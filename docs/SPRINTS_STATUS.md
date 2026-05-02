@@ -1,0 +1,182 @@
+# Kipindi — Sprint Status
+
+**Last updated:** 2026-04-30
+
+| Sprint | Scope | Status |
+|---|---|---|
+| 0 | Foundation: design tokens, Prisma schema, mock data, atomic UI | ✅ Complete |
+| 1 | Auth + KYC + security primitives | ✅ Complete |
+| 2 | Wallet + payments (mobile money + AML) | ✅ Complete |
+| 3 | Match data + pool engine + settlement | ✅ Complete (in-memory; real feed next) |
+| 4 | Bet placement + cash-out + win celebration | ✅ Complete (single bet · cash-out next) |
+| 5 | Real-time + notifications | 🟡 Notifications panel + SMS templates done; WebSocket push pending |
+| 5b | Concurrency lock + intensive stress + security audit | ✅ Complete · 11/11 stress, 6/6 mapigo intensive |
+| 5c | Toast system + breadcrumbs + cross-page win toast | ✅ Complete |
+| 6 | Anti-fraud + match integrity | ⬜ Schema only |
+| 7 | Compliance UI + admin dashboard | ✅ Complete · `/admin` (overview, audit, players, AML, self-exclusions) |
+| 7b | Responsible gambling controls + legal pages | ✅ Complete · `/profile/responsible-gambling`, `/legal/{terms,privacy,responsible-gambling,aml}` |
+| 8 | Mapigo signature game | ✅ Complete · round place + settle wired + win celebration |
+| 9 | Polish + soft launch | ⬜ Pending |
+| ★ | Demo mode for manager review | ✅ Complete · `/auth/demo` |
+| ★ | Avatar dropdown + sign-out | ✅ Complete |
+| ★ | Real-time round timer | ✅ Complete (1s tick interval) |
+| ★ | Win celebration overlay | ✅ Complete (gold jackpot fullscreen) |
+| ★ | Pre-seeded demo bets | ✅ Complete (1 won + 1 lost on first demo entry) |
+| ★ | Regulator & test-lab certification packet | ✅ Complete · `docs/REGULATOR_AND_TEST_LAB_PACKET.md` |
+
+---
+
+## What's shipped end-to-end (verified by walkthrough screenshots in `docs/shots-demo-flow/`)
+
+### Account + auth
+- Phone-first registration with age gate + terms (`/auth/register`)
+- Phone-first login → OTP (`/auth/login` → `/auth/otp`)
+- 6-digit OTP verification, 5-attempt cap, 5-min TTL, scrypt-hashed at rest
+- Session via HMAC-signed HttpOnly cookies, 7-day TTL
+- Demo mode for instant manager walkthrough (`/auth/demo`)
+- Sign-out via top-nav avatar dropdown menu
+- Sign-out via `/auth/logout` route handler
+
+### KYC (regulator-aligned)
+- 3-step wizard at `/profile/kyc`: NIDA → documents → review
+- NIDA mock with deterministic test paths (mismatch / sanctioned / underage)
+- Status state machine: NOT_STARTED → IN_PROGRESS → PENDING_REVIEW → APPROVED | REJECTED
+- Demo session pre-approves KYC so the manager can withdraw immediately
+
+### Wallet + payments
+- `/wallet` — real session reads real balance; mock for guest preview
+- `/wallet/deposit` — 6 providers (M-Pesa, Tigo Pesa, Airtel Money, HaloPesa, Mixx by Yas, Card), TZS amount with quick chips, source phone, AML-ready audit
+- `/wallet/withdraw` — KYC gate, AML threshold (TZS 1M triggers REVIEW), withholding tax notice, 6-digit OTP confirmation
+- Activity tab — real transactions interleaved with deposit/payout/stake events
+
+### Bet placement
+- Match-detail bet slip wired to `placeBetAction` server action
+- Wallet debits on stake, audited as `BET_PLACED` transaction
+- Bet status: PLACED → WON | LOST | VOIDED | CASHED_OUT
+- Demo "settle window" action (demo-only) for manager walkthrough
+- `/bets` page reads real session bets + real Mapigo bets, falls back to mock for guest preview
+
+### Mapigo (signature game)
+- `/mapigo` — gold waveform, prediction tray (SPIKE/DRIFT/CALM), real round state
+- Place call → debits wallet, audited as `mapigo.bet.placed`
+- Real 1-second tick interval drives the round countdown banner
+- Live participant + pool counters update locally on placement
+- Demo settle controls (visible only when bet placed) — pick which call wins
+- Win celebration overlay (full-screen gold jackpot card with payout amount + Continue button)
+- One-bet-per-round enforcement
+- Round state machine: OPEN → SETTLED (idempotent)
+
+### Top app bar + nav
+- Sticky bar with logo, primary nav, search/notifications/lang-toggle/theme-toggle/avatar
+- Avatar dropdown menu when authed: Profile / Wallet / My Bets / Verify ID / Sign out
+- Avatar links to /auth/login when not authed
+- Live ticker bar below nav scrolling recent platform events
+- Demo banner above nav when in demo session
+
+### Notifications
+- Bell icon opens dropdown with full-page scrim
+- 6 mock notification templates (win, round, deposit, withdraw, kyc, match)
+- EN + SW pairs per row with unread gold pulse
+- Click-outside dismiss, Esc dismiss, explicit close button
+
+### Security (regulator-facing)
+- All 8 OWASP-tier security headers active site-wide via edge middleware
+- CSP, HSTS (prod), X-Frame DENY, X-Content nosniff, Permissions-Policy, COOP, Referrer-Policy
+- Append-only audit log capturing every state change with category + actor + target + IP + UA
+- Token-bucket rate limiting per (actor, action)
+- Constant-time HMAC + scrypt verifies for all crypto
+- Per-wallet mutex (`withLock`) prevents double-spend race conditions; idempotent settlement prevents double-pay
+- Verified by automated stress tests: 8 parallel match bets, 4 parallel Mapigo bets, 30× rapid-click, tampered cookie rejection, header presence
+
+### Responsible gambling (LCCP / GLI-19 aligned)
+- `/profile/responsible-gambling` — deposit limits (daily/weekly/monthly), loss limit, session time, reality-check interval
+- Self-exclusion (24h, 1w, 1m, 6m, permanent) — one-way, freezes wallet + destroys session
+- Cooling-off (1h, 24h, 1w) — same shape, shorter
+- Daily-deposit increases deferred 24 hours per LCCP SR Code 3.4.3 — decreases immediate
+- Lockout enforced at every revenue path: `placeBet`, `placeMapigoBet`, `deposit`
+
+### Legal pages
+- `/legal/terms` — Terms of Service (10 sections)
+- `/legal/privacy` — Privacy Policy (Tanzania PDPA + GDPR principles)
+- `/legal/responsible-gambling` — RG policy with helpline numbers
+- `/legal/aml` — AML / KYC policy (CDD, EDD, SAR, sanctions, retention)
+
+### Admin / compliance dashboard
+- `/admin` — overview KPIs + latest audit entries
+- `/admin/audit` — full audit log with category and actor-id filters
+- `/admin/aml` — AML_REVIEW queue with two-person approval scaffolding
+- `/admin/players` — player roster placeholder (production: Postgres-paginated)
+- `/admin/self-exclusions` — RG roster (production: nightly signed CSV to GBT)
+- Demo session granted admin view for manager walkthrough; production limits to ADMIN/COMPLIANCE/MODERATOR roles
+
+---
+
+## Tests in this build
+
+### Automated
+- `scripts/smoke-test.mjs` — 14-check Playwright integration test
+- `scripts/stress-test.mjs` — 11-check concurrent + security stress (8 parallel bets, 4 parallel Mapigo, tampered cookie, security headers)
+- `scripts/mapigo-stress.mjs` — 6-check Mapigo intensive (30× rapid click, parallel race, max stake, idempotent settlement)
+- `scripts/demo-walkthrough.mjs` — captures the 10-screenshot end-to-end demo flow
+- `scripts/screenshot.mjs` — full-page captures across desktop / tablet / mobile, public + authed
+- 25+ routes verified with curl (200/307 status checks)
+
+### Test artifacts in repo
+- `docs/shots-dark/` — canonical dark-mode screenshots (13 public + 7 demo-authed routes)
+- `docs/shots-light/` — canonical light-mode screenshots
+- `docs/shots-demo-flow/` — 10-step end-to-end demo walkthrough proving the full bet-place + settle + payout flow
+
+### Verified flows (via walkthrough screenshots)
+- Demo session boot → wallet starts at TZS 100,000
+- Place a match bet → wallet debits to 99,000
+- Place a Mapigo SPIKE call → debits to 98,000
+- Settle Mapigo round with SPIKE wins → +TZS 2,300 payout, win overlay fires, balance lands at 100,300
+- Activity feed shows complete audit trail
+- /bets shows 8+ active bets (accumulated across runs)
+
+---
+
+## What's still mock or stubbed
+
+| Item | Current | Production target |
+|---|---|---|
+| User / KYC / wallet / bets / mapigo persistence | In-memory `Map` (with hot-reload safety) | Postgres via Prisma 7 |
+| SMS delivery | `console.log` (visible in dev terminal) | Selcom / Beem / Africa's Talking |
+| NIDA API | Deterministic mock with test paths | NIDA mTLS endpoint per signed agreement |
+| Document upload | Storage-key stub | S3-compatible bucket + virus scan + blur detection |
+| Audit log | In-memory ring (10k entries, console-visible) | Postgres `AuditLog` (schema already defined) |
+| Rate-limit store | In-process | Redis cluster |
+| Match feed | Static mock (`mock-data.ts`) | API-Football integration in Sprint 5 production push |
+| Payment provider | Instant-approve mock (declines amounts ending in 13 for QA) | Selcom or Azampay aggregator (BoT-licensed) |
+| Notifications dispatch | Static templates | FCM (Android push) + APN (iOS) + SMS via aggregator |
+
+The boundary is one file change per service. The shape of every interface matches what production will use.
+
+---
+
+## Pre-launch gates (regulator-aligned)
+
+1. Tanzania gaming lawyer engaged
+2. Pre-application meeting with Gaming Board of Tanzania — pool model + Mapigo classification in writing
+3. Selcom or Azampay aggregator agreement signed
+4. NIDA agreement signed
+5. Sportradar Integrity Services partnership
+6. ISO 27001 Stage 1 audit booked
+7. Postgres provisioned (production migration from in-memory store)
+8. Real SMS provider (Selcom recommended — same vendor as payments)
+
+---
+
+## Manager review tomorrow
+
+The manager can test the full platform without any backend infrastructure:
+
+1. Run `npm run dev` locally
+2. Run `cloudflared tunnel --url http://localhost:3000` in another terminal
+3. Send the manager the `*.trycloudflare.com` URL
+4. He clicks **Enter demo · Ingia mfano** on the login page
+5. He gets TZS 100,000 starting balance, KYC pre-approved
+6. He can browse, place real bets on real matches, play Mapigo, settle rounds, watch the wallet update
+7. He can sign out via the avatar dropdown menu
+
+See [`MANAGER_REMOTE_ACCESS.md`](MANAGER_REMOTE_ACCESS.md) for the full guide.

@@ -1,0 +1,16 @@
+node_modules
+.next
+out
+dist
+.DS_Store
+*.log
+.env
+.env.local
+.env.*.local
+coverage
+.vercel
+next-env.d.ts
+prisma/migrations/dev.db*
+.idea
+.vscode/*
+!.vscode/extensions.json
