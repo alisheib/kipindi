@@ -1,104 +1,148 @@
-import { Card, CardBody } from "@/components/ui/card";
-import { Breadcrumbs } from "@/components/ui/breadcrumbs";
-import { Activity, Wallet, ShieldCheck, AlertTriangle } from "lucide-react";
+import { AdminPageHead, AdminKpi, AdminCard, FeedRow, AdminFunnel, AdminStackedBar } from "@/components/admin/admin-shell";
+import { AdminAreaChart } from "@/components/admin/admin-charts";
+import { Activity } from "lucide-react";
 import { db } from "@/lib/server/store";
-import { getAuditPage } from "@/lib/server/audit";
-import { formatTzs } from "@/lib/utils";
+import { getAuditPage, type AuditCategory } from "@/lib/server/audit";
+import { activePlayers, grossGamingRevenue, netGamingRevenue, kycFunnel, providerSummary, rgRosterCounts, moneyFlowSeries } from "@/lib/server/analytics";
+import { formatTzsCompact } from "@/lib/utils";
 
 export const metadata = { title: "Admin · Overview" };
 export const dynamic = "force-dynamic";
 
+const CATEGORY_VARIANT: Record<AuditCategory, "gold" | "royal" | "danger" | "success" | "warning" | "neutral"> = {
+  AUTH:       "royal",
+  KYC:        "royal",
+  WALLET:     "royal",
+  BET:        "gold",
+  ADMIN:      "warning",
+  COMPLIANCE: "warning",
+  SECURITY:   "danger",
+  SYSTEM:     "neutral",
+};
+
 export default function AdminOverviewPage() {
-  // Aggregate live metrics from in-memory store
-  const users = db.user;
-  const wallets = db.wallet;
-  const txns = db.txn;
+  const active24h = activePlayers("today");
+  const ggr = grossGamingRevenue("today");
+  const ngr = netGamingRevenue("today");
+  const amlPending = db.txn.listByStatus("AML_REVIEW").length;
+  const kyc = kycFunnel();
+  const provs = providerSummary("28d").slice(0, 5);
+  const rg = rgRosterCounts();
+  const recent = getAuditPage({ limit: 12 });
+  const flow = moneyFlowSeries("today", 24);
 
-  // Iterate maps via reading the underlying global (since db API doesn't expose iteration directly)
-  // Use the public API: list audit entries to count by category in last 24h
-  const recent = getAuditPage({ limit: 1000 });
-  const cutoff = Date.now() - 24 * 3600 * 1000;
-  const last24h = recent.filter((e) => new Date(e.createdAt).getTime() > cutoff);
+  // Provider mix flex shares — total deposits across the top 5 providers
+  const provTotal = provs.reduce((s, p) => s + p.deposits, 0) || 1;
+  const provColors = ["var(--royal)", "var(--gold)", "#3a4a76", "#7588B1", "#A6B0C8"];
 
-  const counts = {
-    auth:        last24h.filter((e) => e.category === "AUTH").length,
-    kyc:         last24h.filter((e) => e.category === "KYC").length,
-    wallet:      last24h.filter((e) => e.category === "WALLET").length,
-    bet:         last24h.filter((e) => e.category === "BET").length,
-    compliance:  last24h.filter((e) => e.category === "COMPLIANCE").length,
-    security:    last24h.filter((e) => e.category === "SECURITY").length,
-  };
-
-  // Sample reads — will be Prisma queries in production
-  const sampleUserId = recent.find((e) => e.actorId)?.actorId ?? null;
-  const sampleWallet = sampleUserId ? wallets.findByUserId(sampleUserId) : null;
-  void users; void txns; // present in scope for production swap
+  const conversion = kyc.registered === 0 ? 0 : (kyc.approved / kyc.registered) * 100;
 
   return (
-    <div className="space-y-5">
-      <Breadcrumbs items={[{ label: "Admin", href: "/admin" }, { label: "Overview" }]} />
-      <header>
-        <h1 className="font-display font-bold text-title-lg text-text">Overview · Muhtasari</h1>
-        <p className="text-body text-text-secondary">Last 24 hours · in-memory metrics. Production: replace with Postgres queries.</p>
-      </header>
+    <>
+      <AdminPageHead title="Overview" sw="Muhtasari" />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiCard icon={<Activity size={16} className="text-royal" />} label="Audit events / 24h" value={String(last24h.length)} />
-        <KpiCard icon={<ShieldCheck size={16} className="text-success" />} label="Auth events" value={String(counts.auth)} />
-        <KpiCard icon={<Wallet size={16} className="text-gold" />} label="Wallet events" value={String(counts.wallet)} />
-        <KpiCard icon={<AlertTriangle size={16} className="text-warning" />} label="Compliance events" value={String(counts.compliance)} />
+      <div className="px-4 lg:px-6 py-5 space-y-4">
+        {/* §A — KPI strip */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <AdminKpi label="Active players" sw="Wachezaji hai"     value={active24h.toLocaleString()} delta="last 24h" pulse />
+          <AdminKpi label="GGR · 24h"      sw="Mapato ya jumla"   value={`TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`} gold delta="vs yesterday" />
+          <AdminKpi label="NGR · 24h"      sw="Mapato halisi"     value={`TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`} gold delta="net of payouts" />
+          <AdminKpi label="AML pending"    sw="Inasubiri ukaguzi" value={amlPending} delta="needs review" deltaDir={amlPending > 0 ? "up" : "flat"} pulse={amlPending > 0} />
+        </div>
+
+        {/* §B — Money flow + activity */}
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-3">
+          <AdminCard
+            title="24-hour money flow"
+            sw="Mtiririko wa pesa · TZS net per hour"
+            action={<span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">net inflow vs outflow</span>}
+          >
+            <AdminAreaChart
+              series={flow}
+              xLabels={flow.map((p) => p.label)}
+              height={240}
+              fillVar="var(--gold)"
+              strokeVar="var(--gold)"
+              yLabel="Net flow"
+            />
+          </AdminCard>
+          <AdminCard
+            title="Live activity feed"
+            sw="Shughuli za moja kwa moja"
+            action={<a href="/admin/audit" className="font-mono text-micro tracking-[0.10em] uppercase text-royal">audit →</a>}
+          >
+            <div className="max-h-[360px] overflow-y-auto -mx-1 px-1">
+              {recent.map((e) => (
+                <FeedRow
+                  key={e.id}
+                  ts={e.createdAt.split("T")[1]?.slice(0, 8) ?? ""}
+                  category={e.category}
+                  variant={CATEGORY_VARIANT[e.category]}
+                  body={`${e.action} ${e.targetType ? `· ${e.targetType}#${e.targetId?.slice(0, 8)}` : ""}`}
+                />
+              ))}
+              {recent.length === 0 && (
+                <div className="py-6 text-center text-caption text-text-tertiary">
+                  <Activity size={20} className="mx-auto mb-1.5 opacity-40" />
+                  No activity in the last cycle.
+                </div>
+              )}
+            </div>
+          </AdminCard>
+        </div>
+
+        {/* §C — Secondary tiles */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <AdminCard title="KYC funnel" sw="Hatua za uthibitisho">
+            <AdminFunnel
+              steps={[
+                { label: "REG", value: kyc.registered.toLocaleString() },
+                { label: "STARTED", value: kyc.started.toLocaleString() },
+                { label: "PENDING", value: kyc.pending.toLocaleString() },
+                { label: "APPROVED", value: kyc.approved.toLocaleString() },
+              ]}
+            />
+            <p className="text-caption text-text-tertiary">
+              conversion {conversion.toFixed(1)}% · <span className="text-gold italic">uthibitisho</span>
+            </p>
+          </AdminCard>
+
+          <AdminCard title="Provider mix" sw="Watoa huduma ya simu">
+            {provs.length > 0 ? (
+              <>
+                <AdminStackedBar
+                  segments={provs.map((p, i) => ({
+                    flex: Math.max(2, Math.round((p.deposits / provTotal) * 100)),
+                    color: provColors[i] ?? "#A6B0C8",
+                    label: p.provider.split("_")[0],
+                  }))}
+                />
+                <p className="text-caption text-text-tertiary">28-day deposit share · <span className="text-gold italic">asilimia</span></p>
+              </>
+            ) : (
+              <div className="text-caption text-text-tertiary py-3 text-center">No provider data in window.</div>
+            )}
+          </AdminCard>
+
+          <AdminCard title="Self-exclusion" sw="Kujizuia">
+            <div className="flex items-baseline justify-between">
+              <span className="font-mono font-bold text-title-md tabular text-text">{rg.selfExcluded}</span>
+              {rg.expiringThisWeek > 0 && (
+                <span className="font-mono text-micro text-text-tertiary tracking-wider">▼ {rg.expiringThisWeek} expiring</span>
+              )}
+            </div>
+            <p className="text-caption text-text-tertiary">active roster · {rg.cooledOff} cooling-off</p>
+          </AdminCard>
+
+          <AdminCard title="Match-integrity alerts" sw="Tahadhari za uadilifu">
+            <div className="flex items-baseline justify-between">
+              <span className="font-mono font-bold text-title-md tabular text-danger">0</span>
+              <span className="font-mono text-micro text-text-tertiary tracking-wider uppercase">last 24h</span>
+            </div>
+            <p className="text-caption text-text-tertiary">Sportradar feed · stub adapter</p>
+          </AdminCard>
+        </div>
       </div>
-
-      <Card>
-        <CardBody className="p-5 space-y-3">
-          <h2 className="font-display font-bold text-title-sm text-text">Latest audit entries</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-caption">
-              <thead className="text-text-tertiary uppercase tracking-wide">
-                <tr className="border-b border-border-subtle">
-                  <th className="text-left py-2 pr-3">Time</th>
-                  <th className="text-left py-2 pr-3">Category</th>
-                  <th className="text-left py-2 pr-3">Action</th>
-                  <th className="text-left py-2 pr-3">Actor</th>
-                  <th className="text-left py-2 pr-3">Target</th>
-                </tr>
-              </thead>
-              <tbody className="text-text-secondary">
-                {recent.slice(0, 25).map((e) => (
-                  <tr key={e.id} className="border-b border-border-subtle/50">
-                    <td className="py-1.5 pr-3 font-mono whitespace-nowrap">{e.createdAt.split("T")[1]?.slice(0, 8)}</td>
-                    <td className="py-1.5 pr-3"><span className="font-mono text-micro tracking-wide">{e.category}</span></td>
-                    <td className="py-1.5 pr-3 font-medium text-text">{e.action}</td>
-                    <td className="py-1.5 pr-3 font-mono">{e.actorId?.slice(0, 14) ?? "—"}</td>
-                    <td className="py-1.5 pr-3 font-mono">{e.targetType ? `${e.targetType}#${e.targetId?.slice(0, 10)}` : "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {recent.length === 0 && <p className="text-body-sm text-text-tertiary py-3">No audit entries yet.</p>}
-          </div>
-        </CardBody>
-      </Card>
-
-      {sampleWallet && (
-        <Card>
-          <CardBody className="p-5 space-y-2">
-            <h2 className="font-display font-bold text-title-sm text-text">Sample wallet</h2>
-            <p className="text-body-sm text-text-secondary">User <span className="font-mono">{sampleWallet.userId}</span> — balance <strong>{formatTzs(sampleWallet.balance)}</strong>, status <strong>{sampleWallet.status}</strong></p>
-          </CardBody>
-        </Card>
-      )}
-    </div>
-  );
-}
-
-function KpiCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <Card>
-      <CardBody className="p-4 space-y-2">
-        <div className="flex items-center gap-2 text-text-tertiary">{icon}<span className="text-caption uppercase tracking-wide">{label}</span></div>
-        <p className="font-display font-bold text-title-md tabular text-text leading-none">{value}</p>
-      </CardBody>
-    </Card>
+    </>
   );
 }

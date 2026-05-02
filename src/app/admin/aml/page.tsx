@@ -1,5 +1,4 @@
-import { Card, CardBody } from "@/components/ui/card";
-import { Breadcrumbs } from "@/components/ui/breadcrumbs";
+import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
 import { db } from "@/lib/server/store";
 import { formatTzs } from "@/lib/utils";
@@ -13,18 +12,15 @@ export default function AdminAmlPage() {
   const inReview = db.txn.listByStatus("AML_REVIEW");
 
   return (
-    <div className="space-y-4">
-      <Breadcrumbs items={[{ label: "Admin", href: "/admin" }, { label: "AML / EDD queue" }]} />
-      <header className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="font-display font-bold text-title-lg text-text">AML / EDD queue</h1>
-          <p className="text-body text-text-secondary">Transactions held in <code>AML_REVIEW</code> awaiting compliance officer sign-off.</p>
-        </div>
-        <Chip size="md" variant={inReview.length > 0 ? "warning" : "neutral"}>{inReview.length} pending</Chip>
-      </header>
-
-      <Card>
-        <CardBody className="p-0">
+    <>
+      <AdminPageHead
+        title="AML · EDD queue"
+        sw="Foleni ya AML"
+        period={false}
+        actions={<Chip size="md" variant={inReview.length > 0 ? "warning" : "neutral"}>{inReview.length} pending</Chip>}
+      />
+      <div className="px-4 lg:px-6 py-5 space-y-4">
+        <AdminCard padding="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-caption">
               <thead className="text-text-tertiary uppercase tracking-wide bg-bg-sunken/50">
@@ -62,18 +58,18 @@ export default function AdminAmlPage() {
               </tbody>
             </table>
           </div>
-        </CardBody>
-      </Card>
+        </AdminCard>
 
-      <Card className="border border-warning-border bg-warning-bg/15">
-        <CardBody className="p-4 flex items-start gap-3">
-          <AlertTriangle size={18} className="text-warning shrink-0 mt-0.5" />
-          <div className="text-caption text-text-secondary">
-            <p className="text-text font-bold">Two-person approval (production)</p>
-            <p>In production, approve / reject for amounts ≥ TZS 5M requires (a) the on-shift compliance officer, plus (b) the AML lead. Both clicks are recorded in the <code>ADMIN</code> audit category with the reviewer's user-id, IP, and reason. This build records the single approval in audit so the workflow can be lifted directly when the second-officer flow is wired.</p>
+        <AdminCard className="border-warning-border bg-warning-bg/15">
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={18} className="text-warning shrink-0 mt-0.5" />
+            <div className="text-caption text-text-secondary">
+              <p className="text-text font-bold">Two-person approval (production)</p>
+              <p>In production, approve / reject for amounts ≥ TZS 5M requires (a) the on-shift compliance officer, plus (b) the AML lead. Both clicks are recorded in the <code>ADMIN</code> audit category with the reviewer&apos;s user-id, IP, and reason. This build records the single approval in audit so the workflow can be lifted directly when the second-officer flow is wired.</p>
+            </div>
           </div>
-        </CardBody>
-      </Card>
-    </div>
+        </AdminCard>
+      </div>
+    </>
   );
 }

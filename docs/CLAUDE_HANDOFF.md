@@ -134,7 +134,50 @@ The session cookie carries `demoMode: true`. The `<DemoBanner>` component (in `a
 - **Admin dashboard is skeletal.** `/admin` overview + audit log + AML queue work; players + self-exclusions roster are placeholders pending Postgres iteration.
 - **Light + system themes disabled.** Theme is force-locked to dark via `forcedTheme="dark"` in `theme-provider.tsx`. Light theme has known contrast bugs; toggle buttons render but are disabled. Re-enable after a polish pass.
 
-## What's done in Sprint 14 (this session)
+## What's done in Sprint 15 (this session, overnight)
+
+**Full operator-management dashboard.** Built against Claude Designer&apos;s wireframes in `mapigo/admin-wf/*`. The shell, atoms, analytics layer, and 17 routes ship in one go.
+
+### New components
+- `src/components/admin/admin-shell.tsx` — `ConfidentialBand`, `AdminSidebar` (6-group nav with auto-badges from AML pending + SOF pending), `AdminTopBar` (breadcrumbs + officer chip + role badge), `AdminPageHead` (title + SW pair + period picker + actions slot), `AdminKpi`, `AdminCard`, `AdminBlock`, `AdminFunnel`, `AdminStackedBar`, `StatusPill`, `FeedRow`.
+- `src/components/admin/admin-charts.tsx` — pure-SVG `AdminAreaChart` (line+area with grid + end-dot + x-labels), `AdminStackedBars` (multi-series stacked bar), `AdminFunnelChart` (proportional horizontal bars with conversion %).
+- `src/lib/server/analytics.ts` — `grossGamingRevenue`, `netGamingRevenue`, `depositsTotal`, `withdrawalsTotal`, `providerSummary`, `activePlayers`, `walletLiabilityTotal`, `kycFunnel`, `rgRosterCounts`, `userStatusCounts`, `topNgrContributors`, `operatorMarginPct`, `amlThresholdBreaches`, `moneyFlowSeries`, `marginSeries`, `providerStackedSeries`, `listProvidersInPeriod`. Each function maps 1:1 to a single Postgres query for the production swap.
+
+### New routes (17 admin pages)
+- `/admin` — Overview cockpit: 4 KPIs, money-flow area chart, live activity feed, KYC funnel, provider mix, self-exclusion + integrity tiles
+- `/admin/live` — Live ops: live-match table, money-flow chart, bet feed, wallet feed
+- `/admin/finance` — 8 KPIs, net-flow chart, margin chart, provider stacked-bar, top-10 concentration, provider summary table, CSV/PDF export buttons
+- `/admin/reports` — 8 regulator templates (GBT / TRA / FIU / ISO / KYC re-verify / SX register / RG engagement / match-integrity), generation log
+- `/admin/players` — restyled to new shell, links each row to per-player drill-down
+- `/admin/players/[id]` — full per-player drill-down with risk score, 4 quick KPIs, 7 tabs (Activity / Bets / Transactions / KYC / Limits / Self-exclusion / Audit), sticky privileged-actions bar with two-person approval queue
+- `/admin/players/cohorts` — by status / region / age band, registrations-over-time bar chart
+- `/admin/games/match` — match-betting analytics with per-match table + live snapshot
+- `/admin/games/window` — per-window pool analytics with stacked-bar status mix
+- `/admin/games/mapigo` — call distribution vs outcome distribution + recent rounds
+- `/admin/compliance` — chain integrity + backup status + KYC funnel + AML mini-queue + RG row + integrity table + reports list
+- `/admin/aml` — restyled, two-button approve/reject (already wired Sprint 12-13)
+- `/admin/self-exclusions` — real roster from `db.user.list()` × `db.responsible.get()`, sorted by next expiry
+- `/admin/audit` — restyled to new shell, category chips
+- `/admin/system` — 4 health KPIs (chain / users / match-feed / SMS) + backup-now + verify-chain
+- `/admin/approvals` — two-person approval queue (AML pending + SOF pending), recent approval activity
+- `/admin/2fa/setup` — restyled
+
+### Demo session is admin-equivalent
+The admin layout gates on `session.demoMode || ADMIN_ROLES.has(u.role)`. The manager&apos;s demo session sees the full dashboard for the walkthrough — no separate login needed.
+
+### Screenshots
+17 admin pages × 2 themes (dark + light) = **34 PNGs** at `docs/shots-admin/`. Captured at 1440×900.
+
+### Tests passing
+- A11y: 22/22
+- Multi-viewport: 99/99 (admin pages excluded from phone audits — desktop-first per design brief)
+- Stress: 11/11
+- Sprint 9 / 10 / 14 regression: 27/27
+- Sprint 15 admin test: 19/19
+- Golden-path E2E: 12/12
+- **Combined: 190/190**
+
+## What's done in Sprint 14
 
 - **Locale persistence done right** — `kp-locale` cookie set by the language dropdown, read in `layout.tsx` server component to drive `<html lang>` on first paint. No more flash-of-EN-then-flip. localStorage kept as a fallback for back-nav speed.
 - **French now actually drives the UI** — bottom nav reads `t.nav.*`, landing CTAs read `t.common.tryDemo` and `t.common.browseMatches`, OTP messages have FR variant. Dict expanded: `tryDemo`, `browseMatches`, `signIn`, `signOut`, `cashOut`, `help`, `language`.

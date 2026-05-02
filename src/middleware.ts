@@ -49,7 +49,12 @@ const CSP = [
 ].join("; ");
 
 export function middleware(req: NextRequest) {
-  const res = NextResponse.next();
+  // Forward the request path so server components (e.g. the admin layout) can
+  // know which route is rendering for breadcrumb + active-nav decisions.
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-pathname", req.nextUrl.pathname);
+
+  const res = NextResponse.next({ request: { headers: requestHeaders } });
   for (const [k, v] of Object.entries(SECURITY_HEADERS)) res.headers.set(k, v);
   res.headers.set("Content-Security-Policy", CSP);
   if (process.env.NODE_ENV === "production") {

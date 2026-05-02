@@ -1,5 +1,4 @@
-import { Card, CardBody } from "@/components/ui/card";
-import { Breadcrumbs } from "@/components/ui/breadcrumbs";
+import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
 import { Avatar } from "@/components/ui/avatar";
 import { db } from "@/lib/server/store";
@@ -45,23 +44,22 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
   };
 
   return (
-    <div className="space-y-4">
-      <Breadcrumbs items={[{ label: "Admin", href: "/admin" }, { label: "Players" }]} />
+    <>
+      <AdminPageHead
+        title="Players"
+        sw="Wachezaji"
+        period={false}
+        actions={
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Chip size="sm" variant="success">{counts.active} active</Chip>
+            {counts.pending_kyc > 0 && <Chip size="sm" variant="warning">{counts.pending_kyc} pending KYC</Chip>}
+            {(counts.suspended + counts.self_excluded) > 0 && <Chip size="sm" variant="danger">{counts.suspended + counts.self_excluded} blocked</Chip>}
+          </div>
+        }
+      />
 
-      <header className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="font-display font-bold text-title-lg text-text">Players · Wachezaji</h1>
-          <p className="text-body text-text-secondary">Search by phone, name, or user-id.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Chip size="sm" variant="success">{counts.active} active</Chip>
-          {counts.pending_kyc > 0 && <Chip size="sm" variant="warning">{counts.pending_kyc} pending KYC</Chip>}
-          {(counts.suspended + counts.self_excluded) > 0 && <Chip size="sm" variant="danger">{counts.suspended + counts.self_excluded} blocked</Chip>}
-        </div>
-      </header>
-
-      <Card>
-        <CardBody className="p-4 space-y-3">
+      <div className="px-4 lg:px-6 py-5 space-y-4">
+        <AdminCard>
           <form className="flex flex-wrap gap-2">
             <div className="relative flex-1 min-w-[260px]">
               <Search size={14} aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
@@ -103,14 +101,12 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
           <p className="text-caption text-text-tertiary">
             {filtered.length} of {counts.total} {counts.total === 1 ? "player" : "players"}
           </p>
-        </CardBody>
-      </Card>
+        </AdminCard>
 
-      <Card>
-        <CardBody className="p-0">
+        <AdminCard padding="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-caption">
-              <thead className="text-text-tertiary uppercase tracking-wide bg-bg-sunken/50">
+              <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary bg-bg-sunken/50 border-b border-border-subtle">
                 <tr>
                   <th className="text-left p-3">Player</th>
                   <th className="text-left p-3">Phone</th>
@@ -118,23 +114,23 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                   <th className="text-right p-3">Wallet</th>
                   <th className="text-left p-3">Joined</th>
                   <th className="text-left p-3">Last login</th>
-                  <th className="text-left p-3">Actions</th>
+                  <th className="text-left p-3">Drill-down</th>
                 </tr>
               </thead>
               <tbody className="text-text-secondary">
                 {filtered.map((u) => {
                   const wallet = db.wallet.findByUserId(u.id);
-                  const initials = (u.displayName ?? "").split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase() || "?";
+                  const initials = (u.displayName ?? "").split(" ").map((s: string) => s[0]).slice(0, 2).join("").toUpperCase() || "?";
                   return (
-                    <tr key={u.id} className="border-t border-border-subtle/50 hover:bg-surface-2/40">
+                    <tr key={u.id} className="border-b border-border-subtle/40 last:border-b-0 hover:bg-surface-hover">
                       <td className="p-3">
-                        <div className="flex items-center gap-2 min-w-0">
+                        <a href={`/admin/players/${u.id}`} className="flex items-center gap-2 min-w-0 hover:text-royal">
                           <Avatar initials={initials} size="sm" />
                           <div className="min-w-0">
                             <p className="text-body-sm font-medium text-text truncate">{u.displayName ?? "—"}</p>
                             <p className="text-micro font-mono text-text-tertiary truncate">{u.id}</p>
                           </div>
-                        </div>
+                        </a>
                       </td>
                       <td className="p-3 font-mono whitespace-nowrap">{u.phoneE164}</td>
                       <td className="p-3"><Chip size="sm" variant={STATUS_VARIANT[u.status] ?? "neutral"}>{u.status}</Chip></td>
@@ -142,7 +138,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                       <td className="p-3 font-mono whitespace-nowrap">{u.createdAt.split("T")[0]}</td>
                       <td className="p-3 font-mono whitespace-nowrap">{u.lastLoginAt ? u.lastLoginAt.split("T")[0] : "—"}</td>
                       <td className="p-3">
-                        <a href={`/admin/audit?actorId=${u.id}`} className="text-royal hover:underline font-medium">Audit</a>
+                        <a href={`/admin/players/${u.id}`} className="text-royal hover:underline font-medium font-mono text-micro tracking-[0.10em] uppercase">profile →</a>
                       </td>
                     </tr>
                   );
@@ -153,15 +149,15 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
               </tbody>
             </table>
           </div>
-        </CardBody>
-      </Card>
+        </AdminCard>
 
-      <Card className="border border-info-border bg-info-bg/15">
-        <CardBody className="p-4 text-caption text-text-secondary space-y-1">
-          <p className="text-text font-bold">Privileged actions (production)</p>
-          <p>Freeze wallet, override KYC, manual self-exclusion, transaction reversal, and account closure are gated behind two-person approval (compliance officer + AML lead for amounts ≥ TZS 5M). Every action is recorded in the <code>ADMIN</code> audit category with the reviewer's user-id, IP, and reason.</p>
-        </CardBody>
-      </Card>
-    </div>
+        <AdminCard className="border-info-border bg-info-bg/15">
+          <div className="text-caption text-text-secondary space-y-1">
+            <p className="text-text font-bold">Privileged actions (production)</p>
+            <p>Freeze wallet, override KYC, manual self-exclusion, transaction reversal, and account closure are gated behind two-person approval (compliance officer + AML lead for amounts ≥ TZS 5M). Every action is recorded in the <code>ADMIN</code> audit category with the reviewer&apos;s user-id, IP, and reason.</p>
+          </div>
+        </AdminCard>
+      </div>
+    </>
   );
 }

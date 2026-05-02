@@ -24,7 +24,10 @@ const VIEWPORTS = [
 
 const PAGES = {
   public: ["/", "/auth/login", "/mapigo", "/live", "/leaderboard", "/games", "/legal/terms", "/legal/privacy", "/legal/responsible-gambling", "/legal/aml"],
-  authed: ["/", "/wallet", "/wallet/deposit", "/wallet/withdraw", "/bets", "/mapigo", "/match/m1", "/profile", "/profile/account", "/profile/kyc", "/profile/responsible-gambling", "/admin", "/admin/audit", "/admin/aml", "/admin/system"],
+  // Admin pages are desktop-first (1024+) per the design brief. We exclude them
+  // from phone-sized viewports because operators sit at desks, not on phones.
+  authed: ["/", "/wallet", "/wallet/deposit", "/wallet/withdraw", "/bets", "/mapigo", "/match/m1", "/profile", "/profile/account", "/profile/kyc", "/profile/responsible-gambling"],
+  authedDesktopOnly: ["/admin", "/admin/audit", "/admin/aml", "/admin/system", "/admin/finance", "/admin/compliance", "/admin/players", "/admin/players/cohorts", "/admin/games/match", "/admin/games/window", "/admin/games/mapigo", "/admin/live", "/admin/reports", "/admin/approvals", "/admin/self-exclusions"],
 };
 
 let total = 0, fails = 0;
@@ -77,7 +80,9 @@ for (const vp of VIEWPORTS) {
   {
     const ctx = await browser.newContext({ viewport: { width: vp.width, height: vp.height } });
     await (await ctx.newPage()).goto(`${BASE}/auth/demo`, { waitUntil: "networkidle" });
-    for (const url of PAGES.authed) {
+    // Admin pages are desktop-only per design — only audit at tablet-1024 and up.
+    const authedList = vp.width >= 1024 ? [...PAGES.authed, ...PAGES.authedDesktopOnly] : PAGES.authed;
+    for (const url of authedList) {
       total++;
       const page = await ctx.newPage();
       try {

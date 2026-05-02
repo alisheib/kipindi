@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Mapigo · Design Spec</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="spec.css" />
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body data-theme="dark">
+
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="tbg" cx="50%" cy="40%" r="80%">
+        <stop offset="0%" stop-color="#1E3E94" stop-opacity="0.5"/>
+        <stop offset="100%" stop-color="#060F24"/>
+      </radialGradient>
+      <linearGradient id="twf" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0%" stop-color="#F4EAC9"/>
+        <stop offset="100%" stop-color="#B58A21"/>
+      </linearGradient>
+    </defs>
+    <rect width="400" height="400" fill="url(#tbg)"/>
+    <g fill="#F7F8FB" opacity="0.6">
+      <circle cx="60" cy="80" r="1"/><circle cx="140" cy="60" r="1.4"/>
+      <circle cx="240" cy="100" r="0.8"/><circle cx="320" cy="70" r="1.2"/>
+      <circle cx="100" cy="160" r="0.8"/><circle cx="280" cy="180" r="1"/>
+      <circle cx="80" cy="280" r="0.8"/><circle cx="320" cy="320" r="1"/>
+    </g>
+    <circle cx="200" cy="200" r="60" fill="rgba(222,188,84,0.18)"/>
+    <path d="M40 220 L120 222 L160 218 L180 222 L195 100 L205 280 L215 130 L230 220 L280 218 L360 222"
+          fill="none" stroke="url(#twf)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <text x="200" y="340" text-anchor="middle" font-size="32" font-family="Sora, sans-serif" font-weight="600" fill="#F7F8FB" letter-spacing="-0.5">mapigo</text>
+  </svg>
+</template>
+
+<div id="root"></div>
+
+<script type="text/babel" src="logo.jsx"></script>
+<script type="text/babel" src="waveform.jsx"></script>
+<script type="text/babel" src="components.jsx"></script>
+<script type="text/babel" src="game-canvas.jsx"></script>
+<script type="text/babel" src="extras.jsx"></script>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+
+<script type="text/babel" data-presets="env,react">
+const { DesignCanvas, DCSection, DCArtboard } = window;
+
+function Hero() {
+  return (
+    <div className="spec-hero">
+      <div>
+        <div className="spec-hero-meta">MAPIGO · DESIGN SPEC v1.0 · for Kipindi</div>
+        <h1>The match has a <em>pulse</em>.<br/>Now you can bet it.</h1>
+        <p>
+          Mapigo (Swahili: <em>"heartbeats / pulses"</em>) is the signature in-platform mini-game for Kipindi.
+          Players watch a live intensity waveform of a real football match and call the next 60 seconds:
+          will the pulse <strong style={{color:'var(--bet-hot)'}}>SPIKE</strong>, <strong style={{color:'var(--gold)'}}>DRIFT</strong>, or stay <strong style={{color:'var(--bet-cold)'}}>CALM</strong>?
+          All stakes pool together; winners share by stake share.
+        </p>
+        <div className="spec-hero-tag">
+          <span className="spec-hero-tag-en">"Feel the match. Bet the pulse."</span>
+          <span style={{color:'var(--text-low)'}}>·</span>
+          <span className="spec-hero-tag-sw">"Hisi mechi. Cheza mapigo."</span>
+        </div>
+      </div>
+      <div style={{display:'flex',justifyContent:'center'}}>
+        <div style={{width:'100%', maxWidth: 360}}>
+          <HubTilePortrait />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Section({ num, title, sub, children }) {
+  return (
+    <section className="spec-section">
+      <div className="spec-section-head">
+        <div className="spec-section-num">{num}</div>
+        <div className="spec-section-title">{title}</div>
+        {sub && <div className="spec-section-sub">{sub}</div>}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+const COLORS = [
+  { name: 'mapigo.beat',          token: '--mapigo-beat',          hex: '#DEBC54' },
+  { name: 'mapigo.beat-light',    token: '--mapigo-beat-light',    hex: '#B58A21' },
+  { name: 'mapigo.beat-glow',     token: '--mapigo-beat-glow',     hex: 'rgba(240,206,106,0.85)' },
+  { name: 'mapigo.spike',         token: '--mapigo-spike',         hex: '#E6633F' },
+  { name: 'mapigo.drift',         token: '--mapigo-drift',         hex: '#DEBC54' },
+  { name: 'mapigo.calm',          token: '--mapigo-calm',          hex: '#5BA9D6' },
+  { name: 'mapigo.calm-fill',     token: '--mapigo-calm-fill',     hex: 'rgba(66,103,224,0.18)' },
+  { name: 'mapigo.spike-fill',    token: '--mapigo-spike-fill',    hex: 'rgba(240,206,106,0.40)' },
+  { name: 'mapigo.round-band',    token: '--mapigo-round-band-fill', hex: 'rgba(222,188,84,0.08)' },
+  { name: 'mapigo.anchor-won',    token: '--mapigo-anchor-won',    hex: '#F0CE6A' },
+  { name: 'mapigo.anchor-lost',   token: '--mapigo-anchor-lost',   hex: 'rgba(110,104,86,0.55)' },
+  { name: 'signal.win',           token: '--signal-win',           hex: '#4CC38A' },
+];
+
+const COPY = [
+  { key: 'cta.spike',         en: 'SPIKE — Big peak coming',                              sw: 'KILELE — Mlipuko unakaribia' },
+  { key: 'cta.drift',         en: 'DRIFT — Gradual rise or fall',                         sw: 'KIVIVU — Inapanda au kushuka pole' },
+  { key: 'cta.calm',          en: 'CALM — No big events',                                 sw: 'TULIVU — Hakuna matukio makubwa' },
+  { key: 'round.open',        en: 'Round open · Place your bet',                          sw: 'Raundi imefunguka · Weka dau lako' },
+  { key: 'round.placed',      en: 'Bet placed · Resolves in {n}s',                        sw: 'Dau limewekwa · Itamalizika baada ya sekunde {n}' },
+  { key: 'round.won',         en: 'You won! +{amt}',                                      sw: 'Umeshinda! +{amt}' },
+  { key: 'round.lost',        en: 'No win this round',                                    sw: 'Hakuna ushindi raundi hii' },
+  { key: 'pool.share',        en: 'All stakes pool · winners share',                      sw: 'Madau yote bwawani · washindi hugawana' },
+  { key: 'match.choose',      en: 'Choose a live match',                                  sw: 'Chagua mechi ya moja kwa moja' },
+  { key: 'match.connecting',  en: 'Connecting to match feed…',                            sw: 'Inaunganisha kwa mechi…' },
+  { key: 'match.halftime',    en: 'Halftime · Resumes at kickoff',                        sw: 'Mapumziko · Itarudi mechi ikianza' },
+  { key: 'match.ended',       en: 'Match ended · Switch to another live match?',          sw: 'Mechi imekwisha · Badilisha mechi nyingine?' },
+  { key: 'limit.daily',       en: 'Daily limit reached · Come back tomorrow',             sw: 'Kikomo cha leo kimefika · Rudi kesho' },
+  { key: 'streak.3',          en: 'Streak ×{n} · You\'re on fire',                        sw: 'Mfululizo ×{n} · Unawaka moto' },
+  { key: 'goal.flash',        en: 'GOAL · {team} {min}\'',                                sw: 'BAO · {team} {min}\'' },
+  { key: 'compliance',        en: '18+ · Play responsibly · Set limits',                  sw: 'Miaka 18+ · Cheza kwa busara · Weka mipaka' },
+];
+
+const LIFECYCLE = [
+  { num: '01', ttl: 'Pre-game',           copy: 'No live match selected. Show match picker. CTA: "Choose a match · Chagua mechi"' },
+  { num: '02', ttl: 'Connecting',         copy: 'Animated waveform draws itself L→R while feed handshakes. Sub: "Inaunganisha kwa mechi…"' },
+  { num: '03', ttl: 'Round open',         copy: '60s countdown active. Tray enabled. Pool counts increment live as others bet.' },
+  { num: '04', ttl: 'Bet placed',         copy: 'Anchor diamond pops in at placement timestamp. Tray locks. One bet per round.' },
+  { num: '05', ttl: 'Resolving',          copy: '5s server hold. Round band tints by outcome. All anchors freeze.' },
+  { num: '06', ttl: 'Round resolved',     copy: 'Result card slides in. Balance updates. Streak updates. Feed prepends.' },
+  { num: '07', ttl: 'Round closed (no bet)', copy: 'No card; band moves on. Greyed anchor placeholder breathes "place a bet".' },
+  { num: '08', ttl: 'Goal scored',        copy: 'Full-screen GoalFlash override. Wordmark "GOAL" stamps 800ms. Haptic MAP_GOAL.' },
+  { num: '09', ttl: 'Halftime',           copy: 'Pause overlay over the canvas. Waveform freezes; round system halted.' },
+  { num: '10', ttl: 'Match ended',        copy: 'Modal: switch match. Refund any in-flight round per server resolve.' },
+  { num: '11', ttl: 'Disconnection',      copy: 'Waveform desaturates 70%. Banner: "Reconnecting… · Inajaribu kuunganisha tena".' },
+  { num: '12', ttl: 'Self-exclusion',     copy: 'Game blocked, helpline copy. No game UI rendered. Nav still accessible.' },
+  { num: '13', ttl: 'Limit reached',      copy: 'Game blocked with daily-limit copy and "back tomorrow" timer.' },
+  { num: '14', ttl: 'Empty pool',         copy: 'Solo round still resolves at fallback ×rate. Pool indicator shows "low liquidity".' },
+];
+
+function App() {
+  return (
+    <DesignCanvas title="Mapigo — Design System & Game Spec" subtitle="v1.0 · ready for engineering handoff" minScale={0.2} maxScale={1.6} initialFit="width">
+      <DCSection id="hero" title="Overview">
+        <DCArtboard id="cover" label="Spec cover" width={1280} height={780}>
+          <div className="spec" style={{padding:'48px 56px', gap:0}}>
+            <Hero />
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="game" title="The game canvas (desktop · 1280×800)">
+        <DCArtboard id="canvas-desktop" label="Game canvas — Round open, bet placed" width={1280} height={800}>
+          <GameCanvas />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="mobile" title="Mobile (390 × 844, mockup at 360 width)">
+        <DCArtboard id="mobile-game" label="Mobile game canvas" width={420} height={1060}>
+          <div className="mockup-mobile" style={{height:'100%'}}><MobileMockup /></div>
+        </DCArtboard>
+        <DCArtboard id="mobile-onboard" label="First-run onboarding (3 screens)" width={840} height={420}>
+          <div style={{padding:24, height:'100%'}}><Onboarding /></div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="brand" title="Brand & logo system">
+        <DCArtboard id="logo-set" label="Wordmark / glyph / stacked — variants" width={1280} height={520}>
+          <div className="spec" style={{padding:32, gap:24}}>
+            <div className="spec-grid-4">
+              <div className="logo-card dark">
+                <div className="logo-card-label">PRIMARY · DARK</div>
+                <MapigoWordmark height={40} />
+              </div>
+              <div className="logo-card light">
+                <div className="logo-card-label">PRIMARY · LIGHT</div>
+                <MapigoWordmark height={40} color="#1A1F2E" accent="#B58A21" />
+              </div>
+              <div className="logo-card dark">
+                <div className="logo-card-label">MONO · LIGHT</div>
+                <MapigoWordmark height={40} color="#F5F1E6" accent="#F5F1E6" />
+              </div>
+              <div className="logo-card light">
+                <div className="logo-card-label">MONO · DARK</div>
+                <MapigoWordmark height={40} color="#1A1F2E" accent="#1A1F2E" />
+              </div>
+              <div className="logo-card dark">
+                <div className="logo-card-label">GLYPH · 64px</div>
+                <MapigoGlyph size={64} glow />
+              </div>
+              <div className="logo-card dark">
+                <div className="logo-card-label">GLYPH · 32px</div>
+                <MapigoGlyph size={32} />
+              </div>
+              <div className="logo-card dark">
+                <div className="logo-card-label">GLYPH · 16px (notif)</div>
+                <MapigoGlyph size={16} />
+              </div>
+              <div className="logo-card dark">
+                <div className="logo-card-label">STACKED LOCKUP</div>
+                <MapigoStacked size={120} />
+              </div>
+            </div>
+          </div>
+        </DCArtboard>
+
+        <DCArtboard id="tile-feature" label="Hub tile — feature (480×600)" width={480} height={600}>
+          <HubTilePortrait />
+        </DCArtboard>
+
+        <DCArtboard id="tile-small" label="Hub tile — small (320×128)" width={640} height={256}>
+          <div className="mockup-tile-small"><div style={{width:320}}><HubTileSmall /></div></div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="waveform" title="The waveform — visual spec">
+        <DCArtboard id="wf-isolated" label="Waveform in isolation (live mode)" width={1280} height={420}>
+          <div style={{padding:32, height:'100%', background:'var(--bg)'}}>
+            <MapigoWaveform mode="live" anchors={[
+              { t: 0.18, v: 0.85, label: 'SPIKE', state: 'won' },
+              { t: 0.55, v: 0.10, label: 'CALM',  state: 'lost' },
+              { t: 0.78, v: 0.35, label: 'DRIFT', state: 'pending' },
+            ]} roundProgress={0.78} />
+          </div>
+        </DCArtboard>
+        <DCArtboard id="wf-spec-math" label="Waveform — mathematical spec" width={1280} height={420}>
+          <div className="spec" style={{padding:32, gap:20}}>
+            <div className="spec-grid-2">
+              <div className="spec-panel">
+                <div className="spec-panel-head">CALM MODE</div>
+                <div className="spec-panel-body">
+                  <code style={{fontFamily:'var(--font-mono)'}}>
+                    y(t) = 0.10·sin(1.6t) + 0.04·sin(0.7t)<br/>
+                    amplitude ≤ 20% of canvas height<br/>
+                    period ≈ 4.0s primary, 9.0s secondary
+                  </code>
+                </div>
+              </div>
+              <div className="spec-panel">
+                <div className="spec-panel-head">DRIFT MODE</div>
+                <div className="spec-panel-body">
+                  <code style={{fontFamily:'var(--font-mono)'}}>
+                    y(t) = 0.35·sin(0.4t) + 0.06·sin(1.2t)<br/>
+                    slow baseline rise/fall over 3–6s<br/>
+                    no peak {`>`} 50% amplitude
+                  </code>
+                </div>
+              </div>
+              <div className="spec-panel">
+                <div className="spec-panel-head">SPIKE PROFILE</div>
+                <div className="spec-panel-body">
+                  <code style={{fontFamily:'var(--font-mono)'}}>
+                    peak ∈ [0.70, 0.95] amplitude<br/>
+                    onset 80ms · decay e^(−t/0.18) → 600ms<br/>
+                    cooldown 3–10s before next eligible spike
+                  </code>
+                </div>
+              </div>
+              <div className="spec-panel">
+                <div className="spec-panel-head">RENDER BUDGET</div>
+                <div className="spec-panel-body">
+                  <code style={{fontFamily:'var(--font-mono)'}}>
+                    SVG path · 240 samples (60s @ 4 Hz)<br/>
+                    target 60fps on 3GB Android<br/>
+                    will-change: transform · 100KB JS budget
+                  </code>
+                </div>
+              </div>
+            </div>
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="components" title="UI components">
+        <DCArtboard id="states" label="Round states — open / placed / won / goal" width={1280} height={360}>
+          <div style={{padding:24, height:'100%'}}><StateGallery /></div>
+        </DCArtboard>
+        <DCArtboard id="tray-states" label="PredictionTray — interaction states" width={1280} height={260}>
+          <div className="spec" style={{padding:24, gap:18}}>
+            <div className="spec-grid-3">
+              <div>
+                <div className="spec-panel-head">DEFAULT</div>
+                <PredictionTray pools={{spike:184500,drift:92300,calm:121800}} selected={null} onSelect={()=>{}} />
+              </div>
+              <div>
+                <div className="spec-panel-head">SELECTED · SPIKE</div>
+                <PredictionTray pools={{spike:184500,drift:92300,calm:121800}} selected="spike" onSelect={()=>{}} />
+              </div>
+              <div>
+                <div className="spec-panel-head">DISABLED · BET PLACED</div>
+                <PredictionTray pools={{spike:184500,drift:92300,calm:121800}} selected="drift" onSelect={()=>{}} disabled />
+              </div>
+            </div>
+          </div>
+        </DCArtboard>
+        <DCArtboard id="component-roster" label="Component roster (12 components)" width={1280} height={580}>
+          <div className="spec" style={{padding:32, gap:16}}>
+            <table className="token-table">
+              <thead><tr><th>COMPONENT</th><th>PURPOSE</th><th>KEY PROPS</th><th>STATES</th></tr></thead>
+              <tbody>
+                {[
+                  ['MapigoWaveform','Live intensity canvas','mode, samples, anchors, roundProgress, paused','live · drift · calm · paused · reduced-motion'],
+                  ['RoundBand','Active 60s window overlay','progress, resolved, outcome','open · resolving · won · lost'],
+                  ['PredictionTray','3-call CTA tray','pools, selected, disabled, onSelect','default · hover · selected · disabled · winning · losing'],
+                  ['MapigoStakeInput','Stake entry tuned to 60s cycles','value, currency, chips, onChange, onPlace','empty · valid · over-balance · placing · placed'],
+                  ['RoundResultCard','Settlement card','outcome, mult, won, amt, streak','won · lost · push · refunded'],
+                  ['RoundsFeed','Last N rounds + mini-waveforms','rounds[], limit','default · loading · empty'],
+                  ['StreakBadge','Animated streak indicator','count','off · 3 · 5 · 10+ (igniting)'],
+                  ['MatchSelector','Live-match picker modal','matches[], selected','default · loading · no-matches'],
+                  ['MapigoHelpSheet','First-run onboarding (3 screens)','step, onDismiss','step1/2/3 · dismissed'],
+                  ['GoalFlash','Full-screen goal override','team, minute','entering · holding · exiting'],
+                  ['MapigoLeaderboardMini','Session top-5','entries[], you','default · you-in-list · you-out'],
+                  ['OutcomePill','SPIKE/DRIFT/CALM result chip','kind, won','won · lost · pending'],
+                ].map((r,i) => (
+                  <tr key={i}>
+                    <td className="name">{r[0]}</td>
+                    <td className="value" style={{color:'var(--text)'}}>{r[1]}</td>
+                    <td className="value">{r[2]}</td>
+                    <td className="value" style={{color:'var(--gold)'}}>{r[3]}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="tokens" title="Color tokens (extensions.mapigo)">
+        <DCArtboard id="palette" label="Mapigo palette — to add to tokens.json" width={1280} height={420}>
+          <div className="spec" style={{padding:32, gap:16}}>
+            <div className="spec-grid-4">
+              {COLORS.map((c,i) => (
+                <div key={i} className="color-swatch">
+                  <div className="color-swatch-chip" data-hex={c.hex} style={{background: c.hex}} />
+                  <div className="color-swatch-meta">
+                    <div className="color-swatch-name">{c.name}</div>
+                    <div className="color-swatch-token">{c.token}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="lifecycle" title="Game lifecycle (14 states)">
+        <DCArtboard id="lifecycle-grid" label="State map" width={1280} height={520}>
+          <div className="spec" style={{padding:32, gap:16}}>
+            <div className="lifecycle-list">
+              {LIFECYCLE.map((s,i) => (
+                <div key={i} className="lifecycle-item">
+                  <div className="num">{s.num}</div>
+                  <div className="ttl">{s.ttl}</div>
+                  <div className="copy">{s.copy}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="copy" title="Bilingual copy (EN / SW)">
+        <DCArtboard id="copy-table" label="String table — every UI string in both languages" width={1280} height={780}>
+          <div className="spec" style={{padding:32}}>
+            <table className="copy-table">
+              <thead><tr><th>KEY</th><th>EN</th><th>SW</th></tr></thead>
+              <tbody>
+                {COPY.map((r,i) => (
+                  <tr key={i}><td className="key">{r.key}</td><td className="en">{r.en}</td><td className="sw">{r.sw}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="motion" title="Motion, sound, haptics">
+        <DCArtboard id="sound-spec" label="Sound design" width={1280} height={420}>
+          <div className="spec" style={{padding:32, gap:8}}>
+            {[
+              ['mapigo-ambient-loop',  'Sub-bass heartbeat ~60 BPM, looping',  '−28 LUFS · seamless 8s loop'],
+              ['mapigo-spike',         'Soft "thwip" pitched-up rising whoosh', '250ms · −18 LUFS peak'],
+              ['mapigo-round-open',    'Single warm bell tone',                 '400ms · −20 LUFS'],
+              ['mapigo-round-win',     'Two-note ascending chime',              '600ms · A4→E5'],
+              ['mapigo-round-lose',    'Two-note descending tone',              '600ms · E4→A3'],
+              ['mapigo-goal-flash',    'Crowd swell + gold shimmer',            '1.2s · −14 LUFS peak'],
+            ].map((s,i) => (
+              <div key={i} className="sound-row">
+                <div className="sound-name">{s[0]}.wav</div>
+                <div className="sound-desc">{s[1]}</div>
+                <div className="sound-spec">{s[2]}</div>
+              </div>
+            ))}
+            <div style={{marginTop:14, padding:12, fontSize:12, color:'var(--text-mid)', borderTop:'1px dashed var(--border-subtle)'}}>
+              Mute by default · respects system mute · user toggle persists in localStorage(mapigo.sound)
+            </div>
+          </div>
+        </DCArtboard>
+
+        <DCArtboard id="haptics-spec" label="Haptics" width={1280} height={300}>
+          <div className="spec" style={{padding:32, gap:8}}>
+            {[
+              ['MAP_BEAT',  'Light tick on each ambient heartbeat',  'foreground only · throttle ≤1/s'],
+              ['MAP_SPIKE', 'Sharp medium pulse on each spike',      'medium · 60ms'],
+              ['MAP_PLACE', 'Bet placement confirm',                  'reuse H_TICK'],
+              ['MAP_WIN',   'Win pattern',                            'heavy · light · light (reuse H_WIN)'],
+              ['MAP_GOAL',  'Goal moment tribute',                    'heavy single + light double'],
+            ].map((s,i) => (
+              <div key={i} className="sound-row">
+                <div className="sound-name">{s[0]}</div>
+                <div className="sound-desc">{s[1]}</div>
+                <div className="sound-spec">{s[2]}</div>
+              </div>
+            ))}
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="a11y" title="Accessibility & performance">
+        <DCArtboard id="a11y-grid" label="Constraints" width={1280} height={360}>
+          <div className="spec" style={{padding:32}}>
+            <div className="spec-grid-2">
+              <div className="spec-panel">
+                <div className="spec-panel-head">ACCESSIBILITY</div>
+                <div className="spec-panel-body">
+                  <ul style={{paddingLeft:18, lineHeight:1.7, margin:0}}>
+                    <li>Live region announces "Pulse rising", "Spike at 0:43" — rate-limited to 1/3s.</li>
+                    <li>Color is never the only signal: ⚡ lightning / 〰 wave / − flat-line icons accompany every call.</li>
+                    <li><code style={{fontFamily:'var(--font-mono)'}}>prefers-reduced-motion</code>: live waveform replaced with 5s static snapshots; all spikes flagged textually.</li>
+                    <li>Keyboard: <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> = SPIKE/DRIFT/CALM · <kbd>+</kbd>/<kbd>−</kbd> stake · <kbd>Enter</kbd> place.</li>
+                    <li>Every interactive control ≥ 44×44 mobile hit target.</li>
+                    <li>All accent pairings AA-contrast verified against bg-elev-1/2.</li>
+                  </ul>
+                </div>
+              </div>
+              <div className="spec-panel">
+                <div className="spec-panel-head">PERFORMANCE & DATA</div>
+                <div className="spec-panel-body">
+                  <ul style={{paddingLeft:18, lineHeight:1.7, margin:0}}>
+                    <li>60fps on 3GB Android, 3G connection — non-negotiable.</li>
+                    <li>SVG path with 240 samples, requestAnimationFrame-paced advance every 250ms.</li>
+                    <li>Delta-only feed; full snapshot on connect, increments every 1–2s.</li>
+                    <li>JS budget: 100KB on top of Kipindi shell (gzipped).</li>
+                    <li>Visibility API: pause animation + sound when tab hidden.</li>
+                    <li>WebSocket reconnect with exponential backoff (1s → 30s).</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="handoff" title="Handoff message — paste to Claude Code">
+        <DCArtboard id="handoff-msg" label="Engineering brief" width={1280} height={1180}>
+          <div className="spec" style={{padding:32}}>
+            <div className="handoff">
+              <span className="handoff-label">PASTE TO CLAUDE CODE ▸</span>
+{`Build the Mapigo route in the Kipindi codebase per MAPIGO_DESIGN.md.
+
+PROJECT
+  • Route: /mapigo (and bottom-nav entry on mobile, replacing the FAB)
+  • Stack: Next.js + SVG + existing Kipindi component library
+  • Inherits Kipindi DESIGN_SYSTEM v1.0 (§2.2 colors, §2.3 type Sora+Inter+JetBrains Mono,
+    §2.4 spacing/radii, §2.5 motion easings, §2.8 sound+haptics, §2.18 a11y, §2.21 tokens)
+  • Adds the extensions.mapigo block to tokens.json (see palette section)
+  • Delete the 5 placeholder mini-games (Tribal Clash, Lucky Interval,
+    Momentum Rush, Streak Chain, Voice Bet) and collapse the Mini-Games
+    hub to a single hero tile for Mapigo
+
+DESIGN SOURCE OF TRUTH
+  • This spec doc (12 sections). Every component lists props, states,
+    motion, and accessibility. Every string is paired EN+SW.
+  • Token additions live under "Color tokens (extensions.mapigo)".
+  • Waveform math (calm/drift/spike profile) is in section "The waveform".
+
+COMPONENTS TO BUILD (12)
+  MapigoWaveform · RoundBand · PredictionTray · MapigoStakeInput
+  RoundResultCard · RoundsFeed · StreakBadge · MatchSelector
+  MapigoHelpSheet · GoalFlash · MapigoLeaderboardMini · OutcomePill
+
+GAMEPLAY RULES (lock these)
+  • One bet per 60s round; tray locks on placement
+  • SPIKE = at least one peak ≥ 0.70 amplitude in window
+  • DRIFT = baseline shift ≥ 0.30 with no peak ≥ 0.50
+  • CALM  = no peak ≥ 0.30 for the full 60s
+  • Pool fairness math: identical to existing Kipindi pool model
+    (winner stake / total winning stake × pool, minus house rake)
+  • Empty/solo round: fallback ×rate per server config
+  • Match abandoned: full refund to all open stakes
+
+DATA CONTRACT (frontend expects)
+  • WS connect → snapshot { matchId, score, minute, samples[240], roundId, roundOpenAt, pools }
+  • WS delta   → { sample?: number, score?: ..., goal?: { team, minute },
+                   roundResolve?: { roundId, outcome, mult, payouts } }
+  • One sample every 250ms (4 Hz). Server is authoritative for outcome.
+
+ACCEPTANCE
+  • 60fps on a 3GB Android, 3G connection
+  • Every UI string EN+SW from day one (no English-only fallbacks)
+  • prefers-reduced-motion swaps animation for 5s static snapshots
+  • Keyboard play works (1/2/3, +/−, Enter)
+  • All Mapigo CSS variables live under extensions.mapigo in tokens.json
+  • Lighthouse a11y ≥ 95
+  • JS budget ≤ 100KB gz on top of platform shell
+
+ASSETS BUNDLE TO PRODUCE
+  /logo (wordmark, glyph, stacked, mono-dark, mono-light, reverse)
+  /tile (480×600 portrait + 320×128 horizontal · png + svg)
+  /splash (1080×1920, 2160×3840)
+  /icon (1024 app icon, 24 notification monochrome)
+  /og (launch · big-win · leaderboard · 1200×630)
+  /sprites (spike-particles, round-band, anchor-states, streak-chain, goal-flash)
+  /sound (24-bit/48kHz wav masters + caf/ogg deliverables — see sound spec)
+
+OUT OF SCOPE
+  • Do NOT redesign Kipindi parent system
+  • Do NOT use any sports-team marks, real player names, or broadcast clips
+  • Do NOT add WebGL/Canvas — SVG only (per perf budget)
+  • No tribal stereotypes, no acacia, no sunsets in any imagery
+
+Open MAPIGO_DESIGN.md (this spec) for component-level detail. Ship one
+sprint. Ping back at "round resolves" for review before wiring real WS.`}
+            </div>
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+
+</body>
+</html>

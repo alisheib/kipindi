@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Kipindi · Landing — 3 Variations</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="landing/landing.css">
+<link rel="stylesheet" href="landing/v1.css">
+<link rel="stylesheet" href="landing/v2.css">
+<link rel="stylesheet" href="landing/v3.css">
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body data-theme="dark">
+
+<template id="__bundler_thumbnail" data-bg-color="#060F24">
+  <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="kwf" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0%" stop-color="#F4EAC9"/>
+        <stop offset="100%" stop-color="#B58A21"/>
+      </linearGradient>
+    </defs>
+    <rect width="400" height="400" fill="#060F24"/>
+    <g fill="#F7F8FB" opacity="0.5">
+      <circle cx="60" cy="80" r="1"/><circle cx="240" cy="100" r="0.8"/>
+      <circle cx="320" cy="70" r="1.2"/><circle cx="100" cy="160" r="0.8"/>
+      <circle cx="320" cy="320" r="1"/>
+    </g>
+    <path d="M40 220 L120 222 L160 218 L195 100 L205 280 L215 130 L280 218 L360 222"
+          fill="none" stroke="url(#kwf)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <g transform="translate(200 320)">
+      <rect x="-60" y="-8" width="6" height="16" rx="2" fill="#DEBC54" opacity="0.5"/>
+      <rect x="-50" y="-12" width="6" height="24" rx="2" fill="#DEBC54" opacity="0.7"/>
+      <rect x="-40" y="-16" width="6" height="32" rx="2" fill="#DEBC54"/>
+      <rect x="-30" y="-10" width="6" height="20" rx="2" fill="#DEBC54" opacity="0.6"/>
+      <text x="20" y="6" font-size="28" font-family="Sora, sans-serif" font-weight="600" fill="#F7F8FB" letter-spacing="-0.5">kipindi</text>
+    </g>
+  </svg>
+</template>
+
+<div id="root"></div>
+
+<script type="text/babel" src="landing/landing-shared.jsx"></script>
+<script type="text/babel" src="landing/v1-editorial.jsx"></script>
+<script type="text/babel" src="landing/v2-kinetic.jsx"></script>
+<script type="text/babel" src="landing/v3-cinematic.jsx"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+
+<script type="text/babel" data-presets="env,react">
+const { DesignCanvas, DCSection, DCArtboard } = window;
+
+function App() {
+  return (
+    <DesignCanvas title="Kipindi · Landing Page · 3 Variations">
+      <DCSection id="v1" title="Variation 1 · Editorial Pulse" subtitle="Magazine-grade typography. Asymmetric grid. Quiet luxury.">
+        <DCArtboard id="v1-page" label="Editorial Pulse · 1920 wide" width={1920} height={3600}>
+          <V1Editorial />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="v2" title="Variation 2 · Kinetic Stadium" subtitle="Live ticker, animated counts, dual-language band — feels alive.">
+        <DCArtboard id="v2-page" label="Kinetic Stadium · 1920 wide" width={1920} height={3800}>
+          <V2Kinetic />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="v3" title="Variation 3 · Cinematic Manifesto" subtitle="One huge statement. Hero waveform behind 144px type. Ends in app download.">
+        <DCArtboard id="v3-page" label="Cinematic Manifesto · 1920 wide" width={1920} height={4200}>
+          <V3Cinematic />
+        </DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+
+</body>
+</html>

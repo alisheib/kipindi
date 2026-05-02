@@ -1,0 +1,142 @@
+/* ──────────────────────────────────────────────────────────────
+   MAPIGO · Design Tokens — extends Kipindi DESIGN_SYSTEM v1.0
+   Sources: §2.2 Color, §2.3 Type, §2.4 Spacing, §2.5 Motion
+   ────────────────────────────────────────────────────────────── */
+
+:root, [data-theme="dark"] {
+  /* === Kipindi DARK tokens (from §2.2) === */
+  --bg-base:      #060F24;
+  --bg-subtle:    #0A1838;
+  --bg-sunken:    #05070F;
+  --bg-elevated:  #102356;
+  --bg-overlay:   rgba(0,0,0,0.65);
+
+  --surface:           #0A1838;
+  --surface-hover:     #102356;
+  --surface-pressed:   #173173;
+  --surface-selected:  #1E3E94;
+  --surface-disabled:  #0E1730;
+
+  --border:         #1E3E94;
+  --border-subtle:  #102356;
+  --border-strong:  #4F70C2;
+  --border-focus:   #DEBC54;
+  --border-divider: #102356;
+
+  --text-primary:    #F7F8FB;
+  --text-secondary:  #C2C9D8;
+  --text-tertiary:   #9AA3B7;
+  --text-disabled:   #525B70;
+  --text-inverse:    #0A1838;
+  --text-link:       #DEBC54;
+  --text-link-hover: #E9D38E;
+  --text-on-brand:   #FFFFFF;
+
+  --royal:              #4F70C2;
+  --royal-hover:        #7E97D8;
+  --royal-active:       #AFC0EA;
+  --royal-subtle:       #102356;
+  --royal-subtle-hover: #173173;
+  --royal-fg:           #060F24;
+
+  --gold:              #DEBC54;
+  --gold-hover:        #E9D38E;
+  --gold-active:       #F4EAC9;
+  --gold-subtle:       #2C1F06;
+  --gold-subtle-hover: #4D380B;
+  --gold-fg:           #060F24;
+
+  --success: #34D399; --success-bg: #06281C; --success-border: #0D5C3F; --success-fg: #06281C;
+  --warning: #F0C674; --warning-bg: #2C1F06; --warning-border: #705210; --warning-fg: #2C1F06;
+  --danger:  #F87171; --danger-bg:  #2A0B0B; --danger-border:  #7A1A1A; --danger-fg:  #2A0B0B;
+  --info:    #7E97D8; --info-bg:    #0E1730; --info-border:    #1E3E94; --info-fg:    #0E1730;
+
+  --bet-win: #34D399; --bet-lose: #9AA3B7; --bet-draw: #F0C674;
+  --bet-pool: #7E97D8; --bet-stake: #DEBC54; --bet-jackpot: #E9D38E;
+  --bet-streak: #FB923C; --bet-hot: #F87171; --bet-cold: #67E8F9;
+
+  /* Glows */
+  --gold-glow:    0 0 0 1px rgba(222,188,84,0.35), 0 0 24px rgba(222,188,84,0.45), 0 0 64px rgba(181,138,33,0.25);
+  --blue-glow:    0 0 0 1px rgba(79,112,194,0.35), 0 0 24px rgba(30,62,148,0.50), 0 0 64px rgba(16,35,86,0.30);
+  --win-glow:     0 0 0 1px rgba(52,211,153,0.35), 0 0 24px rgba(52,211,153,0.45), 0 0 80px rgba(31,122,77,0.30);
+  --jackpot-glow: 0 0 0 2px rgba(233,211,142,0.50), 0 0 32px rgba(222,188,84,0.55), 0 0 96px rgba(181,138,33,0.35);
+
+  /* Gradients */
+  --g-brand-hero:    linear-gradient(135deg, #060F24 0%, #102356 45%, #1E3E94 100%);
+  --g-gold-rush:     linear-gradient(120deg, #705210 0%, #B58A21 40%, #DEBC54 70%, #F4EAC9 100%);
+  --g-jackpot:       radial-gradient(120% 120% at 50% 0%, #DEBC54 0%, #B58A21 35%, #4D380B 75%, #060F24 100%);
+  --g-pool-pulse:    radial-gradient(80% 80% at 50% 50%, rgba(79,112,194,0.55) 0%, rgba(30,62,148,0.20) 60%, rgba(6,15,36,0) 100%);
+
+  /* Spacing (§2.4) */
+  --s-1:2px; --s-2:4px; --s-3:8px; --s-4:12px; --s-5:16px;
+  --s-6:20px; --s-7:24px; --s-8:32px; --s-9:40px; --s-10:48px;
+
+  /* Radii */
+  --r-xs:2px; --r-sm:4px; --r-md:8px; --r-lg:12px; --r-xl:16px; --r-2xl:24px; --r-pill:999px;
+
+  /* Shadows (dark) */
+  --sh-1: 0 1px 2px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04);
+  --sh-2: 0 2px 6px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.05);
+  --sh-3: 0 6px 16px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06);
+  --sh-4: 0 12px 28px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.06);
+
+  /* Type */
+  --font-display: 'Sora', 'Inter', system-ui, sans-serif;
+  --font-ui:      'Inter', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+
+  /* Easings (§2.5) */
+  --ease-standard:    cubic-bezier(0.2, 0.0, 0.0, 1.0);
+  --ease-decelerate:  cubic-bezier(0.0, 0.0, 0.2, 1.0);
+  --ease-accelerate:  cubic-bezier(0.4, 0.0, 1.0, 1.0);
+  --ease-spring:      cubic-bezier(0.34, 1.56, 0.64, 1.0);
+
+  /* === MAPIGO extensions (extensions.mapigo in tokens.json) === */
+  --mapigo-beat:        var(--gold);              /* #DEBC54 dark */
+  --mapigo-beat-light:  #B58A21;                  /* light theme */
+  --mapigo-beat-glow:   rgba(233,211,142,0.85);
+  --mapigo-calm-fill:   rgba(79,112,194,0.22);    /* royal-tinted */
+  --mapigo-spike-fill:  rgba(233,211,142,0.40);   /* gold-tinted */
+  --mapigo-drift-fill:  rgba(222,188,84,0.14);
+
+  --mapigo-spike: var(--bet-hot);
+  --mapigo-drift: var(--gold);
+  --mapigo-calm:  var(--bet-cold);
+
+  --mapigo-round-band-fill:   rgba(222,188,84,0.08);
+  --mapigo-round-band-border: rgba(222,188,84,0.55);
+
+  --mapigo-anchor-won:   var(--gold-hover);
+  --mapigo-anchor-lost:  rgba(154,163,183,0.45);
+
+  --mapigo-grid-line: rgba(247,248,251,0.05);
+  --mapigo-grid-tick: rgba(247,248,251,0.18);
+
+  /* Aliases used in styles.css from earlier scaffold */
+  --bg: var(--bg-base);
+  --bg-elev-1: var(--bg-subtle);
+  --bg-elev-2: var(--surface-hover);
+  --bg-elev-3: var(--surface-pressed);
+  --text: var(--text-secondary);
+  --text-hi: var(--text-primary);
+  --text-mid: var(--text-tertiary);
+  --text-low: var(--text-disabled);
+  --signal-win: var(--success);
+  --signal-lose: var(--bet-lose);
+  --glow-soft: 0 0 16px rgba(222,188,84,.30);
+  --r-pill: 999px;
+}
+
+/* === Kipindi LIGHT tokens === */
+[data-theme="light"] {
+  --bg-base:#F7F8FB; --bg-subtle:#EEF0F5; --bg-sunken:#E4E8F0; --bg-elevated:#FFFFFF;
+  --surface:#FFFFFF; --surface-hover:#F4F6FB; --surface-pressed:#E9EDF6; --surface-selected:#E0E8F8; --surface-disabled:#F2F3F7;
+  --border:#DEE2EC; --border-subtle:#EEF0F5; --border-strong:#C2C9D8; --border-focus:#2A50AE; --border-divider:#E4E8F0;
+  --text-primary:#0A1838; --text-secondary:#3B4358; --text-tertiary:#6F798F; --text-disabled:#9AA3B7;
+  --text-inverse:#FFFFFF; --text-link:#1E3E94; --text-link-hover:#173173; --text-on-brand:#FFFFFF;
+  --royal:#1E3E94; --royal-hover:#173173; --royal-active:#102356; --royal-subtle:#EEF2FB; --royal-subtle-hover:#D7E0F5; --royal-fg:#FFFFFF;
+  --gold:#B58A21; --gold-hover:#946D17; --gold-active:#705210; --gold-subtle:#FBF7EC; --gold-subtle-hover:#F4EAC9; --gold-fg:#0A1838;
+  --mapigo-beat: var(--gold);
+  --mapigo-grid-line: rgba(10,24,56,.06);
+  --mapigo-grid-tick: rgba(10,24,56,.22);
+}

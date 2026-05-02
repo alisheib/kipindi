@@ -1,6 +1,4 @@
-import { Card, CardBody } from "@/components/ui/card";
-import { Breadcrumbs } from "@/components/ui/breadcrumbs";
-import { Chip } from "@/components/ui/chip";
+import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { getAuditPage, type AuditCategory } from "@/lib/server/audit";
 
 export const metadata = { title: "Admin · Audit log" };
@@ -15,32 +13,33 @@ export default async function AdminAuditPage({ searchParams }: { searchParams: P
   const entries = getAuditPage({ limit: 500, category, actorId });
 
   return (
-    <div className="space-y-4">
-      <Breadcrumbs items={[{ label: "Admin", href: "/admin" }, { label: "Audit log" }]} />
-      <header>
-        <h1 className="font-display font-bold text-title-lg text-text">Audit log · Kumbukumbu</h1>
-        <p className="text-body text-text-secondary">Append-only. Each row = one state change in the system.</p>
-      </header>
+    <>
+      <AdminPageHead
+        title="Audit log"
+        sw="Kumbukumbu · append-only HMAC-chained"
+        period={false}
+      />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <a href="/admin/audit" className={chipClass(!category)}>All</a>
-        {CATEGORIES.map((c) => (
-          <a key={c} href={`/admin/audit?category=${c}`} className={chipClass(category === c)}>{c}</a>
-        ))}
-      </div>
+      <div className="px-4 lg:px-6 py-5 space-y-4">
+        {/* Category filters */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <a href="/admin/audit" className={chipClass(!category)}>All</a>
+          {CATEGORIES.map((c) => (
+            <a key={c} href={`/admin/audit?category=${c}`} className={chipClass(category === c)}>{c}</a>
+          ))}
+          {actorId && (
+            <span className="ml-2 font-mono text-micro text-text-tertiary">
+              actor: <span className="text-text">{actorId}</span>
+              <a href={`/admin/audit${category ? `?category=${category}` : ""}`} className="text-royal hover:underline ml-2">clear</a>
+            </span>
+          )}
+          <span className="ml-auto font-mono text-micro tracking-wider text-text-tertiary">{entries.length} entries</span>
+        </div>
 
-      {actorId && (
-        <p className="text-caption text-text-secondary">
-          Filtered by actor <span className="font-mono">{actorId}</span>{" "}
-          <a href={`/admin/audit${category ? `?category=${category}` : ""}`} className="text-royal hover:underline ml-2">clear</a>
-        </p>
-      )}
-
-      <Card>
-        <CardBody className="p-0">
+        <AdminCard padding="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-caption">
-              <thead className="text-text-tertiary uppercase tracking-wide bg-bg-sunken/50">
+              <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary bg-bg-sunken/50 border-b border-border-subtle">
                 <tr>
                   <th className="text-left p-3">Time</th>
                   <th className="text-left p-3">Cat.</th>
@@ -52,7 +51,7 @@ export default async function AdminAuditPage({ searchParams }: { searchParams: P
               </thead>
               <tbody className="text-text-secondary">
                 {entries.map((e) => (
-                  <tr key={e.id} className="border-t border-border-subtle/50 hover:bg-surface-2/40">
+                  <tr key={e.id} className="border-b border-border-subtle/40 last:border-b-0 hover:bg-surface-hover">
                     <td className="p-3 font-mono whitespace-nowrap">{e.createdAt.replace("T", " ").slice(0, 19)}</td>
                     <td className="p-3"><span className="font-mono text-micro tracking-wide">{e.category}</span></td>
                     <td className="p-3 font-medium text-text">{e.action}</td>
@@ -69,15 +68,15 @@ export default async function AdminAuditPage({ searchParams }: { searchParams: P
               </tbody>
             </table>
           </div>
-        </CardBody>
-      </Card>
-    </div>
+        </AdminCard>
+      </div>
+    </>
   );
 }
 
 function chipClass(active: boolean) {
   return [
-    "inline-flex items-center px-3 h-7 rounded-full border text-caption font-medium transition-colors",
-    active ? "bg-royal text-onBrand border-royal" : "border-border bg-surface text-text-secondary hover:bg-surface-2 hover:text-text",
+    "inline-flex items-center px-2.5 h-7 rounded-md border font-mono text-micro tracking-[0.10em] uppercase transition-colors",
+    active ? "bg-bg-sunken text-onBrand border-bg-sunken" : "border-border bg-bg-elevated text-text-tertiary hover:bg-surface-hover hover:text-text",
   ].join(" ");
 }
