@@ -198,8 +198,8 @@ export function AdminPageHead({
       <div className="min-w-0">
         <h1 className="font-display font-bold text-title-lg text-text leading-none">{title}</h1>
         {sw && (
-          <p className="text-caption text-text-tertiary mt-1.5">
-            {title} · <span className="text-gold italic font-medium">{sw}</span>
+          <p className="text-caption text-text-tertiary italic mt-1.5">
+            {sw}
           </p>
         )}
       </div>
@@ -281,33 +281,26 @@ export function AdminKpi({
         {value}
       </div>
       {sw && (
-        <div className="text-caption text-text-tertiary">
-          {label} · <span className="text-gold italic font-medium">{sw}</span>
+        <div className="text-caption text-text-tertiary italic leading-tight">{sw}</div>
+      )}
+      {(spark || delta) && (
+        <div className="mt-auto flex items-center justify-end gap-2">
+          {delta && (
+            <span
+              className={[
+                "font-mono text-micro px-2 py-0.5 rounded-sm whitespace-nowrap",
+                deltaDir === "up"
+                  ? "bg-gold/15 text-gold"
+                  : deltaDir === "down"
+                    ? "bg-bg-sunken text-text-tertiary"
+                    : "bg-bg-sunken text-text-tertiary",
+              ].join(" ")}
+            >
+              {deltaDir === "up" ? "▲" : deltaDir === "down" ? "▼" : "·"} {delta}
+            </span>
+          )}
         </div>
       )}
-      <div className="mt-auto flex items-center justify-between gap-2">
-        {spark ? (
-          <div className="h-7 flex-1 bg-bg-sunken rounded-sm relative overflow-hidden">
-            <span className="absolute inset-x-0 bottom-1 h-px bg-gold/60" />
-          </div>
-        ) : (
-          <span />
-        )}
-        {delta && (
-          <span
-            className={[
-              "font-mono text-micro px-2 py-0.5 rounded-sm whitespace-nowrap",
-              deltaDir === "up"
-                ? "bg-gold/15 text-gold"
-                : deltaDir === "down"
-                  ? "bg-bg-sunken text-text-tertiary"
-                  : "bg-bg-sunken text-text-tertiary",
-            ].join(" ")}
-          >
-            {deltaDir === "up" ? "▲" : deltaDir === "down" ? "▼" : "·"} {delta}
-          </span>
-        )}
-      </div>
     </div>
   );
 }
@@ -332,16 +325,14 @@ export function AdminCard({
   return (
     <div className={["rounded-lg border border-border bg-bg-elevated", padding, className ?? ""].join(" ")}>
       {(title || action) && (
-        <div className="flex items-center justify-between mb-3 gap-2">
-          <div>
+        <div className="flex items-start justify-between mb-3 gap-3">
+          <div className="min-w-0">
             {title && <p className="font-display font-semibold text-body-sm text-text leading-tight">{title}</p>}
             {sw && (
-              <p className="text-caption text-text-tertiary mt-0.5">
-                {title} · <span className="text-gold italic font-medium">{sw}</span>
-              </p>
+              <p className="text-caption text-text-tertiary italic leading-tight mt-0.5">{sw}</p>
             )}
           </div>
-          {action}
+          {action && <div className="shrink-0">{action}</div>}
         </div>
       )}
       {children}

@@ -1,7 +1,8 @@
 import { AdminPageHead, AdminCard, FeedRow } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
-import { Download, FileDown, ShieldCheck } from "lucide-react";
+import { FileDown, ShieldCheck } from "lucide-react";
 import { getAuditPage } from "@/lib/server/audit";
+import { GenerateButton } from "./generate-button";
 
 export const metadata = { title: "Admin · Reports" };
 export const dynamic = "force-dynamic";
@@ -151,19 +152,12 @@ export default function AdminReportsPage() {
                     <button
                       type="button"
                       disabled
-                      title="Generation wired in next iteration"
+                      title="Preview wired in next iteration"
                       className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border border-border bg-bg-elevated text-text-tertiary cursor-not-allowed"
                     >
                       Preview
                     </button>
-                    <button
-                      type="button"
-                      disabled
-                      title="Generation wired in next iteration"
-                      className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border border-gold bg-gold/10 text-gold cursor-not-allowed"
-                    >
-                      <Download size={11} aria-hidden /> Generate
-                    </button>
+                    <GenerateButton id={t.id} />
                   </div>
                 </div>
               </div>

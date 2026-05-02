@@ -1,17 +1,26 @@
 /**
  * Admin chart components — pure SVG, no external charting library.
- * Each chart is a server component (no client-side state needed; data is
- * passed in as props). Animations come from the parent design system.
+ *
+ * Charts use a wide design-space viewBox (1200×240 default) so when they scale
+ * to the parent's width, the data fills the card edge-to-edge with minimal
+ * padding. The series can be 24 hourly buckets or 28 daily buckets — the SVG
+ * naturally distributes them across the full width.
  */
 
 export type SeriesPoint = { x: number; y: number };
+
+const CHART_W = 1200;
+const CHART_H = 240;
+const PAD_X = 40;          // just enough for left-edge Y-labels
+const PAD_X_RIGHT = 16;    // pull the line all the way to the right edge
+const PAD_Y_TOP = 18;
+const PAD_Y_BOTTOM = 26;   // room for x-axis labels
 
 /* ===== Mini area chart (KPI sparkline at scale) ===== */
 
 export function AdminAreaChart({
   series,
-  height = 220,
-  width = 480,
+  height = CHART_H,
   fillVar = "var(--gold)",
   strokeVar = "var(--gold)",
   fillOpacity = 0.18,
@@ -30,36 +39,44 @@ export function AdminAreaChart({
   if (series.length === 0) {
     return (
       <div
-        className="rounded-md bg-bg-sunken border border-dashed border-border-subtle flex items-center justify-center text-caption text-text-tertiary"
+        className="rounded-md bg-bg-sunken border border-dashed border-border-subtle flex items-center justify-center text-caption text-text-tertiary w-full"
         style={{ minHeight: height }}
       >
         No data in this window
       </div>
     );
   }
-  const padX = 28;
-  const padY = 18;
-  const innerW = width - padX * 2;
-  const innerH = height - padY * 2;
+  const innerW = CHART_W - PAD_X - PAD_X_RIGHT;
+  const innerH = height - PAD_Y_TOP - PAD_Y_BOTTOM;
   const maxY = Math.max(...series.map((p) => p.y), 1);
   const minY = Math.min(...series.map((p) => p.y), 0);
   const range = Math.max(maxY - minY, 1);
-  const xs = series.map((_, i) => padX + (i / Math.max(1, series.length - 1)) * innerW);
-  const ys = series.map((p) => padY + innerH - ((p.y - minY) / range) * innerH);
+  const xs = series.map((_, i) => PAD_X + (i / Math.max(1, series.length - 1)) * innerW);
+  const ys = series.map((p) => PAD_Y_TOP + innerH - ((p.y - minY) / range) * innerH);
 
   const linePath = xs.map((x, i) => `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${ys[i].toFixed(1)}`).join(" ");
-  const areaPath = `${linePath} L ${xs[xs.length - 1].toFixed(1)} ${(padY + innerH).toFixed(1)} L ${xs[0].toFixed(1)} ${(padY + innerH).toFixed(1)} Z`;
+  const areaPath = `${linePath} L ${xs[xs.length - 1].toFixed(1)} ${(PAD_Y_TOP + innerH).toFixed(1)} L ${xs[0].toFixed(1)} ${(PAD_Y_TOP + innerH).toFixed(1)} Z`;
 
-  // Y-axis ticks (4)
+  // Y-axis ticks (5)
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((t) => minY + t * range);
+
+  // Pick X-axis labels — up to 6 evenly distributed
+  const labelIndices: number[] = [];
+  if (xLabels && xLabels.length > 0) {
+    const target = Math.min(6, xLabels.length);
+    for (let i = 0; i < target; i++) {
+      labelIndices.push(Math.round((i / Math.max(1, target - 1)) * (xLabels.length - 1)));
+    }
+  }
 
   return (
     <svg
-      viewBox={`0 0 ${width} ${height}`}
-      className="w-full h-auto block"
+      viewBox={`0 0 ${CHART_W} ${height}`}
+      preserveAspectRatio="none"
+      className="block w-full"
       role="img"
       aria-label={yLabel ? `${yLabel} time series` : "Time series chart"}
-      style={{ maxHeight: height }}
+      style={{ height }}
     >
       <defs>
         <linearGradient id="kp-area-grad" x1="0" y1="0" x2="0" y2="1">
@@ -69,16 +86,25 @@ export function AdminAreaChart({
       </defs>
       {/* Y-axis grid */}
       {yTicks.map((t, i) => {
-        const y = padY + innerH - ((t - minY) / range) * innerH;
+        const y = PAD_Y_TOP + innerH - ((t - minY) / range) * innerH;
         return (
           <g key={i}>
-            <line x1={padX} y1={y} x2={width - padX} y2={y} stroke="var(--border-subtle)" strokeDasharray="2 3" strokeWidth="1" />
+            <line
+              x1={PAD_X}
+              y1={y}
+              x2={CHART_W - PAD_X_RIGHT}
+              y2={y}
+              stroke="var(--border-subtle)"
+              strokeDasharray="3 4"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+            />
             <text
-              x={padX - 6}
+              x={PAD_X - 6}
               y={y + 3}
               textAnchor="end"
               fontFamily="JetBrains Mono"
-              fontSize="9"
+              fontSize="11"
               fill="var(--text-tertiary)"
             >
               {compact(t)}
@@ -88,17 +114,29 @@ export function AdminAreaChart({
       })}
       {/* Area + line */}
       <path d={areaPath} fill="url(#kp-area-grad)" />
-      <path d={linePath} stroke={strokeVar} strokeWidth="1.75" fill="none" strokeLinejoin="round" strokeLinecap="round" />
+      <path
+        d={linePath}
+        stroke={strokeVar}
+        strokeWidth="2"
+        fill="none"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        vectorEffect="non-scaling-stroke"
+      />
       {/* End-point dot */}
-      <circle cx={xs[xs.length - 1]} cy={ys[ys.length - 1]} r="3" fill={strokeVar} />
-      {/* X-axis labels (first + middle + last) */}
+      <circle cx={xs[xs.length - 1]} cy={ys[ys.length - 1]} r="3.5" fill={strokeVar} />
+      {/* X-axis labels */}
       {xLabels && xLabels.length > 0 && (
-        <g fontFamily="JetBrains Mono" fontSize="9" fill="var(--text-tertiary)">
-          {[0, Math.floor(xLabels.length / 2), xLabels.length - 1].map((idx) => (
-            <text key={idx} x={xs[idx] ?? padX + (idx / xs.length) * innerW} y={height - 4} textAnchor={idx === 0 ? "start" : idx === xLabels.length - 1 ? "end" : "middle"}>
-              {xLabels[idx]}
-            </text>
-          ))}
+        <g fontFamily="JetBrains Mono" fontSize="11" fill="var(--text-tertiary)">
+          {labelIndices.map((idx, i) => {
+            const x = xs[idx] ?? PAD_X + (idx / Math.max(1, xLabels.length - 1)) * innerW;
+            const anchor = i === 0 ? "start" : i === labelIndices.length - 1 ? "end" : "middle";
+            return (
+              <text key={idx} x={x} y={height - 8} textAnchor={anchor}>
+                {xLabels[idx]}
+              </text>
+            );
+          })}
         </g>
       )}
     </svg>
@@ -109,8 +147,7 @@ export function AdminAreaChart({
 
 export function AdminStackedBars({
   bars,
-  height = 180,
-  width = 480,
+  height = 200,
   colors = ["var(--royal)", "var(--gold)", "#3a4a76", "#7588B1", "#A6B0C8"],
   legend,
 }: {
@@ -123,25 +160,28 @@ export function AdminStackedBars({
   if (bars.length === 0) {
     return (
       <div
-        className="rounded-md bg-bg-sunken border border-dashed border-border-subtle flex items-center justify-center text-caption text-text-tertiary"
+        className="rounded-md bg-bg-sunken border border-dashed border-border-subtle flex items-center justify-center text-caption text-text-tertiary w-full"
         style={{ minHeight: height }}
       >
         No data
       </div>
     );
   }
-  const padX = 22;
-  const padY = 14;
-  const innerW = width - padX * 2;
-  const innerH = height - padY * 2 - 18; // space for x labels
+  const padX = 24;
+  const padTop = legend ? 28 : 14;
+  const innerW = CHART_W - padX * 2;
+  const innerH = height - padTop - 22; // space for x labels
   const maxStack = Math.max(...bars.map((b) => b.segments.reduce((s, v) => s + v, 0)), 1);
-  const barW = (innerW / bars.length) * 0.7;
-  const gap = (innerW / bars.length) * 0.3;
+  const barW = (innerW / bars.length) * 0.78;
+  const gap = (innerW / bars.length) * 0.22;
+
+  // Pick which x-labels to render (up to 8 to avoid clutter)
+  const labelStep = Math.max(1, Math.ceil(bars.length / 8));
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto block" role="img" aria-label="Stacked bar chart">
+    <svg viewBox={`0 0 ${CHART_W} ${height}`} preserveAspectRatio="none" className="block w-full" role="img" aria-label="Stacked bar chart" style={{ height }}>
       {bars.map((b, i) => {
-        let yCursor = padY + innerH;
+        let yCursor = padTop + innerH;
         const x = padX + i * (barW + gap) + gap / 2;
         return (
           <g key={i}>
@@ -159,25 +199,27 @@ export function AdminStackedBars({
                 />
               );
             })}
-            <text
-              x={x + barW / 2}
-              y={height - 4}
-              textAnchor="middle"
-              fontFamily="JetBrains Mono"
-              fontSize="9"
-              fill="var(--text-tertiary)"
-            >
-              {b.label}
-            </text>
+            {i % labelStep === 0 && (
+              <text
+                x={x + barW / 2}
+                y={height - 6}
+                textAnchor="middle"
+                fontFamily="JetBrains Mono"
+                fontSize="10"
+                fill="var(--text-tertiary)"
+              >
+                {b.label}
+              </text>
+            )}
           </g>
         );
       })}
-      {legend && (
-        <g fontFamily="JetBrains Mono" fontSize="9" fill="var(--text-secondary)">
+      {legend && legend.length > 0 && (
+        <g fontFamily="JetBrains Mono" fontSize="10" fill="var(--text-secondary)">
           {legend.map((l, i) => (
-            <g key={i} transform={`translate(${padX + i * 80}, ${padY - 4})`}>
-              <rect width="9" height="9" fill={colors[i % colors.length]} />
-              <text x="13" y="8">{l}</text>
+            <g key={i} transform={`translate(${padX + i * 140}, ${padTop - 14})`}>
+              <rect width="10" height="10" fill={colors[i % colors.length]} />
+              <text x="14" y="9">{l}</text>
             </g>
           ))}
         </g>
@@ -190,10 +232,8 @@ export function AdminStackedBars({
 
 export function AdminFunnelChart({
   steps,
-  height = 80,
 }: {
   steps: ReadonlyArray<{ label: string; value: number; conversionFromPrev?: string }>;
-  height?: number;
 }) {
   const max = Math.max(...steps.map((s) => s.value), 1);
   return (
@@ -202,7 +242,7 @@ export function AdminFunnelChart({
         const pct = Math.max(8, (s.value / max) * 100);
         return (
           <div key={i} className="flex items-center gap-2">
-            <span className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary w-20 shrink-0">{s.label}</span>
+            <span className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary w-24 shrink-0">{s.label}</span>
             <div className="flex-1 h-7 bg-bg-sunken rounded-sm relative overflow-hidden">
               <div
                 className="absolute inset-y-0 left-0 bg-royal/70 rounded-sm flex items-center justify-end pr-2"
@@ -212,7 +252,7 @@ export function AdminFunnelChart({
               </div>
             </div>
             {s.conversionFromPrev && (
-              <span className="font-mono text-micro tracking-wider text-gold w-12 text-right shrink-0">{s.conversionFromPrev}</span>
+              <span className="font-mono text-micro tracking-wider text-gold w-14 text-right shrink-0">{s.conversionFromPrev}</span>
             )}
           </div>
         );

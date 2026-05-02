@@ -1,10 +1,22 @@
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
+import { hasTotp } from "@/lib/server/totp";
 import { ConfidentialBand, AdminSidebar, AdminTopBar, type AdminSession } from "@/components/admin/admin-shell";
 
 const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+const TOTP_COOKIE = "kp_admin_totp";
+
+/**
+ * Routes inside /admin/* that DON'T require an admin TOTP cookie:
+ *   - /admin/totp-verify (the verify gate itself)
+ *   - /admin/2fa/setup (initial provisioning, before TOTP exists)
+ */
+const TOTP_EXEMPT = new Set<string>([
+  "/admin/totp-verify",
+  "/admin/2fa/setup",
+]);
 
 /**
  * Map the URL to the active sidebar key. Keep this in sync with NAV_GROUPS
@@ -39,10 +51,10 @@ function crumbsFromPath(path: string): string[] {
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login?return=/admin");
+  if (!session) redirect("/auth/admin");
   const u = db.user.findById(session.userId);
   const allowed = !!session.demoMode || (u && ADMIN_ROLES.has(u.role));
-  if (!allowed) redirect("/auth/login");
+  if (!allowed) redirect("/auth/admin");
 
   const adminSession: AdminSession = {
     userId: session.userId,
@@ -51,11 +63,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     demoMode: session.demoMode,
   };
 
-  // Read the request path from headers (set by Next's middleware-style trace)
+  // Read the request path from headers (set by middleware trace)
   const h = await headers();
   const path = h.get("x-pathname") ?? h.get("x-invoke-path") ?? h.get("x-url") ?? "/admin";
   const activeKey = activeKeyFromPath(path);
   const crumbs = crumbsFromPath(path);
+
+  // TOTP gate — non-demo admins with TOTP enabled must verify before browsing
+  if (!session.demoMode && hasTotp(session.userId) && !TOTP_EXEMPT.has(path)) {
+    const jar = await cookies();
+    if (!jar.get(TOTP_COOKIE)) {
+      redirect("/admin/totp-verify");
+    }
+  }
 
   return (
     <div className="min-h-screen bg-bg-base text-text">

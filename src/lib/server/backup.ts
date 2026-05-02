@@ -34,6 +34,8 @@ declare global {
   // eslint-disable-next-line no-var
   var __KIPINDI_STORE: any | undefined;
   // eslint-disable-next-line no-var
+  var __KIPINDI_AUDIT_RING: any[] | undefined;
+  // eslint-disable-next-line no-var
   var __KIPINDI_BACKUP_TIMER: ReturnType<typeof setTimeout> | undefined;
   // eslint-disable-next-line no-var
   var __KIPINDI_BACKUP_RESTORED: boolean | undefined;
@@ -53,12 +55,19 @@ function serializeStore(store: any): string {
       out[k] = v;
     }
   }
+  // Snapshot the audit ring alongside the store so the chain survives restarts
+  out.__auditRing = globalThis.__KIPINDI_AUDIT_RING ?? [];
   return JSON.stringify(out);
 }
 
-/** Reverse — array → Map. */
+/** Reverse — array → Map. Also restores the audit ring if present. */
 function deserializeStore(payload: string): Record<string, Map<unknown, unknown>> {
   const parsed = JSON.parse(payload);
+  // Hoist the audit ring back to globalThis if present
+  if (Array.isArray(parsed.__auditRing)) {
+    globalThis.__KIPINDI_AUDIT_RING = parsed.__auditRing;
+    delete parsed.__auditRing;
+  }
   const restored: Record<string, Map<unknown, unknown>> = {};
   for (const [k, v] of Object.entries(parsed) as [string, any][]) {
     if (v && typeof v === "object" && v.__map === true && Array.isArray(v.entries)) {

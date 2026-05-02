@@ -36,8 +36,19 @@ export type AuditEntry = {
 };
 
 const MAX_IN_MEM = 10_000;
-const ring: AuditEntry[] = [];
 const GENESIS = "GENESIS";
+
+/**
+ * The audit ring lives on globalThis so it survives Next.js module re-imports
+ * (which happen on hot reload + sometimes between requests in serverless).
+ * It is also persisted to disk via the same backup snapshot machinery as the
+ * main store, so a server restart restores the chain.
+ */
+declare global {
+  // eslint-disable-next-line no-var
+  var __KIPINDI_AUDIT_RING: AuditEntry[] | undefined;
+}
+const ring: AuditEntry[] = globalThis.__KIPINDI_AUDIT_RING ?? (globalThis.__KIPINDI_AUDIT_RING = []);
 
 function chainSecret(): string {
   return process.env.AUDIT_CHAIN_SECRET ?? process.env.SESSION_SECRET ?? "dev-only-audit-chain-secret";

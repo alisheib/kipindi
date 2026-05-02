@@ -7,11 +7,13 @@
  *   BASE=https://kipindi-...     node scripts/admin-screenshots.mjs
  */
 import { chromium } from "playwright";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, rmSync, existsSync, readdirSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 
 const BASE = process.env.BASE || "http://localhost:3000";
 const OUT  = join(process.cwd(), "docs", "shots-admin");
+const DARK_DIR  = join(OUT, "dark");
+const LIGHT_DIR = join(OUT, "light");
 
 const PAGES = [
   { name: "01-overview",          url: "/admin" },
@@ -32,7 +34,18 @@ const PAGES = [
   { name: "16-2fa-setup",         url: "/admin/2fa/setup" },
 ];
 
-mkdirSync(OUT, { recursive: true });
+// Reset and recreate split folders so the layout is always clean
+mkdirSync(DARK_DIR, { recursive: true });
+mkdirSync(LIGHT_DIR, { recursive: true });
+// Drop any flat-named legacy files from the parent shots-admin folder
+if (existsSync(OUT)) {
+  for (const f of readdirSync(OUT)) {
+    if (f === "dark" || f === "light") continue;
+    if (f.endsWith(".png")) {
+      try { unlinkSync(join(OUT, f)); } catch { /* ignore */ }
+    }
+  }
+}
 
 const browser = await chromium.launch();
 
@@ -67,9 +80,10 @@ for (const theme of ["dark", "light"]) {
       }, theme);
       await page.reload({ waitUntil: "networkidle" });
       await page.waitForTimeout(500);
-      const file = join(OUT, `${p.name}-${theme}.png`);
+      const targetDir = theme === "dark" ? DARK_DIR : LIGHT_DIR;
+      const file = join(targetDir, `${p.name}.png`);
       await page.screenshot({ path: file, fullPage: true });
-      console.log(`  ✓ ${p.url}  →  ${p.name}-${theme}.png`);
+      console.log(`  ✓ ${p.url}  →  ${theme}/${p.name}.png`);
     } catch (e) {
       console.log(`  ✗ ${p.url}  →  ${e?.message ?? e}`);
     } finally {
@@ -80,5 +94,5 @@ for (const theme of ["dark", "light"]) {
 }
 
 await browser.close();
-console.log(`\nScreenshots: ${OUT}`);
+console.log(`\nScreenshots: ${DARK_DIR}\n             ${LIGHT_DIR}`);
 process.exit(0);
