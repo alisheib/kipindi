@@ -31,12 +31,12 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
   ] as const;
   return (
     <header className="sticky top-0 z-sticky bg-bg-elevated/80 backdrop-blur-xl border-b border-border-divider">
-      <div className="mx-auto max-w-[1280px] flex items-center justify-between px-3 lg:px-6 h-11 lg:h-12">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="text-royal hover:text-royal-hover transition-colors duration-micro">
+      <div className="mx-auto max-w-[1280px] flex items-center justify-between px-3 lg:px-6 h-11 lg:h-12 gap-2">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link href="/" className="text-royal hover:text-royal-hover transition-colors duration-micro shrink-0">
             <Logo variant="primary" className="h-6 lg:h-7" />
           </Link>
-          <nav className="hidden lg:flex items-center ml-3" aria-label="Primary">
+          <nav className="hidden xl:flex items-center ml-3" aria-label="Primary">
             {NAV_ITEMS.map((it) => {
               const active = pathname === it.href;
               return (

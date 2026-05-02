@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card, CardBody } from "@/components/ui/card";
 import { Tabs } from "@/components/ui/tabs";
 import { Chip } from "@/components/ui/chip";
@@ -12,7 +13,10 @@ import { NoBetsYet } from "@/components/ui/illustrations";
 import { ResultChip } from "@/components/betting/result-chip";
 import { OutcomePill } from "@/components/mapigo/outcome-pill";
 import { TeamBadge } from "@/components/betting/team-badge";
+import { useToast } from "@/components/ui/toast";
 import { formatTzs } from "@/lib/utils";
+import { ArrowDownToLine } from "lucide-react";
+import { cashOutBetAction } from "./actions";
 import type { Bet as MockBet } from "@/lib/mock-data";
 
 export type MapigoBetView = {
@@ -29,17 +33,52 @@ export function BetsClient({
   bets,
   mapigoBets,
   isDemo,
+  cashOutOffers = {},
 }: {
   bets: MockBet[];
   mapigoBets: MapigoBetView[];
   isDemo: boolean;
+  cashOutOffers?: Record<string, number>;
 }) {
   const [tab, setTab] = useState<"active" | "settled" | "all">("active");
+  const [pendingCashOutId, setPendingCashOutId] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+  const { toast } = useToast();
+  const router = useRouter();
+
+  const handleCashOut = (betId: string, offer: number) => {
+    setPendingCashOutId(betId);
+    const fd = new FormData();
+    fd.set("betId", betId);
+    startTransition(async () => {
+      const result = await cashOutBetAction(fd);
+      if (result?.ok) {
+        toast({
+          title: `Cashed out · ${formatTzs(offer)}`,
+          description: "Funds back in your wallet · Pesa imerejea",
+          variant: "gold",
+        });
+        router.refresh();
+      } else {
+        toast({
+          title: "Cash-out failed",
+          description: result?.error ?? "Try again.",
+          variant: "danger",
+        });
+      }
+      setPendingCashOutId(null);
+    });
+  };
   const counts = {
     active: bets.filter((b) => b.status === "placed").length + mapigoBets.filter((b) => b.status === "PLACED").length,
     settled: bets.filter((b) => b.status !== "placed").length + mapigoBets.filter((b) => b.status !== "PLACED").length,
     all: bets.length + mapigoBets.length,
   };
+  const PAGE_SIZE = 12;
+  const [page, setPage] = useState(1);
+  // Reset to page 1 when tab changes
+  const setTabAndReset = (v: typeof tab) => { setTab(v); setPage(1); };
+
   const filteredMatch = bets.filter((b) => {
     if (tab === "active") return b.status === "placed";
     if (tab === "settled") return b.status === "won" || b.status === "lost" || b.status === "voided" || b.status === "cashedout";
@@ -50,9 +89,22 @@ export function BetsClient({
     if (tab === "settled") return b.status !== "PLACED";
     return true;
   });
+  const totalCount = filteredMatch.length + filteredMapigo.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  // Page slicing: combine the two lists in their existing order, slice
+  const combined: Array<{ kind: "match"; data: MockBet } | { kind: "mapigo"; data: MapigoBetView }> = [
+    ...filteredMatch.map((b) => ({ kind: "match" as const, data: b })),
+    ...filteredMapigo.map((b) => ({ kind: "mapigo" as const, data: b })),
+  ];
+  const pageStart = (safePage - 1) * PAGE_SIZE;
+  const pageEnd = pageStart + PAGE_SIZE;
+  const pagedItems = combined.slice(pageStart, pageEnd);
+  const pagedMatch = pagedItems.filter((x) => x.kind === "match").map((x) => x.data as MockBet);
+  const pagedMapigo = pagedItems.filter((x) => x.kind === "mapigo").map((x) => x.data as MapigoBetView);
 
   return (
-    <div className="mx-auto max-w-[960px] px-3 lg:px-6 py-4 lg:py-6 space-y-4">
+    <div className="mx-auto max-w-[960px] px-3 lg:px-6 py-4 lg:py-6 space-y-4 overflow-x-hidden">
       <Breadcrumbs items={[{ label: "My bets", labelSw: "Madau yangu" }]} />
       <header>
         <h1 className="font-display text-title-lg text-text">My bets · Madau yangu</h1>
@@ -62,7 +114,7 @@ export function BetsClient({
       <Tabs
         variant="segmented"
         value={tab}
-        onChange={(v) => setTab(v as typeof tab)}
+        onChange={(v) => setTabAndReset(v as typeof tab)}
         tabs={[
           { value: "active",  labelEn: `Active · ${counts.active}` },
           { value: "settled", labelEn: `Settled · ${counts.settled}` },
@@ -88,7 +140,7 @@ export function BetsClient({
         </Card>
       ) : (
         <div className="space-y-2">
-          {filteredMatch.map((b) => {
+          {pagedMatch.map((b) => {
             const isWin = b.status === "won";
             return (
               <Card key={b.id} interactive className={isWin ? "border-gold-subtleHover/40" : undefined}>
@@ -97,11 +149,11 @@ export function BetsClient({
                     <Chip variant="neutral" size="sm">{b.match.league}</Chip>
                     <ResultChip status={b.status} />
                   </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-center justify-between gap-3 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
                       <TeamBadge team={b.match.home} size="sm" />
                       <span className="text-body font-semibold text-text truncate">{b.match.home.shortName}</span>
-                      <span className="text-text-tertiary px-0.5">vs</span>
+                      <span className="text-text-tertiary px-0.5 shrink-0">vs</span>
                       <span className="text-body font-semibold text-text truncate">{b.match.away.shortName}</span>
                       <TeamBadge team={b.match.away} size="sm" />
                     </div>
@@ -128,12 +180,29 @@ export function BetsClient({
                   <p className="text-micro text-text-tertiary tabular">
                     Ref <span className="font-mono">{b.id}</span> · placed {new Date(b.placedAt).toLocaleString([], { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                   </p>
+                  {b.status === "placed" && cashOutOffers[b.id] !== undefined && (
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-border-divider">
+                      <div>
+                        <p className="text-caption uppercase tracking-wide text-text-tertiary leading-tight">Cash-out · Toa sasa</p>
+                        <p className="text-body font-bold text-gold tabular leading-tight mt-0.5">{formatTzs(cashOutOffers[b.id])}</p>
+                      </div>
+                      <Button
+                        variant="gold"
+                        size="md"
+                        leading={<ArrowDownToLine size={14} />}
+                        onClick={() => handleCashOut(b.id, cashOutOffers[b.id])}
+                        loading={pendingCashOutId === b.id}
+                      >
+                        Cash out
+                      </Button>
+                    </div>
+                  )}
                 </CardBody>
               </Card>
             );
           })}
 
-          {filteredMapigo.map((b) => (
+          {pagedMapigo.map((b) => (
             <Card key={b.id} interactive className={b.status === "WON" ? "border-gold-subtleHover/40" : undefined}>
               <CardBody className="space-y-2.5">
                 <div className="flex items-center justify-between">
@@ -163,6 +232,37 @@ export function BetsClient({
               </CardBody>
             </Card>
           ))}
+
+          {totalCount > PAGE_SIZE && (
+            <nav aria-label="Bet history pagination" className="flex items-center justify-between gap-2 pt-3">
+              <p className="text-caption text-text-secondary tabular">
+                Showing {pageStart + 1}–{Math.min(pageEnd, totalCount)} of {totalCount}
+              </p>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={safePage <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  aria-label="Previous page"
+                >
+                  ← Prev
+                </Button>
+                <span className="text-caption font-mono text-text-secondary px-2 tabular">
+                  {safePage} / {totalPages}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={safePage >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  aria-label="Next page"
+                >
+                  Next →
+                </Button>
+              </div>
+            </nav>
+          )}
         </div>
       )}
     </div>

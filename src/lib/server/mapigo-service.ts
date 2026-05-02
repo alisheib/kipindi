@@ -9,6 +9,7 @@ import { randomId } from "./crypto";
 import { rateCheck } from "./rate-limit";
 import { withLock } from "./locks";
 import { isLockedOut } from "./responsible-gambling";
+import { notifyWin } from "./notification-service";
 import type { ServiceResult } from "./auth-service";
 
 const ROUND_DURATION_MS = 60_000;
@@ -165,6 +166,7 @@ export async function settleRound(roundId: string, forcedResult?: "SPIKE" | "DRI
         completedAt: settledAt,
       });
       winnersPaid += payout;
+      notifyWin(bet.userId, payout, `Mapigo round #${round.number} · ${r}`, "/bets");
     } else {
       db.mapigoBet.update(bet.id, { status: "LOST", returnAmount: 0, settledAt });
     }

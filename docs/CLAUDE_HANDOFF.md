@@ -6,7 +6,9 @@
 
 ## TL;DR
 
-Kipindi is a Tanzania-licensed pool-based time-window football betting platform with a signature live in-play game called Mapigo. We're past Sprint 7b: foundation + auth + KYC + wallet + bet placement + Mapigo + security + concurrency lock + responsible gambling + legal pages + admin/compliance dashboard all built and live on `http://localhost:3000`. All persistence is in-memory; Postgres swap is mechanical (one import per service). Every regulatory control is mapped in `docs/REGULATOR_AND_TEST_LAB_PACKET.md` (read this first if a regulator/test-lab question comes up).
+Kipindi is a Tanzania-licensed pool-based time-window football betting platform with a signature live in-play game called Mapigo. We're past Sprint 8b: foundation + auth + KYC + wallet + bet placement + Mapigo + security + concurrency lock + responsible gambling + legal pages + admin/compliance dashboard + reality-check banner + cash-out + production deploy on Railway. All persistence is in-memory; Postgres swap is mechanical (one import per service). Every regulatory control is mapped in `docs/REGULATOR_AND_TEST_LAB_PACKET.md` (read this first if a regulator/test-lab question comes up).
+
+**Live demo:** https://kipindi-production.up.railway.app — manager-facing, dark theme locked, demo session via "Try demo · TZS 100,000" landing CTA.
 
 The user (Ali) is the operator, non-technical, in Dar es Salaam, working with a successful TZ government-side manager who reviews builds. He cares deeply about typography, brand consistency, and regulator-readability. Don't slip on those.
 
@@ -124,13 +126,39 @@ The session cookie carries `demoMode: true`. The `<DemoBanner>` component (in `a
 
 ## What I didn't do (intentional)
 
-- **No real password authentication.** OTP-only matches the TZ market and avoids password-reset complexity early. Add it in Sprint 6 when admin accounts exist.
-- **No real-time WebSockets.** The waveform / pool counters / live ticker are deterministic per render. Real-time push lands in Sprint 5.
-- **No two-factor auth beyond OTP.** Scheduled Sprint 6.
-- **No CSP nonces in production.** Currently `'unsafe-inline'` and `'unsafe-eval'` for Next dev; tighten with per-request nonces in Sprint 9 polish.
-- **Document upload backend.** Storage-key stub only; real S3 + virus scan + blur detection in Sprint 2 production push.
-- **Admin dashboard is skeletal.** `/admin` overview + audit log work; players + self-exclusions roster are placeholders pending Postgres iteration.
-- **Reality-check banner.** RG settings store the interval; the surfacing UI is queued for Sprint 6.
+- **No real password authentication.** OTP-only matches the TZ market and avoids password-reset complexity early.
+- **No real-time WebSockets.** The waveform / pool counters / live ticker are deterministic per render.
+- **No two-factor auth beyond OTP.** Scheduled.
+- **No CSP nonces in production.** Currently `'unsafe-inline'` and `'unsafe-eval'`; tighten with per-request nonces in polish.
+- **Document upload backend.** Storage-key stub only; real S3 + virus scan + blur detection planned.
+- **Admin dashboard is skeletal.** `/admin` overview + audit log + AML queue work; players + self-exclusions roster are placeholders pending Postgres iteration.
+- **Light + system themes disabled.** Theme is force-locked to dark via `forcedTheme="dark"` in `theme-provider.tsx`. Light theme has known contrast bugs; toggle buttons render but are disabled. Re-enable after a polish pass.
+
+## What's done in Sprint 10 (this session)
+
+- **Real notifications service** — `src/lib/server/notification-service.ts` + `_actions/notifications.ts` server actions. DB-backed (in-memory shim), bilingual EN+SW, mark-read / dismiss / mark-all. Fires automatically on `bet.won`, `mapigo.bet.won`, `deposit.confirmed`. The notifications panel polls every 30s, falls back to a static demo list when no real notifications exist (so the marketing landing still has visual content).
+- **Source-of-funds declaration form** at `/profile/source-of-funds` — AML EDD UI mandated by Tanzania POCA Cap 423 + FATF Recommendation 12. Captures source, occupation, employer, annual income band, free-text "other", with anti-perjury notice. Submission audited as `COMPLIANCE / sof.submitted`. Stored at `db.sourceOfFunds`.
+- **Sportradar match-integrity adapter** — `src/lib/server/integrity-service.ts`. Stub returns deterministic suspicion scores; production swap is one fetch call. Auto-escalates `suspicious` / `confirmed` alerts: voids open bets on the match and refunds stakes (with paired transactions + audit).
+- **Bet history pagination** — 12-per-page, prev/next controls, "Showing 1–12 of 45" footer.
+- **Accessibility (WCAG 2.1 AA basics) — 22/22 pages clean**. Added `<h1>` to /mapigo, /match/[id], /profile (sr-only where the visual is non-textual). Added labels to /profile/responsible-gambling selects. Added `aria-label` to back-arrow links.
+
+## What's done in Sprint 9
+
+- **Backup system** at `src/lib/server/backup.ts` — debounced JSON snapshot of `globalThis.__KIPINDI_STORE` to `.kipindi-backups/` after every mutation (1.5s debounce, 12-snapshot rolling history). HMAC-signed with SESSION_SECRET so a manual edit fails verification on next boot. Auto-restore on first import in `store.ts`.
+- **Audit hash-chain** in `src/lib/server/audit.ts` — every entry now has `prevHash` + `entryHash`, forming a Merkle-style chain. `verifyChain()` walks from genesis to head; admin `/admin/system` page exposes a "Verify chain" button.
+- **User self-service** at `/profile/account` — own activity feed, GDPR Art 15 data export (download as JSON), GDPR Art 17 account closure with confirm-phrase guard. Backed by `src/lib/server/user-service.ts`.
+- **2FA primitive** in `src/lib/server/totp.ts` — RFC 6238 TOTP, otpauth URI for QR-code provisioning, ready to wire into admin login flow when admin accounts exist.
+- **Admin system page** at `/admin/system` — Backup-now + Verify-chain buttons; documents production posture (Postgres PITR + nightly chain re-verification).
+- **Tablet responsive overhaul** — desktop nav moved from `lg:` (1024) to `xl:` (1280) so tablet portrait + landscape both get the bottom nav. 100/100 pages clean across 4 viewports (393, 430, 768, 1024).
+
+## What's done in Sprint 8
+
+- **Reality-check banner** at `src/components/rg/reality-check.tsx` — fires every 30 min (configurable) for authed users, shows time on platform, links to limits / break / self-exclude. Mounted in `app-shell.tsx` only when a session exists.
+- **Cash-out for match bets** — `cashOutBet()` and `previewCashOut()` in `bet-service.ts`. Pricing: stake × payRate × 0.62 with a 60% floor. UI on `/bets` shows offer + button; cash-out fires `bet.cashed_out` audit event. Server action at `src/app/bets/actions.ts`.
+- **Mobile responsive overhaul** — top app bar's theme + language toggles collapse to single icon buttons below `lg`; wallet card relayout (TZS balance prominent, action buttons in 2-col grid below); fixed `/dashboard` 404 on landing CTAs; added prominent "Try demo · TZS 100,000" CTA.
+- **Pop-in animation overshoot fix** — `kp-pop-in` keyframe no longer overshoots to 1.04 (was making bet-placed card visibly exceed its container).
+- **Production deploy** — Railway, GitHub auto-deploy, dark theme locked.
+- **Lazy secret resolution** — `crypto.ts` no longer throws at module load in production builds; only at runtime use. Allows `next build` to complete on Railway without env vars set yet.
 
 ---
 

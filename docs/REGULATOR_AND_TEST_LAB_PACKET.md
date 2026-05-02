@@ -57,7 +57,10 @@ This is the canonical request list compiled from GLI-19, eCOGRA, the UK Gambling
 | Ask | Where it lives |
 |---|---|
 | Wallet integrity | `StoredWallet.balance` is never written without a paired `StoredTxn` row of equal magnitude and opposite sign. See `bet-service.ts:47` and `mapigo-service.ts:67`. |
-| Reconciliation | Double-entry: every BET_PLACED has paired wallet debit; every BET_PAYOUT has paired wallet credit. The audit log captures both. |
+| Match-integrity monitoring | ✅ `src/lib/server/integrity-service.ts`. Stub returns deterministic suspicion scores per match-id (production swap: Sportradar Integrity Services fetch). High-severity alerts auto-void affected bets + refund stakes via paired transactions; every alert is audited under `BET / integrity.alert.*`. |
+| Source of funds (AML EDD) | ✅ `/profile/source-of-funds` form. Captures declared source / occupation / employer / income band / free-text. Trigger: cumulative deposits > TZS 5M / 30 days OR single transaction > TZS 1M (per POCA Cap 423). Pending → compliance officer review → ACCEPTED / REJECTED. Audited as `COMPLIANCE / sof.submitted`. |
+| Reconciliation | Double-entry: every BET_PLACED has paired wallet debit; every BET_PAYOUT (or CASHOUT) has paired wallet credit. The audit log captures both. |
+| Cash-out (in-play) | `cashOutBet()` in `bet-service.ts`. Deterministic pricing: `stake × payRate × 0.62` with a `0.6 × stake` floor. Atomic via `withLock(wallet:userId)`; bet status flips PLACED → CASHED_OUT, paired CASHOUT transaction created, audited as `bet.cashed_out`. Idempotent — second cash-out attempt on the same bet returns INVALID. |
 | AML thresholds | TZS 1,000,000 single-transaction threshold flips withdrawal status to `AML_REVIEW`. See [`wallet-service.ts`](../src/lib/server/wallet-service.ts) and the `/admin/aml` queue. |
 | Sanctions screening | Documented in `/legal/aml` §4. Production: weekly screen against UN/OFAC/EU/HMT lists. |
 | Withholding tax | 15% applied to gross winnings on withdrawal (Income Tax Act Cap 332). UI shows the tax line on withdraw confirm. |
@@ -68,7 +71,7 @@ This is the canonical request list compiled from GLI-19, eCOGRA, the UK Gambling
 | Deposit limits (daily/weekly/monthly) | `/profile/responsible-gambling` UI · enforced by [`responsible-gambling.ts:checkDepositLimit`](../src/lib/server/responsible-gambling.ts) · plumbed into `wallet-service.ts:deposit`. |
 | Limit-increase deferral (24 h) | Implemented in `setLimits` in `responsible-gambling.ts`. **Decreases immediate, daily increases deferred 24 h** — matches LCCP SR Code 3.4.3. |
 | Loss limit (daily) | Stored in `StoredResponsibleGambling.dailyLossLimit`. Enforcement hook ready for the bet flow. |
-| Reality-check banner | Default 30 min interval (configurable 5–120 min). UI component to follow in Sprint 6. |
+| Reality-check banner | ✅ Live in `src/components/rg/reality-check.tsx`. Fires every `realityCheckIntervalMin` (default 30 min, configurable 5–120 min). Shows time on platform, links to limits / break / self-exclude. Mounted via `app-shell.tsx` only for authed users. Session-start tracked in `sessionStorage`. |
 | Self-exclusion | `selfExclude(userId, period)` in `responsible-gambling.ts`. Periods: 24h / 1w / 1m / 6m / permanent. **One-way until expiry** — sets user status SELF_EXCLUDED, freezes wallet, destroys session. |
 | Cooling-off | Same shape, periods: 1h / 24h / 1w. Status `COOLED_OFF`. |
 | Lockout enforced server-side | `isLockedOut(userId)` called by `placeBet`, `placeMapigoBet`, and `deposit` — every revenue path. |
@@ -88,8 +91,29 @@ This is the canonical request list compiled from GLI-19, eCOGRA, the UK Gambling
 | Append-only log | [`audit.ts`](../src/lib/server/audit.ts). Production: Postgres `AuditLog` table, signed entries, 7-year retention. |
 | Categories | AUTH · KYC · WALLET · BET · ADMIN · COMPLIANCE · SECURITY · SYSTEM |
 | Actor attribution | Every entry carries actorId (or null = system), targetType+targetId, payload, IP, UA, ISO timestamp. |
-| Read access | `/admin/audit` with category and actor-id filters. |
-| Tamper resistance | Production: each entry signed with HMAC chained to the previous entry's signature (Merkle-style chain) — verifiable by an external auditor. |
+| Read access | `/admin/audit` with category and actor-id filters. User-facing self-audit at `/profile/account`. |
+| Tamper resistance | ✅ Each entry HMAC-chained to the previous (`prevHash` + `entryHash` columns). `verifyChain()` walks the chain end-to-end and is exposed at `/admin/system` "Verify audit chain" button. Production: nightly cron re-verifies + pages on-call on any break. |
+| Backup + restore | ✅ `src/lib/server/backup.ts` writes a HMAC-signed JSON snapshot to `.kipindi-backups/` after every mutation (debounced 1.5s, 12-snapshot history). Auto-restores on first import. Production: replaced by Postgres point-in-time recovery + cross-region replication. |
+
+### 1.10 Accessibility (WCAG 2.1 AA)
+| Ask | Where it lives |
+|---|---|
+| Lang attribute | ✅ `<html lang="en">` set in root layout |
+| Page heading | ✅ Every route has a `<h1>` (visible or sr-only); audited by `scripts/a11y-audit.mjs` |
+| Image alt text | ✅ All `<img>` have `alt` (or `alt=""` when decorative); icons use lucide-react which renders SVG with proper aria |
+| Form labels | ✅ Every `<input>`, `<select>`, `<textarea>` has an associated `<label>` or `aria-label` |
+| Button + link names | ✅ Every interactive element has visible text or `aria-label` |
+| Keyboard navigation | ✅ All interactives use semantic HTML buttons / links; Tab traversal follows DOM order |
+| Color contrast | ⚠️ Visual contrast for the dark theme is regulator-grade; a formal Lighthouse contrast pass is queued for the polish sprint |
+
+Run `BASE=http://localhost:3000 node scripts/a11y-audit.mjs` to reproduce — current result: 22 / 22 routes pass.
+
+### 1.9 Player rights (GDPR / Tanzania PDPA)
+| Ask | Where it lives |
+|---|---|
+| Right of access (Art 15) | ✅ `/profile/account` "Download my data" — returns structured JSON of every record about the user. Server: `exportUserData()` in `src/lib/server/user-service.ts`. |
+| Right to erasure (Art 17) | ✅ Self-service account closure at `/profile/account`. Confirm-phrase guard ("CLOSE MY ACCOUNT"). User status → CLOSED, wallet frozen, marketing cleared, session destroyed. AML retention overrides erasure for 7 years (POCA Cap 423). |
+| Activity feed | ✅ `/profile/account` shows the user's own audit-log entries — they can see exactly what we recorded about them. |
 
 ### 1.8 Operational + governance
 | Ask | Where it lives |

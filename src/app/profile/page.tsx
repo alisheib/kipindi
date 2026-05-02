@@ -4,7 +4,7 @@ import { Chip } from "@/components/ui/chip";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Pattern } from "@/components/ui/pattern";
-import { ChevronRight, ShieldCheck, Sliders, LogOut, BellRing, Globe2, MonitorSmartphone, HeartPulse, Check } from "lucide-react";
+import { ChevronRight, ShieldCheck, Sliders, LogOut, BellRing, Globe2, MonitorSmartphone, HeartPulse, Check, UserCircle2 } from "lucide-react";
 import { user } from "@/lib/mock-data";
 
 export const metadata = { title: "Profile · Wasifu" };
@@ -24,7 +24,7 @@ export default function ProfilePage() {
         <div className="relative z-10 p-4 lg:p-5 flex items-center gap-3 text-onBrand">
           <Avatar initials={user.initials} size="xl" color="var(--gold)" className="shadow-glow-gold" />
           <div className="flex-1">
-            <p className="font-display text-title-md lg:text-title-lg leading-tight">{user.name}</p>
+            <h1 className="font-display text-title-md lg:text-title-lg leading-tight m-0">{user.name}</h1>
             <p className="text-body-sm opacity-80 tabular leading-tight mt-0.5">{user.phone} · {user.region}</p>
             <div className="flex flex-wrap items-center gap-1.5 mt-2">
               {kycPill}
@@ -61,12 +61,14 @@ export default function ProfilePage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <SettingRow icon={Sliders}            title="Responsible gambling" subtitle="Limits · Vikomo · Self-exclusion" href="/wallet" />
-        <SettingRow icon={BellRing}           title="Notifications"        subtitle="Push · SMS · Email"               href="#" />
-        <SettingRow icon={MonitorSmartphone}  title="Active sessions"      subtitle="Devices · Sign out"               href="#" />
-        <SettingRow icon={Globe2}             title="Language · Lugha"     subtitle="English · Kiswahili"              href="#" />
-        <SettingRow icon={HeartPulse}         title="Help & support"       subtitle="Live chat · Helpline"             href="#" />
-        <SettingRow icon={LogOut}             title="Sign out · Toka"      subtitle="See you soon · Tutaonana"         href="#" />
+        <SettingRow icon={UserCircle2}        title="My account · Akaunti yangu"  subtitle="Activity · Export data · Close account" href="/profile/account" />
+        <SettingRow icon={Sliders}            title="Responsible gambling"        subtitle="Limits · Vikomo · Self-exclusion"        href="/profile/responsible-gambling" />
+        <SettingRow icon={ShieldCheck}        title="Verify ID · Thibitisha"      subtitle="NIDA · documents · review"               href="/profile/kyc" />
+        <SettingRow icon={BellRing}           title="Notifications"               subtitle="Push · SMS · Email"                      href="#" />
+        <SettingRow icon={MonitorSmartphone}  title="Active sessions"             subtitle="Devices · Sign out"                      href="#" />
+        <SettingRow icon={HeartPulse}         title="Help & support"              subtitle="Live chat · Helpline"                    href="#" />
+        <SettingRow icon={Globe2}             title="Language · Lugha"            subtitle="English · Kiswahili"                     href="#" />
+        <SettingRow icon={LogOut}             title="Sign out · Toka"             subtitle="See you soon · Tutaonana"                href="/auth/logout" />
       </div>
     </div>
   );

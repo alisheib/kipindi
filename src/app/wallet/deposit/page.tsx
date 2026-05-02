@@ -31,8 +31,8 @@ export default async function DepositPage() {
       <div className="relative w-full max-w-2xl space-y-4">
         <Breadcrumbs items={[{ label: "Wallet", href: "/wallet" }, { label: "Deposit", labelSw: "Amana" }]} />
         <div className="flex items-center gap-2">
-          <Link href="/wallet" className="text-text-tertiary hover:text-text transition-colors">
-            <ChevronLeft size={18} />
+          <Link href="/wallet" aria-label="Back to wallet" className="text-text-tertiary hover:text-text transition-colors">
+            <ChevronLeft size={18} aria-hidden />
           </Link>
           <p className="font-mono text-caption uppercase tracking-[0.32em] text-gold font-bold">Deposit · Amana</p>
         </div>

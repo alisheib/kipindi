@@ -14,6 +14,7 @@ import { dispatchDeposit, dispatchWithdrawal, computeWithdrawalTax } from "./pay
 import { rateCheck } from "./rate-limit";
 import { DepositSchema, WithdrawSchema } from "./validators";
 import { checkDepositLimit, isLockedOut } from "./responsible-gambling";
+import { notifyDeposit } from "./notification-service";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
 
@@ -80,6 +81,7 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
   db.wallet.update(wallet.id, { balance: newBalance });
   db.txn.update(txnId, { status: "CONFIRMED", providerRef: result.providerRef, balanceAfter: newBalance, completedAt: new Date().toISOString() });
   audit({ category: "WALLET", action: "deposit.confirmed", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: result.providerRef, balanceAfter: newBalance } });
+  notifyDeposit(userId, parse.data.amount, friendlyProvider(parse.data.provider));
 
   return { ok: true, data: { txnId, status: "CONFIRMED", balance: newBalance } };
 }

@@ -1,6 +1,14 @@
 # Kipindi — Sprint Status
 
-**Last updated:** 2026-04-30
+**Last updated:** 2026-05-02 · **Live demo:** https://kipindi-production.up.railway.app
+
+## Production deploy
+
+- **Hosting:** Railway (auto-deploy on push to `main`)
+- **Repo:** github.com/alisheib/kipindi (private)
+- **Required env vars:** `SESSION_SECRET`, `OTP_PEPPER`, `DEMO_MODE_ENABLED=true`, `NODE_ENV=production`, `NEXT_PUBLIC_APP_URL`
+- **Theme:** Locked to dark mode (light + system disabled until polish pass)
+- **Manager entry:** Landing page → "Try demo · TZS 100,000" CTA → `/auth/demo` → `/live`
 
 | Sprint | Scope | Status |
 |---|---|---|
@@ -15,8 +23,12 @@
 | 6 | Anti-fraud + match integrity | ⬜ Schema only |
 | 7 | Compliance UI + admin dashboard | ✅ Complete · `/admin` (overview, audit, players, AML, self-exclusions) |
 | 7b | Responsible gambling controls + legal pages | ✅ Complete · `/profile/responsible-gambling`, `/legal/{terms,privacy,responsible-gambling,aml}` |
-| 8 | Mapigo signature game | ✅ Complete · round place + settle wired + win celebration |
-| 9 | Polish + soft launch | ⬜ Pending |
+| 8 | Reality check + cash-out | ✅ Complete · LCCP-mandated mid-session prompt + match-bet cash-out |
+| 8b | Production deploy on Railway | ✅ Complete · auto-deploy from GitHub, dark theme locked |
+| 9 | World-class compliance + user management | ✅ Complete · backup system, audit hash-chain, user self-service (account close + GDPR data export + activity feed), TOTP/2FA primitive, admin /system page, tablet responsive (100/100 across 4 viewports) |
+| 10 | Live realism + accessibility + AML EDD | ✅ Complete · real notifications service (DB-backed, mark read/dismiss, polled), source-of-funds declaration form, Sportradar match-integrity adapter (stub interface), bet history pagination, WCAG 2.1 AA audit + fixes (22/22 pages clean) |
+| 11 | Mapigo signature game | ✅ Complete · round place + settle wired + win celebration |
+| 12 | Polish + soft launch | ⬜ Pending |
 | ★ | Demo mode for manager review | ✅ Complete · `/auth/demo` |
 | ★ | Avatar dropdown + sign-out | ✅ Complete |
 | ★ | Real-time round timer | ✅ Complete (1s tick interval) |
@@ -117,9 +129,26 @@
 - `scripts/smoke-test.mjs` — 14-check Playwright integration test
 - `scripts/stress-test.mjs` — 11-check concurrent + security stress (8 parallel bets, 4 parallel Mapigo, tampered cookie, security headers)
 - `scripts/mapigo-stress.mjs` — 6-check Mapigo intensive (30× rapid click, parallel race, max stake, idempotent settlement)
+- `scripts/sprint9-test.mjs` — 10-check Sprint 9 regression (cash-out flow, /profile/account, audit chain, backup snapshot, reality-check, Mapigo regression)
+- `scripts/sprint10-test.mjs` — 7-check Sprint 10 regression (notifications, SOF form, integrity adapter, pagination, Mapigo + cash-out regression)
+- `scripts/multi-viewport-audit.mjs` — 100-check responsive audit across 4 viewports (393/430/768/1024 px)
+- `scripts/a11y-audit.mjs` — 22-check WCAG 2.1 AA audit (lang, h1, image alt, form labels, button + link names)
 - `scripts/demo-walkthrough.mjs` — captures the 10-screenshot end-to-end demo flow
 - `scripts/screenshot.mjs` — full-page captures across desktop / tablet / mobile, public + authed
-- 25+ routes verified with curl (200/307 status checks)
+- `scripts/live-e2e.mjs` — runs the manager-facing flow against the live Railway URL
+- 30+ routes verified with curl (200/307 status checks)
+
+### Latest test results
+
+| Suite | Pass | Notes |
+|---|---|---|
+| A11y audit (WCAG 2.1 AA basics) | 22 / 22 | html lang, single h1, image alt, form labels, button + link names |
+| Sprint 10 regression | 7 / 7 | Notifications, SOF form, integrity adapter, pagination, Mapigo + cash-out regression |
+| Sprint 9 regression | 10 / 10 | Backup, audit chain, account/export/close, all flows |
+| Multi-viewport audit | 100 / 100 | Phone-393, Phone-430, Tablet-768, Tablet-1024 |
+| Stress | 11 / 11 | 8 parallel bets, 4 parallel Mapigo, tampered cookie, headers |
+| Mapigo intensive | 5 / 6 | Same parallel-race flake on shared demo state — 30× rapid click + idempotent settle pass |
+| **Combined** | **155 / 156** | Single known flake (Mapigo race timing) |
 
 ### Test artifacts in repo
 - `docs/shots-dark/` — canonical dark-mode screenshots (13 public + 7 demo-authed routes)

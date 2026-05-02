@@ -135,8 +135,11 @@ export default function MapigoPage() {
         {/* HEADER */}
         <header className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3">
-            <MapigoWordmark className="text-text text-title-md lg:text-title-lg" />
-            <span className="text-caption uppercase tracking-[0.18em] text-text-tertiary font-bold border-l border-border-divider pl-3">Feel the match · Hisi mechi</span>
+            <h1 className="m-0">
+              <MapigoWordmark className="text-text text-title-md lg:text-title-lg" />
+              <span className="sr-only">Mapigo · feel the match</span>
+            </h1>
+            <span aria-hidden className="text-caption uppercase tracking-[0.18em] text-text-tertiary font-bold border-l border-border-divider pl-3">Feel the match · Hisi mechi</span>
           </div>
           <div className="flex items-center gap-2">
             <LivePill minute={liveMatch.minute} size="md" />

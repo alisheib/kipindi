@@ -1,7 +1,7 @@
 import { BetsClient, type MapigoBetView } from "./bets-client";
 import { myBets as mockBets, teams } from "@/lib/mock-data";
 import { currentSession } from "@/lib/server/auth-service";
-import { getBetsForUser } from "@/lib/server/bet-service";
+import { getBetsForUser, previewCashOut } from "@/lib/server/bet-service";
 import { getMyMapigoBets } from "@/lib/server/mapigo-service";
 import type { Bet as MockBet } from "@/lib/mock-data";
 
@@ -14,9 +14,16 @@ export default async function MyBetsPage() {
   let bets: MockBet[] = mockBets;
   let mapigoBets: MapigoBetView[] = [];
   let isDemo = false;
+  const cashOutOffers: Record<string, number> = {};
 
   if (session) {
     isDemo = !!session.demoMode;
+    for (const b of getBetsForUser(session.userId)) {
+      if (b.status === "PLACED") {
+        const p = previewCashOut(b.id, session.userId);
+        if (p.eligible) cashOutOffers[b.id] = p.offer;
+      }
+    }
     bets = getBetsForUser(session.userId).map<MockBet>((b) => {
       const homeShort = b.matchLabel.split(" vs ")[0] ?? "Home";
       const awayShort = b.matchLabel.split(" vs ")[1] ?? "Away";
@@ -54,5 +61,5 @@ export default async function MyBetsPage() {
     }));
   }
 
-  return <BetsClient bets={bets} mapigoBets={mapigoBets} isDemo={isDemo} />;
+  return <BetsClient bets={bets} mapigoBets={mapigoBets} isDemo={isDemo} cashOutOffers={cashOutOffers} />;
 }

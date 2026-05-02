@@ -4,7 +4,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { Pattern } from "@/components/ui/pattern";
 import { Chip } from "@/components/ui/chip";
-import { ShieldCheck, Activity, Users, FileSearch, AlertTriangle, Lock } from "lucide-react";
+import { ShieldCheck, Activity, Users, FileSearch, AlertTriangle, Lock, Database } from "lucide-react";
 
 const ADMIN_NAV: Array<{ href: string; label: string; sub: string; icon: React.ComponentType<{ size?: number; className?: string }> }> = [
   { href: "/admin",                  label: "Overview",          sub: "Status + KPIs",         icon: Activity },
@@ -12,6 +12,7 @@ const ADMIN_NAV: Array<{ href: string; label: string; sub: string; icon: React.C
   { href: "/admin/players",          label: "Players",           sub: "Search + freeze",       icon: Users },
   { href: "/admin/aml",              label: "AML / EDD queue",   sub: "Suspicious activity",   icon: AlertTriangle },
   { href: "/admin/self-exclusions",  label: "Self-exclusions",   sub: "RG roster",             icon: Lock },
+  { href: "/admin/system",           label: "System",            sub: "Backup · audit chain",  icon: Database },
 ];
 
 const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
@@ -54,7 +55,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </Link>
           ))}
         </aside>
-        <main>{children}</main>
+        <main className="min-w-0">{children}</main>
       </div>
     </div>
   );

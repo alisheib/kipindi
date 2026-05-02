@@ -17,7 +17,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="lg:hidden fixed inset-x-0 bottom-0 z-sticky bg-bg-elevated/95 backdrop-blur-xl border-t border-border-divider pb-[env(safe-area-inset-bottom)]">
+    <nav className="xl:hidden fixed inset-x-0 bottom-0 z-sticky bg-bg-elevated/95 backdrop-blur-xl border-t border-border-divider pb-[env(safe-area-inset-bottom)]">
       <div className="relative flex items-stretch justify-around h-9">
         {items.slice(0, 2).map((it) => <NavItem key={it.href} {...it} active={pathname === it.href} />)}
         <div className="relative flex items-center justify-center w-14">

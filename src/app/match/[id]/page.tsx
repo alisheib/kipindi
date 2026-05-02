@@ -41,6 +41,7 @@ export default async function MatchDetail({ params }: { params: Promise<{ id: st
         { label: "Matches", href: "/" },
         { label: `${match.home.shortName} vs ${match.away.shortName}` },
       ]} />
+      <h1 className="sr-only">{match.home.name} vs {match.away.name} — {match.league}</h1>
       {/* HERO — compact, dense */}
       <section className="relative rounded-xl overflow-hidden border border-royal/40">
         <div className="absolute inset-0 bg-g-brand" aria-hidden />

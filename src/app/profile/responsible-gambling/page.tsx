@@ -96,11 +96,14 @@ export default async function ResponsibleGamblingPage() {
               A short, one-way pause. You will be signed out and cannot bet, deposit, or sign in until it ends.
             </p>
             <form action={coolOffAction} className="flex flex-wrap items-end gap-2">
-              <select name="period" className="h-10 px-3 rounded-md border border-border bg-surface text-text text-body-sm">
-                {COOLING_OFF_OPTIONS.map((o) => (
-                  <option key={o.id} value={o.id}>{o.label} · {o.sw}</option>
-                ))}
-              </select>
+              <label className="block">
+                <span className="block text-caption uppercase tracking-[0.14em] font-bold text-text-secondary mb-1.5">Break length</span>
+                <select name="period" aria-label="Cooling-off period" title="Cooling-off period" className="h-10 px-3 rounded-md border border-border bg-surface text-text text-body-sm">
+                  {COOLING_OFF_OPTIONS.map((o) => (
+                    <option key={o.id} value={o.id}>{o.label} · {o.sw}</option>
+                  ))}
+                </select>
+              </label>
               <Button type="submit" variant="secondary" size="lg" leading={<Pause size={14} />}>Start break</Button>
             </form>
           </CardBody>
@@ -121,11 +124,14 @@ export default async function ResponsibleGamblingPage() {
               <br /><span className="italic">Hutaweza kufuta hii mwenyewe hadi muda umeisha.</span>
             </p>
             <form action={selfExcludeAction} className="flex flex-wrap items-end gap-2">
-              <select name="period" className="h-10 px-3 rounded-md border border-border bg-surface text-text text-body-sm">
-                {SELF_EXCLUSION_OPTIONS.map((o) => (
-                  <option key={o.id} value={o.id}>{o.label} · {o.sw}</option>
-                ))}
-              </select>
+              <label className="block">
+                <span className="block text-caption uppercase tracking-[0.14em] font-bold text-text-secondary mb-1.5">Exclusion period</span>
+                <select name="period" aria-label="Self-exclusion period" title="Self-exclusion period" className="h-10 px-3 rounded-md border border-border bg-surface text-text text-body-sm">
+                  {SELF_EXCLUSION_OPTIONS.map((o) => (
+                    <option key={o.id} value={o.id}>{o.label} · {o.sw}</option>
+                  ))}
+                </select>
+              </label>
               <Button type="submit" variant="danger" size="lg" leading={<Lock size={14} />}>Self-exclude · Jizuie</Button>
             </form>
             <p className="text-micro text-text-tertiary pt-2">

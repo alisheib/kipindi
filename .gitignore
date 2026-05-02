@@ -14,3 +14,6 @@ prisma/migrations/dev.db*
 .idea
 .vscode/*
 !.vscode/extensions.json
+
+# Test artifacts (regenerated on every run)
+scripts/mobile-audit/
