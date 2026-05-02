@@ -49,7 +49,7 @@ export default function LandingPage() {
         <div className="flex flex-col items-center gap-1 text-caption text-text-tertiary text-center">
           <p>Licensed by the Gaming Board of Tanzania · License No. <span className="font-mono">TZ-GBT-2026-XXXX</span> · 18+ only</p>
           <p>Helpline · Msaada: <span className="font-mono">0800 11 0011</span> · Self-exclusion · Kujitenga in Profile.</p>
-          <p className="font-mono mt-1.5 tracking-[0.18em] uppercase">Kipindi · Tanzania-built · Mapigo signature</p>
+          <p className="font-mono mt-1.5 tracking-[0.18em] uppercase">Kipindi · Tanzania-built</p>
         </div>
       </footer>
     </div>

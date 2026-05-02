@@ -4,6 +4,7 @@ import { Chip } from "@/components/ui/chip";
 import { db } from "@/lib/server/store";
 import { formatTzs } from "@/lib/utils";
 import { AlertTriangle } from "lucide-react";
+import { AmlActionRow } from "./aml-actions-client";
 
 export const metadata = { title: "Admin · AML queue" };
 export const dynamic = "force-dynamic";
@@ -17,7 +18,7 @@ export default function AdminAmlPage() {
       <header className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="font-display font-bold text-title-lg text-text">AML / EDD queue</h1>
-          <p className="text-body text-text-secondary">Transactions in <code>AML_REVIEW</code> awaiting compliance officer sign-off.</p>
+          <p className="text-body text-text-secondary">Transactions held in <code>AML_REVIEW</code> awaiting compliance officer sign-off.</p>
         </div>
         <Chip size="md" variant={inReview.length > 0 ? "warning" : "neutral"}>{inReview.length} pending</Chip>
       </header>
@@ -42,13 +43,16 @@ export default function AdminAmlPage() {
                   <tr key={t.id} className="border-t border-border-subtle/50">
                     <td className="p-3 font-mono whitespace-nowrap">{t.createdAt.replace("T", " ").slice(0, 19)}</td>
                     <td className="p-3 font-medium text-text">{t.type}</td>
-                    <td className="p-3 font-mono">{t.userId.slice(0, 16)}</td>
-                    <td className="p-3 font-mono tabular text-right">{formatTzs(t.amount)}</td>
+                    <td className="p-3 font-mono">
+                      <a href={`/admin/players?q=${encodeURIComponent(t.userId)}`} className="hover:text-royal hover:underline">
+                        {t.userId.slice(0, 16)}
+                      </a>
+                    </td>
+                    <td className="p-3 font-mono tabular text-right">{formatTzs(Math.abs(t.amount))}</td>
                     <td className="p-3">{t.provider ?? "—"}</td>
                     <td className="p-3">{t.amlReason ?? "—"}</td>
-                    <td className="p-3 space-x-2">
-                      <button type="button" className="text-success hover:underline font-semibold" disabled>Approve</button>
-                      <button type="button" className="text-danger hover:underline font-semibold" disabled>Reject</button>
+                    <td className="p-3">
+                      <AmlActionRow txnId={t.id} amount={Math.abs(t.amount)} />
                     </td>
                   </tr>
                 ))}
@@ -65,8 +69,8 @@ export default function AdminAmlPage() {
         <CardBody className="p-4 flex items-start gap-3">
           <AlertTriangle size={18} className="text-warning shrink-0 mt-0.5" />
           <div className="text-caption text-text-secondary">
-            <p className="text-text font-bold">Two-person approval</p>
-            <p>Approve / Reject are disabled in this build. In production, approval requires (a) the on-shift compliance officer, plus (b) the AML lead for amounts ≥ TZS 5M. Both clicks are recorded in <code>ADMIN</code> audit with the reviewer's user-id, IP, and reason.</p>
+            <p className="text-text font-bold">Two-person approval (production)</p>
+            <p>In production, approve / reject for amounts ≥ TZS 5M requires (a) the on-shift compliance officer, plus (b) the AML lead. Both clicks are recorded in the <code>ADMIN</code> audit category with the reviewer's user-id, IP, and reason. This build records the single approval in audit so the workflow can be lifted directly when the second-officer flow is wired.</p>
           </div>
         </CardBody>
       </Card>

@@ -11,8 +11,7 @@ export function ThemeProvider({ children, ...props }: ComponentProps<typeof Next
     <NextThemesProvider
       attribute="class"
       defaultTheme="dark"
-      forcedTheme="dark"
-      enableSystem={false}
+      enableSystem
       storageKey="kp-theme"
       disableTransitionOnChange
       {...props}

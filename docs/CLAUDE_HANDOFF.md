@@ -134,7 +134,28 @@ The session cookie carries `demoMode: true`. The `<DemoBanner>` component (in `a
 - **Admin dashboard is skeletal.** `/admin` overview + audit log + AML queue work; players + self-exclusions roster are placeholders pending Postgres iteration.
 - **Light + system themes disabled.** Theme is force-locked to dark via `forcedTheme="dark"` in `theme-provider.tsx`. Light theme has known contrast bugs; toggle buttons render but are disabled. Re-enable after a polish pass.
 
-## What's done in Sprint 10 (this session)
+## What's done in Sprint 12+13 (combined, this session)
+
+- **Admin player roster is now real** — `/admin/players` iterates `db.user.list()` (added in this sprint), supports search by phone / display name / user-id, filters by status, links each row to `/admin/audit?actorId=…` for drill-down. Joins wallet balance per row.
+- **Functional AML approve / reject** — `/admin/aml` action buttons no longer disabled. Approve flips a transaction to CONFIRMED + audited; Reject reverses funds back to wallet (for withdrawals) + flips to FAILED + requires a written reason ≥ 5 chars + audited. Two-person approval is documented as the production hook; this build records single-officer with a `twoPersonApproval: "single-officer-build"` flag in the audit payload so the swap is one diff.
+- **Help & Support page** — `/help` with 8-question FAQ (bilingual EN+SW), three contact cards (phone, email, in-app chat placeholder), quick-link cards to RG / wallet / bets.
+- **Active sessions page** — `/profile/sessions` reads the current session cookie, parses user-agent for device + browser, shows session lifetime + IP + role + KYC status. Sign-out from this device + production-multi-device note.
+- **Light-mode dark-on-dark text bug fixed** — replaced inherited `text-onBrand` with explicit `text-white` (or `text-white/N` for opacity) on every dark-card panel: `/games` hero, `/mapigo` page wrapper, `/profile` user banner, `/match/[id]` hero, `mapigo-showcase` landing component. Root cause: in light mode, parents with `text-onBrand` failed to cascade the white color reliably to descendants — explicit `text-white` resolves both themes identically.
+- **Profile menu cleanup** — added Active sessions + Help & Support; the page now lists 7 real routes (My account, RG, Verify ID, Source of funds, Active sessions, Help, Sign out). Zero dead `href="#"` links.
+- **Removed remaining "Signature game" wording** from /games hero + mapigo-showcase landing.
+- **Golden-path E2E test** at `scripts/golden-path-test.mjs` — 12 checks covering the entire manager flow on a phone-sized viewport: landing CTA, demo session, wallet, place bet, cash-out offer visible, Mapigo win, notification delivered, profile rows, every major route returns 200, logout, gated-route block, production headers.
+
+## What's done in Sprint 11
+
+- **LanguageToggle is now a dropdown** at every viewport (EN / Kiswahili / Français). Globe icon + current locale + chevron; opens a 3-row menu. The previous 2-button or 3-button pill implementations were unmaintainable — single dropdown scales cleanly when more locales arrive.
+- **French (fr) added to i18n** — full `common`, `nav`, `mapigo` translations in `src/lib/i18n.tsx`. `setLocale("fr")` works end-to-end; the document root's `lang` attribute updates to "fr" so screen readers + Lighthouse pick up the change.
+- **Header collisions fixed at desktop** — nav items shrunk from `text-caption tracking-[0.14em] px-2.5` to `text-micro tracking-[0.10em] px-2`. Theme toggle simplified to a single icon button that cycles light → system → dark. Dead Search button removed.
+- **Light theme re-enabled** — `forcedTheme="dark"` removed from `theme-provider.tsx`. The theme toggle is functional again. **Light theme has known cosmetic issues that are queued for a polish pass — not blocking, but the dark theme is the canonical brand at this moment.**
+- **Dead-button audit** — removed dead `href="#"` rows from /profile (Notifications, Active sessions, Help, Language). Wrapped /profile "Continue verification" button in a `<Link>`. Removed dead "How it works" buttons from /mapigo and /games headers. Profile now lists only routes that actually exist (account, RG, KYC, source-of-funds, sign-out).
+- **Copy scrub** — removed all references to the operator's specific take percentage from user-facing UI (the regulator-required disclosure stays in `/legal/terms` but is now phrased as "the operator's published payout structure is filed with the GBT and available on request"). Removed "signature game" wording from the landing — Mapigo is now described as "in-play" or just "Mapigo".
+- **Landing-page V2 design brief** at `docs/DESIGN_REQUEST_LANDING_V2.md` — ready for Claude Designer. Locks the brand baseline, lists the seven required sections, names benchmarks (Stripe / Apple Sports / Pinnacle) and anti-patterns to avoid (SportPesa-style noise).
+
+## What's done in Sprint 10
 
 - **Real notifications service** — `src/lib/server/notification-service.ts` + `_actions/notifications.ts` server actions. DB-backed (in-memory shim), bilingual EN+SW, mark-read / dismiss / mark-all. Fires automatically on `bet.won`, `mapigo.bet.won`, `deposit.confirmed`. The notifications panel polls every 30s, falls back to a static demo list when no real notifications exist (so the marketing landing still has visual content).
 - **Source-of-funds declaration form** at `/profile/source-of-funds` — AML EDD UI mandated by Tanzania POCA Cap 423 + FATF Recommendation 12. Captures source, occupation, employer, annual income band, free-text "other", with anti-perjury notice. Submission audited as `COMPLIANCE / sof.submitted`. Stored at `db.sourceOfFunds`.

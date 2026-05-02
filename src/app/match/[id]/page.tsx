@@ -47,7 +47,7 @@ export default async function MatchDetail({ params }: { params: Promise<{ id: st
         <div className="absolute inset-0 bg-g-brand" aria-hidden />
         <div className="absolute inset-0" aria-hidden style={{ backgroundImage: heroTint }} />
         <Pattern kind="mfumo" opacity={0.06} color="#FFFFFF" />
-        <div className="relative z-10 p-4 lg:p-6 text-onBrand space-y-3">
+        <div className="relative z-10 p-4 lg:p-6 text-white space-y-3">
           <div className="flex items-center justify-between">
             <Chip variant="gold" size="sm">{match.league}</Chip>
             {isLive ? <LivePill minute={match.minute} size="md" /> : <Chip size="sm">FT · Imekwisha</Chip>}
@@ -157,9 +157,9 @@ export default async function MatchDetail({ params }: { params: Promise<{ id: st
               <p className="font-display text-title-sm text-text">How the pool pays · Bwawa hulipa vipi</p>
               <ul className="space-y-1.5 text-body-sm text-text-secondary">
                 <li>· Stakes from all players join the window&apos;s pool · Madau yote huingia katika bwawa la kipindi.</li>
-                <li>· 15% supports operations · 15% kwa uendeshaji.</li>
-                <li>· 85% is shared by winners — bigger stake, bigger share · 85% hugawanywa kati ya washindi.</li>
+                <li>· When the window closes, winners share the pool — the bigger your stake, the bigger your share · Bwawa linagawanywa kati ya washindi.</li>
                 <li>· Cash out before the window closes · Toa mapema kabla kipindi hakijafungwa.</li>
+                <li>· Detailed payout rules are in the <a href="/legal/terms" className="text-royal hover:underline">Terms of Service</a> · Sheria za malipo zimo katika Masharti.</li>
               </ul>
             </CardBody>
           </Card>

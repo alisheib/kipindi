@@ -1,58 +1,48 @@
 "use client";
 
+import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { Moon, Sun, Monitor } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/**
- * Theme toggle is temporarily disabled — the app is locked to dark mode while
- * the light theme is being polished. The buttons are still rendered (greyed out
- * and non-interactive) so the layout stays consistent.
- */
 const ORDER = ["light", "system", "dark"] as const;
 const ICON: Record<(typeof ORDER)[number], typeof Sun> = {
   light: Sun,
   system: Monitor,
   dark: Moon,
 };
+const LABEL: Record<(typeof ORDER)[number], string> = {
+  light: "Light",
+  system: "System",
+  dark: "Dark",
+};
 
+/**
+ * Single icon button that cycles light → system → dark.
+ * Compact at every breakpoint; the icon reflects the active theme.
+ */
 export function ThemeToggle() {
+  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  if (!mounted) return <div className="h-9 w-9 lg:w-[108px] rounded-md bg-surface-pressed" aria-hidden />;
+  if (!mounted) return <div className="h-8 w-8 rounded-md bg-surface-pressed" aria-hidden />;
+
+  const current = (ORDER.includes(theme as (typeof ORDER)[number]) ? theme : "system") as (typeof ORDER)[number];
+  const Icon = ICON[current];
+  const next = ORDER[(ORDER.indexOf(current) + 1) % ORDER.length];
 
   return (
-    <>
-      <button
-        type="button"
-        aria-label="Theme: dark (light + system disabled)"
-        disabled
-        title="Light mode coming soon"
-        className="lg:hidden inline-flex h-9 w-9 items-center justify-center rounded-md bg-surface-pressed text-text opacity-100 cursor-not-allowed"
-      >
-        <Moon size={16} strokeWidth={1.5} />
-      </button>
-      <div className="hidden lg:inline-flex items-center gap-1 rounded-md bg-surface-pressed p-1" title="Light mode coming soon">
-        {ORDER.map((value) => {
-          const Icon = ICON[value];
-          const active = value === "dark";
-          return (
-            <button
-              key={value}
-              type="button"
-              aria-label={value.charAt(0).toUpperCase() + value.slice(1)}
-              aria-pressed={active ? "true" : "false"}
-              disabled={!active}
-              className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-md transition-colors duration-micro",
-                active ? "bg-surface text-royal shadow-e1 cursor-default" : "text-text-tertiary opacity-30 cursor-not-allowed",
-              )}
-            >
-              <Icon size={16} strokeWidth={1.5} />
-            </button>
-          );
-        })}
-      </div>
-    </>
+    <button
+      type="button"
+      aria-label={`Theme: ${LABEL[current]}. Click to switch to ${LABEL[next]}.`}
+      title={`Theme: ${LABEL[current]} (click for ${LABEL[next]})`}
+      onClick={() => setTheme(next)}
+      className={cn(
+        "inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors duration-micro",
+        "text-text-tertiary hover:text-text hover:bg-surface-hover",
+      )}
+    >
+      <Icon size={15} strokeWidth={1.75} aria-hidden />
+    </button>
   );
 }

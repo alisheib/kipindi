@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Search } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageToggle } from "@/components/ui/language-toggle";
@@ -44,7 +43,7 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
                   key={it.href}
                   href={it.href}
                   className={cn(
-                    "relative h-12 px-2.5 inline-flex items-center whitespace-nowrap font-display text-caption font-bold uppercase tracking-[0.14em] transition-colors duration-micro",
+                    "relative h-12 px-2 inline-flex items-center whitespace-nowrap font-display text-micro font-bold uppercase tracking-[0.10em] transition-colors duration-micro",
                     active ? "text-text" : "text-text-tertiary hover:text-text",
                   )}
                 >
@@ -52,7 +51,7 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
                   <span
                     aria-hidden
                     className={cn(
-                      "absolute left-2.5 right-2.5 -bottom-px h-px transition-opacity duration-short",
+                      "absolute left-2 right-2 -bottom-px h-px transition-opacity duration-short",
                       active ? "bg-gold opacity-100" : "bg-gold opacity-0",
                     )}
                   />
@@ -61,14 +60,7 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
             })}
           </nav>
         </div>
-        <div className="flex items-center gap-1 lg:gap-1.5 shrink-0">
-          <button
-            type="button"
-            aria-label="Search"
-            className="hidden sm:inline-flex h-8 w-8 items-center justify-center rounded-md text-text-tertiary hover:text-text hover:bg-surface-hover transition-colors duration-micro"
-          >
-            <Search size={17} strokeWidth={1.75} />
-          </button>
+        <div className="flex items-center gap-1 shrink-0">
           <NotificationsPanel />
           <LanguageToggle />
           <ThemeToggle />

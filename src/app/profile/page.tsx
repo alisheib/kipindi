@@ -4,7 +4,7 @@ import { Chip } from "@/components/ui/chip";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Pattern } from "@/components/ui/pattern";
-import { ChevronRight, ShieldCheck, Sliders, LogOut, BellRing, Globe2, MonitorSmartphone, HeartPulse, Check, UserCircle2 } from "lucide-react";
+import { ChevronRight, ShieldCheck, Sliders, LogOut, Check, UserCircle2, FileSignature, MonitorSmartphone, HeartPulse } from "lucide-react";
 import { user } from "@/lib/mock-data";
 
 export const metadata = { title: "Profile · Wasifu" };
@@ -21,7 +21,7 @@ export default function ProfilePage() {
       <section className="relative rounded-2xl overflow-hidden border border-royal/30">
         <div className="absolute inset-0 bg-g-brand" aria-hidden />
         <Pattern kind="sokoni" opacity={0.06} color="#FFFFFF" />
-        <div className="relative z-10 p-4 lg:p-5 flex items-center gap-3 text-onBrand">
+        <div className="relative z-10 p-4 lg:p-5 flex items-center gap-3 text-white">
           <Avatar initials={user.initials} size="xl" color="var(--gold)" className="shadow-glow-gold" />
           <div className="flex-1">
             <h1 className="font-display text-title-md lg:text-title-lg leading-tight m-0">{user.name}</h1>
@@ -55,20 +55,21 @@ export default function ProfilePage() {
               <Step n={2} title="Phone"         detail="Receive an SMS code" done />
               <Step n={3} title="ID + selfie"   detail="Front, back, selfie" active />
             </div>
-            <Button variant="primary" size="lg" fullWidth>Continue verification · Endelea</Button>
+            <Link href="/profile/kyc">
+              <Button variant="primary" size="lg" fullWidth>Continue verification · Endelea</Button>
+            </Link>
           </CardBody>
         </Card>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <SettingRow icon={UserCircle2}        title="My account · Akaunti yangu"  subtitle="Activity · Export data · Close account" href="/profile/account" />
-        <SettingRow icon={Sliders}            title="Responsible gambling"        subtitle="Limits · Vikomo · Self-exclusion"        href="/profile/responsible-gambling" />
-        <SettingRow icon={ShieldCheck}        title="Verify ID · Thibitisha"      subtitle="NIDA · documents · review"               href="/profile/kyc" />
-        <SettingRow icon={BellRing}           title="Notifications"               subtitle="Push · SMS · Email"                      href="#" />
-        <SettingRow icon={MonitorSmartphone}  title="Active sessions"             subtitle="Devices · Sign out"                      href="#" />
-        <SettingRow icon={HeartPulse}         title="Help & support"              subtitle="Live chat · Helpline"                    href="#" />
-        <SettingRow icon={Globe2}             title="Language · Lugha"            subtitle="English · Kiswahili"                     href="#" />
-        <SettingRow icon={LogOut}             title="Sign out · Toka"             subtitle="See you soon · Tutaonana"                href="/auth/logout" />
+        <SettingRow icon={Sliders}            title="Responsible gambling"        subtitle="Limits · Vikomo · Self-exclusion"       href="/profile/responsible-gambling" />
+        <SettingRow icon={ShieldCheck}        title="Verify ID · Thibitisha"      subtitle="NIDA · documents · review"              href="/profile/kyc" />
+        <SettingRow icon={FileSignature}      title="Source of funds · Asili"     subtitle="AML declaration"                        href="/profile/source-of-funds" />
+        <SettingRow icon={MonitorSmartphone}  title="Active sessions · Vifaa"     subtitle="Devices · Sign out"                     href="/profile/sessions" />
+        <SettingRow icon={HeartPulse}         title="Help & support · Msaada"     subtitle="FAQ · Helpline · Email"                 href="/help" />
+        <SettingRow icon={LogOut}             title="Sign out · Toka"             subtitle="See you soon · Tutaonana"               href="/auth/logout" />
       </div>
     </div>
   );

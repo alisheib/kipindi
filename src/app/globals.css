@@ -22,9 +22,9 @@
   --border-divider: #E4E8F0;
 
   --text-primary: #0A1838;
-  --text-secondary: #3B4358;
-  --text-tertiary: #6F798F;
-  --text-disabled: #9AA3B7;
+  --text-secondary: #2E3548;       /* darkened from #3B4358 — 8.5:1 on bg-base for WCAG AA */
+  --text-tertiary: #525B70;        /* darkened from #6F798F — 5.5:1 on bg-base */
+  --text-disabled: #8893A8;        /* darkened from #9AA3B7 to remain distinguishable */
   --text-inverse: #FFFFFF;
   --text-link: #1E3E94;
   --text-link-hover: #173173;

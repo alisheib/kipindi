@@ -37,12 +37,13 @@ export default function TermsPage() {
       <Section n="4" title="How betting works">
         <p>
           Kipindi operates a <strong>pool-based</strong> betting model. Stakes for a given match window are pooled.
-          When the window settles, a fixed house take of 15% is removed, and the remaining 85% is paid pro-rata
-          to the winning side. The pay-rate shown at placement is the rate at that instant; final pay-rate is
-          determined when the window closes.
+          When the window closes, the winning pool is shared pro-rata among players who picked the right side.
+          The pay-rate shown at placement is the rate at that instant; final pay-rate is determined when the
+          window closes. The operator's published payout structure is filed with the Gaming Board of Tanzania
+          and available on request.
         </p>
         <p>
-          Mapigo is a signature in-play short-form game with rounds of 60 seconds. Rounds settle to one of three
+          Mapigo is an in-play short-form prediction game with rounds of 60 seconds. Rounds settle to one of three
           outcomes (SPIKE, DRIFT, CALM) determined by a deterministic algorithm seeded from the round identifier
           (see Game Rules in Annex A).
         </p>
@@ -51,7 +52,8 @@ export default function TermsPage() {
       <Section n="5" title="Settlement and payout">
         <p>Payouts are credited to your wallet immediately on round settlement. Withdrawals to mobile money or bank
         complete within 60 seconds for amounts under TZS 1,000,000; larger amounts may be held for AML review for up
-        to 24 hours. A 15% withholding tax applies to gross winnings per the Income Tax Act (Cap 332).</p>
+        to 24 hours. A withholding tax applies to gross winnings at the rate prescribed by the Income Tax Act
+        (Cap 332). The current rate is shown on the withdrawal screen at the time of withdrawal.</p>
       </Section>
 
       <Section n="6" title="Voids and disputes">

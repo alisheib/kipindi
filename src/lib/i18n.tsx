@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, type ReactNode, useEffect } from "react";
 
-export type Locale = "en" | "sw";
+export type Locale = "en" | "sw" | "fr";
 
 const dict = {
   en: {
@@ -65,6 +65,37 @@ const dict = {
       pulseRising: "Mapigo yanapanda",
       pulseFalling: "Mapigo yanashuka",
       heartbeat: "Mapigo",
+    },
+  },
+  fr: {
+    common: {
+      home: "Accueil", live: "En direct", myBets: "Mes paris", wallet: "Portefeuille",
+      leaderboard: "Classement", profile: "Profil", mapigo: "Mapigo",
+      settings: "Paramètres", notifications: "Notifications",
+      placeBet: "Placer le pari", deposit: "Dépôt", withdraw: "Retrait",
+      stake: "Mise", pool: "Cagnotte", win: "Gagner", lose: "Perdre", draw: "Nul",
+      cancel: "Annuler", confirm: "Confirmer", back: "Retour", continue: "Continuer",
+      loading: "Chargement…", error: "Une erreur est survenue",
+      poolGrew: "La cagnotte a grandi",
+      youWon: "Vous avez gagné",
+    },
+    nav: {
+      home: "Accueil", live: "En direct", bets: "Paris",
+      wallet: "Portefeuille", leaderboard: "Top", mapigo: "Mapigo",
+    },
+    mapigo: {
+      title: "Mapigo",
+      tagline: "Sentez le match. Lisez le rythme.",
+      spike: "Pic", drift: "Dérive", calm: "Calme",
+      spikeHint: "Un pic dans les 60 prochaines secondes",
+      driftHint: "Hausse ou baisse douce",
+      calmHint: "Aucun événement notable",
+      newRoundIn: "Nouveau tour dans",
+      placeYourCall: "Choisissez",
+      youPicked: "Vous avez choisi",
+      pulseRising: "Le pouls monte",
+      pulseFalling: "Le pouls descend",
+      heartbeat: "Battement",
     },
   },
 } as const;

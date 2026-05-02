@@ -121,7 +121,7 @@ export default function MapigoPage() {
   const payRate = currentRound.payRate[selectedCall ?? "DRIFT"];
 
   return (
-    <div className="relative min-h-[calc(100vh-44px)] overflow-hidden bg-[#060F24]">
+    <div className="relative min-h-[calc(100vh-44px)] overflow-hidden bg-[#060F24] text-white">
       {/* Atmospheric backdrop — always dark, regardless of theme (this is a stage) */}
       <div aria-hidden className="absolute inset-0 bg-g-brand pointer-events-none" />
       <Pattern kind="sokoni" opacity={0.06} color="#DEBC54" className="!fixed inset-0" />
@@ -143,12 +143,6 @@ export default function MapigoPage() {
           </div>
           <div className="flex items-center gap-2">
             <LivePill minute={liveMatch.minute} size="md" />
-            <button
-              type="button"
-              className="h-7 px-3 rounded-sm border border-border-subtle bg-surface/60 backdrop-blur-sm text-caption font-bold uppercase tracking-[0.14em] text-text-secondary hover:text-text hover:border-border-strong transition-colors duration-micro"
-            >
-              How it works
-            </button>
           </div>
         </header>
 

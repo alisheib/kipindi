@@ -123,7 +123,7 @@ export default async function WithdrawPage() {
 
               <div className="rounded-md border border-warning-border bg-warning-bg/20 p-3 text-body-sm text-text-secondary">
                 <p className="font-bold text-warning">Tax notice</p>
-                <p className="mt-1">Tanzania withholds 15% on declared winnings at withdrawal. The amount you receive is net of tax.</p>
+                <p className="mt-1">Tanzania withholds a tax on declared winnings at withdrawal per the Income Tax Act (Cap 332). The amount you receive is net of tax — your withdrawal screen shows the exact amounts.</p>
               </div>
 
               <Button type="submit" variant="primary" size="xl" fullWidth disabled={!kycApproved} leading={<ArrowUpFromLine size={18} />}>

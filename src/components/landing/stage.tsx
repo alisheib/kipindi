@@ -49,7 +49,7 @@ export function HeroStage() {
               <span className="absolute h-2 w-2 rounded-pill bg-gold kp-ping" />
               <span className="h-1.5 w-1.5 rounded-pill bg-gold" />
             </span>
-            <p className="text-caption font-bold uppercase tracking-[0.16em] text-text">Mapigo · live signature game</p>
+            <p className="text-caption font-bold uppercase tracking-[0.16em] text-text">Mapigo · live in-play</p>
           </div>
           <p className="text-micro text-text-tertiary tabular font-mono">60 BPM · round #85</p>
         </div>

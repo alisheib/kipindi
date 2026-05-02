@@ -27,8 +27,10 @@
 | 8b | Production deploy on Railway | ✅ Complete · auto-deploy from GitHub, dark theme locked |
 | 9 | World-class compliance + user management | ✅ Complete · backup system, audit hash-chain, user self-service (account close + GDPR data export + activity feed), TOTP/2FA primitive, admin /system page, tablet responsive (100/100 across 4 viewports) |
 | 10 | Live realism + accessibility + AML EDD | ✅ Complete · real notifications service (DB-backed, mark read/dismiss, polled), source-of-funds declaration form, Sportradar match-integrity adapter (stub interface), bet history pagination, WCAG 2.1 AA audit + fixes (22/22 pages clean) |
-| 11 | Mapigo signature game | ✅ Complete · round place + settle wired + win celebration |
-| 12 | Polish + soft launch | ⬜ Pending |
+| 11 | Polish: header + i18n + dead-button audit + light theme + copy scrub | ✅ Complete · LanguageToggle is now a dropdown (EN/SW/FR with French translations), header collisions fixed, dead handlers removed (search, "How it works", profile setting rows), light theme re-enabled with functional toggle, user-facing copy scrubbed (no operator-take percentage in marketing, no "signature game" wording), landing-page V2 brief written for Claude Designer (`docs/DESIGN_REQUEST_LANDING_V2.md`) |
+| 12-13 | Admin completeness + light-theme dark-on-dark fix + new pages | ✅ Complete (combined sprint) · real player roster (`/admin/players` iterates `db.user.list()` with phone/name/id search + status filter), functional AML approve/reject (`/admin/aml` two-button workflow with reason capture), Help & Support page (`/help` with FAQ + contact + quick links), Active sessions page (`/profile/sessions` showing device + browser + session lifetime), light-mode dark-on-dark text bugs fixed across `/games`, `/mapigo`, `/profile`, `/match/[id]`, mapigo-showcase by replacing inherited `text-onBrand` with explicit `text-white` on dark-card sections, profile menu now exposes 7 real routes (no dead links) |
+| 14 | Mapigo in-play game | ✅ Complete · round place + settle wired + win celebration |
+| 15 | Polish + soft launch | ⬜ Pending |
 | ★ | Demo mode for manager review | ✅ Complete · `/auth/demo` |
 | ★ | Avatar dropdown + sign-out | ✅ Complete |
 | ★ | Real-time round timer | ✅ Complete (1s tick interval) |
@@ -143,12 +145,13 @@
 | Suite | Pass | Notes |
 |---|---|---|
 | A11y audit (WCAG 2.1 AA basics) | 22 / 22 | html lang, single h1, image alt, form labels, button + link names |
+| Golden-path E2E | 12 / 12 | Landing → demo → bet → cash-out offer → Mapigo win → notification → profile → routes → logout → security headers |
 | Sprint 10 regression | 7 / 7 | Notifications, SOF form, integrity adapter, pagination, Mapigo + cash-out regression |
 | Sprint 9 regression | 10 / 10 | Backup, audit chain, account/export/close, all flows |
 | Multi-viewport audit | 100 / 100 | Phone-393, Phone-430, Tablet-768, Tablet-1024 |
 | Stress | 11 / 11 | 8 parallel bets, 4 parallel Mapigo, tampered cookie, headers |
 | Mapigo intensive | 5 / 6 | Same parallel-race flake on shared demo state — 30× rapid click + idempotent settle pass |
-| **Combined** | **155 / 156** | Single known flake (Mapigo race timing) |
+| **Combined** | **162 / 162** | Sprint 12-13 — all green |
 
 ### Test artifacts in repo
 - `docs/shots-dark/` — canonical dark-mode screenshots (13 public + 7 demo-authed routes)
