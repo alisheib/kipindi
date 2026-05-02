@@ -260,12 +260,12 @@
   animation: float-up-fade 1200ms cubic-bezier(0.2, 0, 0, 1) forwards;
 }
 
+/* No overshoot — guarantees the element never exceeds its container's width during animation. */
 @keyframes pop-in {
-  0%   { transform: scale(0.8); opacity: 0; }
-  60%  { transform: scale(1.04); opacity: 1; }
+  0%   { transform: scale(0.96); opacity: 0; }
   100% { transform: scale(1);    opacity: 1; }
 }
-.kp-pop-in { animation: pop-in 240ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.kp-pop-in { animation: pop-in 220ms cubic-bezier(0.16, 1, 0.3, 1); transform-origin: center; }
 
 @keyframes slide-up-fade {
   from { transform: translateY(12px); opacity: 0; }
