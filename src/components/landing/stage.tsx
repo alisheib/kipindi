@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import { CountUp } from "@/components/ui/count-up";
 import { MapigoWaveform } from "@/components/mapigo/waveform";
 import { genWaveform } from "@/lib/mapigo-data";
+import { useT } from "@/lib/i18n";
 
 /**
  * Center "stage" of the Kinetic Stadium hero.
  * Animated waveform + hero copy + primary CTA.
  */
 export function HeroStage() {
+  const { t } = useT();
   const baseWave = genWaveform(120, 1);
   // simple sliding effect — re-roll a small seed every few seconds for the appearance of liveness
   const [seed, setSeed] = useState(1);
@@ -56,11 +58,11 @@ export function HeroStage() {
       </div>
       <div className="flex flex-wrap items-center gap-2 mt-1">
         <Link href="/auth/demo">
-          <Button variant="gold" size="xl" trailing={<ArrowRight size={18} />}>Try demo · TZS 100,000</Button>
+          <Button variant="gold" size="xl" trailing={<ArrowRight size={18} />}>{t.common.tryDemo} · TZS 100,000</Button>
         </Link>
         <Link href="/live">
           <Button size="xl" className="border border-border-strong bg-surface/40 text-text hover:bg-surface backdrop-blur-sm">
-            Browse matches · Tazama mechi
+            {t.common.browseMatches}
           </Button>
         </Link>
       </div>

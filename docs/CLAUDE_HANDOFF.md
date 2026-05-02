@@ -134,7 +134,15 @@ The session cookie carries `demoMode: true`. The `<DemoBanner>` component (in `a
 - **Admin dashboard is skeletal.** `/admin` overview + audit log + AML queue work; players + self-exclusions roster are placeholders pending Postgres iteration.
 - **Light + system themes disabled.** Theme is force-locked to dark via `forcedTheme="dark"` in `theme-provider.tsx`. Light theme has known contrast bugs; toggle buttons render but are disabled. Re-enable after a polish pass.
 
-## What's done in Sprint 12+13 (combined, this session)
+## What's done in Sprint 14 (this session)
+
+- **Locale persistence done right** — `kp-locale` cookie set by the language dropdown, read in `layout.tsx` server component to drive `<html lang>` on first paint. No more flash-of-EN-then-flip. localStorage kept as a fallback for back-nav speed.
+- **French now actually drives the UI** — bottom nav reads `t.nav.*`, landing CTAs read `t.common.tryDemo` and `t.common.browseMatches`, OTP messages have FR variant. Dict expanded: `tryDemo`, `browseMatches`, `signIn`, `signOut`, `cashOut`, `help`, `language`.
+- **2FA admin login flow** — `/admin/2fa/setup` provisions a TOTP secret, renders the otpauth URI for QR scanning, verifies the 6-digit code, supports remove + re-provision. RFC 6238 backed by `lib/server/totp.ts`.
+- **Match-feed adapter scaffolding** — `lib/server/match-feed.ts` introduces `MatchFeedAdapter` interface. `getActiveAdapter()` returns mock or api-football based on `SPORTS_API_PROVIDER` env. Production swap is one env var + filling the api-football TODO. `trace()` wrapper records latency + errors for the eventual `/admin/system` health panel.
+- **SMS adapter rewrite** — `lib/server/sms.ts` now ships Selcom, Beem, and Africa's Talking adapter stubs. Picks active provider via `SMS_PROVIDER` env. `smsHealthSnapshot()` returns sent/failed/successRate for system health. FR added to `otpMessage()`.
+
+## What's done in Sprint 12+13 (combined)
 
 - **Admin player roster is now real** — `/admin/players` iterates `db.user.list()` (added in this sprint), supports search by phone / display name / user-id, filters by status, links each row to `/admin/audit?actorId=…` for drill-down. Joins wallet balance per row.
 - **Functional AML approve / reject** — `/admin/aml` action buttons no longer disabled. Approve flips a transaction to CONFIRMED + audited; Reject reverses funds back to wallet (for withdrawals) + flips to FAILED + requires a written reason ≥ 5 chars + audited. Two-person approval is documented as the production hook; this build records single-officer with a `twoPersonApproval: "single-officer-build"` flag in the audit payload so the swap is one diff.

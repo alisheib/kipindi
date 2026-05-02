@@ -16,6 +16,13 @@ const dict = {
       loading: "Loading…", error: "Something went wrong",
       poolGrew: "The pool grew",
       youWon: "You won",
+      tryDemo: "Try demo",
+      browseMatches: "Browse matches",
+      signIn: "Sign in",
+      signOut: "Sign out",
+      cashOut: "Cash out",
+      help: "Help",
+      language: "Language",
     },
     nav: {
       home: "Home", live: "Live", bets: "Bets",
@@ -47,6 +54,13 @@ const dict = {
       loading: "Inapakia…", error: "Hitilafu imetokea",
       poolGrew: "Bwawa limeongezeka",
       youWon: "Umeshinda",
+      tryDemo: "Ingia mfano",
+      browseMatches: "Tazama mechi",
+      signIn: "Ingia",
+      signOut: "Toka",
+      cashOut: "Toa sasa",
+      help: "Msaada",
+      language: "Lugha",
     },
     nav: {
       home: "Mwanzo", live: "Moja kwa moja", bets: "Madau",
@@ -78,6 +92,13 @@ const dict = {
       loading: "Chargement…", error: "Une erreur est survenue",
       poolGrew: "La cagnotte a grandi",
       youWon: "Vous avez gagné",
+      tryDemo: "Essayer la démo",
+      browseMatches: "Voir les matchs",
+      signIn: "Connexion",
+      signOut: "Déconnexion",
+      cashOut: "Encaisser",
+      help: "Aide",
+      language: "Langue",
     },
     nav: {
       home: "Accueil", live: "En direct", bets: "Paris",
@@ -109,15 +130,50 @@ const I18nContext = createContext<{ locale: Locale; t: Dict; setLocale: (l: Loca
   setLocale: () => {},
 });
 
+/**
+ * Locale is persisted in BOTH a cookie (so the server-rendered `<html lang>` is
+ * correct on first paint) AND localStorage (faster client read on back-nav).
+ * The cookie name is `kp-locale`; `kp-theme` lives next to it (next-themes manages that).
+ */
+const COOKIE_NAME = "kp-locale";
+
+function readCookie(name: string): Locale | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
+  if (!match) return null;
+  const v = decodeURIComponent(match[1]);
+  return v === "en" || v === "sw" || v === "fr" ? v : null;
+}
+
+function writeCookie(name: string, value: string) {
+  if (typeof document === "undefined") return;
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+}
+
 export function I18nProvider({ children, initial = "en" }: { children: ReactNode; initial?: Locale }) {
   const [locale, setLocaleState] = useState<Locale>(initial);
   useEffect(() => {
-    const saved = (typeof window !== "undefined" && (localStorage.getItem("kp-locale") as Locale | null)) || null;
-    if (saved && saved !== locale) setLocaleState(saved);
+    // Read from cookie first (set by server), then localStorage as fallback
+    const fromCookie = readCookie(COOKIE_NAME);
+    if (fromCookie && fromCookie !== locale) {
+      setLocaleState(fromCookie);
+      return;
+    }
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("kp-locale") as Locale | null;
+      if (saved && (saved === "en" || saved === "sw" || saved === "fr") && saved !== locale) {
+        setLocaleState(saved);
+        writeCookie(COOKIE_NAME, saved);
+      }
+    }
   }, []);
   const setLocale = (l: Locale) => {
     setLocaleState(l);
-    try { localStorage.setItem("kp-locale", l); document.documentElement.lang = l; } catch {}
+    try {
+      localStorage.setItem("kp-locale", l);
+      writeCookie(COOKIE_NAME, l);
+      document.documentElement.lang = l;
+    } catch { /* ignore */ }
   };
   return <I18nContext.Provider value={{ locale, t: dict[locale], setLocale }}>{children}</I18nContext.Provider>;
 }

@@ -4,17 +4,18 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Radio, Wallet, Receipt } from "lucide-react";
 import { MapigoMark } from "@/components/mapigo/mapigo-mark";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-
-const items = [
-  { href: "/",       icon: Home,    label: "Home" },
-  { href: "/live",   icon: Radio,   label: "Live" },
-  { href: "/bets",   icon: Receipt, label: "My Bets" },
-  { href: "/wallet", icon: Wallet,  label: "Wallet" },
-];
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { t } = useT();
+  const items = [
+    { href: "/",       icon: Home,    label: t.nav.home },
+    { href: "/live",   icon: Radio,   label: t.nav.live },
+    { href: "/bets",   icon: Receipt, label: t.nav.bets },
+    { href: "/wallet", icon: Wallet,  label: t.nav.wallet },
+  ];
 
   return (
     <nav className="xl:hidden fixed inset-x-0 bottom-0 z-sticky bg-bg-elevated/95 backdrop-blur-xl border-t border-border-divider pb-[env(safe-area-inset-bottom)]">
