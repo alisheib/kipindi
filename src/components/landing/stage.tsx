@@ -55,10 +55,10 @@ export function HeroStage() {
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2 mt-1">
-        <Link href="/mapigo">
-          <Button variant="gold" size="xl" trailing={<ArrowRight size={18} />}>Watch the live waveform</Button>
+        <Link href="/auth/demo">
+          <Button variant="gold" size="xl" trailing={<ArrowRight size={18} />}>Try demo · TZS 100,000</Button>
         </Link>
-        <Link href="/dashboard">
+        <Link href="/live">
           <Button size="xl" className="border border-border-strong bg-surface/40 text-text hover:bg-surface backdrop-blur-sm">
             Browse matches · Tazama mechi
           </Button>

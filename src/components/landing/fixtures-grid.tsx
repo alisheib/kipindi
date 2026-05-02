@@ -22,7 +22,7 @@ export function FixturesGrid() {
           <p className="font-mono text-caption uppercase tracking-[0.32em] text-gold font-bold">Today · Leo</p>
           <h2 className="font-display font-bold text-title-md lg:text-title-lg text-text mt-1.5">Fixtures &amp; pools</h2>
         </div>
-        <Link href="/dashboard" className="text-caption uppercase tracking-[0.14em] font-bold text-royal hover:text-royal-hover transition-colors">
+        <Link href="/live" className="text-caption uppercase tracking-[0.14em] font-bold text-royal hover:text-royal-hover transition-colors">
           See all →
         </Link>
       </div>

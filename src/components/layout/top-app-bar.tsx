@@ -61,7 +61,7 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
             })}
           </nav>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 lg:gap-1.5 shrink-0">
           <button
             type="button"
             aria-label="Search"
