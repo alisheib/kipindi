@@ -46,9 +46,10 @@ export default function GamesPage() {
               </p>
               <p className="text-body-lg text-white/75 italic">Hisi mechi. Cheza mapigo.</p>
               <div className="flex flex-wrap gap-2 pt-2">
-                <Link href="/mapigo">
-                  <Button variant="gold" size="xl" trailing={<ArrowRight size={18} />}>Play now · Cheza</Button>
-                </Link>
+                <span className="inline-flex h-12 items-center gap-2 rounded-md bg-gold px-5 font-display font-bold text-onBrand transition-colors group-hover:bg-gold-hover">
+                  Play now · Cheza
+                  <ArrowRight size={18} aria-hidden />
+                </span>
               </div>
             </div>
             <div className="relative rounded-xl border border-gold/30 bg-black/25 backdrop-blur-md p-3 lg:p-4 self-stretch flex flex-col justify-between gap-3 text-white">

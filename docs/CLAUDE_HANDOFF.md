@@ -134,7 +134,39 @@ The session cookie carries `demoMode: true`. The `<DemoBanner>` component (in `a
 - **Admin dashboard is skeletal.** `/admin` overview + audit log + AML queue work; players + self-exclusions roster are placeholders pending Postgres iteration.
 - **Light + system themes disabled.** Theme is force-locked to dark via `forcedTheme="dark"` in `theme-provider.tsx`. Light theme has known contrast bugs; toggle buttons render but are disabled. Re-enable after a polish pass.
 
-## What's done in Sprint 19 (this session) — markers + 2-person AML + webhooks + responsiveness fix
+## What's done in Sprint 20 (this session) — demo-day hardening
+
+The user's manager demo is tomorrow morning. This sprint is dedicated stress + polish to make sure nothing embarrasses anyone live.
+
+### USER-REPORTED FIX — demo banner Exit did nothing
+Root cause: `<Link href="/auth/logout">` in `src/components/layout/demo-banner.tsx` was being intercepted by Next.js's client-side router. `<Link>` is for app routes; `/auth/logout` is a route handler that returns a 302 redirect. Client-side nav fetched the redirect but didn't follow it, so the page never refreshed and the cookie wasn't cleared.
+
+Fix: replace `<Link>` with a plain `<a href="/auth/logout">`. Browser does a full navigation, route handler runs, cookie is destroyed, redirect to `/` is followed. Verified by `scripts/demo-lifecycle-test.mjs` (12/12).
+
+### Admin sidebar mobile drawer
+Admin pages were desktop-first. The 220px sidebar + tables blew through the right edge on 393px viewports.
+
+Built `src/components/admin/admin-mobile-nav.tsx` — a portal'd drawer with hamburger trigger in the top bar, full-height with `pb-[env(safe-area-inset-bottom)]`, dismisses on link-click + scrim click + Escape. The desktop sidebar gets `hidden lg:flex` so it's only present at ≥1024px. `AdminTopBar` now takes an `activeKey` prop and renders the trigger.
+
+### New comprehensive test scripts (Sprint 20)
+- `scripts/route-navigation-test.mjs` — 38 routes × 3 viewports × 2 sessions = **114/114**
+- `scripts/demo-lifecycle-test.mjs` — **12/12** demo enter/exit/re-enter cycle
+- `scripts/multi-persona-test.mjs` — **27/27** across 5 personas (smart user, dumb user, manager, auditor, CEO)
+- `scripts/dead-button-audit.mjs` — **20/20** every interactive element wired
+
+### What was checked
+- Smart-user happy path on mobile: landing → demo → /live → mapigo SPIKE → settle → win celebration → /bets → /wallet → exit
+- Dumb-user stress: negative deposit, SQL-shaped phone, 5× concurrent demo, non-existent admin route
+- Manager admin review: /admin · /admin/finance · /admin/players · /admin/games/mapigo · /admin/compliance · /admin/aml all show numbers
+- Auditor: 500+ audit entries, audit chain Valid, all 5 regulator templates listed, DSAR queue accessible, /fairness verifier present
+- CEO: GGR/NGR/margin/provider mix · KYC funnel + AML + RG + Player Safety markers · 18+ + helpline + license · /api/health JSON
+- Every interactive element has a real handler, no `href="#"`, no empty aria-labels
+
+**Sprint 20 combined: 173/173.** Combined platform-wide test scoreboard: **504/505**.
+
+---
+
+## What's done in Sprint 19 (previous session) — markers + 2-person AML + webhooks + responsiveness fix
 
 ### Markers-of-harm detector (LCCP §SR Code 3.4.1)
 - New `detectHarmMarkers(userId)` + `detectHarmMarkersForAllUsers()` in `src/lib/server/responsible-gambling.ts` covering 5 LCCP markers:

@@ -8,6 +8,7 @@
  */
 import Link from "next/link";
 import { db } from "@/lib/server/store";
+import { AdminMobileNavTrigger } from "./admin-mobile-nav";
 
 export type AdminSession = {
   userId: string;
@@ -16,7 +17,7 @@ export type AdminSession = {
   demoMode?: boolean;
 };
 
-const NAV_GROUPS: ReadonlyArray<{
+export const NAV_GROUPS: ReadonlyArray<{
   group: { en: string; sw: string };
   items: ReadonlyArray<{ href: string; label: string; key: string; badge?: string }>;
 }> = [
@@ -95,20 +96,20 @@ export function ConfidentialBand({ session }: { session: AdminSession }) {
  * Counts of pending items across the system — drives sidebar badges so an
  * operator can see at a glance "3 in AML, 7 compliance items, 2 approvals."
  */
-function getSidebarBadges() {
+export function getSidebarBadges(): Record<string, string | undefined> {
   const aml = db.txn.listByStatus("AML_REVIEW").length;
   const sof = db.sourceOfFunds.listPending().length;
   return {
     aml: aml > 0 ? String(aml) : undefined,
     compliance: aml + sof > 0 ? String(aml + sof) : undefined,
-    approvals: undefined as string | undefined, // wired when approval queue exists
+    approvals: undefined,
   };
 }
 
 export function AdminSidebar({ activeKey }: { activeKey: string }) {
   const badges = getSidebarBadges();
   return (
-    <aside className="w-[220px] shrink-0 bg-bg-elevated border-r border-border-divider px-3 py-4 flex flex-col gap-1 sticky top-0 self-start max-h-screen overflow-y-auto">
+    <aside className="hidden lg:flex w-[220px] shrink-0 bg-bg-elevated border-r border-border-divider px-3 py-4 flex-col gap-1 sticky top-0 self-start max-h-screen overflow-y-auto">
       <Link href="/admin" className="flex items-center gap-2 px-2 pb-3 mb-2 border-b border-dashed border-border-subtle">
         <span aria-hidden className="h-3.5 w-3.5 rounded-pill border-[1.5px] border-gold" />
         <span className="font-display font-bold text-body-sm text-text">kipindi · admin</span>
@@ -151,10 +152,13 @@ export function AdminSidebar({ activeKey }: { activeKey: string }) {
   );
 }
 
-export function AdminTopBar({ crumbs, session }: { crumbs: string[]; session: AdminSession }) {
+export function AdminTopBar({ crumbs, session, activeKey }: { crumbs: string[]; session: AdminSession; activeKey: string }) {
+  const badges = getSidebarBadges();
   return (
     <div className="flex items-center justify-between px-4 lg:px-6 h-12 border-b border-border-divider bg-bg-elevated gap-3">
-      <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-body-sm text-text-tertiary min-w-0">
+      <div className="flex items-center gap-2 min-w-0">
+        <AdminMobileNavTrigger groups={NAV_GROUPS} badges={badges} activeKey={activeKey} />
+      <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-body-sm text-text-tertiary min-w-0 overflow-hidden">
         {crumbs.map((c, i) => {
           const isLast = i === crumbs.length - 1;
           return (
@@ -165,7 +169,8 @@ export function AdminTopBar({ crumbs, session }: { crumbs: string[]; session: Ad
           );
         })}
       </nav>
-      <div className="flex items-center gap-2">
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
         <input
           aria-label="Search players, IDs, audit"
           placeholder="Search players · IDs · audit · ⌘K"

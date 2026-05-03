@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { getSession } from "@/lib/server/session";
 import { isDemoModeAllowed } from "@/lib/server/demo-mode";
 import { FlaskConical, X } from "lucide-react";
@@ -28,13 +27,14 @@ export async function DemoBanner() {
             </span>
           </p>
         </div>
-        <Link
+        <a
           href="/auth/logout"
           className="inline-flex items-center gap-1 h-6 px-2 rounded-sm bg-gold-fg/10 hover:bg-gold-fg/20 transition-colors text-caption font-bold uppercase tracking-[0.14em]"
+          aria-label="Exit demo mode"
         >
           <X size={12} strokeWidth={2.5} />
           Exit
-        </Link>
+        </a>
       </div>
     </div>
   );

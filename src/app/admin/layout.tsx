@@ -83,7 +83,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <div className="flex">
         <AdminSidebar activeKey={activeKey} />
         <main className="flex-1 min-w-0 flex flex-col">
-          <AdminTopBar crumbs={crumbs} session={adminSession} />
+          <AdminTopBar crumbs={crumbs} session={adminSession} activeKey={activeKey} />
           <div className="flex-1">{children}</div>
         </main>
       </div>
