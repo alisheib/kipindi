@@ -1,5 +1,6 @@
 "use server";
 
+import { createHash } from "node:crypto";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
@@ -192,12 +193,35 @@ export async function exportFiuSar(): Promise<ExportResult> {
    Self-exclusion register (cross-operator format)
    ============================================================ */
 
+/**
+ * Salt for the cross-operator NIDA hash. In production this is a Tanzania-GBT-issued
+ * value shared between operators so the same NIDA produces the same hash everywhere
+ * — that is what makes the cross-operator register actually work.
+ */
+const SX_NIDA_SALT = process.env.SX_REGISTER_SALT ?? "tz-gbt-shared-salt-replace-in-prod";
+
+function hashNida(nida: string): string {
+  return createHash("sha256").update(`${SX_NIDA_SALT}:${nida}`, "utf8").digest("hex");
+}
+
 export async function exportSxRegister(): Promise<ExportResult> {
   const session = await requireAdmin();
   const now = Date.now();
   const lines: string[] = [
-    csvLine(["nida_hash", "region", "self_exclusion_until", "cooling_off_until", "operator"]),
+    csvLine([
+      "row_no",
+      "nida_hash_sha256",
+      "phone_hash_sha256",
+      "region",
+      "period_kind",        // self_exclusion or cooling_off
+      "period_started_at",
+      "period_ends_at",
+      "days_remaining",
+      "operator",
+      "schema_version",
+    ]),
   ];
+  let row = 0;
   for (const u of db.user.list()) {
     const r = db.responsible.get(u.id);
     if (!r) continue;
@@ -205,18 +229,49 @@ export async function exportSxRegister(): Promise<ExportResult> {
     const coAt = r.coolingOffUntil    ? new Date(r.coolingOffUntil).getTime() : 0;
     if (sxAt < now && coAt < now) continue;
     const kyc = db.kyc.findByUserId(u.id);
-    const nidaHash = kyc?.nidaNumber ? `sha256:${kyc.nidaNumber.slice(-8)}` : "unknown";
-    lines.push(csvLine([
-      nidaHash,
-      u.region ?? "",
-      sxAt > now ? r.selfExclusionUntil : "",
-      coAt > now ? r.coolingOffUntil : "",
-      "kipindi",
-    ]));
+    const nidaHash = kyc?.nidaNumber ? hashNida(kyc.nidaNumber) : "";
+    const phoneHash = createHash("sha256").update(`${SX_NIDA_SALT}:${u.phoneE164}`, "utf8").digest("hex");
+    if (sxAt > now) {
+      row++;
+      lines.push(csvLine([
+        row,
+        nidaHash,
+        phoneHash,
+        u.region ?? "",
+        "self_exclusion",
+        // Best-effort start: we use createdAt as a proxy; production stores a dedicated startedAt
+        u.createdAt,
+        r.selfExclusionUntil ?? "",
+        Math.ceil((sxAt - now) / 86_400_000),
+        "kipindi",
+        "v1",
+      ]));
+    } else if (coAt > now) {
+      row++;
+      lines.push(csvLine([
+        row,
+        nidaHash,
+        phoneHash,
+        u.region ?? "",
+        "cooling_off",
+        u.createdAt,
+        r.coolingOffUntil ?? "",
+        Math.ceil((coAt - now) / 86_400_000),
+        "kipindi",
+        "v1",
+      ]));
+    }
   }
+  // Generation footer, regulator-readable
+  lines.push("");
+  lines.push(`# Total_entries=${row}`);
+  lines.push(`# Hash_alg=SHA-256(salt:nida)`);
   lines.unshift("");
   lines.unshift(`# Cross-operator self-exclusion register`);
+  lines.unshift(`# Operator=Kipindi Africa`);
   lines.unshift(`# Generated_at=${new Date().toISOString()}`);
+  lines.unshift(`# Reviewer=${session.userId}`);
+  lines.unshift(`# Format=GBT cross-operator v1`);
   const payload = lines.join("\n");
   audit({
     category: "ADMIN",
@@ -224,7 +279,7 @@ export async function exportSxRegister(): Promise<ExportResult> {
     actorId: session.userId,
     targetType: null,
     targetId: null,
-    payload: { rows: lines.length },
+    payload: { rows: row, schemaVersion: "v1" },
   });
   return {
     ok: true,

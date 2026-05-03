@@ -134,7 +134,50 @@ The session cookie carries `demoMode: true`. The `<DemoBanner>` component (in `a
 - **Admin dashboard is skeletal.** `/admin` overview + audit log + AML queue work; players + self-exclusions roster are placeholders pending Postgres iteration.
 - **Light + system themes disabled.** Theme is force-locked to dark via `forcedTheme="dark"` in `theme-provider.tsx`. Light theme has known contrast bugs; toggle buttons render but are disabled. Re-enable after a polish pass.
 
-## What's done in Sprint 18 (this session) — international regulator-readiness
+## What's done in Sprint 19 (this session) — markers + 2-person AML + webhooks + responsiveness fix
+
+### Markers-of-harm detector (LCCP §SR Code 3.4.1)
+- New `detectHarmMarkers(userId)` + `detectHarmMarkersForAllUsers()` in `src/lib/server/responsible-gambling.ts` covering 5 LCCP markers:
+  - `RAPID_DEPOSIT_ESCALATION` — 3+ deposits in 60 min OR 24h sum > 2× 7d-prior daily-avg
+  - `CHASING_LOSSES` — 3+ deposits within 30 min of a losing bet over 7 days
+  - `LATE_NIGHT_PLAY` — 5+ bets between 00:00–06:00 EAT in 7d
+  - `LIMIT_BREACH_HISTORY` — placeholder for the eventual `rg.limit_breach` audit subsystem
+  - `SESSION_OVERRUN` — current session > 4× reality-check interval
+- Surfaced on `/admin/compliance` Player Safety panel with severity chips + per-user drill-down.
+
+### Two-person AML approval gate (POCA Cap 423 §16, FATF R.10)
+- `TWO_PERSON_THRESHOLD_TZS = 5_000_000` in `src/app/admin/aml/constants.ts`.
+- For amounts ≥ threshold: first-officer click records `aml.approve.stage1`, txn stays in AML_REVIEW.
+- A *different* officer's second click flips to CONFIRMED with `firstOfficer` + `secondOfficer` + `firstOfficerAt` linked in audit. Same-officer second-click is rejected.
+- `/admin/aml` shows a `2-officer` chip on rows ≥ threshold and `stage 1 by <officer>` once first signature lands.
+
+### Cross-operator self-exclusion register (CSV v1)
+- `exportSxRegister()` in `src/app/admin/reports/export-actions.ts` rewritten with v1 schema: row_no, sha256(salt:nida), sha256(salt:phone), region, period_kind, period_started_at, period_ends_at, days_remaining, operator, schema_version.
+- Salt comes from env `SX_REGISTER_SALT` — production-set by GBT so the same NIDA produces the same hash across operators.
+- Generation footer carries `Total_entries` + `Hash_alg` so a regulator can verify the file format.
+
+### Webhook signing primitive
+- New `verifyWebhookSignature()` + `signWebhook()` in `src/lib/server/crypto.ts`. HMAC-SHA-256 with timing-safe compare + 5-minute replay window via `X-Timestamp` header.
+- New route `src/app/api/webhooks/payments/route.ts` accepts Selcom / Azampay / Mixx callbacks. Dev fallback secret = `dev-only-webhook-secret-replace-in-prod`. Audit logs every accepted + rejected webhook (rejection reason captured).
+
+### USER-REPORTED FIX — mobile overlay clipping
+The user reported "in mobile version the notification popup is not working well, it gets dropped by hidden part of the screen, we should fix responsiveness of every single detail everywhere."
+
+Root cause: notifications panel + avatar menu + language toggle were positioned `fixed`/`absolute` inside `<header>` which has `backdrop-blur-xl`. CSS `backdrop-filter` creates a containing block for `position: fixed`, so the dialogs were anchored to the header (not the viewport) — and their `max-h: calc(100dvh-…)` math was wrong as a result.
+
+Fix: render all three popovers via React Portal (`createPortal(…, document.body)`), use viewport-relative `top: calc(env(safe-area-inset-top) + 72px)` + `max-h: calc(100dvh - safe-areas - 72px - 72px)`. Click-outside detection now uses two refs (anchor + portal'd dialog) so clicking inside the dialog doesn't close it.
+
+Verified by `scripts/overlay-responsiveness-test.mjs` — 8/8 across 375×667, 393×667, 768×1024.
+
+### New automated tests (Sprint 19)
+- `scripts/sprint19-test.mjs` — **11/11** (markers panel, two-person threshold, webhook signing 5 vectors)
+- `scripts/overlay-responsiveness-test.mjs` — **8/8** (notifications + menu + language + reality-check on 3 viewports)
+- `scripts/i18n-coverage-test.mjs` — **22/22** (EN/SW/FR all 52 keys + render-leakage audit on 7 public routes)
+- `scripts/money-flow-e2e.mjs` — full money-flow walk with audit verification
+
+---
+
+## What's done in Sprint 18 (previous session) — international regulator-readiness
 
 GLI-19 / LCCP / Tanzania PDPA / GDPR / ISO 27001 alignment work. No new product surface — the platform now actively *publishes* the integrity proofs that test-labs and regulators look for.
 

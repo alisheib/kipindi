@@ -2,9 +2,11 @@ import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
 import { db } from "@/lib/server/store";
 import { formatTzs } from "@/lib/utils";
-import { AlertTriangle, Activity } from "lucide-react";
+import { AlertTriangle, Activity, Users } from "lucide-react";
 import { AmlActionRow } from "./aml-actions-client";
 import { detectSuspiciousBets } from "@/lib/server/analytics";
+import { TWO_PERSON_THRESHOLD_TZS } from "./constants";
+import { getAuditPage } from "@/lib/server/audit";
 
 export const metadata = { title: "Admin · AML queue" };
 export const dynamic = "force-dynamic";
@@ -12,6 +14,11 @@ export const dynamic = "force-dynamic";
 export default function AdminAmlPage() {
   const inReview = db.txn.listByStatus("AML_REVIEW");
   const flags = detectSuspiciousBets();
+  // Track which txns already have a stage-1 signature (waiting on second officer)
+  const stage1 = new Map<string, { actorId: string | null; at: string }>();
+  for (const e of getAuditPage({ category: "ADMIN", limit: 200 })) {
+    if (e.action === "aml.approve.stage1" && e.targetId) stage1.set(e.targetId, { actorId: e.actorId, at: e.at });
+  }
 
   return (
     <>
@@ -37,23 +44,39 @@ export default function AdminAmlPage() {
                 </tr>
               </thead>
               <tbody className="text-text-secondary">
-                {inReview.map((t) => (
-                  <tr key={t.id} className="border-t border-border-subtle/50">
-                    <td className="p-3 font-mono whitespace-nowrap">{t.createdAt.replace("T", " ").slice(0, 19)}</td>
-                    <td className="p-3 font-medium text-text">{t.type}</td>
-                    <td className="p-3 font-mono">
-                      <a href={`/admin/players?q=${encodeURIComponent(t.userId)}`} className="hover:text-royal hover:underline">
-                        {t.userId.slice(0, 16)}
-                      </a>
-                    </td>
-                    <td className="p-3 font-mono tabular text-right">{formatTzs(Math.abs(t.amount))}</td>
-                    <td className="p-3">{t.provider ?? "—"}</td>
-                    <td className="p-3">{t.amlReason ?? "—"}</td>
-                    <td className="p-3">
-                      <AmlActionRow txnId={t.id} amount={Math.abs(t.amount)} />
-                    </td>
-                  </tr>
-                ))}
+                {inReview.map((t) => {
+                  const requiresTwo = Math.abs(t.amount) >= TWO_PERSON_THRESHOLD_TZS;
+                  const sig = stage1.get(t.id);
+                  return (
+                    <tr key={t.id} className="border-t border-border-subtle/50">
+                      <td className="p-3 font-mono whitespace-nowrap">{t.createdAt.replace("T", " ").slice(0, 19)}</td>
+                      <td className="p-3 font-medium text-text">{t.type}</td>
+                      <td className="p-3 font-mono">
+                        <a href={`/admin/players?q=${encodeURIComponent(t.userId)}`} className="hover:text-royal hover:underline">
+                          {t.userId.slice(0, 16)}
+                        </a>
+                      </td>
+                      <td className="p-3 font-mono tabular text-right">
+                        {formatTzs(Math.abs(t.amount))}
+                        {requiresTwo && (
+                          <Chip size="sm" variant="warning" className="ml-2">
+                            <Users size={10} className="mr-1" /> 2-officer
+                          </Chip>
+                        )}
+                        {sig && (
+                          <span className="block font-mono text-micro text-warning mt-1">
+                            stage 1 by {sig.actorId?.slice(0, 12) ?? "—"}…
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3">{t.provider ?? "—"}</td>
+                      <td className="p-3">{t.amlReason ?? "—"}</td>
+                      <td className="p-3">
+                        <AmlActionRow txnId={t.id} amount={Math.abs(t.amount)} />
+                      </td>
+                    </tr>
+                  );
+                })}
                 {inReview.length === 0 && (
                   <tr><td colSpan={7} className="p-6 text-center text-text-tertiary">No transactions awaiting review.</td></tr>
                 )}

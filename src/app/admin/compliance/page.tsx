@@ -1,9 +1,11 @@
 import { AdminPageHead, AdminCard, AdminKpi, AdminStackedBar, StatusPill, FeedRow } from "@/components/admin/admin-shell";
 import { AdminFunnelChart } from "@/components/admin/admin-charts";
-import { ShieldCheck, AlertTriangle, Download, Lock } from "lucide-react";
+import { ShieldCheck, AlertTriangle, Download, Lock, HeartPulse } from "lucide-react";
 import { db } from "@/lib/server/store";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
 import { kycFunnel, rgRosterCounts } from "@/lib/server/analytics";
+import { detectHarmMarkersForAllUsers } from "@/lib/server/responsible-gambling";
+import { Chip } from "@/components/ui/chip";
 
 export const metadata = { title: "Admin · Compliance" };
 export const dynamic = "force-dynamic";
@@ -249,10 +251,84 @@ export default function AdminCompliancePage() {
           </div>
         </AdminCard>
 
+        <PlayerSafetyPanel />
+
         <p className="text-caption text-text-tertiary text-center pt-3 flex items-center justify-center gap-1.5">
           <Lock size={11} aria-hidden /> Confidential · screen and contents are subject to operational access logging.
         </p>
       </div>
     </>
+  );
+}
+
+function PlayerSafetyPanel() {
+  const flags = detectHarmMarkersForAllUsers();
+  const byMarker: Record<string, number> = {};
+  for (const f of flags) byMarker[f.marker] = (byMarker[f.marker] ?? 0) + 1;
+  return (
+    <AdminCard
+      title="Player safety · markers of harm"
+      sw="Alama za hatari"
+      action={
+        <div className="flex items-center gap-2">
+          <HeartPulse size={14} className="text-warning" />
+          <span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">LCCP §3.4.1</span>
+        </div>
+      }
+      padding="p-0"
+    >
+      <div className="px-4 py-3 border-b border-border-subtle flex flex-wrap gap-1.5">
+        <Chip size="sm" variant={byMarker["RAPID_DEPOSIT_ESCALATION"] ? "warning" : "neutral"}>
+          {byMarker["RAPID_DEPOSIT_ESCALATION"] ?? 0} rapid-deposit
+        </Chip>
+        <Chip size="sm" variant={byMarker["CHASING_LOSSES"] ? "danger" : "neutral"}>
+          {byMarker["CHASING_LOSSES"] ?? 0} chasing-losses
+        </Chip>
+        <Chip size="sm" variant={byMarker["LATE_NIGHT_PLAY"] ? "warning" : "neutral"}>
+          {byMarker["LATE_NIGHT_PLAY"] ?? 0} late-night
+        </Chip>
+        <Chip size="sm" variant={byMarker["SESSION_OVERRUN"] ? "warning" : "neutral"}>
+          {byMarker["SESSION_OVERRUN"] ?? 0} session-overrun
+        </Chip>
+        <Chip size="sm" variant={byMarker["LIMIT_BREACH_HISTORY"] ? "warning" : "neutral"}>
+          {byMarker["LIMIT_BREACH_HISTORY"] ?? 0} limit-breach
+        </Chip>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-caption">
+          <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
+            <tr>
+              <th className="text-left p-3">User</th>
+              <th className="text-left p-3">Marker</th>
+              <th className="text-left p-3">Severity</th>
+              <th className="text-left p-3">Detail</th>
+              <th className="text-left p-3">Detected</th>
+            </tr>
+          </thead>
+          <tbody className="text-text-secondary">
+            {flags.slice(0, 20).map((f) => (
+              <tr key={`${f.userId}-${f.marker}`} className="border-t border-border-subtle/50">
+                <td className="p-3 font-mono">
+                  <a href={`/admin/players/${f.userId}`} className="hover:text-royal hover:underline">
+                    {f.userId.slice(0, 16)}…
+                  </a>
+                </td>
+                <td className="p-3 font-medium text-text">{f.marker}</td>
+                <td className="p-3">
+                  <Chip size="sm" variant={f.severity === "high" ? "danger" : f.severity === "warn" ? "warning" : "neutral"}>
+                    {f.severity}
+                  </Chip>
+                </td>
+                <td className="p-3 text-text-tertiary">{f.detail}</td>
+                <td className="p-3 font-mono whitespace-nowrap">{f.detectedAt.replace("T", " ").slice(0, 19)}</td>
+              </tr>
+            ))}
+            {flags.length === 0 && (
+              <tr><td colSpan={5} className="p-6 text-center text-text-tertiary">No markers of harm detected.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </AdminCard>
   );
 }

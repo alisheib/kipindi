@@ -27,11 +27,21 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
     const fn = kind === "approve" ? approveAmlAction : rejectAmlAction;
     const result = await fn(fd);
     if (result?.ok) {
-      toast({
-        title: kind === "approve" ? `Approved · ${formatTzs(amount)}` : "Rejected",
-        description: kind === "approve" ? "Transaction confirmed." : "Funds returned to wallet.",
-        variant: kind === "approve" ? "success" : "warning",
-      });
+      const stage = (result as { stage?: "stage1" | "complete" }).stage;
+      const message = (result as { message?: string }).message;
+      if (stage === "stage1") {
+        toast({
+          title: "Stage 1 recorded",
+          description: message ?? "Second officer required before funds release.",
+          variant: "warning",
+        });
+      } else {
+        toast({
+          title: kind === "approve" ? `Approved · ${formatTzs(amount)}` : "Rejected",
+          description: kind === "approve" ? "Transaction confirmed." : "Funds returned to wallet.",
+          variant: kind === "approve" ? "success" : "warning",
+        });
+      }
       router.refresh();
     } else {
       toast({ title: "Failed", description: result?.error ?? "Try again.", variant: "danger" });

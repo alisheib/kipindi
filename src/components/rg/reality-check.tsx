@@ -72,9 +72,9 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL }: { 
   if (!enabled || !open) return null;
 
   return (
-    <div className="fixed inset-0 z-celebration flex items-end sm:items-center justify-center p-3 sm:p-4 kp-slide-up" role="dialog" aria-modal="true" aria-labelledby="reality-check-title">
+    <div className="fixed inset-0 z-celebration flex items-end sm:items-center justify-center p-3 sm:p-4 pb-[calc(env(safe-area-inset-bottom)+12px)] kp-slide-up" role="dialog" aria-modal="true" aria-labelledby="reality-check-title">
       <div className="absolute inset-0 bg-bg-overlay backdrop-blur-md" onClick={dismiss} aria-hidden />
-      <div className="relative w-full max-w-md rounded-2xl border border-gold-subtleHover/40 bg-bg-elevated p-5 sm:p-6 shadow-e3 kp-pop-in space-y-4">
+      <div className="relative w-full max-w-md max-h-[calc(100dvh-env(safe-area-inset-bottom)-24px)] overflow-y-auto rounded-2xl border border-gold-subtleHover/40 bg-bg-elevated p-5 sm:p-6 shadow-e3 kp-pop-in space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2">
             <ShieldCheck size={20} className="text-gold" />

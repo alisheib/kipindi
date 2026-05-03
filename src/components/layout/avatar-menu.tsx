@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
 import { User, Wallet, Receipt, ShieldCheck, LogOut } from "lucide-react";
@@ -19,11 +20,15 @@ export function AvatarMenu({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (ref.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
+      setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     document.addEventListener("mousedown", onClick);
@@ -53,12 +58,13 @@ export function AvatarMenu({
       >
         <Avatar initials={initials} size="md" />
       </button>
-      {open && (
+      {open && typeof document !== "undefined" && createPortal(
         <>
           <div aria-hidden className="fixed inset-0 z-popover bg-bg-overlay/40" onClick={() => setOpen(false)} />
           <div
+            ref={menuRef}
             role="menu"
-            className="absolute right-0 top-[calc(100%+8px)] w-[260px] rounded-xl border-2 border-border-strong bg-bg-elevated shadow-e5 overflow-hidden z-popover kp-slide-up"
+            className="fixed left-3 right-3 top-[calc(env(safe-area-inset-top)+72px)] sm:left-auto sm:right-4 sm:top-[64px] sm:w-[260px] sm:max-w-[calc(100vw-24px)] max-h-[calc(100dvh-env(safe-area-inset-top)-72px-env(safe-area-inset-bottom)-72px)] sm:max-h-[calc(100dvh-100px)] overflow-y-auto rounded-xl border-2 border-border-strong bg-bg-elevated shadow-e5 z-popover kp-slide-up"
           >
             <div className="px-3 py-3 border-b border-border-divider flex items-center gap-2.5">
               <Avatar initials={initials} size="md" />
@@ -83,7 +89,8 @@ export function AvatarMenu({
               </a>
             </div>
           </div>
-        </>
+        </>,
+        document.body,
       )}
     </div>
   );

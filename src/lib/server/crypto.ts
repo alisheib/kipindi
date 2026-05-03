@@ -99,3 +99,46 @@ export function verifyPassword(password: string, salt: string, hashedHex: string
   if (expected.length !== actual.length) return false;
   return timingSafeEqual(expected, actual);
 }
+
+/**
+ * Verify an incoming webhook signature (HMAC-SHA-256, hex).
+ *
+ * The shared secret is the per-provider webhook secret negotiated when the
+ * payment-aggregator agreement is signed. Caller MUST pass the secret name
+ * (eg. `SELCOM_WEBHOOK_SECRET`) — we never default this for security.
+ *
+ * Includes optional timestamp staleness check (default 5 minutes) so a
+ * captured-and-replayed payload from days ago is rejected.
+ */
+export function verifyWebhookSignature(opts: {
+  body: string;
+  signatureHex: string;
+  secret: string;
+  /** ISO timestamp from the webhook header, optional; if present, must be within `maxSkewSec`. */
+  timestamp?: string;
+  maxSkewSec?: number;
+}): { valid: boolean; reason?: string } {
+  if (!opts.secret) return { valid: false, reason: "missing-secret" };
+  if (!opts.signatureHex) return { valid: false, reason: "missing-signature" };
+  const expectedMac = createHmac("sha256", opts.secret).update(opts.body, "utf8").digest();
+  let actualMac: Buffer;
+  try {
+    actualMac = Buffer.from(opts.signatureHex, "hex");
+  } catch {
+    return { valid: false, reason: "bad-signature-encoding" };
+  }
+  if (expectedMac.length !== actualMac.length) return { valid: false, reason: "length-mismatch" };
+  if (!timingSafeEqual(expectedMac, actualMac)) return { valid: false, reason: "signature-mismatch" };
+  if (opts.timestamp) {
+    const ts = Date.parse(opts.timestamp);
+    if (Number.isNaN(ts)) return { valid: false, reason: "bad-timestamp" };
+    const skew = Math.abs(Date.now() - ts) / 1000;
+    if (skew > (opts.maxSkewSec ?? 300)) return { valid: false, reason: "stale-timestamp" };
+  }
+  return { valid: true };
+}
+
+/** Helper for outbound signatures (test fixtures, dev tooling). */
+export function signWebhook(body: string, secret: string): string {
+  return createHmac("sha256", secret).update(body, "utf8").digest("hex");
+}

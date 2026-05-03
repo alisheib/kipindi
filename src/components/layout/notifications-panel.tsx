@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Bell, Trophy, Coins, ShieldCheck, ArrowDownToLine, ArrowUpFromLine, Activity, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fetchMyNotifications, markNotifReadAction, markAllReadAction, dismissNotifAction } from "@/app/_actions/notifications";
@@ -75,6 +76,7 @@ export function NotificationsPanel() {
   const [items, setItems] = useState<StoredNotification[]>(STATIC_FALLBACK);
   const [unread, setUnread] = useState(STATIC_FALLBACK.filter((n) => !n.readAt).length);
   const ref = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const refresh = useCallback(async () => {
     const r = await fetchMyNotifications();
@@ -98,7 +100,10 @@ export function NotificationsPanel() {
   useEffect(() => {
     if (!open) return;
     const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (ref.current?.contains(target)) return;
+      if (dialogRef.current?.contains(target)) return;
+      setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     document.addEventListener("mousedown", onClick);
@@ -152,7 +157,7 @@ export function NotificationsPanel() {
         )}
       </button>
 
-      {open && (
+      {open && typeof document !== "undefined" && createPortal(
         <>
           <div
             aria-hidden
@@ -160,11 +165,19 @@ export function NotificationsPanel() {
             onClick={() => setOpen(false)}
           />
           <div
+            ref={dialogRef}
             role="dialog"
             aria-label="Notifications"
-            className="absolute right-0 top-[calc(100%+8px)] w-[360px] max-w-[calc(100vw-24px)] rounded-xl border-2 border-border-strong bg-bg-elevated shadow-e5 overflow-hidden z-popover kp-slide-up"
+            className={cn(
+              // Portal'd at document.body so `fixed` is viewport-relative even
+              // though the bell lives inside a backdrop-filter parent.
+              "fixed left-3 right-3 top-[calc(env(safe-area-inset-top)+72px)] z-popover rounded-xl border-2 border-border-strong bg-bg-elevated shadow-e5 overflow-hidden kp-slide-up flex flex-col",
+              "max-h-[calc(100dvh-env(safe-area-inset-top)-72px-env(safe-area-inset-bottom)-72px)]",
+              // Desktop: anchor near the bell (top-right of viewport).
+              "sm:left-auto sm:right-4 sm:top-[64px] sm:w-[360px] sm:max-w-[calc(100vw-24px)] sm:max-h-[480px]",
+            )}
           >
-            <div className="flex items-center justify-between h-11 px-3 border-b border-border-divider bg-bg-elevated">
+            <div className="flex items-center justify-between h-11 px-3 border-b border-border-divider bg-bg-elevated shrink-0">
               <p className="font-display text-label font-bold uppercase tracking-[0.16em] text-text">Notifications · Arifa</p>
               <div className="flex items-center gap-1">
                 <button
@@ -184,7 +197,7 @@ export function NotificationsPanel() {
                 </button>
               </div>
             </div>
-            <div className="max-h-[420px] overflow-y-auto divide-y divide-border-subtle bg-bg-elevated">
+            <div className="flex-1 overflow-y-auto overscroll-contain divide-y divide-border-subtle bg-bg-elevated">
               {items.map((n) => {
                 const Icon = iconFor(n.kind);
                 const isUnread = !n.readAt;
@@ -229,7 +242,8 @@ export function NotificationsPanel() {
               )}
             </div>
           </div>
-        </>
+        </>,
+        document.body,
       )}
     </div>
   );

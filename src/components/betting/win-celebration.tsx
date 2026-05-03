@@ -39,12 +39,12 @@ export function WinCelebration({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-celebration flex items-center justify-center p-3 kp-slide-up">
+    <div className="fixed inset-0 z-celebration flex items-center justify-center p-3 pb-[calc(env(safe-area-inset-bottom)+12px)] kp-slide-up">
       <div className="absolute inset-0 bg-bg-overlay backdrop-blur-md" onClick={onClose} aria-hidden />
       <div
         role="alertdialog"
         aria-label="You won"
-        className="relative max-w-md w-full rounded-2xl overflow-hidden border border-gold/40 kp-pop-in"
+        className="relative max-w-md w-full max-h-[calc(100dvh-env(safe-area-inset-bottom)-24px)] overflow-y-auto rounded-2xl overflow-hidden border border-gold/40 kp-pop-in"
         style={{ background: "var(--g-jackpot)", boxShadow: "var(--glow-jackpot)" }}
       >
         <Pattern kind="sokoni" opacity={0.08} color="#FFFFFF" />

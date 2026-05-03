@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { useT, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Globe, Check, ChevronDown } from "lucide-react";
@@ -15,11 +16,15 @@ export function LanguageToggle() {
   const { locale, setLocale } = useT();
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
+  const menuRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     if (!open) return;
     const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (ref.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
+      setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     document.addEventListener("mousedown", onClick);
@@ -49,11 +54,12 @@ export function LanguageToggle() {
         <span>{current.value.toUpperCase()}</span>
         <ChevronDown size={11} aria-hidden className={cn("transition-transform duration-micro", open && "rotate-180")} />
       </button>
-      {open && (
+      {open && typeof document !== "undefined" && createPortal(
         <div
+          ref={menuRef}
           role="menu"
           aria-label="Language"
-          className="absolute right-0 top-[calc(100%+6px)] min-w-[160px] rounded-md border border-border-strong bg-bg-elevated shadow-e3 overflow-hidden z-popover kp-slide-up"
+          className="fixed left-3 right-3 top-[calc(env(safe-area-inset-top)+72px)] sm:left-auto sm:right-4 sm:top-[64px] sm:min-w-[160px] sm:max-w-[calc(100vw-24px)] rounded-md border border-border-strong bg-bg-elevated shadow-e3 overflow-hidden z-popover kp-slide-up"
         >
           {LANGS.map((l) => {
             const active = l.value === locale;
@@ -79,7 +85,8 @@ export function LanguageToggle() {
               </button>
             );
           })}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
