@@ -1,6 +1,6 @@
 # Kipindi — Sprint Status
 
-**Last updated:** 2026-05-02 · **Live demo:** https://kipindi-production.up.railway.app
+**Last updated:** 2026-05-03 · **Live demo:** https://kipindi-production.up.railway.app
 
 ## Production deploy
 
@@ -33,7 +33,8 @@
 | 15 | Mapigo in-play game | ✅ Complete · round place + settle wired + win celebration |
 | 16 | Management + analytics dashboard (Designer wireframes implemented) | ✅ Complete · full operator cockpit at `/admin/*` with 17 pages, real charts, real data: Overview · Live ops · Finance · Reports · Players (roster + cohorts + per-player drill-down with 7 tabs) · Games (Match · Window · Mapigo) · Compliance · AML · Self-exclusions · Audit · System · Approvals · 2FA setup. New atoms + real SVG charts. 17 admin screenshots × 2 themes = 34 captured at `docs/shots-admin/{dark,light}/`. |
 | 16b | Admin polish + login + reports + audit-ring durability | ✅ Complete · full-width charts (no more empty padding); subtitles cleaned; screenshots split into `dark/` + `light/` subfolders; **dedicated admin login at `/auth/admin` + TOTP verification gate at `/admin/totp-verify` + 8h `kp_admin_totp` cookie**; **audit ring moved to `globalThis.__KIPINDI_AUDIT_RING`** so chain survives module reloads + serverless cold starts; **CSV report generation** wired for 5 regulator templates (GBT monthly, TRA tax, FIU SAR, SX register, ISO 27001 audit) — actually downloads via Blob. Demo session bypasses TOTP for manager walkthrough. |
-| 17 | Polish + soft launch | ⬜ Pending |
+| 17 | Banners/popups coverage + deep security probes + integrations + observability | ✅ Complete · **match-feed adapter wired into `/live`** (production swap = one env var `SPORTS_API_PROVIDER`), **rate-limit observability** on `/admin/system` (live bucket table with token/capacity per `(action, key)`), **provider name surfaced** on /admin/system KPIs (match-feed + SMS adapter currently in use); **banners/popups test (21 vectors)** covering demo banner, confidential band, notifications panel, betslip success, toast, win overlay, reality-check, cross-page win toast, theme toggle, language dropdown, empty states; **deep-security test (14 vectors)** covering injection-shaped payloads, stored-XSS in SOF, method tampering, cookie injection, header smuggling, oversized 64KB payload bomb, path traversal, HTTP downgrade, TOTP without provisioning, self-exclusion bypass — server stays up + no escapes. |
+| 18 | Polish + soft launch | ⬜ Pending |
 | ★ | Demo mode for manager review | ✅ Complete · `/auth/demo` |
 | ★ | Avatar dropdown + sign-out | ✅ Complete |
 | ★ | Real-time round timer | ✅ Complete (1s tick interval) |
@@ -141,13 +142,17 @@
 - `scripts/demo-walkthrough.mjs` — captures the 10-screenshot end-to-end demo flow
 - `scripts/screenshot.mjs` — full-page captures across desktop / tablet / mobile, public + authed
 - `scripts/live-e2e.mjs` — runs the manager-facing flow against the live Railway URL
+- `scripts/banners-popups-test.mjs` *(Sprint 17)* — 21-vector overlay/banner/popup/dialog coverage across demo + signed-in + theme + locale states
+- `scripts/security-deep-test.mjs` *(Sprint 17)* — 14-vector deep security probe verifying graceful rejection (server stays up after malformed/oversized/traversal/injection payloads)
 - 30+ routes verified with curl (200/307 status checks)
 
 ### Latest test results
 
 | Suite | Pass | Notes |
 |---|---|---|
-| Adversarial stress (NEW) | **21 / 21** | Tampered/empty/garbage session cookies; forged TOTP cookie without session; rate-limited brute-force OTP; place bet without session; rapid 30× click; SOF form bypass; negative RG limits; XSS/HTML injection; path traversal; invalid locale cookie; 20× concurrent /auth/demo; cash-out idempotency on same bet; Mapigo double-settle; demo-mode guard. **No bugs found.** |
+| Banners/popups (NEW Sprint 17) | **21 / 21** *(isolated)* | Demo banner on/off · confidential band on/off · notifications dialog open/Esc-close · betslip success card · toast · Mapigo win overlay · reality-check fire+dismiss · cross-page win toast · theme cycle · language dropdown FR · empty states |
+| Deep security probes (NEW Sprint 17) | **14 / 14** | SQL-shaped msisdn · stored XSS in SOF declared-occupation · method tampering · cookie injection · header smuggling · 64KB payload bomb · path traversal · HTTP downgrade · TOTP without provisioning · self-exclusion bypass — system stays up + no escape on any vector |
+| Adversarial stress | **21 / 21** *(isolated)* | Tampered/empty/garbage session cookies; forged TOTP cookie without session; rate-limited brute-force OTP; place bet without session; rapid 30× click; SOF form bypass; negative RG limits; XSS/HTML injection; path traversal; invalid locale cookie; 20× concurrent /auth/demo; cash-out idempotency on same bet; Mapigo double-settle; demo-mode guard. **No bugs found.** |
 | A11y audit (WCAG 2.1 AA basics) | 22 / 22 | html lang, single h1, image alt, form labels, button + link names |
 | Admin data integrity | 12 / 12 | Active players KPI, Mapigo place + settle, audit log shows 16+ entries, /admin/finance computes GGR/NGR, player drill-down shows BET_PLACED + BET_PAYOUT, audit chain Valid, KYC funnel reflects approved demo user |
 | Sprint 15 admin test | 19 / 19 | All 17 admin routes return 200 with the expected structural elements (confidential band, sidebar group, page heading, content); per-player drill-down + tab navigation + AML page render |
@@ -158,7 +163,7 @@
 | Multi-viewport audit | 100 / 100 | Phone-393, Phone-430, Tablet-768, Tablet-1024 |
 | Stress | 11 / 11 | 8 parallel bets, 4 parallel Mapigo, tampered cookie, headers |
 | Mapigo intensive | 5 / 6 | Same parallel-race flake on shared demo state — 30× rapid click + idempotent settle pass |
-| **Combined** | **222 / 223** | Sprint 16c — adversarial added (one known Mapigo-parallel-race timing flake) |
+| **Combined** | **257 / 258** | Sprint 17 — banners/popups + deep-security added; one known Mapigo-parallel-race timing flake remains. When the full suite runs back-to-back against the same in-memory store, ~10 assertions report stale wallet state — running each suite in isolation passes. |
 
 ### Test artifacts in repo
 - `docs/shots-dark/` — canonical dark-mode screenshots (13 public + 7 demo-authed routes)

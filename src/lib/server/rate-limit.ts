@@ -43,3 +43,19 @@ export function rateCheck(key: string, action: keyof typeof RATE_RULES): RateRes
   buckets.set(bucketKey, bucket);
   return { allowed: true, remaining: Math.floor(bucket.tokens), retryAfterSec: 0 };
 }
+
+/** Read-only snapshot of the current rate-limit buckets. Used by /admin/system. */
+export function rateLimitSnapshot(): Array<{ key: string; action: string; tokens: number; capacity: number }> {
+  const out: Array<{ key: string; action: string; tokens: number; capacity: number }> = [];
+  for (const [bucketKey, b] of buckets.entries()) {
+    const [action, ...rest] = bucketKey.split(":");
+    const rule = RATE_RULES[action];
+    out.push({
+      key: rest.join(":"),
+      action,
+      tokens: Math.floor(b.tokens),
+      capacity: rule?.capacity ?? 0,
+    });
+  }
+  return out.sort((a, b) => a.action.localeCompare(b.action) || a.tokens - b.tokens);
+}

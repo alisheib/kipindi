@@ -3,8 +3,9 @@ import { Database, ShieldCheck } from "lucide-react";
 import { SystemActions } from "./system-client";
 import { db } from "@/lib/server/store";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
-import { feedHealth } from "@/lib/server/match-feed";
-import { smsHealthSnapshot } from "@/lib/server/sms";
+import { feedHealth, getActiveAdapter } from "@/lib/server/match-feed";
+import { smsHealthSnapshot, sms as smsClient } from "@/lib/server/sms";
+import { rateLimitSnapshot } from "@/lib/server/rate-limit";
 
 export const metadata = { title: "Admin · System" };
 export const dynamic = "force-dynamic";
@@ -13,8 +14,10 @@ export default function AdminSystemPage() {
   const chain = verifyChain();
   const auditCount = getAuditPage({ limit: 100_000 }).length;
   const feed = feedHealth();
-  const sms = smsHealthSnapshot();
+  const feedAdapter = getActiveAdapter();
+  const smsHealth = smsHealthSnapshot();
   const totalUsers = db.user.list().length;
+  const buckets = rateLimitSnapshot();
 
   return (
     <>
@@ -24,8 +27,8 @@ export default function AdminSystemPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <AdminKpi label="Audit chain"   sw="Mlolongo wa ukaguzi" value={chain.valid ? "Valid" : "BROKEN"} delta={`${auditCount.toLocaleString()} entries`} deltaDir={chain.valid ? "up" : "down"} pulse={!chain.valid} />
           <AdminKpi label="Total users"   sw="Watumiaji"            value={totalUsers.toLocaleString()} />
-          <AdminKpi label="Match-feed"    sw="Mlisho wa mechi"       value={feed.calls === 0 ? "Idle" : `${(feed.failRate * 100).toFixed(1)}% fail`} delta={`${feed.calls} calls`} />
-          <AdminKpi label="SMS provider"  sw="Watoa SMS"            value={sms.sent + sms.failed === 0 ? "Idle" : `${(sms.successRate * 100).toFixed(1)}% ok`} delta={`${sms.sent} sent`} />
+          <AdminKpi label="Match-feed"    sw="Mlisho wa mechi"       value={feed.calls === 0 ? "Idle" : `${(feed.failRate * 100).toFixed(1)}% fail`} delta={`${feedAdapter.name} · ${feed.calls} calls`} />
+          <AdminKpi label="SMS provider"  sw="Watoa SMS"            value={smsHealth.sent + smsHealth.failed === 0 ? "Idle" : `${(smsHealth.successRate * 100).toFixed(1)}% ok`} delta={`${smsClient.name} · ${smsHealth.sent} sent`} />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -52,6 +55,36 @@ export default function AdminSystemPage() {
           </AdminCard>
         </div>
 
+        {/* Rate-limit observability */}
+        <AdminCard title="Rate limiter · live buckets" sw="Vikomo vya mara · token-bucket per (action, key)">
+          {buckets.length === 0 ? (
+            <p className="text-caption text-text-tertiary py-4 text-center">No active rate-limit buckets — system is idle.</p>
+          ) : (
+            <div className="overflow-x-auto -mx-4 px-4">
+              <table className="w-full text-caption min-w-[480px]">
+                <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
+                  <tr>
+                    <th className="text-left py-2 pr-3">Action</th>
+                    <th className="text-left py-2 pr-3">Key</th>
+                    <th className="text-right py-2 pr-3">Tokens</th>
+                    <th className="text-right py-2 pl-3">Capacity</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {buckets.slice(0, 25).map((b, i) => (
+                    <tr key={i} className="border-b border-border-subtle/40 last:border-b-0">
+                      <td className="py-2 pr-3 font-mono text-text">{b.action}</td>
+                      <td className="py-2 pr-3 font-mono text-text-tertiary truncate max-w-[260px]">{b.key.slice(0, 30)}</td>
+                      <td className={["py-2 pr-3 font-mono tabular text-right", b.tokens === 0 ? "text-danger font-semibold" : b.tokens < 3 ? "text-warning" : "text-text"].join(" ")}>{b.tokens}</td>
+                      <td className="py-2 pl-3 font-mono tabular text-right text-text-tertiary">{b.capacity}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </AdminCard>
+
         <AdminCard className="border-info-border bg-info-bg/15">
           <div className="text-caption text-text-secondary space-y-1">
             <p className="text-text font-bold">Production posture</p>
@@ -60,7 +93,7 @@ export default function AdminSystemPage() {
               Audit chain → same HMAC scheme persisted as <code>prevHash</code> + <code>entryHash</code> columns;
               nightly cron re-verifies the entire chain and pages on-call if a break is detected.
               Match-feed + SMS adapters are env-switched (<code>SPORTS_API_PROVIDER</code>, <code>SMS_PROVIDER</code>);
-              health metrics above come from in-memory counters that get replaced by Prometheus in production.
+              rate-limit buckets are in-process today and become Redis cluster in production.
             </p>
           </div>
         </AdminCard>

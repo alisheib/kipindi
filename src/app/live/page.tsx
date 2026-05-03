@@ -1,13 +1,16 @@
 import { MatchCard } from "@/components/betting/match-card";
 import { Chip } from "@/components/ui/chip";
-import { matches } from "@/lib/mock-data";
+import { getActiveAdapter, trace } from "@/lib/server/match-feed";
 
 export const metadata = { title: "Live · Mechi" };
+export const dynamic = "force-dynamic";
 
-export default function LivePage() {
-  const live = matches.filter((m) => m.status === "live");
-  const soon = matches.filter((m) => m.status === "scheduled");
-  const finished = matches.filter((m) => m.status === "finished");
+export default async function LivePage() {
+  const adapter = getActiveAdapter();
+  const all = await trace("listToday", () => adapter.listToday());
+  const live = all.filter((m) => m.status === "live");
+  const soon = all.filter((m) => m.status === "scheduled");
+  const finished = all.filter((m) => m.status === "finished");
 
   return (
     <div className="mx-auto max-w-[1280px] px-3 lg:px-6 py-4 lg:py-6 space-y-5">

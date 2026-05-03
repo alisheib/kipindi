@@ -6,7 +6,7 @@
 
 ## TL;DR
 
-Kipindi is a Tanzania-licensed pool-based time-window football betting platform with a signature live in-play game called Mapigo. We're past Sprint 8b: foundation + auth + KYC + wallet + bet placement + Mapigo + security + concurrency lock + responsible gambling + legal pages + admin/compliance dashboard + reality-check banner + cash-out + production deploy on Railway. All persistence is in-memory; Postgres swap is mechanical (one import per service). Every regulatory control is mapped in `docs/REGULATOR_AND_TEST_LAB_PACKET.md` (read this first if a regulator/test-lab question comes up).
+Kipindi is a Tanzania-licensed pool-based time-window football betting platform with a signature live in-play game called Mapigo. We're past Sprint 17: foundation + auth + KYC + wallet + bet placement + Mapigo + security + concurrency lock + responsible gambling + legal pages + full admin/compliance dashboard (17 routes with real charts) + reality-check banner + cash-out + production deploy on Railway + admin login + TOTP gate + audit-ring durability + CSV reports + match-feed adapter wired into /live + rate-limit observability + 35+ adversarial/deep-security vectors covered (zero bugs found). All persistence is in-memory; Postgres swap is mechanical (one import per service). Every regulatory control is mapped in `docs/REGULATOR_AND_TEST_LAB_PACKET.md` (read this first if a regulator/test-lab question comes up).
 
 **Live demo:** https://kipindi-production.up.railway.app — manager-facing, dark theme locked, demo session via "Try demo · TZS 100,000" landing CTA.
 
@@ -134,7 +134,36 @@ The session cookie carries `demoMode: true`. The `<DemoBanner>` component (in `a
 - **Admin dashboard is skeletal.** `/admin` overview + audit log + AML queue work; players + self-exclusions roster are placeholders pending Postgres iteration.
 - **Light + system themes disabled.** Theme is force-locked to dark via `forcedTheme="dark"` in `theme-provider.tsx`. Light theme has known contrast bugs; toggle buttons render but are disabled. Re-enable after a polish pass.
 
-## What's done in Sprint 15 (this session, overnight)
+## What's done in Sprint 17 (this session)
+
+**Banners + popups + integrations + observability + deep security.** No new product surface — depth pass on what already exists.
+
+### Integrations wired
+- **Match-feed adapter wired into `/live`** — `src/app/live/page.tsx` now calls `getActiveAdapter().listToday()` instead of importing the static mock. Production swap: set `SPORTS_API_PROVIDER=api-football` and the matches arrive from the live feed. The `trace()` wrapper records latency on each call so `/admin/system` will show real adapter health once api-football is signed.
+
+### Observability on /admin/system
+- **Live rate-limit bucket table** — `rateLimitSnapshot()` (new export from `src/lib/server/rate-limit.ts`) returns the current `(action, key, tokens, capacity)` for every active bucket. Rendered as a sortable table on `/admin/system` with danger styling when tokens hit zero. Operator can see right now who is being rate-limited and why.
+- **Provider name surfaced** — match-feed and SMS KPI deltas on `/admin/system` now display the active provider name (`mock-fixtures` / `api-football` / `console` / `selcom` / etc.), so the operator can see at a glance which adapter is in use.
+
+### New automated tests
+- `scripts/banners-popups-test.mjs` — **21 vectors** covering every overlay/banner/popup/dialog: demo banner on/off, confidential band on/off, notifications dialog open + Esc-close, betslip success card, toast, Mapigo win celebration, reality-check fire + dismiss (force-fired via sessionStorage), cross-page win toast (queued via sessionStorage), theme toggle cycle, language dropdown FR pick, empty states. **21/21 in isolation.**
+- `scripts/security-deep-test.mjs` — **14 vectors** of deeper attacks: SQL-shaped msisdn, stored XSS in SOF declared-occupation, method tampering (GET/PUT/DELETE on POST routes), cookie injection, header smuggling, 64KB payload bomb, path traversal `/etc/passwd`, HTTP downgrade attempt, TOTP without provisioning, self-exclusion bypass. **14/14 — server stays up + zero data leaks** on every probe.
+
+### Test isolation note
+The full regression suite running back-to-back against the same in-memory store causes ~10 wallet-state assertions to fail (the demo wallet drains across suites). Each suite passes 100% in isolation. This is a test-fixture issue, not a system bug — production will have Postgres + per-test reset.
+
+### Tests passing (this session)
+- Banners/popups: **21/21** (isolated)
+- Deep security: **14/14**
+- Sprint 15 admin: **19/19**
+- A11y: **22/22**
+- Multi-viewport: **99/99** (zero overflow)
+- Adversarial stress: **21/21** (isolated)
+- Admin data integrity: **12/12** (isolated)
+
+---
+
+## What's done in Sprint 15 (previous overnight session)
 
 **Full operator-management dashboard.** Built against Claude Designer&apos;s wireframes in `mapigo/admin-wf/*`. The shell, atoms, analytics layer, and 17 routes ship in one go.
 
