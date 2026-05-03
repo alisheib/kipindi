@@ -320,3 +320,81 @@ export function providerStackedSeries(period: Period = "28d", buckets = 14): Arr
 export function listProvidersInPeriod(period: Period = "28d"): string[] {
   return Array.from(new Set(txnsInPeriod(period).map((t) => t.provider ?? "OTHER").filter((p) => p !== "INTERNAL"))).slice(0, 5);
 }
+
+/**
+ * Suspicious-bet pattern detector.
+ *
+ * Flags any BET_PLACED in the last 7 days whose stake is more than `multiple`
+ * times the user's 30-day median stake (default 10×). Also flags users whose
+ * 24-hour stake count exceeds `velocityThreshold` (default 100 — possible
+ * automated activity).
+ *
+ * Aligns with FATF Recommendation 10 (CDD ongoing monitoring) + Tanzania POCA
+ * Cap 423 §16 (suspicious activity reporting). Output feeds /admin/aml so a
+ * compliance officer can investigate before a SAR window closes.
+ */
+export type SuspiciousFlag = {
+  userId: string;
+  txnId: string;
+  betId: string | null;
+  type: "STAKE_SPIKE" | "VELOCITY";
+  detectedAt: string;
+  detail: string;
+  stake: number;
+  median: number;
+  multiple: number;
+};
+
+export function detectSuspiciousBets(opts: { multiple?: number; velocityThreshold?: number } = {}): SuspiciousFlag[] {
+  const multiple = opts.multiple ?? 10;
+  const velocityThreshold = opts.velocityThreshold ?? 100;
+  const now = Date.now();
+  const recentCutoff = now - 7 * 24 * 3600_000;
+  const baselineCutoff = now - 30 * 24 * 3600_000;
+
+  const flags: SuspiciousFlag[] = [];
+  for (const u of db.user.list()) {
+    const userTxns = db.txn.findByUser(u.id, 2_000).filter((t) => t.type === "BET_PLACED" && t.status === "CONFIRMED");
+    const baseline = userTxns
+      .filter((t) => new Date(t.createdAt).getTime() >= baselineCutoff)
+      .map((t) => Math.abs(t.amount))
+      .sort((a, b) => a - b);
+    if (baseline.length < 3) continue;
+    const median = baseline[Math.floor(baseline.length / 2)] || 1;
+    for (const t of userTxns) {
+      const at = new Date(t.createdAt).getTime();
+      if (at < recentCutoff) continue;
+      const stake = Math.abs(t.amount);
+      const ratio = stake / median;
+      if (ratio >= multiple) {
+        flags.push({
+          userId: u.id,
+          txnId: t.id,
+          betId: t.betId ?? null,
+          type: "STAKE_SPIKE",
+          detectedAt: new Date().toISOString(),
+          detail: `Stake ${stake.toLocaleString()} is ${ratio.toFixed(1)}× the 30-day median of ${median.toLocaleString()}`,
+          stake,
+          median,
+          multiple: Math.round(ratio * 10) / 10,
+        });
+      }
+    }
+
+    const last24h = userTxns.filter((t) => new Date(t.createdAt).getTime() >= now - 24 * 3600_000);
+    if (last24h.length >= velocityThreshold) {
+      flags.push({
+        userId: u.id,
+        txnId: last24h[0].id,
+        betId: last24h[0].betId ?? null,
+        type: "VELOCITY",
+        detectedAt: new Date().toISOString(),
+        detail: `${last24h.length} bets in the last 24h (threshold ${velocityThreshold})`,
+        stake: last24h.reduce((s, t) => s + Math.abs(t.amount), 0),
+        median,
+        multiple: Math.round((last24h.length / Math.max(1, velocityThreshold)) * 10) / 10,
+      });
+    }
+  }
+  return flags.sort((a, b) => b.multiple - a.multiple);
+}

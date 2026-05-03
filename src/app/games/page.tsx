@@ -75,6 +75,44 @@ export default function GamesPage() {
         <HowCard step="02" title="Pick your call" body="Every 60 seconds a new round opens. Will the next minute SPIKE, DRIFT, or stay CALM? You have until the round band closes." sub="Chagua kati ya mwiba, tetemeka, au tulivu." />
         <HowCard step="03" title="Pool pays" body="Stakes for each call pool together. Winners share their pool — bigger stake, bigger share. Same fair math as the rest of Kipindi." sub="Madau hugawanywa kwa washindi." />
       </section>
+
+      {/* RTP TRANSPARENCY — LCCP §RTS 7B-style game disclosure */}
+      <section>
+        <Card padding="lg">
+          <div className="flex items-baseline justify-between flex-wrap gap-2">
+            <div>
+              <h2 className="font-display font-bold text-title-sm text-text">Mapigo · Game disclosure</h2>
+              <p className="text-caption italic text-text-tertiary">Kanuni za mchezo</p>
+            </div>
+            <Link href={"/fairness" as never} className="text-caption text-gold hover:underline font-bold uppercase tracking-[0.16em]">
+              Provably-fair proof →
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
+            <RtpStat label="Theoretical RTP" value="96%" sub="Wastani wa marejeo" />
+            <RtpStat label="Operator margin" value="4%" sub="Faida ya mwendeshaji" />
+            <RtpStat label="Round duration" value="60 s" sub="Mzunguko" />
+            <RtpStat label="Min / max stake" value="100 / 50,000" sub="TZS" />
+          </div>
+          <p className="text-caption text-text-tertiary mt-3 max-w-[80ch]">
+            Mapigo is a pool game. The realized payout per round depends on how stakes are distributed
+            across SPIKE/DRIFT/CALM. The 96% theoretical RTP is averaged across the published 45/35/20
+            call distribution and the {`{2.3, 3.1, 4.2}`} pay-rate ladder over a long horizon. Round
+            outcomes are committed before staking and verifiable on the{" "}
+            <Link href={"/fairness" as never} className="text-gold hover:underline">fairness page</Link>.
+          </p>
+        </Card>
+      </section>
+    </div>
+  );
+}
+
+function RtpStat({ label, value, sub }: { label: string; value: string; sub: string }) {
+  return (
+    <div className="px-3 py-2 rounded-md border border-border bg-surface">
+      <p className="font-mono text-micro uppercase tracking-[0.14em] font-bold text-text-tertiary">{label}</p>
+      <p className="font-display font-bold text-title-sm text-text tabular leading-tight">{value}</p>
+      <p className="text-caption text-text-tertiary italic">{sub}</p>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { rateCheck } from "./rate-limit";
 import { withLock } from "./locks";
 import { isLockedOut } from "./responsible-gambling";
 import { notifyWin } from "./notification-service";
+import { commitServerSeed, deriveOutcome, generateServerSeed, type CallResult } from "./fairness";
 import type { ServiceResult } from "./auth-service";
 
 const ROUND_DURATION_MS = 60_000;
@@ -19,13 +20,27 @@ export function getOrOpenCurrentRound(): StoredMapigoRound {
   const open = db.mapigoRound.listOpen();
   for (const r of open) {
     const elapsed = Date.now() - new Date(r.startedAt).getTime();
-    if (elapsed < ROUND_DURATION_MS) return r;
+    if (elapsed < ROUND_DURATION_MS) {
+      // Backfill provably-fair fields on legacy rounds opened before Sprint 18.
+      // Safe to commit a seed mid-life because no one has staked yet without one,
+      // and the proof only matters at settle time.
+      if (!r.serverSeedHash) {
+        const serverSeed = generateServerSeed();
+        const serverSeedHash = commitServerSeed(serverSeed);
+        const upgraded = db.mapigoRound.update(r.id, { serverSeed, serverSeedHash, nonce: r.nonce ?? r.number });
+        if (upgraded) return upgraded;
+      }
+      return r;
+    }
   }
   // No active open — open a new one
   const all = db.mapigoRound.list(1);
   const number = (all[0]?.number ?? 84) + 1;
+  const id = `mr_${randomId(10)}`;
+  const serverSeed = generateServerSeed();
+  const serverSeedHash = commitServerSeed(serverSeed);
   const round = db.mapigoRound.create({
-    id: `mr_${randomId(10)}`,
+    id,
     number,
     status: "OPEN",
     result: null,
@@ -35,8 +50,11 @@ export function getOrOpenCurrentRound(): StoredMapigoRound {
     participants: 0,
     startedAt: new Date().toISOString(),
     endedAt: null,
+    serverSeed,
+    serverSeedHash,
+    nonce: number,
   });
-  audit({ category: "BET", action: "mapigo.round.opened", actorId: null, targetType: "MapigoRound", targetId: round.id, payload: { number } });
+  audit({ category: "BET", action: "mapigo.round.opened", actorId: null, targetType: "MapigoRound", targetId: round.id, payload: { number, serverSeedHash } });
   return round;
 }
 
@@ -131,8 +149,12 @@ export async function settleRound(roundId: string, forcedResult?: "SPIKE" | "DRI
   if (!round) return { ok: false, error: "Round not found.", code: "NOT_FOUND" };
   if (round.status === "SETTLED") return { ok: true, data: { result: round.result!, winnersPaid: 0 } };
 
-  // Pick a result — bias toward SPIKE (most common in real matches)
-  const r = forcedResult ?? pickResult(round.id);
+  // Pick a result via the provably-fair seed committed when the round opened.
+  // Demo settle controls supply `forcedResult` for the manager walkthrough; in that
+  // case we still record the canonical computed outcome so the audit trail tells the
+  // truth about why the round paid the way it did.
+  const computed = round.serverSeed ? deriveOutcome(round.serverSeed, round.id, round.nonce) : pickResult(round.id);
+  const r: CallResult = forcedResult ?? computed;
 
   const bets = db.mapigoBet.findByRound(roundId);
   let winnersPaid = 0;
@@ -179,7 +201,17 @@ export async function settleRound(roundId: string, forcedResult?: "SPIKE" | "DRI
     actorId: null,
     targetType: "MapigoRound",
     targetId: roundId,
-    payload: { roundNumber: round.number, result: r, betCount: bets.length, paidTotal: winnersPaid },
+    payload: {
+      roundNumber: round.number,
+      result: r,
+      computed,
+      forced: forcedResult ?? null,
+      serverSeed: round.serverSeed,
+      serverSeedHash: round.serverSeedHash,
+      nonce: round.nonce,
+      betCount: bets.length,
+      paidTotal: winnersPaid,
+    },
   });
 
   return { ok: true, data: { result: r, winnersPaid } };
@@ -202,4 +234,34 @@ export function getRecentRounds(limit = 8) {
 }
 export function getMyMapigoBets(userId: string, limit = 20) {
   return db.mapigoBet.findByUser(userId, limit);
+}
+
+/**
+ * Public fairness proof for a settled round. Returns the seed (revealed),
+ * the published commit, the round id, and the nonce — everything a player
+ * needs to recompute the outcome with the verifier on /fairness.
+ * Returns null for OPEN rounds (the seed must stay secret until settle).
+ */
+export function getFairnessProof(roundId: string): {
+  roundId: string;
+  roundNumber: number;
+  status: "OPEN" | "SETTLED";
+  serverSeedHash: string | null;
+  serverSeed: string | null;
+  nonce: number;
+  result: "SPIKE" | "DRIFT" | "CALM" | null;
+  endedAt: string | null;
+} | null {
+  const r = db.mapigoRound.findById(roundId);
+  if (!r) return null;
+  return {
+    roundId: r.id,
+    roundNumber: r.number,
+    status: r.status,
+    serverSeedHash: r.serverSeedHash,
+    serverSeed: r.status === "SETTLED" ? r.serverSeed : null,
+    nonce: r.nonce,
+    result: r.status === "SETTLED" ? r.result : null,
+    endedAt: r.endedAt,
+  };
 }

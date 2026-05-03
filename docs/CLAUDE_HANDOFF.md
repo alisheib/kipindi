@@ -134,7 +134,33 @@ The session cookie carries `demoMode: true`. The `<DemoBanner>` component (in `a
 - **Admin dashboard is skeletal.** `/admin` overview + audit log + AML queue work; players + self-exclusions roster are placeholders pending Postgres iteration.
 - **Light + system themes disabled.** Theme is force-locked to dark via `forcedTheme="dark"` in `theme-provider.tsx`. Light theme has known contrast bugs; toggle buttons render but are disabled. Re-enable after a polish pass.
 
-## What's done in Sprint 17 (this session)
+## What's done in Sprint 18 (this session) — international regulator-readiness
+
+GLI-19 / LCCP / Tanzania PDPA / GDPR / ISO 27001 alignment work. No new product surface — the platform now actively *publishes* the integrity proofs that test-labs and regulators look for.
+
+### Provably-fair Mapigo (commit-reveal)
+- New `src/lib/server/fairness.ts` — `generateServerSeed`, `commitServerSeed`, `deriveOutcome` (HMAC-SHA-256 → uint32 → mod 100 → call distribution), `verifyCommit`, `verifyRound`. Pure functions, no external deps.
+- `StoredMapigoRound` now carries `serverSeed`, `serverSeedHash`, `nonce`. Seed committed on round open; revealed at settle. Audit `mapigo.round.settled` payload includes seed + commit + nonce so anyone replaying the audit log can re-verify.
+- `getOrOpenCurrentRound` lazy-backfills seeds on legacy OPEN rounds for graceful migration.
+
+### Public surfaces
+- **`/fairness`** — public page (no auth) listing every recent settled round's seed + commit + nonce + result. Includes a Web-Crypto verifier that runs entirely in the browser (so the client never has to trust the server).
+- **`/api/health`** — liveness JSON (`uptimeSec`, store user/audit counts, match-feed + sms provider names). HEAD also returns 200.
+- **`/api/fairness/recent`** — machine-readable proofs for last 20 settled rounds.
+- **`PublicFooter`** at `src/components/layout/public-footer.tsx`, mounted in `AppShell` — every player-facing page now shows: 18+ badge, Tanzania license number stub, helpline `0800 11 0011`, RG/Privacy/Fairness/Help links. Verified across `/`, `/games`, `/mapigo`, `/legal/terms`, `/help`.
+- **`/games`** RTP disclosure: 96% theoretical RTP, 4% operator margin, round duration, min/max stake — LCCP §RTS 7B-style box.
+
+### Admin surfaces
+- **`/admin/privacy`** — DSAR queue (Pending/Fulfilled/Access/Erasure KPIs). Per-row "Export bundle" generates a JSON DSAR bundle covering every data class we hold (user, wallet, transactions, match bets, mapigo bets, KYC, RG, notifications). Officer can mark fulfilled; both actions audit under `ADMIN · privacy.dsar.*`.
+- **`/admin/retention`** — schedule of 10 data classes × retention period × legal basis (POCA Cap 423 §16, PDPA §15, LCCP SR 3.4.4, ISO 27001 A.12.4, FATF R.11). Includes the planned nightly purge cron + the erasure-vs-AML conflict resolution policy.
+- **`/admin/aml`** — added a suspicious-bet detector panel. `detectSuspiciousBets()` (in `src/lib/server/analytics.ts`) flags any BET_PLACED in the last 7d whose stake is ≥10× user's 30-day median, plus users with 24-hour bet velocity ≥100. FATF R.10 + POCA Cap 423 §16 alignment.
+
+### New automated tests
+- `scripts/sprint18-test.mjs` — **33 checks** across 7 sections: /api/health, /fairness page, cryptographic verifier (synthetic + live), public footer on 5 routes, /games RTP disclosure, /admin/privacy + /admin/retention, /admin/aml suspicious-bet panel. **33/33 PASS.**
+
+---
+
+## What's done in Sprint 17 (previous session)
 
 **Banners + popups + integrations + observability + deep security.** No new product surface — depth pass on what already exists.
 

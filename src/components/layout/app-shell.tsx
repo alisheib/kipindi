@@ -2,6 +2,7 @@ import { TopAppBar } from "./top-app-bar";
 import { BottomNav } from "./bottom-nav";
 import { LiveTicker } from "./live-ticker";
 import { DemoBanner } from "./demo-banner";
+import { PublicFooter } from "./public-footer";
 import { getSession } from "@/lib/server/session";
 import { db } from "@/lib/server/store";
 import { user as guestUser } from "@/lib/mock-data";
@@ -31,6 +32,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <main className="pb-[calc(56px+env(safe-area-inset-bottom))] xl:pb-0">
         {children}
       </main>
+      <PublicFooter />
       <BottomNav />
       <RealityCheckHost enabled={!!session} intervalMin={realityCheckMin} />
     </div>

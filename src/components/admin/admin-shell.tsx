@@ -55,6 +55,8 @@ const NAV_GROUPS: ReadonlyArray<{
       { href: "/admin/compliance",      label: "Compliance",     key: "compliance" },
       { href: "/admin/aml",             label: "AML queue",      key: "aml" },
       { href: "/admin/self-exclusions", label: "Self-exclusions", key: "sx" },
+      { href: "/admin/privacy",         label: "Privacy / DSAR", key: "privacy" },
+      { href: "/admin/retention",       label: "Retention",      key: "retention" },
       { href: "/admin/audit",           label: "Audit log",      key: "audit" },
     ],
   },

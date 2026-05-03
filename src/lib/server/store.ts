@@ -131,6 +131,12 @@ export type StoredMapigoRound = {
   participants: number;
   startedAt: string;
   endedAt: string | null;
+  /** Provably-fair: SHA-256 of serverSeed, published when round opens. */
+  serverSeedHash: string | null;
+  /** Provably-fair: revealed only after settle so anyone can verify the commit. */
+  serverSeed: string | null;
+  /** Provably-fair: nonce mixed into the HMAC. */
+  nonce: number;
 };
 
 export type StoredMapigoBet = {
