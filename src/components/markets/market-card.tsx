@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
-import { ProbabilityBar } from "./probability-bar";
+import { TippingBar } from "@/components/brand";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -79,8 +79,8 @@ export function MarketCard({
       {titleSw && <p className="mt-1 text-[13px] italic text-text-subtle">{titleSw}</p>}
 
       <div className="mt-3.5">
-        <ProbabilityBar yesPct={yesPct} size="micro" resolved={status === "RESOLVED"} />
-        <div className="mt-1.5 flex items-baseline justify-between font-mono text-[11px]">
+        <TippingBar yesPct={yesPct} height={14} resolved={status === "RESOLVED"} showLabels={false} />
+        <div className="mt-2 flex items-baseline justify-between font-mono text-[11px]">
           <span className="text-yes-300">YES <strong className="font-bold">{yesPct}¢</strong></span>
           <span className="text-text-subtle uppercase tracking-wider italic text-[9px]">
             {Math.abs(yesPct - 50) < 4 ? "tipping" : yesPct > 50 ? "leans yes" : "leans no"}

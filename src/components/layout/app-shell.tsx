@@ -1,6 +1,5 @@
 import { TopAppBar } from "./top-app-bar";
 import { BottomNav } from "./bottom-nav";
-import { LiveTicker } from "./live-ticker";
 import { DemoBanner } from "./demo-banner";
 import { PublicFooter } from "./public-footer";
 import { getSession } from "@/lib/server/session";
@@ -28,7 +27,6 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-bg-base text-text">
       <DemoBanner />
       <TopAppBar user={topUser} />
-      <LiveTicker />
       <main className="pb-[calc(56px+env(safe-area-inset-bottom))] xl:pb-0">
         {children}
       </main>
