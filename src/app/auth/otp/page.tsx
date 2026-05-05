@@ -1,8 +1,6 @@
 import Link from "next/link";
-import { Card, CardBody } from "@/components/ui/card";
-import { Pattern } from "@/components/ui/pattern";
-import { Logo } from "@/components/logo";
-import { Button } from "@/components/ui/button";
+import { FiftyLockup } from "@/components/brand";
+import { BrandTopo } from "@/components/brand-topo";
 import { verifyLoginOtpAction } from "../login/actions";
 
 export const metadata = { title: "Enter code · Weka msimbo" };
@@ -14,54 +12,61 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
   const masked = phone ? phone.slice(0, 4) + "*****" + phone.slice(-2) : "+255*****";
 
   return (
-    <div className="relative min-h-[calc(100vh-44px)] grid place-items-center px-3 py-8">
-      <Pattern kind="sokoni" opacity={0.04} color="var(--gold)" className="!fixed inset-0" />
+    <div className="relative min-h-[calc(100vh-44px)] grid place-items-center px-3 py-8 overflow-hidden">
+      <BrandTopo opacity={0.05} />
       <div className="relative w-full max-w-md">
-        <Link href="/" className="text-royal hover:text-royal-hover transition-colors duration-micro inline-block mb-5">
-          <Logo variant="primary" className="h-7" />
+        <Link href="/" aria-label="50pick home" className="inline-block mb-6">
+          <FiftyLockup size={22} />
         </Link>
-        <Card className="border-2 border-border-strong">
-          <CardBody className="p-5 lg:p-6 space-y-4">
-            <div>
-              <p className="font-mono text-caption uppercase tracking-[0.32em] text-gold font-bold">Verification · Uthibitisho</p>
-              <h1 className="font-display font-bold text-title-md text-text mt-1.5">Enter the 6-digit code</h1>
-              <p className="text-body-sm text-text-secondary mt-1">
-                Sent to <span className="font-mono text-text font-bold">{masked}</span> · Imetumwa.
-              </p>
-            </div>
-            <form action={verifyLoginOtpAction} className="space-y-3">
-              <input type="hidden" name="phone" value={phone} />
-              <input type="hidden" name="purpose" value={purpose} />
-              <div>
-                <label htmlFor="code" className="block text-caption uppercase tracking-[0.16em] font-bold text-text-secondary mb-1.5">Code · Msimbo</label>
-                <input
-                  id="code"
-                  name="code"
-                  type="text"
-                  required
-                  inputMode="numeric"
-                  pattern="\d{6}"
-                  maxLength={6}
-                  autoComplete="one-time-code"
-                  placeholder="• • • • • •"
-                  className="w-full h-14 px-3 text-center rounded-md bg-surface border-2 border-border text-text font-mono text-title-md tabular tracking-[0.6em] focus:outline-none focus:border-gold focus:ring-2 focus:ring-[var(--gold)]/30 transition-colors"
-                />
-                <p className="text-micro text-text-tertiary mt-1.5">Code valid for 5 minutes · Msimbo ni kwa dakika 5.</p>
-              </div>
-              <Button type="submit" variant="gold" size="xl" fullWidth>Verify · Thibitisha</Button>
-            </form>
-            <div className="flex items-center justify-between pt-2 border-t border-border-divider">
-              <Link href={purpose === "register" ? "/auth/register" : "/auth/login"} className="text-body-sm font-bold text-text-secondary hover:text-text transition-colors">
-                ← Change number
-              </Link>
-              <Link href={purpose === "register" ? "/auth/register" : "/auth/login"} className="text-body-sm font-bold text-royal hover:text-royal-hover transition-colors">
-                Resend code
-              </Link>
-            </div>
-          </CardBody>
-        </Card>
-        <p className="text-micro text-text-tertiary text-center mt-4">
-          5 wrong attempts triggers a cool-down. · Majaribio 5 mabaya — lazimsubiri.
+
+        <div className="rounded-xl border border-border bg-bg-elevated p-6 space-y-5">
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-yes-300">Verification · Uthibitisho</p>
+            <h1 className="mt-1.5 font-display text-[26px] font-bold leading-tight text-text">Enter the 6-digit code</h1>
+            <p className="mt-1.5 text-[14px] text-text-muted">
+              Sent to <span className="font-mono text-text font-bold">{masked}</span>. <span className="italic text-text-subtle">Imetumwa.</span>
+            </p>
+          </div>
+
+          <form action={verifyLoginOtpAction} className="space-y-3">
+            <input type="hidden" name="phone" value={phone} />
+            <input type="hidden" name="purpose" value={purpose} />
+            <label className="block">
+              <span className="block font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5">Code · Msimbo</span>
+              <input
+                id="code"
+                name="code"
+                type="text"
+                required
+                inputMode="numeric"
+                pattern="\d{6}"
+                maxLength={6}
+                autoComplete="one-time-code"
+                placeholder="• • • • • •"
+                className="w-full h-16 px-3 text-center rounded-md border-2 border-border bg-bg-overlay font-mono text-[28px] tabular-nums tracking-[0.6em] text-text outline-none focus:border-yes-500 transition-colors"
+              />
+              <p className="mt-1.5 text-[11px] text-text-subtle">Code valid for 5 minutes. <span className="italic">Msimbo ni kwa dakika 5.</span></p>
+            </label>
+            <button
+              type="submit"
+              className="w-full h-12 rounded-md bg-gradient-to-b from-gold-400 to-gold-600 font-display font-bold text-gold-fg border border-gold-700 hover:from-gold-300 hover:to-gold-500 transition-all"
+            >
+              Verify · Thibitisha
+            </button>
+          </form>
+
+          <div className="flex items-center justify-between pt-3 border-t border-border">
+            <Link href={purpose === "register" ? "/auth/register" : "/auth/login"} className="text-[13px] font-semibold text-text-muted hover:text-text transition-colors">
+              ← Change number
+            </Link>
+            <Link href={purpose === "register" ? "/auth/register" : "/auth/login"} className="text-[13px] font-semibold text-yes-300 hover:text-yes-200 transition-colors">
+              Resend code
+            </Link>
+          </div>
+        </div>
+
+        <p className="mt-6 text-center text-[10px] uppercase tracking-[0.16em] text-text-subtle">
+          5 wrong attempts triggers a cool-down · Majaribio 5 mabaya — lazima subiri
         </p>
       </div>
     </div>

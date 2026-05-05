@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
-import { ExternalLink, Users, Clock, TrendingUp } from "lucide-react";
-import { ProbabilityBar } from "@/components/markets/probability-bar";
+import { ExternalLink, Users, TrendingUp } from "lucide-react";
+import { TippingBar } from "@/components/brand";
 import { BuyTray } from "@/components/markets/buy-tray";
+import { Countdown } from "@/components/markets/countdown";
 import { getMarket, impliedYesPct, listPositionsForMarket, listPositionsForUser, seedDemoMarkets } from "@/lib/server/market-service";
 import { currentSession } from "@/lib/server/auth-service";
 
@@ -75,16 +76,21 @@ export default async function MarketDetail({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
         <section>
-          <ProbabilityBar yesPct={yesPct} size="large" showLabels resolved={isResolved} />
+          <TippingBar yesPct={yesPct} height={28} showLabels resolved={isResolved} />
           <div className="mt-2 flex items-baseline justify-between font-mono text-[13px]">
             <span className="text-yes-300 font-semibold">YES {yesPct}%</span>
             <span className="text-no-300 font-semibold">{100 - yesPct}% NO</span>
           </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+          {!isResolved && (
+            <div className="mt-7 rounded-lg border border-border bg-bg-elevated p-5">
+              <Countdown to={m.resolutionAt} label="Closes in · Inafungwa baada ya" />
+            </div>
+          )}
+
+          <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3">
             <KPI label="Volume"     value={fmtTzs(m.yesPool + m.noPool)} icon={<TrendingUp size={14} />} />
             <KPI label="Predictors" value={String(totalPredictorCount)}   icon={<Users size={14} />} />
-            <KPI label="Closes"     value={timeLeftStr(m.resolutionAt)}   icon={<Clock size={14} />} />
             <KPI label="Resolves"   value={fmtTime(m.resolutionAt)} mono />
           </div>
 
