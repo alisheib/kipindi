@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { ExternalLink, Users, TrendingUp } from "lucide-react";
 import { TippingBar } from "@/components/brand";
-import { BuyTray } from "@/components/markets/buy-tray";
+import { ConvictionSlider } from "@/components/markets/conviction-slider";
 import { Countdown } from "@/components/markets/countdown";
 import { getMarket, impliedYesPct, listPositionsForMarket, listPositionsForUser, seedDemoMarkets } from "@/lib/server/market-service";
 import { currentSession } from "@/lib/server/auth-service";
@@ -121,7 +121,7 @@ export default async function MarketDetail({
 
         <aside>
           {!isResolved && m.status === "LIVE" ? (
-            <BuyTray marketId={m.id} yesPool={m.yesPool} noPool={m.noPool} initialSide={side ?? "YES"} />
+            <ConvictionSlider marketId={m.id} yesPool={m.yesPool} noPool={m.noPool} initialYesPct={yesPct} />
           ) : (
             <div className="rounded-lg border border-border bg-bg-elevated p-6 text-center">
               <p className="font-display text-[16px] font-semibold text-text">Market closed for predictions</p>

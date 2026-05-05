@@ -62,16 +62,18 @@ export function MarketCard({
           </span>
         </div>
         {sourceUrl && (
-          <a
-            href={sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
+          <button
+            type="button"
             aria-label="Open resolution source"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              window.open(sourceUrl, "_blank", "noopener,noreferrer");
+            }}
             className="text-text-subtle hover:text-text-muted transition-colors"
           >
             <ExternalLink size={16} aria-hidden />
-          </a>
+          </button>
         )}
       </div>
 
