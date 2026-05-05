@@ -1,11 +1,13 @@
 /**
- * Edge middleware — security headers + auth gating + age-gate cookie.
+ * Edge proxy — security headers + path-forward.
+ * Renamed from `middleware.ts` per Next 16 file-convention change.
+ *
  * Compliance:
- *  - Strict CSP (no inline scripts at top-level; nonces would be added when going to prod)
+ *  - Strict CSP (script tightening planned for prod with nonces)
  *  - HSTS on production HTTPS
  *  - Frame busting (X-Frame-Options DENY)
  *  - MIME sniffing off (X-Content-Type-Options nosniff)
- *  - Referrer trim (no-referrer-when-downgrade → strict-origin-when-cross-origin)
+ *  - Referrer trim (strict-origin-when-cross-origin)
  *  - Permissions-Policy locks dangerous APIs
  *  - Cross-Origin-Opener-Policy hardens against window.opener
  *  - Audit logging happens in route handlers (request body required)
@@ -20,7 +22,7 @@ const SECURITY_HEADERS: Record<string, string> = {
   "Permissions-Policy": [
     "accelerometer=()",
     "autoplay=()",
-    "camera=(self)",   // selfie capture in KYC
+    "camera=(self)",
     "microphone=()",
     "geolocation=()",
     "payment=()",
@@ -37,7 +39,7 @@ const PROD_HEADERS: Record<string, string> = {
 
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // dev — tighten with nonces in prod
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com data:",
   "img-src 'self' data: blob:",
@@ -48,9 +50,7 @@ const CSP = [
   "upgrade-insecure-requests",
 ].join("; ");
 
-export function middleware(req: NextRequest) {
-  // Forward the request path so server components (e.g. the admin layout) can
-  // know which route is rendering for breadcrumb + active-nav decisions.
+export function proxy(req: NextRequest) {
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set("x-pathname", req.nextUrl.pathname);
 
@@ -65,7 +65,6 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    // skip Next internals + static; everything else gets headers
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
