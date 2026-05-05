@@ -2,51 +2,51 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Radio, Wallet, Receipt } from "lucide-react";
-import { MapigoMark } from "@/components/mapigo/mapigo-mark";
-import { useT } from "@/lib/i18n";
+import { LayoutGrid, Radio, ListChecks, Trophy, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function BottomNav() {
   const pathname = usePathname();
-  const { t } = useT();
   const items = [
-    { href: "/",       icon: Home,    label: t.nav.home },
-    { href: "/live",   icon: Radio,   label: t.nav.live },
-    { href: "/bets",   icon: Receipt, label: t.nav.bets },
-    { href: "/wallet", icon: Wallet,  label: t.nav.wallet },
+    { href: "/markets",     icon: LayoutGrid, label: "Markets" },
+    { href: "/live",        icon: Radio,      label: "Live" },
+    { href: "/positions",   icon: ListChecks, label: "Positions" },
+    { href: "/leaderboard", icon: Trophy,     label: "Top" },
+    { href: "/profile",     icon: User,       label: "Profile" },
   ];
 
+  const isActive = (href: string) => {
+    if (href === "/markets") return pathname === "/" || pathname.startsWith("/markets");
+    if (href === "/positions") return pathname.startsWith("/positions");
+    if (href === "/profile") return pathname.startsWith("/profile");
+    return pathname === href;
+  };
+
   return (
-    <nav className="xl:hidden fixed inset-x-0 bottom-0 z-sticky bg-bg-elevated/95 backdrop-blur-xl border-t border-border-divider pb-[env(safe-area-inset-bottom)]">
-      <div className="relative flex items-stretch justify-around h-9">
-        {items.slice(0, 2).map((it) => <NavItem key={it.href} {...it} active={pathname === it.href} />)}
-        <div className="relative flex items-center justify-center w-14">
-          <Link
-            href="/mapigo"
-            aria-label="Open Mapigo"
-            className="absolute -top-3.5 inline-flex h-7 w-7 items-center justify-center rounded-pill bg-gold text-gold-fg shadow-[0_0_24px_rgba(222,188,84,0.45)] hover:bg-gold-hover transition-all duration-micro"
-          >
-            <MapigoMark size={17} className="text-gold-fg" />
-          </Link>
-        </div>
-        {items.slice(2).map((it) => <NavItem key={it.href} {...it} active={pathname === it.href} />)}
+    <nav
+      aria-label="Primary"
+      className="xl:hidden fixed inset-x-0 bottom-0 z-sticky bg-bg-elevated/95 backdrop-blur-xl border-t border-border pb-[env(safe-area-inset-bottom)]"
+    >
+      <div className="flex items-stretch justify-around h-14">
+        {items.map((it) => (
+          <NavItem key={it.href} {...it} active={isActive(it.href)} />
+        ))}
       </div>
     </nav>
   );
 }
 
-function NavItem({ href, icon: Icon, label, active }: { href: string; icon: typeof Home; label: string; active: boolean }) {
+function NavItem({ href, icon: Icon, label, active }: { href: string; icon: typeof LayoutGrid; label: string; active: boolean }) {
   return (
     <Link
-      href={href}
+      href={href as never}
       className={cn(
-        "flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors duration-micro",
-        active ? "text-royal" : "text-text-tertiary",
+        "flex-1 flex flex-col items-center justify-center gap-1 transition-colors duration-micro",
+        active ? "text-teal-300" : "text-text-subtle hover:text-text-muted",
       )}
     >
-      <Icon size={20} strokeWidth={active ? 2 : 1.5} fill={active ? "currentColor" : "none"} />
-      <span className="text-micro font-bold uppercase tracking-[0.12em]">{label}</span>
+      <Icon size={20} strokeWidth={active ? 2 : 1.5} />
+      <span className="text-[10px] font-semibold uppercase tracking-[0.10em]">{label}</span>
     </Link>
   );
 }

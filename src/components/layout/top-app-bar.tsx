@@ -21,12 +21,11 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
   const pathname = usePathname();
   const { t } = useT();
   const NAV_ITEMS = [
-    { href: "/",            label: t.nav.home },
-    { href: "/live",        label: t.nav.live },
-    { href: "/bets",        label: t.nav.bets },
+    { href: "/markets",     label: "Markets" },
+    { href: "/live",        label: "Live" },
+    { href: "/positions",   label: "Positions" },
     { href: "/wallet",      label: t.nav.wallet },
     { href: "/leaderboard", label: "Top" },
-    { href: "/games",       label: t.nav.mapigo },
   ] as const;
   return (
     <header className="sticky top-0 z-sticky bg-bg-elevated/80 backdrop-blur-xl border-b border-border-divider">

@@ -27,11 +27,11 @@ const jbm = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Kipindi — Bet the moment",
-    template: "%s · Kipindi",
+    default: "50pick — Predict events. Not chance.",
+    template: "%s · 50pick",
   },
-  description: "Pool-based time-window sports betting. Tanzania-licensed. Mobile-first.",
-  applicationName: "Kipindi",
+  description: "Tanzania-licensed binary prediction markets. Pari-mutuel pool — winners share losers' stake. Mobile-first.",
+  applicationName: "50pick",
   formatDetection: { telephone: false, email: false, address: false },
 };
 
