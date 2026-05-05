@@ -116,7 +116,7 @@ export default async function AccountPage() {
             </p>
             <CloseAccountForm />
             <p className="text-micro text-text-tertiary">
-              Need help instead? Email <span className="font-mono">support@kipindi.co.tz</span> or call <span className="font-mono">+255 22 211 5811</span>.
+              Need help instead? Email <span className="font-mono">support@50pick.com</span> or call <span className="font-mono">+255 22 211 5811</span>.
             </p>
           </CardBody>
         </Card>

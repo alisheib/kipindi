@@ -241,7 +241,7 @@ export default function AdminCompliancePage() {
             <div className="text-caption text-text-secondary space-y-1">
               <p className="text-text font-bold">Inspector mode</p>
               <p>
-                A regulator inspecting Kipindi sees this page first. Every chip and table is read-only —
+                A regulator inspecting 50pick sees this page first. Every chip and table is read-only —
                 nothing here mutates state. To act on items, drill into{" "}
                 <a href="/admin/aml" className="text-royal hover:underline">AML queue</a> for approvals,
                 <a href="/admin/players" className="text-royal hover:underline ml-1">Players</a> for player drill-down, or

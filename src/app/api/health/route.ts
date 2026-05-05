@@ -2,19 +2,12 @@
  * Liveness + readiness probe.
  *
  * GET /api/health → 200 with a small JSON body describing system health:
- *   { ok: true, uptimeSec, store: { users, audit }, matchFeed, sms, version }
- *
- * Used by:
- *  - Railway health-check (returns 200 means "keep traffic flowing")
- *  - ISO 27001 + GLI-19 reviewers wanting a public ping
- *  - The /admin/system page (extends this with bucket-level detail)
- *
- * Intentionally exposes no PII and no secrets — anyone can hit this.
+ *   { ok: true, uptimeSec, store: { users, audit, markets }, sms, version }
  */
 import { NextResponse } from "next/server";
 import { db } from "@/lib/server/store";
-import { getActiveAdapter } from "@/lib/server/match-feed";
 import { sms, smsHealthSnapshot } from "@/lib/server/sms";
+import { listMarkets } from "@/lib/server/market-service";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -23,10 +16,11 @@ const BOOT_AT = Date.now();
 
 export async function GET() {
   const uptimeSec = Math.floor((Date.now() - BOOT_AT) / 1000);
-  const matchFeed = getActiveAdapter();
   const userCount = db.user.list().length;
-  const auditRing = (globalThis as { __KIPINDI_AUDIT_RING?: unknown[] }).__KIPINDI_AUDIT_RING ?? [];
+  const auditRing = (globalThis as { __50PICK_AUDIT_RING?: unknown[] }).__50PICK_AUDIT_RING ?? [];
   const smsHealth = smsHealthSnapshot();
+  const liveMarkets = listMarkets({ status: "LIVE" }).length;
+  const resolvedMarkets = listMarkets({ status: "RESOLVED" }).length;
 
   return NextResponse.json(
     {
@@ -37,10 +31,8 @@ export async function GET() {
       store: {
         users: userCount,
         auditEntries: auditRing.length,
-      },
-      matchFeed: {
-        provider: matchFeed.name,
-        ok: true,
+        marketsLive: liveMarkets,
+        marketsResolved: resolvedMarkets,
       },
       sms: {
         provider: sms.name,

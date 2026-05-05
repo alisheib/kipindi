@@ -99,7 +99,7 @@ export default async function AdminLoginPage() {
         </Card>
 
         <p className="text-caption text-text-tertiary text-center pt-2">
-          Lost device or codes? Contact <span className="font-mono">support@kipindi.co.tz</span> with your AML lead in copy.
+          Lost device or codes? Contact <span className="font-mono">support@50pick.com</span> with your AML lead in copy.
           Recovery requires documented identity verification.
         </p>
       </div>

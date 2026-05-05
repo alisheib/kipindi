@@ -10,7 +10,7 @@ export default function ResponsibleGamblingPolicyPage() {
       <p className="text-caption text-text-tertiary">Aligned with the UK Gambling Commission LCCP and the European Committee for Standardization CEN Workshop Agreement 16221.</p>
 
       <Section n="1" title="Our commitment">
-        <p>Most people gamble for fun. A small minority experience harm. Kipindi designs the product, the
+        <p>Most people gamble for fun. A small minority experience harm. 50pick designs the product, the
         marketing, and the customer journey to keep play recreational and to spot harm early.</p>
       </Section>
 
@@ -49,7 +49,7 @@ export default function ResponsibleGamblingPolicyPage() {
         <ul className="list-disc pl-5 space-y-1">
           <li><strong>Tanzania</strong>: National Helpline +255 22 211 5811 (free)</li>
           <li><strong>International</strong>: <span className="font-mono">begambleaware.org</span>, <span className="font-mono">gamcare.org.uk</span></li>
-          <li><strong>Email us</strong>: <span className="font-mono">support@kipindi.co.tz</span></li>
+          <li><strong>Email us</strong>: <span className="font-mono">support@50pick.com</span></li>
         </ul>
       </Section>
     </>

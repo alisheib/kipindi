@@ -13,7 +13,7 @@ const STATIC_FALLBACK: StoredNotification[] = [
     userId: "guest",
     kind: "WIN",
     titleEn: "The 15–30 paid",
-    titleSw: "Kipindi 15–30 kimelipa",
+    titleSw: "50pick 15–30 kimelipa",
     bodyEn: "Return TZS 2,400 ready in your wallet.",
     bodySw: "Pato TZS 2,400 liko tayari.",
     href: "/wallet",

@@ -32,7 +32,7 @@ export function AdminMobileNavTrigger({ groups, badges, activeKey }: { groups: R
             <div className="flex items-center justify-between px-3 py-3 border-b border-border-divider sticky top-0 bg-bg-elevated">
               <Link href="/admin" onClick={() => setOpen(false)} className="flex items-center gap-2">
                 <span aria-hidden className="h-3.5 w-3.5 rounded-pill border-[1.5px] border-gold" />
-                <span className="font-display font-bold text-body-sm text-text">kipindi · admin</span>
+                <span className="font-display font-bold text-body-sm text-text">50pick · admin</span>
               </Link>
               <button
                 type="button"

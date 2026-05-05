@@ -8,7 +8,7 @@ type LogoProps = {
   ariaLabel?: string;
 };
 
-export function Logo({ variant = "primary", className, ariaLabel = "Kipindi" }: LogoProps) {
+export function Logo({ variant = "primary", className, ariaLabel = "50pick" }: LogoProps) {
   if (variant === "monogram") {
     return (
       <svg
@@ -30,7 +30,7 @@ export function Logo({ variant = "primary", className, ariaLabel = "Kipindi" }: 
     return (
       <svg viewBox="0 0 200 48" xmlns="http://www.w3.org/2000/svg" role="img" aria-label={ariaLabel} className={cn("h-6", className)}>
         <text x={0} y={36} fontFamily="Sora, Inter, sans-serif" fontWeight={600} fontSize={32} fill="currentColor" letterSpacing={-0.5}>
-          Kipindi
+          50pick
         </text>
       </svg>
     );
@@ -44,7 +44,7 @@ export function Logo({ variant = "primary", className, ariaLabel = "Kipindi" }: 
           <circle cx={14} cy={-14} r={4} fill="var(--gold)" />
         </g>
         <text x={48} y={108} textAnchor="middle" fontFamily="Sora, Inter, sans-serif" fontWeight={600} fontSize={26} fill="currentColor" letterSpacing={-0.4}>
-          Kipindi
+          50pick
         </text>
       </svg>
     );
@@ -58,7 +58,7 @@ export function Logo({ variant = "primary", className, ariaLabel = "Kipindi" }: 
         <circle cx={14} cy={-14} r={4} fill="var(--gold)" />
       </g>
       <text x={72} y={42} fontFamily="Sora, Inter, sans-serif" fontWeight={600} fontSize={32} fill="currentColor" letterSpacing={-0.5}>
-        Kipindi
+        50pick
       </text>
     </svg>
   );

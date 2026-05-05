@@ -2,7 +2,7 @@
  * Backup + restore for the in-memory store.
  *
  * In dev / single-process production (current Railway deploy), the entire app
- * state lives in `globalThis.__KIPINDI_STORE`. A server restart clears it.
+ * state lives in `globalThis.__50PICK_STORE`. A server restart clears it.
  * This module:
  *
  *  1. Writes a JSON snapshot of the store to disk after every mutation
@@ -25,20 +25,20 @@ import { readFileSync, writeFileSync, mkdirSync, readdirSync, unlinkSync, exists
 import { join } from "node:path";
 import { audit } from "./audit";
 
-const BACKUP_DIR     = process.env.KIPINDI_BACKUP_DIR ?? join(process.cwd(), ".kipindi-backups");
+const BACKUP_DIR     = process.env.KIPINDI_BACKUP_DIR ?? join(process.cwd(), ".50pick-backups");
 const DEBOUNCE_MS    = 1_500;
 const MAX_SNAPSHOTS  = 12; // ~ last 18 minutes at 1.5s cadence
 const SNAPSHOT_FILE  = "store.snapshot.json";
 
 declare global {
   // eslint-disable-next-line no-var
-  var __KIPINDI_STORE: any | undefined;
+  var __50PICK_STORE: any | undefined;
   // eslint-disable-next-line no-var
-  var __KIPINDI_AUDIT_RING: any[] | undefined;
+  var __50PICK_AUDIT_RING: any[] | undefined;
   // eslint-disable-next-line no-var
-  var __KIPINDI_BACKUP_TIMER: ReturnType<typeof setTimeout> | undefined;
+  var __50PICK_BACKUP_TIMER: ReturnType<typeof setTimeout> | undefined;
   // eslint-disable-next-line no-var
-  var __KIPINDI_BACKUP_RESTORED: boolean | undefined;
+  var __50PICK_BACKUP_RESTORED: boolean | undefined;
 }
 
 function getSecret(): string {
@@ -56,7 +56,7 @@ function serializeStore(store: any): string {
     }
   }
   // Snapshot the audit ring alongside the store so the chain survives restarts
-  out.__auditRing = globalThis.__KIPINDI_AUDIT_RING ?? [];
+  out.__auditRing = globalThis.__50PICK_AUDIT_RING ?? [];
   return JSON.stringify(out);
 }
 
@@ -65,7 +65,7 @@ function deserializeStore(payload: string): Record<string, Map<unknown, unknown>
   const parsed = JSON.parse(payload);
   // Hoist the audit ring back to globalThis if present
   if (Array.isArray(parsed.__auditRing)) {
-    globalThis.__KIPINDI_AUDIT_RING = parsed.__auditRing;
+    globalThis.__50PICK_AUDIT_RING = parsed.__auditRing;
     delete parsed.__auditRing;
   }
   const restored: Record<string, Map<unknown, unknown>> = {};
@@ -90,9 +90,9 @@ function ensureDir() {
 
 /** Write the current store to disk now. Called by debounced wrapper. */
 function writeSnapshotNow(): void {
-  if (!globalThis.__KIPINDI_STORE) return;
+  if (!globalThis.__50PICK_STORE) return;
   ensureDir();
-  const payload = serializeStore(globalThis.__KIPINDI_STORE);
+  const payload = serializeStore(globalThis.__50PICK_STORE);
   const signature = sign(payload);
   const envelope = JSON.stringify({ v: 1, ts: new Date().toISOString(), payload, signature });
   const tmp = join(BACKUP_DIR, `${SNAPSHOT_FILE}.tmp`);
@@ -128,8 +128,8 @@ function pruneOldSnapshots() {
 
 /** Public API: schedule a backup. Debounced — bursts of mutations write once. */
 export function scheduleBackup(): void {
-  if (globalThis.__KIPINDI_BACKUP_TIMER) clearTimeout(globalThis.__KIPINDI_BACKUP_TIMER);
-  globalThis.__KIPINDI_BACKUP_TIMER = setTimeout(() => {
+  if (globalThis.__50PICK_BACKUP_TIMER) clearTimeout(globalThis.__50PICK_BACKUP_TIMER);
+  globalThis.__50PICK_BACKUP_TIMER = setTimeout(() => {
     try {
       writeSnapshotNow();
     } catch (err) {
@@ -147,10 +147,10 @@ export function scheduleBackup(): void {
 
 /** Restore from the latest snapshot. Idempotent — safe to call many times. */
 export function restoreLatest(): { restored: boolean; reason: string } {
-  if (globalThis.__KIPINDI_BACKUP_RESTORED) {
+  if (globalThis.__50PICK_BACKUP_RESTORED) {
     return { restored: false, reason: "already restored this process" };
   }
-  globalThis.__KIPINDI_BACKUP_RESTORED = true;
+  globalThis.__50PICK_BACKUP_RESTORED = true;
   ensureDir();
   const path = join(BACKUP_DIR, SNAPSHOT_FILE);
   if (!existsSync(path)) {
@@ -177,9 +177,9 @@ export function restoreLatest(): { restored: boolean; reason: string } {
   }
   // Merge into the existing store. New schema fields added since the snapshot
   // get default empty Maps thanks to the hot-reload safety in store.ts.
-  if (!globalThis.__KIPINDI_STORE) globalThis.__KIPINDI_STORE = {};
+  if (!globalThis.__50PICK_STORE) globalThis.__50PICK_STORE = {};
   for (const [k, v] of Object.entries(restored)) {
-    (globalThis.__KIPINDI_STORE as any)[k] = v;
+    (globalThis.__50PICK_STORE as any)[k] = v;
   }
   // Rebuild secondary indexes that aren't directly stored
   rebuildIndexes();
@@ -189,7 +189,7 @@ export function restoreLatest(): { restored: boolean; reason: string } {
 
 /** Rebuild Map indexes that weren't snapshotted — like usersByPhone, walletsByUser. */
 function rebuildIndexes() {
-  const s = globalThis.__KIPINDI_STORE;
+  const s = globalThis.__50PICK_STORE;
   if (!s) return;
   if (s.users instanceof Map) {
     s.usersByPhone = new Map();

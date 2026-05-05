@@ -11,7 +11,7 @@ export default function TermsPage() {
 
       <Section n="1" title="Operator + licence">
         <p>
-          The Kipindi service is operated by Kipindi Ltd, registered in the United Republic of Tanzania (TIN pending),
+          The 50pick service is operated by 50pick Ltd, registered in the United Republic of Tanzania (TIN pending),
           under licence from the Gaming Board of Tanzania (licence number to be confirmed at launch). Players must be
           18 years or older and physically present in Tanzania at the time of play.
         </p>
@@ -36,7 +36,7 @@ export default function TermsPage() {
 
       <Section n="4" title="How betting works">
         <p>
-          Kipindi operates a <strong>pool-based</strong> betting model. Stakes for a given match window are pooled.
+          50pick operates a <strong>pool-based</strong> betting model. Stakes for a given match window are pooled.
           When the window closes, the winning pool is shared pro-rata among players who picked the right side.
           The pay-rate shown at placement is the rate at that instant; final pay-rate is determined when the
           window closes. The operator's published payout structure is filed with the Gaming Board of Tanzania
@@ -59,7 +59,7 @@ export default function TermsPage() {
       <Section n="6" title="Voids and disputes">
         <p>Bets may be voided where the underlying match is abandoned, the wrong outcome is initially settled, or the
         result is corrected by the league or governing body within 24 hours of full-time. Disputes must be raised in
-        writing to support@kipindi.co.tz within 30 days of the bet placement.</p>
+        writing to support@50pick.com within 30 days of the bet placement.</p>
       </Section>
 
       <Section n="7" title="Responsible gambling">

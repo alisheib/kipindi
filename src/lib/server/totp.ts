@@ -6,7 +6,7 @@
  * ±1 step tolerance for clock skew.
  *
  * Security:
- *  - Secrets stored in `globalThis.__KIPINDI_STORE.totpSecrets` Map (production:
+ *  - Secrets stored in `globalThis.__50PICK_STORE.totpSecrets` Map (production:
  *    encrypted column on User row, AES-256-GCM at rest).
  *  - QR-code provisioning URI follows otpauth:// standard so any compliant
  *    authenticator app accepts it without manual entry.
@@ -23,15 +23,15 @@ const SKEW_STEPS = 1;
 
 declare global {
   // eslint-disable-next-line no-var
-  var __KIPINDI_STORE: any | undefined;
+  var __50PICK_STORE: any | undefined;
 }
 
 function ensureMap(): Map<string, string> {
-  if (!globalThis.__KIPINDI_STORE) globalThis.__KIPINDI_STORE = {};
-  if (!globalThis.__KIPINDI_STORE.totpSecrets) {
-    globalThis.__KIPINDI_STORE.totpSecrets = new Map<string, string>();
+  if (!globalThis.__50PICK_STORE) globalThis.__50PICK_STORE = {};
+  if (!globalThis.__50PICK_STORE.totpSecrets) {
+    globalThis.__50PICK_STORE.totpSecrets = new Map<string, string>();
   }
-  return globalThis.__KIPINDI_STORE.totpSecrets;
+  return globalThis.__50PICK_STORE.totpSecrets;
 }
 
 /** RFC 4648 base32 encode (no padding chars stripped, since otpauth tolerates either). */
@@ -90,7 +90,7 @@ function totpAt(secret: Buffer, time: number): string {
  * Provision a fresh TOTP secret for `userId` and return the otpauth URI for
  * QR-code rendering. Existing secret (if any) is replaced.
  */
-export function provisionTotp(userId: string, accountLabel: string, issuer = "Kipindi"): { secretBase32: string; otpauthUrl: string } {
+export function provisionTotp(userId: string, accountLabel: string, issuer = "50pick"): { secretBase32: string; otpauthUrl: string } {
   const secret = randomBytes(20);
   const secretBase32 = base32Encode(secret);
   ensureMap().set(userId, secretBase32);

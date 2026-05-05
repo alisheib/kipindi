@@ -114,9 +114,9 @@ export function smsHealthSnapshot() {
 /** Templated OTP message — keeps it ≤ 160 GSM-7 chars. EN + SW + FR. */
 export function otpMessage(code: string, locale: "EN" | "SW" | "FR" = "SW"): string {
   switch (locale) {
-    case "SW": return `Msimbo Kipindi: ${code}. Dakika 5. Usishirikishe.`;
-    case "FR": return `Code Kipindi : ${code}. Valide 5 min. Ne partagez pas.`;
+    case "SW": return `Msimbo 50pick: ${code}. Dakika 5. Usishirikishe.`;
+    case "FR": return `Code 50pick : ${code}. Valide 5 min. Ne partagez pas.`;
     case "EN":
-    default:   return `Kipindi code: ${code}. Valid 5 min. Don't share.`;
+    default:   return `50pick code: ${code}. Valid 5 min. Don't share.`;
   }
 }

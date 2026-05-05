@@ -46,9 +46,9 @@ const GENESIS = "GENESIS";
  */
 declare global {
   // eslint-disable-next-line no-var
-  var __KIPINDI_AUDIT_RING: AuditEntry[] | undefined;
+  var __50PICK_AUDIT_RING: AuditEntry[] | undefined;
 }
-const ring: AuditEntry[] = globalThis.__KIPINDI_AUDIT_RING ?? (globalThis.__KIPINDI_AUDIT_RING = []);
+const ring: AuditEntry[] = globalThis.__50PICK_AUDIT_RING ?? (globalThis.__50PICK_AUDIT_RING = []);
 
 function chainSecret(): string {
   return process.env.AUDIT_CHAIN_SECRET ?? process.env.SESSION_SECRET ?? "dev-only-audit-chain-secret";

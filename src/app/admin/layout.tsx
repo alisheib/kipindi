@@ -29,9 +29,8 @@ function activeKeyFromPath(path: string): string {
   if (path.startsWith("/admin/reports"))              return "reports";
   if (path.startsWith("/admin/players/cohorts"))      return "cohorts";
   if (path.startsWith("/admin/players"))              return "players";
-  if (path.startsWith("/admin/games/match"))          return "match";
-  if (path.startsWith("/admin/games/window"))         return "window";
-  if (path.startsWith("/admin/games/mapigo"))         return "mapigo";
+  if (path.startsWith("/admin/markets"))              return "markets";
+  if (path.startsWith("/admin/resolver-queue"))       return "resolver";
   if (path.startsWith("/admin/compliance"))           return "compliance";
   if (path.startsWith("/admin/aml"))                  return "aml";
   if (path.startsWith("/admin/self-exclusions"))      return "sx";

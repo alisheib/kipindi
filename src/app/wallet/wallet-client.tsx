@@ -6,10 +6,51 @@ import { Card, CardBody } from "@/components/ui/card";
 import { Tabs } from "@/components/ui/tabs";
 import { Chip } from "@/components/ui/chip";
 import { Button } from "@/components/ui/button";
-import { WalletCard } from "@/components/betting/wallet-card";
-import { TransactionRow } from "@/components/betting/transaction-row";
 import { ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 import type { Transaction } from "@/lib/mock-data";
+
+function WalletCard({ balance, pending, hold, currency }: { balance: number; pending: number; hold: number; currency: string }) {
+  return (
+    <div className="rounded-lg border border-border bg-bg-elevated p-5">
+      <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">Available · Salio</p>
+      <p
+        data-testid="wallet-balance"
+        data-balance={balance}
+        className="mt-1 font-display text-[44px] font-bold tabular-nums text-text leading-none"
+      >
+        {currency} {balance.toLocaleString("en-US")}
+      </p>
+      <div className="mt-4 grid grid-cols-2 gap-3 text-[12px]">
+        <div>
+          <p className="font-mono uppercase tracking-[0.14em] text-text-subtle">Pending</p>
+          <p className="font-mono tabular-nums text-text-muted">{currency} {pending.toLocaleString("en-US")}</p>
+        </div>
+        <div>
+          <p className="font-mono uppercase tracking-[0.14em] text-text-subtle">On hold</p>
+          <p className="font-mono tabular-nums text-text-muted">{currency} {hold.toLocaleString("en-US")}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TransactionRow({ tx }: { tx: Transaction }) {
+  const isCredit = tx.amount > 0;
+  return (
+    <div className="flex items-start justify-between gap-3 py-3 px-3">
+      <div className="flex-1 min-w-0">
+        <p className="font-display text-[14px] font-semibold text-text leading-tight truncate">{tx.description ?? tx.type}</p>
+        <p className="mt-0.5 font-mono text-[11px] text-text-subtle">{tx.createdAt?.replace("T", " ").slice(0, 19)}</p>
+      </div>
+      <div className="text-right">
+        <p className={`font-mono text-[15px] font-semibold tabular-nums ${isCredit ? "text-yes-300" : "text-text"}`}>
+          {isCredit ? "+" : ""}{tx.amount.toLocaleString("en-US")}
+        </p>
+        <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{tx.status}</p>
+      </div>
+    </div>
+  );
+}
 
 export function WalletPageClient({
   balance, pending, hold, currency,
@@ -108,7 +149,7 @@ export function WalletPageClient({
             { label: "Weekly deposit · Amana ya wiki",   value: "TZS 250,000" },
             { label: "Monthly deposit · Amana ya mwezi", value: "TZS 1,000,000" },
             { label: "Daily loss · Hasara ya siku",      value: "TZS 20,000" },
-            { label: "Session · Kipindi cha mchezo",     value: "60 min" },
+            { label: "Session · 50pick cha mchezo",     value: "60 min" },
           ].map((l) => (
             <Card key={l.label}>
               <CardBody className="flex items-center justify-between">

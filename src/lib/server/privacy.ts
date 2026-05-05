@@ -10,7 +10,7 @@
  * SLA: 30 calendar days from request to fulfilment (PDPA + GDPR aligned).
  *
  * In production this writes to a `dsar_request` Postgres table; here it lives on
- * `globalThis.__KIPINDI_DSAR_QUEUE` so it survives module reloads in dev.
+ * `globalThis.__50PICK_DSAR_QUEUE` so it survives module reloads in dev.
  */
 import { audit } from "./audit";
 import { db } from "./store";
@@ -33,9 +33,9 @@ export type DsarRequest = {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __KIPINDI_DSAR_QUEUE: DsarRequest[] | undefined;
+  var __50PICK_DSAR_QUEUE: DsarRequest[] | undefined;
 }
-const queue: DsarRequest[] = globalThis.__KIPINDI_DSAR_QUEUE ?? (globalThis.__KIPINDI_DSAR_QUEUE = []);
+const queue: DsarRequest[] = globalThis.__50PICK_DSAR_QUEUE ?? (globalThis.__50PICK_DSAR_QUEUE = []);
 
 /** Player-initiated request (called from /profile/account export/close flow). */
 export function fileDsarRequest(opts: { userId: string; type: DsarType; reason?: string }): DsarRequest {

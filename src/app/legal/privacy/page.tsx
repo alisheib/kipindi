@@ -10,7 +10,7 @@ export default function PrivacyPage() {
       <p className="text-caption text-text-tertiary">Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.</p>
 
       <Section n="1" title="Data controller">
-        <p>Kipindi Ltd, Dar es Salaam, Tanzania. Contact: <span className="font-mono">privacy@kipindi.co.tz</span>. Our data protection officer (DPO) is reachable at the same address.</p>
+        <p>50pick Ltd, Dar es Salaam, Tanzania. Contact: <span className="font-mono">privacy@50pick.com</span>. Our data protection officer (DPO) is reachable at the same address.</p>
       </Section>
 
       <Section n="2" title="What we collect">

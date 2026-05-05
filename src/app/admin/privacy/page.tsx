@@ -135,7 +135,7 @@ export default function AdminPrivacyPage() {
               <p className="text-text font-bold">Legal frame</p>
               <p>
                 Tanzania Personal Data Protection Act (2022) §29 grants the right of access, §30 correction, §31 erasure.
-                GDPR Art. 15 + 17 mirror those rights for European residents using Kipindi via roaming SIMs. Both regimes
+                GDPR Art. 15 + 17 mirror those rights for European residents using 50pick via roaming SIMs. Both regimes
                 set a 30-day fulfilment window. AML retention (POCA Cap 423 §16) takes precedence over erasure for 7 years
                 after closure on financial records.
               </p>

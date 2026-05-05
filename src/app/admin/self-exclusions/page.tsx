@@ -126,7 +126,7 @@ export default function AdminSelfExclusionsPage() {
             <p className="text-text font-bold">Cross-operator register (planned, Q3 2026)</p>
             <p>
               The Tanzania Gaming Board&apos;s cross-operator self-exclusion register will accept a daily SFTP upload of
-              this roster so a player who self-excludes on Kipindi is also blocked at all other licensed operators.
+              this roster so a player who self-excludes on 50pick is also blocked at all other licensed operators.
               Format: hashed-NIDA + region + period; reviewed by GBT compliance unit.
             </p>
           </div>

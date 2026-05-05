@@ -3,9 +3,9 @@ import { Database, ShieldCheck } from "lucide-react";
 import { SystemActions } from "./system-client";
 import { db } from "@/lib/server/store";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
-import { feedHealth, getActiveAdapter } from "@/lib/server/match-feed";
 import { smsHealthSnapshot, sms as smsClient } from "@/lib/server/sms";
 import { rateLimitSnapshot } from "@/lib/server/rate-limit";
+import { listMarkets } from "@/lib/server/market-service";
 
 export const metadata = { title: "Admin · System" };
 export const dynamic = "force-dynamic";
@@ -13,11 +13,11 @@ export const dynamic = "force-dynamic";
 export default function AdminSystemPage() {
   const chain = verifyChain();
   const auditCount = getAuditPage({ limit: 100_000 }).length;
-  const feed = feedHealth();
-  const feedAdapter = getActiveAdapter();
   const smsHealth = smsHealthSnapshot();
   const totalUsers = db.user.list().length;
   const buckets = rateLimitSnapshot();
+  const liveMarkets = listMarkets({ status: "LIVE" }).length;
+  const resolvedMarkets = listMarkets({ status: "RESOLVED" }).length;
 
   return (
     <>
@@ -27,7 +27,7 @@ export default function AdminSystemPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <AdminKpi label="Audit chain"   sw="Mlolongo wa ukaguzi" value={chain.valid ? "Valid" : "BROKEN"} delta={`${auditCount.toLocaleString()} entries`} deltaDir={chain.valid ? "up" : "down"} pulse={!chain.valid} />
           <AdminKpi label="Total users"   sw="Watumiaji"            value={totalUsers.toLocaleString()} />
-          <AdminKpi label="Match-feed"    sw="Mlisho wa mechi"       value={feed.calls === 0 ? "Idle" : `${(feed.failRate * 100).toFixed(1)}% fail`} delta={`${feedAdapter.name} · ${feed.calls} calls`} />
+          <AdminKpi label="Markets live"  sw="Soko hai"              value={liveMarkets.toLocaleString()} delta={`${resolvedMarkets} resolved`} />
           <AdminKpi label="SMS provider"  sw="Watoa SMS"            value={smsHealth.sent + smsHealth.failed === 0 ? "Idle" : `${(smsHealth.successRate * 100).toFixed(1)}% ok`} delta={`${smsClient.name} · ${smsHealth.sent} sent`} />
         </div>
 

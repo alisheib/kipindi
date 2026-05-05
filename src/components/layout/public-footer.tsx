@@ -18,14 +18,14 @@ export function PublicFooter() {
             <span aria-label="18 plus only" className="inline-flex items-center justify-center w-7 h-7 rounded-full border-2 border-danger text-danger font-display font-bold text-body-sm">
               18+
             </span>
-            <span className="font-display font-bold text-body-sm text-text">Kipindi</span>
+            <span className="font-display font-bold text-body-sm text-text">50pick</span>
           </div>
           <p className="text-text-tertiary leading-relaxed">
             Licensed by the Gaming Board of Tanzania.
             <br />
             <span className="font-mono text-text-secondary">License: {license}</span>
           </p>
-          <p className="text-text-tertiary">© {new Date().getFullYear()} Kipindi · Tanzania</p>
+          <p className="text-text-tertiary">© {new Date().getFullYear()} 50pick · Tanzania</p>
         </div>
 
         <div className="space-y-1.5">

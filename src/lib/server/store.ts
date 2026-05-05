@@ -181,7 +181,7 @@ export type StoredSourceOfFunds = {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __KIPINDI_STORE: {
+  var __50PICK_STORE: {
     users: Map<string, StoredUser>;
     usersByPhone: Map<string, string>;
     kyc: Map<string, StoredKyc>;
@@ -198,7 +198,7 @@ declare global {
   } | undefined;
 }
 
-const store = globalThis.__KIPINDI_STORE ?? (globalThis.__KIPINDI_STORE = {
+const store = globalThis.__50PICK_STORE ?? (globalThis.__50PICK_STORE = {
   users: new Map(),
   usersByPhone: new Map(),
   kyc: new Map(),
@@ -232,8 +232,8 @@ function tap() {
 }
 
 // On first import in this process, attempt to restore from the latest snapshot.
-// Idempotent — `restoreLatest` self-guards via __KIPINDI_BACKUP_RESTORED.
-if (typeof window === "undefined" && !globalThis.__KIPINDI_BACKUP_RESTORED) {
+// Idempotent — `restoreLatest` self-guards via __50PICK_BACKUP_RESTORED.
+if (typeof window === "undefined" && !globalThis.__50PICK_BACKUP_RESTORED) {
   import("./backup").then((m) => m.restoreLatest()).catch(() => {});
 }
 

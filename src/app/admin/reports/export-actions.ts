@@ -46,7 +46,7 @@ export async function exportGbtMonthly(): Promise<ExportResult> {
 
   const lines: string[] = [
     "GBT Monthly Summary",
-    `Operator,Kipindi Africa`,
+    `Operator,50pick Africa`,
     `Period,${periodLabel}`,
     `Generated_at,${new Date().toISOString()}`,
     `Reviewer,${session.userId}`,
@@ -243,7 +243,7 @@ export async function exportSxRegister(): Promise<ExportResult> {
         u.createdAt,
         r.selfExclusionUntil ?? "",
         Math.ceil((sxAt - now) / 86_400_000),
-        "kipindi",
+        "50pick",
         "v1",
       ]));
     } else if (coAt > now) {
@@ -257,7 +257,7 @@ export async function exportSxRegister(): Promise<ExportResult> {
         u.createdAt,
         r.coolingOffUntil ?? "",
         Math.ceil((coAt - now) / 86_400_000),
-        "kipindi",
+        "50pick",
         "v1",
       ]));
     }
@@ -268,7 +268,7 @@ export async function exportSxRegister(): Promise<ExportResult> {
   lines.push(`# Hash_alg=SHA-256(salt:nida)`);
   lines.unshift("");
   lines.unshift(`# Cross-operator self-exclusion register`);
-  lines.unshift(`# Operator=Kipindi Africa`);
+  lines.unshift(`# Operator=50pick Africa`);
   lines.unshift(`# Generated_at=${new Date().toISOString()}`);
   lines.unshift(`# Reviewer=${session.userId}`);
   lines.unshift(`# Format=GBT cross-operator v1`);

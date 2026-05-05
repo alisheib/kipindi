@@ -19,7 +19,7 @@ export async function exportDataAction(): Promise<{ ok: true; payload: string; f
   return {
     ok: true,
     payload: JSON.stringify(data, null, 2),
-    filename: `kipindi-data-${session.userId}-${new Date().toISOString().slice(0, 10)}.json`,
+    filename: `50pick-data-${session.userId}-${new Date().toISOString().slice(0, 10)}.json`,
   };
 }
 

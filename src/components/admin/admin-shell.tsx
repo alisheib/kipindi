@@ -1,7 +1,7 @@
 /**
  * Admin shell — confidentiality band, grouped sidebar, top bar with crumbs.
  *
- * Inherits the Kipindi design system: existing tokens, Sora/Inter/JBM fonts,
+ * Inherits the 50pick design system: existing tokens, Sora/Inter/JBM fonts,
  * gold-positive / royal-active / muted-loss colour discipline. The wireframe
  * spec lives in `mapigo/admin-wf/awf-shell.jsx` (engineering view) and the
  * canonical visual reference is `mapigo/admin-wf/design-canvas.jsx`.
@@ -43,11 +43,10 @@ export const NAV_GROUPS: ReadonlyArray<{
     ],
   },
   {
-    group: { en: "Games", sw: "Michezo" },
+    group: { en: "Markets", sw: "Soko" },
     items: [
-      { href: "/admin/games/match",  label: "Match betting", key: "match" },
-      { href: "/admin/games/window", label: "Window pools",  key: "window" },
-      { href: "/admin/games/mapigo", label: "Mapigo",        key: "mapigo" },
+      { href: "/admin/markets",        label: "Curation queue", key: "markets" },
+      { href: "/admin/resolver-queue", label: "Resolver queue", key: "resolver" },
     ],
   },
   {
@@ -86,7 +85,7 @@ export function ConfidentialBand({ session }: { session: AdminSession }) {
         <span className="text-white">Staff · Confidential · Internal only</span>
       </span>
       <span className="hidden sm:inline text-white/70">
-        Kipindi Africa · session #{shortSessionLabel(session)} · officer · {email}
+        50pick Africa · session #{shortSessionLabel(session)} · officer · {email}
       </span>
     </div>
   );
@@ -112,7 +111,7 @@ export function AdminSidebar({ activeKey }: { activeKey: string }) {
     <aside className="hidden lg:flex w-[220px] shrink-0 bg-bg-elevated border-r border-border-divider px-3 py-4 flex-col gap-1 sticky top-0 self-start max-h-screen overflow-y-auto">
       <Link href="/admin" className="flex items-center gap-2 px-2 pb-3 mb-2 border-b border-dashed border-border-subtle">
         <span aria-hidden className="h-3.5 w-3.5 rounded-pill border-[1.5px] border-gold" />
-        <span className="font-display font-bold text-body-sm text-text">kipindi · admin</span>
+        <span className="font-display font-bold text-body-sm text-text">50pick · admin</span>
       </Link>
       {NAV_GROUPS.map((g) => (
         <div key={g.group.en}>

@@ -4,8 +4,9 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
-import { OPERATOR_MARGIN } from "@/lib/server/market-service";
 import { buyPositionAction } from "@/app/markets/actions";
+
+const OPERATOR_MARGIN = 0.09;
 
 type Side = "YES" | "NO";
 type Props = {
@@ -85,16 +86,20 @@ export function BuyTray({ marketId, yesPool, noPool, initialSide = "YES" }: Prop
         </button>
       </div>
 
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">Stake amount</p>
-      <div className="flex h-11 items-center gap-2 rounded-md border border-border bg-bg-overlay px-3 focus-within:border-teal-300">
-        <span className="font-mono text-[13px] text-text-subtle">TZS</span>
-        <input
-          inputMode="numeric"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value.replace(/[^\d,]/g, ""))}
-          className="flex-1 bg-transparent font-mono text-[16px] tabular-nums text-text outline-none"
-        />
-      </div>
+      <label className="block">
+        <span className="block mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">Stake amount</span>
+        <span className="flex h-11 items-center gap-2 rounded-md border border-border bg-bg-overlay px-3 focus-within:border-teal-300">
+          <span className="font-mono text-[13px] text-text-subtle">TZS</span>
+          <input
+            inputMode="numeric"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value.replace(/[^\d,]/g, ""))}
+            aria-label="Stake amount in TZS"
+            placeholder="25,000"
+            className="flex-1 bg-transparent font-mono text-[16px] tabular-nums text-text outline-none"
+          />
+        </span>
+      </label>
       <div className="mt-2.5 flex flex-wrap gap-1.5">
         {chips.map((c) => (
           <button

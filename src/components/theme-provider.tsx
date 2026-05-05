@@ -4,7 +4,6 @@ import { ThemeProvider as NextThemesProvider } from "next-themes";
 import type { ComponentProps } from "react";
 import { I18nProvider, type Locale } from "@/lib/i18n";
 import { ToastProvider } from "@/components/ui/toast";
-import { CrossPageWinToast } from "@/components/betting/cross-page-win-toast";
 
 /**
  * Read the locale from the kp-locale cookie at first client paint so the
@@ -32,7 +31,6 @@ export function ThemeProvider({ children, ...props }: ComponentProps<typeof Next
     >
       <I18nProvider initial={readInitialLocale()}>
         <ToastProvider>
-          <CrossPageWinToast />
           {children}
         </ToastProvider>
       </I18nProvider>

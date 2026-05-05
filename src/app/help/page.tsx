@@ -11,7 +11,7 @@ const FAQS = [
     a: "Stakes from every player on the same time-window join one pool. When the window closes, the winning side shares the pool — the bigger your stake relative to the winning pool, the bigger your share. The pay-rate shown at placement is the rate at that instant; the final rate is determined when the pool closes.",
   },
   {
-    q: "What's a window? · Kipindi ni nini?",
+    q: "What's a window? · 50pick ni nini?",
     a: "A window is a slice of the match: 0–15 minutes, 15–30, 30–45, 45–60, or full-time. Each window is its own pool. Pick the window you want to bet on, then pick home, away, or draw within that window.",
   },
   {
@@ -64,9 +64,9 @@ export default function HelpPage() {
           <ContactCard
             icon={<Mail size={18} className="text-royal" />}
             title="Email"
-            value="support@kipindi.co.tz"
+            value="support@50pick.com"
             sub="Reply within 4h on business days"
-            href="mailto:support@kipindi.co.tz"
+            href="mailto:support@50pick.com"
           />
           <ContactCard
             icon={<MessageCircle size={18} className="text-gold" />}
