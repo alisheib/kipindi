@@ -157,10 +157,10 @@ export function TippingBar({
         style={{
           position: "relative",
           height,
-          background: "oklch(22% 0.01 240)",
+          background: "var(--bar-track)",
           borderRadius: height / 2,
           overflow: "visible",
-          boxShadow: "inset 0 0 0 1px oklch(28% 0.013 240)",
+          boxShadow: "inset 0 0 0 1px var(--bar-track-border)",
         }}
         role="progressbar"
         aria-valuenow={yes}
@@ -194,16 +194,16 @@ export function TippingBar({
         <div
           style={{
             position: "absolute",
-            left: `calc(${yes}% - 1px)`,
-            top: -6,
-            bottom: -6,
+            left: `calc(${yes}% - 1.5px)`,
+            top: -8,
+            bottom: -8,
             width: 3,
-            background: "oklch(96% 0.005 240)",
+            background: "var(--bar-needle)",
             borderRadius: 2,
             transformOrigin: "50% 100%",
             transform: `rotate(${tilt}deg)`,
             transition: ease,
-            boxShadow: "0 0 10px oklch(96% 0.005 240 / 0.6)",
+            boxShadow: "0 0 12px var(--bar-needle-glow)",
           }}
         />
         {resolved && (
@@ -230,14 +230,14 @@ export function TippingBar({
             letterSpacing: "0.05em",
           }}
         >
-          <span style={{ color: "oklch(70% 0.10 152)" }}>
-            YES <strong style={{ color: "oklch(80% 0.13 152)" }}>{yes}%</strong>
+          <span style={{ color: "var(--bar-label-yes)" }}>
+            YES <strong style={{ color: "var(--bar-label-yes-strong)" }}>{yes}%</strong>
           </span>
-          <span style={{ color: "oklch(72% 0.04 240)", fontStyle: "italic", textTransform: "uppercase", fontSize: 9 }}>
+          <span style={{ color: "var(--bar-label-tipping)", fontStyle: "italic", textTransform: "uppercase", fontSize: 9 }}>
             {Math.abs(yes - 50) < 3 ? "tipping" : yes > 50 ? "leans yes" : "leans no"}
           </span>
-          <span style={{ color: "oklch(68% 0.10 22)" }}>
-            <strong style={{ color: "oklch(78% 0.14 22)" }}>{no}%</strong> NO
+          <span style={{ color: "var(--bar-label-no)" }}>
+            <strong style={{ color: "var(--bar-label-no-strong)" }}>{no}%</strong> NO
           </span>
         </div>
       )}
@@ -278,13 +278,13 @@ export function ConfidenceDial({
             <circle cx={cx} cy={cy} r={r} />
           </clipPath>
         </defs>
-        <circle cx={cx} cy={cy} r={r} fill="oklch(15% 0.01 240)" />
+        <circle cx={cx} cy={cy} r={r} fill="var(--bar-track)" />
         <g clipPath={`url(#cd-${id})`}>
           <path d={`M ${top.x} ${top.y} A ${r} ${r} 0 0 0 ${bot.x} ${bot.y} L ${top.x} ${top.y} Z`} fill="oklch(50% 0.14 152)" opacity={0.92} />
           <path d={`M ${top.x} ${top.y} A ${r} ${r} 0 0 1 ${bot.x} ${bot.y} L ${top.x} ${top.y} Z`} fill="oklch(52% 0.16 22)" opacity={0.92} />
-          <line x1={top.x} y1={top.y} x2={bot.x} y2={bot.y} stroke="oklch(96% 0.005 240)" strokeWidth="2.2" strokeLinecap="round" />
+          <line x1={top.x} y1={top.y} x2={bot.x} y2={bot.y} stroke="var(--bar-needle)" strokeWidth="2.2" strokeLinecap="round" />
         </g>
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke="oklch(28% 0.013 240)" strokeWidth="1.5" />
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--bar-track-border)" strokeWidth="1.5" />
         <text
           x={cx}
           y={cy + 1.5}
@@ -293,7 +293,7 @@ export function ConfidenceDial({
           fontFamily="'JetBrains Mono', ui-monospace, monospace"
           fontWeight={700}
           fontSize="22"
-          fill="oklch(96% 0.005 240)"
+          fill="var(--text)"
           style={{ letterSpacing: "-0.04em" }}
         >
           {yes}

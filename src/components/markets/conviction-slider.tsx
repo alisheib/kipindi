@@ -161,15 +161,19 @@ export function ConvictionSlider({
         aria-valuenow={Math.round(needle)}
         onPointerDown={onPointerDown}
         onKeyDown={onKeyDown}
-        className="relative h-12 cursor-grab active:cursor-grabbing select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 rounded-pill"
+        className="relative h-14 cursor-grab active:cursor-grabbing select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 rounded-pill touch-none"
       >
         {/* Track */}
         <div
-          className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-7 rounded-pill border border-border bg-bg-overlay overflow-hidden"
+          className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-8 rounded-pill overflow-hidden"
+          style={{
+            background: "var(--bar-track)",
+            boxShadow: "inset 0 0 0 1px var(--bar-track-border), inset 0 1px 4px rgba(0,0,0,0.18)",
+          }}
         >
           {/* YES fill — left half */}
           <div
-            className="absolute left-0 top-0 bottom-0 transition-[width] ease-stage rounded-l-pill"
+            className="absolute left-0 top-0 bottom-0 rounded-l-pill"
             style={{
               width: `${needle < 50 ? yesPortion : 50}%`,
               background: "linear-gradient(90deg, oklch(50% 0.14 152) 0%, oklch(58% 0.16 152) 100%)",
@@ -179,7 +183,7 @@ export function ConvictionSlider({
           />
           {/* NO fill — right half */}
           <div
-            className="absolute right-0 top-0 bottom-0 transition-[width] ease-stage rounded-r-pill"
+            className="absolute right-0 top-0 bottom-0 rounded-r-pill"
             style={{
               width: `${needle >= 50 ? yesPortion : 50}%`,
               background: "linear-gradient(270deg, oklch(52% 0.16 22) 0%, oklch(60% 0.18 22) 100%)",
@@ -188,33 +192,66 @@ export function ConvictionSlider({
             }}
           />
           {/* Centre tick (50/50) */}
-          <div className="absolute left-1/2 top-0 bottom-0 -translate-x-1/2 w-px bg-bg-elevated/60 pointer-events-none" />
+          <div
+            className="absolute left-1/2 top-0 bottom-0 -translate-x-1/2 w-px pointer-events-none"
+            style={{ background: "var(--bar-needle-glow)", opacity: 0.45 }}
+          />
         </div>
+
         {/* Needle */}
         <div
           className="absolute top-0 bottom-0"
           style={{
-            left: `calc(${needle}% - 2px)`,
-            width: 4,
+            left: `calc(${needle}% - 1.5px)`,
+            width: 3,
             transition: "left 80ms cubic-bezier(.2,.8,.2,1)",
           }}
         >
           <div
             className="h-full mx-auto rounded-pill"
             style={{
-              width: 4,
-              background: "oklch(96% 0.005 240)",
+              width: 3,
+              background: "var(--bar-needle)",
               transformOrigin: "50% 100%",
               transform: `rotate(${tilt}deg)`,
-              boxShadow: "0 0 14px oklch(96% 0.005 240 / 0.7)",
+              boxShadow: "0 0 14px var(--bar-needle-glow)",
             }}
           />
-          {/* Grip handle */}
+          {/* Grip handle — glows the side colour, larger touch target, tactile groove */}
           <div
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-9 w-9 rounded-pill bg-bg-elevated border-2 border-text shadow-e4 pointer-events-none flex items-center justify-center"
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-12 w-12 rounded-pill pointer-events-none flex items-center justify-center"
             aria-hidden
+            style={{
+              background: "var(--bg-elevated)",
+              border: "2px solid var(--bar-needle)",
+              boxShadow: side === "YES"
+                ? "0 6px 18px oklch(58% 0.16 152 / 0.45), 0 2px 6px rgba(0,0,0,0.3), inset 0 1px 0 var(--bar-needle-glow)"
+                : "0 6px 18px oklch(60% 0.18 22 / 0.45), 0 2px 6px rgba(0,0,0,0.3), inset 0 1px 0 var(--bar-needle-glow)",
+              transition: "box-shadow 200ms cubic-bezier(.2,.8,.2,1)",
+            }}
           >
-            <span className="block w-2 h-2 rounded-full" style={{ background: side === "YES" ? "oklch(70% 0.18 150)" : "oklch(65% 0.20 25)" }} />
+            {/* Tactile dot — glows the active side */}
+            <span
+              className="block h-2.5 w-2.5 rounded-full"
+              style={{
+                background: side === "YES" ? "oklch(70% 0.18 150)" : "oklch(65% 0.20 25)",
+                boxShadow: side === "YES"
+                  ? "0 0 14px oklch(70% 0.18 150)"
+                  : "0 0 14px oklch(65% 0.20 25)",
+                transition: "background 200ms, box-shadow 200ms",
+              }}
+            />
+            {/* Two grip lines on either side of the dot */}
+            <span
+              aria-hidden
+              className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-px rounded-pill opacity-40"
+              style={{ background: "var(--bar-needle)" }}
+            />
+            <span
+              aria-hidden
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-px rounded-pill opacity-40"
+              style={{ background: "var(--bar-needle)" }}
+            />
           </div>
         </div>
       </div>

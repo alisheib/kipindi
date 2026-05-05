@@ -54,27 +54,42 @@ export default function LivePage() {
       <BrandTopo opacity={0.04} />
 
       <div className="relative mx-auto max-w-[1280px] px-3 lg:px-6 py-6 lg:py-10 space-y-8">
-        {/* Hero — kit BannerSocial composition, simplified */}
+        {/* Hero — kit BannerSocial composition, simplified, theme-adaptive */}
         <header className="relative rounded-xl border border-border overflow-hidden">
           <div
             className="absolute inset-0"
-            style={{ background: "linear-gradient(160deg, oklch(15% 0.03 215) 0%, oklch(20% 0.06 152) 50%, oklch(18% 0.05 22) 100%)" }}
+            style={{ background: "var(--hero-grad-warm)" }}
             aria-hidden
           />
           <BrandTopo id="live-hero" opacity={0.06} />
           <div className="relative p-6 lg:p-10 flex flex-col lg:flex-row lg:items-end gap-6 lg:justify-between">
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <PulseRing size={20} color="oklch(72% 0.20 25)">
-                  <span className="block w-2 h-2 rounded-full bg-no-400" />
+                <PulseRing size={20} color="var(--hero-no-accent)">
+                  <span className="block w-2 h-2 rounded-full" style={{ background: "var(--hero-no-accent)" }} />
                 </PulseRing>
-                <p className="font-mono text-[11px] uppercase tracking-[0.20em] font-bold text-no-300">Live · Hai</p>
+                <p
+                  className="font-mono text-[11px] uppercase tracking-[0.20em] font-bold"
+                  style={{ color: "var(--hero-no-accent)" }}
+                >
+                  Live · Hai
+                </p>
               </div>
-              <h1 className="font-display font-bold text-[34px] sm:text-[44px] lg:text-[56px] leading-[1.0] tracking-[-0.03em] text-text">
-                The pulse of <span className="text-yes-300">YES</span> &{" "}
-                <span className="text-no-300">NO</span>.
+              <h1
+                className="font-display font-bold text-[34px] sm:text-[44px] lg:text-[56px] leading-[1.0] tracking-[-0.03em]"
+                style={{ color: "var(--hero-text-strong)" }}
+              >
+                The pulse of{" "}
+                <span style={{ color: "var(--hero-yes-accent)" }}>YES</span>
+                {" "}&{" "}
+                <span style={{ color: "var(--hero-no-accent)" }}>NO</span>.
               </h1>
-              <p className="mt-3 text-[14px] lg:text-[16px] text-text-muted italic max-w-[58ch]">Mapigo ya YES na NO.</p>
+              <p
+                className="mt-3 text-[14px] lg:text-[16px] italic max-w-[58ch]"
+                style={{ color: "var(--hero-text-muted)" }}
+              >
+                Mapigo ya YES na NO.
+              </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Stat label="Open markets" sw="Soko hai" value={String(markets.length)} />

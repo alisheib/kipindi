@@ -192,6 +192,28 @@
   --g-jackpot:  radial-gradient(circle at 30% 20%, var(--gold-300), var(--gold-700));
   --g-aurora:   linear-gradient(135deg, var(--teal-700), var(--teal-500), var(--gold-700));
   --g-pool:     linear-gradient(135deg, var(--teal-800), var(--teal-600));
+
+  /* ---------- Theme-adaptive surfaces (kit primitives) ---------- */
+  /* Hero gradient — used by landing + /live + /admin banners */
+  --hero-grad:        linear-gradient(135deg, oklch(14% 0.012 240) 0%, oklch(18% 0.03 215) 100%);
+  --hero-grad-warm:   linear-gradient(160deg, oklch(15% 0.03 215) 0%, oklch(20% 0.06 152) 50%, oklch(18% 0.05 22) 100%);
+  --hero-mark-opacity: 0.10;
+  --hero-text-strong:  oklch(96% 0.005 240);
+  --hero-text-muted:   oklch(78% 0.012 240);
+  --hero-yes-accent:   oklch(80% 0.13 152);
+  --hero-no-accent:    oklch(78% 0.14 22);
+  --hero-tag-yes:      oklch(72% 0.10 152);
+
+  /* TippingBar track + needle (was hardcoded, now adapts to theme) */
+  --bar-track:         oklch(22% 0.01 240);
+  --bar-track-border:  oklch(28% 0.013 240);
+  --bar-needle:        oklch(96% 0.005 240);
+  --bar-needle-glow:   oklch(96% 0.005 240 / 0.7);
+  --bar-label-yes:     oklch(70% 0.10 152);
+  --bar-label-yes-strong: oklch(80% 0.13 152);
+  --bar-label-no:      oklch(68% 0.10 22);
+  --bar-label-no-strong:  oklch(78% 0.14 22);
+  --bar-label-tipping: oklch(72% 0.04 240);
 }
 
 [data-theme="light"], html[data-theme="light"], html.light {
@@ -218,6 +240,30 @@
   --text-primary:   var(--text);
   --text-secondary: oklch(28% 0.01 240);
   --text-tertiary:  var(--text-muted);
+
+  /* ---------- Theme-adaptive surfaces — LIGHT mode ---------- */
+  /* Hero now reads as a calm cream-to-mint card with strong inks
+     instead of trying to be a dark marketing banner on a light page. */
+  --hero-grad:        linear-gradient(135deg, oklch(98% 0.01 215) 0%, oklch(94% 0.025 152) 100%);
+  --hero-grad-warm:   linear-gradient(160deg, oklch(97% 0.012 215) 0%, oklch(95% 0.025 152) 50%, oklch(96% 0.020 22) 100%);
+  --hero-mark-opacity: 0.05;
+  --hero-text-strong:  oklch(20% 0.01 240);
+  --hero-text-muted:   oklch(38% 0.014 240);
+  --hero-yes-accent:   oklch(38% 0.13 152);
+  --hero-no-accent:    oklch(45% 0.18 22);
+  --hero-tag-yes:      oklch(35% 0.13 152);
+
+  /* TippingBar — needle becomes dark, track becomes warm light grey,
+     labels become saturated/dark so they actually read on cream. */
+  --bar-track:         oklch(94% 0.01 240);
+  --bar-track-border:  oklch(85% 0.014 240);
+  --bar-needle:        oklch(20% 0.01 240);
+  --bar-needle-glow:   oklch(20% 0.01 240 / 0.4);
+  --bar-label-yes:     oklch(40% 0.12 152);
+  --bar-label-yes-strong: oklch(32% 0.13 152);
+  --bar-label-no:      oklch(45% 0.16 22);
+  --bar-label-no-strong:  oklch(38% 0.18 22);
+  --bar-label-tipping: oklch(45% 0.014 240);
 }
 
 html:not([data-theme="light"]):not(.light) { color-scheme: dark; }
