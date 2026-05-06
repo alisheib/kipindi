@@ -10,6 +10,7 @@
 import { db } from "@/lib/server/store";
 import { listPositionsForUser, listMarkets, seedDemoMarkets } from "@/lib/server/market-service";
 import { PriceChart, VolumeSparkline } from "@/components/markets/price-chart";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export const metadata = { title: "Leaderboard · Bingwa" };
 export const dynamic = "force-dynamic";
@@ -213,12 +214,20 @@ function TierBadge({ tier }: { tier: Tier }) {
     bronze: "bg-gold-700 text-gold-50",
   }[tier];
   const letter = { diamond: "D", gold: "G", silver: "S", bronze: "B" }[tier];
+  const desc = {
+    diamond: "Diamond · ≥20 resolved · ≥30% ROI",
+    gold:    "Gold · ≥10 resolved · ≥15% ROI",
+    silver:  "Silver · ≥5 resolved · positive ROI",
+    bronze:  "Bronze · entry tier",
+  }[tier];
   return (
-    <span
-      className={`inline-flex h-5 w-5 items-center justify-center rounded-pill font-mono text-[10px] font-bold ${cls}`}
-      title={tier}
-    >
-      {letter}
-    </span>
+    <Tooltip label={desc}>
+      <span
+        className={`inline-flex h-5 w-5 items-center justify-center rounded-pill font-mono text-[10px] font-bold ${cls}`}
+        aria-label={tier}
+      >
+        {letter}
+      </span>
+    </Tooltip>
   );
 }

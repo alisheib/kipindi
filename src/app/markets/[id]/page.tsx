@@ -5,6 +5,7 @@ import { TippingBar } from "@/components/brand";
 import { ConvictionDial } from "@/components/markets/conviction-dial";
 import { Countdown } from "@/components/markets/countdown";
 import { ShareButton } from "@/components/markets/share-button";
+import { NotifyPrompt } from "@/components/markets/notify-prompt";
 import { getMarket, impliedYesPct, listPositionsForMarket, listPositionsForUser, seedDemoMarkets } from "@/lib/server/market-service";
 import { currentSession } from "@/lib/server/auth-service";
 
@@ -146,9 +147,12 @@ export default async function MarketDetail({
           )}
         </section>
 
-        <aside>
+        <aside className="space-y-3">
           {!isResolved && m.status === "LIVE" ? (
-            <ConvictionDial marketId={m.id} yesPool={m.yesPool} noPool={m.noPool} />
+            <>
+              <ConvictionDial marketId={m.id} yesPool={m.yesPool} noPool={m.noPool} />
+              <NotifyPrompt marketId={m.id} marketTitle={m.titleEn} />
+            </>
           ) : (
             <div className="rounded-lg border border-border bg-bg-elevated p-6 text-center">
               <p className="font-display text-[16px] font-semibold text-text">Market closed for predictions</p>

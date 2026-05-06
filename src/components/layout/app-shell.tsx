@@ -2,6 +2,7 @@ import { TopAppBar } from "./top-app-bar";
 import { BottomNav } from "./bottom-nav";
 import { DemoBanner } from "./demo-banner";
 import { PublicFooter } from "./public-footer";
+import { NotifyPoller } from "@/components/markets/notify-poller";
 import { getSession } from "@/lib/server/session";
 import { db } from "@/lib/server/store";
 import { user as guestUser } from "@/lib/mock-data";
@@ -33,6 +34,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <PublicFooter />
       <BottomNav />
       <RealityCheckHost enabled={!!session} intervalMin={realityCheckMin} />
+      <NotifyPoller />
     </div>
   );
 }
