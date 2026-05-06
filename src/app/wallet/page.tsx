@@ -20,10 +20,8 @@ function adaptTxn(t: StoredTxn): Transaction {
     type: typeMap[t.type],
     amount: t.amount,
     status: statusMap[t.status],
-    provider: t.provider ?? undefined,
-    ref: t.providerRef ?? t.id,
     description: t.description ?? "",
-    at: t.createdAt,
+    createdAt: t.createdAt,
   };
 }
 
