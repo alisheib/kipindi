@@ -28,11 +28,20 @@ const VIEWPORTS = {
 // the manager always sees one screen at a time. `scrollTo` is the page-Y
 // the viewport should be parked at before the shot. Pages with long content
 // get multiple shots (e.g. admin-config: top + rates + per-market override).
+//
+// `interact` runs after navigation + scroll, before the screenshot — used to
+// show the conviction dial mid-drag and the bet-confirm modal in flight.
 const PAGES = [
   { slug: "landing",                       url: "/",              scrollTo: 0 },
   { slug: "landing-grid",                  url: "/",              scrollTo: 720 },
   { slug: "markets",                       url: "/markets",       scrollTo: 0,    auth: true },
   { slug: "market-detail",                 url: null,             scrollTo: 0,    auth: true, dynamic: "first-market" },
+  // Conviction dial — needle moved to the YES side (~78% conviction)
+  { slug: "market-detail-dial-yes",        url: null,             scrollTo: 0,    auth: true, dynamic: "first-market", interact: "dial-yes" },
+  // Conviction dial — needle moved to the NO side (~22%)
+  { slug: "market-detail-dial-no",         url: null,             scrollTo: 0,    auth: true, dynamic: "first-market", interact: "dial-no" },
+  // Bet-confirm modal in flight (5s lock countdown)
+  { slug: "market-detail-confirm-modal",   url: null,             scrollTo: 0,    auth: true, dynamic: "first-market", interact: "confirm-modal" },
   { slug: "market-detail-chart",           url: null,             scrollTo: 580,  auth: true, dynamic: "first-market" },
   { slug: "profile",                       url: "/profile",       scrollTo: 0,    auth: true },
   { slug: "profile-settings",              url: "/profile",       scrollTo: 320,  auth: true },
@@ -42,6 +51,33 @@ const PAGES = [
   { slug: "admin-config-overrides",        url: "/admin/config",  scrollTo: 720,  admin: true },
   { slug: "admin-finance",                 url: "/admin/finance", scrollTo: 0,    admin: true },
 ];
+
+/**
+ * Drag the dial knob to a fractional position (0..1) along its track.
+ * Uses pointer events because the dial is wired up via onPointerDown.
+ */
+async function dragDialTo(page, fraction) {
+  const track = await page.locator('[role="slider"][aria-label*="conviction" i]').first();
+  await track.waitFor({ state: "visible", timeout: 5_000 });
+  const box = await track.boundingBox();
+  if (!box) return;
+  const startX = box.x + box.width / 2;
+  const targetX = box.x + box.width * fraction;
+  const y = box.y + box.height / 2;
+  // Pointer-down at center, drag to target, release. The dial uses a
+  // critically-damped tween so we wait for it to settle.
+  await page.mouse.move(startX, y);
+  await page.mouse.down();
+  // Tween via 8 intermediate moves so the ResizeObserver-based geometry
+  // catches up smoothly.
+  const steps = 8;
+  for (let i = 1; i <= steps; i++) {
+    const x = startX + (targetX - startX) * (i / steps);
+    await page.mouse.move(x, y, { steps: 3 });
+  }
+  await page.mouse.up();
+  await page.waitForTimeout(450);
+}
 
 const browser = await chromium.launch();
 
@@ -88,6 +124,18 @@ async function shoot(slug, url, label, viewport) {
     await p.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), meta.scrollTo);
   }
   await p.waitForTimeout(900);
+
+  if (meta?.interact === "dial-yes")  await dragDialTo(p, 0.80);
+  if (meta?.interact === "dial-no")   await dragDialTo(p, 0.20);
+  if (meta?.interact === "confirm-modal") {
+    await dragDialTo(p, 0.78);
+    // Click the compact place pill to open the modal
+    const pill = p.locator('button[aria-label^="Place "]').first();
+    await pill.waitFor({ state: "visible", timeout: 3_000 });
+    await pill.click();
+    // The 5s countdown is just starting; pause briefly to render arc
+    await p.waitForTimeout(700);
+  }
 
   const file = `${OUT}/${slug}.${label}.png`;
   // Viewport-sized shot — never full-page. One screen per file so the
