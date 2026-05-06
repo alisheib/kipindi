@@ -6,7 +6,10 @@ import { ConvictionDial } from "@/components/markets/conviction-dial";
 import { Countdown } from "@/components/markets/countdown";
 import { ShareButton } from "@/components/markets/share-button";
 import { NotifyPrompt } from "@/components/markets/notify-prompt";
-import { getMarket, impliedYesPct, listPositionsForMarket, listPositionsForUser, seedDemoMarkets } from "@/lib/server/market-service";
+import { PriceChart } from "@/components/markets/price-chart";
+import { SellButton } from "@/components/markets/sell-button";
+import { cashOutValue, getMarket, impliedYesPct, listPositionsForMarket, listPositionsForUser, seedDemoMarkets } from "@/lib/server/market-service";
+import { getCompressedHistory, seedHistory } from "@/lib/server/market-history";
 import { currentSession } from "@/lib/server/auth-service";
 
 export const dynamic = "force-dynamic";
@@ -67,6 +70,17 @@ export default async function MarketDetail({
   const totalPredictorCount = listPositionsForMarket(m.id).length;
   const isResolved = m.status === "RESOLVED" || m.status === "VOIDED";
 
+  // History — seed if empty (legacy demo markets created before Sprint 23)
+  // and render the kit PriceChart with the compressed series.
+  seedHistory(m.id, m.yesPool, m.noPool);
+  const historyRaw = getCompressedHistory(m.id, 24);
+  const history = historyRaw.map((s) => ({
+    t: new Date(s.t).toLocaleString("en-GB", { day: "2-digit", month: "short" }),
+    yes: s.yes,
+  }));
+  // Replace the last X label with "today" for legibility
+  if (history.length > 0) history[history.length - 1] = { ...history[history.length - 1], t: "now" };
+
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6">
       <a href="/markets" className="text-[12px] font-mono uppercase tracking-[0.16em] text-text-subtle hover:text-text">← Markets</a>
@@ -122,6 +136,20 @@ export default async function MarketDetail({
             <KPI label="Resolves"   value={fmtTime(m.resolutionAt)} mono />
           </div>
 
+          {/* Probability over time — kit PriceChart on real history */}
+          {history.length > 1 && (
+            <section className="mt-8 rounded-lg border border-border bg-bg-elevated p-4 lg:p-5">
+              <div className="flex items-baseline justify-between mb-3">
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">Probability · Uwezekano</p>
+                  <p className="text-[12px] italic text-text-subtle">YES probability over time</p>
+                </div>
+                <p className="font-mono text-[11px] text-text-muted">{yesPct}% now</p>
+              </div>
+              <PriceChart data={history} height={180} />
+            </section>
+          )}
+
           <section className="mt-8 rounded-lg border border-border bg-bg-elevated p-5">
             <h2 className="font-display text-[17px] font-semibold text-text mb-2">Resolution criterion</h2>
             <p className="text-[14px] leading-relaxed text-text-muted whitespace-pre-line">{m.resolutionCriterion}</p>
@@ -131,18 +159,26 @@ export default async function MarketDetail({
           </section>
 
           {myPositions.length > 0 && (
-            <section className="mt-6 rounded-lg border border-teal-700 bg-teal-900/20 p-5">
-              <h2 className="font-display text-[15px] font-semibold text-text mb-2">Your positions</h2>
-              <div className="space-y-2 text-[13px]">
-                {myPositions.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between gap-2 font-mono">
-                    <span className={p.side === "YES" ? "text-yes-300" : "text-no-300"}>{p.side}</span>
-                    <span className="text-text-muted">stake {fmtTzs(p.stake)}</span>
-                    <span className="text-gold-300">→ {fmtTzs(p.finalPayout ?? p.potentialPayout)}</span>
-                    <span className="text-text-subtle">[{p.status}]</span>
+            <section className="mt-6 rounded-lg border border-teal-700 bg-teal-900/20 p-5 space-y-3">
+              <h2 className="font-display text-[15px] font-semibold text-text">Your positions</h2>
+              {myPositions.map((p) => {
+                const liveValue = !isResolved && m.status === "LIVE" && p.status === "OPEN"
+                  ? cashOutValue({ side: p.side, stake: p.stake }, { id: m.id, yesPool: m.yesPool, noPool: m.noPool }).value
+                  : null;
+                return (
+                  <div key={p.id} className="rounded-md border border-teal-800/60 bg-bg-elevated/60 p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2 font-mono text-[12px]">
+                      <span className={p.side === "YES" ? "text-yes-300 font-bold" : "text-no-300 font-bold"}>{p.side}</span>
+                      <span className="text-text-muted">stake {fmtTzs(p.stake)}</span>
+                      <span className="text-gold-300">→ {fmtTzs(p.finalPayout ?? p.potentialPayout)}</span>
+                      <span className="text-text-subtle">[{p.status === "CASHED_OUT" ? "CASHED" : p.status}]</span>
+                    </div>
+                    {liveValue !== null && (
+                      <SellButton positionId={p.id} stake={p.stake} value={liveValue} />
+                    )}
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </section>
           )}
         </section>

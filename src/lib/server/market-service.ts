@@ -21,6 +21,7 @@ import { withLock } from "./locks";
 import { isLockedOut } from "./responsible-gambling";
 import { rateCheck } from "./rate-limit";
 import { getEffectiveConfig, payoutForWhole, settledPayoutWhole } from "./market-config";
+import { recordSnapshot, seedHistory } from "./market-history";
 import type { ServiceResult } from "./auth-service";
 
 /** @deprecated Kept for backwards compat — use getEffectiveConfig instead. */
@@ -62,7 +63,7 @@ export type StoredPosition = {
   side: Side;
   stake: number;
   potentialPayout: number;
-  status: "OPEN" | "WIN" | "LOSS" | "VOID";
+  status: "OPEN" | "WIN" | "LOSS" | "VOID" | "CASHED_OUT";
   finalPayout: number | null;
   placedAt: string;
   settledAt: string | null;
@@ -208,6 +209,8 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
     market.predictorCount += 1;
     market.updatedAt = placedAt;
     markets.set(market.id, market);
+    // Snapshot the new pool for the per-market history chart.
+    recordSnapshot(market.id, market.yesPool, market.noPool);
 
     db.txn.create({
       id: `txn_${randomId(12)}`,
@@ -246,6 +249,105 @@ export function listPositionsForMarket(marketId: string): StoredPosition[] {
 }
 
 /** Two-officer resolution. First call stages, second call (different officer) settles. */
+/** Slippage applied to a cash-out — a small penalty so it never beats holding. */
+export const CASHOUT_SLIPPAGE = 0.02;
+
+/**
+ * Compute the current cash-out value of an OPEN position assuming the market
+ * resolved on the side the user is on RIGHT NOW. Applies slippage on top of
+ * tax + commission so cashing out is always slightly worse than letting it
+ * settle (otherwise cash-out becomes a free ratchet).
+ *
+ * Caller passes the live market pools; we use the same whole-pool formula
+ * that the resolver uses, then knock CASHOUT_SLIPPAGE off the gross.
+ */
+export function cashOutValue(
+  position: Pick<StoredPosition, "side" | "stake">,
+  market: Pick<StoredMarket, "id" | "yesPool" | "noPool">,
+): { value: number; ratio: number } {
+  const cfg = getEffectiveConfig(market.id);
+  const winningPool = position.side === "YES" ? market.yesPool : market.noPool;
+  if (winningPool <= 0) return { value: 0, ratio: 0 };
+  const grossPool = market.yesPool + market.noPool;
+  const fee = Math.min(0.99, Math.max(0, cfg.taxRate + cfg.commissionRate));
+  const netPool = grossPool * (1 - fee);
+  const wouldPay = (position.stake / winningPool) * netPool;
+  const value = Math.round(wouldPay * (1 - CASHOUT_SLIPPAGE));
+  const ratio = position.stake > 0 ? value / position.stake : 0;
+  return { value, ratio };
+}
+
+export async function cashOutPosition(
+  userId: string,
+  positionId: string,
+): Promise<ServiceResult<{ value: number; balance: number }>> {
+  const p = positions.get(positionId);
+  if (!p) return { ok: false, error: "Position not found.", code: "NOT_FOUND" };
+  if (p.userId !== userId) return { ok: false, error: "Not your position.", code: "INVALID" };
+  if (p.status !== "OPEN") return { ok: false, error: "Position is no longer open.", code: "INVALID" };
+
+  const m = markets.get(p.marketId);
+  if (!m) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
+  if (m.status !== "LIVE") return { ok: false, error: "Cash-out only available while the market is LIVE.", code: "INVALID" };
+
+  return withLock(`wallet:${userId}`, async () => {
+    const wallet = db.wallet.findByUserId(userId);
+    if (!wallet) return { ok: false as const, error: "Wallet not found.", code: "NOT_FOUND" as const };
+
+    const { value } = cashOutValue(p, m);
+    if (value <= 0) {
+      return { ok: false as const, error: "Current cash-out value is zero — your side has no live pool.", code: "INVALID" as const };
+    }
+
+    const now = new Date().toISOString();
+
+    // Pull the stake out of the corresponding side's pool.
+    if (p.side === "YES") m.yesPool = Math.max(0, m.yesPool - p.stake);
+    else                  m.noPool  = Math.max(0, m.noPool  - p.stake);
+    m.updatedAt = now;
+    markets.set(m.id, m);
+    recordSnapshot(m.id, m.yesPool, m.noPool);
+
+    // Mark the position closed.
+    p.status = "CASHED_OUT";
+    p.finalPayout = value;
+    p.settledAt = now;
+    positions.set(p.id, p);
+
+    // Credit wallet + record the txn.
+    const newBalance = wallet.balance + value;
+    db.wallet.update(wallet.id, { balance: newBalance });
+    db.txn.create({
+      id: `txn_${randomId(12)}`,
+      walletId: wallet.id, userId,
+      type: "CASHOUT",
+      status: "CONFIRMED",
+      amount: value, fee: Math.round(p.stake * CASHOUT_SLIPPAGE), taxWithheld: 0,
+      balanceAfter: newBalance, currency: "TZS",
+      provider: "INTERNAL", providerRef: null, msisdn: null,
+      description: `Cashed out · "${m.titleEn.slice(0, 60)}"`,
+      betId: p.id,
+      amlReason: null,
+      createdAt: now, updatedAt: now, completedAt: now,
+    });
+
+    audit({
+      category: "BET",
+      action: "market.position.cashed_out",
+      actorId: userId,
+      targetType: "Position",
+      targetId: p.id,
+      payload: {
+        marketId: m.id, side: p.side, stake: p.stake, value,
+        slippage: CASHOUT_SLIPPAGE,
+        yesPoolAfter: m.yesPool, noPoolAfter: m.noPool,
+      },
+    });
+
+    return { ok: true as const, data: { value, balance: newBalance } };
+  });
+}
+
 export async function resolveMarket(opts: { marketId: string; outcome: Side | "VOID"; officerId: string }): Promise<ServiceResult<{ stage: "stage1" | "complete"; winnersPaid?: number }>> {
   const m = markets.get(opts.marketId);
   if (!m) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
@@ -278,6 +380,8 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   m.status = opts.outcome === "VOID" ? "VOIDED" : "RESOLVED";
   m.updatedAt = m.resolutionStage2At;
   markets.set(m.id, m);
+  // Snapshot at the moment of resolution — final point on the chart.
+  recordSnapshot(m.id, m.yesPool, m.noPool);
 
   let winnersPaid = 0;
   const myPositions = listPositionsForMarket(m.id);
@@ -423,5 +527,9 @@ export function seedDemoMarkets() {
       proposedBy: "system",
     },
   ];
-  for (const s of seed) createMarket(s);
+  for (const s of seed) {
+    const m = createMarket(s);
+    // Seed a believable history walk so the PriceChart isn't empty on first paint.
+    seedHistory(m.id, m.yesPool, m.noPool);
+  }
 }

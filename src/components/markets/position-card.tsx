@@ -8,7 +8,7 @@ type Props = {
   stake: number;
   current: number;          // current value if open, final if settled
   payout: number;           // potentialPayout if open, finalPayout if settled
-  status: "OPEN" | "WIN" | "LOSS" | "VOID";
+  status: "OPEN" | "WIN" | "LOSS" | "VOID" | "CASHED_OUT";
   className?: string;
 };
 
@@ -20,6 +20,7 @@ export function PositionCard({ marketId, marketTitle, side, stake, current, payo
     WIN: "Resolved · Win",
     LOSS: "Resolved · Loss",
     VOID: "Voided",
+    CASHED_OUT: "Cashed out",
   }[status];
   return (
     <Link
@@ -44,6 +45,7 @@ export function PositionCard({ marketId, marketTitle, side, stake, current, payo
             status === "LOSS" && "border-no-700 bg-no-500/15 text-no-300",
             status === "OPEN" && "border-info-border bg-info-bg/40 text-info-fg",
             status === "VOID" && "border-border bg-bg-overlay text-text-muted",
+            status === "CASHED_OUT" && "border-warning-border bg-warning-bg/40 text-warning-fg",
           )}
         >
           {statusLabel}

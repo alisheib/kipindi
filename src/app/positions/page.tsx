@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PositionCard } from "@/components/markets/position-card";
-import { listPositionsForUser, getMarket, seedDemoMarkets } from "@/lib/server/market-service";
+import { SellButton } from "@/components/markets/sell-button";
+import { listPositionsForUser, getMarket, seedDemoMarkets, cashOutValue } from "@/lib/server/market-service";
 import { currentSession } from "@/lib/server/auth-service";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -39,17 +40,24 @@ export default async function PositionsPage() {
             {open.map((p) => {
               const m = getMarket(p.marketId);
               if (!m) return null;
+              const liveValue = m.status === "LIVE"
+                ? cashOutValue({ side: p.side, stake: p.stake }, { id: m.id, yesPool: m.yesPool, noPool: m.noPool }).value
+                : null;
               return (
-                <PositionCard
-                  key={p.id}
-                  marketId={p.marketId}
-                  marketTitle={m.titleEn}
-                  side={p.side}
-                  stake={p.stake}
-                  current={p.potentialPayout}
-                  payout={p.potentialPayout}
-                  status="OPEN"
-                />
+                <div key={p.id} className="space-y-2">
+                  <PositionCard
+                    marketId={p.marketId}
+                    marketTitle={m.titleEn}
+                    side={p.side}
+                    stake={p.stake}
+                    current={liveValue ?? p.potentialPayout}
+                    payout={p.potentialPayout}
+                    status="OPEN"
+                  />
+                  {liveValue !== null && (
+                    <SellButton positionId={p.id} stake={p.stake} value={liveValue} />
+                  )}
+                </div>
               );
             })}
           </div>
@@ -79,7 +87,7 @@ export default async function PositionsPage() {
                   stake={p.stake}
                   current={p.finalPayout ?? 0}
                   payout={p.finalPayout ?? 0}
-                  status={p.status as "WIN" | "LOSS" | "VOID"}
+                  status={p.status as "WIN" | "LOSS" | "VOID" | "CASHED_OUT"}
                 />
               );
             })}

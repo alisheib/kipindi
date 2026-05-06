@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
-import { buyPosition, resolveMarket, createMarket, type CreateMarketInput, type Side } from "@/lib/server/market-service";
+import { buyPosition, cashOutPosition, resolveMarket, createMarket, type CreateMarketInput, type Side } from "@/lib/server/market-service";
 import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
 
 export async function buyPositionAction(formData: FormData) {
@@ -18,6 +18,19 @@ export async function buyPositionAction(formData: FormData) {
     revalidatePath(`/markets/${marketId}`);
     revalidatePath("/positions");
     revalidatePath("/wallet");
+  }
+  return r;
+}
+
+export async function cashOutPositionAction(formData: FormData) {
+  const session = await currentSession();
+  if (!session) redirect("/auth/login");
+  const positionId = String(formData.get("positionId") ?? "");
+  const r = await cashOutPosition(session.userId, positionId);
+  if (r.ok) {
+    revalidatePath("/positions");
+    revalidatePath("/wallet");
+    revalidatePath("/markets");
   }
   return r;
 }
