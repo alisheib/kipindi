@@ -30,6 +30,7 @@ function activeKeyFromPath(path: string): string {
   if (path.startsWith("/admin/players/cohorts"))      return "cohorts";
   if (path.startsWith("/admin/players"))              return "players";
   if (path.startsWith("/admin/sources"))              return "sources";
+  if (path.startsWith("/admin/config"))               return "config";
   if (path.startsWith("/admin/markets"))              return "markets";
   if (path.startsWith("/admin/resolver-queue"))       return "resolver";
   if (path.startsWith("/admin/compliance"))           return "compliance";

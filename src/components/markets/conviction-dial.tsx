@@ -17,8 +17,32 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import { buyPositionAction } from "@/app/markets/actions";
+import { HouseLeanWarning } from "./house-lean-warning";
 
 type Side = "YES" | "NO" | "NEUTRAL";
+
+const TAX_RATE = 0.04;
+const COMMISSION_RATE = 0.05;
+const THIN_PROFIT_RATIO = 1.05;
+type LeanLevel = "fair" | "thin" | "negative";
+
+/** Mirror of payoutForWhole for client-side projection. */
+function projectWhole(yesPool: number, noPool: number, side: "YES" | "NO", stake: number): { payout: number; ratio: number } {
+  const yp = side === "YES" ? yesPool + stake : yesPool;
+  const np = side === "NO"  ? noPool  + stake : noPool;
+  const gross = yp + np;
+  const winning = side === "YES" ? yp : np;
+  if (winning <= 0) return { payout: 0, ratio: 0 };
+  const net = gross * (1 - TAX_RATE - COMMISSION_RATE);
+  const payout = Math.round((stake / winning) * net);
+  return { payout, ratio: stake > 0 ? payout / stake : 0 };
+}
+
+function leanFor(ratio: number): LeanLevel {
+  if (ratio < 1.0) return "negative";
+  if (ratio < THIN_PROFIT_RATIO) return "thin";
+  return "fair";
+}
 
 /** Critically-damped tween toward `target`; ~150ms settle, no overshoot. */
 function useRollingNumber(target: number, stiffness = 0.22) {
@@ -82,7 +106,7 @@ type Props = {
   initial?: number;
 };
 
-export function ConvictionDial({ marketId, baseStake = 5_000, initial = 0.5 }: Props) {
+export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, initial = 0.5 }: Props) {
   const [pos, setPos] = useState(initial);
   const [dragging, setDragging] = useState(false);
   const [hover, setHover] = useState(false);
@@ -102,6 +126,14 @@ export function ConvictionDial({ marketId, baseStake = 5_000, initial = 0.5 }: P
   const multiplier = useRollingNumber(multiplierTarget);
   const stakeRolled = useRollingNumber(stakeTarget);
   const stake = Math.max(100, Math.round(stakeRolled / 100) * 100);
+
+  // Whole-pool projection — payout AND warning level
+  const proj = side === "NEUTRAL"
+    ? { payout: 0, ratio: 0 }
+    : projectWhole(yesPool, noPool, side, stake);
+  const lean: LeanLevel = side === "NEUTRAL" ? "fair" : leanFor(proj.ratio);
+  const payoutRolled = useRollingNumber(proj.payout);
+  const payoutDisplay = Math.max(0, Math.round(payoutRolled));
 
   const strength = Math.max(0, (distFromCenter - NEUTRAL_BAND) / (1 - NEUTRAL_BAND));
   const sideHue = side === "YES" ? 152 : side === "NO" ? 22 : 240;
@@ -334,7 +366,7 @@ export function ConvictionDial({ marketId, baseStake = 5_000, initial = 0.5 }: P
             className="font-display font-bold text-[22px] leading-none"
             style={{ color: sideText, letterSpacing: "-0.025em" }}
           >
-            {side === "NEUTRAL" ? "drag the dial" : `${side} · ${multiplier.toFixed(1)}×`}
+            {side === "NEUTRAL" ? "drag the dial" : `${side}`}
           </p>
         </div>
         <div className="text-right">
@@ -344,6 +376,46 @@ export function ConvictionDial({ marketId, baseStake = 5_000, initial = 0.5 }: P
           </p>
         </div>
       </div>
+
+      {/* Projected payout (whole-pool) */}
+      {side !== "NEUTRAL" && (
+        <div className="mt-3 grid grid-cols-2 gap-3 items-baseline rounded-md border border-border bg-bg-overlay px-3 py-2.5">
+          <div>
+            <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mb-1">If correct · Ukishinda</p>
+            <p
+              className="font-mono font-bold text-[18px] tabular-nums leading-none"
+              style={{
+                letterSpacing: "-0.02em",
+                color:
+                  lean === "negative" ? "var(--no-300)"
+                  : lean === "thin"   ? "var(--warning-fg)"
+                  : "var(--gold-300)",
+              }}
+            >
+              TZS {fmt(payoutDisplay)}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mb-1">Net</p>
+            <p
+              className="font-mono font-bold text-[14px] tabular-nums leading-none"
+              style={{
+                color:
+                  payoutDisplay - stake < 0 ? "var(--no-300)"
+                  : payoutDisplay - stake < (THIN_PROFIT_RATIO - 1) * stake ? "var(--warning-fg)"
+                  : "var(--gold-300)",
+              }}
+            >
+              {payoutDisplay - stake >= 0 ? "+" : "−"}TZS {fmt(Math.abs(payoutDisplay - stake))}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* House-lean disclosure — only when ratio is sub-fair */}
+      {side !== "NEUTRAL" && (
+        <HouseLeanWarning level={lean} payout={proj.payout} stake={stake} />
+      )}
 
       {/* Confirm button — disabled at neutral */}
       <button

@@ -20,8 +20,10 @@ import { randomId } from "./crypto";
 import { withLock } from "./locks";
 import { isLockedOut } from "./responsible-gambling";
 import { rateCheck } from "./rate-limit";
+import { getEffectiveConfig, payoutForWhole, settledPayoutWhole } from "./market-config";
 import type { ServiceResult } from "./auth-service";
 
+/** @deprecated Kept for backwards compat — use getEffectiveConfig instead. */
 export const OPERATOR_MARGIN = 0.09;
 export const MIN_STAKE = 100;
 export const MAX_STAKE = 1_000_000;
@@ -82,13 +84,23 @@ export function impliedYesPct(m: Pick<StoredMarket, "yesPool" | "noPool">): numb
   return Math.round((m.yesPool / total) * 100);
 }
 
-/** Pool-share payout if `stake` lands on the winning side `winSide`, given current pool sizes. */
-export function projectedPayout(m: Pick<StoredMarket, "yesPool" | "noPool">, side: Side, stake: number): number {
-  const winningPool  = side === "YES" ? m.yesPool + stake : m.noPool + stake;
-  const losingPool   = side === "YES" ? m.noPool : m.yesPool;
-  const distributable = losingPool * (1 - OPERATOR_MARGIN);
-  // Player gets their stake back + their share of the distributable losing pool.
-  return Math.round(stake + (stake / winningPool) * distributable);
+/**
+ * Whole-pool pari-mutuel projection.
+ *   netPool = (yesPool + noPool + stake) × (1 - tax - commission)
+ *   payout  = (stake / winningSidePool) × netPool
+ * Under heavy lean, payout/stake can drop below 1.0 — that's the
+ * `negative` lean state surfaced by the inline warning.
+ *
+ * Marketid is optional; without it we use the global config.
+ */
+export function projectedPayout(
+  m: Pick<StoredMarket, "yesPool" | "noPool"> & { id?: string },
+  side: Side,
+  stake: number,
+): number {
+  const cfg = getEffectiveConfig(m.id);
+  const r = payoutForWhole({ yesPool: m.yesPool, noPool: m.noPool, side, stake }, cfg);
+  return r.payout;
 }
 
 export function listMarkets(filter?: { status?: MarketStatus; category?: MarketCategory }): StoredMarket[] {
@@ -154,8 +166,10 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
   const lockout = isLockedOut(userId);
   if (lockout.locked) return { ok: false, error: `Locked until ${new Date(lockout.until!).toLocaleString("en-GB")}.`, code: "SUSPENDED" };
 
-  if (!Number.isInteger(opts.stake) || opts.stake < MIN_STAKE || opts.stake > MAX_STAKE) {
-    return { ok: false, error: `Stake must be a whole number between TZS ${MIN_STAKE} and TZS ${MAX_STAKE.toLocaleString()}.`, code: "INVALID" };
+  // Stake bounds come from runtime config — global with optional per-market override.
+  const stakeCfg = getEffectiveConfig(opts.marketId);
+  if (!Number.isInteger(opts.stake) || opts.stake < stakeCfg.minStake || opts.stake > stakeCfg.maxStake) {
+    return { ok: false, error: `Stake must be a whole number between TZS ${stakeCfg.minStake.toLocaleString()} and TZS ${stakeCfg.maxStake.toLocaleString()}.`, code: "INVALID" };
   }
   if (opts.side !== "YES" && opts.side !== "NO") return { ok: false, error: "Invalid side.", code: "INVALID" };
 
@@ -291,15 +305,19 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
       });
     }
   } else {
+    // Whole-pool pari-mutuel distribution.
+    //   netPool = (yesPool + noPool) × (1 - tax - commission)
+    //   payout  = (stake / winningSidePool) × netPool
+    const settleCfg = getEffectiveConfig(m.id);
     const winningPool = opts.outcome === "YES" ? m.yesPool : m.noPool;
-    const losingPool  = opts.outcome === "YES" ? m.noPool : m.yesPool;
-    const distributable = losingPool * (1 - OPERATOR_MARGIN);
     for (const p of myPositions) {
       const w = db.wallet.findByUserId(p.userId);
       if (!w) continue;
       if (p.side === opts.outcome) {
-        const share = winningPool > 0 ? p.stake / winningPool : 0;
-        const payout = Math.round(p.stake + share * distributable);
+        const payout = settledPayoutWhole(
+          { yesPool: m.yesPool, noPool: m.noPool, side: p.side, stake: p.stake },
+          settleCfg,
+        );
         db.wallet.update(w.id, { balance: w.balance + payout });
         p.status = "WIN"; p.finalPayout = payout; p.settledAt = m.resolutionStage2At!;
         positions.set(p.id, p);
@@ -331,7 +349,12 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
     payload: {
       outcome: opts.outcome,
       yesPool: m.yesPool, noPool: m.noPool,
-      operatorMargin: OPERATOR_MARGIN,
+      payoutModel: "whole-pool",
+      taxRate: settleCfg.taxRate,
+      commissionRate: settleCfg.commissionRate,
+      grossPool: m.yesPool + m.noPool,
+      netPool: Math.round((m.yesPool + m.noPool) * (1 - settleCfg.taxRate - settleCfg.commissionRate)),
+      winningPool,
       winnersPaid,
       stage1By: m.resolutionStage1By, stage2By: m.resolutionStage2By,
       sourceUrl: m.sourceUrl,
