@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { FiftyLockup } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
+import { Input, Field } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { startLoginAction } from "./actions";
 import { isDemoModeAllowed } from "@/lib/server/demo-mode";
 import { FlaskConical } from "lucide-react";
@@ -25,29 +27,23 @@ export default function LoginPage() {
           </div>
 
           <form action={startLoginAction} className="space-y-3">
-            <label className="block">
-              <span className="block font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5">Phone · Simu</span>
-              <span className="flex h-12 rounded-md border border-border bg-bg-overlay focus-within:border-teal-300 transition-colors overflow-hidden">
-                <span className="inline-flex items-center px-3 bg-bg-elevated border-r border-border font-mono text-[13px] text-text-muted">+255</span>
-                <input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  inputMode="numeric"
-                  autoComplete="tel"
-                  required
-                  placeholder="712 345 678"
-                  className="flex-1 px-3 bg-transparent font-mono text-[15px] text-text outline-none"
-                />
-              </span>
-              <p className="mt-1.5 text-[11px] text-text-subtle">Use your registered Tanzania mobile number.</p>
-            </label>
-            <button
-              type="submit"
-              className="w-full h-12 rounded-md bg-yes-500 font-display font-bold text-yes-950 hover:bg-yes-400 transition-colors"
-            >
+            <Field label="Phone · Simu" hint="Use your registered Tanzania mobile number.">
+              <Input
+                id="phone"
+                name="phone"
+                type="tel"
+                inputMode="numeric"
+                autoComplete="tel"
+                required
+                placeholder="712 345 678"
+                size="lg"
+                mono
+                prefix="+255"
+              />
+            </Field>
+            <Button type="submit" variant="yes" size="lg" fullWidth>
               Send code · Tuma msimbo
-            </button>
+            </Button>
           </form>
 
           <p className="text-[13px] text-text-muted pt-3 border-t border-border text-center">

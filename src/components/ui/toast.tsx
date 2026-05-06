@@ -92,29 +92,29 @@ export function useToast(): ToastContextValue {
 
 const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; surface: string }> = {
   default: {
-    bar: "bg-royal",
-    icon: <CheckCircle2 size={18} className="text-royal" />,
-    surface: "bg-surface-1 border-border",
+    bar: "bg-teal-500",
+    icon: <CheckCircle2 size={18} className="text-teal-300" />,
+    surface: "bg-bg-elevated border-border",
   },
   success: {
-    bar: "bg-success",
-    icon: <CheckCircle2 size={18} className="text-success" />,
-    surface: "bg-surface-1 border-border",
+    bar: "bg-yes-500",
+    icon: <CheckCircle2 size={18} className="text-yes-300" />,
+    surface: "bg-bg-elevated border-border",
   },
   warning: {
-    bar: "bg-warning",
-    icon: <AlertTriangle size={18} className="text-warning" />,
-    surface: "bg-surface-1 border-border",
+    bar: "bg-warning-500",
+    icon: <AlertTriangle size={18} className="text-warning-fg" />,
+    surface: "bg-bg-elevated border-border",
   },
   danger: {
-    bar: "bg-danger",
-    icon: <AlertCircle size={18} className="text-danger" />,
-    surface: "bg-surface-1 border-border",
+    bar: "bg-no-500",
+    icon: <AlertCircle size={18} className="text-no-300" />,
+    surface: "bg-bg-elevated border-border",
   },
   gold: {
-    bar: "bg-gold",
+    bar: "bg-gold-500",
     icon: <Trophy size={18} className="text-gold-fg" />,
-    surface: "bg-gold/10 border-gold/40",
+    surface: "bg-bg-elevated border-gold-700",
   },
 };
 
@@ -154,14 +154,14 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
         <div className="min-w-0 flex-1">
           <p className="text-body-sm font-semibold text-text leading-tight">{toast.title}</p>
           {toast.description ? (
-            <p className="mt-0.5 text-caption text-text-soft leading-snug">{toast.description}</p>
+            <p className="mt-0.5 text-caption text-text-muted leading-snug">{toast.description}</p>
           ) : null}
         </div>
       </div>
       <button
         type="button"
         onClick={onDismiss}
-        className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-md text-text-soft hover:bg-surface-2 hover:text-text"
+        className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-md text-text-muted hover:bg-bg-overlay hover:text-text"
         aria-label="Dismiss"
       >
         <X size={14} />

@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { MarketCard } from "@/components/markets/market-card";
 import { listMarkets, impliedYesPct, seedDemoMarkets, type MarketCategory } from "@/lib/server/market-service";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const metadata = { title: "Markets · Soko" };
 export const dynamic = "force-dynamic";
@@ -83,9 +85,22 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
           />
         ))}
         {live.length === 0 && (
-          <div className="col-span-full rounded-lg border border-dashed border-border bg-bg-elevated/40 p-10 text-center">
-            <p className="font-display text-[16px] font-semibold text-text">No markets in this category yet.</p>
-            <p className="mt-1 text-[13px] italic text-text-subtle">Hakuna soko bado kwenye aina hii.</p>
+          <div className="col-span-full">
+            <EmptyState
+              kind="markets"
+              title="No markets in this category yet"
+              titleSw="Hakuna soko bado kwenye aina hii"
+              body="Try a different category, or check back soon — operators publish new markets daily."
+              bodySw="Jaribu aina nyingine au rudi baadaye."
+              action={
+                <Link
+                  href="/markets"
+                  className="inline-flex h-9 items-center px-4 rounded-pill border border-border-strong bg-bg-elevated font-semibold text-text hover:bg-bg-overlay text-[13px] transition-colors"
+                >
+                  See all categories
+                </Link>
+              }
+            />
           </div>
         )}
       </section>

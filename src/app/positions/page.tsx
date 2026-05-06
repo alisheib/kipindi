@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PositionCard } from "@/components/markets/position-card";
 import { listPositionsForUser, getMarket, seedDemoMarkets } from "@/lib/server/market-service";
 import { currentSession } from "@/lib/server/auth-service";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const metadata = { title: "My positions · Madau yangu" };
 export const dynamic = "force-dynamic";
@@ -25,7 +27,13 @@ export default async function PositionsPage() {
 
       <Section title="Open" sw="Hai" count={open.length}>
         {open.length === 0 ? (
-          <Empty>You don&apos;t have any open positions yet.<br /><span className="italic text-text-subtle">Bado huna utabiri wowote hai.</span></Empty>
+          <Empty
+            kind="positions"
+            title="No open positions yet"
+            titleSw="Bado huna utabiri hai"
+            body="Pick a market and drag the conviction dial to commit your first prediction."
+            bodySw="Chagua soko, geuza dial ya imani, ushiriki utabiri wako wa kwanza."
+          />
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {open.map((p) => {
@@ -50,7 +58,13 @@ export default async function PositionsPage() {
 
       <Section title="Settled" sw="Imekamilika" count={settled.length}>
         {settled.length === 0 ? (
-          <Empty>No settled positions yet.<br /><span className="italic text-text-subtle">Bado hakuna utabiri uliokamilika.</span></Empty>
+          <Empty
+            kind="default"
+            title="No settled positions yet"
+            titleSw="Bado hakuna utabiri uliokamilika"
+            body="Settled positions appear here once their markets resolve."
+            bodySw="Utabiri uliokamilika utaonekana hapa baada ya soko kutatuliwa."
+          />
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {settled.map((p) => {
@@ -89,10 +103,24 @@ function Section({ title, sw, count, children }: { title: string; sw: string; co
   );
 }
 
-function Empty({ children }: { children: React.ReactNode }) {
+function Empty({ kind, title, titleSw, body, bodySw }: { kind: "positions" | "default"; title: string; titleSw: string; body?: string; bodySw?: string }) {
   return (
-    <div className="rounded-lg border border-dashed border-border bg-bg-elevated/40 p-10 text-center">
-      <p className="text-[14px] text-text-muted">{children}</p>
-    </div>
+    <EmptyState
+      kind={kind}
+      title={title}
+      titleSw={titleSw}
+      body={body}
+      bodySw={bodySw}
+      action={
+        kind === "positions" ? (
+          <Link
+            href={"/markets" as never}
+            className="inline-flex h-9 items-center px-4 rounded-pill bg-yes-500 font-semibold text-yes-950 hover:bg-yes-400 transition-colors text-[13px]"
+          >
+            Browse markets →
+          </Link>
+        ) : null
+      }
+    />
   );
 }

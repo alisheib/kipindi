@@ -1,27 +1,43 @@
+/**
+ * Button — kit-faithful (kit/atoms.jsx → Btn).
+ * 6 variants × 4 sizes. Tokens only — no hardcoded oklch outside the gold
+ * gradient (which uses --gold-* directly, theme-adaptive automatically).
+ *
+ * variants: primary (teal) · yes (emerald) · no (rose) · ghost · danger · gold
+ * sizes:    sm 30 · md 38 · lg 46 · xl 56 (xl uses --r-lg radius)
+ *
+ * Adds: leading + trailing icon slots, loading state (spinner replaces leading),
+ * fullWidth, focus-visible ring (--teal-300, 2px offset).
+ */
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-type Variant = "primary" | "secondary" | "ghost" | "danger" | "gold";
+type Variant = "primary" | "yes" | "no" | "ghost" | "danger" | "gold" | "secondary";
 type Size = "sm" | "md" | "lg" | "xl";
+
+const sizeClass: Record<Size, string> = {
+  sm: "h-[30px] px-3 text-[13px] rounded-md",
+  md: "h-[38px] px-4 text-[14px] rounded-md",
+  lg: "h-[46px] px-5 text-[15px] rounded-md",
+  xl: "h-[56px] px-6 text-[16px] rounded-lg",
+};
 
 const variantClass: Record<Variant, string> = {
   primary:
-    "bg-royal text-onBrand hover:bg-royal-hover active:bg-royal-active shadow-e1 hover:shadow-e2 disabled:bg-surface-disabled disabled:text-disabled disabled:shadow-e0",
-  secondary:
-    "border border-royal text-royal hover:bg-royal-subtle active:bg-royal-subtleHover disabled:border-border disabled:text-disabled",
+    "bg-teal-500 text-white hover:bg-teal-400 disabled:bg-bg-overlay disabled:text-text-subtle",
+  yes:
+    "bg-yes-500 text-yes-950 font-bold hover:bg-yes-400 disabled:bg-bg-overlay disabled:text-text-subtle",
+  no:
+    "bg-no-500 text-white font-bold hover:bg-no-400 disabled:bg-bg-overlay disabled:text-text-subtle",
   ghost:
-    "text-royal hover:bg-royal-subtle active:bg-royal-subtleHover disabled:text-disabled",
+    "bg-transparent text-text border border-border hover:bg-bg-overlay hover:border-border-strong disabled:text-text-subtle",
+  // Legacy alias — many existing call sites use 'secondary'; map to ghost.
+  secondary:
+    "bg-transparent text-text border border-border hover:bg-bg-overlay hover:border-border-strong disabled:text-text-subtle",
   danger:
-    "bg-danger text-onBrand hover:opacity-90 active:opacity-80 shadow-e1 disabled:bg-surface-disabled disabled:text-disabled",
+    "bg-danger-500 text-white hover:brightness-110 disabled:bg-bg-overlay disabled:text-text-subtle",
   gold:
-    "bg-gold text-gold-fg hover:bg-gold-hover active:bg-gold-active shadow-e1 hover:shadow-glow-gold disabled:bg-surface-disabled disabled:text-disabled",
-};
-
-const sizeClass: Record<Size, string> = {
-  sm: "h-7 px-2 text-label",
-  md: "h-9 px-3 text-label",
-  lg: "h-10 px-4 text-body-sm font-semibold",
-  xl: "h-11 px-5 text-body font-semibold",
+    "text-gold-fg font-bold border bg-gradient-to-b from-gold-400 to-gold-600 border-gold-700 shadow-[0_1px_0_oklch(95%_0.08_80)_inset] hover:from-gold-300 hover:to-gold-500 disabled:from-bg-overlay disabled:to-bg-overlay disabled:text-text-subtle disabled:border-border disabled:shadow-none",
 };
 
 export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -43,20 +59,32 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={cn(
-        "inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition-all duration-micro ease-standard whitespace-nowrap",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--border-focus)]",
+        "inline-flex items-center justify-center gap-2 font-display whitespace-nowrap",
+        "transition-all duration-100 ease-out",
+        "active:translate-y-px",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 focus-visible:ring-offset-2 focus-visible:ring-offset-bg",
+        "disabled:opacity-50 disabled:cursor-not-allowed disabled:active:translate-y-0",
         sizeClass[size],
         variantClass[variant],
         fullWidth && "w-full",
-        loading && "opacity-70 cursor-progress",
-        disabled && "cursor-not-allowed",
+        loading && "cursor-progress",
         className,
       )}
       {...rest}
     >
-      {loading ? <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" /> : leading}
+      {loading ? <Spinner size={size} /> : leading}
       {children}
-      {trailing}
+      {!loading && trailing}
     </button>
   );
 });
+
+function Spinner({ size }: { size: Size }) {
+  const dim = size === "xl" ? 16 : size === "lg" ? 14 : size === "md" ? 13 : 12;
+  return (
+    <svg width={dim} height={dim} viewBox="0 0 24 24" className="animate-spin" aria-hidden>
+      <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />
+      <path d="M21 12a9 9 0 0 0-9-9" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  );
+}

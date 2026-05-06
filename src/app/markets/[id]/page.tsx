@@ -1,12 +1,38 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ExternalLink, Users, TrendingUp } from "lucide-react";
 import { TippingBar } from "@/components/brand";
 import { ConvictionDial } from "@/components/markets/conviction-dial";
 import { Countdown } from "@/components/markets/countdown";
+import { ShareButton } from "@/components/markets/share-button";
 import { getMarket, impliedYesPct, listPositionsForMarket, listPositionsForUser, seedDemoMarkets } from "@/lib/server/market-service";
 import { currentSession } from "@/lib/server/auth-service";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  seedDemoMarkets();
+  const { id } = await params;
+  const m = getMarket(id);
+  if (!m) return { title: "Market" };
+  const yes = impliedYesPct(m);
+  const desc = `YES ${yes}% · NO ${100 - yes}%. Predict on 50pick.`;
+  return {
+    title: m.titleEn,
+    description: desc,
+    openGraph: {
+      title: m.titleEn,
+      description: desc,
+      images: [{ url: `/api/og/market/${id}`, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: m.titleEn,
+      description: desc,
+      images: [`/api/og/market/${id}`],
+    },
+  };
+}
 
 const fmtTzs = (n: number) => `TZS ${n.toLocaleString("en-US")}`;
 const fmtTime = (iso: string) => new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
@@ -69,6 +95,7 @@ export default async function MarketDetail({
             Source
             <ExternalLink size={12} aria-hidden />
           </a>
+          <ShareButton marketId={m.id} title={m.titleEn} />
         </div>
         <h1 className="font-display text-[28px] md:text-[34px] font-bold leading-tight tracking-[-0.02em] text-text">{m.titleEn}</h1>
         {m.titleSw && <p className="mt-2 text-[15px] italic text-text-subtle">{m.titleSw}</p>}
