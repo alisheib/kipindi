@@ -44,6 +44,7 @@ export async function enterDemoMode(): Promise<{ ok: true } | { ok: false; error
       acceptedTermsAt: new Date().toISOString(),
       marketingOptIn: false,
       twoFactorEnabled: false,
+      avatarDataUrl: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       lastLoginAt: new Date().toISOString(),

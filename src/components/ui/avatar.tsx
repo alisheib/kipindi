@@ -7,7 +7,7 @@
  */
 import { cn } from "@/lib/utils";
 
-type Size = "xs" | "sm" | "md" | "lg" | "xl";
+type Size = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
 
 const sizeClass: Record<Size, string> = {
   xs: "h-5 w-5 text-[10px]",
@@ -15,6 +15,7 @@ const sizeClass: Record<Size, string> = {
   md: "h-8 w-8 text-[12px]",
   lg: "h-10 w-10 text-[13px]",
   xl: "h-14 w-14 text-[16px]",
+  "2xl": "h-20 w-20 text-[22px]",
 };
 
 /** Hash a string to a deterministic hue 0..359. */

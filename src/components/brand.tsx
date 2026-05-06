@@ -150,6 +150,16 @@ export function TippingBar({
   const no = 100 - yes;
   const tilt = ((yes - 50) / 50) * 18;
   const ease = animate ? "width 700ms cubic-bezier(.2,.8,.2,1), transform 700ms cubic-bezier(.2,.8,.2,1)" : "none";
+  const r = height / 2;
+  // When one side is fully empty, the surviving side covers the whole
+  // rail and needs both ends rounded — not just the inside corner — so the
+  // bar never renders as "all track + a needle on the edge".
+  const yesRadii = no === 0
+    ? { borderRadius: r }
+    : { borderTopLeftRadius: r, borderBottomLeftRadius: r };
+  const noRadii  = yes === 0
+    ? { borderRadius: r }
+    : { borderTopRightRadius: r, borderBottomRightRadius: r };
 
   return (
     <div className={cn("w-full", className)}>
@@ -158,7 +168,7 @@ export function TippingBar({
           position: "relative",
           height,
           background: "var(--bar-track)",
-          borderRadius: height / 2,
+          borderRadius: r,
           overflow: "visible",
           boxShadow: "inset 0 0 0 1px var(--bar-track-border)",
         }}
@@ -173,8 +183,7 @@ export function TippingBar({
             position: "absolute", top: 0, bottom: 0, left: 0,
             width: `${yes}%`,
             background: "linear-gradient(90deg, oklch(50% 0.14 152) 0%, oklch(58% 0.16 152) 100%)",
-            borderTopLeftRadius: height / 2,
-            borderBottomLeftRadius: height / 2,
+            ...yesRadii,
             transition: ease,
             boxShadow: "0 0 18px oklch(58% 0.16 152 / 0.35)",
           }}
@@ -184,8 +193,7 @@ export function TippingBar({
             position: "absolute", top: 0, bottom: 0, right: 0,
             width: `${no}%`,
             background: "linear-gradient(270deg, oklch(52% 0.16 22) 0%, oklch(60% 0.18 22) 100%)",
-            borderTopRightRadius: height / 2,
-            borderBottomRightRadius: height / 2,
+            ...noRadii,
             transition: ease,
             boxShadow: "0 0 18px oklch(60% 0.18 22 / 0.35)",
           }}

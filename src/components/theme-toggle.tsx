@@ -1,30 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Moon, Sun, Monitor } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { setStoredTheme, getStoredTheme } from "./theme-provider";
 
-type Theme = "light" | "system" | "dark";
-const ORDER: Theme[] = ["light", "system", "dark"];
-const ICON: Record<Theme, typeof Sun> = { light: Sun, system: Monitor, dark: Moon };
-const LABEL: Record<Theme, string> = { light: "Light", system: "System", dark: "Dark" };
+type Theme = "light" | "dark";
+const ICON: Record<Theme, typeof Sun> = { light: Sun, dark: Moon };
+const LABEL: Record<Theme, string> = { light: "Light", dark: "Dark" };
 
 /**
- * Single icon button that cycles light → system → dark.
- * Compact at every breakpoint; the icon reflects the active theme.
+ * Single icon button that toggles dark ↔ light. Default is dark — there is
+ * no "system" option by design (50pick is dark-first).
  */
 export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>("dark");
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
-    setTheme(getStoredTheme());
+    const t = getStoredTheme();
+    setTheme(t === "light" ? "light" : "dark");
     setMounted(true);
   }, []);
-  if (!mounted) return <div className="h-8 w-8 rounded-md bg-surface-pressed" aria-hidden />;
+  if (!mounted) return <div className="h-8 w-8 rounded-md bg-bg-overlay" aria-hidden />;
 
   const Icon = ICON[theme];
-  const next = ORDER[(ORDER.indexOf(theme) + 1) % ORDER.length];
+  const next: Theme = theme === "dark" ? "light" : "dark";
 
   return (
     <button
@@ -33,8 +33,8 @@ export function ThemeToggle() {
       title={`Theme: ${LABEL[theme]} (click for ${LABEL[next]})`}
       onClick={() => { setStoredTheme(next); setTheme(next); }}
       className={cn(
-        "inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors duration-micro",
-        "text-text-tertiary hover:text-text hover:bg-surface-hover",
+        "inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors duration-200",
+        "text-text-subtle hover:text-text hover:bg-bg-overlay",
       )}
     >
       <Icon size={15} strokeWidth={1.75} aria-hidden />

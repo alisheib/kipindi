@@ -6,7 +6,10 @@
  * React 19's "script tag while rendering" warning).
  *
  * Strategy:
- *   - Theme is stored in `kp-theme` cookie + localStorage. Default = "dark".
+ *   - Theme is "dark" or "light" only. Default = "dark" — first-time visitors
+ *     always land in dark mode regardless of OS preference.
+ *   - Stored in `kp-theme` cookie + localStorage; only flipped by an explicit
+ *     toggle action.
  *   - The actual class is applied to <html> via a tiny boot-script in
  *     RootLayout's <head> (NOT inside React) before paint, so there's no FOUC.
  *   - This component only synchronises React-side state for the toggle.
@@ -16,32 +19,28 @@ import { useEffect, type ReactNode } from "react";
 import { I18nProvider, type Locale } from "@/lib/i18n";
 import { ToastProvider } from "@/components/ui/toast";
 
-type Theme = "dark" | "light" | "system";
+type Theme = "dark" | "light";
 
 function readTheme(): Theme {
   if (typeof document === "undefined") return "dark";
   const m = document.cookie.match(/(?:^|; )kp-theme=([^;]*)/);
   if (m) {
     const v = decodeURIComponent(m[1]);
-    if (v === "light" || v === "dark" || v === "system") return v;
+    if (v === "light" || v === "dark") return v;
   }
   try {
     const ls = localStorage.getItem("kp-theme");
-    if (ls === "light" || ls === "dark" || ls === "system") return ls as Theme;
+    if (ls === "light" || ls === "dark") return ls as Theme;
   } catch { /* localStorage blocked */ }
   return "dark";
 }
 
 function applyTheme(t: Theme) {
   if (typeof document === "undefined") return;
-  const resolved =
-    t === "system"
-      ? (window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light")
-      : t;
   const html = document.documentElement;
-  html.classList.toggle("dark", resolved === "dark");
-  html.classList.toggle("light", resolved === "light");
-  html.setAttribute("data-theme", resolved);
+  html.classList.toggle("dark", t === "dark");
+  html.classList.toggle("light", t === "light");
+  html.setAttribute("data-theme", t);
 }
 
 function readInitialLocale(): Locale {
@@ -54,15 +53,9 @@ function readInitialLocale(): Locale {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   // Theme is purely a side-effect — the boot-script already applied the
-  // class before paint. We just listen for OS-theme changes on "system".
+  // class before paint. Just keep the React tree in sync after hydration.
   useEffect(() => {
     applyTheme(readTheme());
-    const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
-    const onChange = () => {
-      if (readTheme() === "system") applyTheme("system");
-    };
-    mq?.addEventListener?.("change", onChange);
-    return () => mq?.removeEventListener?.("change", onChange);
   }, []);
 
   return (
@@ -75,8 +68,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 /**
  * Boot-script that the layout renders into <head>. Apply the theme class
  * synchronously, BEFORE first paint, to prevent flash-of-wrong-theme.
+ * Default = dark. We never fall back to OS preference, by design — dark is
+ * the canonical 50pick mode.
  */
-export const themeBootScript = `(function(){try{var t=document.cookie.match(/(?:^|; )kp-theme=([^;]*)/);t=t?decodeURIComponent(t[1]):null;if(!t){try{t=localStorage.getItem('kp-theme')}catch(e){}};if(!t)t='dark';var r=t==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):t;var h=document.documentElement;h.classList.toggle('dark',r==='dark');h.classList.toggle('light',r==='light');h.setAttribute('data-theme',r);}catch(e){}})();`;
+export const themeBootScript = `(function(){try{var t=document.cookie.match(/(?:^|; )kp-theme=([^;]*)/);t=t?decodeURIComponent(t[1]):null;if(!t){try{t=localStorage.getItem('kp-theme')}catch(e){}};if(t!=='light')t='dark';var h=document.documentElement;h.classList.toggle('dark',t==='dark');h.classList.toggle('light',t==='light');h.setAttribute('data-theme',t);}catch(e){}})();`;
 
 /** Public theme API for the toggle component. */
 export function setStoredTheme(t: Theme) {

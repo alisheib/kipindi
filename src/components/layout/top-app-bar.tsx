@@ -15,6 +15,8 @@ export type TopAppBarUser = {
   name: string;
   phone: string;
   isAuthed: boolean;
+  avatarSrc?: string | null;
+  seed?: string;
 };
 
 export function TopAppBar({ user }: { user: TopAppBarUser }) {
@@ -63,7 +65,14 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
           <NotificationsPanel />
           <LanguageToggle />
           <ThemeToggle />
-          <AvatarMenu initials={user.initials} name={user.name} phone={user.phone} isAuthed={user.isAuthed} />
+          <AvatarMenu
+            initials={user.initials}
+            name={user.name}
+            phone={user.phone}
+            isAuthed={user.isAuthed}
+            avatarSrc={user.avatarSrc ?? null}
+            seed={user.seed}
+          />
         </div>
       </div>
     </header>

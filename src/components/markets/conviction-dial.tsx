@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import { buyPositionAction } from "@/app/markets/actions";
 import { HouseLeanWarning } from "./house-lean-warning";
+import { BetConfirmModal } from "./bet-confirm-modal";
 
 type Side = "YES" | "NO" | "NEUTRAL";
 
@@ -104,12 +105,15 @@ type Props = {
   /** Baseline stake at 1× multiplier (multiplier reaches 5× at the extremes). */
   baseStake?: number;
   initial?: number;
+  /** Used in the confirm modal headline. */
+  marketTitle?: string;
 };
 
-export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, initial = 0.5 }: Props) {
+export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, initial = 0.5, marketTitle }: Props) {
   const [pos, setPos] = useState(initial);
   const [dragging, setDragging] = useState(false);
   const [hover, setHover] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const trackRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -181,7 +185,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
     if (e.key === "ArrowRight") { e.preventDefault(); setPos((p) => Math.min(1, p + step)); }
     if (e.key === "Home")       { e.preventDefault(); setPos(0); }
     if (e.key === "End")        { e.preventDefault(); setPos(1); }
-    if (e.key === " " || e.key === "Enter") { e.preventDefault(); submit(); }
+    if (e.key === " " || e.key === "Enter") { e.preventDefault(); openConfirm(); }
   };
 
   // Use ResizeObserver to keep the SVG width responsive without re-renders
@@ -209,6 +213,11 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
   const noFillW  = pos < 0.5 ? (0.5 - pos) * width : 0;
   const sqPath = squirclePath(knobR);
 
+  const openConfirm = () => {
+    if (side === "NEUTRAL" || pending) return;
+    setConfirmOpen(true);
+  };
+
   const submit = () => {
     if (side === "NEUTRAL" || pending) return;
     startTransition(async () => {
@@ -225,6 +234,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
           description: `If correct, you receive TZS ${fmt(r.data!.payoutIfWin)}`,
           variant: "success",
         });
+        setConfirmOpen(false);
         router.refresh();
       }
     });
@@ -417,30 +427,54 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
         <HouseLeanWarning level={lean} payout={proj.payout} stake={stake} />
       )}
 
-      {/* Confirm button — disabled at neutral */}
-      <button
-        type="button"
-        onClick={submit}
-        disabled={pending || side === "NEUTRAL"}
-        className="mt-5 w-full h-12 rounded-md font-display font-bold text-[15px] transition-all border disabled:opacity-50 disabled:cursor-not-allowed"
-        style={{
-          background: side === "NEUTRAL"
-            ? "var(--bg-overlay)"
-            : "linear-gradient(180deg, var(--gold-400), var(--gold-600))",
-          color: side === "NEUTRAL" ? "var(--text-subtle)" : "var(--gold-fg)",
-          borderColor: side === "NEUTRAL" ? "var(--border)" : "var(--gold-700)",
-          boxShadow: side === "NEUTRAL" ? "none" : "0 1px 0 oklch(95% 0.08 80) inset",
-        }}
-      >
-        {pending
-          ? "Placing…"
-          : side === "NEUTRAL"
-            ? "Drag the dial to commit"
-            : `Confirm ${side} · TZS ${fmt(stake)}`}
-      </button>
-      <p className="mt-2.5 text-center text-[11px] text-text-subtle">
-        Pool-share payout. Outcome may differ from current odds.
-      </p>
+      {/* Compact place-bet pill — opens the confirm modal. Sits inline with
+          a hint instead of taking the full width with a giant gold slab. */}
+      <div className="mt-4 flex items-center gap-3">
+        <p className="flex-1 text-[11px] text-text-subtle leading-snug">
+          {side === "NEUTRAL"
+            ? "Drag the dial · Vuta dial kuanza"
+            : "Pool-share payout. Confirm in a popup."}
+        </p>
+        <button
+          type="button"
+          onClick={openConfirm}
+          disabled={pending || side === "NEUTRAL"}
+          aria-label={side === "NEUTRAL" ? "Drag the dial to commit" : `Place ${side} for TZS ${fmt(stake)}`}
+          className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-pill font-display font-bold text-[13px] tabular-nums transition-all border disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{
+            background: side === "NEUTRAL"
+              ? "var(--bg-overlay)"
+              : "linear-gradient(180deg, var(--gold-400), var(--gold-600))",
+            color: side === "NEUTRAL" ? "var(--text-subtle)" : "var(--gold-fg)",
+            borderColor: side === "NEUTRAL" ? "var(--border)" : "var(--gold-700)",
+            boxShadow: side === "NEUTRAL" ? "none" : "0 1px 0 oklch(95% 0.08 80) inset, 0 6px 14px -10px oklch(78% 0.14 80 / 0.7)",
+            minWidth: 168,
+          }}
+        >
+          {side === "NEUTRAL"
+            ? "—"
+            : (
+              <>
+                <span>Place {side}</span>
+                <span className="font-mono opacity-90">TZS {fmt(stake)}</span>
+              </>
+            )}
+        </button>
+      </div>
+
+      <BetConfirmModal
+        open={confirmOpen}
+        side={side === "NEUTRAL" ? "YES" : side}
+        stake={stake}
+        multiplier={multiplier}
+        payout={proj.payout}
+        ratio={proj.ratio}
+        lean={lean}
+        pending={pending}
+        marketTitle={marketTitle}
+        onConfirm={submit}
+        onCancel={() => { if (!pending) setConfirmOpen(false); }}
+      />
 
       <style>{`
         @keyframes csrf-breathe { 0%,100% { opacity: 0.35; } 50% { opacity: 0.7; } }

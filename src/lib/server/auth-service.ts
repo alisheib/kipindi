@@ -163,6 +163,7 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
       acceptedTermsAt: new Date().toISOString(),
       marketingOptIn: reg.marketingOptIn,
       twoFactorEnabled: false,
+      avatarDataUrl: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       lastLoginAt: new Date().toISOString(),

@@ -186,7 +186,7 @@ export default async function MarketDetail({
         <aside className="space-y-3">
           {!isResolved && m.status === "LIVE" ? (
             <>
-              <ConvictionDial marketId={m.id} yesPool={m.yesPool} noPool={m.noPool} />
+              <ConvictionDial marketId={m.id} yesPool={m.yesPool} noPool={m.noPool} marketTitle={m.titleEn} />
               <NotifyPrompt marketId={m.id} marketTitle={m.titleEn} />
             </>
           ) : (

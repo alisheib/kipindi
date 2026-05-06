@@ -17,6 +17,10 @@ export type StoredUser = {
   acceptedTermsAt: string | null;
   marketingOptIn: boolean;
   twoFactorEnabled: boolean;
+  /** Optional user-uploaded avatar image as a data URL (base64 jpeg/png).
+   *  Capped at ~96KB after client-side resize to 256x256. Null means use
+   *  the deterministic OKLCH gradient + initials. */
+  avatarDataUrl: string | null;
   createdAt: string;
   updatedAt: string;
   lastLoginAt: string | null;

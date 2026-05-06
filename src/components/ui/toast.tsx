@@ -90,31 +90,36 @@ export function useToast(): ToastContextValue {
   return ctx;
 }
 
-const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; surface: string }> = {
+const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; surface: string; rail: string }> = {
   default: {
     bar: "bg-teal-500",
-    icon: <CheckCircle2 size={18} className="text-teal-300" />,
-    surface: "bg-bg-elevated border-border",
+    icon: <CheckCircle2 size={20} className="text-teal-300" />,
+    surface: "bg-bg-elevated border-teal-700/60 shadow-[0_18px_42px_-14px_rgba(0,170,170,0.35)]",
+    rail: "bg-teal-500",
   },
   success: {
     bar: "bg-yes-500",
-    icon: <CheckCircle2 size={18} className="text-yes-300" />,
-    surface: "bg-bg-elevated border-border",
+    icon: <CheckCircle2 size={20} className="text-yes-300" />,
+    surface: "bg-bg-elevated border-yes-700/60 shadow-[0_18px_42px_-14px_oklch(45%_0.16_152_/_0.55)]",
+    rail: "bg-yes-500",
   },
   warning: {
     bar: "bg-warning-500",
-    icon: <AlertTriangle size={18} className="text-warning-fg" />,
-    surface: "bg-bg-elevated border-border",
+    icon: <AlertTriangle size={20} className="text-warning-fg" />,
+    surface: "bg-bg-elevated border-warning-border shadow-[0_18px_42px_-14px_oklch(60%_0.18_85_/_0.50)]",
+    rail: "bg-warning-500",
   },
   danger: {
     bar: "bg-no-500",
-    icon: <AlertCircle size={18} className="text-no-300" />,
-    surface: "bg-bg-elevated border-border",
+    icon: <AlertCircle size={20} className="text-no-300" />,
+    surface: "bg-bg-elevated border-no-700/60 shadow-[0_18px_42px_-14px_oklch(50%_0.18_22_/_0.55)]",
+    rail: "bg-no-500",
   },
   gold: {
     bar: "bg-gold-500",
-    icon: <Trophy size={18} className="text-gold-fg" />,
-    surface: "bg-bg-elevated border-gold-700",
+    icon: <Trophy size={20} className="text-gold-fg" />,
+    surface: "bg-bg-elevated border-gold-700 shadow-[0_18px_42px_-14px_oklch(78%_0.14_80_/_0.55)]",
+    rail: "bg-gold-500",
   },
 };
 
@@ -144,29 +149,32 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
     <div
       role="status"
       className={cn(
-        "pointer-events-auto relative w-full max-w-sm overflow-hidden rounded-xl border shadow-e3 backdrop-blur-md transition-all duration-200",
+        "pointer-events-auto relative w-full max-w-[420px] overflow-hidden rounded-xl border-[1.5px] backdrop-blur-md transition-all duration-200",
         v.surface,
-        enter ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0",
+        enter ? "translate-y-0 opacity-100 scale-100" : "-translate-y-2 opacity-0 scale-95",
       )}
     >
-      <div className="flex items-start gap-3 p-3 pr-9">
+      {/* Side rail — accent stripe so the variant is unmissable */}
+      <div className={cn("absolute left-0 top-0 bottom-0 w-1", v.rail)} aria-hidden />
+
+      <div className="flex items-start gap-3 py-3.5 pl-4 pr-9">
         <div className="mt-0.5 shrink-0">{v.icon}</div>
         <div className="min-w-0 flex-1">
-          <p className="text-body-sm font-semibold text-text leading-tight">{toast.title}</p>
+          <p className="font-display text-[14px] font-bold text-text leading-tight">{toast.title}</p>
           {toast.description ? (
-            <p className="mt-0.5 text-caption text-text-muted leading-snug">{toast.description}</p>
+            <p className="mt-1 text-[12.5px] text-text-muted leading-snug">{toast.description}</p>
           ) : null}
         </div>
       </div>
       <button
         type="button"
         onClick={onDismiss}
-        className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-md text-text-muted hover:bg-bg-overlay hover:text-text"
+        className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
         aria-label="Dismiss"
       >
         <X size={14} />
       </button>
-      <div className="absolute inset-x-0 bottom-0 h-1 bg-border/50">
+      <div className="absolute inset-x-0 bottom-0 h-1 bg-border/40">
         <div
           className={cn("h-full origin-left", v.bar)}
           style={{
