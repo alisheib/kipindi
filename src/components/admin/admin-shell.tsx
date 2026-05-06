@@ -47,6 +47,7 @@ export const NAV_GROUPS: ReadonlyArray<{
     items: [
       { href: "/admin/markets",        label: "Curation queue", key: "markets" },
       { href: "/admin/resolver-queue", label: "Resolver queue", key: "resolver" },
+      { href: "/admin/sources",        label: "Sources & categories", key: "sources" },
     ],
   },
   {

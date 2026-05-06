@@ -98,20 +98,22 @@ export function MarketCard({
         <span className="ml-auto">{timeLeft}</span>
       </div>
 
-      <div className="mt-3.5 grid grid-cols-2 gap-2">
+      <div className="mt-3 grid grid-cols-2 gap-1.5">
         <button
           type="button"
+          aria-label={`Buy YES at ${yesPct}%`}
           onClick={(e) => { e.preventDefault(); window.location.href = `/markets/${id}?side=YES`; }}
-          className="h-10 rounded-md bg-yes-500 font-bold text-yes-950 transition-colors hover:bg-yes-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-elevated"
+          className="h-8 rounded-md bg-yes-500 text-[12px] font-bold text-yes-950 transition-colors hover:bg-yes-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-elevated"
         >
-          YES @ {yesPct}%
+          YES · {yesPct}¢
         </button>
         <button
           type="button"
+          aria-label={`Buy NO at ${100 - yesPct}%`}
           onClick={(e) => { e.preventDefault(); window.location.href = `/markets/${id}?side=NO`; }}
-          className="h-10 rounded-md bg-no-500 font-bold text-white transition-colors hover:bg-no-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-elevated"
+          className="h-8 rounded-md bg-no-500 text-[12px] font-bold text-white transition-colors hover:bg-no-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-elevated"
         >
-          NO @ {100 - yesPct}%
+          NO · {100 - yesPct}¢
         </button>
       </div>
     </Link>

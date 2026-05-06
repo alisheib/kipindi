@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
 import { buyPosition, resolveMarket, createMarket, type CreateMarketInput, type Side } from "@/lib/server/market-service";
+import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
 
 export async function buyPositionAction(formData: FormData) {
   const session = await currentSession();
@@ -50,6 +51,12 @@ export async function createMarketAction(formData: FormData) {
   };
   if (!input.titleEn || !input.sourceUrl || !input.resolutionAt) {
     return { ok: false as const, error: "Title, source URL, and resolution time are required." };
+  }
+  // Source-trust gate — only enabled, on-registry sources can publish a market.
+  seedDefaultSources();
+  const trust = isSourceTrusted(input.sourceUrl, input.category);
+  if (!trust.ok) {
+    return { ok: false as const, error: `Source not approved · ${trust.reason}. Add or enable it at /admin/sources.` };
   }
   const m = createMarket(input);
   revalidatePath("/admin/markets");

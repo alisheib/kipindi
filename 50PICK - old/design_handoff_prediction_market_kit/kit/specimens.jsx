@@ -668,12 +668,6 @@ const App = () => (
       </DCArtboard>
     </DCSection>
 
-    <DCSection id="conviction" title="Conviction dial">
-      <DCArtboard id="conviction-dial" label="Squircle dial — side + stake in one gesture" width={880} height={520}>
-        <ConvictionSliderRoundSpecimen />
-      </DCArtboard>
-    </DCSection>
-
     <DCSection id="microstructure" title="Market microstructure">
       <DCArtboard id="price-chart" label="Price chart · YES probability over time" width={880} height={500}>
         <PriceChartSpecimen />

@@ -73,17 +73,17 @@ export default function LandingPage() {
                 <TippingBar yesPct={featuredYesPct} height={22} animate={false} />
               </div>
             )}
-            <div className="flex flex-wrap gap-2.5">
+            <div className="flex flex-wrap gap-2">
               <Link
                 href={"/auth/demo" as never}
-                className="inline-flex h-12 items-center gap-2 rounded-pill bg-yes-500 px-6 font-display font-bold text-yes-950 hover:bg-yes-400 transition-colors"
+                className="inline-flex h-10 sm:h-11 items-center gap-2 rounded-pill bg-yes-500 px-4 sm:px-5 text-[14px] sm:text-[15px] font-display font-bold text-yes-950 hover:bg-yes-400 transition-colors"
               >
                 Try the demo
-                <ArrowRight size={18} aria-hidden />
+                <ArrowRight size={15} aria-hidden />
               </Link>
               <Link
                 href={"/markets" as never}
-                className="inline-flex h-12 items-center gap-2 rounded-pill border border-border-strong bg-bg-elevated px-6 font-display font-semibold text-text hover:bg-bg-overlay transition-colors"
+                className="inline-flex h-10 sm:h-11 items-center gap-2 rounded-pill border border-border-strong bg-bg-elevated px-4 sm:px-5 text-[14px] sm:text-[15px] font-display font-semibold text-text hover:bg-bg-overlay transition-colors"
               >
                 Browse markets
               </Link>
