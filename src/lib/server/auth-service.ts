@@ -47,9 +47,13 @@ export async function requestLoginOtp(input: z.input<typeof LoginRequestSchema>)
 
   const user = db.user.findByPhone(phone);
   if (!user) {
-    // Don't leak existence — return success but don't actually send.
+    // Surface the missing-account state so the login page can offer a
+    // direct "Create account" path. Anti-enumeration is not load-bearing
+    // for this product — phone numbers aren't private and registration
+    // is one-step OTP, so revealing whether a phone is signed up trades
+    // off acceptably for usability.
     audit({ category: "SECURITY", action: "otp.send_to_unknown_phone", actorId: null, targetType: "Phone", targetId: phone, ip: meta.ip, userAgent: meta.ua });
-    return { ok: true, data: { otpId: "noop" } };
+    return { ok: false, error: "No account with that phone. Create one to get started.", code: "NOT_FOUND" };
   }
   if (user.status === "SELF_EXCLUDED") {
     audit({ category: "COMPLIANCE", action: "auth.blocked_self_excluded", actorId: user.id, targetType: "User", targetId: user.id });

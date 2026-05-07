@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AlertCircle } from "lucide-react";
 import { FiftyLockup } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { Input, Field } from "@/components/ui/input";
@@ -6,7 +7,43 @@ import { startLoginAction } from "./actions";
 
 export const metadata = { title: "Sign in · Ingia" };
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ phone?: string; error?: string }>;
+}) {
+  const sp = await searchParams;
+  const phoneDefault = sp.phone ?? "";
+
+  const errorPanel = (() => {
+    switch (sp.error) {
+      case "no_account":
+        return {
+          tone: "warning" as const,
+          title: "No account yet · Bado huna akaunti",
+          body:
+            "We couldn't find an account for that phone. Create one in 30 seconds — TZS 10,000 lands in your wallet on sign-up.",
+          cta: { href: "/auth/register", label: "Create account · Fungua akaunti" },
+        };
+      case "rate_limited":
+        return {
+          tone: "warning" as const,
+          title: "Too many tries · Majaribio mengi",
+          body: "Wait a couple of minutes and try the same phone again.",
+          cta: null,
+        };
+      case "blocked":
+        return {
+          tone: "danger" as const,
+          title: "Account unavailable · Akaunti haipatikani",
+          body: "Contact support@50pick.com if you believe this is in error.",
+          cta: null,
+        };
+      default:
+        return null;
+    }
+  })();
+
   return (
     <main className="relative min-h-[calc(100vh-44px)] grid place-items-center overflow-hidden px-3 py-8">
       <BrandTopo opacity={0.05} />
@@ -32,8 +69,37 @@ export default function LoginPage() {
             </p>
           </div>
 
+          {errorPanel && (
+            <div
+              role="alert"
+              className={
+                "flex items-start gap-2.5 rounded-md border px-3.5 py-3 " +
+                (errorPanel.tone === "danger"
+                  ? "border-no-700/60 bg-no-500/[0.10]"
+                  : "border-warning-border bg-warning-bg/30")
+              }
+            >
+              <AlertCircle
+                size={16}
+                className={"mt-0.5 shrink-0 " + (errorPanel.tone === "danger" ? "text-no-300" : "text-gold-300")}
+              />
+              <div className="text-[12.5px] leading-snug">
+                <p className="font-display font-semibold text-text">{errorPanel.title}</p>
+                <p className="mt-0.5 text-text-muted">{errorPanel.body}</p>
+                {errorPanel.cta && (
+                  <Link
+                    href={errorPanel.cta.href as never}
+                    className="mt-2 inline-flex h-9 items-center px-3.5 rounded-pill border border-gold-700 bg-gold-500/10 font-display font-bold text-[12.5px] text-gold-300 hover:bg-gold-500/20 transition-colors"
+                  >
+                    {errorPanel.cta.label} →
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
+
           <form action={startLoginAction} className="space-y-4">
-            <Field label="Phone · Simu" hint="Use your registered Tanzania mobile number.">
+            <Field label="Phone · Simu" hint="Tanzania mobile number.">
               <Input
                 id="phone"
                 name="phone"
@@ -41,6 +107,7 @@ export default function LoginPage() {
                 inputMode="numeric"
                 autoComplete="tel"
                 required
+                defaultValue={phoneDefault.replace(/^\+255/, "")}
                 placeholder="712 345 678"
                 size="lg"
                 mono

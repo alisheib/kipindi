@@ -145,11 +145,17 @@ export default function LandingPage() {
                 <ArrowRight size={16} aria-hidden />
               </Link>
               <Link
-                href={"/markets" as never}
+                href={"/auth/login" as never}
                 className="btn btn-ghost inline-flex items-center"
                 style={{ height: 52, padding: "0 24px", fontSize: 15, borderRadius: 999 }}
               >
-                Browse markets
+                Sign in
+              </Link>
+              <Link
+                href={"/markets" as never}
+                className="font-mono text-[11px] uppercase tracking-[0.14em] text-aqua-200 hover:text-aqua-100 underline-offset-2 hover:underline self-center"
+              >
+                Browse markets first →
               </Link>
             </div>
           </div>
