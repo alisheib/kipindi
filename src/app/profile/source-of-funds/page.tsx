@@ -1,10 +1,7 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Card, CardBody } from "@/components/ui/card";
-import { Pattern } from "@/components/ui/pattern";
-import { Breadcrumbs } from "@/components/ui/breadcrumbs";
-import { Chip } from "@/components/ui/chip";
-import { Button } from "@/components/ui/button";
-import { ShieldCheck, FileSignature } from "lucide-react";
+import { ChevronLeft, ShieldCheck, FileSignature } from "lucide-react";
+import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { submitSourceOfFundsAction } from "./actions";
@@ -22,156 +19,242 @@ const SOURCES = [
 ];
 
 const BANDS = [
-  { id: "under-12m",  label: "Under TZS 12M" },
-  { id: "12m-50m",    label: "TZS 12M – 50M" },
-  { id: "50m-200m",   label: "TZS 50M – 200M" },
-  { id: "over-200m",  label: "Over TZS 200M" },
+  { id: "under-12m", label: "Under TZS 12M" },
+  { id: "12m-50m",   label: "TZS 12M – 50M" },
+  { id: "50m-200m",  label: "TZS 50M – 200M" },
+  { id: "over-200m", label: "Over TZS 200M" },
 ];
 
 export default async function SourceOfFundsPage() {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
   const existing = db.sourceOfFunds.get(session.userId);
+  const statusTone =
+    existing?.reviewStatus === "ACCEPTED" ? "yes"
+    : existing?.reviewStatus === "REJECTED" ? "no"
+    : "warning";
 
   return (
-    <div className="relative min-h-[calc(100vh-44px)] grid place-items-start justify-center px-3 py-8">
-      <Pattern kind="sokoni" opacity={0.03} color="var(--gold)" className="!fixed inset-0" />
-      <div className="relative w-full max-w-2xl space-y-4">
-        <Breadcrumbs items={[
-          { label: "Profile", href: "/profile" },
-          { label: "Source of funds", labelSw: "Asili ya pesa" },
-        ]} />
+    <main className="mx-auto max-w-[680px] px-3 lg:px-6 py-6 space-y-5">
+      <Link
+        href="/profile"
+        className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
+      >
+        <ChevronLeft size={14} aria-hidden />
+        Profile
+      </Link>
 
-        <header>
-          <div className="flex items-center gap-2">
-            <ShieldCheck size={20} className="text-info" />
-            <p className="font-mono text-caption uppercase tracking-[0.32em] text-info font-bold">AML · Enhanced due diligence</p>
+      <header className="relative overflow-hidden rounded-2xl border border-border bg-bg-elevated">
+        <div
+          className="absolute inset-0"
+          aria-hidden
+          style={{
+            background:
+              "radial-gradient(800px 320px at 100% 0%, oklch(45% 0.10 240 / 0.18), transparent 60%), " +
+              "linear-gradient(135deg, oklch(20% 0.012 240) 0%, oklch(16% 0.014 240) 100%)",
+          }}
+        />
+        <div className="absolute -right-6 -top-6 opacity-[0.06]" aria-hidden>
+          <FiftyMark size={180} />
+        </div>
+        <div className="relative z-10 p-5 lg:p-6">
+          <div className="flex items-center gap-2 mb-1">
+            <ShieldCheck size={14} className="text-info-fg" />
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-info-fg">
+              AML · Enhanced due diligence
+            </p>
           </div>
-          <h1 className="font-display font-bold text-title-lg text-text mt-1.5">Source of funds · Asili ya pesa</h1>
-          <p className="text-body text-text-secondary mt-2 max-w-prose">
-            Required by the Tanzania Anti-Money-Laundering Act (Cap 423) when cumulative deposits exceed TZS 5,000,000
-            in 30 days, or any single transaction exceeds TZS 1,000,000.
-            <br /><span className="italic">Tunahitaji kujua chanzo cha pesa zako kwa mujibu wa sheria ya kuzuia uoshaji wa fedha.</span>
+          <h1 className="font-display text-[24px] lg:text-[26px] font-bold text-text leading-tight tracking-[-0.02em]">
+            Source of funds <span className="text-text-subtle italic font-normal text-[18px]">· Asili ya pesa</span>
+          </h1>
+          <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose">
+            Required by the Tanzania Anti-Money-Laundering Act (Cap 423) when cumulative deposits exceed
+            TZS 5,000,000 in 30 days, or any single transaction exceeds TZS 1,000,000.
+            <span className="block italic text-text-subtle text-[12px] mt-1">
+              Tunahitaji kujua chanzo cha pesa zako kwa mujibu wa sheria ya kuzuia uoshaji wa fedha.
+            </span>
           </p>
-        </header>
+        </div>
+      </header>
 
-        {existing && existing.reviewStatus !== "REJECTED" && (
-          <Card className="border-2 border-success-border bg-success-bg/15">
-            <CardBody className="p-4 space-y-1">
-              <div className="flex items-center gap-2">
-                <Chip size="sm" variant={existing.reviewStatus === "ACCEPTED" ? "success" : "warning"}>
-                  {existing.reviewStatus}
-                </Chip>
-                <p className="text-caption text-text-secondary">Submitted {new Date(existing.submittedAt).toLocaleDateString("en-GB")}</p>
-              </div>
-              <p className="text-body-sm text-text">
-                Source: <strong>{existing.declaredSource}</strong> · {existing.declaredOccupation}
-                {existing.declaredEmployer ? ` · ${existing.declaredEmployer}` : ""}
-                <br />Income band: <strong>{existing.declaredAnnualIncomeBand}</strong>
-              </p>
-              {existing.reviewStatus === "PENDING" && (
-                <p className="text-caption text-text-secondary">A compliance officer will review within 1 business day.</p>
-              )}
-            </CardBody>
-          </Card>
-        )}
+      {existing && existing.reviewStatus !== "REJECTED" && (
+        <section className="rounded-xl border border-yes-700/60 bg-yes-500/[0.06] p-4 space-y-1.5">
+          <div className="flex items-center gap-2">
+            <Pill tone={statusTone as "yes" | "no" | "warning"}>{existing.reviewStatus}</Pill>
+            <p className="font-mono text-[11px] text-text-subtle tabular-nums">
+              Submitted {new Date(existing.submittedAt).toLocaleDateString("en-GB")}
+            </p>
+          </div>
+          <p className="text-[12.5px] text-text-muted leading-snug">
+            Source: <span className="font-semibold text-text">{existing.declaredSource}</span> · {existing.declaredOccupation}
+            {existing.declaredEmployer ? ` · ${existing.declaredEmployer}` : ""}
+            <br />Income band: <span className="font-semibold text-text">{existing.declaredAnnualIncomeBand}</span>
+          </p>
+          {existing.reviewStatus === "PENDING" && (
+            <p className="font-mono text-[11px] text-text-subtle">A compliance officer will review within 1 business day.</p>
+          )}
+        </section>
+      )}
 
-        <Card className="border-2 border-border-strong">
-          <CardBody className="p-5 lg:p-6 space-y-4">
-            <div className="flex items-center gap-2">
-              <FileSignature size={18} className="text-royal" />
-              <h2 className="font-display font-bold text-title-sm text-text">Declaration · Tamko</h2>
-            </div>
+      <section className="rounded-2xl border border-border bg-bg-elevated p-5 lg:p-6 space-y-5">
+        <div className="flex items-center gap-2">
+          <FileSignature size={16} className="text-info-fg" />
+          <h2 className="font-display text-[15px] font-semibold text-text">Declaration · Tamko</h2>
+        </div>
 
-            <form action={submitSourceOfFundsAction} className="space-y-4">
-              <fieldset>
-                <legend className="text-caption uppercase tracking-[0.16em] font-bold text-text-secondary mb-2">
-                  Primary source of funds · Chanzo kikuu
-                </legend>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {SOURCES.map((s, i) => (
-                    <label key={s.id} className="relative flex flex-col items-center gap-1 px-2 py-3 rounded-md border border-border bg-surface hover:border-border-strong cursor-pointer transition-colors has-[:checked]:border-royal has-[:checked]:bg-royal-subtle/40">
-                      <input type="radio" name="declaredSource" value={s.id} required defaultChecked={existing?.declaredSource === s.id || (!existing && i === 0)} className="sr-only peer" />
-                      <span className="text-body-sm font-bold text-text">{s.label}</span>
-                      <span className="text-caption text-text-tertiary">{s.sw}</span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <label className="block">
-                  <span className="block text-caption uppercase tracking-[0.16em] font-bold text-text-secondary mb-1.5">
-                    Occupation · Kazi
-                  </span>
+        <form action={submitSourceOfFundsAction} className="space-y-5">
+          <fieldset>
+            <legend className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
+              Primary source of funds · Chanzo kikuu
+            </legend>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {SOURCES.map((s, i) => (
+                <label
+                  key={s.id}
+                  className="relative flex flex-col items-center gap-1 px-2 py-3 rounded-md border border-border bg-bg-overlay hover:border-gold-700 cursor-pointer transition-colors has-[:checked]:border-gold-500 has-[:checked]:bg-gold-500/10"
+                >
                   <input
-                    name="declaredOccupation"
-                    type="text"
+                    type="radio"
+                    name="declaredSource"
+                    value={s.id}
                     required
-                    minLength={2}
-                    maxLength={200}
-                    defaultValue={existing?.declaredOccupation ?? ""}
-                    placeholder="e.g. Software engineer"
-                    className="w-full h-10 px-3 rounded-md bg-surface border border-border text-text text-body-sm focus:outline-none focus:border-border-focus"
+                    defaultChecked={existing?.declaredSource === s.id || (!existing && i === 0)}
+                    className="sr-only peer"
                   />
+                  <span className="font-display text-[12.5px] font-bold text-text">{s.label}</span>
+                  <span className="font-mono text-[10.5px] italic text-text-subtle">{s.sw}</span>
                 </label>
-                <label className="block">
-                  <span className="block text-caption uppercase tracking-[0.16em] font-bold text-text-secondary mb-1.5">
-                    Employer (optional) · Mwajiri
-                  </span>
+              ))}
+            </div>
+          </fieldset>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field
+              name="declaredOccupation"
+              label="Occupation · Kazi"
+              required
+              minLength={2}
+              maxLength={200}
+              defaultValue={existing?.declaredOccupation ?? ""}
+              placeholder="e.g. Software engineer"
+            />
+            <Field
+              name="declaredEmployer"
+              label="Employer (optional) · Mwajiri"
+              maxLength={200}
+              defaultValue={existing?.declaredEmployer ?? ""}
+              placeholder="Company name"
+            />
+          </div>
+
+          <fieldset>
+            <legend className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
+              Approximate annual income · Mapato ya mwaka
+            </legend>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {BANDS.map((b, i) => (
+                <label
+                  key={b.id}
+                  className="relative flex items-center justify-center gap-1 px-2 py-3 rounded-md border border-border bg-bg-overlay hover:border-gold-700 cursor-pointer transition-colors has-[:checked]:border-gold-500 has-[:checked]:bg-gold-500/10"
+                >
                   <input
-                    name="declaredEmployer"
-                    type="text"
-                    maxLength={200}
-                    defaultValue={existing?.declaredEmployer ?? ""}
-                    placeholder="Company name"
-                    className="w-full h-10 px-3 rounded-md bg-surface border border-border text-text text-body-sm focus:outline-none focus:border-border-focus"
+                    type="radio"
+                    name="declaredAnnualIncomeBand"
+                    value={b.id}
+                    required
+                    defaultChecked={existing?.declaredAnnualIncomeBand === b.id || (!existing && i === 0)}
+                    className="sr-only peer"
                   />
+                  <span className="font-mono text-[11px] font-bold text-text text-center">{b.label}</span>
                 </label>
-              </div>
+              ))}
+            </div>
+          </fieldset>
 
-              <fieldset>
-                <legend className="text-caption uppercase tracking-[0.16em] font-bold text-text-secondary mb-2">
-                  Approximate annual income · Mapato ya mwaka
-                </legend>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {BANDS.map((b, i) => (
-                    <label key={b.id} className="relative flex items-center justify-center gap-1 px-2 py-3 rounded-md border border-border bg-surface hover:border-border-strong cursor-pointer transition-colors has-[:checked]:border-royal has-[:checked]:bg-royal-subtle/40">
-                      <input type="radio" name="declaredAnnualIncomeBand" value={b.id} required defaultChecked={existing?.declaredAnnualIncomeBand === b.id || (!existing && i === 0)} className="sr-only peer" />
-                      <span className="text-caption font-bold text-text text-center">{b.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
+          <div>
+            <label
+              htmlFor="declaredOther"
+              className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2"
+            >
+              Other details (required if &quot;Other&quot; selected) · Maelezo zaidi
+            </label>
+            <textarea
+              id="declaredOther"
+              name="declaredOther"
+              rows={3}
+              maxLength={500}
+              defaultValue={existing?.declaredOther ?? ""}
+              placeholder="Describe the source of funds in your own words"
+              className="w-full p-3 rounded-md border border-border bg-bg-overlay text-text text-[13px] focus:outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 transition-colors"
+            />
+          </div>
 
-              <label className="block">
-                <span className="block text-caption uppercase tracking-[0.16em] font-bold text-text-secondary mb-1.5">
-                  Other details (required if &quot;Other&quot; selected) · Maelezo zaidi
-                </span>
-                <textarea
-                  name="declaredOther"
-                  rows={3}
-                  maxLength={500}
-                  defaultValue={existing?.declaredOther ?? ""}
-                  placeholder="Describe the source of funds in your own words"
-                  className="w-full p-3 rounded-md bg-surface border border-border text-text text-body-sm focus:outline-none focus:border-border-focus"
-                />
-              </label>
+          <div className="rounded-md border border-warning-border bg-warning-bg/30 p-3.5 space-y-1">
+            <p className="font-display text-[12.5px] font-semibold text-text">By submitting</p>
+            <p className="text-[12px] text-text-muted leading-snug">
+              You confirm the declared information is true and complete. Knowingly providing false
+              information is an offence under the Tanzania Anti-Money-Laundering Act, with penalties
+              up to 10 years imprisonment and/or fines up to TZS 100,000,000.
+            </p>
+          </div>
 
-              <div className="rounded-md bg-bg-sunken/50 border border-border-subtle p-3 text-caption text-text-secondary">
-                <p className="font-bold text-text mb-1">By submitting</p>
-                <p>You confirm the declared information is true and complete. Knowingly providing false information is an
-                offence under the Tanzania Anti-Money-Laundering Act, with penalties up to 10 years imprisonment and/or
-                fines up to TZS 100,000,000.</p>
-              </div>
+          <button
+            type="submit"
+            className="w-full h-12 inline-flex items-center justify-center gap-2 rounded-pill font-display font-bold text-[14px] transition-all border"
+            style={{
+              background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))",
+              color: "var(--gold-fg)",
+              borderColor: "var(--gold-700)",
+              boxShadow: "0 1px 0 oklch(95% 0.08 80) inset, 0 8px 18px -10px oklch(78% 0.14 80 / 0.7)",
+            }}
+          >
+            <FileSignature size={16} />
+            Submit declaration · Wasilisha
+          </button>
+        </form>
+      </section>
+    </main>
+  );
+}
 
-              <Button type="submit" variant="primary" size="xl" fullWidth leading={<FileSignature size={18} />}>
-                Submit declaration · Wasilisha
-              </Button>
-            </form>
-          </CardBody>
-        </Card>
-      </div>
-    </div>
+function Field({
+  name, label, required, minLength, maxLength, defaultValue, placeholder,
+}: {
+  name: string;
+  label: string;
+  required?: boolean;
+  minLength?: number;
+  maxLength?: number;
+  defaultValue?: string;
+  placeholder?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
+        {label}
+      </span>
+      <input
+        name={name}
+        type="text"
+        required={required}
+        minLength={minLength}
+        maxLength={maxLength}
+        defaultValue={defaultValue}
+        placeholder={placeholder}
+        className="w-full h-10 px-3 rounded-md border border-border bg-bg-overlay text-text text-[13px] focus:outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 transition-colors"
+      />
+    </label>
+  );
+}
+
+function Pill({ tone, children }: { tone: "yes" | "no" | "warning"; children: React.ReactNode }) {
+  const cls =
+    tone === "yes"     ? "border-yes-700 bg-yes-500/10 text-yes-300"
+    : tone === "no"      ? "border-no-700 bg-no-500/10 text-no-300"
+    :                      "border-warning-border bg-warning-bg/40 text-warning-fg";
+  return (
+    <span className={`inline-flex items-center rounded-pill border px-2.5 py-0.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.06em] ${cls}`}>
+      {children}
+    </span>
   );
 }
