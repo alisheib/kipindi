@@ -210,17 +210,8 @@ export default async function WithdrawPage() {
         <button
           type="submit"
           disabled={!kycApproved}
-          className="w-full h-12 inline-flex items-center justify-center gap-2 rounded-pill font-display font-bold text-[14px] transition-all border disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{
-            background: kycApproved
-              ? "linear-gradient(180deg, var(--gold-400), var(--gold-600))"
-              : "var(--bg-overlay)",
-            color: kycApproved ? "var(--gold-fg)" : "var(--text-subtle)",
-            borderColor: kycApproved ? "var(--gold-700)" : "var(--border)",
-            boxShadow: kycApproved
-              ? "0 1px 0 oklch(95% 0.08 80) inset, 0 8px 18px -10px oklch(78% 0.14 80 / 0.7)"
-              : "none",
-          }}
+          className={kycApproved ? "btn btn-gold btn-lg w-full" : "btn btn-ghost btn-lg w-full"}
+          style={{ borderRadius: 999 }}
         >
           <ArrowUpFromLine size={16} />
           Confirm withdrawal · Thibitisha

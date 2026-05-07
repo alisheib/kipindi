@@ -199,13 +199,13 @@ export function BetConfirmModal({
             </span>
           </div>
 
-          {/* CTAs */}
+          {/* CTAs — kit btn-ghost + btn-gold */}
           <div className="mt-5 grid grid-cols-[1fr_1.4fr] gap-2">
             <button
               type="button"
               onClick={onCancel}
               disabled={pending}
-              className="h-11 rounded-md border border-border bg-bg-elevated font-display font-semibold text-[13px] text-text hover:bg-bg-overlay transition-colors disabled:opacity-50"
+              className="btn btn-ghost btn-md"
             >
               Cancel · Ghairi
             </button>
@@ -214,13 +214,7 @@ export function BetConfirmModal({
               type="button"
               onClick={onConfirm}
               disabled={pending || remainingMs <= 0}
-              className="h-11 rounded-md font-display font-bold text-[13.5px] transition-all border disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{
-                background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))",
-                color: "var(--gold-fg)",
-                borderColor: "var(--gold-700)",
-                boxShadow: "0 1px 0 oklch(95% 0.08 80) inset, 0 8px 18px -10px oklch(78% 0.14 80 / 0.7)",
-              }}
+              className="btn btn-gold btn-md"
             >
               {pending ? "Placing…" : `Confirm ${side} · TZS ${fmt(stake)}`}
             </button>

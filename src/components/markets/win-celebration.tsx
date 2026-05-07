@@ -178,13 +178,8 @@ export function WinCelebrationHost() {
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="mt-5 inline-flex h-10 items-center px-5 rounded-pill font-display font-bold text-[13px] transition-all border"
-            style={{
-              background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))",
-              color: "var(--gold-fg)",
-              borderColor: "var(--gold-700)",
-              boxShadow: "0 1px 0 oklch(95% 0.08 80) inset",
-            }}
+            className="btn btn-gold btn-md mt-5"
+            style={{ borderRadius: 999 }}
           >
             Continue · Endelea
           </button>

@@ -47,11 +47,11 @@ export function MarketCard({
         <div className="flex items-center gap-2">
           <span
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-pill border px-2.5 py-0.5 text-[12px] font-semibold",
-              status === "LIVE" && "border-danger-border bg-danger-bg/40 text-danger-fg",
-              status === "RESOLVED" && "border-gold-subtleHover bg-gold-subtle text-gold-300",
-              (status === "CLOSED" || status === "DRAFT") && "border-info-border bg-info-bg/40 text-info-fg",
-              status === "VOIDED" && "border-border bg-bg-overlay text-text-muted",
+              "chip",
+              status === "LIVE" && "chip-live",
+              status === "RESOLVED" && "chip-resolved",
+              (status === "CLOSED" || status === "DRAFT") && "chip-pending",
+              status === "VOIDED" && "chip-objection",
             )}
           >
             {status === "LIVE" && <span className="live-dot" style={{ width: 6, height: 6 }} />}
@@ -59,11 +59,9 @@ export function MarketCard({
           </span>
           <span
             className={cn(
-              "inline-flex items-center rounded-pill border px-2.5 py-0.5 text-[12px] font-medium",
+              "chip",
               // Politics carries the heraldic claret chip per the design rules.
-              category === "politics"
-                ? "chip-politics"
-                : "border-border bg-bg-elevated text-text-muted",
+              category === "politics" && "chip-politics",
             )}
           >
             {category}
@@ -116,7 +114,7 @@ export function MarketCard({
           type="button"
           aria-label={`Buy YES at ${yesPct}%`}
           onClick={(e) => { e.preventDefault(); window.location.href = `/markets/${id}?side=YES`; }}
-          className="h-8 rounded-md bg-yes-500 text-[12px] font-bold text-yes-950 transition-colors hover:bg-yes-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-elevated"
+          className="btn btn-yes btn-sm"
         >
           YES · {yesPct}¢
         </button>
@@ -124,7 +122,7 @@ export function MarketCard({
           type="button"
           aria-label={`Buy NO at ${100 - yesPct}%`}
           onClick={(e) => { e.preventDefault(); window.location.href = `/markets/${id}?side=NO`; }}
-          className="h-8 rounded-md bg-no-500 text-[12px] font-bold text-white transition-colors hover:bg-no-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-elevated"
+          className="btn btn-no btn-sm"
         >
           NO · {100 - yesPct}¢
         </button>

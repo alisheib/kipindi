@@ -144,10 +144,7 @@ export default async function ProfilePage() {
                 <Step n={2} title="Phone"  detail="SMS code"           done />
                 <Step n={3} title="Selfie" detail="Front · back · selfie" active />
               </div>
-              <Link
-                href="/profile/kyc"
-                className="mt-4 inline-flex h-10 items-center justify-center px-5 rounded-pill bg-gold-500 hover:bg-gold-400 text-gold-fg font-display font-bold text-[13px] transition-colors"
-              >
+              <Link href="/profile/kyc" className="btn btn-gold btn-md mt-4 inline-flex" style={{ borderRadius: 999 }}>
                 Continue verification · Endelea
               </Link>
             </div>

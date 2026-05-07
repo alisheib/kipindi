@@ -73,10 +73,12 @@ export function SellButton({
     });
   };
 
-  const bgClass =
-    tone === "yes"     ? "bg-yes-500/15 border-yes-700 text-yes-300 hover:bg-yes-500/25" :
-    tone === "warning" ? "bg-warning-bg/40 border-warning-border text-warning-fg hover:bg-warning-bg/60" :
-    "bg-no-500/15 border-no-700 text-no-300 hover:bg-no-500/25";
+  // Kit btn map: profit at conviction-grade ratio → gold; positive but thin →
+  // primary royal; loss territory → no.
+  const btnVariant =
+    tone === "yes"     ? "btn-gold" :
+    tone === "warning" ? "btn-primary" :
+                         "btn-no";
 
   return (
     <button
@@ -84,12 +86,13 @@ export function SellButton({
       onClick={onClick}
       disabled={pending}
       aria-label={`Cash out for TZS ${fmt(value)}`}
-      className={`w-full inline-flex items-center justify-between gap-2 rounded-md border px-3 h-10 font-display font-semibold text-[13px] transition-all disabled:opacity-50 ${bgClass}`}
+      className={`btn ${btnVariant} btn-md w-full`}
+      style={{ justifyContent: "space-between" }}
     >
       <span>{pending ? "Selling…" : "Sell now"}</span>
       <span className="font-mono tabular-nums">
         TZS {fmt(value)}
-        <span className="ml-1.5 opacity-70 text-[11px]">
+        <span className="ml-1.5 opacity-80 text-[11px]">
           {net >= 0 ? "+" : "−"}{fmt(Math.abs(net))}
         </span>
       </span>

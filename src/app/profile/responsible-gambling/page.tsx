@@ -104,16 +104,7 @@ export default async function ResponsibleGamblingPage() {
           <Field name="sessionTimeLimitMin"      label="Session time (minutes)"   defaultValue={rg.sessionTimeLimitMin}      placeholder="e.g. 60" />
           <Field name="realityCheckIntervalMin"  label="Reality check (minutes)"  defaultValue={rg.realityCheckIntervalMin}  placeholder="30" />
           <div className="sm:col-span-2 pt-2">
-            <button
-              type="submit"
-              className="h-11 px-5 rounded-pill font-display font-bold text-[13px] transition-all border"
-              style={{
-                background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))",
-                color: "var(--gold-fg)",
-                borderColor: "var(--gold-700)",
-                boxShadow: "0 1px 0 oklch(95% 0.08 80) inset",
-              }}
-            >
+            <button type="submit" className="btn btn-gold btn-md" style={{ borderRadius: 999 }}>
               Save limits · Hifadhi
             </button>
           </div>

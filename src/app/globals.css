@@ -1,9 +1,12 @@
 /* ===========================================================================
-   50pick — design tokens (from polymarket-wf kit)
-   Tanzania-licensed binary prediction market.
-   Hard invariants: YES=emerald-LEFT, NO=rose-RIGHT, gold=resolved-only,
-                    mono digits everywhere, dark default, WCAG 2.1 AA.
+   50pick — application stylesheet
+   Direct port of `kit/tokens.css` from the design handoff. Single canonical
+   theme: sapphire-royal canvas, pearl ink, gilt soloist, claret + aqua chord.
+   Compat aliases at the bottom map our existing component class names onto
+   the new tokens so we can retire the old slate-based palette.
    =========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -11,61 +14,75 @@
 
 :root {
   /* ---------- Color ramps (OKLCH) ---------- */
-  /* Brand teal — primary chrome */
-  --teal-50:  oklch(96% 0.02 215);
-  --teal-100: oklch(92% 0.04 215);
-  --teal-200: oklch(85% 0.07 215);
-  --teal-300: oklch(75% 0.09 215);
-  --teal-400: oklch(60% 0.10 215);
-  --teal-500: oklch(45% 0.10 215);
-  --teal-600: oklch(38% 0.09 215);
-  --teal-700: oklch(31% 0.08 215);
-  --teal-800: oklch(24% 0.06 215);
-  --teal-900: oklch(18% 0.04 215);
-  --teal-950: oklch(13% 0.03 215);
 
-  /* YES — emerald (always LEFT in any binary control) */
-  --yes-50:  oklch(96% 0.04 150);
-  --yes-100: oklch(92% 0.07 150);
-  --yes-200: oklch(86% 0.11 150);
-  --yes-300: oklch(80% 0.14 150);
-  --yes-400: oklch(75% 0.16 150);
-  --yes-500: oklch(70% 0.18 150);
-  --yes-600: oklch(60% 0.17 150);
-  --yes-700: oklch(50% 0.14 150);
-  --yes-800: oklch(38% 0.11 150);
-  --yes-900: oklch(28% 0.08 150);
-  --yes-950: oklch(20% 0.05 150);
+  /* Royal blue — primary chrome. Sovereign, financial, trustworthy.
+     `--teal-*` retained for backward compat. Hue 258 = sapphire/cobalt. */
+  --teal-50:  oklch(97% 0.018 258);
+  --teal-100: oklch(93% 0.040 258);
+  --teal-200: oklch(86% 0.080 258);
+  --teal-300: oklch(76% 0.130 258);
+  --teal-400: oklch(60% 0.180 258);
+  --teal-500: oklch(48% 0.200 258);
+  --teal-600: oklch(40% 0.200 258);
+  --teal-700: oklch(32% 0.150 258);
+  --teal-800: oklch(24% 0.110 258);
+  --teal-900: oklch(18% 0.080 258);
+  --teal-950: oklch(13% 0.060 258);
 
-  /* NO — rose (always RIGHT) */
-  --no-50:  oklch(96% 0.03 25);
-  --no-100: oklch(92% 0.06 25);
-  --no-200: oklch(85% 0.10 25);
-  --no-300: oklch(78% 0.14 25);
-  --no-400: oklch(72% 0.18 25);
-  --no-500: oklch(65% 0.20 25);
-  --no-600: oklch(56% 0.19 25);
-  --no-700: oklch(46% 0.17 25);
-  --no-800: oklch(36% 0.13 25);
-  --no-900: oklch(26% 0.09 25);
-  --no-950: oklch(18% 0.06 25);
+  --royal-50:  var(--teal-50);
+  --royal-100: var(--teal-100);
+  --royal-200: var(--teal-200);
+  --royal-300: var(--teal-300);
+  --royal-400: var(--teal-400);
+  --royal-500: var(--teal-500);
+  --royal-600: var(--teal-600);
+  --royal-700: var(--teal-700);
+  --royal-800: var(--teal-800);
+  --royal-900: var(--teal-900);
+  --royal-950: var(--teal-950);
 
-  /* Gold — resolved-winner, leaderboard, payout (NEVER for chrome) */
-  --gold-50:  oklch(97% 0.03 80);
-  --gold-100: oklch(94% 0.06 80);
-  --gold-200: oklch(90% 0.09 80);
-  --gold-300: oklch(86% 0.12 80);
-  --gold-400: oklch(83% 0.14 80);
-  --gold-500: oklch(80% 0.15 80);
-  --gold-600: oklch(70% 0.14 80);
-  --gold-700: oklch(58% 0.12 80);
-  --gold-800: oklch(45% 0.09 80);
-  --gold-900: oklch(33% 0.06 80);
-  --gold-950: oklch(22% 0.04 80);
+  /* YES — emerald (hue 152). Semantic, untouchable. */
+  --yes-50:  oklch(96% 0.04 152);
+  --yes-100: oklch(92% 0.07 152);
+  --yes-200: oklch(86% 0.11 152);
+  --yes-300: oklch(80% 0.14 152);
+  --yes-400: oklch(72% 0.16 152);
+  --yes-500: oklch(62% 0.17 152);
+  --yes-600: oklch(52% 0.16 152);
+  --yes-700: oklch(44% 0.14 152);
+  --yes-800: oklch(34% 0.11 152);
+  --yes-900: oklch(26% 0.08 152);
+  --yes-950: oklch(18% 0.05 152);
+
+  /* NO — rose (hue 22). Semantic, untouchable. */
+  --no-50:  oklch(96% 0.03 22);
+  --no-100: oklch(92% 0.06 22);
+  --no-200: oklch(86% 0.10 22);
+  --no-300: oklch(80% 0.14 22);
+  --no-400: oklch(72% 0.18 22);
+  --no-500: oklch(62% 0.20 22);
+  --no-600: oklch(52% 0.19 22);
+  --no-700: oklch(44% 0.17 22);
+  --no-800: oklch(34% 0.13 22);
+  --no-900: oklch(26% 0.09 22);
+  --no-950: oklch(18% 0.06 22);
+
+  /* Gold — champagne tuned to sing on a sapphire-royal canvas. */
+  --gold-50:  oklch(98% 0.025 82);
+  --gold-100: oklch(94% 0.06 82);
+  --gold-200: oklch(90% 0.10 80);
+  --gold-300: oklch(86% 0.13 80);
+  --gold-400: oklch(80% 0.14 78);
+  --gold-500: oklch(72% 0.14 78);
+  --gold-600: oklch(64% 0.13 76);
+  --gold-700: oklch(56% 0.11 76);
+  --gold-800: oklch(46% 0.09 76);
+  --gold-900: oklch(36% 0.07 76);
+  --gold-950: oklch(26% 0.05 76);
 
   /* Claret — heraldic burgundy (hue 15). Editorial weight only:
-     Politics chip, Sovereign tier badge, regulator/footer crest, archival
-     chrome. Never on YES/NO money surfaces or adjacent to NO-rose. */
+     Politics chip, Sovereign tier, regulator/footer crest, archival chrome.
+     Never on YES/NO money surfaces or adjacent to NO-rose. */
   --claret-50:  oklch(96% 0.025 15);
   --claret-100: oklch(90% 0.060 15);
   --claret-200: oklch(82% 0.100 15);
@@ -93,7 +110,6 @@
   --aqua-900: oklch(22% 0.045 195);
   --aqua-950: oklch(14% 0.030 195);
 
-  /* Heraldic semantic aliases — see kit/tokens.css */
   --claret:        var(--claret-600);
   --claret-soft:   color-mix(in oklab, var(--claret-600) 22%, transparent);
   --claret-edge:   color-mix(in oklab, var(--claret-400) 60%, transparent);
@@ -101,92 +117,138 @@
   --aqua-glow:     color-mix(in oklab, var(--aqua-300) 50%, transparent);
   --aqua-edge:     color-mix(in oklab, var(--aqua-300) 70%, transparent);
 
-  /* Neutrals */
-  --slate-50:  oklch(98% 0.005 240);
-  --slate-100: oklch(96% 0.01 240);
-  --slate-200: oklch(92% 0.012 240);
-  --slate-300: oklch(85% 0.014 240);
-  --slate-400: oklch(70% 0.015 240);
-  --slate-500: oklch(55% 0.015 240);
-  --slate-600: oklch(42% 0.014 240);
-  --slate-700: oklch(30% 0.013 240);
-  --slate-800: oklch(22% 0.012 240);
-  --slate-850: oklch(18% 0.011 240);
-  --slate-900: oklch(14% 0.01 240);
-  --slate-950: oklch(9% 0.008 240);
+  /* Neutrals — kit-tuned ramp on the royal axis. */
+  --slate-50:  oklch(99% 0.006 258);
+  --slate-100: oklch(96% 0.012 258);
+  --slate-150: oklch(90% 0.030 258);
+  --slate-200: oklch(82% 0.060 258);
+  --slate-300: oklch(74% 0.090 258);
+  --slate-400: oklch(64% 0.150 258);
+  --slate-500: oklch(54% 0.180 258);
+  --slate-600: oklch(46% 0.200 258);
+  --slate-700: oklch(38% 0.200 258);  /* canvas seed */
+  --slate-750: oklch(34% 0.180 258);
+  --slate-800: oklch(28% 0.150 258);
+  --slate-850: oklch(22% 0.110 258);
+  --slate-900: oklch(16% 0.090 258);
+  --slate-950: oklch(11% 0.060 258);
 
+  /* Pearl + royal ink */
+  --pearl-50:    oklch(99% 0.006 258);
+  --pearl-100:   oklch(96% 0.012 258);
+  --pearl-200:   oklch(88% 0.030 258);
+  --pearl-300:   oklch(78% 0.060 258);
+  --pearl-muted: var(--slate-300);
+  --pearl-subtle: var(--slate-400);
+
+  --royal-ink:   oklch(99% 0.006 258);
+  --royal-ink-2: oklch(82% 0.040 258);
+  --royal-ink-3: oklch(64% 0.060 258);
+
+  /* Semantic */
   --danger-500:  oklch(60% 0.22 25);
-  --info-500:    oklch(60% 0.15 240);
-  --warning-500: oklch(75% 0.18 80);
+  --info-500:    oklch(64% 0.17 258);
+  --warning-500: oklch(78% 0.13 86);
 
-  /* ---------- Surfaces (DARK default) ---------- */
-  --bg:           var(--slate-900);
-  --bg-elevated:  var(--slate-850);
-  --bg-overlay:   var(--slate-800);
-  --border:       oklch(28% 0.013 240);
-  --border-strong: oklch(38% 0.014 240);
-  --text:         oklch(96% 0.005 240);
-  --text-muted:   oklch(72% 0.012 240);
-  --text-subtle:  oklch(55% 0.014 240);
+  /* ---------- Typography ---------- */
+  --font-display: 'Sora', system-ui, sans-serif;
+  --font-body:    'Inter', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+  --font-sans:    var(--font-body);
 
-  /* ---------- Backwards-compat aliases (existing code uses these) ---------- */
+  --type-hero:      72px;
+  --type-display-1: 60px;
+  --type-display-2: 44px;
+  --type-h1:        32px;
+  --type-h2:        24px;
+  --type-h3:        20px;
+  --type-h4:        17px;
+  --type-body:      15px;
+  --type-small:     13px;
+  --type-micro:     11px;
+
+  /* ---------- Spacing ---------- */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px;
+  --sp-6: 24px; --sp-8: 32px; --sp-10: 40px; --sp-12: 48px; --sp-16: 64px;
+
+  /* ---------- Radius — additive +4 rhythm ---------- */
+  --r-xs: 4px; --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 24px; --r-pill: 999px;
+
+  /* ---------- Motion ---------- */
+  --ease-micro:     100ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-stage:     240ms cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-celebrate: 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* ---------- Surfaces — TRUE ROYAL BLUE canvas ---------- */
+  --bg:            oklch(38% 0.20 258);
+  --bg-elevated:   oklch(44% 0.20 258);
+  --bg-overlay:    oklch(34% 0.18 258);
+  --bg-royal-soft: oklch(50% 0.20 258);
+  --border:        oklch(54% 0.18 258);
+  --border-strong: oklch(64% 0.16 258);
+  --border-royal:  oklch(70% 0.16 258);
+  --border-gold:   oklch(78% 0.13 80);
+  --text:          oklch(99% 0.006 258);
+  --text-muted:    oklch(90% 0.030 258);
+  --text-subtle:   oklch(78% 0.060 258);
+  --gilt:          oklch(86% 0.13 82);
+  --gilt-strong:   oklch(78% 0.14 80);
+  --shadow-card:   0 1px 2px oklch(20% 0.10 258 / 0.40), 0 8px 24px -10px oklch(14% 0.08 258 / 0.55);
+  --shadow-royal:  0 12px 36px -12px oklch(14% 0.08 258 / 0.60);
+
+  /* ---------- Compat aliases (existing component code) ---------- */
   --bg-base:        var(--bg);
   --bg-subtle:      var(--bg-overlay);
   --bg-sunken:      var(--bg-overlay);
   --surface:        var(--bg-elevated);
-  --surface-hover:  oklch(20% 0.011 240);
-  --surface-pressed: oklch(24% 0.012 240);
-  --surface-selected: oklch(26% 0.012 240);
-  --surface-disabled: oklch(20% 0.01 240);
-
-  --border-subtle: oklch(22% 0.012 240);
-  --border-focus:  var(--teal-300);
+  --surface-hover:  oklch(48% 0.20 258);
+  --surface-pressed: oklch(40% 0.20 258);
+  --surface-selected: oklch(50% 0.20 258);
+  --surface-disabled: oklch(36% 0.16 258);
+  --border-subtle:  oklch(46% 0.18 258);
+  --border-focus:   var(--aqua-300);
   --border-divider: var(--border);
 
   --text-primary:   var(--text);
-  --text-secondary: var(--text);
+  --text-secondary: var(--text-muted);
   --text-tertiary:  var(--text-muted);
   --text-disabled:  var(--text-subtle);
-  --text-inverse:   oklch(15% 0.01 240);
-  --text-link:      var(--teal-300);
-  --text-link-hover: var(--teal-200);
-  --text-on-brand:  oklch(15% 0.01 240);
+  --text-inverse:   oklch(15% 0.06 258);
+  --text-link:      var(--aqua-300);
+  --text-link-hover: var(--aqua-200);
+  --text-on-brand:  oklch(15% 0.06 258);
 
-  --gold:           var(--gold-500);
-  --gold-hover:     var(--gold-400);
-  --gold-active:    var(--gold-600);
-  --gold-fg:        oklch(20% 0.05 80);
+  --gold:               var(--gold-500);
+  --gold-hover:         var(--gold-400);
+  --gold-active:        var(--gold-600);
+  --gold-fg:            oklch(20% 0.05 80);
   --gold-subtle:        color-mix(in oklab, var(--gold-500) 18%, transparent);
   --gold-subtle-hover:  color-mix(in oklab, var(--gold-500) 30%, transparent);
 
-  --royal:          var(--teal-500);
-  --royal-hover:    var(--teal-400);
-  --royal-active:   var(--teal-600);
-  --royal-subtle:   color-mix(in oklab, var(--teal-500) 20%, transparent);
-  --royal-subtle-hover: color-mix(in oklab, var(--teal-500) 28%, transparent);
-  --royal-fg:       oklch(95% 0.01 215);
+  --royal:               var(--teal-500);
+  --royal-hover:         var(--teal-400);
+  --royal-active:        var(--teal-600);
+  --royal-subtle:        color-mix(in oklab, var(--teal-500) 22%, transparent);
+  --royal-subtle-hover:  color-mix(in oklab, var(--teal-500) 30%, transparent);
+  --royal-fg:            var(--pearl-50);
 
   --success:        var(--yes-500);
-  --success-bg:     color-mix(in oklab, var(--yes-500) 16%, transparent);
-  --success-border: color-mix(in oklab, var(--yes-500) 32%, transparent);
-  --success-fg:     var(--yes-300);
-
+  --success-bg:     color-mix(in oklab, var(--yes-500) 18%, transparent);
+  --success-border: color-mix(in oklab, var(--yes-500) 36%, transparent);
+  --success-fg:     var(--yes-200);
   --warning:        var(--warning-500);
-  --warning-bg:     color-mix(in oklab, var(--warning-500) 16%, transparent);
-  --warning-border: color-mix(in oklab, var(--warning-500) 32%, transparent);
-  --warning-fg:     oklch(82% 0.16 80);
-
+  --warning-bg:     color-mix(in oklab, var(--warning-500) 18%, transparent);
+  --warning-border: color-mix(in oklab, var(--warning-500) 36%, transparent);
+  --warning-fg:     var(--gilt);
   --danger:         var(--danger-500);
-  --danger-bg:      color-mix(in oklab, var(--danger-500) 16%, transparent);
-  --danger-border:  color-mix(in oklab, var(--danger-500) 32%, transparent);
-  --danger-fg:      oklch(80% 0.18 25);
-
+  --danger-bg:      color-mix(in oklab, var(--danger-500) 18%, transparent);
+  --danger-border:  color-mix(in oklab, var(--danger-500) 36%, transparent);
+  --danger-fg:      oklch(82% 0.16 25);
   --info:           var(--info-500);
-  --info-bg:        color-mix(in oklab, var(--info-500) 16%, transparent);
-  --info-border:    color-mix(in oklab, var(--info-500) 32%, transparent);
-  --info-fg:        oklch(78% 0.13 240);
+  --info-bg:        color-mix(in oklab, var(--info-500) 18%, transparent);
+  --info-border:    color-mix(in oklab, var(--info-500) 36%, transparent);
+  --info-fg:        oklch(86% 0.10 258);
 
-  /* Bet legacy aliases — mapped to YES/NO so old admin tables read sanely */
   --bet-win:    var(--yes-500);
   --bet-lose:   var(--no-500);
   --bet-draw:   var(--text-subtle);
@@ -195,348 +257,202 @@
   --bet-jackpot: var(--gold-500);
   --bet-streak: var(--gold-400);
   --bet-hot:    var(--no-400);
-  --bet-cold:   var(--info-500);
+  --bet-cold:   var(--aqua-300);
 
-  /* ---------- Type ---------- */
-  --font-display: 'Sora', system-ui, sans-serif;
-  --font-body:    'Inter', system-ui, sans-serif;
-  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
-
-  /* ---------- Spacing ---------- */
-  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px;
-  --sp-6: 24px; --sp-8: 32px; --sp-10: 40px; --sp-12: 48px; --sp-16: 64px;
-
-  /* ---------- Radius ---------- */
-  --r-xs: 4px; --r-sm: 6px; --r-md: 10px; --r-lg: 14px; --r-xl: 20px; --r-pill: 999px;
-
-  /* ---------- Motion ---------- */
-  --ease-micro:     100ms cubic-bezier(0.2, 0.8, 0.2, 1);
-  --ease-stage:     240ms cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-celebrate: 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
-
-  /* ---------- Shadows + glows ---------- */
-  --shadow-1: 0 1px 2px rgba(0,0,0,0.18);
-  --shadow-2: 0 2px 6px rgba(0,0,0,0.22);
-  --shadow-3: 0 4px 14px rgba(0,0,0,0.28);
-  --shadow-4: 0 8px 28px -8px rgba(0,0,0,0.42);
-  --shadow-5: 0 14px 44px -12px rgba(0,0,0,0.55);
-  --glow-gold:     0 0 24px -4px color-mix(in oklab, var(--gold-500) 60%, transparent);
-  --glow-blue:     0 0 24px -4px color-mix(in oklab, var(--teal-400) 60%, transparent);
-  --glow-win:      0 0 32px -4px color-mix(in oklab, var(--yes-400) 60%, transparent);
-  --glow-jackpot:  0 0 60px -8px color-mix(in oklab, var(--gold-400) 70%, transparent);
+  /* Shadows + glows */
+  --shadow-1: 0 1px 2px oklch(14% 0.08 258 / 0.40);
+  --shadow-2: 0 2px 6px oklch(14% 0.08 258 / 0.45);
+  --shadow-3: 0 4px 14px oklch(14% 0.08 258 / 0.50);
+  --shadow-4: 0 8px 28px -8px oklch(14% 0.08 258 / 0.55);
+  --shadow-5: 0 14px 44px -12px oklch(14% 0.08 258 / 0.62);
+  --glow-gold:    0 0 24px -4px color-mix(in oklab, var(--gold-500) 60%, transparent);
+  --glow-blue:    0 0 24px -4px color-mix(in oklab, var(--teal-400) 60%, transparent);
+  --glow-win:     0 0 32px -4px color-mix(in oklab, var(--yes-400) 60%, transparent);
+  --glow-jackpot: 0 0 60px -8px color-mix(in oklab, var(--gold-400) 70%, transparent);
 
   --g-brand:    linear-gradient(135deg, var(--teal-700), var(--teal-500));
-  --g-gold:     linear-gradient(180deg, var(--gold-400), var(--gold-600));
+  --g-gold:     linear-gradient(180deg, var(--gold-300), var(--gold-600));
   --g-jackpot:  radial-gradient(circle at 30% 20%, var(--gold-300), var(--gold-700));
   --g-aurora:   linear-gradient(135deg, var(--teal-700), var(--teal-500), var(--gold-700));
   --g-pool:     linear-gradient(135deg, var(--teal-800), var(--teal-600));
 
-  /* ---------- Theme-adaptive surfaces (kit primitives) ---------- */
-  /* Hero gradient — used by landing + /live + /admin banners */
-  --hero-grad:        linear-gradient(135deg, oklch(14% 0.012 240) 0%, oklch(18% 0.03 215) 100%);
-  --hero-grad-warm:   linear-gradient(160deg, oklch(15% 0.03 215) 0%, oklch(20% 0.06 152) 50%, oklch(18% 0.05 22) 100%);
+  /* Hero gradient — sapphire royal + gilt + emerald + rose finishing pass */
+  --hero-grad:        linear-gradient(135deg, oklch(28% 0.16 258) 0%, oklch(40% 0.20 258) 100%);
+  --hero-grad-warm:   linear-gradient(160deg, oklch(30% 0.18 258) 0%, oklch(36% 0.20 258) 50%, oklch(28% 0.16 258) 100%);
   --hero-mark-opacity: 0.10;
-  --hero-text-strong:  oklch(96% 0.005 240);
-  --hero-text-muted:   oklch(78% 0.012 240);
-  --hero-yes-accent:   oklch(80% 0.13 152);
-  --hero-no-accent:    oklch(78% 0.14 22);
-  --hero-tag-yes:      oklch(72% 0.10 152);
+  --hero-text-strong:  var(--pearl-50);
+  --hero-text-muted:   var(--pearl-300);
+  --hero-yes-accent:   var(--yes-300);
+  --hero-no-accent:    var(--no-300);
+  --hero-tag-yes:      var(--yes-300);
 
-  /* TippingBar track + needle (was hardcoded, now adapts to theme) */
-  --bar-track:         oklch(22% 0.01 240);
-  --bar-track-border:  oklch(28% 0.013 240);
-  --bar-needle:        oklch(96% 0.005 240);
-  --bar-needle-glow:   oklch(96% 0.005 240 / 0.7);
-  --bar-label-yes:     oklch(70% 0.10 152);
-  --bar-label-yes-strong: oklch(80% 0.13 152);
-  --bar-label-no:      oklch(68% 0.10 22);
-  --bar-label-no-strong:  oklch(78% 0.14 22);
-  --bar-label-tipping: oklch(72% 0.04 240);
+  /* TippingBar — kit royal track + gilt needle */
+  --bar-track:            oklch(50% 0.20 258);
+  --bar-track-border:     oklch(58% 0.17 258);
+  --bar-needle:           var(--gilt);
+  --bar-needle-glow:      color-mix(in oklab, var(--gilt) 40%, transparent);
+  --bar-label-yes:        oklch(94% 0.10 152);
+  --bar-label-yes-strong: var(--yes-200);
+  --bar-label-no:         oklch(94% 0.08 22);
+  --bar-label-no-strong:  var(--no-200);
+  --bar-label-tipping:    var(--text-muted);
 }
 
-[data-theme="light"], html[data-theme="light"], html.light {
-  --bg:           var(--slate-100);
-  --bg-elevated:  #ffffff;
-  --bg-overlay:   var(--slate-50);
-  --border:       oklch(88% 0.012 240);
-  --border-strong: oklch(80% 0.013 240);
-  --text:         oklch(20% 0.01 240);
-  --text-muted:   oklch(42% 0.014 240);
-  --text-subtle:  oklch(58% 0.014 240);
-  --text-inverse: oklch(96% 0.005 240);
+/* The kit specifies: "No dark mode — single light royal theme." We retire
+   the previous [data-theme="light"] override block. Everything renders on
+   the canonical sapphire-royal canvas. */
 
-  --bg-base:        var(--bg);
-  --bg-subtle:      var(--bg-overlay);
-  --bg-sunken:      var(--slate-200);
-  --surface:        var(--bg-elevated);
-  --surface-hover:  oklch(94% 0.01 240);
-  --surface-pressed: oklch(90% 0.012 240);
-  --surface-selected: oklch(92% 0.014 240);
-  --surface-disabled: oklch(94% 0.01 240);
-  --border-subtle: oklch(94% 0.01 240);
-  --border-divider: var(--border);
-  --text-primary:   var(--text);
-  --text-secondary: oklch(28% 0.01 240);
-  --text-tertiary:  var(--text-muted);
-
-  /* ---------- Theme-adaptive surfaces — LIGHT mode ---------- */
-  /* Hero now reads as a calm cream-to-mint card with strong inks
-     instead of trying to be a dark marketing banner on a light page. */
-  --hero-grad:        linear-gradient(135deg, oklch(98% 0.01 215) 0%, oklch(94% 0.025 152) 100%);
-  --hero-grad-warm:   linear-gradient(160deg, oklch(97% 0.012 215) 0%, oklch(95% 0.025 152) 50%, oklch(96% 0.020 22) 100%);
-  --hero-mark-opacity: 0.05;
-  --hero-text-strong:  oklch(20% 0.01 240);
-  --hero-text-muted:   oklch(38% 0.014 240);
-  --hero-yes-accent:   oklch(38% 0.13 152);
-  --hero-no-accent:    oklch(45% 0.18 22);
-  --hero-tag-yes:      oklch(35% 0.13 152);
-
-  /* TippingBar — needle becomes dark, track becomes warm light grey,
-     labels become saturated/dark so they actually read on cream. */
-  --bar-track:         oklch(94% 0.01 240);
-  --bar-track-border:  oklch(85% 0.014 240);
-  --bar-needle:        oklch(20% 0.01 240);
-  --bar-needle-glow:   oklch(20% 0.01 240 / 0.4);
-  --bar-label-yes:     oklch(40% 0.12 152);
-  --bar-label-yes-strong: oklch(32% 0.13 152);
-  --bar-label-no:      oklch(45% 0.16 22);
-  --bar-label-no-strong:  oklch(38% 0.18 22);
-  --bar-label-tipping: oklch(45% 0.014 240);
-}
-
-html:not([data-theme="light"]):not(.light) { color-scheme: dark; }
-[data-theme="light"], html.light { color-scheme: light; }
-
-/* ===========================================================================
-   Base
-   =========================================================================== */
+html { color-scheme: dark; background: var(--bg); }
+html.light, [data-theme="light"] { color-scheme: dark; }
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  font-family: var(--font-body);
-  font-size: 15px;
-  line-height: 1.5;
-  color: var(--text);
   background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--type-body);
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   font-feature-settings: "ss01", "cv11";
 }
 
-.mono, .tabular { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-.display, .font-display { font-family: var(--font-display); letter-spacing: -0.02em; }
+.mono    { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.display { font-family: var(--font-display); letter-spacing: -0.02em; }
 
 /* ===========================================================================
-   Probability bar — split / segmented / minimal / resolved
+   Tipping rails + heraldic furniture
    =========================================================================== */
 
-.pbar {
-  position: relative;
-  width: 100%;
-  background: var(--bg-overlay);
-  border: 1px solid var(--border);
-  border-radius: var(--r-pill);
-  overflow: hidden;
-}
-.pbar-micro { height: 12px; }
-.pbar-large { height: 24px; }
-.pbar-yes {
-  position: absolute; left: 0; top: 0; bottom: 0;
-  background: linear-gradient(90deg, var(--yes-700), var(--yes-500));
-  transition: width var(--ease-stage);
-}
-.pbar-no {
-  position: absolute; right: 0; top: 0; bottom: 0;
-  background: linear-gradient(270deg, var(--no-700), var(--no-500));
-  transition: width var(--ease-stage);
-}
-.pbar-resolved::after {
-  content: "";
-  position: absolute; inset: 0;
-  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--gold-300) 60%, transparent), transparent);
-  background-size: 200% 100%;
-  animation: gold-shimmer 1.6s linear infinite;
-  pointer-events: none;
-}
-.pbar-label {
-  position: absolute;
-  top: 50%; transform: translateY(-50%);
-  font-family: var(--font-mono);
-  font-size: 11px; font-weight: 600;
-  letter-spacing: 0.02em;
-  pointer-events: none;
-}
-.pbar-label-yes { left: 12px; color: oklch(15% 0.04 150); }
-.pbar-label-no  { right: 12px; color: white; }
+.gilt        { color: var(--gilt); }
+.gilt-strong { color: var(--gilt-strong); }
+.gilt-num    { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--gilt); letter-spacing: -0.01em; }
 
-@keyframes gold-shimmer { from { background-position: -100% 0; } to { background-position: 200% 0; } }
-
-/* ===========================================================================
-   Live dot
-   =========================================================================== */
-
-.live-dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: oklch(72% 0.20 25);
-  box-shadow: 0 0 0 0 color-mix(in oklab, oklch(72% 0.20 25) 60%, transparent);
-  animation: live-pulse 1.5s ease-in-out infinite;
-}
-@keyframes live-pulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 color-mix(in oklab, oklch(72% 0.20 25) 60%, transparent); }
-  50%      { opacity: 0.55; box-shadow: 0 0 0 6px transparent; }
+.gilt-rule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gilt) 8%, var(--gilt) 92%, transparent);
+  margin: 16px 0;
+  opacity: 0.85;
 }
 
-/* ===========================================================================
-   Legacy keyframes (preserved — referenced by win-celebration etc.)
-   =========================================================================== */
-
-@keyframes pool-pulse { 0%, 100% { opacity: 0.85; } 50% { opacity: 1; } }
-.kp-pool-pulse { animation: pool-pulse 2.4s ease-in-out infinite; }
-
-@keyframes pool-pulse-fast { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
-.kp-pool-pulse-active { animation: pool-pulse-fast 1.6s cubic-bezier(0.2, 0, 0, 1) infinite; }
-
-@keyframes ping-soft { 0% { transform: scale(0.95); opacity: 0.65; } 100% { transform: scale(1.6); opacity: 0; } }
-.kp-ping { animation: ping-soft 1.6s cubic-bezier(0, 0, 0.2, 1) infinite; }
-
-@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-.kp-shimmer-track {
-  background: linear-gradient(90deg, var(--bg-overlay), color-mix(in oklab, var(--teal-500) 20%, var(--bg-overlay)), var(--bg-overlay));
-  background-size: 200% 100%;
-  animation: shimmer 1.4s linear infinite;
-}
-
-@keyframes float-up-fade { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-32px); opacity: 0; } }
-.kp-particle { animation: float-up-fade 800ms ease-out forwards; }
-
-@keyframes pop-in { 0% { transform: scale(0.92); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-.kp-pop-in { animation: pop-in 220ms cubic-bezier(0.16, 1, 0.3, 1); transform-origin: center; }
-
-@keyframes slide-up-fade { 0% { transform: translateY(8px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
-.kp-slide-up { animation: slide-up-fade 240ms cubic-bezier(0, 0, 0.2, 1); }
-
-@keyframes goal-flash { 0%, 100% { background: transparent; } 50% { background: color-mix(in oklab, var(--gold-500) 22%, transparent); } }
-.kp-goal-flash { animation: goal-flash 600ms cubic-bezier(0.2, 0, 0, 1); }
-
-@keyframes ticker-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-.kp-ticker-stream { animation: ticker-scroll 60s linear infinite; }
-.kp-ticker-stream:hover { animation-play-state: paused; }
-
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ===========================================================================
-   Tooltip — hover-show with 400ms delay (kit/tokens.css pattern)
-   =========================================================================== */
-
-.kp-tooltip {
-  position: relative;
-  display: inline-flex;
-}
-.kp-tooltip-popover {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%) translateY(2px);
-  padding: 6px 10px;
-  border-radius: var(--r-sm);
-  background: var(--slate-950);
-  color: oklch(96% 0.005 240);
-  font-size: 11px;
-  font-family: var(--font-mono);
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  border: 1px solid var(--border-strong);
-  pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 120ms ease-out, visibility 0s linear 120ms, transform 120ms ease-out;
-  z-index: 1500;
-}
-[data-theme="light"] .kp-tooltip-popover, html.light .kp-tooltip-popover {
-  background: oklch(96% 0.005 240);
-  color: var(--slate-950);
-  border-color: oklch(80% 0.013 240);
-}
-.kp-tooltip-popover::after {
-  content: "";
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 4px solid transparent;
-  border-top-color: var(--slate-950);
-}
-[data-theme="light"] .kp-tooltip-popover::after, html.light .kp-tooltip-popover::after {
-  border-top-color: oklch(96% 0.005 240);
-}
-.kp-tooltip:hover .kp-tooltip-popover,
-.kp-tooltip:focus-within .kp-tooltip-popover {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) translateY(0);
-  transition-delay: 400ms, 400ms, 400ms;
-}
-
-/* ===========================================================================
-   Selection + scrollbar
-   =========================================================================== */
-
-::selection { background: color-mix(in oklab, var(--teal-400) 35%, transparent); color: var(--text); }
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
-::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
-
-/* ===========================================================================
-   Heraldic chord — claret + aqua utility classes
-   Mirror of kit/tokens.css. Apply to existing components per the rules:
-     • Claret = editorial only (Politics chip, Sovereign tier, regulator chrome)
-     • Aqua   = finishing only (live glow, "new" pip, focus tint, ≤8% coverage)
-   =========================================================================== */
-
-/* Claret rule — heraldic divider with gilt midpoint. */
 .claret-rule {
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--claret-400) 18%, var(--gold-400) 50%, var(--claret-400) 82%, transparent);
+  background: linear-gradient(90deg, transparent, var(--claret-400) 18%, var(--gilt) 50%, var(--claret-400) 82%, transparent);
   margin: 16px 0;
   opacity: 0.95;
 }
 
-/* Royal damask — subtle on-canvas pattern. Hero surfaces only. */
 .bg-damask {
   background-color: var(--bg);
   background-image:
-    radial-gradient(circle at 20% 30%, color-mix(in oklab, var(--gold-400) 6%, transparent) 0, transparent 28%),
+    radial-gradient(circle at 20% 30%, color-mix(in oklab, var(--gilt) 6%, transparent) 0, transparent 28%),
     radial-gradient(circle at 80% 70%, color-mix(in oklab, var(--aqua-300) 5%, transparent) 0, transparent 32%),
-    repeating-linear-gradient(45deg, transparent 0 22px, color-mix(in oklab, var(--text) 2%, transparent) 22px 23px),
-    repeating-linear-gradient(-45deg, transparent 0 22px, color-mix(in oklab, var(--text) 2%, transparent) 22px 23px);
+    repeating-linear-gradient(45deg, transparent 0 22px, color-mix(in oklab, var(--pearl-50) 2%, transparent) 22px 23px),
+    repeating-linear-gradient(-45deg, transparent 0 22px, color-mix(in oklab, var(--pearl-50) 2%, transparent) 22px 23px);
 }
 
-/* Politics chip — claret tint */
-.chip-politics {
-  background: var(--claret-soft);
-  color: var(--claret-200);
-  border-color: var(--claret-edge);
+.gilt-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--gilt);
 }
 
-/* "Signal" / new pip chip — aqua tint, NOT semantic. Only used for
-   freshness highlights ("new market", "live data", "what's new"). */
-.chip-signal {
-  background: color-mix(in oklab, var(--aqua-300) 18%, transparent);
-  color: var(--aqua-200);
-  border-color: var(--aqua-edge);
+/* ===========================================================================
+   Atoms — kit classes (button, chip, live-dot, pbar, input, avatar, tier,
+   skeleton, toast, tooltip)
+   =========================================================================== */
+
+.btn {
+  font-family: var(--font-body);
+  font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  transition: transform var(--ease-micro), background-color var(--ease-micro), border-color var(--ease-micro), box-shadow var(--ease-micro), filter var(--ease-micro);
+  white-space: nowrap;
+  user-select: none;
+}
+.btn:active { transform: translateY(1px); }
+.btn:focus-visible { outline: 2px solid var(--aqua-300); outline-offset: 2px; box-shadow: 0 0 0 4px var(--aqua-glow); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btn-sm { height: 30px; padding: 0 12px; font-size: 13px; }
+.btn-md { height: 38px; padding: 0 16px; font-size: 14px; }
+.btn-lg { height: 46px; padding: 0 20px; font-size: 15px; }
+.btn-xl { height: 56px; padding: 0 24px; font-size: 16px; border-radius: var(--r-lg); }
+
+.btn-primary {
+  background: linear-gradient(180deg, oklch(60% 0.20 258) 0%, oklch(48% 0.20 258) 100%);
+  color: var(--pearl-50);
+  border-color: oklch(40% 0.20 258);
+  box-shadow:
+    0 1px 0 oklch(74% 0.16 258) inset,
+    0 -1px 0 oklch(36% 0.18 258) inset,
+    0 2px 8px -2px oklch(20% 0.10 258 / 0.50),
+    0 8px 22px -10px oklch(48% 0.20 258 / 0.55);
+  letter-spacing: 0.005em;
+  text-shadow: 0 1px 0 oklch(20% 0.10 258 / 0.40);
+}
+.btn-primary:hover:not(:disabled) { filter: brightness(1.08) saturate(1.04); }
+
+.btn-yes {
+  background: linear-gradient(180deg, oklch(60% 0.17 152) 0%, oklch(48% 0.16 152) 100%);
+  color: oklch(98% 0.02 152);
+  font-weight: 700;
+  border-color: oklch(40% 0.14 152);
+  box-shadow: 0 1px 0 oklch(72% 0.15 152) inset, 0 -1px 0 oklch(34% 0.12 152) inset, 0 2px 8px -2px oklch(20% 0.10 258 / 0.50);
+  text-shadow: 0 1px 0 oklch(20% 0.10 152 / 0.35);
+}
+.btn-yes:hover:not(:disabled) { filter: brightness(1.06); }
+
+.btn-no {
+  background: linear-gradient(180deg, oklch(64% 0.20 22) 0%, oklch(54% 0.20 22) 100%);
+  color: oklch(98% 0.02 22);
+  font-weight: 700;
+  border-color: oklch(46% 0.18 22);
+  box-shadow: 0 1px 0 oklch(76% 0.18 22) inset, 0 -1px 0 oklch(40% 0.16 22) inset, 0 2px 8px -2px oklch(20% 0.10 258 / 0.50);
+  text-shadow: 0 1px 0 oklch(20% 0.10 22 / 0.35);
+}
+.btn-no:hover:not(:disabled) { filter: brightness(1.06); }
+
+.btn-ghost {
+  background: oklch(22% 0.110 258 / 0.40);
+  color: var(--text);
+  border-color: var(--border-strong);
+  backdrop-filter: blur(6px);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: oklch(28% 0.130 258 / 0.55);
+  border-color: var(--gilt);
+  color: var(--gilt);
 }
 
-/* Sovereign tier — claret field, gilt ring. Sits above Diamond. */
-.tier-sovereign {
-  background: var(--claret-700);
-  color: var(--claret-100);
-  border-color: var(--gold-400);
-  box-shadow: 0 0 0 1px color-mix(in oklab, var(--gold-400) 50%, transparent) inset;
-}
+.btn-danger { background: var(--danger-500); color: white; }
+.btn-danger:hover:not(:disabled) { filter: brightness(1.08); }
 
-/* Heraldic CTA — Sovereign actions, regulator letters, archival actions.
-   Never on money flows. */
+.btn-gold {
+  background: linear-gradient(180deg, oklch(86% 0.13 82) 0%, oklch(72% 0.14 80) 50%, oklch(58% 0.12 76) 100%);
+  color: oklch(18% 0.06 76);
+  font-weight: 700;
+  border: 1px solid oklch(50% 0.10 76);
+  box-shadow:
+    0 1px 0 oklch(96% 0.07 80) inset,
+    0 -1px 0 oklch(40% 0.09 76) inset,
+    0 2px 6px -2px oklch(20% 0.06 76 / 0.45),
+    0 10px 28px -10px oklch(60% 0.13 78 / 0.55);
+  letter-spacing: 0.005em;
+  text-shadow: 0 1px 0 oklch(96% 0.07 80 / 0.55);
+}
+.btn-gold:hover:not(:disabled) { filter: brightness(1.06) saturate(1.06); }
+
 .btn-claret {
   background: linear-gradient(180deg, var(--claret-500) 0%, var(--claret-700) 100%);
   color: var(--claret-50);
@@ -548,17 +464,14 @@ body {
     0 2px 8px -2px oklch(20% 0.10 258 / 0.50),
     0 10px 28px -10px oklch(38% 0.14 15 / 0.55);
   text-shadow: 0 1px 0 oklch(15% 0.06 15 / 0.45);
-  transition: filter 160ms ease;
 }
 .btn-claret:hover:not(:disabled) { filter: brightness(1.08) saturate(1.04); }
 
-/* Aqua finishing button — "What's new", live data, fresh-info CTAs. */
 .btn-aqua-ghost {
   background: color-mix(in oklab, var(--aqua-300) 12%, transparent);
   color: var(--aqua-200);
   border: 1px solid var(--aqua-edge);
   backdrop-filter: blur(6px);
-  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
 }
 .btn-aqua-ghost:hover:not(:disabled) {
   background: color-mix(in oklab, var(--aqua-300) 22%, transparent);
@@ -566,23 +479,273 @@ body {
   box-shadow: 0 0 0 3px var(--aqua-glow);
 }
 
-/* SignalPip animation — aqua-pulsing sibling of live-dot. Non-semantic. */
+/* ---------- Chip ---------- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border: 1px solid var(--border-strong);
+  background: oklch(50% 0.20 258);
+  color: var(--text);
+}
+.chip-yes      { background: color-mix(in oklab, var(--yes-500) 22%, transparent); color: oklch(94% 0.10 152); border-color: color-mix(in oklab, var(--yes-500) 50%, transparent); }
+.chip-no       { background: color-mix(in oklab, var(--no-500)  22%, transparent); color: oklch(94% 0.08 22);  border-color: color-mix(in oklab, var(--no-500)  50%, transparent); }
+.chip-live     { background: color-mix(in oklab, var(--danger-500) 22%, transparent); color: oklch(94% 0.10 25); border-color: color-mix(in oklab, var(--danger-500) 50%, transparent); }
+.chip-resolved { background: color-mix(in oklab, var(--gold-500) 24%, transparent); color: var(--gilt); border-color: color-mix(in oklab, var(--gilt) 60%, transparent); }
+.chip-pending  { background: oklch(54% 0.18 258); color: oklch(96% 0.012 258); border-color: oklch(70% 0.16 258); }
+.chip-objection{ background: color-mix(in oklab, var(--gold-300) 22%, transparent); color: var(--gilt); border-color: color-mix(in oklab, var(--gilt) 50%, transparent); }
+.chip-politics { background: var(--claret-soft); color: var(--claret-200); border-color: var(--claret-edge); }
+.chip-signal   { background: color-mix(in oklab, var(--aqua-300) 18%, transparent); color: var(--aqua-200); border-color: var(--aqua-edge); }
+
+/* ---------- LiveDot + animations ---------- */
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: oklch(72% 0.20 25);
+  box-shadow: 0 0 0 0 color-mix(in oklab, oklch(72% 0.20 25) 60%, transparent);
+  animation: live-pulse 1.5s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 0.55; box-shadow: 0 0 0 0 color-mix(in oklab, oklch(72% 0.20 25) 60%, transparent); }
+  50%      { opacity: 1.00; box-shadow: 0 0 0 6px color-mix(in oklab, oklch(72% 0.20 25) 0%, transparent); }
+}
 @keyframes aqua-pulse {
   0%, 100% { opacity: 0.7; box-shadow: 0 0 0 0 var(--aqua-glow); }
   50%      { opacity: 1.0; box-shadow: 0 0 0 5px color-mix(in oklab, var(--aqua-300) 0%, transparent); }
 }
-
-/* Aqua focus ring — replaces gilt focus on inputs + ghost buttons. The
-   gold-gradient confirm pills keep their gilt rim because they are
-   inherently money surfaces; aqua is for the "neutral interaction" affordance. */
-.aqua-focus:focus-visible,
-.aqua-focus:focus-within {
-  outline: 2px solid var(--aqua-300);
-  outline-offset: 2px;
-  box-shadow: 0 0 0 4px var(--aqua-glow);
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes gold-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -100% 0; }
 }
 
-/* Confetti for the win celebration. Spread keyed by --x (0..1). */
+/* ---------- Probability bar ---------- */
+.pbar {
+  position: relative;
+  width: 100%;
+  background: var(--bg-overlay);
+  border-radius: var(--r-pill);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.pbar-micro { height: 12px; }
+.pbar-large { height: 24px; }
+.pbar-yes {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, var(--yes-600), var(--yes-500));
+  transition: width var(--ease-stage);
+}
+.pbar-no {
+  position: absolute;
+  inset: 0 0 0 auto;
+  background: linear-gradient(270deg, var(--no-600), var(--no-500));
+  transition: width var(--ease-stage);
+}
+.pbar-large .pbar-label {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 12px;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+.pbar-label-yes { left: 10px; }
+.pbar-label-no  { right: 10px; }
+.pbar-resolved::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, color-mix(in oklab, var(--gold-300) 70%, transparent) 50%, transparent 70%);
+  background-size: 220% 100%;
+  animation: gold-shimmer 1.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ---------- Input ---------- */
+.input {
+  width: 100%;
+  height: 42px;
+  padding: 0 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  transition: border-color var(--ease-micro), box-shadow var(--ease-micro);
+}
+.input:focus {
+  outline: none;
+  border-color: var(--aqua-300);
+  box-shadow: 0 0 0 3px var(--aqua-glow);
+}
+.input.input-mono { font-family: var(--font-mono); }
+
+.input-group {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--bg-elevated);
+  transition: border-color var(--ease-micro), box-shadow var(--ease-micro);
+  overflow: hidden;
+}
+.input-group:focus-within {
+  border-color: var(--aqua-300);
+  box-shadow: 0 0 0 3px var(--aqua-glow);
+}
+.input-group .prefix {
+  padding: 0 10px 0 14px;
+  color: var(--text-subtle);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+}
+.input-group .input {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  padding-left: 0;
+}
+.input-group .input:focus { box-shadow: none; }
+
+/* ---------- Avatar ---------- */
+.avatar {
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--pearl-50);
+  background: linear-gradient(135deg, var(--royal-500), var(--royal-800));
+  flex-shrink: 0;
+}
+.avatar-sm { width: 28px; height: 28px; font-size: 11px; }
+.avatar-md { width: 40px; height: 40px; font-size: 14px; }
+.avatar-lg { width: 56px; height: 56px; font-size: 19px; }
+
+/* ---------- Tier badge ---------- */
+.tier-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  border: 1.5px solid;
+}
+.tier-bronze  { background: oklch(40% 0.060 70);  color: oklch(90% 0.060 78);   border-color: oklch(58% 0.090 70); }
+.tier-silver  { background: oklch(60% 0.020 258); color: oklch(98% 0.006 258);  border-color: oklch(82% 0.018 258); }
+.tier-gold    { background: var(--gold-700);      color: var(--gold-100);       border-color: var(--gold-500); }
+.tier-diamond { background: oklch(46% 0.14 258);  color: oklch(96% 0.012 258);  border-color: oklch(78% 0.13 80); }
+.tier-sovereign {
+  background: var(--claret-700);
+  color: var(--claret-100);
+  border-color: var(--gilt);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--gilt) 50%, transparent) inset;
+}
+
+/* ---------- Skeleton ---------- */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-overlay) 0%, var(--border) 50%, var(--bg-overlay) 100%);
+  background-size: 200% 100%;
+  animation: skel 1.4s ease-in-out infinite;
+  border-radius: var(--r-sm);
+}
+@keyframes skel {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ---------- Toast (kit class) ---------- */
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-card);
+  min-width: 280px;
+  max-width: 360px;
+}
+.toast-icon {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+  font-weight: 700;
+  font-size: 12px;
+}
+.toast-success .toast-icon { background: color-mix(in oklab, var(--yes-500) 22%, transparent); color: var(--yes-300); }
+.toast-warning .toast-icon { background: color-mix(in oklab, var(--warning-500) 22%, transparent); color: oklch(82% 0.16 80); }
+.toast-danger  .toast-icon { background: color-mix(in oklab, var(--danger-500) 22%, transparent); color: oklch(80% 0.18 25); }
+.toast-info    .toast-icon { background: color-mix(in oklab, var(--info-500) 22%, transparent); color: oklch(78% 0.13 258); }
+.toast-title   { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+.toast-body    { font-size: 12px; color: var(--text-muted); }
+
+/* ===========================================================================
+   Legacy tooltip (kp-tooltip) — kept because existing components use it.
+   The new kit's `.tooltip` class also resolves correctly above.
+   =========================================================================== */
+.kp-tooltip { position: relative; display: inline-flex; }
+.kp-tooltip-popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(2px);
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  background: var(--slate-950);
+  color: var(--pearl-50);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  border: 1px solid var(--border-strong);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 120ms ease-out, visibility 0s linear 120ms, transform 120ms ease-out;
+  z-index: 1500;
+}
+.kp-tooltip-popover::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: var(--slate-950);
+}
+.kp-tooltip:hover .kp-tooltip-popover,
+.kp-tooltip:focus-within .kp-tooltip-popover {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+  transition-delay: 400ms, 400ms, 400ms;
+}
+
+/* ===========================================================================
+   Win celebration animations
+   =========================================================================== */
 @keyframes win-confetti {
   0%   { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 1; }
   100% { transform: translate3d(calc((var(--x) - 0.5) * 90vw), 90vh, 0) rotate(720deg); opacity: 0; }
@@ -592,3 +755,20 @@ body {
   60%  { transform: scale(1.05); opacity: 1; }
   100% { transform: scale(1.0); opacity: 1; }
 }
+
+/* Aqua focus ring opt-in for inputs / ghost buttons that aren't using the
+   `.input` class directly. */
+.aqua-focus:focus-visible,
+.aqua-focus:focus-within {
+  outline: 2px solid var(--aqua-300);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--aqua-glow);
+}
+
+/* ===========================================================================
+   Selection + scrollbar
+   =========================================================================== */
+::selection { background: color-mix(in oklab, var(--gilt) 35%, transparent); color: oklch(15% 0.06 258); }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }

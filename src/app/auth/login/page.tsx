@@ -64,10 +64,7 @@ export default function LoginPage() {
               Skip OTP and explore with a sandbox account, TZS 500,000 fake balance. All bets are virtual.
             </p>
             <form action="/auth/demo" method="post">
-              <button
-                type="submit"
-                className="w-full h-11 rounded-md bg-gradient-to-b from-gold-400 to-gold-600 font-display font-bold text-gold-fg border border-gold-700 hover:from-gold-300 hover:to-gold-500 transition-all"
-              >
+              <button type="submit" className="btn btn-gold btn-lg w-full">
                 Enter demo · Ingia mfano
               </button>
             </form>

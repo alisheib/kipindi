@@ -7,13 +7,15 @@
  * platform this session and one-click links to: continue, set limits, take a
  * break, or self-exclude. After dismissal, the timer restarts.
  *
- * Session start is tracked in sessionStorage (per browser tab); the modal does
- * not fire for unauthed visitors. Respects prefers-reduced-motion.
+ * Session start is tracked in sessionStorage (per browser tab); the modal
+ * does not fire for unauthed visitors. Respects prefers-reduced-motion.
+ *
+ * Direct port of the kit's player-protection prompt — gilt eyebrow, royal
+ * card, kit btn-primary / btn-ghost / btn-claret.
  */
 import * as React from "react";
 import Link from "next/link";
 import { Clock, Pause, Lock, X, ShieldCheck } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 const SESSION_START_KEY  = "kp_session_started_at";
 const LAST_PROMPT_KEY    = "kp_reality_check_last";
@@ -27,7 +29,6 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL }: { 
     if (!enabled) return;
     if (typeof window === "undefined") return;
 
-    // Bootstrap session start time
     let startedAt = Number(sessionStorage.getItem(SESSION_START_KEY) ?? 0);
     if (!startedAt || Number.isNaN(startedAt)) {
       startedAt = Date.now();
@@ -49,7 +50,6 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL }: { 
         sessionStorage.setItem(LAST_PROMPT_KEY, String(now));
       }
     };
-    // Tick once on mount, then every 30s
     tick();
     const id = window.setInterval(tick, 30_000);
     return () => window.clearInterval(id);
@@ -72,51 +72,89 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL }: { 
   if (!enabled || !open) return null;
 
   return (
-    <div className="fixed inset-0 z-celebration flex items-end sm:items-center justify-center p-3 sm:p-4 pb-[calc(env(safe-area-inset-bottom)+12px)] kp-slide-up" role="dialog" aria-modal="true" aria-labelledby="reality-check-title">
-      <div className="absolute inset-0 bg-bg-overlay backdrop-blur-md" onClick={dismiss} aria-hidden />
-      <div className="relative w-full max-w-md max-h-[calc(100dvh-env(safe-area-inset-bottom)-24px)] overflow-y-auto rounded-2xl border border-gold-subtleHover/40 bg-bg-elevated p-5 sm:p-6 shadow-e3 kp-pop-in space-y-4">
+    <div
+      className="fixed inset-0 z-[1700] flex items-end sm:items-center justify-center p-3 sm:p-4 pb-[calc(env(safe-area-inset-bottom)+12px)]"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="reality-check-title"
+      style={{ animation: "win-burst 200ms ease-out both" }}
+    >
+      <div
+        className="absolute inset-0"
+        style={{ background: "oklch(11% 0.06 258 / 0.65)", backdropFilter: "blur(6px)" }}
+        onClick={dismiss}
+        aria-hidden
+      />
+      <div
+        className="relative w-full max-w-md max-h-[calc(100dvh-env(safe-area-inset-bottom)-24px)] overflow-y-auto rounded-2xl bg-bg-elevated p-5 sm:p-6 space-y-4"
+        style={{
+          border: "1px solid var(--gilt)",
+          boxShadow: "var(--shadow-royal), 0 0 0 1px color-mix(in oklab, var(--gilt) 30%, transparent) inset",
+          animation: "win-burst 320ms cubic-bezier(.2,.8,.2,1) both",
+        }}
+      >
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2">
-            <ShieldCheck size={20} className="text-gold" />
-            <p className="font-mono text-caption uppercase tracking-[0.32em] text-gold font-bold">Reality check</p>
+            <ShieldCheck size={18} style={{ color: "var(--gilt)" }} />
+            <p className="gilt-eyebrow">Reality check · Tafakari</p>
           </div>
-          <button type="button" onClick={dismiss} aria-label="Dismiss" className="text-text-subtle hover:text-text">
-            <X size={18} />
+          <button
+            type="button"
+            onClick={dismiss}
+            aria-label="Dismiss"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
+          >
+            <X size={16} />
           </button>
         </div>
 
+        {/* Gilt rule under the eyebrow — heraldic kit furniture */}
+        <div aria-hidden className="claret-rule" style={{ margin: 0 }} />
+
         <div className="space-y-1.5">
-          <h2 id="reality-check-title" className="font-display font-bold text-title-md text-text">
-            You've been playing for <span className="text-gold tabular">{elapsedMin}</span> {elapsedMin === 1 ? "minute" : "minutes"}.
+          <h2
+            id="reality-check-title"
+            className="font-display font-bold leading-tight text-text"
+            style={{ fontSize: "var(--type-h2)", letterSpacing: "-0.02em", margin: 0 }}
+          >
+            You&apos;ve been playing for{" "}
+            <span className="gilt-num" style={{ fontSize: "var(--type-h2)" }}>
+              {elapsedMin}
+            </span>{" "}
+            {elapsedMin === 1 ? "minute" : "minutes"}.
           </h2>
-          <p className="text-body-sm text-text-secondary italic">Umekuwa ukicheza kwa dakika {elapsedMin}.</p>
+          <p className="text-text-muted italic" style={{ fontSize: "var(--type-small)" }}>
+            Umekuwa ukicheza kwa dakika {elapsedMin}.
+          </p>
         </div>
 
-        <p className="text-body-sm text-text-secondary leading-relaxed">
+        <p className="text-text-muted" style={{ fontSize: "var(--type-small)", lineHeight: 1.6 }}>
           Most people play for fun. If it stops feeling fun, take a break.
-          <br />
-          <span className="italic text-text-subtle">Kama haifurahishi tena, pumzika.</span>
+          <span className="block italic text-text-subtle">Kama haifurahishi tena, pumzika.</span>
         </p>
 
         <div className="grid grid-cols-1 gap-2 pt-1">
-          <Button variant="primary" size="lg" onClick={dismiss} fullWidth>
+          <button type="button" onClick={dismiss} className="btn btn-primary btn-lg w-full">
             Continue playing · Endelea
-          </Button>
-          <Link href="/profile/responsible-gambling" className="block">
-            <Button size="lg" variant="secondary" fullWidth leading={<Clock size={14} />}>Set limits · Weka mipaka</Button>
+          </button>
+          <Link href="/profile/responsible-gambling" className="btn btn-ghost btn-lg w-full inline-flex">
+            <Clock size={14} aria-hidden />
+            Set limits · Weka mipaka
           </Link>
           <div className="grid grid-cols-2 gap-2">
-            <Link href="/profile/responsible-gambling" className="block">
-              <Button size="lg" variant="ghost" fullWidth leading={<Pause size={14} />}>Take a break</Button>
+            <Link href="/profile/responsible-gambling" className="btn btn-ghost btn-md w-full inline-flex">
+              <Pause size={13} aria-hidden />
+              Take a break
             </Link>
-            <Link href="/profile/responsible-gambling" className="block">
-              <Button size="lg" variant="ghost" fullWidth leading={<Lock size={14} />}>Self-exclude</Button>
+            <Link href="/profile/responsible-gambling" className="btn btn-claret btn-md w-full inline-flex">
+              <Lock size={13} aria-hidden />
+              Self-exclude
             </Link>
           </div>
         </div>
 
-        <p className="text-micro text-text-subtle text-center pt-1">
-          Tanzania Helpline · <span className="font-mono">+255 22 211 5811</span>
+        <p className="text-center font-mono pt-1" style={{ fontSize: "var(--type-micro)", color: "var(--text-subtle)" }}>
+          Tanzania Helpline · <span style={{ color: "var(--text-muted)" }}>+255 22 211 5811</span>
         </p>
       </div>
     </div>

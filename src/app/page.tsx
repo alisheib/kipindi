@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, ShieldCheck, Smartphone, BarChart3 } from "lucide-react";
 import { MarketCard } from "@/components/markets/market-card";
-import { TippingBar, FiftyMark } from "@/components/brand";
+import { TippingBar, FiftyMark, FiftyLockup, GiltCorner } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { listMarkets, impliedYesPct, seedDemoMarkets } from "@/lib/server/market-service";
 
@@ -27,63 +27,127 @@ export default function LandingPage() {
   return (
     <div className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6 lg:py-8 space-y-8 lg:space-y-10">
 
-      {/* HERO — adapts to theme via --hero-* tokens */}
+      {/* HERO — direct port of kit/banners.jsx → BannerHero. Royal radial
+          canvas, gilt outer border, gilt L-bracket corners, gilt-gradient
+          "wisdom" word, Soro display headline, gilt-rules around the
+          eyebrow + Est. line, featured-market card with TippingBar, gold
+          + ghost CTAs. */}
       <section
-        className="relative overflow-hidden rounded-xl border border-border"
-        style={{ background: "var(--hero-grad)" }}
+        className="relative overflow-hidden rounded-2xl"
+        style={{
+          background:
+            "radial-gradient(ellipse 90% 70% at 75% 30%, oklch(28% 0.16 258) 0%, oklch(38% 0.20 258) 60%, oklch(34% 0.18 258) 100%)",
+          border: "1px solid oklch(78% 0.13 80)",
+          boxShadow:
+            "0 1px 0 oklch(78% 0.13 80 / 0.40) inset, 0 24px 60px -30px oklch(8% 0.05 258 / 0.70)",
+        }}
       >
-        <BrandTopo id="hero" opacity={0.05} />
-        {/* Ghosted mark — opacity adapts to theme */}
-        <div
-          className="absolute right-[-6%] top-[-12%] pointer-events-none hidden md:block"
-          style={{ opacity: "var(--hero-mark-opacity)" }}
-        >
-          <FiftyMark size={520} mono inverted />
+        <BrandTopo id="hero" opacity={0.06} />
+        {/* Ghosted mark — opacity from kit */}
+        <div className="absolute right-[-5%] top-[-12%] pointer-events-none hidden md:block" style={{ opacity: 0.10 }}>
+          <FiftyMark size={520} mono />
         </div>
+        {/* Heraldic gilt corners */}
+        <GiltCorner size={56} className="absolute" style={{ top: 18, left: 18 }} rotate={0} />
+        <GiltCorner size={56} className="absolute" style={{ top: 18, right: 18 }} rotate={90} />
+        <GiltCorner size={56} className="absolute" style={{ bottom: 18, left: 18 }} rotate={-90} />
+        <GiltCorner size={56} className="absolute" style={{ bottom: 18, right: 18 }} rotate={180} />
 
-        <div className="relative px-6 py-9 md:px-12 md:py-14 flex flex-col gap-6">
-          <p className="font-mono text-[12px] tracking-[0.16em] uppercase font-bold" style={{ color: "var(--hero-tag-yes)" }}>
+        <div className="relative px-8 py-12 md:px-16 md:py-16 flex flex-col gap-7">
+          {/* Top row — lockup left, "Concept platform" caption right */}
+          <div className="flex items-center justify-between gap-4">
+            <FiftyLockup size={24} color="oklch(99% 0.006 258)" />
+            <div className="hidden sm:flex items-center gap-2.5 font-mono text-[11px] uppercase tracking-[0.16em]" style={{ color: "oklch(78% 0.13 80)" }}>
+              <span style={{ width: 6, height: 6, borderRadius: 999, background: "oklch(78% 0.13 80)" }} />
+              Tanzania · Concept platform · Not a live product
+            </div>
+          </div>
+
+          {/* Mono eyebrow with gilt-rule on either side */}
+          <div className="inline-flex items-center gap-3 font-mono text-[12px] uppercase tracking-[0.18em]" style={{ color: "oklch(78% 0.13 80)" }}>
+            <span style={{ display: "inline-block", width: 28, height: 1, background: "oklch(78% 0.13 80)" }} />
             Soko la utabiri · Prediction markets
-          </p>
+            <span style={{ display: "inline-block", width: 28, height: 1, background: "oklch(78% 0.13 80)" }} />
+          </div>
+
+          {/* The headline — "wisdom" carries the gilt vertical gradient */}
           <h1
-            className="font-display font-bold text-[40px] sm:text-[52px] md:text-[68px] leading-[1.0] tracking-[-0.035em] max-w-[18ch]"
-            style={{ color: "var(--hero-text-strong)" }}
+            className="font-display font-bold text-[44px] sm:text-[60px] md:text-[80px] leading-[1.0] tracking-[-0.035em] max-w-[18ch] m-0"
+            style={{ color: "oklch(99% 0.006 258)" }}
           >
-            The wisdom of{" "}
-            <span style={{ color: "var(--hero-yes-accent)" }}>YES</span>
-            {" "}&{" "}
-            <span style={{ color: "var(--hero-no-accent)" }}>NO</span>.
+            The{" "}
+            <span
+              style={{
+                background: "linear-gradient(180deg, oklch(92% 0.10 82) 0%, oklch(72% 0.14 78) 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+                color: "transparent",
+              }}
+            >
+              wisdom
+            </span>{" "}
+            of <span style={{ color: "oklch(72% 0.16 152)" }}>YES</span> &{" "}
+            <span style={{ color: "oklch(72% 0.18 22)" }}>NO</span>.
           </h1>
+
+          {/* Gilt-rule + Est. line + flowing rule */}
+          <div className="flex items-center gap-3.5 -mt-2">
+            <span style={{ height: 1, width: 120, background: "linear-gradient(90deg, oklch(78% 0.13 80), transparent)" }} />
+            <span className="font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: "oklch(78% 0.13 80)" }}>
+              Est. 2026 · Dar es Salaam
+            </span>
+            <span style={{ height: 1, flex: 1, background: "linear-gradient(90deg, oklch(78% 0.13 80), transparent)" }} />
+          </div>
+
           <p
-            className="font-display text-[15px] md:text-[17px] leading-[1.5] max-w-[58ch]"
-            style={{ color: "var(--hero-text-muted)" }}
+            className="font-display text-[15px] md:text-[19px] leading-[1.5] max-w-[58ch] m-0"
+            style={{ color: "oklch(82% 0.040 258)" }}
           >
             Pesa kidogo, ukweli mkubwa. Trade questions about Tanzania&apos;s weather, markets, sport and elections — settled by official sources.
           </p>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-5 lg:gap-10 items-end">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 lg:gap-10 items-end">
+            {/* Featured market — kit "Featured market" card */}
             {featured && (
-              <div className="max-w-[440px]">
+              <div
+                className="max-w-[480px] p-3.5 px-4"
+                style={{
+                  background: "oklch(44% 0.20 258)",
+                  border: "1px solid oklch(60% 0.16 258)",
+                  borderRadius: 12,
+                  boxShadow: "0 1px 0 oklch(78% 0.13 80 / 0.20) inset",
+                }}
+              >
                 <p
-                  className="font-mono text-[10px] tracking-[0.12em] uppercase mb-2 line-clamp-1"
-                  style={{ color: "var(--hero-text-muted)" }}
+                  className="font-mono text-[10px] uppercase tracking-[0.14em] mb-2"
+                  style={{ color: "oklch(78% 0.13 80)" }}
+                >
+                  Featured market
+                </p>
+                <p
+                  className="font-display text-[14px] font-semibold mb-2.5 leading-tight"
+                  style={{ color: "oklch(99% 0.006 258)" }}
                 >
                   {featured.titleEn}
                 </p>
-                <TippingBar yesPct={featuredYesPct} height={22} animate={false} />
+                <TippingBar yesPct={featuredYesPct} height={20} animate={false} showLabels={false} />
               </div>
             )}
-            <div className="flex flex-wrap gap-2">
+            {/* Gold + Ghost CTAs — kit btn-gold + btn-ghost (radius 999 per banner spec) */}
+            <div className="flex flex-wrap gap-3">
               <Link
                 href={"/auth/demo" as never}
-                className="inline-flex h-10 sm:h-11 items-center gap-2 rounded-pill bg-yes-500 px-4 sm:px-5 text-[14px] sm:text-[15px] font-display font-bold text-yes-950 hover:bg-yes-400 transition-colors"
+                className="btn btn-gold inline-flex items-center gap-2"
+                style={{ height: 52, padding: "0 28px", fontSize: 16, borderRadius: 999 }}
               >
                 Try the demo
-                <ArrowRight size={15} aria-hidden />
+                <ArrowRight size={16} aria-hidden />
               </Link>
               <Link
                 href={"/markets" as never}
-                className="inline-flex h-10 sm:h-11 items-center gap-2 rounded-pill border border-border-strong bg-bg-elevated px-4 sm:px-5 text-[14px] sm:text-[15px] font-display font-semibold text-text hover:bg-bg-overlay transition-colors"
+                className="btn btn-ghost inline-flex items-center"
+                style={{ height: 52, padding: "0 24px", fontSize: 15, borderRadius: 999 }}
               >
                 Browse markets
               </Link>

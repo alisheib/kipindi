@@ -198,16 +198,7 @@ export default async function SourceOfFundsPage() {
             </p>
           </div>
 
-          <button
-            type="submit"
-            className="w-full h-12 inline-flex items-center justify-center gap-2 rounded-pill font-display font-bold text-[14px] transition-all border"
-            style={{
-              background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))",
-              color: "var(--gold-fg)",
-              borderColor: "var(--gold-700)",
-              boxShadow: "0 1px 0 oklch(95% 0.08 80) inset, 0 8px 18px -10px oklch(78% 0.14 80 / 0.7)",
-            }}
-          >
+          <button type="submit" className="btn btn-gold btn-lg w-full" style={{ borderRadius: 999 }}>
             <FileSignature size={16} />
             Submit declaration · Wasilisha
           </button>

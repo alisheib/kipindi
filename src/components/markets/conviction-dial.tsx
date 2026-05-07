@@ -447,16 +447,8 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
           onClick={openConfirm}
           disabled={pending || side === "NEUTRAL"}
           aria-label={side === "NEUTRAL" ? "Drag the dial to commit" : `Place ${side} for TZS ${fmt(stake)}`}
-          className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-pill font-display font-bold text-[13px] tabular-nums transition-all border disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{
-            background: side === "NEUTRAL"
-              ? "var(--bg-overlay)"
-              : "linear-gradient(180deg, var(--gold-400), var(--gold-600))",
-            color: side === "NEUTRAL" ? "var(--text-subtle)" : "var(--gold-fg)",
-            borderColor: side === "NEUTRAL" ? "var(--border)" : "var(--gold-700)",
-            boxShadow: side === "NEUTRAL" ? "none" : "0 1px 0 oklch(95% 0.08 80) inset, 0 6px 14px -10px oklch(78% 0.14 80 / 0.7)",
-            minWidth: 168,
-          }}
+          className={side === "NEUTRAL" ? "btn btn-ghost btn-md" : "btn btn-gold btn-md"}
+          style={{ borderRadius: 999, minWidth: 168, fontVariantNumeric: "tabular-nums" }}
         >
           {side === "NEUTRAL"
             ? "—"

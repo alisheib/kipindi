@@ -137,22 +137,11 @@ export function WalletPageClient({
         </div>
         {isAuthed && (
           <div className="flex items-center gap-2 shrink-0">
-            <Link
-              href="/wallet/deposit"
-              className="inline-flex h-10 items-center gap-1.5 px-4 rounded-pill font-display font-bold text-[13px] transition-colors"
-              style={{
-                background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))",
-                color: "var(--gold-fg)",
-                boxShadow: "0 1px 0 oklch(95% 0.08 80) inset",
-              }}
-            >
+            <Link href="/wallet/deposit" className="btn btn-gold btn-md inline-flex" style={{ borderRadius: 999 }}>
               <ArrowDownToLine size={14} />
               Deposit
             </Link>
-            <Link
-              href="/wallet/withdraw"
-              className="inline-flex h-10 items-center gap-1.5 px-4 rounded-pill border border-border bg-bg-elevated text-text font-display font-semibold text-[13px] hover:bg-bg-overlay transition-colors"
-            >
+            <Link href="/wallet/withdraw" className="btn btn-ghost btn-md inline-flex" style={{ borderRadius: 999 }}>
               <ArrowUpFromLine size={14} />
               Withdraw
             </Link>
@@ -216,10 +205,7 @@ export function WalletPageClient({
               Make your first deposit to start predicting.
             </p>
             {isAuthed && (
-              <Link
-                href="/wallet/deposit"
-                className="mt-5 inline-flex h-11 items-center px-6 rounded-pill bg-gold-500 hover:bg-gold-400 text-gold-fg font-display font-bold text-[13.5px] transition-colors"
-              >
+              <Link href="/wallet/deposit" className="btn btn-gold btn-lg mt-5 inline-flex" style={{ borderRadius: 999 }}>
                 Deposit · Weka pesa
               </Link>
             )}

@@ -32,10 +32,19 @@ export function FiftyMark({
   const top = { x: cx + dx, y: cy - dy };
   const bot = { x: cx - dx, y: cy + dy };
 
-  const yesColor    = mono ? (inverted ? "oklch(96% 0.005 240)" : "oklch(20% 0.01 240)") : "oklch(58% 0.16 152)";
-  const noColor     = mono ? (inverted ? "oklch(70% 0.005 240)" : "oklch(50% 0.01 240)") : "oklch(60% 0.18 22)";
-  const ringColor   = mono ? (inverted ? "oklch(96% 0.005 240)" : "oklch(20% 0.01 240)") : "oklch(20% 0.01 240)";
-  const numberColor = mono ? (inverted ? "oklch(15% 0.01 240)" : "oklch(96% 0.005 240)") : "oklch(96% 0.005 240)";
+  // Kit-faithful palette:
+  //   yes wedge  = emerald 152
+  //   no wedge   = rose 22
+  //   outer ring = royal 258 (NOT black)
+  //   divider    = gilt 86 stroke
+  //   gilt pip   = signature mark on the divider midpoint
+  //   gilt outer hairline at r-2.4 — the "golden line" the kit specifies
+  const yesColor    = mono ? (inverted ? "oklch(99% 0.006 258)" : "oklch(48% 0.20 258)") : "oklch(58% 0.16 152)";
+  const noColor     = mono ? (inverted ? "oklch(72% 0.020 258)" : "oklch(78% 0.045 258)") : "oklch(60% 0.18 22)";
+  const ringColor   = mono ? (inverted ? "oklch(99% 0.006 258)" : "oklch(48% 0.20 258)") : "oklch(48% 0.20 258)";
+  const numberColor = mono ? (inverted ? "oklch(44% 0.20 258)" : "oklch(99% 0.006 258)") : "oklch(99% 0.006 258)";
+  const giltStroke  = "oklch(78% 0.13 86)";  // champagne divider
+  const giltPip     = "oklch(85% 0.13 86)";  // brighter pip on the divider midpoint
 
   const id = React.useId().replace(/:/g, "");
 
@@ -47,9 +56,18 @@ export function FiftyMark({
         </clipPath>
       </defs>
       <g clipPath={`url(#fc-${id})`}>
+        {/* YES wedge */}
         <path d={`M ${top.x} ${top.y} A ${r} ${r} 0 0 0 ${bot.x} ${bot.y} L ${top.x} ${top.y} Z`} fill={yesColor} />
+        {/* NO wedge */}
         <path d={`M ${top.x} ${top.y} A ${r} ${r} 0 0 1 ${bot.x} ${bot.y} L ${top.x} ${top.y} Z`} fill={noColor} />
-        <line x1={top.x} y1={top.y} x2={bot.x} y2={bot.y} stroke={ringColor} strokeWidth="2.4" strokeLinecap="round" />
+        {/* Divider — gilt when in chord, royal when mono */}
+        <line
+          x1={top.x} y1={top.y} x2={bot.x} y2={bot.y}
+          stroke={mono ? ringColor : giltStroke}
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+        {/* The 50 sitting on the divider */}
         <text
           x={cx}
           y={cy + 2}
@@ -63,15 +81,44 @@ export function FiftyMark({
         >
           50
         </text>
+        {/* Gold pip on the divider midpoint — signature mark */}
+        {!mono && <circle cx={cx} cy={cy} r={1.6} fill={giltPip} />}
       </g>
+      {/* Outer royal ring */}
       <circle cx={cx} cy={cy} r={r - 1} fill="none" stroke={ringColor} strokeWidth="2" />
+      {/* Gilt outer hairline — the "golden line" — only in chord, not mono */}
+      {!mono && (
+        <circle
+          cx={cx}
+          cy={cy}
+          r={r - 2.4}
+          fill="none"
+          stroke={giltStroke}
+          strokeWidth="0.5"
+          opacity="0.55"
+        />
+      )}
     </svg>
   );
 }
 
 /* ── FiftyWordmark ──────────────────────────────────────────────────────── */
 
-export function FiftyWordmark({ size = 32, color = "currentColor", className }: { size?: number; color?: string; className?: string }) {
+export function FiftyWordmark({
+  size = 32,
+  color = "currentColor",
+  gilt = true,
+  className,
+}: {
+  size?: number;
+  color?: string;
+  /** Gilt rule beneath the wordmark — the kit's signature touch. */
+  gilt?: boolean;
+  className?: string;
+}) {
+  // Kit values: rule height 4.5% of size, padding-bottom 10% of size.
+  const ruleH = Math.max(1, Math.round(size * 0.045));
+  const rulePad = Math.max(3, Math.round(size * 0.10));
   return (
     <span
       className={className}
@@ -81,19 +128,21 @@ export function FiftyWordmark({ size = 32, color = "currentColor", className }: 
         fontFamily: "Sora, ui-sans-serif, system-ui",
         fontWeight: 700,
         fontSize: size,
-        letterSpacing: "-0.03em",
+        letterSpacing: "-0.025em",
         color,
         lineHeight: 1,
+        borderBottom: gilt ? `${ruleH}px solid oklch(78% 0.13 86)` : "none",
+        paddingBottom: gilt ? rulePad : 0,
       }}
     >
-      50pick
+      <span>50pick</span>
       <span
         style={{
           fontFamily: "JetBrains Mono, ui-monospace, monospace",
           fontWeight: 500,
-          fontSize: size * 0.55,
-          marginLeft: size * 0.04,
-          opacity: 0.7,
+          fontSize: size * 0.52,
+          marginLeft: size * 0.08,
+          opacity: 0.62,
           letterSpacing: 0,
         }}
       >
@@ -110,24 +159,67 @@ export function FiftyLockup({
   color = "currentColor",
   mono = false,
   inverted = false,
+  gilt = true,
   className,
 }: {
   size?: number;
   color?: string;
   mono?: boolean;
   inverted?: boolean;
+  /** Gilt rule under the wordmark. */
+  gilt?: boolean;
   className?: string;
 }) {
+  // Kit ratios: gap = size × 0.42, mark = size × 1.22.
   return (
-    <div className={cn("inline-flex items-center", className)} style={{ gap: size * 0.32 }}>
-      <FiftyMark size={size * 1.18} mono={mono} inverted={inverted} />
-      <FiftyWordmark size={size} color={color} />
+    <div className={cn("inline-flex items-center", className)} style={{ gap: size * 0.42 }}>
+      <FiftyMark size={size * 1.22} mono={mono} inverted={inverted} />
+      <FiftyWordmark size={size} color={color} gilt={gilt} />
     </div>
   );
 }
 
 /* ── FiftyFavicon (kit alias) ───────────────────────────────────────────── */
 export const FiftyFavicon = ({ size = 32 }: { size?: number }) => <FiftyMark size={size} />;
+
+/* ── GiltCorner — the kit's heraldic L-bracket ──────────────────────────── */
+/* Decorative gilt corner used to frame Banner heroes / regulator letters /
+   palette specimens. Rotation values: 0 = top-left, 90 = top-right,
+   -90 = bottom-left, 180 = bottom-right. Direct port of kit/banners.jsx. */
+
+export function GiltCorner({
+  size = 64,
+  rotate = 0,
+  className,
+  style,
+}: {
+  size?: number;
+  rotate?: 0 | 90 | -90 | 180;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      className={className}
+      style={{ display: "block", overflow: "visible", ...style }}
+      aria-hidden
+    >
+      <g
+        transform={`rotate(${rotate} ${size / 2} ${size / 2})`}
+        stroke="oklch(78% 0.13 80)"
+        fill="none"
+        strokeLinecap="round"
+      >
+        <line x1="6" y1="6" x2={size * 0.55} y2="6" strokeWidth="0.5" />
+        <line x1="6" y1="6" x2="6" y2={size * 0.55} strokeWidth="0.5" />
+        <circle cx="6" cy="6" r="2" fill="oklch(78% 0.13 80)" />
+      </g>
+    </svg>
+  );
+}
 
 /* ── TippingBar — signature progress with the tilting needle ─────────────── */
 
@@ -167,10 +259,11 @@ export function TippingBar({
         style={{
           position: "relative",
           height,
-          background: "var(--bar-track)",
+          // Kit values: royal track with royal-edge inset stroke.
+          background: "oklch(50% 0.20 258)",
           borderRadius: r,
           overflow: "visible",
-          boxShadow: "inset 0 0 0 1px var(--bar-track-border)",
+          boxShadow: "inset 0 0 0 1px oklch(58% 0.17 258)",
         }}
         role="progressbar"
         aria-valuenow={yes}
@@ -198,7 +291,7 @@ export function TippingBar({
             boxShadow: "0 0 18px oklch(60% 0.18 22 / 0.35)",
           }}
         />
-        {/* Tipping needle — sits on the boundary, tilts with lean */}
+        {/* Tipping needle — gilt champagne, sits on the boundary, tilts with lean */}
         <div
           style={{
             position: "absolute",
@@ -206,12 +299,12 @@ export function TippingBar({
             top: -8,
             bottom: -8,
             width: 3,
-            background: "var(--bar-needle)",
+            background: "oklch(86% 0.13 82)",
             borderRadius: 2,
             transformOrigin: "50% 100%",
             transform: `rotate(${tilt}deg)`,
             transition: ease,
-            boxShadow: "0 0 12px var(--bar-needle-glow)",
+            boxShadow: "0 0 12px oklch(86% 0.13 82 / 0.55)",
           }}
         />
         {resolved && (
