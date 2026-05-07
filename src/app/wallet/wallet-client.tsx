@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowDownToLine, ArrowUpFromLine, Wallet as WalletIcon, Sliders, Phone, CreditCard, Plus } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, Wallet as WalletIcon, Phone, CreditCard, Plus } from "lucide-react";
 import { FiftyMark } from "@/components/brand";
 import type { Transaction } from "@/lib/mock-data";
 
@@ -118,12 +118,10 @@ export function WalletPageClient({
   balance, pending, hold, currency,
   transactions,
   isAuthed,
-  isDemo,
 }: {
   balance: number; pending: number; hold: number; currency: string;
   transactions: Transaction[];
   isAuthed: boolean;
-  isDemo: boolean;
 }) {
   const [tab, setTab] = useState<typeof TABS[number]["v"]>("activity");
 
@@ -150,22 +148,6 @@ export function WalletPageClient({
       </header>
 
       <BalanceCard balance={balance} pending={pending} hold={hold} currency={currency} />
-
-      {isDemo && (
-        <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg/30 px-3.5 py-3 text-[12.5px] leading-snug">
-          <Sliders size={14} className="mt-0.5 shrink-0 text-warning-fg" />
-          <div>
-            <p className="font-display font-semibold text-text">Demo mode · Mode ya mfano</p>
-            <p className="text-text-muted">
-              The TZS 500,000 balance and any deposits/withdrawals you make here are virtual.
-              Sign out and re-enter demo to reset.
-              <span className="block italic text-text-subtle text-[11.5px] mt-0.5">
-                Salio na shughuli zote ni za mfano. Toka kisha rudi kuanza upya.
-              </span>
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Kit tabs — line variant rebuilt inline so we don't pull the legacy Tabs component. */}
       <nav role="tablist" aria-label="Wallet sections" className="flex items-center gap-1 border-b border-border">

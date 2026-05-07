@@ -43,11 +43,13 @@ export async function updateGlobalConfigAction(formData: FormData) {
   const min = parseInteger(String(formData.get("minStake") ?? ""));
   const max = parseInteger(String(formData.get("maxStake") ?? ""));
   const thin = parseRatio(String(formData.get("thinProfitRatio") ?? ""));
+  const starter = parseInteger(String(formData.get("starterBalanceTzs") ?? ""));
   if (t !== undefined) updates.taxRate = t;
   if (c !== undefined) updates.commissionRate = c;
   if (min !== undefined) updates.minStake = min;
   if (max !== undefined) updates.maxStake = max;
   if (thin !== undefined) updates.thinProfitRatio = thin;
+  if (starter !== undefined) updates.starterBalanceTzs = starter;
   const r = setGlobalConfig(updates, s.userId);
   revalidatePath("/admin/config");
   return r;

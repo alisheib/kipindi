@@ -25,6 +25,11 @@ export type RateConfig = {
   maxStake: number;
   /** Show "thin profit" warning when projected payout/stake < this. Default 1.05. */
   thinProfitRatio: number;
+  /** Starter wallet balance for newly-registered users in TZS.
+   *  Default 0 — anyone can sign up but must add funds (or be credited
+   *  by an admin) before they can place a stake. Setting this to a
+   *  positive number turns 50pick into a free-trial sandbox. */
+  starterBalanceTzs: number;
 };
 
 export const DEFAULT_GLOBAL_CONFIG: RateConfig = {
@@ -33,6 +38,7 @@ export const DEFAULT_GLOBAL_CONFIG: RateConfig = {
   minStake: 100,
   maxStake: 1_000_000,
   thinProfitRatio: 1.05,
+  starterBalanceTzs: 0,
 };
 
 declare global {
@@ -101,6 +107,11 @@ function validate(updates: Partial<RateConfig>): { ok: true } | { ok: false; rea
   if (updates.thinProfitRatio !== undefined) {
     if (updates.thinProfitRatio < 1.0 || updates.thinProfitRatio > 2.0) {
       return { ok: false, reason: "Thin-profit threshold must be 1.0–2.0." };
+    }
+  }
+  if (updates.starterBalanceTzs !== undefined) {
+    if (!Number.isFinite(updates.starterBalanceTzs) || updates.starterBalanceTzs < 0 || updates.starterBalanceTzs > 5_000_000) {
+      return { ok: false, reason: "Starter balance must be 0–5,000,000 TZS." };
     }
   }
   return { ok: true };

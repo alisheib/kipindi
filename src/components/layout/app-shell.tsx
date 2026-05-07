@@ -1,6 +1,5 @@
 import { TopAppBar } from "./top-app-bar";
 import { BottomNav } from "./bottom-nav";
-import { DemoBanner } from "./demo-banner";
 import { PublicFooter } from "./public-footer";
 import { NotifyPoller } from "@/components/markets/notify-poller";
 import { WinCelebrationHost } from "@/components/markets/win-celebration";
@@ -41,7 +40,6 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   }
   return (
     <div className="min-h-screen bg-bg-base text-text">
-      <DemoBanner />
       <TopAppBar user={topUser} />
       <main className="pb-[calc(56px+env(safe-area-inset-bottom))] xl:pb-0">
         {children}

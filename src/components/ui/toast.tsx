@@ -92,33 +92,33 @@ export function useToast(): ToastContextValue {
 
 const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; surface: string; rail: string }> = {
   default: {
-    bar: "bg-teal-500",
-    icon: <CheckCircle2 size={20} className="text-teal-300" />,
-    surface: "bg-bg-elevated border-teal-700/60 shadow-[0_18px_42px_-14px_rgba(0,170,170,0.35)]",
-    rail: "bg-teal-500",
+    bar: "bg-aqua-300",
+    icon: <CheckCircle2 size={16} className="text-aqua-300" />,
+    surface: "bg-bg-elevated border-aqua-edge",
+    rail: "bg-aqua-300",
   },
   success: {
     bar: "bg-yes-500",
-    icon: <CheckCircle2 size={20} className="text-yes-300" />,
-    surface: "bg-bg-elevated border-yes-700/60 shadow-[0_18px_42px_-14px_oklch(45%_0.16_152_/_0.55)]",
+    icon: <CheckCircle2 size={16} className="text-yes-300" />,
+    surface: "bg-bg-elevated border-yes-700/60",
     rail: "bg-yes-500",
   },
   warning: {
-    bar: "bg-warning-500",
-    icon: <AlertTriangle size={20} className="text-warning-fg" />,
-    surface: "bg-bg-elevated border-warning-border shadow-[0_18px_42px_-14px_oklch(60%_0.18_85_/_0.50)]",
-    rail: "bg-warning-500",
+    bar: "bg-gold-500",
+    icon: <AlertTriangle size={16} className="text-gold-300" />,
+    surface: "bg-bg-elevated border-gold-700/60",
+    rail: "bg-gold-500",
   },
   danger: {
     bar: "bg-no-500",
-    icon: <AlertCircle size={20} className="text-no-300" />,
-    surface: "bg-bg-elevated border-no-700/60 shadow-[0_18px_42px_-14px_oklch(50%_0.18_22_/_0.55)]",
+    icon: <AlertCircle size={16} className="text-no-300" />,
+    surface: "bg-bg-elevated border-no-700/60",
     rail: "bg-no-500",
   },
   gold: {
     bar: "bg-gold-500",
-    icon: <Trophy size={20} className="text-gold-fg" />,
-    surface: "bg-bg-elevated border-gold-700 shadow-[0_18px_42px_-14px_oklch(78%_0.14_80_/_0.55)]",
+    icon: <Trophy size={16} className="text-gold-300" />,
+    surface: "bg-bg-elevated border-gold-700",
     rail: "bg-gold-500",
   },
 };
@@ -149,20 +149,27 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
     <div
       role="status"
       className={cn(
-        "pointer-events-auto relative w-full max-w-[420px] overflow-hidden rounded-xl border-[1.5px] backdrop-blur-md transition-all duration-200",
+        // Kit toast — 280..360 max width, .toast surface, .shadow-card
+        "pointer-events-auto relative w-full max-w-[340px] overflow-hidden rounded-md border transition-all duration-200",
+        "shadow-[var(--shadow-card)]",
         v.surface,
         enter ? "translate-y-0 opacity-100 scale-100" : "-translate-y-2 opacity-0 scale-95",
       )}
+      style={{ background: "var(--bg-elevated)" }}
     >
-      {/* Side rail — accent stripe so the variant is unmissable */}
-      <div className={cn("absolute left-0 top-0 bottom-0 w-1", v.rail)} aria-hidden />
+      {/* Heraldic rail — 3px wide, gilt-tinted accent at the leading edge */}
+      <div className={cn("absolute left-0 top-0 bottom-0 w-[3px]", v.rail)} aria-hidden />
 
-      <div className="flex items-start gap-3 py-3.5 pl-4 pr-9">
-        <div className="mt-0.5 shrink-0">{v.icon}</div>
+      <div className="flex items-start gap-3 py-3 pl-4 pr-8">
+        <div className="mt-0.5 shrink-0 inline-flex h-[22px] w-[22px] items-center justify-center rounded-pill"
+             style={{ background: "color-mix(in oklab, var(--bg-overlay) 55%, transparent)" }}>
+          {v.icon}
+        </div>
         <div className="min-w-0 flex-1">
-          <p className="font-display text-[14px] font-bold text-text leading-tight">{toast.title}</p>
+          {/* Kit toast-title 13px / 600 / -2px margin */}
+          <p className="font-display text-[13px] font-semibold text-text leading-tight">{toast.title}</p>
           {toast.description ? (
-            <p className="mt-1 text-[12.5px] text-text-muted leading-snug">{toast.description}</p>
+            <p className="mt-0.5 text-[12px] text-text-muted leading-snug">{toast.description}</p>
           ) : null}
         </div>
       </div>

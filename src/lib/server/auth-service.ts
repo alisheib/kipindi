@@ -169,16 +169,30 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
       lastLoginAt: new Date().toISOString(),
       closedAt: null,
     });
-    // Auto-create wallet
+    // Auto-create wallet — starter balance is the admin-tunable
+    // `starterBalanceTzs` config knob; defaults to 0 (no free funds).
     const { db: dbRef } = await import("./store");
+    const { getEffectiveConfig } = await import("./market-config");
+    const starterBalance = getEffectiveConfig().starterBalanceTzs ?? 0;
     dbRef.wallet.create({
       id: `wlt_${randomId(12)}`,
       userId: user.id,
-      balance: 0, pending: 0, hold: 0,
+      balance: starterBalance, pending: 0, hold: 0,
       currency: "TZS", status: "ACTIVE",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
+    if (starterBalance > 0) {
+      const { audit: auditFn } = await import("./audit");
+      auditFn({
+        category: "WALLET",
+        action: "wallet.starter_credit",
+        actorId: user.id,
+        targetType: "Wallet",
+        targetId: user.id,
+        payload: { amount: starterBalance },
+      });
+    }
     audit({ category: "AUTH", action: "user.registered", actorId: user.id, targetType: "User", targetId: user.id, payload: { phone } });
     isNew = true;
   } else {

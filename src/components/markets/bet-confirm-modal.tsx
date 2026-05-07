@@ -58,9 +58,10 @@ export function BetConfirmModal({
       setRemainingMs(left);
       if (left <= 0) {
         rafRef.current = null;
-        // Quote expired — close so the user re-aims; the dial keeps their
-        // last position so they can confirm again immediately.
-        onCancel();
+        // Quote expired — close so the user re-aims, BUT NEVER while a
+        // submit is in flight; cancelling a pending action would race the
+        // server and leave a position placed but the modal closed early.
+        if (!pending) onCancel();
         return;
       }
       rafRef.current = requestAnimationFrame(tick);
@@ -70,15 +71,15 @@ export function BetConfirmModal({
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     };
-  }, [open, onCancel]);
+  }, [open, onCancel, pending]);
 
-  // Focus + keybinds.
+  // Focus + keybinds. Esc cannot fire while a submit is in flight.
   useEffect(() => {
     if (!open) return;
     const f = setTimeout(() => confirmRef.current?.focus(), 30);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { e.preventDefault(); onCancel(); }
-      if (e.key === "Enter") { e.preventDefault(); if (!pending) onConfirm(); }
+      if (e.key === "Escape" && !pending) { e.preventDefault(); onCancel(); }
+      if (e.key === "Enter" && !pending) { e.preventDefault(); onConfirm(); }
     };
     window.addEventListener("keydown", onKey);
     return () => { clearTimeout(f); window.removeEventListener("keydown", onKey); };
@@ -105,8 +106,9 @@ export function BetConfirmModal({
       <button
         type="button"
         aria-label="Cancel"
-        onClick={onCancel}
-        className="absolute inset-0 bg-black/55 backdrop-blur-sm transition-opacity"
+        onClick={() => { if (!pending) onCancel(); }}
+        disabled={pending}
+        className="absolute inset-0 bg-black/55 backdrop-blur-sm transition-opacity disabled:cursor-wait"
         style={{ animation: "bcm-fade 160ms ease-out" }}
       />
 

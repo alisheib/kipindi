@@ -96,7 +96,6 @@ export default async function ProfilePage() {
                 {kycPill.label}
               </Pill>
               <Pill tone="neutral">{user.locale === "SW" ? "Kiswahili" : "English"}</Pill>
-              {session.demoMode && <Pill tone="warning">Demo · Mfano</Pill>}
             </div>
           </div>
         </div>

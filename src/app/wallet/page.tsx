@@ -1,11 +1,12 @@
+import { redirect } from "next/navigation";
 import { WalletPageClient } from "./wallet-client";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
-import { transactions as mockTxns, wallet as mockWallet } from "@/lib/mock-data";
 import type { Transaction } from "@/lib/mock-data";
 import type { StoredTxn } from "@/lib/server/store";
 
 export const metadata = { title: "Wallet · Pochi" };
+export const dynamic = "force-dynamic";
 
 function adaptTxn(t: StoredTxn): Transaction {
   const typeMap: Record<StoredTxn["type"], Transaction["type"]> = {
@@ -27,31 +28,23 @@ function adaptTxn(t: StoredTxn): Transaction {
 
 export default async function WalletPage() {
   const session = await currentSession();
-  let balance = mockWallet.balance;
-  let pending = mockWallet.pending;
-  let hold = mockWallet.hold;
-  let currency = mockWallet.currency;
-  let txns: Transaction[] = mockTxns;
-  let isAuthed = false;
-  let isDemo = false;
+  if (!session) redirect("/auth/login");
 
-  if (session) {
-    isAuthed = true;
-    isDemo = !!session.demoMode;
-    const w = db.wallet.findByUserId(session.userId);
-    if (w) {
-      balance = w.balance; pending = w.pending; hold = w.hold; currency = w.currency;
-    }
-    // Authenticated: always show real transactions (even if empty — empty state will render).
-    txns = db.txn.findByUser(session.userId, 50).map(adaptTxn);
-  }
+  const w = db.wallet.findByUserId(session.userId);
+  const balance = w?.balance ?? 0;
+  const pending = w?.pending ?? 0;
+  const hold = w?.hold ?? 0;
+  const currency = w?.currency ?? "TZS";
+  const txns: Transaction[] = db.txn.findByUser(session.userId, 50).map(adaptTxn);
 
   return (
     <WalletPageClient
-      balance={balance} pending={pending} hold={hold} currency={currency}
+      balance={balance}
+      pending={pending}
+      hold={hold}
+      currency={currency}
       transactions={txns}
-      isAuthed={isAuthed}
-      isDemo={isDemo}
+      isAuthed={true}
     />
   );
 }

@@ -240,7 +240,13 @@ export function TippingBar({
 }) {
   const yes = Math.max(0, Math.min(100, yesPct));
   const no = 100 - yes;
-  const tilt = ((yes - 50) / 50) * 18;
+  // Tilt eases off near 0/100 — at the extremes there is no "tipping" any
+  // more, so the needle should stand cleanly upright instead of pivoting
+  // hard into the rounded corner. We softmax the lean into the inner 6..94
+  // range so the visual never registers as a clipped sliver.
+  const inner = Math.max(6, Math.min(94, yes));
+  const tiltLean = (inner - 50) / 44;
+  const tilt = tiltLean * 14;
   const ease = animate ? "width 700ms cubic-bezier(.2,.8,.2,1), transform 700ms cubic-bezier(.2,.8,.2,1)" : "none";
   const r = height / 2;
   // When one side is fully empty, the surviving side covers the whole
@@ -291,13 +297,15 @@ export function TippingBar({
             boxShadow: "0 0 18px oklch(60% 0.18 22 / 0.35)",
           }}
         />
-        {/* Tipping needle — gilt champagne, sits on the boundary, tilts with lean */}
+        {/* Tipping needle — gilt champagne, sits on the boundary, tilts with
+            lean. At extremes the position is clamped to the inner 6..94
+            range so the needle never clips the rounded corner. */}
         <div
           style={{
             position: "absolute",
-            left: `calc(${yes}% - 1.5px)`,
-            top: -8,
-            bottom: -8,
+            left: `calc(${inner}% - 1.5px)`,
+            top: -6,
+            bottom: -6,
             width: 3,
             background: "oklch(86% 0.13 82)",
             borderRadius: 2,

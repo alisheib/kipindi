@@ -2,31 +2,37 @@ import Link from "next/link";
 import { FiftyLockup } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { Input, Field } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { startLoginAction } from "./actions";
-import { isDemoModeAllowed } from "@/lib/server/demo-mode";
-import { FlaskConical } from "lucide-react";
 
 export const metadata = { title: "Sign in · Ingia" };
 
 export default function LoginPage() {
-  const demoOn = isDemoModeAllowed();
   return (
-    <div className="relative min-h-[calc(100vh-44px)] grid place-items-center px-3 py-8 overflow-hidden">
+    <main className="relative min-h-[calc(100vh-44px)] grid place-items-center overflow-hidden px-3 py-8">
       <BrandTopo opacity={0.05} />
       <div className="relative w-full max-w-md">
         <Link href="/" aria-label="50pick home" className="inline-block mb-6">
           <FiftyLockup size={22} />
         </Link>
 
-        <div className="rounded-xl border border-border bg-bg-elevated p-6 space-y-5">
+        <section
+          className="rounded-2xl border border-border bg-bg-elevated p-6 space-y-5"
+          style={{ boxShadow: "var(--shadow-card)" }}
+        >
           <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-yes-300">Sign in · Ingia</p>
-            <h1 className="mt-1.5 font-display text-[26px] font-bold leading-tight text-text">Continue with your phone</h1>
-            <p className="mt-1.5 text-[14px] text-text-muted">We&apos;ll send a 6-digit code. <span className="italic text-text-subtle">Tutatuma msimbo wa tarakimu 6.</span></p>
+            <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-gold-300">
+              Sign in · Ingia
+            </p>
+            <h1 className="mt-1.5 font-display text-[26px] font-bold leading-tight text-text tracking-[-0.02em]">
+              Continue with your phone
+            </h1>
+            <p className="mt-1.5 text-[13.5px] text-text-muted">
+              We&apos;ll send a 6-digit code.{" "}
+              <span className="italic text-text-subtle">Tutatuma msimbo wa tarakimu 6.</span>
+            </p>
           </div>
 
-          <form action={startLoginAction} className="space-y-3">
+          <form action={startLoginAction} className="space-y-4">
             <Field label="Phone · Simu" hint="Use your registered Tanzania mobile number.">
               <Input
                 id="phone"
@@ -41,41 +47,26 @@ export default function LoginPage() {
                 prefix="+255"
               />
             </Field>
-            <Button type="submit" variant="yes" size="lg" fullWidth>
+            <button type="submit" className="btn btn-gold btn-lg w-full">
               Send code · Tuma msimbo
-            </Button>
+            </button>
           </form>
 
-          <p className="text-[13px] text-text-muted pt-3 border-t border-border text-center">
+          <p className="border-t border-border pt-3 text-center text-[13px] text-text-muted">
             No account?{" "}
-            <Link href={"/auth/register" as never} className="text-yes-300 hover:text-yes-200 font-semibold underline-offset-2 hover:underline">
+            <Link
+              href={"/auth/register" as never}
+              className="font-semibold text-aqua-200 hover:text-aqua-100 underline-offset-2 hover:underline"
+            >
               Create one · Fungua akaunti
             </Link>
           </p>
-        </div>
+        </section>
 
-        {demoOn && (
-          <div className="mt-3 rounded-xl border border-gold-700 bg-gradient-to-br from-gold-950/60 via-gold-900/30 to-bg-elevated p-5 space-y-3">
-            <div className="flex items-center gap-2">
-              <FlaskConical size={14} className="text-gold-300" />
-              <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">Reviewer access · dev only</p>
-            </div>
-            <p className="text-[13px] text-text-muted leading-snug">
-              Skip OTP and explore with a sandbox account, TZS 500,000 fake balance. All bets are virtual.
-            </p>
-            <form action="/auth/demo" method="post">
-              <button type="submit" className="btn btn-gold btn-lg w-full">
-                Enter demo · Ingia mfano
-              </button>
-            </form>
-            <p className="text-[10px] text-text-subtle">Disabled in production by setting <span className="font-mono">DEMO_MODE_ENABLED=false</span>.</p>
-          </div>
-        )}
-
-        <p className="mt-6 text-center text-[10px] uppercase tracking-[0.16em] text-text-subtle">
+        <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-text-subtle">
           18+ · Licensed by GBT · Helpline 0800 11 0011
         </p>
       </div>
-    </div>
+    </main>
   );
 }

@@ -61,6 +61,20 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
         >
           <Input name="thinProfitRatio" type="number" step="0.01" min="1" max="2" defaultValue={config.thinProfitRatio.toFixed(2)} mono />
         </Field>
+        <Field
+          label="Starter balance (TZS)"
+          hint={`Currently ${(config.starterBalanceTzs ?? 0).toLocaleString()}. Credited to every newly-registered wallet.`}
+        >
+          <Input
+            name="starterBalanceTzs"
+            type="number"
+            step="1000"
+            min="0"
+            max="5000000"
+            defaultValue={config.starterBalanceTzs ?? 0}
+            mono
+          />
+        </Field>
       </div>
       <div className="flex items-center gap-2 pt-1">
         <Button type="submit" variant="yes" loading={pending}>

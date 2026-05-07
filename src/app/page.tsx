@@ -137,11 +137,11 @@ export default function LandingPage() {
             {/* Gold + Ghost CTAs — kit btn-gold + btn-ghost (radius 999 per banner spec) */}
             <div className="flex flex-wrap gap-3">
               <Link
-                href={"/auth/demo" as never}
+                href={"/auth/register" as never}
                 className="btn btn-gold inline-flex items-center gap-2"
                 style={{ height: 52, padding: "0 28px", fontSize: 16, borderRadius: 999 }}
               >
-                Try the demo
+                Create account
                 <ArrowRight size={16} aria-hidden />
               </Link>
               <Link
