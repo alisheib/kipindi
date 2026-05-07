@@ -14,7 +14,6 @@ export type AdminSession = {
   userId: string;
   phoneE164: string;
   role: string;
-  demoMode?: boolean;
 };
 
 export const NAV_GROUPS: ReadonlyArray<{
@@ -179,7 +178,7 @@ export function AdminTopBar({ crumbs, session, activeKey }: { crumbs: string[]; 
           className="hidden md:block w-[260px] h-8 px-3 rounded-md bg-bg-sunken border border-border text-text-tertiary font-mono text-caption focus:outline-none"
         />
         <span className="font-mono text-micro tracking-[0.14em] uppercase px-2.5 h-7 inline-flex items-center rounded-md border border-border bg-surface text-text-secondary">
-          {session.demoMode ? "DEMO" : "ACTIVE"}
+          ACTIVE
         </span>
         <span className="font-mono text-micro tracking-[0.14em] px-2.5 h-7 inline-flex items-center rounded-md border border-border bg-bg-elevated text-text gap-1.5">
           <span className="h-1.5 w-1.5 rounded-pill bg-gold" />

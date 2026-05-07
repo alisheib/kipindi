@@ -54,14 +54,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const session = await currentSession();
   if (!session) redirect("/auth/admin");
   const u = db.user.findById(session.userId);
-  const allowed = !!session.demoMode || (u && ADMIN_ROLES.has(u.role));
+  const allowed = u && ADMIN_ROLES.has(u.role);
   if (!allowed) redirect("/auth/admin");
 
   const adminSession: AdminSession = {
     userId: session.userId,
     phoneE164: session.phoneE164,
     role: session.role,
-    demoMode: session.demoMode,
   };
 
   // Read the request path from headers (set by middleware trace)
@@ -71,7 +70,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const crumbs = crumbsFromPath(path);
 
   // TOTP gate — non-demo admins with TOTP enabled must verify before browsing
-  if (!session.demoMode && hasTotp(session.userId) && !TOTP_EXEMPT.has(path)) {
+  if (hasTotp(session.userId) && !TOTP_EXEMPT.has(path)) {
     const jar = await cookies();
     if (!jar.get(TOTP_COOKIE)) {
       redirect("/admin/totp-verify");

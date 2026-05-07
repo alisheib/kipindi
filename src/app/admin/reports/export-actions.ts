@@ -13,7 +13,7 @@ async function requireAdmin() {
   const session = await currentSession();
   if (!session) redirect("/auth/admin");
   const u = db.user.findById(session.userId);
-  if (!session.demoMode && !(u && ADMIN_ROLES.has(u.role))) redirect("/auth/admin");
+  if (!(u && ADMIN_ROLES.has(u.role))) redirect("/auth/admin");
   return session;
 }
 

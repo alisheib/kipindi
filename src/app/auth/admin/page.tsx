@@ -16,9 +16,9 @@ export default async function AdminLoginPage() {
   const session = await currentSession();
   if (session) {
     const u = db.user.findById(session.userId);
-    const isAdmin = !!session.demoMode || (u && ADMIN_ROLES.has(u.role));
+    const isAdmin = u && ADMIN_ROLES.has(u.role);
     if (isAdmin) {
-      if (!session.demoMode && hasTotp(session.userId)) {
+      if (hasTotp(session.userId)) {
         redirect("/admin/totp-verify");
       }
       redirect("/admin");

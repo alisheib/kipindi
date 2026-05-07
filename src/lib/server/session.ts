@@ -16,7 +16,6 @@ export type SessionData = {
   phoneE164: string;
   role: "PLAYER" | "AGENT" | "MODERATOR" | "ADMIN" | "COMPLIANCE" | "SUPPORT";
   kycStatus: "NOT_STARTED" | "IN_PROGRESS" | "PENDING_REVIEW" | "APPROVED" | "REJECTED" | "ADDITIONAL_INFO_REQUIRED";
-  demoMode?: boolean;     // dev-only sandbox flag
   iat: number; // issued at
   exp: number; // expiry (ms epoch)
 };
