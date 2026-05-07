@@ -3,19 +3,8 @@
 import { redirect } from "next/navigation";
 import { requestLoginOtp, verifyOtpAndAuth } from "@/lib/server/auth-service";
 
-/** Combine the country-code dropdown + national number into E.164. */
-function joinPhone(formData: FormData): string {
-  const cc = String(formData.get("phone-cc") ?? "+255").trim();
-  const local = String(formData.get("phone") ?? "").trim().replace(/[\s-]/g, "");
-  // Strip a leading 0 from the national number (legacy local format).
-  const stripped = local.startsWith("0") ? local.slice(1) : local;
-  // If the user already typed the +cc (e.g. paste), trust that.
-  if (local.startsWith("+")) return local;
-  return `${cc}${stripped}`;
-}
-
 export async function startLoginAction(formData: FormData) {
-  const phoneRaw = joinPhone(formData);
+  const phoneRaw = String(formData.get("phone") ?? "");
   const result = await requestLoginOtp({ phone: phoneRaw });
   if (!result.ok) {
     // Surface the no-account case via redirect-with-flash so the login

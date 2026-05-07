@@ -2,7 +2,6 @@ import Link from "next/link";
 import { FiftyLockup } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { Field, Input } from "@/components/ui/input";
-import { PhoneInput } from "@/components/ui/phone-input";
 import { startRegisterAction } from "./actions";
 
 export const metadata = { title: "Create account · Fungua akaunti" };
@@ -34,8 +33,19 @@ export default function RegisterPage() {
           </div>
 
           <form action={startRegisterAction} className="space-y-4">
-            <Field label="Phone · Simu" hint="Pick your country, then the mobile number.">
-              <PhoneInput name="phone" required size="lg" />
+            <Field label="Phone · Simu" hint="Tanzania mobile number.">
+              <Input
+                id="phone"
+                name="phone"
+                type="tel"
+                required
+                inputMode="numeric"
+                autoComplete="tel"
+                placeholder="712 345 678"
+                size="lg"
+                mono
+                prefix="+255"
+              />
             </Field>
 
             <Field label="Date of birth · Tarehe ya kuzaliwa" hint="Must be 18 or older. Lazima uwe na miaka 18+.">
