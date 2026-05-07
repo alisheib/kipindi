@@ -18,11 +18,28 @@ export type SmsProvider = {
   send(to: string, body: string, opts?: { senderId?: string }): Promise<{ id: string; cost?: number }>;
 };
 
+/** Dev-only ring buffer of the last few outgoing SMS bodies, keyed by phone.
+ *  Read by /api/_test/last-otp so end-to-end tests can complete the OTP
+ *  step without scraping stdout. Disabled in production. */
+declare global {
+  // eslint-disable-next-line no-var
+  var __50PICK_LAST_SMS: Map<string, { body: string; at: number }[]> | undefined;
+}
+function recordTestSms(to: string, body: string) {
+  if (process.env.NODE_ENV === "production") return;
+  const m = (globalThis.__50PICK_LAST_SMS ??= new Map<string, { body: string; at: number }[]>());
+  const arr = m.get(to) ?? [];
+  arr.push({ body, at: Date.now() });
+  if (arr.length > 5) arr.splice(0, arr.length - 5);
+  m.set(to, arr);
+}
+
 export const consoleSms: SmsProvider = {
   name: "console",
   async send(to, body) {
     const id = `sms_${Date.now().toString(36)}`;
     console.log(`\n[SMS → ${to}]\n  ${body}\n  (ref: ${id})\n`);
+    recordTestSms(to, body);
     return { id };
   },
 };

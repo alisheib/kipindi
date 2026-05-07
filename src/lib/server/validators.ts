@@ -10,16 +10,32 @@
  */
 import { z } from "zod";
 
+// Tanzania mobile number — accepts every common shape the user might type:
+//   712 345 678   (just the 9 digits, with optional spaces) — most common,
+//                 because the form shows "+255" as a visual prefix
+//   0712 345 678  (legacy local format)
+//   255712345678
+//   +255712345678 (canonical E.164)
+// All variants normalise to "+2557…" or "+2556…".
 export const tzPhone = z
   .string()
   .trim()
-  .regex(/^(\+?255|0)[67]\d{8}$/, "Enter a valid Tanzania mobile number")
-  .transform((v) => {
-    if (v.startsWith("+")) return v;
-    if (v.startsWith("0")) return "+255" + v.slice(1);
-    if (v.startsWith("255")) return "+" + v;
-    return v;
-  });
+  .transform((v) => v.replace(/[\s-]/g, ""))
+  .pipe(
+    z
+      .string()
+      .regex(
+        /^(?:\+?255|0)?[67]\d{8}$/,
+        "Enter a valid Tanzania mobile number",
+      )
+      .transform((v) => {
+        if (v.startsWith("+")) return v;
+        if (v.startsWith("255")) return "+" + v;
+        if (v.startsWith("0")) return "+255" + v.slice(1);
+        if (/^[67]\d{8}$/.test(v)) return "+255" + v;
+        return v;
+      }),
+  );
 
 export const otpCode = z.string().trim().regex(/^\d{6}$/, "OTP must be 6 digits");
 

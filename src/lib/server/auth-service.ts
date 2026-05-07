@@ -85,7 +85,15 @@ export async function requestRegisterOtp(input: z.input<typeof RegisterSchema>):
   return { ok: true, data: { otpId: issued.data!.otpId, phone } };
 }
 
-const pendingRegistration = new Map<string, { dob: string; marketingOptIn: boolean }>();
+// Stash registration intent (DOB, terms) between requestRegisterOtp and the
+// follow-up verifyOtpAndAuth call. Persisted on globalThis so Next.js dev-mode
+// HMR doesn't wipe the entry between the two requests.
+declare global {
+  // eslint-disable-next-line no-var
+  var __50PICK_PENDING_REG: Map<string, { dob: string; marketingOptIn: boolean }> | undefined;
+}
+const pendingRegistration: Map<string, { dob: string; marketingOptIn: boolean }> =
+  globalThis.__50PICK_PENDING_REG ?? (globalThis.__50PICK_PENDING_REG = new Map());
 
 async function issueOtp(phone: string, purpose: "login" | "register" | "withdraw" | "reauth" | "self_exclusion", meta: { ip: string | null; ua: string | null }): Promise<ServiceResult<{ otpId: string }>> {
   const code = generateOtp();
