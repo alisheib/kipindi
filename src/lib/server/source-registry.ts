@@ -49,8 +49,6 @@ export function seedDefaultSources() {
     { domain: "itv.co.tz",          label: "ITV Tanzania",                    category: "culture",  rationale: "Broadcast TV — Bongo Star Search etc. official schedule",  enabled: true,  addedBy: "system" },
     { domain: "coingecko.com",      label: "CoinGecko",                       category: "crypto",   rationale: "Aggregated crypto prices — daily close used for resolution", enabled: true,  addedBy: "system" },
     { domain: "tcra.go.tz",         label: "Tanzania Communications Regulatory Authority", category: "tech", rationale: "Official telecom + spectrum decisions", enabled: true,  addedBy: "system" },
-    { domain: "ec.europa.eu",       label: "European Commission",             category: "politics", rationale: "EU policy decisions affecting Tanzania-EU trade",          enabled: false, addedBy: "system" },
-    { domain: "reuters.com",        label: "Reuters",                         category: "politics", rationale: "Wire service — corroborating source only, not sole source", enabled: false, addedBy: "system" },
   ];
   for (const s of seed) {
     const row: TrustedSource = {

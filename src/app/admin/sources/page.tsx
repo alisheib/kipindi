@@ -7,7 +7,7 @@ import { ToggleSource, RemoveSource, ToggleCategory, AddSourceForm } from "./sou
 export const metadata = { title: "Admin · Sources" };
 export const dynamic = "force-dynamic";
 
-const CATEGORIES: MarketCategory[] = ["politics", "sports", "macro", "weather", "crypto", "culture", "tech", "other"];
+const CATEGORIES: MarketCategory[] = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"];
 
 export default function AdminSourcesPage() {
   seedDefaultSources();

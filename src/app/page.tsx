@@ -104,7 +104,7 @@ export default function LandingPage() {
             className="font-display text-[15px] md:text-[19px] leading-[1.5] max-w-[58ch] m-0"
             style={{ color: "oklch(82% 0.040 258)" }}
           >
-            Pesa kidogo, ukweli mkubwa. Trade questions about Tanzania&apos;s weather, markets, sport and elections — settled by official sources.
+            Pesa kidogo, ukweli mkubwa. Trade questions about Tanzania&apos;s weather, markets, sport and culture — settled by official sources.
           </p>
 
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 lg:gap-10 items-end">

@@ -6,13 +6,13 @@ import { SteppedProgress } from "@/components/markets/stepped-progress";
 import { useToast } from "@/components/ui/toast";
 import { createMarketAction } from "@/app/markets/actions";
 
-const CATEGORIES = ["politics", "sports", "macro", "weather", "crypto", "culture", "tech", "other"] as const;
+const CATEGORIES = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"] as const;
 
 export function NewMarketWizard() {
   const [step, setStep] = useState(0);
   const [titleEn, setTitleEn] = useState("");
   const [titleSw, setTitleSw] = useState("");
-  const [category, setCategory] = useState<typeof CATEGORIES[number]>("politics");
+  const [category, setCategory] = useState<typeof CATEGORIES[number]>("sports");
   const [sourceUrl, setSourceUrl] = useState("");
   const [resolutionAt, setResolutionAt] = useState("");
   const [criterion, setCriterion] = useState("");

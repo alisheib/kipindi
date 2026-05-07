@@ -87,14 +87,7 @@ export default async function MarketDetail({
 
       <header className="mt-3 mb-6">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span
-            className={
-              "inline-flex items-center rounded-pill border px-3 py-1 font-mono text-[11px] uppercase tracking-[0.14em] " +
-              (m.category === "politics"
-                ? "chip-politics"
-                : "border-border bg-bg-elevated text-text-muted")
-            }
-          >
+          <span className="inline-flex items-center rounded-pill border border-border bg-bg-elevated px-3 py-1 font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
             {m.category}
           </span>
           {m.status === "LIVE" && (

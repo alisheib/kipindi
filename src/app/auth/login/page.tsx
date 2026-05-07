@@ -2,7 +2,8 @@ import Link from "next/link";
 import { AlertCircle } from "lucide-react";
 import { FiftyLockup } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
-import { Input, Field } from "@/components/ui/input";
+import { Field } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { startLoginAction } from "./actions";
 
 export const metadata = { title: "Sign in · Ingia" };
@@ -99,19 +100,12 @@ export default async function LoginPage({
           )}
 
           <form action={startLoginAction} className="space-y-4">
-            <Field label="Phone · Simu" hint="Tanzania mobile number.">
-              <Input
-                id="phone"
+            <Field label="Phone · Simu" hint="Pick your country, then the mobile number.">
+              <PhoneInput
                 name="phone"
-                type="tel"
-                inputMode="numeric"
-                autoComplete="tel"
+                defaultValue={phoneDefault.replace(/^\+\d{1,4}/, "")}
                 required
-                defaultValue={phoneDefault.replace(/^\+255/, "")}
-                placeholder="712 345 678"
                 size="lg"
-                mono
-                prefix="+255"
               />
             </Field>
             <button type="submit" className="btn btn-gold btn-lg w-full">

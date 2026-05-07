@@ -25,7 +25,16 @@ import { readFileSync, writeFileSync, mkdirSync, readdirSync, unlinkSync, exists
 import { join } from "node:path";
 import { audit } from "./audit";
 
-const BACKUP_DIR     = process.env.KIPINDI_BACKUP_DIR ?? join(process.cwd(), ".50pick-backups");
+// Backup directory — point at a Railway volume mount in production so
+// snapshots survive container redeploys. Recognised env vars (in order of
+// precedence): STORE_BACKUP_DIR (canonical), FIFTYPICK_BACKUP_DIR,
+// KIPINDI_BACKUP_DIR (legacy). Recommended Railway setup: attach a 1 GB
+// volume mounted at /data, then set STORE_BACKUP_DIR=/data/50pick-backups.
+const BACKUP_DIR =
+  process.env.STORE_BACKUP_DIR ??
+  process.env.FIFTYPICK_BACKUP_DIR ??
+  process.env.KIPINDI_BACKUP_DIR ??
+  join(process.cwd(), ".50pick-backups");
 const DEBOUNCE_MS    = 1_500;
 const MAX_SNAPSHOTS  = 12; // ~ last 18 minutes at 1.5s cadence
 const SNAPSHOT_FILE  = "store.snapshot.json";

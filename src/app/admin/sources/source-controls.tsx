@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import { addSourceAction, removeSourceAction, toggleSourceAction, toggleCategoryAction } from "./actions";
 
-const CATEGORIES = ["politics", "sports", "macro", "weather", "crypto", "culture", "tech", "other"] as const;
+const CATEGORIES = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"] as const;
 
 export function ToggleSource({ id, enabled }: { id: string; enabled: boolean }) {
   const [pending, start] = useTransition();

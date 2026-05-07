@@ -7,13 +7,12 @@ export const metadata = { title: "Markets · Soko" };
 export const dynamic = "force-dynamic";
 
 const CATEGORIES: Array<{ id: "all" | MarketCategory; label: string }> = [
-  { id: "all",      label: "All" },
-  { id: "politics", label: "Politics" },
-  { id: "sports",   label: "Sports" },
-  { id: "macro",    label: "Macro" },
-  { id: "weather",  label: "Weather" },
-  { id: "crypto",   label: "Crypto" },
-  { id: "culture",  label: "Culture" },
+  { id: "all",     label: "All" },
+  { id: "sports",  label: "Sports" },
+  { id: "macro",   label: "Macro" },
+  { id: "weather", label: "Weather" },
+  { id: "crypto",  label: "Crypto" },
+  { id: "culture", label: "Culture" },
 ];
 
 function timeLeftStr(iso: string): string {

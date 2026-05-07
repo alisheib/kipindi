@@ -57,13 +57,7 @@ export function MarketCard({
             {status === "LIVE" && <span className="live-dot" style={{ width: 6, height: 6 }} />}
             {status === "LIVE" ? "Live" : status === "RESOLVED" ? "Resolved" : status === "VOIDED" ? "Void" : "Pending"}
           </span>
-          <span
-            className={cn(
-              "chip",
-              // Politics carries the heraldic claret chip per the design rules.
-              category === "politics" && "chip-politics",
-            )}
-          >
+          <span className="chip">
             {category}
           </span>
         </div>
