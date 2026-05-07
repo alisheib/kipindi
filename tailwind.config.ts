@@ -18,6 +18,23 @@ const config: Config = {
           50:  "var(--no-50)", 100: "var(--no-100)", 200: "var(--no-200)", 300: "var(--no-300)", 400: "var(--no-400)",
           500: "var(--no-500)", 600: "var(--no-600)", 700: "var(--no-700)", 800: "var(--no-800)", 900: "var(--no-900)", 950: "var(--no-950)",
         },
+        // Heraldic chord additions — claret (editorial weight) + aqua (finishing pass).
+        // See `globals.css` for the design rules. Never use claret on YES/NO money
+        // surfaces. Aqua is non-semantic and is capped at ~8% surface coverage.
+        claret: {
+          DEFAULT:    "var(--claret)",
+          soft:       "var(--claret-soft)",
+          edge:       "var(--claret-edge)",
+          50:  "var(--claret-50)", 100: "var(--claret-100)", 200: "var(--claret-200)", 300: "var(--claret-300)", 400: "var(--claret-400)",
+          500: "var(--claret-500)", 600: "var(--claret-600)", 700: "var(--claret-700)", 800: "var(--claret-800)", 900: "var(--claret-900)", 950: "var(--claret-950)",
+        },
+        aqua: {
+          DEFAULT:    "var(--aqua)",
+          glow:       "var(--aqua-glow)",
+          edge:       "var(--aqua-edge)",
+          50:  "var(--aqua-50)", 100: "var(--aqua-100)", 200: "var(--aqua-200)", 300: "var(--aqua-300)", 400: "var(--aqua-400)",
+          500: "var(--aqua-500)", 600: "var(--aqua-600)", 700: "var(--aqua-700)", 800: "var(--aqua-800)", 900: "var(--aqua-900)", 950: "var(--aqua-950)",
+        },
         slate: {
           50: "var(--slate-50)", 100: "var(--slate-100)", 200: "var(--slate-200)", 300: "var(--slate-300)", 400: "var(--slate-400)",
           500: "var(--slate-500)", 600: "var(--slate-600)", 700: "var(--slate-700)", 800: "var(--slate-800)", 850: "var(--slate-850)", 900: "var(--slate-900)", 950: "var(--slate-950)",

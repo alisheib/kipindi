@@ -61,7 +61,7 @@ export default function LoginPage() {
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">Reviewer access · dev only</p>
             </div>
             <p className="text-[13px] text-text-muted leading-snug">
-              Skip OTP and explore with a sandbox account, TZS 100,000 fake balance. All bets are virtual.
+              Skip OTP and explore with a sandbox account, TZS 500,000 fake balance. All bets are virtual.
             </p>
             <form action="/auth/demo" method="post">
               <button

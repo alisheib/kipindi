@@ -63,6 +63,44 @@
   --gold-900: oklch(33% 0.06 80);
   --gold-950: oklch(22% 0.04 80);
 
+  /* Claret — heraldic burgundy (hue 15). Editorial weight only:
+     Politics chip, Sovereign tier badge, regulator/footer crest, archival
+     chrome. Never on YES/NO money surfaces or adjacent to NO-rose. */
+  --claret-50:  oklch(96% 0.025 15);
+  --claret-100: oklch(90% 0.060 15);
+  --claret-200: oklch(82% 0.100 15);
+  --claret-300: oklch(72% 0.140 15);
+  --claret-400: oklch(60% 0.160 15);
+  --claret-500: oklch(48% 0.160 15);
+  --claret-600: oklch(38% 0.140 15);
+  --claret-700: oklch(30% 0.110 15);
+  --claret-800: oklch(23% 0.085 15);
+  --claret-900: oklch(17% 0.060 15);
+  --claret-950: oklch(12% 0.040 15);
+
+  /* Aqua — patina cyan (hue 195). Finishing pass only — live ticker glow,
+     sparkline highlight, "new" pip, focus-ring tint. ≤8% surface coverage.
+     Never as a chip, button label, or anything semantic. */
+  --aqua-50:  oklch(96% 0.025 195);
+  --aqua-100: oklch(92% 0.050 195);
+  --aqua-200: oklch(86% 0.080 195);
+  --aqua-300: oklch(80% 0.100 195);
+  --aqua-400: oklch(72% 0.110 195);
+  --aqua-500: oklch(62% 0.110 195);
+  --aqua-600: oklch(52% 0.100 195);
+  --aqua-700: oklch(42% 0.080 195);
+  --aqua-800: oklch(32% 0.060 195);
+  --aqua-900: oklch(22% 0.045 195);
+  --aqua-950: oklch(14% 0.030 195);
+
+  /* Heraldic semantic aliases — see kit/tokens.css */
+  --claret:        var(--claret-600);
+  --claret-soft:   color-mix(in oklab, var(--claret-600) 22%, transparent);
+  --claret-edge:   color-mix(in oklab, var(--claret-400) 60%, transparent);
+  --aqua:          var(--aqua-300);
+  --aqua-glow:     color-mix(in oklab, var(--aqua-300) 50%, transparent);
+  --aqua-edge:     color-mix(in oklab, var(--aqua-300) 70%, transparent);
+
   /* Neutrals */
   --slate-50:  oklch(98% 0.005 240);
   --slate-100: oklch(96% 0.01 240);
@@ -448,3 +486,109 @@ body {
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
+/* ===========================================================================
+   Heraldic chord — claret + aqua utility classes
+   Mirror of kit/tokens.css. Apply to existing components per the rules:
+     • Claret = editorial only (Politics chip, Sovereign tier, regulator chrome)
+     • Aqua   = finishing only (live glow, "new" pip, focus tint, ≤8% coverage)
+   =========================================================================== */
+
+/* Claret rule — heraldic divider with gilt midpoint. */
+.claret-rule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--claret-400) 18%, var(--gold-400) 50%, var(--claret-400) 82%, transparent);
+  margin: 16px 0;
+  opacity: 0.95;
+}
+
+/* Royal damask — subtle on-canvas pattern. Hero surfaces only. */
+.bg-damask {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(circle at 20% 30%, color-mix(in oklab, var(--gold-400) 6%, transparent) 0, transparent 28%),
+    radial-gradient(circle at 80% 70%, color-mix(in oklab, var(--aqua-300) 5%, transparent) 0, transparent 32%),
+    repeating-linear-gradient(45deg, transparent 0 22px, color-mix(in oklab, var(--text) 2%, transparent) 22px 23px),
+    repeating-linear-gradient(-45deg, transparent 0 22px, color-mix(in oklab, var(--text) 2%, transparent) 22px 23px);
+}
+
+/* Politics chip — claret tint */
+.chip-politics {
+  background: var(--claret-soft);
+  color: var(--claret-200);
+  border-color: var(--claret-edge);
+}
+
+/* "Signal" / new pip chip — aqua tint, NOT semantic. Only used for
+   freshness highlights ("new market", "live data", "what's new"). */
+.chip-signal {
+  background: color-mix(in oklab, var(--aqua-300) 18%, transparent);
+  color: var(--aqua-200);
+  border-color: var(--aqua-edge);
+}
+
+/* Sovereign tier — claret field, gilt ring. Sits above Diamond. */
+.tier-sovereign {
+  background: var(--claret-700);
+  color: var(--claret-100);
+  border-color: var(--gold-400);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--gold-400) 50%, transparent) inset;
+}
+
+/* Heraldic CTA — Sovereign actions, regulator letters, archival actions.
+   Never on money flows. */
+.btn-claret {
+  background: linear-gradient(180deg, var(--claret-500) 0%, var(--claret-700) 100%);
+  color: var(--claret-50);
+  font-weight: 700;
+  border: 1px solid var(--claret-800);
+  box-shadow:
+    0 1px 0 var(--claret-300) inset,
+    0 -1px 0 var(--claret-900) inset,
+    0 2px 8px -2px oklch(20% 0.10 258 / 0.50),
+    0 10px 28px -10px oklch(38% 0.14 15 / 0.55);
+  text-shadow: 0 1px 0 oklch(15% 0.06 15 / 0.45);
+  transition: filter 160ms ease;
+}
+.btn-claret:hover:not(:disabled) { filter: brightness(1.08) saturate(1.04); }
+
+/* Aqua finishing button — "What's new", live data, fresh-info CTAs. */
+.btn-aqua-ghost {
+  background: color-mix(in oklab, var(--aqua-300) 12%, transparent);
+  color: var(--aqua-200);
+  border: 1px solid var(--aqua-edge);
+  backdrop-filter: blur(6px);
+  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+.btn-aqua-ghost:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--aqua-300) 22%, transparent);
+  color: var(--aqua-100);
+  box-shadow: 0 0 0 3px var(--aqua-glow);
+}
+
+/* SignalPip animation — aqua-pulsing sibling of live-dot. Non-semantic. */
+@keyframes aqua-pulse {
+  0%, 100% { opacity: 0.7; box-shadow: 0 0 0 0 var(--aqua-glow); }
+  50%      { opacity: 1.0; box-shadow: 0 0 0 5px color-mix(in oklab, var(--aqua-300) 0%, transparent); }
+}
+
+/* Aqua focus ring — replaces gilt focus on inputs + ghost buttons. The
+   gold-gradient confirm pills keep their gilt rim because they are
+   inherently money surfaces; aqua is for the "neutral interaction" affordance. */
+.aqua-focus:focus-visible,
+.aqua-focus:focus-within {
+  outline: 2px solid var(--aqua-300);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--aqua-glow);
+}
+
+/* Confetti for the win celebration. Spread keyed by --x (0..1). */
+@keyframes win-confetti {
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 1; }
+  100% { transform: translate3d(calc((var(--x) - 0.5) * 90vw), 90vh, 0) rotate(720deg); opacity: 0; }
+}
+@keyframes win-burst {
+  0%   { transform: scale(0.6); opacity: 0; }
+  60%  { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1.0); opacity: 1; }
+}

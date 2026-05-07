@@ -23,7 +23,7 @@ export async function DemoBanner() {
           <p className="truncate font-mono text-[11px] font-bold uppercase tracking-[0.14em]">
             Demo mode
             <span className="ml-2 hidden font-normal normal-case tracking-normal opacity-80 sm:inline">
-              · sandbox account, TZS 100,000 fake balance · all bets virtual
+              · sandbox account, TZS 500,000 fake balance · all bets virtual
             </span>
           </p>
         </div>

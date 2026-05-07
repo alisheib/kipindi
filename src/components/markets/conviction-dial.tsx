@@ -234,6 +234,13 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
           description: `If correct, you receive TZS ${fmt(r.data!.payoutIfWin)}`,
           variant: "success",
         });
+        // Record the side the user took on this market — the NotifyPoller
+        // uses this to fire the WinCelebration only when the resolution
+        // matches what the user actually picked.
+        try {
+          const key = `50pick-bet-${marketId}`;
+          localStorage.setItem(key, JSON.stringify({ side, stake, payoutIfWin: r.data!.payoutIfWin }));
+        } catch { /* private browsing */ }
         setConfirmOpen(false);
         router.refresh();
       }

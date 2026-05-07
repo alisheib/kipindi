@@ -324,6 +324,29 @@ export function ConfidenceDial({
   );
 }
 
+/* ── SignalPip — aqua-pulsing finishing detail ─────────────────────────────
+ * Cooler sibling of LiveDot. Non-semantic — use for "new", live ticker glow,
+ * fresh-data highlights, sparkline anchor. NEVER for resolution status.
+ * Mirror of kit/atoms.jsx → SignalPip. */
+
+export function SignalPip({ size = 8, className }: { size?: number; className?: string }) {
+  return (
+    <span
+      aria-hidden
+      className={className}
+      style={{
+        display: "inline-block",
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        background: "var(--aqua-300)",
+        boxShadow: "0 0 0 0 var(--aqua-glow)",
+        animation: "aqua-pulse 2.2s ease-in-out infinite",
+      }}
+    />
+  );
+}
+
 /* ── PulseRing — for live-market badges + loaders ────────────────────────── */
 
 export function PulseRing({

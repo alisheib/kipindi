@@ -63,15 +63,17 @@ export function Avatar({
   );
 }
 
-/** Tier badge — kit/atoms.jsx → TierBadge. */
-type Tier = "bronze" | "silver" | "gold" | "diamond";
+/** Tier badge — kit/atoms.jsx → TierBadge.
+ *  Sovereign sits above Diamond — claret field, gilt ring. Heraldic chord. */
+type Tier = "bronze" | "silver" | "gold" | "diamond" | "sovereign";
 
 export function TierBadge({ tier, className }: { tier: Tier; className?: string }) {
   const map: Record<Tier, { letter: string; cls: string }> = {
-    bronze:  { letter: "B", cls: "bg-gold-700 text-gold-50" },
-    silver:  { letter: "S", cls: "bg-slate-300 text-slate-900" },
-    gold:    { letter: "G", cls: "bg-gold-500 text-gold-fg" },
-    diamond: { letter: "D", cls: "bg-gradient-to-br from-cyan-300 to-blue-400 text-slate-900" },
+    bronze:    { letter: "B", cls: "bg-gold-700 text-gold-50 border border-gold-500" },
+    silver:    { letter: "S", cls: "bg-slate-300 text-slate-900 border border-slate-400" },
+    gold:      { letter: "G", cls: "bg-gold-700 text-gold-100 border border-gold-500" },
+    diamond:   { letter: "D", cls: "bg-gradient-to-br from-cyan-300 to-blue-400 text-slate-900 border border-blue-400" },
+    sovereign: { letter: "S", cls: "tier-sovereign" },
   };
   const { letter, cls } = map[tier];
   return (

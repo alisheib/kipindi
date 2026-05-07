@@ -15,7 +15,10 @@ import { db } from "./store";
 import { randomId } from "./crypto";
 
 const DEMO_PHONE = "+255700000000";
-const DEMO_BALANCE = 100_000; // TZS
+// Bumped from TZS 100k to TZS 500k so the demo user has room for several
+// 5–25k bets, a cash-out, AND a 50k+ confidence stake without running dry —
+// makes the celebration / cash-out flows worth experiencing end-to-end.
+const DEMO_BALANCE = 500_000; // TZS
 
 export function isDemoModeAllowed(): boolean {
   if (process.env.DEMO_MODE_ENABLED === "true") return true;

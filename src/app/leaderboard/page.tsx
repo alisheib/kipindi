@@ -15,7 +15,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 export const metadata = { title: "Leaderboard · Bingwa" };
 export const dynamic = "force-dynamic";
 
-type Tier = "diamond" | "gold" | "silver" | "bronze";
+type Tier = "sovereign" | "diamond" | "gold" | "silver" | "bronze";
 
 type Row = {
   userId: string;
@@ -31,9 +31,11 @@ type Row = {
 };
 
 function tierFor(roi: number, resolved: number): Tier {
+  // Sovereign sits above Diamond — heraldic top-of-board honour.
+  if (resolved >= 50 && roi >= 60) return "sovereign";
   if (resolved >= 20 && roi >= 30) return "diamond";
   if (resolved >= 10 && roi >= 15) return "gold";
-  if (resolved >= 5 && roi >= 0) return "silver";
+  if (resolved >= 5  && roi >= 0)  return "silver";
   return "bronze";
 }
 
@@ -208,17 +210,19 @@ export default function LeaderboardPage() {
 
 function TierBadge({ tier }: { tier: Tier }) {
   const cls = {
-    diamond: "bg-gradient-to-br from-cyan-300 to-blue-400 text-slate-900",
-    gold: "bg-gold-500 text-gold-fg",
-    silver: "bg-slate-300 text-slate-900",
-    bronze: "bg-gold-700 text-gold-50",
+    sovereign: "tier-sovereign",
+    diamond:   "bg-gradient-to-br from-cyan-300 to-blue-400 text-slate-900",
+    gold:      "bg-gold-500 text-gold-fg",
+    silver:    "bg-slate-300 text-slate-900",
+    bronze:    "bg-gold-700 text-gold-50",
   }[tier];
-  const letter = { diamond: "D", gold: "G", silver: "S", bronze: "B" }[tier];
+  const letter = { sovereign: "S", diamond: "D", gold: "G", silver: "S", bronze: "B" }[tier];
   const desc = {
-    diamond: "Diamond · ≥20 resolved · ≥30% ROI",
-    gold:    "Gold · ≥10 resolved · ≥15% ROI",
-    silver:  "Silver · ≥5 resolved · positive ROI",
-    bronze:  "Bronze · entry tier",
+    sovereign: "Sovereign · ≥50 resolved · ≥60% ROI · heraldic honour",
+    diamond:   "Diamond · ≥20 resolved · ≥30% ROI",
+    gold:      "Gold · ≥10 resolved · ≥15% ROI",
+    silver:    "Silver · ≥5 resolved · positive ROI",
+    bronze:    "Bronze · entry tier",
   }[tier];
   return (
     <Tooltip label={desc}>

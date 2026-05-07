@@ -469,7 +469,14 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
 
 /** Seed the demo with a handful of compelling markets. */
 export function seedDemoMarkets() {
-  if (markets.size > 0) return;
+  // If markets are seeded but the Politics one is missing (older seed), top
+  // it up — the Sprint 29 heraldic chord needs a Politics market in the
+  // wild to demonstrate the claret chip.
+  if (markets.size > 0) {
+    const hasPolitics = Array.from(markets.values()).some((m) => m.category === "politics");
+    if (hasPolitics) return;
+    // fall through to seed the missing Politics market only
+  }
   const day = 24 * 3600_000;
   const seed: CreateMarketInput[] = [
     {
@@ -526,8 +533,23 @@ export function seedDemoMarkets() {
       resolutionAt: new Date(Date.now() + 4 * day).toISOString(),
       proposedBy: "system",
     },
+    // Heraldic chord: a Politics market shows the claret chip in the wild.
+    {
+      titleEn: "Will the 2026 Local Government Authority election turnout exceed 60%?",
+      titleSw: "Je, ushiriki wa uchaguzi wa Serikali za Mitaa wa 2026 utazidi 60%?",
+      category: "politics",
+      sourceUrl: "https://www.necjpc.go.tz",
+      resolutionCriterion:
+        "Resolves YES if the National Electoral Commission (NEC) reports a final national turnout of more than 60% of registered voters for the LGA elections. Source: NEC official communiqué.",
+      resolutionAt: new Date(Date.now() + 30 * day).toISOString(),
+      proposedBy: "system",
+    },
   ];
+  // If we already have markets, only seed the categories that are missing.
+  const existingCategories = new Set<string>();
+  for (const m of markets.values()) existingCategories.add(m.category);
   for (const s of seed) {
+    if (existingCategories.size > 0 && existingCategories.has(s.category)) continue;
     const m = createMarket(s);
     // Seed a believable history walk so the PriceChart isn't empty on first paint.
     seedHistory(m.id, m.yesPool, m.noPool);

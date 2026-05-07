@@ -168,7 +168,7 @@ export function WalletPageClient({
           <div>
             <p className="font-display font-semibold text-text">Demo mode · Mode ya mfano</p>
             <p className="text-text-muted">
-              The TZS 100,000 balance and any deposits/withdrawals you make here are virtual.
+              The TZS 500,000 balance and any deposits/withdrawals you make here are virtual.
               Sign out and re-enter demo to reset.
               <span className="block italic text-text-subtle text-[11.5px] mt-0.5">
                 Salio na shughuli zote ni za mfano. Toka kisha rudi kuanza upya.
@@ -254,7 +254,7 @@ export function WalletPageClient({
                   Default
                 </span>
               ) : (
-                <button className="font-mono text-[11px] font-semibold text-text-subtle hover:text-gold-300 transition-colors uppercase tracking-[0.06em]">
+                <button type="button" className="font-mono text-[11px] font-semibold text-text-subtle hover:text-gold-300 transition-colors uppercase tracking-[0.06em]">
                   Set default
                 </button>
               )}

@@ -14,6 +14,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import { cashOutPositionAction } from "@/app/markets/actions";
+import { dispatchWinCelebration } from "@/components/markets/win-celebration";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 
@@ -58,6 +59,16 @@ export function SellButton({
         description: net >= 0 ? `+TZS ${fmt(net)} profit locked in` : `−TZS ${fmt(Math.abs(net))} loss`,
         variant: net >= 0 ? "success" : "warning",
       });
+      // Profit-only: fire the gold-and-aqua celebration. Losses get the
+      // toast only — no fanfare for crossing back below stake.
+      if (net > 0) {
+        dispatchWinCelebration({
+          kind: "CASHOUT",
+          amount: r.data!.value,
+          net,
+          label: "Cashed out at profit",
+        });
+      }
       router.refresh();
     });
   };

@@ -12,8 +12,10 @@ import { FiftyMark } from "@/components/brand";
 export function PublicFooter() {
   const license = process.env.NEXT_PUBLIC_LICENSE_REF ?? "TZ-GBT-2026-XXXX (pending)";
   return (
-    <footer className="mt-12 border-t border-border bg-bg-elevated/40">
-      <div className="mx-auto max-w-[1280px] px-3 lg:px-6 py-7 grid grid-cols-1 md:grid-cols-4 gap-6 text-[12px]">
+    <footer className="mt-12 bg-bg-elevated/40">
+      {/* Heraldic claret rule with gilt midpoint — regulator/footer chrome. */}
+      <div aria-hidden className="claret-rule mx-auto max-w-[1280px]" />
+      <div className="mx-auto max-w-[1280px] px-3 lg:px-6 pt-2 pb-7 grid grid-cols-1 md:grid-cols-4 gap-6 text-[12px]">
         {/* Brand + license */}
         <div className="space-y-3">
           <div className="flex items-center gap-2.5">
