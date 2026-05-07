@@ -1,35 +1,54 @@
 import Link from "next/link";
-import { Pattern } from "@/components/ui/pattern";
+import { ScrollText } from "lucide-react";
+import { FiftyMark } from "@/components/brand";
 
 const LEGAL_NAV: Array<{ href: string; en: string; sw: string }> = [
-  { href: "/legal/terms",                 en: "Terms",               sw: "Masharti" },
-  { href: "/legal/privacy",               en: "Privacy",             sw: "Faragha" },
-  { href: "/legal/responsible-gambling",  en: "Responsible Gambling", sw: "Mchezo salama" },
-  { href: "/legal/aml",                   en: "AML / KYC",           sw: "Kuzuia uoshaji" },
+  { href: "/legal/terms",                en: "Terms",                sw: "Masharti" },
+  { href: "/legal/privacy",              en: "Privacy",              sw: "Faragha" },
+  { href: "/legal/responsible-gambling", en: "Responsible Gambling", sw: "Mchezo salama" },
+  { href: "/legal/aml",                  en: "AML / KYC",            sw: "Kuzuia uoshaji" },
 ];
 
 export default function LegalLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative">
-      <Pattern kind="sokoni" opacity={0.025} color="var(--gold)" className="!fixed inset-0" />
-      <div className="relative mx-auto max-w-[1080px] px-3 lg:px-6 py-6 lg:py-8 grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6 lg:gap-10">
-        <aside className="space-y-1 lg:sticky lg:top-20 self-start">
-          <p className="font-mono text-caption uppercase tracking-[0.32em] text-gold font-bold mb-3">Legal · Sheria</p>
-          {LEGAL_NAV.map((n) => (
+    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 lg:py-8 grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6 lg:gap-10">
+      <aside className="lg:sticky lg:top-20 self-start space-y-3">
+        <div className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated p-4">
+          <div
+            className="absolute inset-0"
+            aria-hidden
+            style={{
+              background:
+                "radial-gradient(400px 240px at 100% 0%, oklch(58% 0.13 80 / 0.16), transparent 60%), " +
+                "linear-gradient(135deg, oklch(20% 0.012 240) 0%, oklch(16% 0.014 240) 100%)",
+            }}
+          />
+          <div className="absolute -right-4 -bottom-4 opacity-[0.06]" aria-hidden>
+            <FiftyMark size={120} />
+          </div>
+          <div className="relative z-10 flex items-center gap-2">
+            <ScrollText size={14} className="text-gold-300" aria-hidden />
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
+              Legal · Sheria
+            </p>
+          </div>
+        </div>
+        <nav aria-label="Legal sections" className="rounded-xl border border-border bg-bg-elevated overflow-hidden">
+          {LEGAL_NAV.map((n, i) => (
             <Link
               key={n.href}
               href={n.href as never}
-              className="block px-3 py-2 rounded-md text-body-sm hover:bg-surface-2 hover:text-text text-text-secondary transition-colors"
+              className={`block px-3.5 py-2.5 hover:bg-bg-overlay transition-colors ${i > 0 ? "border-t border-border" : ""}`}
             >
-              <span className="font-medium text-text">{n.en}</span>{" "}
-              <span className="text-text-tertiary">· {n.sw}</span>
+              <p className="font-display text-[13px] font-semibold text-text leading-tight">{n.en}</p>
+              <p className="mt-0.5 text-[11px] italic text-text-subtle">· {n.sw}</p>
             </Link>
           ))}
-        </aside>
-        <article className="prose-kp space-y-4">
-          {children}
-        </article>
-      </div>
-    </div>
+        </nav>
+      </aside>
+      <article className="space-y-5 min-w-0">
+        {children}
+      </article>
+    </main>
   );
 }

@@ -1,18 +1,16 @@
-import { Card, CardBody } from "@/components/ui/card";
-import { Pattern } from "@/components/ui/pattern";
-import { Breadcrumbs } from "@/components/ui/breadcrumbs";
-import { Phone, Mail, MessageCircle, ShieldCheck, Wallet, Trophy } from "lucide-react";
+import { Phone, Mail, MessageCircle, ShieldCheck, Wallet, Trophy, ChevronDown } from "lucide-react";
+import { FiftyMark } from "@/components/brand";
 
 export const metadata = { title: "Help · Msaada" };
 
-const FAQS = [
+const FAQS: { q: string; a: string }[] = [
   {
-    q: "How does pool betting work? · Bwawa hulipa vipi?",
-    a: "Stakes from every player on the same time-window join one pool. When the window closes, the winning side shares the pool — the bigger your stake relative to the winning pool, the bigger your share. The pay-rate shown at placement is the rate at that instant; the final rate is determined when the pool closes.",
+    q: "How do prediction markets work? · Soko la utabiri linafanyaje?",
+    a: "Stakes from every player on the same market join one pool — YES + NO together. After applying tax + commission (currently 9% combined), the net pool is paid out only to whichever side is correct, pro-rata to each correct stake's share of the winning side. The dial probability is implied by the current pool composition and updates with every new bet.",
   },
   {
-    q: "What's a window? · 50pick ni nini?",
-    a: "A window is a slice of the match: 0–15 minutes, 15–30, 30–45, 45–60, or full-time. Each window is its own pool. Pick the window you want to bet on, then pick home, away, or draw within that window.",
+    q: "Will my odds change after I place? · Bei zinabadilika baada ya kuweka dau?",
+    a: "Your stake and the pool composition at the moment of placement are locked in for your payout calculation, but the implied probability you see on the dial is live and moves with every new bet. The bet-confirm popup locks the price for 5 seconds so you can confirm at the rate you saw.",
   },
   {
     q: "How do I withdraw winnings? · Nitatoa pesa zangu vipi?",
@@ -27,113 +25,175 @@ const FAQS = [
     a: "Open Profile → Responsible gambling. You can set deposit and time limits, take a break, or self-exclude. If you need to talk to someone, call the Tanzania Helpline +255 22 211 5811 (free).",
   },
   {
-    q: "Mapigo · how does it work? · Mapigo inavyofanya kazi?",
-    a: "Mapigo is an in-play prediction game. Every 60 seconds a new round opens with three calls: SPIKE (a peak in match intensity), DRIFT (a gentle shift), or CALM (no notable events). Pick one before the round closes. Winners share the round's pool.",
+    q: "Can I cash out before resolution? · Nitatoa dau mapema?",
+    a: "Yes. On every open position on a LIVE market, a Sell-now button shows the current sell-back value (with a small slippage buffer applied). Once accepted, the position flips to CASHED_OUT and funds return to your wallet.",
   },
   {
-    q: "What if a match is abandoned? · Mechi ikifutwa?",
-    a: "Bets on abandoned matches are voided and stakes refunded to your wallet. Settlement corrections by the league within 24 hours of full-time are honored — see Terms §6.",
+    q: "What if a market is voided? · Soko likifutwa?",
+    a: "Bets on voided markets have their stakes refunded to your wallet. Settlement corrections by the source authority within 24 hours of resolution are honoured — see Terms §6.",
   },
   {
-    q: "Can I cash out before the window closes? · Nitatoa dau mapema?",
-    a: "Yes. On every active match bet, an offer to cash out is shown in My Bets. The offer reflects current pool dynamics. Once accepted, the bet flips to CASHED_OUT and funds return to your wallet.",
+    q: "Is the platform fair? · Mfumo huu uko sawa?",
+    a: "Every market move is recorded into a HMAC-chained audit trail. Resolutions cite a public source URL. The whole-pool math is published in the Terms and surfaced on the admin /admin/config page; tax + commission rates are visible to everyone.",
   },
 ];
 
 export default function HelpPage() {
   return (
-    <div className="relative">
-      <Pattern kind="sokoni" opacity={0.025} color="var(--gold)" className="!fixed inset-0" />
-      <div className="relative mx-auto max-w-3xl px-3 lg:px-6 py-6 lg:py-8 space-y-5">
-        <Breadcrumbs items={[{ label: "Help", labelSw: "Msaada" }]} />
-
-        <header>
-          <p className="font-mono text-caption uppercase tracking-[0.32em] text-gold font-bold">Help · Msaada</p>
-          <h1 className="font-display font-bold text-title-lg text-text mt-1.5">How can we help? · Tunaweza kukusaidiaje?</h1>
-        </header>
-
-        {/* CONTACT */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <ContactCard
-            icon={<Phone size={18} className="text-success" />}
-            title="Call us"
-            value="+255 22 211 5811"
-            sub="Free helpline · 24/7"
-            href="tel:+255222115811"
-          />
-          <ContactCard
-            icon={<Mail size={18} className="text-royal" />}
-            title="Email"
-            value="support@50pick.com"
-            sub="Reply within 4h on business days"
-            href="mailto:support@50pick.com"
-          />
-          <ContactCard
-            icon={<MessageCircle size={18} className="text-gold" />}
-            title="Live chat"
-            value="In-app"
-            sub="Coming soon"
-          />
+    <main className="mx-auto max-w-[840px] px-3 lg:px-6 py-6 space-y-5">
+      <header className="relative overflow-hidden rounded-2xl border border-border bg-bg-elevated">
+        <div
+          className="absolute inset-0"
+          aria-hidden
+          style={{
+            background:
+              "radial-gradient(900px 360px at 100% 0%, oklch(58% 0.13 80 / 0.18), transparent 60%), " +
+              "linear-gradient(135deg, oklch(20% 0.012 240) 0%, oklch(16% 0.014 240) 100%)",
+          }}
+        />
+        <div className="absolute -right-6 -top-6 opacity-[0.06]" aria-hidden>
+          <FiftyMark size={180} />
         </div>
-
-        {/* FAQ */}
-        <Card>
-          <CardBody className="p-5 lg:p-6 space-y-3">
-            <h2 className="font-display font-bold text-title-sm text-text">Frequently asked · Maswali yanayoulizwa</h2>
-            <div className="divide-y divide-border-subtle">
-              {FAQS.map((f, i) => (
-                <details key={i} className="group py-3">
-                  <summary className="cursor-pointer flex items-start justify-between gap-3 text-body-sm font-semibold text-text list-none">
-                    <span>{f.q}</span>
-                    <span aria-hidden className="text-text-tertiary group-open:rotate-180 transition-transform shrink-0 mt-0.5">▾</span>
-                  </summary>
-                  <p className="text-body-sm text-text-secondary leading-relaxed mt-2">{f.a}</p>
-                </details>
-              ))}
-            </div>
-          </CardBody>
-        </Card>
-
-        {/* QUICK LINKS */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <QuickLinkCard icon={<ShieldCheck size={16} />} title="Responsible gambling" sub="Limits · break · self-exclude" href="/profile/responsible-gambling" />
-          <QuickLinkCard icon={<Wallet size={16} />}      title="Wallet help"          sub="Deposit · withdraw · holds"   href="/wallet" />
-          <QuickLinkCard icon={<Trophy size={16} />}      title="My bets"               sub="Active · settled · cash-out"  href="/bets" />
+        <div className="relative z-10 p-5 lg:p-6">
+          <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
+            Help · Msaada
+          </p>
+          <h1 className="mt-1 font-display text-[26px] lg:text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
+            How can we help?
+          </h1>
+          <p className="mt-1 text-[14px] italic text-text-subtle">Tunaweza kukusaidiaje?</p>
         </div>
+      </header>
 
-        <p className="text-caption text-text-tertiary text-center pt-4">
-          18+. Play responsibly. Mainland Tanzania + Zanzibar only.
-        </p>
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <ContactCard
+          icon={<Phone size={15} />}
+          tone="yes"
+          title="Call us"
+          value="+255 22 211 5811"
+          sub="Free helpline · 24/7"
+          href="tel:+255222115811"
+        />
+        <ContactCard
+          icon={<Mail size={15} />}
+          tone="info"
+          title="Email"
+          value="support@50pick.com"
+          sub="Reply within 4h on business days"
+          href="mailto:support@50pick.com"
+        />
+        <ContactCard
+          icon={<MessageCircle size={15} />}
+          tone="gold"
+          title="Live chat"
+          value="In-app"
+          sub="Coming soon"
+        />
+      </section>
+
+      <section className="rounded-2xl border border-border bg-bg-elevated p-5 lg:p-6 space-y-2">
+        <h2 className="font-display text-[15px] font-semibold text-text">
+          Frequently asked <span className="text-text-subtle italic font-normal">· Maswali</span>
+        </h2>
+        <div>
+          {FAQS.map((f, i) => (
+            <details
+              key={i}
+              className="group border-t border-border first:border-t-0 py-3"
+            >
+              <summary className="cursor-pointer list-none flex items-start justify-between gap-3 font-display text-[13.5px] font-semibold text-text">
+                <span>{f.q}</span>
+                <ChevronDown
+                  size={14}
+                  aria-hidden
+                  className="mt-1 shrink-0 text-text-subtle transition-transform group-open:rotate-180"
+                />
+              </summary>
+              <p className="mt-2 text-[12.5px] text-text-muted leading-relaxed">{f.a}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <QuickLinkCard
+          icon={<ShieldCheck size={15} />}
+          title="Responsible gambling"
+          sub="Limits · break · self-exclude"
+          href="/profile/responsible-gambling"
+        />
+        <QuickLinkCard
+          icon={<Wallet size={15} />}
+          title="Wallet help"
+          sub="Deposit · withdraw · holds"
+          href="/wallet"
+        />
+        <QuickLinkCard
+          icon={<Trophy size={15} />}
+          title="My positions"
+          sub="Open · settled · cash-out"
+          href="/positions"
+        />
+      </section>
+
+      <p className="pt-2 text-center font-mono text-[11px] tabular-nums text-text-subtle">
+        18+. Play responsibly. Mainland Tanzania + Zanzibar only.
+      </p>
+    </main>
+  );
+}
+
+function ContactCard({
+  icon, tone, title, value, sub, href,
+}: {
+  icon: React.ReactNode;
+  tone: "yes" | "info" | "gold";
+  title: string;
+  value: string;
+  sub: string;
+  href?: string;
+}) {
+  const tintCls =
+    tone === "yes"   ? "border-yes-700 bg-yes-500/10 text-yes-300"
+    : tone === "info"  ? "border-info-border bg-info-bg/30 text-info-fg"
+    :                    "border-gold-700 bg-gold-500/10 text-gold-300";
+  const card = (
+    <div className="rounded-xl border border-border bg-bg-elevated p-4 space-y-2 hover:border-gold-700 transition-colors h-full">
+      <div className="flex items-center gap-2">
+        <span className={`inline-flex h-7 w-7 items-center justify-center rounded-md border ${tintCls}`}>
+          {icon}
+        </span>
+        <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-semibold text-text-subtle">
+          {title}
+        </span>
       </div>
+      <p className="font-display font-bold text-[15px] text-text break-all">{value}</p>
+      <p className="text-[11.5px] text-text-subtle">{sub}</p>
     </div>
   );
+  return href ? <a href={href} className="block">{card}</a> : card;
 }
 
-function ContactCard({ icon, title, value, sub, href }: { icon: React.ReactNode; title: string; value: string; sub: string; href?: string }) {
-  const inner = (
-    <Card interactive={!!href}>
-      <CardBody className="p-4 space-y-2">
-        <div className="flex items-center gap-2 text-text-tertiary">{icon}<span className="text-caption uppercase tracking-wide">{title}</span></div>
-        <p className="font-display font-bold text-body text-text break-all">{value}</p>
-        <p className="text-caption text-text-tertiary">{sub}</p>
-      </CardBody>
-    </Card>
-  );
-  return href ? <a href={href} className="block">{inner}</a> : inner;
-}
-
-function QuickLinkCard({ icon, title, sub, href }: { icon: React.ReactNode; title: string; sub: string; href: string }) {
+function QuickLinkCard({
+  icon, title, sub, href,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  sub: string;
+  href: string;
+}) {
   return (
-    <a href={href} className="block">
-      <Card interactive>
-        <CardBody className="p-4 flex items-center gap-3">
-          <span className="h-9 w-9 rounded-md bg-royal-subtle text-royal inline-flex items-center justify-center shrink-0">{icon}</span>
-          <div className="flex-1 min-w-0">
-            <p className="text-body-sm font-semibold text-text truncate">{title}</p>
-            <p className="text-caption text-text-tertiary">{sub}</p>
-          </div>
-        </CardBody>
-      </Card>
+    <a
+      href={href}
+      className="flex items-center gap-3 rounded-xl border border-border bg-bg-elevated p-4 hover:border-gold-700 hover:bg-bg-overlay transition-colors"
+    >
+      <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-gold-500/10 text-gold-300 shrink-0">
+        {icon}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="font-display text-[13px] font-semibold text-text truncate">{title}</p>
+        <p className="mt-0.5 text-[11px] text-text-subtle">{sub}</p>
+      </div>
     </a>
   );
 }
