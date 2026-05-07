@@ -20,7 +20,7 @@ function BalanceCard({
           background:
             "radial-gradient(900px 360px at 100% 0%, oklch(58% 0.13 80 / 0.18), transparent 60%), " +
             "radial-gradient(700px 320px at 0% 100%, oklch(45% 0.10 152 / 0.18), transparent 60%), " +
-            "linear-gradient(135deg, oklch(20% 0.012 240) 0%, oklch(16% 0.014 240) 100%)",
+            "linear-gradient(135deg, oklch(28% 0.16 258) 0%, oklch(40% 0.20 258) 100%)",
         }}
       />
       <div className="absolute -right-8 -bottom-8 opacity-[0.07]" aria-hidden>

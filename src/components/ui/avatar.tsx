@@ -1,50 +1,53 @@
 /**
- * Avatar — kit-faithful (kit/atoms.jsx → Avatar).
- * Initials-on-gradient by default; supports a photo `src` if given.
- * The hue prop seeds an OKLCH gradient, deterministic per user when called
- * with a stable string input → so two predictors with different ids always
- * get visually different avatars.
+ * Avatar — direct port of kit/atoms.jsx → Avatar. Royal-gradient default
+ * with pearl ink (per kit). The `seed` prop drives a deterministic hue
+ * shift so two predictors with different ids get visibly different
+ * avatars without leaving the royal axis. `src` overrides for uploaded
+ * profile photos.
  */
 import { cn } from "@/lib/utils";
 
 type Size = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
 
 const sizeClass: Record<Size, string> = {
-  xs: "h-5 w-5 text-[10px]",
-  sm: "h-6 w-6 text-[11px]",
-  md: "h-8 w-8 text-[12px]",
-  lg: "h-10 w-10 text-[13px]",
-  xl: "h-14 w-14 text-[16px]",
-  "2xl": "h-20 w-20 text-[22px]",
+  xs:   "h-5 w-5 text-[10px]",
+  sm:   "h-7 w-7 text-[11px]",
+  md:   "h-10 w-10 text-[14px]",
+  lg:   "h-12 w-12 text-[16px]",
+  xl:   "h-14 w-14 text-[18px]",
+  "2xl":"h-20 w-20 text-[22px]",
 };
 
-/** Hash a string to a deterministic hue 0..359. */
-function hueFor(seed: string): number {
+/** Hash a string to a deterministic offset 0..40. The avatar gradient
+ *  always lives on the royal axis (hue 258); we only nudge the hue by a
+ *  small amount so each avatar reads as part of the same family. */
+function offsetFor(seed: string): number {
   let h = 0;
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-  return h % 360;
+  return (h % 41) - 20; // -20..+20 around 258
 }
 
 export function Avatar({
   initials,
   size = "md",
   src,
-  hue,
   seed,
   className,
 }: {
   initials: string;
   size?: Size;
   src?: string;
+  /** legacy, kept for compat — replaced by `seed`. */
   hue?: number;
   seed?: string;
   className?: string;
 }) {
-  const finalHue = hue ?? (seed ? hueFor(seed) : hueFor(initials));
+  const offset = seed ? offsetFor(seed) : offsetFor(initials);
+  const hue = 258 + offset;
   return (
     <span
       className={cn(
-        "inline-flex items-center justify-center rounded-pill font-display font-semibold tabular-nums select-none overflow-hidden",
+        "inline-flex items-center justify-center rounded-pill font-display font-semibold tabular-nums select-none overflow-hidden flex-shrink-0",
         sizeClass[size],
         className,
       )}
@@ -52,8 +55,9 @@ export function Avatar({
         src
           ? { backgroundImage: `url(${src})`, backgroundSize: "cover", backgroundPosition: "center" }
           : {
-              background: `linear-gradient(135deg, oklch(55% 0.10 ${finalHue}), oklch(35% 0.08 ${finalHue}))`,
-              color: "oklch(96% 0.005 240)",
+              background: `linear-gradient(135deg, oklch(54% 0.18 ${hue}), oklch(28% 0.15 ${hue}))`,
+              color: "var(--pearl-50)",
+              boxShadow: "0 0 0 1px color-mix(in oklab, var(--gilt) 30%, transparent) inset",
             }
       }
       aria-label={`Avatar ${initials}`}
@@ -63,28 +67,16 @@ export function Avatar({
   );
 }
 
-/** Tier badge — kit/atoms.jsx → TierBadge.
- *  Sovereign sits above Diamond — claret field, gilt ring. Heraldic chord. */
+/** Tier badge — kit/atoms.jsx → TierBadge. Sovereign sits above Diamond. */
 type Tier = "bronze" | "silver" | "gold" | "diamond" | "sovereign";
 
 export function TierBadge({ tier, className }: { tier: Tier; className?: string }) {
-  const map: Record<Tier, { letter: string; cls: string }> = {
-    bronze:    { letter: "B", cls: "bg-gold-700 text-gold-50 border border-gold-500" },
-    silver:    { letter: "S", cls: "bg-slate-300 text-slate-900 border border-slate-400" },
-    gold:      { letter: "G", cls: "bg-gold-700 text-gold-100 border border-gold-500" },
-    diamond:   { letter: "D", cls: "bg-gradient-to-br from-cyan-300 to-blue-400 text-slate-900 border border-blue-400" },
-    sovereign: { letter: "S", cls: "tier-sovereign" },
-  };
-  const { letter, cls } = map[tier];
+  // Kit class names — let globals.css drive the actual look so badges
+  // automatically match the rest of the heraldic chord.
+  const cls = `tier-${tier}`;
+  const letter = { sovereign: "S", diamond: "D", gold: "G", silver: "S", bronze: "B" }[tier];
   return (
-    <span
-      title={tier}
-      className={cn(
-        "inline-flex h-5 w-5 items-center justify-center rounded-pill font-mono text-[10px] font-bold",
-        cls,
-        className,
-      )}
-    >
+    <span title={tier} className={cn("tier-badge", cls, className)}>
       {letter}
     </span>
   );

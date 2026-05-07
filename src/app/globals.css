@@ -503,17 +503,32 @@ body {
 .chip-signal   { background: color-mix(in oklab, var(--aqua-300) 18%, transparent); color: var(--aqua-200); border-color: var(--aqua-edge); }
 
 /* ---------- LiveDot + animations ---------- */
+/* Brightened so it actually glows against the saturated royal canvas:
+   higher base lightness (76% vs 72%), additional always-on outer halo,
+   and a stronger pulse expansion. */
 .live-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: oklch(72% 0.20 25);
-  box-shadow: 0 0 0 0 color-mix(in oklab, oklch(72% 0.20 25) 60%, transparent);
-  animation: live-pulse 1.5s ease-in-out infinite;
+  background: oklch(76% 0.22 25);
+  box-shadow:
+    0 0 0 0 color-mix(in oklab, oklch(76% 0.22 25) 75%, transparent),
+    0 0 12px 1px color-mix(in oklab, oklch(76% 0.22 25) 60%, transparent);
+  animation: live-pulse 1.4s ease-in-out infinite;
 }
 @keyframes live-pulse {
-  0%, 100% { opacity: 0.55; box-shadow: 0 0 0 0 color-mix(in oklab, oklch(72% 0.20 25) 60%, transparent); }
-  50%      { opacity: 1.00; box-shadow: 0 0 0 6px color-mix(in oklab, oklch(72% 0.20 25) 0%, transparent); }
+  0%, 100% {
+    opacity: 0.85;
+    box-shadow:
+      0 0 0 0 color-mix(in oklab, oklch(76% 0.22 25) 75%, transparent),
+      0 0 10px 1px color-mix(in oklab, oklch(76% 0.22 25) 60%, transparent);
+  }
+  50% {
+    opacity: 1;
+    box-shadow:
+      0 0 0 8px color-mix(in oklab, oklch(76% 0.22 25) 0%, transparent),
+      0 0 18px 2px color-mix(in oklab, oklch(76% 0.22 25) 80%, transparent);
+  }
 }
 @keyframes aqua-pulse {
   0%, 100% { opacity: 0.7; box-shadow: 0 0 0 0 var(--aqua-glow); }

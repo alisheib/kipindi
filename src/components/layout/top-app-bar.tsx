@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FiftyLockup } from "@/components/brand";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageToggle } from "@/components/ui/language-toggle";
 import { NotificationsPanel } from "@/components/layout/notifications-panel";
 import { AvatarMenu } from "@/components/layout/avatar-menu";
@@ -65,7 +64,6 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
         <div className="flex shrink-0 items-center gap-1">
           <NotificationsPanel />
           <LanguageToggle />
-          <ThemeToggle />
           <AvatarMenu
             initials={user.initials}
             name={user.name}
