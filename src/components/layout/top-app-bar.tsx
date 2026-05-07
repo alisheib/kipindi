@@ -29,14 +29,15 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
     { href: "/wallet",      label: t.nav.wallet },
     { href: "/leaderboard", label: "Top" },
   ] as const;
+
   return (
-    <header className="sticky top-0 z-sticky bg-bg-elevated/80 backdrop-blur-xl border-b border-border-divider">
-      <div className="mx-auto max-w-[1280px] flex items-center justify-between px-3 lg:px-6 h-11 lg:h-12 gap-2">
-        <div className="flex items-center gap-3 min-w-0">
+    <header className="sticky top-0 z-40 border-b border-border bg-bg-elevated/80 backdrop-blur-xl">
+      <div className="mx-auto max-w-[1280px] flex items-center justify-between gap-2 px-3 lg:px-6 h-12">
+        <div className="flex min-w-0 items-center gap-3">
           <Link href="/" aria-label="50pick home" className="shrink-0 hover:opacity-90 transition-opacity">
             <FiftyLockup size={20} />
           </Link>
-          <nav className="hidden xl:flex items-center ml-3" aria-label="Primary">
+          <nav className="ml-3 hidden xl:flex items-center" aria-label="Primary">
             {NAV_ITEMS.map((it) => {
               const active = pathname === it.href;
               return (
@@ -44,16 +45,16 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
                   key={it.href}
                   href={it.href}
                   className={cn(
-                    "relative h-12 px-2 inline-flex items-center whitespace-nowrap font-display text-micro font-bold uppercase tracking-[0.10em] transition-colors duration-micro",
-                    active ? "text-text" : "text-text-tertiary hover:text-text",
+                    "relative h-12 px-2.5 inline-flex items-center whitespace-nowrap font-mono text-[11px] font-bold uppercase tracking-[0.12em] transition-colors",
+                    active ? "text-text" : "text-text-subtle hover:text-text",
                   )}
                 >
                   {it.label}
                   <span
                     aria-hidden
                     className={cn(
-                      "absolute left-2 right-2 -bottom-px h-px transition-opacity duration-short",
-                      active ? "bg-gold opacity-100" : "bg-gold opacity-0",
+                      "absolute left-2 right-2 -bottom-px h-[2px] rounded-pill bg-gold-500 transition-opacity",
+                      active ? "opacity-100" : "opacity-0",
                     )}
                   />
                 </Link>
@@ -61,7 +62,7 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
             })}
           </nav>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex shrink-0 items-center gap-1">
           <NotificationsPanel />
           <LanguageToggle />
           <ThemeToggle />

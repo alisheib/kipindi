@@ -39,7 +39,7 @@ export function MarketCard({
       href={`/markets/${id}` as never}
       className={cn(
         "group block rounded-lg border border-border bg-bg-elevated p-4 transition-all duration-stage",
-        "hover:-translate-y-[2px] hover:border-teal-500 hover:shadow-e4",
+        "hover:-translate-y-[2px] hover:border-gold-700 hover:shadow-[0_18px_36px_-12px_rgba(0,0,0,0.55)]",
         className,
       )}
     >

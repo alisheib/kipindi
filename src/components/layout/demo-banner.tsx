@@ -7,8 +7,8 @@ import { FlaskConical, X } from "lucide-react";
  * Server-rendered; no client JS unless user clicks Exit (route-handler GET).
  *
  * REMOVAL FOR PRODUCTION:
- *  Set env DEMO_MODE_ENABLED=false. The banner's <Link> still works for any
- *  legacy demo cookies (calls /auth/logout to clear them).
+ *  Set env DEMO_MODE_ENABLED=false. The link still works for legacy demo
+ *  cookies (calls /auth/logout to clear them).
  */
 export async function DemoBanner() {
   if (!isDemoModeAllowed()) return null;
@@ -16,21 +16,21 @@ export async function DemoBanner() {
   if (!session?.demoMode) return null;
 
   return (
-    <div className="bg-gold text-gold-fg border-b border-gold-active">
-      <div className="mx-auto max-w-[1280px] flex items-center justify-between gap-3 px-3 lg:px-6 h-9">
-        <div className="flex items-center gap-2 min-w-0">
+    <div className="bg-gold-500 text-gold-fg border-b border-gold-700">
+      <div className="mx-auto max-w-[1280px] flex h-9 items-center justify-between gap-3 px-3 lg:px-6">
+        <div className="flex min-w-0 items-center gap-2">
           <FlaskConical size={14} strokeWidth={2.25} />
-          <p className="text-caption font-bold uppercase tracking-[0.14em] truncate">
+          <p className="truncate font-mono text-[11px] font-bold uppercase tracking-[0.14em]">
             Demo mode
-            <span className="hidden sm:inline opacity-80 font-normal normal-case tracking-normal ml-2">
+            <span className="ml-2 hidden font-normal normal-case tracking-normal opacity-80 sm:inline">
               · sandbox account, TZS 100,000 fake balance · all bets virtual
             </span>
           </p>
         </div>
         <a
           href="/auth/logout"
-          className="inline-flex items-center gap-1 h-6 px-2 rounded-sm bg-gold-fg/10 hover:bg-gold-fg/20 transition-colors text-caption font-bold uppercase tracking-[0.14em]"
           aria-label="Exit demo mode"
+          className="inline-flex h-6 items-center gap-1 rounded-pill bg-gold-fg/10 px-2 font-mono text-[11px] font-bold uppercase tracking-[0.14em] hover:bg-gold-fg/20 transition-colors"
         >
           <X size={12} strokeWidth={2.5} />
           Exit

@@ -80,7 +80,7 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL }: { 
             <ShieldCheck size={20} className="text-gold" />
             <p className="font-mono text-caption uppercase tracking-[0.32em] text-gold font-bold">Reality check</p>
           </div>
-          <button type="button" onClick={dismiss} aria-label="Dismiss" className="text-text-tertiary hover:text-text">
+          <button type="button" onClick={dismiss} aria-label="Dismiss" className="text-text-subtle hover:text-text">
             <X size={18} />
           </button>
         </div>
@@ -95,7 +95,7 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL }: { 
         <p className="text-body-sm text-text-secondary leading-relaxed">
           Most people play for fun. If it stops feeling fun, take a break.
           <br />
-          <span className="italic text-text-tertiary">Kama haifurahishi tena, pumzika.</span>
+          <span className="italic text-text-subtle">Kama haifurahishi tena, pumzika.</span>
         </p>
 
         <div className="grid grid-cols-1 gap-2 pt-1">
@@ -115,7 +115,7 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL }: { 
           </div>
         </div>
 
-        <p className="text-micro text-text-tertiary text-center pt-1">
+        <p className="text-micro text-text-subtle text-center pt-1">
           Tanzania Helpline · <span className="font-mono">+255 22 211 5811</span>
         </p>
       </div>

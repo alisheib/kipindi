@@ -25,7 +25,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Primary"
-      className="xl:hidden fixed inset-x-0 bottom-0 z-sticky bg-bg-elevated/95 backdrop-blur-xl border-t border-border pb-[env(safe-area-inset-bottom)]"
+      className="xl:hidden fixed inset-x-0 bottom-0 z-40 bg-bg-elevated/95 backdrop-blur-xl border-t border-border pb-[env(safe-area-inset-bottom)]"
     >
       <div className="flex items-stretch justify-around h-14">
         {items.map((it) => (
@@ -41,8 +41,8 @@ function NavItem({ href, icon: Icon, label, active }: { href: string; icon: type
     <Link
       href={href as never}
       className={cn(
-        "flex-1 flex flex-col items-center justify-center gap-1 transition-colors duration-micro",
-        active ? "text-teal-300" : "text-text-subtle hover:text-text-muted",
+        "flex-1 flex flex-col items-center justify-center gap-1 transition-colors",
+        active ? "text-gold-300" : "text-text-subtle hover:text-text-muted",
       )}
     >
       <Icon size={20} strokeWidth={active ? 2 : 1.5} />

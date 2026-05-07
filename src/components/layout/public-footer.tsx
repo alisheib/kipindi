@@ -2,63 +2,93 @@
  * Unified public footer. Visible on every player-facing page.
  * Carries the regulator-required disclosures: 18+ badge, license stub,
  * problem-gambling helpline, GDPR/PDPA rights links, and a link to the
- * provably-fair verifier so anyone can audit Mapigo round outcomes.
+ * provably-fair verifier.
  *
  * LCCP §SR Code 5.1.5 (visible age + RG messaging on every page).
  */
 import Link from "next/link";
+import { FiftyMark } from "@/components/brand";
 
 export function PublicFooter() {
   const license = process.env.NEXT_PUBLIC_LICENSE_REF ?? "TZ-GBT-2026-XXXX (pending)";
   return (
-    <footer className="mt-10 border-t border-border bg-surface/40">
-      <div className="mx-auto max-w-[1240px] px-3 lg:px-6 py-6 grid grid-cols-1 md:grid-cols-4 gap-5 text-caption">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <span aria-label="18 plus only" className="inline-flex items-center justify-center w-7 h-7 rounded-full border-2 border-danger text-danger font-display font-bold text-body-sm">
+    <footer className="mt-12 border-t border-border bg-bg-elevated/40">
+      <div className="mx-auto max-w-[1280px] px-3 lg:px-6 py-7 grid grid-cols-1 md:grid-cols-4 gap-6 text-[12px]">
+        {/* Brand + license */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2.5">
+            <span
+              aria-label="18 plus only"
+              className="inline-flex items-center justify-center w-7 h-7 rounded-pill border-2 border-no-700 text-no-300 font-display font-bold text-[11px]"
+            >
               18+
             </span>
-            <span className="font-display font-bold text-body-sm text-text">50pick</span>
+            <FiftyMark size={20} />
+            <span className="font-display font-bold text-[14px] text-text">50pick</span>
           </div>
-          <p className="text-text-tertiary leading-relaxed">
+          <p className="text-text-muted leading-relaxed text-[12px]">
             Licensed by the Gaming Board of Tanzania.
-            <br />
-            <span className="font-mono text-text-secondary">License: {license}</span>
           </p>
-          <p className="text-text-tertiary">© {new Date().getFullYear()} 50pick · Tanzania</p>
+          <p className="font-mono text-[11px] text-text-subtle tabular-nums">
+            License: {license}
+          </p>
+          <p className="font-mono text-[11px] text-text-subtle">
+            © {new Date().getFullYear()} 50pick · Tanzania
+          </p>
         </div>
 
-        <div className="space-y-1.5">
-          <p className="font-bold uppercase tracking-[0.16em] text-text-secondary">Play safe · Cheza salama</p>
-          <ul className="space-y-1 text-text-tertiary">
-            <li><Link href={"/profile/responsible-gambling" as never} className="hover:text-text">Set limits</Link></li>
-            <li><Link href={"/legal/responsible-gambling" as never} className="hover:text-text">Take a break / Self-exclude</Link></li>
-            <li>
-              <a href="tel:0800110011" className="hover:text-text">Helpline · 0800 11 0011</a>
-            </li>
-            <li className="text-text-secondary italic">If gambling stops being fun, stop.</li>
-          </ul>
-        </div>
+        <FooterCol heading="Play safe" sw="Cheza salama">
+          <FooterLink href="/profile/responsible-gambling">Set limits</FooterLink>
+          <FooterLink href="/legal/responsible-gambling">Take a break / Self-exclude</FooterLink>
+          <li>
+            <a href="tel:0800110011" className="text-text-muted hover:text-text transition-colors">
+              Helpline · 0800 11 0011
+            </a>
+          </li>
+          <li className="italic text-text-subtle text-[11.5px]">
+            If gambling stops being fun, stop.
+          </li>
+        </FooterCol>
 
-        <div className="space-y-1.5">
-          <p className="font-bold uppercase tracking-[0.16em] text-text-secondary">Fairness · Uadilifu</p>
-          <ul className="space-y-1 text-text-tertiary">
-            <li><Link href={"/fairness" as never} className="hover:text-text">Provably-fair Mapigo</Link></li>
-            <li><Link href={"/legal/terms" as never} className="hover:text-text">Game RTP &amp; rules</Link></li>
-            <li><Link href={"/help" as never} className="hover:text-text">Help &amp; support</Link></li>
-          </ul>
-        </div>
+        <FooterCol heading="Fairness" sw="Uadilifu">
+          <FooterLink href="/fairness">Provably-fair Mapigo</FooterLink>
+          <FooterLink href="/legal/terms">Game RTP &amp; rules</FooterLink>
+          <FooterLink href="/help">Help &amp; support</FooterLink>
+        </FooterCol>
 
-        <div className="space-y-1.5">
-          <p className="font-bold uppercase tracking-[0.16em] text-text-secondary">Privacy · Faragha</p>
-          <ul className="space-y-1 text-text-tertiary">
-            <li><Link href={"/legal/privacy" as never} className="hover:text-text">Privacy notice</Link></li>
-            <li><Link href={"/legal/aml" as never} className="hover:text-text">AML / KYC policy</Link></li>
-            <li><Link href={"/legal/terms" as never} className="hover:text-text">Terms of service</Link></li>
-            <li><Link href={"/profile/account" as never} className="hover:text-text">Export / close my account</Link></li>
-          </ul>
-        </div>
+        <FooterCol heading="Privacy" sw="Faragha">
+          <FooterLink href="/legal/privacy">Privacy notice</FooterLink>
+          <FooterLink href="/legal/aml">AML / KYC policy</FooterLink>
+          <FooterLink href="/legal/terms">Terms of service</FooterLink>
+          <FooterLink href="/profile/account">Export / close my account</FooterLink>
+        </FooterCol>
       </div>
     </footer>
+  );
+}
+
+function FooterCol({
+  heading, sw, children,
+}: { heading: string; sw: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">
+        {heading} <span className="opacity-70 font-normal italic normal-case tracking-normal">· {sw}</span>
+      </p>
+      <ul className="space-y-1.5">{children}</ul>
+    </div>
+  );
+}
+
+function FooterLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <li>
+      <Link
+        href={href as never}
+        className="text-text-muted hover:text-text transition-colors"
+      >
+        {children}
+      </Link>
+    </li>
   );
 }
