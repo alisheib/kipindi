@@ -208,10 +208,7 @@ function Empty({ kind, title, titleSw, body, bodySw }: { kind: "positions" | "de
       bodySw={bodySw}
       action={
         kind === "positions" ? (
-          <Link
-            href={"/markets" as never}
-            className="inline-flex h-9 items-center px-4 rounded-pill bg-yes-500 font-semibold text-yes-950 hover:bg-yes-400 transition-colors text-[13px]"
-          >
+          <Link href={"/markets" as never} className="btn btn-gold btn-sm">
             Browse markets →
           </Link>
         ) : null

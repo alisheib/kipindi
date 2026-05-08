@@ -83,10 +83,7 @@ export default async function WithdrawPage() {
                 Sheria ya Bodi ya Michezo ya Kubahatisha inahitaji NIDA.
               </span>
             </p>
-            <Link
-              href="/profile/kyc"
-              className="mt-3 inline-flex h-9 items-center px-4 rounded-pill bg-gold-500 hover:bg-gold-400 text-gold-fg font-display font-bold text-[12.5px] transition-colors"
-            >
+            <Link href="/profile/kyc" className="btn btn-gold btn-sm mt-3">
               Continue KYC →
             </Link>
           </div>
