@@ -78,21 +78,41 @@ export default async function AdminLoginPage() {
                   required
                   inputMode="numeric"
                   pattern="[0-9]{9}"
+                  maxLength={9}
                   placeholder="712 345 678"
                   autoComplete="tel"
                   className="input input-mono"
+                  onInput={undefined /* digits-only enforced by pattern + maxLength on the legacy admin shell */}
                 />
               </div>
             </div>
+            <div>
+              <label
+                htmlFor="password"
+                className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-1.5"
+              >
+                Password · Nenosiri
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                minLength={8}
+                autoComplete="current-password"
+                placeholder="••••••••"
+                className="input"
+              />
+            </div>
             <button type="submit" className="btn btn-gold btn-xl w-full" style={{ borderRadius: 999 }}>
               <Lock size={15} aria-hidden />
-              Send OTP · Tuma msimbo
+              Sign in · Ingia
             </button>
           </form>
 
           <div className="relative flex items-center gap-2 pt-3 border-t border-border font-mono text-[11px] text-text-subtle">
             <Smartphone size={11} aria-hidden />
-            <span>You will be prompted for your authenticator code after OTP.</span>
+            <span>If TOTP is enabled on your account you will be prompted next.</span>
           </div>
         </section>
 

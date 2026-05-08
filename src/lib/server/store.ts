@@ -7,6 +7,11 @@
 export type StoredUser = {
   id: string;
   phoneE164: string;
+  /** scrypt(password, passwordSalt) hex. Optional only because legacy
+   *  rows created during the OTP-only era have neither — those accounts
+   *  must set a password on next login. */
+  passwordHash: string | null;
+  passwordSalt: string | null;
   role: "PLAYER" | "AGENT" | "MODERATOR" | "ADMIN" | "COMPLIANCE" | "SUPPORT";
   status: "ACTIVE" | "PENDING_KYC" | "SUSPENDED" | "SELF_EXCLUDED" | "COOLED_OFF" | "CLOSED";
   locale: "EN" | "SW";

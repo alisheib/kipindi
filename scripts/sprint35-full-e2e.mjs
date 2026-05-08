@@ -59,31 +59,18 @@ const p = await ctx.newPage();
 await p.goto(`${BASE}/auth/register`, { waitUntil: "networkidle" });
 await p.fill('input[name="phone"]', phoneTail);
 await p.fill('input[name="dob"]', "1990-01-15");
+await p.fill('input[name="password"]', "TestPass123!");
+await p.fill('input[name="passwordConfirm"]', "TestPass123!");
 await p.check('input[name="acceptAge"]');
 await p.check('input[name="acceptTerms"]');
 await Promise.all([
-  p.waitForURL(/\/auth\/otp/, { timeout: 10_000 }).catch(() => null),
+  p.waitForURL(u => !/\/auth\/register/.test(u.toString()), { timeout: 15_000 }).catch(() => null),
   p.click('button[type="submit"]'),
 ]);
-log("1a register form posts → /auth/otp", /\/auth\/otp/.test(p.url()), p.url());
-
-// Fetch the OTP via the dev test endpoint
-let code;
-try {
-  code = await fetchOtp(phoneE164);
-  log("1b OTP fetched from test endpoint", /^\d{6}$/.test(code), `code=${code}`);
-} catch (e) {
-  log("1b OTP fetch failed", false, String(e?.message ?? e));
-  await browser.close();
-  process.exit(1);
-}
-
-await p.fill('input[name="code"]', code);
-await Promise.all([
-  p.waitForURL(/^(?!.*\/auth\/otp).*$/, { timeout: 10_000 }).catch(() => null),
-  p.click('button[type="submit"]'),
-]);
-log("1c OTP verifies → out of /auth/otp", !/\/auth\/otp/.test(p.url()), p.url());
+log("1a register form posts → out of /auth/register", !/\/auth\/register/.test(p.url()), p.url());
+log("1b session created (no OTP step)", /\/profile\/kyc|\/$|welcome=/.test(p.url()), p.url());
+// 1c is a no-op for password flow; keep numbering stable for downstream code.
+log("1c registration complete", !/\/auth\//.test(p.url()) || /welcome=/.test(p.url()), p.url());
 
 // ── 2 · Starter balance ──────────────────────────────────────────────────
 console.log("\n=== 2 · STARTER BALANCE ===");

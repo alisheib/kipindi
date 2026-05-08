@@ -1,12 +1,47 @@
 import Link from "next/link";
+import { AlertCircle } from "lucide-react";
 import { FiftyLockup } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { Field, Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { startRegisterAction } from "./actions";
 
 export const metadata = { title: "Create account · Fungua akaunti" };
 
-export default function RegisterPage() {
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ phone?: string; error?: string; message?: string }>;
+}) {
+  const sp = await searchParams;
+  const phoneDefault = (sp.phone ?? "").replace(/^\+255/, "").replace(/\D+/g, "").slice(0, 9);
+
+  const errorPanel = (() => {
+    if (!sp.error) return null;
+    if (sp.error === "exists") {
+      return {
+        tone: "warning" as const,
+        title: "Account already exists · Akaunti tayari ipo",
+        body: "That phone is already registered. Sign in with your password.",
+        cta: { href: `/auth/login?phone=${encodeURIComponent(phoneDefault)}`, label: "Sign in · Ingia" },
+      };
+    }
+    if (sp.error === "rate_limited") {
+      return {
+        tone: "warning" as const,
+        title: "Too many tries · Majaribio mengi",
+        body: "Wait a couple of minutes and try again.",
+        cta: null,
+      };
+    }
+    return {
+      tone: "danger" as const,
+      title: "Could not create account",
+      body: sp.message ?? "Check the form fields and try again.",
+      cta: null,
+    };
+  })();
+
   return (
     <main className="relative min-h-[calc(100vh-44px)] grid place-items-center overflow-hidden px-3 py-8">
       <BrandTopo opacity={0.05} />
@@ -32,24 +67,74 @@ export default function RegisterPage() {
             </p>
           </div>
 
+          {errorPanel && (
+            <div
+              role="alert"
+              className={
+                "flex items-start gap-2.5 rounded-md border px-3.5 py-3 " +
+                (errorPanel.tone === "danger"
+                  ? "border-no-700/60 bg-no-500/[0.10]"
+                  : "border-warning-border bg-warning-bg/30")
+              }
+            >
+              <AlertCircle
+                size={16}
+                className={"mt-0.5 shrink-0 " + (errorPanel.tone === "danger" ? "text-no-300" : "text-gold-300")}
+              />
+              <div className="text-[12.5px] leading-snug">
+                <p className="font-display font-semibold text-text">{errorPanel.title}</p>
+                <p className="mt-0.5 text-text-muted">{errorPanel.body}</p>
+                {errorPanel.cta && (
+                  <Link
+                    href={errorPanel.cta.href as never}
+                    className="mt-2 inline-flex h-9 items-center px-3.5 rounded-pill border border-gold-700 bg-gold-500/10 font-display font-bold text-[12.5px] text-gold-300 hover:bg-gold-500/20 transition-colors"
+                  >
+                    {errorPanel.cta.label} →
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
+
           <form action={startRegisterAction} className="space-y-4">
-            <Field label="Phone · Simu" hint="Tanzania mobile number.">
-              <Input
+            <Field label="Phone · Simu" hint="9 digits after +255 (e.g. 712 345 678).">
+              <PhoneInput
                 id="phone"
                 name="phone"
-                type="tel"
                 required
-                inputMode="numeric"
-                autoComplete="tel"
-                placeholder="712 345 678"
+                defaultValue={phoneDefault}
                 size="lg"
-                mono
-                prefix="+255"
               />
             </Field>
 
-            <Field label="Date of birth · Tarehe ya kuzaliwa" hint="Must be 18 or older. Lazima uwe na miaka 18+.">
+            <Field label="Date of birth · Tarehe ya kuzaliwa" hint="You must be 18 or older. Lazima uwe na miaka 18+.">
               <Input id="dob" name="dob" type="date" required mono size="lg" />
+            </Field>
+
+            <Field label="Password · Nenosiri" hint="At least 8 characters.">
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                required
+                autoComplete="new-password"
+                minLength={8}
+                size="lg"
+                placeholder="••••••••"
+              />
+            </Field>
+
+            <Field label="Confirm password · Thibitisha nenosiri">
+              <Input
+                id="passwordConfirm"
+                name="passwordConfirm"
+                type="password"
+                required
+                autoComplete="new-password"
+                minLength={8}
+                size="lg"
+                placeholder="••••••••"
+              />
             </Field>
 
             <fieldset className="space-y-2 pt-1">
@@ -80,7 +165,7 @@ export default function RegisterPage() {
             </fieldset>
 
             <button type="submit" className="btn btn-gold btn-lg w-full">
-              Send verification code · Tuma msimbo
+              Create account · Fungua akaunti
             </button>
           </form>
 

@@ -10,12 +10,21 @@
 import { headers } from "next/headers";
 import { audit } from "./audit";
 import { db } from "./store";
-import { generateOtp, hashOtp, randomId, verifyOtp } from "./crypto";
+import { generateOtp, hashOtp, hashPassword, randomId, verifyOtp, verifyPassword } from "./crypto";
 import { rateCheck } from "./rate-limit";
 import { sms, otpMessage } from "./sms";
 import { LoginRequestSchema, OtpVerifySchema, RegisterSchema } from "./validators";
 import type { z } from "zod";
 import { createSession, destroySession, getSession, type SessionData } from "./session";
+
+/** Phone numbers Ali wants auto-promoted to ADMIN on first registration.
+ *  Set ADMIN_BOOTSTRAP_PHONES=+255712345678,+255700000000 in env. */
+function adminBootstrapPhones(): Set<string> {
+  return new Set(
+    (process.env.ADMIN_BOOTSTRAP_PHONES ?? "")
+      .split(",").map(s => s.trim()).filter(Boolean)
+  );
+}
 
 const OTP_TTL_MS = 5 * 60 * 1000;
 const TERMS_VERSION = "2026-04-01";
@@ -165,6 +174,8 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
     user = db.user.create({
       id: `usr_${randomId(12)}`,
       phoneE164: phone,
+      passwordHash: null,
+      passwordSalt: null,
       role: "PLAYER",
       status: "PENDING_KYC",
       locale: "SW",
@@ -228,4 +239,160 @@ export async function logout(): Promise<void> {
 
 export async function currentSession(): Promise<SessionData | null> {
   return getSession();
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Password-based auth — interim path while SMS provider is unsigned.
+// OTP code above is preserved verbatim; flip back by routing the auth
+// pages to startLoginAction / startRegisterAction instead of these.
+// ─────────────────────────────────────────────────────────────────────
+
+const PASSWORD_MIN = 8;
+
+export type PasswordRegisterInput = {
+  phone: string;            // E.164, e.g. +255712345678
+  password: string;
+  passwordConfirm: string;
+  dob: string;              // YYYY-MM-DD
+  acceptTerms: boolean;
+  acceptAge: boolean;
+  marketingOptIn?: boolean;
+};
+
+export async function registerWithPassword(input: PasswordRegisterInput): Promise<ServiceResult<{ userId: string }>> {
+  // Validate the non-password parts via the existing schema, then add
+  // password rules ourselves so we don't bend the OTP-era validators.
+  const baseParse = RegisterSchema.safeParse({
+    phone: input.phone,
+    dob: input.dob,
+    acceptTerms: input.acceptTerms,
+    acceptAge: input.acceptAge,
+    marketingOptIn: input.marketingOptIn ?? false,
+  });
+  if (!baseParse.success) return { ok: false, error: baseParse.error.errors[0]?.message ?? "Invalid input", code: "INVALID" };
+  if (!input.password || input.password.length < PASSWORD_MIN) {
+    return { ok: false, error: `Password must be at least ${PASSWORD_MIN} characters.`, code: "INVALID" };
+  }
+  if (input.password !== input.passwordConfirm) {
+    return { ok: false, error: "Passwords do not match.", code: "INVALID" };
+  }
+  if (/^\s|\s$/.test(input.password)) {
+    return { ok: false, error: "Password cannot start or end with a space.", code: "INVALID" };
+  }
+
+  const phone = baseParse.data.phone;
+  const meta = await clientMeta();
+
+  const rl = rateCheck(phone, "auth.register");
+  if (!rl.allowed) return { ok: false, error: "Too many attempts. Please wait.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
+
+  if (db.user.findByPhone(phone)) {
+    audit({ category: "AUTH", action: "register.duplicate_phone", actorId: null, targetType: "Phone", targetId: phone, ip: meta.ip });
+    return { ok: false, error: "An account with that phone already exists.", code: "ALREADY_EXISTS" };
+  }
+
+  const salt = randomId(16);
+  const hash = hashPassword(input.password, salt);
+
+  // First-admin bootstrap: any phone listed in ADMIN_BOOTSTRAP_PHONES gets
+  // the ADMIN role + ACTIVE status (no KYC) the moment they sign up.
+  const bootstrapAdmins = adminBootstrapPhones();
+  const isBootstrapAdmin = bootstrapAdmins.has(phone);
+
+  const user = db.user.create({
+    id: `usr_${randomId(12)}`,
+    phoneE164: phone,
+    passwordHash: hash,
+    passwordSalt: salt,
+    role: isBootstrapAdmin ? "ADMIN" : "PLAYER",
+    status: isBootstrapAdmin ? "ACTIVE" : "PENDING_KYC",
+    locale: "SW",
+    displayName: null,
+    dob: baseParse.data.dob,
+    region: null,
+    acceptedTermsVersion: TERMS_VERSION,
+    acceptedTermsAt: new Date().toISOString(),
+    marketingOptIn: baseParse.data.marketingOptIn ?? false,
+    twoFactorEnabled: false,
+    avatarDataUrl: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    lastLoginAt: new Date().toISOString(),
+    closedAt: null,
+  });
+
+  // Auto-create wallet at the configured starter balance.
+  const { getEffectiveConfig } = await import("./market-config");
+  const starterBalance = getEffectiveConfig().starterBalanceTzs ?? 0;
+  db.wallet.create({
+    id: `wlt_${randomId(12)}`,
+    userId: user.id,
+    balance: starterBalance, pending: 0, hold: 0,
+    currency: "TZS", status: "ACTIVE",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+  if (starterBalance > 0) {
+    audit({ category: "WALLET", action: "wallet.starter_credit", actorId: user.id, targetType: "Wallet", targetId: user.id, payload: { amount: starterBalance } });
+  }
+
+  audit({
+    category: "AUTH",
+    action: isBootstrapAdmin ? "user.registered.admin_bootstrap" : "user.registered",
+    actorId: user.id, targetType: "User", targetId: user.id,
+    payload: { phone, role: user.role },
+  });
+
+  await createSession({
+    userId: user.id,
+    phoneE164: user.phoneE164,
+    role: user.role,
+    kycStatus: "NOT_STARTED",
+  });
+
+  return { ok: true, data: { userId: user.id } };
+}
+
+export type PasswordLoginInput = { phone: string; password: string };
+
+export async function loginWithPassword(input: PasswordLoginInput): Promise<ServiceResult<{ userId: string; role: string }>> {
+  const parse = LoginRequestSchema.safeParse({ phone: input.phone });
+  if (!parse.success) return { ok: false, error: parse.error.errors[0]?.message ?? "Invalid phone.", code: "INVALID" };
+  const phone = parse.data.phone;
+  const meta = await clientMeta();
+
+  const rl = rateCheck(phone, "auth.login");
+  if (!rl.allowed) return { ok: false, error: "Too many attempts. Please wait.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
+
+  const user = db.user.findByPhone(phone);
+  if (!user) {
+    audit({ category: "SECURITY", action: "auth.login.unknown_phone", actorId: null, targetType: "Phone", targetId: phone, ip: meta.ip });
+    return { ok: false, error: "No account with that phone. Create one to get started.", code: "NOT_FOUND" };
+  }
+  if (user.status === "SELF_EXCLUDED") {
+    audit({ category: "COMPLIANCE", action: "auth.blocked_self_excluded", actorId: user.id, targetType: "User", targetId: user.id });
+    return { ok: false, error: "Your account is in self-exclusion.", code: "SUSPENDED" };
+  }
+  if (user.status === "SUSPENDED" || user.status === "CLOSED") {
+    return { ok: false, error: "Account unavailable. Contact support.", code: "SUSPENDED" };
+  }
+  if (!user.passwordHash || !user.passwordSalt) {
+    return { ok: false, error: "This account has no password yet. Use the OTP flow or contact support.", code: "INVALID" };
+  }
+  if (!verifyPassword(input.password, user.passwordSalt, user.passwordHash)) {
+    audit({ category: "SECURITY", action: "auth.login.bad_password", actorId: user.id, targetType: "User", targetId: user.id, ip: meta.ip });
+    return { ok: false, error: "Wrong phone or password.", code: "INVALID" };
+  }
+
+  db.user.update(user.id, { lastLoginAt: new Date().toISOString() });
+  audit({ category: "AUTH", action: "user.login.password", actorId: user.id, targetType: "User", targetId: user.id, ip: meta.ip, userAgent: meta.ua });
+
+  await createSession({
+    userId: user.id,
+    phoneE164: user.phoneE164,
+    role: user.role,
+    kycStatus: db.kyc.findByUserId(user.id)?.status ?? "NOT_STARTED",
+  });
+
+  return { ok: true, data: { userId: user.id, role: user.role } };
 }

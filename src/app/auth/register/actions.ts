@@ -1,9 +1,43 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { requestRegisterOtp } from "@/lib/server/auth-service";
+import { registerWithPassword, requestRegisterOtp } from "@/lib/server/auth-service";
 
+/**
+ * Phone + password registration. The OTP-only path
+ * `requestRegisterOtp` is preserved below — flip back when the SMS
+ * provider contract is signed by routing the form to it again.
+ */
 export async function startRegisterAction(formData: FormData) {
+  const phone = String(formData.get("phone") ?? "");
+  const password = String(formData.get("password") ?? "");
+  const passwordConfirm = String(formData.get("passwordConfirm") ?? "");
+  const dob = String(formData.get("dob") ?? "");
+  const acceptTerms = formData.get("acceptTerms") === "on" || formData.get("acceptTerms") === "true";
+  const acceptAge = formData.get("acceptAge") === "on" || formData.get("acceptAge") === "true";
+  const marketingOptIn = formData.get("marketingOptIn") === "on";
+
+  const result = await registerWithPassword({
+    phone, password, passwordConfirm, dob,
+    acceptTerms, acceptAge, marketingOptIn,
+  });
+
+  if (!result.ok) {
+    const params = new URLSearchParams({
+      phone,
+      error: result.code === "ALREADY_EXISTS" ? "exists"
+        : result.code === "RATE_LIMITED" ? "rate_limited"
+        : "invalid",
+      message: result.error,
+    });
+    redirect(`/auth/register?${params.toString()}`);
+  }
+
+  redirect("/profile/kyc?welcome=new");
+}
+
+/** Legacy OTP-driven registration — re-enable once SMS provider goes live. */
+export async function startRegisterOtpAction(formData: FormData) {
   const phone = String(formData.get("phone") ?? "");
   const dob = String(formData.get("dob") ?? "");
   const acceptTerms = formData.get("acceptTerms") === "on" || formData.get("acceptTerms") === "true";

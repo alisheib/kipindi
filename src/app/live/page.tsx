@@ -104,7 +104,7 @@ export default function LivePage() {
           <div className="rounded-xl border border-dashed border-border bg-bg-elevated/40 p-20 text-center">
             <p className="font-display text-[20px] font-semibold text-text">No markets live right now</p>
             <p className="mt-1 text-[14px] italic text-text-subtle">Hakuna soko hai sasa hivi.</p>
-            <Link href={"/markets" as never} className="mt-4 inline-flex h-10 items-center px-5 rounded-pill bg-yes-500 font-semibold text-yes-950 hover:bg-yes-400 transition-colors">
+            <Link href={"/markets" as never} className="btn btn-gold btn-md mt-4">
               Browse all markets →
             </Link>
           </div>
@@ -136,7 +136,7 @@ export default function LivePage() {
                   {markets[0].titleEn}
                 </h2>
                 <TippingBar yesPct={markets[0].yesPct} height={36} showLabels />
-                <Link href={`/markets/${markets[0].id}` as never} className="mt-5 inline-flex h-11 items-center gap-2 rounded-pill bg-yes-500 px-6 font-display font-bold text-yes-950 hover:bg-yes-400 transition-colors">
+                <Link href={`/markets/${markets[0].id}` as never} className="btn btn-gold btn-lg mt-5">
                   Open market →
                 </Link>
               </section>

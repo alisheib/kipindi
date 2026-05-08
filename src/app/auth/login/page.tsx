@@ -3,6 +3,7 @@ import { AlertCircle } from "lucide-react";
 import { FiftyLockup } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { Field, Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { startLoginAction } from "./actions";
 
 export const metadata = { title: "Sign in · Ingia" };
@@ -13,7 +14,7 @@ export default async function LoginPage({
   searchParams: Promise<{ phone?: string; error?: string }>;
 }) {
   const sp = await searchParams;
-  const phoneDefault = sp.phone ?? "";
+  const phoneDefault = (sp.phone ?? "").replace(/^\+255/, "").replace(/\D+/g, "").slice(0, 9);
 
   const errorPanel = (() => {
     switch (sp.error) {
@@ -21,9 +22,15 @@ export default async function LoginPage({
         return {
           tone: "warning" as const,
           title: "No account yet · Bado huna akaunti",
-          body:
-            "We couldn't find an account for that phone. Create one in 30 seconds — TZS 10,000 lands in your wallet on sign-up.",
+          body: "We couldn't find an account for that phone. Create one in 30 seconds — TZS 10,000 lands in your wallet on sign-up.",
           cta: { href: "/auth/register", label: "Create account · Fungua akaunti" },
+        };
+      case "wrong_credentials":
+        return {
+          tone: "danger" as const,
+          title: "Wrong phone or password · Simu au nenosiri si sahihi",
+          body: "Check the digits and try again. After several failed tries we'll slow you down.",
+          cta: null,
         };
       case "rate_limited":
         return {
@@ -64,8 +71,8 @@ export default async function LoginPage({
               Continue with your phone
             </h1>
             <p className="mt-1.5 text-[13.5px] text-text-muted">
-              We&apos;ll send a 6-digit code.{" "}
-              <span className="italic text-text-subtle">Tutatuma msimbo wa tarakimu 6.</span>
+              Enter your phone and password.{" "}
+              <span className="italic text-text-subtle">Weka simu na nenosiri.</span>
             </p>
           </div>
 
@@ -99,23 +106,31 @@ export default async function LoginPage({
           )}
 
           <form action={startLoginAction} className="space-y-4">
-            <Field label="Phone · Simu" hint="Tanzania mobile number.">
-              <Input
+            <Field label="Phone · Simu" hint="Tanzania mobile, 9 digits after +255.">
+              <PhoneInput
                 id="phone"
                 name="phone"
-                type="tel"
-                inputMode="numeric"
-                autoComplete="tel"
                 required
-                defaultValue={phoneDefault.replace(/^\+255/, "")}
-                placeholder="712 345 678"
+                defaultValue={phoneDefault}
                 size="lg"
-                mono
-                prefix="+255"
               />
             </Field>
+
+            <Field label="Password · Nenosiri" hint="At least 8 characters.">
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                required
+                autoComplete="current-password"
+                minLength={8}
+                size="lg"
+                placeholder="••••••••"
+              />
+            </Field>
+
             <button type="submit" className="btn btn-gold btn-lg w-full">
-              Send code · Tuma msimbo
+              Sign in · Ingia
             </button>
           </form>
 

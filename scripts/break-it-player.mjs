@@ -34,16 +34,12 @@ async function register(ctx) {
   await p.goto(`${BASE}/auth/register`, { waitUntil: "networkidle" });
   await p.fill('input[name="phone"]', tail);
   await p.fill('input[name="dob"]', "1990-01-15");
+  await p.fill('input[name="password"]', "TestPass123!");
+  await p.fill('input[name="passwordConfirm"]', "TestPass123!");
   await p.check('input[name="acceptAge"]');
   await p.check('input[name="acceptTerms"]');
   await Promise.all([
-    p.waitForURL(/auth\/otp/, { timeout: 15_000 }).catch(() => null),
-    p.click('button[type="submit"]'),
-  ]);
-  const code = await fetchOtp(e164);
-  await p.fill('input[name="code"]', code);
-  await Promise.all([
-    p.waitForURL(u => !/auth\/otp/.test(u.toString()), { timeout: 15_000 }).catch(() => null),
+    p.waitForURL(u => !/auth\/register/.test(u.toString()), { timeout: 15_000 }).catch(() => null),
     p.click('button[type="submit"]'),
   ]);
   await p.close();

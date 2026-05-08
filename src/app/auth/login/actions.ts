@@ -1,15 +1,39 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { requestLoginOtp, verifyOtpAndAuth } from "@/lib/server/auth-service";
+import { loginWithPassword, requestLoginOtp, verifyOtpAndAuth } from "@/lib/server/auth-service";
 
+/**
+ * Phone + password sign-in. The OTP path below is preserved verbatim;
+ * route /auth/login back to startLoginOtpAction once SMS provider is
+ * signed and the OTP delivery is reliable.
+ */
 export async function startLoginAction(formData: FormData) {
+  const phone = String(formData.get("phone") ?? "");
+  const password = String(formData.get("password") ?? "");
+  const result = await loginWithPassword({ phone, password });
+  if (!result.ok) {
+    const params = new URLSearchParams({
+      phone,
+      error: result.code === "NOT_FOUND" ? "no_account"
+        : result.code === "RATE_LIMITED" ? "rate_limited"
+        : result.code === "SUSPENDED" ? "blocked"
+        : "wrong_credentials",
+    });
+    redirect(`/auth/login?${params.toString()}`);
+  }
+  // Admins land directly in /admin; players go to the pulse.
+  if (result.data?.role && result.data.role !== "PLAYER" && result.data.role !== "AGENT") {
+    redirect("/admin");
+  }
+  redirect("/?welcome=back");
+}
+
+/** Legacy OTP login — re-enable once SMS goes live. */
+export async function startLoginOtpAction(formData: FormData) {
   const phoneRaw = String(formData.get("phone") ?? "");
   const result = await requestLoginOtp({ phone: phoneRaw });
   if (!result.ok) {
-    // Surface the no-account case via redirect-with-flash so the login
-    // page can render a clear "Create one" link. Other errors fall back
-    // to the same query-param channel.
     const params = new URLSearchParams({
       phone: phoneRaw,
       error: result.code === "NOT_FOUND" ? "no_account" : result.code === "RATE_LIMITED" ? "rate_limited" : "blocked",
