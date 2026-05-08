@@ -24,7 +24,22 @@ export async function verifyLoginOtpAction(formData: FormData) {
   const code = String(formData.get("code") ?? "");
   const purpose = String(formData.get("purpose") ?? "login") as "login" | "register" | "withdraw" | "reauth" | "self_exclusion";
   const result = await verifyOtpAndAuth({ phone, code, purpose });
-  if (!result.ok) return { ok: false as const, error: result.error, code: result.code };
-  if (result.data?.isNew) redirect("/profile/kyc");
-  redirect("/");
+  if (!result.ok) {
+    // Surface OTP errors back on the OTP page via query-param flash so
+    // the user sees what went wrong (wrong code / expired / rate-limited).
+    const params = new URLSearchParams({
+      purpose,
+      phone,
+      error: result.code === "INVALID" ? "wrong_code"
+        : result.code === "EXPIRED" ? "expired"
+        : result.code === "TOO_MANY_ATTEMPTS" ? "too_many"
+        : result.code === "RATE_LIMITED" ? "rate_limited"
+        : "failed",
+    });
+    redirect(`/auth/otp?${params.toString()}`);
+  }
+  // Success — fire a "welcome" flash on the destination so the user
+  // gets clear confirmation that the auth completed.
+  if (result.data?.isNew) redirect("/profile/kyc?welcome=new");
+  redirect("/?welcome=back");
 }

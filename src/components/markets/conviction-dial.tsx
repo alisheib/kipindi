@@ -218,6 +218,39 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
     setConfirmOpen(true);
   };
 
+  /** Translate a server error message into a user-friendly title + body
+   *  + variant. International betting platforms always close the betting
+   *  popup on resolution and fire a clear toast — never leave a half-open
+   *  modal with a generic banner inside. */
+  const errorToToast = (err: string): { title: string; body: string; variant: "danger" | "warning" } => {
+    const e = err.toLowerCase();
+    if (e.includes("balance") || e.includes("funds") || e.includes("wallet"))
+      return {
+        title: "Insufficient balance · Salio halitoshi",
+        body: "Top up your wallet to place this stake. Tap Wallet → Deposit.",
+        variant: "danger",
+      };
+    if (e.includes("closed") || e.includes("resolv") || e.includes("voided"))
+      return {
+        title: "Market is closed · Soko limefungwa",
+        body: "This market has stopped accepting predictions.",
+        variant: "warning",
+      };
+    if (e.includes("self") && e.includes("exclu"))
+      return {
+        title: "Account in self-exclusion",
+        body: "Predictions are paused. Manage in Profile → Responsible gambling.",
+        variant: "warning",
+      };
+    if (e.includes("rate") || e.includes("limit"))
+      return {
+        title: "Slow down · Subiri",
+        body: "Too many attempts in a row. Try again in a moment.",
+        variant: "warning",
+      };
+    return { title: "Could not place", body: err, variant: "danger" };
+  };
+
   const submit = () => {
     if (side === "NEUTRAL" || pending) return;
     startTransition(async () => {
@@ -226,24 +259,27 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
       fd.set("side", side);
       fd.set("stake", String(stake));
       const r = await buyPositionAction(fd);
+      // Whether success or failure, the modal MUST close — leaving it
+      // open with the same locked quote was racing into double-place.
+      setConfirmOpen(false);
       if (!r.ok) {
-        toast({ title: "Could not place", description: r.error, variant: "danger" });
-      } else {
-        toast({
-          title: `${side} · TZS ${fmt(stake)}`,
-          description: `If correct, you receive TZS ${fmt(r.data!.payoutIfWin)}`,
-          variant: "success",
-        });
-        // Record the side the user took on this market — the NotifyPoller
-        // uses this to fire the WinCelebration only when the resolution
-        // matches what the user actually picked.
-        try {
-          const key = `50pick-bet-${marketId}`;
-          localStorage.setItem(key, JSON.stringify({ side, stake, payoutIfWin: r.data!.payoutIfWin }));
-        } catch { /* private browsing */ }
-        setConfirmOpen(false);
-        router.refresh();
+        const t = errorToToast(r.error);
+        toast({ title: t.title, description: t.body, variant: t.variant });
+        return;
       }
+      toast({
+        title: `Bet placed · ${side} TZS ${fmt(stake)}`,
+        description: `If correct, you receive TZS ${fmt(r.data!.payoutIfWin)}.`,
+        variant: "success",
+      });
+      // Record the side the user took on this market — the NotifyPoller
+      // uses this to fire the WinCelebration only when the resolution
+      // matches what the user actually picked.
+      try {
+        const key = `50pick-bet-${marketId}`;
+        localStorage.setItem(key, JSON.stringify({ side, stake, payoutIfWin: r.data!.payoutIfWin }));
+      } catch { /* private browsing */ }
+      router.refresh();
     });
   };
 

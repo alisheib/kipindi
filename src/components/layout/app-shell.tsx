@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import { TopAppBar } from "./top-app-bar";
 import { BottomNav } from "./bottom-nav";
 import { PublicFooter } from "./public-footer";
+import { AuthFlash } from "./auth-flash";
 import { NotifyPoller } from "@/components/markets/notify-poller";
 import { WinCelebrationHost } from "@/components/markets/win-celebration";
 import { getSession } from "@/lib/server/session";
@@ -49,6 +51,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <RealityCheckHost enabled={!!session} intervalMin={realityCheckMin} />
       <NotifyPoller />
       <WinCelebrationHost />
+      <Suspense fallback={null}>
+        <AuthFlash />
+      </Suspense>
     </div>
   );
 }

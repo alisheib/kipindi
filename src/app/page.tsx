@@ -36,10 +36,10 @@ export default function LandingPage() {
         className="relative overflow-hidden rounded-2xl"
         style={{
           background:
-            "radial-gradient(ellipse 90% 70% at 75% 30%, oklch(28% 0.16 258) 0%, oklch(38% 0.20 258) 60%, oklch(34% 0.18 258) 100%)",
+            "radial-gradient(ellipse 90% 70% at 75% 30%, oklch(24% 0.150 268) 0%, oklch(20% 0.135 268) 60%, oklch(15% 0.130 268) 100%)",
           border: "1px solid oklch(78% 0.13 80)",
           boxShadow:
-            "0 1px 0 oklch(78% 0.13 80 / 0.40) inset, 0 24px 60px -30px oklch(8% 0.05 258 / 0.70)",
+            "0 1px 0 oklch(78% 0.13 80 / 0.40) inset, 0 24px 60px -30px oklch(8% 0.05 268 / 0.70)",
         }}
       >
         <BrandTopo id="hero" opacity={0.06} />
@@ -56,7 +56,7 @@ export default function LandingPage() {
         <div className="relative px-8 py-12 md:px-16 md:py-16 flex flex-col gap-7">
           {/* Top row — lockup left, "Concept platform" caption right */}
           <div className="flex items-center justify-between gap-4">
-            <FiftyLockup size={24} color="oklch(99% 0.006 258)" />
+            <FiftyLockup size={24} color="oklch(99% 0.006 268)" />
             <div className="hidden sm:flex items-center gap-2.5 font-mono text-[11px] uppercase tracking-[0.16em]" style={{ color: "oklch(78% 0.13 80)" }}>
               <span style={{ width: 6, height: 6, borderRadius: 999, background: "oklch(78% 0.13 80)" }} />
               Tanzania · Concept platform · Not a live product
@@ -73,7 +73,7 @@ export default function LandingPage() {
           {/* The headline — "wisdom" carries the gilt vertical gradient */}
           <h1
             className="font-display font-bold text-[44px] sm:text-[60px] md:text-[80px] leading-[1.0] tracking-[-0.035em] max-w-[18ch] m-0"
-            style={{ color: "oklch(99% 0.006 258)" }}
+            style={{ color: "oklch(99% 0.006 268)" }}
           >
             The{" "}
             <span
@@ -102,7 +102,7 @@ export default function LandingPage() {
 
           <p
             className="font-display text-[15px] md:text-[19px] leading-[1.5] max-w-[58ch] m-0"
-            style={{ color: "oklch(82% 0.040 258)" }}
+            style={{ color: "oklch(82% 0.040 268)" }}
           >
             Pesa kidogo, ukweli mkubwa. Trade questions about Tanzania&apos;s weather, markets, sport and culture — settled by official sources.
           </p>
@@ -113,8 +113,8 @@ export default function LandingPage() {
               <div
                 className="max-w-[480px] p-3.5 px-4"
                 style={{
-                  background: "oklch(44% 0.20 258)",
-                  border: "1px solid oklch(60% 0.16 258)",
+                  background: "oklch(30% 0.165 268)",
+                  border: "1px solid oklch(44% 0.150 268)",
                   borderRadius: 12,
                   boxShadow: "0 1px 0 oklch(78% 0.13 80 / 0.20) inset",
                 }}
@@ -127,7 +127,7 @@ export default function LandingPage() {
                 </p>
                 <p
                   className="font-display text-[14px] font-semibold mb-2.5 leading-tight"
-                  style={{ color: "oklch(99% 0.006 258)" }}
+                  style={{ color: "oklch(99% 0.006 268)" }}
                 >
                   {featured.titleEn}
                 </p>

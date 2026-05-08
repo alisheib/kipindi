@@ -60,7 +60,7 @@ export function PriceChart({
               y2={y}
               // Royal-axis gridlines, subtler against the royal canvas; the
               // 50% midline is gilt to anchor the chart heraldically.
-              stroke={p === 0.5 ? "oklch(78% 0.13 80 / 0.55)" : "oklch(60% 0.16 258 / 0.40)"}
+              stroke={p === 0.5 ? "oklch(78% 0.13 80 / 0.55)" : "oklch(60% 0.16 268 / 0.40)"}
               strokeDasharray={p === 0.5 ? "0" : "2 3"}
               strokeWidth="0.6"
             />
@@ -69,7 +69,7 @@ export function PriceChart({
               y={y + 3}
               fontFamily="JetBrains Mono, monospace"
               fontSize="9"
-              fill="oklch(82% 0.06 258)"
+              fill="oklch(82% 0.06 268)"
               letterSpacing="0.05em"
             >
               {Math.round(p * 100)}
@@ -78,13 +78,13 @@ export function PriceChart({
         );
       })}
       {xTicks.map((i) => (
-        <text key={i} x={xs[i]} y={height - 8} fontFamily="JetBrains Mono, monospace" fontSize="9" fill="oklch(82% 0.06 258)" textAnchor="middle">
+        <text key={i} x={xs[i]} y={height - 8} fontFamily="JetBrains Mono, monospace" fontSize="9" fill="oklch(82% 0.06 268)" textAnchor="middle">
           {data[i].t}
         </text>
       ))}
       {showArea && <path d={areaPath} fill="url(#pc-area)" />}
       <path d={linePath} fill="none" stroke="url(#pc-line)" strokeWidth="2" strokeLinejoin="round" />
-      <circle cx={xs[xs.length - 1]} cy={lastY} r="4" fill="oklch(72% 0.13 152)" stroke="oklch(38% 0.20 258)" strokeWidth="2" />
+      <circle cx={xs[xs.length - 1]} cy={lastY} r="4" fill="oklch(72% 0.13 152)" stroke="oklch(38% 0.20 268)" strokeWidth="2" />
       <g transform={`translate(${xs[xs.length - 1] + 8}, ${lastY - 10})`}>
         <rect x="0" y="0" width="46" height="20" rx="4" fill="oklch(34% 0.10 152)" stroke="oklch(58% 0.16 152)" />
         <text

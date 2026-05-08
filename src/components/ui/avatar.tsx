@@ -19,7 +19,7 @@ const sizeClass: Record<Size, string> = {
 };
 
 /** Hash a string to a deterministic offset 0..40. The avatar gradient
- *  always lives on the royal axis (hue 258); we only nudge the hue by a
+ *  always lives on the royal axis (hue 268); we only nudge the hue by a
  *  small amount so each avatar reads as part of the same family. */
 function offsetFor(seed: string): number {
   let h = 0;

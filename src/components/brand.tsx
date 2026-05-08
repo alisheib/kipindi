@@ -39,10 +39,10 @@ export function FiftyMark({
   //   divider    = gilt 86 stroke
   //   gilt pip   = signature mark on the divider midpoint
   //   gilt outer hairline at r-2.4 — the "golden line" the kit specifies
-  const yesColor    = mono ? (inverted ? "oklch(99% 0.006 258)" : "oklch(48% 0.20 258)") : "oklch(58% 0.16 152)";
-  const noColor     = mono ? (inverted ? "oklch(72% 0.020 258)" : "oklch(78% 0.045 258)") : "oklch(60% 0.18 22)";
-  const ringColor   = mono ? (inverted ? "oklch(99% 0.006 258)" : "oklch(48% 0.20 258)") : "oklch(48% 0.20 258)";
-  const numberColor = mono ? (inverted ? "oklch(44% 0.20 258)" : "oklch(99% 0.006 258)") : "oklch(99% 0.006 258)";
+  const yesColor    = mono ? (inverted ? "oklch(99% 0.006 268)" : "oklch(48% 0.20 268)") : "oklch(58% 0.16 152)";
+  const noColor     = mono ? (inverted ? "oklch(72% 0.020 268)" : "oklch(78% 0.045 268)") : "oklch(60% 0.18 22)";
+  const ringColor   = mono ? (inverted ? "oklch(99% 0.006 268)" : "oklch(48% 0.20 268)") : "oklch(48% 0.20 268)";
+  const numberColor = mono ? (inverted ? "oklch(44% 0.20 268)" : "oklch(99% 0.006 268)") : "oklch(99% 0.006 268)";
   const giltStroke  = "oklch(78% 0.13 86)";  // champagne divider
   const giltPip     = "oklch(85% 0.13 86)";  // brighter pip on the divider midpoint
 
@@ -266,10 +266,10 @@ export function TippingBar({
           position: "relative",
           height,
           // Kit values: royal track with royal-edge inset stroke.
-          background: "oklch(50% 0.20 258)",
+          background: "oklch(50% 0.20 268)",
           borderRadius: r,
           overflow: "visible",
-          boxShadow: "inset 0 0 0 1px oklch(58% 0.17 258)",
+          boxShadow: "inset 0 0 0 1px oklch(58% 0.17 268)",
         }}
         role="progressbar"
         aria-valuenow={yes}

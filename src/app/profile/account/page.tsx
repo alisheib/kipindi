@@ -40,7 +40,7 @@ export default async function AccountPage() {
           style={{
             background:
               "radial-gradient(800px 320px at 100% 0%, oklch(45% 0.10 240 / 0.18), transparent 60%), " +
-              "linear-gradient(135deg, oklch(28% 0.16 258) 0%, oklch(40% 0.20 258) 100%)",
+              "linear-gradient(135deg, oklch(22% 0.140 268) 0%, oklch(30% 0.165 268) 100%)",
           }}
         />
         <div className="absolute -right-6 -top-6 opacity-[0.06]" aria-hidden>
