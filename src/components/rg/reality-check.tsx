@@ -134,7 +134,7 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL }: { 
         </p>
 
         <div className="grid grid-cols-1 gap-2 pt-1">
-          <button type="button" onClick={dismiss} className="btn btn-primary btn-lg w-full">
+          <button type="button" onClick={dismiss} className="btn btn-gold btn-lg w-full">
             Continue playing · Endelea
           </button>
           <Link href="/profile/responsible-gambling" className="btn btn-ghost btn-lg w-full inline-flex">

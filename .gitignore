@@ -17,3 +17,17 @@ prisma/migrations/dev.db*
 
 # Test artifacts (regenerated on every run)
 scripts/mobile-audit/
+
+# Local store snapshots (Railway uses /data/50pick-backups via STORE_BACKUP_DIR)
+.50pick-backups/
+.kipindi-backups/
+
+# Local screenshot output
+.50pick-shots/
+
+# TS incremental cache
+tsconfig.tsbuildinfo
+
+# Old design kits
+50Pick  - old/
+50PICK - old/

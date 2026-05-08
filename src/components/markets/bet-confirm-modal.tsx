@@ -45,6 +45,17 @@ export function BetConfirmModal({
   const rafRef = useRef<number | null>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
 
+  // Pin the latest callbacks + pending flag so the timer effect only
+  // restarts when `open` actually flips. Otherwise the parent re-creating
+  // its onCancel arrow each render would restart the 5s countdown forever
+  // and the quote would never auto-expire.
+  const onCancelRef = useRef(onCancel);
+  const onConfirmRef = useRef(onConfirm);
+  const pendingRef = useRef(pending);
+  useEffect(() => { onCancelRef.current = onCancel; }, [onCancel]);
+  useEffect(() => { onConfirmRef.current = onConfirm; }, [onConfirm]);
+  useEffect(() => { pendingRef.current = pending; }, [pending]);
+
   useEffect(() => { setMounted(true); }, []);
 
   // Quote-hold timer — runs while the modal is open.
@@ -61,29 +72,36 @@ export function BetConfirmModal({
         // Quote expired — close so the user re-aims, BUT NEVER while a
         // submit is in flight; cancelling a pending action would race the
         // server and leave a position placed but the modal closed early.
-        if (!pending) onCancel();
+        if (!pendingRef.current) onCancelRef.current();
         return;
       }
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
+    // Belt-and-braces: a setTimeout backstop in case RAF is throttled
+    // (e.g. backgrounded tab, headless test runners). Fires at the same
+    // 5s mark and dismisses if the RAF loop somehow missed it.
+    const backstop = setTimeout(() => {
+      if (!pendingRef.current) onCancelRef.current();
+    }, QUOTE_HOLD_MS + 50);
     return () => {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
+      clearTimeout(backstop);
     };
-  }, [open, onCancel, pending]);
+  }, [open]);
 
   // Focus + keybinds. Esc cannot fire while a submit is in flight.
   useEffect(() => {
     if (!open) return;
     const f = setTimeout(() => confirmRef.current?.focus(), 30);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !pending) { e.preventDefault(); onCancel(); }
-      if (e.key === "Enter" && !pending) { e.preventDefault(); onConfirm(); }
+      if (e.key === "Escape" && !pendingRef.current) { e.preventDefault(); onCancelRef.current(); }
+      if (e.key === "Enter" && !pendingRef.current) { e.preventDefault(); onConfirmRef.current(); }
     };
     window.addEventListener("keydown", onKey);
     return () => { clearTimeout(f); window.removeEventListener("keydown", onKey); };
-  }, [open, pending, onCancel, onConfirm]);
+  }, [open]);
 
   if (!mounted || !open) return null;
 

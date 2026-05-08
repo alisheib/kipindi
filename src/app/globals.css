@@ -281,7 +281,12 @@
 
   /* Hero gradient — sapphire royal + gilt + emerald + rose finishing pass */
   --hero-grad:        linear-gradient(135deg, oklch(28% 0.16 268) 0%, oklch(40% 0.20 268) 100%);
-  --hero-grad-warm:   linear-gradient(160deg, oklch(30% 0.18 268) 0%, oklch(36% 0.20 268) 50%, oklch(28% 0.16 268) 100%);
+  /* Hero "warm" — kit-faithful deep royal radial. Spec: kit/banners.jsx
+     BannerHero (1600×540) uses a radial ellipse 90% 70% at 75% 30% from
+     oklch(24% .15 268) → oklch(20% .135 268) → oklch(15% .13 268). Same
+     hue as the cool hero but deeper / denser, so the eye reads it as
+     premium and supports gold + pearl ink without competing for attention. */
+  --hero-grad-warm:   radial-gradient(ellipse 90% 70% at 75% 30%, oklch(24% 0.150 268) 0%, oklch(20% 0.135 268) 60%, oklch(15% 0.130 268) 100%);
   --hero-mark-opacity: 0.10;
   --hero-text-strong:  var(--pearl-50);
   --hero-text-muted:   var(--pearl-300);
@@ -335,14 +340,14 @@ body {
 .gilt-rule {
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--gilt) 8%, var(--gilt) 92%, transparent);
-  margin: 16px 0;
+  margin-block: 16px;
   opacity: 0.85;
 }
 
 .claret-rule {
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--claret-400) 18%, var(--gilt) 50%, var(--claret-400) 82%, transparent);
-  margin: 16px 0;
+  margin-block: 16px;
   opacity: 0.95;
 }
 

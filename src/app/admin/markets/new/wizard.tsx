@@ -134,7 +134,7 @@ export function NewMarketWizard() {
   );
 }
 
-const inputCls = "w-full h-11 px-3 rounded-md border border-border bg-bg-overlay font-body text-text outline-none focus:border-teal-300 transition-colors";
+const inputCls = "w-full h-11 px-3 rounded-md border border-border bg-bg-overlay font-sans text-text outline-none focus:border-teal-300 transition-colors";
 
 function Section({ title, sw, children }: { title: string; sw: string; children: React.ReactNode }) {
   return (

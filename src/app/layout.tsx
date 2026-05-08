@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Sora, Inter, JetBrains_Mono } from "next/font/google";
+import Script from "next/script";
 import { ThemeProvider, themeBootScript } from "@/components/theme-provider";
 import { AppShell } from "@/components/layout/app-shell";
 import "./globals.css";
@@ -53,11 +54,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const lang = cookieLocale === "sw" || cookieLocale === "fr" ? cookieLocale : "en";
   return (
     <html lang={lang} suppressHydrationWarning className={`${sora.variable} ${inter.variable} ${jbm.variable}`}>
-      <head>
-        {/* Apply theme synchronously, before paint, to avoid FOUC */}
-        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
-      </head>
       <body className="font-sans antialiased">
+        <Script
+          id="theme-boot"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: themeBootScript }}
+        />
         <ThemeProvider>
           <AppShell>{children}</AppShell>
         </ThemeProvider>

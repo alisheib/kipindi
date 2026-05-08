@@ -129,7 +129,7 @@ export function AddSourceForm() {
   }
 
   const inputCls =
-    "w-full h-10 px-3 rounded-md border border-border bg-bg-overlay font-body text-text outline-none focus:border-teal-300 transition-colors";
+    "w-full h-10 px-3 rounded-md border border-border bg-bg-overlay font-sans text-text outline-none focus:border-teal-300 transition-colors";
 
   return (
     <form onSubmit={onSubmit} className="rounded-lg border border-border bg-bg-elevated p-4 space-y-3">
