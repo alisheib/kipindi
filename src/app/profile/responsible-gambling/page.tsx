@@ -5,6 +5,7 @@ import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
 import { getRgSettings } from "@/lib/server/responsible-gambling";
 import { setLimitsAction, selfExcludeAction, coolOffAction } from "./actions";
+import { SelfExcludeConfirm } from "@/components/rg/self-exclude-confirm";
 import { formatTzs } from "@/lib/utils";
 
 export const metadata = { title: "Responsible gambling · Mchezo salama" };
@@ -179,13 +180,7 @@ export default async function ResponsibleGamblingPage() {
               ))}
             </select>
           </label>
-          <button
-            type="submit"
-            className="inline-flex h-10 items-center gap-1.5 px-4 rounded-pill border border-no-700 bg-no-500/10 font-display font-semibold text-[12.5px] text-no-300 hover:bg-no-500/20 transition-colors"
-          >
-            <Lock size={13} />
-            Self-exclude · Jizuie
-          </button>
+          <SelfExcludeConfirm />
         </form>
         <p className="font-mono text-[11px] text-text-subtle pt-1">
           Need help now? Tanzania Helpline · <span className="text-text-muted">+255 22 211 5811</span>.

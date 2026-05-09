@@ -4,6 +4,7 @@ import { FiftyLockup } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { Field, Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { startRegisterAction } from "./actions";
 
 export const metadata = { title: "Create account · Fungua akaunti" };
@@ -164,9 +165,7 @@ export default async function RegisterPage({
               </label>
             </fieldset>
 
-            <button type="submit" className="btn btn-gold btn-lg w-full">
-              Create account · Fungua akaunti
-            </button>
+            <SubmitButton label="Create account · Fungua akaunti" pendingLabel="Creating account…" />
           </form>
 
           <p className="border-t border-border pt-3 text-center text-[13px] text-text-muted">

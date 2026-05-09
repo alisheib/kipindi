@@ -36,9 +36,9 @@ export function CloseAccountForm() {
       <button
         type="submit"
         disabled={!canSubmit}
-        className="inline-flex h-10 items-center gap-1.5 px-4 rounded-pill border border-no-700 bg-no-500/10 font-display font-semibold text-[12.5px] text-no-300 hover:bg-no-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="btn btn-claret btn-md inline-flex items-center gap-1.5"
       >
-        <AlertOctagon size={13} />
+        <AlertOctagon size={13} aria-hidden />
         Permanently close my account
       </button>
     </form>

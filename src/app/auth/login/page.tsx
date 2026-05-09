@@ -4,6 +4,7 @@ import { FiftyLockup } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { Field, Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { startLoginAction } from "./actions";
 
 export const metadata = { title: "Sign in · Ingia" };
@@ -129,9 +130,16 @@ export default async function LoginPage({
               />
             </Field>
 
-            <button type="submit" className="btn btn-gold btn-lg w-full">
-              Sign in · Ingia
-            </button>
+            <div className="flex items-center justify-end -mt-2">
+              <Link
+                href="/auth/forgot-password"
+                className="font-mono text-[11.5px] uppercase tracking-[0.14em] text-text-subtle hover:text-text"
+              >
+                Forgot password? · Umesahau?
+              </Link>
+            </div>
+
+            <SubmitButton label="Sign in · Ingia" pendingLabel="Signing in…" />
           </form>
 
           <p className="border-t border-border pt-3 text-center text-[13px] text-text-muted">

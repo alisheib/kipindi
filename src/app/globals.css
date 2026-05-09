@@ -863,6 +863,10 @@ body {
 @keyframes toast-slide { from { transform: translateY(-12px) scale(0.96); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
 @keyframes toast-bar   { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 
+/* Spinner — kit atom Spinner uses this. Stroke-only, so it inherits
+   currentColor and works on any button background. */
+@keyframes spin { to { transform: rotate(360deg); } }
+
 /* ---------- Win celebration parts ---------- */
 @keyframes confetti-fall {
   0%   { transform: translate3d(0, -20px, 0) rotate(0deg); opacity: 0; }
