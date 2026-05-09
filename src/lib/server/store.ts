@@ -246,10 +246,11 @@ function tap() {
   import("./backup").then((m) => m.scheduleBackup()).catch(() => {});
 }
 
-// On first import in this process, attempt to restore from the latest snapshot.
-// Idempotent — `restoreLatest` self-guards via __50PICK_BACKUP_RESTORED.
+// On first import in this process, restore from the latest snapshot.
+// Source order: Postgres (if DATABASE_URL set) → on-disk file → fresh.
+// Idempotent — restoreLatestAsync self-guards via __50PICK_BACKUP_RESTORED.
 if (typeof window === "undefined" && !globalThis.__50PICK_BACKUP_RESTORED) {
-  import("./backup").then((m) => m.restoreLatest()).catch(() => {});
+  import("./backup").then((m) => m.restoreLatestAsync()).catch(() => {});
 }
 
 export const db = {

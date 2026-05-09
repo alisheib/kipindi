@@ -202,6 +202,23 @@ enum AuditCategory {
 }
 
 // ============================================================================
+// PERSISTENCE — single-row snapshot of the in-memory runtime store
+// ============================================================================
+//
+// The app is single-instance + in-memory by design (Sprint 0–47). To make
+// player accounts and money survive a Railway container restart, every
+// scheduled backup writes the full HMAC-signed snapshot envelope into
+// this row. On boot, the app reads it back and rehydrates globalThis.
+//
+// Long-term we move every entity to its own first-class Prisma model.
+// This row buys us correctness today without that risk.
+model StoreSnapshot {
+  id        Int      @id @default(1)
+  envelope  String   @db.Text   // HMAC-signed JSON envelope; same shape as the disk file
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================================================
 // IDENTITY & ACCESS
 // ============================================================================
 

@@ -24,6 +24,7 @@ import { createHmac } from "node:crypto";
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, unlinkSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { audit } from "./audit";
+import { prisma, hasDatabase } from "./prisma";
 
 // Backup directory — point at a Railway volume mount in production so
 // snapshots survive container redeploys. Recognised env vars (in order of
@@ -97,30 +98,73 @@ function ensureDir() {
   try { mkdirSync(BACKUP_DIR, { recursive: true }); } catch { /* ignore */ }
 }
 
-/** Write the current store to disk now. Called by debounced wrapper. */
+/** Write the current store now. Called by debounced wrapper.
+ *
+ *  Single source of truth — Postgres when DATABASE_URL is set, disk
+ *  otherwise. Never both. This keeps the demo deploy and a future
+ *  per-entity Prisma migration on the same architectural axis: the
+ *  database (or the file) is the only place state lives outside RAM. */
 function writeSnapshotNow(): void {
   if (!globalThis.__50PICK_STORE) return;
-  ensureDir();
   const payload = serializeStore(globalThis.__50PICK_STORE);
   const signature = sign(payload);
   const envelope = JSON.stringify({ v: 1, ts: new Date().toISOString(), payload, signature });
-  const tmp = join(BACKUP_DIR, `${SNAPSHOT_FILE}.tmp`);
-  writeFileSync(tmp, envelope, "utf8");
-  // Atomic replace via rename — avoids partial-write corruption
-  const dest = join(BACKUP_DIR, SNAPSHOT_FILE);
-  try {
-    // Node's writeFileSync + rename doesn't exist for fs sync rename here; emulate:
-    // copy contents, then delete tmp.
-    writeFileSync(dest, envelope, "utf8");
-    try { unlinkSync(tmp); } catch { /* ignore */ }
-  } catch (e) {
-    // Best-effort fallback: keep the tmp file
+
+  if (hasDatabase()) {
+    void writeToPostgres(envelope).catch((err) => {
+      audit({
+        category: "SYSTEM",
+        action: "backup.postgres_write_failed",
+        actorId: null, targetType: null, targetId: null,
+        payload: { error: String((err as Error)?.message ?? err) },
+      });
+    });
     return;
   }
-  // Rolling history snapshot
+
+  // No database — disk path (local dev / first-boot before Postgres
+  // is wired). Atomic-rename pattern to avoid partial-write corruption.
+  ensureDir();
+  const tmp = join(BACKUP_DIR, `${SNAPSHOT_FILE}.tmp`);
+  writeFileSync(tmp, envelope, "utf8");
+  const dest = join(BACKUP_DIR, SNAPSHOT_FILE);
+  try {
+    writeFileSync(dest, envelope, "utf8");
+    try { unlinkSync(tmp); } catch { /* ignore */ }
+  } catch {
+    return;
+  }
+  // Rolling history (12 most-recent snapshots, ~18 min at 1.5 s cadence)
   const histName = `snap-${Date.now()}.json`;
   try { writeFileSync(join(BACKUP_DIR, histName), envelope, "utf8"); } catch { /* ignore */ }
   pruneOldSnapshots();
+}
+
+async function writeToPostgres(envelope: string): Promise<void> {
+  const client = prisma();
+  if (!client) return;
+  await client.storeSnapshot.upsert({
+    where: { id: 1 },
+    create: { id: 1, envelope },
+    update: { envelope },
+  });
+}
+
+async function readFromPostgres(): Promise<string | null> {
+  const client = prisma();
+  if (!client) return null;
+  try {
+    const row = await client.storeSnapshot.findUnique({ where: { id: 1 } });
+    return row?.envelope ?? null;
+  } catch (err) {
+    audit({
+      category: "SYSTEM",
+      action: "backup.postgres_read_failed",
+      actorId: null, targetType: null, targetId: null,
+      payload: { error: String((err as Error)?.message ?? err) },
+    });
+    return null;
+  }
 }
 
 function pruneOldSnapshots() {
@@ -154,20 +198,65 @@ export function scheduleBackup(): void {
   }, DEBOUNCE_MS);
 }
 
-/** Restore from the latest snapshot. Idempotent — safe to call many times. */
+/** Restore from the latest snapshot. Idempotent — safe to call many times.
+ *  Source order: (1) Postgres StoreSnapshot row, (2) on-disk snapshot,
+ *  (3) nothing — fresh empty store.
+ *
+ *  Synchronous return for compatibility with existing call sites that
+ *  expect { restored, reason }; the Postgres read is fired in the
+ *  background and re-merges on completion. The boot path now exposes
+ *  `restoreLatestAsync` for callers that can await — used by the boot
+ *  hook so cold starts don't serve from an empty store. */
 export function restoreLatest(): { restored: boolean; reason: string } {
   if (globalThis.__50PICK_BACKUP_RESTORED) {
     return { restored: false, reason: "already restored this process" };
   }
   globalThis.__50PICK_BACKUP_RESTORED = true;
+  return restoreFromDisk();
+}
+
+/** Async variant — checks Postgres first, then falls through to disk. */
+export async function restoreLatestAsync(): Promise<{ restored: boolean; reason: string; source: "postgres" | "disk" | "none" }> {
+  if (globalThis.__50PICK_BACKUP_RESTORED) {
+    return { restored: false, reason: "already restored this process", source: "none" };
+  }
+  globalThis.__50PICK_BACKUP_RESTORED = true;
+
+  if (hasDatabase()) {
+    const envelope = await readFromPostgres();
+    if (envelope) {
+      const r = applyEnvelope(envelope);
+      if (r.restored) {
+        audit({ category: "SYSTEM", action: "backup.restored.postgres", actorId: null, targetType: null, targetId: null, payload: { reason: r.reason } });
+        return { restored: true, reason: r.reason, source: "postgres" };
+      }
+      // Postgres row was malformed — fall through to disk
+    }
+  }
+  const r = restoreFromDisk();
+  return { ...r, source: r.restored ? "disk" : "none" };
+}
+
+function restoreFromDisk(): { restored: boolean; reason: string } {
   ensureDir();
   const path = join(BACKUP_DIR, SNAPSHOT_FILE);
   if (!existsSync(path)) {
     return { restored: false, reason: "no snapshot present" };
   }
+  let envelope: string;
+  try {
+    envelope = readFileSync(path, "utf8");
+  } catch (e) {
+    audit({ category: "SYSTEM", action: "backup.restore.read_failed", actorId: null, targetType: null, targetId: null, payload: { error: String(e) } });
+    return { restored: false, reason: "snapshot read failed" };
+  }
+  return applyEnvelope(envelope);
+}
+
+function applyEnvelope(rawEnvelope: string): { restored: boolean; reason: string } {
   let envelope: { v: number; ts: string; payload: string; signature: string };
   try {
-    envelope = JSON.parse(readFileSync(path, "utf8"));
+    envelope = JSON.parse(rawEnvelope);
   } catch (e) {
     audit({ category: "SYSTEM", action: "backup.restore.parse_failed", actorId: null, targetType: null, targetId: null, payload: { error: String(e) } });
     return { restored: false, reason: "snapshot corrupt (parse failed)" };
@@ -184,13 +273,10 @@ export function restoreLatest(): { restored: boolean; reason: string } {
     audit({ category: "SYSTEM", action: "backup.restore.deserialize_failed", actorId: null, targetType: null, targetId: null, payload: { error: String(e) } });
     return { restored: false, reason: "snapshot deserialize failed" };
   }
-  // Merge into the existing store. New schema fields added since the snapshot
-  // get default empty Maps thanks to the hot-reload safety in store.ts.
   if (!globalThis.__50PICK_STORE) globalThis.__50PICK_STORE = {};
   for (const [k, v] of Object.entries(restored)) {
     (globalThis.__50PICK_STORE as any)[k] = v;
   }
-  // Rebuild secondary indexes that aren't directly stored
   rebuildIndexes();
   audit({ category: "SYSTEM", action: "backup.restored", actorId: null, targetType: null, targetId: null, payload: { ts: envelope.ts } });
   return { restored: true, reason: `restored from ${envelope.ts}` };
