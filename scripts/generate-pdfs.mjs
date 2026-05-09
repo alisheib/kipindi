@@ -35,15 +35,35 @@ for (const t of TARGETS) {
   // network requests resolve mostly in that "networkidle" wait, but the
   // first paint can still flash unstyled if we PDF immediately).
   await page.waitForTimeout(800);
-  await page.pdf({
-    path: outPath,
-    format: "A4",
-    printBackground: true,
-    preferCSSPageSize: true,
-    margin: { top: "0", right: "0", bottom: "0", left: "0" },
-  });
+  let writePath = outPath;
+  try {
+    await page.pdf({
+      path: outPath,
+      format: "A4",
+      printBackground: true,
+      preferCSSPageSize: true,
+      margin: { top: "0", right: "0", bottom: "0", left: "0" },
+    });
+    console.log(`  ✓ ${t.out}`);
+  } catch (err) {
+    // Most common Windows case: the canonical PDF is open in a reader
+    // and locked. Fall back to a -new.pdf suffix so the user can swap
+    // when ready.
+    if (err && (err.code === "EBUSY" || /EBUSY/.test(String(err)))) {
+      writePath = outPath.replace(/\.pdf$/i, "-new.pdf");
+      await page.pdf({
+        path: writePath,
+        format: "A4",
+        printBackground: true,
+        preferCSSPageSize: true,
+        margin: { top: "0", right: "0", bottom: "0", left: "0" },
+      });
+      console.log(`  ! ${t.out} was locked — wrote ${writePath.replace(root + "\\", "").replace(root + "/", "")} instead. Close the viewer + rename when ready.`);
+    } else {
+      throw err;
+    }
+  }
   await page.close();
-  console.log(`  ✓ ${t.out}`);
 }
 
 await ctx.close();

@@ -42,6 +42,22 @@
 
   .page { page-break-after: always; position: relative; padding-bottom: 14mm; min-height: 245mm; }
   .page:last-child { page-break-after: auto; }
+
+  /* Whole-element page-break protection. Any card, bar, row, or
+     paragraph block that doesn't fit on the current page MUST move
+     entirely to the next page — never split mid-content. */
+  .card, .sec-card, .feature, .bar, .journey .step, .lede, .quote,
+  .stack-row, table tr, .grid-2 > div, .grid-3 > div, .pending-row {
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
+
+  /* Pending block — kit-warm tone, professional pill prefix */
+  .pending-row { display: grid; grid-template-columns: 60mm 1fr; gap: 5mm; padding: 4mm 0; border-top: 1px solid var(--rule); align-items: start; }
+  .pending-row:first-child { border-top: none; padding-top: 0; }
+  .pending-row .tag { font-family: "JetBrains Mono", monospace; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.1em; color: oklch(34% 0.13 76); background: oklch(95% 0.04 86); border: 1px solid oklch(86% 0.10 86); border-radius: 999px; padding: 1.5mm 3mm; display: inline-block; font-weight: 600; }
+  .pending-row .body { font-size: 10pt; line-height: 1.5; color: var(--ink); }
+  .pending-row .body strong { color: var(--royal-deep); }
   .footer {
     position: absolute; left: 0; right: 0; bottom: 0;
     display: flex; align-items: center; justify-content: space-between;
@@ -191,7 +207,7 @@
       </svg>
       50pick.tz
     </span>
-    <span>1 · 6</span>
+    <span>1 · 7</span>
   </div>
 </section>
 
@@ -236,7 +252,7 @@
   <div class="footer">
     <span>50pick · Operator briefing</span>
     <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-f2"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-f2)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
-    <span>2 · 6</span>
+    <span>2 · 7</span>
   </div>
 </section>
 
@@ -277,7 +293,7 @@
   <div class="footer">
     <span>50pick · Operator briefing</span>
     <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-f3"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-f3)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
-    <span>3 · 6</span>
+    <span>3 · 7</span>
   </div>
 </section>
 
@@ -324,7 +340,7 @@
   <div class="footer">
     <span>50pick · Operator briefing</span>
     <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-f4"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-f4)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
-    <span>4 · 6</span>
+    <span>4 · 7</span>
   </div>
 </section>
 
@@ -360,7 +376,7 @@
   <div class="footer">
     <span>50pick · Operator briefing</span>
     <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-f5"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-f5)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
-    <span>5 · 6</span>
+    <span>5 · 7</span>
   </div>
 </section>
 
@@ -407,7 +423,64 @@
   <div class="footer">
     <span>50pick · Operator briefing</span>
     <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-f6"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-f6)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
-    <span>6 · 6</span>
+    <span>6 · 7</span>
+  </div>
+</section>
+
+<!-- ============================================================ PENDING -->
+<section class="page">
+  <h4>Pending · production prerequisites</h4>
+  <h2>What's still on the runway</h2>
+
+  <p>
+    Every item below is the platform waiting on an external dependency
+    — a regulator, a partner, or a final hosting decision. The product
+    itself is feature-complete; these are commercial and operational
+    sign-offs.
+  </p>
+
+  <div style="margin-top: 6mm;">
+
+    <div class="pending-row">
+      <div><span class="tag">Pending · Regulator</span></div>
+      <div class="body"><strong>Tanzania Gaming Board licence.</strong> Awaiting the pre-application meeting and written classification of the pari-mutuel pool model as betting. Lawyer engaged; pre-application packet drafted.</div>
+    </div>
+
+    <div class="pending-row">
+      <div><span class="tag">Pending · Telco</span></div>
+      <div class="body"><strong>Phone-OTP delivery.</strong> Waiting on a TCRA-licensed sender ID and a contracted Tanzanian SMS gateway. The provider abstraction is in place — switch is configuration only.</div>
+    </div>
+
+    <div class="pending-row">
+      <div><span class="tag">Pending · Aggregator</span></div>
+      <div class="body"><strong>Mobile-money payments.</strong> Waiting on the signed aggregator agreement covering deposit and withdrawal across every major Tanzanian mobile-money provider. Integration adapters are scaffolded; the contract triggers go-live.</div>
+    </div>
+
+    <div class="pending-row">
+      <div><span class="tag">Pending · Hosting</span></div>
+      <div class="body"><strong>Email transactional sending.</strong> Waiting on the final production hosting environment to be selected before configuring a reputable email provider (transactional account confirmations, RG digests, regulator exports).</div>
+    </div>
+
+    <div class="pending-row">
+      <div><span class="tag">Pending · Hosting</span></div>
+      <div class="body"><strong>Domain, certificates, monitoring.</strong> Final domain pointing, TLS certificates, uptime + alerting, log retention sizing. All standard infrastructure work that lands once the host is chosen.</div>
+    </div>
+
+    <div class="pending-row">
+      <div><span class="tag">Pending · Partner</span></div>
+      <div class="body"><strong>Sportradar Integrity Services.</strong> Live match-integrity feed for football market resolution at scale. Required pre-launch for the football category.</div>
+    </div>
+
+  </div>
+
+  <p class="small" style="margin-top: 6mm; font-size: 9pt; color: var(--ink-soft);">
+    None of the items above are engineering blockers — every dependency is external (regulator, telco, payment partner, audit body). The platform's player flow, operator console, security model, and compliance controls are all in place today.
+  </p>
+
+  <div class="footer">
+    <span>50pick · Operator briefing</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-f7"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-f7)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>7 · 7</span>
   </div>
 </section>
 

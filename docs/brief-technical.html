@@ -43,6 +43,19 @@
 
   .page { page-break-after: always; position: relative; padding-bottom: 14mm; min-height: 245mm; }
   .page:last-child { page-break-after: auto; }
+
+  /* Whole-element page-break protection. */
+  .card, .sec-card, .stack-row, .lede, table tr,
+  .grid-2 > div, .grid-3 > div, .pending-row {
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
+
+  .pending-row { display: grid; grid-template-columns: 60mm 1fr; gap: 5mm; padding: 4mm 0; border-top: 1px solid var(--rule); align-items: start; }
+  .pending-row:first-child { border-top: none; padding-top: 0; }
+  .pending-row .tag { font-family: "JetBrains Mono", monospace; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.1em; color: oklch(34% 0.13 76); background: oklch(95% 0.04 86); border: 1px solid oklch(86% 0.10 86); border-radius: 999px; padding: 1.5mm 3mm; display: inline-block; font-weight: 600; }
+  .pending-row .body { font-size: 10pt; line-height: 1.5; color: var(--ink); }
+  .pending-row .body strong { color: var(--royal-deep); }
   .footer { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: space-between; padding-top: 5mm; border-top: 1px solid var(--rule); font-family: "JetBrains Mono", monospace; font-size: 8pt; color: var(--ink-soft); letter-spacing: 0.08em; }
   .footer .mark { display: inline-flex; align-items: center; gap: 6px; }
 
@@ -158,7 +171,7 @@
   <div class="footer">
     <span>50pick · Technical brief</span>
     <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-tf1"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-tf1)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
-    <span>1 · 6</span>
+    <span>1 · 7</span>
   </div>
 </section>
 
@@ -181,7 +194,7 @@
   <div class="footer">
     <span>50pick · Technical brief</span>
     <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-tf2"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-tf2)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
-    <span>2 · 6</span>
+    <span>2 · 7</span>
   </div>
 </section>
 
@@ -242,7 +255,7 @@
   <div class="footer">
     <span>50pick · Technical brief</span>
     <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-tf3"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-tf3)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
-    <span>3 · 6</span>
+    <span>3 · 7</span>
   </div>
 </section>
 
@@ -270,7 +283,7 @@
   <div class="footer">
     <span>50pick · Technical brief</span>
     <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-tf4"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-tf4)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
-    <span>4 · 6</span>
+    <span>4 · 7</span>
   </div>
 </section>
 
@@ -312,7 +325,7 @@
   <div class="footer">
     <span>50pick · Technical brief</span>
     <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-tf5"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-tf5)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
-    <span>5 · 6</span>
+    <span>5 · 7</span>
   </div>
 </section>
 
@@ -371,7 +384,65 @@
   <div class="footer">
     <span>50pick · Technical brief</span>
     <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-tf6"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-tf6)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
-    <span>6 · 6</span>
+    <span>6 · 7</span>
+  </div>
+</section>
+
+<!-- ============================================================ PENDING -->
+<section class="page">
+  <h4>Pending · production prerequisites</h4>
+  <h2>External dependencies before public launch</h2>
+
+  <p>
+    Every item below is the platform waiting on an external party — a
+    regulator, a telecommunications authority, a payment partner, or a
+    final hosting decision. None are engineering blockers; the platform
+    is feature-complete, the controls are in place, and the integrations
+    are abstracted behind switchable provider adapters.
+  </p>
+
+  <div style="margin-top: 6mm;">
+
+    <div class="pending-row">
+      <div><span class="tag">Pending · Regulator</span></div>
+      <div class="body"><strong>Tanzania Gaming Board licence.</strong> Pre-application meeting and written classification of the pari-mutuel pool model as betting. Pre-application packet drafted; legal counsel engaged.</div>
+    </div>
+
+    <div class="pending-row">
+      <div><span class="tag">Pending · Telco</span></div>
+      <div class="body"><strong>SMS-OTP delivery.</strong> Awaiting a TCRA-licensed sender ID and a contracted Tanzanian SMS gateway. Provider abstraction is in place — switch is configuration only.</div>
+    </div>
+
+    <div class="pending-row">
+      <div><span class="tag">Pending · Aggregator</span></div>
+      <div class="body"><strong>Mobile-money payment integration.</strong> Awaiting the signed aggregator agreement covering deposit and withdrawal across every major Tanzanian mobile-money provider. Deposit and withdraw adapters are scaffolded behind the same provider abstraction.</div>
+    </div>
+
+    <div class="pending-row">
+      <div><span class="tag">Pending · Hosting</span></div>
+      <div class="body"><strong>Email transactional sending.</strong> Reputable transactional email provider (account confirmations, RG digests, regulator exports) configured once the final production hosting environment is selected.</div>
+    </div>
+
+    <div class="pending-row">
+      <div><span class="tag">Pending · Hosting</span></div>
+      <div class="body"><strong>Domain, certificates, monitoring.</strong> Final domain pointing, TLS certificates, observability stack wiring, log retention sizing, alerting rules. Standard infrastructure work that lands once the host is chosen.</div>
+    </div>
+
+    <div class="pending-row">
+      <div><span class="tag">Pending · Partner</span></div>
+      <div class="body"><strong>Live match-integrity feed.</strong> Sportradar Integrity Services (or equivalent) for football market resolution at scale. Anti-fraud module ingest hook is already in place.</div>
+    </div>
+
+  </div>
+
+  <p class="small" style="margin-top: 6mm;">
+    Specifics on every item above — partner shortlists, integration timelines, and provider-side technical readiness — are available to vetted partners under standard non-disclosure terms.
+  </p>
+
+  <div class="footer">
+    <span>50pick · Technical brief</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-tf7"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-tf7)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>7 · 7</span>
   </div>
 </section>
 
