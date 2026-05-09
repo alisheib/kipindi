@@ -24,12 +24,12 @@
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   body { font-family: "Inter", system-ui, sans-serif; color: var(--ink); font-size: 10.5pt; line-height: 1.55; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  h1, h2, h3, h4 { font-family: "Sora", sans-serif; font-weight: 700; color: var(--royal); margin: 0 0 5mm 0; letter-spacing: -0.018em; }
+  h1, h2, h3, h4 { font-family: "Sora", sans-serif; font-weight: 700; color: var(--royal); margin: 0 0 3mm 0; letter-spacing: -0.018em; }
   h1 { font-size: 28pt; line-height: 1.05; letter-spacing: -0.025em; }
-  h2 { font-size: 17pt; margin-top: 6mm; }
-  h3 { font-size: 12pt; margin-top: 5mm; margin-bottom: 2mm; color: var(--royal-deep); }
-  h4 { font-size: 9.5pt; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-soft); font-weight: 700; }
-  p { margin: 0 0 3mm 0; }
+  h2 { font-size: 16pt; margin-top: 3mm; }
+  h3 { font-size: 11.5pt; margin-top: 3mm; margin-bottom: 1.5mm; color: var(--royal-deep); }
+  h4 { font-size: 9pt; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-soft); font-weight: 700; margin: 0 0 2mm 0; }
+  p { margin: 0 0 2.5mm 0; }
   strong { color: var(--royal-deep); }
 
   .page { page-break-after: always; position: relative; padding-bottom: 14mm; min-height: 245mm; }
@@ -51,19 +51,19 @@
   .cover .bottom { display: flex; align-items: flex-end; justify-content: space-between; padding-top: 10mm; border-top: 1px solid var(--rule); font-family: "JetBrains Mono", monospace; font-size: 8.5pt; letter-spacing: 0.14em; color: var(--ink-soft); text-transform: uppercase; }
   .cover .bottom .meta { line-height: 1.7; }
 
-  .step { display: grid; grid-template-columns: 12mm 1fr; gap: 4mm; margin-bottom: 6mm; }
-  .step .num { width: 9mm; height: 9mm; border-radius: 50%; background: var(--royal); color: var(--pearl); display: inline-flex; align-items: center; justify-content: center; font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 11pt; }
-  .step .body h3 { margin-top: 0; font-size: 13pt; }
-  .step .body p { font-size: 10.5pt; margin: 0 0 3mm 0; }
+  .step { display: grid; grid-template-columns: 9mm 1fr; gap: 3mm; margin-bottom: 3mm; }
+  .step .num { width: 7mm; height: 7mm; border-radius: 50%; background: var(--royal); color: var(--pearl); display: inline-flex; align-items: center; justify-content: center; font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 9pt; }
+  .step .body h3 { margin-top: 0; margin-bottom: 1.5mm; font-size: 11pt; }
+  .step .body p { font-size: 10pt; margin: 0 0 2mm 0; line-height: 1.45; }
 
-  .shot { margin: 4mm 0 6mm 0; }
-  .shot img { width: 100%; max-width: 178mm; display: block; border: 1px solid var(--rule); border-radius: 2mm; box-shadow: 0 4mm 10mm -4mm rgba(0,0,0,0.18); }
-  .shot .caption { margin-top: 2mm; font-family: "JetBrains Mono", monospace; font-size: 8.5pt; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); }
+  .shot { margin: 3mm auto; text-align: center; max-width: 130mm; }
+  .shot img { width: 100%; max-width: 130mm; display: block; border: 1px solid var(--rule); border-radius: 1.5mm; box-shadow: 0 2mm 6mm -2mm rgba(0,0,0,0.15); margin: 0 auto; }
+  .shot .caption { margin-top: 1.5mm; font-family: "JetBrains Mono", monospace; font-size: 8pt; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); text-align: center; }
 
-  .tip { background: oklch(96% 0.04 86); border-left: 3px solid var(--gilt); border-radius: 1.5mm; padding: 4mm 6mm; margin: 4mm 0; font-size: 10pt; }
+  .tip { background: oklch(96% 0.04 86); border-left: 3px solid var(--gilt); border-radius: 1.5mm; padding: 3mm 5mm; margin: 3mm 0; font-size: 9.5pt; line-height: 1.5; }
   .tip strong { color: oklch(34% 0.13 76); }
 
-  .danger { background: oklch(96% 0.04 22); border-left: 3px solid var(--no); border-radius: 1.5mm; padding: 4mm 6mm; margin: 4mm 0; font-size: 10pt; }
+  .danger { background: oklch(96% 0.04 22); border-left: 3px solid var(--no); border-radius: 1.5mm; padding: 3mm 5mm; margin: 3mm 0; font-size: 9.5pt; line-height: 1.5; }
   .danger strong { color: oklch(36% 0.16 22); }
 
   table { width: 100%; border-collapse: collapse; margin: 3mm 0; }
