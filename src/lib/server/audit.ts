@@ -90,6 +90,14 @@ export function audit(entry: Omit<AuditEntry, "id" | "createdAt" | "prevHash" | 
   return stamped;
 }
 
+/** Live size of the audit ring. Exposed as a function (not a number)
+ *  so callers always read through the same module instance — avoiding
+ *  HMR-stale globalThis snapshots that the previous direct-read pattern
+ *  in /api/health was hitting. */
+export function auditRingSize(): number {
+  return ring.length;
+}
+
 /** Read-only access for admin dashboards. */
 export function getAuditPage(opts: { limit?: number; category?: AuditCategory; actorId?: string } = {}): AuditEntry[] {
   const limit = opts.limit ?? 100;

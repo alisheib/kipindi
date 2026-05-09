@@ -164,6 +164,38 @@ console.log("\n=== A · AUTHENTICATION SECURITY ===");
     await ctx.close();
   }
 
+  // A8 — account lockout: 5 wrong passwords + correct password should
+  //       still be rejected (account is locked, not just rate-limited).
+  await resetRateLimits();
+  {
+    const ctx = await browser.newContext();
+    const me = await register(ctx, { offset: 350 });
+    // Fire 5 wrong passwords from FRESH contexts so we don't trip the
+    // per-IP rate-limit (which would mask the lockout signal).
+    for (let i = 0; i < 5; i++) {
+      const c = await browser.newContext();
+      const p = await c.newPage();
+      await p.goto(`${BASE}/auth/login`, { waitUntil: "networkidle" });
+      await p.fill('#phone', me.tail);
+      await p.fill('input[name="password"]', "Wrong"+i+"!Long");
+      await p.click('button[type="submit"]');
+      await p.waitForTimeout(300);
+      await c.close();
+    }
+    // Now try the CORRECT password — must still be refused.
+    const p = await ctx.newPage();
+    await p.goto(`${BASE}/auth/login`, { waitUntil: "networkidle" });
+    await p.fill('#phone', me.tail);
+    await p.fill('input[name="password"]', me.password);
+    await p.click('button[type="submit"]');
+    await p.waitForTimeout(500);
+    const url = p.url();
+    log("A8 correct password refused after 5 wrong tries (account locked)",
+        /error=(rate_limited|wrong_credentials|blocked)/.test(url),
+        `landed=${url.slice(0, 110)}`);
+    await ctx.close();
+  }
+
   // A7 — same phone-IP burst from a fresh context is throttled at IP level
   // (LCCP / GBT — protect against credential stuffing)
   {

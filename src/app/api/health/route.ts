@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/server/store";
 import { sms, smsHealthSnapshot } from "@/lib/server/sms";
 import { listMarkets } from "@/lib/server/market-service";
+import { auditRingSize } from "@/lib/server/audit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -17,7 +18,7 @@ const BOOT_AT = Date.now();
 export async function GET() {
   const uptimeSec = Math.floor((Date.now() - BOOT_AT) / 1000);
   const userCount = db.user.list().length;
-  const auditRing = (globalThis as { __50PICK_AUDIT_RING?: unknown[] }).__50PICK_AUDIT_RING ?? [];
+  const auditCount = auditRingSize();
   const smsHealth = smsHealthSnapshot();
   const liveMarkets = listMarkets({ status: "LIVE" }).length;
   const resolvedMarkets = listMarkets({ status: "RESOLVED" }).length;
@@ -30,7 +31,7 @@ export async function GET() {
       version: process.env.NEXT_PUBLIC_APP_VERSION ?? "1.0.0",
       store: {
         users: userCount,
-        auditEntries: auditRing.length,
+        auditEntries: auditCount,
         marketsLive: liveMarkets,
         marketsResolved: resolvedMarkets,
       },

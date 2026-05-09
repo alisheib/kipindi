@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, type ReactNode, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export type Locale = "en" | "sw" | "fr";
 
@@ -152,6 +153,7 @@ function writeCookie(name: string, value: string) {
 
 export function I18nProvider({ children, initial = "en" }: { children: ReactNode; initial?: Locale }) {
   const [locale, setLocaleState] = useState<Locale>(initial);
+  const router = useRouter();
   useEffect(() => {
     // Read from cookie first (set by server), then localStorage as fallback
     const fromCookie = readCookie(COOKIE_NAME);
@@ -168,12 +170,18 @@ export function I18nProvider({ children, initial = "en" }: { children: ReactNode
     }
   }, []);
   const setLocale = (l: Locale) => {
+    if (l === locale) return;
     setLocaleState(l);
     try {
       localStorage.setItem("kp-locale", l);
       writeCookie(COOKIE_NAME, l);
       document.documentElement.lang = l;
     } catch { /* ignore */ }
+    // Refresh so server components (which read the kp-locale cookie in
+    // app/layout.tsx to set <html lang>) re-render with the new locale.
+    // Without this, client-only useT() users update but the page's
+    // server-rendered text stays in the previous language.
+    try { router.refresh(); } catch { /* SSR or test env */ }
   };
   return <I18nContext.Provider value={{ locale, t: dict[locale], setLocale }}>{children}</I18nContext.Provider>;
 }

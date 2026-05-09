@@ -193,6 +193,8 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
       phoneE164: phone,
       passwordHash: null,
       passwordSalt: null,
+      failedLoginCount: 0,
+      lockedUntil: null,
       role: "PLAYER",
       status: "PENDING_KYC",
       locale: "SW",
@@ -334,6 +336,8 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
     phoneE164: phone,
     passwordHash: hash,
     passwordSalt: salt,
+    failedLoginCount: 0,
+    lockedUntil: null,
     role: isBootstrapAdmin ? "ADMIN" : "PLAYER",
     status: isBootstrapAdmin ? "ACTIVE" : "PENDING_KYC",
     locale: "SW",
@@ -385,6 +389,9 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
 
 export type PasswordLoginInput = { phone: string; password: string };
 
+const LOCKOUT_MAX_FAILS = 5;
+const LOCKOUT_DURATION_MS = 30 * 60 * 1000;   // 30-minute lockout per LCCP guidance
+
 export async function loginWithPassword(input: PasswordLoginInput): Promise<ServiceResult<{ userId: string; role: string }>> {
   const parse = LoginRequestSchema.safeParse({ phone: input.phone });
   if (!parse.success) return { ok: false, error: parse.error.errors[0]?.message ?? "Invalid phone.", code: "INVALID" };
@@ -413,15 +420,59 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
   if (user.status === "SUSPENDED" || user.status === "CLOSED") {
     return { ok: false, error: "Account unavailable. Contact support.", code: "SUSPENDED" };
   }
+  // Brute-force lockout — separate from rate limit. Rate limit blocks
+  // ANY login from a phone/IP for a short window; lockout pins THIS
+  // account closed for 30 min after 5 consecutive wrong passwords,
+  // which forces an attacker to either solve the rate limit at scale
+  // or know the actual password. LCCP / GBT account-protection.
+  if (user.lockedUntil) {
+    const lockedMs = Date.parse(user.lockedUntil) - Date.now();
+    if (lockedMs > 0) {
+      audit({ category: "SECURITY", action: "auth.login.account_locked", actorId: user.id, targetType: "User", targetId: user.id, payload: { lockedUntil: user.lockedUntil } });
+      return {
+        ok: false,
+        error: "Account temporarily locked after repeated wrong-password attempts. Try again later or reset your password.",
+        code: "RATE_LIMITED",
+        retryAfterSec: Math.ceil(lockedMs / 1000),
+      };
+    }
+    // Lock expired — clear it so a successful login resets cleanly.
+    db.user.update(user.id, { lockedUntil: null, failedLoginCount: 0 });
+  }
   if (!user.passwordHash || !user.passwordSalt) {
     return { ok: false, error: "This account has no password yet. Use the OTP flow or contact support.", code: "INVALID" };
   }
   if (!verifyPassword(input.password, user.passwordSalt, user.passwordHash)) {
-    audit({ category: "SECURITY", action: "auth.login.bad_password", actorId: user.id, targetType: "User", targetId: user.id, ip: meta.ip });
+    const nextCount = (user.failedLoginCount ?? 0) + 1;
+    const shouldLock = nextCount >= LOCKOUT_MAX_FAILS;
+    const patch: Partial<typeof user> = {
+      failedLoginCount: shouldLock ? 0 : nextCount,
+      lockedUntil: shouldLock ? new Date(Date.now() + LOCKOUT_DURATION_MS).toISOString() : user.lockedUntil ?? null,
+    };
+    db.user.update(user.id, patch);
+    audit({
+      category: "SECURITY",
+      action: shouldLock ? "auth.login.locked_after_failures" : "auth.login.bad_password",
+      actorId: user.id, targetType: "User", targetId: user.id, ip: meta.ip,
+      payload: { failedCount: shouldLock ? LOCKOUT_MAX_FAILS : nextCount },
+    });
+    if (shouldLock) {
+      return {
+        ok: false,
+        error: `Too many wrong attempts. Account locked for 30 minutes. Reset your password if you forgot it.`,
+        code: "RATE_LIMITED",
+        retryAfterSec: Math.ceil(LOCKOUT_DURATION_MS / 1000),
+      };
+    }
     return { ok: false, error: "Wrong phone or password.", code: "INVALID" };
   }
 
-  db.user.update(user.id, { lastLoginAt: new Date().toISOString() });
+  // Successful login — clear the brute-force counter + lockout.
+  db.user.update(user.id, {
+    lastLoginAt: new Date().toISOString(),
+    failedLoginCount: 0,
+    lockedUntil: null,
+  });
   audit({ category: "AUTH", action: "user.login.password", actorId: user.id, targetType: "User", targetId: user.id, ip: meta.ip, userAgent: meta.ua });
 
   await createSession({

@@ -12,6 +12,12 @@ export type StoredUser = {
    *  must set a password on next login. */
   passwordHash: string | null;
   passwordSalt: string | null;
+  /** Brute-force defence: counts consecutive wrong-password attempts.
+   *  Resets to 0 on any successful login. */
+  failedLoginCount: number;
+  /** ISO-8601 timestamp until which the account refuses logins. Set when
+   *  failedLoginCount crosses the threshold. */
+  lockedUntil: string | null;
   role: "PLAYER" | "AGENT" | "MODERATOR" | "ADMIN" | "COMPLIANCE" | "SUPPORT";
   status: "ACTIVE" | "PENDING_KYC" | "SUSPENDED" | "SELF_EXCLUDED" | "COOLED_OFF" | "CLOSED";
   locale: "EN" | "SW";

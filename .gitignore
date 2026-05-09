@@ -7,6 +7,10 @@ dist
 .env
 .env.local
 .env.*.local
+# Notepad / VS Code "save as" can append .txt — refuse those too.
+.env.local.txt
+.env.*.txt
+.prisma-smoke-probe.mjs
 coverage
 .vercel
 next-env.d.ts
