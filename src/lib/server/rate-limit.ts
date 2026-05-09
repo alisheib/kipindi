@@ -6,7 +6,30 @@
  */
 
 type Bucket = { tokens: number; updatedAt: number };
-const buckets = new Map<string, Bucket>();
+
+// Pin buckets on globalThis so Next.js dev-mode HMR doesn't strand
+// references in stale closures (the dev-test reset endpoint relies on
+// hitting the SAME Map instance that auth-service writes into).
+declare global {
+  // eslint-disable-next-line no-var
+  var __50PICK_RL_BUCKETS: Map<string, Bucket> | undefined;
+  // eslint-disable-next-line no-var
+  var __50PICK_RL_RESET_HOOK: (() => number) | undefined;
+}
+const buckets: Map<string, Bucket> =
+  globalThis.__50PICK_RL_BUCKETS ?? (globalThis.__50PICK_RL_BUCKETS = new Map());
+
+// Dev-only reset hook used by /api/dev-test/reset-rate-limits so test
+// suites can wipe accumulated buckets between sections. Per-IP cap is
+// REAL in production — only this dev endpoint and the test suites it
+// powers ever touch the hook.
+if (process.env.NODE_ENV !== "production") {
+  globalThis.__50PICK_RL_RESET_HOOK = () => {
+    const n = buckets.size;
+    buckets.clear();
+    return n;
+  };
+}
 
 export type RateRule = { capacity: number; refillPerMin: number };
 
@@ -14,7 +37,11 @@ export const RATE_RULES: Record<string, RateRule> = {
   "otp.send":      { capacity: 5,  refillPerMin: 0.5 },   // 5 per ~10 min, refills slow
   "otp.verify":    { capacity: 5,  refillPerMin: 1 },
   "auth.login":    { capacity: 8,  refillPerMin: 2 },
-  "auth.register": { capacity: 3,  refillPerMin: 0.2 },   // 3 per hour
+  "auth.register": { capacity: 3,  refillPerMin: 0.2 },   // 3 per hour per phone
+  // Per-IP buckets for credential stuffing / mass-registration abuse.
+  // Capacities above are per-phone; these add a separate ceiling per IP.
+  "auth.register.ip": { capacity: 10, refillPerMin: 0.5 }, // 10 fresh phones per IP per ~20 min
+  "auth.login.ip":    { capacity: 25, refillPerMin: 5 },   // looser — multiple devices share an IP
   "kyc.submit":    { capacity: 5,  refillPerMin: 0.5 },
   "wallet.deposit":{ capacity: 20, refillPerMin: 4 },
   "wallet.withdraw":{ capacity: 6, refillPerMin: 0.5 },

@@ -5,6 +5,29 @@ import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
 import { buyPosition, cashOutPosition, resolveMarket, createMarket, type CreateMarketInput, type Side } from "@/lib/server/market-service";
 import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
+import { db } from "@/lib/server/store";
+import { audit } from "@/lib/server/audit";
+
+/** Defense-in-depth: even though the /admin layout gates non-admin
+ *  access at render time, the Server Action itself must refuse a
+ *  privileged write if the caller is not actually an admin. A leaked
+ *  Server-Action ID would otherwise let a regular player resolve a
+ *  market. Regulator: GBT / LCCP "least-privilege" + ISO 27001 A.9. */
+const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+function requireAdminOrThrow(userId: string, action: string): void {
+  const user = db.user.findById(userId);
+  if (!user || !ADMIN_ROLES.has(user.role)) {
+    audit({
+      category: "SECURITY",
+      action: "privilege_escalation_blocked",
+      actorId: userId,
+      targetType: "Action",
+      targetId: action,
+      payload: { role: user?.role ?? "unknown" },
+    });
+    throw new Error("Forbidden: admin role required.");
+  }
+}
 
 export async function buyPositionAction(formData: FormData) {
   const session = await currentSession();
@@ -38,6 +61,7 @@ export async function cashOutPositionAction(formData: FormData) {
 export async function resolveMarketAction(formData: FormData) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
+  requireAdminOrThrow(session.userId, "resolveMarketAction");
   const marketId = String(formData.get("marketId") ?? "");
   const outcome = String(formData.get("outcome") ?? "") as Side | "VOID";
   const r = await resolveMarket({ marketId, outcome, officerId: session.userId });
@@ -53,6 +77,7 @@ export async function resolveMarketAction(formData: FormData) {
 export async function createMarketAction(formData: FormData) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
+  requireAdminOrThrow(session.userId, "createMarketAction");
   const input: CreateMarketInput = {
     titleEn: String(formData.get("titleEn") ?? ""),
     titleSw: String(formData.get("titleSw") ?? ""),

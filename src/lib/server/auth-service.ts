@@ -26,6 +26,23 @@ function adminBootstrapPhones(): Set<string> {
   );
 }
 
+/** Common-password blacklist. Tiny on purpose — this catches the worst
+ *  offenders without UX-blocking legitimate weak choices that the strength
+ *  meter already discourages. Source: SecLists top-1000 intersected with
+ *  the OWASP "TOP 100 worst passwords" — only entries with length ≥ 8 (so
+ *  we don't double-reject the min-length rule). */
+const COMMON_PASSWORDS = new Set([
+  "password", "12345678", "123456789", "1234567890", "qwerty12", "qwertyui",
+  "qwerty123", "iloveyou", "password1", "password!", "letmein1", "welcome1",
+  "admin123", "abc12345", "monkey12", "dragon12", "football", "baseball",
+  "basketball", "trustno1", "sunshine", "princess", "starwars", "shadow12",
+  "michael1", "jennifer", "daniel12", "computer", "internet", "welcome123",
+  "password123", "passw0rd", "p@ssword", "p@ssw0rd",
+]);
+function isCommonPassword(pw: string): boolean {
+  return COMMON_PASSWORDS.has(pw.toLowerCase());
+}
+
 const OTP_TTL_MS = 5 * 60 * 1000;
 const TERMS_VERSION = "2026-04-01";
 
@@ -279,12 +296,25 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
   if (/^\s|\s$/.test(input.password)) {
     return { ok: false, error: "Password cannot start or end with a space.", code: "INVALID" };
   }
+  if (isCommonPassword(input.password)) {
+    return { ok: false, error: "That password is in the public breach list. Pick something less common.", code: "INVALID" };
+  }
 
   const phone = baseParse.data.phone;
   const meta = await clientMeta();
 
   const rl = rateCheck(phone, "auth.register");
   if (!rl.allowed) return { ok: false, error: "Too many attempts. Please wait.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
+
+  // Per-IP cap on registration to block credential-stuffing / mass-fake-account
+  // bursts from a single source. Looser than the per-phone cap.
+  if (meta.ip) {
+    const rlIp = rateCheck(meta.ip, "auth.register.ip");
+    if (!rlIp.allowed) {
+      audit({ category: "SECURITY", action: "register.ip_rate_limited", actorId: null, targetType: "Ip", targetId: meta.ip });
+      return { ok: false, error: "Too many sign-ups from this network. Please try again later.", code: "RATE_LIMITED", retryAfterSec: rlIp.retryAfterSec };
+    }
+  }
 
   if (db.user.findByPhone(phone)) {
     audit({ category: "AUTH", action: "register.duplicate_phone", actorId: null, targetType: "Phone", targetId: phone, ip: meta.ip });
@@ -363,6 +393,13 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
 
   const rl = rateCheck(phone, "auth.login");
   if (!rl.allowed) return { ok: false, error: "Too many attempts. Please wait.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
+  if (meta.ip) {
+    const rlIp = rateCheck(meta.ip, "auth.login.ip");
+    if (!rlIp.allowed) {
+      audit({ category: "SECURITY", action: "login.ip_rate_limited", actorId: null, targetType: "Ip", targetId: meta.ip });
+      return { ok: false, error: "Too many sign-in attempts from this network. Please try again later.", code: "RATE_LIMITED", retryAfterSec: rlIp.retryAfterSec };
+    }
+  }
 
   const user = db.user.findByPhone(phone);
   if (!user) {

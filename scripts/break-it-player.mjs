@@ -51,6 +51,11 @@ async function readAuditCount() {
   return (await r.json())?.store?.auditEntries ?? 0;
 }
 
+async function resetRateLimits() {
+  await fetch(`${BASE}/api/dev-test/reset-rate-limits`, { method: "POST" }).catch(() => {});
+}
+await resetRateLimits();
+
 async function readWallet(p) {
   await p.goto(`${BASE}/wallet`, { waitUntil: "domcontentloaded" }).catch(() => {});
   await p.waitForTimeout(800);
@@ -271,15 +276,16 @@ console.log("\n=== F · SELF-EXCLUSION BYPASS ===");
 console.log("\n=== G · PRIVILEGE ESCALATION ===");
 {
   // Player browses to /admin → must redirect (browser-level via meta-refresh).
-  // ERR_ABORTED is expected when the browser cancels the original load to
-  // follow the refresh — catch it and check the final URL.
+  // Acceptable landings: /auth/admin OR / (the admin login page bounces
+  // already-authed non-admins straight home — both are "not on /admin").
+  const landedAway = (url) => !/\/admin(\b|\/)/.test(url) || /\/auth\/admin/.test(url);
   await p.goto(`${BASE}/admin`, { waitUntil: "domcontentloaded" }).catch(() => {});
-  await p.waitForTimeout(2500);
-  log("G1 /admin redirects player to /auth/admin", /auth\/admin/.test(p.url()), `landed=${p.url()}`);
+  for (let i = 0; i < 12 && !landedAway(p.url()); i++) await p.waitForTimeout(500);
+  log("G1 /admin pushes player off (auth/admin or /)", landedAway(p.url()), `landed=${p.url()}`);
 
   await p.goto(`${BASE}/admin/resolver-queue`, { waitUntil: "domcontentloaded" }).catch(() => {});
-  await p.waitForTimeout(2500);
-  log("G2 /admin/resolver-queue redirects player", /auth\/admin/.test(p.url()), `landed=${p.url()}`);
+  for (let i = 0; i < 12 && !landedAway(p.url()); i++) await p.waitForTimeout(500);
+  log("G2 /admin/resolver-queue pushes player off", landedAway(p.url()), `landed=${p.url()}`);
 
   // Even if a player somehow knew an admin Server Action ID, the action
   // function itself should refuse (defense in depth). We test this by
@@ -556,12 +562,13 @@ console.log("\n=== O · TIME / AGE TAMPERING ===");
 // =========================================================
 console.log("\n=== P · BOT / AUTOMATION ===");
 {
-  // Best-effort signal — if the app rate-limits per-IP rapid registrations,
-  // 6 fast registrations from the same context should hit the cap.
+  // Per-IP rate-limit assertion: 12 fast registrations from the same
+  // context must trip the IP cap (Sprint 45: cap=10 per ~20 min).
+  await resetRateLimits();
   const probe = await browser.newContext();
   const pp = await probe.newPage();
   let okCount = 0, blockedCount = 0;
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 12; i++) {
     await pp.goto(`${BASE}/auth/register`, { waitUntil: "networkidle" });
     const tail = "7" + String((Date.now() + i + 7) % 100_000_000).padStart(8, "0");
     await pp.fill('#phone', tail);
@@ -577,9 +584,8 @@ console.log("\n=== P · BOT / AUTOMATION ===");
     if (/error=rate_limited/.test(pp.url())) blockedCount++;
     else if (!/auth\/register/.test(pp.url())) okCount++;
   }
-  // Either rate-limit fires (preferred) or all 6 succeed (no per-IP cap).
-  // We just record what happened — it's a signal, not a strict assertion.
-  log("P1 rapid 6× registration burst (signal only)", okCount + blockedCount === 6, `ok=${okCount} blocked=${blockedCount}`);
+  // Per-IP cap (Sprint 45) must throttle BEFORE 12 succeed.
+  log("P1 rapid 12× registration burst is throttled per-IP", blockedCount > 0, `ok=${okCount} blocked=${blockedCount}`);
   await probe.close();
 }
 

@@ -25,6 +25,13 @@ function initialsFor(displayName: string | null, phone: string): string {
   return tail || "50";
 }
 
+/** Mask a Tanzanian E.164 phone for on-screen display per PDPA / GBT
+ *  data-minimisation: keep prefix + 2 trailing digits, mask the rest. */
+function maskPhone(phoneE164: string): string {
+  if (phoneE164.length <= 6) return phoneE164;
+  return `${phoneE164.slice(0, 4)}*****${phoneE164.slice(-2)}`;
+}
+
 function regionLabel(region: string | null) {
   return region ?? "Tanzania";
 }
@@ -88,7 +95,7 @@ export default async function ProfilePage() {
               fallbackPlaceholder={displayName}
             />
             <p className="mt-1.5 font-mono text-[12px] text-text-muted tabular-nums">
-              {user.phoneE164} · {regionLabel(user.region)}
+              {maskPhone(user.phoneE164)} · {regionLabel(user.region)}
             </p>
 
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
