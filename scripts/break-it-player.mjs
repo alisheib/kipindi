@@ -32,7 +32,7 @@ async function register(ctx) {
   const e164 = "+255" + tail;
   const p = await ctx.newPage();
   await p.goto(`${BASE}/auth/register`, { waitUntil: "networkidle" });
-  await p.fill('input[name="phone"]', tail);
+  await p.fill('#phone', tail);
   await p.fill('input[name="dob"]', "1990-01-15");
   await p.fill('input[name="password"]', "TestPass123!");
   await p.fill('input[name="passwordConfirm"]', "TestPass123!");
@@ -537,7 +537,7 @@ console.log("\n=== O · TIME / AGE TAMPERING ===");
   const pp = await probe.newPage();
   await pp.goto(`${BASE}/auth/register`, { waitUntil: "networkidle" });
   const tail = "7" + String((Date.now() + 1) % 100_000_000).padStart(8, "0");
-  await pp.fill('input[name="phone"]', tail);
+  await pp.fill('#phone', tail);
   await pp.fill('input[name="dob"]', "2020-01-15");   // 5-year-old
   await pp.fill('input[name="password"]', "TestPass123!");
   await pp.fill('input[name="passwordConfirm"]', "TestPass123!");
@@ -564,7 +564,7 @@ console.log("\n=== P · BOT / AUTOMATION ===");
   for (let i = 0; i < 6; i++) {
     await pp.goto(`${BASE}/auth/register`, { waitUntil: "networkidle" });
     const tail = "7" + String((Date.now() + i + 7) % 100_000_000).padStart(8, "0");
-    await pp.fill('input[name="phone"]', tail);
+    await pp.fill('#phone', tail);
     await pp.fill('input[name="dob"]', "1990-01-15");
     await pp.fill('input[name="password"]', "TestPass123!");
     await pp.fill('input[name="passwordConfirm"]', "TestPass123!");

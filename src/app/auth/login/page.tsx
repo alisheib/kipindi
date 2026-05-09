@@ -2,9 +2,11 @@ import Link from "next/link";
 import { AlertCircle } from "lucide-react";
 import { FiftyLockup } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
-import { Field, Input } from "@/components/ui/input";
+import { Field } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { CountdownPill } from "@/components/ui/countdown-pill";
 import { startLoginAction } from "./actions";
 
 export const metadata = { title: "Sign in · Ingia" };
@@ -12,10 +14,11 @@ export const metadata = { title: "Sign in · Ingia" };
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ phone?: string; error?: string }>;
+  searchParams: Promise<{ phone?: string; error?: string; retry?: string }>;
 }) {
   const sp = await searchParams;
   const phoneDefault = (sp.phone ?? "").replace(/^\+255/, "").replace(/\D+/g, "").slice(0, 9);
+  const retrySec = Number.parseInt(sp.retry ?? "", 10);
 
   const errorPanel = (() => {
     switch (sp.error) {
@@ -37,7 +40,9 @@ export default async function LoginPage({
         return {
           tone: "warning" as const,
           title: "Too many tries · Majaribio mengi",
-          body: "Wait a couple of minutes and try the same phone again.",
+          body: Number.isFinite(retrySec) && retrySec > 0
+            ? <>You can try again in <CountdownPill seconds={retrySec} suffix="· Subiri" />.</>
+            : "Wait a couple of minutes and try the same phone again.",
           cta: null,
         };
       case "blocked":
@@ -118,10 +123,9 @@ export default async function LoginPage({
             </Field>
 
             <Field label="Password · Nenosiri" hint="At least 8 characters.">
-              <Input
+              <PasswordInput
                 id="password"
                 name="password"
-                type="password"
                 required
                 autoComplete="current-password"
                 minLength={8}

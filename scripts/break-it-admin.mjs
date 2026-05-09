@@ -35,7 +35,7 @@ async function register(ctx) {
   const e164 = "+255" + tail;
   const p = await ctx.newPage();
   await p.goto(`${BASE}/auth/register`, { waitUntil: "networkidle" });
-  await p.fill('input[name="phone"]', tail);
+  await p.fill('#phone', tail);
   await p.fill('input[name="dob"]', "1990-01-15");
   await p.fill('input[name="password"]', "TestPass123!");
   await p.fill('input[name="passwordConfirm"]', "TestPass123!");

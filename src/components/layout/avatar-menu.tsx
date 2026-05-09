@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
 import { User, Wallet, Receipt, ShieldCheck, LogOut } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 
 export function AvatarMenu({
@@ -84,13 +85,30 @@ export function AvatarMenu({
               <Item href="/profile/kyc"    icon={ShieldCheck} label="Verify ID"    sw="Thibitisha" />
             </ul>
             <div className="border-t border-border">
-              <a
-                href="/auth/logout"
-                className="flex items-center gap-2.5 px-3.5 py-2.5 font-display text-[13px] font-semibold text-no-300 hover:bg-no-500/10 transition-colors"
-              >
-                <LogOut size={15} strokeWidth={1.75} />
-                Sign out · Toka
-              </a>
+              <ConfirmDialog
+                tone="claret"
+                title="Sign out · Toka"
+                body={
+                  <>
+                    <p>You will be signed out of this device.</p>
+                    <p className="text-text-subtle italic text-[12.5px] mt-1">
+                      Utatoka kwenye akaunti yako kwenye kifaa hiki.
+                    </p>
+                  </>
+                }
+                confirmLabel="Yes, sign out"
+                cancelLabel="Stay signed in"
+                onConfirm={() => { window.location.href = "/auth/logout"; }}
+                trigger={
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 font-display text-[13px] font-semibold text-no-300 hover:bg-no-500/10 transition-colors text-left"
+                  >
+                    <LogOut size={15} strokeWidth={1.75} aria-hidden />
+                    Sign out · Toka
+                  </button>
+                }
+              />
             </div>
           </div>
         </>,

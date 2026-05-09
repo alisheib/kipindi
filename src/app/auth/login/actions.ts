@@ -20,6 +20,9 @@ export async function startLoginAction(formData: FormData) {
         : result.code === "SUSPENDED" ? "blocked"
         : "wrong_credentials",
     });
+    if (result.code === "RATE_LIMITED" && result.retryAfterSec) {
+      params.set("retry", String(Math.max(1, Math.ceil(result.retryAfterSec))));
+    }
     redirect(`/auth/login?${params.toString()}`);
   }
   // Admins land directly in /admin; players go to the pulse.

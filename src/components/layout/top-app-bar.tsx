@@ -16,6 +16,9 @@ export type TopAppBarUser = {
   isAuthed: boolean;
   avatarSrc?: string | null;
   seed?: string;
+  /** TZS wallet balance — null = guest. Renders as the kit's mono pearl
+   *  balance pill next to the avatar (kit/screens.jsx top-bar pattern). */
+  balance?: number | null;
 };
 
 export function TopAppBar({ user }: { user: TopAppBarUser }) {
@@ -61,7 +64,16 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
             })}
           </nav>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1.5">
+          {user.isAuthed && user.balance !== null && user.balance !== undefined && (
+            <Link
+              href="/wallet"
+              aria-label={`Wallet · TZS ${user.balance.toLocaleString("en-US")}`}
+              className="hidden sm:inline-flex h-8 items-center px-2.5 rounded-pill border border-border bg-bg-overlay font-mono text-[11px] tabular-nums font-semibold text-text hover:border-gold-700 hover:text-gold-300 transition-colors"
+            >
+              TZS {user.balance.toLocaleString("en-US")}
+            </Link>
+          )}
           <NotificationsPanel />
           <LanguageToggle />
           <AvatarMenu

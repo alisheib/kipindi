@@ -21,7 +21,19 @@ type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, "type" | "onChang
 
 const DIGITS_ONLY = /\D+/g;
 
-export function PhoneInput({ defaultValue, value, onChange, ...rest }: Props) {
+/**
+ * Formats a 9-digit Tanzanian local number as "ABC DEF GHI" while
+ * keeping the underlying form value as the raw 9 digits (so the server
+ * receives the canonical shape).
+ */
+function formatTzPhone(digits: string): string {
+  const d = digits.slice(0, 9);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)} ${d.slice(3)}`;
+  return `${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6)}`;
+}
+
+export function PhoneInput({ defaultValue, value, onChange, name, ...rest }: Props) {
   const [v, setV] = React.useState<string>(() => stripDigits(String(defaultValue ?? "")));
 
   // Keep controlled mode honoured when caller passes `value`.
@@ -31,9 +43,10 @@ export function PhoneInput({ defaultValue, value, onChange, ...rest }: Props) {
 
   const handle = (e: React.ChangeEvent<HTMLInputElement>) => {
     const cleaned = stripDigits(e.target.value);
-    e.target.value = cleaned;       // mutate so consumers see the cleaned value
     setV(cleaned);
-    onChange?.(e);
+    // Synthesize a change event with the cleaned value for any outer listener.
+    const synthetic = { ...e, target: { ...e.target, value: cleaned, name: name ?? "" } };
+    onChange?.(synthetic as unknown as React.ChangeEvent<HTMLInputElement>);
   };
 
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
@@ -44,27 +57,33 @@ export function PhoneInput({ defaultValue, value, onChange, ...rest }: Props) {
     const target = e.target as HTMLInputElement;
     const start = target.selectionStart ?? target.value.length;
     const end = target.selectionEnd ?? target.value.length;
-    const next = (target.value.slice(0, start) + cleaned + target.value.slice(end)).slice(0, 9);
-    target.value = next;
-    setV(next);
-    onChange?.({ target } as React.ChangeEvent<HTMLInputElement>);
+    const merged = (stripDigits(target.value).slice(0, start) + cleaned + stripDigits(target.value).slice(end)).slice(0, 9);
+    setV(merged);
   };
 
+  // The visible input must NOT carry the form name — otherwise it
+  // submits the formatted "712 345 678" string. The hidden input below
+  // owns the canonical name + raw-9-digit value.
+  const { id, ...visibleRest } = rest;
   return (
-    <Input
-      {...rest}
-      type="tel"
-      inputMode="numeric"
-      autoComplete="tel-national"
-      pattern="[0-9]{9}"
-      maxLength={9}
-      mono
-      prefix="+255"
-      placeholder={rest.placeholder ?? "712 345 678"}
-      value={v}
-      onChange={handle}
-      onPaste={handlePaste}
-    />
+    <>
+      <Input
+        {...visibleRest}
+        id={id}
+        type="tel"
+        inputMode="numeric"
+        autoComplete="tel-national"
+        pattern="[0-9 ]{9,11}"
+        maxLength={11}
+        mono
+        prefix="+255"
+        placeholder={visibleRest.placeholder ?? "712 345 678"}
+        value={formatTzPhone(v)}
+        onChange={handle}
+        onPaste={handlePaste}
+      />
+      {name && <input type="hidden" name={name} value={v} />}
+    </>
   );
 }
 

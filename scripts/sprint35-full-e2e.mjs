@@ -57,7 +57,7 @@ const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } })
 const p = await ctx.newPage();
 
 await p.goto(`${BASE}/auth/register`, { waitUntil: "networkidle" });
-await p.fill('input[name="phone"]', phoneTail);
+await p.fill('#phone', phoneTail);
 await p.fill('input[name="dob"]', "1990-01-15");
 await p.fill('input[name="password"]', "TestPass123!");
 await p.fill('input[name="passwordConfirm"]', "TestPass123!");

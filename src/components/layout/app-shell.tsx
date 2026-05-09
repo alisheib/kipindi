@@ -20,7 +20,8 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     isAuthed: boolean;
     avatarSrc?: string | null;
     seed?: string;
-  } = { initials: guestUser.initials, name: guestUser.name, phone: guestUser.phone, isAuthed: false };
+    balance?: number | null;
+  } = { initials: guestUser.initials, name: guestUser.name, phone: guestUser.phone, isAuthed: false, balance: null };
   let realityCheckMin = 30;
   if (session) {
     const u = db.user.findById(session.userId);
@@ -29,6 +30,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     const masked = session.phoneE164.length > 6
       ? `${session.phoneE164.slice(0, 4)}*****${session.phoneE164.slice(-2)}`
       : session.phoneE164;
+    const wallet = db.wallet.findByUserId(session.userId);
     topUser = {
       initials,
       name: display,
@@ -36,6 +38,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       isAuthed: true,
       avatarSrc: u?.avatarDataUrl ?? null,
       seed: session.userId,
+      balance: wallet?.balance ?? null,
     };
     const rg = getRgSettings(session.userId);
     realityCheckMin = rg.realityCheckIntervalMin || 30;

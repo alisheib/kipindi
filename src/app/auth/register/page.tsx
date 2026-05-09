@@ -4,6 +4,7 @@ import { FiftyLockup } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { Field, Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { startRegisterAction } from "./actions";
 
@@ -113,23 +114,22 @@ export default async function RegisterPage({
             </Field>
 
             <Field label="Password · Nenosiri" hint="At least 8 characters.">
-              <Input
+              <PasswordInput
                 id="password"
                 name="password"
-                type="password"
                 required
                 autoComplete="new-password"
                 minLength={8}
                 size="lg"
+                showStrength
                 placeholder="••••••••"
               />
             </Field>
 
             <Field label="Confirm password · Thibitisha nenosiri">
-              <Input
+              <PasswordInput
                 id="passwordConfirm"
                 name="passwordConfirm"
-                type="password"
                 required
                 autoComplete="new-password"
                 minLength={8}
