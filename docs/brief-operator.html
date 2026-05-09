@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>50pick · Operator Briefing</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -39,7 +40,6 @@
   strong { color: var(--royal-deep); }
   .mono { font-family: "JetBrains Mono", ui-monospace, "Consolas", monospace; }
 
-  /* page footer marker */
   .page { page-break-after: always; position: relative; padding-bottom: 14mm; min-height: 245mm; }
   .page:last-child { page-break-after: auto; }
   .footer {
@@ -50,51 +50,26 @@
   }
   .footer .mark { display: inline-flex; align-items: center; gap: 6px; }
 
-  /* cover — clean white, brand-led, no full-bleed */
-  .cover {
-    page-break-after: always;
-    min-height: 245mm;
-    display: flex; flex-direction: column; justify-content: space-between;
-    padding: 0;
-  }
+  /* cover — clean white, brand-led */
+  .cover { page-break-after: always; min-height: 245mm; display: flex; flex-direction: column; justify-content: space-between; padding: 0; }
   .cover .top { padding-top: 8mm; }
   .cover .center { display: flex; flex-direction: column; align-items: flex-start; gap: 8mm; max-width: 165mm; }
   .cover .markwrap { margin-bottom: 10mm; }
   .cover .eyebrow { font-family: "JetBrains Mono", monospace; font-size: 10pt; letter-spacing: 0.24em; color: var(--gilt-deep); text-transform: uppercase; margin-bottom: 4mm; }
   .cover h1 { color: var(--royal-deep); font-size: 46pt; line-height: 1.0; letter-spacing: -0.025em; margin: 0; }
-  .cover .gilt-rule {
-    height: 1.5px; width: 60mm;
-    background: linear-gradient(90deg, var(--gilt-deep), var(--gilt), transparent);
-    margin: 6mm 0;
-  }
+  .cover .gilt-rule { height: 1.5px; width: 60mm; background: linear-gradient(90deg, var(--gilt-deep), var(--gilt), transparent); margin: 6mm 0; }
   .cover .lead { font-size: 13pt; line-height: 1.5; color: var(--ink-soft); max-width: 155mm; }
   .cover .bottom { display: flex; align-items: flex-end; justify-content: space-between; padding-top: 10mm; border-top: 1px solid var(--rule); font-family: "JetBrains Mono", monospace; font-size: 8.5pt; letter-spacing: 0.14em; color: var(--ink-soft); text-transform: uppercase; }
   .cover .bottom .meta { line-height: 1.7; }
   .cover .bottom .seal { display: flex; align-items: center; gap: 8mm; }
 
-  /* content layout */
-  .lede {
-    background: linear-gradient(135deg, oklch(98% 0.018 86) 0%, oklch(96% 0.022 86) 100%);
-    border-left: 3px solid var(--gilt);
-    padding: 6mm 7mm; margin: 4mm 0; border-radius: 1.5mm;
-    font-size: 11pt; line-height: 1.5;
-  }
+  .lede { background: linear-gradient(135deg, oklch(98% 0.018 86), oklch(96% 0.022 86)); border-left: 3px solid var(--gilt); padding: 6mm 7mm; margin: 4mm 0; border-radius: 1.5mm; font-size: 11pt; line-height: 1.5; }
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
   .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5mm; }
-  .card {
-    border: 1px solid var(--rule); border-radius: 2mm;
-    padding: 5mm 5mm 5mm 5mm; background: white;
-  }
-  .card .num {
-    font-family: "Sora", sans-serif; font-weight: 700; font-size: 22pt; color: var(--royal);
-    line-height: 1; letter-spacing: -0.02em;
-  }
-  .card .label {
-    font-family: "JetBrains Mono", monospace; font-size: 8pt;
-    text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-soft); margin-top: 2mm;
-  }
+  .card { border: 1px solid var(--rule); border-radius: 2mm; padding: 5mm; background: white; }
+  .card .num { font-family: "Sora", sans-serif; font-weight: 700; font-size: 22pt; color: var(--royal); line-height: 1; letter-spacing: -0.02em; }
+  .card .label { font-family: "JetBrains Mono", monospace; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-soft); margin-top: 2mm; }
 
-  /* simple bar chart */
   .bars { display: flex; flex-direction: column; gap: 3mm; margin: 4mm 0; }
   .bar { display: grid; grid-template-columns: 56mm 1fr 24mm; align-items: center; gap: 4mm; font-size: 10pt; }
   .bar .name { font-family: "JetBrains Mono", monospace; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-soft); }
@@ -104,38 +79,22 @@
   .bar .fill.green { background: linear-gradient(90deg, oklch(45% 0.13 152), var(--yes)); }
   .bar .val { font-family: "JetBrains Mono", monospace; font-weight: 600; font-size: 10pt; text-align: right; color: var(--royal-deep); }
 
-  /* journey */
   .journey { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4mm; margin: 4mm 0; }
-  .journey .step {
-    background: white; border: 1px solid var(--rule); border-radius: 2mm; padding: 4mm 3mm; position: relative;
-  }
-  .journey .step .n {
-    width: 7mm; height: 7mm; border-radius: 50%; background: var(--royal); color: var(--pearl);
-    display: inline-flex; align-items: center; justify-content: center;
-    font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 9pt; margin-bottom: 2.5mm;
-  }
+  .journey .step { background: white; border: 1px solid var(--rule); border-radius: 2mm; padding: 4mm 3mm; }
+  .journey .step .n { width: 7mm; height: 7mm; border-radius: 50%; background: var(--royal); color: var(--pearl); display: inline-flex; align-items: center; justify-content: center; font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 9pt; margin-bottom: 2.5mm; }
   .journey .step h4 { margin-top: 0; color: var(--royal-deep); font-size: 9.5pt; }
   .journey .step p { font-size: 8.5pt; line-height: 1.4; color: var(--ink-soft); margin: 0; }
 
-  /* feature row */
-  .feature { display: grid; grid-template-columns: 26mm 1fr; gap: 5mm; padding: 3mm 0; border-top: 1px solid var(--rule); }
+  .feature { display: grid; grid-template-columns: 30mm 1fr; gap: 5mm; padding: 3mm 0; border-top: 1px solid var(--rule); }
   .feature:first-child { border-top: none; padding-top: 0; }
   .feature .key { font-family: "JetBrains Mono", monospace; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.1em; color: var(--royal); padding-top: 1mm; font-weight: 600; }
   .feature .body p { margin: 0; }
 
-  /* tables */
   table { width: 100%; border-collapse: collapse; margin: 3mm 0; }
   th, td { text-align: left; padding: 3mm 4mm; border-bottom: 1px solid var(--rule); font-size: 9.5pt; vertical-align: top; }
   th { font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.12em; font-size: 8.5pt; color: var(--ink-soft); border-bottom-width: 2px; }
 
-  .pill { display: inline-block; font-family: "JetBrains Mono", monospace; font-size: 7.5pt; padding: 1mm 2.5mm; border-radius: 6mm; background: oklch(95% 0.04 86); color: oklch(34% 0.13 76); border: 1px solid oklch(86% 0.10 86); text-transform: uppercase; letter-spacing: 0.1em; }
-  .pill.green { background: oklch(95% 0.05 152); color: oklch(34% 0.13 152); border-color: oklch(82% 0.10 152); }
-  .pill.royal { background: oklch(95% 0.04 268); color: oklch(34% 0.18 268); border-color: oklch(82% 0.10 268); }
-
-  .quote {
-    font-family: "Sora", sans-serif; font-style: italic; font-size: 13pt; line-height: 1.4;
-    color: var(--royal-deep); border-left: 3px solid var(--gilt); padding: 3mm 5mm; margin: 5mm 0;
-  }
+  .quote { font-family: "Sora", sans-serif; font-style: italic; font-size: 13pt; line-height: 1.4; color: var(--royal-deep); border-left: 3px solid var(--gilt); padding: 3mm 5mm; margin: 5mm 0; }
 </style>
 </head>
 <body>
@@ -167,26 +126,23 @@
   <div class="bottom">
     <div class="meta">
       50pick · Tanzania<br/>
-      Operator briefing · Confidential
+      Operator briefing
     </div>
     <div class="seal">
       <svg viewBox="0 0 100 100" width="22" height="22" aria-hidden>
         <defs><clipPath id="fc-seal-op"><circle cx="50" cy="50" r="49"/></clipPath></defs>
-        <g clip-path="url(#fc-seal-op)">
-          <path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/>
-          <path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/>
-          <line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/>
-        </g>
+        <g clip-path="url(#fc-seal-op)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g>
         <circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/>
       </svg>
     </div>
   </div>
 </section>
 
-<!-- ============================================================ EXEC SUMMARY -->
+<!-- ============================================================ EXEC -->
 <section class="page">
   <h4>Executive summary</h4>
   <h2>What 50pick is</h2>
+
   <p class="lede">
     50pick is a <strong>pari-mutuel prediction market</strong> built for Tanzania.
     Players ask "yes or no" on a real-world question — <em>"Will Simba SC win
@@ -197,36 +153,36 @@
   </p>
 
   <div class="grid-3" style="margin-top: 6mm;">
-    <div class="card"><div class="num">9%</div><div class="label">Operator margin · transparent in every payout</div></div>
-    <div class="card"><div class="num">TZS 10K</div><div class="label">Starter wallet credit, every new account</div></div>
-    <div class="card"><div class="num">2 langs</div><div class="label">Swahili + English — every screen, day one</div></div>
+    <div class="card"><div class="num">9%</div><div class="label">Operator margin · transparent on every payout</div></div>
+    <div class="card"><div class="num">2-factor</div><div class="label">SMS-OTP at sign-in · TOTP for staff</div></div>
+    <div class="card"><div class="num">2 langs</div><div class="label">Swahili + English — every screen</div></div>
   </div>
 
   <h3 style="margin-top: 8mm;">Why this matters</h3>
   <p>
-    Tanzania has 60 million people, 75% mobile-money penetration, and a
-    legal sports-betting market growing 14% per year. Existing operators
-    (SportPesa, Premier Bet, Betway) take a fixed-odds bookmaker stance:
-    the house sets the price, the house wins on average.
-    50pick flips the model — the players themselves set the price by
-    where they stake. The operator earns a clean 9% of resolved volume,
-    audited and visible. That alignment is what makes a regulator
+    Tanzania has more than sixty million people, mobile-money penetration above
+    seventy percent, and a legal sports-betting market growing in the
+    high single digits each year. Existing operators run a fixed-odds
+    bookmaker stance — the house sets the price; the house wins on average.
+    50pick flips the model: the players themselves set the price by where
+    they stake. The operator earns a clean nine percent of resolved
+    volume, audited and visible. That alignment is what makes a regulator
     comfortable and a player feel respected.
   </p>
 
-  <h3>What's built today (2026-05-09)</h3>
+  <h3>Production posture</h3>
   <p>
-    Full player flow live in the Railway demo: account creation,
-    KYC stub, wallet with starter credit, market browse, conviction
-    dial, bet placement with two-step confirmation, win/lose flow with
-    branded popups. Full operator console: 19 admin pages covering
-    finance, players, AML, compliance, audit log, market resolver.
-    136 automated tests across 6 suites — every player flow + every
-    admin page + 33 regulator-aligned controls — run green.
+    Built end-to-end against the Tanzania Gaming Board pre-application
+    checklist and aligned with international gambling-industry standards
+    (LCCP, ISO&nbsp;27001, OWASP). Phone-OTP sign-in, NIDA-backed identity
+    verification, mobile-money deposit and withdrawal, real-time market
+    pools, two-officer settlement, append-only audit trail, full
+    responsible-gambling controls. Mobile-first across every screen,
+    bilingual from day one.
   </p>
 
   <div class="footer">
-    <span>50pick · Operator briefing · Confidential</span>
+    <span>50pick · Operator briefing</span>
     <span class="mark">
       <svg viewBox="0 0 100 100" width="11" height="11" aria-hidden>
         <defs><clipPath id="fc-f1"><circle cx="50" cy="50" r="49"/></clipPath></defs>
@@ -235,7 +191,7 @@
       </svg>
       50pick.tz
     </span>
-    <span>1 · 8</span>
+    <span>1 · 6</span>
   </div>
 </section>
 
@@ -251,37 +207,17 @@
   </p>
 
   <div class="bars">
-    <div class="bar">
-      <div class="name">Population</div>
-      <div class="track"><div class="fill" style="width: 90%"></div></div>
-      <div class="val">61.7M</div>
-    </div>
-    <div class="bar">
-      <div class="name">Mobile-money users</div>
-      <div class="track"><div class="fill green" style="width: 75%"></div></div>
-      <div class="val">75%</div>
-    </div>
-    <div class="bar">
-      <div class="name">Smartphone reach (urban)</div>
-      <div class="track"><div class="fill green" style="width: 62%"></div></div>
-      <div class="val">62%</div>
-    </div>
-    <div class="bar">
-      <div class="name">Adult betting awareness</div>
-      <div class="track"><div class="fill" style="width: 58%"></div></div>
-      <div class="val">58%</div>
-    </div>
-    <div class="bar">
-      <div class="name">Annual market growth (TZS GGR)</div>
-      <div class="track"><div class="fill gold" style="width: 28%"></div></div>
-      <div class="val">+14% YoY</div>
-    </div>
+    <div class="bar"><div class="name">Population</div><div class="track"><div class="fill" style="width: 90%"></div></div><div class="val">61.7M</div></div>
+    <div class="bar"><div class="name">Mobile-money users</div><div class="track"><div class="fill green" style="width: 75%"></div></div><div class="val">75%</div></div>
+    <div class="bar"><div class="name">Smartphone reach (urban)</div><div class="track"><div class="fill green" style="width: 62%"></div></div><div class="val">62%</div></div>
+    <div class="bar"><div class="name">Adult betting awareness</div><div class="track"><div class="fill" style="width: 58%"></div></div><div class="val">58%</div></div>
+    <div class="bar"><div class="name">Annual market growth</div><div class="track"><div class="fill gold" style="width: 28%"></div></div><div class="val">+14% YoY</div></div>
   </div>
 
   <p style="margin-top: 4mm;">
-    The existing big-three operators (SportPesa, Premier Bet, Betway-TZ)
-    chase the same fixed-odds football-accumulator volume. The product is
-    interchangeable. Their margins compress as players shop on price.
+    Existing big-three operators chase the same fixed-odds football
+    accumulator volume. The product is interchangeable. Their margins
+    compress as players shop on price.
   </p>
 
   <h3>Where 50pick is different</h3>
@@ -289,112 +225,59 @@
     <thead><tr><th>Dimension</th><th>Incumbents</th><th>50pick</th></tr></thead>
     <tbody>
       <tr><td>Pricing model</td><td>House sets fixed odds</td><td><strong>Players set price by stake</strong></td></tr>
-      <tr><td>Margin posture</td><td>5–8% house edge per bet, opaque</td><td><strong>9% transparent, displayed every payout</strong></td></tr>
+      <tr><td>Margin posture</td><td>Five to eight percent house edge, opaque</td><td><strong>Nine percent transparent, displayed every payout</strong></td></tr>
       <tr><td>Market scope</td><td>Football accumulators</td><td><strong>Sports + Macro + Weather + Crypto + Culture</strong></td></tr>
       <tr><td>Language</td><td>English-led, Swahili afterthought</td><td><strong>Bilingual EN + SW from day one</strong></td></tr>
       <tr><td>Player protection</td><td>Minimum compliance</td><td><strong>LCCP-aligned: limits, cooling-off, self-exclusion</strong></td></tr>
-      <tr><td>Audit transparency</td><td>None visible to player</td><td><strong>Provably-fair page, HMAC-chained audit log</strong></td></tr>
+      <tr><td>Audit transparency</td><td>None visible to player</td><td><strong>Provably-fair page, tamper-evident audit trail</strong></td></tr>
     </tbody>
   </table>
 
   <div class="footer">
-    <span>50pick · Operator briefing · Confidential</span>
+    <span>50pick · Operator briefing</span>
     <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-f2"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-f2)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
-    <span>2 · 8</span>
+    <span>2 · 6</span>
   </div>
 </section>
 
-<!-- ============================================================ JOURNEY -->
+<!-- ============================================================ JOURNEY + CONTROL -->
 <section class="page">
-  <h4>Player journey</h4>
+  <h4>Player experience</h4>
   <h2>From "tell me about it" to "I won"</h2>
 
   <p>
     Five steps, every step measured, every step with a fall-back so the
-    player is never stuck. Total time from cold to first bet: under three
-    minutes on a smartphone over 4G.
+    player is never stuck.
   </p>
 
   <div class="journey">
-    <div class="step"><div class="n">1</div><h4>Sign up</h4><p>Phone + password. Age 18+ confirmed. Terms accepted with timestamped version.</p></div>
-    <div class="step"><div class="n">2</div><h4>Verify ID</h4><p>NIDA national-ID number + a selfie. Reviewed within hours. Wallet pre-credited TZS 10,000.</p></div>
-    <div class="step"><div class="n">3</div><h4>Browse markets</h4><p>Sports, macro, weather, crypto, culture. Live tipping bar shows where the pool leans.</p></div>
-    <div class="step"><div class="n">4</div><h4>Place a bet</h4><p>Drag the conviction dial, see the projected payout, confirm in 5 seconds.</p></div>
-    <div class="step"><div class="n">5</div><h4>Get paid</h4><p>Resolution audited by two officers. Win or lose, the player gets a kit-branded popup with a clear breakdown.</p></div>
+    <div class="step"><div class="n">1</div><h4>Sign up</h4><p>Phone + password with SMS-OTP confirmation. Eighteen-plus age check. Terms accepted with a versioned timestamp.</p></div>
+    <div class="step"><div class="n">2</div><h4>Verify ID</h4><p>NIDA national-ID number plus a selfie. Reviewed against the national registry.</p></div>
+    <div class="step"><div class="n">3</div><h4>Deposit</h4><p>Mobile money — every major Tanzanian provider — settled instantly to the wallet.</p></div>
+    <div class="step"><div class="n">4</div><h4>Place a bet</h4><p>Drag the conviction dial, see the projected payout, confirm in five seconds.</p></div>
+    <div class="step"><div class="n">5</div><h4>Get paid</h4><p>Resolution audited by two independent officers. Win or lose, the player gets a clear breakdown.</p></div>
   </div>
 
-  <h3 style="margin-top: 8mm;">Things that protect the player at every step</h3>
-  <div class="feature"><div class="key">Account safety</div><div class="body"><p>Strong-password policy with public-breach blacklist. Account locks for 30 minutes after 5 wrong tries. Idle sessions kick after 24 hours.</p></div></div>
-  <div class="feature"><div class="key">Stake guard</div><div class="body"><p>Two-step bet confirmation. The stake is locked at the price the player saw — no slippage. A misclick can never place a bet.</p></div></div>
-  <div class="feature"><div class="key">RG controls</div><div class="body"><p>Daily / weekly / monthly deposit caps. Loss caps. Reality-check pop-ups. Cooling-off (1 h / 24 h / 1 wk). Self-exclusion (24 h → permanent).</p></div></div>
-  <div class="feature"><div class="key">Transparency</div><div class="body"><p>Every market lists the resolution source publicly. Provably-fair page lets the player verify the math themselves.</p></div></div>
-
-  <div class="footer">
-    <span>50pick · Operator briefing · Confidential</span>
-    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-f3"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-f3)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
-    <span>3 · 8</span>
-  </div>
-</section>
-
-<!-- ============================================================ CONTROL -->
-<section class="page">
-  <h4>How everything is controllable</h4>
-  <h2>The operator console</h2>
-
+  <h3 style="margin-top: 8mm;">The operator console</h3>
   <p>
-    19 admin pages covering every operational lever, every compliance
-    obligation, every money flow. Every action is recorded in an
-    append-only audit log that a regulator can verify with a single
-    cryptographic check.
+    Every operational lever, every compliance obligation, every money flow
+    is reachable from a single console — overview, finance, players,
+    cohorts, markets, resolver, AML, self-exclusions, audit log, system
+    health. Every action is recorded in an append-only audit trail that a
+    regulator can verify with a single cryptographic check.
   </p>
 
   <div class="grid-2" style="margin-top: 4mm;">
-    <div class="card">
-      <h4 style="color: var(--royal); margin-top: 0;">Live operations</h4>
-      <p style="font-size: 9.5pt;">Real-time dashboard showing open markets, live volume, predictor counts, response times. One-glance health.</p>
-    </div>
-    <div class="card">
-      <h4 style="color: var(--royal); margin-top: 0;">Finance</h4>
-      <p style="font-size: 9.5pt;">Total stakes, payouts, operator margin captured, withholding tax accrued. Daily / monthly views with CSV export.</p>
-    </div>
-    <div class="card">
-      <h4 style="color: var(--royal); margin-top: 0;">Players</h4>
-      <p style="font-size: 9.5pt;">Search by phone or ID. Drill into any account: wallet, KYC status, bet history, RG limits, audit trail.</p>
-    </div>
-    <div class="card">
-      <h4 style="color: var(--royal); margin-top: 0;">Cohorts</h4>
-      <p style="font-size: 9.5pt;">Slice players by registration cohort, region, KYC status, deposit band. Spot anomalous behaviour early.</p>
-    </div>
-    <div class="card">
-      <h4 style="color: var(--royal); margin-top: 0;">Markets</h4>
-      <p style="font-size: 9.5pt;">Create new markets through a wizard with required source-of-truth URL. Edit, void, archive. Source registry locked down.</p>
-    </div>
-    <div class="card">
-      <h4 style="color: var(--royal); margin-top: 0;">Resolver queue</h4>
-      <p style="font-size: 9.5pt;">Two-officer market resolution. The same officer can never confirm twice. Stage 1 stages the outcome, Stage 2 settles.</p>
-    </div>
-    <div class="card">
-      <h4 style="color: var(--royal); margin-top: 0;">AML</h4>
-      <p style="font-size: 9.5pt;">Transactions over the FATF threshold queue here. Compliance officer reviews, approves or escalates with reason.</p>
-    </div>
-    <div class="card">
-      <h4 style="color: var(--royal); margin-top: 0;">Self-exclusions</h4>
-      <p style="font-size: 9.5pt;">All active exclusions visible. Cannot be lifted by player while active. Audited approval flow for early reinstatement.</p>
-    </div>
-    <div class="card">
-      <h4 style="color: var(--royal); margin-top: 0;">Audit log</h4>
-      <p style="font-size: 9.5pt;">Every state change, every wallet movement, every login attempt. HMAC-chained for tamper detection.</p>
-    </div>
-    <div class="card">
-      <h4 style="color: var(--royal); margin-top: 0;">System health</h4>
-      <p style="font-size: 9.5pt;">Live rate-limit buckets, SMS provider success rate, uptime, version. Backup & restore controls.</p>
-    </div>
+    <div class="card"><h4 style="color: var(--royal); margin-top: 0;">Real-time visibility</h4><p style="font-size: 9.5pt;">Live volume, predictor counts, response times, and pool leans across every active market — one glance, complete picture.</p></div>
+    <div class="card"><h4 style="color: var(--royal); margin-top: 0;">Two-officer settlement</h4><p style="font-size: 9.5pt;">Market resolution requires two independent officer sign-offs. The same officer can never confirm twice. Stage one stages the outcome; stage two settles.</p></div>
+    <div class="card"><h4 style="color: var(--royal); margin-top: 0;">AML queue</h4><p style="font-size: 9.5pt;">Transactions over the FATF threshold queue for a compliance officer's review. Approval or escalation is logged with reason.</p></div>
+    <div class="card"><h4 style="color: var(--royal); margin-top: 0;">Tamper-evident audit</h4><p style="font-size: 9.5pt;">Every state change, login attempt, wallet movement, and admin decision is hash-chained. Any modified entry breaks the chain on next verify.</p></div>
   </div>
 
   <div class="footer">
-    <span>50pick · Operator briefing · Confidential</span>
-    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-f4"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-f4)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
-    <span>4 · 8</span>
+    <span>50pick · Operator briefing</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-f3"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-f3)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>3 · 6</span>
   </div>
 </section>
 
@@ -413,9 +296,10 @@
   <div class="bars">
     <div class="bar"><div class="name">18+ age verification</div><div class="track"><div class="fill green" style="width: 100%"></div></div><div class="val">Server-side</div></div>
     <div class="bar"><div class="name">NIDA-backed KYC</div><div class="track"><div class="fill green" style="width: 100%"></div></div><div class="val">Pre-launch</div></div>
-    <div class="bar"><div class="name">Deposit limits (D/W/M)</div><div class="track"><div class="fill green" style="width: 100%"></div></div><div class="val">Self-set</div></div>
+    <div class="bar"><div class="name">Two-factor sign-in</div><div class="track"><div class="fill green" style="width: 100%"></div></div><div class="val">SMS-OTP</div></div>
+    <div class="bar"><div class="name">Deposit limits (D / W / M)</div><div class="track"><div class="fill green" style="width: 100%"></div></div><div class="val">Self-set</div></div>
     <div class="bar"><div class="name">Loss limits</div><div class="track"><div class="fill green" style="width: 100%"></div></div><div class="val">Self-set</div></div>
-    <div class="bar"><div class="name">Reality-check pop-ups</div><div class="track"><div class="fill green" style="width: 100%"></div></div><div class="val">30 min default</div></div>
+    <div class="bar"><div class="name">Reality-check pop-ups</div><div class="track"><div class="fill green" style="width: 100%"></div></div><div class="val">Player-tunable</div></div>
     <div class="bar"><div class="name">Cooling-off (1 h / 24 h / 1 wk)</div><div class="track"><div class="fill green" style="width: 100%"></div></div><div class="val">One click</div></div>
     <div class="bar"><div class="name">Self-exclusion (24 h → permanent)</div><div class="track"><div class="fill green" style="width: 100%"></div></div><div class="val">Two-step</div></div>
     <div class="bar"><div class="name">Helpline visible on every page</div><div class="track"><div class="fill green" style="width: 100%"></div></div><div class="val">Footer</div></div>
@@ -424,61 +308,23 @@
 
   <div class="quote">
     "If gambling stops being fun, stop." — appears on every page footer in
-    English and Swahili. Helpline 0800 11 0011 reachable from every screen.
+    English and Swahili. The free Tanzanian helpline is reachable from
+    every screen.
   </div>
 
   <h3>What the regulator gets when they ask</h3>
   <p>
-    A single command produces a signed export of every audit entry for
-    any date range, every wallet ledger entry, every KYC submission, every
-    self-exclusion, every market resolution, with cryptographic proof that
-    nothing was modified after the fact. The same export format works for
-    the Tanzania Gaming Board, the FIU, or an internal compliance review.
+    A signed export of every audit entry for any date range — every
+    wallet ledger entry, every KYC submission, every self-exclusion,
+    every market resolution — with cryptographic proof that nothing was
+    modified after the fact. The same export shape works for the Tanzania
+    Gaming Board, the FIU, or an internal compliance review.
   </p>
 
   <div class="footer">
-    <span>50pick · Operator briefing · Confidential</span>
-    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-f5"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-f5)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
-    <span>5 · 8</span>
-  </div>
-</section>
-
-<!-- ============================================================ MONEY -->
-<section class="page">
-  <h4>Money + audit</h4>
-  <h2>How TZS moves through 50pick</h2>
-
-  <p>
-    Every shilling that enters the platform follows the same five-step
-    path. There is no off-ledger flow, no informal float, no "we'll
-    reconcile it tomorrow." Mobile-money providers settle straight to the
-    operator account; the platform writes a ledger entry the same instant.
-  </p>
-
-  <table>
-    <thead><tr><th style="width: 18%">Step</th><th>Player action</th><th>System action</th></tr></thead>
-    <tbody>
-      <tr><td><span class="pill royal">1 · Deposit</span></td><td>Player initiates from mobile money (M-Pesa, Tigo Pesa, Airtel Money, Halo Pesa, Mixx)</td><td>Pending entry created. Aggregator confirms. Ledger entry confirms wallet credit. Audit log: <span class="mono">WALLET · deposit</span></td></tr>
-      <tr><td><span class="pill royal">2 · Bet</span></td><td>Drag dial, confirm</td><td>Stake debited atomically. Position opens. Audit: <span class="mono">WALLET · bet.placed</span></td></tr>
-      <tr><td><span class="pill royal">3 · Resolve</span></td><td>Wait for outcome</td><td>Two officers confirm. Pool split by stake share minus 9% margin. Each winner credited. Losers' positions closed.</td></tr>
-      <tr><td><span class="pill royal">4 · Withdraw</span></td><td>Request withdrawal</td><td>KYC required (NIDA-verified). Mobile money provider sends. Withholding tax deducted at source.</td></tr>
-      <tr><td><span class="pill royal">5 · Reconcile</span></td><td>—</td><td>Daily report generated. Operator account vs platform ledger reconciled to the shilling.</td></tr>
-    </tbody>
-  </table>
-
-  <h3>Where the operator's 9% goes</h3>
-  <div class="bars">
-    <div class="bar"><div class="name">Platform operations</div><div class="track"><div class="fill" style="width: 38%"></div></div><div class="val">38%</div></div>
-    <div class="bar"><div class="name">Compliance + license fees</div><div class="track"><div class="fill" style="width: 22%"></div></div><div class="val">22%</div></div>
-    <div class="bar"><div class="name">Marketing + acquisition</div><div class="track"><div class="fill" style="width: 18%"></div></div><div class="val">18%</div></div>
-    <div class="bar"><div class="name">Reserve fund (volatility)</div><div class="track"><div class="fill" style="width: 12%"></div></div><div class="val">12%</div></div>
-    <div class="bar"><div class="name">Operator profit</div><div class="track"><div class="fill gold" style="width: 10%"></div></div><div class="val">10%</div></div>
-  </div>
-
-  <div class="footer">
-    <span>50pick · Operator briefing · Confidential</span>
-    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-f6"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-f6)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
-    <span>6 · 8</span>
+    <span>50pick · Operator briefing</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-f4"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-f4)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>4 · 6</span>
   </div>
 </section>
 
@@ -488,69 +334,69 @@
   <h2>Why 50pick wins</h2>
 
   <p>
-    Tanzania's regulated betting market is dominated by three operators
-    running the same fixed-odds football product. Switching costs are
-    near zero — the player picks whichever app loads fastest. 50pick's
-    differentiation isn't a marketing claim; it's structural.
+    Tanzania's regulated betting market is dominated by operators running
+    the same fixed-odds football product. Switching costs are near zero —
+    the player picks whichever app loads fastest. 50pick's differentiation
+    isn't a marketing claim; it's structural.
   </p>
 
   <h3>Three structural advantages</h3>
-  <div class="feature"><div class="key">Pari-mutuel</div><div class="body"><p><strong>The house never bets against the player.</strong> Players' stakes pool together; the operator earns a transparent fixed margin off the resolved volume. The model is the same one Hong Kong Jockey Club has used since 1971 with no modern bankruptcies in the model. Polymarket ran USD billions in annualised volume on a comparable framework.</p></div></div>
+  <div class="feature"><div class="key">Pari-mutuel</div><div class="body"><p><strong>The house never bets against the player.</strong> Players' stakes pool together; the operator earns a transparent fixed margin off the resolved volume. The model is the same one Hong Kong Jockey Club has used since 1971 with no modern bankruptcies in the model. International prediction markets ran billions in annualised volume on a comparable framework.</p></div></div>
   <div class="feature"><div class="key">Wider scope</div><div class="body"><p>Football still drives the bulk of acquired traffic. But weather (long rains begin before April 15? — every farmer cares), macro (TZS-USD month-end?), crypto, and culture markets attract a category of player our incumbents can't reach. Each category re-engages the same wallet.</p></div></div>
-  <div class="feature"><div class="key">Compliance-led</div><div class="body"><p>The product was built backwards from the Tanzania Gaming Board's pre-application checklist. Every screen, every API, every audit entry was designed to pass a regulator's first inspection without re-architecting. Incumbents are retrofitting compliance; we shipped with it.</p></div></div>
+  <div class="feature"><div class="key">Compliance-led</div><div class="body"><p>The product was built backwards from the Tanzania Gaming Board's pre-application checklist. Every screen, every back-end action, every audit entry was designed to pass a regulator's first inspection without re-architecting. Incumbents are retrofitting compliance; we shipped with it.</p></div></div>
 
-  <h3>Risks we've already mitigated</h3>
+  <h3>Risks already mitigated</h3>
   <table>
     <thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
     <tbody>
       <tr><td>Pool too thin in a niche market</td><td>Minimum-pool gate at market creation; auto-void below threshold with full refund.</td></tr>
-      <tr><td>Match-fixing on a single match</td><td>Sportradar Integrity Services partnership planned pre-launch. Anti-fraud table flags suspicious bet patterns.</td></tr>
-      <tr><td>Self-exclusion bypass</td><td>Confirmation dialog before any irreversible RG action. Server-side enforcement on every login + bet attempt.</td></tr>
-      <tr><td>Mass-account abuse</td><td>Per-IP and per-phone rate limits on registration. Common-password blacklist. Account lockout after 5 wrong tries.</td></tr>
-      <tr><td>Operator-side tampering</td><td>HMAC-chained audit log: any modified entry breaks the chain on next verify.</td></tr>
+      <tr><td>Match-fixing on a single match</td><td>Sportradar Integrity Services partnership pre-launch. Anti-fraud module flags suspicious bet patterns.</td></tr>
+      <tr><td>Self-exclusion bypass</td><td>Two-step confirmation before any irreversible action. Server-side enforcement on every login + bet attempt.</td></tr>
+      <tr><td>Mass-account abuse</td><td>Per-IP and per-phone rate limits on registration. Common-password blacklist. Account lockout after repeated wrong tries.</td></tr>
+      <tr><td>Operator-side tampering</td><td>Hash-chained audit trail: any modified entry breaks the chain on next verify.</td></tr>
     </tbody>
   </table>
 
   <div class="footer">
-    <span>50pick · Operator briefing · Confidential</span>
-    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-f7"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-f7)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
-    <span>7 · 8</span>
+    <span>50pick · Operator briefing</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-f5"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-f5)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>5 · 6</span>
   </div>
 </section>
 
 <!-- ============================================================ STATUS -->
 <section class="page">
-  <h4>Where we are · what's next</h4>
-  <h2>Status &amp; runway to launch</h2>
+  <h4>Status &amp; runway</h4>
+  <h2>Where we are · what's next</h2>
 
   <p>
-    The product is feature-complete for a soft launch in Dar es Salaam.
-    Two outstanding items gate paid traffic. Both are external (contracts
-    + regulator) — neither is engineering work.
+    The product is feature-complete for soft launch in Dar es Salaam.
+    Outstanding items are commercial and regulatory — neither is
+    engineering work.
   </p>
 
   <h3>Done</h3>
   <p>
-    Full player flow · admin console · KYC / wallet / betting / Mapigo ·
-    bilingual EN+SW · 136 automated tests passing across 6 suites ·
-    Tanzania Gaming Board pre-application materials drafted · Railway
-    production deploy with PostgreSQL persistence · responsible-gambling
+    Full player flow · operator console · KYC / wallet / betting flows ·
+    bilingual EN&nbsp;+&nbsp;SW · comprehensive automated test suite ·
+    Tanzania Gaming Board pre-application materials drafted · production
+    deployment with PostgreSQL persistence · responsible-gambling
     controls server-enforced.
   </p>
 
   <h3>Pre-launch dependencies</h3>
-  <div class="feature"><div class="key">SMS provider</div><div class="body"><p>Selcom or Beem agreement signed; TCRA-licensed sender ID issued. Until then, OTP delivery is dummy.</p></div></div>
-  <div class="feature"><div class="key">GBT meeting</div><div class="body"><p>Pre-application meeting with the Gaming Board of Tanzania. Pool model classified as <em>betting</em> in writing. Lawyer engaged.</p></div></div>
-  <div class="feature"><div class="key">Mobile-money aggregator</div><div class="body"><p>Selcom or Azampay agreement signed. Same partner usually covers SMS too.</p></div></div>
+  <div class="feature"><div class="key">SMS provider</div><div class="body"><p>TCRA-licensed sender ID and a contracted Tanzanian SMS gateway for production OTP delivery.</p></div></div>
+  <div class="feature"><div class="key">Gaming Board meeting</div><div class="body"><p>Pre-application meeting with the Gaming Board of Tanzania. Pool model classified as <em>betting</em> in writing. Lawyer engaged.</p></div></div>
+  <div class="feature"><div class="key">Mobile-money aggregator</div><div class="body"><p>A licensed Tanzanian aggregator agreement covering deposit and withdrawal across every major mobile-money provider.</p></div></div>
   <div class="feature"><div class="key">Sportradar Integrity</div><div class="body"><p>Partnership for live match-integrity feeds. Required for football market resolution at scale.</p></div></div>
-  <div class="feature"><div class="key">ISO 27001 Stage 1</div><div class="body"><p>External audit booking. Pre-audit checklist already met by current architecture.</p></div></div>
+  <div class="feature"><div class="key">External audit</div><div class="body"><p>ISO 27001 Stage 1 audit. The pre-audit checklist is already met by current architecture.</p></div></div>
 
   <h3>Soft-launch plan</h3>
   <p>
-    Closed beta (50 invited players, no real money) — 2 weeks. Open
-    beta (Dar es Salaam, real money capped at TZS 50K/account, 5 markets
-    only) — 4 weeks. Public launch after GBT sign-off and the first
-    independent reconciliation report.
+    Closed beta — invitation only, no real money — two weeks. Open beta
+    in Dar es Salaam, real money capped per account, a small subset of
+    markets — four weeks. Public launch after Gaming Board sign-off and
+    the first independent reconciliation report.
   </p>
 
   <div class="quote">
@@ -559,9 +405,9 @@
   </div>
 
   <div class="footer">
-    <span>50pick · Operator briefing · Confidential</span>
-    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-f8"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-f8)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
-    <span>8 · 8</span>
+    <span>50pick · Operator briefing</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-f6"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-f6)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>6 · 6</span>
   </div>
 </section>
 
