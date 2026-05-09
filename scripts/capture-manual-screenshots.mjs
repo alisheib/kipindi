@@ -22,7 +22,10 @@ const browser = await chromium.launch();
 async function shot(page, name, area = "player", clip) {
   const path = resolve(OUT, area, `${name}.png`);
   await page.waitForTimeout(700);
-  await page.screenshot({ path, clip, fullPage: !clip });
+  // Viewport-only capture — never fullPage. Long pages produce
+  // 2000-3000 px tall images that, even at 78 mm wide in a print
+  // layout, balloon to 100 mm+ tall and blow the page budget.
+  await page.screenshot({ path, clip, fullPage: false });
   console.log(`  ✓ ${area}/${name}.png`);
 }
 
@@ -42,8 +45,9 @@ const phoneTail = (offset = 0) => "7" + String((Date.now() + offset) % 100_000_0
 // ─────────────────────────────────────────────────────────────
 {
   console.log("\nPLAYER:");
-  // Mobile-ish viewport so the screenshots reflect the real player surface
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  // 1280×800 viewport — desktop framing, sane 1.6:1 aspect ratio so the
+  // shots scale cleanly into a 78 mm column at ~50 mm tall.
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const me = { tail: phoneTail(), pwd: "DemoPlayer!2026" };
 
   // 1 · Register page

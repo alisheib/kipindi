@@ -20,55 +20,56 @@
     --yes: oklch(58% 0.16 152);
     --no: oklch(60% 0.18 22);
   }
-  @page { size: A4; margin: 18mm 16mm 22mm 16mm; }
+  @page { size: A4; margin: 16mm 14mm 18mm 14mm; }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
-  body { font-family: "Inter", system-ui, sans-serif; color: var(--ink); font-size: 10.5pt; line-height: 1.55; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  h1, h2, h3, h4 { font-family: "Sora", sans-serif; font-weight: 700; color: var(--royal); margin: 0 0 3mm 0; letter-spacing: -0.018em; }
+  body { font-family: "Inter", system-ui, sans-serif; color: var(--ink); font-size: 10pt; line-height: 1.5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  h1, h2, h3, h4 { font-family: "Sora", sans-serif; font-weight: 700; color: var(--royal); margin: 0 0 2.5mm 0; letter-spacing: -0.018em; }
   h1 { font-size: 28pt; line-height: 1.05; letter-spacing: -0.025em; }
-  h2 { font-size: 16pt; margin-top: 3mm; }
-  h3 { font-size: 11.5pt; margin-top: 3mm; margin-bottom: 1.5mm; color: var(--royal-deep); }
-  h4 { font-size: 9pt; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-soft); font-weight: 700; margin: 0 0 2mm 0; }
-  p { margin: 0 0 2.5mm 0; }
+  h2 { font-size: 15pt; margin-top: 0; margin-bottom: 4mm; }
+  h3 { font-size: 11pt; margin-top: 4mm; margin-bottom: 1.5mm; color: var(--royal-deep); }
+  h4 { font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-soft); font-weight: 700; margin: 0 0 1.5mm 0; }
+  p { margin: 0 0 2mm 0; }
   strong { color: var(--royal-deep); }
 
-  .page { page-break-after: always; position: relative; padding-bottom: 14mm; min-height: 245mm; }
+  .page { page-break-after: always; position: relative; padding-bottom: 12mm; min-height: 252mm; }
   .page:last-child { page-break-after: auto; }
-  .footer { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: space-between; padding-top: 5mm; border-top: 1px solid var(--rule); font-family: "JetBrains Mono", monospace; font-size: 8pt; color: var(--ink-soft); letter-spacing: 0.08em; }
+  .footer { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: space-between; padding-top: 4mm; border-top: 1px solid var(--rule); font-family: "JetBrains Mono", monospace; font-size: 7.5pt; color: var(--ink-soft); letter-spacing: 0.08em; }
   .footer .mark { display: inline-flex; align-items: center; gap: 6px; }
 
-  .step, .shot, table tr, .tip, .danger { break-inside: avoid; page-break-inside: avoid; }
+  .row, .shot, table tr, .tip, .danger { break-inside: avoid; page-break-inside: avoid; }
   h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
 
-  .cover { page-break-after: always; min-height: 245mm; display: flex; flex-direction: column; justify-content: space-between; padding: 0; }
+  .cover { page-break-after: always; min-height: 252mm; display: flex; flex-direction: column; justify-content: space-between; padding: 0; }
   .cover .top { padding-top: 8mm; }
   .cover .center { display: flex; flex-direction: column; align-items: flex-start; gap: 8mm; max-width: 165mm; }
   .cover .markwrap { margin-bottom: 10mm; }
   .cover .eyebrow { font-family: "JetBrains Mono", monospace; font-size: 10pt; letter-spacing: 0.24em; color: var(--gilt-deep); text-transform: uppercase; margin-bottom: 4mm; }
   .cover h1 { color: var(--royal-deep); font-size: 42pt; line-height: 1.0; letter-spacing: -0.025em; margin: 0; }
   .cover .gilt-rule { height: 1.5px; width: 60mm; background: linear-gradient(90deg, var(--gilt-deep), var(--gilt), transparent); margin: 6mm 0; }
-  .cover .lead { font-size: 13pt; line-height: 1.5; color: var(--ink-soft); max-width: 155mm; }
-  .cover .bottom { display: flex; align-items: flex-end; justify-content: space-between; padding-top: 10mm; border-top: 1px solid var(--rule); font-family: "JetBrains Mono", monospace; font-size: 8.5pt; letter-spacing: 0.14em; color: var(--ink-soft); text-transform: uppercase; }
-  .cover .bottom .meta { line-height: 1.7; }
+  .cover .lead { font-size: 12pt; line-height: 1.5; color: var(--ink-soft); max-width: 155mm; }
+  .cover .bottom { display: flex; align-items: flex-end; justify-content: space-between; padding-top: 8mm; border-top: 1px solid var(--rule); font-family: "JetBrains Mono", monospace; font-size: 8pt; letter-spacing: 0.14em; color: var(--ink-soft); text-transform: uppercase; }
 
-  .step { display: grid; grid-template-columns: 9mm 1fr; gap: 3mm; margin-bottom: 3mm; }
-  .step .num { width: 7mm; height: 7mm; border-radius: 50%; background: var(--royal); color: var(--pearl); display: inline-flex; align-items: center; justify-content: center; font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 9pt; }
-  .step .body h3 { margin-top: 0; margin-bottom: 1.5mm; font-size: 11pt; }
-  .step .body p { font-size: 10pt; margin: 0 0 2mm 0; line-height: 1.45; }
+  /* The consulting-style shot+text row — small image, dense paragraph next to it */
+  .row { display: grid; grid-template-columns: 78mm 1fr; gap: 6mm; margin-bottom: 6mm; align-items: start; }
+  .row.flip { grid-template-columns: 1fr 78mm; }
+  .row .shot { margin: 0; }
+  .row .shot img { width: 78mm; height: auto; max-height: 60mm; object-fit: cover; object-position: top; display: block; border: 1px solid var(--rule); border-radius: 1.5mm; box-shadow: 0 1.5mm 4mm -1.5mm rgba(0,0,0,0.18); }
+  .row .shot .caption { margin-top: 1mm; font-family: "JetBrains Mono", monospace; font-size: 7.5pt; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+  .row .body h3 { margin-top: 0; }
+  .row .body p { margin: 0 0 2mm 0; font-size: 9.5pt; line-height: 1.5; }
+  .row .body ul { margin: 1.5mm 0 0 0; padding-left: 4.5mm; }
+  .row .body li { font-size: 9.5pt; line-height: 1.5; margin: 0.5mm 0; }
 
-  .shot { margin: 3mm auto; text-align: center; max-width: 130mm; }
-  .shot img { width: 100%; max-width: 130mm; display: block; border: 1px solid var(--rule); border-radius: 1.5mm; box-shadow: 0 2mm 6mm -2mm rgba(0,0,0,0.15); margin: 0 auto; }
-  .shot .caption { margin-top: 1.5mm; font-family: "JetBrains Mono", monospace; font-size: 8pt; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); text-align: center; }
+  table { width: 100%; border-collapse: collapse; margin: 2mm 0; }
+  th, td { text-align: left; padding: 2mm 3mm; border-bottom: 1px solid var(--rule); font-size: 9pt; vertical-align: top; }
+  th { font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.12em; font-size: 8pt; color: var(--ink-soft); border-bottom-width: 2px; }
 
-  .tip { background: oklch(96% 0.04 86); border-left: 3px solid var(--gilt); border-radius: 1.5mm; padding: 3mm 5mm; margin: 3mm 0; font-size: 9.5pt; line-height: 1.5; }
+  .tip, .danger { border-radius: 1.5mm; padding: 2.5mm 4mm; margin: 2mm 0; font-size: 9pt; line-height: 1.45; }
+  .tip { background: oklch(96% 0.04 86); border-left: 3px solid var(--gilt); }
   .tip strong { color: oklch(34% 0.13 76); }
-
-  .danger { background: oklch(96% 0.04 22); border-left: 3px solid var(--no); border-radius: 1.5mm; padding: 3mm 5mm; margin: 3mm 0; font-size: 9.5pt; line-height: 1.5; }
+  .danger { background: oklch(96% 0.04 22); border-left: 3px solid var(--no); }
   .danger strong { color: oklch(36% 0.16 22); }
-
-  table { width: 100%; border-collapse: collapse; margin: 3mm 0; }
-  th, td { text-align: left; padding: 2.5mm 4mm; border-bottom: 1px solid var(--rule); font-size: 9.5pt; vertical-align: top; }
-  th { font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.12em; font-size: 8.5pt; color: var(--ink-soft); border-bottom-width: 2px; }
 </style>
 </head>
 <body>
@@ -95,209 +96,167 @@
     <p class="eyebrow">User manual · Admin</p>
     <h1>How to operate 50pick.</h1>
     <div class="gilt-rule"></div>
-    <p class="lead">A screenshot-led walk-through of the operator console — every page you'll touch as staff. What's there, what each control does, what the regulator-side audit trail looks like. Internal, confidential.</p>
+    <p class="lead">A short, screenshot-led walk-through of the operator console. What's there. Where to look. What each control does. Internal — confidential.</p>
   </div>
   <div class="bottom">
-    <div class="meta">
-      50pick · Tanzania<br/>
-      Admin user manual · Confidential
-    </div>
+    <span>50pick · Tanzania · Confidential</span>
   </div>
 </section>
 
-<!-- ============================================================ OVERVIEW -->
+<!-- ============================================================ PAGE 1 — OVERVIEW + FINANCE + PLAYERS -->
 <section class="page">
-  <h4>Section 1 · Overview</h4>
-  <h2>What you can do</h2>
+  <h4>Section 1</h4>
+  <h2>Daily operations</h2>
 
-  <p>The operator console is split into nine areas, each reachable from the left sidebar. Every action you take is logged in an append-only audit trail with your user ID, the time, and the change you made.</p>
+  <div class="row">
+    <div class="shot"><img src="screenshots/admin/01-overview.png" alt="Admin overview" /><p class="caption">Overview</p></div>
+    <div class="body">
+      <h3>Overview · live snapshot</h3>
+      <p>Open <strong>/admin</strong>. Live volume, predictor counts, market health, recent activity — one glance.</p>
+      <p>Sidebar links every other area; every action you take is logged to the audit trail with your user ID.</p>
+    </div>
+  </div>
+
+  <div class="row flip">
+    <div class="body">
+      <h3>Finance · daily reconciliation</h3>
+      <p>Open <strong>/admin/finance</strong>. Stakes, payouts, operator margin, withholding tax — by day or month.</p>
+      <ul>
+        <li>Reconcile platform payouts against the aggregator each morning.</li>
+        <li>Track operator margin (9% of resolved volume) week-over-week.</li>
+        <li>CSV export per period for board reports and regulator returns.</li>
+      </ul>
+    </div>
+    <div class="shot"><img src="screenshots/admin/02-finance.png" alt="Finance" /><p class="caption">Finance</p></div>
+  </div>
+
+  <div class="row">
+    <div class="shot"><img src="screenshots/admin/03-players.png" alt="Players" /><p class="caption">Players</p></div>
+    <div class="body">
+      <h3>Players · search &amp; drill in</h3>
+      <p>Open <strong>/admin/players</strong>. Search by phone, ID, or display name. Drill in to see wallet, KYC, positions, RG limits, and the audit trail tied to that user.</p>
+      <div class="tip"><strong>PII discipline.</strong> Never copy a player's phone or NIDA into chat or email. Every drill-in is logged.</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>50pick · Admin user manual · Confidential</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="10" height="10" aria-hidden><defs><clipPath id="fc-af1"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-af1)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>1 · 4</span>
+  </div>
+</section>
+
+<!-- ============================================================ PAGE 2 — MARKETS + RESOLVER + AML -->
+<section class="page">
+  <h4>Section 2</h4>
+  <h2>Markets &amp; risk</h2>
+
+  <div class="row">
+    <div class="shot"><img src="screenshots/admin/04-markets.png" alt="Markets" /><p class="caption">Markets</p></div>
+    <div class="body">
+      <h3>Markets · create &amp; manage</h3>
+      <p>Open <strong>/admin/markets</strong>. Tap <strong>+ New market</strong> to launch one. Question (EN + SW), category, source URL (must be on the approved registry), and resolution time.</p>
+      <p>Edit, void, or archive any existing market from the same list.</p>
+    </div>
+  </div>
+
+  <div class="row flip">
+    <div class="body">
+      <h3>Resolver · two-officer rule</h3>
+      <p>Open <strong>/admin/resolver-queue</strong>. Markets at resolution time appear here. Stage 1 stages the outcome; Stage 2 settles. <strong>The same officer cannot confirm twice.</strong></p>
+      <div class="danger"><strong>Settlement is final.</strong> Once Stage 2 fires, payouts credit and positions close. No undo.</div>
+    </div>
+    <div class="shot"><img src="screenshots/admin/05-resolver-queue.png" alt="Resolver queue" /><p class="caption">Resolver</p></div>
+  </div>
+
+  <div class="row">
+    <div class="shot"><img src="screenshots/admin/06-aml.png" alt="AML queue" /><p class="caption">AML</p></div>
+    <div class="body">
+      <h3>AML · threshold review</h3>
+      <p>Open <strong>/admin/aml</strong>. Transactions above the FATF reporting threshold are paused here.</p>
+      <p>Open each one, review history, then <strong>approve</strong> (logged with reason) or <strong>escalate</strong> to the FIU. Nothing settles without a recorded sign-off.</p>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>50pick · Admin user manual · Confidential</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="10" height="10" aria-hidden><defs><clipPath id="fc-af2"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-af2)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>2 · 4</span>
+  </div>
+</section>
+
+<!-- ============================================================ PAGE 3 — SE + AUDIT + SYSTEM -->
+<section class="page">
+  <h4>Section 3</h4>
+  <h2>Compliance &amp; integrity</h2>
+
+  <div class="row">
+    <div class="shot"><img src="screenshots/admin/07-self-exclusions.png" alt="Self-exclusions" /><p class="caption">Self-exclusions</p></div>
+    <div class="body">
+      <h3>Self-exclusions · monitor only</h3>
+      <p>Open <strong>/admin/self-exclusions</strong>. Active exclusions, end dates, reasons.</p>
+      <p>The platform refuses login and bet attempts automatically. Early reinstatement requests must go through documented compliance review — not via this screen.</p>
+    </div>
+  </div>
+
+  <div class="row flip">
+    <div class="body">
+      <h3>Audit log · regulator hand-off</h3>
+      <p>Open <strong>/admin/audit</strong>. Append-only, hash-chained log of every state change since boot.</p>
+      <ul>
+        <li><strong>Filter</strong> by category (AUTH, WALLET, BET, ADMIN, COMPLIANCE, SECURITY).</li>
+        <li><strong>Verify chain</strong> — green tick = tamper-evident integrity end-to-end.</li>
+        <li><strong>Export</strong> a signed CSV — same shape you hand the regulator.</li>
+      </ul>
+    </div>
+    <div class="shot"><img src="screenshots/admin/08-audit.png" alt="Audit log" /><p class="caption">Audit log</p></div>
+  </div>
+
+  <div class="row">
+    <div class="shot"><img src="screenshots/admin/09-system.png" alt="System health" /><p class="caption">System</p></div>
+    <div class="body">
+      <h3>System · health &amp; controls</h3>
+      <p>Open <strong>/admin/system</strong>. Uptime, rate-limit buckets, SMS provider success, version. Backup &amp; restore controls.</p>
+      <div class="tip"><strong>TOTP for staff.</strong> First sign-in prompts you to scan a QR; every later sign-in asks for a 6-digit authenticator code.</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>50pick · Admin user manual · Confidential</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="10" height="10" aria-hidden><defs><clipPath id="fc-af3"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-af3)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>3 · 4</span>
+  </div>
+</section>
+
+<!-- ============================================================ PAGE 4 — REFERENCE TABLE -->
+<section class="page">
+  <h4>Quick reference</h4>
+  <h2>Every admin route, at a glance</h2>
 
   <table>
-    <thead><tr><th style="width: 40mm">Area</th><th>What's there</th></tr></thead>
+    <thead><tr><th style="width: 50mm">Route</th><th>What's there</th><th style="width: 38mm">When you use it</th></tr></thead>
     <tbody>
-      <tr><td><strong>Overview</strong></td><td>Live volume, predictor counts, market health.</td></tr>
-      <tr><td><strong>Finance</strong></td><td>Stakes, payouts, operator margin, withholding tax. Daily &amp; monthly views.</td></tr>
-      <tr><td><strong>Players</strong></td><td>Search, drill into any account, see wallet, KYC, positions, audit trail.</td></tr>
-      <tr><td><strong>Markets</strong></td><td>Create new markets, edit, void, archive. Resolution-source registry.</td></tr>
-      <tr><td><strong>Resolver queue</strong></td><td>Two-officer market resolution. Stage 1 stages the outcome; Stage 2 settles.</td></tr>
-      <tr><td><strong>AML</strong></td><td>Threshold-flagged transactions waiting for compliance review.</td></tr>
-      <tr><td><strong>Self-exclusions</strong></td><td>Active player exclusions. Cannot be lifted while active.</td></tr>
-      <tr><td><strong>Audit log</strong></td><td>Every state change since boot. Searchable. Hash-chained.</td></tr>
-      <tr><td><strong>System</strong></td><td>Health, rate-limit buckets, SMS provider success, version.</td></tr>
+      <tr><td><strong>/admin</strong></td><td>Live ops dashboard — volume, predictors, recent activity.</td><td>Every shift</td></tr>
+      <tr><td><strong>/admin/finance</strong></td><td>Stakes, payouts, margin, tax. CSV export.</td><td>Daily</td></tr>
+      <tr><td><strong>/admin/players</strong></td><td>Search and drill into any account.</td><td>On request</td></tr>
+      <tr><td><strong>/admin/markets</strong></td><td>Create new markets, edit, void, archive.</td><td>Pre-publish</td></tr>
+      <tr><td><strong>/admin/resolver-queue</strong></td><td>Two-officer market settlement.</td><td>At resolution</td></tr>
+      <tr><td><strong>/admin/aml</strong></td><td>Threshold-flagged transactions.</td><td>Daily</td></tr>
+      <tr><td><strong>/admin/self-exclusions</strong></td><td>Active player exclusions.</td><td>Read-only</td></tr>
+      <tr><td><strong>/admin/audit</strong></td><td>Hash-chained audit log + verify + export.</td><td>On audit request</td></tr>
+      <tr><td><strong>/admin/system</strong></td><td>Health, rate-limit, SMS, version.</td><td>On alert</td></tr>
     </tbody>
   </table>
 
-  <div class="shot">
-    <img src="screenshots/admin/01-overview.png" alt="Admin overview" />
-    <p class="caption">Overview · Live operations dashboard.</p>
-  </div>
+  <h3 style="margin-top: 6mm;">Sign out cleanly</h3>
+  <p>Avatar menu (top-right) → <strong>Sign out</strong>. A confirmation dialog ensures you don't get bumped out by a misclick. Session is invalidated immediately and a session-destroyed entry is logged.</p>
+
+  <div class="tip"><strong>Lost your authenticator app?</strong> Contact the security lead with the AML lead in copy. A reset is logged as an admin action and requires written justification.</div>
 
   <div class="footer">
     <span>50pick · Admin user manual · Confidential</span>
-    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-af1"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-af1)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
-    <span>1 · 7</span>
-  </div>
-</section>
-
-<!-- ============================================================ FINANCE -->
-<section class="page">
-  <h4>Section 2 · Finance</h4>
-  <h2>Money in, money out</h2>
-
-  <p>The finance screen is the daily reconciliation tool. It shows everything that moved through the platform — stakes placed, payouts settled, operator margin captured, and withholding tax accrued.</p>
-
-  <div class="shot">
-    <img src="screenshots/admin/02-finance.png" alt="Finance screen" />
-    <p class="caption">Finance · Stakes, payouts, margin, tax — by day or by month.</p>
-  </div>
-
-  <h3>Standard tasks</h3>
-  <div class="step"><div class="num">1</div><div class="body"><h3>Daily reconciliation</h3><p>Each morning, compare the platform's total payouts against the mobile-money aggregator's settled volume. They should match to the shilling. A mismatch is the first sign of an integration issue.</p></div></div>
-  <div class="step"><div class="num">2</div><div class="body"><h3>Margin tracking</h3><p>Operator margin captured is the nine percent of resolved volume. Track it weekly to confirm the model is stable.</p></div></div>
-  <div class="step"><div class="num">3</div><div class="body"><h3>CSV export</h3><p>Every page exposes a CSV export for the period you're viewing. Use it for monthly board reports and the regulator's quarterly returns.</p></div></div>
-
-  <div class="footer">
-    <span>50pick · Admin user manual · Confidential</span>
-    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-af2"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-af2)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
-    <span>2 · 7</span>
-  </div>
-</section>
-
-<!-- ============================================================ PLAYERS -->
-<section class="page">
-  <h4>Section 3 · Players</h4>
-  <h2>Find any account</h2>
-
-  <p>Search by phone number, account ID, or display name. From the result, drill into the player to see everything that's true about them — wallet balance, KYC status, RG limits, every bet they've placed, every audit entry tied to their user ID.</p>
-
-  <div class="shot">
-    <img src="screenshots/admin/03-players.png" alt="Players screen" />
-    <p class="caption">Players · Search, filter, drill in.</p>
-  </div>
-
-  <div class="tip">
-    <strong>PII discipline.</strong> The admin UI shows the player's full phone number — a Tanzania-PDPA reportable surface. Every drill-in is logged in the audit trail with your user ID. Never copy a player's PII into chat, email, or a screenshot you didn't own.
-  </div>
-
-  <div class="footer">
-    <span>50pick · Admin user manual · Confidential</span>
-    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-af3"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-af3)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
-    <span>3 · 7</span>
-  </div>
-</section>
-
-<!-- ============================================================ MARKETS + RESOLVER -->
-<section class="page">
-  <h4>Section 4 · Markets &amp; resolution</h4>
-  <h2>Create, run, settle</h2>
-
-  <div class="shot">
-    <img src="screenshots/admin/04-markets.png" alt="Markets management" />
-    <p class="caption">Markets · The list of every market you've ever published.</p>
-  </div>
-
-  <div class="step"><div class="num">1</div><div class="body"><h3>New market</h3><p>Tap <strong>+ New market</strong>. Fill the question (English + Swahili), pick a category, paste the resolution-source URL — only sources from the approved registry are accepted — and set the resolution time.</p></div></div>
-  <div class="step"><div class="num">2</div><div class="body"><h3>Live monitoring</h3><p>While a market is live, it appears on Overview with its pool size, predictor count, and how the bar is leaning.</p></div></div>
-
-  <h3 style="margin-top: 6mm;">Resolution — the two-officer rule</h3>
-
-  <div class="shot">
-    <img src="screenshots/admin/05-resolver-queue.png" alt="Resolver queue" />
-    <p class="caption">Resolver queue · Markets at the resolution time, waiting on staff sign-off.</p>
-  </div>
-
-  <p>When a market reaches its resolution time, it lands in the resolver queue. Two distinct officers must each confirm the outcome: the first stages it (Stage 1), the second settles it (Stage 2). The same officer cannot confirm twice. Stage 2 triggers the wallet payouts and a tamper-evident audit entry per winner.</p>
-
-  <div class="danger">
-    <strong>Settlement is final.</strong> Once Stage 2 fires, payouts are credited and positions are closed. There is no undo. Confirm carefully.
-  </div>
-
-  <div class="footer">
-    <span>50pick · Admin user manual · Confidential</span>
-    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-af4"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-af4)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
-    <span>4 · 7</span>
-  </div>
-</section>
-
-<!-- ============================================================ AML + SE -->
-<section class="page">
-  <h4>Section 5 · AML &amp; self-exclusion</h4>
-  <h2>Compliance review queues</h2>
-
-  <p>Two queues live alongside the main flow — both are reviewed daily.</p>
-
-  <h3>AML queue</h3>
-  <div class="shot">
-    <img src="screenshots/admin/06-aml.png" alt="AML queue" />
-    <p class="caption">AML · Threshold-flagged transactions awaiting a compliance officer.</p>
-  </div>
-
-  <p>Transactions above the FATF reporting threshold are paused here. Open each one, review the player's history, and either approve it (logged with your reason) or escalate to the FIU. Nothing settles without a recorded sign-off.</p>
-
-  <h3>Self-exclusions</h3>
-  <div class="shot">
-    <img src="screenshots/admin/07-self-exclusions.png" alt="Self-exclusion list" />
-    <p class="caption">Self-exclusions · Active periods, end dates, and reason.</p>
-  </div>
-
-  <p>Players who self-excluded appear here for the duration of their lock. The platform refuses every login and bet attempt for those accounts automatically — there is no manual approval to do. If a player asks for an early reinstatement, the request must go through documented compliance review (not via this screen).</p>
-
-  <div class="footer">
-    <span>50pick · Admin user manual · Confidential</span>
-    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-af5"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-af5)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
-    <span>5 · 7</span>
-  </div>
-</section>
-
-<!-- ============================================================ AUDIT -->
-<section class="page">
-  <h4>Section 6 · Audit log</h4>
-  <h2>Every action, every actor, every time</h2>
-
-  <p>The audit log is the regulator-grade record of everything that's happened — auth events, wallet movements, KYC submissions, bet placements, market resolutions, admin decisions. It's append-only and hash-chained: any modified entry breaks the chain on next verify.</p>
-
-  <div class="shot">
-    <img src="screenshots/admin/08-audit.png" alt="Audit log" />
-    <p class="caption">Audit log · Filter by category, actor, time window. Export to CSV.</p>
-  </div>
-
-  <div class="step"><div class="num">1</div><div class="body"><h3>Filter</h3><p>Category (AUTH, WALLET, BET, ADMIN, COMPLIANCE, SYSTEM, SECURITY), actor (your user ID or any player's), and time window.</p></div></div>
-  <div class="step"><div class="num">2</div><div class="body"><h3>Verify the chain</h3><p>The "Verify chain" button walks the entire log and reports the first break, if any. A green tick means tamper-evident integrity end-to-end.</p></div></div>
-  <div class="step"><div class="num">3</div><div class="body"><h3>Export</h3><p>Download a signed CSV export for any time range. The same export is what you hand to the regulator on request.</p></div></div>
-
-  <div class="footer">
-    <span>50pick · Admin user manual · Confidential</span>
-    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-af6"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-af6)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
-    <span>6 · 7</span>
-  </div>
-</section>
-
-<!-- ============================================================ SYSTEM -->
-<section class="page">
-  <h4>Section 7 · System health</h4>
-  <h2>Live infrastructure status</h2>
-
-  <p>The system page is your at-a-glance health view: uptime since last restart, the number of active rate-limit buckets, the SMS provider's success rate, the number of users in the live store, and the build version.</p>
-
-  <div class="shot">
-    <img src="screenshots/admin/09-system.png" alt="System health" />
-    <p class="caption">System · Live rate-limit, SMS health, version, backup controls.</p>
-  </div>
-
-  <h3>Two-factor for staff</h3>
-  <p>Every staff role is required to enrol in TOTP (a time-based one-time password from any authenticator app — Google Authenticator, Authy, 1Password, etc). After your first sign-in you'll be prompted to scan a QR code. Subsequent sign-ins ask for a six-digit code from that app — entirely separate from your password.</p>
-
-  <div class="tip">
-    <strong>Lost your authenticator app?</strong> Contact the security lead with your AML lead in copy. A reset is logged as an admin action and requires written justification.
-  </div>
-
-  <h3>Sign out cleanly</h3>
-  <p>Use the avatar menu in the top-right and tap <strong>Sign out</strong>. A confirmation dialog ensures you don't get bumped out by a misclick. Your session is invalidated immediately and a session-destroyed entry is logged.</p>
-
-  <div class="footer">
-    <span>50pick · Admin user manual · Confidential</span>
-    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-af7"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-af7)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
-    <span>7 · 7</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="10" height="10" aria-hidden><defs><clipPath id="fc-af4"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-af4)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>4 · 4</span>
   </div>
 </section>
 
