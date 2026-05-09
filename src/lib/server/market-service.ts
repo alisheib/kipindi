@@ -22,6 +22,7 @@ import { isLockedOut } from "./responsible-gambling";
 import { rateCheck } from "./rate-limit";
 import { getEffectiveConfig, payoutForWhole, settledPayoutWhole } from "./market-config";
 import { recordSnapshot, seedHistory } from "./market-history";
+import { notifyBetPlaced, notifyWin, notifyLoss } from "./notification-service";
 import type { ServiceResult } from "./auth-service";
 
 /** @deprecated Kept for backwards compat — use getEffectiveConfig instead. */
@@ -237,6 +238,14 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
       targetId: positionId,
       payload: { marketId: market.id, side: opts.side, stake: opts.stake, payoutIfWin },
     });
+    // Inbox receipt — kit-faithful, opens to the market detail.
+    notifyBetPlaced(userId, {
+      side: opts.side,
+      stake: opts.stake,
+      payoutIfWin,
+      marketTitle: market.titleEn,
+      marketId: market.id,
+    });
     return { ok: true as const, data: { positionId, balance: newBalance, payoutIfWin } };
   });
 }
@@ -442,9 +451,13 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
           createdAt: m.resolutionStage2At!, updatedAt: m.resolutionStage2At!, completedAt: m.resolutionStage2At!,
         });
         winnersPaid += payout;
+        // Win receipt — opens the position so they can see the payout.
+        notifyWin(p.userId, payout, m.titleEn, "/positions");
       } else {
         p.status = "LOSS"; p.finalPayout = 0; p.settledAt = m.resolutionStage2At!;
         positions.set(p.id, p);
+        // Loss receipt — kit copy reframes loss as "pool grew".
+        notifyLoss(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id });
       }
     }
   }

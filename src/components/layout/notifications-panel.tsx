@@ -7,34 +7,10 @@ import { cn } from "@/lib/utils";
 import { fetchMyNotifications, markNotifReadAction, markAllReadAction, dismissNotifAction } from "@/app/_actions/notifications";
 import type { StoredNotification } from "@/lib/server/store";
 
-const STATIC_FALLBACK: StoredNotification[] = [
-  {
-    id: "demo-n1",
-    userId: "guest",
-    kind: "WIN",
-    titleEn: "The 15–30 paid",
-    titleSw: "50pick 15–30 kimelipa",
-    bodyEn: "Return TZS 2,400 ready in your wallet.",
-    bodySw: "Pato TZS 2,400 liko tayari.",
-    href: "/wallet",
-    readAt: null,
-    dismissedAt: null,
-    createdAt: new Date(Date.now() - 2 * 60_000).toISOString(),
-  },
-  {
-    id: "demo-n2",
-    userId: "guest",
-    kind: "MATCH_START",
-    titleEn: "Sim-Yang starts in 1h",
-    titleSw: "Sim-Yang inaanza saa 1",
-    bodyEn: "Pick a window before kickoff.",
-    bodySw: "Chagua kipindi kabla mechi haijaanza.",
-    href: "/live",
-    readAt: null,
-    dismissedAt: null,
-    createdAt: new Date(Date.now() - 3 * 3600_000).toISOString(),
-  },
-];
+// No static fallbacks — players only see notifications that were really
+// emitted to their own userId. Empty inbox shows "No notifications yet."
+// (Fake demo notifications used to live here; they confused players who
+// saw "TZS 2,400 paid out" without ever winning anything.)
 
 const iconFor = (k: StoredNotification["kind"]) => {
   switch (k) {
@@ -75,20 +51,15 @@ function relTime(iso: string): string {
 
 export function NotificationsPanel() {
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState<StoredNotification[]>(STATIC_FALLBACK);
-  const [unread, setUnread] = useState(STATIC_FALLBACK.filter((n) => !n.readAt).length);
+  const [items, setItems] = useState<StoredNotification[]>([]);
+  const [unread, setUnread] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
   const refresh = useCallback(async () => {
     const r = await fetchMyNotifications();
-    if (r.items.length > 0) {
-      setItems(r.items);
-      setUnread(r.unread);
-    } else {
-      setItems(STATIC_FALLBACK);
-      setUnread(STATIC_FALLBACK.filter((n) => !n.readAt).length);
-    }
+    setItems(r.items);
+    setUnread(r.unread);
   }, []);
 
   useEffect(() => {
@@ -115,7 +86,6 @@ export function NotificationsPanel() {
   }, [open]);
 
   const handleClick = async (n: StoredNotification) => {
-    if (n.id.startsWith("demo-")) return;
     if (!n.readAt) {
       await markNotifReadAction(n.id);
       await refresh();
@@ -125,13 +95,12 @@ export function NotificationsPanel() {
 
   const handleDismiss = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (id.startsWith("demo-")) return;
     await dismissNotifAction(id);
     await refresh();
   };
 
   const handleMarkAll = async () => {
-    if (items.every((n) => n.id.startsWith("demo-"))) return;
+    if (items.length === 0) return;
     await markAllReadAction();
     await refresh();
   };

@@ -64,7 +64,27 @@ export function dismiss(id: string) {
 
 /* ---- Convenience emitters used by other services ---- */
 
-export function notifyWin(userId: string, amount: number, label: string, href = "/bets") {
+/**
+ * Bet-placed receipt — fires from buyPosition() so the player has a
+ * canonical record in the inbox they can click into. href points to
+ * the market detail (where their conviction-dial state lives) so the
+ * inbox click takes them back to the same market.
+ */
+export function notifyBetPlaced(userId: string, opts: {
+  side: "YES" | "NO"; stake: number; payoutIfWin: number; marketTitle: string; marketId: string;
+}) {
+  return notify({
+    userId,
+    kind: "ROUND_RESULT",
+    titleEn: `Bet placed · ${opts.side} TZS ${opts.stake.toLocaleString()}`,
+    titleSw: `Dau limewekwa · ${opts.side} TZS ${opts.stake.toLocaleString()}`,
+    bodyEn: `${opts.marketTitle.slice(0, 70)} · pays TZS ${opts.payoutIfWin.toLocaleString()} if right.`,
+    bodySw: `Lipo TZS ${opts.payoutIfWin.toLocaleString()} ukishinda.`,
+    href: `/markets/${opts.marketId}`,
+  });
+}
+
+export function notifyWin(userId: string, amount: number, label: string, href = "/positions") {
   return notify({
     userId,
     kind: "WIN",
@@ -73,6 +93,22 @@ export function notifyWin(userId: string, amount: number, label: string, href = 
     bodyEn: `${label} paid out. Tap to view.`,
     bodySw: `${label} kimelipa. Bonyeza kuona.`,
     href,
+  });
+}
+
+/**
+ * Loss receipt — kit-faithful copy reframes the loss as "the pool grew"
+ * (per the design system's responsibility-first language rule).
+ */
+export function notifyLoss(userId: string, opts: { stake: number; marketTitle: string; marketId: string }) {
+  return notify({
+    userId,
+    kind: "ROUND_RESULT",
+    titleEn: `Pool grew · TZS ${opts.stake.toLocaleString()} contributed`,
+    titleSw: `Bwawa limeongezeka · TZS ${opts.stake.toLocaleString()}`,
+    bodyEn: `${opts.marketTitle.slice(0, 70)} · the call didn't land this time.`,
+    bodySw: `Wakati huu hujashinda. Jaribu tena.`,
+    href: `/markets/${opts.marketId}`,
   });
 }
 

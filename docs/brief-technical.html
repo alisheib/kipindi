@@ -52,15 +52,21 @@
   .footer .mark { display: inline-flex; align-items: center; gap: 6px; }
 
   .cover {
-    height: 250mm; display: flex; flex-direction: column; justify-content: space-between;
-    background: radial-gradient(ellipse 90% 70% at 75% 30%, oklch(24% 0.150 268) 0%, oklch(20% 0.135 268) 60%, oklch(15% 0.130 268) 100%);
-    color: var(--pearl); padding: 16mm; margin: -18mm -16mm 0 -16mm;
+    page-break-after: always;
+    min-height: 245mm;
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 0;
   }
-  .cover h1 { color: var(--pearl); font-size: 40pt; line-height: 1; max-width: 230mm; }
-  .cover .eyebrow { font-family: "JetBrains Mono", monospace; font-size: 9pt; letter-spacing: 0.22em; color: var(--gilt); text-transform: uppercase; }
-  .cover .lead { font-size: 13pt; max-width: 165mm; opacity: 0.85; margin-top: 6mm; }
-  .cover .meta { font-family: "JetBrains Mono", monospace; font-size: 8pt; letter-spacing: 0.14em; color: rgba(255,255,255,0.55); text-transform: uppercase; }
+  .cover .top { padding-top: 8mm; }
+  .cover .center { display: flex; flex-direction: column; align-items: flex-start; gap: 8mm; max-width: 175mm; }
   .cover .markwrap { margin-bottom: 10mm; }
+  .cover .eyebrow { font-family: "JetBrains Mono", monospace; font-size: 10pt; letter-spacing: 0.24em; color: var(--gilt-deep); text-transform: uppercase; margin-bottom: 4mm; }
+  .cover h1 { color: var(--royal-deep); font-size: 42pt; line-height: 1.0; letter-spacing: -0.025em; margin: 0; }
+  .cover .gilt-rule { height: 1.5px; width: 60mm; background: linear-gradient(90deg, var(--gilt-deep), var(--gilt), transparent); margin: 6mm 0; }
+  .cover .lead { font-size: 13pt; line-height: 1.5; color: var(--ink-soft); max-width: 165mm; }
+  .cover .bottom { display: flex; align-items: flex-end; justify-content: space-between; padding-top: 10mm; border-top: 1px solid var(--rule); font-family: "JetBrains Mono", monospace; font-size: 8.5pt; letter-spacing: 0.14em; color: var(--ink-soft); text-transform: uppercase; }
+  .cover .bottom .meta { line-height: 1.7; }
+  .cover .bottom .seal { display: flex; align-items: center; gap: 8mm; }
 
   .lede {
     background: linear-gradient(135deg, oklch(98% 0.018 268) 0%, oklch(96% 0.022 268) 100%);
@@ -106,9 +112,9 @@
 
 <!-- ============================================================ COVER -->
 <section class="page cover">
-  <div>
+  <div class="top">
     <div class="markwrap">
-      <svg viewBox="0 0 100 100" width="56" height="56" aria-hidden>
+      <svg viewBox="0 0 100 100" width="84" height="84" aria-hidden>
         <defs><clipPath id="fc-cover-t"><circle cx="50" cy="50" r="49"/></clipPath></defs>
         <g clip-path="url(#fc-cover-t)">
           <path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/>
@@ -121,11 +127,30 @@
         <circle cx="50" cy="50" r="47.6" fill="none" stroke="oklch(78% 0.13 86)" stroke-width="0.5" opacity="0.55"/>
       </svg>
     </div>
+  </div>
+  <div class="center">
     <p class="eyebrow">Technical brief · 2026</p>
     <h1>Architecture, security<br/>&amp; standards alignment.</h1>
+    <div class="gilt-rule"></div>
     <p class="lead">A reference document for a software engineer evaluating 50pick — the product, the platform, the controls, the test floor. Written so a regulator's technical reviewer or a future engineering hire can read it and walk straight in.</p>
   </div>
-  <div class="meta">50pick · Tanzania · Technical brief · Internal &amp; partner-share</div>
+  <div class="bottom">
+    <div class="meta">
+      50pick · Tanzania<br/>
+      Technical brief · Internal &amp; partner-share
+    </div>
+    <div class="seal">
+      <svg viewBox="0 0 100 100" width="22" height="22" aria-hidden>
+        <defs><clipPath id="fc-seal-tech"><circle cx="50" cy="50" r="49"/></clipPath></defs>
+        <g clip-path="url(#fc-seal-tech)">
+          <path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/>
+          <path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/>
+          <line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/>
+        </g>
+        <circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/>
+      </svg>
+    </div>
+  </div>
 </section>
 
 <!-- ============================================================ TL;DR -->
