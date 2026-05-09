@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>50pick · Admin User Manual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --royal: oklch(28% 0.16 268);
+    --royal-deep: oklch(18% 0.13 268);
+    --gilt: oklch(78% 0.13 86);
+    --gilt-deep: oklch(58% 0.12 76);
+    --pearl: oklch(99% 0.006 268);
+    --ink: oklch(20% 0.04 268);
+    --ink-soft: oklch(42% 0.05 268);
+    --rule: oklch(85% 0.02 268);
+    --yes: oklch(58% 0.16 152);
+    --no: oklch(60% 0.18 22);
+  }
+  @page { size: A4; margin: 18mm 16mm 22mm 16mm; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: "Inter", system-ui, sans-serif; color: var(--ink); font-size: 10.5pt; line-height: 1.55; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  h1, h2, h3, h4 { font-family: "Sora", sans-serif; font-weight: 700; color: var(--royal); margin: 0 0 5mm 0; letter-spacing: -0.018em; }
+  h1 { font-size: 28pt; line-height: 1.05; letter-spacing: -0.025em; }
+  h2 { font-size: 17pt; margin-top: 6mm; }
+  h3 { font-size: 12pt; margin-top: 5mm; margin-bottom: 2mm; color: var(--royal-deep); }
+  h4 { font-size: 9.5pt; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-soft); font-weight: 700; }
+  p { margin: 0 0 3mm 0; }
+  strong { color: var(--royal-deep); }
+
+  .page { page-break-after: always; position: relative; padding-bottom: 14mm; min-height: 245mm; }
+  .page:last-child { page-break-after: auto; }
+  .footer { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: space-between; padding-top: 5mm; border-top: 1px solid var(--rule); font-family: "JetBrains Mono", monospace; font-size: 8pt; color: var(--ink-soft); letter-spacing: 0.08em; }
+  .footer .mark { display: inline-flex; align-items: center; gap: 6px; }
+
+  .step, .shot, table tr, .tip, .danger { break-inside: avoid; page-break-inside: avoid; }
+  h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
+
+  .cover { page-break-after: always; min-height: 245mm; display: flex; flex-direction: column; justify-content: space-between; padding: 0; }
+  .cover .top { padding-top: 8mm; }
+  .cover .center { display: flex; flex-direction: column; align-items: flex-start; gap: 8mm; max-width: 165mm; }
+  .cover .markwrap { margin-bottom: 10mm; }
+  .cover .eyebrow { font-family: "JetBrains Mono", monospace; font-size: 10pt; letter-spacing: 0.24em; color: var(--gilt-deep); text-transform: uppercase; margin-bottom: 4mm; }
+  .cover h1 { color: var(--royal-deep); font-size: 42pt; line-height: 1.0; letter-spacing: -0.025em; margin: 0; }
+  .cover .gilt-rule { height: 1.5px; width: 60mm; background: linear-gradient(90deg, var(--gilt-deep), var(--gilt), transparent); margin: 6mm 0; }
+  .cover .lead { font-size: 13pt; line-height: 1.5; color: var(--ink-soft); max-width: 155mm; }
+  .cover .bottom { display: flex; align-items: flex-end; justify-content: space-between; padding-top: 10mm; border-top: 1px solid var(--rule); font-family: "JetBrains Mono", monospace; font-size: 8.5pt; letter-spacing: 0.14em; color: var(--ink-soft); text-transform: uppercase; }
+  .cover .bottom .meta { line-height: 1.7; }
+
+  .step { display: grid; grid-template-columns: 12mm 1fr; gap: 4mm; margin-bottom: 6mm; }
+  .step .num { width: 9mm; height: 9mm; border-radius: 50%; background: var(--royal); color: var(--pearl); display: inline-flex; align-items: center; justify-content: center; font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 11pt; }
+  .step .body h3 { margin-top: 0; font-size: 13pt; }
+  .step .body p { font-size: 10.5pt; margin: 0 0 3mm 0; }
+
+  .shot { margin: 4mm 0 6mm 0; }
+  .shot img { width: 100%; max-width: 178mm; display: block; border: 1px solid var(--rule); border-radius: 2mm; box-shadow: 0 4mm 10mm -4mm rgba(0,0,0,0.18); }
+  .shot .caption { margin-top: 2mm; font-family: "JetBrains Mono", monospace; font-size: 8.5pt; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); }
+
+  .tip { background: oklch(96% 0.04 86); border-left: 3px solid var(--gilt); border-radius: 1.5mm; padding: 4mm 6mm; margin: 4mm 0; font-size: 10pt; }
+  .tip strong { color: oklch(34% 0.13 76); }
+
+  .danger { background: oklch(96% 0.04 22); border-left: 3px solid var(--no); border-radius: 1.5mm; padding: 4mm 6mm; margin: 4mm 0; font-size: 10pt; }
+  .danger strong { color: oklch(36% 0.16 22); }
+
+  table { width: 100%; border-collapse: collapse; margin: 3mm 0; }
+  th, td { text-align: left; padding: 2.5mm 4mm; border-bottom: 1px solid var(--rule); font-size: 9.5pt; vertical-align: top; }
+  th { font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.12em; font-size: 8.5pt; color: var(--ink-soft); border-bottom-width: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ COVER -->
+<section class="page cover">
+  <div class="top">
+    <div class="markwrap">
+      <svg viewBox="0 0 100 100" width="84" height="84" aria-hidden>
+        <defs><clipPath id="fc-cv-ad"><circle cx="50" cy="50" r="49"/></clipPath></defs>
+        <g clip-path="url(#fc-cv-ad)">
+          <path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/>
+          <path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/>
+          <line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2" stroke-linecap="round"/>
+          <text x="50" y="52" text-anchor="middle" dominant-baseline="middle" font-family="JetBrains Mono, monospace" font-weight="700" font-size="30" fill="oklch(99% 0.006 268)" style="letter-spacing:-0.04em">50</text>
+          <circle cx="50" cy="50" r="1.6" fill="oklch(85% 0.13 86)"/>
+        </g>
+        <circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/>
+        <circle cx="50" cy="50" r="47.6" fill="none" stroke="oklch(78% 0.13 86)" stroke-width="0.5" opacity="0.55"/>
+      </svg>
+    </div>
+  </div>
+  <div class="center">
+    <p class="eyebrow">User manual · Admin</p>
+    <h1>How to operate 50pick.</h1>
+    <div class="gilt-rule"></div>
+    <p class="lead">A screenshot-led walk-through of the operator console — every page you'll touch as staff. What's there, what each control does, what the regulator-side audit trail looks like. Internal, confidential.</p>
+  </div>
+  <div class="bottom">
+    <div class="meta">
+      50pick · Tanzania<br/>
+      Admin user manual · Confidential
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ OVERVIEW -->
+<section class="page">
+  <h4>Section 1 · Overview</h4>
+  <h2>What you can do</h2>
+
+  <p>The operator console is split into nine areas, each reachable from the left sidebar. Every action you take is logged in an append-only audit trail with your user ID, the time, and the change you made.</p>
+
+  <table>
+    <thead><tr><th style="width: 40mm">Area</th><th>What's there</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Overview</strong></td><td>Live volume, predictor counts, market health.</td></tr>
+      <tr><td><strong>Finance</strong></td><td>Stakes, payouts, operator margin, withholding tax. Daily &amp; monthly views.</td></tr>
+      <tr><td><strong>Players</strong></td><td>Search, drill into any account, see wallet, KYC, positions, audit trail.</td></tr>
+      <tr><td><strong>Markets</strong></td><td>Create new markets, edit, void, archive. Resolution-source registry.</td></tr>
+      <tr><td><strong>Resolver queue</strong></td><td>Two-officer market resolution. Stage 1 stages the outcome; Stage 2 settles.</td></tr>
+      <tr><td><strong>AML</strong></td><td>Threshold-flagged transactions waiting for compliance review.</td></tr>
+      <tr><td><strong>Self-exclusions</strong></td><td>Active player exclusions. Cannot be lifted while active.</td></tr>
+      <tr><td><strong>Audit log</strong></td><td>Every state change since boot. Searchable. Hash-chained.</td></tr>
+      <tr><td><strong>System</strong></td><td>Health, rate-limit buckets, SMS provider success, version.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="shot">
+    <img src="screenshots/admin/01-overview.png" alt="Admin overview" />
+    <p class="caption">Overview · Live operations dashboard.</p>
+  </div>
+
+  <div class="footer">
+    <span>50pick · Admin user manual · Confidential</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-af1"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-af1)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>1 · 7</span>
+  </div>
+</section>
+
+<!-- ============================================================ FINANCE -->
+<section class="page">
+  <h4>Section 2 · Finance</h4>
+  <h2>Money in, money out</h2>
+
+  <p>The finance screen is the daily reconciliation tool. It shows everything that moved through the platform — stakes placed, payouts settled, operator margin captured, and withholding tax accrued.</p>
+
+  <div class="shot">
+    <img src="screenshots/admin/02-finance.png" alt="Finance screen" />
+    <p class="caption">Finance · Stakes, payouts, margin, tax — by day or by month.</p>
+  </div>
+
+  <h3>Standard tasks</h3>
+  <div class="step"><div class="num">1</div><div class="body"><h3>Daily reconciliation</h3><p>Each morning, compare the platform's total payouts against the mobile-money aggregator's settled volume. They should match to the shilling. A mismatch is the first sign of an integration issue.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="body"><h3>Margin tracking</h3><p>Operator margin captured is the nine percent of resolved volume. Track it weekly to confirm the model is stable.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="body"><h3>CSV export</h3><p>Every page exposes a CSV export for the period you're viewing. Use it for monthly board reports and the regulator's quarterly returns.</p></div></div>
+
+  <div class="footer">
+    <span>50pick · Admin user manual · Confidential</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-af2"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-af2)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>2 · 7</span>
+  </div>
+</section>
+
+<!-- ============================================================ PLAYERS -->
+<section class="page">
+  <h4>Section 3 · Players</h4>
+  <h2>Find any account</h2>
+
+  <p>Search by phone number, account ID, or display name. From the result, drill into the player to see everything that's true about them — wallet balance, KYC status, RG limits, every bet they've placed, every audit entry tied to their user ID.</p>
+
+  <div class="shot">
+    <img src="screenshots/admin/03-players.png" alt="Players screen" />
+    <p class="caption">Players · Search, filter, drill in.</p>
+  </div>
+
+  <div class="tip">
+    <strong>PII discipline.</strong> The admin UI shows the player's full phone number — a Tanzania-PDPA reportable surface. Every drill-in is logged in the audit trail with your user ID. Never copy a player's PII into chat, email, or a screenshot you didn't own.
+  </div>
+
+  <div class="footer">
+    <span>50pick · Admin user manual · Confidential</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-af3"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-af3)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>3 · 7</span>
+  </div>
+</section>
+
+<!-- ============================================================ MARKETS + RESOLVER -->
+<section class="page">
+  <h4>Section 4 · Markets &amp; resolution</h4>
+  <h2>Create, run, settle</h2>
+
+  <div class="shot">
+    <img src="screenshots/admin/04-markets.png" alt="Markets management" />
+    <p class="caption">Markets · The list of every market you've ever published.</p>
+  </div>
+
+  <div class="step"><div class="num">1</div><div class="body"><h3>New market</h3><p>Tap <strong>+ New market</strong>. Fill the question (English + Swahili), pick a category, paste the resolution-source URL — only sources from the approved registry are accepted — and set the resolution time.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="body"><h3>Live monitoring</h3><p>While a market is live, it appears on Overview with its pool size, predictor count, and how the bar is leaning.</p></div></div>
+
+  <h3 style="margin-top: 6mm;">Resolution — the two-officer rule</h3>
+
+  <div class="shot">
+    <img src="screenshots/admin/05-resolver-queue.png" alt="Resolver queue" />
+    <p class="caption">Resolver queue · Markets at the resolution time, waiting on staff sign-off.</p>
+  </div>
+
+  <p>When a market reaches its resolution time, it lands in the resolver queue. Two distinct officers must each confirm the outcome: the first stages it (Stage 1), the second settles it (Stage 2). The same officer cannot confirm twice. Stage 2 triggers the wallet payouts and a tamper-evident audit entry per winner.</p>
+
+  <div class="danger">
+    <strong>Settlement is final.</strong> Once Stage 2 fires, payouts are credited and positions are closed. There is no undo. Confirm carefully.
+  </div>
+
+  <div class="footer">
+    <span>50pick · Admin user manual · Confidential</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-af4"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-af4)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>4 · 7</span>
+  </div>
+</section>
+
+<!-- ============================================================ AML + SE -->
+<section class="page">
+  <h4>Section 5 · AML &amp; self-exclusion</h4>
+  <h2>Compliance review queues</h2>
+
+  <p>Two queues live alongside the main flow — both are reviewed daily.</p>
+
+  <h3>AML queue</h3>
+  <div class="shot">
+    <img src="screenshots/admin/06-aml.png" alt="AML queue" />
+    <p class="caption">AML · Threshold-flagged transactions awaiting a compliance officer.</p>
+  </div>
+
+  <p>Transactions above the FATF reporting threshold are paused here. Open each one, review the player's history, and either approve it (logged with your reason) or escalate to the FIU. Nothing settles without a recorded sign-off.</p>
+
+  <h3>Self-exclusions</h3>
+  <div class="shot">
+    <img src="screenshots/admin/07-self-exclusions.png" alt="Self-exclusion list" />
+    <p class="caption">Self-exclusions · Active periods, end dates, and reason.</p>
+  </div>
+
+  <p>Players who self-excluded appear here for the duration of their lock. The platform refuses every login and bet attempt for those accounts automatically — there is no manual approval to do. If a player asks for an early reinstatement, the request must go through documented compliance review (not via this screen).</p>
+
+  <div class="footer">
+    <span>50pick · Admin user manual · Confidential</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-af5"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-af5)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>5 · 7</span>
+  </div>
+</section>
+
+<!-- ============================================================ AUDIT -->
+<section class="page">
+  <h4>Section 6 · Audit log</h4>
+  <h2>Every action, every actor, every time</h2>
+
+  <p>The audit log is the regulator-grade record of everything that's happened — auth events, wallet movements, KYC submissions, bet placements, market resolutions, admin decisions. It's append-only and hash-chained: any modified entry breaks the chain on next verify.</p>
+
+  <div class="shot">
+    <img src="screenshots/admin/08-audit.png" alt="Audit log" />
+    <p class="caption">Audit log · Filter by category, actor, time window. Export to CSV.</p>
+  </div>
+
+  <div class="step"><div class="num">1</div><div class="body"><h3>Filter</h3><p>Category (AUTH, WALLET, BET, ADMIN, COMPLIANCE, SYSTEM, SECURITY), actor (your user ID or any player's), and time window.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="body"><h3>Verify the chain</h3><p>The "Verify chain" button walks the entire log and reports the first break, if any. A green tick means tamper-evident integrity end-to-end.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="body"><h3>Export</h3><p>Download a signed CSV export for any time range. The same export is what you hand to the regulator on request.</p></div></div>
+
+  <div class="footer">
+    <span>50pick · Admin user manual · Confidential</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-af6"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-af6)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>6 · 7</span>
+  </div>
+</section>
+
+<!-- ============================================================ SYSTEM -->
+<section class="page">
+  <h4>Section 7 · System health</h4>
+  <h2>Live infrastructure status</h2>
+
+  <p>The system page is your at-a-glance health view: uptime since last restart, the number of active rate-limit buckets, the SMS provider's success rate, the number of users in the live store, and the build version.</p>
+
+  <div class="shot">
+    <img src="screenshots/admin/09-system.png" alt="System health" />
+    <p class="caption">System · Live rate-limit, SMS health, version, backup controls.</p>
+  </div>
+
+  <h3>Two-factor for staff</h3>
+  <p>Every staff role is required to enrol in TOTP (a time-based one-time password from any authenticator app — Google Authenticator, Authy, 1Password, etc). After your first sign-in you'll be prompted to scan a QR code. Subsequent sign-ins ask for a six-digit code from that app — entirely separate from your password.</p>
+
+  <div class="tip">
+    <strong>Lost your authenticator app?</strong> Contact the security lead with your AML lead in copy. A reset is logged as an admin action and requires written justification.
+  </div>
+
+  <h3>Sign out cleanly</h3>
+  <p>Use the avatar menu in the top-right and tap <strong>Sign out</strong>. A confirmation dialog ensures you don't get bumped out by a misclick. Your session is invalidated immediately and a session-destroyed entry is logged.</p>
+
+  <div class="footer">
+    <span>50pick · Admin user manual · Confidential</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-af7"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-af7)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>7 · 7</span>
+  </div>
+</section>
+
+</body>
+</html>

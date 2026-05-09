@@ -17,6 +17,8 @@ const root = resolve(__dirname, "..");
 const TARGETS = [
   { in: "docs/brief-operator.html",  out: "docs/50pick-operator-briefing.pdf" },
   { in: "docs/brief-technical.html", out: "docs/50pick-technical-brief.pdf"  },
+  { in: "docs/manual-player.html",   out: "docs/50pick-player-user-manual.pdf"  },
+  { in: "docs/manual-admin.html",    out: "docs/50pick-admin-user-manual.pdf"   },
 ];
 
 const browser = await chromium.launch();

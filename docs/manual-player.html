@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>50pick · Player User Manual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --royal: oklch(28% 0.16 268);
+    --royal-deep: oklch(18% 0.13 268);
+    --gilt: oklch(78% 0.13 86);
+    --gilt-deep: oklch(58% 0.12 76);
+    --pearl: oklch(99% 0.006 268);
+    --ink: oklch(20% 0.04 268);
+    --ink-soft: oklch(42% 0.05 268);
+    --rule: oklch(85% 0.02 268);
+    --yes: oklch(58% 0.16 152);
+  }
+  @page { size: A4; margin: 18mm 16mm 22mm 16mm; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: "Inter", system-ui, sans-serif; color: var(--ink); font-size: 10.5pt; line-height: 1.55; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  h1, h2, h3, h4 { font-family: "Sora", sans-serif; font-weight: 700; color: var(--royal); margin: 0 0 5mm 0; letter-spacing: -0.018em; }
+  h1 { font-size: 28pt; line-height: 1.05; letter-spacing: -0.025em; }
+  h2 { font-size: 17pt; margin-top: 6mm; }
+  h3 { font-size: 12pt; margin-top: 5mm; margin-bottom: 2mm; color: var(--royal-deep); }
+  h4 { font-size: 9.5pt; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-soft); font-weight: 700; }
+  p { margin: 0 0 3mm 0; }
+  strong { color: var(--royal-deep); }
+
+  .page { page-break-after: always; position: relative; padding-bottom: 14mm; min-height: 245mm; }
+  .page:last-child { page-break-after: auto; }
+  .footer { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: space-between; padding-top: 5mm; border-top: 1px solid var(--rule); font-family: "JetBrains Mono", monospace; font-size: 8pt; color: var(--ink-soft); letter-spacing: 0.08em; }
+  .footer .mark { display: inline-flex; align-items: center; gap: 6px; }
+
+  .step, .shot, table tr, .tip { break-inside: avoid; page-break-inside: avoid; }
+  h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
+
+  /* cover */
+  .cover { page-break-after: always; min-height: 245mm; display: flex; flex-direction: column; justify-content: space-between; padding: 0; }
+  .cover .top { padding-top: 8mm; }
+  .cover .center { display: flex; flex-direction: column; align-items: flex-start; gap: 8mm; max-width: 165mm; }
+  .cover .markwrap { margin-bottom: 10mm; }
+  .cover .eyebrow { font-family: "JetBrains Mono", monospace; font-size: 10pt; letter-spacing: 0.24em; color: var(--gilt-deep); text-transform: uppercase; margin-bottom: 4mm; }
+  .cover h1 { color: var(--royal-deep); font-size: 42pt; line-height: 1.0; letter-spacing: -0.025em; margin: 0; }
+  .cover .gilt-rule { height: 1.5px; width: 60mm; background: linear-gradient(90deg, var(--gilt-deep), var(--gilt), transparent); margin: 6mm 0; }
+  .cover .lead { font-size: 13pt; line-height: 1.5; color: var(--ink-soft); max-width: 155mm; }
+  .cover .bottom { display: flex; align-items: flex-end; justify-content: space-between; padding-top: 10mm; border-top: 1px solid var(--rule); font-family: "JetBrains Mono", monospace; font-size: 8.5pt; letter-spacing: 0.14em; color: var(--ink-soft); text-transform: uppercase; }
+  .cover .bottom .meta { line-height: 1.7; }
+
+  /* step layout */
+  .step { display: grid; grid-template-columns: 12mm 1fr; gap: 4mm; margin-bottom: 6mm; }
+  .step .num { width: 9mm; height: 9mm; border-radius: 50%; background: var(--royal); color: var(--pearl); display: inline-flex; align-items: center; justify-content: center; font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 11pt; }
+  .step .body h3 { margin-top: 0; font-size: 13pt; }
+  .step .body p { font-size: 10.5pt; margin: 0 0 3mm 0; }
+  .step .body .sw { font-style: italic; color: var(--ink-soft); font-size: 10pt; }
+
+  .shot { margin: 4mm 0 6mm 0; }
+  .shot img { width: 100%; max-width: 165mm; display: block; border: 1px solid var(--rule); border-radius: 2mm; box-shadow: 0 4mm 10mm -4mm rgba(0,0,0,0.18); }
+  .shot .caption { margin-top: 2mm; font-family: "JetBrains Mono", monospace; font-size: 8.5pt; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); }
+
+  .tip { background: oklch(96% 0.04 86); border-left: 3px solid var(--gilt); border-radius: 1.5mm; padding: 4mm 6mm; margin: 4mm 0; font-size: 10pt; }
+  .tip strong { color: oklch(34% 0.13 76); }
+
+  table { width: 100%; border-collapse: collapse; margin: 3mm 0; }
+  th, td { text-align: left; padding: 2.5mm 4mm; border-bottom: 1px solid var(--rule); font-size: 9.5pt; vertical-align: top; }
+  th { font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.12em; font-size: 8.5pt; color: var(--ink-soft); border-bottom-width: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ COVER -->
+<section class="page cover">
+  <div class="top">
+    <div class="markwrap">
+      <svg viewBox="0 0 100 100" width="84" height="84" aria-hidden>
+        <defs><clipPath id="fc-cv-pl"><circle cx="50" cy="50" r="49"/></clipPath></defs>
+        <g clip-path="url(#fc-cv-pl)">
+          <path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/>
+          <path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/>
+          <line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2" stroke-linecap="round"/>
+          <text x="50" y="52" text-anchor="middle" dominant-baseline="middle" font-family="JetBrains Mono, monospace" font-weight="700" font-size="30" fill="oklch(99% 0.006 268)" style="letter-spacing:-0.04em">50</text>
+          <circle cx="50" cy="50" r="1.6" fill="oklch(85% 0.13 86)"/>
+        </g>
+        <circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/>
+        <circle cx="50" cy="50" r="47.6" fill="none" stroke="oklch(78% 0.13 86)" stroke-width="0.5" opacity="0.55"/>
+      </svg>
+    </div>
+  </div>
+  <div class="center">
+    <p class="eyebrow">User manual · Players</p>
+    <h1>How to use 50pick.</h1>
+    <div class="gilt-rule"></div>
+    <p class="lead">A short, screenshot-led walk-through of every screen you'll touch as a player — sign up, place a bet, see your wallet, take a break when you need to. Bilingual notes (Swahili in italics) where it helps.</p>
+  </div>
+  <div class="bottom">
+    <div class="meta">
+      50pick · Tanzania<br/>
+      Player user manual
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ SIGN UP -->
+<section class="page">
+  <h4>Step 1 · Sign up</h4>
+  <h2>Create your account</h2>
+
+  <p>You need a Tanzanian phone number, a password, and to be 18 or older. The whole sign-up takes under a minute.</p>
+
+  <div class="shot">
+    <img src="screenshots/player/01-register-empty.png" alt="The empty sign-up form" />
+    <p class="caption">Sign-up screen · Open <strong>50pick.tz</strong> and tap "Create account".</p>
+  </div>
+
+  <div class="step">
+    <div class="num">1</div>
+    <div class="body">
+      <h3>Enter your phone number</h3>
+      <p>Type only digits — the input strips letters or spaces automatically and shows the number formatted as <em>712 345 678</em>. The "+255" prefix is added for you.</p>
+      <p class="sw">Andika tarakimu tu — alama nyingine zinaondolewa moja kwa moja.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="num">2</div>
+    <div class="body">
+      <h3>Pick a strong password</h3>
+      <p>At least 8 characters. The strength meter under the field tells you when it's <strong>Strong · Imara</strong>. Avoid common passwords like "password" or "12345678" — the platform refuses them.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="num">3</div>
+    <div class="body">
+      <h3>Confirm age &amp; terms</h3>
+      <p>Tick the two boxes — you must be 18 or older and you accept the <strong>Terms</strong> and <strong>Privacy</strong> notice. The optional third box opts you in to product updates.</p>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>50pick · Player user manual</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-pf1"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-pf1)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>1 · 6</span>
+  </div>
+</section>
+
+<!-- ============================================================ AFTER SIGN UP -->
+<section class="page">
+  <h4>Step 1 · continued</h4>
+  <h2>Welcome screen</h2>
+
+  <div class="shot">
+    <img src="screenshots/player/02-register-filled.png" alt="The sign-up form filled in" />
+    <p class="caption">A filled sign-up form, ready to submit.</p>
+  </div>
+
+  <p>After tapping <strong>Create account</strong>, you'll land on the verify-identity screen. A welcome message confirms your account is open.</p>
+
+  <div class="shot">
+    <img src="screenshots/player/03-after-register-kyc.png" alt="The verify-identity screen after sign-up" />
+    <p class="caption">Verify identity · This step unlocks withdrawals.</p>
+  </div>
+
+  <div class="tip">
+    <strong>Stay safe.</strong> Never share your password with anyone — not support, not friends, not family. If you forget it, use the <strong>Forgot password</strong> link on the sign-in page.
+  </div>
+
+  <div class="footer">
+    <span>50pick · Player user manual</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-pf2"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-pf2)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>2 · 6</span>
+  </div>
+</section>
+
+<!-- ============================================================ MARKETS -->
+<section class="page">
+  <h4>Step 2 · Browse markets</h4>
+  <h2>Find a question to predict</h2>
+
+  <p>Markets are real-world questions with a <strong>YES</strong> or <strong>NO</strong> answer — football, weather, macro, crypto, culture. The bar on each card shows where the pool is leaning right now.</p>
+
+  <div class="shot">
+    <img src="screenshots/player/04-markets.png" alt="Markets list" />
+    <p class="caption">Markets · Tap any card to see the full question and place a bet.</p>
+  </div>
+
+  <div class="step">
+    <div class="num">1</div>
+    <div class="body"><h3>Filter by category</h3><p>Use the chips at the top — All, Sports, Macro, Weather, Crypto, Culture — to narrow down.</p></div>
+  </div>
+  <div class="step">
+    <div class="num">2</div>
+    <div class="body"><h3>Read the bar</h3><p>Green is YES, red is NO. The percentages tell you where the crowd has put their money. A market near 50/50 is "tipping" — the most contested.</p></div>
+  </div>
+  <div class="step">
+    <div class="num">3</div>
+    <div class="body"><h3>Tap to open</h3><p>Tap any card to see the full question, the resolution source, the live pool, and the bet panel.</p></div>
+  </div>
+
+  <div class="footer">
+    <span>50pick · Player user manual</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-pf3"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-pf3)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>3 · 6</span>
+  </div>
+</section>
+
+<!-- ============================================================ PLACE BET -->
+<section class="page">
+  <h4>Step 3 · Place a bet</h4>
+  <h2>The conviction dial</h2>
+
+  <div class="shot">
+    <img src="screenshots/player/05-market-detail.png" alt="A market detail with the conviction dial" />
+    <p class="caption">Market detail · Drag the dial toward YES (right) or NO (left). The projected payout updates live.</p>
+  </div>
+
+  <div class="step">
+    <div class="num">1</div>
+    <div class="body"><h3>Drag the dial</h3><p>Slide right for <strong>YES</strong>, left for <strong>NO</strong>. The further you push, the bigger your stake. A small dot in the centre means "no bet yet."</p></div>
+  </div>
+  <div class="step">
+    <div class="num">2</div>
+    <div class="body"><h3>Read the projection</h3><p>The screen shows your stake, the projected payout if you're right, and the operator margin (the same nine percent on every market).</p></div>
+  </div>
+  <div class="step">
+    <div class="num">3</div>
+    <div class="body"><h3>Confirm</h3><p>Tap <strong>Place bet</strong>. A confirmation pops up with a five-second locked-in price. Tap <strong>Confirm</strong> to submit. You'll get an inbox notification right away with the receipt.</p></div>
+  </div>
+
+  <div class="tip">
+    <strong>Quote-hold.</strong> The five-second timer means the price you see at confirmation is the price you get — no slippage, no surprise. If you wait too long, the modal closes and you can re-aim.
+  </div>
+
+  <div class="footer">
+    <span>50pick · Player user manual</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-pf4"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-pf4)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>4 · 6</span>
+  </div>
+</section>
+
+<!-- ============================================================ WALLET + POSITIONS -->
+<section class="page">
+  <h4>Step 4 · Wallet &amp; positions</h4>
+  <h2>Track your money</h2>
+
+  <p>Your wallet shows your balance, deposit and withdrawal history. The top-bar pill (TZS pill next to your avatar) is the same number — tap it any time.</p>
+
+  <div class="shot">
+    <img src="screenshots/player/06-wallet.png" alt="Wallet screen" />
+    <p class="caption">Wallet · Deposit, withdraw, history, and the AML notice when limits apply.</p>
+  </div>
+
+  <p>Open bets live on the <strong>Positions</strong> screen. Each card shows the market, your side (YES or NO), the stake, and the projected payout if you win.</p>
+
+  <div class="shot">
+    <img src="screenshots/player/07-positions.png" alt="Positions screen" />
+    <p class="caption">Positions · Open bets and resolved bets, in one list.</p>
+  </div>
+
+  <div class="footer">
+    <span>50pick · Player user manual</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-pf5"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-pf5)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>5 · 6</span>
+  </div>
+</section>
+
+<!-- ============================================================ PROFILE + RG -->
+<section class="page">
+  <h4>Step 5 · Profile &amp; safety</h4>
+  <h2>You're in control</h2>
+
+  <p>Your <strong>Profile</strong> screen carries everything that's about you — display name, KYC status, language, region, the limits you've set on yourself.</p>
+
+  <div class="shot">
+    <img src="screenshots/player/08-profile.png" alt="Profile screen" />
+    <p class="caption">Profile · Your account, your limits, your sessions.</p>
+  </div>
+
+  <h3>If gambling stops being fun, stop.</h3>
+
+  <p>The <strong>Responsible gambling</strong> screen lets you set deposit limits (daily, weekly, monthly), session limits, take a break (1 hour, 24 hours, 1 week), or self-exclude (24 hours through permanent). Self-exclusion cannot be reversed by you until the period ends — that's the whole point.</p>
+
+  <div class="shot">
+    <img src="screenshots/player/09-responsible-gambling.png" alt="Responsible-gambling screen" />
+    <p class="caption">Responsible gambling · Set limits before you need them.</p>
+  </div>
+
+  <div class="tip">
+    <strong>Helpline · 0800 11 0011.</strong> Free in Tanzania, every day, eight in the morning to eight at night. The same number is on every page footer.
+  </div>
+
+  <div class="footer">
+    <span>50pick · Player user manual</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-pf6"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-pf6)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>6 · 6</span>
+  </div>
+</section>
+
+</body>
+</html>
