@@ -70,17 +70,23 @@ export function NotificationsPanel() {
 
   useEffect(() => {
     if (!open) return;
-    const onClick = (e: MouseEvent) => {
-      const target = e.target as Node;
+    // `click` (not `mousedown`) so that controls inside any child
+    // portal — confirm dialogs, sub-menus — get to complete their own
+    // click cycle before this panel tears down. See the avatar-menu
+    // sign-out fix (Sprint 53.1) for the original repro.
+    const onDocClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
       if (ref.current?.contains(target)) return;
       if (dialogRef.current?.contains(target)) return;
+      if (target.closest('[role="dialog"], [role="alertdialog"]')) return;
       setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("mousedown", onClick);
+    document.addEventListener("click", onDocClick);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("click", onDocClick);
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
