@@ -111,19 +111,32 @@ function writeSnapshotNow(): void {
   const envelope = JSON.stringify({ v: 1, ts: new Date().toISOString(), payload, signature });
 
   if (hasDatabase()) {
+    // Try Postgres first. If it fails (table missing because migrations
+    // didn't deploy, engine mismatch, network blip), STILL fall through
+    // to disk so the operator's writes are not silently lost. The audit
+    // entry surfaces the error in /admin/audit so the cause is visible.
     void writeToPostgres(envelope).catch((err) => {
       audit({
         category: "SYSTEM",
         action: "backup.postgres_write_failed",
         actorId: null, targetType: null, targetId: null,
-        payload: { error: String((err as Error)?.message ?? err) },
+        payload: { error: String((err as Error)?.message ?? err), fallback: "disk" },
       });
+      // Disk fallback so state survives the next restart even when
+      // Postgres is misconfigured. Without this, `npm run start` on
+      // Railway with a missing StoreSnapshot table would silently
+      // drop every write to /dev/null.
+      try { writeEnvelopeToDisk(envelope); } catch { /* really unrecoverable */ }
     });
     return;
   }
 
   // No database — disk path (local dev / first-boot before Postgres
   // is wired). Atomic-rename pattern to avoid partial-write corruption.
+  writeEnvelopeToDisk(envelope);
+}
+
+function writeEnvelopeToDisk(envelope: string): void {
   ensureDir();
   const tmp = join(BACKUP_DIR, `${SNAPSHOT_FILE}.tmp`);
   writeFileSync(tmp, envelope, "utf8");
