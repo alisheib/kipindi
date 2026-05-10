@@ -19,6 +19,7 @@ import { useToast } from "@/components/ui/toast";
 import { buyPositionAction } from "@/app/markets/actions";
 import { HouseLeanWarning } from "./house-lean-warning";
 import { BetConfirmModal } from "./bet-confirm-modal";
+import { OperationResultModal } from "./operation-result-modal";
 
 type Side = "YES" | "NO" | "NEUTRAL";
 
@@ -114,6 +115,14 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
   const [dragging, setDragging] = useState(false);
   const [hover, setHover] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [resultOpen, setResultOpen] = useState(false);
+  const [resultData, setResultData] = useState<{
+    variant: "success" | "danger";
+    side: "YES" | "NO";
+    stake: number;
+    payoutIfWin: number;
+    error?: string;
+  } | null>(null);
   const [pending, startTransition] = useTransition();
   const trackRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -264,7 +273,12 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
       setConfirmOpen(false);
       if (!r.ok) {
         const t = errorToToast(r.error);
+        // Centered failure modal — a corner toast alone is too easy to miss
+        // for a money-handling failure. Toast still fires as a secondary
+        // signal in the corner so the user has both.
         toast({ title: t.title, description: t.body, variant: t.variant });
+        setResultData({ variant: "danger", side: side === "NEUTRAL" ? "YES" : side, stake, payoutIfWin: 0, error: t.body });
+        setResultOpen(true);
         return;
       }
       toast({
@@ -272,6 +286,13 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
         description: `If correct, you receive TZS ${fmt(r.data!.payoutIfWin)}.`,
         variant: "success",
       });
+      setResultData({
+        variant: "success",
+        side: side as "YES" | "NO",
+        stake,
+        payoutIfWin: r.data!.payoutIfWin,
+      });
+      setResultOpen(true);
       // Record the side the user took on this market — the NotifyPoller
       // uses this to fire the WinCelebration only when the resolution
       // matches what the user actually picked.
@@ -510,6 +531,29 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
         onConfirm={submit}
         onCancel={() => { if (!pending) setConfirmOpen(false); }}
       />
+
+      {resultData && (
+        <OperationResultModal
+          open={resultOpen}
+          variant={resultData.variant}
+          eyebrow={resultData.variant === "success" ? "Bet placed · Dau lipo" : "Could not place bet"}
+          title={resultData.variant === "success" ? `${resultData.side} · TZS ${fmt(resultData.stake)}` : (resultData.error ?? "Try again")}
+          subtitle={
+            resultData.variant === "success"
+              ? (marketTitle ?? "Position open. We'll notify you on resolution.")
+              : "Your stake hasn't moved · Dau lako halijaondoka."
+          }
+          details={resultData.variant === "success" ? [
+            { label: "If correct", sw: "Ukishinda", value: `TZS ${fmt(resultData.payoutIfWin)}`, tone: "good" },
+            { label: "Net profit", sw: "Faida", value: `+TZS ${fmt(Math.max(0, resultData.payoutIfWin - resultData.stake))}`, tone: "good" },
+          ] : undefined}
+          footnote={resultData.variant === "success" ? "Bahati njema · Good luck." : undefined}
+          primaryLabel={resultData.variant === "success" ? "Done · Sawa" : "Close"}
+          secondaryLabel={resultData.variant === "success" ? "View positions" : undefined}
+          onSecondary={resultData.variant === "success" ? () => router.push("/positions") : undefined}
+          onClose={() => setResultOpen(false)}
+        />
+      )}
 
       <style>{`
         @keyframes csrf-breathe { 0%,100% { opacity: 0.35; } 50% { opacity: 0.7; } }

@@ -22,9 +22,10 @@ EN + SW (FR also wired), regulator-ready.
 - Next.js 16 App Router · React 19 · TypeScript · Turbopack
 - Tailwind CSS 3, design tokens in `src/app/globals.css` + `tailwind.config.ts`
 - next-themes for light/dark
-- Prisma 7 schema present (`prisma/schema.prisma`, 19 entities) but **not wired**
-  — current persistence is in-memory `Map`s in `src/lib/server/store.ts` with
-  disk snapshots every 1.5 s (see "Persistence" below).
+- Prisma 6.5 (downgraded from 7 — Prisma 7 broke `url = env("DATABASE_URL")` inline)
+  with managed Postgres on Railway. Single source of truth: when `DATABASE_URL`
+  is set we read/write a single `StoreSnapshot` row in Postgres; otherwise we
+  fall back to disk snapshots in `STORE_BACKUP_DIR` (see "Persistence" below).
 - Playwright for E2E (driven directly via the SDK, not @playwright/test)
 
 ## Source of truth
@@ -110,20 +111,29 @@ Required Railway env vars (set in service → Variables):
 ## Test scripts
 
 Run with `node scripts/<name>.mjs`. They use the dev server on `:3000` and
-hit the OTP endpoint at `/api/dev-test/last-otp` (dev-only).
+hit dev-only helpers under `/api/dev-test/*` (returns 404 in production).
 
 | Script | What it covers |
 |---|---|
-| `sprint35-full-e2e.mjs` | Real OTP register, 3 bets, break-it block, win celebration. **Authoritative happy-path test.** |
+| `multi-player-resolution-e2e.mjs` | **Authoritative settlement test.** 4 player accounts + 2 admin officers, mixed YES/NO bets on one market, two-officer settlement, wallet deltas, win/loss notifications, audit chain, money conservation. |
 | `break-it-player.mjs` | 23 manipulator scenarios — auth bypass, cookie tampering, stake validation, race, KYC, XSS, privilege escalation, API surface |
 | `break-it-admin.mjs` | 10 admin-portal QA scenarios — anon + player gating across 21 routes, TOTP cookie spoofing, forged Server Actions, CSV gating |
 | `multi-viewport-audit.mjs` | 99 routes × 4 viewports for layout overflow |
 | `overlay-responsiveness-test.mjs` | Notifications / language menu / avatar / reality-check inside viewport |
 | `screenshot.mjs` | Capture all routes (light/dark, public/authed) |
+| `capture-manual-screenshots.mjs` | 19 screenshots (10 player + 9 admin) for the user manuals |
+| `generate-pdfs.mjs` | Render the 4 production PDFs (operator brief, technical brief, player manual, admin manual) |
+| `rasterize-pdfs-for-audit.mjs` | Per-page PNGs of every PDF for visual audit before delivery |
 
-`break-it-player.mjs` predates the password swap and uses the old OTP
-register flow. Update its `register()` helper to fill `password` +
-`passwordConfirm` and submit when you next change it.
+### Dev-test helpers
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/dev-test/promote-admin` `{ phone }` | Mark a registered phone as ADMIN |
+| `POST /api/dev-test/seed-wallet` `{ phone, amount }` | Credit a wallet for test scenarios |
+| `POST /api/dev-test/fast-forward-market` `{ marketId }` | Pull a market's resolution to +1h so it appears in the resolver queue |
+| `POST /api/dev-test/reset-rate-limits` | Wipe per-IP / per-phone token buckets |
+| `GET  /api/dev-test/last-otp?phone=...` | Last OTP code for a phone (when SMS is on `console`) |
 
 ## Design rules
 
@@ -152,14 +162,42 @@ register flow. Update its `register()` helper to fill `password` +
 
 ## Open hard blockers before public launch
 
-1. **Postgres swap** (in-memory store will not survive 6M clicks/month).
-2. **SMS contract** (no OTP delivery in production right now).
-3. **GBT pre-application meeting** (regulator confirmation that the
+1. **SMS contract** (no OTP delivery in production right now — currently
+   on `console` provider so OTP codes print to stdout).
+2. **GBT pre-application meeting** (regulator confirmation that the
    pari-mutuel pool model classifies as betting under their license).
-4. **TOTP for admins** — code is there, set up via `/admin/2fa/setup`.
-5. **Two-officer market resolution** is enforced in `market-service.ts`
-   but the action `resolveMarketAction` only checks session, not role —
-   defense-in-depth: add a role assertion inside the action.
+3. **Mobile-money aggregator agreement** — deposit / withdrawal flows
+   are wired against a stub `INTERNAL` provider; need a licensed
+   Tanzanian aggregator (Selcom / Pesapal / etc.) before paid traffic.
+4. **Match-integrity feed** — currently no Sportradar (or equivalent)
+   live feed; football market resolution is manual via the admin UI.
+
+Already shipped (was on this list before):
+
+- ✅ **Postgres persistence** — single-row StoreSnapshot pattern wired
+  via `DATABASE_URL`. Disk fallback when no DB is configured.
+- ✅ **TOTP for admins** — code at `/admin/2fa/setup`, enforced on every
+  privileged action.
+- ✅ **Two-officer settlement defense-in-depth** — `requireAdminOrThrow`
+  in `src/app/markets/actions.ts` runs inside every privileged Server
+  Action, not just the layout.
+
+## UX commitments (kit-faithful)
+
+- **Every consequential mutation goes through the unified `OperationResultModal`**
+  ([src/components/markets/operation-result-modal.tsx](src/components/markets/operation-result-modal.tsx)) —
+  large ✓ / ✗ crest, eyebrow + headline + bilingual subtitle, optional
+  detail rows, primary + ghost CTAs. Success auto-dismisses at 5 s;
+  failures stay until dismissed (LCCP informed-consent pattern).
+- **Confirmations**: bet → `BetConfirmModal`, sell → `SellConfirmModal`.
+  **Never use the native browser `confirm()`** — always portal a kit-
+  styled modal. The toast at the corner is a *secondary* signal only.
+- **Bootstrap admin** registers / logs in → redirected to `/admin`,
+  not `/profile/kyc`. Player → `/profile/kyc?welcome=new` which now
+  shows a prominent "Skip for now · Browse markets" CTA.
+- **Profile page** displays a yellow `ADMIN` (or `COMPLIANCE` /
+  `MODERATOR`) pill so the operator can see at a glance that
+  `ADMIN_BOOTSTRAP_PHONES` wired up.
 
 ## Memory
 

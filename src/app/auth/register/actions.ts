@@ -33,6 +33,11 @@ export async function startRegisterAction(formData: FormData) {
     redirect(`/auth/register?${params.toString()}`);
   }
 
+  // Bootstrap admin (phone in ADMIN_BOOTSTRAP_PHONES) lands directly in
+  // the operator console — no KYC nag, status is already ACTIVE.
+  if (result.data?.role && result.data.role !== "PLAYER" && result.data.role !== "AGENT") {
+    redirect("/admin");
+  }
   redirect("/profile/kyc?welcome=new");
 }
 

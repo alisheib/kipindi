@@ -8,13 +8,15 @@ import { submitNidaAction } from "./actions";
 
 export const metadata = { title: "Verify identity · Thibitisha" };
 
-export default async function KycPage() {
+export default async function KycPage({ searchParams }: { searchParams?: Promise<{ welcome?: string }> }) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
 
   await startKyc(session.userId);
   const kyc = await getKycStatus(session.userId);
 
+  const sp = (await searchParams) ?? {};
+  const isWelcome = sp.welcome === "new";
   const nidaDone = !!kyc?.nidaVerifiedAt;
   const docsCount = kyc?.documents.length ?? 0;
   const submitted = kyc?.status === "PENDING_REVIEW" || kyc?.status === "APPROVED";
@@ -28,6 +30,30 @@ export default async function KycPage() {
         <ChevronLeft size={14} aria-hidden />
         Profile
       </Link>
+
+      {isWelcome && !submitted && !nidaDone && (
+        <section className="rounded-2xl border border-gold-700 bg-gold-500/10 p-4 lg:p-5 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex-1">
+            <p className="font-display text-[14px] font-bold text-gold-300">
+              Welcome to 50pick · Karibu
+            </p>
+            <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
+              You can <span className="font-bold text-text">browse markets and place bets right away</span>.
+              Verify your identity later — withdrawals unlock once KYC is approved.
+              <span className="block italic text-text-subtle text-[11.5px] mt-0.5">
+                Unaweza kuanza kuweka dau sasa hivi. Thibitisha NIDA kabla ya kutoa pesa.
+              </span>
+            </p>
+          </div>
+          <Link
+            href="/markets"
+            className="btn btn-gold btn-lg whitespace-nowrap"
+            style={{ borderRadius: 999 }}
+          >
+            Skip for now · Browse markets
+          </Link>
+        </section>
+      )}
 
       <header className="relative overflow-hidden rounded-2xl border border-border bg-bg-elevated">
         <div

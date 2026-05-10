@@ -384,7 +384,7 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
     kycStatus: "NOT_STARTED",
   });
 
-  return { ok: true, data: { userId: user.id } };
+  return { ok: true, data: { userId: user.id, role: user.role } };
 }
 
 export type PasswordLoginInput = { phone: string; password: string };

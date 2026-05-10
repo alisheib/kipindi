@@ -38,10 +38,11 @@ export const DEFAULT_GLOBAL_CONFIG: RateConfig = {
   minStake: 100,
   maxStake: 1_000_000,
   thinProfitRatio: 1.05,
-  // Sign-up gift — TZS 10,000 lands in every new wallet so first-time
-  // users can place a few real stakes without an upfront deposit. Admin
-  // can change this any time at /admin/config.
-  starterBalanceTzs: 10_000,
+  // Sign-up gift — TZS 100,000 lands in every new wallet so first-time
+  // users (and the manager doing demo runs) can place dozens of stakes
+  // without an upfront deposit. Admin can change this any time at
+  // /admin/config — the production launch will lower this to 0.
+  starterBalanceTzs: 100_000,
 };
 
 declare global {

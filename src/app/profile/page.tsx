@@ -99,6 +99,28 @@ export default async function ProfilePage() {
             </p>
 
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              {/* Role badge — yellow for ADMIN/COMPLIANCE/MODERATOR so Ali can
+                  see at a glance whether his ADMIN_BOOTSTRAP_PHONES env wired
+                  up correctly on this account. Plain "Player" otherwise. */}
+              {user.role !== "PLAYER" && user.role !== "AGENT" ? (
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-pill border px-2.5 py-1 font-mono text-[10.5px] font-bold uppercase tracking-[0.14em]"
+                  style={{
+                    background: "linear-gradient(135deg, oklch(82% 0.13 86), oklch(72% 0.12 76))",
+                    borderColor: "oklch(58% 0.12 76)",
+                    color: "oklch(20% 0.06 86)",
+                    boxShadow: "0 0 0 3px oklch(60% 0.13 86 / 0.18)",
+                  }}
+                >
+                  <ShieldCheck size={11} strokeWidth={2.6} />
+                  {user.role === "ADMIN" ? "ADMIN · Msimamizi"
+                    : user.role === "COMPLIANCE" ? "COMPLIANCE · Ufuatiliaji"
+                    : user.role === "MODERATOR" ? "MODERATOR · Mwangalizi"
+                    : user.role}
+                </span>
+              ) : (
+                <Pill tone="neutral">Player · Mtabiri</Pill>
+              )}
               <Pill tone={kycPill.tone as "yes" | "no" | "info" | "warning"}>
                 {kycPill.label}
               </Pill>
