@@ -110,7 +110,29 @@ export default async function RegisterPage({
             </Field>
 
             <Field label="Date of birth · Tarehe ya kuzaliwa" hint="You must be 18 or older. Lazima uwe na miaka 18+.">
-              <Input id="dob" name="dob" type="date" required mono size="lg" />
+              {(() => {
+                // Browser-side guards on the date input. min=1900-01-01
+                // blocks the "year 0019" trap (where typing just "19"
+                // for the year produced a 2000-year-old user and a
+                // confusing "18 or older" message). max=18 years ago
+                // means the browser validates age before the form even
+                // submits — server still re-checks.
+                const today = new Date();
+                const maxDob = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+                const maxStr = `${maxDob.getFullYear()}-${String(maxDob.getMonth() + 1).padStart(2, "0")}-${String(maxDob.getDate()).padStart(2, "0")}`;
+                return (
+                  <Input
+                    id="dob"
+                    name="dob"
+                    type="date"
+                    required
+                    mono
+                    size="lg"
+                    min="1900-01-01"
+                    max={maxStr}
+                  />
+                );
+              })()}
             </Field>
 
             <Field label="Password · Nenosiri" hint="At least 8 characters.">

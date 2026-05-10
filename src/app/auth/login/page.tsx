@@ -14,11 +14,18 @@ export const metadata = { title: "Sign in · Ingia" };
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ phone?: string; error?: string; retry?: string }>;
+  searchParams: Promise<{ phone?: string; error?: string; retry?: string; next?: string }>;
 }) {
   const sp = await searchParams;
   const phoneDefault = (sp.phone ?? "").replace(/^\+255/, "").replace(/\D+/g, "").slice(0, 9);
   const retrySec = Number.parseInt(sp.retry ?? "", 10);
+  // ?next= is set by the proxy when an unauthed user hits a protected
+  // route. We round-trip it through a hidden field so the login action
+  // can land the user on the page they actually wanted, not the home.
+  // Open-redirect safety: the action validates this is a same-origin,
+  // path-only string before redirecting.
+  const nextRaw = (sp.next ?? "").trim();
+  const nextSafe = nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : "";
 
   const errorPanel = (() => {
     switch (sp.error) {
@@ -112,6 +119,7 @@ export default async function LoginPage({
           )}
 
           <form action={startLoginAction} className="space-y-4">
+            {nextSafe && <input type="hidden" name="next" value={nextSafe} />}
             <Field label="Phone · Simu" hint="Tanzania mobile, 9 digits after +255.">
               <PhoneInput
                 id="phone"

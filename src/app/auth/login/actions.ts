@@ -11,6 +11,15 @@ import { loginWithPassword, requestLoginOtp, verifyOtpAndAuth } from "@/lib/serv
 export async function startLoginAction(formData: FormData) {
   const phone = String(formData.get("phone") ?? "");
   const password = String(formData.get("password") ?? "");
+  const nextRaw = String(formData.get("next") ?? "");
+  // Open-redirect safety: only accept a same-origin path. Reject any
+  // protocol-relative ("//evil.com"), absolute URL, or empty value.
+  // Also keep the user on the auth surface forwarded by the proxy
+  // ONLY when it points at an in-app destination.
+  const next = nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : "";
+  // And never let `next` send the user back to the auth pages themselves.
+  const safeNext = next && !next.startsWith("/auth/") ? next : "";
+
   const result = await loginWithPassword({ phone, password });
   if (!result.ok) {
     const params = new URLSearchParams({
@@ -23,13 +32,16 @@ export async function startLoginAction(formData: FormData) {
     if (result.code === "RATE_LIMITED" && result.retryAfterSec) {
       params.set("retry", String(Math.max(1, Math.ceil(result.retryAfterSec))));
     }
+    if (safeNext) params.set("next", safeNext);
     redirect(`/auth/login?${params.toString()}`);
   }
-  // Admins land directly in /admin; players go to the pulse.
+  // Admins land directly in /admin; players honour the proxy's `next`
+  // round-trip when present so the visitor lands back on the page they
+  // tried to reach (e.g. /wallet, /positions). Falls back to home.
   if (result.data?.role && result.data.role !== "PLAYER" && result.data.role !== "AGENT") {
-    redirect("/admin");
+    redirect(safeNext.startsWith("/admin") ? safeNext : "/admin");
   }
-  redirect("/?welcome=back");
+  redirect(safeNext || "/?welcome=back");
 }
 
 /** Legacy OTP login — re-enable once SMS goes live. */

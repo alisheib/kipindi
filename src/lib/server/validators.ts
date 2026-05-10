@@ -48,11 +48,23 @@ export const dateOfBirth = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
   .refine((v) => {
+    // Year sanity: <input type="date"> happily accepts "0019-01-01"
+    // when the user types just "19" for the year. That tripped a
+    // confusing "must be 18 or older" message even though Ali had
+    // typed 1999. Reject any year before 1900 explicitly so the user
+    // sees the real reason ("Year must be 1900 or later") and can
+    // re-type — separate from the actual age gate below.
+    const year = parseInt(v.slice(0, 4), 10);
+    return year >= 1900;
+  }, "Year must be 1900 or later — please re-type the full year (e.g. 1999)")
+  .refine((v) => {
     const dob = new Date(v);
     if (isNaN(dob.getTime())) return false;
-    const age = (Date.now() - dob.getTime()) / (365.25 * 24 * 3600 * 1000);
-    return age >= 18 && age <= 120;
-  }, "You must be 18 or older");
+    const now = Date.now();
+    if (dob.getTime() > now) return false;
+    const age = (now - dob.getTime()) / (365.25 * 24 * 3600 * 1000);
+    return age >= 18;
+  }, "You must be 18 or older to register");
 
 export const fullName = z.string().trim().min(2).max(120);
 
