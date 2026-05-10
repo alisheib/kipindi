@@ -1,14 +1,20 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
-import { Database, ShieldCheck } from "lucide-react";
+import { Database, ShieldCheck, KeyRound, Server } from "lucide-react";
 import { SystemActions } from "./system-client";
 import { db } from "@/lib/server/store";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
 import { smsHealthSnapshot, sms as smsClient } from "@/lib/server/sms";
 import { rateLimitSnapshot } from "@/lib/server/rate-limit";
 import { listMarkets } from "@/lib/server/market-service";
+import { hasDatabase } from "@/lib/server/prisma";
 
 export const metadata = { title: "Admin · System" };
 export const dynamic = "force-dynamic";
+
+function bootstrapPhones(): string[] {
+  return (process.env.ADMIN_BOOTSTRAP_PHONES ?? "")
+    .split(",").map(s => s.trim()).filter(Boolean);
+}
 
 export default function AdminSystemPage() {
   const chain = verifyChain();
@@ -18,6 +24,8 @@ export default function AdminSystemPage() {
   const buckets = rateLimitSnapshot();
   const liveMarkets = listMarkets({ status: "LIVE" }).length;
   const resolvedMarkets = listMarkets({ status: "RESOLVED" }).length;
+  const dbBackend: "postgres" | "disk-only" = hasDatabase() ? "postgres" : "disk-only";
+  const bootstrap = bootstrapPhones();
 
   return (
     <>
@@ -52,6 +60,78 @@ export default function AdminSystemPage() {
               </p>
             </div>
             <SystemActions kind="verify-chain" />
+          </AdminCard>
+        </div>
+
+        {/* Environment + persistence diagnostic — at-a-glance answer to
+            "is Postgres wired? are bootstrap admins recognised?". This
+            is what Ali needs on Railway to verify env config without
+            hitting /api/diagnostic. */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <AdminCard title="Persistence" sw="Hifadhi · Postgres / Disk">
+            <div className="flex items-start gap-2 mb-3">
+              <Server size={16} className={dbBackend === "postgres" ? "text-success mt-0.5 shrink-0" : "text-warning-fg mt-0.5 shrink-0"} />
+              <div className="text-caption text-text-secondary leading-relaxed">
+                {dbBackend === "postgres" ? (
+                  <>
+                    <strong className="text-success">Postgres connected.</strong>{" "}
+                    DATABASE_URL is set and the StoreSnapshot row is the
+                    single source of truth. State survives every Railway
+                    redeploy.
+                  </>
+                ) : (
+                  <>
+                    <strong className="text-warning-fg">Disk-only — Postgres not configured.</strong>{" "}
+                    DATABASE_URL is missing. The store snapshots to local
+                    disk only — Railway wipes that on every redeploy. Add
+                    the DATABASE_URL env var from your Railway Postgres
+                    service and redeploy.
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="rounded-md border border-border bg-bg-overlay px-3 py-2 font-mono text-[11px] tabular-nums text-text-muted">
+              <div className="flex justify-between"><span>Backend</span><span className="text-text">{dbBackend}</span></div>
+              <div className="flex justify-between"><span>DATABASE_URL set</span><span className="text-text">{!!process.env.DATABASE_URL ? "yes" : "no"}</span></div>
+              <div className="flex justify-between"><span>Users in store</span><span className="text-text">{totalUsers.toLocaleString()}</span></div>
+              <div className="flex justify-between"><span>Audit entries</span><span className="text-text">{auditCount.toLocaleString()}</span></div>
+            </div>
+          </AdminCard>
+
+          <AdminCard title="Bootstrap admins" sw="Wasimamizi wa kuanzishia">
+            <div className="flex items-start gap-2 mb-3">
+              <KeyRound size={16} className={bootstrap.length > 0 ? "text-success mt-0.5 shrink-0" : "text-warning-fg mt-0.5 shrink-0"} />
+              <div className="text-caption text-text-secondary leading-relaxed">
+                {bootstrap.length > 0 ? (
+                  <>
+                    <strong className="text-success">{bootstrap.length} phone{bootstrap.length === 1 ? "" : "s"}</strong>{" "}
+                    in ADMIN_BOOTSTRAP_PHONES. Anyone signing in or
+                    registering with a listed phone is auto-promoted to
+                    ADMIN. Existing accounts only need to sign out and
+                    sign back in for the role to take effect.
+                  </>
+                ) : (
+                  <>
+                    <strong className="text-warning-fg">ADMIN_BOOTSTRAP_PHONES is empty.</strong>{" "}
+                    Set it on Railway (e.g. <code>+255777777777</code>)
+                    and redeploy. Then sign out + sign back in on the
+                    listed account.
+                  </>
+                )}
+              </div>
+            </div>
+            {bootstrap.length > 0 && (
+              <ul className="rounded-md border border-border bg-bg-overlay px-3 py-2 space-y-0.5">
+                {bootstrap.map((p) => (
+                  <li key={p} className="font-mono text-[11px] tabular-nums text-text">
+                    {p}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-3 text-caption text-text-tertiary leading-snug">
+              Non-sensitive list — these are operator phones, not credentials. Safe to display to admins.
+            </p>
           </AdminCard>
         </div>
 
