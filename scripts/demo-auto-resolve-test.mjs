@@ -206,8 +206,11 @@ try {
   }
 
   console.log("\n=== SUMMARY ===");
-  log(`Saw at least one WIN across ${TRIALS} trials`, winsSeen > 0, `${winsSeen} wins`);
-  log(`Saw at least one LOSS across ${TRIALS} trials`, lossesSeen > 0, `${lossesSeen} losses`);
+  // Solo-player wins are virtually guaranteed: one bet → pool 100% on
+  // their side → pool-weighted outcome favors them. The loss path is
+  // covered by multi-player-resolution-e2e.mjs (26/26). Here we only
+  // assert that we observed *settlement*, not a particular outcome mix.
+  log(`Every trial settled (won or lost) across ${TRIALS} trials`, winsSeen + lossesSeen === TRIALS, `${winsSeen} wins · ${lossesSeen} losses`);
 } catch (e) {
   log("FATAL", false, String(e?.message ?? e));
 }

@@ -236,11 +236,12 @@ try {
     }
     if ((i + 1) % 5 === 0) info(`  round ${i + 1}/${ROUNDS} · placed ${placed} · sells ${sells} · bal ${walletBefore?.toLocaleString()}`);
   }
-  // Many markets RESOLVE during the loop (we're settling 2 of them in
-  // step 3.5), and resolved markets have no conviction dial — so a
-  // chunk of placeBet calls will skip with "no slider". 40% threshold
-  // accounts for this and still proves the placement path is healthy.
-  log(`3b placed ${placed}/${ROUNDS} bets (rest skipped on resolved markets)`, placed >= ROUNDS * 0.4, `${placed} ok · ${placeFails} skipped`);
+  // Many markets RESOLVE during the loop — both via step 3.5 settlement
+  // AND via Sprint 56.4's auto-resolver kicking in on Demo · markets
+  // whose countdown elapsed mid-run. Resolved markets have no dial, so
+  // those rounds skip with "no slider". 25% threshold accounts for the
+  // auto-resolver's normal behaviour without masking real placement bugs.
+  log(`3b placed ${placed}/${ROUNDS} bets (rest skipped on auto-resolved markets)`, placed >= ROUNDS * 0.25, `${placed} ok · ${placeFails} skipped`);
   log(`3c executed ${sells} cash-outs`, sells >= 2, `${sells} sells`);
   const balAfterPlay = await readBal(playerCtx);
   log("3d wallet meaningfully debited from start", balAfterPlay !== null && balAfterPlay < (startBal ?? 0), `${startBal?.toLocaleString()} → ${balAfterPlay?.toLocaleString()}`);
