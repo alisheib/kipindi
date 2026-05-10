@@ -22,7 +22,7 @@
 import { NextResponse } from "next/server";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
-import { hasDatabase } from "@/lib/server/prisma";
+import { hasDatabase, pingDatabase } from "@/lib/server/prisma";
 import { verifyChain } from "@/lib/server/audit";
 import { dbHealth } from "@/lib/server/backup";
 
@@ -66,6 +66,9 @@ export async function GET() {
   const chain = verifyChain();
 
   const userCount = db.user.list().length;
+  // Active DB ping — proves reachability + table existence WITHOUT
+  // having to perform a mutation. Cheap (5–50ms on a healthy link).
+  const ping = await pingDatabase();
 
   return NextResponse.json({
     ok: true,
@@ -91,10 +94,19 @@ export async function GET() {
       hasDatabaseUrl: !!process.env.DATABASE_URL,
       userCount,
       auditChainValid: chain.valid,
-      // Live write health — shows whether Postgres is actually
-      // accepting writes vs just being configured. lastOk null
-      // means we've never successfully written; consecutiveFails
-      // > 0 means recent writes are failing.
+      // Live ping result — reachable=true means we just talked to
+      // Postgres successfully. tableExists=true means the migration
+      // has been applied. Together they prove "database is connected"
+      // 100% without needing a mutation.
+      ping: {
+        reachable: ping.reachable,
+        tableExists: ping.tableExists,
+        latencyMs: ping.latencyMs,
+        host: ping.hostHint,
+        error: ping.error,
+      },
+      // Last-write-attempt health (updates on each mutation; null
+      // means nothing's tried to write since boot).
       health: dbHealth(),
     },
     build: {

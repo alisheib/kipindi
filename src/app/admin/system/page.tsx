@@ -6,7 +6,7 @@ import { verifyChain, getAuditPage } from "@/lib/server/audit";
 import { smsHealthSnapshot, sms as smsClient } from "@/lib/server/sms";
 import { rateLimitSnapshot } from "@/lib/server/rate-limit";
 import { listMarkets } from "@/lib/server/market-service";
-import { hasDatabase } from "@/lib/server/prisma";
+import { hasDatabase, pingDatabase } from "@/lib/server/prisma";
 import { dbHealth } from "@/lib/server/backup";
 
 export const metadata = { title: "Admin · System" };
@@ -17,7 +17,7 @@ function bootstrapPhones(): string[] {
     .split(",").map(s => s.trim()).filter(Boolean);
 }
 
-export default function AdminSystemPage() {
+export default async function AdminSystemPage() {
   const chain = verifyChain();
   const auditCount = getAuditPage({ limit: 100_000 }).length;
   const smsHealth = smsHealthSnapshot();
@@ -27,12 +27,13 @@ export default function AdminSystemPage() {
   const resolvedMarkets = listMarkets({ status: "RESOLVED" }).length;
   const dbBackend: "postgres" | "disk-only" = hasDatabase() ? "postgres" : "disk-only";
   const health = dbHealth();
-  // Postgres health verdict — green only when we've successfully written
-  // recently AND the consecutive-fail counter is zero. Failure path is
-  // explicit so the operator can never confuse "no writes attempted yet"
-  // with "writes are succeeding".
-  const dbHealthy = dbBackend === "postgres" && !!health.lastOk && health.consecutiveFails === 0;
-  const dbWaiting = dbBackend === "postgres" && !health.lastOk && !health.lastFail;
+  // Active reachability ping — runs SELECT 1 + a StoreSnapshot probe
+  // on every render of this page so the operator gets a NOW answer,
+  // not a "we last saw it 12 hours ago when something wrote" answer.
+  const ping = await pingDatabase();
+  // Combined verdict for the green/grey/red badge
+  const dbConnected = ping.reachable && ping.tableExists;
+  const dbWaiting = dbBackend === "postgres" && ping.reachable && !ping.tableExists;
   const bootstrap = bootstrapPhones();
 
   return (
@@ -81,62 +82,67 @@ export default function AdminSystemPage() {
               <Server
                 size={16}
                 className={
-                  dbHealthy ? "text-success mt-0.5 shrink-0"
+                  dbConnected ? "text-success mt-0.5 shrink-0"
                   : dbWaiting ? "text-text-muted mt-0.5 shrink-0"
                   : "text-no-300 mt-0.5 shrink-0"
                 }
               />
               <div className="text-caption text-text-secondary leading-relaxed">
-                {dbBackend !== "postgres" ? (
+                {!ping.envSet ? (
                   <>
-                    <strong className="text-no-300">Postgres NOT configured.</strong>{" "}
-                    DATABASE_URL is missing. Set it on Railway from your
-                    Postgres service → Connect → DATABASE_URL, then
-                    redeploy. State is currently written to local disk
-                    only — wiped on every redeploy.
+                    <strong className="text-no-300">DATABASE_URL not set.</strong>{" "}
+                    Add a variable on the App service → Variables tab →{" "}
+                    <code>DATABASE_URL</code> = <code>{"${{ Postgres.DATABASE_URL }}"}</code>{" "}
+                    (the Postgres-service reference syntax). Then redeploy.
                   </>
-                ) : dbHealthy ? (
+                ) : !ping.reachable ? (
                   <>
-                    <strong className="text-success">Postgres healthy — writes confirmed.</strong>{" "}
-                    Last successful write at{" "}
-                    <span className="font-mono text-text">{health.lastOk!.replace("T", " ").slice(0, 19)}</span>.
-                    StoreSnapshot row is the single source of truth.
+                    <strong className="text-no-300">Cannot reach Postgres.</strong>{" "}
+                    Connection failed at <span className="font-mono text-text">{ping.hostHint ?? "—"}</span>.
+                    Check the URL is correct (host, port, password) and that
+                    the Postgres service is healthy.
                   </>
-                ) : dbWaiting ? (
+                ) : !ping.tableExists ? (
                   <>
-                    <strong>Postgres connected — no writes yet.</strong>{" "}
-                    DATABASE_URL is set and the engine loaded, but no
-                    snapshot has been written since boot. Place a bet
-                    or trigger any mutation and re-load this page.
+                    <strong className="text-warning-fg">Connected, but StoreSnapshot table is missing.</strong>{" "}
+                    The connection works ({ping.latencyMs}ms to{" "}
+                    <span className="font-mono text-text">{ping.hostHint}</span>),
+                    but migrations haven't run yet. Force a redeploy so
+                    the start script's <code>prisma migrate deploy</code>{" "}
+                    executes, or apply manually from your laptop:{" "}
+                    <code>DATABASE_URL=&lt;url&gt; npx prisma migrate deploy</code>.
                   </>
                 ) : (
                   <>
-                    <strong className="text-no-300">
-                      Postgres write failed ({health.consecutiveFails} consecutive).
-                    </strong>{" "}
-                    Last error at{" "}
-                    <span className="font-mono text-text">{health.lastFail?.replace("T", " ").slice(0, 19)}</span>.
-                    Most likely the StoreSnapshot table is missing —
-                    confirm <code>prisma migrate deploy</code> ran during
-                    deploy (start script), or apply manually with{" "}
-                    <code>npx prisma migrate deploy</code>.
+                    <strong className="text-success">Postgres connected and ready.</strong>{" "}
+                    Reachable in <span className="font-mono text-text">{ping.latencyMs}ms</span>{" "}
+                    at <span className="font-mono text-text">{ping.hostHint}</span>.
+                    StoreSnapshot table exists.
+                    {health.lastOk && (
+                      <>
+                        {" "}Last write{" "}
+                        <span className="font-mono text-text">{health.lastOk.replace("T", " ").slice(11, 19)}</span>.
+                      </>
+                    )}
                   </>
                 )}
               </div>
             </div>
             <div className="rounded-md border border-border bg-bg-overlay px-3 py-2 font-mono text-[11px] tabular-nums text-text-muted">
-              <div className="flex justify-between"><span>Backend</span><span className="text-text">{dbBackend}</span></div>
-              <div className="flex justify-between"><span>DATABASE_URL set</span><span className="text-text">{!!process.env.DATABASE_URL ? "yes" : "no"}</span></div>
+              <div className="flex justify-between"><span>DATABASE_URL set</span><span className={ping.envSet ? "text-success" : "text-no-300"}>{ping.envSet ? "yes" : "no"}</span></div>
+              <div className="flex justify-between"><span>Reachable</span><span className={ping.reachable ? "text-success" : "text-no-300"}>{ping.reachable ? `yes (${ping.latencyMs}ms)` : "no"}</span></div>
+              <div className="flex justify-between"><span>Table exists</span><span className={ping.tableExists ? "text-success" : "text-no-300"}>{ping.tableExists ? "yes" : "no"}</span></div>
+              <div className="flex justify-between"><span>Host</span><span className="text-text">{ping.hostHint ?? "—"}</span></div>
               <div className="flex justify-between"><span>Last OK write</span><span className="text-text">{health.lastOk?.replace("T", " ").slice(11, 19) ?? "never"}</span></div>
               <div className="flex justify-between"><span>Last failed write</span><span className={health.lastFail ? "text-no-300" : "text-text"}>{health.lastFail?.replace("T", " ").slice(11, 19) ?? "never"}</span></div>
               <div className="flex justify-between"><span>Consecutive fails</span><span className={health.consecutiveFails > 0 ? "text-no-300" : "text-text"}>{health.consecutiveFails}</span></div>
               <div className="flex justify-between"><span>Users in store</span><span className="text-text">{totalUsers.toLocaleString()}</span></div>
               <div className="flex justify-between"><span>Audit entries</span><span className="text-text">{auditCount.toLocaleString()}</span></div>
             </div>
-            {health.lastError && (
+            {(ping.error || health.lastError) && (
               <div className="mt-2 rounded-md border border-no-700/60 bg-no-500/10 px-3 py-2 font-mono text-[10.5px] text-no-200 leading-relaxed">
                 <div className="font-bold uppercase tracking-[0.14em] text-no-300 text-[9.5px] mb-1">Last error</div>
-                {health.lastError.slice(0, 280)}
+                {(ping.error ?? health.lastError ?? "").slice(0, 280)}
               </div>
             )}
           </AdminCard>
