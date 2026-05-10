@@ -49,6 +49,29 @@ declare global {
   var __50PICK_BACKUP_TIMER: ReturnType<typeof setTimeout> | undefined;
   // eslint-disable-next-line no-var
   var __50PICK_BACKUP_RESTORED: boolean | undefined;
+  // Last-write health signal — read by /admin/system so the operator
+  // sees at a glance whether Postgres is actually accepting writes.
+  // eslint-disable-next-line no-var
+  var __50PICK_DB_HEALTH: { lastOk: string | null; lastFail: string | null; lastError: string | null; consecutiveFails: number } | undefined;
+}
+
+function recordHealth(ok: boolean, error?: string) {
+  const h = globalThis.__50PICK_DB_HEALTH ?? { lastOk: null, lastFail: null, lastError: null, consecutiveFails: 0 };
+  const now = new Date().toISOString();
+  if (ok) {
+    h.lastOk = now;
+    h.consecutiveFails = 0;
+    h.lastError = null;
+  } else {
+    h.lastFail = now;
+    h.lastError = error ?? "unknown error";
+    h.consecutiveFails += 1;
+  }
+  globalThis.__50PICK_DB_HEALTH = h;
+}
+
+export function dbHealth(): { lastOk: string | null; lastFail: string | null; lastError: string | null; consecutiveFails: number } {
+  return globalThis.__50PICK_DB_HEALTH ?? { lastOk: null, lastFail: null, lastError: null, consecutiveFails: 0 };
 }
 
 function getSecret(): string {
@@ -111,28 +134,25 @@ function writeSnapshotNow(): void {
   const envelope = JSON.stringify({ v: 1, ts: new Date().toISOString(), payload, signature });
 
   if (hasDatabase()) {
-    // Try Postgres first. If it fails (table missing because migrations
-    // didn't deploy, engine mismatch, network blip), STILL fall through
-    // to disk so the operator's writes are not silently lost. The audit
-    // entry surfaces the error in /admin/audit so the cause is visible.
+    // Postgres-only when DATABASE_URL is set. NEVER fall back to disk
+    // here — Railway's container filesystem is wiped on every
+    // redeploy, so a "successful" disk write would be a lie that
+    // silently loses state on the next deploy. Operator preference:
+    // fail loudly (audit entry surfaces in /admin/audit) rather than
+    // pretend the write succeeded.
     void writeToPostgres(envelope).catch((err) => {
       audit({
         category: "SYSTEM",
         action: "backup.postgres_write_failed",
         actorId: null, targetType: null, targetId: null,
-        payload: { error: String((err as Error)?.message ?? err), fallback: "disk" },
+        payload: { error: String((err as Error)?.message ?? err) },
       });
-      // Disk fallback so state survives the next restart even when
-      // Postgres is misconfigured. Without this, `npm run start` on
-      // Railway with a missing StoreSnapshot table would silently
-      // drop every write to /dev/null.
-      try { writeEnvelopeToDisk(envelope); } catch { /* really unrecoverable */ }
     });
     return;
   }
 
-  // No database — disk path (local dev / first-boot before Postgres
-  // is wired). Atomic-rename pattern to avoid partial-write corruption.
+  // No database — disk path (local dev only; production must set
+  // DATABASE_URL). Atomic-rename pattern to avoid partial-write corruption.
   writeEnvelopeToDisk(envelope);
 }
 
@@ -156,11 +176,17 @@ function writeEnvelopeToDisk(envelope: string): void {
 async function writeToPostgres(envelope: string): Promise<void> {
   const client = prisma();
   if (!client) return;
-  await client.storeSnapshot.upsert({
-    where: { id: 1 },
-    create: { id: 1, envelope },
-    update: { envelope },
-  });
+  try {
+    await client.storeSnapshot.upsert({
+      where: { id: 1 },
+      create: { id: 1, envelope },
+      update: { envelope },
+    });
+    recordHealth(true);
+  } catch (err) {
+    recordHealth(false, String((err as Error)?.message ?? err));
+    throw err;
+  }
 }
 
 async function readFromPostgres(): Promise<string | null> {

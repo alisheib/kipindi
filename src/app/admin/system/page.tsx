@@ -7,6 +7,7 @@ import { smsHealthSnapshot, sms as smsClient } from "@/lib/server/sms";
 import { rateLimitSnapshot } from "@/lib/server/rate-limit";
 import { listMarkets } from "@/lib/server/market-service";
 import { hasDatabase } from "@/lib/server/prisma";
+import { dbHealth } from "@/lib/server/backup";
 
 export const metadata = { title: "Admin · System" };
 export const dynamic = "force-dynamic";
@@ -25,6 +26,13 @@ export default function AdminSystemPage() {
   const liveMarkets = listMarkets({ status: "LIVE" }).length;
   const resolvedMarkets = listMarkets({ status: "RESOLVED" }).length;
   const dbBackend: "postgres" | "disk-only" = hasDatabase() ? "postgres" : "disk-only";
+  const health = dbHealth();
+  // Postgres health verdict — green only when we've successfully written
+  // recently AND the consecutive-fail counter is zero. Failure path is
+  // explicit so the operator can never confuse "no writes attempted yet"
+  // with "writes are succeeding".
+  const dbHealthy = dbBackend === "postgres" && !!health.lastOk && health.consecutiveFails === 0;
+  const dbWaiting = dbBackend === "postgres" && !health.lastOk && !health.lastFail;
   const bootstrap = bootstrapPhones();
 
   return (
@@ -68,24 +76,50 @@ export default function AdminSystemPage() {
             is what Ali needs on Railway to verify env config without
             hitting /api/diagnostic. */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <AdminCard title="Persistence" sw="Hifadhi · Postgres / Disk">
+          <AdminCard title="Persistence" sw="Hifadhi · Postgres">
             <div className="flex items-start gap-2 mb-3">
-              <Server size={16} className={dbBackend === "postgres" ? "text-success mt-0.5 shrink-0" : "text-warning-fg mt-0.5 shrink-0"} />
+              <Server
+                size={16}
+                className={
+                  dbHealthy ? "text-success mt-0.5 shrink-0"
+                  : dbWaiting ? "text-text-muted mt-0.5 shrink-0"
+                  : "text-no-300 mt-0.5 shrink-0"
+                }
+              />
               <div className="text-caption text-text-secondary leading-relaxed">
-                {dbBackend === "postgres" ? (
+                {dbBackend !== "postgres" ? (
                   <>
-                    <strong className="text-success">Postgres connected.</strong>{" "}
-                    DATABASE_URL is set and the StoreSnapshot row is the
-                    single source of truth. State survives every Railway
-                    redeploy.
+                    <strong className="text-no-300">Postgres NOT configured.</strong>{" "}
+                    DATABASE_URL is missing. Set it on Railway from your
+                    Postgres service → Connect → DATABASE_URL, then
+                    redeploy. State is currently written to local disk
+                    only — wiped on every redeploy.
+                  </>
+                ) : dbHealthy ? (
+                  <>
+                    <strong className="text-success">Postgres healthy — writes confirmed.</strong>{" "}
+                    Last successful write at{" "}
+                    <span className="font-mono text-text">{health.lastOk!.replace("T", " ").slice(0, 19)}</span>.
+                    StoreSnapshot row is the single source of truth.
+                  </>
+                ) : dbWaiting ? (
+                  <>
+                    <strong>Postgres connected — no writes yet.</strong>{" "}
+                    DATABASE_URL is set and the engine loaded, but no
+                    snapshot has been written since boot. Place a bet
+                    or trigger any mutation and re-load this page.
                   </>
                 ) : (
                   <>
-                    <strong className="text-warning-fg">Disk-only — Postgres not configured.</strong>{" "}
-                    DATABASE_URL is missing. The store snapshots to local
-                    disk only — Railway wipes that on every redeploy. Add
-                    the DATABASE_URL env var from your Railway Postgres
-                    service and redeploy.
+                    <strong className="text-no-300">
+                      Postgres write failed ({health.consecutiveFails} consecutive).
+                    </strong>{" "}
+                    Last error at{" "}
+                    <span className="font-mono text-text">{health.lastFail?.replace("T", " ").slice(0, 19)}</span>.
+                    Most likely the StoreSnapshot table is missing —
+                    confirm <code>prisma migrate deploy</code> ran during
+                    deploy (start script), or apply manually with{" "}
+                    <code>npx prisma migrate deploy</code>.
                   </>
                 )}
               </div>
@@ -93,9 +127,18 @@ export default function AdminSystemPage() {
             <div className="rounded-md border border-border bg-bg-overlay px-3 py-2 font-mono text-[11px] tabular-nums text-text-muted">
               <div className="flex justify-between"><span>Backend</span><span className="text-text">{dbBackend}</span></div>
               <div className="flex justify-between"><span>DATABASE_URL set</span><span className="text-text">{!!process.env.DATABASE_URL ? "yes" : "no"}</span></div>
+              <div className="flex justify-between"><span>Last OK write</span><span className="text-text">{health.lastOk?.replace("T", " ").slice(11, 19) ?? "never"}</span></div>
+              <div className="flex justify-between"><span>Last failed write</span><span className={health.lastFail ? "text-no-300" : "text-text"}>{health.lastFail?.replace("T", " ").slice(11, 19) ?? "never"}</span></div>
+              <div className="flex justify-between"><span>Consecutive fails</span><span className={health.consecutiveFails > 0 ? "text-no-300" : "text-text"}>{health.consecutiveFails}</span></div>
               <div className="flex justify-between"><span>Users in store</span><span className="text-text">{totalUsers.toLocaleString()}</span></div>
               <div className="flex justify-between"><span>Audit entries</span><span className="text-text">{auditCount.toLocaleString()}</span></div>
             </div>
+            {health.lastError && (
+              <div className="mt-2 rounded-md border border-no-700/60 bg-no-500/10 px-3 py-2 font-mono text-[10.5px] text-no-200 leading-relaxed">
+                <div className="font-bold uppercase tracking-[0.14em] text-no-300 text-[9.5px] mb-1">Last error</div>
+                {health.lastError.slice(0, 280)}
+              </div>
+            )}
           </AdminCard>
 
           <AdminCard title="Bootstrap admins" sw="Wasimamizi wa kuanzishia">

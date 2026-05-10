@@ -24,6 +24,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { hasDatabase } from "@/lib/server/prisma";
 import { verifyChain } from "@/lib/server/audit";
+import { dbHealth } from "@/lib/server/backup";
 
 function maskPhone(p: string): string {
   if (p.length <= 6) return p;
@@ -90,6 +91,11 @@ export async function GET() {
       hasDatabaseUrl: !!process.env.DATABASE_URL,
       userCount,
       auditChainValid: chain.valid,
+      // Live write health — shows whether Postgres is actually
+      // accepting writes vs just being configured. lastOk null
+      // means we've never successfully written; consecutiveFails
+      // > 0 means recent writes are failing.
+      health: dbHealth(),
     },
     build: {
       nodeEnv: process.env.NODE_ENV ?? "(unset)",
