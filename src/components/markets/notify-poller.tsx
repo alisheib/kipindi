@@ -70,6 +70,15 @@ type Attestation = {
   stage2At: string | null;
 };
 
+// Poll cadence — tight when the user has live watched markets (so a
+// 5-minute demo market's resolution lands within ~8s of settlement),
+// relaxed when there's nothing to watch (no point pinging the server
+// every 8 seconds for an empty list). Also re-runs immediately on
+// tab focus so an alt-tabbed user sees the celebration the moment
+// they come back to the window.
+const ACTIVE_POLL_MS = 8_000;
+const IDLE_POLL_MS = 60_000;
+
 export function NotifyPoller() {
   const { toast } = useToast();
 
@@ -81,13 +90,13 @@ export function NotifyPoller() {
       if (cancelled) return;
       const watch = readWatch();
       if (watch.length === 0) {
-        timer = setTimeout(tick, 30_000);
+        timer = setTimeout(tick, IDLE_POLL_MS);
         return;
       }
       try {
         const r = await fetch("/api/fairness/recent", { cache: "no-store" });
         if (!r.ok) {
-          timer = setTimeout(tick, 60_000);
+          timer = setTimeout(tick, IDLE_POLL_MS);
           return;
         }
         const j = (await r.json()) as { attestations: Attestation[] };
@@ -124,6 +133,14 @@ export function NotifyPoller() {
           } else if (a.resolvedOutcome === "VOID" || (stored && stored.side !== a.resolvedOutcome)) {
             clearStoredBet(a.marketId);
           }
+          // Drop the resolved market from the watch list so subsequent
+          // polls don't keep re-checking it. The seen-set guards
+          // against duplicate fires within a session, but pruning the
+          // watch list keeps the poll payload small over time.
+          try {
+            const remaining = watch.filter((id) => id !== a.marketId);
+            localStorage.setItem("50pick-notify-markets", JSON.stringify(remaining));
+          } catch { /* ignore */ }
           toast({
             title,
             description: body,
@@ -137,13 +154,29 @@ export function NotifyPoller() {
       } catch {
         /* network — try again later */
       }
-      timer = setTimeout(tick, 30_000);
+      // Stay tight while there's at least one watched market; otherwise
+      // fall back to the idle cadence.
+      const stillWatching = readWatch().length > 0;
+      timer = setTimeout(tick, stillWatching ? ACTIVE_POLL_MS : IDLE_POLL_MS);
     };
+
+    // Tab focus / visibility — immediately fire a tick so an alt-tabbed
+    // user sees the win the moment they refocus. We clear any pending
+    // timer and re-tick from scratch.
+    const onWake = () => {
+      if (cancelled) return;
+      if (timer) clearTimeout(timer);
+      tick();
+    };
+    document.addEventListener("visibilitychange", onWake);
+    window.addEventListener("focus", onWake);
 
     tick();
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onWake);
+      window.removeEventListener("focus", onWake);
     };
   }, [toast]);
 

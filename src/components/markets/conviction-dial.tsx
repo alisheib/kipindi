@@ -314,9 +314,22 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
       // Record the side the user took on this market — the NotifyPoller
       // uses this to fire the WinCelebration only when the resolution
       // matches what the user actually picked.
+      //
+      // Also add this market to the notify-watch list so the poller
+      // actually checks it on its next tick. Without this, only markets
+      // the user explicitly opted into via NotifyPrompt would fire the
+      // celebration — so the most common path (place bet → win) was
+      // silently skipping the popup. Ali's report fixed in this line.
       try {
         const key = `50pick-bet-${marketId}`;
         localStorage.setItem(key, JSON.stringify({ side, stake, payoutIfWin: r.data!.payoutIfWin }));
+        const WATCH_KEY = "50pick-notify-markets";
+        const watchRaw = localStorage.getItem(WATCH_KEY);
+        const watch: string[] = watchRaw ? (JSON.parse(watchRaw) as string[]) : [];
+        if (!watch.includes(marketId)) {
+          watch.push(marketId);
+          localStorage.setItem(WATCH_KEY, JSON.stringify(watch));
+        }
       } catch { /* private browsing */ }
       router.refresh();
     });
