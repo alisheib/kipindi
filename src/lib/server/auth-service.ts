@@ -473,14 +473,34 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
     failedLoginCount: 0,
     lockedUntil: null,
   });
+
+  // Bootstrap-admin auto-promote on login. The register-time bootstrap
+  // (line ~331) only fires for *new* accounts. Anyone who registered
+  // before ADMIN_BOOTSTRAP_PHONES was set in the env stays a PLAYER
+  // forever unless we also re-check on login. Production needs this
+  // because the dev-test promote-admin endpoint is 404-gated.
+  // Idempotent and safe: only ever raises a PLAYER → ADMIN; never
+  // demotes; ignored when the phone has been removed from the env.
+  let effectiveRole = user.role;
+  if (effectiveRole !== "ADMIN" && adminBootstrapPhones().has(user.phoneE164)) {
+    db.user.update(user.id, { role: "ADMIN", status: "ACTIVE" });
+    effectiveRole = "ADMIN";
+    audit({
+      category: "SECURITY",
+      action: "user.bootstrap_promoted_on_login",
+      actorId: user.id, targetType: "User", targetId: user.id, ip: meta.ip,
+      payload: { fromRole: user.role, toRole: "ADMIN", reason: "phone in ADMIN_BOOTSTRAP_PHONES" },
+    });
+  }
+
   audit({ category: "AUTH", action: "user.login.password", actorId: user.id, targetType: "User", targetId: user.id, ip: meta.ip, userAgent: meta.ua });
 
   await createSession({
     userId: user.id,
     phoneE164: user.phoneE164,
-    role: user.role,
+    role: effectiveRole,
     kycStatus: db.kyc.findByUserId(user.id)?.status ?? "NOT_STARTED",
   });
 
-  return { ok: true, data: { userId: user.id, role: user.role } };
+  return { ok: true, data: { userId: user.id, role: effectiveRole } };
 }

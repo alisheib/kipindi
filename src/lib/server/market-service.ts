@@ -486,7 +486,10 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
 
 /** Seed the demo with a deep, varied catalogue and top up automatically
  *  when fewer than 25 LIVE markets remain — the manager always has at
- *  least 40 markets to drill into without needing to /admin/markets. */
+ *  least 40 markets to drill into without needing to /admin/markets.
+ *  Demo · minute-scale markets are refreshed *separately* so the
+ *  bet → settle → celebrate loop always has a fresh-soon market to
+ *  drill into, regardless of total LIVE count. */
 export function seedDemoMarkets() {
   // Migrate older snapshots: purge any market with category "politics"
   // (pre-Sprint 37 the seed included an LGA-turnout market; the Tanzania
@@ -496,6 +499,36 @@ export function seedDemoMarkets() {
       markets.delete(id);
     }
   }
+
+  // Demo refresher — always ensure fresh minute-scale markets exist,
+  // even on a fully-stocked production instance. Removes any expired
+  // "Demo · " markets first so the queue doesn't pile up with stale
+  // ones, then re-seeds a small rolling set 5 / 15 / 30 minutes out.
+  const now = Date.now();
+  for (const [id, m] of markets.entries()) {
+    if (m.titleEn.startsWith("Demo · ") && m.status === "LIVE" && Date.parse(m.resolutionAt) < now) {
+      // Expired demo — drop it so the next seed pass replaces it cleanly.
+      markets.delete(id);
+    }
+  }
+  const liveDemoMinuteScale = Array.from(markets.values())
+    .filter(m => m.titleEn.startsWith("Demo · ") && m.status === "LIVE" && (Date.parse(m.resolutionAt) - now) < 60 * 60_000)
+    .length;
+  if (liveDemoMinuteScale < 2) {
+    // We're below the demo-friendly threshold — top up with two fresh
+    // minute-scale markets so the operator always finds a "soon" one.
+    const refreshSeed: CreateMarketInput[] = [
+      { titleEn: "Demo · 5-minute coin flip — will the next 5 minutes resolve YES?", titleSw: "Demo · sarafu ya dakika 5 — je, dakika 5 zijazo zitafungwa na YES?", category: "culture", sourceUrl: "https://www.itv.co.tz", resolutionCriterion: "Demo market — resolves at the discretion of the demo operator. For training and walk-throughs only.", resolutionAt: new Date(now + 5 * 60_000).toISOString(), proposedBy: "system" },
+      { titleEn: "Demo · 15-minute hot market — will the demo close YES in 15 min?", titleSw: "Demo · soko la moto la dakika 15 — je, demo itafungwa na YES baada ya dakika 15?", category: "sports", sourceUrl: "https://nbc.co.tz/premier-league", resolutionCriterion: "Demo market — operator-resolved for live walk-throughs.", resolutionAt: new Date(now + 15 * 60_000).toISOString(), proposedBy: "system" },
+    ];
+    for (const s of refreshSeed) {
+      try {
+        const m = createMarket(s);
+        seedHistory(m.id, m.yesPool, m.noPool);
+      } catch { /* ignore duplicates */ }
+    }
+  }
+
   // Top-up gate: if we already have 25+ LIVE markets, leave them alone.
   // Otherwise we'll re-seed the canonical 40-market catalogue below to
   // bring the count back up. Resolved + voided markets stay in history.
