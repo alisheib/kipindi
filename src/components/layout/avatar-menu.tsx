@@ -29,17 +29,28 @@ export function AvatarMenu({
 
   useEffect(() => {
     if (!open) return;
-    const onClick = (e: MouseEvent) => {
-      const target = e.target as Node;
+    // Use `click` (not `mousedown`) so that controls inside the menu —
+    // including a ConfirmDialog rendered into its own portal *above*
+    // this menu — get to run their own onClick before we tear the menu
+    // (and any child component state) down. With `mousedown` the menu
+    // unmounted between the user pressing and releasing on the
+    // ConfirmDialog's "Yes, sign out" button, so the navigation never
+    // fired. Also ignore any click whose target sits inside a higher-z
+    // dialog (`role="dialog"` / `role="alertdialog"`) for the same
+    // reason.
+    const onDocClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
       if (ref.current?.contains(target)) return;
       if (menuRef.current?.contains(target)) return;
+      if (target.closest('[role="dialog"], [role="alertdialog"]')) return;
       setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("mousedown", onClick);
+    document.addEventListener("click", onDocClick);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("click", onDocClick);
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
