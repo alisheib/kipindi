@@ -185,10 +185,54 @@ export default async function MarketDetail({
 
         <aside className="space-y-3">
           {!isResolved && m.status === "LIVE" ? (
-            <>
-              <ConvictionDial marketId={m.id} yesPool={m.yesPool} noPool={m.noPool} marketTitle={m.titleEn} />
-              <NotifyPrompt marketId={m.id} marketTitle={m.titleEn} />
-            </>
+            session ? (
+              <>
+                <ConvictionDial marketId={m.id} yesPool={m.yesPool} noPool={m.noPool} marketTitle={m.titleEn} />
+                <NotifyPrompt marketId={m.id} marketTitle={m.titleEn} />
+              </>
+            ) : (
+              // Public visitors see the market read-only — pool, history,
+              // resolution criterion are all visible above. The conviction
+              // dial is gated behind a clear "sign in to bet" CTA so the
+              // mutation surface only opens for an authenticated session.
+              <div
+                className="rounded-2xl border border-border bg-bg-elevated p-6 text-center"
+                style={{
+                  background:
+                    "radial-gradient(420px 160px at 50% 0%, oklch(45% 0.10 240 / 0.20), transparent 60%), " +
+                    "linear-gradient(135deg, oklch(22% 0.140 268) 0%, oklch(28% 0.165 268) 100%)",
+                }}
+              >
+                <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
+                  Sign in to predict
+                </p>
+                <h3 className="mt-1.5 font-display text-[18px] font-bold text-text leading-tight">
+                  Place your stake on this market
+                </h3>
+                <p className="mt-1.5 text-[12.5px] text-text-muted leading-snug">
+                  Browse for free, but a verified phone is required before any bet can be placed.
+                  <span className="block italic text-text-subtle text-[11.5px] mt-0.5">
+                    Andika namba ya simu ili kuweka dau.
+                  </span>
+                </p>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <a
+                    href={`/auth/register?next=${encodeURIComponent("/markets/" + m.id)}`}
+                    className="btn btn-gold btn-md"
+                    style={{ borderRadius: 999 }}
+                  >
+                    Sign up
+                  </a>
+                  <a
+                    href={`/auth/login?next=${encodeURIComponent("/markets/" + m.id)}`}
+                    className="btn btn-ghost btn-md"
+                    style={{ borderRadius: 999 }}
+                  >
+                    Sign in
+                  </a>
+                </div>
+              </div>
+            )
           ) : (
             <div className="rounded-lg border border-border bg-bg-elevated p-6 text-center">
               <p className="font-display text-[16px] font-semibold text-text">Market closed for predictions</p>

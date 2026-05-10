@@ -2,23 +2,34 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, Radio, ListChecks, Trophy, User } from "lucide-react";
+import { LayoutGrid, Radio, ListChecks, Trophy, User, LogIn } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export function BottomNav() {
+export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
   const pathname = usePathname();
-  const items = [
-    { href: "/markets",     icon: LayoutGrid, label: "Markets" },
-    { href: "/live",        icon: Radio,      label: "Live" },
-    { href: "/positions",   icon: ListChecks, label: "Positions" },
-    { href: "/leaderboard", icon: Trophy,     label: "Top" },
-    { href: "/profile",     icon: User,       label: "Profile" },
-  ];
+  // Public visitors don't see Positions / Profile here — those would
+  // immediately bounce to /auth/login on tap. Replace them with a
+  // single "Sign in" tile so the auth path is one tap, not two.
+  const items = isAuthed
+    ? [
+        { href: "/markets",     icon: LayoutGrid, label: "Markets" },
+        { href: "/live",        icon: Radio,      label: "Live" },
+        { href: "/positions",   icon: ListChecks, label: "Positions" },
+        { href: "/leaderboard", icon: Trophy,     label: "Top" },
+        { href: "/profile",     icon: User,       label: "Profile" },
+      ]
+    : [
+        { href: "/markets",     icon: LayoutGrid, label: "Markets" },
+        { href: "/live",        icon: Radio,      label: "Live" },
+        { href: "/leaderboard", icon: Trophy,     label: "Top" },
+        { href: "/auth/login",  icon: LogIn,      label: "Sign in" },
+      ];
 
   const isActive = (href: string) => {
     if (href === "/markets") return pathname === "/" || pathname.startsWith("/markets");
     if (href === "/positions") return pathname.startsWith("/positions");
     if (href === "/profile") return pathname.startsWith("/profile");
+    if (href === "/auth/login") return pathname.startsWith("/auth");
     return pathname === href;
   };
 

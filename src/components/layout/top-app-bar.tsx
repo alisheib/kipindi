@@ -24,13 +24,23 @@ export type TopAppBarUser = {
 export function TopAppBar({ user }: { user: TopAppBarUser }) {
   const pathname = usePathname();
   const { t } = useT();
-  const NAV_ITEMS = [
-    { href: "/markets",     label: "Markets" },
-    { href: "/live",        label: "Live" },
-    { href: "/positions",   label: "Positions" },
-    { href: "/wallet",      label: t.nav.wallet },
-    { href: "/leaderboard", label: "Top" },
-  ] as const;
+  // Public visitors see only the routes they can actually open without
+  // a session. Wallet + Positions require auth — surfacing them in the
+  // nav and then bouncing the click to /auth/login is a worse UX than
+  // hiding the entry until the visitor is signed in.
+  const NAV_ITEMS = user.isAuthed
+    ? ([
+        { href: "/markets",     label: "Markets" },
+        { href: "/live",        label: "Live" },
+        { href: "/positions",   label: "Positions" },
+        { href: "/wallet",      label: t.nav.wallet },
+        { href: "/leaderboard", label: "Top" },
+      ] as const)
+    : ([
+        { href: "/markets",     label: "Markets" },
+        { href: "/live",        label: "Live" },
+        { href: "/leaderboard", label: "Top" },
+      ] as const);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-bg-elevated/80 backdrop-blur-xl">

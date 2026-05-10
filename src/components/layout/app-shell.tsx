@@ -50,7 +50,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       <PublicFooter />
-      <BottomNav />
+      <BottomNav isAuthed={!!session} />
       <RealityCheckHost enabled={!!session} intervalMin={realityCheckMin} />
       <NotifyPoller />
       <WinCelebrationHost />

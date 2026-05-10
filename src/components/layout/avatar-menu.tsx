@@ -45,10 +45,26 @@ export function AvatarMenu({
   }, [open]);
 
   if (!isAuthed) {
+    // Two clear CTAs for the public visitor. A faceless avatar that
+    // silently linked to /auth/login was easy to miss — both options
+    // here read as actions, not as a "your account" affordance.
     return (
-      <Link href="/auth/login" className="ml-1" aria-label="Sign in">
-        <Avatar initials={initials} size="md" seed={seed ?? initials} />
-      </Link>
+      <div className="ml-1 flex items-center gap-1.5">
+        <Link
+          href="/auth/login"
+          className="hidden sm:inline-flex h-8 items-center px-3 rounded-pill border border-border bg-bg-overlay font-mono text-[10.5px] font-bold uppercase tracking-[0.14em] text-text hover:border-gold-700 hover:text-gold-300 transition-colors"
+          aria-label="Sign in"
+        >
+          Sign in
+        </Link>
+        <Link
+          href="/auth/register"
+          className="inline-flex h-8 items-center px-3 rounded-pill bg-gold-500 hover:bg-gold-400 font-mono text-[10.5px] font-bold uppercase tracking-[0.14em] text-gold-fg transition-colors"
+          aria-label="Create account"
+        >
+          Sign up
+        </Link>
+      </div>
     );
   }
 
