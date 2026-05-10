@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { MarketCard } from "@/components/markets/market-card";
-import { listMarkets, impliedYesPct, seedDemoMarkets, type MarketCategory } from "@/lib/server/market-service";
+import { listMarkets, impliedYesPct, isClosedByTime, seedDemoMarkets, type MarketCategory } from "@/lib/server/market-service";
 import { EmptyState } from "@/components/ui/empty-state";
 
 export const metadata = { title: "Markets · Soko" };
@@ -125,6 +125,11 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
   // markets float to the top. Past-resolution markets sink (they're in the
   // resolver queue, not the live grid).
   const liveAll = listMarkets({ status: "LIVE", category: cat })
+    // Filter out markets whose clock has already passed but the
+    // resolver hasn't yet acted — they're closed-by-time, not bettable,
+    // and showing them in the LIVE grid produces a confused UX where
+    // you can click a card whose dial then refuses to fire.
+    .filter(m => !isClosedByTime(m))
     .map(m => ({ m, ms: Math.max(0, Date.parse(m.resolutionAt) - now) }))
     .sort((a, b) => a.ms - b.ms);
   const live = (whenCfg.cutoffMs === null

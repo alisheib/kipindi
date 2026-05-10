@@ -108,12 +108,30 @@ type Props = {
   initial?: number;
   /** Used in the confirm modal headline. */
   marketTitle?: string;
+  /** ISO timestamp when this market closes — when the wall clock crosses
+   *  this, the dial freezes and shows a "Closed — awaiting settlement"
+   *  state on the next render so the player sees the transition without
+   *  a hard refresh. */
+  resolutionAt?: string;
 };
 
-export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, initial = 0.5, marketTitle }: Props) {
+export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, initial = 0.5, marketTitle, resolutionAt }: Props) {
   const [pos, setPos] = useState(initial);
   const [dragging, setDragging] = useState(false);
   const [hover, setHover] = useState(false);
+  // closedNow flips the moment the wall clock crosses resolutionAt.
+  // Tick once a second — cheap, and the dial's already mounted as a
+  // client component. We compute lazily on mount + tick so SSR returns
+  // the open state and the client takes over without flicker.
+  const [closedNow, setClosedNow] = useState(false);
+  useEffect(() => {
+    if (!resolutionAt) return;
+    const closeTs = Date.parse(resolutionAt);
+    const update = () => setClosedNow(Date.now() >= closeTs);
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [resolutionAt]);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [resultOpen, setResultOpen] = useState(false);
   const [resultData, setResultData] = useState<{
@@ -334,17 +352,18 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
       <div
         ref={trackRef}
         role="slider"
-        tabIndex={0}
+        tabIndex={closedNow ? -1 : 0}
         aria-label="Drag to set side and conviction"
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={ariaValue}
-        onPointerDown={onPointerDown}
-        onKeyDown={onKeyDown}
-        onPointerEnter={() => setHover(true)}
-        onPointerLeave={() => setHover(false)}
-        className="relative w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 rounded-md touch-none"
-        style={{ height, cursor: dragging ? "grabbing" : "grab" }}
+        aria-disabled={closedNow ? "true" : "false"}
+        onPointerDown={closedNow ? undefined : onPointerDown}
+        onKeyDown={closedNow ? undefined : onKeyDown}
+        onPointerEnter={closedNow ? undefined : () => setHover(true)}
+        onPointerLeave={closedNow ? undefined : () => setHover(false)}
+        className={`relative w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 rounded-md touch-none transition-opacity ${closedNow ? "opacity-40" : ""}`}
+        style={{ height, cursor: closedNow ? "not-allowed" : (dragging ? "grabbing" : "grab") }}
       >
         <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} className="block overflow-visible">
           <defs>
@@ -495,26 +514,34 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
           a hint instead of taking the full width with a giant gold slab. */}
       <div className="mt-4 flex items-center gap-3">
         <p className="flex-1 text-[11px] text-text-subtle leading-snug">
-          {side === "NEUTRAL"
-            ? "Drag the dial · Vuta dial kuanza"
-            : "Pool-share payout. Confirm in a popup."}
+          {closedNow
+            ? "Market closed · Soko limefungwa"
+            : side === "NEUTRAL"
+              ? "Drag the dial · Vuta dial kuanza"
+              : "Pool-share payout. Confirm in a popup."}
         </p>
         <button
           type="button"
-          onClick={openConfirm}
-          disabled={pending || side === "NEUTRAL"}
-          aria-label={side === "NEUTRAL" ? "Drag the dial to commit" : `Place ${side} for TZS ${fmt(stake)}`}
-          className={side === "NEUTRAL" ? "btn btn-ghost btn-md" : "btn btn-gold btn-md"}
+          onClick={closedNow ? undefined : openConfirm}
+          disabled={closedNow || pending || side === "NEUTRAL"}
+          aria-label={
+            closedNow ? "Market closed — awaiting settlement"
+            : side === "NEUTRAL" ? "Drag the dial to commit"
+            : `Place ${side} for TZS ${fmt(stake)}`
+          }
+          className={closedNow ? "btn btn-ghost btn-md" : (side === "NEUTRAL" ? "btn btn-ghost btn-md" : "btn btn-gold btn-md")}
           style={{ borderRadius: 999, minWidth: 168, fontVariantNumeric: "tabular-nums" }}
         >
-          {side === "NEUTRAL"
-            ? "—"
-            : (
-              <>
-                <span>Place {side}</span>
-                <span className="font-mono opacity-90">TZS {fmt(stake)}</span>
-              </>
-            )}
+          {closedNow
+            ? "Closed · awaiting settle"
+            : side === "NEUTRAL"
+              ? "—"
+              : (
+                <>
+                  <span>Place {side}</span>
+                  <span className="font-mono opacity-90">TZS {fmt(stake)}</span>
+                </>
+              )}
         </button>
       </div>
 

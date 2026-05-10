@@ -120,6 +120,16 @@ export function getMarket(id: string): StoredMarket | null {
   return markets.get(id) ?? null;
 }
 
+/** A market is "closed by time" once resolutionAt has passed, regardless
+ *  of whether the resolver has run stage-1 yet. The server enforces this
+ *  at buyPosition (line ~185), and the client uses it to disable the dial
+ *  + drop the market from the bettable grid the moment the clock hits 0,
+ *  so the visitor sees a clean state transition without a hard refresh. */
+export function isClosedByTime(m: Pick<StoredMarket, "resolutionAt" | "status">): boolean {
+  if (m.status === "RESOLVED" || m.status === "VOIDED" || m.status === "CLOSED") return true;
+  return Date.parse(m.resolutionAt) <= Date.now();
+}
+
 export type CreateMarketInput = {
   titleEn: string;
   titleSw: string;
@@ -259,6 +269,169 @@ export function listPositionsForUser(userId: string, limit = 100): StoredPositio
 
 export function listPositionsForMarket(marketId: string): StoredPosition[] {
   return Array.from(positions.values()).filter((p) => p.marketId === marketId);
+}
+
+/**
+ * Auto-resolve expired Demo · markets. Demo markets exist for live
+ * walk-throughs — the manager cannot wait for a human officer pair to
+ * stage + confirm before the wallet shows the win. The moment the
+ * countdown hits 0, settle the market with a synthetic outcome and
+ * run the same settlement codepath as a regular market (pay winners,
+ * forfeit losers, notify both, audit). When the real polling vendor is
+ * wired (Sportradar / TMA / BoT feeds), production markets resolve
+ * from those responses; this function only ever touches markets whose
+ * title starts with "Demo · ".
+ *
+ * Outcome selection: weighted by the current pool lean. If 65% of the
+ * pool went YES, YES wins 65% of the time. This reads more like a real
+ * market resolving than a pure coin-flip and keeps demo runs varied
+ * while still surprising the manager often enough to feel realistic.
+ *
+ * Idempotent: a Demo market that's already RESOLVED is skipped.
+ * Re-entry safe under the global Map mutation pattern; we don't run
+ * the two-officer dance because there's no second human in a demo.
+ */
+export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: number }> {
+  let resolved = 0;
+  const now = Date.now();
+  for (const m of markets.values()) {
+    if (!m.titleEn.startsWith("Demo · ")) continue;
+    if (m.status !== "LIVE") continue;
+    if (Date.parse(m.resolutionAt) > now) continue;
+
+    // Outcome weighted by pool lean — if the crowd believed YES at 70%,
+    // YES wins ~70% of the time. Falls back to a fair 50/50 when pools
+    // are empty (no bets placed yet → market just resolves YES half the
+    // time).
+    const total = m.yesPool + m.noPool;
+    const yesProb = total > 0 ? m.yesPool / total : 0.5;
+    const outcome: Side = Math.random() < yesProb ? "YES" : "NO";
+
+    // Run the exact settlement codepath used by the resolver-queue's
+    // stage-2 confirm — same pay-winners / forfeit-losers / notify /
+    // audit shape, just bypassing the two-officer staging dance which
+    // makes no sense for a synthetic demo market.
+    m.resolutionStage1By = "system_demo_auto";
+    m.resolutionStage1At = new Date(now).toISOString();
+    m.resolutionStage2By = "system_demo_auto";
+    m.resolutionStage2At = new Date(now).toISOString();
+    m.objectionsClosedAt = new Date(now + 24 * 3600_000).toISOString();
+    m.resolvedOutcome = outcome;
+    m.status = "RESOLVED";
+    m.updatedAt = m.resolutionStage2At;
+    markets.set(m.id, m);
+    recordSnapshot(m.id, m.yesPool, m.noPool);
+
+    let winnersPaid = 0;
+    const settleCfg = getEffectiveConfig(m.id);
+    const winningPool = outcome === "YES" ? m.yesPool : m.noPool;
+    const myPositions = listPositionsForMarket(m.id);
+    for (const p of myPositions) {
+      const w = db.wallet.findByUserId(p.userId);
+      if (!w) continue;
+      if (p.side === outcome) {
+        const payout = settledPayoutWhole(
+          { yesPool: m.yesPool, noPool: m.noPool, side: p.side, stake: p.stake },
+          settleCfg,
+        );
+        const newBal = w.balance + payout;
+        db.wallet.update(w.id, { balance: newBal });
+        p.status = "WIN"; p.finalPayout = payout; p.settledAt = m.resolutionStage2At!;
+        positions.set(p.id, p);
+        db.txn.create({
+          id: `txn_${randomId(12)}`,
+          walletId: w.id, userId: p.userId,
+          type: "BET_PAYOUT", status: "CONFIRMED",
+          amount: payout, fee: 0, taxWithheld: 0,
+          balanceAfter: newBal, currency: "TZS",
+          provider: "INTERNAL", providerRef: null, msisdn: null,
+          description: `${outcome} won · "${m.titleEn.slice(0, 60)}" (auto)`,
+          betId: p.id,
+          amlReason: null,
+          createdAt: m.resolutionStage2At!, updatedAt: m.resolutionStage2At!, completedAt: m.resolutionStage2At!,
+        });
+        winnersPaid += payout;
+        notifyWin(p.userId, payout, m.titleEn, "/positions");
+      } else {
+        p.status = "LOSS"; p.finalPayout = 0; p.settledAt = m.resolutionStage2At!;
+        positions.set(p.id, p);
+        notifyLoss(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id });
+      }
+    }
+    audit({
+      category: "ADMIN",
+      action: "market.resolved.demo_auto",
+      actorId: "system_demo_auto",
+      targetType: "Market",
+      targetId: m.id,
+      payload: {
+        outcome,
+        yesPool: m.yesPool, noPool: m.noPool,
+        payoutModel: "whole-pool",
+        winningPool,
+        winnersPaid,
+        reason: "Demo market countdown elapsed; no human officer required for synthetic markets",
+      },
+    });
+    resolved++;
+  }
+  return { resolved };
+}
+
+/**
+ * Repair orphaned positions — refund stakes for any open position whose
+ * market record no longer exists. This is a defensive boot-time pass
+ * that recovers from a Sprint 55 bug where seedDemoMarkets was deleting
+ * expired Demo · markets out from under live positions: the wallet had
+ * debited at place-time, the market vanished, and the position could
+ * never settle. The bug is fixed (Sprint 56.4 stops the deletion), but
+ * any stake already debited stays missing until we walk back and
+ * refund it.
+ *
+ * Idempotent: only OPEN positions whose market is missing are affected,
+ * and each refund creates a wallet credit + transaction + audit entry
+ * exactly once. Running this on every boot is safe because the second
+ * pass finds no orphans.
+ */
+export async function repairOrphanedPositions(): Promise<{ repaired: number; refundedTzs: number }> {
+  let repaired = 0;
+  let refundedTzs = 0;
+  for (const p of positions.values()) {
+    if (p.status !== "OPEN") continue;
+    if (markets.has(p.marketId)) continue; // market still exists → nothing to repair
+    // Orphaned — refund the stake to the wallet, mark VOID, audit.
+    const w = db.wallet.findByUserId(p.userId);
+    if (!w) continue;
+    const newBal = w.balance + p.stake;
+    db.wallet.update(w.id, { balance: newBal });
+    p.status = "VOID";
+    p.finalPayout = p.stake;
+    p.settledAt = new Date().toISOString();
+    positions.set(p.id, p);
+    db.txn.create({
+      id: `txn_${randomId(12)}`,
+      walletId: w.id, userId: p.userId,
+      type: "BET_REFUND", status: "CONFIRMED",
+      amount: p.stake, fee: 0, taxWithheld: 0,
+      balanceAfter: newBal, currency: "TZS",
+      provider: "INTERNAL", providerRef: null, msisdn: null,
+      description: `Refund · orphaned position (market record missing)`,
+      betId: p.id,
+      amlReason: null,
+      createdAt: p.settledAt, updatedAt: p.settledAt, completedAt: p.settledAt,
+    });
+    audit({
+      category: "WALLET",
+      action: "position.orphan_refund",
+      actorId: p.userId,
+      targetType: "Position",
+      targetId: p.id,
+      payload: { marketId: p.marketId, refunded: p.stake, reason: "market record missing" },
+    });
+    repaired++;
+    refundedTzs += p.stake;
+  }
+  return { repaired, refundedTzs };
 }
 
 /** Two-officer resolution. First call stages, second call (different officer) settles. */
@@ -500,19 +673,34 @@ export function seedDemoMarkets() {
     }
   }
 
+  // 1. Auto-resolve expired Demo · markets so the manager sees their
+  //    win/loss the moment the countdown hits 0 (no human officer
+  //    needed for synthetic markets — production polls a real vendor).
+  // 2. Sweep orphaned positions left over from the deletion bug that
+  //    Sprint 56.4 fixed; refunds the stake.
+  // Both are idempotent; running them on every /markets page hit is
+  // safe and keeps state self-healing without a cron.
+  autoResolveExpiredDemoMarkets().catch(() => {});
+  repairOrphanedPositions().catch(() => {});
+
   // Demo refresher — always ensure fresh minute-scale markets exist,
-  // even on a fully-stocked production instance. Removes any expired
-  // "Demo · " markets first so the queue doesn't pile up with stale
-  // ones, then re-seeds a small rolling set 5 / 15 / 30 minutes out.
+  // even on a fully-stocked production instance.
+  //
+  // CRITICAL: never DELETE an existing market here, even if it's a
+  // demo that ran past its resolutionAt. Players land on /markets/<id>
+  // by URL and Server Components call getMarket(id) — deleting a
+  // market mid-flight produces a 404 the player can't recover from,
+  // and (worse) wipes their open positions. Expired markets stay in
+  // the store so the resolver can settle / void them and the audit
+  // trail stays intact. We only ADD here.
   const now = Date.now();
-  for (const [id, m] of markets.entries()) {
-    if (m.titleEn.startsWith("Demo · ") && m.status === "LIVE" && Date.parse(m.resolutionAt) < now) {
-      // Expired demo — drop it so the next seed pass replaces it cleanly.
-      markets.delete(id);
-    }
-  }
   const liveDemoMinuteScale = Array.from(markets.values())
-    .filter(m => m.titleEn.startsWith("Demo · ") && m.status === "LIVE" && (Date.parse(m.resolutionAt) - now) < 60 * 60_000)
+    .filter(m =>
+      m.titleEn.startsWith("Demo · ") &&
+      m.status === "LIVE" &&
+      Date.parse(m.resolutionAt) > now &&  // not yet expired
+      (Date.parse(m.resolutionAt) - now) < 60 * 60_000  // within an hour
+    )
     .length;
   if (liveDemoMinuteScale < 2) {
     // We're below the demo-friendly threshold — top up with two fresh

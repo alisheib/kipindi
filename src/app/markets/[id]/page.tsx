@@ -8,7 +8,7 @@ import { ShareButton } from "@/components/markets/share-button";
 import { NotifyPrompt } from "@/components/markets/notify-prompt";
 import { PriceChart } from "@/components/markets/price-chart";
 import { SellButton } from "@/components/markets/sell-button";
-import { cashOutValue, getMarket, impliedYesPct, listPositionsForMarket, listPositionsForUser, seedDemoMarkets } from "@/lib/server/market-service";
+import { cashOutValue, getMarket, impliedYesPct, isClosedByTime, listPositionsForMarket, listPositionsForUser, seedDemoMarkets } from "@/lib/server/market-service";
 import { getCompressedHistory, seedHistory } from "@/lib/server/market-history";
 import { currentSession } from "@/lib/server/auth-service";
 
@@ -69,6 +69,10 @@ export default async function MarketDetail({
   const myPositions = session ? listPositionsForUser(session.userId).filter((p) => p.marketId === m.id) : [];
   const totalPredictorCount = listPositionsForMarket(m.id).length;
   const isResolved = m.status === "RESOLVED" || m.status === "VOIDED";
+  // closed-by-time = the resolutionAt clock has elapsed but no resolver
+  // has run yet. The dial cannot accept a bet here (server enforces),
+  // so the page swaps it out for an "awaiting settlement" card.
+  const closedByTime = isClosedByTime(m) && !isResolved;
 
   // History — seed if empty (legacy demo markets created before Sprint 23)
   // and render the kit PriceChart with the compressed series.
@@ -184,10 +188,10 @@ export default async function MarketDetail({
         </section>
 
         <aside className="space-y-3">
-          {!isResolved && m.status === "LIVE" ? (
+          {!isResolved && m.status === "LIVE" && !closedByTime ? (
             session ? (
               <>
-                <ConvictionDial marketId={m.id} yesPool={m.yesPool} noPool={m.noPool} marketTitle={m.titleEn} />
+                <ConvictionDial marketId={m.id} yesPool={m.yesPool} noPool={m.noPool} marketTitle={m.titleEn} resolutionAt={m.resolutionAt} />
                 <NotifyPrompt marketId={m.id} marketTitle={m.titleEn} />
               </>
             ) : (
@@ -233,6 +237,22 @@ export default async function MarketDetail({
                 </div>
               </div>
             )
+          ) : closedByTime ? (
+            // Countdown elapsed but the resolver hasn't recorded an
+            // outcome yet. For Demo · markets this state is brief —
+            // the next /markets hit auto-resolves on the server. For
+            // production markets it lasts until the human resolver
+            // queue confirms. Either way, no more bets accepted.
+            <div className="rounded-2xl border border-warning-border bg-warning-bg/30 p-6 text-center">
+              <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-warning-fg">
+                Closed · Awaiting settlement
+              </p>
+              <h3 className="mt-1.5 font-display text-[16px] font-bold text-text">No more bets</h3>
+              <p className="mt-1 text-[13px] italic text-text-subtle">Soko limefungwa · subiri matokeo.</p>
+              <p className="mt-3 text-[12px] text-text-muted leading-snug">
+                The countdown ended. The market is closed for predictions while the outcome is recorded — refresh in a moment to see your win or loss.
+              </p>
+            </div>
           ) : (
             <div className="rounded-lg border border-border bg-bg-elevated p-6 text-center">
               <p className="font-display text-[16px] font-semibold text-text">Market closed for predictions</p>

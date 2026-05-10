@@ -6,7 +6,9 @@
  *
  * Returns 404 in production — never reachable on a live deployment.
  *
- *   POST { marketId: "mkt_xxx" } → { ok, resolutionAt }
+ *   POST { marketId: "mkt_xxx", seconds?: number } → { ok, resolutionAt }
+ *   `seconds` defaults to +3600 (1h). Negative pulls the market into
+ *   the past (useful for testing the auto-resolve path).
  */
 import { NextResponse } from "next/server";
 import { getMarket } from "@/lib/server/market-service";
@@ -16,14 +18,14 @@ export async function POST(req: Request) {
   if (process.env.NODE_ENV === "production") {
     return NextResponse.json({ ok: false, error: "Not available" }, { status: 404 });
   }
-  const body = (await req.json().catch(() => null)) as { marketId?: string } | null;
+  const body = (await req.json().catch(() => null)) as { marketId?: string; seconds?: number } | null;
   if (!body?.marketId) {
     return NextResponse.json({ ok: false, error: "marketId required" }, { status: 400 });
   }
   const m = getMarket(body.marketId);
   if (!m) return NextResponse.json({ ok: false, error: "market not found" }, { status: 404 });
-  // Mutate in place — markets is a singleton Map keyed by id.
-  m.resolutionAt = new Date(Date.now() + 60 * 60_000).toISOString();
+  const offsetSec = typeof body.seconds === "number" && Number.isFinite(body.seconds) ? body.seconds : 3600;
+  m.resolutionAt = new Date(Date.now() + offsetSec * 1000).toISOString();
   audit({
     category: "ADMIN",
     action: "dev_test.market_fast_forwarded",
