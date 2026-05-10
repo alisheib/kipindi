@@ -112,15 +112,15 @@
     <div class="shot"><img src="screenshots/admin/01-overview.png" alt="Admin overview" /><p class="caption">Overview</p></div>
     <div class="body">
       <h3>Overview · live snapshot</h3>
-      <p>Open <strong>/admin</strong>. Live volume, predictor counts, market health, recent activity — one glance.</p>
-      <p>Sidebar links every other area; every action you take is logged to the audit trail with your user ID.</p>
+      <p>The <strong>Overview</strong> tile in the sidebar opens the operations dashboard — live volume, predictor counts, market health, recent activity at one glance.</p>
+      <p>Every other area is one click away in the sidebar; every action you take is logged to the audit trail with your user ID.</p>
     </div>
   </div>
 
   <div class="row flip">
     <div class="body">
       <h3>Finance · daily reconciliation</h3>
-      <p>Open <strong>/admin/finance</strong>. Stakes, payouts, operator margin, withholding tax — by day or month.</p>
+      <p>Open the <strong>Finance</strong> tile from the sidebar. Stakes, payouts, operator margin, withholding tax — filterable by day or month.</p>
       <ul>
         <li>Reconcile platform payouts against the aggregator each morning.</li>
         <li>Track operator margin (9% of resolved volume) week-over-week.</li>
@@ -134,7 +134,7 @@
     <div class="shot"><img src="screenshots/admin/03-players.png" alt="Players" /><p class="caption">Players</p></div>
     <div class="body">
       <h3>Players · search &amp; drill in</h3>
-      <p>Open <strong>/admin/players</strong>. Search by phone, ID, or display name. Drill in to see wallet, KYC, positions, RG limits, and the audit trail tied to that user.</p>
+      <p>Open the <strong>Players</strong> tile from the sidebar. Search by phone, ID, or display name. Drill in to see wallet, KYC, positions, RG limits, and the audit trail tied to that user.</p>
       <div class="tip"><strong>PII discipline.</strong> Never copy a player's phone or NIDA into chat or email. Every drill-in is logged.</div>
     </div>
   </div>
@@ -155,7 +155,7 @@
     <div class="shot"><img src="screenshots/admin/04-markets.png" alt="Markets" /><p class="caption">Markets</p></div>
     <div class="body">
       <h3>Markets · create &amp; manage</h3>
-      <p>Open <strong>/admin/markets</strong>. Tap <strong>+ New market</strong> to launch one. Question (EN + SW), category, source URL (must be on the approved registry), and resolution time.</p>
+      <p>Open the <strong>Markets</strong> tile from the sidebar. Tap <strong>+ New market</strong> to launch one. Question (EN + SW), category, source URL (must be on the approved registry), and resolution time.</p>
       <p>Edit, void, or archive any existing market from the same list.</p>
     </div>
   </div>
@@ -163,8 +163,9 @@
   <div class="row flip">
     <div class="body">
       <h3>Resolver · two-officer rule</h3>
-      <p>Open <strong>/admin/resolver-queue</strong>. Markets at resolution time appear here. Stage 1 stages the outcome; Stage 2 settles. <strong>The same officer cannot confirm twice.</strong></p>
+      <p>Open the <strong>Resolver queue</strong> from the sidebar. Markets within 24 hours of their resolution time appear here. <strong>Stage 1</strong> stages the outcome; <strong>Stage 2</strong> settles. The same officer cannot confirm twice.</p>
       <div class="danger"><strong>Settlement is final.</strong> Once Stage 2 fires, payouts credit and positions close. No undo.</div>
+      <p style="margin-top: 2mm;">For a live walk-through, use the <strong>Demo · 5-minute</strong> or <strong>15-minute</strong> markets at the top of the player <strong>Markets</strong> page (sorted by <em>Ending soon</em>) — place a bet, then return here to settle and watch the win celebration on the player browser.</p>
     </div>
     <div class="shot"><img src="screenshots/admin/05-resolver-queue.png" alt="Resolver queue" /><p class="caption">Resolver</p></div>
   </div>
@@ -173,7 +174,7 @@
     <div class="shot"><img src="screenshots/admin/06-aml.png" alt="AML queue" /><p class="caption">AML</p></div>
     <div class="body">
       <h3>AML · threshold review</h3>
-      <p>Open <strong>/admin/aml</strong>. Transactions above the FATF reporting threshold are paused here.</p>
+      <p>Open the <strong>AML queue</strong> from the sidebar. Transactions above the FATF reporting threshold are paused here.</p>
       <p>Open each one, review history, then <strong>approve</strong> (logged with reason) or <strong>escalate</strong> to the FIU. Nothing settles without a recorded sign-off.</p>
     </div>
   </div>
@@ -194,7 +195,7 @@
     <div class="shot"><img src="screenshots/admin/07-self-exclusions.png" alt="Self-exclusions" /><p class="caption">Self-exclusions</p></div>
     <div class="body">
       <h3>Self-exclusions · monitor only</h3>
-      <p>Open <strong>/admin/self-exclusions</strong>. Active exclusions, end dates, reasons.</p>
+      <p>Open the <strong>Self-exclusions</strong> tile from the sidebar. Active exclusions, end dates, reasons.</p>
       <p>The platform refuses login and bet attempts automatically. Early reinstatement requests must go through documented compliance review — not via this screen.</p>
     </div>
   </div>
@@ -202,7 +203,7 @@
   <div class="row flip">
     <div class="body">
       <h3>Audit log · regulator hand-off</h3>
-      <p>Open <strong>/admin/audit</strong>. Append-only, hash-chained log of every state change since boot.</p>
+      <p>Open the <strong>Audit log</strong> from the sidebar. Append-only, hash-chained log of every state change since boot.</p>
       <ul>
         <li><strong>Filter</strong> by category (AUTH, WALLET, BET, ADMIN, COMPLIANCE, SECURITY).</li>
         <li><strong>Verify chain</strong> — green tick = tamper-evident integrity end-to-end.</li>
@@ -216,7 +217,7 @@
     <div class="shot"><img src="screenshots/admin/09-system.png" alt="System health" /><p class="caption">System</p></div>
     <div class="body">
       <h3>System · health &amp; controls</h3>
-      <p>Open <strong>/admin/system</strong>. Uptime, rate-limit buckets, SMS provider success, version. Backup &amp; restore controls.</p>
+      <p>Open the <strong>System</strong> tile from the sidebar. Uptime, rate-limit buckets, SMS provider success, version. Backup &amp; restore controls.</p>
       <div class="tip"><strong>TOTP for staff.</strong> First sign-in prompts you to scan a QR; every later sign-in asks for a 6-digit authenticator code.</div>
     </div>
   </div>
@@ -228,27 +229,41 @@
   </div>
 </section>
 
-<!-- ============================================================ PAGE 4 — REFERENCE TABLE -->
+<!-- ============================================================ PAGE 4 — DEMO WALK-THROUGH -->
 <section class="page">
-  <h4>Quick reference</h4>
-  <h2>Every admin route, at a glance</h2>
+  <h4>Live demo walk-through</h4>
+  <h2>Show a win in five minutes</h2>
 
-  <table>
-    <thead><tr><th style="width: 50mm">Route</th><th>What's there</th><th style="width: 38mm">When you use it</th></tr></thead>
-    <tbody>
-      <tr><td><strong>/admin</strong></td><td>Live ops dashboard — volume, predictors, recent activity.</td><td>Every shift</td></tr>
-      <tr><td><strong>/admin/finance</strong></td><td>Stakes, payouts, margin, tax. CSV export.</td><td>Daily</td></tr>
-      <tr><td><strong>/admin/players</strong></td><td>Search and drill into any account.</td><td>On request</td></tr>
-      <tr><td><strong>/admin/markets</strong></td><td>Create new markets, edit, void, archive.</td><td>Pre-publish</td></tr>
-      <tr><td><strong>/admin/resolver-queue</strong></td><td>Two-officer market settlement.</td><td>At resolution</td></tr>
-      <tr><td><strong>/admin/aml</strong></td><td>Threshold-flagged transactions.</td><td>Daily</td></tr>
-      <tr><td><strong>/admin/self-exclusions</strong></td><td>Active player exclusions.</td><td>Read-only</td></tr>
-      <tr><td><strong>/admin/audit</strong></td><td>Hash-chained audit log + verify + export.</td><td>On audit request</td></tr>
-      <tr><td><strong>/admin/system</strong></td><td>Health, rate-limit, SMS, version.</td><td>On alert</td></tr>
-    </tbody>
-  </table>
+  <p>The platform ships with a handful of <strong>Demo</strong> markets that close in <strong>5, 15, 30 minutes</strong> and a few hours, so you can show the full bet → settle → celebration loop in one session.</p>
 
-  <h3 style="margin-top: 6mm;">Sign out cleanly</h3>
+  <div class="row" style="margin-top: 4mm;">
+    <div class="body">
+      <h3>1 · Open as the player</h3>
+      <p>Sign in on a phone or a second browser. On the <strong>Markets</strong> screen, tap the <strong>Ending soon</strong> filter. Pick a market labelled <em>Demo · 5-minute</em> and place a YES bet.</p>
+      <p>You'll get a centered confirmation popup with a 5-second locked-in price, then a centered green checkmark "Bet placed" card. Your stake leaves the wallet immediately.</p>
+    </div>
+    <div class="body">
+      <h3>2 · Switch to the operator console</h3>
+      <p>On the same laptop (or a separate admin browser), open the <strong>Resolver queue</strong> tile. The demo market now sits at the top — it's already inside the 24-hour window.</p>
+      <p>Press <strong>Resolve YES</strong>. A toast confirms <em>Stage 1 recorded · awaiting second officer</em>. The same officer cannot confirm twice — that's the two-officer rule, server-enforced.</p>
+    </div>
+  </div>
+
+  <div class="row" style="margin-top: 4mm;">
+    <div class="body">
+      <h3>3 · Settle as a second officer</h3>
+      <p>Open a different admin browser (incognito or a colleague's account). Same Resolver queue, same market — press <strong>Resolve YES</strong> again. Settlement fires: payouts credit, positions close, an entry lands in the audit log.</p>
+    </div>
+    <div class="body">
+      <h3>4 · Watch the celebration on the player</h3>
+      <p>Within a few seconds the player browser pops the celebration overlay — gold confetti, the payout figure, a "View positions" CTA. The notification bell shows <strong>You won</strong>. The wallet pill in the top bar updates live.</p>
+      <p>For the loss path, repeat with a NO bet on the same market — the player gets the kit "Pool grew" notification (no fanfare, by design).</p>
+    </div>
+  </div>
+
+  <div class="tip" style="margin-top: 4mm;"><strong>Audit hand-off.</strong> Open the <strong>Audit log</strong> from the sidebar after settlement — the <em>market.resolve.stage1</em>, <em>market.resolved</em>, <em>BET_PAYOUT</em> entries are right there, hash-chained, with a one-click <strong>Verify chain</strong> button.</div>
+
+  <h3 style="margin-top: 5mm;">Sign out cleanly</h3>
   <p>Avatar menu (top-right) → <strong>Sign out</strong>. A confirmation dialog ensures you don't get bumped out by a misclick. Session is invalidated immediately and a session-destroyed entry is logged.</p>
 
   <div class="tip"><strong>Lost your authenticator app?</strong> Contact the security lead with the AML lead in copy. A reset is logged as an admin action and requires written justification.</div>

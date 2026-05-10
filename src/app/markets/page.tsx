@@ -15,6 +15,18 @@ const CATEGORIES: Array<{ id: "all" | MarketCategory; label: string }> = [
   { id: "culture", label: "Culture" },
 ];
 
+// "When does it close?" filter — kit-faithful pill row above the
+// category tabs. Lets the operator drop the manager straight onto
+// minute-scale demo markets so the bet → resolve → celebrate loop
+// closes inside a single demo session.
+type WhenFilter = "soon" | "today" | "week" | "all";
+const WHEN_OPTIONS: Array<{ id: WhenFilter; label: string; sw: string; cutoffMs: number | null }> = [
+  { id: "soon",  label: "Ending soon",  sw: "Karibu kuisha",   cutoffMs: 60 * 60_000 },        // ≤ 1h
+  { id: "today", label: "Today",        sw: "Leo",             cutoffMs: 24 * 3600_000 },      // ≤ 24h
+  { id: "week",  label: "This week",    sw: "Wiki hii",        cutoffMs: 7 * 24 * 3600_000 },  // ≤ 7d
+  { id: "all",   label: "All",          sw: "Vyote",           cutoffMs: null },
+];
+
 function timeLeftStr(iso: string): string {
   const ms = Date.parse(iso) - Date.now();
   if (ms <= 0) return "closed";
@@ -26,7 +38,7 @@ function timeLeftStr(iso: string): string {
   return `${m}m left`;
 }
 
-export default function MarketsPage({ searchParams }: { searchParams: Promise<{ cat?: string }> }) {
+export default function MarketsPage({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string }> }) {
   seedDemoMarkets();
   return (
     <main className="mx-auto max-w-[1240px] px-3 lg:px-6 py-6 space-y-5">
@@ -36,33 +48,89 @@ export default function MarketsPage({ searchParams }: { searchParams: Promise<{ 
         <p className="text-[15px] text-text-muted italic">Tabiri matukio. Si bahati.</p>
       </header>
 
-      <CategoryTabs />
+      <FilterBar searchParams={searchParams} />
 
       <SearchAwareGrid searchParams={searchParams} />
     </main>
   );
 }
 
-function CategoryTabs() {
+async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string }> }) {
+  const sp = await searchParams;
+  const activeWhen = (sp.when as WhenFilter | undefined) ?? "today";
+  const activeCat = sp.cat ?? "all";
+  const buildHref = (next: { when?: WhenFilter; cat?: string }) => {
+    const params = new URLSearchParams();
+    const w = next.when ?? activeWhen;
+    const c = next.cat  ?? activeCat;
+    if (w !== "today") params.set("when", w);
+    if (c !== "all")   params.set("cat", c);
+    const qs = params.toString();
+    return qs ? `/markets?${qs}` : "/markets";
+  };
   return (
-    <nav aria-label="Market categories" className="flex flex-wrap gap-1.5 -mx-1 px-1 overflow-x-auto">
-      {CATEGORIES.map((c) => (
-        <a
-          key={c.id}
-          href={c.id === "all" ? "/markets" : `/markets?cat=${c.id}`}
-          className="inline-flex h-8 items-center rounded-pill border border-border bg-bg-elevated px-3.5 font-mono text-[12px] font-semibold text-text-muted hover:border-teal-500 hover:text-text whitespace-nowrap"
-        >
-          {c.label}
-        </a>
-      ))}
-    </nav>
+    <div className="space-y-2.5">
+      <nav aria-label="When does it close?" className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto">
+        <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle pr-1">When</span>
+        {WHEN_OPTIONS.map((o) => {
+          const active = o.id === activeWhen;
+          return (
+            <a
+              key={o.id}
+              href={buildHref({ when: o.id })}
+              className={
+                "inline-flex h-8 items-center rounded-pill border px-3.5 font-mono text-[12px] font-semibold whitespace-nowrap transition-colors " +
+                (active
+                  ? "border-gold-500 bg-gold-500/10 text-gold-300"
+                  : "border-border bg-bg-elevated text-text-muted hover:border-gold-700 hover:text-text")
+              }
+            >
+              {o.label}
+              <span className="ml-1.5 italic font-normal text-[10.5px] text-text-subtle">· {o.sw}</span>
+            </a>
+          );
+        })}
+      </nav>
+      <nav aria-label="Market categories" className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto">
+        <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle pr-1">Topic</span>
+        {CATEGORIES.map((c) => {
+          const active = c.id === activeCat;
+          return (
+            <a
+              key={c.id}
+              href={buildHref({ cat: c.id })}
+              className={
+                "inline-flex h-8 items-center rounded-pill border px-3.5 font-mono text-[12px] font-semibold whitespace-nowrap transition-colors " +
+                (active
+                  ? "border-text bg-bg-overlay text-text"
+                  : "border-border bg-bg-elevated text-text-muted hover:border-text hover:text-text")
+              }
+            >
+              {c.label}
+            </a>
+          );
+        })}
+      </nav>
+    </div>
   );
 }
 
-async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?: string }> }) {
+async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string }> }) {
   const sp = await searchParams;
   const cat = (sp.cat as MarketCategory | undefined) ?? undefined;
-  const live = listMarkets({ status: "LIVE", category: cat });
+  const whenId = (sp.when as WhenFilter | undefined) ?? "today";
+  const whenCfg = WHEN_OPTIONS.find(o => o.id === whenId) ?? WHEN_OPTIONS[1];
+  const now = Date.now();
+  // Sort by closest-to-resolution first so the demo-friendly minute-scale
+  // markets float to the top. Past-resolution markets sink (they're in the
+  // resolver queue, not the live grid).
+  const liveAll = listMarkets({ status: "LIVE", category: cat })
+    .map(m => ({ m, ms: Math.max(0, Date.parse(m.resolutionAt) - now) }))
+    .sort((a, b) => a.ms - b.ms);
+  const live = (whenCfg.cutoffMs === null
+    ? liveAll
+    : liveAll.filter(x => x.ms <= whenCfg.cutoffMs!)
+  ).map(x => x.m);
   const resolved = listMarkets({ status: "RESOLVED" }).slice(0, 6);
 
   return (

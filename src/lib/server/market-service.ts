@@ -608,6 +608,20 @@ export function seedDemoMarkets() {
     { titleEn: "Will Brent crude close above $80/bbl next Monday?", titleSw: "Je, Brent itafungwa juu ya $80/bbl Jumatatu ijayo?", category: "macro", sourceUrl: "https://www.eia.gov/dnav/pet/pet_pri_spt_s1_d.htm", resolutionCriterion: "Resolves YES if EIA Brent spot price on the named Monday closes ≥ 80.00 USD/bbl. Source: EIA.", resolutionAt: new Date(Date.now() + 4 * day).toISOString(), proposedBy: "system" },
     // ── Weather — long-range hurricane / drought ──────────────────────────
     { titleEn: "Will the next Indian Ocean tropical cyclone reach Category 3+?", titleSw: "Je, kimbunga kijacho cha Bahari ya Hindi kitafikia daraja la 3 au juu?", category: "weather", sourceUrl: "https://www.meteo.go.tz", resolutionCriterion: "Resolves YES if any tropical cyclone in the SW Indian Ocean basin during the named period reaches Category 3 (≥ 178 km/h sustained) per RSMC La Réunion. Source: RSMC La Réunion bulletin.", resolutionAt: new Date(Date.now() + 45 * day).toISOString(), proposedBy: "system" },
+
+    // ────────────────────────────────────────────────────────────────────
+    // DEMO — minute-scale + hour-scale markets so the operator can place
+    // a bet, watch it land in the resolver queue, and run it through
+    // two-officer settlement *during* a single demo session. Without
+    // these, every market is days out and the celebration loop never
+    // closes inside the meeting.
+    // ────────────────────────────────────────────────────────────────────
+    { titleEn: "Demo · 5-minute coin flip — will the next 5 minutes resolve YES?", titleSw: "Demo · sarafu ya dakika 5 — je, dakika 5 zijazo zitafungwa na YES?", category: "culture", sourceUrl: "https://www.itv.co.tz", resolutionCriterion: "Demo market — resolves at the discretion of the demo operator. For training and walk-throughs only.", resolutionAt: new Date(Date.now() + 5 * 60_000).toISOString(), proposedBy: "system" },
+    { titleEn: "Demo · 15-minute hot market — will the demo close YES in 15 min?", titleSw: "Demo · soko la moto la dakika 15 — je, demo itafungwa na YES baada ya dakika 15?", category: "sports", sourceUrl: "https://nbc.co.tz/premier-league", resolutionCriterion: "Demo market — operator-resolved for live walk-throughs.", resolutionAt: new Date(Date.now() + 15 * 60_000).toISOString(), proposedBy: "system" },
+    { titleEn: "Demo · 30-minute warm-up — outcome at 30-min mark?", titleSw: "Demo · soko la dakika 30 — matokeo baada ya dakika 30?", category: "macro", sourceUrl: "https://www.bot.go.tz", resolutionCriterion: "Demo market — operator-resolved for live walk-throughs.", resolutionAt: new Date(Date.now() + 30 * 60_000).toISOString(), proposedBy: "system" },
+    { titleEn: "Demo · 1-hour TZS spot — TZS-USD higher in 1 hour?", titleSw: "Demo · TZS dhidi ya USD ndani ya saa 1?", category: "macro", sourceUrl: "https://www.bot.go.tz", resolutionCriterion: "Demo market — operator-resolved for live walk-throughs.", resolutionAt: new Date(Date.now() + 60 * 60_000).toISOString(), proposedBy: "system" },
+    { titleEn: "Demo · 2-hour BTC drift — Bitcoin higher in 2 hours?", titleSw: "Demo · Bitcoin baada ya saa 2 — itakuwa juu zaidi?", category: "crypto", sourceUrl: "https://www.coingecko.com/en/coins/bitcoin", resolutionCriterion: "Demo market — operator-resolved for live walk-throughs.", resolutionAt: new Date(Date.now() + 2 * 3600_000).toISOString(), proposedBy: "system" },
+    { titleEn: "Demo · 6-hour weather check — Dar rainfall in 6 hours?", titleSw: "Demo · mvua Dar baada ya saa 6?", category: "weather", sourceUrl: "https://www.meteo.go.tz", resolutionCriterion: "Demo market — operator-resolved for live walk-throughs.", resolutionAt: new Date(Date.now() + 6 * 3600_000).toISOString(), proposedBy: "system" },
   ];
   for (const s of seed) {
     // createMarket throws on duplicate id; since we're idempotent on
