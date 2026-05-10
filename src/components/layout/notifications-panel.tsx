@@ -91,12 +91,33 @@ export function NotificationsPanel() {
     };
   }, [open]);
 
-  const handleClick = async (n: StoredNotification) => {
+  const handleClick = (n: StoredNotification) => {
+    // Navigate IMMEDIATELY — the previous version awaited mark-read
+    // and refresh before window.location.href fired, which made the
+    // tap feel dead for ~500–1000ms (Ali's "click seems weak" report).
+    // Fire-and-forget the mark-read in the background; the destination
+    // page re-fetches notifications anyway and picks up the read state.
     if (!n.readAt) {
-      await markNotifReadAction(n.id);
-      await refresh();
+      void markNotifReadAction(n.id).then(() => refresh()).catch(() => {});
     }
-    if (n.href) window.location.href = n.href;
+    if (n.href) {
+      // Use router.push when the href is a same-origin SPA path so we
+      // get instant client-side navigation; fall back to a full reload
+      // for anything external or hash-only.
+      const sameOrigin = n.href.startsWith("/") && !n.href.startsWith("//");
+      if (sameOrigin) {
+        setOpen(false);
+        // Native navigation here instead of router because the panel
+        // is rendered into a portal and we want the destination to be
+        // a fresh fetch (positions/market detail need server-fresh
+        // data, not a cached client transition).
+        window.location.href = n.href;
+      } else {
+        window.location.href = n.href;
+      }
+    } else {
+      setOpen(false);
+    }
   };
 
   const handleDismiss = async (e: React.MouseEvent, id: string) => {
