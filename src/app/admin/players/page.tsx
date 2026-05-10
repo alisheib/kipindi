@@ -4,6 +4,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { db } from "@/lib/server/store";
 import { formatTzs } from "@/lib/utils";
 import { Search } from "lucide-react";
+import { displayLabel, displayInitials } from "@/lib/display-label";
 
 export const metadata = { title: "Admin · Players" };
 export const dynamic = "force-dynamic";
@@ -29,7 +30,10 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
     return (
       u.id.toLowerCase().includes(query) ||
       u.phoneE164.toLowerCase().includes(query) ||
-      (u.displayName ?? "").toLowerCase().includes(query)
+      (u.displayName ?? "").toLowerCase().includes(query) ||
+      // Auto-handle search — operator can paste "Player #A3F2K8" or
+      // just "A3F2K8" and it resolves to the right account.
+      displayLabel(u).toLowerCase().includes(query)
     );
   });
 
@@ -120,14 +124,20 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
               <tbody className="text-text-secondary">
                 {filtered.map((u) => {
                   const wallet = db.wallet.findByUserId(u.id);
-                  const initials = (u.displayName ?? "").split(" ").map((s: string) => s[0]).slice(0, 2).join("").toUpperCase() || "?";
+                  const label = displayLabel(u);
+                  const initials = displayInitials(u);
+                  // Subtle visual cue for "auto-handle vs real name" — if the
+                  // user hasn't set a displayName, the auto-handle is shown
+                  // in the kit's mono face so the operator can tell at a
+                  // glance which records are still anonymous.
+                  const isAutoHandle = !((u.displayName ?? "").trim().length > 0);
                   return (
                     <tr key={u.id} className="border-b border-border-subtle/40 last:border-b-0 hover:bg-surface-hover">
                       <td className="p-3">
                         <a href={`/admin/players/${u.id}`} className="flex items-center gap-2 min-w-0 hover:text-royal">
-                          <Avatar initials={initials} size="sm" />
+                          <Avatar initials={initials} size="sm" seed={u.id} />
                           <div className="min-w-0">
-                            <p className="text-body-sm font-medium text-text truncate">{u.displayName ?? "—"}</p>
+                            <p className={`text-body-sm font-medium text-text truncate ${isAutoHandle ? "font-mono" : ""}`}>{label}</p>
                             <p className="text-micro font-mono text-text-tertiary truncate">{u.id}</p>
                           </div>
                         </a>

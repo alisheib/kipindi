@@ -7,6 +7,7 @@ import { getAuditForActor, type AuditCategory } from "@/lib/server/audit";
 import { exportUserData } from "@/lib/server/user-service";
 import { Download, ShieldCheck, AlertOctagon } from "lucide-react";
 import { formatTzs, formatTzsCompact } from "@/lib/utils";
+import { displayLabel, displayInitials } from "@/lib/display-label";
 
 export const dynamic = "force-dynamic";
 
@@ -58,12 +59,9 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   const riskScore = computeRiskScore(data.transactions.length, lifetimeWithdrawals, kyc?.status === "APPROVED");
   const riskBand = riskScore >= 70 ? "high" : riskScore >= 40 ? "medium" : "low";
 
-  const initials = (user.displayName ?? "")
-    .split(" ")
-    .map((s: string) => s[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase() || "?";
+  const initials = displayInitials(user);
+  const headerLabel = displayLabel(user);
+  const isAutoHandle = !((user.displayName ?? "").trim().length > 0);
 
   const TABS = [
     { id: "activity",     label: "Activity",         count: audit.length },
@@ -95,9 +93,9 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
         {/* §A — Identity card */}
         <AdminCard>
           <div className="flex items-center gap-4 flex-wrap">
-            <Avatar initials={initials} size="xl" />
+            <Avatar initials={initials} size="xl" seed={user.id} />
             <div className="flex-1 min-w-[260px]">
-              <h2 className="font-display font-bold text-title-md text-text leading-none">{user.displayName ?? "—"}</h2>
+              <h2 className={`font-display font-bold text-title-md text-text leading-none ${isAutoHandle ? "font-mono" : ""}`}>{headerLabel}</h2>
               <p className="font-mono text-caption text-text-tertiary mt-1">
                 {id.slice(0, 14)}… · {user.phoneE164.slice(0, 4)}*****{user.phoneE164.slice(-2)} · {user.region ?? "—"} · joined {user.createdAt.split("T")[0]}
               </p>

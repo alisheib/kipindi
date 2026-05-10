@@ -10,6 +10,7 @@ import { db } from "@/lib/server/store";
 import { user as guestUser } from "@/lib/mock-data";
 import { RealityCheckHost } from "@/components/rg/reality-check";
 import { getRgSettings } from "@/lib/server/responsible-gambling";
+import { displayLabel, displayInitials } from "@/lib/display-label";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const session = await getSession();
@@ -25,8 +26,12 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   let realityCheckMin = 30;
   if (session) {
     const u = db.user.findById(session.userId);
-    const display = u?.displayName ?? "Demo Manager";
-    const initials = display.split(" ").map((s: string) => s[0]).slice(0, 2).join("").toUpperCase() || "AS";
+    // Canonical display: real displayName if set, otherwise the
+    // auto-generated "Player #ABCDEF" anonymous handle. Never the old
+    // "Demo Manager" placeholder — that read as a bug to operators.
+    const userRef = u ?? { id: session.userId, displayName: null };
+    const display = displayLabel(userRef);
+    const initials = displayInitials(userRef);
     const masked = session.phoneE164.length > 6
       ? `${session.phoneE164.slice(0, 4)}*****${session.phoneE164.slice(-2)}`
       : session.phoneE164;
