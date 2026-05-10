@@ -321,6 +321,7 @@ export function AdminCard({
   children,
   padding = "p-4",
   className,
+  ...rest
 }: {
   title?: string;
   sw?: string;
@@ -328,9 +329,9 @@ export function AdminCard({
   children: React.ReactNode;
   padding?: string;
   className?: string;
-}) {
+} & Omit<React.HTMLAttributes<HTMLElement>, "children" | "title">) {
   return (
-    <div className={["rounded-lg border border-border bg-bg-elevated", padding, className ?? ""].join(" ")}>
+    <div {...rest} className={["rounded-lg border border-border bg-bg-elevated", padding, className ?? ""].join(" ")}>
       {(title || action) && (
         <div className="flex items-start justify-between mb-3 gap-3">
           <div className="min-w-0">

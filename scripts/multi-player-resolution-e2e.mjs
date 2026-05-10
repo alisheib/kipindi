@@ -213,18 +213,22 @@ try {
   }).catch(() => null);
 
   // Stage 1: Officer A picks YES
+  // The resolver queue may have several markets within their 24h window
+  // (the always-on demo refresher publishes 5-min + 15-min markets that
+  // sort above ours). Scope the click to OUR market's card by data-market-id.
   {
     const p = await officers[0].ctx.newPage();
     await p.goto(`${BASE}/admin/resolver-queue`, { waitUntil: "networkidle" });
     await p.waitForTimeout(900);
-    const buttons = await p.locator('button').filter({ hasText: /^Resolve YES$/ }).all();
+    const card = p.locator(`[data-market-id="${marketId}"]`).first();
+    const cardVisible = await card.isVisible({ timeout: 3_000 }).catch(() => false);
     let staged = false;
-    if (buttons.length > 0) {
-      await buttons[0].click();
+    if (cardVisible) {
+      await card.locator('button').filter({ hasText: /^Resolve YES$/ }).first().click();
       await p.waitForTimeout(2_500);
       staged = true;
     }
-    log(`5a Officer A staged YES (stage 1)`, staged, `${buttons.length} resolve buttons visible`);
+    log(`5a Officer A staged YES (stage 1)`, staged, `card ${cardVisible ? "found" : "missing"}`);
     await p.close();
   }
 
@@ -248,17 +252,22 @@ try {
     await p.close();
   }
 
-  // Stage 2: Officer B confirms YES → settles
+  // Stage 2: Officer B confirms YES → settles. Scope to the right card
+  // via data-market-id, then click through the kit Stage-2 confirm modal.
   {
     const p = await officers[1].ctx.newPage();
     await p.goto(`${BASE}/admin/resolver-queue`, { waitUntil: "networkidle" });
     await p.waitForTimeout(700);
-    const buttons = await p.locator('button').filter({ hasText: /^Resolve YES$/ }).all();
+    const card = p.locator(`[data-market-id="${marketId}"]`).first();
     let settled = false;
-    if (buttons.length > 0) {
-      await buttons[0].click();
-      await p.waitForTimeout(3_000);
-      settled = true;
+    if (await card.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await card.locator('button').filter({ hasText: /^Resolve YES$/ }).first().click();
+      const dlg = p.locator('[role="alertdialog"][aria-label="Confirm settlement"]').first();
+      if (await dlg.waitFor({ state: "visible", timeout: 3_000 }).then(() => true).catch(() => false)) {
+        await dlg.locator('button.btn-claret').first().click();
+        await p.waitForTimeout(3_000);
+        settled = true;
+      }
     }
     log("5c Officer B confirmed YES (stage 2 → settled)", settled);
     await p.close();

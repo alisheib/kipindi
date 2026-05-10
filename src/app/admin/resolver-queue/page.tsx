@@ -56,7 +56,7 @@ export default function ResolverQueuePage() {
               // Confidence: derived from how lopsided the pool is (proxy for crowd certainty)
               const confidence = Math.round(Math.abs(yes - 50) * 2);
               return (
-                <AdminCard key={m.id} padding="p-0">
+                <AdminCard key={m.id} padding="p-0" data-market-id={m.id}>
                   <div className="flex items-start gap-4 p-4 border-b border-border">
                     <CircularProgress
                       value={confidence}
