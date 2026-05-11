@@ -14,8 +14,8 @@ import {
   providerStackedSeries,
   listProvidersInPeriod,
 } from "@/lib/server/analytics";
-import { Download, FileDown } from "lucide-react";
 import { formatTzs, formatTzsCompact } from "@/lib/utils";
+import { GenerateButton } from "../reports/generate-button";
 
 export const metadata = { title: "Admin · Finance" };
 export const dynamic = "force-dynamic";
@@ -46,22 +46,12 @@ export default function AdminFinancePage() {
         title="Finance"
         sw="Fedha"
         actions={
-          <div className="flex gap-1.5">
-            <button
-              type="button"
-              className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border border-border bg-bg-elevated text-text-secondary hover:text-text"
-              aria-label="Download CSV regulator report"
-            >
-              <Download size={12} aria-hidden /> CSV · regulator
-            </button>
-            <button
-              type="button"
-              className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border border-gold bg-gold/10 text-gold"
-              aria-label="Download PDF report"
-            >
-              <FileDown size={12} aria-hidden /> PDF report
-            </button>
-          </div>
+          // Branded Excel + PDF export pair. Both call the same
+          // /api/admin/reports endpoint with the GBT monthly summary
+          // (currently the most complete finance report); a future
+          // sprint splits this into "daily reconciliation" and "weekly
+          // P&L" with the same button shape.
+          <GenerateButton id="gbt-monthly" />
         }
       />
 

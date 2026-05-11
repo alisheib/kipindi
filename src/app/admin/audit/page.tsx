@@ -1,4 +1,5 @@
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
+import { GenerateButton } from "../reports/generate-button";
 import { getAuditPage, verifyChain, type AuditCategory } from "@/lib/server/audit";
 import { MarketStats, type Stat } from "@/components/markets/market-stats";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -51,6 +52,7 @@ export default async function AdminAuditPage({
         title="Audit log"
         sw="Kumbukumbu · append-only HMAC-chained"
         period={false}
+        actions={<GenerateButton id="iso-audit" />}
       />
 
       <div className="px-4 lg:px-6 py-5 space-y-4">
