@@ -6,16 +6,16 @@ import type { Report, Section, Column, SummaryItem } from "./types";
 
 const LOGO_PNG = (() => {
   try {
-    return readFileSync(join(process.cwd(), "public/brand/fiftymark-white.png"));
+    return readFileSync(join(process.cwd(), "public/brand/fiftymark-color.png"));
   } catch {
     return null;
   }
 })();
 
 const M = { top: 0, bottom: 0, left: 32, right: 32 };
-const BAND_H = 34;
-const FOOTER_H = 20;
-const CONTENT_TOP = BAND_H + 18;
+const BAND_H = 46;
+const FOOTER_H = 22;
+const CONTENT_TOP = BAND_H + 22;
 const CONTENT_BOTTOM_INSET = FOOTER_H + 12;
 const F = {
   band:       { name: "Helvetica-Bold",  size: 12 },
@@ -55,23 +55,40 @@ type DocCtx = {
 
 function drawBand(ctx: DocCtx) {
   const { doc, pageW } = ctx;
-  const cy = BAND_H / 2;
   doc.save();
-  doc.rect(0, 0, pageW, BAND_H).fill(BRAND.royal);
-  doc.rect(0, BAND_H, pageW, 1.5).fill(BRAND.gilt);
-  let textX = 24;
+  // Deep royal field with a subtle lighter overlay at the top to
+  // give the band depth — the kit uses a radial gradient on screen;
+  // pdfkit's fill doesn't support gradients, so we approximate with
+  // two stacked rectangles.
+  doc.rect(0, 0, pageW, BAND_H).fill(BRAND.royalDeep);
+  doc.rect(0, 0, pageW, BAND_H * 0.55).fill(BRAND.royal);
+  // Gilt accent rule
+  doc.rect(0, BAND_H, pageW, 2).fill(BRAND.gilt);
+  doc.rect(0, BAND_H + 2, pageW, 0.8).fill(BRAND.royal);
+
+  let textX = 30;
   if (LOGO_PNG) {
-    const logoSize = BAND_H - 10;
-    doc.image(LOGO_PNG, 24, (BAND_H - logoSize) / 2, { width: logoSize, height: logoSize });
-    textX = 24 + logoSize + 10;
+    const logoSize = BAND_H - 14;
+    // White rounded disc behind the colour logo so the green / red
+    // wedges and gilt divider read crisp against the royal band.
+    const cx = 30 + logoSize / 2, cy = BAND_H / 2;
+    doc.circle(cx, cy, logoSize / 2 + 2).fill(BRAND.white);
+    doc.image(LOGO_PNG, 30, (BAND_H - logoSize) / 2, { width: logoSize, height: logoSize });
+    textX = 30 + logoSize + 14;
   }
-  doc.fillColor(BRAND.white).font(F.band.name).fontSize(F.band.size)
-     .text(COMPANY.name, textX, cy - F.band.size / 2 + 1, { lineBreak: false });
-  const nameW = doc.widthOfString(COMPANY.name);
+
+  const nameY = BAND_H / 2 - 11;
+  const tagY  = BAND_H / 2 + 3;
+  doc.fillColor(BRAND.white).font(F.band.name).fontSize(F.band.size + 2)
+     .text(COMPANY.name, textX, nameY, { lineBreak: false });
   doc.fillColor(BRAND.giltSoft).font(F.bandTag.name).fontSize(F.bandTag.size)
-     .text(toAnsiSafe("  ·  " + COMPANY.tagline), textX + nameW + 6, cy - F.bandTag.size / 2 + 1, { lineBreak: false });
-  doc.fillColor(BRAND.white).font(F.bandRight.name).fontSize(F.bandRight.size)
-     .text(COMPANY.tld, pageW - 24 - 90, cy - F.bandRight.size / 2 + 1, { width: 90, align: "right", lineBreak: false });
+     .text(toAnsiSafe(COMPANY.tagline), textX, tagY, { lineBreak: false });
+
+  // Right side: TLD + jurisdiction stamp
+  doc.fillColor(BRAND.white).font(F.bandRight.name).fontSize(F.bandRight.size + 1)
+     .text(COMPANY.tld, pageW - 30 - 130, nameY, { width: 130, align: "right", lineBreak: false });
+  doc.fillColor(BRAND.giltSoft).font("Helvetica").fontSize(7)
+     .text("Tanzania", pageW - 30 - 130, tagY + 1, { width: 130, align: "right", lineBreak: false });
   doc.restore();
 }
 

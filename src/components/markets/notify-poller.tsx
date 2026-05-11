@@ -76,7 +76,10 @@ type Attestation = {
 // every 8 seconds for an empty list). Also re-runs immediately on
 // tab focus so an alt-tabbed user sees the celebration the moment
 // they come back to the window.
-const ACTIVE_POLL_MS = 8_000;
+// Tight when the user has a watched market — 2 s feels effectively
+// instant to a human watching a countdown. Idle stays high so a
+// session with nothing to watch doesn't burn the server.
+const ACTIVE_POLL_MS = 2_000;
 const IDLE_POLL_MS = 60_000;
 
 export function NotifyPoller() {

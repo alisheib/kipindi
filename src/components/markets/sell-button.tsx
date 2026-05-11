@@ -78,6 +78,7 @@ export function SellButton({
           label: "Cashed out at profit",
         });
       }
+      try { window.dispatchEvent(new Event("50pick:refresh-notifications")); } catch {}
       router.refresh();
     });
   };

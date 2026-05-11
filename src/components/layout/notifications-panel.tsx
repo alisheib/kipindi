@@ -64,8 +64,19 @@ export function NotificationsPanel() {
 
   useEffect(() => {
     refresh();
-    const id = setInterval(refresh, 30_000);
-    return () => clearInterval(id);
+    // 5 s — every moment counts in a betting platform, the user said.
+    // The endpoint is cheap (in-memory store) so this is safe for demo.
+    const id = setInterval(refresh, 5_000);
+    // Also refresh on demand — any mutation (bet placed, sell, etc.)
+    // can dispatch `50pick:refresh-notifications` and the bell will
+    // re-poll within the next event-loop tick. This is the
+    // sub-second-feedback path the user asked for.
+    const onRefresh = () => { refresh(); };
+    window.addEventListener("50pick:refresh-notifications", onRefresh);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("50pick:refresh-notifications", onRefresh);
+    };
   }, [refresh]);
 
   useEffect(() => {

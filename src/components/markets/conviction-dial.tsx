@@ -331,6 +331,11 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
           localStorage.setItem(WATCH_KEY, JSON.stringify(watch));
         }
       } catch { /* private browsing */ }
+      // Tell the bell to repoll immediately — the bet-placed receipt
+      // server-side fires synchronously inside buyPositionAction, so
+      // by the time this event dispatches the notification is already
+      // available. Eliminates the 5 s "where's my receipt?" gap.
+      try { window.dispatchEvent(new Event("50pick:refresh-notifications")); } catch {}
       router.refresh();
     });
   };

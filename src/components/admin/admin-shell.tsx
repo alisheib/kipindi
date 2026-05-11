@@ -218,34 +218,7 @@ export function AdminPageHead({
   );
 }
 
-/** 5-segment period picker. The active segment is currently visual-only — the
- * pages render their data on whatever range they decide; period selection is
- * wired in a follow-up. */
-export function PeriodPicker() {
-  const segments = [
-    { id: "today",  label: "Today" },
-    { id: "7d",     label: "7d" },
-    { id: "28d",    label: "28d" },
-    { id: "qtd",    label: "QTD" },
-    { id: "custom", label: "Custom" },
-  ];
-  const activeId = "7d";
-  return (
-    <div className="inline-flex border border-border rounded-md overflow-hidden bg-bg-elevated font-mono text-micro">
-      {segments.map((s) => (
-        <span
-          key={s.id}
-          className={[
-            "px-2.5 h-7 inline-flex items-center border-r border-border last:border-r-0",
-            s.id === activeId ? "bg-bg-sunken text-onBrand" : "text-text-tertiary",
-          ].join(" ")}
-        >
-          {s.label}
-        </span>
-      ))}
-    </div>
-  );
-}
+export { PeriodPicker } from "./period-picker";
 
 /* ===== KPI tile ===== */
 

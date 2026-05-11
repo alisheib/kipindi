@@ -1,6 +1,13 @@
 import ExcelJS from "exceljs";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { BRAND, COMPANY, fmtDate, fmtDateTime } from "./brand";
 import type { Report, Section, Column, Row } from "./types";
+
+const LOGO_PNG_PATH = join(process.cwd(), "public/brand/fiftymark-color.png");
+const LOGO_PNG_BUF = (() => {
+  try { return readFileSync(LOGO_PNG_PATH); } catch { return null; }
+})();
 
 const argb = (hex: string) => "FF" + hex.replace("#", "").toUpperCase();
 
@@ -58,42 +65,81 @@ export async function renderXlsx(report: Report): Promise<Buffer> {
 
   const MERGE_END = "L";
 
-  // Brand band — two-row royal masthead with company name on row 1
-  // and tagline on row 2. Excel's row-height + indent gives a cleaner
-  // single-cell brand block than a frozen pane (which Ali called out
-  // as the "duplicating header" complaint).
-  sheet.mergeCells(`A1:${MERGE_END}1`);
-  const band1 = sheet.getCell("A1");
-  band1.value = COMPANY.name;
-  band1.font = { name: "Calibri", size: 14, bold: true, color: { argb: argb(BRAND.white) } };
-  band1.fill = { type: "pattern", pattern: "solid", fgColor: { argb: argb(BRAND.royal) } };
-  band1.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
-  sheet.getRow(1).height = 22;
+  // Brand band spans rows 1-3 as a single tall band that fits the
+  // logo image cleanly. Column A is the logo gutter; B..L is the
+  // text. The royal fill on each cell makes the whole band read as
+  // one block.
+  for (let r = 1; r <= 3; r++) {
+    for (let c = 1; c <= 12; c++) {
+      sheet.getRow(r).getCell(c).fill = {
+        type: "pattern", pattern: "solid", fgColor: { argb: argb(BRAND.royal) },
+      };
+    }
+  }
+  // Logo gutter — column A, ~46px wide
+  sheet.getColumn(1).width = 8;
+  sheet.getRow(1).height = 16;
+  sheet.getRow(2).height = 22;
+  sheet.getRow(3).height = 16;
 
-  sheet.mergeCells(`A2:${MERGE_END}2`);
-  const band2 = sheet.getCell("A2");
+  // Company name on row 2 in the merged B..L band
+  sheet.mergeCells(`B2:${MERGE_END}2`);
+  const band1 = sheet.getCell("B2");
+  band1.value = COMPANY.name;
+  band1.font = { name: "Calibri", size: 16, bold: true, color: { argb: argb(BRAND.white) } };
+  band1.alignment = { vertical: "middle", horizontal: "left" };
+
+  // Tagline + tld on row 3 in the merged B..L band
+  sheet.mergeCells(`B3:${MERGE_END}3`);
+  const band2 = sheet.getCell("B3");
   band2.value = `${COMPANY.tagline}      ${COMPANY.tld}      ${COMPANY.jurisdiction}`;
   band2.font = { name: "Calibri", size: 9.5, italic: true, color: { argb: argb(BRAND.giltSoft) } };
-  band2.fill = { type: "pattern", pattern: "solid", fgColor: { argb: argb(BRAND.royal) } };
-  band2.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
-  sheet.getRow(2).height = 16;
+  band2.alignment = { vertical: "middle", horizontal: "left" };
 
-  sheet.mergeCells(`A3:${MERGE_END}3`);
-  const titleCell = sheet.getCell("A3");
+  // Top-of-band thin fill on row 1 to widen the band visually
+  sheet.mergeCells(`A1:${MERGE_END}1`);
+
+  // Embed the logo PNG anchored to the logo gutter. Safe to skip when
+  // the PNG isn't present (e.g. a build step missed it) — band stays
+  // royal-only.
+  if (LOGO_PNG_BUF) {
+    try {
+      const imgId = wb.addImage({ buffer: LOGO_PNG_BUF as unknown as ExcelJS.Buffer, extension: "png" });
+      sheet.addImage(imgId, {
+        tl: { col: 0.15, row: 1.05 } as ExcelJS.Anchor,
+        ext: { width: 42, height: 42 },
+        editAs: "absolute",
+      });
+    } catch {
+      // ignore — band still renders without the image
+    }
+  }
+
+  // Gilt accent rule below the band
+  sheet.mergeCells(`A4:${MERGE_END}4`);
+  sheet.getRow(4).height = 4;
+  for (let c = 1; c <= 12; c++) {
+    sheet.getRow(4).getCell(c).fill = {
+      type: "pattern", pattern: "solid", fgColor: { argb: argb(BRAND.gilt) },
+    };
+  }
+
+  sheet.mergeCells(`A5:${MERGE_END}5`);
+  const titleCell = sheet.getCell("A5");
   titleCell.value = report.title;
   titleCell.font = { name: "Calibri", size: 18, bold: true, color: { argb: argb(BRAND.royalDeep) } };
   titleCell.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
-  sheet.getRow(3).height = 28;
+  sheet.getRow(5).height = 28;
 
-  sheet.mergeCells(`A4:${MERGE_END}4`);
-  const subCell = sheet.getCell("A4");
+  sheet.mergeCells(`A6:${MERGE_END}6`);
+  const subCell = sheet.getCell("A6");
   subCell.value = report.subtitle;
   subCell.font = { name: "Calibri", size: 10.5, italic: true, color: { argb: argb(BRAND.inkMuted) } };
   subCell.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
-  sheet.getRow(4).height = 18;
+  sheet.getRow(6).height = 18;
 
-  sheet.mergeCells(`A5:${MERGE_END}5`);
-  const meta = sheet.getCell("A5");
+  sheet.mergeCells(`A7:${MERGE_END}7`);
+  const meta = sheet.getCell("A7");
   meta.value =
     `Generated: ${fmtDateTime(report.meta.generatedAt)}      ` +
     `By: ${report.meta.generatedBy}      ` +
@@ -101,16 +147,9 @@ export async function renderXlsx(report: Report): Promise<Buffer> {
     `Classification: ${report.meta.classification ?? "Internal"}`;
   meta.font = { name: "Calibri", size: 9, color: { argb: argb(BRAND.inkSubtle) } };
   meta.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
-  sheet.getRow(5).height = 16;
+  sheet.getRow(7).height = 16;
 
-  sheet.getRow(6).height = 5;
-  for (let c = 1; c <= 12; c++) {
-    sheet.getRow(6).getCell(c).fill = {
-      type: "pattern", pattern: "solid", fgColor: { argb: argb(BRAND.gilt) },
-    };
-  }
-
-  let cursor = 8;
+  let cursor = 9;
 
   if (report.summary && report.summary.length > 0) {
     sheet.mergeCells(`A${cursor}:${MERGE_END}${cursor}`);
