@@ -9,6 +9,7 @@
 import Link from "next/link";
 import { db } from "@/lib/server/store";
 import { AdminMobileNavTrigger } from "./admin-mobile-nav";
+import { PeriodPicker } from "./period-picker";
 
 export type AdminSession = {
   userId: string;
@@ -218,7 +219,7 @@ export function AdminPageHead({
   );
 }
 
-export { PeriodPicker } from "./period-picker";
+export { PeriodPicker };
 
 /* ===== KPI tile ===== */
 
