@@ -58,47 +58,59 @@ export async function renderXlsx(report: Report): Promise<Buffer> {
 
   const MERGE_END = "L";
 
+  // Brand band — two-row royal masthead with company name on row 1
+  // and tagline on row 2. Excel's row-height + indent gives a cleaner
+  // single-cell brand block than a frozen pane (which Ali called out
+  // as the "duplicating header" complaint).
   sheet.mergeCells(`A1:${MERGE_END}1`);
-  const band = sheet.getCell("A1");
-  band.value = ` 50PICK   ·   ${COMPANY.tagline}`;
-  band.font = { name: "Calibri", size: 13, bold: true, color: { argb: argb(BRAND.white) } };
-  band.fill = { type: "pattern", pattern: "solid", fgColor: { argb: argb(BRAND.royal) } };
-  band.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+  const band1 = sheet.getCell("A1");
+  band1.value = COMPANY.name;
+  band1.font = { name: "Calibri", size: 14, bold: true, color: { argb: argb(BRAND.white) } };
+  band1.fill = { type: "pattern", pattern: "solid", fgColor: { argb: argb(BRAND.royal) } };
+  band1.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
   sheet.getRow(1).height = 22;
 
   sheet.mergeCells(`A2:${MERGE_END}2`);
-  const titleCell = sheet.getCell("A2");
-  titleCell.value = report.title;
-  titleCell.font = { name: "Calibri", size: 16, bold: true, color: { argb: argb(BRAND.royalDeep) } };
-  titleCell.alignment = { vertical: "middle", horizontal: "left" };
-  sheet.getRow(2).height = 22;
+  const band2 = sheet.getCell("A2");
+  band2.value = `${COMPANY.tagline}      ${COMPANY.tld}      ${COMPANY.jurisdiction}`;
+  band2.font = { name: "Calibri", size: 9.5, italic: true, color: { argb: argb(BRAND.giltSoft) } };
+  band2.fill = { type: "pattern", pattern: "solid", fgColor: { argb: argb(BRAND.royal) } };
+  band2.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+  sheet.getRow(2).height = 16;
 
   sheet.mergeCells(`A3:${MERGE_END}3`);
-  const subCell = sheet.getCell("A3");
-  subCell.value = report.subtitle;
-  subCell.font = { name: "Calibri", size: 10, italic: true, color: { argb: argb(BRAND.inkMuted) } };
-  subCell.alignment = { vertical: "middle", horizontal: "left" };
-  sheet.getRow(3).height = 16;
+  const titleCell = sheet.getCell("A3");
+  titleCell.value = report.title;
+  titleCell.font = { name: "Calibri", size: 18, bold: true, color: { argb: argb(BRAND.royalDeep) } };
+  titleCell.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+  sheet.getRow(3).height = 28;
 
   sheet.mergeCells(`A4:${MERGE_END}4`);
-  const meta = sheet.getCell("A4");
-  meta.value =
-    `Generated: ${fmtDateTime(report.meta.generatedAt)}   ·   ` +
-    `By: ${report.meta.generatedBy}   ·   ` +
-    `Reference: ${report.reference}   ·   ` +
-    `Classification: ${report.meta.classification ?? "Internal"}`;
-  meta.font = { name: "Consolas", size: 9, color: { argb: argb(BRAND.inkSubtle) } };
-  meta.alignment = { vertical: "middle", horizontal: "left" };
-  sheet.getRow(4).height = 14;
+  const subCell = sheet.getCell("A4");
+  subCell.value = report.subtitle;
+  subCell.font = { name: "Calibri", size: 10.5, italic: true, color: { argb: argb(BRAND.inkMuted) } };
+  subCell.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+  sheet.getRow(4).height = 18;
 
-  sheet.getRow(5).height = 3;
+  sheet.mergeCells(`A5:${MERGE_END}5`);
+  const meta = sheet.getCell("A5");
+  meta.value =
+    `Generated: ${fmtDateTime(report.meta.generatedAt)}      ` +
+    `By: ${report.meta.generatedBy}      ` +
+    `Reference: ${report.reference}      ` +
+    `Classification: ${report.meta.classification ?? "Internal"}`;
+  meta.font = { name: "Calibri", size: 9, color: { argb: argb(BRAND.inkSubtle) } };
+  meta.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+  sheet.getRow(5).height = 16;
+
+  sheet.getRow(6).height = 5;
   for (let c = 1; c <= 12; c++) {
-    sheet.getRow(5).getCell(c).fill = {
+    sheet.getRow(6).getCell(c).fill = {
       type: "pattern", pattern: "solid", fgColor: { argb: argb(BRAND.gilt) },
     };
   }
 
-  let cursor = 7;
+  let cursor = 8;
 
   if (report.summary && report.summary.length > 0) {
     sheet.mergeCells(`A${cursor}:${MERGE_END}${cursor}`);

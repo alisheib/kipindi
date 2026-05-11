@@ -12,14 +12,16 @@ const LOGO_PNG = (() => {
   }
 })();
 
-const M = { top: 32, bottom: 32, left: 32, right: 32 };
-const BAND_H = 26;
-const FOOTER_H = 18;
+const M = { top: 0, bottom: 0, left: 32, right: 32 };
+const BAND_H = 34;
+const FOOTER_H = 20;
+const CONTENT_TOP = BAND_H + 18;
+const CONTENT_BOTTOM_INSET = FOOTER_H + 12;
 const F = {
-  band:       { name: "Helvetica-Bold",  size: 11 },
-  bandTag:    { name: "Helvetica",       size: 9   },
-  bandRight:  { name: "Helvetica",       size: 8.5 },
-  title:      { name: "Helvetica-Bold",  size: 18 },
+  band:       { name: "Helvetica-Bold",  size: 12 },
+  bandTag:    { name: "Helvetica",       size: 9.5 },
+  bandRight:  { name: "Helvetica",       size: 9 },
+  title:      { name: "Helvetica-Bold",  size: 22 },
   subtitle:   { name: "Helvetica-Oblique", size: 10 },
   meta:       { name: "Helvetica",       size: 8 },
   kpiLabel:   { name: "Helvetica-Bold",  size: 7.5 },
@@ -56,60 +58,52 @@ function drawBand(ctx: DocCtx) {
   const cy = BAND_H / 2;
   doc.save();
   doc.rect(0, 0, pageW, BAND_H).fill(BRAND.royal);
-  doc.rect(0, BAND_H, pageW, 1.2).fill(BRAND.gilt);
-  let textX = M.left;
+  doc.rect(0, BAND_H, pageW, 1.5).fill(BRAND.gilt);
+  let textX = 24;
   if (LOGO_PNG) {
-    const logoSize = BAND_H - 8;
-    doc.image(LOGO_PNG, M.left, (BAND_H - logoSize) / 2, { width: logoSize, height: logoSize });
-    textX = M.left + logoSize + 8;
+    const logoSize = BAND_H - 10;
+    doc.image(LOGO_PNG, 24, (BAND_H - logoSize) / 2, { width: logoSize, height: logoSize });
+    textX = 24 + logoSize + 10;
   }
   doc.fillColor(BRAND.white).font(F.band.name).fontSize(F.band.size)
      .text(COMPANY.name, textX, cy - F.band.size / 2 + 1, { lineBreak: false });
   const nameW = doc.widthOfString(COMPANY.name);
   doc.fillColor(BRAND.giltSoft).font(F.bandTag.name).fontSize(F.bandTag.size)
-     .text(toAnsiSafe("  ·  " + COMPANY.tagline), textX + nameW + 4, cy - F.bandTag.size / 2 + 1, { lineBreak: false });
+     .text(toAnsiSafe("  ·  " + COMPANY.tagline), textX + nameW + 6, cy - F.bandTag.size / 2 + 1, { lineBreak: false });
   doc.fillColor(BRAND.white).font(F.bandRight.name).fontSize(F.bandRight.size)
-     .text(COMPANY.tld, pageW - M.right - 80, cy - F.bandRight.size / 2 + 1, { width: 80, align: "right", lineBreak: false });
+     .text(COMPANY.tld, pageW - 24 - 90, cy - F.bandRight.size / 2 + 1, { width: 90, align: "right", lineBreak: false });
   doc.restore();
 }
 
-function drawFooter(ctx: DocCtx) {
+function drawFooter(ctx: DocCtx, pageNum: number, pageCount: number) {
   const { doc, pageW, pageH, reference, classification, generatedAt } = ctx;
   const y = pageH - FOOTER_H;
   doc.save();
   doc.lineWidth(0.4).strokeColor(BRAND.rule)
-     .moveTo(M.left, y).lineTo(pageW - M.right, y).stroke();
+     .moveTo(24, y).lineTo(pageW - 24, y).stroke();
   doc.fillColor(BRAND.inkSubtle).font(F.footer.name).fontSize(F.footer.size);
-  doc.text(toAnsiSafe(`${reference}  ·  ${classification}`), M.left, y + 5, { lineBreak: false });
-  doc.text(fmtDateTime(generatedAt), pageW - M.right - 160, y + 5, { width: 160, align: "right", lineBreak: false });
+  doc.text(toAnsiSafe(`${reference}  ·  ${classification}`), 24, y + 6, { lineBreak: false });
+  doc.text(`Page ${pageNum} of ${pageCount}`, pageW / 2 - 60, y + 6, { width: 120, align: "center", lineBreak: false });
+  doc.text(fmtDateTime(generatedAt), pageW - 24 - 160, y + 6, { width: 160, align: "right", lineBreak: false });
   doc.restore();
 }
 
-function addPageWithChrome(ctx: DocCtx): number {
+function addContentPage(ctx: DocCtx): number {
   ctx.doc.addPage();
-  drawBand(ctx);
-  drawFooter(ctx);
-  ctx.doc.y = BAND_H + 12;
-  ctx.doc.x = M.left;
-  return BAND_H + 12;
-}
-
-function paintFirstPage(ctx: DocCtx) {
-  drawBand(ctx);
-  drawFooter(ctx);
-  ctx.doc.y = BAND_H + 12;
-  ctx.doc.x = M.left;
+  ctx.doc.y = CONTENT_TOP;
+  ctx.doc.x = 32;
+  return CONTENT_TOP;
 }
 
 function drawHeader(ctx: DocCtx, report: Report): number {
   const { doc, contentX, contentW } = ctx;
-  let y = BAND_H + 14;
+  let y = CONTENT_TOP;
   doc.fillColor(BRAND.royalDeep).font(F.title.name).fontSize(F.title.size)
-     .text(toAnsiSafe(report.title), contentX, y, { width: contentW });
-  y = doc.y + 3;
+     .text(toAnsiSafe(report.title), contentX, y, { width: contentW, lineBreak: true });
+  y = doc.y + 4;
   doc.fillColor(BRAND.inkMuted).font(F.subtitle.name).fontSize(F.subtitle.size)
-     .text(toAnsiSafe(report.subtitle), contentX, y, { width: contentW });
-  y = doc.y + 8;
+     .text(toAnsiSafe(report.subtitle), contentX, y, { width: contentW, lineBreak: false });
+  y = doc.y + 10;
   const cls = report.meta.classification ?? "Internal";
   doc.fillColor(BRAND.inkSubtle).font(F.meta.name).fontSize(F.meta.size);
   const metaText = toAnsiSafe(
@@ -118,12 +112,12 @@ function drawHeader(ctx: DocCtx, report: Report): number {
     `Reference  ${report.reference}      ` +
     `Classification  ${cls}`
   );
-  doc.text(metaText, contentX, y, { width: contentW });
-  y = doc.y + 6;
+  doc.text(metaText, contentX, y, { width: contentW, lineBreak: false });
+  y = doc.y + 8;
   doc.save();
-  doc.rect(contentX, y, contentW, 1).fill(BRAND.gilt);
+  doc.rect(contentX, y, contentW, 1.2).fill(BRAND.gilt);
   doc.restore();
-  return y + 10;
+  return y + 14;
 }
 
 function drawSummary(ctx: DocCtx, summary: SummaryItem[], startY: number): number {
@@ -156,7 +150,7 @@ function drawSummary(ctx: DocCtx, summary: SummaryItem[], startY: number): numbe
 }
 
 function ensureRoom(ctx: DocCtx, needed: number, y: number): number {
-  return y + needed > ctx.contentBottomY ? addPageWithChrome(ctx) : y;
+  return y + needed > ctx.contentBottomY ? addContentPage(ctx) : y;
 }
 
 function computeColWidths(cols: Column[], total: number): number[] {
@@ -294,6 +288,7 @@ export async function renderPdf(report: Report): Promise<Buffer> {
       const doc = new PDFDocument({
         size: "A4",
         margins: M,
+        bufferPages: true,
         info: {
           Title: report.title,
           Author: COMPANY.name,
@@ -311,14 +306,16 @@ export async function renderPdf(report: Report): Promise<Buffer> {
       const pageH = doc.page.height;
       const ctx: DocCtx = {
         doc, pageW, pageH,
-        contentX: M.left,
-        contentW: pageW - M.left - M.right,
-        contentBottomY: pageH - M.bottom,
+        contentX: 32,
+        contentW: pageW - 64,
+        contentBottomY: pageH - CONTENT_BOTTOM_INSET - FOOTER_H,
         reference: report.reference,
         classification: report.meta.classification ?? "Internal",
         generatedAt: report.meta.generatedAt,
       };
-      paintFirstPage(ctx);
+
+      doc.y = CONTENT_TOP;
+      doc.x = 32;
 
       let y = drawHeader(ctx, report);
       if (report.summary && report.summary.length > 0) {
@@ -328,8 +325,17 @@ export async function renderPdf(report: Report): Promise<Buffer> {
         y = drawSection(ctx, sec, y);
       }
       if (report.notes && report.notes.length > 0) {
-        y = drawNotes(ctx, report.notes, y + 4);
+        y = drawNotes(ctx, report.notes, y + 6);
       }
+
+      const range = doc.bufferedPageRange();
+      const totalPages = range.count;
+      for (let i = 0; i < totalPages; i++) {
+        doc.switchToPage(range.start + i);
+        drawBand(ctx);
+        drawFooter(ctx, i + 1, totalPages);
+      }
+
       doc.end();
     } catch (err) {
       reject(err);
