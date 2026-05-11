@@ -77,10 +77,6 @@ export const COMPANY = {
  *
  * Keeps every report visually identical to the on-screen branding.
  */
-// PDFKit type imported as `unknown` to dodge the pdfkit type's
-// reliance on Buffer constructor signatures that conflict with Node's
-// Buffer typings. The drawCrest function only uses runtime methods
-// we know exist on PDFDocument.
 type AnyDoc = {
   save(): AnyDoc;
   restore(): AnyDoc;
@@ -93,48 +89,60 @@ type AnyDoc = {
   lineWidth(w: number): AnyDoc;
   moveTo(x: number, y: number): AnyDoc;
   lineTo(x: number, y: number): AnyDoc;
+  clip(): AnyDoc;
 };
 
 /**
- * Draw a kit-faithful 50pick crest using only rect / circle / line
- * primitives — no path strings (PDFKit's path parser overflowed the
- * call stack on multi-line A-arc strings, surfaced during the Sprint 57
- * smoke test). The crest reads as a royal ring with a gilt diagonal +
- * green-and-claret half-fills — same visual identity as the SVG mark
- * in the product header.
+ * Kit-faithful 50pick crest, drawn with pdfkit clipping primitives.
+ * Visual: a clean half-and-half disc (emerald left, claret right) with
+ * a gilt diagonal stroke and a thin royal ring. The first version of
+ * this used a thick royal stroke as a "ring eraser" — that produced
+ * a giant blue donut hiding the crest. The clip-path approach is the
+ * correct way to render a half-and-half circle in pdfkit.
  */
 export function drawCrest(doc: AnyDoc, x: number, y: number, r: number): void {
-  // Green left half — rect clipped to a circle approximation via two stacked rectangles
+  // Clip subsequent rectangles to a circle. Anything drawn inside
+  // this save/restore block is masked to the disc.
   doc.save();
-  doc.fillColor(BRAND.yes);
-  doc.rect(x - r, y - r, r, 2 * r).fill();
+  doc.circle(x, y, r).clip();
+  // Left half — emerald
+  doc.fillColor(BRAND.yes).rect(x - r, y - r, r, 2 * r).fill();
+  // Right half — claret
+  doc.fillColor("#B7263A").rect(x, y - r, r, 2 * r).fill();
   doc.restore();
-  // Claret right half
+  // Gilt diagonal across the full diameter
   doc.save();
-  doc.fillColor("#B7263A");
-  doc.rect(x, y - r, r, 2 * r).fill();
-  doc.restore();
-  // White outer mask — circle stroke trims the rectangles into a disc
-  // by drawing a thick white ring just outside the radius. The band
-  // background under the crest is royal, so we use the band fill color
-  // to "erase" the corners — passed in via stroke instead.
-  doc.save();
-  doc.lineWidth(r * 0.9);
-  doc.strokeColor(BRAND.royal);
-  doc.circle(x, y, r * 1.45).stroke();
-  doc.restore();
-  // Gilt diagonal (top-right to bottom-left)
-  doc.save();
-  doc.lineWidth(Math.max(0.6, r * 0.08));
+  doc.lineWidth(Math.max(0.5, r * 0.10));
   doc.strokeColor(BRAND.gilt);
-  doc.moveTo(x - r * 0.92, y - r * 0.45).lineTo(x + r * 0.92, y + r * 0.45).stroke();
+  doc.moveTo(x - r * 0.94, y - r * 0.34).lineTo(x + r * 0.94, y + r * 0.34).stroke();
   doc.restore();
-  // Royal inner ring outline for crispness at small print sizes
+  // Thin royal outline for crispness
   doc.save();
-  doc.lineWidth(Math.max(0.4, r * 0.08));
+  doc.lineWidth(Math.max(0.5, r * 0.10));
   doc.strokeColor(BRAND.royalDeep);
-  doc.circle(x, y, r * 0.97).stroke();
+  doc.circle(x, y, r).stroke();
   doc.restore();
+}
+
+/**
+ * pdfkit's built-in fonts use WinAnsi encoding, which doesn't include
+ * the Unicode arrow (→), em-dash (—), or en-dash (–). Those render as
+ * stray glyphs like `!'` or `"`. This helper substitutes ASCII /
+ * WinAnsi-safe equivalents before text() is called. Used by every
+ * pdf.ts text() that takes string content from the catalogue.
+ */
+export function toAnsiSafe(s: string): string {
+  return s
+    .replace(/→/g, "->")
+    .replace(/←/g, "<-")
+    .replace(/—/g, " - ")
+    .replace(/–/g, "-")
+    .replace(/−/g, "-")
+    .replace(/’/g, "'")
+    .replace(/‘/g, "'")
+    .replace(/“/g, '"')
+    .replace(/”/g, '"')
+    .replace(/…/g, "...");
 }
 
 /** TZS formatter — locale-aware, tabular numerals, no symbol (we add

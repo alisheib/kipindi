@@ -66,12 +66,11 @@ export function buildGbtMonthly(generatorId: string): Report {
     sections: [
       {
         title: "Aggregate financials",
-        titleSw: "Fedha kwa ujumla",
-        description: "TZS totals for the 28-day window. Counts reflect confirmed transactions only; pending and AML-review entries are excluded.",
+        description: "TZS totals for the 28-day window. Counts reflect confirmed transactions only.",
         columns: [
-          { header: "Metric", key: "metric", width: 32 },
-          { header: "Value", sub: "TZS", key: "value", format: "tzs", align: "right", width: 18 },
-          { header: "Count", key: "count", format: "integer", align: "right", width: 12 },
+          { header: "Metric", key: "metric", width: 55 },
+          { header: "Value", sub: "TZS", key: "value", format: "tzs", align: "right", width: 25 },
+          { header: "Count", key: "count", format: "integer", align: "right", width: 20 },
         ],
         rows: [
           { metric: "Deposits — total", value: dep.amount, count: dep.count },
@@ -82,12 +81,11 @@ export function buildGbtMonthly(generatorId: string): Report {
       },
       {
         title: "KYC funnel",
-        titleSw: "Uthibitishaji wa kitambulisho",
         description: "Player progression through identity verification. Approved players may withdraw.",
         columns: [
-          { header: "Step", key: "step", width: 24 },
-          { header: "Count", key: "count", format: "integer", align: "right", width: 12 },
-          { header: "Conversion", sub: "vs. registered", key: "rate", format: "percent", align: "right", width: 16 },
+          { header: "Step", key: "step", width: 50 },
+          { header: "Count", key: "count", format: "integer", align: "right", width: 20 },
+          { header: "Conversion", sub: "vs. registered", key: "rate", format: "percent", align: "right", width: 30 },
         ],
         rows: [
           { step: "Registered", count: kyc.registered, rate: 1 },
@@ -98,11 +96,10 @@ export function buildGbtMonthly(generatorId: string): Report {
       },
       {
         title: "Responsible-gambling roster",
-        titleSw: "Wachezaji wenye vikomo",
         description: "Self-imposed exclusions, cooling-off periods, and limit-increase requests pending review.",
         columns: [
-          { header: "State", key: "state", width: 32 },
-          { header: "Players", key: "count", format: "integer", align: "right", width: 14 },
+          { header: "State", key: "state", width: 70 },
+          { header: "Players", key: "count", format: "integer", align: "right", width: 30 },
         ],
         rows: [
           { state: "Self-excluded (active)", count: rg.selfExcluded },
@@ -113,14 +110,13 @@ export function buildGbtMonthly(generatorId: string): Report {
       },
       {
         title: "Mobile-money provider summary",
-        titleSw: "Muhtasari wa watoa pesa",
         description: "Volume by aggregator over the 28-day window. Negative net = aggregator paid out more than it took in.",
         columns: [
           { header: "Provider", key: "provider", width: 18 },
           { header: "Deposits", sub: "TZS", key: "deposits", format: "tzs", align: "right", width: 18 },
-          { header: "Dep. count", key: "depositCount", format: "integer", align: "right", width: 12 },
+          { header: "Dep. count", key: "depositCount", format: "integer", align: "right", width: 14 },
           { header: "Withdrawals", sub: "TZS", key: "withdrawals", format: "tzs", align: "right", width: 18 },
-          { header: "Wd. count", key: "withdrawalCount", format: "integer", align: "right", width: 12 },
+          { header: "Wd. count", key: "withdrawalCount", format: "integer", align: "right", width: 14 },
           { header: "Net", sub: "TZS", key: "net", format: "tzs", align: "right", width: 18 },
         ],
         rows: provs.map((p) => ({
@@ -202,16 +198,15 @@ export function buildTraTax(generatorId: string): Report {
     sections: [
       {
         title: "Player remittance",
-        titleSw: "Marejesho ya kodi kwa kila mchezaji",
-        description: "Each row is one player who has received at least one settled payout. Phone is masked to comply with PDPA data-minimisation; NIDA masking shows first 4 and last 4 digits only.",
+        description: "Each row is one player who has received at least one settled payout. Phone masked per PDPA.",
         columns: [
-          { header: "Player ID", key: "playerId", width: 24 },
-          { header: "Phone", sub: "masked", key: "phone", width: 18 },
-          { header: "NIDA", sub: "masked", key: "nida", width: 16 },
-          { header: "Gross winnings", sub: "TZS", key: "grossWinnings", format: "tzs", align: "right", width: 16 },
-          { header: "Tax withheld", sub: "TZS", key: "taxWithheld", format: "tzs", align: "right", width: 14 },
+          { header: "Player ID", key: "playerId", width: 22 },
+          { header: "Phone", sub: "masked", key: "phone", width: 14 },
+          { header: "NIDA", sub: "masked", key: "nida", width: 13 },
+          { header: "Gross", sub: "TZS", key: "grossWinnings", format: "tzs", align: "right", width: 14 },
+          { header: "Tax", sub: "TZS", key: "taxWithheld", format: "tzs", align: "right", width: 12 },
           { header: "Net paid", sub: "TZS", key: "netPaid", format: "tzs", align: "right", width: 14 },
-          { header: "Withdrawals", key: "withdrawalCount", format: "integer", align: "right", width: 12 },
+          { header: "Wd. count", key: "withdrawalCount", format: "integer", align: "right", width: 11 },
         ],
         rows,
         totals: {
@@ -278,16 +273,15 @@ export function buildFiuSar(generatorId: string): Report {
     sections: [
       {
         title: "Flagged transactions",
-        titleSw: "Miamala iliyowekewa alama",
-        description: "Each row meets at least one of: (a) absolute amount over the threshold, (b) status set to AML review by a compliance officer.",
+        description: "Each row meets at least one of: (a) absolute amount over the threshold, (b) status set to AML review.",
         columns: [
-          { header: "Player ID", key: "playerId", width: 26 },
-          { header: "Phone", sub: "masked", key: "phone", width: 18 },
-          { header: "Trigger", key: "triggerKind", width: 18 },
-          { header: "Amount", sub: "TZS", key: "amount", format: "tzs", align: "right", width: 14 },
-          { header: "Transaction ID", key: "txnId", width: 22 },
-          { header: "Triggered at", key: "triggerAt", format: "datetime", width: 22 },
-          { header: "Status", key: "reviewStatus", width: 16 },
+          { header: "Player ID",       key: "playerId",     width: 18 },
+          { header: "Phone",            sub: "masked",      key: "phone",        width: 12 },
+          { header: "Trigger",          key: "triggerKind", width: 14 },
+          { header: "Amount",           sub: "TZS",         key: "amount",       format: "tzs",      align: "right", width: 12 },
+          { header: "Transaction ID",   key: "txnId",       width: 18 },
+          { header: "Triggered at",     key: "triggerAt",   format: "datetime",  width: 16 },
+          { header: "Status",           key: "reviewStatus", width: 10 },
         ],
         rows,
       },
@@ -365,18 +359,17 @@ export function buildSxRegister(generatorId: string): Report {
     sections: [
       {
         title: "Register",
-        titleSw: "Daftari",
-        description: "One row per active exclusion or cooling-off period. Plain NIDA and phone are never written here; only their salted hashes.",
+        description: "One row per active exclusion or cooling-off period. Plain NIDA and phone are never written; only their salted hashes.",
         columns: [
-          { header: "#", key: "rowNo", format: "integer", align: "right", width: 6 },
-          { header: "NIDA hash", sub: "SHA-256", key: "nidaHash", width: 30 },
-          { header: "Phone hash", sub: "SHA-256", key: "phoneHash", width: 30 },
-          { header: "Region", key: "region", width: 14 },
-          { header: "Kind", key: "periodKind", width: 16 },
-          { header: "Started", key: "periodStarted", format: "date", width: 14 },
-          { header: "Ends", key: "periodEnds", format: "date", width: 14 },
-          { header: "Days left", key: "daysRemaining", format: "integer", align: "right", width: 10 },
-          { header: "Operator", key: "operator", width: 10 },
+          { header: "#",            key: "rowNo",         format: "integer", align: "right", width: 5 },
+          { header: "NIDA hash",    sub: "SHA-256",       key: "nidaHash",  width: 22 },
+          { header: "Phone hash",   sub: "SHA-256",       key: "phoneHash", width: 22 },
+          { header: "Region",       key: "region",        width: 10 },
+          { header: "Kind",         key: "periodKind",    width: 12 },
+          { header: "Started",      key: "periodStarted", format: "date",    width: 10 },
+          { header: "Ends",         key: "periodEnds",    format: "date",    width: 10 },
+          { header: "Days",         key: "daysRemaining", format: "integer", align: "right", width: 6 },
+          { header: "Operator",     key: "operator",      width: 8 },
         ],
         rows,
       },
@@ -414,16 +407,15 @@ export function buildIsoAudit(generatorId: string): Report {
     sections: [
       {
         title: "Audit entries",
-        titleSw: "Kumbukumbu za ukaguzi",
         description: "Each row carries the previous-entry hash and its own hash; walking the chain proves no entry was added, edited, or removed.",
         columns: [
-          { header: "Entry ID", key: "id", width: 18 },
-          { header: "Created", key: "createdAt", format: "datetime", width: 20 },
-          { header: "Cat.", key: "category", width: 10 },
-          { header: "Action", key: "action", width: 28 },
-          { header: "Actor", key: "actorId", width: 18 },
-          { header: "Target", key: "target", width: 22 },
-          { header: "Entry hash", sub: "SHA-256", key: "entryHash", width: 24 },
+          { header: "Entry ID",   key: "id",        width: 14 },
+          { header: "Created",    key: "createdAt", format: "datetime", width: 16 },
+          { header: "Category",   key: "category",  width: 10 },
+          { header: "Action",     key: "action",    width: 22 },
+          { header: "Actor",      key: "actorId",   width: 14 },
+          { header: "Target",     key: "target",    width: 16 },
+          { header: "Entry hash", sub: "SHA-256",   key: "entryHash", width: 18 },
         ],
         rows: entries.map((e) => ({
           id: e.id,
