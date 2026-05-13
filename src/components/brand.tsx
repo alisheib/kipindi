@@ -230,6 +230,7 @@ export function TippingBar({
   showLabels = true,
   resolved = false,
   className,
+  recastOnHover = true,
 }: {
   yesPct?: number;
   height?: number;
@@ -237,8 +238,30 @@ export function TippingBar({
   showLabels?: boolean;
   resolved?: boolean;
   className?: string;
+  /** Hover-recast gesture per kit spec: bar collapses to 50/50 then
+   *  re-expands to the true split with an overshoot, a gilt hairline
+   *  sweeps across, leading side bolds. Disable on order books, depth
+   *  charts, and any list of > 10 bars in view. */
+  recastOnHover?: boolean;
 }) {
-  const yes = Math.max(0, Math.min(100, yesPct));
+  const target = Math.max(0, Math.min(100, yesPct));
+  const [animYes, setAnimYes] = React.useState(target);
+  const [sweepKey, setSweepKey] = React.useState(0);
+  const rafRef = React.useRef<number | null>(null);
+  React.useEffect(() => { setAnimYes(target); }, [target]);
+  React.useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
+
+  const handleEnter = () => {
+    if (!recastOnHover) return;
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    setSweepKey((k) => k + 1);
+    setAnimYes(50);
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = requestAnimationFrame(() => setAnimYes(target));
+    });
+  };
+
+  const yes = animYes;
   const no = 100 - yes;
   // Tilt eases off near 0/100 — at the extremes there is no "tipping" any
   // more, so the needle should stand cleanly upright instead of pivoting
@@ -247,7 +270,11 @@ export function TippingBar({
   const inner = Math.max(6, Math.min(94, yes));
   const tiltLean = (inner - 50) / 44;
   const tilt = tiltLean * 14;
-  const ease = animate ? "width 700ms cubic-bezier(.2,.8,.2,1), transform 700ms cubic-bezier(.2,.8,.2,1)" : "none";
+  // Kit recast uses `--ease-arrive` (cubic-bezier(.34, 1.56, .64, 1)) at
+  // 540ms for the overshoot. Static placements keep the original glide.
+  const ease = animate
+    ? "width 540ms cubic-bezier(.34, 1.56, .64, 1), transform 540ms cubic-bezier(.34, 1.56, .64, 1), left 540ms cubic-bezier(.34, 1.56, .64, 1)"
+    : "none";
   const r = height / 2;
   // When one side is fully empty, the surviving side covers the whole
   // rail and needs both ends rounded — not just the inside corner — so the
@@ -265,17 +292,18 @@ export function TippingBar({
         style={{
           position: "relative",
           height,
-          // Kit values: royal track with royal-edge inset stroke.
           background: "oklch(50% 0.20 268)",
           borderRadius: r,
           overflow: "visible",
           boxShadow: "inset 0 0 0 1px oklch(58% 0.17 268)",
+          cursor: recastOnHover ? "default" : undefined,
         }}
+        onMouseEnter={handleEnter}
         role="progressbar"
-        aria-valuenow={yes}
+        aria-valuenow={target}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label={`YES probability ${yes}%`}
+        aria-label={`YES probability ${target}%`}
       >
         <div
           style={{
@@ -327,6 +355,36 @@ export function TippingBar({
             />
           </div>
         )}
+        {recastOnHover && (
+          <div
+            key={sweepKey}
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: r,
+              overflow: "hidden",
+              pointerEvents: "none",
+              opacity: sweepKey === 0 ? 0 : undefined,
+            }}
+          >
+            {sweepKey > 0 && (
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background:
+                    "linear-gradient(90deg, transparent 0%, oklch(78% 0.13 80 / 0) 20%, oklch(78% 0.13 80 / 0.90) 50%, oklch(78% 0.13 80 / 0) 80%, transparent 100%)",
+                  backgroundSize: "35% 100%",
+                  backgroundRepeat: "no-repeat",
+                  backgroundPosition: "-35% 0",
+                  animation: "tb-pbar-sweep 540ms cubic-bezier(.22, 1, .36, 1) both",
+                  mixBlendMode: "screen",
+                }}
+              />
+            )}
+          </div>
+        )}
       </div>
       {showLabels && (
         <div
@@ -340,17 +398,42 @@ export function TippingBar({
           }}
         >
           <span style={{ color: "var(--bar-label-yes)" }}>
-            YES <strong style={{ color: "var(--bar-label-yes-strong)" }}>{yes}%</strong>
+            YES{" "}
+            <strong
+              style={{
+                color: "var(--bar-label-yes-strong)",
+                fontWeight: target >= 50 ? 700 : 500,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              {Math.round(yes)}%
+            </strong>
           </span>
           <span style={{ color: "var(--bar-label-tipping)", fontStyle: "italic", textTransform: "uppercase", fontSize: 9 }}>
-            {Math.abs(yes - 50) < 3 ? "tipping" : yes > 50 ? "leans yes" : "leans no"}
+            {Math.abs(target - 50) < 3 ? "tipping" : target > 50 ? "leans yes" : "leans no"}
           </span>
           <span style={{ color: "var(--bar-label-no)" }}>
-            <strong style={{ color: "var(--bar-label-no-strong)" }}>{no}%</strong> NO
+            <strong
+              style={{
+                color: "var(--bar-label-no-strong)",
+                fontWeight: target < 50 ? 700 : 500,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              {Math.round(no)}%
+            </strong>{" "}
+            NO
           </span>
         </div>
       )}
-      <style>{`@keyframes tb-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }`}</style>
+      <style>{`
+        @keyframes tb-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+        @keyframes tb-pbar-sweep {
+          0%   { background-position: -35% 0; opacity: 0; }
+          15%  { opacity: 0.9; }
+          100% { background-position: 135% 0; opacity: 0; }
+        }
+      `}</style>
     </div>
   );
 }

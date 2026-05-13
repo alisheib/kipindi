@@ -44,6 +44,15 @@ export function BetConfirmModal({
   const startedAtRef = useRef<number>(0);
   const rafRef = useRef<number | null>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
+  // Direct-DOM target for the gilt countdown strip. Driving its
+  // transform through React state caused stair-stepping: every RAF
+  // triggered a full modal re-render AND a CSS transition that
+  // interpolated between values, so overlapping 80ms transitions
+  // fought the next frame's setState. Now we mutate the ref in the
+  // RAF loop and let React state only update the seconds label
+  // (~1Hz) — animation is smooth, label is correct.
+  const stripRef = useRef<HTMLDivElement>(null);
+  const lastSecLabelRef = useRef<number>(Math.ceil(QUOTE_HOLD_MS / 1000));
 
   // Pin the latest callbacks + pending flag so the timer effect only
   // restarts when `open` actually flips. Otherwise the parent re-creating
@@ -63,15 +72,26 @@ export function BetConfirmModal({
     if (!open) return;
     startedAtRef.current = performance.now();
     setRemainingMs(QUOTE_HOLD_MS);
+    lastSecLabelRef.current = Math.ceil(QUOTE_HOLD_MS / 1000);
+    if (stripRef.current) stripRef.current.style.transform = "scaleX(1)";
     const tick = () => {
       const elapsed = performance.now() - startedAtRef.current;
       const left = Math.max(0, QUOTE_HOLD_MS - elapsed);
-      setRemainingMs(left);
+      // Direct DOM transform — no React render, no CSS transition.
+      // Each frame paints the exact instantaneous scale, no overlap.
+      if (stripRef.current) {
+        const pct = Math.max(0, Math.min(1, left / QUOTE_HOLD_MS));
+        stripRef.current.style.transform = `scaleX(${pct})`;
+      }
+      // React state only when the seconds label would change — once
+      // per second instead of once per frame. Keeps the modal stable.
+      const nextSec = Math.ceil(left / 1000);
+      if (nextSec !== lastSecLabelRef.current) {
+        lastSecLabelRef.current = nextSec;
+        setRemainingMs(left);
+      }
       if (left <= 0) {
         rafRef.current = null;
-        // Quote expired — close so the user re-aims, BUT NEVER while a
-        // submit is in flight; cancelling a pending action would race the
-        // server and leave a position placed but the modal closed early.
         if (!pendingRef.current) onCancelRef.current();
         return;
       }
@@ -110,7 +130,6 @@ export function BetConfirmModal({
     : { fg: "oklch(78% 0.16 22)",  bg: "oklch(40% 0.13 22 / 0.18)",  brd: "oklch(48% 0.15 22)" };
   const net = payout - stake;
   const netColor = lean === "negative" ? "var(--no-300)" : lean === "thin" ? "var(--warning-fg)" : "var(--gold-300)";
-  const progressPct = Math.max(0, Math.min(1, remainingMs / QUOTE_HOLD_MS));
   const seconds = Math.ceil(remainingMs / 1000);
 
   return createPortal(
@@ -135,15 +154,18 @@ export function BetConfirmModal({
         className="relative w-full max-w-[440px] rounded-2xl border border-border bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)]"
         style={{ animation: "bcm-rise 200ms cubic-bezier(.2,.8,.2,1)" }}
       >
-        {/* Quote-hold progress strip */}
+        {/* Quote-hold progress strip — driven directly via stripRef
+            from the RAF loop. No CSS transition (would overlap with
+            the next frame's render and stair-step). */}
         <div className="absolute inset-x-0 top-0 h-1 overflow-hidden rounded-t-2xl">
           <div
+            ref={stripRef}
             className="h-full origin-left"
             style={{
               width: "100%",
-              transform: `scaleX(${progressPct})`,
+              transform: "scaleX(1)",
               background: "linear-gradient(90deg, var(--gold-500), var(--gold-300))",
-              transition: "transform 80ms linear",
+              willChange: "transform",
             }}
           />
         </div>
