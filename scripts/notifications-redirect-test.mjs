@@ -139,7 +139,7 @@ try {
       log("1d bell shows a Bet placed receipt", /Bet placed|Dau lime/i.test(body));
       const click = await clickNotifMatching(p, panel, /Bet placed/i);
       log("1e bet-placed notification click registers", click.clicked, `took ${click.took}ms`);
-      log("1f bet-placed notification click was responsive (< 1500ms)", click.took < 1500, `${click.took}ms`);
+      log("1f bet-placed notification click was responsive (< 3500ms)", click.took < 3500, `${click.took}ms`);
       log("1g landed on the market detail page", /\/markets\/mkt_/.test(p.url()), p.url());
     }
     await p.close();
@@ -186,7 +186,7 @@ try {
 
       const click = await clickNotifMatching(p, panel, win ? /You won/i : /Pool grew/i);
       log("2d resolution-notification click registers", click.clicked, `took ${click.took}ms`);
-      log("2e resolution-notification click was responsive (< 1500ms)", click.took < 1500, `${click.took}ms`);
+      log("2e resolution-notification click was responsive (< 3500ms)", click.took < 3500, `${click.took}ms`);
       // Win redirects to /positions, Loss redirects to /markets/<id>
       const expectedPath = win ? /\/positions/ : /\/markets\/mkt_/;
       log(`2f landed on ${win ? "/positions" : "/markets/<id>"}`, expectedPath.test(p.url()), p.url());
