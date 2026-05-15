@@ -379,7 +379,9 @@ export function HeroConstellation({ height = 540 }: { height?: number }) {
       {/* Verdict tape — cycles every 6s. The heartbeat of the piece:
           a winning verdict resolves on stage, with the actual TZS payout
           and holder count. The matching dial in the constellation gains
-          a gilt halo for the duration (handled in the dial map above). */}
+          a gilt halo for the duration (handled in the dial map above).
+          Tape gracefully hides secondary fields as width shrinks so the
+          payout amount never clips on mobile. */}
       <div
         className="absolute"
         style={{
@@ -394,22 +396,24 @@ export function HeroConstellation({ height = 540 }: { height?: number }) {
           borderBottom: "1px solid color-mix(in oklab, oklch(78% 0.13 80) 28%, transparent)",
         }}
       >
-        <div
-          style={{
-            fontFamily: "var(--font-mono, JetBrains Mono)",
-            fontSize: 9,
-            letterSpacing: "0.30em",
-            textTransform: "uppercase",
-            color: "oklch(78% 0.13 80)",
-            opacity: 0.7,
-            paddingRight: 14,
-            marginRight: 14,
-            borderRight: "1px solid color-mix(in oklab, oklch(78% 0.13 80) 28%, transparent)",
-            whiteSpace: "nowrap",
-          }}
-        >
-          Latest verdict
-        </div>
+        {width >= 560 && (
+          <div
+            style={{
+              fontFamily: "var(--font-mono, JetBrains Mono)",
+              fontSize: 9,
+              letterSpacing: "0.30em",
+              textTransform: "uppercase",
+              color: "oklch(78% 0.13 80)",
+              opacity: 0.7,
+              paddingRight: 14,
+              marginRight: 14,
+              borderRight: "1px solid color-mix(in oklab, oklch(78% 0.13 80) 28%, transparent)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Latest verdict
+          </div>
+        )}
         <div
           key={verdictIdx}
           style={{
@@ -439,35 +443,40 @@ export function HeroConstellation({ height = 540 }: { height?: number }) {
           >
             {currentVerdict.side}
           </span>
-          <span
-            style={{
-              fontFamily: "var(--font-display, Sora)",
-              fontSize: 14,
-              fontWeight: 500,
-              color: "oklch(99% 0.006 268)",
-              letterSpacing: "-0.005em",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              minWidth: 0,
-            }}
-          >
-            {currentVerdict.title}
-          </span>
-          <span
-            style={{
-              fontFamily: "var(--font-mono, JetBrains Mono)",
-              fontSize: 11,
-              color: "oklch(72% 0.045 268)",
-              fontVariantNumeric: "tabular-nums",
-            }}
-          >
-            at {currentVerdict.odds}¢
-          </span>
+          {width >= 460 && (
+            <span
+              style={{
+                fontFamily: "var(--font-display, Sora)",
+                fontSize: 14,
+                fontWeight: 500,
+                color: "oklch(99% 0.006 268)",
+                letterSpacing: "-0.005em",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                minWidth: 0,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {currentVerdict.title}
+            </span>
+          )}
+          {width >= 700 && (
+            <span
+              style={{
+                fontFamily: "var(--font-mono, JetBrains Mono)",
+                fontSize: 11,
+                color: "oklch(72% 0.045 268)",
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              at {currentVerdict.odds}¢
+            </span>
+          )}
           <span style={{ flex: 1 }} />
           <span
             style={{
               fontFamily: "var(--font-display, Sora)",
-              fontSize: 17,
+              fontSize: width >= 460 ? 17 : 14,
               fontWeight: 600,
               color: "oklch(78% 0.13 80)",
               fontVariantNumeric: "tabular-nums",
@@ -475,22 +484,29 @@ export function HeroConstellation({ height = 540 }: { height?: number }) {
               display: "inline-flex",
               alignItems: "baseline",
               gap: 4,
+              whiteSpace: "nowrap",
             }}
           >
             <span>+TZS</span>
-            <RollingNumber value={currentVerdict.amount} fontSize={17} weight={600} />
+            {width >= 460 ? (
+              <RollingNumber value={currentVerdict.amount} fontSize={width >= 700 ? 17 : 14} weight={600} />
+            ) : (
+              <span>{(currentVerdict.amount / 1_000_000).toFixed(2)}M</span>
+            )}
           </span>
-          <span
-            style={{
-              fontFamily: "var(--font-mono, JetBrains Mono)",
-              fontSize: 10,
-              color: "oklch(72% 0.045 268)",
-              textTransform: "uppercase",
-              letterSpacing: "0.22em",
-            }}
-          >
-            paid · {currentVerdict.holders}
-          </span>
+          {width >= 700 && (
+            <span
+              style={{
+                fontFamily: "var(--font-mono, JetBrains Mono)",
+                fontSize: 10,
+                color: "oklch(72% 0.045 268)",
+                textTransform: "uppercase",
+                letterSpacing: "0.22em",
+              }}
+            >
+              paid · {currentVerdict.holders}
+            </span>
+          )}
         </div>
       </div>
 

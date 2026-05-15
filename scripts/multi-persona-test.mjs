@@ -123,7 +123,7 @@ console.log("\n=== PERSONA 2 · DUMB USER (validation stress) ===");
   const p2 = await ctx.newPage();
   await p2.goto(`${BASE}/auth/login`, { waitUntil: "networkidle" });
   await p2.waitForTimeout(300);
-  const phoneInput = p2.locator('input[type="tel"], input[name="phone"], input[name="msisdn"]').first();
+  const phoneInput = p2.locator('input[type="tel"], #phone, input[name="msisdn"]').first();
   if (await phoneInput.isVisible().catch(() => false)) {
     await phoneInput.fill("' OR 1=1 --");
     await p2.locator('button[type="submit"]').first().click().catch(() => {});

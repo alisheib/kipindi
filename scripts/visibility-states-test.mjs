@@ -250,10 +250,15 @@ try {
     await p.waitForTimeout(400);
     await p.locator('button[aria-label="Account menu"]').first().click();
     await p.waitForTimeout(400);
-    log("player · avatar menu opens",          await p.locator('[role="menu"]').first().isVisible({ timeout: 1500 }).catch(() => false));
-    log("player · avatar menu has Sign out",   await visibleByText(p, "Sign out"));
-    log("player · avatar menu has Profile",    await visibleByText(p, "Profile"));
-    log("player · avatar menu has Wallet",     await visibleByText(p, "Wallet"));
+    const menu = p.locator('[role="menu"]').first();
+    log("player · avatar menu opens", await menu.isVisible({ timeout: 1500 }).catch(() => false));
+    // Scope the text lookups to the menu itself — the homepage has
+    // "Profile" / "Wallet" elsewhere (bottom-nav, etc) and `.first()`
+    // would pick the wrong one. Scoped search picks the right node
+    // regardless of DOM order.
+    log("player · avatar menu has Sign out",   await menu.getByText(/Sign out/i).first().isVisible({ timeout: 1500 }).catch(() => false));
+    log("player · avatar menu has Profile",    await menu.getByText(/Profile/i).first().isVisible({ timeout: 1500 }).catch(() => false));
+    log("player · avatar menu has Wallet",     await menu.getByText(/Wallet/i).first().isVisible({ timeout: 1500 }).catch(() => false));
     await p.close();
   }
 

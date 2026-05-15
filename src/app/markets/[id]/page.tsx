@@ -122,11 +122,10 @@ export default async function MarketDetail({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
         <section>
+          {/* TippingBar carries its own YES / TIPPING / NO labels — the
+              older page-level duplicate row was removed to avoid the
+              "YES 50%  YES 50%" double-line that appeared on market detail. */}
           <TippingBar yesPct={yesPct} height={28} showLabels resolved={isResolved} />
-          <div className="mt-2 flex items-baseline justify-between font-mono text-[13px]">
-            <span className="text-yes-300 font-semibold">YES {yesPct}%</span>
-            <span className="text-no-300 font-semibold">{100 - yesPct}% NO</span>
-          </div>
 
           {!isResolved && (
             <div className="mt-7 rounded-lg border border-border bg-bg-elevated p-5">
