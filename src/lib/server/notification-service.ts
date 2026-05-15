@@ -75,7 +75,7 @@ export function notifyBetPlaced(userId: string, opts: {
 }) {
   return notify({
     userId,
-    kind: "ROUND_RESULT",
+    kind: "BET_PLACED",
     titleEn: `Bet placed · ${opts.side} TZS ${opts.stake.toLocaleString()}`,
     titleSw: `Dau limewekwa · ${opts.side} TZS ${opts.stake.toLocaleString()}`,
     bodyEn: `${opts.marketTitle.slice(0, 70)} · pays TZS ${opts.payoutIfWin.toLocaleString()} if right.`,
@@ -103,7 +103,7 @@ export function notifyWin(userId: string, amount: number, label: string, href = 
 export function notifyLoss(userId: string, opts: { stake: number; marketTitle: string; marketId: string }) {
   return notify({
     userId,
-    kind: "ROUND_RESULT",
+    kind: "LOSS",
     titleEn: `Pool grew · TZS ${opts.stake.toLocaleString()} contributed`,
     titleSw: `Bwawa limeongezeka · TZS ${opts.stake.toLocaleString()}`,
     bodyEn: `${opts.marketTitle.slice(0, 70)} · the call didn't land this time.`,
@@ -120,6 +120,61 @@ export function notifyDeposit(userId: string, amount: number, provider: string) 
     titleSw: `Amana imethibitishwa · TZS ${amount.toLocaleString()}`,
     bodyEn: `Funds added via ${provider}.`,
     bodySw: `Pesa imeingia kupitia ${provider}.`,
+    href: "/wallet",
+  });
+}
+
+export function notifyWithdraw(
+  userId: string,
+  opts: {
+    status: "INITIATED" | "CONFIRMED" | "AML_REVIEW" | "FAILED";
+    amount: number;
+    net?: number;
+    provider: string;
+    reason?: string;
+  },
+) {
+  if (opts.status === "CONFIRMED") {
+    const net = opts.net ?? opts.amount;
+    return notify({
+      userId,
+      kind: "WITHDRAW",
+      titleEn: `Withdrawal sent · TZS ${net.toLocaleString()}`,
+      titleSw: `Pesa imetumwa · TZS ${net.toLocaleString()}`,
+      bodyEn: `${opts.provider} should land in moments.`,
+      bodySw: `${opts.provider} itafika sasa hivi.`,
+      href: "/wallet",
+    });
+  }
+  if (opts.status === "AML_REVIEW") {
+    return notify({
+      userId,
+      kind: "WITHDRAW",
+      titleEn: `Withdrawal under review · TZS ${opts.amount.toLocaleString()}`,
+      titleSw: `Inakaguliwa · TZS ${opts.amount.toLocaleString()}`,
+      bodyEn: "Compliance review takes up to 24h.",
+      bodySw: "Ukaguzi unachukua hadi saa 24.",
+      href: "/wallet",
+    });
+  }
+  if (opts.status === "FAILED") {
+    return notify({
+      userId,
+      kind: "WITHDRAW",
+      titleEn: `Withdrawal failed · TZS ${opts.amount.toLocaleString()}`,
+      titleSw: `Kutoa pesa kumeshindikana · TZS ${opts.amount.toLocaleString()}`,
+      bodyEn: opts.reason ? `Funds returned. ${opts.reason}` : "Funds returned to your balance.",
+      bodySw: "Pesa imerudishwa kwenye salio lako.",
+      href: "/wallet",
+    });
+  }
+  return notify({
+    userId,
+    kind: "WITHDRAW",
+    titleEn: `Withdrawal in flight · TZS ${opts.amount.toLocaleString()}`,
+    titleSw: `Inatuma · TZS ${opts.amount.toLocaleString()}`,
+    bodyEn: `${opts.provider} processing.`,
+    bodySw: `${opts.provider} inaendelea.`,
     href: "/wallet",
   });
 }

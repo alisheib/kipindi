@@ -1,7 +1,7 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
-import { ExternalLink, Plus } from "lucide-react";
+import { ExternalLink, Plus, Search } from "lucide-react";
 import Link from "next/link";
-import { listMarkets, impliedYesPct, seedDemoMarkets } from "@/lib/server/market-service";
+import { listMarkets, impliedYesPct, seedDemoMarkets, type MarketCategory } from "@/lib/server/market-service";
 import { ProbabilityBar } from "@/components/markets/probability-bar";
 
 export const metadata = { title: "Admin · Markets curation" };
@@ -9,6 +9,9 @@ export const dynamic = "force-dynamic";
 
 const fmtTzs = (n: number) => `TZS ${n.toLocaleString("en-US")}`;
 const fmtTime = (iso: string) => new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
+
+const STATUS_OPTIONS = ["LIVE", "CLOSED", "RESOLVED", "VOIDED"] as const;
+const CATEGORY_OPTIONS: readonly MarketCategory[] = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"];
 
 function timeLeftStr(iso: string): string {
   const ms = Date.parse(iso) - Date.now();
@@ -19,13 +22,38 @@ function timeLeftStr(iso: string): string {
   return `${h}h`;
 }
 
-export default function AdminMarketsPage() {
+export default async function AdminMarketsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; status?: string; category?: string }>;
+}) {
   seedDemoMarkets();
+  const sp = await searchParams;
+  const query = (sp.q ?? "").trim().toLowerCase();
+  // Validate against closed sets so a typo'd ?status=LIV doesn't silently
+  // erase the table — fall back to "no filter" instead.
+  const statusFilter = (STATUS_OPTIONS as readonly string[]).includes(sp.status ?? "") ? sp.status : "";
+  const categoryFilter = (CATEGORY_OPTIONS as readonly string[]).includes(sp.category ?? "")
+    ? (sp.category as MarketCategory)
+    : "";
+
   const all = listMarkets();
+  const filtered = all.filter((m) => {
+    if (statusFilter && m.status !== statusFilter) return false;
+    if (categoryFilter && m.category !== categoryFilter) return false;
+    if (!query) return true;
+    return (
+      m.id.toLowerCase().includes(query) ||
+      m.titleEn.toLowerCase().includes(query) ||
+      (m.titleSw ?? "").toLowerCase().includes(query)
+    );
+  });
+
   const live = all.filter((m) => m.status === "LIVE");
   const closed = all.filter((m) => m.status === "CLOSED");
   const resolved = all.filter((m) => m.status === "RESOLVED");
   const totalVolume = all.reduce((s, m) => s + m.yesPool + m.noPool, 0);
+  const hasFilter = !!query || !!statusFilter || !!categoryFilter;
 
   return (
     <>
@@ -51,6 +79,62 @@ export default function AdminMarketsPage() {
           <AdminKpi label="Total volume" sw="Jumla ya ujazo" value={fmtTzs(totalVolume)} />
         </div>
 
+        <AdminCard>
+          <form className="flex flex-wrap gap-2">
+            <div className="relative flex-1 min-w-[260px]">
+              <Search size={14} aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+              <input
+                name="q"
+                defaultValue={query}
+                placeholder="Search title (EN / SW) or mkt_… id"
+                aria-label="Search markets"
+                className="w-full h-10 pl-9 pr-3 rounded-md bg-surface border border-border text-text font-mono text-body-sm focus:outline-none focus:border-border-focus"
+              />
+            </div>
+            <label className="block">
+              <span className="sr-only">Status filter</span>
+              <select
+                name="status"
+                defaultValue={statusFilter}
+                aria-label="Filter by status"
+                title="Filter by status"
+                className="h-10 px-3 rounded-md bg-surface border border-border text-text text-body-sm"
+              >
+                <option value="">All statuses</option>
+                {STATUS_OPTIONS.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="sr-only">Category filter</span>
+              <select
+                name="category"
+                defaultValue={categoryFilter}
+                aria-label="Filter by category"
+                title="Filter by category"
+                className="h-10 px-3 rounded-md bg-surface border border-border text-text text-body-sm"
+              >
+                <option value="">All categories</option>
+                {CATEGORY_OPTIONS.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </label>
+            <button type="submit" className="h-10 px-4 rounded-md bg-royal text-onBrand font-semibold text-body-sm hover:bg-royal-hover transition-colors">
+              Search
+            </button>
+            {hasFilter && (
+              <a href="/admin/markets" className="h-10 px-4 inline-flex items-center rounded-md border border-border text-text-secondary text-body-sm hover:bg-surface-hover">
+                Clear
+              </a>
+            )}
+          </form>
+          <p className="mt-2 font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
+            {filtered.length} of {all.length} {all.length === 1 ? "market" : "markets"}
+          </p>
+        </AdminCard>
+
         <AdminCard title="All markets" sw="Soko zote" padding="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
@@ -66,7 +150,7 @@ export default function AdminMarketsPage() {
                 </tr>
               </thead>
               <tbody>
-                {all.map((m) => {
+                {filtered.map((m) => {
                   const yes = impliedYesPct(m);
                   return (
                     <tr key={m.id} className="border-b border-border last:border-b-0 align-top">
@@ -99,6 +183,11 @@ export default function AdminMarketsPage() {
                     </tr>
                   );
                 })}
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="p-6 text-center text-text-tertiary">No markets match the current filter.</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

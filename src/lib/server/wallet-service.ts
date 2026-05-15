@@ -14,7 +14,7 @@ import { dispatchDeposit, dispatchWithdrawal, computeWithdrawalTax } from "./pay
 import { rateCheck } from "./rate-limit";
 import { DepositSchema, WithdrawSchema } from "./validators";
 import { checkDepositLimit, isLockedOut } from "./responsible-gambling";
-import { notifyDeposit } from "./notification-service";
+import { notifyDeposit, notifyWithdraw } from "./notification-service";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
 
@@ -141,18 +141,22 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
   });
   audit({ category: "WALLET", action: "withdraw.initiated", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { provider: parse.data.provider, amount: parse.data.amount, tax } });
 
+  const providerLabel = friendlyProvider(parse.data.provider);
+
   const result = await dispatchWithdrawal({ provider: parse.data.provider, amount: net, msisdn: parse.data.msisdn, userId });
   if (!result.ok) {
     // refund the hold
     db.wallet.update(wallet.id, { balance: wallet.balance, hold: wallet.hold });
     db.txn.update(txnId, { status: "FAILED", description: `Withdrawal failed: ${result.reason}` });
     audit({ category: "WALLET", action: "withdraw.failed", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { reason: result.reason } });
+    notifyWithdraw(userId, { status: "FAILED", amount: parse.data.amount, provider: providerLabel, reason: result.reason });
     return { ok: false, error: "Withdrawal failed. Funds returned to your balance.", code: "INVALID" };
   }
 
   if (result.status === "AML_REVIEW") {
     db.txn.update(txnId, { status: "AML_REVIEW", providerRef: result.providerRef, amlReason: "Threshold ≥ TZS 1,000,000" });
     audit({ category: "COMPLIANCE", action: "withdraw.aml_held", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { amount: parse.data.amount } });
+    notifyWithdraw(userId, { status: "AML_REVIEW", amount: parse.data.amount, net, provider: providerLabel });
     return { ok: true, data: { txnId, status: "AML_REVIEW", tax, net } };
   }
 
@@ -160,6 +164,7 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
   db.wallet.update(wallet.id, { hold: wallet.hold });
   db.txn.update(txnId, { status: "CONFIRMED", providerRef: result.providerRef, completedAt: new Date().toISOString() });
   audit({ category: "WALLET", action: "withdraw.confirmed", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: result.providerRef, net } });
+  notifyWithdraw(userId, { status: "CONFIRMED", amount: parse.data.amount, net, provider: providerLabel });
 
   return { ok: true, data: { txnId, status: "CONFIRMED", tax, net } };
 }

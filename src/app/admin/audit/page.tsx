@@ -27,8 +27,17 @@ export default async function AdminAuditPage({
   searchParams: Promise<{ category?: string; actorId?: string }>;
 }) {
   const sp = await searchParams;
-  const category = (sp.category as AuditCategory | undefined) ?? undefined;
-  const actorId = sp.actorId ?? undefined;
+  // Validate against the closed CATEGORIES set so a stray ?category=BOGUS
+  // does not silently render an empty page (operator wonders why).
+  const rawCategory = sp.category;
+  const category: AuditCategory | undefined =
+    rawCategory && (CATEGORIES as readonly string[]).includes(rawCategory)
+      ? (rawCategory as AuditCategory)
+      : undefined;
+  const invalidCategory = !!rawCategory && !category;
+  // actorId: shape-check (usr_…) so the panel doesn't try to render a
+  // hostile string back into the page.
+  const actorId = typeof sp.actorId === "string" && /^[a-zA-Z0-9_]{4,40}$/.test(sp.actorId) ? sp.actorId : undefined;
   const entries = getAuditPage({ limit: 500, category, actorId });
   const allEntries = getAuditPage({ limit: 100_000 });
   const chain = verifyChain();
@@ -74,6 +83,11 @@ export default async function AdminAuditPage({
             {entries.length} entries
           </span>
         </div>
+        {invalidCategory && (
+          <p className="font-mono text-[11px] text-warning-fg bg-warning-bg/15 border border-warning-border rounded-md px-3 py-2">
+            Unknown audit category &mdash; showing all entries. Pick one from the chip row above.
+          </p>
+        )}
 
         <AdminCard padding="p-0">
           <div className="overflow-x-auto">

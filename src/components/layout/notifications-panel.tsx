@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { Bell, Trophy, Coins, ShieldCheck, ArrowDownToLine, ArrowUpFromLine, Activity, X } from "lucide-react";
+import { Bell, Trophy, Coins, ShieldCheck, ArrowDownToLine, ArrowUpFromLine, Activity, TrendingDown, Ticket, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fetchMyNotifications, markNotifReadAction, markAllReadAction, dismissNotifAction } from "@/app/_actions/notifications";
 import type { StoredNotification } from "@/lib/server/store";
@@ -15,6 +15,8 @@ import type { StoredNotification } from "@/lib/server/store";
 const iconFor = (k: StoredNotification["kind"]) => {
   switch (k) {
     case "WIN":          return Trophy;
+    case "LOSS":         return TrendingDown;
+    case "BET_PLACED":   return Ticket;
     case "DEPOSIT":      return ArrowDownToLine;
     case "WITHDRAW":     return ArrowUpFromLine;
     case "KYC":          return ShieldCheck;
@@ -28,8 +30,14 @@ const iconFor = (k: StoredNotification["kind"]) => {
 /** Kit-tinted swatch per notification kind (OKLCH-tuned for dark + light). */
 const tintFor = (k: StoredNotification["kind"]) => {
   switch (k) {
+    // Gold is celebratory — reserved for wins only.
     case "WIN":          return "border-gold-700 bg-gold-500/10 text-gold-300";
-    case "ROUND_RESULT": return "border-gold-700 bg-gold-500/10 text-gold-300";
+    // Loss uses muted neutral tint — kit responsibility-first language
+    // forbids alarming colors for a player's bad outcome.
+    case "LOSS":         return "border-border bg-bg-overlay text-text-muted";
+    // Bet placed = informational receipt — info tint, never gold.
+    case "BET_PLACED":   return "border-info-border bg-info-bg/30 text-info-fg";
+    case "ROUND_RESULT": return "border-border bg-bg-overlay text-text-muted";
     case "DEPOSIT":      return "border-yes-700 bg-yes-500/10 text-yes-300";
     case "WITHDRAW":     return "border-warning-border bg-warning-bg/30 text-warning-fg";
     case "KYC":          return "border-info-border bg-info-bg/30 text-info-fg";

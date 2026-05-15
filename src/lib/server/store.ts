@@ -170,7 +170,17 @@ export type StoredMapigoBet = {
 export type StoredNotification = {
   id: string;
   userId: string;
-  kind: "WIN" | "ROUND_RESULT" | "DEPOSIT" | "WITHDRAW" | "KYC" | "MATCH_START" | "RG" | "SECURITY";
+  kind:
+    | "WIN"
+    | "LOSS"
+    | "BET_PLACED"
+    | "ROUND_RESULT"
+    | "DEPOSIT"
+    | "WITHDRAW"
+    | "KYC"
+    | "MATCH_START"
+    | "RG"
+    | "SECURITY";
   titleEn: string;
   titleSw: string;
   bodyEn: string;
