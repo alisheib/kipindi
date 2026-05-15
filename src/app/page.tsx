@@ -124,7 +124,7 @@ export default async function LandingPage() {
         </div>
 
         <div className="order-1 lg:order-2 -mx-3 lg:mx-0">
-          <HeroConstellation height={460} />
+          <HeroConstellation height={540} />
         </div>
       </section>
 

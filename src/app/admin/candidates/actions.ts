@@ -1,0 +1,84 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { currentSession } from "@/lib/server/auth-service";
+import { db } from "@/lib/server/store";
+import { audit } from "@/lib/server/audit";
+import {
+  approveCandidate,
+  rejectCandidate,
+  markPublished,
+  getCandidate,
+  type RejectReason,
+} from "@/lib/server/market-candidate";
+import { createMarket } from "@/lib/server/market-service";
+import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
+
+const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+
+async function requireAdmin(action: string): Promise<string> {
+  const session = await currentSession();
+  if (!session) redirect("/auth/login");
+  const u = db.user.findById(session.userId);
+  if (!u || !ADMIN_ROLES.has(u.role)) {
+    audit({
+      category: "SECURITY", action: "privilege_escalation_blocked",
+      actorId: session.userId, targetType: "Action", targetId: action,
+      payload: { role: u?.role ?? "unknown" },
+    });
+    throw new Error("Forbidden: admin role required.");
+  }
+  return session.userId;
+}
+
+export async function approveCandidateAction(formData: FormData) {
+  const officerId = await requireAdmin("approveCandidateAction");
+  const id = String(formData.get("id") ?? "");
+  const note = String(formData.get("note") ?? "");
+  const c = approveCandidate(id, { officerId, note: note || undefined });
+  if (!c) return { ok: false as const, error: "Candidate not found or not in review state." };
+  revalidatePath("/admin/candidates");
+  return { ok: true as const, candidate: c };
+}
+
+export async function rejectCandidateAction(formData: FormData) {
+  const officerId = await requireAdmin("rejectCandidateAction");
+  const id = String(formData.get("id") ?? "");
+  const reason = String(formData.get("reason") ?? "officer_decision") as RejectReason;
+  const note = String(formData.get("note") ?? "");
+  const c = rejectCandidate(id, { officerId, reason, note: note || undefined });
+  if (!c) return { ok: false as const, error: "Candidate not found." };
+  revalidatePath("/admin/candidates");
+  return { ok: true as const };
+}
+
+export async function publishCandidateAction(formData: FormData) {
+  const officerId = await requireAdmin("publishCandidateAction");
+  const id = String(formData.get("id") ?? "");
+  const c = getCandidate(id);
+  if (!c) return { ok: false as const, error: "Candidate not found." };
+  if (c.state !== "APPROVED") return { ok: false as const, error: "Candidate is not approved." };
+  if (c.sources.length === 0) return { ok: false as const, error: "Candidate has no source URL." };
+
+  seedDefaultSources();
+  const primary = c.sources[0];
+  const trust = isSourceTrusted(primary.url, c.category === "infrastructure" ? "macro" : c.category);
+  if (!trust.ok) {
+    return { ok: false as const, error: `Source not approved · ${trust.reason}.` };
+  }
+
+  const market = createMarket({
+    titleEn: c.proposedTitleEn,
+    titleSw: c.proposedTitleSw ?? c.proposedTitleEn,
+    category: c.category === "infrastructure" ? "macro" : c.category,
+    sourceUrl: primary.url,
+    resolutionCriterion: c.resolutionCriterion,
+    resolutionAt: c.resolutionAt,
+    proposedBy: officerId,
+  });
+  markPublished(c.id, market.id, officerId);
+  revalidatePath("/admin/candidates");
+  revalidatePath("/admin/markets");
+  return { ok: true as const, marketId: market.id };
+}

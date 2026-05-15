@@ -7,11 +7,19 @@ const HC_MARKETS = [
   { id: "afcon", x: 0.20, y: 0.34, size: 96, yes: 57, phase: 0.0, title: "TZ hosts AFCON 2027 group stage",   date: "Resolves 27 Mar" },
   { id: "rains", x: 0.42, y: 0.66, size: 72, yes: 64, phase: 1.4, title: "Long rains begin before 15 Apr",     date: "Resolves 15 Apr" },
   { id: "bot",   x: 0.34, y: 0.20, size: 56, yes: 71, phase: 2.6, title: "BoT holds rate at next MPC",         date: "Resolves 02 May" },
-  { id: "usd",   x: 0.60, y: 0.26, size: 64, yes: 38, phase: 0.7, title: "USD/TZS closes < 2,650 in Q2",       date: "Resolves 30 Jun" },
-  { id: "simba", x: 0.74, y: 0.58, size: 60, yes: 31, phase: 2.0, title: "Simba SC lifts NBC Premier",         date: "Resolves 18 Jul" },
-  { id: "kili",  x: 0.84, y: 0.30, size: 48, yes: 64, phase: 3.4, title: "Kilimanjaro tops 50k climbs",        date: "Resolves EOY" },
-  { id: "bgs",   x: 0.52, y: 0.78, size: 44, yes: 82, phase: 1.0, title: "Bongo Star Search · finale on time", date: "Resolves 04 Aug" },
+  { id: "usd",   x: 0.62, y: 0.24, size: 64, yes: 38, phase: 0.7, title: "USD/TZS closes < 2,650 in Q2",       date: "Resolves 30 Jun" },
+  { id: "simba", x: 0.76, y: 0.56, size: 60, yes: 31, phase: 2.0, title: "Simba SC lifts NBC Premier",         date: "Resolves 18 Jul" },
+  { id: "kili",  x: 0.86, y: 0.30, size: 48, yes: 64, phase: 3.4, title: "Kilimanjaro tops 50k climbs",        date: "Resolves EOY" },
+  { id: "bgs",   x: 0.54, y: 0.80, size: 44, yes: 82, phase: 1.0, title: "Bongo Star Search · finale on time", date: "Resolves 04 Aug" },
 ] as const;
+
+const HC_VERDICTS = [
+  { mid: "afcon", side: "YES" as const, odds: 84, amount: 2_840_000, holders: 412, title: "TZ to host AFCON 2027 group stage" },
+  { mid: "bot",   side: "YES" as const, odds: 71, amount: 1_120_000, holders: 198, title: "BoT held rate at MPC" },
+  { mid: "simba", side: "NO"  as const, odds: 69, amount:   720_000, holders: 256, title: "Simba SC did not lift NBC Premier" },
+  { mid: "rains", side: "YES" as const, odds: 64, amount: 1_980_000, holders: 374, title: "Long rains began before 15 Apr" },
+  { mid: "usd",   side: "NO"  as const, odds: 62, amount:   904_000, holders: 211, title: "USD/TZS did not close < 2,650 in Q2" },
+];
 
 function DriftParticles({ count = 18 }: { count?: number }) {
   const particles = useMemo(() => Array.from({ length: count }).map((_, i) => {
@@ -83,8 +91,9 @@ function RollingNumber({ value, fontSize = 22, weight = 600 }: { value: number; 
   );
 }
 
-export function HeroConstellation({ height = 460 }: { height?: number }) {
+export function HeroConstellation({ height = 540 }: { height?: number }) {
   const [hovered, setHovered] = useState<string | null>(null);
+  const [verdictIdx, setVerdictIdx] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(1100);
 
@@ -100,7 +109,16 @@ export function HeroConstellation({ height = 460 }: { height?: number }) {
     return () => ro.disconnect();
   }, []);
 
+  useEffect(() => {
+    const id = setInterval(() => setVerdictIdx((i) => (i + 1) % HC_VERDICTS.length), 6000);
+    return () => clearInterval(id);
+  }, []);
+
   const horizonY = height * 0.58;
+  const pendulumX = width / 2;
+  const pendulumAnchorY = height * 0.06;
+  const pendulumLen = height * 0.32;
+  const currentVerdict = HC_VERDICTS[verdictIdx];
 
   return (
     <div
@@ -135,17 +153,55 @@ export function HeroConstellation({ height = 460 }: { height?: number }) {
             <stop offset="0%"   stopColor="oklch(78% 0.13 80)" stopOpacity="0.12" />
             <stop offset="100%" stopColor="oklch(78% 0.13 80)" stopOpacity="0" />
           </radialGradient>
+          <radialGradient id="hc-bob" cx="0.4" cy="0.35" r="0.6">
+            <stop offset="0%"   stopColor="oklch(95% 0.10 82)" />
+            <stop offset="60%"  stopColor="oklch(78% 0.13 80)" />
+            <stop offset="100%" stopColor="oklch(50% 0.10 76)" />
+          </radialGradient>
         </defs>
         <ellipse cx={width * 0.42} cy={height * 0.46} rx={width * 0.38} ry={height * 0.55} fill="url(#hc-glow)" />
         <line x1="0" y1={horizonY} x2={width} y2={horizonY} stroke="url(#hc-horizon)" strokeWidth="1" />
         <line x1={width / 2} y1={horizonY - 5} x2={width / 2} y2={horizonY + 5}
               stroke="oklch(78% 0.13 80)" strokeWidth="1" opacity="0.7" />
+
+        {/* Pendulum — the brand's tipping point made literal. Anchored at
+            top center, swinging through an 8° arc on a 4s curve. */}
+        <g
+          className="hc-pendulum"
+          style={{ transformOrigin: `${pendulumX}px ${pendulumAnchorY}px` }}
+        >
+          {/* Anchor pin */}
+          <circle cx={pendulumX} cy={pendulumAnchorY} r={2.4} fill="oklch(78% 0.13 80)" opacity={0.85} />
+          {/* Rod */}
+          <line
+            x1={pendulumX} y1={pendulumAnchorY}
+            x2={pendulumX} y2={pendulumAnchorY + pendulumLen}
+            stroke="oklch(78% 0.13 80)" strokeWidth="0.7" opacity={0.45}
+          />
+          {/* Bob */}
+          <circle cx={pendulumX} cy={pendulumAnchorY + pendulumLen} r={6} fill="url(#hc-bob)" opacity={0.92} />
+        </g>
       </svg>
+
+      {/* Hover scrim — darkens everything except the focused dial */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "oklch(11% 0.090 268 / 0.55)",
+          opacity: hovered ? 1 : 0,
+          transition: "opacity 320ms var(--ease-glide)",
+          pointerEvents: "none",
+          zIndex: 1,
+        }}
+      />
 
       {HC_MARKETS.map((m) => {
         const cx = m.x * width;
         const cy = m.y * height;
         const isHover = hovered === m.id;
+        const dimmed = !!hovered && !isHover;
+        const verdictMatch = currentVerdict.mid === m.id;
         const tipOnLeft = m.x > 0.55;
         const tipDist = m.size / 2 + 18;
 
@@ -161,7 +217,12 @@ export function HeroConstellation({ height = 460 }: { height?: number }) {
                 width: m.size,
                 height: m.size,
                 cursor: "help",
-                zIndex: isHover ? 2 : 1,
+                zIndex: isHover ? 5 : 2,
+                opacity: dimmed ? 0.18 : 1,
+                transform: isHover ? "scale(1.06)" : "scale(1)",
+                transformOrigin: "center",
+                filter: dimmed ? "blur(1px)" : "none",
+                transition: "opacity 320ms var(--ease-glide), transform 480ms var(--ease-glide), filter 480ms var(--ease-glide)",
               }}
             >
               <div
@@ -172,9 +233,11 @@ export function HeroConstellation({ height = 460 }: { height?: number }) {
                   animationDelay: `${m.phase}s`,
                   transformOrigin: "center",
                   filter: isHover
-                    ? "drop-shadow(0 8px 24px oklch(8% 0.06 268 / 0.7)) drop-shadow(0 0 14px oklch(78% 0.13 86 / 0.35))"
-                    : "drop-shadow(0 6px 20px oklch(8% 0.06 268 / 0.55))",
-                  transition: "filter 320ms var(--ease-glide)",
+                    ? "drop-shadow(0 12px 30px oklch(8% 0.06 268 / 0.85)) drop-shadow(0 0 28px oklch(78% 0.13 86 / 0.65))"
+                    : verdictMatch
+                      ? "drop-shadow(0 6px 20px oklch(8% 0.06 268 / 0.55)) drop-shadow(0 0 14px oklch(78% 0.13 86 / 0.45))"
+                      : "drop-shadow(0 6px 20px oklch(8% 0.06 268 / 0.55))",
+                  transition: "filter 480ms var(--ease-glide)",
                 }}
               >
                 <ConfidenceDial yesPct={m.yes} size={m.size} />
@@ -284,36 +347,157 @@ export function HeroConstellation({ height = 460 }: { height?: number }) {
         The Tipping Field
       </div>
 
+      {/* Predictors counter — repositioned to top-right (was bottom-left).
+          Makes room for the verdict tape along the bottom. */}
       <div
         className="absolute"
         style={{
-          bottom: 22,
-          left: 28,
-          display: "flex",
-          alignItems: "baseline",
-          gap: 10,
+          top: 22,
+          right: 28,
+          textAlign: "right",
           zIndex: 4,
-          color: "oklch(99% 0.006 268)",
         }}
       >
-        <RollingNumber value={47312} fontSize={22} weight={600} />
         <div
           style={{
             fontFamily: "var(--font-mono, JetBrains Mono)",
-            fontSize: 10,
-            letterSpacing: "0.22em",
+            fontSize: 9,
+            letterSpacing: "0.24em",
             textTransform: "uppercase",
-            color: "oklch(72% 0.045 268)",
+            color: "oklch(78% 0.13 80)",
+            opacity: 0.85,
+            marginBottom: 2,
           }}
         >
           predictors live
+        </div>
+        <div style={{ color: "oklch(99% 0.006 268)" }}>
+          <RollingNumber value={47312} fontSize={22} weight={600} />
+        </div>
+      </div>
+
+      {/* Verdict tape — cycles every 6s. The heartbeat of the piece:
+          a winning verdict resolves on stage, with the actual TZS payout
+          and holder count. The matching dial in the constellation gains
+          a gilt halo for the duration (handled in the dial map above). */}
+      <div
+        className="absolute"
+        style={{
+          left: 28,
+          right: 28,
+          bottom: 48,
+          height: 50,
+          zIndex: 4,
+          display: "flex",
+          alignItems: "center",
+          borderTop: "1px solid color-mix(in oklab, oklch(78% 0.13 80) 28%, transparent)",
+          borderBottom: "1px solid color-mix(in oklab, oklch(78% 0.13 80) 28%, transparent)",
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "var(--font-mono, JetBrains Mono)",
+            fontSize: 9,
+            letterSpacing: "0.30em",
+            textTransform: "uppercase",
+            color: "oklch(78% 0.13 80)",
+            opacity: 0.7,
+            paddingRight: 14,
+            marginRight: 14,
+            borderRight: "1px solid color-mix(in oklab, oklch(78% 0.13 80) 28%, transparent)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Latest verdict
+        </div>
+        <div
+          key={verdictIdx}
+          style={{
+            flex: 1,
+            display: "flex",
+            alignItems: "baseline",
+            gap: 12,
+            animation: "hc-verdict-in 700ms cubic-bezier(0.34, 1.56, 0.64, 1) both",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "var(--font-display, Sora)",
+              fontWeight: 700,
+              fontSize: 12,
+              letterSpacing: "0.12em",
+              padding: "2px 8px",
+              borderRadius: 4,
+              background:
+                currentVerdict.side === "YES"
+                  ? "color-mix(in oklab, oklch(58% 0.16 152) 22%, transparent)"
+                  : "color-mix(in oklab, oklch(60% 0.18 22) 22%, transparent)",
+              color: currentVerdict.side === "YES" ? "oklch(72% 0.13 152)" : "oklch(78% 0.16 22)",
+            }}
+          >
+            {currentVerdict.side}
+          </span>
+          <span
+            style={{
+              fontFamily: "var(--font-display, Sora)",
+              fontSize: 14,
+              fontWeight: 500,
+              color: "oklch(99% 0.006 268)",
+              letterSpacing: "-0.005em",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              minWidth: 0,
+            }}
+          >
+            {currentVerdict.title}
+          </span>
+          <span
+            style={{
+              fontFamily: "var(--font-mono, JetBrains Mono)",
+              fontSize: 11,
+              color: "oklch(72% 0.045 268)",
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            at {currentVerdict.odds}¢
+          </span>
+          <span style={{ flex: 1 }} />
+          <span
+            style={{
+              fontFamily: "var(--font-display, Sora)",
+              fontSize: 17,
+              fontWeight: 600,
+              color: "oklch(78% 0.13 80)",
+              fontVariantNumeric: "tabular-nums",
+              letterSpacing: "-0.01em",
+              display: "inline-flex",
+              alignItems: "baseline",
+              gap: 4,
+            }}
+          >
+            <span>+TZS</span>
+            <RollingNumber value={currentVerdict.amount} fontSize={17} weight={600} />
+          </span>
+          <span
+            style={{
+              fontFamily: "var(--font-mono, JetBrains Mono)",
+              fontSize: 10,
+              color: "oklch(72% 0.045 268)",
+              textTransform: "uppercase",
+              letterSpacing: "0.22em",
+            }}
+          >
+            paid · {currentVerdict.holders}
+          </span>
         </div>
       </div>
 
       <div
         className="absolute"
         style={{
-          bottom: 22,
+          bottom: 18,
           right: 28,
           display: "flex",
           alignItems: "center",
@@ -360,6 +544,22 @@ export function HeroConstellation({ height = 460 }: { height?: number }) {
         @keyframes hc-sway {
           0%   { margin-left: 0; }
           100% { margin-left: var(--hc-sway, 0px); }
+        }
+        @keyframes hc-pendulum-swing {
+          0%   { transform: rotate(-8deg); }
+          50%  { transform: rotate(8deg); }
+          100% { transform: rotate(-8deg); }
+        }
+        .hc-pendulum {
+          animation: hc-pendulum-swing 4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+        }
+        @keyframes hc-verdict-in {
+          0%   { opacity: 0; transform: translateX(18px); }
+          100% { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes hc-caption-rise {
+          0%   { opacity: 0; transform: translateY(6px); }
+          100% { opacity: 1; transform: translateY(0); }
         }
       `}</style>
     </div>
