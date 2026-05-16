@@ -46,6 +46,19 @@ export type SummaryItem = {
   delta?: string;
 };
 
+/** Attestation row — renders at the bottom of regulator-grade reports.
+ *  Each row gets a "Prepared by / Reviewed by / Approved by" label, a
+ *  name, and a signature line. Optional; only present on hand-offs that
+ *  need a wet-ink (or e-sign) trail. */
+export type SignatureRow = {
+  role: string;        // e.g. "Prepared by", "Reviewed by", "Approved by"
+  name: string;        // operator name + title
+  /** Optional ID printed alongside the name — usr_… or staff id. */
+  id?: string;
+  /** Optional date locked-in at sign time. */
+  signedAt?: string;
+};
+
 export type Report = {
   /** Title used in the PDF cover band, XLSX sheet name, file name. */
   title: string;
@@ -68,4 +81,8 @@ export type Report = {
   sections: Section[];
   /** Methodology notes / disclaimers — printed in the footer band. */
   notes?: string[];
+  /** Attestation block — present on regulator hand-offs. PDF renders
+   *  a clean signature panel; XLSX renders a labeled block at the foot
+   *  of the sheet. Omit for internal-only documents. */
+  signatures?: SignatureRow[];
 };

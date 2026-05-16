@@ -2,7 +2,7 @@ import PDFDocument from "pdfkit";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { BRAND, COMPANY, fmtDate, fmtDateTime, fmtTzs, toAnsiSafe } from "./brand";
-import type { Report, Section, Column, SummaryItem } from "./types";
+import type { Report, Section, Column, SummaryItem, SignatureRow } from "./types";
 
 const LOGO_PNG = (() => {
   try {
@@ -143,12 +143,16 @@ function drawSummary(ctx: DocCtx, summary: SummaryItem[], startY: number): numbe
   const cardW = contentW / cols;
   const cardH = 46;
   const rows = Math.ceil(summary.length / cols);
+  let y = ensureRoom(ctx, rows * (cardH + 4) + 12, startY);
+  // After ensureRoom we may be on a new page; align the summary block
+  // to that new top instead of startY.
+  const blockTop = y;
   for (let i = 0; i < summary.length; i++) {
     const k = summary[i];
     const cIdx = i % cols;
     const rIdx = Math.floor(i / cols);
     const x = contentX + cIdx * cardW;
-    const yy = startY + rIdx * (cardH + 4);
+    const yy = blockTop + rIdx * (cardH + 4);
     doc.save();
     doc.rect(x + 2, yy, cardW - 4, cardH).fill(BRAND.royalSoft);
     doc.rect(x + 2, yy, 2.5, cardH).fill(BRAND.gilt);
@@ -163,7 +167,7 @@ function drawSummary(ctx: DocCtx, summary: SummaryItem[], startY: number): numbe
          .text(toAnsiSafe(k.delta), x + 10, yy + 34, { width: cardW - 14, lineBreak: false });
     }
   }
-  return startY + rows * (cardH + 4) + 8;
+  return blockTop + rows * (cardH + 4) + 8;
 }
 
 function ensureRoom(ctx: DocCtx, needed: number, y: number): number {
@@ -187,24 +191,10 @@ function renderCellText(raw: string | number | null | undefined, format?: Column
   return toAnsiSafe(String(raw));
 }
 
-function drawSection(ctx: DocCtx, sec: Section, startY: number): number {
+function drawTableHeader(ctx: DocCtx, sec: Section, colW: number[], y: number, continuation = false): number {
   const { doc, contentX, contentW } = ctx;
-  let y = ensureRoom(ctx, 80, startY);
-
-  doc.fillColor(BRAND.royalDeep).font(F.sectionTitle.name).fontSize(F.sectionTitle.size)
-     .text(toAnsiSafe(sec.title), contentX, y, { width: contentW, lineBreak: false });
-  y += 15;
-  if (sec.description) {
-    doc.fillColor(BRAND.inkSubtle).font(F.sectionDesc.name).fontSize(F.sectionDesc.size)
-       .text(toAnsiSafe(sec.description), contentX, y, { width: contentW });
-    y = doc.y + 5;
-  }
-
-  const colW = computeColWidths(sec.columns, contentW);
   const hasSub = sec.columns.some((c) => c.sub);
   const headerH = hasSub ? 24 : 18;
-  y = ensureRoom(ctx, headerH + 30, y);
-
   doc.save();
   doc.rect(contentX, y, contentW, headerH).fill(BRAND.royal);
   doc.rect(contentX, y + headerH - 1.2, contentW, 1.2).fill(BRAND.gilt);
@@ -221,7 +211,38 @@ function drawSection(ctx: DocCtx, sec: Section, startY: number): number {
     }
     xC += colW[i];
   }
-  y += headerH;
+  // "continued" marker on re-drawn headers so the auditor can see the
+  // row count didn't reset between pages.
+  if (continuation) {
+    doc.fillColor(BRAND.giltSoft).font(F.thSub.name).fontSize(F.thSub.size - 0.5)
+       .text("· continued", contentX + contentW - 60, y + headerH + 2, { width: 60, align: "right", lineBreak: false });
+  }
+  return y + headerH;
+}
+
+function drawSection(ctx: DocCtx, sec: Section, startY: number): number {
+  const { doc, contentX, contentW } = ctx;
+  let y = ensureRoom(ctx, 80, startY);
+
+  doc.fillColor(BRAND.royalDeep).font(F.sectionTitle.name).fontSize(F.sectionTitle.size)
+     .text(toAnsiSafe(sec.title), contentX, y, { width: contentW, lineBreak: false });
+  y += 15;
+  if (sec.titleSw) {
+    doc.fillColor(BRAND.inkSubtle).font(F.subtitle.name).fontSize(F.sectionDesc.size + 0.5)
+       .text(toAnsiSafe(sec.titleSw), contentX, y, { width: contentW, lineBreak: false });
+    y += 12;
+  }
+  if (sec.description) {
+    doc.fillColor(BRAND.inkSubtle).font(F.sectionDesc.name).fontSize(F.sectionDesc.size)
+       .text(toAnsiSafe(sec.description), contentX, y, { width: contentW });
+    y = doc.y + 5;
+  }
+
+  const colW = computeColWidths(sec.columns, contentW);
+  const hasSub = sec.columns.some((c) => c.sub);
+  const headerH = hasSub ? 24 : 18;
+  y = ensureRoom(ctx, headerH + 30, y);
+  y = drawTableHeader(ctx, sec, colW, y);
 
   const rowH = 16;
 
@@ -230,12 +251,21 @@ function drawSection(ctx: DocCtx, sec: Section, startY: number): number {
     doc.save();
     doc.rect(contentX, y, contentW, rowH).fill(BRAND.royalSoft);
     doc.restore();
+    // Bilingual empty-state — kit pairs every English label with Swahili
     doc.fillColor(BRAND.inkSubtle).font(F.empty.name).fontSize(F.empty.size)
-       .text("No data in this period", contentX, y + 4, { width: contentW, align: "center", lineBreak: false });
+       .text("No data in this period  ·  Hakuna data katika kipindi hiki",
+             contentX, y + 4, { width: contentW, align: "center", lineBreak: false });
     y += rowH;
   } else {
     for (let ri = 0; ri < sec.rows.length; ri++) {
-      y = ensureRoom(ctx, rowH + 4, y);
+      // If this row would overflow the page, start a new page AND re-draw
+      // the table header on the new page so the auditor can still read
+      // column labels. Without this the continuation page lists naked
+      // rows with no context.
+      if (y + rowH + 4 > ctx.contentBottomY) {
+        y = addContentPage(ctx);
+        y = drawTableHeader(ctx, sec, colW, y, true);
+      }
       if (ri % 2 === 1) {
         doc.save();
         doc.rect(contentX, y, contentW, rowH).fill(BRAND.royalSoft);
@@ -289,6 +319,8 @@ function drawNotes(ctx: DocCtx, notes: string[], startY: number): number {
   let y = ensureRoom(ctx, 30 + notes.length * 12, startY);
   doc.fillColor(BRAND.royalDeep).font(F.notesTitle.name).fontSize(F.notesTitle.size)
      .text("Notes & methodology", contentX, y, { lineBreak: false });
+  doc.fillColor(BRAND.inkSubtle).font(F.subtitle.name).fontSize(F.notes.size + 0.5)
+     .text(toAnsiSafe("  ·  Maelezo na mbinu"), contentX + 130, y + 2, { lineBreak: false });
   y += 14;
   for (const n of notes) {
     y = ensureRoom(ctx, 14, y);
@@ -297,6 +329,53 @@ function drawNotes(ctx: DocCtx, notes: string[], startY: number): number {
     y = doc.y + 2;
   }
   return y;
+}
+
+/** Signature block — renders at the end of regulator hand-off reports.
+ *  Each row gets a role label, a name, and an explicit signature/date
+ *  line so the auditor has a clean attestation panel to stamp. */
+function drawSignatures(ctx: DocCtx, sigs: SignatureRow[], startY: number): number {
+  const { doc, contentX, contentW } = ctx;
+  const blockH = 56;
+  // Reserve room for the panel + title; if we can't fit it, push to a
+  // fresh page so the attestations aren't visually severed from their
+  // labels at the top of one page and the line on the next.
+  let y = ensureRoom(ctx, blockH + 30, startY + 8);
+  doc.fillColor(BRAND.royalDeep).font(F.notesTitle.name).fontSize(F.notesTitle.size)
+     .text("Attestation", contentX, y, { lineBreak: false });
+  doc.fillColor(BRAND.inkSubtle).font(F.subtitle.name).fontSize(F.notes.size + 0.5)
+     .text(toAnsiSafe("  ·  Uthibitisho"), contentX + 75, y + 2, { lineBreak: false });
+  y += 16;
+
+  const cols = sigs.length;
+  const cellW = contentW / cols;
+  for (let i = 0; i < sigs.length; i++) {
+    const s = sigs[i];
+    const x = contentX + i * cellW;
+    // Light card background — same royalSoft used by alternating rows.
+    doc.save();
+    doc.rect(x + 2, y, cellW - 4, blockH).fill(BRAND.royalSoft);
+    doc.rect(x + 2, y, 2.5, blockH).fill(BRAND.gilt);
+    doc.restore();
+    doc.fillColor(BRAND.inkMuted).font(F.kpiLabel.name).fontSize(F.kpiLabel.size)
+       .text(toAnsiSafe(s.role.toUpperCase()), x + 10, y + 6, { width: cellW - 14, lineBreak: false });
+    doc.fillColor(BRAND.royalDeep).font(F.sectionTitle.name).fontSize(F.sectionTitle.size - 1)
+       .text(toAnsiSafe(s.name), x + 10, y + 18, { width: cellW - 14, lineBreak: false, ellipsis: true });
+    if (s.id) {
+      doc.fillColor(BRAND.inkSubtle).font(F.meta.name).fontSize(F.meta.size)
+         .text(toAnsiSafe(s.id), x + 10, y + 32, { width: cellW - 14, lineBreak: false, ellipsis: true });
+    }
+    // Signature line — a thin gilt rule + "Signature" / "Date" labels
+    const lineY = y + blockH - 14;
+    doc.save();
+    doc.lineWidth(0.4).strokeColor(BRAND.gilt)
+       .moveTo(x + 10, lineY).lineTo(x + cellW - 12, lineY).stroke();
+    doc.restore();
+    doc.fillColor(BRAND.inkSubtle).font(F.footer.name).fontSize(F.footer.size)
+       .text(toAnsiSafe(s.signedAt ? `Signed ${fmtDate(s.signedAt)}` : "Signature & date"),
+             x + 10, lineY + 2, { width: cellW - 22, lineBreak: false });
+  }
+  return y + blockH + 8;
 }
 
 export async function renderPdf(report: Report): Promise<Buffer> {
@@ -343,6 +422,9 @@ export async function renderPdf(report: Report): Promise<Buffer> {
       }
       if (report.notes && report.notes.length > 0) {
         y = drawNotes(ctx, report.notes, y + 6);
+      }
+      if (report.signatures && report.signatures.length > 0) {
+        y = drawSignatures(ctx, report.signatures, y + 4);
       }
 
       const range = doc.bufferedPageRange();

@@ -2,7 +2,7 @@ import ExcelJS from "exceljs";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { BRAND, COMPANY, fmtDate, fmtDateTime } from "./brand";
-import type { Report, Section, Column, Row } from "./types";
+import type { Report, Section, Column, Row, SignatureRow } from "./types";
 
 const LOGO_PNG_PATH = join(process.cwd(), "public/brand/fiftymark-color.png");
 const LOGO_PNG_BUF = (() => {
@@ -149,6 +149,11 @@ export async function renderXlsx(report: Report): Promise<Buffer> {
   meta.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
   sheet.getRow(7).height = 16;
 
+  // Freeze the brand band + title + meta so the operator scrolling
+  // through long tables still sees who/what/when/classification at
+  // the top of the viewport. ySplit = 7 means rows 1..7 stay pinned.
+  sheet.views = [{ state: "frozen", ySplit: 7, xSplit: 0, activeCell: "A8" }];
+
   let cursor = 9;
 
   if (report.summary && report.summary.length > 0) {
@@ -180,7 +185,7 @@ export async function renderXlsx(report: Report): Promise<Buffer> {
   if (report.notes && report.notes.length > 0) {
     cursor++;
     const notesTitle = sheet.getCell(`A${cursor}`);
-    notesTitle.value = "Notes & methodology";
+    notesTitle.value = "Notes & methodology  ·  Maelezo na mbinu";
     notesTitle.font = { name: "Calibri", size: 10, bold: true, color: { argb: argb(BRAND.royalDeep) } };
     sheet.getRow(cursor).height = 16;
     cursor++;
@@ -195,8 +200,54 @@ export async function renderXlsx(report: Report): Promise<Buffer> {
     }
   }
 
+  if (report.signatures && report.signatures.length > 0) {
+    cursor = renderSignatures(sheet, report.signatures, cursor + 1, MERGE_END);
+  }
+
   const ab = await wb.xlsx.writeBuffer();
   return Buffer.from(ab as ArrayBuffer);
+}
+
+/** Attestation block — matches the PDF signature panel. Each role gets
+ *  a labeled card with a "Signature & date" line so the regulator can
+ *  apply an e-signature (or print + stamp). */
+function renderSignatures(sheet: ExcelJS.Worksheet, sigs: SignatureRow[], startRow: number, mergeEnd: string): number {
+  let row = startRow;
+  // Section title (bilingual)
+  sheet.mergeCells(`A${row}:${mergeEnd}${row}`);
+  const title = sheet.getCell(`A${row}`);
+  title.value = "Attestation  ·  Uthibitisho";
+  title.font = { name: "Calibri", size: 11, bold: true, color: { argb: argb(BRAND.royalDeep) } };
+  sheet.getRow(row).height = 18;
+  row++;
+
+  // Lay each signature out in a 3-column block: role label, name + id,
+  // signature line. Stacking vertically keeps the layout legible at any
+  // page width.
+  for (const s of sigs) {
+    const roleCell = sheet.getCell(`A${row}`);
+    roleCell.value = s.role;
+    roleCell.font = { name: "Calibri", size: 9, bold: true, color: { argb: argb(BRAND.inkMuted) } };
+    roleCell.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+
+    sheet.mergeCells(`B${row}:E${row}`);
+    const nameCell = sheet.getCell(`B${row}`);
+    nameCell.value = s.id ? `${s.name}   (${s.id})` : s.name;
+    nameCell.font = { name: "Calibri", size: 10, bold: true, color: { argb: argb(BRAND.royalDeep) } };
+    nameCell.alignment = { vertical: "middle", horizontal: "left" };
+
+    sheet.mergeCells(`F${row}:${mergeEnd}${row}`);
+    const sigCell = sheet.getCell(`F${row}`);
+    sigCell.value = s.signedAt ? `Signed ${fmtDate(s.signedAt)}` : "Signature & date: __________________________";
+    sigCell.font = { name: "Calibri", size: 9, italic: true, color: { argb: argb(BRAND.inkSubtle) } };
+    sigCell.alignment = { vertical: "middle", horizontal: "left" };
+    sigCell.border = {
+      bottom: { style: "thin", color: { argb: argb(BRAND.gilt) } },
+    };
+    sheet.getRow(row).height = 22;
+    row++;
+  }
+  return row;
 }
 
 function renderSection(sheet: ExcelJS.Worksheet, sec: Section, startRow: number): number {
@@ -204,7 +255,9 @@ function renderSection(sheet: ExcelJS.Worksheet, sec: Section, startRow: number)
 
   sheet.mergeCells(`A${row}:L${row}`);
   const t = sheet.getCell(`A${row}`);
-  t.value = sec.title;
+  // Pair the section title with its Swahili sibling on the same line so
+  // the kit's bilingual rule reads through to the spreadsheet too.
+  t.value = sec.titleSw ? `${sec.title}  ·  ${sec.titleSw}` : sec.title;
   t.font = { name: "Calibri", size: 12, bold: true, color: { argb: argb(BRAND.royalDeep) } };
   sheet.getRow(row).height = 18;
   row++;
@@ -237,7 +290,21 @@ function renderSection(sheet: ExcelJS.Worksheet, sec: Section, startRow: number)
     };
   });
   headerRow.height = 22;
+  const headerRowNum = row;
   row++;
+
+  // Empty-state row — match the PDF's bilingual "No data" panel rather
+  // than dropping the auditor onto a naked header with nothing under it.
+  if (sec.rows.length === 0) {
+    sheet.mergeCells(`A${row}:${String.fromCharCode(64 + sec.columns.length)}${row}`);
+    const empty = sheet.getCell(`A${row}`);
+    empty.value = "No data in this period  ·  Hakuna data katika kipindi hiki";
+    empty.font = { name: "Calibri", size: 10, italic: true, color: { argb: argb(BRAND.inkSubtle) } };
+    empty.alignment = { vertical: "middle", horizontal: "center" };
+    empty.fill = { type: "pattern", pattern: "solid", fgColor: { argb: argb(BRAND.royalSoft) } };
+    sheet.getRow(row).height = 16;
+    row++;
+  }
 
   sec.rows.forEach((r, ri) => {
     const dataRow = sheet.getRow(row);
@@ -255,6 +322,20 @@ function renderSection(sheet: ExcelJS.Worksheet, sec: Section, startRow: number)
     dataRow.height = 16;
     row++;
   });
+
+  // Auto-filter dropdowns on the header row — gives the auditor
+  // Excel's native sort/search affordances on every data section
+  // without needing extra UI. Only useful when there are rows to
+  // filter, so skip empty sections.
+  if (sec.rows.length > 0 && sec.columns.length > 0) {
+    const lastCol = String.fromCharCode(64 + sec.columns.length);
+    const lastDataRow = row - 1;
+    // ExcelJS allows a single autoFilter per worksheet; the last one
+    // assigned wins. That's fine for single-section reports; for
+    // multi-section ones it scopes to the largest table, which the
+    // user can re-apply per section if they want.
+    sheet.autoFilter = `A${headerRowNum}:${lastCol}${lastDataRow}`;
+  }
 
   if (sec.totals) {
     const tRow = sheet.getRow(row);

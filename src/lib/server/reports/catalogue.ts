@@ -16,7 +16,22 @@ import {
   providerSummary, depositsTotal, withdrawalsTotal,
   grossGamingRevenue, netGamingRevenue, kycFunnel, rgRosterCounts,
 } from "../analytics";
-import type { Report } from "./types";
+import type { Report, SignatureRow } from "./types";
+
+/** Standard regulator attestation block — three roles applied at the foot
+ *  of every hand-off-grade report. Names are intentionally placeholders;
+ *  the operator countersigns the printed copy (or e-signs the PDF) and
+ *  the signedAt date locks in the final attestation. Kept here so every
+ *  regulator report renders the same three columns in the same order. */
+function regulatorSignatures(generatorId: string): SignatureRow[] {
+  const u = db.user.findById(generatorId);
+  const generator = u?.displayName?.trim() || `Generator · ${generatorId}`;
+  return [
+    { role: "Prepared by",   name: generator,                       id: generatorId },
+    { role: "Reviewed by",   name: "Compliance Officer",            id: "Compliance · 50pick" },
+    { role: "Approved by",   name: "AML Lead / MLRO",               id: "AML Lead · 50pick" },
+  ];
+}
 
 const SX_NIDA_SALT = process.env.SX_REGISTER_SALT ?? "tz-gbt-shared-salt-replace-in-prod";
 function hashNida(nida: string): string {
@@ -143,6 +158,7 @@ export function buildGbtMonthly(generatorId: string): Report {
       "All amounts in Tanzanian Shillings (TZS). Rounded to the nearest shilling.",
       "Generated from the live append-only audit log; row counts match the audit chain.",
     ],
+    signatures: regulatorSignatures(generatorId),
   };
 }
 
@@ -225,6 +241,7 @@ export function buildTraTax(generatorId: string): Report {
       "Reconcile this total against the TRA online portal remittance figure before submission.",
       "Phone and NIDA masking is applied per the Tanzania Personal Data Protection Act (PDPA, 2022).",
     ],
+    signatures: regulatorSignatures(generatorId),
   };
 }
 
@@ -291,6 +308,7 @@ export function buildFiuSar(generatorId: string): Report {
       "Each row is hash-chained to an audit entry — verify in /admin/audit before remittance.",
       "Confidential: do not share outside compliance + Financial Intelligence Unit.",
     ],
+    signatures: regulatorSignatures(generatorId),
   };
 }
 
@@ -379,6 +397,7 @@ export function buildSxRegister(generatorId: string): Report {
       "Plain NIDA and phone numbers are NEVER written into this file by design (PDPA + LCCP).",
       "Schema GBT-v1 — increment if column shape changes.",
     ],
+    signatures: regulatorSignatures(generatorId),
   };
 }
 
@@ -433,6 +452,7 @@ export function buildIsoAudit(generatorId: string): Report {
       "If a single field is modified, the chain breaks at the next verify. Cf. ISO/IEC 27001:2022 A.8.15.",
       "Full payloads are available on /admin/audit; this report is the index for a regulator first-pass.",
     ],
+    signatures: regulatorSignatures(generatorId),
   };
 }
 
