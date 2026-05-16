@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ConfidenceDial } from "@/components/brand";
+import { cn } from "@/lib/utils";
 
 const HC_MARKETS = [
   { id: "afcon", x: 0.20, y: 0.34, size: 96, yes: 57, phase: 0.0, title: "TZ hosts AFCON 2027 group stage",   date: "Resolves 27 Mar" },
@@ -158,28 +159,90 @@ export function HeroConstellation({ height = 540 }: { height?: number }) {
             <stop offset="60%"  stopColor="oklch(78% 0.13 80)" />
             <stop offset="100%" stopColor="oklch(50% 0.10 76)" />
           </radialGradient>
+          {/* Soft halo around the bob — adds a sense of mass and lets the
+              pendulum read as a luminous object rather than a flat disk. */}
+          <radialGradient id="hc-bob-halo" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0%"   stopColor="oklch(78% 0.13 80)" stopOpacity="0.55" />
+            <stop offset="60%"  stopColor="oklch(78% 0.13 80)" stopOpacity="0.12" />
+            <stop offset="100%" stopColor="oklch(78% 0.13 80)" stopOpacity="0" />
+          </radialGradient>
+          {/* Tapered rod gradient — slightly thicker toward the anchor,
+              fading near the bob. Sells the "string under tension" idea. */}
+          <linearGradient id="hc-rod" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%"   stopColor="oklch(78% 0.13 80)" stopOpacity="0.85" />
+            <stop offset="100%" stopColor="oklch(78% 0.13 80)" stopOpacity="0.30" />
+          </linearGradient>
+          {/* SVG drop-shadow filter for the bob — gives it weight. */}
+          <filter id="hc-bob-shadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="2.5" />
+            <feOffset dx="0" dy="2" result="offsetblur" />
+            <feComponentTransfer>
+              <feFuncA type="linear" slope="0.55" />
+            </feComponentTransfer>
+            <feMerge>
+              <feMergeNode />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
         </defs>
         <ellipse cx={width * 0.42} cy={height * 0.46} rx={width * 0.38} ry={height * 0.55} fill="url(#hc-glow)" />
         <line x1="0" y1={horizonY} x2={width} y2={horizonY} stroke="url(#hc-horizon)" strokeWidth="1" />
         <line x1={width / 2} y1={horizonY - 5} x2={width / 2} y2={horizonY + 5}
               stroke="oklch(78% 0.13 80)" strokeWidth="1" opacity="0.7" />
 
-        {/* Pendulum — the brand's tipping point made literal. Anchored at
-            top center, swinging through an 8° arc on a 4s curve. */}
+        {/* Pendulum — the brand's tipping point made literal.
+            Anchored at top center; arc + period are CSS-driven so we can
+            slow + tighten the swing on hover (player is contemplating).
+            Easing approximates SHM (sin/cos): cubic-bezier(0.37, 0, 0.63, 1)
+            slows the bob at the apex of each swing, the way a real
+            pendulum does, instead of the unphysical linear-feeling
+            constant-velocity sweep the old curve produced. */}
         <g
-          className="hc-pendulum"
+          className={cn("hc-pendulum", hovered && "hc-pendulum--listening")}
           style={{ transformOrigin: `${pendulumX}px ${pendulumAnchorY}px` }}
         >
+          {/* Ghost trail — three faint bobs animated with a tiny stagger
+              so the live bob always appears to be followed by the echoes
+              of where it just was. Sub-pixel accumulation reads as motion
+              blur without the GPU cost of a real blur filter. */}
+          {[0, 1, 2].map((i) => (
+            <circle
+              key={`trail-${i}`}
+              className={`hc-pendulum-trail hc-pendulum-trail-${i}`}
+              cx={pendulumX}
+              cy={pendulumAnchorY + pendulumLen}
+              r={5.5 - i * 0.8}
+              fill="oklch(78% 0.13 80)"
+              opacity={0.20 - i * 0.05}
+              style={{ transformOrigin: `${pendulumX}px ${pendulumAnchorY}px` }}
+            />
+          ))}
+          {/* Bob halo — soft outer glow, sized to bleed past the bob edge */}
+          <circle
+            cx={pendulumX}
+            cy={pendulumAnchorY + pendulumLen}
+            r={14}
+            fill="url(#hc-bob-halo)"
+          />
           {/* Anchor pin */}
           <circle cx={pendulumX} cy={pendulumAnchorY} r={2.4} fill="oklch(78% 0.13 80)" opacity={0.85} />
-          {/* Rod */}
+          {/* Rod — tapered gradient stroke gives it the feel of a
+              tensioned thread under load, not a uniform line. */}
           <line
             x1={pendulumX} y1={pendulumAnchorY}
             x2={pendulumX} y2={pendulumAnchorY + pendulumLen}
-            stroke="oklch(78% 0.13 80)" strokeWidth="0.7" opacity={0.45}
+            stroke="url(#hc-rod)" strokeWidth="0.9" strokeLinecap="round"
           />
-          {/* Bob */}
-          <circle cx={pendulumX} cy={pendulumAnchorY + pendulumLen} r={6} fill="url(#hc-bob)" opacity={0.92} />
+          {/* Bob — drop-shadow filter sells the weight; the gradient gives
+              it the polished-brass read the kit calls for. */}
+          <circle
+            cx={pendulumX}
+            cy={pendulumAnchorY + pendulumLen}
+            r={6}
+            fill="url(#hc-bob)"
+            opacity={0.95}
+            filter="url(#hc-bob-shadow)"
+          />
         </g>
       </svg>
 
@@ -562,12 +625,56 @@ export function HeroConstellation({ height = 540 }: { height?: number }) {
           100% { margin-left: var(--hc-sway, 0px); }
         }
         @keyframes hc-pendulum-swing {
-          0%   { transform: rotate(-8deg); }
-          50%  { transform: rotate(8deg); }
-          100% { transform: rotate(-8deg); }
+          0%   { transform: rotate(-10deg); }
+          50%  { transform: rotate(10deg); }
+          100% { transform: rotate(-10deg); }
+        }
+        @keyframes hc-pendulum-swing-listening {
+          /* Hover state — the pendulum slows + tightens its arc, like
+             a watchmaker's escapement holding its breath while the
+             player makes a call. */
+          0%   { transform: rotate(-4deg); }
+          50%  { transform: rotate(4deg); }
+          100% { transform: rotate(-4deg); }
         }
         .hc-pendulum {
-          animation: hc-pendulum-swing 4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+          /* SHM-faithful easing: cubic-bezier(0.37, 0, 0.63, 1) is the
+             closest the CSS-curve language gets to a sine wave, so the
+             bob slows at the apex of each swing the way a real
+             pendulum does instead of the linear-feeling sweep the
+             old (0.45, 0, 0.55, 1) curve produced. */
+          animation: hc-pendulum-swing 4s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+          will-change: transform;
+        }
+        .hc-pendulum--listening {
+          animation: hc-pendulum-swing-listening 5.6s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+          transition: opacity 320ms var(--ease-glide, ease);
+        }
+        /* Ghost trail — each circle is the same animation lagged by
+           a fraction of a beat. Stacking three of them at decaying
+           opacity gives the bob a comet-like trail without burning
+           a real motion-blur filter. */
+        .hc-pendulum-trail {
+          animation: hc-pendulum-swing 4s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+          pointer-events: none;
+        }
+        .hc-pendulum-trail-0 { animation-delay: -0.06s; }
+        .hc-pendulum-trail-1 { animation-delay: -0.12s; }
+        .hc-pendulum-trail-2 { animation-delay: -0.18s; }
+        .hc-pendulum--listening .hc-pendulum-trail {
+          animation: hc-pendulum-swing-listening 5.6s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+          opacity: 0 !important;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          /* Pendulum holds at center for visitors who've asked the OS
+             not to animate. The static composition is still readable
+             — the bob just stops drawing the eye. */
+          .hc-pendulum,
+          .hc-pendulum--listening,
+          .hc-pendulum-trail {
+            animation: none !important;
+            transform: rotate(0deg);
+          }
         }
         @keyframes hc-verdict-in {
           0%   { opacity: 0; transform: translateX(18px); }
