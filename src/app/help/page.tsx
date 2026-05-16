@@ -70,24 +70,30 @@ export default function HelpPage() {
           icon={<Phone size={15} />}
           tone="yes"
           title="Call us"
+          titleSw="Tupigie"
           value="+255 22 211 5811"
           sub="Free helpline · 24/7"
+          subSw="Mstari wa msaada bure · 24/7"
           href="tel:+255222115811"
         />
         <ContactCard
           icon={<Mail size={15} />}
           tone="info"
           title="Email"
+          titleSw="Barua pepe"
           value="support@50pick.com"
           sub="Reply within 4h on business days"
+          subSw="Tunajibu ndani ya saa 4 siku za kazi"
           href="mailto:support@50pick.com"
         />
         <ContactCard
           icon={<MessageCircle size={15} />}
           tone="gold"
           title="Live chat"
+          titleSw="Mazungumzo ya moja kwa moja"
           value="In-app"
           sub="Coming soon"
+          subSw="Inakuja hivi karibuni"
         />
       </section>
 
@@ -119,38 +125,43 @@ export default function HelpPage() {
         <QuickLinkCard
           icon={<ShieldCheck size={15} />}
           title="Responsible gambling"
+          titleSw="Kucheza kwa busara"
           sub="Limits · break · self-exclude"
           href="/profile/responsible-gambling"
         />
         <QuickLinkCard
           icon={<Wallet size={15} />}
           title="Wallet help"
+          titleSw="Msaada wa pochi"
           sub="Deposit · withdraw · holds"
           href="/wallet"
         />
         <QuickLinkCard
           icon={<Trophy size={15} />}
           title="My positions"
+          titleSw="Madau yangu"
           sub="Open · settled · cash-out"
           href="/positions"
         />
       </section>
 
       <p className="pt-2 text-center font-mono text-[11px] tabular-nums text-text-subtle">
-        18+. Play responsibly. Mainland Tanzania + Zanzibar only.
+        18+ · Play responsibly · Cheza kwa busara · Mainland Tanzania + Zanzibar only
       </p>
     </main>
   );
 }
 
 function ContactCard({
-  icon, tone, title, value, sub, href,
+  icon, tone, title, titleSw, value, sub, subSw, href,
 }: {
   icon: React.ReactNode;
   tone: "yes" | "info" | "gold";
   title: string;
+  titleSw?: string;
   value: string;
   sub: string;
+  subSw?: string;
   href?: string;
 }) {
   const tintCls =
@@ -164,21 +175,23 @@ function ContactCard({
           {icon}
         </span>
         <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-semibold text-text-subtle">
-          {title}
+          {title}{titleSw ? ` · ${titleSw}` : ""}
         </span>
       </div>
       <p className="font-display font-bold text-[15px] text-text break-all">{value}</p>
       <p className="text-[11.5px] text-text-subtle">{sub}</p>
+      {subSw && <p className="text-[11px] italic text-text-tertiary">{subSw}</p>}
     </div>
   );
   return href ? <a href={href} className="block">{card}</a> : card;
 }
 
 function QuickLinkCard({
-  icon, title, sub, href,
+  icon, title, titleSw, sub, href,
 }: {
   icon: React.ReactNode;
   title: string;
+  titleSw?: string;
   sub: string;
   href: string;
 }) {
@@ -192,6 +205,7 @@ function QuickLinkCard({
       </span>
       <div className="flex-1 min-w-0">
         <p className="font-display text-[13px] font-semibold text-text truncate">{title}</p>
+        {titleSw && <p className="text-[11px] italic text-text-tertiary truncate">{titleSw}</p>}
         <p className="mt-0.5 text-[11px] text-text-subtle">{sub}</p>
       </div>
     </a>
