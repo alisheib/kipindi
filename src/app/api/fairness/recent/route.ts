@@ -2,14 +2,33 @@
  * Public attestation feed for resolved markets.
  * Each item carries the market id, the outcome, the source URL, and the
  * two-officer signatures. Anyone can scrape this and verify against the source.
+ *
+ * Also acts as the heartbeat that drives the client-side NotifyPoller's
+ * real-time win celebration. The poller hits this every 2 s for any
+ * user with a watched market. Before listing resolved markets we run
+ * `autoResolveExpiredDemoMarkets()` so a demo market that just ticked
+ * past its `resolutionAt` settles HERE, on the polling path — instead
+ * of waiting for the next full page render to trigger the sweep.
+ *
+ * Without this call, a player on /markets/[id] would watch the
+ * countdown hit 0 but never see the win-celebration popup until they
+ * refreshed — the exact behaviour the user reported. The fix shifts
+ * the demo-resolve trigger off the page-render path and onto the same
+ * 2 s cadence the celebration listener already runs on.
  */
 import { NextResponse } from "next/server";
-import { listMarkets } from "@/lib/server/market-service";
+import { autoResolveExpiredDemoMarkets, listMarkets } from "@/lib/server/market-service";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET() {
+  // Run the auto-resolver synchronously before we list — keeps the
+  // response self-consistent: if a market expired ≤2 s ago, this same
+  // call settles it and includes it in the response. The function is
+  // idempotent (guards on `m.status !== "LIVE"`) so concurrent polls
+  // from multiple browsers can't double-resolve a market.
+  await autoResolveExpiredDemoMarkets().catch(() => {});
   const resolved = listMarkets({ status: "RESOLVED" }).slice(0, 50);
   return NextResponse.json({
     attestations: resolved.map((m) => ({
