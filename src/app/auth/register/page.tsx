@@ -15,6 +15,9 @@ export default async function RegisterPage({
 }: {
   searchParams: Promise<{ phone?: string; error?: string; message?: string }>;
 }) {
+  // Bounce-authed-users guard lives in src/app/auth/layout.tsx so the
+  // redirect happens before any page hooks run (avoids a Next.js 16
+  // dev-mode hook-count mismatch on hot reload).
   const sp = await searchParams;
   const phoneDefault = (sp.phone ?? "").replace(/^\+255/, "").replace(/\D+/g, "").slice(0, 9);
 

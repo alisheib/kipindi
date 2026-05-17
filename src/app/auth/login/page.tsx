@@ -16,6 +16,10 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ phone?: string; error?: string; retry?: string; next?: string }>;
 }) {
+  // Note: the "bounce authed users away from this page" check lives in
+  // src/app/auth/(public)/layout.tsx so the redirect happens before the
+  // page renders. Avoiding redirect() inside the page itself sidesteps a
+  // Next.js 16 dev-mode hook-count mismatch on hot reload.
   const sp = await searchParams;
   const phoneDefault = (sp.phone ?? "").replace(/^\+255/, "").replace(/\D+/g, "").slice(0, 9);
   const retrySec = Number.parseInt(sp.retry ?? "", 10);

@@ -44,6 +44,54 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
     return { ok: false, error: limitCheck.reason ?? "Deposit limit reached.", code: "INVALID" };
   }
 
+  // Source-of-Funds gate — Anti-Money-Laundering Act 2006 + LCCP SR 9.2.
+  // Two thresholds trigger an SOF requirement:
+  //   (a) any single deposit ≥ TZS 1,000,000, OR
+  //   (b) rolling 30-day cumulative deposits incl. this one ≥ TZS 5,000,000.
+  // If the threshold trips and the player has no ACCEPTED SOF on file
+  // (PENDING, REJECTED, or never-submitted), block the deposit with a
+  // pointer to the form. UX policy: don't take their money first, then
+  // freeze it for AML — make the requirement obvious *before* the call.
+  const SOF_SINGLE_TXN_TZS = 1_000_000;
+  const SOF_ROLLING_30D_TZS = 5_000_000;
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 3600_000;
+  const recentDeposits = db.txn
+    .findByUser(userId, 500)
+    .filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED" && Date.parse(t.createdAt) >= thirtyDaysAgo)
+    .reduce((s, t) => s + t.amount, 0);
+  const cumulativeAfter = recentDeposits + parse.data.amount;
+  const triggersSof =
+    parse.data.amount >= SOF_SINGLE_TXN_TZS || cumulativeAfter >= SOF_ROLLING_30D_TZS;
+  if (triggersSof) {
+    const sof = db.sourceOfFunds.get(userId);
+    if (!sof || sof.reviewStatus !== "ACCEPTED") {
+      audit({
+        category: "COMPLIANCE",
+        action: "deposit.sof_gate_blocked",
+        actorId: userId,
+        targetType: "User",
+        targetId: userId,
+        payload: {
+          amount: parse.data.amount,
+          rolling30dBefore: recentDeposits,
+          rolling30dAfter: cumulativeAfter,
+          singleTxnThreshold: SOF_SINGLE_TXN_TZS,
+          rolling30dThreshold: SOF_ROLLING_30D_TZS,
+          sofStatus: sof?.reviewStatus ?? "NOT_SUBMITTED",
+        },
+      });
+      const reasonEn =
+        parse.data.amount >= SOF_SINGLE_TXN_TZS
+          ? `Deposits of TZS ${SOF_SINGLE_TXN_TZS.toLocaleString()} or more require a Source of Funds declaration on file.`
+          : `Your rolling 30-day deposits would exceed TZS ${SOF_ROLLING_30D_TZS.toLocaleString()}, which requires a Source of Funds declaration on file.`;
+      return {
+        ok: false,
+        error: `${reasonEn} Submit one at /profile/source-of-funds and wait for compliance to accept it.`,
+        code: "INVALID",
+      };
+    }
+  }
+
   // Open the transaction in PENDING
   const txnId = `txn_${randomId(12)}`;
   const txn = db.txn.create({
