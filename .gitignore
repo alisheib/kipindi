@@ -32,6 +32,8 @@ scripts/mobile-audit/
 # TS incremental cache
 tsconfig.tsbuildinfo
 
-# Old design kits
+# Old design kits — local backups, never committed
 50Pick  - old/
 50PICK - old/
+50Pick-old/
+50PICK-old/

@@ -39,7 +39,8 @@ EN + SW (FR also wired), regulator-ready.
 | Market service / pool engine | [`src/lib/server/market-service.ts`](src/lib/server/market-service.ts) |
 | Crypto (scrypt, HMAC, OTP) | [`src/lib/server/crypto.ts`](src/lib/server/crypto.ts) |
 | Railway deploy notes + env vars | [`RAILWAY.md`](RAILWAY.md) |
-| Postgres swap walkthrough | [`RAILWAY_DATABASE.md`](RAILWAY_DATABASE.md) |
+| Postgres swap walkthrough | [`RAILWAY_DB_README.md`](RAILWAY_DB_README.md) |
+| Flow architecture (every redirect + gate) | [`docs/FLOWS.md`](docs/FLOWS.md) |
 
 ## Auth — current state
 
@@ -83,7 +84,7 @@ In-memory `Map`s in `store.ts`, snapshot to disk every 1.5 s
 redeploys unless you mount a volume; see [`RAILWAY.md`](RAILWAY.md)).
 
 This will not survive 6M clicks/month. Postgres swap is described in
-[`RAILWAY_DATABASE.md`](RAILWAY_DATABASE.md).
+[`RAILWAY_DB_README.md`](RAILWAY_DB_README.md).
 
 ## Deploy workflow
 
@@ -115,15 +116,23 @@ hit dev-only helpers under `/api/dev-test/*` (returns 404 in production).
 
 | Script | What it covers |
 |---|---|
-| `multi-player-resolution-e2e.mjs` | **Authoritative settlement test.** 4 player accounts + 2 admin officers, mixed YES/NO bets on one market, two-officer settlement, wallet deltas, win/loss notifications, audit chain, money conservation. |
-| `break-it-player.mjs` | 23 manipulator scenarios — auth bypass, cookie tampering, stake validation, race, KYC, XSS, privilege escalation, API surface |
-| `break-it-admin.mjs` | 10 admin-portal QA scenarios — anon + player gating across 21 routes, TOTP cookie spoofing, forged Server Actions, CSV gating |
-| `multi-viewport-audit.mjs` | 99 routes × 4 viewports for layout overflow |
-| `overlay-responsiveness-test.mjs` | Notifications / language menu / avatar / reality-check inside viewport |
-| `screenshot.mjs` | Capture all routes (light/dark, public/authed) |
-| `capture-manual-screenshots.mjs` | 19 screenshots (10 player + 9 admin) for the user manuals |
-| `generate-pdfs.mjs` | Render the 4 production PDFs (operator brief, technical brief, player manual, admin manual) |
-| `rasterize-pdfs-for-audit.mjs` | Per-page PNGs of every PDF for visual audit before delivery |
+| `multi-player-resolution-e2e.mjs` | **Authoritative settlement test.** 4 players + 2 officers, mixed YES/NO bets, two-officer settlement, wallet deltas, win/loss notifications, audit chain, money conservation. 26/26. |
+| `candidate-pipeline-e2e.mjs` | AI market-candidate state machine — seed L1–L4 fixtures, officer queue, approve/reject/publish, audit. 22/22. |
+| `flow-architecture-e2e.mjs` | Every redirect + gate — auth gates, KYC gate, /not-found, SOF threshold gate, locale preservation. 16/16. |
+| `notifications-redirect-test.mjs` | Bet-placed receipt + win/loss receipt + click-through to market / positions. 13/13. |
+| `visibility-states-test.mjs` | Top-bar / nav / CTAs per actor (public · player · admin). 44/44. |
+| `responsive-overflow-test.mjs` | 393/768/1024/1280/1440 across all public + auth routes. 70/70. |
+| `demo-auto-resolve-test.mjs` | Auto-resolved demo markets settle correctly + emit notifications. 31/31. |
+| `i18n-toggle-e2e.mjs` | EN/SW/FR cookie + localStorage + `<html lang>` round trip + persistence. 13/13. |
+| `report-renderers-smoke.mjs` | Renders every catalogue entry (5 reports × PDF + XLSX) and checks magic bytes. 11/11. |
+| `break-it-player.mjs` | 23 manipulator scenarios — auth bypass, cookie tampering, stake validation, race, KYC, XSS, privilege escalation. |
+| `break-it-admin.mjs` | 10 admin-portal QA scenarios — anon + player gating, TOTP cookie spoofing, forged Server Actions, CSV gating. |
+| `multi-viewport-audit.mjs` | 99 routes × 4 viewports for layout overflow. |
+| `overlay-responsiveness-test.mjs` | Notifications / language menu / avatar / reality-check inside viewport. |
+| `screenshot.mjs` | Capture all routes (light/dark, public/authed). |
+| `capture-manual-screenshots.mjs` | 19 screenshots (10 player + 9 admin) for the user manuals. |
+| `generate-pdfs.mjs` | Render the 4 production PDFs (operator brief, technical brief, player manual, admin manual). |
+| `rasterize-pdfs-for-audit.mjs` | Per-page PNGs of every PDF for visual audit before delivery. |
 
 ### Dev-test helpers
 
@@ -131,6 +140,7 @@ hit dev-only helpers under `/api/dev-test/*` (returns 404 in production).
 |---|---|
 | `POST /api/dev-test/promote-admin` `{ phone }` | Mark a registered phone as ADMIN |
 | `POST /api/dev-test/seed-wallet` `{ phone, amount }` | Credit a wallet for test scenarios |
+| `POST /api/dev-test/seed-candidates` | Seed the AI market-candidate pipeline with 6 fixtures across every terminal state (4 PENDING_REVIEW, 1 L2-rejected politics, 1 L4-rejected low-confidence) |
 | `POST /api/dev-test/fast-forward-market` `{ marketId }` | Pull a market's resolution to +1h so it appears in the resolver queue |
 | `POST /api/dev-test/reset-rate-limits` | Wipe per-IP / per-phone token buckets |
 | `GET  /api/dev-test/last-otp?phone=...` | Last OTP code for a phone (when SMS is on `console`) |
