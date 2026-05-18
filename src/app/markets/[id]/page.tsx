@@ -18,7 +18,14 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   seedDemoMarkets();
   const { id } = await params;
   const m = getMarket(id);
-  if (!m) return { title: "Market" };
+  // Throwing notFound() here too — not just inside the page render —
+  // because the `/markets` segment has a loading.tsx, which means the
+  // page renders inside a Suspense boundary. When notFound() fires
+  // mid-stream the rendered UI swaps to not-found.tsx but the HTTP
+  // status header has already been sent as 200 and can't be changed.
+  // Calling notFound() during metadata generation gets us a real 404
+  // because metadata runs before the streaming response starts.
+  if (!m) notFound();
   const yes = impliedYesPct(m);
   const desc = `YES ${yes}% · NO ${100 - yes}%. Predict on 50pick.`;
   return {
