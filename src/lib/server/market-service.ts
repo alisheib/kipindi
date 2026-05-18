@@ -182,6 +182,24 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
   const lockout = isLockedOut(userId);
   if (lockout.locked) return { ok: false, error: `Locked until ${new Date(lockout.until!).toLocaleString("en-GB")}.`, code: "SUSPENDED" };
 
+  // Account-level status check — a suspended or closed user must not
+  // be able to place bets even if their wallet is still nominally
+  // ACTIVE. This is the "ban hammer" path the admin operator uses
+  // when a player is under investigation or has been removed.
+  const u = db.user.findById(userId);
+  if (!u) return { ok: false, error: "Account not found.", code: "NOT_FOUND" };
+  if (u.status === "SUSPENDED" || u.status === "CLOSED") {
+    audit({
+      category: "COMPLIANCE",
+      action: "bet.account_blocked",
+      actorId: userId,
+      targetType: "User",
+      targetId: userId,
+      payload: { status: u.status },
+    });
+    return { ok: false, error: u.status === "SUSPENDED" ? "Account suspended. Contact support." : "Account closed.", code: "SUSPENDED" };
+  }
+
   // Stake bounds come from runtime config — global with optional per-market override.
   const stakeCfg = getEffectiveConfig(opts.marketId);
   if (!Number.isInteger(opts.stake) || opts.stake < stakeCfg.minStake || opts.stake > stakeCfg.maxStake) {

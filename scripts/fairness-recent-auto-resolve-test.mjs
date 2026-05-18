@@ -63,17 +63,30 @@ try {
     await p.close();
   }
 
-  // Find a Demo market and fast-forward it. autoResolveExpiredDemoMarkets
-  // only acts on markets whose titleEn starts with "Demo · " — scope
-  // the locator accordingly so the test doesn't randomly pick a real
-  // market whose resolutionAt we shouldn't be moving.
+  // Find a LIVE Demo market and fast-forward it. autoResolveExpiredDemoMarkets
+  // only acts on markets whose titleEn starts with "Demo · " AND status === "LIVE".
+  // The /markets page also shows a "Recently resolved" section — make sure
+  // we don't pick a card from that section by scoping to the live-grid
+  // container (the page's first <section> with market cards).
   let marketId = null;
   {
     const p = await ctx.newPage();
     await p.goto(`${BASE}/markets`, { waitUntil: "networkidle" });
-    const card = p.locator('a[href^="/markets/mkt_"]').filter({ hasText: /Demo/ }).first();
-    const href = await card.getAttribute("href").catch(() => null);
-    marketId = href?.split("/").pop() ?? null;
+    // Find a card that has both "Demo" text and a "Live" chip — that
+    // narrows to LIVE Demo markets in either section but avoids
+    // resolved cards.
+    const cards = p.locator('a[href^="/markets/mkt_"]').filter({ hasText: /Demo/ });
+    const count = await cards.count();
+    for (let i = 0; i < count; i++) {
+      const card = cards.nth(i);
+      const cardText = (await card.textContent()) ?? "";
+      // Skip cards marked "Resolved" — those are in the recently-
+      // resolved section and fast-forward is a no-op for them.
+      if (/Resolved/i.test(cardText)) continue;
+      const href = await card.getAttribute("href").catch(() => null);
+      marketId = href?.split("/").pop() ?? null;
+      if (marketId) break;
+    }
     await p.close();
   }
   log("1a found a LIVE Demo market", !!marketId, marketId ?? "(none)");

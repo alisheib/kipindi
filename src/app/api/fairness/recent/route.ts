@@ -29,7 +29,17 @@ export async function GET() {
   // idempotent (guards on `m.status !== "LIVE"`) so concurrent polls
   // from multiple browsers can't double-resolve a market.
   await autoResolveExpiredDemoMarkets().catch(() => {});
-  const resolved = listMarkets({ status: "RESOLVED" }).slice(0, 50);
+  // listMarkets() sorts ASC by resolutionAt — for the "recent" feed we
+  // want NEWEST first so the NotifyPoller (polling this every 2 s) can
+  // see a just-resolved market. Sort DESC by stage2At (the actual
+  // settlement timestamp) before slicing to 50. Without this, on a
+  // long-lived instance the resolved-market backlog pushes newly-
+  // settled markets past the 50-row cutoff and players miss their
+  // win-celebration popup — same root cause as the original
+  // refresh-required bug, just from the other side of the window.
+  const resolved = listMarkets({ status: "RESOLVED" })
+    .sort((a, b) => (b.resolutionStage2At ?? "").localeCompare(a.resolutionStage2At ?? ""))
+    .slice(0, 50);
   return NextResponse.json({
     attestations: resolved.map((m) => ({
       marketId: m.id,

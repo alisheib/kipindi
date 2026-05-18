@@ -8,6 +8,7 @@ import { exportUserData } from "@/lib/server/user-service";
 import { Download, ShieldCheck, AlertOctagon } from "lucide-react";
 import { formatTzs, formatTzsCompact } from "@/lib/utils";
 import { displayLabel, displayInitials } from "@/lib/display-label";
+import { SuspendControls } from "./suspend-controls";
 
 export const dynamic = "force-dynamic";
 
@@ -265,6 +266,9 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
               Every action generates an audit entry · reason field required
             </p>
             <div className="flex items-center gap-1 flex-wrap">
+              {/* Live actions (wired this sprint) */}
+              <SuspendControls userId={data.user.id} currentStatus={data.user.status} />
+              {/* Stubbed actions — need the two-officer flow */}
               <ActionBtn label="Freeze wallet" />
               <ActionBtn label="Refund" />
               <ActionBtn label="Manual self-exclude" />
@@ -275,7 +279,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
           </div>
           <p className="text-caption text-text-tertiary mt-3 flex items-center gap-1.5">
             <ShieldCheck size={12} aria-hidden />
-            Privileged actions are wired up in the next iteration; the queue + audit shape is ready.
+            Suspend / Restore are live + audited. The remaining actions need the two-officer queue (next iteration).
           </p>
         </AdminCard>
       </div>
