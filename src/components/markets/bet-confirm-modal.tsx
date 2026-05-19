@@ -152,7 +152,10 @@ export function BetConfirmModal({
       {/* Card */}
       <div
         className="relative w-full max-w-[440px] rounded-2xl border border-border bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)]"
-        style={{ animation: "bcm-rise 200ms cubic-bezier(.2,.8,.2,1)" }}
+        // Kit `--ease-arrive` — same entry curve as the result modal,
+        // so the pre-confirm and post-place beats feel like one
+        // continuous motion language.
+        style={{ animation: "bcm-rise 240ms var(--ease-arrive)" }}
       >
         {/* Quote-hold progress strip — driven directly via stripRef
             from the RAF loop. No CSS transition (would overlap with

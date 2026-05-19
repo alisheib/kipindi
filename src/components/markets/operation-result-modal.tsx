@@ -29,7 +29,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, X, AlertTriangle, Info } from "lucide-react";
 
-const AUTO_CLOSE_SUCCESS_MS = 5_000;
+const DEFAULT_AUTO_CLOSE_MS = 5_000;
 
 export type OperationVariant = "success" | "danger" | "warning" | "info";
 
@@ -55,6 +55,14 @@ type Props = {
   onPrimary?: () => void;
   onSecondary?: () => void;
   onClose: () => void;
+  /**
+   * Override the success auto-close timer. Default 5000 ms.
+   * The gold progress strip animates over the SAME value — both are
+   * driven from a single RAF loop sharing the same start timestamp,
+   * so the bar reaching empty and the modal closing happen on the
+   * exact same frame. No drift between visual countdown and timer.
+   */
+  autoCloseMs?: number;
 };
 
 const TONE: Record<OperationVariant, { fg: string; bg: string; brd: string; shadow: string; primaryBtn: string }> = {
@@ -99,28 +107,69 @@ function CrestIcon({ variant, color }: { variant: OperationVariant; color: strin
 export function OperationResultModal({
   open, variant, eyebrow, title, subtitle, details, footnote,
   primaryLabel, secondaryLabel, onPrimary, onSecondary, onClose,
+  autoCloseMs,
 }: Props) {
   const [mounted, setMounted] = useState(false);
   const closeRef = useRef(onClose);
   useEffect(() => { closeRef.current = onClose; }, [onClose]);
 
+  // RAF-driven gold strip. Same pattern as BetConfirmModal — direct
+  // DOM mutation each frame keeps the bar exactly aligned with the
+  // close timer (single start timestamp, single duration). No CSS
+  // animation racing against setTimeout.
+  const stripRef = useRef<HTMLDivElement>(null);
+  const closeMs = autoCloseMs ?? DEFAULT_AUTO_CLOSE_MS;
+
   useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     if (!open) return;
-    // Only success auto-dismisses. Danger/warning/info stay open so the
-    // user can read the reason — that's the LCCP "informed-consent"
-    // pattern: never auto-clear an error message.
-    const t = variant === "success"
-      ? setTimeout(() => closeRef.current(), AUTO_CLOSE_SUCCESS_MS)
-      : null;
+    // Errors / warnings / info don't auto-close (LCCP informed-consent).
+    if (variant !== "success") {
+      const onKey = (e: KeyboardEvent) => {
+        if (e.key === "Escape") { e.preventDefault(); closeRef.current(); }
+        if (e.key === "Enter")  { e.preventDefault(); (onPrimary ?? closeRef.current)(); }
+      };
+      window.addEventListener("keydown", onKey);
+      return () => window.removeEventListener("keydown", onKey);
+    }
+
+    // Success path — RAF-driven countdown that drives both the gold
+    // strip AND the dismiss in lock-step. Single start timestamp,
+    // single duration. Bar reaches 0 the same frame the close fires.
+    const startedAt = performance.now();
+    if (stripRef.current) stripRef.current.style.transform = "scaleX(1)";
+    let rafId: number | null = null;
+    const tick = () => {
+      const elapsed = performance.now() - startedAt;
+      const pct = Math.max(0, Math.min(1, 1 - elapsed / closeMs));
+      if (stripRef.current) stripRef.current.style.transform = `scaleX(${pct})`;
+      if (elapsed >= closeMs) {
+        rafId = null;
+        closeRef.current();
+        return;
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+
+    // setTimeout backstop — fires alongside the RAF in case the tab
+    // is backgrounded and RAF gets throttled. Both calling
+    // closeRef.current() is idempotent (the parent owns the open
+    // state and re-render is cheap).
+    const backstop = setTimeout(() => closeRef.current(), closeMs + 50);
+
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") { e.preventDefault(); closeRef.current(); }
       if (e.key === "Enter")  { e.preventDefault(); (onPrimary ?? closeRef.current)(); }
     };
     window.addEventListener("keydown", onKey);
-    return () => { if (t) clearTimeout(t); window.removeEventListener("keydown", onKey); };
-  }, [open, variant, onPrimary]);
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      clearTimeout(backstop);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open, variant, onPrimary, closeMs]);
 
   if (!mounted || !open) return null;
 
@@ -143,17 +192,24 @@ export function OperationResultModal({
 
       <div
         className="relative w-full max-w-[460px] rounded-2xl border border-border bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)]"
-        style={{ animation: "orm-rise 220ms cubic-bezier(.2,.8,.2,1)" }}
+        // Kit `--ease-arrive` is the gentle overshoot reserved for
+        // entry surfaces — gives the modal a confident "land" that
+        // a generic cubic-bezier can't match.
+        style={{ animation: "orm-rise 240ms var(--ease-arrive)" }}
       >
-        {/* Auto-close progress strip — success only */}
+        {/* Auto-close progress strip — success only. Driven by the
+            same RAF tick that schedules the close, so the bar and the
+            dismiss are guaranteed to land on the same frame. No CSS
+            animation that could race against the timer. */}
         {variant === "success" && (
           <div className="absolute inset-x-0 top-0 h-1 overflow-hidden rounded-t-2xl" aria-hidden>
             <div
+              ref={stripRef}
               className="h-full w-full origin-left"
               style={{
                 background: "linear-gradient(90deg, var(--gold-500), var(--gold-300))",
                 transform: "scaleX(1)",
-                animation: `orm-strip ${AUTO_CLOSE_SUCCESS_MS}ms linear forwards`,
+                willChange: "transform",
               }}
             />
           </div>
@@ -262,7 +318,6 @@ export function OperationResultModal({
         @keyframes orm-rise  { from { transform: translateY(8px) scale(.96); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
         @keyframes orm-fade  { from { opacity: 0; } to { opacity: 1; } }
         @keyframes orm-pop   { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.06); opacity: 1; } 100% { transform: scale(1); } }
-        @keyframes orm-strip { from { transform: scaleX(1); } to { transform: scaleX(0); } }
       `}</style>
     </div>,
     document.body,

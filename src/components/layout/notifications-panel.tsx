@@ -165,10 +165,11 @@ export function NotificationsPanel() {
       >
         <Bell size={16} strokeWidth={1.75} />
         {unread > 0 && (
-          <span aria-hidden className="absolute right-1.5 top-1.5 inline-flex">
-            <span className="absolute h-2 w-2 rounded-pill bg-gold-500 opacity-75 animate-ping" />
-            <span className="h-1.5 w-1.5 rounded-pill bg-gold-500" />
-          </span>
+          // Kit `gold-dot` — same box-shadow halo technique as the
+          // .live-dot used on /live. Reads as a crisp circle at all
+          // sizes; the older animate-ping ring rendered as a fuzzy
+          // smudge at 6 px.
+          <span aria-hidden className="gold-dot absolute right-1 top-1" />
         )}
       </button>
 

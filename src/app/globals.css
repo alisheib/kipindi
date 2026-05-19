@@ -524,6 +524,37 @@ body {
     0 0 12px 1px color-mix(in oklab, oklch(76% 0.22 25) 60%, transparent);
   animation: live-pulse 1.4s ease-in-out infinite;
 }
+/* Same technique as .live-dot but in the brand gold — used for the
+   notification-bell unread indicator. The earlier dot used Tailwind's
+   `animate-ping`, which scales a translucent ring to 0 opacity. At a
+   6px size that rendered as a fuzzy smudge rather than a crisp
+   pulsing circle. The box-shadow approach keeps a real halo around
+   the dot at all times, so it always reads as a circle, and only the
+   outer ring breathes. */
+.gold-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: oklch(82% 0.15 86);
+  box-shadow:
+    0 0 0 0 color-mix(in oklab, oklch(82% 0.15 86) 70%, transparent),
+    0 0 10px 1px color-mix(in oklab, oklch(82% 0.15 86) 55%, transparent);
+  animation: gold-pulse 1.6s ease-in-out infinite;
+}
+@keyframes gold-pulse {
+  0%, 100% {
+    opacity: 0.92;
+    box-shadow:
+      0 0 0 0 color-mix(in oklab, oklch(82% 0.15 86) 70%, transparent),
+      0 0 8px 1px color-mix(in oklab, oklch(82% 0.15 86) 55%, transparent);
+  }
+  50% {
+    opacity: 1;
+    box-shadow:
+      0 0 0 6px color-mix(in oklab, oklch(82% 0.15 86) 0%, transparent),
+      0 0 14px 2px color-mix(in oklab, oklch(82% 0.15 86) 75%, transparent);
+  }
+}
 @keyframes live-pulse {
   0%, 100% {
     opacity: 0.85;

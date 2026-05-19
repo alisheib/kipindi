@@ -158,6 +158,42 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
   const stakeRolled = useRollingNumber(stakeTarget);
   const stake = Math.max(100, Math.round(stakeRolled / 100) * 100);
 
+  // Manual stake input — bidirectional bridge to the dial position.
+  // The slider can't easily land on a specific shilling amount
+  // (it's continuous), so we let the player type the number directly
+  // and translate it back to a dial position using the inverse of
+  // the multiplier curve. Keystrokes update the slider live so the
+  // two stay locked.
+  const [stakeText, setStakeText] = useState<string>("");
+  const [editingStake, setEditingStake] = useState(false);
+  // Mirror the rolling stake into the input whenever the user isn't
+  // actively typing — keeps the field in step with slider drags.
+  useEffect(() => {
+    if (!editingStake) setStakeText(String(stake));
+  }, [stake, editingStake]);
+
+  /** Translate a typed stake (TZS) back to a slider position. */
+  const posFromStake = useCallback((tzs: number): number => {
+    const minDial = baseStake;          // multiplier 1 → baseStake
+    const maxDial = baseStake * 5;      // multiplier 5 → baseStake × 5
+    const clamped = Math.max(minDial, Math.min(maxDial, tzs));
+    const mult = clamped / baseStake;
+    // Inverse of (1 + 4·dist²) → dist = √((mult−1)/4)
+    const dist = Math.sqrt(Math.max(0, (mult - 1) / 4));
+    // Preserve current side; default to YES (right) if neutral.
+    const goingRight = pos === 0.5 ? true : pos > 0.5;
+    return Math.max(0, Math.min(1, 0.5 + (goingRight ? dist : -dist) / 2));
+  }, [baseStake, pos]);
+
+  const onStakeInput = (raw: string) => {
+    // Strip everything except digits — players paste " TZS 12,500" all the time.
+    const cleaned = raw.replace(/[^\d]/g, "");
+    setStakeText(cleaned);
+    const parsed = parseInt(cleaned, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) return;
+    setPos(posFromStake(parsed));
+  };
+
   // Whole-pool projection — payout AND warning level
   const proj = side === "NEUTRAL"
     ? { payout: 0, ratio: 0 }
@@ -481,9 +517,46 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
           </p>
         </div>
         <div className="text-right">
-          <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mb-1">Stake · dau</p>
-          <p className="font-mono font-bold text-[20px] tabular-nums leading-none text-text" style={{ letterSpacing: "-0.02em" }}>
-            TZS {fmt(stake)}
+          <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mb-1">
+            Stake · dau
+          </p>
+          <div className="inline-flex items-baseline justify-end gap-1.5">
+            <span className="font-mono text-[14px] font-semibold text-text-muted leading-none">TZS</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={editingStake ? stakeText : fmt(stake)}
+              onFocus={(e) => {
+                setEditingStake(true);
+                setStakeText(String(stake));
+                // Select all on focus so the player can replace the
+                // amount in one tap — keeps the interaction "type the
+                // exact number" friction-free.
+                requestAnimationFrame(() => e.target.select());
+              }}
+              onBlur={() => {
+                setEditingStake(false);
+                // Final settle — if the typed value is below the dial
+                // minimum, snap up; above the dial max, snap down.
+                const parsed = parseInt(stakeText.replace(/[^\d]/g, ""), 10);
+                if (Number.isFinite(parsed) && parsed > 0) setPos(posFromStake(parsed));
+              }}
+              onChange={(e) => onStakeInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                // Bubble-stop arrow keys so the dial's keyboard
+                // handler doesn't also shift position while the
+                // player is editing the number.
+                if (e.key === "ArrowLeft" || e.key === "ArrowRight") e.stopPropagation();
+              }}
+              aria-label="Stake amount in TZS"
+              className="font-mono font-bold text-[20px] tabular-nums leading-none text-text bg-transparent text-right outline-none w-[7.5ch] focus:bg-bg-overlay focus:rounded-md focus:px-1.5 focus:py-0.5 transition-all"
+              style={{ letterSpacing: "-0.02em" }}
+            />
+          </div>
+          <p className="mt-1 font-mono text-[9px] text-text-subtle">
+            {fmt(baseStake)} – {fmt(baseStake * 5)} · type or slide
           </p>
         </div>
       </div>
@@ -597,6 +670,10 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
           secondaryLabel={resultData.variant === "success" ? "View positions" : undefined}
           onSecondary={resultData.variant === "success" ? () => router.push("/positions") : undefined}
           onClose={() => setResultOpen(false)}
+          // Bet-placed gets the longer 10 s hold — gives the player
+          // time to read the payout block AND notice the bell
+          // notification, so the two signals never feel out of sync.
+          autoCloseMs={resultData.variant === "success" ? 10_000 : undefined}
         />
       )}
 
