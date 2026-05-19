@@ -166,6 +166,11 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
   // two stay locked.
   const [stakeText, setStakeText] = useState<string>("");
   const [editingStake, setEditingStake] = useState(false);
+  // Side at the moment the input was focused — preserved for the
+  // whole editing session so that typing transient stakes that round
+  // through the centre (e.g. dropping below baseStake) doesn't flip
+  // the dial to the other side. Captured on focus, cleared on blur.
+  const editingSideRef = useRef<"left" | "right" | null>(null);
   // Mirror the rolling stake into the input whenever the user isn't
   // actively typing — keeps the field in step with slider drags.
   useEffect(() => {
@@ -180,8 +185,11 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
     const mult = clamped / baseStake;
     // Inverse of (1 + 4·dist²) → dist = √((mult−1)/4)
     const dist = Math.sqrt(Math.max(0, (mult - 1) / 4));
-    // Preserve current side; default to YES (right) if neutral.
-    const goingRight = pos === 0.5 ? true : pos > 0.5;
+    // Side priority: editingSideRef (captured on focus) wins so an
+    // in-flight edit can't accidentally cross the centre. Otherwise
+    // preserve the current pos's side; default to YES if neutral.
+    const fallback = pos === 0.5 ? "right" : pos > 0.5 ? "right" : "left";
+    const goingRight = (editingSideRef.current ?? fallback) === "right";
     return Math.max(0, Math.min(1, 0.5 + (goingRight ? dist : -dist) / 2));
   }, [baseStake, pos]);
 
@@ -238,6 +246,13 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     setDragging(true);
+    // Resuming a drag means the player is back to slider control —
+    // exit any in-flight stake-input edit so the input goes back to
+    // mirroring the dragged value live. Without this, the input
+    // stays frozen at whatever the player last typed even though
+    // the slider has moved.
+    setEditingStake(false);
+    editingSideRef.current = null;
     setFromClientX(e.clientX);
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
   };
@@ -530,6 +545,12 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
               onFocus={(e) => {
                 setEditingStake(true);
                 setStakeText(String(stake));
+                // Capture the side at focus time so the whole editing
+                // session stays on the user's currently-chosen side
+                // — typing a value that maps to a position near the
+                // centre won't accidentally flip YES↔NO. Neutral
+                // (pos === 0.5) defaults to right (YES).
+                editingSideRef.current = pos < 0.5 ? "left" : "right";
                 // Select all on focus so the player can replace the
                 // amount in one tap — keeps the interaction "type the
                 // exact number" friction-free.
@@ -537,10 +558,11 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
               }}
               onBlur={() => {
                 setEditingStake(false);
-                // Final settle — if the typed value is below the dial
-                // minimum, snap up; above the dial max, snap down.
-                const parsed = parseInt(stakeText.replace(/[^\d]/g, ""), 10);
-                if (Number.isFinite(parsed) && parsed > 0) setPos(posFromStake(parsed));
+                editingSideRef.current = null;
+                // No snap on blur — the slider is already at the
+                // typed-value position (keystrokes drove setPos
+                // live). Snapping again would overwrite any drag
+                // the player did after typing.
               }}
               onChange={(e) => onStakeInput(e.target.value)}
               onKeyDown={(e) => {
