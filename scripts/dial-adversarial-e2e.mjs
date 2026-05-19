@@ -92,7 +92,7 @@ try {
   await p.goto(`${BASE}${marketHref}`, { waitUntil: "networkidle" });
   await p.waitForTimeout(700);
   const track = p.locator('[role="slider"][aria-label*="conviction" i]').first();
-  const stakeInput = p.locator('input[aria-label="Stake amount in TZS"]').first();
+  const stakeInput = p.locator('input[aria-label^="Stake amount in TZS"]').first();
   log("A.0 track + stake input visible",
       (await track.isVisible().catch(() => false)) && (await stakeInput.isVisible().catch(() => false)));
 
@@ -334,7 +334,7 @@ try {
   await pH.goto(`${BASE}${marketHref}`, { waitUntil: "networkidle" });
   await pH.waitForTimeout(700);
   const trackH = pH.locator('[role="slider"][aria-label*="conviction" i]').first();
-  const stakeH = pH.locator('input[aria-label="Stake amount in TZS"]').first();
+  const stakeH = pH.locator('input[aria-label^="Stake amount in TZS"]').first();
   // Set initial side to YES
   {
     const box = await trackH.boundingBox();
@@ -373,7 +373,7 @@ try {
   await pI.goto(`${BASE}${marketHref}`, { waitUntil: "networkidle" });
   await pI.waitForTimeout(700);
   const trackI = pI.locator('[role="slider"][aria-label*="conviction" i]').first();
-  const stakeI = pI.locator('input[aria-label="Stake amount in TZS"]').first();
+  const stakeI = pI.locator('input[aria-label^="Stake amount in TZS"]').first();
   async function dragI(fraction) {
     const box = await trackI.boundingBox();
     if (!box) return;

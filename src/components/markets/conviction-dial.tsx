@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Pencil } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { buyPositionAction } from "@/app/markets/actions";
 import { HouseLeanWarning } from "./house-lean-warning";
@@ -193,13 +194,45 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
     return Math.max(0, Math.min(1, 0.5 + (goingRight ? dist : -dist) / 2));
   }, [baseStake, pos]);
 
+  // Dial's typeable range. Anything outside this can't be represented
+  // on the slider; we still let the user type freely (so they see
+  // what they're keying), but the slider clamps + the input flashes
+  // an "out of range — will adjust" hint until blur or correction.
+  const minDial = baseStake;
+  const maxDial = baseStake * 5;
+  const typedNumber = (() => {
+    const n = parseInt(stakeText.replace(/[^\d]/g, ""), 10);
+    return Number.isFinite(n) ? n : 0;
+  })();
+  const isOverMax = editingStake && typedNumber > maxDial;
+  const isUnderMin = editingStake && typedNumber > 0 && typedNumber < minDial;
+  const isOutOfRange = isOverMax || isUnderMin;
+
   const onStakeInput = (raw: string) => {
     // Strip everything except digits — players paste " TZS 12,500" all the time.
-    const cleaned = raw.replace(/[^\d]/g, "");
+    // Also cap the visible length at 7 digits — TZS 9,999,999 is well
+    // above the platform's hard cap and longer strings are pasted
+    // garbage that would push the layout out.
+    const cleaned = raw.replace(/[^\d]/g, "").slice(0, 7);
     setStakeText(cleaned);
     const parsed = parseInt(cleaned, 10);
     if (!Number.isFinite(parsed) || parsed <= 0) return;
+    // The slider's position uses the clamped value — posFromStake
+    // already clamps to [minDial, maxDial] internally so this is
+    // a no-op-safe pass-through.
     setPos(posFromStake(parsed));
+  };
+
+  /** Settle the input on blur / Enter to the clamped value. The
+   *  slider is already at the clamped position; this just makes the
+   *  number visible to the user match what the dial represents. */
+  const settleStakeOnExit = () => {
+    setEditingStake(false);
+    editingSideRef.current = null;
+    const parsed = parseInt(stakeText.replace(/[^\d]/g, ""), 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) return;
+    const clamped = Math.max(minDial, Math.min(maxDial, parsed));
+    if (clamped !== parsed) setStakeText(String(clamped));
   };
 
   // Whole-pool projection — payout AND warning level
@@ -532,11 +565,28 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
           </p>
         </div>
         <div className="text-right">
-          <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mb-1">
-            Stake · dau
-          </p>
-          <div className="inline-flex items-baseline justify-end gap-1.5">
-            <span className="font-mono text-[14px] font-semibold text-text-muted leading-none">TZS</span>
+          <div className="flex items-center justify-end gap-1.5 mb-1.5">
+            <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle">
+              Stake · dau · <span className="text-gold-300">edit</span>
+            </p>
+            <Pencil size={10} aria-hidden className="text-gold-300/80" />
+          </div>
+          {/*
+            Pill-style editable field: visible border + hover state so
+            it reads as "this is a control, click me". The TZS prefix
+            sits inside the pill. Width is fixed so the pill doesn't
+            jump when digits change. Focus state lights the border in
+            gold; out-of-range typing flashes claret.
+          */}
+          <label
+            className={[
+              "inline-flex items-baseline gap-1.5 px-2.5 py-1.5 rounded-md border transition-colors cursor-text",
+              editingStake
+                ? (isOutOfRange ? "border-no-700 bg-no-500/10" : "border-gold-500 bg-gold-500/10")
+                : "border-border bg-bg-overlay/40 hover:border-gold-700 hover:bg-bg-overlay",
+            ].join(" ")}
+          >
+            <span className="font-mono text-[13px] font-semibold text-text-subtle leading-none">TZS</span>
             <input
               type="text"
               inputMode="numeric"
@@ -556,14 +606,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
                 // exact number" friction-free.
                 requestAnimationFrame(() => e.target.select());
               }}
-              onBlur={() => {
-                setEditingStake(false);
-                editingSideRef.current = null;
-                // No snap on blur — the slider is already at the
-                // typed-value position (keystrokes drove setPos
-                // live). Snapping again would overwrite any drag
-                // the player did after typing.
-              }}
+              onBlur={settleStakeOnExit}
               onChange={(e) => onStakeInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") (e.target as HTMLInputElement).blur();
@@ -572,14 +615,31 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
                 // player is editing the number.
                 if (e.key === "ArrowLeft" || e.key === "ArrowRight") e.stopPropagation();
               }}
-              aria-label="Stake amount in TZS"
-              className="font-mono font-bold text-[20px] tabular-nums leading-none text-text bg-transparent text-right outline-none w-[7.5ch] focus:bg-bg-overlay focus:rounded-md focus:px-1.5 focus:py-0.5 transition-all"
+              aria-label={`Stake amount in TZS — type or use the dial (min ${minDial}, max ${maxDial})`}
+              aria-invalid={isOutOfRange}
+              className="font-mono font-bold text-[18px] tabular-nums leading-none text-text bg-transparent text-right outline-none w-[6.5ch]"
               style={{ letterSpacing: "-0.02em" }}
             />
-          </div>
-          <p className="mt-1 font-mono text-[9px] text-text-subtle">
-            {fmt(baseStake)} – {fmt(baseStake * 5)} · type or slide
-          </p>
+          </label>
+          {/*
+            Range helper line — switches to a corrective hint when the
+            typed value is outside the dial range. The hint tells the
+            player exactly what the slider settled to, so the clamp
+            never feels arbitrary.
+          */}
+          {isOverMax ? (
+            <p className="mt-1 font-mono text-[9.5px] text-no-300">
+              Max {fmt(maxDial)} · adjusts on blur
+            </p>
+          ) : isUnderMin ? (
+            <p className="mt-1 font-mono text-[9.5px] text-no-300">
+              Min {fmt(minDial)} · adjusts on blur
+            </p>
+          ) : (
+            <p className="mt-1 font-mono text-[9px] text-text-subtle">
+              {fmt(minDial)} – {fmt(maxDial)} · type or slide
+            </p>
+          )}
         </div>
       </div>
 

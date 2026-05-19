@@ -81,7 +81,7 @@ try {
   await p.goto(`${BASE}${marketHref}`, { waitUntil: "networkidle" });
   await p.waitForTimeout(700);
   const track = p.locator('[role="slider"][aria-label*="conviction" i]').first();
-  const stakeInput = p.locator('input[aria-label="Stake amount in TZS"]').first();
+  const stakeInput = p.locator('input[aria-label^="Stake amount in TZS"]').first();
 
   // Helper: measure keystroke → aria-valuenow change latency.
   async function measureKeystrokeLatency(stakeTarget) {
@@ -356,7 +356,7 @@ try {
   await pR.goto(`${BASE}${marketHref}`, { waitUntil: "networkidle" });
   await pR.waitForTimeout(700);
   const trackR = pR.locator('[role="slider"][aria-label*="conviction" i]').first();
-  const inputR = pR.locator('input[aria-label="Stake amount in TZS"]').first();
+  const inputR = pR.locator('input[aria-label^="Stake amount in TZS"]').first();
 
   // Hammer 100 keystrokes.
   for (let i = 0; i < 100; i++) {
