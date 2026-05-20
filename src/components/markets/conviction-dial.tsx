@@ -709,15 +709,15 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
           */}
           {isOverMax ? (
             <p className="mt-1 font-mono text-[9.5px] text-no-300">
-              Max {fmt(maxDial)} · adjusts on blur
+              Max TZS {fmt(maxDial)} · adjusts on blur
             </p>
           ) : isUnderMin ? (
             <p className="mt-1 font-mono text-[9.5px] text-no-300">
-              Min {fmt(minDial)} · adjusts on blur
+              Min TZS {fmt(minDial)} · adjusts on blur
             </p>
           ) : (
             <p className="mt-1 font-mono text-[9px] text-text-subtle">
-              {fmt(minDial)} – {fmt(maxDial)} · type or slide
+              TZS {fmt(minDial)} – {fmt(maxDial)} · type or drag
             </p>
           )}
         </div>
