@@ -653,20 +653,22 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
 
       {/* Readout — `grid-cols-[1fr_auto]` so the stake input keeps
           whatever width its content needs, instead of being squeezed
-          into a fixed 50% column where "TZS 25,000" gets clipped. */}
-      <div className="grid grid-cols-[1fr_auto] gap-3 mt-5 items-center">
+          into a fixed 50% column where "TZS 25,000" gets clipped.
+          Text scales down on narrow viewports so "drag the dial" /
+          "TZS 25,000" don't collide at < 360 px container widths. */}
+      <div className="grid grid-cols-[1fr_auto] gap-2 sm:gap-3 mt-5 items-center">
         <div className="min-w-0">
           <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mb-1">
             {side === "NEUTRAL" ? "No conviction" : "You are picking"}
           </p>
           <p
-            className="font-display font-bold text-[22px] leading-none truncate"
+            className="font-display font-bold text-[15px] sm:text-[22px] leading-[1.05] break-words"
             style={{ color: sideText, letterSpacing: "-0.025em" }}
           >
-            {side === "NEUTRAL" ? "drag the dial" : `${side}`}
+            {side === "NEUTRAL" ? "Pick side" : `${side}`}
           </p>
         </div>
-        <div className="text-right">
+        <div className="text-right min-w-0">
           <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mb-1.5">
             Stake · dau
           </p>
@@ -704,10 +706,11 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
             }}
             aria-label={`Stake amount in TZS — type or use the dial (min ${minDial}, max ${maxDial})`}
             aria-invalid={isOutOfRange}
-            // Fixed width on the input itself so "25,000" + commas
-            // never get visually clipped. With prefix + trailing the
-            // container settles around ~170 px overall.
-            className="text-right font-bold tabular-nums w-[80px] px-2"
+            // Responsive width: narrow viewports squeeze to 68 px so
+            // the input doesn't crowd the side label; from sm: up the
+            // 80 px width keeps "25,000" comfortable. tabular-nums
+            // prevents digit-width jitter across the 5-character span.
+            className="text-right font-bold tabular-nums w-[68px] sm:w-[80px] px-1.5 sm:px-2"
             containerClassName="ml-auto"
           />
           {/*
@@ -717,16 +720,16 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
             never feels arbitrary.
           */}
           {isOverMax ? (
-            <p className="mt-1 font-mono text-[9.5px] text-no-300">
-              Max TZS {fmt(maxDial)} · adjusts on blur
+            <p className="mt-1 font-mono text-[9.5px] text-no-300 whitespace-nowrap">
+              Max TZS {fmt(maxDial)}
             </p>
           ) : isUnderMin ? (
-            <p className="mt-1 font-mono text-[9.5px] text-no-300">
-              Min TZS {fmt(minDial)} · adjusts on blur
+            <p className="mt-1 font-mono text-[9.5px] text-no-300 whitespace-nowrap">
+              Min TZS {fmt(minDial)}
             </p>
           ) : (
-            <p className="mt-1 font-mono text-[9px] text-text-subtle">
-              TZS {fmt(minDial)} – {fmt(maxDial)} · type or drag
+            <p className="mt-1 font-mono text-[9px] text-text-subtle whitespace-nowrap">
+              TZS {fmt(minDial)}–{fmt(maxDial)}
             </p>
           )}
         </div>
@@ -770,7 +773,9 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
             : `Place ${side} for TZS ${fmt(stake)}`
           }
           className={closedNow ? "btn btn-ghost btn-md" : (side === "NEUTRAL" ? "btn btn-ghost btn-md" : "btn btn-gold btn-md")}
-          style={{ borderRadius: 999, minWidth: 168, fontVariantNumeric: "tabular-nums" }}
+          // 44 px min-height meets WCAG 2.5.5 tap-target on mobile;
+          // btn-md alone caps at 38 px.
+          style={{ borderRadius: 999, minWidth: 168, minHeight: 44, fontVariantNumeric: "tabular-nums" }}
         >
           {closedNow
             ? "Closed · awaiting settle"

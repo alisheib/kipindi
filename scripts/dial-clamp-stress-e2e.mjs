@@ -79,8 +79,8 @@ try {
   // The "TZS" prefix sits inside the kit Input's separated sub-cell.
   const tzsPrefix = await p.getByText(/^TZS$/).first().isVisible({ timeout: 2_000 }).catch(() => false);
   log("A.2 'TZS' prefix visible inside the input pill", tzsPrefix);
-  const rangeLabel = await p.getByText(/TZS\s*5,?000.*–.*25,?000.*type or drag/i).first().isVisible({ timeout: 2_000 }).catch(() => false);
-  log("A.3 range helper 'TZS 5,000 – 25,000 · type or drag' visible", rangeLabel);
+  const rangeLabel = await p.getByText(/TZS\s*5,?000\s*–\s*25,?000/i).first().isVisible({ timeout: 2_000 }).catch(() => false);
+  log("A.3 range helper 'TZS 5,000–25,000' visible", rangeLabel);
 
   // Kit Input wraps input + prefix + trailing in a <span> with the
   // recognisable "form field" treatment — visible border, raised
@@ -120,8 +120,8 @@ try {
   await p.waitForTimeout(300);
 
   // The "Max 25,000" hint should now be visible.
-  const overMaxHint = await p.getByText(/Max\s+TZS\s*25,?000\s*·\s*adjusts on blur/i).first().isVisible({ timeout: 1_500 }).catch(() => false);
-  log("C.1 over-max typing shows 'Max TZS 25,000 · adjusts on blur' hint",
+  const overMaxHint = await p.getByText(/Max\s+TZS\s*25,?000/i).first().isVisible({ timeout: 1_500 }).catch(() => false);
+  log("C.1 over-max typing shows 'Max TZS 25,000' hint",
       overMaxHint);
 
   // aria-invalid should be true.
@@ -159,8 +159,8 @@ try {
   await stakeInput.type("1000", { delay: 6 });
   await p.waitForTimeout(300);
 
-  const underMinHint = await p.getByText(/Min\s+TZS\s*5,?000\s*·\s*adjusts on blur/i).first().isVisible({ timeout: 1_500 }).catch(() => false);
-  log("E.1 under-min typing shows 'Min TZS 5,000 · adjusts on blur' hint",
+  const underMinHint = await p.getByText(/Min\s+TZS\s*5,?000/i).first().isVisible({ timeout: 1_500 }).catch(() => false);
+  log("E.1 under-min typing shows 'Min TZS 5,000' hint",
       underMinHint);
 
   const ariaAtMin = parseInt(await track.getAttribute("aria-valuenow") ?? "0", 10) / 100;
@@ -267,8 +267,8 @@ try {
   log("I.2 hint disappears once a valid value is typed", !hintAfter);
 
   // Range helper line should be back.
-  const rangeBack = await p.getByText(/TZS\s*5,?000.*–.*25,?000.*type or drag/i).first().isVisible({ timeout: 600 }).catch(() => false);
-  log("I.3 range helper 'TZS 5,000 – 25,000 · type or drag' is back", rangeBack);
+  const rangeBack = await p.getByText(/TZS\s*5,?000\s*–\s*25,?000/i).first().isVisible({ timeout: 600 }).catch(() => false);
+  log("I.3 range helper 'TZS 5,000–25,000' is back", rangeBack);
 
   await p.close();
   await ctx.close();

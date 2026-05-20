@@ -249,8 +249,8 @@ try {
   log("F.4 pencil icon trailing inside the input", pencil);
 
   // Range helper present at rest.
-  const rangeHelper = await p.getByText(/TZS\s*5,?000.*–.*25,?000.*type or drag/i).first().isVisible({ timeout: 1_500 }).catch(() => false);
-  log("F.5 'TZS 5,000 – 25,000 · type or drag' range helper visible", rangeHelper);
+  const rangeHelper = await p.getByText(/TZS\s*5,?000\s*–\s*25,?000/i).first().isVisible({ timeout: 1_500 }).catch(() => false);
+  log("F.5 'TZS 5,000–25,000' range helper visible", rangeHelper);
 
   await p.close();
   await ctx.close();

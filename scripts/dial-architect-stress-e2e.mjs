@@ -119,7 +119,7 @@ try {
     const youArePickingHeader = (await p.getByText(/^you are picking$/i).first().textContent({ timeout: 300 }).catch(() => "")) ?? "";
     const noConvictionHeader = (await p.getByText(/^no conviction$/i).first().textContent({ timeout: 300 }).catch(() => "")) ?? "";
     const isNeutralByUi = !!noConvictionHeader && !youArePickingHeader;
-    const sideLabel = (await p.getByText(/^YES$|^NO$|drag the dial/).first().textContent({ timeout: 300 }).catch(() => "")) ?? "";
+    const sideLabel = (await p.getByText(/^YES$|^NO$|Pick side/).first().textContent({ timeout: 300 }).catch(() => "")) ?? "";
     return { inputVal, aria, placeVisible, placeAmount, placeText: placeText.trim(), sideLabel: sideLabel.trim(), isNeutralByUi };
   }
 
@@ -209,7 +209,7 @@ try {
   const s_neutral = await snapshot();
   log("D.1 drag to 0.5 → Place button hidden",
       !s_neutral.placeVisible, `placeText="${s_neutral.placeText}"`);
-  log("D.2 drag to 0.5 → 'No conviction / drag the dial' label",
+  log("D.2 drag to 0.5 → 'No conviction / Pick side' label",
       s_neutral.isNeutralByUi);
 
   // -----------------------------------------------------------------
