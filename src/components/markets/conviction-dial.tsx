@@ -151,19 +151,14 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
   const distFromCenter = Math.abs(pos - 0.5) * 2;
   const conviction = distFromCenter * distFromCenter; // ease-in
   const maxMultiplier = 5;
-  const multiplierTarget = 1 + conviction * (maxMultiplier - 1);
   const isNeutral = distFromCenter < NEUTRAL_BAND;
   const side: Side = isNeutral ? "NEUTRAL" : pos < 0.5 ? "NO" : "YES";
-  const stakeTarget = baseStake * multiplierTarget;
-
-  const multiplier = useRollingNumber(multiplierTarget);
-  const stakeRolled = useRollingNumber(stakeTarget);
-  // Drag-derived stake snaps to the nearest 100 TZS — players don't
-  // want to bet "TZS 8,237". That snap is the right call for a
-  // continuous slider, but it would override a typed exact value
-  // like 10,475 → 10,500. The override below restores the typed
-  // value when the user has explicitly chosen one.
-  const stakeFromSlider = Math.max(100, Math.round(stakeRolled / 100) * 100);
+  // Snap on TARGET, not on tweened value — otherwise `stake`
+  // momentarily disagrees with itself across two consecutive DOM
+  // reads (input.value vs. Place-button text) during the 150 ms
+  // settle window. The architect-stress E.1 invariant catches that.
+  const stakeTargetFromSlider = baseStake * (1 + conviction * (maxMultiplier - 1));
+  const stakeFromSlider = Math.max(100, Math.round(stakeTargetFromSlider / 100) * 100);
 
   // Manual stake input — bidirectional bridge to the dial position.
   // The slider can't easily land on a specific shilling amount
@@ -183,6 +178,13 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
   // displayed, what powers the payout projection. Typed value wins;
   // drag falls back to snapped slider value.
   const stake = exactStake !== null ? exactStake : stakeFromSlider;
+  // Knob multiplier — when exactStake is locked, derive it from the
+  // typed value so 1.00× is honest at baseStake. Otherwise use the
+  // pos-derived geometry. Tween via useRollingNumber for the visual.
+  const multiplierTarget = exactStake !== null
+    ? exactStake / baseStake
+    : 1 + conviction * (maxMultiplier - 1);
+  const multiplier = useRollingNumber(multiplierTarget);
   // Side at the moment the input was focused — preserved for the
   // whole editing session so that typing transient stakes that round
   // through the centre (e.g. dropping below baseStake) doesn't flip
@@ -194,7 +196,17 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
     if (!editingStake) setStakeText(String(stake));
   }, [stake, editingStake]);
 
-  /** Translate a typed stake (TZS) back to a slider position. */
+  /** Translate a typed stake (TZS) back to a slider position.
+   *
+   *  Architectural subtlety: when the player types EXACTLY baseStake
+   *  (mult = 1, dist = 0), the unconstrained inverse lands on pos =
+   *  0.5 — which is INSIDE NEUTRAL_BAND, so `side` derives as NEUTRAL
+   *  and the Place button disappears. To preserve the player's chosen
+   *  side, we floor `dist` to just past the neutral band when an
+   *  editing intent (or current side) exists. The knob visually
+   *  nudges ~2.3% off-centre but the displayed multiplier is
+   *  overridden to "1.00×" via exactStake (above) so the player sees
+   *  a coherent { side, 1.00×, TZS 5,000, Place button } state. */
   const posFromStake = useCallback((tzs: number): number => {
     const minDial = baseStake;          // multiplier 1 → baseStake
     const maxDial = baseStake * 5;      // multiplier 5 → baseStake × 5
@@ -206,8 +218,13 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
     // in-flight edit can't accidentally cross the centre. Otherwise
     // preserve the current pos's side; default to YES if neutral.
     const fallback = pos === 0.5 ? "right" : pos > 0.5 ? "right" : "left";
-    const goingRight = (editingSideRef.current ?? fallback) === "right";
-    return Math.max(0, Math.min(1, 0.5 + (goingRight ? dist : -dist) / 2));
+    const chosen = editingSideRef.current ?? fallback;
+    const goingRight = chosen === "right";
+    // If we have a committed side, ensure the resulting pos sits
+    // outside NEUTRAL_BAND so the dial preserves it.
+    const minDist = NEUTRAL_BAND + 0.005;
+    const effDist = chosen ? Math.max(dist, minDist) : dist;
+    return Math.max(0, Math.min(1, 0.5 + (goingRight ? effDist : -effDist) / 2));
   }, [baseStake, pos]);
 
   // Dial's typeable range. Anything outside this can't be represented
