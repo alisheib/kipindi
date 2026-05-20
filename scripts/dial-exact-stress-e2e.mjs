@@ -220,28 +220,37 @@ try {
   const stakeInput2 = p.locator('input[aria-label^="Stake amount in TZS"]').first();
   await stakeInput2.waitFor({ state: "visible" });
 
-  // The label wrapper is the parent. Confirm it has border-2 and a
-  // non-transparent background.
-  const borderWidth = await stakeInput2.evaluate((el) => {
-    return window.getComputedStyle(el.closest("label")).borderWidth;
-  });
-  log("F.1 input pill has a 2px border at rest (visible affordance)",
-      /^2px/.test(borderWidth), `borderWidth=${borderWidth}`);
+  // The kit Input atom wraps prefix + input + trailing in a <span>
+  // with the recognisable form-field treatment. Walk up the DOM to
+  // find that wrapper (the one with `rounded-md` class).
+  const findWrapperStyle = async (prop) => stakeInput2.evaluate((el, p) => {
+    let node = el.parentElement;
+    while (node && !node.className.includes("rounded-md")) node = node.parentElement;
+    return node ? window.getComputedStyle(node).getPropertyValue(p) : "";
+  }, prop);
 
-  const bgColor = await stakeInput2.evaluate((el) => {
-    return window.getComputedStyle(el.closest("label")).backgroundColor;
-  });
-  log("F.2 input pill has a non-transparent background at rest",
-      bgColor !== "rgba(0, 0, 0, 0)" && !bgColor.endsWith(", 0)"),
+  const borderWidth = await findWrapperStyle("border-width");
+  log("F.1 input wrapper has a visible border at rest",
+      borderWidth && parseFloat(borderWidth) > 0,
+      `borderWidth=${borderWidth}`);
+
+  const bgColor = await findWrapperStyle("background-color");
+  log("F.2 input wrapper has a non-transparent background at rest",
+      bgColor && bgColor !== "rgba(0, 0, 0, 0)" && !bgColor.endsWith(", 0)"),
       `bg=${bgColor}`);
 
-  // The gold accent rule (left tick) is visible at rest.
-  const accent = await p.locator('label > span[aria-hidden]').first().isVisible({ timeout: 1_500 }).catch(() => false);
-  log("F.3 gold accent rule visible on the left side at rest", accent);
+  // Kit Input has a TZS prefix sub-cell — visible at rest, separates
+  // the unit from the typed amount with a vertical rule (border-r).
+  const prefixVisible = await p.getByText(/^TZS$/).first().isVisible({ timeout: 1_500 }).catch(() => false);
+  log("F.3 'TZS' prefix sub-cell visible inside the input", prefixVisible);
+
+  // Pencil icon trailing inside the input (extra "you can edit" cue).
+  const pencil = await p.locator('svg.lucide-pencil').first().isVisible({ timeout: 1_500 }).catch(() => false);
+  log("F.4 pencil icon trailing inside the input", pencil);
 
   // Range helper present at rest.
   const rangeHelper = await p.getByText(/5,?000.*–.*25,?000.*type or slide/i).first().isVisible({ timeout: 1_500 }).catch(() => false);
-  log("F.4 'type or slide' range helper visible", rangeHelper);
+  log("F.5 'type or slide' range helper visible", rangeHelper);
 
   await p.close();
   await ctx.close();

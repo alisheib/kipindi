@@ -73,19 +73,25 @@ try {
   // === A · AFFORDANCE ============================================
   // -----------------------------------------------------------------
   console.log("\n=== A · INPUT LOOKS EDITABLE BEFORE TOUCH ===");
-  // Pencil + edit label both reachable in the DOM before focus.
+  // Pencil + range helper visible at rest.
   const pencilVisible = await p.locator('svg.lucide-pencil').first().isVisible({ timeout: 2_000 }).catch(() => false);
-  log("A.1 Pencil icon visible next to 'Stake' label", pencilVisible);
-  const editLabel = await p.getByText(/Stake\s*·\s*dau\s*·\s*edit/i).first().isVisible({ timeout: 2_000 }).catch(() => false);
-  log("A.2 'Stake · dau · edit' helper text visible", editLabel);
+  log("A.1 Pencil icon visible inside the input as trailing affordance", pencilVisible);
+  // The "TZS" prefix sits inside the kit Input's separated sub-cell.
+  const tzsPrefix = await p.getByText(/^TZS$/).first().isVisible({ timeout: 2_000 }).catch(() => false);
+  log("A.2 'TZS' prefix visible inside the input pill", tzsPrefix);
   const rangeLabel = await p.getByText(/5,?000.*–.*25,?000.*type or slide/i).first().isVisible({ timeout: 2_000 }).catch(() => false);
   log("A.3 range helper '5,000 – 25,000 · type or slide' visible", rangeLabel);
 
-  // The pill should have a visible border before focus (not just text).
+  // Kit Input wraps input + prefix + trailing in a <span> with the
+  // recognisable "form field" treatment — visible border, raised
+  // background, separator between prefix and input. Walk up to find
+  // the wrapper.
   const borderColorBefore = await stakeInput.evaluate((el) => {
-    return window.getComputedStyle(el.closest("label")).borderColor;
+    let node = el.parentElement;
+    while (node && !node.className.includes("rounded-md")) node = node.parentElement;
+    return node ? window.getComputedStyle(node).borderColor : "";
   });
-  log("A.4 wrapper label has a visible border before focus",
+  log("A.4 input wrapper has a visible border before focus",
       !!borderColorBefore && !borderColorBefore.includes("rgba(0, 0, 0, 0)"),
       `borderColor=${borderColorBefore}`);
 
@@ -96,10 +102,12 @@ try {
   await stakeInput.focus();
   await p.waitForTimeout(200);
   const borderFocus = await stakeInput.evaluate((el) => {
-    return window.getComputedStyle(el.closest("label")).borderColor;
+    let node = el.parentElement;
+    while (node && !node.className.includes("rounded-md")) node = node.parentElement;
+    return node ? window.getComputedStyle(node).borderColor : "";
   });
-  log("B.1 border changes on focus (gold) — distinct from blur color",
-      borderFocus !== borderColorBefore, `before=${borderColorBefore} focus=${borderFocus}`);
+  log("B.1 border changes on focus (aqua) — distinct from rest color",
+      borderFocus !== borderColorBefore, `rest=${borderColorBefore} focus=${borderFocus}`);
 
   // -----------------------------------------------------------------
   // === C · OVER-MAX TYPING SHOWS CLARET HINT =====================

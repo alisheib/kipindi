@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { buyPositionAction } from "@/app/markets/actions";
 import { HouseLeanWarning } from "./house-lean-warning";
@@ -593,94 +594,65 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
         </svg>
       </div>
 
-      {/* Readout */}
-      <div className="grid grid-cols-2 gap-3 mt-5 items-center">
-        <div>
+      {/* Readout — `grid-cols-[1fr_auto]` so the stake input keeps
+          whatever width its content needs, instead of being squeezed
+          into a fixed 50% column where "TZS 25,000" gets clipped. */}
+      <div className="grid grid-cols-[1fr_auto] gap-3 mt-5 items-center">
+        <div className="min-w-0">
           <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mb-1">
             {side === "NEUTRAL" ? "No conviction" : "You are picking"}
           </p>
           <p
-            className="font-display font-bold text-[22px] leading-none"
+            className="font-display font-bold text-[22px] leading-none truncate"
             style={{ color: sideText, letterSpacing: "-0.025em" }}
           >
             {side === "NEUTRAL" ? "drag the dial" : `${side}`}
           </p>
         </div>
         <div className="text-right">
-          <div className="flex items-center justify-end gap-1.5 mb-1.5">
-            <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle">
-              Stake · dau · <span className="text-gold-300">edit</span>
-            </p>
-            <Pencil size={10} aria-hidden className="text-gold-300/80" />
-          </div>
+          <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mb-1.5">
+            Stake · dau
+          </p>
           {/*
-            Pill-style editable field — kit-native treatment that
-            unambiguously reads as a control even before the player
-            interacts. Three signals stack:
-              · `bg-bg-sunken` baseline tint distinguishes the field
-                from the card around it (a "lifted" surface);
-              · gold-tinted gradient overlay (via a tiny accent rule
-                on the left) suggests "this is an entry point";
-              · `border-border-strong` is a heavier-weight border
-                than the default — paired with `cursor-text` it
-                signals editability at rest.
-            Hover brightens to `border-gold-700`. Focus + valid lights
-            the whole thing gold. Focus + out-of-range flashes claret
-            with the corrective hint underneath. Width is fixed so
-            the pill doesn't jump when digits change.
+            Kit `Input` atom — the SAME form field players have already
+            seen on /auth, /wallet, /profile/kyc, /wallet/deposit. The
+            universal "this is a form field" affordance solves the
+            "doesn't look modifiable" report without inventing a new
+            visual pattern: border-border at rest, focus-within
+            lights border-aqua + a 3px aqua glow shadow,
+            error={isOutOfRange} swaps to border-no-500. The "TZS"
+            prefix sits in a separated sub-cell, and the trailing
+            pencil icon adds an extra "yes, you can edit" cue.
           */}
-          <label
-            className={[
-              "inline-flex items-baseline gap-1.5 px-2.5 py-1.5 rounded-md border-2 transition-colors cursor-text relative overflow-hidden",
-              editingStake
-                ? (isOutOfRange ? "border-no-700 bg-no-500/15" : "border-gold-500 bg-gold-500/15")
-                : "border-border-strong bg-bg-sunken hover:border-gold-700 hover:bg-bg-overlay",
-            ].join(" ")}
-          >
-            {/* Gold tick on the left — a static accent that says
-                "this surface is interactive" without needing a label
-                cycle. Disappears when focused so it doesn't clutter. */}
-            {!editingStake && (
-              <span
-                aria-hidden
-                className="absolute left-0 top-1 bottom-1 w-[2px] rounded-pill bg-gold-500/70"
-              />
-            )}
-            <span className="font-mono text-[13px] font-semibold text-text-subtle leading-none">TZS</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={editingStake ? stakeText : fmt(stake)}
-              onFocus={(e) => {
-                setEditingStake(true);
-                setStakeText(String(stake));
-                // Capture the side at focus time so the whole editing
-                // session stays on the user's currently-chosen side
-                // — typing a value that maps to a position near the
-                // centre won't accidentally flip YES↔NO. Neutral
-                // (pos === 0.5) defaults to right (YES).
-                editingSideRef.current = pos < 0.5 ? "left" : "right";
-                // Select all on focus so the player can replace the
-                // amount in one tap — keeps the interaction "type the
-                // exact number" friction-free.
-                requestAnimationFrame(() => e.target.select());
-              }}
-              onBlur={settleStakeOnExit}
-              onChange={(e) => onStakeInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                // Bubble-stop arrow keys so the dial's keyboard
-                // handler doesn't also shift position while the
-                // player is editing the number.
-                if (e.key === "ArrowLeft" || e.key === "ArrowRight") e.stopPropagation();
-              }}
-              aria-label={`Stake amount in TZS — type or use the dial (min ${minDial}, max ${maxDial})`}
-              aria-invalid={isOutOfRange}
-              className="font-mono font-bold text-[18px] tabular-nums leading-none text-text bg-transparent text-right outline-none w-[6.5ch]"
-              style={{ letterSpacing: "-0.02em" }}
-            />
-          </label>
+          <Input
+            mono
+            size="sm"
+            prefix="TZS"
+            trailing={<Pencil size={12} aria-hidden className="text-text-subtle" />}
+            error={isOutOfRange}
+            value={editingStake ? stakeText : fmt(stake)}
+            inputMode="numeric"
+            pattern="[0-9]*"
+            onFocus={(e) => {
+              setEditingStake(true);
+              setStakeText(String(stake));
+              editingSideRef.current = pos < 0.5 ? "left" : "right";
+              requestAnimationFrame(() => (e.target as HTMLInputElement).select());
+            }}
+            onBlur={settleStakeOnExit}
+            onChange={(e) => onStakeInput((e.target as HTMLInputElement).value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+              if (e.key === "ArrowLeft" || e.key === "ArrowRight") e.stopPropagation();
+            }}
+            aria-label={`Stake amount in TZS — type or use the dial (min ${minDial}, max ${maxDial})`}
+            aria-invalid={isOutOfRange}
+            // Fixed width on the input itself so "25,000" + commas
+            // never get visually clipped. With prefix + trailing the
+            // container settles around ~170 px overall.
+            className="text-right font-bold tabular-nums w-[80px] px-2"
+            containerClassName="ml-auto"
+          />
           {/*
             Range helper line — switches to a corrective hint when the
             typed value is outside the dial range. The hint tells the
