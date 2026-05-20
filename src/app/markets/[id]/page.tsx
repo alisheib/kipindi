@@ -184,7 +184,12 @@ export default async function MarketDetail({
                       <span className="text-text-subtle">[{p.status === "CASHED_OUT" ? "CASHED" : p.status}]</span>
                     </div>
                     {liveValue !== null && (
-                      <SellButton positionId={p.id} stake={p.stake} value={liveValue} />
+                      <SellButton
+                        positionId={p.id}
+                        stake={p.stake}
+                        value={liveValue}
+                        resolutionAt={market.resolutionAt}
+                      />
                     )}
                   </div>
                 );

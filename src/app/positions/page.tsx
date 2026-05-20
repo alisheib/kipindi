@@ -117,7 +117,12 @@ export default async function PositionsPage() {
                     status="OPEN"
                   />
                   {liveValue !== null && (
-                    <SellButton positionId={p.id} stake={p.stake} value={liveValue} />
+                    <SellButton
+                      positionId={p.id}
+                      stake={p.stake}
+                      value={liveValue}
+                      resolutionAt={m.resolutionAt}
+                    />
                   )}
                 </div>
               );

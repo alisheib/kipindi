@@ -10,7 +10,7 @@
  * by second; the value displayed here is the moment we render — the
  * server re-runs the math when the action fires.
  */
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import { cashOutPositionAction } from "@/app/markets/actions";
@@ -24,14 +24,33 @@ export function SellButton({
   positionId,
   stake,
   value,
+  resolutionAt,
 }: {
   positionId: string;
   /** Stake at place-time. */
   stake: number;
   /** Current sellback value (post-slippage). */
   value: number;
+  /** ISO timestamp when the underlying market closes. If supplied, the
+   *  button switches to a "Market closed" state the instant the wall
+   *  clock crosses this — avoiding the stale "Sell now · TZS X" call
+   *  to action sitting in front of a market the server has already
+   *  shut for cash-outs. Mirrors the dial's closedNow pattern. */
+  resolutionAt?: string;
 }) {
   const [pending, start] = useTransition();
+  // closedNow flips client-side the moment the wall clock crosses
+  // resolutionAt. Tick once per second.
+  const [closedNow, setClosedNow] = useState(false);
+  useEffect(() => {
+    if (!resolutionAt) return;
+    const closeTs = Date.parse(resolutionAt);
+    if (!Number.isFinite(closeTs)) return;
+    const update = () => setClosedNow(Date.now() >= closeTs);
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [resolutionAt]);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [resultOpen, setResultOpen] = useState(false);
   const [resultData, setResultData] = useState<{ variant: "success" | "danger"; value: number; net: number; error?: string } | null>(null);
@@ -46,7 +65,7 @@ export function SellButton({
     "no";
 
   const openConfirm = () => {
-    if (pending) return;
+    if (pending || closedNow) return;
     setConfirmOpen(true);
   };
 
@@ -94,19 +113,29 @@ export function SellButton({
     <>
       <button
         type="button"
-        onClick={openConfirm}
-        disabled={pending}
-        aria-label={`Cash out for TZS ${fmt(value)}`}
-        className={`btn ${btnVariant} btn-md w-full`}
-        style={{ justifyContent: "space-between" }}
+        onClick={closedNow ? undefined : openConfirm}
+        disabled={pending || closedNow}
+        aria-label={
+          closedNow
+            ? "Market closed — awaiting settlement"
+            : `Cash out for TZS ${fmt(value)}`
+        }
+        className={`btn ${closedNow ? "btn-ghost" : btnVariant} btn-md w-full`}
+        style={{ justifyContent: "space-between", minHeight: 44 }}
       >
-        <span>{pending ? "Selling…" : "Sell now"}</span>
-        <span className="font-mono tabular-nums">
-          TZS {fmt(value)}
-          <span className="ml-1.5 opacity-80 text-[11px]">
-            {net >= 0 ? "+" : "−"}{fmt(Math.abs(net))}
-          </span>
+        <span>
+          {closedNow ? "Market closed · Soko limefungwa"
+            : pending ? "Selling…"
+            : "Sell now"}
         </span>
+        {!closedNow && (
+          <span className="font-mono tabular-nums">
+            TZS {fmt(value)}
+            <span className="ml-1.5 opacity-80 text-[11px]">
+              {net >= 0 ? "+" : "−"}{fmt(Math.abs(net))}
+            </span>
+          </span>
+        )}
       </button>
       <SellConfirmModal
         open={confirmOpen}

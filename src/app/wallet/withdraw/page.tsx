@@ -184,12 +184,12 @@ export default async function WithdrawPage() {
             pattern="\d{6}"
             maxLength={6}
             inputMode="numeric"
+            autoComplete="one-time-code"
             placeholder="6-digit code from SMS"
-            defaultValue="000000"
             disabled={!kycApproved}
             className="w-full h-11 px-3 rounded-md border border-border bg-bg-overlay font-mono text-[14px] tracking-[0.4em] tabular-nums text-text focus:outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 transition-colors disabled:opacity-50"
           />
-          <p className="mt-2 text-[11px] text-text-subtle">For dev: any 6-digit code is accepted.</p>
+          <p className="mt-2 text-[11px] text-text-subtle">Enter the 6-digit code from the SMS.</p>
         </div>
 
         <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg/30 px-3 py-2.5 text-[12.5px] leading-snug">
