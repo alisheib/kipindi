@@ -157,7 +157,12 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
 
   const multiplier = useRollingNumber(multiplierTarget);
   const stakeRolled = useRollingNumber(stakeTarget);
-  const stake = Math.max(100, Math.round(stakeRolled / 100) * 100);
+  // Drag-derived stake snaps to the nearest 100 TZS — players don't
+  // want to bet "TZS 8,237". That snap is the right call for a
+  // continuous slider, but it would override a typed exact value
+  // like 10,475 → 10,500. The override below restores the typed
+  // value when the user has explicitly chosen one.
+  const stakeFromSlider = Math.max(100, Math.round(stakeRolled / 100) * 100);
 
   // Manual stake input — bidirectional bridge to the dial position.
   // The slider can't easily land on a specific shilling amount
@@ -167,6 +172,16 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
   // two stay locked.
   const [stakeText, setStakeText] = useState<string>("");
   const [editingStake, setEditingStake] = useState(false);
+  // When the user has typed an EXACT amount, we lock the dial's
+  // effective stake to that number — bypassing the snap-to-100
+  // rounding that the slider applies. Cleared whenever the slider
+  // is dragged or the page first loads. Null means "stake is
+  // whatever the slider says, snapped to nearest 100".
+  const [exactStake, setExactStake] = useState<number | null>(null);
+  // The effective stake — what gets sent to the server, what's
+  // displayed, what powers the payout projection. Typed value wins;
+  // drag falls back to snapped slider value.
+  const stake = exactStake !== null ? exactStake : stakeFromSlider;
   // Side at the moment the input was focused — preserved for the
   // whole editing session so that typing transient stakes that round
   // through the centre (e.g. dropping below baseStake) doesn't flip
@@ -216,16 +231,32 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
     const cleaned = raw.replace(/[^\d]/g, "").slice(0, 7);
     setStakeText(cleaned);
     const parsed = parseInt(cleaned, 10);
-    if (!Number.isFinite(parsed) || parsed <= 0) return;
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      // Empty or zero — clear the exact lock so the slider takes over.
+      setExactStake(null);
+      return;
+    }
     // The slider's position uses the clamped value — posFromStake
     // already clamps to [minDial, maxDial] internally so this is
     // a no-op-safe pass-through.
     setPos(posFromStake(parsed));
+    // Lock the EXACT typed value (clamped to dial range) as the
+    // effective stake. This is what makes "type 10,475 → bet 10,475"
+    // work, instead of snapping to 10,500 via the drag-based round.
+    setExactStake(Math.max(minDial, Math.min(maxDial, parsed)));
   };
 
-  /** Settle the input on blur / Enter to the clamped value. The
-   *  slider is already at the clamped position; this just makes the
-   *  number visible to the user match what the dial represents. */
+  /** Settle the input on blur / Enter to the clamped value.
+   *
+   *  If the player is blurring the input by clicking the slider
+   *  track (which fires its own onPointerDown handler), we MUST
+   *  NOT re-assert the exact lock here — the drag handler has
+   *  already cleared exactStake to null and we'd be undoing it
+   *  microseconds later. Detect that by checking whether the
+   *  drag is in flight (draggingRef) and skip the re-affirm. */
+  const draggingRef = useRef(false);
+  useEffect(() => { draggingRef.current = dragging; }, [dragging]);
+
   const settleStakeOnExit = () => {
     setEditingStake(false);
     editingSideRef.current = null;
@@ -233,6 +264,10 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
     if (!Number.isFinite(parsed) || parsed <= 0) return;
     const clamped = Math.max(minDial, Math.min(maxDial, parsed));
     if (clamped !== parsed) setStakeText(String(clamped));
+    // Only re-affirm the exact lock if the blur is NOT caused by
+    // a drag starting. If draggingRef is true, leave exactStake
+    // null so the slider's snapped value wins.
+    if (!draggingRef.current) setExactStake(clamped);
   };
 
   // Whole-pool projection — payout AND warning level
@@ -286,16 +321,23 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
     // the slider has moved.
     setEditingStake(false);
     editingSideRef.current = null;
+    // Drag overrides any previously-typed exact value; the slider's
+    // snap-to-100 stake takes over from here.
+    setExactStake(null);
     setFromClientX(e.clientX);
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const step = e.shiftKey ? 0.10 : 0.02;
-    if (e.key === "ArrowLeft")  { e.preventDefault(); setPos((p) => Math.max(0, p - step)); }
-    if (e.key === "ArrowRight") { e.preventDefault(); setPos((p) => Math.min(1, p + step)); }
-    if (e.key === "Home")       { e.preventDefault(); setPos(0); }
-    if (e.key === "End")        { e.preventDefault(); setPos(1); }
+    // Any slider-driven movement clears the typed-exact lock — the
+    // player has shifted from "type a precise number" mode back to
+    // "slide to a vibe" mode, and the snap-to-100 should re-apply.
+    const move = (next: number) => { setExactStake(null); setPos(next); };
+    if (e.key === "ArrowLeft")  { e.preventDefault(); move(Math.max(0, pos - step)); }
+    if (e.key === "ArrowRight") { e.preventDefault(); move(Math.min(1, pos + step)); }
+    if (e.key === "Home")       { e.preventDefault(); move(0); }
+    if (e.key === "End")        { e.preventDefault(); move(1); }
     if (e.key === " " || e.key === "Enter") { e.preventDefault(); openConfirm(); }
   };
 
@@ -572,20 +614,38 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
             <Pencil size={10} aria-hidden className="text-gold-300/80" />
           </div>
           {/*
-            Pill-style editable field: visible border + hover state so
-            it reads as "this is a control, click me". The TZS prefix
-            sits inside the pill. Width is fixed so the pill doesn't
-            jump when digits change. Focus state lights the border in
-            gold; out-of-range typing flashes claret.
+            Pill-style editable field — kit-native treatment that
+            unambiguously reads as a control even before the player
+            interacts. Three signals stack:
+              · `bg-bg-sunken` baseline tint distinguishes the field
+                from the card around it (a "lifted" surface);
+              · gold-tinted gradient overlay (via a tiny accent rule
+                on the left) suggests "this is an entry point";
+              · `border-border-strong` is a heavier-weight border
+                than the default — paired with `cursor-text` it
+                signals editability at rest.
+            Hover brightens to `border-gold-700`. Focus + valid lights
+            the whole thing gold. Focus + out-of-range flashes claret
+            with the corrective hint underneath. Width is fixed so
+            the pill doesn't jump when digits change.
           */}
           <label
             className={[
-              "inline-flex items-baseline gap-1.5 px-2.5 py-1.5 rounded-md border transition-colors cursor-text",
+              "inline-flex items-baseline gap-1.5 px-2.5 py-1.5 rounded-md border-2 transition-colors cursor-text relative overflow-hidden",
               editingStake
-                ? (isOutOfRange ? "border-no-700 bg-no-500/10" : "border-gold-500 bg-gold-500/10")
-                : "border-border bg-bg-overlay/40 hover:border-gold-700 hover:bg-bg-overlay",
+                ? (isOutOfRange ? "border-no-700 bg-no-500/15" : "border-gold-500 bg-gold-500/15")
+                : "border-border-strong bg-bg-sunken hover:border-gold-700 hover:bg-bg-overlay",
             ].join(" ")}
           >
+            {/* Gold tick on the left — a static accent that says
+                "this surface is interactive" without needing a label
+                cycle. Disappears when focused so it doesn't clutter. */}
+            {!editingStake && (
+              <span
+                aria-hidden
+                className="absolute left-0 top-1 bottom-1 w-[2px] rounded-pill bg-gold-500/70"
+              />
+            )}
             <span className="font-mono text-[13px] font-semibold text-text-subtle leading-none">TZS</span>
             <input
               type="text"
