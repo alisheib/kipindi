@@ -164,41 +164,70 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
   const stakeTargetFromSlider = baseStake * (1 + conviction * (maxMultiplier - 1));
   const stakeFromSlider = Math.max(100, Math.round(stakeTargetFromSlider / 100) * 100);
 
-  // Manual stake input — bidirectional bridge to the dial position.
-  // The slider can't easily land on a specific shilling amount
-  // (it's continuous), so we let the player type the number directly
-  // and translate it back to a dial position using the inverse of
-  // the multiplier curve. Keystrokes update the slider live so the
-  // two stay locked.
+  // THREE coordinated inputs share one source of truth:
+  //   1 · DRAG the dial         → pos  → stakeFromSlider (snap-to-100)
+  //   2 · TYPE a stake (TZS)    → exactStake lock, pos via posFromStake
+  //   3 · TYPE a multiplier (×) → exactMultiplier lock, pos via same path
+  //
+  // exactStake and exactMultiplier are MUTUALLY EXCLUSIVE: typing in
+  // one input clears the other's lock, so the player always commits
+  // through a single intent. Both clear on drag commit / arrow keys.
   const [stakeText, setStakeText] = useState<string>("");
   const [editingStake, setEditingStake] = useState(false);
-  // When the user has typed an EXACT amount, we lock the dial's
-  // effective stake to that number — bypassing the snap-to-100
-  // rounding that the slider applies. Cleared whenever the slider
-  // is dragged or the page first loads. Null means "stake is
-  // whatever the slider says, snapped to nearest 100".
-  const [exactStake, setExactStake] = useState<number | null>(null);
+  const [exactStake, setExactStakeState] = useState<number | null>(null);
+  // Multiplier input mirrors the stake input one-for-one — same kit
+  // Input atom, same focus/blur lifecycle, same side-preservation.
+  const [multText, setMultText] = useState<string>("");
+  const [editingMult, setEditingMult] = useState(false);
+  const [exactMultiplier, setExactMultiplierState] = useState<number | null>(null);
+  // Mutex setters — picking one unit clears the other so the two
+  // exact-locks can never disagree about what the player wanted.
+  const setExactStake = useCallback((v: number | null) => {
+    setExactStakeState(v);
+    if (v !== null) setExactMultiplierState(null);
+  }, []);
+  const setExactMultiplier = useCallback((v: number | null) => {
+    setExactMultiplierState(v);
+    if (v !== null) setExactStakeState(null);
+  }, []);
+  const clearBothLocks = useCallback(() => {
+    setExactStakeState(null);
+    setExactMultiplierState(null);
+  }, []);
+
   // The effective stake — what gets sent to the server, what's
-  // displayed, what powers the payout projection. Typed value wins;
-  // drag falls back to snapped slider value.
-  const stake = exactStake !== null ? exactStake : stakeFromSlider;
-  // Knob multiplier — when exactStake is locked, derive it from the
-  // typed value so 1.00× is honest at baseStake. Otherwise use the
-  // pos-derived geometry. Tween via useRollingNumber for the visual.
-  const multiplierTarget = exactStake !== null
-    ? exactStake / baseStake
-    : 1 + conviction * (maxMultiplier - 1);
+  // displayed, what powers the payout projection. Priority:
+  //   1) typed multiplier (computed stake) → 2) typed stake →
+  //   3) slider snap.
+  const stake = exactStake !== null
+    ? exactStake
+    : exactMultiplier !== null
+      ? Math.max(baseStake, Math.min(baseStake * 5, Math.round(baseStake * exactMultiplier)))
+      : stakeFromSlider;
+  // Knob multiplier target — when a lock is set, derive truthfully
+  // from the typed unit. Otherwise use pos-derived geometry. Tween
+  // via useRollingNumber for smooth visual.
+  const multiplierTarget = exactMultiplier !== null
+    ? exactMultiplier
+    : exactStake !== null
+      ? exactStake / baseStake
+      : 1 + conviction * (maxMultiplier - 1);
   const multiplier = useRollingNumber(multiplierTarget);
   // Side at the moment the input was focused — preserved for the
   // whole editing session so that typing transient stakes that round
   // through the centre (e.g. dropping below baseStake) doesn't flip
   // the dial to the other side. Captured on focus, cleared on blur.
   const editingSideRef = useRef<"left" | "right" | null>(null);
-  // Mirror the rolling stake into the input whenever the user isn't
-  // actively typing — keeps the field in step with slider drags.
+  // Mirror the effective stake into the stake input + the effective
+  // multiplier into the multiplier input whenever the user isn't
+  // actively typing in THAT field. Keeps both fields in step with
+  // drags and with each other.
   useEffect(() => {
     if (!editingStake) setStakeText(String(stake));
   }, [stake, editingStake]);
+  useEffect(() => {
+    if (!editingMult) setMultText(multiplierTarget.toFixed(2));
+  }, [multiplierTarget, editingMult]);
 
   /** Translate a typed stake (TZS) back to a slider position.
    *
@@ -245,6 +274,17 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
   const isUnderMin = editingStake && typedNumber > 0 && typedNumber < minDial;
   const isOutOfRange = isOverMax || isUnderMin;
 
+  // Multiplier input range: [1.00, 5.00] matches the dial's geometry.
+  const MULT_MIN = 1;
+  const MULT_MAX = 5;
+  const typedMult = (() => {
+    const n = parseFloat(multText);
+    return Number.isFinite(n) ? n : 0;
+  })();
+  const isMultOverMax = editingMult && typedMult > MULT_MAX;
+  const isMultUnderMin = editingMult && typedMult > 0 && typedMult < MULT_MIN;
+  const isMultOutOfRange = isMultOverMax || isMultUnderMin;
+
   const onStakeInput = (raw: string) => {
     // Strip everything except digits — players paste " TZS 12,500" all the time.
     // Also cap the visible length at 7 digits — TZS 9,999,999 is well
@@ -265,7 +305,39 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
     // Lock the EXACT typed value (clamped to dial range) as the
     // effective stake. This is what makes "type 10,475 → bet 10,475"
     // work, instead of snapping to 10,500 via the drag-based round.
+    // setExactStake (mutex) clears any active exactMultiplier lock.
     setExactStake(Math.max(minDial, Math.min(maxDial, parsed)));
+  };
+
+  /** Translate a typed multiplier (e.g. 2.5) to the equivalent stake
+   *  and route through posFromStake. Reuses the same side-preservation
+   *  + neutral-band-floor logic so a typed 1.00× doesn't collapse to
+   *  NEUTRAL. Mutually exclusive with exactStake. */
+  const onMultInput = (raw: string) => {
+    // Strip non-digit / non-dot, keep only first decimal point,
+    // cap at "X.XX" (4 chars). Decimal precision past 0.01× isn't
+    // meaningful since the bet stake is rounded to the shilling.
+    const stripped = raw.replace(/[^\d.]/g, "");
+    const firstDot = stripped.indexOf(".");
+    const oneDot = firstDot === -1
+      ? stripped
+      : stripped.slice(0, firstDot + 1) + stripped.slice(firstDot + 1).replace(/\./g, "");
+    const cleaned = oneDot.slice(0, 4);
+    setMultText(cleaned);
+    const parsed = parseFloat(cleaned);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      // Empty / "." alone / zero — release the multiplier lock so
+      // the slider takes over again.
+      setExactMultiplier(null);
+      return;
+    }
+    const clampedMult = Math.max(MULT_MIN, Math.min(MULT_MAX, parsed));
+    // Route the dial position through posFromStake using the
+    // equivalent stake — gives us the same neutral-band-floor and
+    // side-preservation guarantees that the stake input has.
+    const equivalentStake = Math.round(baseStake * clampedMult);
+    setPos(posFromStake(equivalentStake));
+    setExactMultiplier(clampedMult);
   };
 
   /** Settle the input on blur / Enter to the clamped value.
@@ -290,6 +362,20 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
     // a drag starting. If draggingRef is true, leave exactStake
     // null so the slider's snapped value wins.
     if (!draggingRef.current) setExactStake(clamped);
+  };
+
+  /** Settle the multiplier input on blur / Enter. Mirror of
+   *  settleStakeOnExit — clamps to [1.00, 5.00], normalises the
+   *  display text to 2-decimal form, and re-affirms the lock
+   *  unless a drag is in flight. */
+  const settleMultOnExit = () => {
+    setEditingMult(false);
+    editingSideRef.current = null;
+    const parsed = parseFloat(multText);
+    if (!Number.isFinite(parsed) || parsed <= 0) return;
+    const clamped = Math.max(MULT_MIN, Math.min(MULT_MAX, parsed));
+    setMultText(clamped.toFixed(2));
+    if (!draggingRef.current) setExactMultiplier(clamped);
   };
 
   // Whole-pool projection — payout AND warning level
@@ -337,10 +423,10 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
         const startX = dragStartXRef.current;
         if (startX === null || Math.abs(e.clientX - startX) < DRAG_COMMIT_PX) return;
         // Crossed the threshold — this is a real drag. Take over
-        // slider mode: clear the typed-exact lock so snap-to-100
-        // governs from here, and start tracking the cursor.
+        // slider mode: clear BOTH typed-exact locks (stake AND
+        // multiplier) so snap-to-100 governs from here.
         dragCommittedRef.current = true;
-        setExactStake(null);
+        clearBothLocks();
       }
       setFromClientX(e.clientX);
     };
@@ -361,15 +447,16 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     setDragging(true);
-    // Always exit any in-flight stake-input edit — clicking the
-    // dial is unambiguously a "done with the input" intent.
+    // Always exit any in-flight input edit — clicking the dial is
+    // unambiguously a "done with both inputs" intent.
     setEditingStake(false);
+    setEditingMult(false);
     editingSideRef.current = null;
     dragStartXRef.current = e.clientX;
-    if (exactStake !== null) {
-      // Player has a typed exact value to protect. Don't jump the
-      // knob and don't clear the lock yet — defer both to the
-      // pointermove handler once a real drag is detected.
+    if (exactStake !== null || exactMultiplier !== null) {
+      // Player has a typed exact value (either unit) to protect.
+      // Don't jump the knob and don't clear the locks yet — defer
+      // both to the pointermove handler once a real drag is detected.
       dragCommittedRef.current = false;
     } else {
       // No typed value at risk — classic slider behaviour: jump the
@@ -383,10 +470,10 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const step = e.shiftKey ? 0.10 : 0.02;
-    // Any slider-driven movement clears the typed-exact lock — the
-    // player has shifted from "type a precise number" mode back to
-    // "slide to a vibe" mode, and the snap-to-100 should re-apply.
-    const move = (next: number) => { setExactStake(null); setPos(next); };
+    // Any slider-driven movement clears BOTH typed-exact locks —
+    // the player has shifted back to "slide to a vibe" mode, and
+    // the snap-to-100 should re-apply.
+    const move = (next: number) => { clearBothLocks(); setPos(next); };
     if (e.key === "ArrowLeft")  { e.preventDefault(); move(Math.max(0, pos - step)); }
     if (e.key === "ArrowRight") { e.preventDefault(); move(Math.min(1, pos + step)); }
     if (e.key === "Home")       { e.preventDefault(); move(0); }
@@ -730,6 +817,57 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
           ) : (
             <p className="mt-1 font-mono text-[9px] text-text-subtle whitespace-nowrap">
               TZS {fmt(minDial)}–{fmt(maxDial)}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Multiplier input — third coordinated entry point. Type a
+          conviction strength directly (e.g. "2.50×") and the dial
+          + stake both move in lock-step. Mutually exclusive with
+          the stake-text lock above. Same kit Input atom for visual
+          consistency. */}
+      <div className="mt-3 grid grid-cols-[1fr_auto] gap-2 sm:gap-3 items-center">
+        <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle">
+          Multiplier · Mara
+        </p>
+        <div className="text-right min-w-0">
+          <Input
+            mono
+            size="sm"
+            trailing="×"
+            error={isMultOutOfRange}
+            value={editingMult ? multText : multiplierTarget.toFixed(2)}
+            inputMode="decimal"
+            pattern="[0-9.]*"
+            onFocus={(e) => {
+              setEditingMult(true);
+              setMultText(multiplierTarget.toFixed(2));
+              editingSideRef.current = pos < 0.5 ? "left" : "right";
+              requestAnimationFrame(() => (e.target as HTMLInputElement).select());
+            }}
+            onBlur={settleMultOnExit}
+            onChange={(e) => onMultInput((e.target as HTMLInputElement).value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+              if (e.key === "ArrowLeft" || e.key === "ArrowRight") e.stopPropagation();
+            }}
+            aria-label={`Conviction multiplier — type ${MULT_MIN.toFixed(2)}× to ${MULT_MAX.toFixed(2)}×`}
+            aria-invalid={isMultOutOfRange}
+            className="text-right font-bold tabular-nums w-[64px] sm:w-[72px] px-1.5 sm:px-2"
+            containerClassName="ml-auto"
+          />
+          {isMultOverMax ? (
+            <p className="mt-1 font-mono text-[9.5px] text-no-300 whitespace-nowrap">
+              Max {MULT_MAX.toFixed(2)}×
+            </p>
+          ) : isMultUnderMin ? (
+            <p className="mt-1 font-mono text-[9.5px] text-no-300 whitespace-nowrap">
+              Min {MULT_MIN.toFixed(2)}×
+            </p>
+          ) : (
+            <p className="mt-1 font-mono text-[9px] text-text-subtle whitespace-nowrap">
+              {MULT_MIN.toFixed(2)}×–{MULT_MAX.toFixed(2)}×
             </p>
           )}
         </div>

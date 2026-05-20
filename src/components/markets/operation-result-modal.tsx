@@ -120,7 +120,27 @@ export function OperationResultModal({
   const stripRef = useRef<HTMLDivElement>(null);
   const closeMs = autoCloseMs ?? DEFAULT_AUTO_CLOSE_MS;
 
+  // Anchor the close target as an ABSOLUTE timestamp set ONCE per
+  // open cycle. Survives prop-changes / re-renders / dep-change
+  // effect re-runs that would otherwise reset a relative timer and
+  // close the modal early. The bar uses the same anchor so the gold
+  // strip can never drift away from the close moment.
+  const closeTargetRef = useRef<number | null>(null);
+
   useEffect(() => { setMounted(true); }, []);
+
+  // Anchor / release the close target as `open` toggles. Separate
+  // from the tick effect so closeMs prop changes can't reset the
+  // anchor mid-cycle.
+  useEffect(() => {
+    if (open && variant === "success") {
+      if (closeTargetRef.current === null) {
+        closeTargetRef.current = performance.now() + closeMs;
+      }
+    } else {
+      closeTargetRef.current = null;
+    }
+  }, [open, variant, closeMs]);
 
   useEffect(() => {
     if (!open) return;
@@ -134,17 +154,19 @@ export function OperationResultModal({
       return () => window.removeEventListener("keydown", onKey);
     }
 
-    // Success path — RAF-driven countdown that drives both the gold
-    // strip AND the dismiss in lock-step. Single start timestamp,
-    // single duration. Bar reaches 0 the same frame the close fires.
-    const startedAt = performance.now();
+    // Success path — RAF-driven countdown anchored to the absolute
+    // close target. The strip width pct = remaining/closeMs, so the
+    // bar always lines up with the moment-of-close regardless of
+    // how many times the effect re-runs.
     if (stripRef.current) stripRef.current.style.transform = "scaleX(1)";
     let rafId: number | null = null;
     const tick = () => {
-      const elapsed = performance.now() - startedAt;
-      const pct = Math.max(0, Math.min(1, 1 - elapsed / closeMs));
+      const target = closeTargetRef.current;
+      if (target === null) { rafId = null; return; }
+      const remaining = target - performance.now();
+      const pct = Math.max(0, Math.min(1, remaining / closeMs));
       if (stripRef.current) stripRef.current.style.transform = `scaleX(${pct})`;
-      if (elapsed >= closeMs) {
+      if (remaining <= 0) {
         rafId = null;
         closeRef.current();
         return;
@@ -153,11 +175,13 @@ export function OperationResultModal({
     };
     rafId = requestAnimationFrame(tick);
 
-    // setTimeout backstop — fires alongside the RAF in case the tab
-    // is backgrounded and RAF gets throttled. Both calling
-    // closeRef.current() is idempotent (the parent owns the open
-    // state and re-render is cheap).
-    const backstop = setTimeout(() => closeRef.current(), closeMs + 50);
+    // setTimeout backstop — fires from the ABSOLUTE target so a
+    // dep-change re-run can't extend the close past the intended
+    // moment. Idempotent with the RAF (both call closeRef.current
+    // and parent owns the open state).
+    const target = closeTargetRef.current ?? performance.now() + closeMs;
+    const remainingForBackstop = Math.max(0, target - performance.now()) + 50;
+    const backstop = setTimeout(() => closeRef.current(), remainingForBackstop);
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") { e.preventDefault(); closeRef.current(); }
