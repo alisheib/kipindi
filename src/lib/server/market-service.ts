@@ -453,8 +453,10 @@ export async function repairOrphanedPositions(): Promise<{ repaired: number; ref
 }
 
 /** Two-officer resolution. First call stages, second call (different officer) settles. */
-/** Slippage applied to a cash-out — a small penalty so it never beats holding. */
-export const CASHOUT_SLIPPAGE = 0.02;
+/** Slippage applied to a cash-out — a regulator-aligned 9% deduction so a
+ *  cancellation never beats holding to settlement. Per management spec
+ *  (license review · 2026-05): 9% of the projected cash-out is withheld. */
+export const CASHOUT_SLIPPAGE = 0.09;
 
 /**
  * Compute the current cash-out value of an OPEN position assuming the market

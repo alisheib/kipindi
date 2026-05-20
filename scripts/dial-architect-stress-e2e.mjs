@@ -151,7 +151,8 @@ try {
   // === A · TYPE baseStake WHILE ON YES — side stays YES ===========
   // -----------------------------------------------------------------
   console.log("\n=== A · TYPE baseStake (5,000) ON YES — Place button MUST stay visible ===");
-  await dragTo(0.7);
+  // YES is on the LEFT half (pos < 0.5) per license-review spec.
+  await dragTo(0.25);
   await p.waitForTimeout(300);
   const s_yes_before = await snapshot();
   log("A.0 starting on YES side",
@@ -171,7 +172,8 @@ try {
   // === B · TYPE baseStake WHILE ON NO — symmetric =================
   // -----------------------------------------------------------------
   console.log("\n=== B · TYPE baseStake (5,000) ON NO — symmetric to A ===");
-  await dragTo(0.25);
+  // NO is on the RIGHT half (pos > 0.5) per license-review spec.
+  await dragTo(0.75);
   await p.waitForTimeout(300);
   await typeStake(5000);
   const s_no_5k = await snapshot();
@@ -186,7 +188,7 @@ try {
   // === C · TYPE CLAMP-LOW (1) WHILE ON YES — clamped to 5000 ======
   // -----------------------------------------------------------------
   console.log("\n=== C · TYPE under-min (1) ON YES — side preserved, stake=5000 ===");
-  await dragTo(0.75);
+  await dragTo(0.25);
   await typeStake(1);
   // Need to blur to settle the clamp.
   await input.blur();

@@ -54,11 +54,21 @@ export function PositionCard({ marketId, marketTitle, side, stake, current, payo
       <p className="font-display text-[15px] font-semibold leading-tight tracking-[-0.005em] text-text mb-3.5 line-clamp-2">
         {marketTitle}
       </p>
-      <div className="grid grid-cols-3 gap-3">
-        <Stat label="Stake" value={`TZS ${fmt(stake)}`} />
-        <Stat label={status === "OPEN" ? "Current" : "Final"} value={`TZS ${fmt(current)}`} />
-        <Stat label={status === "OPEN" ? "Max payout" : "Payout"} value={`TZS ${fmt(payout)}`} tone={status === "WIN" ? "gold" : "default"} />
-      </div>
+      {/* Open positions: per management spec (license review · 2026-05)
+          the potential payout is NOT shown until the event has resolved.
+          Settled positions show the actual final payout. */}
+      {status === "OPEN" ? (
+        <div className="grid grid-cols-2 gap-3">
+          <Stat label="Stake" value={`TZS ${fmt(stake)}`} />
+          <Stat label="Payout" value="At resolution" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-3">
+          <Stat label="Stake" value={`TZS ${fmt(stake)}`} />
+          <Stat label="Final" value={`TZS ${fmt(current)}`} />
+          <Stat label="Payout" value={`TZS ${fmt(payout)}`} tone={status === "WIN" ? "gold" : "default"} />
+        </div>
+      )}
     </Link>
   );
 }

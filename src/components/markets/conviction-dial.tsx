@@ -4,7 +4,7 @@
  * ConvictionDial — 1:1 port of `kit/conviction-slider-round.jsx`.
  *
  * A weighted squircle dial. One gesture sets BOTH side and stake:
- *   • Position 0..1 along the track — left = NO, right = YES, centre = NEUTRAL
+ *   • Position 0..1 along the track — left = YES, right = NO, centre = NEUTRAL
  *   • Distance from centre maps quadratically to a multiplier (1× → 5×)
  *   • Stake = baseStake × multiplier
  *
@@ -152,7 +152,11 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
   const conviction = distFromCenter * distFromCenter; // ease-in
   const maxMultiplier = 5;
   const isNeutral = distFromCenter < NEUTRAL_BAND;
-  const side: Side = isNeutral ? "NEUTRAL" : pos < 0.5 ? "NO" : "YES";
+  // Per management spec (license review · 2026-05):
+  // slide LEFT → YES, slide RIGHT → NO. Inverted from the original
+  // kit prototype because licensed Tanzania conventions place the
+  // affirmative ("ndio") on the left.
+  const side: Side = isNeutral ? "NEUTRAL" : pos < 0.5 ? "YES" : "NO";
   // Snap on TARGET, not on tweened value — otherwise `stake`
   // momentarily disagrees with itself across two consecutive DOM
   // reads (input.value vs. Place-button text) during the 150 ms
@@ -411,8 +415,10 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
   const knobScale = 1 + 0.08 * conviction + (dragging ? 0.04 : 0);
   const needleX = pos * (width - knobR * 2) + knobR;
   const tilt = (pos - 0.5) * 18;
-  const yesFillW = pos > 0.5 ? (pos - 0.5) * width : 0;
-  const noFillW  = pos < 0.5 ? (0.5 - pos) * width : 0;
+  // YES fills the LEFT half (pos < 0.5), NO fills the RIGHT half (pos > 0.5).
+  // Matches the side-derivation flip above.
+  const yesFillW = pos < 0.5 ? (0.5 - pos) * width : 0;
+  const noFillW  = pos > 0.5 ? (pos - 0.5) * width : 0;
   const sqPath = squirclePath(knobR);
 
   const openConfirm = () => {
@@ -476,7 +482,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
       }
       toast({
         title: `Bet placed · ${side} TZS ${fmt(stake)}`,
-        description: `If correct, you receive TZS ${fmt(r.data!.payoutIfWin)}.`,
+        description: "Payout calculated at resolution.",
         variant: "success",
       });
       setResultData({
@@ -560,11 +566,13 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
       >
         <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} className="block overflow-visible">
           <defs>
-            <linearGradient id={`csrf-yes-${marketId}`} x1="0" x2="1">
+            {/* YES gradient: bright at LEFT (knob), dim at centre. */}
+            <linearGradient id={`csrf-yes-${marketId}`} x1="1" x2="0">
               <stop offset="0%"  stopColor="oklch(40% 0.10 152)" stopOpacity={0.35} />
               <stop offset="100%" stopColor="oklch(58% 0.16 152)" />
             </linearGradient>
-            <linearGradient id={`csrf-no-${marketId}`} x1="1" x2="0">
+            {/* NO gradient: bright at RIGHT (knob), dim at centre. */}
+            <linearGradient id={`csrf-no-${marketId}`} x1="0" x2="1">
               <stop offset="0%"  stopColor="oklch(40% 0.13 22)" stopOpacity={0.35} />
               <stop offset="100%" stopColor="oklch(60% 0.18 22)" />
             </linearGradient>
@@ -591,13 +599,14 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
                 y1={trackY - 4} y2={trackY + trackH + 4}
                 stroke="var(--bar-track-border)" strokeWidth="1" />
 
-          {/* Side fills from center */}
+          {/* Side fills from center — YES fills LEFT (from pos*width back to centre),
+              NO fills RIGHT (from centre forward). */}
           {yesFillW > 0 && (
-            <rect x={width / 2} y={trackY} width={yesFillW} height={trackH} rx={trackH / 2}
+            <rect x={pos * width} y={trackY} width={yesFillW} height={trackH} rx={trackH / 2}
                   fill={`url(#csrf-yes-${marketId})`} />
           )}
           {noFillW > 0 && (
-            <rect x={pos * width} y={trackY} width={noFillW} height={trackH} rx={trackH / 2}
+            <rect x={width / 2} y={trackY} width={noFillW} height={trackH} rx={trackH / 2}
                   fill={`url(#csrf-no-${marketId})`} />
           )}
 
@@ -723,44 +732,22 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
         </div>
       </div>
 
-      {/* Projected payout (whole-pool) */}
+      {/* Payout disclosure — per management spec (license review · 2026-05)
+          the potential winning is NOT shown until the event has resolved.
+          During placement the player sees their stake, multiplier, and side;
+          the actual payout is communicated post-resolution via notification
+          + the Positions page. */}
       {side !== "NEUTRAL" && (
-        <div className="mt-3 grid grid-cols-2 gap-3 items-baseline rounded-md border border-border bg-bg-overlay px-3 py-2.5">
-          <div>
-            <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mb-1">If correct · Ukishinda</p>
-            <p
-              className="font-mono font-bold text-[18px] tabular-nums leading-none"
-              style={{
-                letterSpacing: "-0.02em",
-                color:
-                  lean === "negative" ? "var(--no-300)"
-                  : lean === "thin"   ? "var(--warning-fg)"
-                  : "var(--gold-300)",
-              }}
-            >
-              TZS {fmt(payoutDisplay)}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mb-1">Net</p>
-            <p
-              className="font-mono font-bold text-[14px] tabular-nums leading-none"
-              style={{
-                color:
-                  payoutDisplay - stake < 0 ? "var(--no-300)"
-                  : payoutDisplay - stake < (THIN_PROFIT_RATIO - 1) * stake ? "var(--warning-fg)"
-                  : "var(--gold-300)",
-              }}
-            >
-              {payoutDisplay - stake >= 0 ? "+" : "−"}TZS {fmt(Math.abs(payoutDisplay - stake))}
-            </p>
-          </div>
+        <div className="mt-3 rounded-md border border-border bg-bg-overlay px-3 py-2.5">
+          <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mb-1">
+            Payout · Lipo
+          </p>
+          <p className="text-[12px] leading-relaxed text-text-muted">
+            Calculated at resolution from the final pool share.
+            <br />
+            <span className="text-text-subtle">Itahesabiwa baada ya tukio kukamilika.</span>
+          </p>
         </div>
-      )}
-
-      {/* House-lean disclosure — only when ratio is sub-fair */}
-      {side !== "NEUTRAL" && (
-        <HouseLeanWarning level={lean} payout={proj.payout} stake={stake} />
       )}
 
       {/* Compact place-bet pill — opens the confirm modal. Sits inline with
@@ -824,8 +811,8 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
               : "Your stake hasn't moved · Dau lako halijaondoka."
           }
           details={resultData.variant === "success" ? [
-            { label: "If correct", sw: "Ukishinda", value: `TZS ${fmt(resultData.payoutIfWin)}`, tone: "good" },
-            { label: "Net profit", sw: "Faida", value: `+TZS ${fmt(Math.max(0, resultData.payoutIfWin - resultData.stake))}`, tone: "good" },
+            { label: "Stake", sw: "Dau", value: `TZS ${fmt(resultData.stake)}` },
+            { label: "Payout", sw: "Lipo", value: "At resolution" },
           ] : undefined}
           footnote={resultData.variant === "success" ? "Bahati njema · Good luck." : undefined}
           primaryLabel={resultData.variant === "success" ? "Done · Sawa" : "Close"}

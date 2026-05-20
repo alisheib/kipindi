@@ -63,9 +63,9 @@ export function buildGbtMonthly(generatorId: string): Report {
   const period = `${periodLabel} · ${periodStart.toISOString().slice(0, 10)} → ${periodEnd.toISOString().slice(0, 10)}`;
 
   return {
-    title: "Gaming Board of Tanzania · Monthly Summary",
+    title: "Monthly report",
     subtitle: period,
-    reference: makeReference("GBT", generatorId),
+    reference: makeReference("MONTHLY", generatorId),
     meta: {
       generatedAt: new Date().toISOString(),
       generatedBy: generatorId,
@@ -461,7 +461,7 @@ export function buildIsoAudit(generatorId: string): Report {
 // ─────────────────────────────────────────────────────────────────────
 
 export const REPORT_CATALOGUE = {
-  "gbt-monthly": { name: "GBT Monthly Summary", build: buildGbtMonthly },
+  "gbt-monthly": { name: "Monthly report", build: buildGbtMonthly },
   "tra-tax":     { name: "TRA Withholding Tax", build: buildTraTax },
   "fiu-sar":     { name: "FIU SAR",             build: buildFiuSar },
   "sx-register": { name: "Self-exclusion Register", build: buildSxRegister },

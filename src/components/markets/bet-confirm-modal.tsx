@@ -212,29 +212,20 @@ export function BetConfirmModal({
             </div>
           </div>
 
-          {/* Payout block */}
-          <div className="mt-3 grid grid-cols-2 gap-3 rounded-lg border border-border bg-bg-overlay p-3">
-            <div>
-              <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle mb-1">If correct · Ukishinda</p>
-              <p className="font-mono font-bold text-[18px] tabular-nums leading-none" style={{ color: netColor }}>
-                TZS {fmt(payout)}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle mb-1">Net · Faida</p>
-              <p className="font-mono font-bold text-[15px] tabular-nums leading-none" style={{ color: netColor }}>
-                {net >= 0 ? "+" : "−"}TZS {fmt(Math.abs(net))}
-              </p>
-              <p className="mt-1 font-mono text-[10px] text-text-subtle">×{ratio.toFixed(2)} return</p>
-            </div>
+          {/* Payout disclosure — per management spec (license review · 2026-05)
+              the potential winning is NOT shown until the event has resolved.
+              Player commits on stake + multiplier + side; final payout
+              communicated post-resolution. */}
+          <div className="mt-3 rounded-lg border border-border bg-bg-overlay p-3">
+            <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle mb-1">
+              Payout · Lipo
+            </p>
+            <p className="text-[12px] leading-relaxed text-text-muted">
+              Calculated at resolution from the final pool share.
+              <br />
+              <span className="text-text-subtle">Itahesabiwa baada ya tukio kukamilika.</span>
+            </p>
           </div>
-
-          {/* Lean warning, only when sub-fair */}
-          {lean !== "fair" && (
-            <div className="mt-3">
-              <HouseLeanWarning level={lean} payout={payout} stake={stake} />
-            </div>
-          )}
 
           {/* Quote-hold caption */}
           <div className="mt-4 flex items-center gap-2 text-[12px] text-text-subtle">

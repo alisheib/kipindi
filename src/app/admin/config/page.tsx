@@ -31,7 +31,7 @@ export default function AdminConfigPage() {
         period={false}
         actions={
           <Chip size="md" variant="resolved">
-            Pari-mutuel · whole-pool
+            Price Competition · whole-pool
           </Chip>
         }
       />

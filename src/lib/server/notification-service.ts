@@ -78,8 +78,8 @@ export function notifyBetPlaced(userId: string, opts: {
     kind: "BET_PLACED",
     titleEn: `Bet placed · ${opts.side} TZS ${opts.stake.toLocaleString()}`,
     titleSw: `Dau limewekwa · ${opts.side} TZS ${opts.stake.toLocaleString()}`,
-    bodyEn: `${opts.marketTitle.slice(0, 70)} · pays TZS ${opts.payoutIfWin.toLocaleString()} if right.`,
-    bodySw: `Lipo TZS ${opts.payoutIfWin.toLocaleString()} ukishinda.`,
+    bodyEn: `${opts.marketTitle.slice(0, 70)} · payout calculated at resolution.`,
+    bodySw: `${opts.marketTitle.slice(0, 50)} · lipo itahesabiwa baada ya tukio.`,
     href: `/markets/${opts.marketId}`,
   });
 }

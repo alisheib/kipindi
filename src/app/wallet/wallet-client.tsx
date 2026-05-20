@@ -100,7 +100,6 @@ const TABS = [
 type Method = { id: string; name: string; phone: string; hue: number; default?: boolean };
 const METHODS: Method[] = [
   { id: "MPESA",        name: "M-Pesa",        phone: "+2557*****99", default: true, hue: 152 },
-  { id: "TIGO_PESA",    name: "Tigo Pesa",     phone: "+2557*****99", hue: 240 },
   { id: "AIRTEL_MONEY", name: "Airtel Money",  phone: "+2556*****20", hue: 22 },
   { id: "HALO_PESA",    name: "HaloPesa",      phone: "+2556*****11", hue: 80 },
   { id: "MIXX",         name: "Mixx by Yas",   phone: "+2557*****99", hue: 280 },

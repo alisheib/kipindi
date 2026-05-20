@@ -123,14 +123,14 @@ export const PlaceBetSchema = z.object({
 export type PlaceBetInput = z.infer<typeof PlaceBetSchema>;
 
 export const DepositSchema = z.object({
-  provider: z.enum(["MPESA", "TIGO_PESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX", "CARD"]),
+  provider: z.enum(["MPESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX", "CARD"]),
   amount: depositAmount,
   msisdn: tzPhone.optional(),
 });
 export type DepositInput = z.infer<typeof DepositSchema>;
 
 export const WithdrawSchema = z.object({
-  provider: z.enum(["MPESA", "TIGO_PESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX", "BANK_TRANSFER"]),
+  provider: z.enum(["MPESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX", "BANK_TRANSFER"]),
   amount: withdrawAmount,
   msisdn: tzPhone.optional(),
   otpCode,

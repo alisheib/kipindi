@@ -38,7 +38,7 @@ export default function TermsPage() {
 
       <LegalSection n="4" title="How prediction markets work">
         <p>
-          50pick operates a <strong className="text-text">whole-pool pari-mutuel</strong> prediction-market model.
+          50pick operates a <strong className="text-text">whole-pool Price Competition</strong> prediction-market model.
           All stakes — YES and NO — are pooled. After applying the published platform tax and operator commission,
           the remaining net pool is distributed to the winning side, pro-rata to each correct stake&apos;s share of
           the winning side&apos;s pool. The current rates are displayed on every market, in your placement preview,

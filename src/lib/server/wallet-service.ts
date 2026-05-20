@@ -224,7 +224,6 @@ export function listTransactions(userId: string, limit = 50) {
 function friendlyProvider(p: string): string {
   switch (p) {
     case "MPESA": return "M-Pesa";
-    case "TIGO_PESA": return "Tigo Pesa";
     case "AIRTEL_MONEY": return "Airtel Money";
     case "HALO_PESA": return "HaloPesa";
     case "MIXX": return "Mixx by Yas";

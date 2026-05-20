@@ -168,7 +168,7 @@ export default async function LandingPage() {
             n="01"
             en="Pick a side, stake TZS"
             sw="Chagua upande, weka dau"
-            body="Pari-mutuel pool. Min TZS 100. Drag the conviction needle on any market."
+            body="Price Competition pool. Min TZS 100. Drag the conviction needle on any market."
             tone="yes"
           />
           <TrustItem

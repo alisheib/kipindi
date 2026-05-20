@@ -10,13 +10,13 @@ export const dynamic = "force-dynamic";
 const TEMPLATES = [
   {
     id: "gbt-monthly",
-    title: "GBT monthly summary",
-    sw: "Ripoti ya kila mwezi · GBT",
+    title: "Monthly report",
+    sw: "Ripoti ya kila mwezi",
     body: "Tanzania Gaming Board · 12-sheet workbook covering player register changes, GGR, NGR, deposit/withdraw flows, AML triggers, self-exclusion roster, integrity alerts, audit-chain proof. Signed JSON + accompanying PDF.",
     formats: ["JSON (signed)", "PDF"],
     cadence: "Monthly · 5th of each month",
     severity: "high",
-    target: "GBT",
+    target: "Regulator",
   },
   {
     id: "tra-tax",

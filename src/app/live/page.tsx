@@ -116,7 +116,7 @@ export default function LivePage() {
             {/* Cross-cut callout */}
             <section className="rounded-xl border border-border bg-bg-elevated p-5 lg:p-6">
               <div className="flex flex-wrap items-baseline gap-2 mb-2">
-                <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-yes-300">Pari-mutuel · pool model</p>
+                <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-yes-300">Price Competition · pool model</p>
               </div>
               <p className="text-[14px] leading-relaxed text-text-muted max-w-[78ch]">
                 Every bar above is the live pool of stakes. Each new prediction <em>tips the bar</em> —

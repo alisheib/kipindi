@@ -11,7 +11,7 @@ export const metadata = { title: "Admin · Compliance" };
 export const dynamic = "force-dynamic";
 
 const REPORTS: ReadonlyArray<{ id: string; title: string; sub: string; tone: "gold" | "royal" | "danger" | "neutral" }> = [
-  { id: "gbt-monthly",    title: "GBT monthly summary",   sub: "Last 28 days · 12 sheets · signed JSON", tone: "gold" },
+  { id: "gbt-monthly",    title: "Monthly report",         sub: "Last 28 days · 12 sheets · signed JSON", tone: "gold" },
   { id: "tra-tax",        title: "TRA withholding tax",   sub: "Last 28 days · CSV · ready",             tone: "royal" },
   { id: "fiu-sar",        title: "FIU SAR · suspicious",  sub: "7-day rolling · entries pending review", tone: "danger" },
   { id: "iso-audit",      title: "ISO 27001 audit log",   sub: "Last 90 days · CSV",                     tone: "neutral" },
@@ -51,7 +51,7 @@ export default function AdminCompliancePage() {
         actions={
           <div className="flex gap-1.5 flex-wrap">
             {[
-              { id: "gbt",  label: "GBT monthly" },
+              { id: "gbt",  label: "Monthly report" },
               { id: "tra",  label: "TRA tax" },
               { id: "fiu",  label: "FIU SAR" },
             ].map((b) => (

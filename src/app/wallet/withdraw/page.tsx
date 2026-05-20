@@ -10,7 +10,6 @@ export const metadata = { title: "Withdraw · Toa" };
 
 const PROVIDERS = [
   { id: "MPESA",        name: "M-Pesa",        hue: 152 },
-  { id: "TIGO_PESA",    name: "Tigo Pesa",     hue: 240 },
   { id: "AIRTEL_MONEY", name: "Airtel Money",  hue: 22 },
   { id: "HALO_PESA",    name: "HaloPesa",      hue: 80 },
   { id: "MIXX",         name: "Mixx by Yas",   hue: 280 },
