@@ -315,11 +315,36 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
     setPos(next);
   }, []);
 
+  // Tap-vs-drag discrimination. A pure click on the track (no
+  // movement) MUST NOT overwrite a typed exact value with the
+  // slider's snap-to-100, otherwise typing 6,210 → clicking
+  // anywhere on the dial silently becomes 6,200. We commit to
+  // slider mode only after the pointer crosses DRAG_COMMIT_PX.
+  const DRAG_COMMIT_PX = 4;
+  const dragStartXRef = useRef<number | null>(null);
+  const dragCommittedRef = useRef(false);
+
   // Pointer events handle mouse + touch + pen uniformly
   useEffect(() => {
     if (!dragging) return;
-    const move = (e: PointerEvent) => { e.preventDefault(); setFromClientX(e.clientX); };
-    const up = () => setDragging(false);
+    const move = (e: PointerEvent) => {
+      e.preventDefault();
+      if (!dragCommittedRef.current) {
+        const startX = dragStartXRef.current;
+        if (startX === null || Math.abs(e.clientX - startX) < DRAG_COMMIT_PX) return;
+        // Crossed the threshold — this is a real drag. Take over
+        // slider mode: clear the typed-exact lock so snap-to-100
+        // governs from here, and start tracking the cursor.
+        dragCommittedRef.current = true;
+        setExactStake(null);
+      }
+      setFromClientX(e.clientX);
+    };
+    const up = () => {
+      setDragging(false);
+      dragStartXRef.current = null;
+      dragCommittedRef.current = false;
+    };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
     window.addEventListener("pointercancel", up);
@@ -332,17 +357,23 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     setDragging(true);
-    // Resuming a drag means the player is back to slider control —
-    // exit any in-flight stake-input edit so the input goes back to
-    // mirroring the dragged value live. Without this, the input
-    // stays frozen at whatever the player last typed even though
-    // the slider has moved.
+    // Always exit any in-flight stake-input edit — clicking the
+    // dial is unambiguously a "done with the input" intent.
     setEditingStake(false);
     editingSideRef.current = null;
-    // Drag overrides any previously-typed exact value; the slider's
-    // snap-to-100 stake takes over from here.
-    setExactStake(null);
-    setFromClientX(e.clientX);
+    dragStartXRef.current = e.clientX;
+    if (exactStake !== null) {
+      // Player has a typed exact value to protect. Don't jump the
+      // knob and don't clear the lock yet — defer both to the
+      // pointermove handler once a real drag is detected.
+      dragCommittedRef.current = false;
+    } else {
+      // No typed value at risk — classic slider behaviour: jump the
+      // knob to the click position immediately and treat the rest
+      // of the gesture as a drag.
+      dragCommittedRef.current = true;
+      setFromClientX(e.clientX);
+    }
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
   };
 

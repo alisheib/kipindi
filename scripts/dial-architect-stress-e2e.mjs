@@ -125,7 +125,10 @@ try {
 
   async function dragTo(fraction) {
     const box = await track.boundingBox();
-    const sx = box.x + box.width / 2;
+    // Always start from the opposite end so any target produces real
+    // movement (dragTo(0.5) starting from the centre would be zero
+    // distance — the tap-vs-drag threshold would ignore it).
+    const sx = box.x + box.width * (fraction < 0.5 ? 0.95 : 0.05);
     const tx = box.x + box.width * fraction;
     const y = box.y + box.height / 2;
     await p.mouse.move(sx, y);
@@ -289,6 +292,55 @@ try {
   const g4 = await snapshot();
   log("G.4 25,000 → exact + place visible",
       g4.placeVisible && g4.placeAmount === 25000, `place=${g4.placeAmount}`);
+
+  // -----------------------------------------------------------------
+  // === I · TAP TRACK AFTER TYPE — exact value MUST survive ========
+  // (Tap = pointerdown + pointerup with no movement. Players who
+  // type a value and then click the dial to dismiss the keyboard
+  // should NOT have their typed value silently snapped to 100.)
+  // -----------------------------------------------------------------
+  console.log("\n=== I · TAP TRACK AFTER TYPE — exact value must survive ===");
+  await dragTo(0.7);
+  await typeStake(6210);
+  // Tap the track at the current knob position — no movement.
+  const tapBox = await track.boundingBox();
+  await p.mouse.move(tapBox.x + tapBox.width * 0.7, tapBox.y + tapBox.height / 2);
+  await p.mouse.down();
+  await p.waitForTimeout(40);
+  await p.mouse.up();
+  await p.waitForTimeout(300);
+  const i1 = await snapshot();
+  log("I.1 typed 6,210 then tapped track → input still 6,210",
+      i1.inputVal === 6210, `inputVal=${i1.inputVal}`);
+  log("I.2 typed 6,210 then tapped track → Place button still TZS 6,210",
+      i1.placeVisible && i1.placeAmount === 6210,
+      `place=${i1.placeAmount}`);
+
+  // -----------------------------------------------------------------
+  // === J · DRAG > 4px CLEARS LOCK — snap-to-100 takes over ========
+  // -----------------------------------------------------------------
+  console.log("\n=== J · ACTUAL DRAG AFTER TYPE — slider takes over (snap-to-100) ===");
+  await typeStake(6210);
+  // Drag from the knob to a different position — > 4px movement.
+  const dragBox = await track.boundingBox();
+  await p.mouse.move(dragBox.x + dragBox.width * 0.62, dragBox.y + dragBox.height / 2);
+  await p.mouse.down();
+  for (let i = 1; i <= 6; i++) {
+    await p.mouse.move(
+      dragBox.x + dragBox.width * (0.62 + 0.10 * (i / 6)),
+      dragBox.y + dragBox.height / 2,
+      { steps: 3 },
+    );
+  }
+  await p.mouse.up();
+  await p.waitForTimeout(400);
+  const j1 = await snapshot();
+  log("J.1 drag overrides typed lock → input snapped to 100",
+      j1.inputVal !== 6210 && j1.inputVal % 100 === 0,
+      `inputVal=${j1.inputVal}`);
+  log("J.2 drag clears lock → input value == Place button amount",
+      j1.placeVisible && j1.inputVal === j1.placeAmount,
+      `input=${j1.inputVal} place=${j1.placeAmount}`);
 
   // -----------------------------------------------------------------
   // === H · TYPE → CONFIRM dialog shows EXACT typed amount =========
