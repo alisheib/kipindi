@@ -79,8 +79,11 @@ try {
   // The "TZS" prefix sits inside the kit Input's separated sub-cell.
   const tzsPrefix = await p.getByText(/^TZS$/).first().isVisible({ timeout: 2_000 }).catch(() => false);
   log("A.2 'TZS' prefix visible inside the input pill", tzsPrefix);
-  const rangeLabel = await p.getByText(/TZS\s*5,?000\s*–\s*25,?000/i).first().isVisible({ timeout: 2_000 }).catch(() => false);
-  log("A.3 range helper 'TZS 5,000–25,000' visible", rangeLabel);
+  // Range chip — kit-grade indicator with gradient mini-bar between
+  // min and max values. Verify both 5,000 and 25,000 chips appear.
+  const minChip = await p.locator('[data-testid="stake-range-min"]').first().isVisible({ timeout: 2_000 }).catch(() => false);
+  const maxChip = await p.locator('[data-testid="stake-range-max"]').first().isVisible({ timeout: 2_000 }).catch(() => false);
+  log("A.3 range chip shows both stake-range-min and stake-range-max", minChip && maxChip);
 
   // Kit Input wraps input + prefix + trailing in a <span> with the
   // recognisable "form field" treatment — visible border, raised
@@ -120,8 +123,8 @@ try {
   await p.waitForTimeout(300);
 
   // The "Max 25,000" hint should now be visible.
-  const overMaxHint = await p.getByText(/Max\s+TZS\s*25,?000/i).first().isVisible({ timeout: 1_500 }).catch(() => false);
-  log("C.1 over-max typing shows 'Max TZS 25,000' hint",
+  const overMaxHint = await p.getByText(/Max\s+25,?000/i).first().isVisible({ timeout: 1_500 }).catch(() => false);
+  log("C.1 over-max typing shows 'Max 25,000' chip",
       overMaxHint);
 
   // aria-invalid should be true.
@@ -159,8 +162,8 @@ try {
   await stakeInput.type("1000", { delay: 6 });
   await p.waitForTimeout(300);
 
-  const underMinHint = await p.getByText(/Min\s+TZS\s*5,?000/i).first().isVisible({ timeout: 1_500 }).catch(() => false);
-  log("E.1 under-min typing shows 'Min TZS 5,000' hint",
+  const underMinHint = await p.getByText(/Min\s+5,?000/i).first().isVisible({ timeout: 1_500 }).catch(() => false);
+  log("E.1 under-min typing shows 'Min 5,000' chip",
       underMinHint);
 
   const ariaAtMin = parseInt(await track.getAttribute("aria-valuenow") ?? "0", 10) / 100;
@@ -255,7 +258,7 @@ try {
   await stakeInput.type("99999", { delay: 6 });
   await p.waitForTimeout(200);
   // Out of range now
-  const hintBefore = await p.getByText(/Max\s+TZS\s*25,?000/).first().isVisible({ timeout: 800 }).catch(() => false);
+  const hintBefore = await p.getByText(/Max\s+25,?000/).first().isVisible({ timeout: 800 }).catch(() => false);
   log("I.1 hint shown while typing over max", hintBefore);
 
   // User corrects to a valid value
@@ -263,12 +266,12 @@ try {
   await p.keyboard.press("Delete");
   await stakeInput.type("15000", { delay: 6 });
   await p.waitForTimeout(300);
-  const hintAfter = await p.getByText(/Max\s+TZS\s*25,?000/).first().isVisible({ timeout: 600 }).catch(() => false);
+  const hintAfter = await p.getByText(/Max\s+25,?000/).first().isVisible({ timeout: 600 }).catch(() => false);
   log("I.2 hint disappears once a valid value is typed", !hintAfter);
 
-  // Range helper line should be back.
-  const rangeBack = await p.getByText(/TZS\s*5,?000\s*–\s*25,?000/i).first().isVisible({ timeout: 600 }).catch(() => false);
-  log("I.3 range helper 'TZS 5,000–25,000' is back", rangeBack);
+  // Range chip should be visible — gradient mini-bar between min/max values.
+  const rangeBack = await p.locator('[data-testid="stake-range-min"]').first().isVisible({ timeout: 600 }).catch(() => false);
+  log("I.3 stake-range-min visible again after valid input", rangeBack);
 
   await p.close();
   await ctx.close();

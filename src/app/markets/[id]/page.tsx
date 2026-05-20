@@ -188,7 +188,7 @@ export default async function MarketDetail({
                         positionId={p.id}
                         stake={p.stake}
                         value={liveValue}
-                        resolutionAt={market.resolutionAt}
+                        resolutionAt={m.resolutionAt}
                       />
                     )}
                   </div>

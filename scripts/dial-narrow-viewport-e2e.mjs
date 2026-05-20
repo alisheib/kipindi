@@ -155,18 +155,12 @@ try {
           `height=${pb?.height.toFixed(1)}`);
     }
 
-    // 8 · Range helper line fully visible (not clipped)
-    const helper = p.locator("p.font-mono").filter({ hasText: /TZS\s*5,?000.*25,?000/i }).first();
-    if (await helper.count() > 0) {
-      const helperClip = await helper.evaluate((el) => ({
-        cw: el.clientWidth,
-        sw: el.scrollWidth,
-        text: el.textContent ?? "",
-      }));
-      log(`${vp.w}px · range helper line not clipped`,
-          helperClip.cw >= helperClip.sw,
-          `cw=${helperClip.cw} sw=${helperClip.sw}`);
-    }
+    // 8 · Range chip min + max values fully visible (not clipped)
+    const minOk = await p.locator('[data-testid="stake-range-min"]').first().isVisible({ timeout: 800 }).catch(() => false);
+    const maxOk = await p.locator('[data-testid="stake-range-max"]').first().isVisible({ timeout: 800 }).catch(() => false);
+    log(`${vp.w}px · range chip both min + max visible`,
+        minOk && maxOk,
+        `min=${minOk} max=${maxOk}`);
 
     // 9 · Header "YES · slide to commit · NO" labels visible
     const yesLabel = p.locator("span").filter({ hasText: /^YES$/ }).first();

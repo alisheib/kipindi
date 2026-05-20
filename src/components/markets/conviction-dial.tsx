@@ -218,10 +218,11 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
   // through the centre (e.g. dropping below baseStake) doesn't flip
   // the dial to the other side. Captured on focus, cleared on blur.
   const editingSideRef = useRef<"left" | "right" | null>(null);
-  // Mirror the effective stake into the stake input + the effective
-  // multiplier into the multiplier input whenever the user isn't
-  // actively typing in THAT field. Keeps both fields in step with
-  // drags and with each other.
+  // Mirror the effective stake / multiplier into their inputs when
+  // the user isn't typing in THAT field. We DO mirror during drag
+  // because the player wants to see the live value — but we use a
+  // ref+RAF coalescer (see `setFromClientX` above) so we update at
+  // most once per animation frame regardless of pointer rate.
   useEffect(() => {
     if (!editingStake) setStakeText(String(stake));
   }, [stake, editingStake]);
@@ -398,11 +399,25 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
   const sideAccent = ringColor;
   const sideText = side === "YES" ? "oklch(80% 0.13 152)" : side === "NO" ? "oklch(80% 0.14 22)" : "oklch(75% 0.012 240)";
 
+  // RAF-throttled pos update — pointermove can fire > 60 fps on
+  // high-rate trackpads, and each setState cascades through the
+  // rolling-tween + mirror-effect chain. Coalescing into one
+  // update per animation frame keeps drag butter-smooth.
+  const pendingClientXRef = useRef<number | null>(null);
+  const rafScheduledRef = useRef(false);
   const setFromClientX = useCallback((clientX: number) => {
-    if (!trackRef.current) return;
-    const r = trackRef.current.getBoundingClientRect();
-    const next = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
-    setPos(next);
+    pendingClientXRef.current = clientX;
+    if (rafScheduledRef.current) return;
+    rafScheduledRef.current = true;
+    requestAnimationFrame(() => {
+      rafScheduledRef.current = false;
+      const cx = pendingClientXRef.current;
+      pendingClientXRef.current = null;
+      if (cx === null || !trackRef.current) return;
+      const r = trackRef.current.getBoundingClientRect();
+      const next = Math.max(0, Math.min(1, (cx - r.left) / r.width));
+      setPos(next);
+    });
   }, []);
 
   // Tap-vs-drag discrimination. A pure click on the track (no
@@ -508,8 +523,20 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
   const noFillW  = pos > 0.5 ? (pos - 0.5) * width : 0;
   const sqPath = squirclePath(knobR);
 
+  // Locked quote — captured the moment the player opens the confirm
+  // modal. Any subsequent dial/input edit DOES NOT change what
+  // the modal displays or what the server gets. Prevents the
+  // "open modal at TZS 5,000 → change dial behind it → bet TZS
+  // 25,000" UX-tamper / scam vector that abuse testing surfaced.
+  const [lockedQuote, setLockedQuote] = useState<{
+    stake: number;
+    side: "YES" | "NO";
+    multiplier: number;
+  } | null>(null);
+
   const openConfirm = () => {
     if (side === "NEUTRAL" || pending) return;
+    setLockedQuote({ stake, side, multiplier: multiplierTarget });
     setConfirmOpen(true);
   };
 
@@ -547,12 +574,16 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
   };
 
   const submit = () => {
-    if (side === "NEUTRAL" || pending) return;
+    // Read EXCLUSIVELY from the locked quote captured at modal open.
+    // The live `side` / `stake` may have changed if the player
+    // tampered with the dial behind the modal — we ignore those.
+    if (!lockedQuote || pending) return;
+    const q = lockedQuote;
     startTransition(async () => {
       const fd = new FormData();
       fd.set("marketId", marketId);
-      fd.set("side", side);
-      fd.set("stake", String(stake));
+      fd.set("side", q.side);
+      fd.set("stake", String(q.stake));
       const r = await buyPositionAction(fd);
       // Whether success or failure, the modal MUST close — leaving it
       // open with the same locked quote was racing into double-place.
@@ -563,19 +594,19 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
         // for a money-handling failure. Toast still fires as a secondary
         // signal in the corner so the user has both.
         toast({ title: t.title, description: t.body, variant: t.variant });
-        setResultData({ variant: "danger", side: side === "NEUTRAL" ? "YES" : side, stake, payoutIfWin: 0, error: t.body });
+        setResultData({ variant: "danger", side: q.side, stake: q.stake, payoutIfWin: 0, error: t.body });
         setResultOpen(true);
         return;
       }
       toast({
-        title: `Bet placed · ${side} TZS ${fmt(stake)}`,
+        title: `Bet placed · ${q.side} TZS ${fmt(q.stake)}`,
         description: "Payout calculated at resolution.",
         variant: "success",
       });
       setResultData({
         variant: "success",
-        side: side as "YES" | "NO",
-        stake,
+        side: q.side,
+        stake: q.stake,
         payoutIfWin: r.data!.payoutIfWin,
       });
       setResultOpen(true);
@@ -590,7 +621,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
       // silently skipping the popup. Ali's report fixed in this line.
       try {
         const key = `50pick-bet-${marketId}`;
-        localStorage.setItem(key, JSON.stringify({ side, stake, payoutIfWin: r.data!.payoutIfWin }));
+        localStorage.setItem(key, JSON.stringify({ side: q.side, stake: q.stake, payoutIfWin: r.data!.payoutIfWin }));
         const WATCH_KEY = "50pick-notify-markets";
         const watchRaw = localStorage.getItem(WATCH_KEY);
         const watch: string[] = watchRaw ? (JSON.parse(watchRaw) as string[]) : [];
@@ -725,7 +756,11 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
               <text x="0" y="-2" textAnchor="middle"
                     fontFamily="JetBrains Mono, monospace" fontWeight="700"
                     fontSize="15" fill="oklch(96% 0.005 240)" letterSpacing="-0.02em">
-                {multiplier.toFixed(2)}×
+                {/* During an active drag the knob text snaps to the
+                    target directly — no tween lag behind the cursor.
+                    When the player releases, the gentle critically-
+                    damped roll resumes for the next change. */}
+                {(dragging ? multiplierTarget : multiplier).toFixed(2)}×
               </text>
               <text x="0" y="11" textAnchor="middle"
                     fontFamily="JetBrains Mono, monospace" fontWeight="500"
@@ -806,18 +841,19 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
             player exactly what the slider settled to, so the clamp
             never feels arbitrary.
           */}
-          {isOverMax ? (
-            <p className="mt-1 font-mono text-[9.5px] text-no-300 whitespace-nowrap">
-              Max TZS {fmt(maxDial)}
-            </p>
-          ) : isUnderMin ? (
-            <p className="mt-1 font-mono text-[9.5px] text-no-300 whitespace-nowrap">
-              Min TZS {fmt(minDial)}
-            </p>
+          {/* Range chip — replaces the tiny gray text with a kit-grade
+              gradient indicator. Out-of-range states swap the gradient
+              for a no-300 chip to make the clamp un-missable. */}
+          {isOverMax || isUnderMin ? (
+            <span className="mt-1 inline-flex items-center gap-1 rounded-pill border border-no-700 bg-no-500/15 px-1.5 py-0.5 font-mono text-[9.5px] font-bold text-no-300 whitespace-nowrap">
+              {isOverMax ? `Max ${fmt(maxDial)}` : `Min ${fmt(minDial)}`}
+            </span>
           ) : (
-            <p className="mt-1 font-mono text-[9px] text-text-subtle whitespace-nowrap">
-              TZS {fmt(minDial)}–{fmt(maxDial)}
-            </p>
+            <span className="mt-1 inline-flex items-center gap-1 font-mono text-[9.5px] text-text-subtle whitespace-nowrap" data-testid="stake-range-chip">
+              <span data-testid="stake-range-min" className="tabular-nums font-bold text-text-muted">{fmt(minDial)}</span>
+              <span aria-hidden className="inline-block h-[2px] w-5 rounded-pill bg-gradient-to-r from-yes-500 to-gold-500" />
+              <span data-testid="stake-range-max" className="tabular-nums font-bold text-text-muted">{fmt(maxDial)}</span>
+            </span>
           )}
         </div>
       </div>
@@ -857,18 +893,16 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
             className="text-right font-bold tabular-nums w-[64px] sm:w-[72px] px-1.5 sm:px-2"
             containerClassName="ml-auto"
           />
-          {isMultOverMax ? (
-            <p className="mt-1 font-mono text-[9.5px] text-no-300 whitespace-nowrap">
-              Max {MULT_MAX.toFixed(2)}×
-            </p>
-          ) : isMultUnderMin ? (
-            <p className="mt-1 font-mono text-[9.5px] text-no-300 whitespace-nowrap">
-              Min {MULT_MIN.toFixed(2)}×
-            </p>
+          {isMultOverMax || isMultUnderMin ? (
+            <span className="mt-1 inline-flex items-center gap-1 rounded-pill border border-no-700 bg-no-500/15 px-1.5 py-0.5 font-mono text-[9.5px] font-bold text-no-300 whitespace-nowrap">
+              {isMultOverMax ? `Max ${MULT_MAX.toFixed(2)}×` : `Min ${MULT_MIN.toFixed(2)}×`}
+            </span>
           ) : (
-            <p className="mt-1 font-mono text-[9px] text-text-subtle whitespace-nowrap">
-              {MULT_MIN.toFixed(2)}×–{MULT_MAX.toFixed(2)}×
-            </p>
+            <span className="mt-1 inline-flex items-center gap-1 font-mono text-[9.5px] text-text-subtle whitespace-nowrap" data-testid="mult-range-chip">
+              <span data-testid="mult-range-min" className="tabular-nums font-bold text-text-muted">{MULT_MIN.toFixed(2)}×</span>
+              <span aria-hidden className="inline-block h-[2px] w-5 rounded-pill bg-gradient-to-r from-text-subtle to-gold-500" />
+              <span data-testid="mult-range-max" className="tabular-nums font-bold text-text-muted">{MULT_MAX.toFixed(2)}×</span>
+            </span>
           )}
         </div>
       </div>
@@ -930,9 +964,12 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
 
       <BetConfirmModal
         open={confirmOpen}
-        side={side === "NEUTRAL" ? "YES" : side}
-        stake={stake}
-        multiplier={multiplier}
+        // Display the LOCKED quote captured at modal open — never
+        // the live `side`/`stake`/`multiplier` that the player could
+        // have shifted under the modal.
+        side={lockedQuote?.side ?? (side === "NEUTRAL" ? "YES" : side)}
+        stake={lockedQuote?.stake ?? stake}
+        multiplier={lockedQuote?.multiplier ?? multiplierTarget}
         payout={proj.payout}
         ratio={proj.ratio}
         lean={lean}
