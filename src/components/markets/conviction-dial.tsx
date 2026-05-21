@@ -868,12 +868,16 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
             }}
             aria-label={`Stake amount in TZS — type or use the dial (min ${minDial}, max ${maxDial})`}
             aria-invalid={isOutOfRange}
-            // Responsive width: narrow viewports squeeze to 68 px so
-            // the input doesn't crowd the side label; from sm: up the
-            // 80 px width keeps "25,000" comfortable. tabular-nums
-            // prevents digit-width jitter across the 5-character span.
-            className="text-right font-bold tabular-nums w-[68px] sm:w-[80px] px-1.5 sm:px-2"
-            containerClassName="ml-auto"
+            // Tabular-nums prevents digit-width jitter across the 5-
+            // character span; the inner input flexes to fill whatever's
+            // left between the "TZS" prefix and the pencil trailing
+            // cell, so we no longer pin an explicit width here.
+            className="text-right font-bold tabular-nums px-2"
+            // Fixed outer width + 32 px height so the stake and the
+            // multiplier inputs read as a matched pair. 152 px is the
+            // smallest size that still fits "25,000" comfortably given
+            // the prefix + trailing cells inside.
+            containerClassName="ml-auto h-8 w-[152px]"
           />
           {/*
             Range helper line — switches to a corrective hint when the
@@ -930,8 +934,11 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
             }}
             aria-label={`Conviction multiplier — type ${MULT_MIN.toFixed(2)}× to ${MULT_MAX.toFixed(2)}×`}
             aria-invalid={isMultOutOfRange}
-            className="text-right font-bold tabular-nums w-[64px] sm:w-[72px] px-1.5 sm:px-2"
-            containerClassName="ml-auto"
+            className="text-right font-bold tabular-nums px-2"
+            // Same outer width + 32 px height as the stake input above
+            // — they read as a matched pair, with the trailing "×" cell
+            // mirroring the prefix "TZS" cell on the stake row.
+            containerClassName="ml-auto h-8 w-[152px]"
           />
           {isMultOverMax || isMultUnderMin ? (
             <span className="mt-1 inline-flex items-center gap-1 rounded-pill border border-no-700 bg-no-500/15 px-1.5 py-0.5 font-mono text-[9.5px] font-bold text-no-300 whitespace-nowrap">
