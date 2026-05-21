@@ -159,7 +159,9 @@ export function HeroConstellation({ height = 540 }: { height?: number }) {
           "0 1px 0 oklch(78% 0.13 80 / 0.35) inset, 0 24px 60px -30px oklch(8% 0.05 268 / 0.70)",
       }}
     >
-      <DriftParticles count={particleCount} paused={!visible} />
+      {/* Drift particles removed per Ali — the hero reads cleaner without
+          the floating gilt dots. The component is kept (above) in case
+          we want to bring them back in a different form later. */}
 
       <svg
         viewBox={`0 0 ${width} ${height}`}
