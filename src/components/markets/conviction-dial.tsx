@@ -15,7 +15,6 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { buyPositionAction } from "@/app/markets/actions";
@@ -849,7 +848,12 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
             mono
             size="sm"
             prefix="TZS"
-            trailing={<Pencil size={12} aria-hidden className="text-text-subtle" />}
+            // Pencil trailing icon dropped — it duplicated affordance the
+            // border + focus ring already provide, and its 24-px padded
+            // cell was eating room so the actual amount got clipped.
+            // The atom's prefix cell alone occupies ~49 px; the input
+            // needs the rest of the outer width to render "25,000" with
+            // room to breathe.
             error={isOutOfRange}
             value={editingStake ? stakeText : fmt(stake)}
             inputMode="numeric"
@@ -877,7 +881,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
             // multiplier inputs read as a matched pair. 152 px is the
             // smallest size that still fits "25,000" comfortably given
             // the prefix + trailing cells inside.
-            containerClassName="ml-auto h-8 w-[152px]"
+            containerClassName="ml-auto h-8 w-[172px]"
           />
           {/*
             Range helper line — switches to a corrective hint when the
@@ -938,7 +942,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
             // Same outer width + 32 px height as the stake input above
             // — they read as a matched pair, with the trailing "×" cell
             // mirroring the prefix "TZS" cell on the stake row.
-            containerClassName="ml-auto h-8 w-[152px]"
+            containerClassName="ml-auto h-8 w-[172px]"
           />
           {isMultOverMax || isMultUnderMin ? (
             <span className="mt-1 inline-flex items-center gap-1 rounded-pill border border-no-700 bg-no-500/15 px-1.5 py-0.5 font-mono text-[9.5px] font-bold text-no-300 whitespace-nowrap">
