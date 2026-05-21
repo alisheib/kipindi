@@ -63,7 +63,13 @@ function DriftParticles({ count = 18, paused = false }: { count?: number; paused
             width: p.sz,
             height: p.sz,
             borderRadius: "50%",
-            background: "oklch(78% 0.13 86)",
+            // Gilt-budget rule (FINAL.md cross-cutting): the hero glow
+            // and atmospheric drift are NOT gilt — gilt is reserved for
+            // resolved + commit + verdict moments. Aqua-300 at the
+            // particle's existing layer opacity reads as cool atmospheric
+            // patina, lets the gold horizon and verdict tape stay the
+            // soloists. Hue 195 = patina aqua (oklch 80% 0.10 195).
+            background: "oklch(80% 0.10 195)",
             opacity: p.opacity,
             animation: `hc-drift ${p.dur}s linear infinite, hc-sway ${p.dur * 0.6}s ease-in-out infinite alternate`,
             animationDelay: `${p.delay}s, ${p.delay * 0.4}s`,
@@ -159,9 +165,7 @@ export function HeroConstellation({ height = 540 }: { height?: number }) {
           "0 1px 0 oklch(78% 0.13 80 / 0.35) inset, 0 24px 60px -30px oklch(8% 0.05 268 / 0.70)",
       }}
     >
-      {/* Drift particles removed per Ali — the hero reads cleaner without
-          the floating gilt dots. The component is kept (above) in case
-          we want to bring them back in a different form later. */}
+      <DriftParticles count={particleCount} paused={!visible} />
 
       <svg
         viewBox={`0 0 ${width} ${height}`}
@@ -253,6 +257,10 @@ export function HeroConstellation({ height = 540 }: { height?: number }) {
                   height: "100%",
                   animation: "mark-breathe 8s var(--ease-conduct) infinite",
                   animationDelay: `${m.phase}s`,
+                  // Per FINAL.md: pause every looping animation on
+                  // visibilitychange === 'hidden' to save battery on
+                  // mid-tier Android. mark-breathe runs on all 7 dials.
+                  animationPlayState: visible ? "running" : "paused",
                   transformOrigin: "center",
                   filter: isHover
                     ? "drop-shadow(0 12px 30px oklch(8% 0.06 268 / 0.85)) drop-shadow(0 0 28px oklch(78% 0.13 86 / 0.65))"
@@ -413,6 +421,7 @@ export function HeroConstellation({ height = 540 }: { height?: number }) {
             background: "oklch(72% 0.10 200)",
             boxShadow: "0 0 10px oklch(72% 0.10 200)",
             animation: "aqua-pulse 3s infinite",
+            animationPlayState: visible ? "running" : "paused",
           }}
         />
         The Tipping Field
