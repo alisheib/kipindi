@@ -21,7 +21,22 @@ const HC_VERDICTS = [
   { mid: "usd",   side: "NO"  as const, odds: 62, amount:   904_000, holders: 211, title: "USD/TZS did not close < 2,650 in Q2" },
 ];
 
-function DriftParticles({ count = 18 }: { count?: number }) {
+/** Returns true while the document is hidden (background tab, lock screen).
+ *  When the page isn't visible we pause all the hero's looping animations so
+ *  a backgrounded constellation doesn't drain battery on mid-tier phones. */
+function useDocumentVisible(): boolean {
+  const [visible, setVisible] = useState(true);
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const update = () => setVisible(document.visibilityState !== "hidden");
+    update();
+    document.addEventListener("visibilitychange", update);
+    return () => document.removeEventListener("visibilitychange", update);
+  }, []);
+  return visible;
+}
+
+function DriftParticles({ count = 18, paused = false }: { count?: number; paused?: boolean }) {
   const particles = useMemo(() => Array.from({ length: count }).map((_, i) => {
     const seed = i * 137;
     const x = ((seed * 53) % 1000) / 1000;
@@ -52,6 +67,11 @@ function DriftParticles({ count = 18 }: { count?: number }) {
             opacity: p.opacity,
             animation: `hc-drift ${p.dur}s linear infinite, hc-sway ${p.dur * 0.6}s ease-in-out infinite alternate`,
             animationDelay: `${p.delay}s, ${p.delay * 0.4}s`,
+            // Pausing all child animations when the tab is backgrounded
+            // keeps battery flat on mid-tier Android. Browsers already
+            // throttle rAF when hidden, but CSS keyframes keep ticking;
+            // this hard-pauses them.
+            animationPlayState: paused ? "paused" : "running",
             ["--hc-sway" as string]: `${p.drift}px`,
             willChange: "transform",
           } as React.CSSProperties}
@@ -96,6 +116,11 @@ export function HeroConstellation({ height = 540 }: { height?: number }) {
   const [verdictIdx, setVerdictIdx] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(1100);
+  const visible = useDocumentVisible();
+  // Mobile gets fewer drift particles — Tecno F4-class devices spend a
+  // disproportionate share of frame budget on 18 of them. Threshold is
+  // narrow viewport (≤ 640px); desktop keeps the full count.
+  const particleCount = width <= 640 ? 8 : 18;
 
   useEffect(() => {
     if (!wrapRef.current) return;
@@ -110,9 +135,13 @@ export function HeroConstellation({ height = 540 }: { height?: number }) {
   }, []);
 
   useEffect(() => {
+    // Pause the verdict-tape rotation when the tab is hidden so the
+    // user doesn't return to a strangers-have-moved-on state and so we
+    // don't spend wall-clock cycles re-rendering the tape off-screen.
+    if (!visible) return;
     const id = setInterval(() => setVerdictIdx((i) => (i + 1) % HC_VERDICTS.length), 6000);
     return () => clearInterval(id);
-  }, []);
+  }, [visible]);
 
   const horizonY = height * 0.58;
   const currentVerdict = HC_VERDICTS[verdictIdx];
@@ -130,7 +159,7 @@ export function HeroConstellation({ height = 540 }: { height?: number }) {
           "0 1px 0 oklch(78% 0.13 80 / 0.35) inset, 0 24px 60px -30px oklch(8% 0.05 268 / 0.70)",
       }}
     >
-      <DriftParticles count={18} />
+      <DriftParticles count={particleCount} paused={!visible} />
 
       <svg
         viewBox={`0 0 ${width} ${height}`}
@@ -180,6 +209,22 @@ export function HeroConstellation({ height = 540 }: { height?: number }) {
         const tipOnLeft = m.x > 0.55;
         const tipDist = m.size / 2 + 18;
 
+        // Truncate the editorial title to a single short line for the
+        // always-on label. The "Resolves DD MMM" date stays full-length
+        // since it's already terse. Width matches the dial diameter so
+        // labels read as a tightly-coupled stack, not a floating caption.
+        const shortTitle = m.title.length > 26 ? m.title.slice(0, 25) + "…" : m.title;
+        const dateShort = m.date.replace(/^Resolves\s+/i, "");
+        // Verdict tape lives at bottom: 48px from edge, 50px tall — its
+        // top is at height − 98. Labels that would land in that band
+        // flip to sit ABOVE the dial instead, so they never overlap.
+        const LABEL_BLOCK_H = 32;
+        const VERDICT_TAPE_TOP = height - 98;
+        const labelBelow = cy + m.size / 2 + 6 + LABEL_BLOCK_H < VERDICT_TAPE_TOP;
+        const labelTop = labelBelow
+          ? cy + m.size / 2 + 6
+          : cy - m.size / 2 - 6 - LABEL_BLOCK_H;
+
         return (
           <div key={m.id}>
             <div
@@ -216,6 +261,55 @@ export function HeroConstellation({ height = 540 }: { height?: number }) {
                 }}
               >
                 <ConfidenceDial yesPct={m.yes} size={m.size} />
+              </div>
+            </div>
+
+            {/* Always-on rest label — date stamp + truncated title under
+                each dial. Visible whenever the constellation isn't being
+                hovered; the editorial tooltip takes over on hover. This
+                is the readability fix from the handoff: at rest, every
+                dial reads as a market, not a decorative orb. */}
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                left: cx - (m.size + 16) / 2,
+                top:  labelTop,
+                width: m.size + 16,
+                textAlign: "center",
+                opacity: hovered ? 0 : 1,
+                transition: "opacity 280ms var(--ease-glide)",
+                pointerEvents: "none",
+                zIndex: 2,
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: "var(--font-mono, JetBrains Mono)",
+                  fontSize: 9,
+                  letterSpacing: "0.22em",
+                  textTransform: "uppercase",
+                  color: "oklch(72% 0.045 268)",
+                  opacity: 0.85,
+                  marginBottom: 2,
+                }}
+              >
+                {dateShort}
+              </div>
+              <div
+                style={{
+                  fontFamily: "var(--font-display, Sora)",
+                  fontSize: 11,
+                  fontWeight: 500,
+                  color: "oklch(96% 0.012 268)",
+                  lineHeight: 1.25,
+                  letterSpacing: "-0.005em",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {shortTitle}
               </div>
             </div>
 

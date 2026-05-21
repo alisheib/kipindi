@@ -22,31 +22,9 @@ import { buyPositionAction } from "@/app/markets/actions";
 import { HouseLeanWarning } from "./house-lean-warning";
 import { BetConfirmModal } from "./bet-confirm-modal";
 import { OperationResultModal } from "./operation-result-modal";
+import { payoutFor, leanFor, type LeanLevel } from "@/lib/payout";
 
 type Side = "YES" | "NO" | "NEUTRAL";
-
-const TAX_RATE = 0.04;
-const COMMISSION_RATE = 0.05;
-const THIN_PROFIT_RATIO = 1.05;
-type LeanLevel = "fair" | "thin" | "negative";
-
-/** Mirror of payoutForWhole for client-side projection. */
-function projectWhole(yesPool: number, noPool: number, side: "YES" | "NO", stake: number): { payout: number; ratio: number } {
-  const yp = side === "YES" ? yesPool + stake : yesPool;
-  const np = side === "NO"  ? noPool  + stake : noPool;
-  const gross = yp + np;
-  const winning = side === "YES" ? yp : np;
-  if (winning <= 0) return { payout: 0, ratio: 0 };
-  const net = gross * (1 - TAX_RATE - COMMISSION_RATE);
-  const payout = Math.round((stake / winning) * net);
-  return { payout, ratio: stake > 0 ? payout / stake : 0 };
-}
-
-function leanFor(ratio: number): LeanLevel {
-  if (ratio < 1.0) return "negative";
-  if (ratio < THIN_PROFIT_RATIO) return "thin";
-  return "fair";
-}
 
 /** Critically-damped tween toward `target`; ~150ms settle, no overshoot. */
 function useRollingNumber(target: number, stiffness = 0.22) {
@@ -379,14 +357,23 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
     if (!draggingRef.current) setExactMultiplier(clamped);
   };
 
-  // Whole-pool projection — payout AND warning level
+  // Whole-pool projection — payout AND warning level. Single source of
+  // truth lives in `@/lib/payout` so the dial, the confirm modal, the
+  // position card, and the server settlement engine never disagree.
   const proj = side === "NEUTRAL"
     ? { payout: 0, ratio: 0 }
-    : projectWhole(yesPool, noPool, side, stake);
+    : payoutFor({ yesPool, noPool, side, stake });
   const lean: LeanLevel = side === "NEUTRAL" ? "fair" : leanFor(proj.ratio);
   const payoutRolled = useRollingNumber(proj.payout);
   const payoutDisplay = Math.max(0, Math.round(payoutRolled));
 
+  // Strength curve (calmed): linear ramp out of the neutral band, then
+  // tapered after a 0.7 peak so the side glow stops escalating into an
+  // alarm at the extremes. Matches the design handoff's halo softening.
+  const rawStrength = Math.max(0, (distFromCenter - NEUTRAL_BAND) / (1 - NEUTRAL_BAND));
+  const haloStrength = rawStrength < 0.7
+    ? rawStrength
+    : 0.7 - (rawStrength - 0.7) * 0.5;
   const strength = Math.max(0, (distFromCenter - NEUTRAL_BAND) / (1 - NEUTRAL_BAND));
   const sideHue = side === "YES" ? 152 : side === "NO" ? 22 : 240;
   const sideChroma = side === "NEUTRAL" ? 0 : side === "YES" ? 0.16 : 0.18;
@@ -712,10 +699,61 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
           <rect x="0" y={trackY} width={width} height={trackH} rx={trackH / 2}
                 fill="var(--bar-track)" stroke="var(--bar-track-border)" strokeWidth="1" />
 
+          {/* Inactive-side hint tint — always-on emerald wash on the LEFT
+              half and rose wash on the RIGHT half so the binary symmetry
+              of the dial is legible at rest, before any drag. Sits BELOW
+              the side fills (which paint over the hint when chosen). */}
+          <rect x="0" y={trackY} width={width / 2} height={trackH} rx={trackH / 2}
+                fill="oklch(58% 0.16 152)" opacity="0.10" />
+          <rect x={width / 2} y={trackY} width={width / 2} height={trackH} rx={trackH / 2}
+                fill="oklch(60% 0.18 22)" opacity="0.10" />
+
           {/* Midpoint marker */}
           <line x1={width / 2} x2={width / 2}
                 y1={trackY - 4} y2={trackY + trackH + 4}
                 stroke="var(--bar-track-border)" strokeWidth="1" />
+
+          {/* Tachymeter detents — small pearl ticks at 1.5×, 2×, 3×, 4×, 5×
+              both sides. Per the gilt-budget rule, these use pearl-muted
+              (not gilt) so gold stays reserved for resolved + commit +
+              verdict moments. Positions are the inverse of the multiplier
+              curve: pos = 0.5 ± 0.5·√((m−1)/4).  */}
+          {[1.5, 2, 3, 4, 5].flatMap((m) => {
+            const dist = Math.sqrt(Math.max(0, (m - 1) / 4));
+            const isEdge = m === 5;
+            return ["YES", "NO"].map((s) => {
+              const px = s === "YES" ? (0.5 - 0.5 * dist) * width : (0.5 + 0.5 * dist) * width;
+              return (
+                <g key={`${s}-${m}`} aria-hidden>
+                  <line
+                    x1={px} x2={px}
+                    y1={trackY - 4} y2={trackY + trackH + 4}
+                    stroke="var(--text-muted)"
+                    strokeWidth={isEdge ? 1 : 0.75}
+                    opacity={isEdge ? 0.55 : 0.32}
+                  />
+                  {/* The 5× ticks are at pos=0 and pos=1, where the knob
+                      lives at maximum conviction — labeling them would
+                      collide with the knob squircle. The tick alone is
+                      enough; the multiplier on the knob face shows 5.00×. */}
+                  {!isEdge && (
+                    <text
+                      x={px} y={trackY - 8}
+                      textAnchor="middle"
+                      fontFamily="JetBrains Mono, monospace"
+                      fontWeight="500"
+                      fontSize="7.5"
+                      fill="var(--text-muted)"
+                      opacity={0.55}
+                      letterSpacing="0.04em"
+                    >
+                      {m % 1 === 0 ? `${m}×` : `${m.toFixed(1)}×`}
+                    </text>
+                  )}
+                </g>
+              );
+            });
+          })}
 
           {/* Side fills from center — YES fills LEFT (from pos*width back to centre),
               NO fills RIGHT (from centre forward). */}
@@ -728,10 +766,12 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
                   fill={`url(#csrf-no-${marketId})`} />
           )}
 
-          {/* Conviction halo */}
-          {strength > 0 && (
+          {/* Conviction halo — softened curve. Peaks at ~70% conviction
+              and eases back to ~55% at the extremes so the glow stops
+              escalating into an alarm. The number leads, not the light. */}
+          {haloStrength > 0 && (
             <circle cx={needleX} cy={height / 2}
-                    r={knobR * (1.7 + 1.0 * conviction)}
+                    r={knobR * (1.4 + 0.8 * haloStrength)}
                     fill={`url(#csrf-glow-${marketId})`} />
           )}
 
