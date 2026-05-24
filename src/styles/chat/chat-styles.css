@@ -670,3 +670,20 @@
   background: oklch(8% 0.080 268 / 0.55);
   backdrop-filter: blur(2px);
 }
+
+/* ---------- HelpMark halo pulse (variant="halo" fallback) -----------
+   The ship-it default for HelpMark is "gilt" (headphones), which does
+   not use this class. The halo variant is the no-headphones fallback —
+   defined here so it stays reduced-motion safe if marketing ever
+   switches the FAB to that variant. */
+.hm-halo-pulse {
+  animation: hm-halo-pulse 3s ease-in-out infinite;
+  transform-origin: center;
+}
+@keyframes hm-halo-pulse {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 0.8; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hm-halo-pulse { animation: none; opacity: 0.6; }
+}

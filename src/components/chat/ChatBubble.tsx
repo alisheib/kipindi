@@ -7,14 +7,18 @@
  * with a 16-px gap (positioning logic lives in ChatRoot so the bubble
  * stays a presentational component).
  *
- * The FAB wears the kit's existing 50pick FiftyMark in mono+inverted
- * mode — pearl wedges + royal-indigo "50" on the dark bubble
- * background. Mono mode strips the YES/NO emerald + rose semantics so
- * the chat surface's color invariant (no betting cues in chat) is
- * respected, while still announcing the brand.
+ * The FAB wears the chat-companion <HelpMark /> — full-color 50pick
+ * coin under a gilt support headset + boom mic. Reads as "AI concierge"
+ * at 30–34 px without losing the brand mark.
+ *
+ * Per product-owner direction this is an INTENTIONAL override of the
+ * original "no YES/NO emerald + rose on the chat surface" rule for the
+ * FAB only. The chat panel internals (header, message bubbles, chips,
+ * etc.) still follow the no-YES/NO rule. Track that as a one-place
+ * exception, not a precedent.
  */
 
-import { FiftyMark } from "@/components/brand";
+import { HelpMark } from "./HelpMark";
 
 export function ChatBubble({
   isMobile = false,
@@ -36,7 +40,7 @@ export function ChatBubble({
       aria-expanded={open}
       onClick={onClick}
     >
-      <FiftyMark mono inverted size={isMobile ? 30 : 34} />
+      <HelpMark size={isMobile ? 30 : 34} />
       {unread > 0 && (
         <span className="cm-bubble-pip" aria-label={`${unread} unread`}>
           {unread > 99 ? "99+" : unread}
