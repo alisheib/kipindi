@@ -3,13 +3,18 @@
 /**
  * ChatPanel — the floating card (desktop) / bottom sheet (mobile).
  *
- * Renders the header, message list, composer, and disclosure. Receives
- * messages + send handler from ChatRoot. Mobile sheet adds a scrim and
+ * Renders the header, message list, and composer. Receives messages +
+ * send handler from ChatRoot. Mobile sheet adds a scrim and
  * `aria-modal`; desktop card is non-modal.
+ *
+ * Header wears the chat-companion <HelpMark /> for brand presence
+ * inside the popup. The per-message AI avatars stay on the small
+ * abstract <BotAvatar /> so the conversation doesn't repeat the
+ * headphones logo down the entire scroll.
  */
 
 import { useEffect, useRef } from "react";
-import { BotAvatar } from "./BotMark";
+import { HelpMark } from "./HelpMark";
 import { AiMessage, UserMessage, TypingMessage } from "./messages/Bubbles";
 import { EmptyState } from "./messages/EmptyState";
 import { RgRedirectCard } from "./messages/RgRedirectCard";
@@ -84,7 +89,7 @@ export function ChatPanel({ lang, messages, pending, onClose, onSend, variant }:
       aria-label="50pick Help chat"
     >
       <div className="cm-header">
-        <BotAvatar size="md" />
+        <HelpMark size={36} aria-label="50pick Help" />
         <div className="cm-header-titles">
           <div className="cm-header-name">{t.name}</div>
           <div className="cm-header-sub">
@@ -137,11 +142,10 @@ export function ChatPanel({ lang, messages, pending, onClose, onSend, variant }:
         </div>
       </form>
 
-      <div className="cm-disclosure">
-        Powered by Claude
-        <span className="cm-dot">·</span>
-        Mfumo wa AI
-      </div>
+      {/* "Powered by Claude · Mfumo wa AI" disclosure intentionally
+          removed per Ali. If a regulator pass later requires the
+          AI-disclosure, restore it from chat-styles.css `.cm-disclosure`
+          which is still defined. */}
     </section>
   );
 }

@@ -5,9 +5,13 @@
  * to signal bilingual support up-front). Each chip sends the same text
  * the player would have typed, which routes through the regular send
  * action so the experience is uniform.
+ *
+ * Hero displays the chat-companion <HelpMark /> at hero scale (no
+ * plate wrapper) so the player sees the brand-mark concierge identity
+ * as the first thing inside the panel.
  */
 
-import { BotMark } from "../BotMark";
+import { HelpMark } from "../HelpMark";
 
 export function EmptyState({ onPick }: { onPick: (text: string) => void }) {
   const starters: Array<{ text: string; sw: boolean }> = [
@@ -18,8 +22,8 @@ export function EmptyState({ onPick }: { onPick: (text: string) => void }) {
   ];
   return (
     <div className="cm-empty">
-      <div className="cm-empty-mark">
-        <BotMark size={28} stroke={1.4} />
+      <div className="cm-empty-mark cm-empty-mark-bare">
+        <HelpMark size={56} aria-label="50pick Help" />
       </div>
       <div className="cm-empty-greeting">
         Habari <span style={{ opacity: 0.5 }}>·</span> Hi.

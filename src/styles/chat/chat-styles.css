@@ -595,6 +595,15 @@
   color: var(--pearl);
   margin: 0 auto;
 }
+/* Bare variant — drops the indigo plate so a self-framed mark (HelpMark)
+   can sit clean. HelpMark already has its own coin ring + outer
+   hairline, so a second plate around it looked fussy. */
+.cm-empty-mark-bare {
+  width: auto;
+  height: auto;
+  background: transparent;
+  border: none;
+}
 .cm-empty-greeting {
   font-family: var(--font-display);
   font-weight: 600;
