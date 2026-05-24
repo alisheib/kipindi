@@ -2,8 +2,8 @@
  * RG-redirect card — surfaces when the bot detects at-risk language.
  *
  * Never a free-text reply: at-risk language always renders this card so
- * the player is one tap from concrete RG tools and one tap from a human
- * support specialist. Pearl left-edge (the kit's emphasis color) keeps
+ * the player is one tap from concrete RG tools and one tap from the
+ * support team. Pearl left-edge (the kit's emphasis color) keeps
  * it distinct from a neutral AI reply without using YES/NO semantics.
  */
 

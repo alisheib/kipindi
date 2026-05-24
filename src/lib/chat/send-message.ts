@@ -174,7 +174,10 @@ function stubReply(userText: string, lang: Lang): Reply {
     };
   }
 
-  if (/\bescalate|human|support|specialist|msaada/.test(t)) {
+  // Keyword path → escalate to the support team. We still accept
+  // "human" / "specialist" as user-typed triggers (some players use
+  // those words) but never produce them as bot output.
+  if (/\bescalate|human|support|specialist|agent|team|msaada/.test(t)) {
     return {
       role: "ai",
       kind: "escalate",
@@ -184,9 +187,10 @@ function stubReply(userText: string, lang: Lang): Reply {
     };
   }
 
-  // Default: gentle "I'm not sure" that opens the door to the human
+  // Default: gentle "I'm not sure" that opens the door to a support-team
   // handoff. Marked unresolved so the surface can auto-escalate after
-  // two of these in a row.
+  // two of these in a row. The reply never uses "human" / "person" —
+  // always "support team" / "timu ya msaada".
   return {
     role: "ai",
     kind: "text",
@@ -194,8 +198,8 @@ function stubReply(userText: string, lang: Lang): Reply {
     unresolved: true,
     text:
       lang === "sw"
-        ? "Sina uhakika kuhusu hilo bado. Unaweza kuelezea zaidi, au nikukabidhi mtaalamu wa msaada?"
-        : "I'm not sure about that one yet. Can you tell me a bit more, or should I hand you over to a support specialist?",
+        ? "Sina uhakika kuhusu hilo bado. Unaweza kuelezea zaidi, au nikukuelekeze kwa timu ya msaada?"
+        : "I'm not sure about that one yet. Can you tell me a bit more, or should I connect you with our support team?",
   };
 }
 

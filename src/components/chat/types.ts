@@ -20,7 +20,7 @@ export type Message =
       lang: Lang;
       text: string;
       /** True when the AI couldn't help and the surface should consider
-       *  surfacing the escalate-to-human card. Two consecutive `true`s
+       *  surfacing the escalate-to-support card. Two consecutive `true`s
        *  trigger the auto-escalate per the design spec. */
       unresolved?: boolean;
     }

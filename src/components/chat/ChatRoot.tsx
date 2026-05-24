@@ -66,9 +66,10 @@ export function ChatRoot() {
       setPending(true);
       try {
         const reply = await sendMessage([...messages, user], text);
-        // Per the design spec, surface the escalate-to-human card after
-        // 2 consecutive unresolved AI text replies — at that point the
-        // bot is clearly not helping and we should hand the user over.
+        // Per the design spec, surface the escalate-to-support card
+        // after 2 consecutive unresolved AI text replies — at that
+        // point the bot is clearly not helping and we should hand the
+        // user over to the support team.
         // A reply with `unresolved: true` increments the run; any other
         // reply (text_with_citations, rg_redirect, an already-escalate
         // card, even a confident plain-text refusal) resets it.
