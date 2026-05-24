@@ -53,6 +53,11 @@ export function ChatRoot() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  /** Last reply was an unresolved AI text? Track in a ref so we don't
+   *  re-render every time it changes — the only consumer is the
+   *  auto-escalate decision below, which fires inside `handleSend`. */
+  const unresolvedRunRef = useRef(0);
+
   const handleSend = useCallback(
     async (text: string) => {
       const user = buildUserMessage(text);
@@ -61,7 +66,32 @@ export function ChatRoot() {
       setPending(true);
       try {
         const reply = await sendMessage([...messages, user], text);
-        setMessages((prev) => [...prev, reply]);
+        // Per the design spec, surface the escalate-to-human card after
+        // 2 consecutive unresolved AI text replies — at that point the
+        // bot is clearly not helping and we should hand the user over.
+        // A reply with `unresolved: true` increments the run; any other
+        // reply (text_with_citations, rg_redirect, an already-escalate
+        // card, even a confident plain-text refusal) resets it.
+        const isUnresolved = reply.role === "ai" && reply.kind === "text" && reply.unresolved === true;
+        unresolvedRunRef.current = isUnresolved ? unresolvedRunRef.current + 1 : 0;
+        const autoEscalate = unresolvedRunRef.current >= 2;
+        setMessages((prev) =>
+          autoEscalate
+            ? [
+                ...prev,
+                reply,
+                {
+                  id: `m_esc_${Date.now().toString(36)}`,
+                  role: "ai",
+                  kind: "escalate",
+                  lang: user.lang,
+                  ticketId: "HC-" + Math.floor(1000 + Math.random() * 9000),
+                  etaMinutes: 4,
+                },
+              ]
+            : [...prev, reply],
+        );
+        if (autoEscalate) unresolvedRunRef.current = 0;
       } catch {
         // Even on local failures the panel should keep working; surface
         // a benign reply instead of crashing.

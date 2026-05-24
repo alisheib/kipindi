@@ -66,7 +66,7 @@ function isOutsideScope(text: string): boolean {
  *  discriminator and trips TS's excess-property checks. The caller
  *  (`sendMessage`) spreads `id` onto whichever variant is returned. */
 type Reply =
-  | { role: "ai"; kind: "text"; lang: Lang; text: string }
+  | { role: "ai"; kind: "text"; lang: Lang; text: string; unresolved?: boolean }
   | {
       role: "ai";
       kind: "text_with_citations";
@@ -184,11 +184,14 @@ function stubReply(userText: string, lang: Lang): Reply {
     };
   }
 
-  // Default: gentle "I'm not sure" that opens the door to the human handoff.
+  // Default: gentle "I'm not sure" that opens the door to the human
+  // handoff. Marked unresolved so the surface can auto-escalate after
+  // two of these in a row.
   return {
     role: "ai",
     kind: "text",
     lang,
+    unresolved: true,
     text:
       lang === "sw"
         ? "Sina uhakika kuhusu hilo bado. Unaweza kuelezea zaidi, au nikukabidhi mtaalamu wa msaada?"

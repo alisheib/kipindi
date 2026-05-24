@@ -13,7 +13,17 @@ export type Citation = { n: number; href: string; label: string };
 
 export type Message =
   | { id: string; role: "user"; lang: Lang; text: string }
-  | { id: string; role: "ai"; kind: "text"; lang: Lang; text: string }
+  | {
+      id: string;
+      role: "ai";
+      kind: "text";
+      lang: Lang;
+      text: string;
+      /** True when the AI couldn't help and the surface should consider
+       *  surfacing the escalate-to-human card. Two consecutive `true`s
+       *  trigger the auto-escalate per the design spec. */
+      unresolved?: boolean;
+    }
   | {
       id: string;
       role: "ai";
