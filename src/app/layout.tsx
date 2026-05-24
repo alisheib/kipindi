@@ -3,6 +3,7 @@ import { Sora, Inter, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
 import { ThemeProvider, themeBootScript } from "@/components/theme-provider";
 import { AppShell } from "@/components/layout/app-shell";
+import { ChatRoot } from "@/components/chat/ChatRoot";
 import "./globals.css";
 
 const sora = Sora({
@@ -62,6 +63,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
         <ThemeProvider>
           <AppShell>{children}</AppShell>
+          {/* AI Help Companion — floats on every authed page. The
+              component self-hides on /auth/* and /admin/* via a
+              pathname guard, so it can sit at the root level here. */}
+          <ChatRoot />
         </ThemeProvider>
       </body>
     </html>

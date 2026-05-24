@@ -8,6 +8,12 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
+/* AI Help Companion — token extension + component styles. Layered on top
+   of the kit tokens below so any kit value the chat surface references
+   resolves before its own indigo / pearl / gilt axis is set up. */
+@import "../styles/chat/chat-tokens.css";
+@import "../styles/chat/chat-styles.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
