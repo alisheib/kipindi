@@ -8,9 +8,8 @@
  * `aria-modal`; desktop card is non-modal.
  *
  * Header wears the chat-companion <HelpMark /> for brand presence
- * inside the popup. The per-message AI avatars stay on the small
- * abstract <BotAvatar /> so the conversation doesn't repeat the
- * headphones logo down the entire scroll.
+ * inside the popup. Per-message AI avatars also use <HelpMark /> at
+ * a smaller 22 px size — consistent identity across the surface.
  */
 
 import { useEffect, useRef } from "react";

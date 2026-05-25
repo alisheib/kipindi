@@ -25,6 +25,44 @@ import { buildUserMessage, sendMessage } from "@/lib/chat/send-message";
 const HIDE_ON = /^\/(auth|admin)(\/|$)/;
 const MOBILE_BREAKPOINT = 768;
 
+/** Conversation history lives in sessionStorage so closing + reopening
+ *  the bubble within one browser session preserves what the player
+ *  already saw. Cleared on tab close — the design's open question
+ *  said "fresh after logout"; per-session is the safer default since
+ *  we don't have a server-side history store yet. Cap at 40 messages
+ *  to keep storage small. */
+const CHAT_STORAGE_KEY = "50pick-chat-history";
+const CHAT_HISTORY_LIMIT = 40;
+
+function loadHistory(): Message[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.sessionStorage.getItem(CHAT_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as Message[];
+    if (!Array.isArray(parsed)) return [];
+    // Cheap structural validation — if the shape drifted across a
+    // deploy, drop the cache rather than render broken markup.
+    return parsed.filter(
+      (m) =>
+        m && typeof m === "object" &&
+        "id" in m && "role" in m &&
+        (m.role === "user" || m.role === "ai"),
+    );
+  } catch {
+    return [];
+  }
+}
+function saveHistory(messages: Message[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    const trimmed = messages.slice(-CHAT_HISTORY_LIMIT);
+    window.sessionStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(trimmed));
+  } catch {
+    /* private browsing or quota — fail silent, panel still works */
+  }
+}
+
 export function ChatRoot() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -32,6 +70,28 @@ export function ChatRoot() {
   const [pending, setPending] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [lang, setLang] = useState<"en" | "sw">("en");
+
+  // Hydrate from sessionStorage on mount so a returning player sees
+  // their prior turn. Server-render starts empty — that's correct,
+  // there's no SSR for chat history.
+  useEffect(() => {
+    const cached = loadHistory();
+    if (cached.length > 0) {
+      setMessages(cached);
+      // Pick up the language of the last user message so the UI
+      // renders in the right locale on re-open.
+      const lastUser = [...cached].reverse().find((m) => m.role === "user");
+      if (lastUser && (lastUser.lang === "en" || lastUser.lang === "sw")) {
+        setLang(lastUser.lang);
+      }
+    }
+  }, []);
+
+  // Persist on every change. Cheap — sessionStorage write is sync but
+  // small (we cap at 40 messages).
+  useEffect(() => {
+    saveHistory(messages);
+  }, [messages]);
 
   // Mobile detection — recomputed on resize. Initialised on mount
   // (server-render falls back to desktop, which is fine since the

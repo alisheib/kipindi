@@ -91,11 +91,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Not available" }, { status: 404 });
   }
   const body = (await req.json().catch(() => null)) as Body | null;
-  const marketId = body?.marketId ?? "";
-  const n = Math.max(1, Math.min(2000, body?.n ?? 100));
-  const yesRatio = Math.max(0, Math.min(1, body?.yesRatio ?? 0.5));
-  const stake = Math.max(100, Math.min(1_000_000, body?.stake ?? 1_000));
-  const prefix = (body?.userPrefix ?? "s1").slice(0, 4);
+  const marketId = typeof body?.marketId === "string" ? body.marketId : "";
+
+  // Explicit finiteness check before Math.max/min — those silently
+  // propagate NaN (Math.min(2000, NaN) === NaN). Defence-in-depth:
+  // a future caller might pass NaN and we'd loop zero times without
+  // a useful error. Same lesson as the seed-wallet Infinity bug.
+  const numOrDefault = (v: unknown, dflt: number): number =>
+    typeof v === "number" && Number.isFinite(v) ? v : dflt;
+
+  const n = Math.max(1, Math.min(2000, numOrDefault(body?.n, 100)));
+  const yesRatio = Math.max(0, Math.min(1, numOrDefault(body?.yesRatio, 0.5)));
+  const stake = Math.max(100, Math.min(1_000_000, numOrDefault(body?.stake, 1_000)));
+  const prefix = typeof body?.userPrefix === "string" ? body.userPrefix.slice(0, 4) : "s1";
 
   const m0 = getMarket(marketId);
   if (!m0) return NextResponse.json({ ok: false, error: "marketId not found" }, { status: 400 });

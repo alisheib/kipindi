@@ -187,11 +187,14 @@ export async function POST(req: Request) {
   }
 
   const body = (await req.json().catch(() => null)) as Body | null;
-  const n = Math.max(1, Math.min(2000, body?.n ?? 1000));
-  const u = Math.max(1, Math.min(500, body?.u ?? 200));
-  const b = Math.max(1, Math.min(20_000, body?.b ?? 5_000));
-  const r = Math.max(0, Math.min(n, body?.r ?? 100));
-  const prefix = (body?.prefix ?? "rg").slice(0, 4);
+  // Explicit finiteness — Math.max/min silently propagates NaN.
+  const numOrDefault = (v: unknown, dflt: number): number =>
+    typeof v === "number" && Number.isFinite(v) ? v : dflt;
+  const n = Math.max(1, Math.min(2000, numOrDefault(body?.n, 1000)));
+  const u = Math.max(1, Math.min(500, numOrDefault(body?.u, 200)));
+  const b = Math.max(1, Math.min(20_000, numOrDefault(body?.b, 5_000)));
+  const r = Math.max(0, Math.min(n, numOrDefault(body?.r, 100)));
+  const prefix = typeof body?.prefix === "string" ? body.prefix.slice(0, 4) : "rg";
 
   const stake = 1000;
   // Fund each user enough to place their share of the bets + headroom.
