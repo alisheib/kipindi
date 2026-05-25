@@ -23,23 +23,29 @@ export type TopAppBarUser = {
 
 export function TopAppBar({ user }: { user: TopAppBarUser }) {
   const pathname = usePathname();
-  const { t } = useT();
+  const { t, locale } = useT();
   // Public visitors see only the routes they can actually open without
   // a session. Wallet + Positions require auth — surfacing them in the
   // nav and then bouncing the click to /auth/login is a worse UX than
   // hiding the entry until the visitor is signed in.
+  // Locale-aware labels — wire the toggle so flipping the chip actually
+  // re-labels the visible chrome. Most of the app uses a "bilingual at
+  // all times" pattern ("Place bet · Weka dau"); these top-bar nav
+  // items are an exception that the toggle genuinely flips. The
+  // dictionary in @/lib/i18n.tsx has SW + FR for every key below.
+  const POSITIONS = locale === "sw" ? "Madau" : locale === "fr" ? "Paris" : "Positions";
   const NAV_ITEMS = user.isAuthed
     ? ([
-        { href: "/markets",     label: "Markets" },
-        { href: "/live",        label: "Live" },
-        { href: "/positions",   label: "Positions" },
+        { href: "/markets",     label: locale === "sw" ? "Soko" : locale === "fr" ? "Marchés" : "Markets" },
+        { href: "/live",        label: t.nav.live },
+        { href: "/positions",   label: POSITIONS },
         { href: "/wallet",      label: t.nav.wallet },
-        { href: "/leaderboard", label: "Top" },
+        { href: "/leaderboard", label: t.nav.leaderboard },
       ] as const)
     : ([
-        { href: "/markets",     label: "Markets" },
-        { href: "/live",        label: "Live" },
-        { href: "/leaderboard", label: "Top" },
+        { href: "/markets",     label: locale === "sw" ? "Soko" : locale === "fr" ? "Marchés" : "Markets" },
+        { href: "/live",        label: t.nav.live },
+        { href: "/leaderboard", label: t.nav.leaderboard },
       ] as const);
 
   return (

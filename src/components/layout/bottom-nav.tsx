@@ -3,26 +3,36 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutGrid, Radio, ListChecks, Trophy, User, LogIn } from "lucide-react";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
   const pathname = usePathname();
-  // Public visitors don't see Positions / Profile here — those would
-  // immediately bounce to /auth/login on tap. Replace them with a
-  // single "Sign in" tile so the auth path is one tap, not two.
+  const { t, locale } = useT();
+  // Locale-aware labels so flipping the language toggle actually
+  // changes the bottom nav. EN dictionary is single-word; SW + FR
+  // pulled from the i18n dictionary directly.
+  const L = {
+    markets: locale === "sw" ? "Soko" : locale === "fr" ? "Marchés" : "Markets",
+    live: t.nav.live,
+    positions: locale === "sw" ? "Madau" : locale === "fr" ? "Paris" : "Positions",
+    leaderboard: t.nav.leaderboard,
+    profile: locale === "sw" ? "Wasifu" : locale === "fr" ? "Profil" : "Profile",
+    signIn: t.common.signIn,
+  };
   const items = isAuthed
     ? [
-        { href: "/markets",     icon: LayoutGrid, label: "Markets" },
-        { href: "/live",        icon: Radio,      label: "Live" },
-        { href: "/positions",   icon: ListChecks, label: "Positions" },
-        { href: "/leaderboard", icon: Trophy,     label: "Top" },
-        { href: "/profile",     icon: User,       label: "Profile" },
+        { href: "/markets",     icon: LayoutGrid, label: L.markets },
+        { href: "/live",        icon: Radio,      label: L.live },
+        { href: "/positions",   icon: ListChecks, label: L.positions },
+        { href: "/leaderboard", icon: Trophy,     label: L.leaderboard },
+        { href: "/profile",     icon: User,       label: L.profile },
       ]
     : [
-        { href: "/markets",     icon: LayoutGrid, label: "Markets" },
-        { href: "/live",        icon: Radio,      label: "Live" },
-        { href: "/leaderboard", icon: Trophy,     label: "Top" },
-        { href: "/auth/login",  icon: LogIn,      label: "Sign in" },
+        { href: "/markets",     icon: LayoutGrid, label: L.markets },
+        { href: "/live",        icon: Radio,      label: L.live },
+        { href: "/leaderboard", icon: Trophy,     label: L.leaderboard },
+        { href: "/auth/login",  icon: LogIn,      label: L.signIn },
       ];
 
   const isActive = (href: string) => {

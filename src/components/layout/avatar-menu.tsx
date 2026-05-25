@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
 import { User, Wallet, Receipt, ShieldCheck, LogOut } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export function AvatarMenu({
@@ -26,6 +27,11 @@ export function AvatarMenu({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const { t, locale } = useT();
+  // Locale-aware labels — most of the app is bilingual-always, but the
+  // top-bar auth CTAs are chrome the toggle should genuinely flip.
+  const SIGN_UP_LABEL = locale === "sw" ? "Jisajili" : locale === "fr" ? "Inscription" : "Sign up";
+  const ACCOUNT_LABEL = locale === "sw" ? "Akaunti" : locale === "fr" ? "Compte" : "Create account";
 
   useEffect(() => {
     if (!open) return;
@@ -67,17 +73,17 @@ export function AvatarMenu({
           href="/auth/login"
           className="btn btn-ghost btn-sm hidden sm:inline-flex"
           style={{ borderRadius: 999 }}
-          aria-label="Sign in"
+          aria-label={t.common.signIn}
         >
-          Sign in
+          {t.common.signIn}
         </Link>
         <Link
           href="/auth/register"
           className="btn btn-gold btn-sm"
           style={{ borderRadius: 999 }}
-          aria-label="Create account"
+          aria-label={ACCOUNT_LABEL}
         >
-          Sign up
+          {SIGN_UP_LABEL}
         </Link>
       </div>
     );
