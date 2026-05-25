@@ -8,7 +8,7 @@
  */
 
 import Link from "next/link";
-import { BotAvatar } from "../BotMark";
+import { HelpMark } from "../HelpMark";
 import type { Lang } from "../types";
 
 export function RgRedirectCard({ lang = "en" }: { lang?: Lang }) {
@@ -30,7 +30,7 @@ export function RgRedirectCard({ lang = "en" }: { lang?: Lang }) {
         };
   return (
     <div className="cm-row cm-row-ai">
-      <BotAvatar size="sm" />
+      <HelpMark size={22} aria-label="50pick Help" />
       <div
         className="cm-bubble-ai"
         style={{ padding: 0, background: "transparent", border: "none", maxWidth: "88%" }}

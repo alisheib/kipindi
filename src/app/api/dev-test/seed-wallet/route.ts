@@ -16,8 +16,27 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Not available" }, { status: 404 });
   }
   const body = (await req.json().catch(() => null)) as { phone?: string; amount?: number } | null;
-  if (!body?.phone || typeof body.amount !== "number" || body.amount <= 0) {
-    return NextResponse.json({ ok: false, error: "phone + positive amount required" }, { status: 400 });
+  // Defence layers (the fuzz suite caught both):
+  //   1. Number.isFinite rejects Infinity / -Infinity / NaN. The old
+  //      `amount <= 0` check let Infinity through (Infinity > 0 is true).
+  //   2. MAX_SEED_AMOUNT caps inputs that are finite but huge enough
+  //      (e.g. 1e308) that adding them to an existing balance overflows
+  //      to Infinity, which then serialises as `null` and poisons the
+  //      wallet column.
+  // No demo flow needs more than TZS 100,000,000 seeded in a single
+  // call — set the cap there.
+  const MAX_SEED_AMOUNT = 100_000_000;
+  if (
+    !body?.phone ||
+    typeof body.amount !== "number" ||
+    !Number.isFinite(body.amount) ||
+    body.amount <= 0 ||
+    body.amount > MAX_SEED_AMOUNT
+  ) {
+    return NextResponse.json(
+      { ok: false, error: `phone + finite positive amount ≤ ${MAX_SEED_AMOUNT} required` },
+      { status: 400 },
+    );
   }
   const user = db.user.findByPhone(body.phone);
   if (!user) return NextResponse.json({ ok: false, error: "user not found" }, { status: 404 });
