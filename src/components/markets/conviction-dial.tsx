@@ -596,6 +596,17 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
         payoutIfWin: r.data!.payoutIfWin,
       });
       setResultOpen(true);
+      // Reset the dial to its initial neutral position after a
+      // successful bet. The previous behaviour kept the dial parked
+      // at the user's last conviction, which read as "your bet" the
+      // next time they opened the page — misleading. Clear the typed
+      // exact-locks too so the stake/multiplier inputs reflect the
+      // canonical base again.
+      setPos(initial);
+      setExactStakeState(null);
+      setExactMultiplierState(null);
+      setStakeText("");
+      setMultText("");
       // Record the side the user took on this market — the NotifyPoller
       // uses this to fire the WinCelebration only when the resolution
       // matches what the user actually picked.

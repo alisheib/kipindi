@@ -277,12 +277,20 @@ export function TippingBar({
     : "none";
   const r = height / 2;
   // When one side is fully empty, the surviving side covers the whole
-  // rail and needs both ends rounded — not just the inside corner — so the
-  // bar never renders as "all track + a needle on the edge".
-  const yesRadii = no === 0
+  // rail and needs both ends rounded — not just the inside corner — so
+  // the bar never renders as "all track + a needle on the edge".
+  //
+  // Critically, base this decision on the TARGET (the real value), not
+  // the animated `yes` / `no`. During the hover-recast both halves are
+  // briefly mid-animation (e.g. 50/50) and the radii would otherwise
+  // jump from full-pill to corner-only and back. Border-radius isn't in
+  // the transition list, so it snaps — causing the visible "edges
+  // appear and fade incorrectly" glitch Ali reported. Anchoring radii
+  // to TARGET keeps them stable across the entire recast.
+  const yesRadii = target === 100
     ? { borderRadius: r }
     : { borderTopLeftRadius: r, borderBottomLeftRadius: r };
-  const noRadii  = yes === 0
+  const noRadii  = target === 0
     ? { borderRadius: r }
     : { borderTopRightRadius: r, borderBottomRightRadius: r };
 

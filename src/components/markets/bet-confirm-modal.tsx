@@ -3,10 +3,12 @@
 /**
  * BetConfirmModal — last-mile confirmation popup for placing a bet.
  *
- *   • Locked-quote countdown — the user has 5 seconds to confirm at the price
- *     they saw on the dial. After that, the modal closes and the dial timer
- *     restarts so they can re-aim. Mirrors how serious markets handle quote
- *     freshness without faking certainty.
+ *   • Locked-quote countdown — the user has 10 seconds to confirm at the
+ *     price they saw on the dial. After that, the modal closes and the
+ *     dial timer restarts so they can re-aim. Mirrors how serious
+ *     markets handle quote freshness without faking certainty. 10 s
+ *     gives a player time to read the side + stake + payout block
+ *     without rushing; 5 s was too tight (Ali's report).
  *   • Kit-faithful (border-border, bg-bg-elevated, gold confirm gradient,
  *     OKLCH hues, mono numerals).
  *   • Portal-rendered to escape any backdrop-filter containing-block trap.
@@ -20,7 +22,7 @@ import { HouseLeanWarning } from "./house-lean-warning";
 import type { LeanLevel } from "@/lib/server/market-config";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
-const QUOTE_HOLD_MS = 5_000;
+const QUOTE_HOLD_MS = 10_000;
 
 type Props = {
   open: boolean;
@@ -56,7 +58,7 @@ export function BetConfirmModal({
 
   // Pin the latest callbacks + pending flag so the timer effect only
   // restarts when `open` actually flips. Otherwise the parent re-creating
-  // its onCancel arrow each render would restart the 5s countdown forever
+  // its onCancel arrow each render would restart the countdown forever
   // and the quote would never auto-expire.
   const onCancelRef = useRef(onCancel);
   const onConfirmRef = useRef(onConfirm);
@@ -100,7 +102,7 @@ export function BetConfirmModal({
     rafRef.current = requestAnimationFrame(tick);
     // Belt-and-braces: a setTimeout backstop in case RAF is throttled
     // (e.g. backgrounded tab, headless test runners). Fires at the same
-    // 5s mark and dismisses if the RAF loop somehow missed it.
+    // 10 s mark and dismisses if the RAF loop somehow missed it.
     const backstop = setTimeout(() => {
       if (!pendingRef.current) onCancelRef.current();
     }, QUOTE_HOLD_MS + 50);
@@ -149,9 +151,13 @@ export function BetConfirmModal({
         style={{ animation: "bcm-fade 160ms ease-out" }}
       />
 
-      {/* Card */}
+      {/* Card — `overflow-hidden` clips the gold countdown strip to
+          the popup's rounded corners. Without it, subpixel mismatch
+          between the strip's `rounded-t-2xl` and the popup's
+          `rounded-2xl` + 1px border lets the strip's ends protrude
+          past the popup's curved corners (Ali's report). */}
       <div
-        className="relative w-full max-w-[440px] rounded-2xl border border-border bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)]"
+        className="relative w-full max-w-[440px] rounded-2xl border border-border bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)] overflow-hidden"
         // Kit `--ease-arrive` — same entry curve as the result modal,
         // so the pre-confirm and post-place beats feel like one
         // continuous motion language.

@@ -215,7 +215,12 @@ export function OperationResultModal({
       />
 
       <div
-        className="relative w-full max-w-[460px] rounded-2xl border border-border bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)]"
+        className="relative w-full max-w-[460px] rounded-2xl border border-border bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)] overflow-hidden"
+        // `overflow-hidden` clips the gold auto-close strip to the
+        // rounded corners; without it, the strip's `rounded-t-2xl`
+        // can render slightly past the popup's `rounded-2xl` + 1 px
+        // border edge (same bug Ali caught on BetConfirmModal).
+        //
         // Kit `--ease-arrive` is the gentle overshoot reserved for
         // entry surfaces — gives the modal a confident "land" that
         // a generic cubic-bezier can't match.
