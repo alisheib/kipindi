@@ -265,9 +265,38 @@ export function NotificationsPanel() {
                 );
               })}
               {items.length === 0 && (
-                <p className="px-3 py-10 text-center text-[12px] text-text-subtle">
-                  No notifications yet.
-                </p>
+                <div className="px-4 py-10 text-center">
+                  {/* Inline line-art bell — kit-faithful, royal-indigo
+                      stroke with a gilt accent on the clapper. Matches
+                      the EmptyState atom's illustrative voice without
+                      pulling the whole component (the panel is a tight
+                      surface; a 56 px square would crowd it). */}
+                  <svg
+                    aria-hidden
+                    width="44"
+                    height="44"
+                    viewBox="0 0 56 56"
+                    className="mx-auto mb-3 text-teal-300"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M14 38 V24 a14 14 0 0 1 28 0 V38 l4 4 H10 Z" />
+                    <path d="M22 44 a6 6 0 0 0 12 0" />
+                    <circle cx="42" cy="14" r="4" fill="var(--gold-400)" stroke="none" />
+                  </svg>
+                  <p className="font-display text-[14px] font-semibold text-text">
+                    No notifications yet
+                  </p>
+                  <p className="mt-0.5 text-[11px] italic text-text-subtle">
+                    Hakuna arifa bado
+                  </p>
+                  <p className="mt-2 text-[12px] text-text-muted leading-relaxed">
+                    We&apos;ll buzz here when a bet settles or a market resolves.
+                  </p>
+                </div>
               )}
             </div>
           </div>

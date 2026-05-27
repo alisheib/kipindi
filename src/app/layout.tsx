@@ -4,6 +4,7 @@ import Script from "next/script";
 import { ThemeProvider, themeBootScript } from "@/components/theme-provider";
 import { AppShell } from "@/components/layout/app-shell";
 import { ChatRoot } from "@/components/chat/ChatRoot";
+import { FirstVisitPrimer } from "@/components/onboarding/first-visit-primer";
 import "./globals.css";
 
 const sora = Sora({
@@ -67,6 +68,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               component self-hides on /auth/* and /admin/* via a
               pathname guard, so it can sit at the root level here. */}
           <ChatRoot />
+          {/* First-visit primer — shows once per browser. Self-hides
+              on /auth/* + /admin/* and after localStorage flag set. */}
+          <FirstVisitPrimer />
         </ThemeProvider>
       </body>
     </html>

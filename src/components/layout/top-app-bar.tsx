@@ -6,6 +6,7 @@ import { FiftyLockup } from "@/components/brand";
 import { LanguageToggle } from "@/components/ui/language-toggle";
 import { NotificationsPanel } from "@/components/layout/notifications-panel";
 import { AvatarMenu } from "@/components/layout/avatar-menu";
+import { WalletBalancePill } from "@/components/layout/wallet-balance-pill";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -82,13 +83,7 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           {user.isAuthed && user.balance !== null && user.balance !== undefined && (
-            <Link
-              href="/wallet"
-              aria-label={`Wallet · TZS ${user.balance.toLocaleString("en-US")}`}
-              className="hidden sm:inline-flex h-8 items-center px-2.5 rounded-pill border border-border bg-bg-overlay font-mono text-[11px] tabular-nums font-semibold text-text hover:border-gold-700 hover:text-gold-300 transition-colors"
-            >
-              TZS {user.balance.toLocaleString("en-US")}
-            </Link>
+            <WalletBalancePill balance={user.balance} />
           )}
           <NotificationsPanel />
           <LanguageToggle />
