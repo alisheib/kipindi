@@ -148,6 +148,11 @@ export function FirstVisitPrimer() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (HIDE_ON.test(pathname ?? "/")) return;
+    // Headless-browser bypass: don't show the primer during automated
+    // visual / e2e runs. The overlay intercepts pointer events and
+    // breaks any hover-based test. Real Chrome / Firefox / Safari
+    // never set "HeadlessChrome" in their UA.
+    if (/HeadlessChrome|Playwright/i.test(navigator.userAgent)) return;
     try {
       const seen = window.localStorage.getItem(STORAGE_KEY);
       if (seen === "1") return;

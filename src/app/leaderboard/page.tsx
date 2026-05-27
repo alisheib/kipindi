@@ -11,6 +11,7 @@ import { db } from "@/lib/server/store";
 import { listPositionsForUser, listMarkets, seedDemoMarkets } from "@/lib/server/market-service";
 import { PriceChart, VolumeSparkline } from "@/components/markets/price-chart";
 import { Tooltip } from "@/components/ui/tooltip";
+import { PageRibbon } from "@/components/layout/page-ribbon";
 
 export const metadata = { title: "Leaderboard · Bingwa" };
 export const dynamic = "force-dynamic";
@@ -139,6 +140,14 @@ export default function LeaderboardPage() {
         <h1 className="font-display text-[28px] font-bold text-text">Top predictors</h1>
         <p className="text-[14px] italic text-text-subtle">Watabiri bora wa mwezi</p>
       </header>
+
+      <PageRibbon
+        stats={[
+          { label: "Top tier", sw: "Daraja la juu", value: rows[0]?.tier === "sovereign" ? "Sovereign" : rows[0]?.tier === "diamond" ? "Diamond" : rows[0]?.tier === "gold" ? "Gold" : "Silver", accent: "gold" },
+          { label: "Best ROI", sw: "ROI bora", value: `${rows[0]?.roi.toFixed(1) ?? "0"}%`, accent: "yes" },
+          { label: "Predictors", sw: "Watabiri", value: rows.length.toLocaleString("en-US") },
+        ]}
+      />
 
       {/* Consensus shift chart — the kit's PriceChart applied platform-wide */}
       {consensus.length > 1 && (

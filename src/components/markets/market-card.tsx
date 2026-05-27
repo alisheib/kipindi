@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Flame, Clock, Scale } from "lucide-react";
 import { TippingBar } from "@/components/brand";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +19,28 @@ type Props = {
   className?: string;
 };
 
+/** Compute an at-a-glance signal badge for a LIVE market.
+ *
+ *   "hot"     — pool volume above ~30k or predictors ≥ 40
+ *   "soon"    — under 60 minutes to resolution (matches timeLeft string)
+ *   "tipping" — implied probability within 3 % of 50/50
+ *
+ *  Returns the most attention-worthy single badge — multiple would
+ *  crowd the chip row. Priority: hot > soon > tipping. */
+function getSignalBadge(
+  status: Props["status"],
+  yesPct: number,
+  volume: number,
+  predictors: number,
+  timeLeft: string,
+): { kind: "hot" | "soon" | "tipping"; label: string } | null {
+  if (status !== "LIVE") return null;
+  if (volume >= 30_000 || predictors >= 40) return { kind: "hot", label: "Hot" };
+  if (/^\d+m left$/.test(timeLeft) || /^\d+s left$/.test(timeLeft)) return { kind: "soon", label: "Ending soon" };
+  if (Math.abs(yesPct - 50) <= 3) return { kind: "tipping", label: "Tipping" };
+  return null;
+}
+
 const fmtTzs = (n: number) => `TZS ${n.toLocaleString("en-US")}`;
 
 export function MarketCard({
@@ -34,6 +56,7 @@ export function MarketCard({
   sourceUrl,
   className,
 }: Props) {
+  const signal = getSignalBadge(status, yesPct, volume, predictors, timeLeft);
   return (
     <Link
       href={`/markets/${id}` as never}
@@ -44,7 +67,7 @@ export function MarketCard({
       )}
     >
       <div className="mb-2.5 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span
             className={cn(
               "chip",
@@ -60,6 +83,23 @@ export function MarketCard({
           <span className="chip">
             {category}
           </span>
+          {signal && (
+            <span
+              aria-label={signal.label}
+              className={cn(
+                "chip",
+                signal.kind === "hot" && "chip-objection",
+                signal.kind === "soon" && "chip-pending",
+                signal.kind === "tipping" && "chip-signal",
+              )}
+              style={{ fontWeight: 700 }}
+            >
+              {signal.kind === "hot" && <Flame size={10} aria-hidden />}
+              {signal.kind === "soon" && <Clock size={10} aria-hidden />}
+              {signal.kind === "tipping" && <Scale size={10} aria-hidden />}
+              {signal.label}
+            </span>
+          )}
         </div>
         {sourceUrl && (
           <button

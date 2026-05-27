@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
+import { InfoHint } from "@/components/ui/info-hint";
 import { useToast } from "@/components/ui/toast";
 import { buyPositionAction } from "@/app/markets/actions";
 import { HouseLeanWarning } from "./house-lean-warning";
@@ -843,6 +844,10 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
         <div className="text-right min-w-0">
           <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mb-1.5">
             Stake · dau
+            <InfoHint
+              size={10}
+              label="The TZS amount you'd lose if your side doesn't win. Drag the dial further from centre to increase it. · Kiasi cha TZS unachoweza kupoteza."
+            />
           </p>
           {/*
             Kit `Input` atom — the SAME form field players have already
@@ -925,6 +930,10 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
       <div className="mt-3 grid grid-cols-[1fr_auto] gap-2 sm:gap-3 items-center">
         <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle">
           Multiplier · Mara
+          <InfoHint
+            size={10}
+            label="How strong your conviction is — 1× is a base bet, 5× is the maximum. Higher conviction means higher stake AND higher payout share if you're right. · Imani ya juu, dau kubwa."
+          />
         </p>
         <div className="text-right min-w-0">
           <Input

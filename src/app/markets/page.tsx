@@ -2,6 +2,7 @@ import Link from "next/link";
 import { MarketCard } from "@/components/markets/market-card";
 import { listMarkets, impliedYesPct, isClosedByTime, seedDemoMarkets, type MarketCategory } from "@/lib/server/market-service";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageRibbon } from "@/components/layout/page-ribbon";
 
 export const metadata = { title: "Markets · Soko" };
 export const dynamic = "force-dynamic";
@@ -40,6 +41,9 @@ function timeLeftStr(iso: string): string {
 
 export default function MarketsPage({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string }> }) {
   seedDemoMarkets();
+  const allLive = listMarkets({ status: "LIVE" }).filter((m) => !isClosedByTime(m));
+  const totalVolume = allLive.reduce((s, m) => s + m.yesPool + m.noPool, 0);
+  const totalPredictors = allLive.reduce((s, m) => s + m.predictorCount, 0);
   return (
     <main className="mx-auto max-w-[1240px] px-3 lg:px-6 py-6 space-y-5">
       <header className="space-y-1">
@@ -47,6 +51,18 @@ export default function MarketsPage({ searchParams }: { searchParams: Promise<{ 
         <h1 className="font-display text-[28px] font-bold text-text">Predict events. Not chance.</h1>
         <p className="text-[15px] text-text-muted italic">Tabiri matukio. Si bahati.</p>
       </header>
+
+      <PageRibbon
+        stats={[
+          { label: "Live", sw: "Hai", value: String(allLive.length), accent: "gold" },
+          { label: "Predictors", sw: "Watabiri", value: totalPredictors.toLocaleString("en-US") },
+          {
+            label: "In play",
+            sw: "Bwawani",
+            value: `TZS ${(totalVolume / 1000).toFixed(0)}k`,
+          },
+        ]}
+      />
 
       <FilterBar searchParams={searchParams} />
 
