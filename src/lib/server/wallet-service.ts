@@ -235,11 +235,11 @@ function friendlyProvider(p: string): string {
 
 function friendlyDepositReason(reason: string): string {
   switch (reason) {
-    case "INSUFFICIENT_FUNDS": return "Not enough balance on the source account.";
-    case "PROVIDER_DOWN": return "Provider unavailable. Try again in a moment.";
-    case "TIMEOUT": return "The provider timed out. Try again.";
-    case "DECLINED": return "The provider declined the transaction.";
-    case "FRAUD": return "Transaction blocked. Contact support.";
-    default: return "Deposit failed.";
+    case "INSUFFICIENT_FUNDS": return "Not enough balance on the source account · Salio halitoshi kwenye akaunti.";
+    case "PROVIDER_DOWN":      return "Provider unavailable. Try again in a moment · Jaribu tena baada ya muda.";
+    case "TIMEOUT":            return "The provider timed out. Try again · Muda umemalizika. Jaribu tena.";
+    case "DECLINED":           return "The provider declined the transaction · Muamala umekataliwa.";
+    case "FRAUD":              return "Transaction blocked. Contact support · Muamala umezuiwa. Wasiliana na msaada.";
+    default:                   return "Deposit failed · Amana imeshindikana.";
   }
 }

@@ -94,7 +94,13 @@ export function HelpMark({
   const boom = `M 6 60 Q 14 86 36 92`;
   const mic = { x: 38, y: 93, rx: 6.5, ry: 4.2 };
 
-  const HEADBAND_W = 6.5;
+  // Compact layout auto-engages below the legibility threshold (~25 px).
+  // At small sizes the boom mic + capsule + foam tip add up to ~4-5 px
+  // of dense detail that just reads as mud against the chat-background.
+  // Dropping them keeps the coin + earcups + headband — the three
+  // shapes a reader actually parses at 22 px.
+  const compact = size <= 25;
+  const HEADBAND_W = compact ? 8 : 6.5;
   const BOOM_W = 4;
 
   return (
@@ -205,38 +211,45 @@ export function HelpMark({
             transform="translate(0, -1.6)"
           />
 
-          {/* Mic boom — shadow + main + highlight */}
-          <path
-            d={boom}
-            fill="none"
-            stroke={hp.deep}
-            strokeWidth={BOOM_W + 1}
-            strokeLinecap="round"
-            opacity={0.5}
-            transform="translate(0.6, 1.2)"
-          />
-          <path
-            d={boom}
-            fill="none"
-            stroke={hp.color}
-            strokeWidth={BOOM_W}
-            strokeLinecap="round"
-          />
-          <path
-            d={boom}
-            fill="none"
-            stroke={hp.hi}
-            strokeWidth={1}
-            strokeLinecap="round"
-            opacity={0.6}
-            transform="translate(-0.4, -0.6)"
-          />
+          {/* Mic boom + capsule + foam — suppressed in compact mode
+              (size ≤ 25 px) so the small per-message AI avatars don't
+              render the mic as illegible mud. The coin + earcups +
+              headband stay; that's enough of a concierge read. */}
+          {!compact && (
+            <>
+              <path
+                d={boom}
+                fill="none"
+                stroke={hp.deep}
+                strokeWidth={BOOM_W + 1}
+                strokeLinecap="round"
+                opacity={0.5}
+                transform="translate(0.6, 1.2)"
+              />
+              <path
+                d={boom}
+                fill="none"
+                stroke={hp.color}
+                strokeWidth={BOOM_W}
+                strokeLinecap="round"
+              />
+              <path
+                d={boom}
+                fill="none"
+                stroke={hp.hi}
+                strokeWidth={1}
+                strokeLinecap="round"
+                opacity={0.6}
+                transform="translate(-0.4, -0.6)"
+              />
 
-          {/* Mic capsule — foam tip with darker core */}
-          <ellipse cx={mic.x + 0.5} cy={mic.y + 1} rx={mic.rx} ry={mic.ry} fill={hp.deep} opacity={0.55} />
-          <ellipse cx={mic.x} cy={mic.y} rx={mic.rx} ry={mic.ry} fill={hp.color} />
-          <ellipse cx={mic.x} cy={mic.y} rx={mic.rx - 2.2} ry={mic.ry - 1.6} fill={hp.deep} opacity={0.62} />
-          <ellipse cx={mic.x - 1.4} cy={mic.y - 1} rx={1.6} ry={1} fill={hp.hi} opacity={0.55} />
+              {/* Mic capsule — foam tip with darker core */}
+              <ellipse cx={mic.x + 0.5} cy={mic.y + 1} rx={mic.rx} ry={mic.ry} fill={hp.deep} opacity={0.55} />
+              <ellipse cx={mic.x} cy={mic.y} rx={mic.rx} ry={mic.ry} fill={hp.color} />
+              <ellipse cx={mic.x} cy={mic.y} rx={mic.rx - 2.2} ry={mic.ry - 1.6} fill={hp.deep} opacity={0.62} />
+              <ellipse cx={mic.x - 1.4} cy={mic.y - 1} rx={1.6} ry={1} fill={hp.hi} opacity={0.55} />
+            </>
+          )}
 
           {/* Earcups — shadow + main + rim + cone + dot + glint */}
           <circle cx={cupL.x + 0.6} cy={cupL.y + 1.4} r={cupL.r} fill={hp.deep} opacity={0.5} />

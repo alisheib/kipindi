@@ -68,7 +68,7 @@ export async function requestLoginOtp(input: z.input<typeof LoginRequestSchema>)
   const rl = rateCheck(phone, "otp.send");
   if (!rl.allowed) {
     audit({ category: "SECURITY", action: "otp.rate_limited", actorId: null, targetType: "Phone", targetId: phone, payload: { ip: meta.ip } });
-    return { ok: false, error: "Too many attempts. Please wait.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
+    return { ok: false, error: "Too many attempts. Please wait · Subiri kidogo.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
   }
 
   const user = db.user.findByPhone(phone);

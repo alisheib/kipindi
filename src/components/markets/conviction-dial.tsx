@@ -554,10 +554,10 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
     if (e.includes("rate") || e.includes("limit"))
       return {
         title: "Slow down · Subiri",
-        body: "Too many attempts in a row. Try again in a moment.",
+        body: "Too many attempts in a row. Try again in a moment · Jaribu tena baada ya muda kidogo.",
         variant: "warning",
       };
-    return { title: "Could not place", body: err, variant: "danger" };
+    return { title: "Could not place · Haikuwekwa", body: err, variant: "danger" };
   };
 
   const submit = () => {
@@ -1054,8 +1054,8 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
         <OperationResultModal
           open={resultOpen}
           variant={resultData.variant}
-          eyebrow={resultData.variant === "success" ? "Bet placed · Dau lipo" : "Could not place bet"}
-          title={resultData.variant === "success" ? `${resultData.side} · TZS ${fmt(resultData.stake)}` : (resultData.error ?? "Try again")}
+          eyebrow={resultData.variant === "success" ? "Bet placed · Dau lipo" : "Could not place bet · Haikuwekwa"}
+          title={resultData.variant === "success" ? `${resultData.side} · TZS ${fmt(resultData.stake)}` : (resultData.error ?? "Try again · Jaribu tena")}
           subtitle={
             resultData.variant === "success"
               ? (marketTitle ?? "Position open. We'll notify you on resolution.")

@@ -149,11 +149,11 @@ export function SellButton({
         <OperationResultModal
           open={resultOpen}
           variant={resultData.variant}
-          eyebrow={resultData.variant === "success" ? "Position sold · Imeuzwa" : "Cash-out failed"}
+          eyebrow={resultData.variant === "success" ? "Position sold · Imeuzwa" : "Cash-out failed · Haikufanikiwa"}
           title={
             resultData.variant === "success"
-              ? `TZS ${fmt(resultData.value)} returned`
-              : (resultData.error ?? "Try again")
+              ? `TZS ${fmt(resultData.value)} returned · Imerudishwa`
+              : (resultData.error ?? "Try again · Jaribu tena")
           }
           subtitle={
             resultData.variant === "success"

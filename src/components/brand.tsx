@@ -417,7 +417,20 @@ export function TippingBar({
               {Math.round(yes)}%
             </strong>
           </span>
-          <span style={{ color: "var(--bar-label-tipping)", fontStyle: "italic", textTransform: "uppercase", fontSize: 9 }}>
+          <span
+            style={{
+              // Was 9 px italic — illegible on mobile. 10.5 px + 500
+              // weight + 0.10 em letter-spacing reads cleanly without
+              // overpowering the YES / NO percentages on either side.
+              color: "var(--bar-label-tipping)",
+              fontStyle: "italic",
+              textTransform: "uppercase",
+              fontSize: 10.5,
+              fontWeight: 500,
+              letterSpacing: "0.10em",
+              opacity: 0.85,
+            }}
+          >
             {Math.abs(target - 50) < 3 ? "tipping" : target > 50 ? "leans yes" : "leans no"}
           </span>
           <span style={{ color: "var(--bar-label-no)" }}>
