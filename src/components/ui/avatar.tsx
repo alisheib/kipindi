@@ -27,6 +27,15 @@ function offsetFor(seed: string): number {
   return (h % 41) - 20; // -20..+20 around 258
 }
 
+/** Normalise initials — trim, uppercase, cap at 2 characters. Empty
+ *  / whitespace input falls back to "?". Keeps every avatar in the
+ *  same visual rhythm across the app regardless of what the caller
+ *  passes in. */
+function normInitials(raw: string): string {
+  const trimmed = (raw ?? "").replace(/\s+/g, "").slice(0, 2).toUpperCase();
+  return trimmed || "?";
+}
+
 export function Avatar({
   initials,
   size = "md",
@@ -42,7 +51,8 @@ export function Avatar({
   seed?: string;
   className?: string;
 }) {
-  const offset = seed ? offsetFor(seed) : offsetFor(initials);
+  const cleaned = normInitials(initials);
+  const offset = seed ? offsetFor(seed) : offsetFor(cleaned);
   const hue = 258 + offset;
   return (
     <span
@@ -60,9 +70,9 @@ export function Avatar({
               boxShadow: "0 0 0 1px color-mix(in oklab, var(--gilt) 30%, transparent) inset",
             }
       }
-      aria-label={`Avatar ${initials}`}
+      aria-label={`Avatar ${cleaned}`}
     >
-      {!src && initials}
+      {!src && cleaned}
     </span>
   );
 }

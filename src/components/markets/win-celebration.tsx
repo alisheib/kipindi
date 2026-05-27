@@ -144,8 +144,32 @@ export function WinCelebrationHost() {
             background: "linear-gradient(90deg, var(--gold-500), var(--aqua-300), var(--gold-500))",
           }}
         />
-        <div className="p-6 text-center">
-          <div className="inline-flex items-center justify-center h-12 w-12 rounded-pill border border-gold-700 bg-gold-500/15 text-gold-300 mb-3">
+        <div className="p-6 text-center relative">
+          {/* Gilt spotlight rays behind the trophy — slow rotation,
+              respects reduced-motion. Adds the "earned" prestige read
+              without going over the top. */}
+          <div
+            aria-hidden
+            className="absolute left-1/2 -translate-x-1/2 wc-rays"
+            style={{
+              top: 18,
+              width: 140,
+              height: 140,
+              background:
+                "conic-gradient(from 0deg, transparent 0deg, color-mix(in oklab, var(--gold-300) 22%, transparent) 8deg, transparent 16deg, transparent 90deg, color-mix(in oklab, var(--gold-300) 18%, transparent) 98deg, transparent 106deg, transparent 180deg, color-mix(in oklab, var(--gold-300) 22%, transparent) 188deg, transparent 196deg, transparent 270deg, color-mix(in oklab, var(--gold-300) 18%, transparent) 278deg, transparent 286deg, transparent 360deg)",
+              borderRadius: "50%",
+              filter: "blur(2px)",
+              opacity: 0.7,
+              animation: "wc-ray-spin 14s linear infinite",
+            }}
+          />
+          <div
+            className="relative inline-flex items-center justify-center h-12 w-12 rounded-pill border border-gold-700 bg-gold-500/15 text-gold-300 mb-3"
+            style={{
+              boxShadow: "0 0 0 6px color-mix(in oklab, var(--gold-300) 18%, transparent)",
+              animation: "wc-trophy-pulse 2.4s ease-in-out infinite",
+            }}
+          >
             <Trophy size={22} aria-hidden />
           </div>
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] font-bold text-gold-300">

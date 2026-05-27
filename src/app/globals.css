@@ -815,6 +815,29 @@ body {
   60%  { transform: scale(1.05); opacity: 1; }
   100% { transform: scale(1.0); opacity: 1; }
 }
+/* Trophy pulse — subtle heartbeat behind the win-card crest. */
+@keyframes wc-trophy-pulse {
+  0%, 100% { box-shadow: 0 0 0 6px color-mix(in oklab, var(--gold-300) 18%, transparent); }
+  50%      { box-shadow: 0 0 0 9px color-mix(in oklab, var(--gold-300) 12%, transparent); }
+}
+/* Gilt rays — slow continuous rotation behind the trophy. */
+@keyframes wc-ray-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+/* Reduced motion — collapse the confetti firehose to a single gentle
+   fade. The win moment still lands, just calmly. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes win-confetti {
+    0%, 100% { opacity: 0; transform: none; }
+    20%, 60% { opacity: 0.6; transform: none; }
+  }
+  @keyframes win-burst {
+    from { opacity: 0; }
+    to   { opacity: 1; transform: none; }
+  }
+  .wc-rays { animation: none !important; opacity: 0.5; }
+}
 
 /* Aqua focus ring opt-in for inputs / ghost buttons that aren't using the
    `.input` class directly. */
@@ -823,6 +846,19 @@ body {
   outline: 2px solid var(--aqua-300);
   outline-offset: 2px;
   box-shadow: 0 0 0 4px var(--aqua-glow);
+}
+
+/* Defensive baseline — any keyboard-focusable element that doesn't
+   set its own focus-visible style still gets an aqua ring. The kit's
+   .btn / .input / link patterns override locally; this catches the
+   long tail (custom <a>, <details>, [role="..."], etc.) so a keyboard
+   user can never lose focus on the page.
+
+   :where() keeps specificity at 0,0,0 so component-level overrides
+   still win without !important. */
+:where(a, button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid var(--aqua-300);
+  outline-offset: 2px;
 }
 
 /* ===========================================================================
