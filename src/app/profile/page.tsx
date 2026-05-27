@@ -61,6 +61,14 @@ export default async function ProfilePage() {
 
   return (
     <main className="mx-auto max-w-[960px] px-3 lg:px-6 py-6 space-y-6">
+      {/* Screen-reader-only h1 — gives the page proper landmark
+          structure without disturbing the visual hierarchy (the
+          display name + ProfileNameEditor sit prominently inside the
+          hero card below; that's where the eye reads, but a screen
+          reader needs a top-level heading too). */}
+      <h1 className="sr-only">
+        Profile · {displayName} · Wasifu
+      </h1>
       {/* ── Hero — kit-faithful: tilted FiftyMark watermark, OKLCH gradient,
             mono-stamped meta, picture uploader badge. No Kipindi tokens. */}
       <section className="relative overflow-hidden rounded-2xl border border-border bg-bg-elevated">
