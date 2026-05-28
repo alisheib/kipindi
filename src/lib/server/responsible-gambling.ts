@@ -205,26 +205,42 @@ export function isLockedOut(userId: string): { locked: boolean; until: string | 
 /**
  * Check whether a deposit of `amount` would exceed any active deposit limit.
  * Sums confirmed DEPOSIT transactions inside each rolling window.
+ *
+ * Single-pass aggregation — earlier version filtered the same txn list
+ * three times (one per window). Now we walk it once and accumulate
+ * daily / weekly / monthly sums together. The 30-day window dominates,
+ * so anything that doesn't fall inside it short-circuits early.
  */
 export function checkDepositLimit(userId: string, amount: number): { allowed: boolean; reason?: string } {
   const r = getRgSettings(userId);
   const now = Date.now();
-  const txns = db.txn.findByUser(userId, 500).filter((t: StoredTxn) =>
-    t.type === "DEPOSIT" && t.status === "CONFIRMED",
-  );
-  const sumSince = (sec: number) => {
-    const cutoff = now - sec * 1000;
-    return txns
-      .filter((t) => new Date(t.createdAt).getTime() >= cutoff)
-      .reduce((s, t) => s + t.amount, 0);
-  };
-  if (r.dailyDepositLimit !== null && sumSince(86_400) + amount > r.dailyDepositLimit) {
+  const cutoffMonth = now - 30 * 86_400 * 1000;
+  const cutoffWeek = now - 7 * 86_400 * 1000;
+  const cutoffDay = now - 86_400 * 1000;
+
+  let dailySum = 0, weeklySum = 0, monthlySum = 0;
+  // Explicit type annotation on the local — db.txn.findByUser returns
+  // `unknown` in the current type chain (a pre-existing store-shape
+  // issue) so we narrow once here for the loop.
+  const allTxns: StoredTxn[] = db.txn.findByUser(userId, 500) as StoredTxn[];
+  for (const t of allTxns) {
+    if (t.type !== "DEPOSIT" || t.status !== "CONFIRMED") continue;
+    const at = new Date(t.createdAt).getTime();
+    if (at < cutoffMonth) continue;        // older than 30d — irrelevant to any window
+    monthlySum += t.amount;
+    if (at < cutoffWeek) continue;
+    weeklySum += t.amount;
+    if (at < cutoffDay) continue;
+    dailySum += t.amount;
+  }
+
+  if (r.dailyDepositLimit !== null && dailySum + amount > r.dailyDepositLimit) {
     return { allowed: false, reason: `Daily deposit limit of TZS ${r.dailyDepositLimit.toLocaleString()} would be exceeded.` };
   }
-  if (r.weeklyDepositLimit !== null && sumSince(7 * 86_400) + amount > r.weeklyDepositLimit) {
+  if (r.weeklyDepositLimit !== null && weeklySum + amount > r.weeklyDepositLimit) {
     return { allowed: false, reason: `Weekly deposit limit of TZS ${r.weeklyDepositLimit.toLocaleString()} would be exceeded.` };
   }
-  if (r.monthlyDepositLimit !== null && sumSince(30 * 86_400) + amount > r.monthlyDepositLimit) {
+  if (r.monthlyDepositLimit !== null && monthlySum + amount > r.monthlyDepositLimit) {
     return { allowed: false, reason: `Monthly deposit limit of TZS ${r.monthlyDepositLimit.toLocaleString()} would be exceeded.` };
   }
   return { allowed: true };
@@ -261,103 +277,149 @@ export type HarmFlag = {
   detail: string;
 };
 
-/** Detect markers for a single user. */
-export function detectHarmMarkers(userId: string, opts: { sessionStartedAt?: string } = {}): HarmFlag[] {
-  const now = Date.now();
-  const flags: HarmFlag[] = [];
-  const txns = db.txn.findByUser(userId, 1_000);
+/** Context passed to every Detector — pre-computed once per call to
+ *  detectHarmMarkers so the individual detectors don't re-walk the
+ *  transaction list. */
+type DetectorContext = {
+  userId: string;
+  now: number;
+  txns: StoredTxn[];
+  recent7d: StoredTxn[];
+  opts: { sessionStartedAt?: string };
+};
 
-  // 1. Rapid deposit escalation
-  const deposits = txns.filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED");
-  const dep1h = deposits.filter((t) => now - new Date(t.createdAt).getTime() < 3600_000);
-  const dep24h = deposits.filter((t) => now - new Date(t.createdAt).getTime() < 24 * 3600_000);
-  const depPrior7d = deposits.filter((t) => {
-    const at = new Date(t.createdAt).getTime();
-    return at >= now - 8 * 24 * 3600_000 && at < now - 24 * 3600_000;
-  });
-  const priorDailyAvg = depPrior7d.length > 0 ? depPrior7d.reduce((s, t) => s + t.amount, 0) / 7 : 0;
-  const today24hSum = dep24h.reduce((s, t) => s + t.amount, 0);
-  if (dep1h.length >= 3) {
-    flags.push({
-      userId,
-      marker: "RAPID_DEPOSIT_ESCALATION",
-      detectedAt: new Date().toISOString(),
-      severity: "warn",
-      detail: `${dep1h.length} deposits in last 60 min`,
-    });
-  } else if (priorDailyAvg > 0 && today24hSum > priorDailyAvg * 2 && today24hSum > 50_000) {
-    flags.push({
-      userId,
-      marker: "RAPID_DEPOSIT_ESCALATION",
-      detectedAt: new Date().toISOString(),
-      severity: "warn",
-      detail: `24h deposits ${Math.round(today24hSum).toLocaleString()} > 2× prior daily avg ${Math.round(priorDailyAvg).toLocaleString()}`,
-    });
-  }
+/** A Detector is a pure function from context to an optional flag.
+ *  Adding a new harm-marker is now one entry in the DETECTORS array
+ *  below — no need to graft new logic into a 100-line function. */
+type Detector = (ctx: DetectorContext) => HarmFlag | null;
 
-  // 2. Chasing losses — deposit within 30 min of a LOST bet, 3+ times in 7d
-  const recent7d = txns.filter((t) => now - new Date(t.createdAt).getTime() < 7 * 24 * 3600_000);
-  const lostBets = recent7d.filter((t) => t.type === "BET_PLACED" && t.status === "CONFIRMED");
-  const recentDeposits = recent7d.filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED");
-  let chases = 0;
-  for (const dep of recentDeposits) {
-    const depAt = new Date(dep.createdAt).getTime();
-    const recentLossNearby = lostBets.find((b) => {
-      const bAt = new Date(b.createdAt).getTime();
-      return depAt - bAt > 0 && depAt - bAt < 30 * 60_000;
-    });
-    if (recentLossNearby) chases++;
-  }
-  if (chases >= 3) {
-    flags.push({
-      userId,
-      marker: "CHASING_LOSSES",
-      detectedAt: new Date().toISOString(),
-      severity: "high",
-      detail: `${chases} deposits within 30 min of a losing bet over the last 7 days`,
-    });
-  }
+const flag = (
+  ctx: DetectorContext,
+  marker: HarmMarker,
+  severity: HarmFlag["severity"],
+  detail: string,
+): HarmFlag => ({
+  userId: ctx.userId,
+  marker,
+  detectedAt: new Date().toISOString(),
+  severity,
+  detail,
+});
 
-  // 3. Late-night play — 5+ bets between 00:00 and 06:00 EAT (UTC+3)
-  const lateNight = recent7d.filter((t) => {
-    if (t.type !== "BET_PLACED" || t.status !== "CONFIRMED") return false;
-    // Convert UTC to EAT (UTC+3)
-    const eatHours = (new Date(t.createdAt).getUTCHours() + 3) % 24;
-    return eatHours >= 0 && eatHours < 6;
-  });
-  if (lateNight.length >= 5) {
-    flags.push({
-      userId,
-      marker: "LATE_NIGHT_PLAY",
-      detectedAt: new Date().toISOString(),
-      severity: "info",
-      detail: `${lateNight.length} bets between 00:00 and 06:00 EAT in last 7 days`,
+const DETECTORS: Detector[] = [
+  // 1. Rapid deposit escalation — 3+ deposits in 60 min OR 24h sum >
+  //    2× prior-7d daily-avg AND > TZS 50,000.
+  (ctx) => {
+    const deposits = ctx.txns.filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED");
+    const dep1h = deposits.filter((t) => ctx.now - new Date(t.createdAt).getTime() < 3600_000);
+    if (dep1h.length >= 3) {
+      return flag(ctx, "RAPID_DEPOSIT_ESCALATION", "warn", `${dep1h.length} deposits in last 60 min`);
+    }
+    const dep24h = deposits.filter((t) => ctx.now - new Date(t.createdAt).getTime() < 24 * 3600_000);
+    const depPrior7d = deposits.filter((t) => {
+      const at = new Date(t.createdAt).getTime();
+      return at >= ctx.now - 8 * 24 * 3600_000 && at < ctx.now - 24 * 3600_000;
     });
-  }
+    const priorDailyAvg =
+      depPrior7d.length > 0 ? depPrior7d.reduce((s, t) => s + t.amount, 0) / 7 : 0;
+    const today24hSum = dep24h.reduce((s, t) => s + t.amount, 0);
+    if (priorDailyAvg > 0 && today24hSum > priorDailyAvg * 2 && today24hSum > 50_000) {
+      return flag(
+        ctx,
+        "RAPID_DEPOSIT_ESCALATION",
+        "warn",
+        `24h deposits ${Math.round(today24hSum).toLocaleString()} > 2× prior daily avg ${Math.round(priorDailyAvg).toLocaleString()}`,
+      );
+    }
+    return null;
+  },
 
-  // 4. Limit-breach history — repeated rejections feel like soft markers; we
-  // approximate by counting ADJUSTMENT_DEBIT or rejected deposits.
-  // (In production this comes from the rg.limit_breach audit subsystem.)
-  // We keep it derivable from current data so the test can demonstrate it.
-  // For now, no audit-side ledger — leave the marker callable but quiet.
+  // 2. Chasing losses — 3+ deposits within 30 min of a losing bet in 7d
+  (ctx) => {
+    const lostBets = ctx.recent7d.filter((t) => t.type === "BET_PLACED" && t.status === "CONFIRMED");
+    const recentDeposits = ctx.recent7d.filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED");
+    let chases = 0;
+    for (const dep of recentDeposits) {
+      const depAt = new Date(dep.createdAt).getTime();
+      const nearby = lostBets.find((b) => {
+        const bAt = new Date(b.createdAt).getTime();
+        return depAt - bAt > 0 && depAt - bAt < 30 * 60_000;
+      });
+      if (nearby) chases++;
+    }
+    if (chases >= 3) {
+      return flag(
+        ctx,
+        "CHASING_LOSSES",
+        "high",
+        `${chases} deposits within 30 min of a losing bet over the last 7 days`,
+      );
+    }
+    return null;
+  },
 
-  // 5. Session overrun — if a sessionStartedAt is provided, compare to RG setting
-  if (opts.sessionStartedAt) {
-    const startedAt = new Date(opts.sessionStartedAt).getTime();
-    const minutes = (now - startedAt) / 60_000;
-    const r = getRgSettings(userId);
+  // 3. Late-night play — 5+ bets between 00:00 and 06:00 EAT (UTC+3) in 7d
+  (ctx) => {
+    const lateNight = ctx.recent7d.filter((t) => {
+      if (t.type !== "BET_PLACED" || t.status !== "CONFIRMED") return false;
+      const eatHours = (new Date(t.createdAt).getUTCHours() + 3) % 24;
+      return eatHours >= 0 && eatHours < 6;
+    });
+    if (lateNight.length >= 5) {
+      return flag(
+        ctx,
+        "LATE_NIGHT_PLAY",
+        "info",
+        `${lateNight.length} bets between 00:00 and 06:00 EAT in last 7 days`,
+      );
+    }
+    return null;
+  },
+
+  // 4. Limit-breach history — no audit-side ledger yet; left as a
+  //    no-op detector so adding the data source later is one PR (just
+  //    return a flag, no surrounding plumbing changes).
+
+  // 5. Session overrun — current session exceeds reality-check × 4
+  (ctx) => {
+    if (!ctx.opts.sessionStartedAt) return null;
+    const startedAt = new Date(ctx.opts.sessionStartedAt).getTime();
+    const minutes = (ctx.now - startedAt) / 60_000;
+    const r = getRgSettings(ctx.userId);
     const limitMin = r.realityCheckIntervalMin || DEFAULT_REALITY_CHECK_MIN;
     if (minutes > limitMin * 4) {
-      flags.push({
-        userId,
-        marker: "SESSION_OVERRUN",
-        detectedAt: new Date().toISOString(),
-        severity: "warn",
-        detail: `Session has run ${Math.round(minutes)} min, > 4× reality-check interval (${limitMin} min)`,
-      });
+      return flag(
+        ctx,
+        "SESSION_OVERRUN",
+        "warn",
+        `Session has run ${Math.round(minutes)} min, > 4× reality-check interval (${limitMin} min)`,
+      );
     }
-  }
+    return null;
+  },
+];
 
+/** Detect harm markers for a single user. Walks the DETECTORS list
+ *  and collects flags — adding a new marker is one entry in the
+ *  array above. */
+export function detectHarmMarkers(
+  userId: string,
+  opts: { sessionStartedAt?: string } = {},
+): HarmFlag[] {
+  const now = Date.now();
+  const txns = db.txn.findByUser(userId, 1_000) as StoredTxn[];
+  const ctx: DetectorContext = {
+    userId,
+    now,
+    txns,
+    recent7d: txns.filter((t) => now - new Date(t.createdAt).getTime() < 7 * 24 * 3600_000),
+    opts,
+  };
+  const flags: HarmFlag[] = [];
+  for (const det of DETECTORS) {
+    const f = det(ctx);
+    if (f) flags.push(f);
+  }
   return flags;
 }
 
