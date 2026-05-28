@@ -412,30 +412,38 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
   // slider's snap-to-100, otherwise typing 6,210 → clicking
   // anywhere on the dial silently becomes 6,200. We commit to
   // slider mode only after the pointer crosses DRAG_COMMIT_PX.
+  //
+  // The previous version used two refs (`dragStartXRef` + a
+  // `dragCommittedRef` boolean) which could in principle drift
+  // out of sync. Now they live in a single discriminated union —
+  // impossible to be `committed` without a `startX`, impossible
+  // to read `startX` when idle.
   const DRAG_COMMIT_PX = 4;
-  const dragStartXRef = useRef<number | null>(null);
-  const dragCommittedRef = useRef(false);
+  type DragMode =
+    | { kind: "idle" }
+    | { kind: "pending_commit"; startX: number }
+    | { kind: "committed"; startX: number };
+  const dragModeRef = useRef<DragMode>({ kind: "idle" });
 
   // Pointer events handle mouse + touch + pen uniformly
   useEffect(() => {
     if (!dragging) return;
     const move = (e: PointerEvent) => {
       e.preventDefault();
-      if (!dragCommittedRef.current) {
-        const startX = dragStartXRef.current;
-        if (startX === null || Math.abs(e.clientX - startX) < DRAG_COMMIT_PX) return;
+      const mode = dragModeRef.current;
+      if (mode.kind === "pending_commit") {
+        if (Math.abs(e.clientX - mode.startX) < DRAG_COMMIT_PX) return;
         // Crossed the threshold — this is a real drag. Take over
         // slider mode: clear BOTH typed-exact locks (stake AND
         // multiplier) so snap-to-100 governs from here.
-        dragCommittedRef.current = true;
+        dragModeRef.current = { kind: "committed", startX: mode.startX };
         clearBothLocks();
       }
       setFromClientX(e.clientX);
     };
     const up = () => {
       setDragging(false);
-      dragStartXRef.current = null;
-      dragCommittedRef.current = false;
+      dragModeRef.current = { kind: "idle" };
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
@@ -454,17 +462,16 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
     setEditingStake(false);
     setEditingMult(false);
     editingSideRef.current = null;
-    dragStartXRef.current = e.clientX;
     if (exactStake !== null || exactMultiplier !== null) {
       // Player has a typed exact value (either unit) to protect.
       // Don't jump the knob and don't clear the locks yet — defer
       // both to the pointermove handler once a real drag is detected.
-      dragCommittedRef.current = false;
+      dragModeRef.current = { kind: "pending_commit", startX: e.clientX };
     } else {
       // No typed value at risk — classic slider behaviour: jump the
       // knob to the click position immediately and treat the rest
       // of the gesture as a drag.
-      dragCommittedRef.current = true;
+      dragModeRef.current = { kind: "committed", startX: e.clientX };
       setFromClientX(e.clientX);
     }
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
