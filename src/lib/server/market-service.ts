@@ -1,5 +1,5 @@
 /**
- * Market service — binary YES/NO prediction markets, pari-mutuel pool.
+ * Market service — binary YES/NO price-competition markets, pari-mutuel pool.
  *
  * Pool model (regulator-approved):
  *   1. Officer creates a market with a title, source URL, resolutionAt timestamp,

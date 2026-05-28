@@ -8,7 +8,7 @@
  *
  * Why this exists: the home headline "The wisdom of YES & NO" is
  * poetic but doesn't teach. A first-timer doesn't know what a
- * prediction market is, what pari-mutuel means, or why we say "the
+ * price-competition market is, what pari-mutuel means, or why we say "the
  * pool grew" instead of "you lost". This primer closes that gap with
  * three calm, kit-faithful cards. Bilingual, reduced-motion aware,
  * keyboard-navigable.
@@ -44,9 +44,9 @@ const CARDS: Card[] = [
     },
     body: {
       en:
-        "50pick is a prediction market. Every question is a real-world event with a YES or NO answer — like \"will the masika rains start before 15 April?\" — settled against an official public source.",
+        "50pick is a price-competition market. Every question is a real-world event with a YES or NO answer — like \"will the masika rains start before 15 April?\" — settled against an official public source.",
       sw:
-        "50pick ni soko la utabiri. Kila swali ni tukio halisi lenye jibu la NDIO au HAPANA — kama \"Je, mvua za masika zitaanza kabla ya 15 Aprili?\" — linatatuliwa kupitia chanzo rasmi cha umma.",
+        "50pick ni soko la ushindani wa bei. Kila swali ni tukio halisi lenye jibu la NDIO au HAPANA — kama \"Je, mvua za masika zitaanza kabla ya 15 Aprili?\" — linatatuliwa kupitia chanzo rasmi cha umma.",
     },
     visual: (
       <svg viewBox="0 0 200 120" width="200" height="120" aria-hidden>

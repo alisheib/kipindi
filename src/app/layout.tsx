@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     default: "50pick — Predict events. Not chance.",
     template: "%s · 50pick",
   },
-  description: "Tanzania-licensed binary prediction markets. Price Competition pool — winners share losers' stake. Mobile-first.",
+  description: "Tanzania-licensed binary price-competition markets. Price Competition pool — winners share losers' stake. Mobile-first.",
   applicationName: "50pick",
   formatDetection: { telephone: false, email: false, address: false },
 };
