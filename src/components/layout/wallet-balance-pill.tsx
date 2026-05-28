@@ -90,7 +90,7 @@ export function WalletBalancePill({ balance }: { balance: number }) {
       href="/wallet"
       aria-label={`Wallet · TZS ${balance.toLocaleString("en-US")}`}
       className={cn(
-        "hidden sm:inline-flex h-8 items-center px-2.5 rounded-pill border bg-bg-overlay font-mono text-[11px] tabular-nums font-semibold text-text transition-colors transition-shadow",
+        "hidden sm:inline-flex h-8 items-center px-2.5 rounded-pill border bg-bg-overlay font-mono text-caption tabular-nums font-semibold text-text transition-colors transition-shadow",
         flashing
           ? "border-gold-300 text-gold-300 shadow-[0_0_0_3px_color-mix(in_oklab,var(--gold-300)_22%,transparent)]"
           : "border-border hover:border-gold-700 hover:text-gold-300",

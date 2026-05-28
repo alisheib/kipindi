@@ -64,7 +64,7 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
                   key={it.href}
                   href={it.href}
                   className={cn(
-                    "relative h-12 px-2.5 inline-flex items-center whitespace-nowrap font-mono text-[11px] font-bold uppercase tracking-[0.12em] transition-colors",
+                    "relative h-12 px-2.5 inline-flex items-center whitespace-nowrap font-mono text-caption font-bold uppercase tracking-[0.12em] transition-colors",
                     active ? "text-text" : "text-text-subtle hover:text-text",
                   )}
                 >

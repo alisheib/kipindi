@@ -112,7 +112,7 @@ export function AvatarMenu({
               <Avatar initials={initials} size="md" seed={seed ?? initials} src={avatarSrc ?? undefined} />
               <div className="min-w-0">
                 <p className="font-display text-[13.5px] font-semibold text-text truncate leading-tight">{name}</p>
-                <p className="mt-0.5 font-mono text-[11px] text-text-subtle tabular-nums truncate">{phone}</p>
+                <p className="mt-0.5 font-mono text-caption text-text-subtle tabular-nums truncate">{phone}</p>
               </div>
             </div>
             <ul className="py-1">
@@ -139,7 +139,7 @@ export function AvatarMenu({
                 trigger={
                   <button
                     type="button"
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 font-display text-[13px] font-semibold text-no-300 hover:bg-no-500/10 transition-colors text-left"
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 font-display text-body-sm font-semibold text-no-300 hover:bg-no-500/10 transition-colors text-left"
                   >
                     <LogOut size={15} strokeWidth={1.75} aria-hidden />
                     Sign out · Toka
@@ -161,12 +161,12 @@ function Item({ href, icon: Icon, label, sw }: { href: string; icon: typeof User
       <Link
         href={href as never}
         className={cn(
-          "flex items-center gap-2.5 px-3.5 py-2.5 font-display text-[13px] font-medium text-text hover:bg-bg-overlay transition-colors",
+          "flex items-center gap-2.5 px-3.5 py-2.5 font-display text-body-sm font-medium text-text hover:bg-bg-overlay transition-colors",
         )}
       >
         <Icon size={15} strokeWidth={1.75} className="text-text-subtle" />
         {label}
-        <span className="text-text-subtle italic font-normal text-[12px]">· {sw}</span>
+        <span className="text-text-subtle italic font-normal text-label">· {sw}</span>
       </Link>
     </li>
   );

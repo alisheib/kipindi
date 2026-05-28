@@ -67,7 +67,7 @@ function NavItem({ href, icon: Icon, label, active }: { href: string; icon: type
       )}
     >
       <Icon size={20} strokeWidth={active ? 2 : 1.5} />
-      <span className="text-[10px] font-semibold uppercase tracking-[0.10em]">{label}</span>
+      <span className="text-micro font-semibold uppercase tracking-[0.10em]">{label}</span>
     </Link>
   );
 }

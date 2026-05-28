@@ -40,14 +40,14 @@ export function PageRibbon({
               {s.label}
             </p>
             {s.sw && (
-              <p className="text-[10px] italic text-text-subtle whitespace-nowrap leading-none">
+              <p className="text-micro italic text-text-subtle whitespace-nowrap leading-none">
                 {s.sw}
               </p>
             )}
           </div>
           <p
             className={cn(
-              "font-mono text-[16px] font-bold tabular-nums whitespace-nowrap leading-none",
+              "font-mono text-body-lg font-bold tabular-nums whitespace-nowrap leading-none",
               s.accent === "gold" && "text-gold-300",
               s.accent === "yes" && "text-yes-300",
               s.accent === "no" && "text-no-300",

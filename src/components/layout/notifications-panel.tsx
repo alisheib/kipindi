@@ -192,14 +192,14 @@ export function NotificationsPanel() {
             style={{ animation: "np-rise 180ms cubic-bezier(.2,.8,.2,1)" }}
           >
             <div className="flex h-11 items-center justify-between border-b border-border bg-bg-elevated px-3 shrink-0">
-              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-text">
+              <p className="font-mono text-micro font-bold uppercase tracking-[0.18em] text-text">
                 Notifications · Arifa
               </p>
               <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={handleMarkAll}
-                  className="h-7 px-2 rounded-md font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-text-subtle hover:text-text hover:bg-bg-overlay transition-colors"
+                  className="h-7 px-2 rounded-md font-mono text-micro font-bold uppercase tracking-[0.14em] text-text-subtle hover:text-text hover:bg-bg-overlay transition-colors"
                 >
                   Mark all
                 </button>
@@ -235,14 +235,14 @@ export function NotificationsPanel() {
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="font-display text-[13px] font-semibold text-text truncate leading-tight">
+                        <p className="font-display text-body-sm font-semibold text-text truncate leading-tight">
                           {n.titleEn}
                         </p>
                         {isUnread && (
                           <span aria-hidden className="h-1.5 w-1.5 rounded-pill bg-gold-500 shrink-0 mt-1" />
                         )}
                       </div>
-                      <p className="mt-0.5 text-[12px] text-text-muted leading-snug">
+                      <p className="mt-0.5 text-label text-text-muted leading-snug">
                         {n.bodyEn}
                       </p>
                       <div className="mt-1 flex items-center justify-between">
@@ -287,13 +287,13 @@ export function NotificationsPanel() {
                     <path d="M22 44 a6 6 0 0 0 12 0" />
                     <circle cx="42" cy="14" r="4" fill="var(--gold-400)" stroke="none" />
                   </svg>
-                  <p className="font-display text-[14px] font-semibold text-text">
+                  <p className="font-display text-body font-semibold text-text">
                     No notifications yet
                   </p>
-                  <p className="mt-0.5 text-[11px] italic text-text-subtle">
+                  <p className="mt-0.5 text-caption italic text-text-subtle">
                     Hakuna arifa bado
                   </p>
-                  <p className="mt-2 text-[12px] text-text-muted leading-relaxed">
+                  <p className="mt-2 text-label text-text-muted leading-relaxed">
                     We&apos;ll buzz here when a bet settles or a market resolves.
                   </p>
                 </div>
