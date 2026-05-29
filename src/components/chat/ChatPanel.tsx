@@ -132,7 +132,7 @@ export function ChatPanel({ lang, messages, pending, onClose, onSend, variant }:
             onKeyDown={handleKey}
             onInput={handleInput}
           />
-          <button type="submit" className="cm-send" aria-label="Send message">
+          <button type="submit" className="cm-send" aria-label="Send message" disabled={pending}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 12 L19 12" />
               <path d="M13 6 L19 12 L13 18" />
