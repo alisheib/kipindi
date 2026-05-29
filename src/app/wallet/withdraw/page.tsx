@@ -142,7 +142,8 @@ export default async function WithdrawPage() {
             />
           </div>
           <p className="mt-2 text-[11px] text-text-subtle">
-            Withdrawals ≥ <span className="font-mono text-text-muted">TZS 1,000,000</span> trigger AML review (typically 2 hours).
+            Min TZS 1,000 · Max TZS 5,000,000 per withdrawal.
+            Amounts ≥ <span className="font-mono text-text-muted">TZS 1,000,000</span> trigger AML review (typically 2 hours).
           </p>
         </div>
 
@@ -162,6 +163,9 @@ export default async function WithdrawPage() {
               name="msisdn"
               type="tel"
               inputMode="numeric"
+              pattern="\d{9}"
+              maxLength={9}
+              required
               placeholder="712 345 678"
               disabled={!kycApproved}
               className="flex-1 h-11 px-3 rounded-r-md border border-border bg-bg-overlay font-mono text-[13px] tabular-nums text-text focus:outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 transition-colors disabled:opacity-50"

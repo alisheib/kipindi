@@ -139,6 +139,8 @@ export default async function DepositPage() {
               name="msisdn"
               type="tel"
               inputMode="numeric"
+              pattern="\d{9}"
+              maxLength={9}
               placeholder="712 345 678"
               className="flex-1 h-11 px-3 rounded-r-md border border-border bg-bg-overlay font-mono text-[13px] tabular-nums text-text focus:outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 transition-colors"
             />

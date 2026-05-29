@@ -106,7 +106,9 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               label="NIDA number · Nambari ya NIDA"
               hint="20 digits, exactly as on your card"
               type="text"
+              required
               pattern="\d{20}"
+              maxLength={20}
               inputMode="numeric"
               placeholder="00000000000000000000"
             />
@@ -115,12 +117,18 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               label="Full name · Jina kamili"
               hint="As printed on the NIDA card"
               type="text"
+              required
+              minLength={3}
+              maxLength={100}
             />
             <Field
               id="dob"
               label="Date of birth · Tarehe ya kuzaliwa"
-              hint="Must match NIDA exactly"
+              hint="Must match NIDA exactly. 18+ required."
               type="date"
+              required
+              min="1900-01-01"
+              max={new Date(new Date().getFullYear() - 18, new Date().getMonth(), new Date().getDate()).toISOString().slice(0, 10)}
             />
             <button type="submit" className="btn btn-gold btn-lg w-full" style={{ borderRadius: 999 }}>
               Verify NIDA · Thibitisha
@@ -244,9 +252,11 @@ function UploadSlot({ label, done }: { label: string; done: boolean }) {
 
 function Field({
   id, label, hint, type, pattern, inputMode, placeholder,
+  required: req = true, minLength, maxLength, min, max,
 }: {
   id: string; label: string; hint?: string; type: string;
   pattern?: string; inputMode?: "numeric" | "text"; placeholder?: string;
+  required?: boolean; minLength?: number; maxLength?: number; min?: string; max?: string;
 }) {
   return (
     <div>
@@ -263,7 +273,11 @@ function Field({
         pattern={pattern}
         inputMode={inputMode}
         placeholder={placeholder}
-        required
+        required={req}
+        minLength={minLength}
+        maxLength={maxLength}
+        min={min}
+        max={max}
         className="w-full h-11 px-3 rounded-md border border-border bg-bg-overlay font-mono text-[13px] tabular-nums text-text focus:outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 transition-colors"
       />
       {hint && <p className="mt-1.5 text-[11px] text-text-subtle">{hint}</p>}
