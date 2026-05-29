@@ -6,9 +6,19 @@ import { ArrowDownToLine, ArrowUpFromLine, Settings2 } from "lucide-react";
 import { Input, Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { AdminCard } from "@/components/admin/admin-shell";
 import { topUpAction, withdrawAction, updateHousePoolConfigAction } from "./actions";
 import type { HousePoolConfig } from "@/lib/server/house-pool";
+
+/** Lightweight card — mirrors AdminCard's visual without importing the
+ *  server-coupled admin-shell module into this client component. */
+function Card({ title, children }: { title?: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-border bg-bg-elevated p-4">
+      {title && <p className="font-display font-semibold text-body-sm text-text leading-tight mb-3">{title}</p>}
+      {children}
+    </div>
+  );
+}
 
 export function HousePoolForms({ config }: { config: HousePoolConfig }) {
   return (
@@ -43,7 +53,7 @@ function TopUpForm() {
   };
 
   return (
-    <AdminCard>
+    <Card>
       <div className="flex items-center gap-2 mb-3">
         <ArrowDownToLine size={14} className="text-yes-300" />
         <p className="font-display text-body-sm font-semibold text-text">Top up reserve</p>
@@ -56,7 +66,7 @@ function TopUpForm() {
           Top up
         </Button>
       </form>
-    </AdminCard>
+    </Card>
   );
 }
 
@@ -81,7 +91,7 @@ function WithdrawForm() {
   };
 
   return (
-    <AdminCard>
+    <Card>
       <div className="flex items-center gap-2 mb-3">
         <ArrowUpFromLine size={14} className="text-no-300" />
         <p className="font-display text-body-sm font-semibold text-text">Withdraw from reserve</p>
@@ -94,7 +104,7 @@ function WithdrawForm() {
           Withdraw
         </Button>
       </form>
-    </AdminCard>
+    </Card>
   );
 }
 
@@ -118,11 +128,11 @@ function PoolConfigForm({ config }: { config: HousePoolConfig }) {
   };
 
   return (
-    <AdminCard
-      title="Pool configuration"
-      sw="Mipangilio ya dimbwi"
-      action={<Settings2 size={14} className="text-text-tertiary" />}
-    >
+    <Card>
+      <div className="flex items-center gap-2 mb-3">
+        <Settings2 size={14} className="text-text-tertiary" />
+        <p className="font-display font-semibold text-body-sm text-text">Pool configuration</p>
+      </div>
       <form onSubmit={onSubmit} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Field label="Seed per side (TZS)" hint={`Currently ${config.seedPerSide.toLocaleString()}`}>
           <Input name="seedPerSide" type="number" min={0} step={10000} defaultValue={config.seedPerSide} mono size="md" />
@@ -145,6 +155,6 @@ function PoolConfigForm({ config }: { config: HousePoolConfig }) {
           </Button>
         </div>
       </form>
-    </AdminCard>
+    </Card>
   );
 }
