@@ -95,7 +95,7 @@ type Props = {
   resolutionAt?: string;
 };
 
-export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, initial = 0.5, marketTitle, resolutionAt }: Props) {
+export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, initial = 0.5, marketTitle, resolutionAt }: Props) {
   const [pos, setPos] = useState(initial);
   const [dragging, setDragging] = useState(false);
   const [hover, setHover] = useState(false);
@@ -218,7 +218,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
    *  editing intent (or current side) exists. The knob visually
    *  nudges ~2.3% off-centre but the displayed multiplier is
    *  overridden to "1.00×" via exactStake (above) so the player sees
-   *  a coherent { side, 1.00×, TZS 5,000, Place button } state. */
+   *  a coherent { side, 1.00×, TZS 500, Place button } state. */
   const posFromStake = useCallback((tzs: number): number => {
     const minDial = baseStake;          // multiplier 1 → baseStake
     const maxDial = baseStake * 5;      // multiplier 5 → baseStake × 5

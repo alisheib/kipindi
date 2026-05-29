@@ -135,7 +135,7 @@ function stubReply(userText: string, lang: Lang): Reply {
       lang,
       paragraphs: [
         "The conviction dial picks both your side and your stake in one gesture. Drag toward YES on the left, NO on the right. The further from centre, the stronger your conviction — and the bigger your stake.",
-        "Your stake scales from the base ({TZS 5,000}) up to {5×} that at the extremes. The TZS amount and the multiplier both update live as you drag[1].",
+        "Your stake scales from the base ({TZS 500}) up to {5×} that at the extremes. The TZS amount and the multiplier both update live as you drag[1].",
         "When you're happy, the confirm popup locks the quote. You can't accidentally move the dial while the popup is open — the locked quote is what gets placed.",
       ],
       citations: [{ n: 1, href: "/help#conviction-dial", label: "/help#conviction-dial" }],
