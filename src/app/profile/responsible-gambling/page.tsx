@@ -103,7 +103,7 @@ export default async function ResponsibleGamblingPage() {
           <Field name="monthlyDepositLimit"      label="Monthly deposit (TZS)"    defaultValue={rg.monthlyDepositLimit}      placeholder="e.g. 500000" />
           <Field name="dailyLossLimit"           label="Daily loss (TZS)"         defaultValue={rg.dailyLossLimit}           placeholder="e.g. 30000" />
           <Field name="sessionTimeLimitMin"      label="Session time (minutes)"   defaultValue={rg.sessionTimeLimitMin}      placeholder="e.g. 60" />
-          <Field name="realityCheckIntervalMin"  label="Reality check (minutes)"  defaultValue={rg.realityCheckIntervalMin}  placeholder="30" />
+          <Field name="realityCheckIntervalMin"  label="Reality check (min 5, max 120)"  defaultValue={rg.realityCheckIntervalMin}  placeholder="30" min={5} max={120} step={5} />
           <div className="sm:col-span-2 pt-2">
             <button type="submit" className="btn btn-gold btn-md" style={{ borderRadius: 999 }}>
               Save limits · Hifadhi
@@ -192,12 +192,15 @@ export default async function ResponsibleGamblingPage() {
 }
 
 function Field({
-  name, label, defaultValue, placeholder,
+  name, label, defaultValue, placeholder, min = 0, max, step = 1000,
 }: {
   name: string;
   label: string;
   defaultValue: number | null;
   placeholder?: string;
+  min?: number;
+  max?: number;
+  step?: number;
 }) {
   return (
     <label className="block">
@@ -207,8 +210,9 @@ function Field({
       <input
         name={name}
         type="number"
-        min={0}
-        step={1000}
+        min={min}
+        max={max}
+        step={step}
         defaultValue={defaultValue ?? ""}
         placeholder={placeholder}
         className="w-full h-10 px-3 rounded-md border border-border bg-bg-overlay font-mono text-[13px] tabular-nums text-text focus:outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 transition-colors"

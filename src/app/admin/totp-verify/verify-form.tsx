@@ -22,10 +22,18 @@ export function TotpVerifyForm() {
     const r = await verifyAdminTotpAction(fd);
     if (r && !r.ok) {
       toast({ title: "Invalid code", description: r.error, variant: "danger" });
+      setCode("");
       setBusy(false);
       return;
     }
     // success → redirect happens server-side
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && code.length === 6 && !busy) {
+      e.preventDefault();
+      submit();
+    }
   };
 
   return (
@@ -41,6 +49,7 @@ export function TotpVerifyForm() {
           maxLength={6}
           value={code}
           onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+          onKeyDown={onKeyDown}
           placeholder="123 456"
           autoComplete="one-time-code"
           autoFocus

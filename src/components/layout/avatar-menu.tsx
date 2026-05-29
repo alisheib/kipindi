@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Avatar } from "@/components/ui/avatar";
 import { User, Wallet, Receipt, ShieldCheck, LogOut } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -28,6 +29,9 @@ export function AvatarMenu({
   const ref = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const { t, locale } = useT();
+  const pathname = usePathname();
+  // Close menu on navigation so the portal + scrim don't persist.
+  useEffect(() => { setOpen(false); }, [pathname]);
   // Locale-aware labels — most of the app is bilingual-always, but the
   // top-bar auth CTAs are chrome the toggle should genuinely flip.
   const SIGN_UP_LABEL = locale === "sw" ? "Jisajili" : locale === "fr" ? "Inscription" : "Sign up";

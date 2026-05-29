@@ -72,24 +72,24 @@ export function ConfirmDialog({
 
   const confirmClass =
     tone === "gold" ? "btn btn-gold btn-md"
-    : tone === "warning" ? "btn btn-gold btn-md"
+    : tone === "warning" ? "btn btn-claret btn-md"
     : "btn btn-claret btn-md";
 
   return (
     <>
       {triggerEl}
       {mounted && open && createPortal(
-        <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-[110] flex items-center justify-center px-3">
+        <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-[100] flex items-center justify-center px-3">
           <button
             type="button"
             aria-label={cancelLabel}
             onClick={() => setOpen(false)}
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            style={{ animation: "bcm-fade 160ms ease-out" }}
+            style={{ animation: "cd-fade 160ms ease-out" }}
           />
           <div
             className="relative w-full max-w-[440px] rounded-2xl border border-border bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)] p-5 lg:p-6"
-            style={{ animation: "bcm-rise 200ms cubic-bezier(.2,.8,.2,1)" }}
+            style={{ animation: "cd-rise 200ms var(--ease-arrive)" }}
           >
             <button
               type="button"
@@ -137,6 +137,10 @@ export function ConfirmDialog({
         </div>,
         document.body,
       )}
+      <style>{`
+        @keyframes cd-fade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes cd-rise { from { transform: translateY(8px) scale(.98); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+      `}</style>
     </>
   );
 }

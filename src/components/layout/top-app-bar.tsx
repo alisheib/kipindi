@@ -58,7 +58,9 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
           </Link>
           <nav className="ml-3 hidden xl:flex items-center" aria-label="Primary">
             {NAV_ITEMS.map((it) => {
-              const active = pathname === it.href;
+              const active = it.href === "/markets"
+                ? pathname === "/" || pathname.startsWith("/markets")
+                : pathname === it.href;
               return (
                 <Link
                   key={it.href}

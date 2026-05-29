@@ -18,7 +18,7 @@ export function Skeleton({
 }) {
   return (
     <div
-      className={cn("kp-shimmer-track", !w && "w-full", className)}
+      className={cn("skeleton", !w && "w-full", className)}
       style={{ width: w, height: h, borderRadius: r }}
       aria-hidden
     />

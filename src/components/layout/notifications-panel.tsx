@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { usePathname } from "next/navigation";
 import { Bell, Trophy, Coins, ShieldCheck, ArrowDownToLine, ArrowUpFromLine, Activity, TrendingDown, Ticket, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fetchMyNotifications, markNotifReadAction, markAllReadAction, dismissNotifAction } from "@/app/_actions/notifications";
@@ -63,6 +64,9 @@ export function NotificationsPanel() {
   const [unread, setUnread] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+  // Close panel on navigation so the portal + scrim don't persist.
+  useEffect(() => { setOpen(false); }, [pathname]);
 
   const refresh = useCallback(async () => {
     const r = await fetchMyNotifications();

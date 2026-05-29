@@ -43,7 +43,7 @@ export default function AdminOverviewPage() {
 
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* §A — KPI strip */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           <AdminKpi label="Active players" sw="Wachezaji hai"     value={active24h.toLocaleString()} delta="last 24h" pulse />
           <AdminKpi label="GGR · 24h"      sw="Mapato ya jumla"   value={`TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`} gold delta="vs yesterday" />
           <AdminKpi label="NGR · 24h"      sw="Mapato halisi"     value={`TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`} gold delta="net of payouts" />

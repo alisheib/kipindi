@@ -41,7 +41,7 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
       className={cn(
         "flex items-stretch rounded-md border bg-bg-overlay overflow-hidden focus-within:border-aqua-300 focus-within:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors",
         heightCls[size],
-        errored ? "border-no-500" : "border-border",
+        errored ? "border-no-500 bg-no-500/5" : "border-border",
         containerClassName,
       )}
     >

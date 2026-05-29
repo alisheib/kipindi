@@ -35,6 +35,8 @@ export function ResolveControls({ marketId, stage }: { marketId: string; stage: 
         toast({ title: "Could not resolve", description: r.error, variant: "danger" });
         setResultData({ variant: "danger", title: "Could not resolve", subtitle: r.error ?? "Try again." });
         setResultOpen(true);
+        setSubmittedSide(null);
+        return;
       } else if (r.data?.stage === "stage1") {
         toast({ title: "Stage 1 recorded", description: "Awaiting second officer to release.", variant: "warning" });
         setResultData({
@@ -91,21 +93,24 @@ export function ResolveControls({ marketId, stage }: { marketId: string; stage: 
         <button
           type="button"
           onClick={() => submit("YES")}
-          className="h-10 rounded-md bg-yes-500 font-bold text-yes-950 transition-colors hover:bg-yes-400 disabled:opacity-50"
+          disabled={pending}
+          className="h-10 rounded-md bg-yes-500 font-bold text-yes-950 transition-colors hover:bg-yes-400 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Resolve YES
         </button>
         <button
           type="button"
           onClick={() => submit("NO")}
-          className="h-10 rounded-md bg-no-500 font-bold text-white transition-colors hover:bg-no-400 disabled:opacity-50"
+          disabled={pending}
+          className="h-10 rounded-md bg-no-500 font-bold text-white transition-colors hover:bg-no-400 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Resolve NO
         </button>
         <button
           type="button"
           onClick={() => submit("VOID")}
-          className="h-10 rounded-md border border-border bg-bg-overlay font-bold text-text-muted transition-colors hover:border-border-strong"
+          disabled={pending}
+          className="h-10 rounded-md border border-border bg-bg-overlay font-bold text-text-muted transition-colors hover:border-border-strong disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Void
         </button>
@@ -173,7 +178,7 @@ function SettleConfirm({
       role="alertdialog"
       aria-modal="true"
       aria-label="Confirm settlement"
-      className="fixed inset-0 z-[110] flex items-center justify-center px-3"
+      className="fixed inset-0 z-modal flex items-center justify-center px-3"
     >
       <button
         type="button"

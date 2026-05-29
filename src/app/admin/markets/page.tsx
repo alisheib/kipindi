@@ -81,7 +81,7 @@ export default async function AdminMarketsPage({
 
         <AdminCard>
           <form className="flex flex-wrap gap-2">
-            <div className="relative flex-1 min-w-[260px]">
+            <div className="relative flex-1 min-w-0 sm:min-w-[260px]">
               <Search size={14} aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
               <input
                 name="q"

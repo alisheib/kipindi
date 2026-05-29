@@ -126,6 +126,7 @@ export function MarketCard({
           height={14}
           resolved={status === "RESOLVED"}
           showLabels={false}
+          recastOnHover={false}
         />
         <div className="mt-2 flex items-baseline justify-between font-mono text-[11px]">
           <span className="text-yes-300">YES <strong className="font-bold">{yesPct}¢</strong></span>

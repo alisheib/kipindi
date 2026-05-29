@@ -590,6 +590,13 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
         toast({ title: t.title, description: t.body, variant: t.variant });
         setResultData({ variant: "danger", side: q.side, stake: q.stake, payoutIfWin: 0, error: t.body });
         setResultOpen(true);
+        // Reset dial so the failed stake doesn't linger — the player
+        // should re-aim rather than seeing a stale amount.
+        setPos(initial);
+        setExactStakeState(null);
+        setExactMultiplierState(null);
+        setStakeText("");
+        setMultText("");
         return;
       }
       toast({
@@ -679,6 +686,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={ariaValue}
+        aria-valuetext={`${side === "NEUTRAL" ? "Neutral" : side}, ${multiplierTarget.toFixed(2)} times, TZS ${fmt(stake)}`}
         aria-disabled={closedNow ? "true" : "false"}
         onPointerDown={closedNow ? undefined : onPointerDown}
         onKeyDown={closedNow ? undefined : onKeyDown}
@@ -900,11 +908,9 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
             // left between the "TZS" prefix and the pencil trailing
             // cell, so we no longer pin an explicit width here.
             className="text-right font-bold tabular-nums px-2"
-            // Fixed outer width + 32 px height so the stake and the
-            // multiplier inputs read as a matched pair. 152 px is the
-            // smallest size that still fits "25,000" comfortably given
-            // the prefix + trailing cells inside.
-            containerClassName="ml-auto h-8 w-[172px]"
+            // Fixed outer width + 44 px height (WCAG 2.5.5 touch target)
+            // so the stake and multiplier inputs read as a matched pair.
+            containerClassName="ml-auto h-11 w-[172px]"
           />
           {/*
             Range helper line — switches to a corrective hint when the
@@ -966,10 +972,9 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 5_000, i
             aria-label={`Conviction multiplier — type ${MULT_MIN.toFixed(2)}× to ${MULT_MAX.toFixed(2)}×`}
             aria-invalid={isMultOutOfRange}
             className="text-right font-bold tabular-nums px-2"
-            // Same outer width + 32 px height as the stake input above
-            // — they read as a matched pair, with the trailing "×" cell
-            // mirroring the prefix "TZS" cell on the stake row.
-            containerClassName="ml-auto h-8 w-[172px]"
+            // Same outer width + 44 px height (WCAG 2.5.5 touch target)
+            // as the stake input — matched pair.
+            containerClassName="ml-auto h-11 w-[172px]"
           />
           {isMultOverMax || isMultUnderMin ? (
             <span className="mt-1 inline-flex items-center gap-1 rounded-pill border border-no-700 bg-no-500/15 px-1.5 py-0.5 font-mono text-[9.5px] font-bold text-no-300 whitespace-nowrap">

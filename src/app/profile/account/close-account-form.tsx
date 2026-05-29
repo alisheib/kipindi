@@ -6,7 +6,7 @@ import { closeAccountAction } from "./actions";
 
 export function CloseAccountForm() {
   const [confirm, setConfirm] = useState("");
-  const canSubmit = confirm === "CLOSE MY ACCOUNT";
+  const canSubmit = confirm.trim() === "CLOSE MY ACCOUNT";
   return (
     <form action={closeAccountAction} className="space-y-3">
       <label className="block">

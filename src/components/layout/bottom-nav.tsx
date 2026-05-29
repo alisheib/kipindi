@@ -39,7 +39,7 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
     if (href === "/markets") return pathname === "/" || pathname.startsWith("/markets");
     if (href === "/positions") return pathname.startsWith("/positions");
     if (href === "/profile") return pathname.startsWith("/profile");
-    if (href === "/auth/login") return pathname.startsWith("/auth");
+    if (href === "/auth/login") return pathname === "/auth/login";
     return pathname === href;
   };
 

@@ -248,17 +248,30 @@ export function TippingBar({
   const [animYes, setAnimYes] = React.useState(target);
   const [sweepKey, setSweepKey] = React.useState(0);
   const rafRef = React.useRef<number | null>(null);
+  const recastTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   React.useEffect(() => { setAnimYes(target); }, [target]);
-  React.useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
+  React.useEffect(() => () => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    if (recastTimerRef.current) clearTimeout(recastTimerRef.current);
+  }, []);
 
   const handleEnter = () => {
     if (!recastOnHover) return;
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    if (recastTimerRef.current) clearTimeout(recastTimerRef.current);
     setSweepKey((k) => k + 1);
+    // Collapse to 50/50 instantly (no transition) by setting animYes
+    // synchronously. The CSS transition on width handles the visual.
     setAnimYes(50);
-    rafRef.current = requestAnimationFrame(() => {
-      rafRef.current = requestAnimationFrame(() => setAnimYes(target));
-    });
+    // Wait long enough for the collapse to paint (one frame), then
+    // trigger the re-expand. Using setTimeout ensures the browser
+    // commits the 50% state before starting the overshoot transition
+    // back to target — fixes the "animation disappears" bug where
+    // double-RAF was too fast and batched both updates into one frame.
+    recastTimerRef.current = setTimeout(() => {
+      recastTimerRef.current = null;
+      setAnimYes(target);
+    }, 50);
   };
 
   const yes = animYes;
@@ -414,7 +427,7 @@ export function TippingBar({
                 fontVariantNumeric: "tabular-nums",
               }}
             >
-              {Math.round(yes)}%
+              {target}%
             </strong>
           </span>
           <span
@@ -441,7 +454,7 @@ export function TippingBar({
                 fontVariantNumeric: "tabular-nums",
               }}
             >
-              {Math.round(no)}%
+              {100 - target}%
             </strong>{" "}
             NO
           </span>

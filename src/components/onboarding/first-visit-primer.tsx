@@ -1,27 +1,21 @@
 "use client";
 
 /**
- * FirstVisitPrimer — three-card overlay shown the very first time a
+ * FirstVisitPrimer — premium three-card overlay shown the very first time a
  * player lands on the platform. After "Got it" or "Skip", a flag is
  * written to localStorage and the primer never shows again for that
  * browser. Demo runs can clear it by deleting `50pick-primer-seen`.
  *
- * Why this exists: the home headline "The wisdom of YES & NO" is
- * poetic but doesn't teach. A first-timer doesn't know what a
- * price-competition market is, what pari-mutuel means, or why we say "the
- * pool grew" instead of "you lost". This primer closes that gap with
- * three calm, kit-faithful cards. Bilingual, reduced-motion aware,
- * keyboard-navigable.
- *
- * Doesn't render on auth or admin routes (it'd be confusing on a
- * login screen). Hidden if `50pick-primer-seen=1` or
- * `50pick-primer-dismissed=1` is in localStorage.
+ * Uses REAL brand components (TippingBar, FiftyMark) as live visuals
+ * inside each card — no placeholder SVGs. Kit-faithful: royal canvas,
+ * gilt accents, Sora headings, JetBrains Mono labels.
  */
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
 import { ChevronRight, X } from "lucide-react";
+import { FiftyMark, TippingBar, GiltCorner } from "@/components/brand";
 
 const STORAGE_KEY = "50pick-primer-seen";
 const HIDE_ON = /^\/(auth|admin)(\/|$)/;
@@ -30,10 +24,121 @@ type Card = {
   eyebrow: { en: string; sw: string };
   title: { en: string; sw: string };
   body: { en: string; sw: string };
-  // Inline SVG visual — kit-faithful (royal indigo + gilt + emerald + rose),
-  // no external assets.
   visual: React.ReactNode;
 };
+
+/* ── Card 1 visual: the 50pick mark flanked by YES/NO paths ────────────── */
+function VisualWhatIs() {
+  return (
+    <div className="relative flex flex-col items-center gap-3 py-2">
+      {/* The real brand mark — exact SVG used in the app bar */}
+      <div className="relative">
+        <div
+          className="absolute inset-0 rounded-full"
+          style={{
+            background: "radial-gradient(circle, oklch(48% 0.20 268 / 0.35), transparent 70%)",
+            filter: "blur(16px)",
+          }}
+          aria-hidden
+        />
+        <FiftyMark size={72} />
+      </div>
+      {/* YES / NO labels with connecting lines */}
+      <div className="flex items-center gap-6 font-mono text-[11px] font-bold tracking-[0.14em]">
+        <span className="flex items-center gap-1.5">
+          <span
+            className="inline-block h-[6px] w-[6px] rounded-full"
+            style={{ background: "oklch(58% 0.16 152)", boxShadow: "0 0 8px oklch(58% 0.16 152 / 0.6)" }}
+          />
+          <span style={{ color: "oklch(80% 0.14 152)" }}>YES</span>
+        </span>
+        <span className="font-mono text-[9px] text-text-subtle tracking-[0.2em]">or</span>
+        <span className="flex items-center gap-1.5">
+          <span style={{ color: "oklch(80% 0.16 22)" }}>NO</span>
+          <span
+            className="inline-block h-[6px] w-[6px] rounded-full"
+            style={{ background: "oklch(60% 0.18 22)", boxShadow: "0 0 8px oklch(60% 0.18 22 / 0.6)" }}
+          />
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* ── Card 2 visual: a real TippingBar + miniature dial ─────────────────── */
+function VisualDial() {
+  return (
+    <div className="space-y-3 py-1 w-full">
+      {/* Miniature conviction dial — SVG with knob at 3.2x NO side */}
+      <div className="relative mx-auto" style={{ maxWidth: 280 }}>
+        <svg viewBox="0 0 280 56" width="100%" height="56" className="block" aria-hidden>
+          {/* Track */}
+          <rect x="0" y="20" width="280" height="12" rx="6" fill="oklch(22% 0.140 268)" stroke="oklch(34% 0.130 268)" strokeWidth="0.75" />
+          {/* Inactive hint tints */}
+          <rect x="0" y="20" width="140" height="12" rx="6" fill="oklch(58% 0.16 152)" opacity="0.10" />
+          <rect x="140" y="20" width="140" height="12" rx="6" fill="oklch(60% 0.18 22)" opacity="0.10" />
+          {/* NO-side fill from centre to knob */}
+          <defs>
+            <linearGradient id="primer-no-fill" x1="0" x2="1">
+              <stop offset="0%" stopColor="oklch(40% 0.13 22)" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="oklch(60% 0.18 22)" />
+            </linearGradient>
+          </defs>
+          <rect x="140" y="20" width="62" height="12" rx="6" fill="url(#primer-no-fill)" />
+          {/* Centre tick */}
+          <line x1="140" x2="140" y1="16" y2="36" stroke="oklch(34% 0.130 268)" strokeWidth="0.75" />
+          {/* Knob — squircle shape via rounded rect */}
+          <g transform="translate(202 26)">
+            <rect x="-16" y="-16" width="32" height="32" rx="10"
+              fill="oklch(28% 0.110 268)" stroke="oklch(60% 0.18 22)" strokeWidth="1.5" />
+            <text x="0" y="2" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontWeight="700" fontSize="10" fill="oklch(96% 0.005 240)">3.2x</text>
+            <text x="0" y="11" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontWeight="500" fontSize="6" fill="oklch(80% 0.16 22)" letterSpacing="0.12em">NO</text>
+          </g>
+          {/* Side labels */}
+          <text x="12" y="50" fontFamily="JetBrains Mono, monospace" fontWeight="600" fontSize="8" fill="oklch(70% 0.12 152)" letterSpacing="0.08em">YES</text>
+          <text x="255" y="50" fontFamily="JetBrains Mono, monospace" fontWeight="600" fontSize="8" fill="oklch(70% 0.14 22)" letterSpacing="0.08em">NO</text>
+        </svg>
+      </div>
+      {/* Annotation labels */}
+      <div className="flex items-center justify-between px-2 font-mono text-[9px] tracking-[0.12em] uppercase text-text-subtle">
+        <span>1x min</span>
+        <span style={{ color: "var(--gilt)" }}>drag to commit</span>
+        <span>5x max</span>
+      </div>
+    </div>
+  );
+}
+
+/* ── Card 3 visual: real TippingBar showing the pool split ─────────────── */
+function VisualPools() {
+  return (
+    <div className="space-y-4 py-1 w-full">
+      {/* Real TippingBar component — 62% YES / 38% NO */}
+      <div className="px-1">
+        <TippingBar yesPct={62} height={24} recastOnHover={false} />
+      </div>
+      {/* Payout flow annotation */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-1">
+        <div className="rounded-lg border border-yes-700/40 bg-yes-500/8 px-3 py-2 text-center">
+          <p className="font-mono text-[8px] uppercase tracking-[0.14em] font-bold" style={{ color: "oklch(70% 0.12 152)" }}>YES pool</p>
+          <p className="font-display text-[15px] font-bold text-text">TZS 12k</p>
+        </div>
+        <div className="flex flex-col items-center gap-0.5">
+          <span className="inline-block h-[2px] w-5 rounded-pill" style={{ background: "var(--gilt)" }} />
+          <span className="font-mono text-[7px] uppercase tracking-[0.14em]" style={{ color: "var(--gilt)" }}>share</span>
+          <span className="inline-block h-[2px] w-5 rounded-pill" style={{ background: "var(--gilt)" }} />
+        </div>
+        <div className="rounded-lg border border-no-700/40 bg-no-500/8 px-3 py-2 text-center">
+          <p className="font-mono text-[8px] uppercase tracking-[0.14em] font-bold" style={{ color: "oklch(70% 0.14 22)" }}>NO pool</p>
+          <p className="font-display text-[15px] font-bold text-text">TZS 18k</p>
+        </div>
+      </div>
+      <p className="text-center font-mono text-[8px] uppercase tracking-[0.14em] text-text-subtle">
+        losers fund winners &middot; 9% operator margin
+      </p>
+    </div>
+  );
+}
 
 const CARDS: Card[] = [
   {
@@ -43,22 +148,10 @@ const CARDS: Card[] = [
       sw: "Tabiri matukio. Si bahati.",
     },
     body: {
-      en:
-        "50pick is a price-competition market. Every question is a real-world event with a YES or NO answer — like \"will the masika rains start before 15 April?\" — settled against an official public source.",
-      sw:
-        "50pick ni soko la ushindani wa bei. Kila swali ni tukio halisi lenye jibu la NDIO au HAPANA — kama \"Je, mvua za masika zitaanza kabla ya 15 Aprili?\" — linatatuliwa kupitia chanzo rasmi cha umma.",
+      en: "Every question is a real-world event with a YES or NO answer — settled against an official public source. No dice, no slots. Just conviction.",
+      sw: "Kila swali ni tukio halisi lenye jibu la NDIO au HAPANA — linatatuliwa kupitia chanzo rasmi cha umma. Hakuna kete. Imani tu.",
     },
-    visual: (
-      <svg viewBox="0 0 200 120" width="200" height="120" aria-hidden>
-        {/* Question mark glyph with two paths to YES + NO */}
-        <circle cx="100" cy="44" r="30" fill="oklch(22% 0.140 268)" stroke="oklch(38% 0.18 268)" strokeWidth="1.5" />
-        <text x="100" y="54" textAnchor="middle" fontFamily="Sora" fontWeight="700" fontSize="32" fill="oklch(86% 0.13 82)">?</text>
-        <path d="M70 82 Q 50 110 30 108" stroke="oklch(58% 0.16 152)" strokeWidth="2" fill="none" />
-        <path d="M130 82 Q 150 110 170 108" stroke="oklch(60% 0.18 22)" strokeWidth="2" fill="none" />
-        <text x="22" y="118" fontFamily="JetBrains Mono" fontWeight="600" fontSize="9" fill="oklch(80% 0.14 152)">YES</text>
-        <text x="160" y="118" fontFamily="JetBrains Mono" fontWeight="600" fontSize="9" fill="oklch(80% 0.16 22)">NO</text>
-      </svg>
-    ),
+    visual: <VisualWhatIs />,
   },
   {
     eyebrow: { en: "how you bet", sw: "jinsi ya kuweka dau" },
@@ -67,33 +160,10 @@ const CARDS: Card[] = [
       sw: "Sogeza dial. Imani = dau.",
     },
     body: {
-      en:
-        "One gesture sets both your side AND your stake. Drag toward YES (left) or NO (right). The further from centre, the higher your conviction multiplier (1×–5×) and the bigger the stake.",
-      sw:
-        "Mguso mmoja huweka upande wako na dau lako. Sogeza kuelekea NDIO (kushoto) au HAPANA (kulia). Kadri unavyosogea mbali na katikati, ndivyo kiwango chako kinaongezeka (1×–5×).",
+      en: "One gesture sets both your side and your stake. Drag toward YES or NO — the further from centre, the higher your conviction multiplier (1x to 5x).",
+      sw: "Mguso mmoja huweka upande wako na dau lako. Sogeza kuelekea NDIO au HAPANA — kadri unavyosogea mbali, ndivyo kiwango chako kinaongezeka.",
     },
-    visual: (
-      <svg viewBox="0 0 200 120" width="200" height="120" aria-hidden>
-        {/* A miniature dial — track + knob with side fills */}
-        <rect x="20" y="55" width="160" height="10" rx="5" fill="oklch(22% 0.140 268)" stroke="oklch(34% 0.130 268)" />
-        {/* Inactive hint tints */}
-        <rect x="20" y="55" width="80" height="10" rx="5" fill="oklch(58% 0.16 152)" opacity="0.10" />
-        <rect x="100" y="55" width="80" height="10" rx="5" fill="oklch(60% 0.18 22)" opacity="0.10" />
-        {/* NO-side fill */}
-        <rect x="100" y="55" width="48" height="10" rx="5" fill="url(#prim-no)" />
-        <defs>
-          <linearGradient id="prim-no" x1="0" x2="1">
-            <stop offset="0%" stopColor="oklch(40% 0.13 22)" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="oklch(60% 0.18 22)" />
-          </linearGradient>
-        </defs>
-        {/* Knob */}
-        <circle cx="148" cy="60" r="14" fill="oklch(28% 0.110 268)" stroke="oklch(60% 0.18 22)" strokeWidth="2" />
-        <text x="148" y="63" textAnchor="middle" fontFamily="JetBrains Mono" fontWeight="700" fontSize="10" fill="oklch(96% 0.005 240)">2.4×</text>
-        <text x="22" y="100" fontFamily="JetBrains Mono" fontWeight="600" fontSize="9" fill="oklch(76% 0.13 152)">YES</text>
-        <text x="167" y="100" fontFamily="JetBrains Mono" fontWeight="600" fontSize="9" fill="oklch(78% 0.16 22)">NO</text>
-      </svg>
-    ),
+    visual: <VisualDial />,
   },
   {
     eyebrow: { en: "how payouts work", sw: "jinsi malipo yanavyofanya kazi" },
@@ -102,32 +172,10 @@ const CARDS: Card[] = [
       sw: "Washindi wanagawana bwawa la wapotezao.",
     },
     body: {
-      en:
-        "There is no fixed odds. The losing side's pool (minus a 9 % operator margin) is split among winners by the size of their stake. Because the math is shared — when one side grows, the other side's potential payout grows too.",
-      sw:
-        "Hakuna odds zilizowekwa. Bwawa la upande uliopoteza (kasoro asilimia 9 ya mtumiaji) linagawanywa kati ya washindi kulingana na ukubwa wa dau. Wakati upande mmoja unakua, malipo ya upande mwingine yanaongezeka pia.",
+      en: "No fixed odds. The losing side's pool (minus 9% margin) is split among winners by the size of their stake. When one side grows, the other's potential payout grows too.",
+      sw: "Hakuna odds. Bwawa la upande uliopoteza linagawanywa kati ya washindi kulingana na dau. Upande mmoja ukikua, malipo ya upande mwingine yanaongezeka.",
     },
-    visual: (
-      <svg viewBox="0 0 200 120" width="200" height="120" aria-hidden>
-        {/* Two stacked pools with arrows showing flow */}
-        <rect x="22" y="22" width="70" height="36" rx="6" fill="oklch(40% 0.10 152 / 0.25)" stroke="oklch(45% 0.13 152)" />
-        <text x="57" y="38" textAnchor="middle" fontFamily="JetBrains Mono" fontSize="9" fontWeight="700" fill="oklch(78% 0.13 152)">YES POOL</text>
-        <text x="57" y="51" textAnchor="middle" fontFamily="Sora" fontSize="12" fontWeight="700" fill="oklch(96% 0.005 268)">TZS 12k</text>
-
-        <rect x="108" y="22" width="70" height="36" rx="6" fill="oklch(40% 0.13 22 / 0.25)" stroke="oklch(48% 0.15 22)" />
-        <text x="143" y="38" textAnchor="middle" fontFamily="JetBrains Mono" fontSize="9" fontWeight="700" fill="oklch(78% 0.16 22)">NO POOL</text>
-        <text x="143" y="51" textAnchor="middle" fontFamily="Sora" fontSize="12" fontWeight="700" fill="oklch(96% 0.005 268)">TZS 18k</text>
-
-        {/* Arrows from loser pool to winner pool */}
-        <path d="M108 78 L 92 88" stroke="oklch(86% 0.13 82)" strokeWidth="1.5" fill="none" markerEnd="url(#arr)" />
-        <defs>
-          <marker id="arr" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-            <path d="M 0 0 L 6 3 L 0 6 Z" fill="oklch(86% 0.13 82)" />
-          </marker>
-        </defs>
-        <text x="100" y="105" textAnchor="middle" fontFamily="JetBrains Mono" fontSize="9" fill="oklch(86% 0.13 82)">share of pool</text>
-      </svg>
-    ),
+    visual: <VisualPools />,
   },
 ];
 
@@ -136,7 +184,7 @@ function readLang(): "en" | "sw" {
   const m = document.cookie.match(/(?:^|; )kp-locale=([^;]*)/);
   if (!m) return "en";
   const v = decodeURIComponent(m[1]);
-  return v === "sw" ? "sw" : "en"; // FR falls through to EN copy (not yet translated for this primer)
+  return v === "sw" ? "sw" : "en";
 }
 
 export function FirstVisitPrimer() {
@@ -148,20 +196,15 @@ export function FirstVisitPrimer() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (HIDE_ON.test(pathname ?? "/")) return;
-    // Headless-browser bypass: don't show the primer during automated
-    // visual / e2e runs. The overlay intercepts pointer events and
-    // breaks any hover-based test. Real Chrome / Firefox / Safari
-    // never set "HeadlessChrome" in their UA.
     if (/HeadlessChrome|Playwright/i.test(navigator.userAgent)) return;
     try {
       const seen = window.localStorage.getItem(STORAGE_KEY);
       if (seen === "1") return;
       setLang(readLang());
-      // Small delay so the page paints before the primer overlays.
       const t = window.setTimeout(() => setOpen(true), 700);
       return () => window.clearTimeout(t);
     } catch {
-      /* private browsing — just don't show */
+      /* private browsing */
     }
   }, [pathname]);
 
@@ -210,21 +253,42 @@ export function FirstVisitPrimer() {
         type="button"
         aria-label="Skip primer"
         onClick={dismiss}
-        className="absolute inset-0 bg-black/55 backdrop-blur-sm"
-        style={{ animation: "fvp-fade 180ms ease-out" }}
+        className="absolute inset-0 bg-black/60 backdrop-blur-md"
+        style={{ animation: "fvp-fade 200ms ease-out" }}
       />
 
       <div
-        className="relative w-full sm:max-w-[440px] rounded-t-2xl sm:rounded-2xl border border-border bg-bg-elevated overflow-hidden shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)]"
-        style={{ animation: "fvp-rise 320ms var(--ease-arrive)" }}
+        className="relative w-full sm:max-w-[460px] rounded-t-2xl sm:rounded-2xl border border-border bg-bg-elevated overflow-hidden shadow-[0_32px_80px_-20px_rgba(0,0,0,0.7)]"
+        style={{ animation: "fvp-rise 360ms var(--ease-arrive)" }}
       >
-        {/* Step strip — three small gilt-dotted segments */}
-        <div className="flex items-center gap-1 px-5 pt-4">
+        {/* Gilt corners — heraldic framing from the brand kit */}
+        <div className="pointer-events-none absolute top-0 left-0" aria-hidden>
+          <GiltCorner size={40} rotate={0} />
+        </div>
+        <div className="pointer-events-none absolute top-0 right-0" aria-hidden>
+          <GiltCorner size={40} rotate={90} />
+        </div>
+
+        {/* Gold progress strip at top */}
+        <div className="absolute inset-x-0 top-0 h-[2px]" aria-hidden>
+          <div
+            className="h-full transition-all duration-500"
+            style={{
+              width: `${((step + 1) / CARDS.length) * 100}%`,
+              background: "linear-gradient(90deg, var(--gold-500), var(--gold-300))",
+            }}
+          />
+        </div>
+
+        {/* Step indicators + close */}
+        <div className="flex items-center gap-1.5 px-5 pt-5">
           {CARDS.map((_, i) => (
-            <span
+            <button
               key={i}
-              aria-hidden
-              className="h-[3px] flex-1 rounded-pill transition-colors duration-300"
+              type="button"
+              onClick={() => setStep(i)}
+              aria-label={`Step ${i + 1}`}
+              className="h-[3px] flex-1 rounded-pill transition-all duration-300 hover:opacity-80"
               style={{
                 background:
                   i < step
@@ -232,65 +296,84 @@ export function FirstVisitPrimer() {
                     : i === step
                       ? "var(--gold-300)"
                       : "oklch(34% 0.130 268)",
+                boxShadow: i === step ? "0 0 8px oklch(78% 0.13 80 / 0.4)" : "none",
               }}
             />
           ))}
           <button
             type="button"
             onClick={dismiss}
-            aria-label="Skip · Ruka"
+            aria-label="Skip"
             className="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
           >
             <X size={14} />
           </button>
         </div>
 
-        <div className="px-5 pt-3 pb-5">
-          <div className="flex justify-center py-4">{c.visual}</div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-gold-300">
+        <div className="px-5 pt-4 pb-6 sm:px-6">
+          {/* Visual — full-width, kit-faithful */}
+          <div
+            className="flex items-center justify-center rounded-xl border border-border/60 bg-bg-overlay/40 px-4 py-5"
+            style={{ minHeight: 120 }}
+          >
+            {c.visual}
+          </div>
+
+          {/* Eyebrow */}
+          <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-gold-300">
             {c.eyebrow[lang]}
           </p>
-          <h2 className="mt-1 font-display text-[20px] font-bold text-text leading-tight tracking-[-0.018em]">
+
+          {/* Title */}
+          <h2 className="mt-1.5 font-display text-[22px] sm:text-[24px] font-bold text-text leading-tight tracking-[-0.02em]">
             {c.title[lang]}
           </h2>
-          <p className="mt-2 text-[13px] text-text-muted leading-relaxed">
+
+          {/* Body */}
+          <p className="mt-2.5 text-[13.5px] text-text-muted leading-relaxed">
             {c.body[lang]}
           </p>
 
+          {/* Navigation */}
           <div className="mt-6 flex items-center justify-between gap-3">
             <button
               type="button"
               onClick={back}
               disabled={step === 0}
-              className="btn btn-ghost btn-sm disabled:opacity-30 disabled:cursor-not-allowed"
-              style={{ borderRadius: 999, minWidth: 80 }}
+              className="btn btn-ghost btn-md disabled:opacity-0 disabled:pointer-events-none"
+              style={{ borderRadius: 999, minWidth: 88 }}
             >
               {lang === "sw" ? "Rudi" : "Back"}
             </button>
-            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
-              {step + 1} / {CARDS.length}
-            </p>
+            <div className="flex items-center gap-1.5">
+              {CARDS.map((_, i) => (
+                <span
+                  key={i}
+                  className="inline-block h-[5px] w-[5px] rounded-full transition-all duration-300"
+                  style={{
+                    background: i === step ? "var(--gold-300)" : "oklch(34% 0.130 268)",
+                    transform: i === step ? "scale(1.4)" : "scale(1)",
+                  }}
+                />
+              ))}
+            </div>
             <button
               type="button"
               onClick={next}
-              className="btn btn-gold btn-sm inline-flex items-center gap-1.5"
-              style={{ borderRadius: 999, minWidth: 80 }}
+              className="btn btn-gold btn-md inline-flex items-center gap-1.5"
+              style={{ borderRadius: 999, minWidth: 88 }}
             >
               {step === CARDS.length - 1
-                ? lang === "sw"
-                  ? "Sawa"
-                  : "Got it"
-                : lang === "sw"
-                  ? "Endelea"
-                  : "Next"}
-              <ChevronRight size={14} aria-hidden />
+                ? lang === "sw" ? "Sawa" : "Got it"
+                : lang === "sw" ? "Endelea" : "Next"}
+              {step < CARDS.length - 1 && <ChevronRight size={14} aria-hidden />}
             </button>
           </div>
         </div>
 
         <style>{`
           @keyframes fvp-fade { from { opacity: 0; } to { opacity: 1; } }
-          @keyframes fvp-rise { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+          @keyframes fvp-rise { from { transform: translateY(24px) scale(0.97); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
           @media (prefers-reduced-motion: reduce) {
             @keyframes fvp-fade { from, to { opacity: 1; } }
             @keyframes fvp-rise { from, to { opacity: 1; transform: none; } }

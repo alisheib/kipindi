@@ -185,16 +185,10 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
         <div
           className={cn("h-full origin-left", v.bar)}
           style={{
-            animation: `kp-toast-progress ${toast.durationMs}ms linear forwards`,
+            animation: `toast-bar ${toast.durationMs}ms linear forwards`,
           }}
         />
       </div>
-      <style jsx>{`
-        @keyframes kp-toast-progress {
-          from { transform: scaleX(1); }
-          to   { transform: scaleX(0); }
-        }
-      `}</style>
     </div>
   );
 }

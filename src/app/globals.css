@@ -1030,6 +1030,10 @@ body {
 }
 .tooltip:hover .tooltip-popover { transform: translateX(-50%) translateY(0); opacity: 1; }
 
+/* ---------- Slide-up entrance (share popover, mobile nav) ---------- */
+.kp-slide-up { animation: kp-slide-up var(--dur-arrive) var(--ease-arrive) both; }
+@keyframes kp-slide-up { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
 /* ---------- Reduced-motion respect ---------- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

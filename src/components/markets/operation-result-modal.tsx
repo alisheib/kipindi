@@ -131,9 +131,11 @@ export function OperationResultModal({
 
   // Anchor / release the close target as `open` toggles. Separate
   // from the tick effect so closeMs prop changes can't reset the
-  // anchor mid-cycle.
+  // anchor mid-cycle. Also reset the strip transform eagerly so
+  // reopening never flashes the empty bar from the previous cycle.
   useEffect(() => {
     if (open && variant === "success") {
+      if (stripRef.current) stripRef.current.style.transform = "scaleX(1)";
       if (closeTargetRef.current === null) {
         closeTargetRef.current = performance.now() + closeMs;
       }

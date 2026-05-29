@@ -63,7 +63,7 @@ export function LanguageToggle() {
           ref={menuRef}
           role="menu"
           aria-label="Language"
-          className="fixed left-3 right-3 top-[calc(env(safe-area-inset-top)+72px)] sm:left-auto sm:right-4 sm:top-[64px] sm:min-w-[180px] sm:max-w-[calc(100vw-24px)] rounded-xl border border-border bg-bg-elevated overflow-hidden z-[61] shadow-[0_18px_42px_-14px_rgba(0,0,0,0.55)]"
+          className="fixed left-3 right-3 top-[calc(env(safe-area-inset-top)+72px)] sm:left-auto sm:right-4 sm:top-[64px] sm:min-w-[180px] sm:max-w-[calc(100vw-24px)] rounded-xl border border-border bg-bg-elevated z-[61] shadow-[0_18px_42px_-14px_rgba(0,0,0,0.55)]"
         >
           {LANGS.map((l) => {
             const active = l.value === locale;

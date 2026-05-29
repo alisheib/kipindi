@@ -151,11 +151,17 @@ export default function AdminCandidatesPage() {
                       <td className="p-3 font-mono uppercase tracking-[0.12em] text-[10px]">{c.category}</td>
                       <td className="p-3 text-text max-w-[420px] truncate">{c.proposedTitleEn}</td>
                       <td className="p-3 font-mono tabular-nums text-right">
-                        <span style={{
-                          color: c.confidence >= 85 ? "var(--success)"
-                            : c.confidence >= 75 ? "var(--warning-fg)"
-                            : "var(--text-tertiary)",
-                        }}>{c.confidence}</span>
+                        <span
+                          style={{
+                            color: c.confidence >= 85 ? "var(--success)"
+                              : c.confidence >= 75 ? "var(--warning-fg)"
+                              : "var(--text-tertiary)",
+                          }}
+                          aria-label={`Confidence ${c.confidence}% — ${c.confidence >= 85 ? "high" : c.confidence >= 75 ? "medium" : "low"}`}
+                        >
+                          {c.confidence}
+                          <span className="sr-only"> — {c.confidence >= 85 ? "high" : c.confidence >= 75 ? "medium" : "low"}</span>
+                        </span>
                       </td>
                       <td className="p-3 font-mono tabular-nums text-right">{c.sources.length}</td>
                       <td className="p-3 font-mono text-[11px]">{fmtDate(c.resolutionAt)}</td>

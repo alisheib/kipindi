@@ -56,13 +56,13 @@ export function NewMarketWizard() {
       {step === 0 && (
         <Section title="Question" sw="Swali">
           <Field label="Title (EN)" hint="≥10 chars. Phrase it so YES/NO answers are unambiguous.">
-            <input value={titleEn} onChange={(e) => setTitleEn(e.target.value)} className={inputCls} placeholder="Will the TZS strengthen against the USD by month-end?" />
+            <input value={titleEn} onChange={(e) => setTitleEn(e.target.value)} disabled={pending} className={inputCls} placeholder="Will the TZS strengthen against the USD by month-end?" />
           </Field>
           <Field label="Title (SW)" hint="Optional Swahili translation.">
-            <input value={titleSw} onChange={(e) => setTitleSw(e.target.value)} className={inputCls} placeholder="Je, TZS itaimarika dhidi ya USD?" />
+            <input value={titleSw} onChange={(e) => setTitleSw(e.target.value)} disabled={pending} className={inputCls} placeholder="Je, TZS itaimarika dhidi ya USD?" />
           </Field>
           <Field label="Category">
-            <select value={category} onChange={(e) => setCategory(e.target.value as typeof CATEGORIES[number])} className={inputCls}>
+            <select value={category} onChange={(e) => setCategory(e.target.value as typeof CATEGORIES[number])} disabled={pending} className={inputCls}>
               {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </Field>
@@ -72,10 +72,10 @@ export function NewMarketWizard() {
       {step === 1 && (
         <Section title="Resolution source" sw="Chanzo cha utatuzi">
           <Field label="Public source URL" hint="Officers + players resolve against this URL. Must be reachable and authoritative.">
-            <input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} className={inputCls} placeholder="https://www.bot.go.tz/exchangerates" />
+            <input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} disabled={pending} className={inputCls} placeholder="https://www.bot.go.tz/exchangerates" />
           </Field>
           <Field label="Resolution timestamp" hint="When stage-1 officer can begin reviewing.">
-            <input type="datetime-local" value={resolutionAt} onChange={(e) => setResolutionAt(e.target.value)} className={inputCls} />
+            <input type="datetime-local" value={resolutionAt} onChange={(e) => setResolutionAt(e.target.value)} disabled={pending} className={inputCls} />
           </Field>
         </Section>
       )}
@@ -83,7 +83,7 @@ export function NewMarketWizard() {
       {step === 2 && (
         <Section title="Resolution criterion" sw="Kigezo cha utatuzi">
           <Field label="Written criterion" hint="≥30 chars. Be precise — this is the legal text resolvers and players will rely on.">
-            <textarea value={criterion} onChange={(e) => setCriterion(e.target.value)} rows={6} className={`${inputCls} resize-none`} placeholder="Resolves YES if the BoT mid-rate on the last business day…" />
+            <textarea value={criterion} onChange={(e) => setCriterion(e.target.value)} disabled={pending} rows={6} className={`${inputCls} resize-none`} placeholder="Resolves YES if the BoT mid-rate on the last business day…" />
           </Field>
         </Section>
       )}
@@ -134,7 +134,7 @@ export function NewMarketWizard() {
   );
 }
 
-const inputCls = "w-full h-11 px-3 rounded-md border border-border bg-bg-overlay font-sans text-text outline-none focus:border-teal-300 transition-colors";
+const inputCls = "w-full h-11 px-3 rounded-md border border-border bg-bg-overlay font-sans text-text outline-none focus:border-teal-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
 
 function Section({ title, sw, children }: { title: string; sw: string; children: React.ReactNode }) {
   return (

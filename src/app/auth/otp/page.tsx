@@ -5,11 +5,18 @@ import { verifyLoginOtpAction } from "../login/actions";
 
 export const metadata = { title: "Enter code · Weka msimbo" };
 
-export default async function OtpPage({ searchParams }: { searchParams: Promise<{ purpose?: string; phone?: string }> }) {
+export default async function OtpPage({ searchParams }: { searchParams: Promise<{ purpose?: string; phone?: string; error?: string }> }) {
   const sp = await searchParams;
   const purpose = (sp.purpose ?? "login") as "login" | "register" | "withdraw" | "reauth" | "self_exclusion";
   const phone = sp.phone ?? "";
+  const error = sp.error ?? "";
   const masked = phone ? phone.slice(0, 4) + "*****" + phone.slice(-2) : "+255*****";
+  const errorMsg: Record<string, string> = {
+    wrong_code: "Wrong code — try again. · Msimbo si sahihi.",
+    expired: "Code expired — request a new one. · Msimbo umeisha muda.",
+    too_many: "Too many attempts — wait a moment. · Majaribio mengi sana.",
+    rate_limited: "Rate limited — try again shortly. · Subiri kidogo.",
+  };
 
   return (
     <main className="relative min-h-[calc(100vh-44px)] grid place-items-center overflow-hidden px-3 py-8">
@@ -35,6 +42,12 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
               <span className="italic text-text-subtle">Imetumwa.</span>
             </p>
           </div>
+
+          {error && (
+            <div role="alert" className="rounded-md border border-no-700 bg-no-500/10 px-3 py-2.5 text-[13px] text-no-300">
+              {errorMsg[error] ?? error}
+            </div>
+          )}
 
           <form action={verifyLoginOtpAction} className="space-y-3">
             <input type="hidden" name="phone" value={phone} />
