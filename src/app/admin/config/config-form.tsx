@@ -33,6 +33,8 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
 
   const taxPct = (config.taxRate * 100).toFixed(1);
   const commPct = (config.commissionRate * 100).toFixed(1);
+  const resPct = (config.reserveRate * 100).toFixed(1);
+  const aggPct = (config.aggregatorRate * 100).toFixed(1);
 
   return (
     <form onSubmit={onSubmit} className="space-y-3">
@@ -48,6 +50,18 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
           hint={`Current ${commPct}%. 50pick operator margin.`}
         >
           <Input name="commissionRate" type="number" step="0.1" min="0" max="20" defaultValue={commPct} mono />
+        </Field>
+        <Field
+          label="Reserve rate (%)"
+          hint={`Current ${resPct}%. Replenishes the house liquidity pool.`}
+        >
+          <Input name="reserveRate" type="number" step="0.1" min="0" max="10" defaultValue={resPct} mono />
+        </Field>
+        <Field
+          label="Aggregator rate (%)"
+          hint={`Current ${aggPct}%. Covers payment aggregator fees (Selcom/Pesapal).`}
+        >
+          <Input name="aggregatorRate" type="number" step="0.1" min="0" max="10" defaultValue={aggPct} mono />
         </Field>
         <Field label="Min stake (TZS)" hint={`Current ${config.minStake.toLocaleString()}`}>
           <Input name="minStake" type="number" step="100" min="100" defaultValue={config.minStake} mono />
@@ -80,8 +94,8 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
         <Button type="submit" variant="yes" loading={pending}>
           Save · Hifadhi
         </Button>
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
-          Combined tax + commission must stay ≤ 30%
+        <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">
+          Combined tax + commission + reserve + aggregator must stay ≤ 30%
         </p>
       </div>
     </form>

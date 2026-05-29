@@ -16,12 +16,14 @@
  * Under heavy lean (winning side dominates), payout/stake can drop below 1.0 —
  * that's the `negative` lean state surfaced by HouseLeanWarning.
  *
- * Default fee = 0.04 tax + 0.05 commission = 0.09 (9%). Matches the kit spec
- * and the server's DEFAULT_GLOBAL_CONFIG.
+ * Default fee = 0.04 tax + 0.03 commission + 0.02 reserve + 0.00 aggregator
+ * = 0.09 (9%). Matches the server's DEFAULT_GLOBAL_CONFIG.
  */
 
 export const DEFAULT_TAX_RATE = 0.04;
-export const DEFAULT_COMMISSION_RATE = 0.05;
+export const DEFAULT_COMMISSION_RATE = 0.03;
+export const DEFAULT_RESERVE_RATE = 0.02;
+export const DEFAULT_AGGREGATOR_RATE = 0.00;
 export const THIN_PROFIT_RATIO = 1.05;
 
 export type Side = "YES" | "NO";
@@ -34,6 +36,8 @@ export interface PayoutInput {
   noPool: number;
   taxRate?: number;
   commissionRate?: number;
+  reserveRate?: number;
+  aggregatorRate?: number;
 }
 
 export interface PayoutResult {
@@ -51,11 +55,13 @@ export interface PayoutResult {
 export function payoutFor(input: PayoutInput): PayoutResult {
   const tax = input.taxRate ?? DEFAULT_TAX_RATE;
   const commission = input.commissionRate ?? DEFAULT_COMMISSION_RATE;
+  const reserve = input.reserveRate ?? DEFAULT_RESERVE_RATE;
+  const aggregator = input.aggregatorRate ?? DEFAULT_AGGREGATOR_RATE;
   const yesPool = input.side === "YES" ? input.yesPool + input.stake : input.yesPool;
   const noPool = input.side === "NO" ? input.noPool + input.stake : input.noPool;
   const grossPool = yesPool + noPool;
   const winningPool = input.side === "YES" ? yesPool : noPool;
-  const fee = Math.min(0.99, Math.max(0, tax + commission));
+  const fee = Math.min(0.99, Math.max(0, tax + commission + reserve + aggregator));
   const netPool = grossPool * (1 - fee);
   if (winningPool <= 0 || input.stake <= 0) return { payout: 0, net: 0, share: 0, ratio: 0 };
   const share = input.stake / winningPool;

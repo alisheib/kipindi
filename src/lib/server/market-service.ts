@@ -23,6 +23,7 @@ import { rateCheck } from "./rate-limit";
 import { getEffectiveConfig, payoutForWhole, settledPayoutWhole } from "./market-config";
 import { recordSnapshot, seedHistory } from "./market-history";
 import { notifyBetPlaced, notifyWin, notifyLoss } from "./notification-service";
+import { seedMarket, settleHousePosition, canSeedNewMarket, getHousePoolSeedForMarket } from "./house-pool";
 import type { ServiceResult } from "./auth-service";
 
 /** @deprecated Kept for backwards compat — use getEffectiveConfig instead. */
@@ -142,8 +143,14 @@ export type CreateMarketInput = {
 
 export function createMarket(input: CreateMarketInput): StoredMarket {
   const now = new Date().toISOString();
+  const id = `mkt_${randomId(10)}`;
+
+  // Seed house liquidity — equal on both sides. Returns 0 if reserve
+  // is empty or seeding is disabled (seedPerSide = 0).
+  const houseSeed = seedMarket(id);
+
   const m: StoredMarket = {
-    id: `mkt_${randomId(10)}`,
+    id,
     titleEn: input.titleEn,
     titleSw: input.titleSw,
     category: input.category,
@@ -151,8 +158,8 @@ export function createMarket(input: CreateMarketInput): StoredMarket {
     resolutionCriterion: input.resolutionCriterion,
     resolutionAt: input.resolutionAt,
     status: "LIVE",
-    yesPool: 0,
-    noPool: 0,
+    yesPool: houseSeed,
+    noPool: houseSeed,
     predictorCount: 0,
     resolvedOutcome: null,
     resolutionStage1By: null, resolutionStage1At: null,
@@ -169,7 +176,7 @@ export function createMarket(input: CreateMarketInput): StoredMarket {
     actorId: input.proposedBy,
     targetType: "Market",
     targetId: m.id,
-    payload: { titleEn: m.titleEn, category: m.category, sourceUrl: m.sourceUrl, resolutionAt: m.resolutionAt },
+    payload: { titleEn: m.titleEn, category: m.category, sourceUrl: m.sourceUrl, resolutionAt: m.resolutionAt, houseSeedPerSide: houseSeed },
   });
   return m;
 }
@@ -342,6 +349,12 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
 
     let winnersPaid = 0;
     const settleCfg = getEffectiveConfig(m.id);
+
+    // Settle house virtual position for this demo market
+    const demoHouseSettle = settleHousePosition(
+      m.id, outcome, m.yesPool + m.noPool, settleCfg.reserveRate,
+    );
+
     const winningPool = outcome === "YES" ? m.yesPool : m.noPool;
     const myPositions = listPositionsForMarket(m.id);
     for (const p of myPositions) {
@@ -388,6 +401,7 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
         payoutModel: "whole-pool",
         winningPool,
         winnersPaid,
+        housePool: { returnedToReserve: demoHouseSettle.returnedToReserve, reserveFee: demoHouseSettle.reserveFee, lossAbsorbed: demoHouseSettle.lossAbsorbed },
         reason: "Demo market countdown elapsed; no human officer required for synthetic markets",
       },
     });
@@ -475,7 +489,7 @@ export function cashOutValue(
   const winningPool = position.side === "YES" ? market.yesPool : market.noPool;
   if (winningPool <= 0) return { value: 0, ratio: 0 };
   const grossPool = market.yesPool + market.noPool;
-  const fee = Math.min(0.99, Math.max(0, cfg.taxRate + cfg.commissionRate));
+  const fee = Math.min(0.99, Math.max(0, cfg.taxRate + cfg.commissionRate + cfg.reserveRate + cfg.aggregatorRate));
   const netPool = grossPool * (1 - fee);
   const wouldPay = (position.stake / winningPool) * netPool;
   const value = Math.round(wouldPay * (1 - CASHOUT_SLIPPAGE));
@@ -590,6 +604,18 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   recordSnapshot(m.id, m.yesPool, m.noPool);
 
   let winnersPaid = 0;
+  const settleCfg = getEffectiveConfig(m.id);
+  const grossPool = m.yesPool + m.noPool;
+  const winningPool = opts.outcome === "YES" ? m.yesPool : opts.outcome === "NO" ? m.noPool : 0;
+
+  // Settle the house's virtual position — runs for both VOID and real outcomes.
+  const houseSettle = settleHousePosition(
+    m.id,
+    opts.outcome === "VOID" ? "VOID" : opts.outcome,
+    grossPool,
+    settleCfg.reserveRate,
+  );
+
   const myPositions = listPositionsForMarket(m.id);
   if (opts.outcome === "VOID") {
     // Refund everyone
@@ -616,10 +642,8 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
     }
   } else {
     // Whole-pool pari-mutuel distribution.
-    //   netPool = (yesPool + noPool) × (1 - tax - commission)
+    //   netPool = grossPool × (1 - totalFee)
     //   payout  = (stake / winningSidePool) × netPool
-    const settleCfg = getEffectiveConfig(m.id);
-    const winningPool = opts.outcome === "YES" ? m.yesPool : m.noPool;
     for (const p of myPositions) {
       const w = db.wallet.findByUserId(p.userId);
       if (!w) continue;
@@ -666,10 +690,13 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
       payoutModel: "whole-pool",
       taxRate: settleCfg.taxRate,
       commissionRate: settleCfg.commissionRate,
+      reserveRate: settleCfg.reserveRate,
+      aggregatorRate: settleCfg.aggregatorRate,
       grossPool: m.yesPool + m.noPool,
-      netPool: Math.round((m.yesPool + m.noPool) * (1 - settleCfg.taxRate - settleCfg.commissionRate)),
+      netPool: Math.round((m.yesPool + m.noPool) * (1 - settleCfg.taxRate - settleCfg.commissionRate - settleCfg.reserveRate - settleCfg.aggregatorRate)),
       winningPool,
       winnersPaid,
+      housePool: { returnedToReserve: houseSettle.returnedToReserve, reserveFee: houseSettle.reserveFee, lossAbsorbed: houseSettle.lossAbsorbed },
       stage1By: m.resolutionStage1By, stage2By: m.resolutionStage2By,
       sourceUrl: m.sourceUrl,
     },

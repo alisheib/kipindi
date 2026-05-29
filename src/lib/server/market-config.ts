@@ -19,6 +19,12 @@ export type RateConfig = {
   taxRate: number;
   /** Operator commission (e.g. 0.05 = 5%). 50pick keeps this. */
   commissionRate: number;
+  /** House liquidity reserve rate (e.g. 0.02 = 2%). Replenishes the
+   *  house pool that seeds every market. Can be 0 to disable. */
+  reserveRate: number;
+  /** Payment aggregator rate (e.g. 0.01 = 1%). Covers Selcom/Pesapal/etc
+   *  transaction fees. Can be 0 pre-launch. */
+  aggregatorRate: number;
   /** Minimum stake in TZS. */
   minStake: number;
   /** Maximum stake in TZS. */
@@ -34,7 +40,9 @@ export type RateConfig = {
 
 export const DEFAULT_GLOBAL_CONFIG: RateConfig = {
   taxRate: 0.04,
-  commissionRate: 0.05,
+  commissionRate: 0.03,
+  reserveRate: 0.02,
+  aggregatorRate: 0.00, // 0% until aggregator contract is signed
   minStake: 100,
   maxStake: 1_000_000,
   thinProfitRatio: 1.05,
@@ -89,14 +97,23 @@ function validate(updates: Partial<RateConfig>): { ok: true } | { ok: false; rea
       return { ok: false, reason: "Commission rate must be 0–20%." };
     }
   }
-  if (updates.taxRate !== undefined && updates.commissionRate !== undefined) {
-    if (updates.taxRate + updates.commissionRate >= 0.30) {
-      return { ok: false, reason: "Combined tax + commission cannot exceed 30%." };
+  if (updates.reserveRate !== undefined) {
+    if (Number.isNaN(updates.reserveRate) || updates.reserveRate < 0 || updates.reserveRate > 0.10) {
+      return { ok: false, reason: "Reserve rate must be 0–10%." };
     }
-  } else {
+  }
+  if (updates.aggregatorRate !== undefined) {
+    if (Number.isNaN(updates.aggregatorRate) || updates.aggregatorRate < 0 || updates.aggregatorRate > 0.10) {
+      return { ok: false, reason: "Aggregator rate must be 0–10%." };
+    }
+  }
+  // Combined ceiling: tax + commission + reserve + aggregator < 30%
+  {
     const t = updates.taxRate ?? store.global.taxRate;
     const c = updates.commissionRate ?? store.global.commissionRate;
-    if (t + c >= 0.30) return { ok: false, reason: "Combined tax + commission cannot exceed 30%." };
+    const r = updates.reserveRate ?? store.global.reserveRate;
+    const a = updates.aggregatorRate ?? store.global.aggregatorRate;
+    if (t + c + r + a >= 0.30) return { ok: false, reason: "Combined fees (tax + commission + reserve + aggregator) cannot exceed 30%." };
   }
   if (updates.minStake !== undefined) {
     if (updates.minStake < 100 || !Number.isFinite(updates.minStake)) {
@@ -192,7 +209,7 @@ export function payoutForWhole(
   const noPool  = opts.side === "NO"  ? opts.noPool  + opts.stake : opts.noPool;
   const grossPool   = yesPool + noPool;
   const winningPool = opts.side === "YES" ? yesPool : noPool;
-  const fee = Math.min(0.99, Math.max(0, cfg.taxRate + cfg.commissionRate));
+  const fee = Math.min(0.99, Math.max(0, cfg.taxRate + cfg.commissionRate + cfg.reserveRate + cfg.aggregatorRate));
   const netPool = grossPool * (1 - fee);
   if (winningPool <= 0) return { payout: 0, net: 0, share: 0, ratio: 0 };
   const share = opts.stake / winningPool;
@@ -210,7 +227,7 @@ export function settledPayoutWhole(
   const grossPool   = opts.yesPool + opts.noPool;
   const winningPool = opts.side === "YES" ? opts.yesPool : opts.noPool;
   if (winningPool <= 0) return 0;
-  const fee = Math.min(0.99, Math.max(0, cfg.taxRate + cfg.commissionRate));
+  const fee = Math.min(0.99, Math.max(0, cfg.taxRate + cfg.commissionRate + cfg.reserveRate + cfg.aggregatorRate));
   const netPool = grossPool * (1 - fee);
   return Math.round((opts.stake / winningPool) * netPool);
 }

@@ -21,7 +21,7 @@ export default function AdminConfigPage() {
     (e) => e.action.startsWith("config."),
   ).slice(0, 12);
 
-  const totalFee = config.taxRate + config.commissionRate;
+  const totalFee = config.taxRate + config.commissionRate + config.reserveRate + config.aggregatorRate;
 
   return (
     <>
@@ -40,8 +40,8 @@ export default function AdminConfigPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <AdminKpi label="Tax rate"        sw="Kodi"        value={`${(config.taxRate * 100).toFixed(1)}%`} delta="TRA · Cap 332" />
           <AdminKpi label="Commission"      sw="Faida"       value={`${(config.commissionRate * 100).toFixed(1)}%`} delta="50pick" gold />
-          <AdminKpi label="Combined fee"    sw="Jumla"       value={`${(totalFee * 100).toFixed(1)}%`} delta="≤ 30% policy ceiling" />
-          <AdminKpi label="Market overrides" sw="Soko mahsusi" value={String(overrides.length)} delta="active" />
+          <AdminKpi label="Reserve"         sw="Akiba"       value={`${(config.reserveRate * 100).toFixed(1)}%`} delta="house pool" gold />
+          <AdminKpi label="Total fee"       sw="Jumla"       value={`${(totalFee * 100).toFixed(1)}%`} delta="≤ 30% ceiling" />
         </div>
 
         {/* Pari-mutuel formula */}
@@ -52,7 +52,7 @@ export default function AdminConfigPage() {
               <p className="text-text font-bold">Whole-pool distribution model</p>
               <p>
                 Every stake — YES and NO — joins one pool. At resolution we compute{" "}
-                <code className="font-mono text-gold-300">netPool = grossPool × (1 − tax − commission)</code>,
+                <code className="font-mono text-gold-300">netPool = grossPool × (1 − tax − commission − reserve − aggregator)</code>,
                 then pay each winner{" "}
                 <code className="font-mono text-gold-300">stake × (netPool / winningSidePool)</code>.
                 Payouts are dynamic and depend on how the pool ends up split.
