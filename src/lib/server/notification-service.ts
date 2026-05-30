@@ -179,6 +179,47 @@ export function notifyWithdraw(
   });
 }
 
+/* ---- Affiliate / referral emitters ---- */
+
+/** Referrer is told a friend joined with their link. */
+export function notifyReferralJoined(referrerUserId: string, opts: { recruitMasked: string }) {
+  return notify({
+    userId: referrerUserId,
+    kind: "AFFILIATE",
+    titleEn: "Your friend just joined",
+    titleSw: "Rafiki yako amejisajili",
+    bodyEn: `${opts.recruitMasked} signed up with your link.`,
+    bodySw: `${opts.recruitMasked} amejisajili kupitia kiungo chako.`,
+    href: "/profile/invite",
+  });
+}
+
+/** A reward (commission / prize / bonus) landed in someone's wallet. */
+export function notifyReferralReward(userId: string, opts: { type: "COMMISSION" | "PRIZE" | "BONUS"; amountTzs: number }) {
+  const amount = opts.amountTzs.toLocaleString();
+  const titleEn =
+    opts.type === "COMMISSION" ? `You earned TZS ${amount} from a referral`
+    : opts.type === "PRIZE"    ? `Milestone reward · TZS ${amount}`
+    :                            `Referral bonus · TZS ${amount}`;
+  const titleSw =
+    opts.type === "COMMISSION" ? `Umepata TZS ${amount} kutoka kwa rafiki`
+    : opts.type === "PRIZE"    ? `Zawadi ya hatua · TZS ${amount}`
+    :                            `Bonasi ya rafiki · TZS ${amount}`;
+  const bodyEn =
+    opts.type === "COMMISSION" ? "Commission from a friend's activity. Tap to view."
+    : opts.type === "PRIZE"    ? "A friend hit a milestone. Tap to view."
+    :                            "Credited to your wallet. Tap to view.";
+  return notify({
+    userId,
+    kind: "AFFILIATE",
+    titleEn,
+    titleSw,
+    bodyEn,
+    bodySw: "Imewekwa kwenye pochi yako. Bonyeza kuona.",
+    href: "/profile/invite",
+  });
+}
+
 export function notifyKyc(userId: string, status: "APPROVED" | "REJECTED" | "PENDING_REVIEW") {
   if (status === "APPROVED") {
     return notify({

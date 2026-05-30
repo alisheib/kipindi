@@ -276,9 +276,11 @@ export type PasswordRegisterInput = {
   acceptTerms: boolean;
   acceptAge: boolean;
   marketingOptIn?: boolean;
+  /** Affiliate referral code from a ?ref= link, if the user arrived via one. */
+  referralCode?: string;
 };
 
-export async function registerWithPassword(input: PasswordRegisterInput): Promise<ServiceResult<{ userId: string }>> {
+export async function registerWithPassword(input: PasswordRegisterInput): Promise<ServiceResult<{ userId: string; role: string }>> {
   // Validate the non-password parts via the existing schema, then add
   // password rules ourselves so we don't bend the OTP-era validators.
   const baseParse = RegisterSchema.safeParse({
@@ -368,6 +370,18 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
   });
   if (starterBalance > 0) {
     audit({ category: "WALLET", action: "wallet.starter_credit", actorId: user.id, targetType: "Wallet", targetId: user.id, payload: { amount: starterBalance } });
+  }
+
+  // Affiliate referral binding — if the user arrived via a ?ref= link, bind
+  // them to their referrer and fire any sign-up-triggered reward. Best-effort
+  // and never blocks registration (invalid codes are a silent no-op).
+  if (input.referralCode) {
+    try {
+      const { bindRecruit } = await import("./affiliate-service");
+      bindRecruit({ recruitUserId: user.id, code: input.referralCode, ip: meta.ip });
+    } catch (e) {
+      audit({ category: "SYSTEM", action: "affiliate.bind.failed", actorId: user.id, targetType: "User", targetId: user.id, payload: { error: String((e as Error)?.message ?? e) } });
+    }
   }
 
   audit({

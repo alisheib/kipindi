@@ -131,6 +131,18 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
   audit({ category: "WALLET", action: "deposit.confirmed", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: result.providerRef, balanceAfter: newBalance } });
   notifyDeposit(userId, parse.data.amount, friendlyProvider(parse.data.provider));
 
+  // Affiliate program — fire the first-deposit bonus and/or deposit-threshold
+  // prize for whoever referred this player. Best-effort; never blocks the
+  // deposit. Cumulative includes this just-confirmed deposit.
+  try {
+    const { onRecruitDeposit } = await import("./affiliate-service");
+    const cumulativeDepositsTzs = db.txn
+      .findByUser(userId, 1000)
+      .filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED")
+      .reduce((sum, t) => sum + t.amount, 0);
+    onRecruitDeposit(userId, { cumulativeDepositsTzs });
+  } catch { /* affiliate accrual must never break a deposit */ }
+
   return { ok: true, data: { txnId, status: "CONFIRMED", balance: newBalance } };
 }
 

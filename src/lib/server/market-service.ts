@@ -23,6 +23,7 @@ import { rateCheck } from "./rate-limit";
 import { getEffectiveConfig, payoutForWhole, settledPayoutWhole } from "./market-config";
 import { recordSnapshot, seedHistory } from "./market-history";
 import { notifyBetPlaced, notifyWin, notifyLoss } from "./notification-service";
+import { onRecruitBet } from "./affiliate-service";
 import { seedMarket, settleHousePosition, canSeedNewMarket, getHousePoolSeedForMarket } from "./house-pool";
 import type { ServiceResult } from "./auth-service";
 
@@ -281,6 +282,15 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
       marketTitle: market.titleEn,
       marketId: market.id,
     });
+
+    // Affiliate program — if this player was referred, accrue the referrer's
+    // commission on this stake and fire the first-bet milestone prize. The
+    // basis is the operator's commission on the stake; the referral cut is a
+    // configured share of that. Best-effort; never blocks the bet.
+    try {
+      onRecruitBet(userId, { stake: opts.stake, operatorCommissionRate: stakeCfg.commissionRate });
+    } catch { /* affiliate accrual must never break bet placement */ }
+
     return { ok: true as const, data: { positionId, balance: newBalance, payoutIfWin } };
   });
 }

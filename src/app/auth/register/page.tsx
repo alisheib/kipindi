@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { AlertCircle } from "lucide-react";
-import { FiftyLockup } from "@/components/brand";
+import { AlertCircle, Check } from "lucide-react";
+import { FiftyLockup, FiftyMark } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { Field, Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { resolveReferralPreview } from "@/lib/server/affiliate-service";
 import { startRegisterAction } from "./actions";
 
 export const metadata = { title: "Create account · Fungua akaunti" };
@@ -13,13 +14,15 @@ export const metadata = { title: "Create account · Fungua akaunti" };
 export default async function RegisterPage({
   searchParams,
 }: {
-  searchParams: Promise<{ phone?: string; error?: string; message?: string }>;
+  searchParams: Promise<{ phone?: string; error?: string; message?: string; ref?: string }>;
 }) {
   // Bounce-authed-users guard lives in src/app/auth/layout.tsx so the
   // redirect happens before any page hooks run (avoids a Next.js 16
   // dev-mode hook-count mismatch on hot reload).
   const sp = await searchParams;
   const phoneDefault = (sp.phone ?? "").replace(/^\+255/, "").replace(/\D+/g, "").slice(0, 9);
+  const refCode = (sp.ref ?? "").trim().slice(0, 16);
+  const referral = refCode ? resolveReferralPreview(refCode) : null;
 
   const errorPanel = (() => {
     if (!sp.error) return null;
@@ -72,6 +75,32 @@ export default async function RegisterPage({
             </p>
           </div>
 
+          {referral && (
+            <div
+              className="overflow-hidden rounded-xl border"
+              style={{
+                borderColor: "color-mix(in oklab, var(--gold-500) 36%, transparent)",
+                background: "linear-gradient(135deg, color-mix(in oklab, var(--gold-500) 16%, var(--bg-elevated)), var(--bg-elevated))",
+              }}
+            >
+              <div className="flex items-center gap-3 p-3.5">
+                <FiftyMark size={40} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[14px] font-bold text-text">You were invited by {referral.referrerName}</p>
+                  <p className="font-display italic text-text-subtle text-[11px]">Umealikwa na rafiki</p>
+                  {referral.newPlayerBonusTzs > 0 && (
+                    <p className="mt-1 text-[12.5px] font-semibold text-gold-300">
+                      {referral.bonusTrigger === "SIGNUP"
+                        ? `Sign up & get TZS ${referral.newPlayerBonusTzs.toLocaleString()} to start`
+                        : `Get TZS ${referral.newPlayerBonusTzs.toLocaleString()} on your first deposit`}{" "}
+                      · Pata TZS {referral.newPlayerBonusTzs.toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {errorPanel && (
             <div
               role="alert"
@@ -102,6 +131,17 @@ export default async function RegisterPage({
           )}
 
           <form action={startRegisterAction} className="space-y-4">
+            {referral && <input type="hidden" name="ref" value={refCode} />}
+            {referral && (
+              <Field label="Referral code · auto-filled">
+                <div className="input-group">
+                  <span className="prefix" style={{ color: "var(--gold-400)" }}>
+                    <Check size={14} />
+                  </span>
+                  <input className="input input-mono" readOnly value={refCode.toUpperCase()} style={{ color: "var(--gold-300)", fontWeight: 600 }} aria-label="Referral code" />
+                </div>
+              </Field>
+            )}
             <Field label="Phone · Simu" hint="9 digits after +255 (e.g. 712 345 678).">
               <PhoneInput
                 id="phone"

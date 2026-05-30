@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   ChevronRight, ShieldCheck, Sliders, LogOut, Check, UserCircle2,
-  FileSignature, MonitorSmartphone, HeartPulse, Wallet, Sparkles,
+  FileSignature, MonitorSmartphone, HeartPulse, Wallet, Sparkles, Gift,
 } from "lucide-react";
 import { FiftyMark } from "@/components/brand";
 import { AvatarUploader } from "@/components/profile/avatar-uploader";
@@ -194,6 +194,7 @@ export default async function ProfilePage() {
           Account · Akaunti
         </h2>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+          <SettingRow icon={Gift}              title="Invite & Earn"       sw="Alika upate"     subtitle="Refer friends · earn rewards"         href="/profile/invite" accent badge="New" />
           <SettingRow icon={UserCircle2}       title="My account"          sw="Akaunti yangu"   subtitle="Activity · Export · Close"            href="/profile/account" />
           <SettingRow icon={Sliders}           title="Responsible gambling" sw="Vikomo"          subtitle="Limits · Self-exclusion"              href="/profile/responsible-gambling" />
           <SettingRow icon={ShieldCheck}       title="Verify ID"           sw="Thibitisha"      subtitle="NIDA · documents · review"            href="/profile/kyc" />
@@ -272,18 +273,30 @@ function Step({ n, title, detail, active, done }: { n: number; title: string; de
   );
 }
 
-function SettingRow({ icon: Icon, title, sw, subtitle, href }: { icon: typeof Sliders; title: string; sw: string; subtitle: string; href: string }) {
+function SettingRow({ icon: Icon, title, sw, subtitle, href, accent, badge }: { icon: typeof Sliders; title: string; sw: string; subtitle: string; href: string; accent?: boolean; badge?: string }) {
   return (
     <Link
       href={href as never}
-      className="group flex items-center gap-3 rounded-xl border border-border bg-bg-elevated p-3.5 hover:border-gold-700 hover:bg-bg-overlay transition-colors"
+      className={`group relative flex items-center gap-3 overflow-hidden rounded-xl border bg-bg-elevated p-3.5 transition-colors ${accent ? "border-gold-700/60 hover:border-gold-500" : "border-border hover:border-gold-700"} hover:bg-bg-overlay`}
+      style={accent ? { background: "color-mix(in oklab, var(--gold-500) 7%, var(--bg-elevated))" } : undefined}
     >
-      <span className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-gold-500/10 text-gold-300 group-hover:bg-gold-500/15 transition-colors shrink-0">
+      {accent && (
+        <span aria-hidden className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))" }} />
+      )}
+      <span
+        className={`inline-flex h-10 w-10 items-center justify-center rounded-md shrink-0 transition-colors ${accent ? "text-gold-fg" : "bg-gold-500/10 text-gold-300 group-hover:bg-gold-500/15"}`}
+        style={accent ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))" } : undefined}
+      >
         <Icon size={17} strokeWidth={1.75} />
       </span>
       <div className="flex-1 min-w-0">
-        <p className="font-display text-[13.5px] font-semibold text-text leading-tight">
+        <p className="font-display text-[13.5px] font-semibold text-text leading-tight flex items-center gap-2">
           {title} <span className="text-text-subtle font-normal italic font-display">· {sw}</span>
+          {badge && (
+            <span className="inline-flex items-center rounded-pill border border-gold-700/50 bg-gold-500/15 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-gold-300">
+              {badge}
+            </span>
+          )}
         </p>
         <p className="mt-0.5 text-[11.5px] text-text-subtle leading-snug">{subtitle}</p>
       </div>

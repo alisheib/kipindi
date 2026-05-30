@@ -25,6 +25,8 @@ const iconFor = (k: StoredNotification["kind"]) => {
     case "MATCH_START":  return Coins;
     case "RG":           return ShieldCheck;
     case "SECURITY":     return ShieldCheck;
+    case "AFFILIATE":    return Coins;
+    default:             return Coins;
   }
 };
 
@@ -45,6 +47,9 @@ const tintFor = (k: StoredNotification["kind"]) => {
     case "RG":           return "border-info-border bg-info-bg/30 text-info-fg";
     case "SECURITY":     return "border-no-700 bg-no-500/10 text-no-300";
     case "MATCH_START":  return "border-border bg-bg-overlay text-text-muted";
+    // Affiliate earnings are money received → gold, per the brand guide.
+    case "AFFILIATE":    return "border-gold-700 bg-gold-500/10 text-gold-300";
+    default:             return "border-border bg-bg-overlay text-text-muted";
   }
 };
 

@@ -16,10 +16,11 @@ export async function startRegisterAction(formData: FormData) {
   const acceptTerms = formData.get("acceptTerms") === "on" || formData.get("acceptTerms") === "true";
   const acceptAge = formData.get("acceptAge") === "on" || formData.get("acceptAge") === "true";
   const marketingOptIn = formData.get("marketingOptIn") === "on";
+  const referralCode = String(formData.get("ref") ?? "").trim().slice(0, 16) || undefined;
 
   const result = await registerWithPassword({
     phone, password, passwordConfirm, dob,
-    acceptTerms, acceptAge, marketingOptIn,
+    acceptTerms, acceptAge, marketingOptIn, referralCode,
   });
 
   if (!result.ok) {

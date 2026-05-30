@@ -17,6 +17,10 @@ type Variant =
   | "resolved"
   | "pending"
   | "objection"
+  // Program-status variants (affiliate): indigo chrome / amber paused —
+  // deliberately NOT betting-green, per the brand guide.
+  | "active"
+  | "paused"
   // Legacy aliases — kept so existing call sites keep rendering.
   | "brand"
   | "gold"
@@ -35,6 +39,8 @@ const variantStyle: Record<Variant, React.CSSProperties> = {
   resolved:  { background: "color-mix(in oklab, var(--gold-500) 18%, transparent)",                                        color: "var(--gold-300)",                    borderColor: "color-mix(in oklab, var(--gold-500) 32%, transparent)" },
   pending:   { background: "color-mix(in oklab, var(--info-500) 16%, transparent)",                                        color: "oklch(78% 0.13 240)",                borderColor: "color-mix(in oklab, var(--info-500) 28%, transparent)" },
   objection: { background: "color-mix(in oklab, var(--warning-500) 18%, transparent)",                                     color: "oklch(82% 0.16 80)",                 borderColor: "color-mix(in oklab, var(--warning-500) 30%, transparent)" },
+  active:    { background: "color-mix(in oklab, var(--royal-500) 20%, transparent)",                                       color: "var(--royal-200)",                   borderColor: "color-mix(in oklab, var(--royal-500) 38%, transparent)" },
+  paused:    { background: "color-mix(in oklab, var(--warning-500) 18%, transparent)",                                     color: "oklch(82% 0.16 80)",                 borderColor: "color-mix(in oklab, var(--warning-500) 32%, transparent)" },
   // legacy
   brand:     { background: "color-mix(in oklab, var(--teal-500) 18%, transparent)",                                        color: "var(--teal-300)",                    borderColor: "color-mix(in oklab, var(--teal-500) 30%, transparent)" },
   gold:      { background: "color-mix(in oklab, var(--gold-500) 18%, transparent)",                                        color: "var(--gold-300)",                    borderColor: "color-mix(in oklab, var(--gold-500) 32%, transparent)" },

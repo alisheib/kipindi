@@ -36,6 +36,11 @@ export type StoredUser = {
   updatedAt: string;
   lastLoginAt: string | null;
   closedAt: string | null;
+  /** Affiliate program: the userId of the affiliate who recruited this
+   *  account (resolved from a referral code at registration). Null for
+   *  organic sign-ups. Optional so snapshots created before the affiliate
+   *  feature shipped restore cleanly (treated as null). */
+  recruitedBy?: string | null;
 };
 
 export type StoredKyc = {
@@ -180,7 +185,8 @@ export type StoredNotification = {
     | "KYC"
     | "MATCH_START"
     | "RG"
-    | "SECURITY";
+    | "SECURITY"
+    | "AFFILIATE";
   titleEn: string;
   titleSw: string;
   bodyEn: string;
@@ -204,6 +210,46 @@ export type StoredSourceOfFunds = {
   submittedAt: string;
 };
 
+/**
+ * Affiliate account — every player automatically gets one the first time
+ * their referral surface is touched (visiting /profile/invite, or someone
+ * registering with their code). Keyed by userId. `code` is the public,
+ * shareable referral code embedded in their link. Running totals are
+ * denormalised counters kept in sync by the affiliate service so the
+ * Invite & Earn page and the admin leaderboard read in O(1).
+ */
+export type StoredAffiliateAccount = {
+  userId: string;
+  code: string;
+  recruitCount: number;
+  totalEarnedTzs: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/**
+ * Referral reward ledger entry — the immutable record of every payout the
+ * affiliate program makes. `COMMISSION` accrues from a recruit's betting
+ * activity, `BONUS` from sign-up / first-deposit, `PRIZE` from a milestone.
+ * status: PAID (credited to wallet) · PENDING (awaiting trigger) ·
+ * HELD (withheld pending anti-fraud review).
+ */
+export type StoredReferralReward = {
+  id: string;
+  referrerUserId: string;
+  recruitUserId: string;
+  type: "COMMISSION" | "BONUS" | "PRIZE";
+  /** Human label e.g. "Commission", "Prize · first bet", "Bonus · sign-up". */
+  label: string;
+  amountTzs: number;
+  status: "PAID" | "PENDING" | "HELD";
+  /** Recipient of this reward — almost always the referrer, but the bonus
+   *  mode can also pay the NEW player; we record who actually received it. */
+  recipientUserId: string;
+  note: string | null;
+  createdAt: string;
+};
+
 declare global {
   // eslint-disable-next-line no-var
   var __50PICK_STORE: {
@@ -220,6 +266,8 @@ declare global {
     mapigoBets: Map<string, StoredMapigoBet>;
     notifications: Map<string, StoredNotification>;
     sourceOfFunds: Map<string, StoredSourceOfFunds>;
+    affiliates: Map<string, StoredAffiliateAccount>;
+    referralRewards: Map<string, StoredReferralReward>;
   } | undefined;
 }
 
@@ -237,6 +285,8 @@ const store = globalThis.__50PICK_STORE ?? (globalThis.__50PICK_STORE = {
   mapigoBets: new Map(),
   notifications: new Map(),
   sourceOfFunds: new Map(),
+  affiliates: new Map(),
+  referralRewards: new Map(),
 });
 
 // Hot-reload safety: if a previous build created the global without the newer maps,
@@ -247,6 +297,8 @@ if (!store.mapigoRounds)  store.mapigoRounds = new Map();
 if (!store.mapigoBets)    store.mapigoBets = new Map();
 if (!store.notifications) store.notifications = new Map();
 if (!store.sourceOfFunds) store.sourceOfFunds = new Map();
+if (!store.affiliates)      store.affiliates = new Map();
+if (!store.referralRewards) store.referralRewards = new Map();
 
 // Lazy import of the backup module — keeps store.ts clean of file-system imports
 // for clients that bundle this file (none currently, but future-proof).
@@ -266,8 +318,8 @@ if (typeof window === "undefined" && !globalThis.__50PICK_BACKUP_RESTORED) {
 export const db = {
   // USER
   user: {
-    findById: (id: string) => store.users.get(id) ?? null,
-    findByPhone: (phone: string) => {
+    findById: (id: string): StoredUser | null => store.users.get(id) ?? null,
+    findByPhone: (phone: string): StoredUser | null => {
       const id = store.usersByPhone.get(phone);
       return id ? store.users.get(id) ?? null : null;
     },
@@ -280,7 +332,7 @@ export const db = {
       tap();
       return next;
     },
-    list: () => Array.from(store.users.values()),
+    list: (): StoredUser[] => Array.from(store.users.values()),
   },
   kyc: {
     findByUserId: (userId: string) => {
@@ -319,7 +371,7 @@ export const db = {
     },
   },
   wallet: {
-    findByUserId: (userId: string) => {
+    findByUserId: (userId: string): StoredWallet | null => {
       const id = store.walletsByUser.get(userId);
       return id ? store.wallets.get(id) ?? null : null;
     },
@@ -434,5 +486,44 @@ export const db = {
     get: (userId: string) => store.sourceOfFunds.get(userId) ?? null,
     upsert: (s: StoredSourceOfFunds) => { store.sourceOfFunds.set(s.userId, s); tap(); return s; },
     listPending: () => Array.from(store.sourceOfFunds.values()).filter((s) => s.reviewStatus === "PENDING"),
+  },
+  affiliate: {
+    findByUserId: (userId: string): StoredAffiliateAccount | null => store.affiliates.get(userId) ?? null,
+    findByCode: (code: string): StoredAffiliateAccount | null => {
+      const norm = code.trim().toUpperCase();
+      for (const a of store.affiliates.values()) if (a.code === norm) return a;
+      return null;
+    },
+    create: (a: StoredAffiliateAccount): StoredAffiliateAccount => { store.affiliates.set(a.userId, a); tap(); return a; },
+    update: (userId: string, patch: Partial<StoredAffiliateAccount>): StoredAffiliateAccount | null => {
+      const a = store.affiliates.get(userId);
+      if (!a) return null;
+      const next: StoredAffiliateAccount = { ...a, ...patch, updatedAt: new Date().toISOString() };
+      store.affiliates.set(userId, next);
+      tap();
+      return next;
+    },
+    list: (): StoredAffiliateAccount[] => Array.from(store.affiliates.values()),
+  },
+  referralReward: {
+    create: (r: StoredReferralReward): StoredReferralReward => { store.referralRewards.set(r.id, r); tap(); return r; },
+    update: (id: string, patch: Partial<StoredReferralReward>): StoredReferralReward | null => {
+      const r = store.referralRewards.get(id);
+      if (!r) return null;
+      const next: StoredReferralReward = { ...r, ...patch };
+      store.referralRewards.set(id, next);
+      tap();
+      return next;
+    },
+    list: (limit = 500): StoredReferralReward[] =>
+      Array.from(store.referralRewards.values())
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .slice(0, limit),
+    listByReferrer: (referrerUserId: string): StoredReferralReward[] =>
+      Array.from(store.referralRewards.values())
+        .filter((r) => r.referrerUserId === referrerUserId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    listByRecruit: (recruitUserId: string): StoredReferralReward[] =>
+      Array.from(store.referralRewards.values()).filter((r) => r.recruitUserId === recruitUserId),
   },
 };
