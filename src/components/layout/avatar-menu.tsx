@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Avatar } from "@/components/ui/avatar";
-import { User, Wallet, Receipt, ShieldCheck, LogOut } from "lucide-react";
+import { User, Wallet, Receipt, ShieldCheck, LogOut, Gift, Trophy } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -122,6 +122,8 @@ export function AvatarMenu({
             <ul className="py-1">
               <Item href="/profile"        icon={User}        label="Profile"      sw="Wasifu" />
               <Item href="/wallet"         icon={Wallet}      label="Wallet"       sw="Pochi" />
+              <Item href="/profile/invite" icon={Gift}        label="Invite & Earn" sw="Alika upate" accent />
+              <Item href="/proposals"      icon={Trophy}      label="Propose & earn" sw="Pendekeza" accent />
               <Item href="/positions"      icon={Receipt}     label="Positions"    sw="Madau" />
               <Item href="/profile/kyc"    icon={ShieldCheck} label="Verify ID"    sw="Thibitisha" />
             </ul>
@@ -159,16 +161,17 @@ export function AvatarMenu({
   );
 }
 
-function Item({ href, icon: Icon, label, sw }: { href: string; icon: typeof User; label: string; sw: string }) {
+function Item({ href, icon: Icon, label, sw, accent }: { href: string; icon: typeof User; label: string; sw: string; accent?: boolean }) {
   return (
     <li>
       <Link
         href={href as never}
         className={cn(
-          "flex items-center gap-2.5 px-3.5 py-2.5 font-display text-body-sm font-medium text-text hover:bg-bg-overlay transition-colors",
+          "flex items-center gap-2.5 px-3.5 py-2.5 font-display text-body-sm font-medium text-text transition-colors",
+          accent ? "hover:bg-gold-500/10" : "hover:bg-bg-overlay",
         )}
       >
-        <Icon size={15} strokeWidth={1.75} className="text-text-subtle" />
+        <Icon size={15} strokeWidth={1.75} className={accent ? "text-gold-300" : "text-text-subtle"} />
         {label}
         <span className="text-text-subtle italic font-normal text-label">· {sw}</span>
       </Link>

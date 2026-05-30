@@ -172,7 +172,9 @@ export default async function InvitePage() {
       )}
 
       {/* Referral link + share (client) */}
-      <ReferralShare link={s.link} shareText={shareText} />
+      <div id="referral-share">
+        <ReferralShare link={s.link} shareText={shareText} />
+      </div>
 
       {/* Stat tiles */}
       <div className="grid grid-cols-2 gap-2.5">
@@ -244,7 +246,7 @@ export default async function InvitePage() {
           titleSw="Bado hakuna marafiki"
           body="Share your link to invite your first friend. They'll appear here once they join."
           action={
-            <a href="#top">
+            <a href="#referral-share">
               <Button variant="gold" size="md" leading={<Share2 size={14} />}>
                 Share your link
               </Button>

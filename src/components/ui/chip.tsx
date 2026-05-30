@@ -21,6 +21,8 @@ type Variant =
   // deliberately NOT betting-green, per the brand guide.
   | "active"
   | "paused"
+  // Declined / danger chip (proposals) — claret, not betting-red.
+  | "claret"
   // Legacy aliases — kept so existing call sites keep rendering.
   | "brand"
   | "gold"
@@ -41,6 +43,7 @@ const variantStyle: Record<Variant, React.CSSProperties> = {
   objection: { background: "color-mix(in oklab, var(--warning-500) 18%, transparent)",                                     color: "oklch(82% 0.16 80)",                 borderColor: "color-mix(in oklab, var(--warning-500) 30%, transparent)" },
   active:    { background: "color-mix(in oklab, var(--royal-500) 20%, transparent)",                                       color: "var(--royal-200)",                   borderColor: "color-mix(in oklab, var(--royal-500) 38%, transparent)" },
   paused:    { background: "color-mix(in oklab, var(--warning-500) 18%, transparent)",                                     color: "oklch(82% 0.16 80)",                 borderColor: "color-mix(in oklab, var(--warning-500) 32%, transparent)" },
+  claret:    { background: "color-mix(in oklab, var(--claret-500) 18%, transparent)",                                      color: "var(--claret-300)",                  borderColor: "color-mix(in oklab, var(--claret-500) 34%, transparent)" },
   // legacy
   brand:     { background: "color-mix(in oklab, var(--teal-500) 18%, transparent)",                                        color: "var(--teal-300)",                    borderColor: "color-mix(in oklab, var(--teal-500) 30%, transparent)" },
   gold:      { background: "color-mix(in oklab, var(--gold-500) 18%, transparent)",                                        color: "var(--gold-300)",                    borderColor: "color-mix(in oklab, var(--gold-500) 32%, transparent)" },

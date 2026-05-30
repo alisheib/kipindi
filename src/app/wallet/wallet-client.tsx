@@ -221,20 +221,20 @@ export function WalletPageClient({
                   Default
                 </span>
               ) : (
-                <button type="button" className="font-mono text-[11px] font-semibold text-text-subtle hover:text-gold-300 transition-colors uppercase tracking-[0.06em]">
+                <button type="button" disabled title="Coming soon" aria-disabled className="font-mono text-[11px] font-semibold text-text-subtle/60 uppercase tracking-[0.06em] cursor-not-allowed">
                   Set default
                 </button>
               )}
             </div>
           ))}
-          <button
-            type="button"
-            className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-bg-elevated/50 p-6 text-text-subtle hover:text-text hover:border-gold-700 transition-colors"
+          <div
+            aria-disabled
+            className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-bg-elevated/30 p-6 text-text-subtle/70 cursor-not-allowed"
           >
             <CreditCard size={15} />
-            <Plus size={14} strokeWidth={2.5} />
             <span className="font-display text-[13px] font-semibold">Add a card · Ongeza kadi</span>
-          </button>
+            <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-subtle">Coming soon</span>
+          </div>
         </section>
       )}
 

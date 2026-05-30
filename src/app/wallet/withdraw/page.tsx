@@ -16,9 +16,12 @@ const PROVIDERS = [
   { id: "BANK_TRANSFER",name: "Bank transfer", hue: 200 },
 ] as const;
 
-export default async function WithdrawPage() {
+export default async function WithdrawPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
+
+  const sp = await searchParams;
+  const errorMsg = sp.error ? decodeURIComponent(sp.error) : null;
 
   const wallet = db.wallet.findByUserId(session.userId);
   const kyc = db.kyc.findByUserId(session.userId);
@@ -70,6 +73,16 @@ export default async function WithdrawPage() {
           </div>
         </div>
       </header>
+
+      {errorMsg && (
+        <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-no-700/60 bg-no-500/[0.10] px-4 py-3">
+          <AlertCircle size={16} className="mt-0.5 shrink-0 text-no-300" />
+          <div className="text-[12.5px] leading-snug">
+            <p className="font-display font-semibold text-text">Withdrawal didn&rsquo;t go through</p>
+            <p className="mt-0.5 text-text-muted">{errorMsg}</p>
+          </div>
+        </div>
+      )}
 
       {!kycApproved && (
         <div className="flex items-start gap-2.5 rounded-xl border border-warning-border bg-warning-bg/30 p-4">
@@ -173,27 +186,16 @@ export default async function WithdrawPage() {
           </div>
         </div>
 
-        <div>
-          <label
-            htmlFor="otpCode"
-            className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2"
-          >
-            Confirmation code · Msimbo
-          </label>
-          <input
-            id="otpCode"
-            name="otpCode"
-            type="text"
-            required
-            pattern="\d{6}"
-            maxLength={6}
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            placeholder="6-digit code from SMS"
-            disabled={!kycApproved}
-            className="w-full h-11 px-3 rounded-md border border-border bg-bg-overlay font-mono text-[14px] tracking-[0.4em] tabular-nums text-text focus:outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 transition-colors disabled:opacity-50"
-          />
-          <p className="mt-2 text-[11px] text-text-subtle">Enter the 6-digit code from the SMS.</p>
+        <div className="flex items-start gap-2.5 rounded-md border border-info-border bg-info-bg/30 px-3 py-2.5 text-[12.5px] leading-snug">
+          <ShieldCheck size={14} className="mt-0.5 shrink-0 text-info-fg" />
+          <div>
+            <p className="font-display font-semibold text-text">Secured by KYC &amp; AML · Imelindwa</p>
+            <p className="mt-0.5 text-text-muted">
+              Withdrawals are released only to a NIDA-verified account, and amounts of
+              <span className="font-mono text-text-muted"> TZS 1,000,000</span>+ are held for AML review.
+              SMS step-up confirmation is added once the licensed SMS provider is live.
+            </p>
+          </div>
         </div>
 
         <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg/30 px-3 py-2.5 text-[12.5px] leading-snug">

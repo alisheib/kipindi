@@ -21,6 +21,7 @@ import { getAffiliateConfig } from "./affiliate-config";
 import { audit } from "./audit";
 import { randomId } from "./crypto";
 import { notifyReferralJoined, notifyReferralReward } from "./notification-service";
+import { creditInternal } from "./wallet-service";
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I ambiguity
 
@@ -58,11 +59,22 @@ export function ensureAffiliateAccount(userId: string): StoredAffiliateAccount {
   if (existing) return existing;
   const user = db.user.findById(userId);
   let code = genCode(user?.displayName ?? null);
-  // Collision-avoidance — vanishingly rare, but make the code truly unique.
+  // Collision-avoidance — vanishingly rare. Try friendly regenerations first…
   let guard = 0;
   while (db.affiliate.findByCode(code) && guard < 12) {
     code = genCode(user?.displayName ?? null);
     guard++;
+  }
+  // …then, if we somehow still collide, widen the code with extra entropy until
+  // it is provably unique. Never fall through and mint a duplicate code — two
+  // referrers sharing a code would misattribute every recruit and reward.
+  while (db.affiliate.findByCode(code)) {
+    const hex = randomId(8);
+    let extra = "";
+    for (let i = 0; i + 1 < hex.length && extra.length < 4; i += 2) {
+      extra += CODE_ALPHABET[parseInt(hex.slice(i, i + 2), 16) % CODE_ALPHABET.length];
+    }
+    code = (code.slice(0, 5) + extra).slice(0, 12);
   }
   const now = new Date().toISOString();
   const account = db.affiliate.create({
@@ -120,36 +132,9 @@ export function resolveReferralPreview(code: string): { referrerName: string; ne
 }
 
 // ── Wallet credit (internal) ─────────────────────────────────────────────
-/** Credit a referral reward to a wallet as a CONFIRMED BONUS_CREDIT txn. */
+/** Credit a referral reward to a wallet via the shared, atomic credit path. */
 function creditWallet(userId: string, amount: number, description: string): boolean {
-  if (amount <= 0) return false;
-  const wallet = db.wallet.findByUserId(userId);
-  if (!wallet || wallet.status !== "ACTIVE") return false;
-  const newBalance = wallet.balance + amount;
-  db.wallet.update(wallet.id, { balance: newBalance });
-  const now = new Date().toISOString();
-  db.txn.create({
-    id: `txn_${randomId(12)}`,
-    walletId: wallet.id,
-    userId,
-    type: "BONUS_CREDIT",
-    status: "CONFIRMED",
-    amount,
-    fee: 0,
-    taxWithheld: 0,
-    balanceAfter: newBalance,
-    currency: "TZS",
-    provider: "INTERNAL",
-    providerRef: null,
-    msisdn: null,
-    description,
-    betId: null,
-    amlReason: null,
-    createdAt: now,
-    updatedAt: now,
-    completedAt: now,
-  });
-  return true;
+  return creditInternal(userId, amount, { description }) !== null;
 }
 
 function recordReward(input: {
@@ -278,7 +263,11 @@ function payBonus(opts: { referrerUserId: string; recruitUserId: string; held: b
 
   const payTo = (userId: string, amount: number, who: "new" | "referrer") => {
     if (amount <= 0) return;
-    if (status === "PAID") creditWallet(userId, amount, `Referral bonus · ${triggerLabel}`);
+    // If the credit can't land (frozen/missing wallet), record the reward as
+    // HELD rather than PAID — otherwise the ledger claims money was paid that
+    // never moved, and the held queue lets an officer retry it.
+    const credited = status === "PAID" ? creditWallet(userId, amount, `Referral bonus · ${triggerLabel}`) : false;
+    const finalStatus: StoredReferralReward["status"] = status === "PAID" && !credited ? "HELD" : status;
     recordReward({
       referrerUserId: opts.referrerUserId,
       recruitUserId: opts.recruitUserId,
@@ -286,10 +275,10 @@ function payBonus(opts: { referrerUserId: string; recruitUserId: string; held: b
       type: "BONUS",
       label: `Bonus · ${triggerLabel}`,
       amountTzs: amount,
-      status,
+      status: finalStatus,
       note: who === "new" ? "new-player bonus" : "referrer bonus",
     });
-    if (status === "PAID") notifyReferralReward(userId, { type: "BONUS", amountTzs: amount });
+    if (finalStatus === "PAID") notifyReferralReward(userId, { type: "BONUS", amountTzs: amount });
   };
 
   if (cfg.bonus.recipient === "NEW" || cfg.bonus.recipient === "BOTH") payTo(opts.recruitUserId, cfg.bonus.newAmountTzs, "new");
@@ -308,7 +297,7 @@ function payPrize(opts: { referrerUserId: string; recruitUserId: string; milesto
     const prizeCount = db.referralReward.listByReferrer(opts.referrerUserId).filter((r) => r.type === "PRIZE").length;
     if (prizeCount >= cfg.prize.capPerReferrer) return;
   }
-  creditWallet(opts.referrerUserId, cfg.prize.amountTzs, `Referral prize · ${opts.milestoneLabel}`);
+  const credited = creditWallet(opts.referrerUserId, cfg.prize.amountTzs, `Referral prize · ${opts.milestoneLabel}`);
   recordReward({
     referrerUserId: opts.referrerUserId,
     recruitUserId: opts.recruitUserId,
@@ -316,9 +305,9 @@ function payPrize(opts: { referrerUserId: string; recruitUserId: string; milesto
     type: "PRIZE",
     label: `Prize · ${opts.milestoneLabel}`,
     amountTzs: cfg.prize.amountTzs,
-    status: "PAID",
+    status: credited ? "PAID" : "HELD",
   });
-  notifyReferralReward(opts.referrerUserId, { type: "PRIZE", amountTzs: cfg.prize.amountTzs });
+  if (credited) notifyReferralReward(opts.referrerUserId, { type: "PRIZE", amountTzs: cfg.prize.amountTzs });
 }
 
 // ── Activity hooks (called from the betting + wallet flows) ──────────────
@@ -344,9 +333,11 @@ export function onRecruitBet(recruitUserId: string, opts: { stake: number; opera
   if (cfg.commission.enabled && cfg.commission.rate > 0) {
     // Window check — commission only accrues for windowMonths after join.
     const acct = db.affiliate.findByUserId(referrerUserId);
-    const recruitJoined = Date.parse(recruit!.createdAt);
-    const windowEnd = recruitJoined + cfg.commission.windowMonths * 30 * 24 * 3600_000;
-    if (Date.now() > windowEnd) return;
+    // Real calendar-month window (not a flat 30-day approximation, which would
+    // drift ~5 days/year and shortchange the referrer on long windows).
+    const windowEnd = new Date(recruit!.createdAt);
+    windowEnd.setMonth(windowEnd.getMonth() + cfg.commission.windowMonths);
+    if (Date.now() > windowEnd.getTime()) return;
 
     const operatorFee = opts.stake * Math.max(0, opts.operatorCommissionRate);
     let cut = Math.round(operatorFee * cfg.commission.rate);
@@ -364,7 +355,7 @@ export function onRecruitBet(recruitUserId: string, opts: { stake: number; opera
     }
     if (cut <= 0) return;
 
-    creditWallet(referrerUserId, cut, "Referral commission");
+    const credited = creditWallet(referrerUserId, cut, "Referral commission");
     recordReward({
       referrerUserId,
       recruitUserId,
@@ -372,9 +363,9 @@ export function onRecruitBet(recruitUserId: string, opts: { stake: number; opera
       type: "COMMISSION",
       label: "Commission",
       amountTzs: cut,
-      status: "PAID",
+      status: credited ? "PAID" : "HELD",
     });
-    notifyReferralReward(referrerUserId, { type: "COMMISSION", amountTzs: cut });
+    if (credited) notifyReferralReward(referrerUserId, { type: "COMMISSION", amountTzs: cut });
     if (acct) { /* totals updated inside recordReward */ }
   }
 }

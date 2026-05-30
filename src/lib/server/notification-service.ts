@@ -220,6 +220,63 @@ export function notifyReferralReward(userId: string, opts: { type: "COMMISSION" 
   });
 }
 
+/* ---- Player market-proposal emitters ---- */
+
+export function notifyProposalUnderReview(userId: string, opts: { titleEn: string }) {
+  return notify({
+    userId, kind: "PROPOSAL",
+    titleEn: "Your proposal is under review",
+    titleSw: "Pendekezo lako linakaguliwa",
+    bodyEn: `"${opts.titleEn.slice(0, 60)}" — an officer will review it shortly.`,
+    bodySw: "Afisa atalikagua hivi karibuni.",
+    href: "/proposals",
+  });
+}
+
+export function notifyProposalListed(userId: string, opts: { titleEn: string; marketId: string }) {
+  return notify({
+    userId, kind: "PROPOSAL",
+    titleEn: "Your proposal is now live",
+    titleSw: "Pendekezo lako sasa ni soko",
+    bodyEn: `"${opts.titleEn.slice(0, 60)}" is a market now — share it.`,
+    bodySw: "Sasa ni soko — lishiriki.",
+    href: `/markets/${opts.marketId}`,
+  });
+}
+
+export function notifyProposalChanges(userId: string, opts: { titleEn: string; note: string | null }) {
+  return notify({
+    userId, kind: "PROPOSAL",
+    titleEn: "Changes requested on your proposal",
+    titleSw: "Mabadiliko yanahitajika",
+    bodyEn: opts.note ? `Officer note: ${opts.note.slice(0, 80)}` : `"${opts.titleEn.slice(0, 60)}" needs a tweak before listing.`,
+    bodySw: "Rekebisha kabla ya kuorodheshwa.",
+    href: "/proposals",
+  });
+}
+
+export function notifyProposalDeclined(userId: string, opts: { titleEn: string; reason: string }) {
+  return notify({
+    userId, kind: "PROPOSAL",
+    titleEn: "Your proposal was declined",
+    titleSw: "Pendekezo limekataliwa",
+    bodyEn: `"${opts.titleEn.slice(0, 50)}" — reason: ${opts.reason}.`,
+    bodySw: `Sababu: ${opts.reason}.`,
+    href: "/proposals",
+  });
+}
+
+export function notifyProposalResolvedPaid(userId: string, opts: { titleEn: string; amountTzs: number }) {
+  return notify({
+    userId, kind: "PROPOSAL",
+    titleEn: `Your proposal resolved — you earned TZS ${opts.amountTzs.toLocaleString()}`,
+    titleSw: `Pendekezo limetatuliwa — umepata TZS ${opts.amountTzs.toLocaleString()}`,
+    bodyEn: "Listed & resolved. Paid to your wallet. Tap to view.",
+    bodySw: "Imeorodheshwa na kutatuliwa. Imelipwa kwenye pochi yako.",
+    href: "/proposals",
+  });
+}
+
 export function notifyKyc(userId: string, status: "APPROVED" | "REJECTED" | "PENDING_REVIEW") {
   if (status === "APPROVED") {
     return notify({

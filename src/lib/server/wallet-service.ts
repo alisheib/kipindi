@@ -12,9 +12,10 @@ import { db, type StoredTxn } from "./store";
 import { randomId } from "./crypto";
 import { dispatchDeposit, dispatchWithdrawal, computeWithdrawalTax } from "./payments";
 import { rateCheck } from "./rate-limit";
-import { DepositSchema, WithdrawSchema } from "./validators";
+import { DepositSchema, AdminDepositSchema, WithdrawSchema } from "./validators";
 import { checkDepositLimit, isLockedOut } from "./responsible-gambling";
 import { notifyDeposit, notifyWithdraw } from "./notification-service";
+import { withLock } from "./locks";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
 
@@ -23,7 +24,17 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
   const rl = rateCheck(userId, "wallet.deposit");
   if (!rl.allowed) return { ok: false, error: "Too many deposit attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
 
-  const parse = DepositSchema.safeParse(input);
+  // ── TEMPORARY admin test-funding bypass ────────────────────────────────
+  // For ADMIN-role accounts (and while ADMIN_TEST_DEPOSITS isn't "false"),
+  // allow uncapped play-money deposits and skip the SOF + responsible-gambling
+  // deposit-limit gates, so the operator can fund a wallet to test deposits,
+  // referrals and proposals. Withdrawals are unaffected (still fully gated).
+  // Disable later by setting ADMIN_TEST_DEPOSITS=false (or remove this block).
+  const ADMIN_TEST_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+  const depositor = db.user.findById(userId);
+  const adminTest = !!depositor && ADMIN_TEST_ROLES.has(depositor.role) && process.env.ADMIN_TEST_DEPOSITS !== "false";
+
+  const parse = (adminTest ? AdminDepositSchema : DepositSchema).safeParse(input);
   if (!parse.success) return { ok: false, error: parse.error.errors[0]?.message ?? "Invalid input", code: "INVALID" };
 
   const wallet = db.wallet.findByUserId(userId);
@@ -37,11 +48,14 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
     return { ok: false, error: `You are in a ${lockout.reason === "self_exclusion" ? "self-exclusion" : "cooling-off"} period until ${new Date(lockout.until!).toLocaleString("en-GB")}.`, code: "SUSPENDED" };
   }
 
-  // Responsible-gambling deposit-limit check (daily / weekly / monthly)
-  const limitCheck = checkDepositLimit(userId, parse.data.amount);
-  if (!limitCheck.allowed) {
-    audit({ category: "COMPLIANCE", action: "deposit.limit_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { reason: limitCheck.reason } });
-    return { ok: false, error: limitCheck.reason ?? "Deposit limit reached.", code: "INVALID" };
+  // Responsible-gambling deposit-limit check (daily / weekly / monthly).
+  // Skipped for admin test-funding (see bypass note above).
+  if (!adminTest) {
+    const limitCheck = checkDepositLimit(userId, parse.data.amount);
+    if (!limitCheck.allowed) {
+      audit({ category: "COMPLIANCE", action: "deposit.limit_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { reason: limitCheck.reason } });
+      return { ok: false, error: limitCheck.reason ?? "Deposit limit reached.", code: "INVALID" };
+    }
   }
 
   // Source-of-Funds gate — Anti-Money-Laundering Act 2006 + LCCP SR 9.2.
@@ -61,7 +75,7 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
     .reduce((s, t) => s + t.amount, 0);
   const cumulativeAfter = recentDeposits + parse.data.amount;
   const triggersSof =
-    parse.data.amount >= SOF_SINGLE_TXN_TZS || cumulativeAfter >= SOF_ROLLING_30D_TZS;
+    !adminTest && (parse.data.amount >= SOF_SINGLE_TXN_TZS || cumulativeAfter >= SOF_ROLLING_30D_TZS);
   if (triggersSof) {
     const sof = db.sourceOfFunds.get(userId);
     if (!sof || sof.reviewStatus !== "ACCEPTED") {
@@ -163,74 +177,135 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
     return { ok: false, error: "Verify your identity to withdraw.", code: "INVALID" };
   }
 
-  const wallet = db.wallet.findByUserId(userId);
-  if (!wallet) return { ok: false, error: "Wallet not found.", code: "NOT_FOUND" };
-  if (wallet.status !== "ACTIVE") return { ok: false, error: "Wallet frozen.", code: "SUSPENDED" };
-  if (wallet.balance < parse.data.amount) {
-    return { ok: false, error: "Insufficient balance.", code: "INVALID" };
-  }
-
+  const amount = parse.data.amount;
   // Withholding tax — naïve: assume entire amount is taxable winnings until we wire bet ledger
-  const tax = computeWithdrawalTax(parse.data.amount, parse.data.amount);
-  const net = parse.data.amount - tax;
-
-  // Hold the funds while in flight
-  db.wallet.update(wallet.id, { balance: wallet.balance - parse.data.amount, hold: wallet.hold + parse.data.amount });
-
-  const txnId = `txn_${randomId(12)}`;
-  db.txn.create({
-    id: txnId,
-    walletId: wallet.id,
-    userId,
-    type: "WITHDRAWAL",
-    status: "PROCESSING",
-    amount: -parse.data.amount,
-    fee: 0,
-    taxWithheld: tax,
-    balanceAfter: wallet.balance - parse.data.amount,
-    currency: "TZS",
-    provider: parse.data.provider,
-    providerRef: null,
-    msisdn: parse.data.msisdn ?? null,
-    description: `${friendlyProvider(parse.data.provider)} withdrawal`,
-    betId: null,
-    amlReason: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    completedAt: null,
-  });
-  audit({ category: "WALLET", action: "withdraw.initiated", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { provider: parse.data.provider, amount: parse.data.amount, tax } });
-
+  const tax = computeWithdrawalTax(amount, amount);
+  const net = amount - tax;
   const providerLabel = friendlyProvider(parse.data.provider);
+  const txnId = `txn_${randomId(12)}`;
 
+  // ── Phase A (locked): validate balance + place the hold atomically ─────────
+  // Re-read inside the lock so the balance check and the debit can't be split
+  // by a concurrent withdrawal/bet/payout on the same wallet (double-spend).
+  const hold = await withLock(`wallet:${userId}`, async () => {
+    const w = db.wallet.findByUserId(userId);
+    if (!w) return { ok: false as const, error: "Wallet not found.", code: "NOT_FOUND" as const };
+    if (w.status !== "ACTIVE") return { ok: false as const, error: "Wallet frozen.", code: "SUSPENDED" as const };
+    if (w.balance < amount) return { ok: false as const, error: "Insufficient balance.", code: "INVALID" as const };
+
+    // Move funds from spendable balance into `hold` while in flight.
+    const updated = db.wallet.update(w.id, { balance: w.balance - amount, hold: w.hold + amount });
+    const balanceAfter = updated?.balance ?? w.balance - amount;
+    db.txn.create({
+      id: txnId,
+      walletId: w.id,
+      userId,
+      type: "WITHDRAWAL",
+      status: "PROCESSING",
+      amount: -amount,
+      fee: 0,
+      taxWithheld: tax,
+      balanceAfter,
+      currency: "TZS",
+      provider: parse.data.provider,
+      providerRef: null,
+      msisdn: parse.data.msisdn ?? null,
+      description: `${providerLabel} withdrawal`,
+      betId: null,
+      amlReason: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      completedAt: null,
+    });
+    audit({ category: "WALLET", action: "withdraw.initiated", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { provider: parse.data.provider, amount, tax } });
+    return { ok: true as const };
+  });
+  if (!hold.ok) return hold;
+
+  // ── Provider dispatch (UNLOCKED): never hold a wallet lock across network I/O.
   const result = await dispatchWithdrawal({ provider: parse.data.provider, amount: net, msisdn: parse.data.msisdn, userId });
+
+  // ── Phase B (locked): settle by applying DELTAS to a fresh wallet read ──────
+  // We must never write back an absolute balance/hold captured before the await
+  // above — concurrent deposits/credits would be silently clobbered. Reversing
+  // *this* withdrawal's hold delta is the only safe mutation.
   if (!result.ok) {
-    // refund the hold
-    db.wallet.update(wallet.id, { balance: wallet.balance, hold: wallet.hold });
+    await withLock(`wallet:${userId}`, async () => {
+      const w = db.wallet.findByUserId(userId);
+      if (w) db.wallet.update(w.id, { balance: w.balance + amount, hold: Math.max(0, w.hold - amount) });
+    });
     db.txn.update(txnId, { status: "FAILED", description: `Withdrawal failed: ${result.reason}` });
     audit({ category: "WALLET", action: "withdraw.failed", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { reason: result.reason } });
-    notifyWithdraw(userId, { status: "FAILED", amount: parse.data.amount, provider: providerLabel, reason: result.reason });
+    notifyWithdraw(userId, { status: "FAILED", amount, provider: providerLabel, reason: result.reason });
     return { ok: false, error: "Withdrawal failed. Funds returned to your balance.", code: "INVALID" };
   }
 
   if (result.status === "AML_REVIEW") {
+    // Funds stay in `hold` pending manual review — no settle delta yet.
     db.txn.update(txnId, { status: "AML_REVIEW", providerRef: result.providerRef, amlReason: "Threshold ≥ TZS 1,000,000" });
-    audit({ category: "COMPLIANCE", action: "withdraw.aml_held", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { amount: parse.data.amount } });
-    notifyWithdraw(userId, { status: "AML_REVIEW", amount: parse.data.amount, net, provider: providerLabel });
+    audit({ category: "COMPLIANCE", action: "withdraw.aml_held", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { amount } });
+    notifyWithdraw(userId, { status: "AML_REVIEW", amount, net, provider: providerLabel });
     return { ok: true, data: { txnId, status: "AML_REVIEW", tax, net } };
   }
 
-  // Release hold, complete withdrawal
-  db.wallet.update(wallet.id, { hold: wallet.hold });
+  // Success — the held funds have left the building; clear this withdrawal's hold.
+  await withLock(`wallet:${userId}`, async () => {
+    const w = db.wallet.findByUserId(userId);
+    if (w) db.wallet.update(w.id, { hold: Math.max(0, w.hold - amount) });
+  });
   db.txn.update(txnId, { status: "CONFIRMED", providerRef: result.providerRef, completedAt: new Date().toISOString() });
   audit({ category: "WALLET", action: "withdraw.confirmed", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: result.providerRef, net } });
-  notifyWithdraw(userId, { status: "CONFIRMED", amount: parse.data.amount, net, provider: providerLabel });
+  notifyWithdraw(userId, { status: "CONFIRMED", amount, net, provider: providerLabel });
 
   return { ok: true, data: { txnId, status: "CONFIRMED", tax, net } };
 }
 
 export function listTransactions(userId: string, limit = 50) {
   return db.txn.findByUser(userId, limit);
+}
+
+/**
+ * Credit an internal (non-deposit) amount to a wallet — used by promotional
+ * money flows: affiliate rewards and player-proposal prizes. Posts a CONFIRMED
+ * transaction so the credit has immutable history like every other money
+ * movement. Synchronous + atomic (single read-modify-write, no await between),
+ * so concurrent callers can't lose an update under Node's single thread.
+ * Returns the new balance, or null if the wallet is missing/frozen or the
+ * amount is non-positive.
+ */
+export function creditInternal(
+  userId: string,
+  amount: number,
+  opts: { description: string; type?: StoredTxn["type"] },
+): number | null {
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  const wallet = db.wallet.findByUserId(userId);
+  if (!wallet || wallet.status !== "ACTIVE") return null;
+  const newBalance = wallet.balance + amount;
+  db.wallet.update(wallet.id, { balance: newBalance });
+  const now = new Date().toISOString();
+  db.txn.create({
+    id: `txn_${randomId(12)}`,
+    walletId: wallet.id,
+    userId,
+    type: opts.type ?? "BONUS_CREDIT",
+    status: "CONFIRMED",
+    amount,
+    fee: 0,
+    taxWithheld: 0,
+    balanceAfter: newBalance,
+    currency: "TZS",
+    provider: "INTERNAL",
+    providerRef: null,
+    msisdn: null,
+    description: opts.description,
+    betId: null,
+    amlReason: null,
+    createdAt: now,
+    updatedAt: now,
+    completedAt: now,
+  });
+  return newBalance;
 }
 
 function friendlyProvider(p: string): string {

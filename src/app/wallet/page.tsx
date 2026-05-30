@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { WalletPageClient } from "./wallet-client";
+import { WalletResultModal } from "./wallet-result-modal";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import type { Transaction } from "@/lib/mock-data";
@@ -26,10 +27,11 @@ function adaptTxn(t: StoredTxn): Transaction {
   };
 }
 
-export default async function WalletPage() {
+export default async function WalletPage({ searchParams }: { searchParams: Promise<{ deposited?: string; withdrawal?: string; status?: string; amount?: string }> }) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
 
+  const sp = await searchParams;
   const w = db.wallet.findByUserId(session.userId);
   const balance = w?.balance ?? 0;
   const pending = w?.pending ?? 0;
@@ -38,13 +40,16 @@ export default async function WalletPage() {
   const txns: Transaction[] = db.txn.findByUser(session.userId, 50).map(adaptTxn);
 
   return (
-    <WalletPageClient
-      balance={balance}
-      pending={pending}
-      hold={hold}
-      currency={currency}
-      transactions={txns}
-      isAuthed={true}
-    />
+    <>
+      <WalletResultModal deposited={sp.deposited} withdrawal={sp.withdrawal} status={sp.status} amount={sp.amount} />
+      <WalletPageClient
+        balance={balance}
+        pending={pending}
+        hold={hold}
+        currency={currency}
+        transactions={txns}
+        isAuthed={true}
+      />
+    </>
   );
 }

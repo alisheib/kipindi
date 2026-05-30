@@ -27,6 +27,11 @@ function easeOutQuart(t: number): number {
 export function WalletBalancePill({ balance }: { balance: number }) {
   const [display, setDisplay] = useState(balance);
   const [flashing, setFlashing] = useState(false);
+  // The signed change from the previous balance, captured when a flash starts.
+  // Held in state (not derived at render) because previousRef is advanced to the
+  // new balance inside the effect, so a render-time `balance - previousRef` is
+  // always 0 by the time the flash paints.
+  const [delta, setDelta] = useState(0);
   const previousRef = useRef(balance);
   const rafRef = useRef<number | null>(null);
 
@@ -43,6 +48,7 @@ export function WalletBalancePill({ balance }: { balance: number }) {
     const to = balance;
     if (from === to) return;
     previousRef.current = to;
+    setDelta(to - from);
 
     if (reducedMotion.current) {
       setDisplay(to);
@@ -82,8 +88,6 @@ export function WalletBalancePill({ balance }: { balance: number }) {
     },
     [],
   );
-
-  const delta = balance - previousRef.current; // 0 except during a flash
 
   return (
     <Link

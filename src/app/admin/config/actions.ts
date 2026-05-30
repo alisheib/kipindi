@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
+import { db } from "@/lib/server/store";
 import {
   setGlobalConfig,
   setMarketOverride,
@@ -10,9 +11,14 @@ import {
   type RateConfig,
 } from "@/lib/server/market-config";
 
+const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+
 async function ensureAdmin() {
   const s = await currentSession();
   if (!s) redirect("/auth/admin");
+  // Role check here too — Server Actions bypass the admin layout's gate.
+  const u = db.user.findById(s.userId);
+  if (!u || !ADMIN_ROLES.has(u.role)) redirect("/auth/admin");
   return s;
 }
 

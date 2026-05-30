@@ -54,6 +54,7 @@ export function PublicFooter() {
 
         <FooterCol heading="Fairness" sw="Uadilifu">
           <FooterLink href="/fairness">Provably-fair Mapigo</FooterLink>
+          <FooterLink href="/proposals">Propose markets &amp; get paid</FooterLink>
           <FooterLink href="/legal/terms">Game RTP &amp; rules</FooterLink>
           <FooterLink href="/help">Help &amp; support</FooterLink>
         </FooterCol>

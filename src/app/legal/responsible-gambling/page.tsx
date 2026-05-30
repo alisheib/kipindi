@@ -55,9 +55,9 @@ export default function ResponsibleGamblingPolicyPage() {
 
       <LegalSection n="5" title="Get help">
         <ul className="list-disc pl-5 space-y-1">
-          <li><strong className="text-text">Tanzania</strong>: National Helpline <span className="font-mono text-text-muted">+255 22 211 5811</span> (free)</li>
-          <li><strong className="text-text">International</strong>: <span className="font-mono text-text-muted">begambleaware.org</span>, <span className="font-mono text-text-muted">gamcare.org.uk</span></li>
-          <li><strong className="text-text">Email us</strong>: <span className="font-mono text-text-muted">support@50pick.com</span></li>
+          <li><strong className="text-text">Tanzania</strong>: National Helpline <a href="tel:+255222115811" className="font-mono text-aqua-200 underline-offset-2 hover:underline">+255 22 211 5811</a> (free)</li>
+          <li><strong className="text-text">International</strong>: <a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="font-mono text-aqua-200 underline-offset-2 hover:underline">begambleaware.org</a>, <a href="https://www.gamcare.org.uk" target="_blank" rel="noopener noreferrer" className="font-mono text-aqua-200 underline-offset-2 hover:underline">gamcare.org.uk</a></li>
+          <li><strong className="text-text">Email us</strong>: <a href="mailto:support@50pick.com" className="font-mono text-aqua-200 underline-offset-2 hover:underline">support@50pick.com</a></li>
         </ul>
       </LegalSection>
     </>

@@ -64,6 +64,12 @@ export async function resolveMarketAction(formData: FormData) {
   requireAdminOrThrow(session.userId, "resolveMarketAction");
   const marketId = String(formData.get("marketId") ?? "");
   const outcome = String(formData.get("outcome") ?? "") as Side | "VOID";
+  // Validate at runtime — the `as` cast is erased, so an invalid string would
+  // otherwise reach settlement, mark the market RESOLVED with no winners, and
+  // permanently lock every stake.
+  if (outcome !== "YES" && outcome !== "NO" && outcome !== "VOID") {
+    return { ok: false as const, error: "Invalid outcome.", code: "INVALID" as const };
+  }
   const r = await resolveMarket({ marketId, outcome, officerId: session.userId });
   if (r.ok) {
     revalidatePath("/admin/resolver-queue");

@@ -8,7 +8,6 @@ const SEGMENTS = [
   { id: "7d",     label: "7d" },
   { id: "28d",    label: "28d" },
   { id: "qtd",    label: "QTD" },
-  { id: "custom", label: "Custom" },
 ] as const;
 
 /** Clickable 5-segment range picker. Round-trips via `?range=`. */

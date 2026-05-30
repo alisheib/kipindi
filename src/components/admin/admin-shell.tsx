@@ -46,6 +46,7 @@ export const NAV_GROUPS: ReadonlyArray<{
     group: { en: "Markets", sw: "Soko" },
     items: [
       { href: "/admin/candidates",     label: "AI candidates", key: "candidates" },
+      { href: "/admin/proposals",      label: "Player proposals", key: "proposals" },
       { href: "/admin/markets",        label: "Curation queue", key: "markets" },
       { href: "/admin/resolver-queue", label: "Resolver queue", key: "resolver" },
       { href: "/admin/sources",        label: "Sources & categories", key: "sources" },

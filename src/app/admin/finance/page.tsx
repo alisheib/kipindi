@@ -16,12 +16,17 @@ import {
 } from "@/lib/server/analytics";
 import { formatTzs, formatTzsCompact } from "@/lib/utils";
 import { GenerateButton } from "../reports/generate-button";
+import type { Period } from "@/lib/server/analytics";
 
 export const metadata = { title: "Admin · Finance" };
 export const dynamic = "force-dynamic";
 
-export default function AdminFinancePage() {
-  const period = "28d" as const;
+const VALID_PERIODS: Period[] = ["today", "7d", "28d", "qtd"];
+
+export default async function AdminFinancePage({ searchParams }: { searchParams: Promise<{ range?: string }> }) {
+  const sp = await searchParams;
+  // The PeriodPicker round-trips via ?range= — honour it (default 7d).
+  const period: Period = VALID_PERIODS.includes(sp.range as Period) ? (sp.range as Period) : "7d";
 
   const dep = depositsTotal(period);
   const wd  = withdrawalsTotal(period);
@@ -64,7 +69,7 @@ export default function AdminFinancePage() {
           <AdminKpi label="NGR"             sw="Mapato halisi"      value={`TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`}        gold delta="net of payouts" />
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Tax accrued"      sw="Kodi"          value={`TZS ${formatTzsCompact(taxAccrued).replace("TZS ", "")}`} delta="TRA · Cap 332" />
+          <AdminKpi label="Tax accrued (est.)" sw="Kodi · makisio" value={`TZS ${formatTzsCompact(taxAccrued).replace("TZS ", "")}`} delta="pending TRA module" deltaDir="flat" />
           <AdminKpi label="Operator margin"  sw="Faida"         value={`${margin.toFixed(1)}%`} gold delta="vs 7-10% band" deltaDir={margin > 7 ? "up" : "flat"} />
           <AdminKpi label="Wallet liability" sw="Madeni"        value={`TZS ${formatTzsCompact(liability).replace("TZS ", "")}`} delta="real-time" />
           <AdminKpi label="Active players"   sw="Wachezaji"     value={top.length.toLocaleString()} delta={`${period}`} />

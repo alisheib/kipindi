@@ -494,37 +494,47 @@ export const CASHOUT_SLIPPAGE = 0.09;
 export function cashOutValue(
   position: Pick<StoredPosition, "side" | "stake">,
   market: Pick<StoredMarket, "id" | "yesPool" | "noPool">,
-): { value: number; ratio: number } {
+): { value: number; ratio: number; gross: number } {
   const cfg = getEffectiveConfig(market.id);
   const winningPool = position.side === "YES" ? market.yesPool : market.noPool;
-  if (winningPool <= 0) return { value: 0, ratio: 0 };
+  if (winningPool <= 0) return { value: 0, ratio: 0, gross: 0 };
   const grossPool = market.yesPool + market.noPool;
   const fee = Math.min(0.99, Math.max(0, cfg.taxRate + cfg.commissionRate + cfg.reserveRate + cfg.aggregatorRate));
   const netPool = grossPool * (1 - fee);
   const wouldPay = (position.stake / winningPool) * netPool;
+  const gross = Math.round(wouldPay);
   const value = Math.round(wouldPay * (1 - CASHOUT_SLIPPAGE));
   const ratio = position.stake > 0 ? value / position.stake : 0;
-  return { value, ratio };
+  return { value, ratio, gross };
 }
 
 export async function cashOutPosition(
   userId: string,
   positionId: string,
 ): Promise<ServiceResult<{ value: number; balance: number }>> {
-  const p = positions.get(positionId);
-  if (!p) return { ok: false, error: "Position not found.", code: "NOT_FOUND" };
-  if (p.userId !== userId) return { ok: false, error: "Not your position.", code: "INVALID" };
-  if (p.status !== "OPEN") return { ok: false, error: "Position is no longer open.", code: "INVALID" };
-
-  const m = markets.get(p.marketId);
-  if (!m) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
-  if (m.status !== "LIVE") return { ok: false, error: "Cash-out only available while the market is LIVE.", code: "INVALID" };
+  // Cheap pre-lock fast-fail (avoids taking the lock for obviously-bad calls).
+  const pre = positions.get(positionId);
+  if (!pre) return { ok: false, error: "Position not found.", code: "NOT_FOUND" };
+  if (pre.userId !== userId) return { ok: false, error: "Not your position.", code: "INVALID" };
 
   return withLock(`wallet:${userId}`, async () => {
+    // Re-fetch under the lock: a concurrent resolveMarket may have settled this
+    // position (and credited the wallet) at an await point between the pre-lock
+    // read above and acquiring the lock. Validating the live state here is what
+    // prevents a double-settle / double-credit.
+    const p = positions.get(positionId);
+    if (!p) return { ok: false as const, error: "Position not found.", code: "NOT_FOUND" as const };
+    if (p.userId !== userId) return { ok: false as const, error: "Not your position.", code: "INVALID" as const };
+    if (p.status !== "OPEN") return { ok: false as const, error: "Position is no longer open.", code: "INVALID" as const };
+
+    const m = markets.get(p.marketId);
+    if (!m) return { ok: false as const, error: "Market not found.", code: "NOT_FOUND" as const };
+    if (m.status !== "LIVE") return { ok: false as const, error: "Cash-out only available while the market is LIVE.", code: "INVALID" as const };
+
     const wallet = db.wallet.findByUserId(userId);
     if (!wallet) return { ok: false as const, error: "Wallet not found.", code: "NOT_FOUND" as const };
 
-    const { value } = cashOutValue(p, m);
+    const { value, gross } = cashOutValue(p, m);
     if (value <= 0) {
       return { ok: false as const, error: "Current cash-out value is zero — your side has no live pool.", code: "INVALID" as const };
     }
@@ -552,7 +562,7 @@ export async function cashOutPosition(
       walletId: wallet.id, userId,
       type: "CASHOUT",
       status: "CONFIRMED",
-      amount: value, fee: Math.round(p.stake * CASHOUT_SLIPPAGE), taxWithheld: 0,
+      amount: value, fee: Math.max(0, gross - value), taxWithheld: 0,
       balanceAfter: newBalance, currency: "TZS",
       provider: "INTERNAL", providerRef: null, msisdn: null,
       description: `Cashed out · "${m.titleEn.slice(0, 60)}"`,
@@ -603,6 +613,12 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   if (m.resolutionStage1By === opts.officerId) {
     return { ok: false, error: "Second-officer must be a different reviewer.", code: "INVALID" };
   }
+  // The second officer is confirming the first officer's decision — they cannot
+  // silently settle on a *different* outcome than the one recorded at stage 1.
+  // Without this, a colluding/erroneous stage-2 officer could pay the wrong side.
+  if (opts.outcome !== m.resolvedOutcome) {
+    return { ok: false, error: "Stage-2 outcome must match the Stage-1 decision. Reject and restart to change it.", code: "INVALID" };
+  }
   // Stage 2 — settle
   m.resolutionStage2By = opts.officerId;
   m.resolutionStage2At = new Date().toISOString();
@@ -626,13 +642,17 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
     settleCfg.reserveRate,
   );
 
-  const myPositions = listPositionsForMarket(m.id);
+  // Settle only OPEN positions. A CASHED_OUT (or otherwise already-settled)
+  // position has already paid out and had its stake removed from the pool —
+  // re-settling it here would double-credit the player.
+  const myPositions = listPositionsForMarket(m.id).filter((p) => p.status === "OPEN");
   if (opts.outcome === "VOID") {
     // Refund everyone
     for (const p of myPositions) {
       const w = db.wallet.findByUserId(p.userId);
       if (!w) continue;
-      db.wallet.update(w.id, { balance: w.balance + p.stake });
+      const updated = db.wallet.update(w.id, { balance: w.balance + p.stake });
+      const balanceAfter = updated?.balance ?? w.balance + p.stake;
       p.status = "VOID";
       p.finalPayout = p.stake;
       p.settledAt = m.resolutionStage2At!;
@@ -642,7 +662,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
         walletId: w.id, userId: p.userId,
         type: "BET_REFUND", status: "CONFIRMED",
         amount: p.stake, fee: 0, taxWithheld: 0,
-        balanceAfter: w.balance + p.stake, currency: "TZS",
+        balanceAfter, currency: "TZS",
         provider: "INTERNAL", providerRef: null, msisdn: null,
         description: `Refund · "${m.titleEn.slice(0, 60)}" voided`,
         betId: p.id,
@@ -662,7 +682,8 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
           { yesPool: m.yesPool, noPool: m.noPool, side: p.side, stake: p.stake },
           settleCfg,
         );
-        db.wallet.update(w.id, { balance: w.balance + payout });
+        const updated = db.wallet.update(w.id, { balance: w.balance + payout });
+        const balanceAfter = updated?.balance ?? w.balance + payout;
         p.status = "WIN"; p.finalPayout = payout; p.settledAt = m.resolutionStage2At!;
         positions.set(p.id, p);
         db.txn.create({
@@ -670,7 +691,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
           walletId: w.id, userId: p.userId,
           type: "BET_PAYOUT", status: "CONFIRMED",
           amount: payout, fee: 0, taxWithheld: 0,
-          balanceAfter: w.balance + payout, currency: "TZS",
+          balanceAfter, currency: "TZS",
           provider: "INTERNAL", providerRef: null, msisdn: null,
           description: `${opts.outcome} won · "${m.titleEn.slice(0, 60)}"`,
           betId: p.id,
@@ -711,6 +732,15 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
       sourceUrl: m.sourceUrl,
     },
   });
+
+  // Feature 2 — if this market came from a player proposal, pay the proposer
+  // their prize now that it is listed AND resolved. Best-effort; never blocks
+  // settlement. VOID outcomes mark the proposal resolved without a prize.
+  try {
+    const { onMarketResolved } = await import("./proposals-service");
+    onMarketResolved(m.id, { voided: opts.outcome === "VOID" });
+  } catch { /* proposal prize must never break settlement */ }
+
   return { ok: true, data: { stage: "complete", winnersPaid } };
 }
 

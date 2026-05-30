@@ -257,16 +257,20 @@ export function settleHousePosition(
   // 1. Reserve fee from the gross pool (configurable %)
   const reserveFee = Math.round(grossPool * Math.max(0, Math.min(0.10, reserveRate)));
 
+  // Apply each balance movement just before its ledger entry so every
+  // `balanceAfter` is the true running reserve balance at that step (auditors
+  // reconcile by walking the ledger; lumping the mutation broke that).
   if (outcome === "VOID") {
     // Full refund of both sides
     const returned = perSide * 2;
-    pool.balance += returned + reserveFee;
     pool.seeds.delete(marketId);
 
     if (returned > 0) {
-      pushLedger({ type: "SETTLE_RETURN", amount: returned, balanceAfter: pool.balance - reserveFee, marketId, note: "Void — full refund", actorId: "system" });
+      pool.balance += returned;
+      pushLedger({ type: "SETTLE_RETURN", amount: returned, balanceAfter: pool.balance, marketId, note: "Void — full refund", actorId: "system" });
     }
     if (reserveFee > 0) {
+      pool.balance += reserveFee;
       pushLedger({ type: "RESERVE_FEE", amount: reserveFee, balanceAfter: pool.balance, marketId, note: `Reserve fee ${(reserveRate * 100).toFixed(1)}%`, actorId: "system" });
     }
     return { returnedToReserve: returned, reserveFee, lossAbsorbed: 0 };
@@ -277,16 +281,19 @@ export function settleHousePosition(
   const returned = perSide; // winning side comes back
   const lossAbsorbed = perSide; // losing side was consumed by player payouts
 
-  pool.balance += returned + reserveFee;
   pool.seeds.delete(marketId);
 
   if (returned > 0) {
-    pushLedger({ type: "SETTLE_RETURN", amount: returned, balanceAfter: pool.balance - reserveFee, marketId, note: `Winning-side return (${outcome})`, actorId: "system" });
+    pool.balance += returned;
+    pushLedger({ type: "SETTLE_RETURN", amount: returned, balanceAfter: pool.balance, marketId, note: `Winning-side return (${outcome})`, actorId: "system" });
   }
   if (lossAbsorbed > 0) {
-    pushLedger({ type: "LOSS_ABSORBED", amount: -lossAbsorbed, balanceAfter: pool.balance - reserveFee, marketId, note: `Losing-side absorbed (${outcome === "YES" ? "NO" : "YES"})`, actorId: "system" });
+    // Accounting-only: the losing seed was already consumed by player payouts and
+    // was never part of the reserve balance, so the reserve is unchanged here.
+    pushLedger({ type: "LOSS_ABSORBED", amount: -lossAbsorbed, balanceAfter: pool.balance, marketId, note: `Losing-side absorbed (${outcome === "YES" ? "NO" : "YES"})`, actorId: "system" });
   }
   if (reserveFee > 0) {
+    pool.balance += reserveFee;
     pushLedger({ type: "RESERVE_FEE", amount: reserveFee, balanceAfter: pool.balance, marketId, note: `Reserve fee ${(reserveRate * 100).toFixed(1)}%`, actorId: "system" });
   }
 

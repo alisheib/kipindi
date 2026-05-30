@@ -7,6 +7,7 @@ import { ConfidentialBand, AdminSidebar, AdminTopBar, type AdminSession } from "
 
 const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
 const TOTP_COOKIE = "kp_admin_totp";
+const TOTP_TTL_SEC = 60 * 60 * 8; // 8h — must match totp-verify/actions.ts
 
 /**
  * Routes inside /admin/* that DON'T require an admin TOTP cookie:
@@ -33,6 +34,7 @@ function activeKeyFromPath(path: string): string {
   if (path.startsWith("/admin/config"))               return "config";
   if (path.startsWith("/admin/house-pool"))           return "house-pool";
   if (path.startsWith("/admin/candidates"))           return "candidates";
+  if (path.startsWith("/admin/proposals"))            return "proposals";
   if (path.startsWith("/admin/markets"))              return "markets";
   if (path.startsWith("/admin/resolver-queue"))       return "resolver";
   if (path.startsWith("/admin/affiliate"))            return "affiliate";
@@ -78,6 +80,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     if (!jar.get(TOTP_COOKIE)) {
       redirect("/admin/totp-verify");
     }
+    // Sliding refresh: re-issue the TOTP cookie on activity so an actively
+    // working admin isn't kicked back to the TOTP gate at the hard 8h mark
+    // mid-shift. Mirrors the session sliding refresh; best-effort, since a
+    // static/read-only render context can't write cookies (it just skips).
+    try {
+      jar.set(TOTP_COOKIE, "1", {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: TOTP_TTL_SEC,
+      });
+    } catch { /* read-only render context — next mutable request resyncs */ }
   }
 
   return (

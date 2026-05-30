@@ -21,7 +21,7 @@
  *    edit will fail the signature check on next boot, surfacing in audit log.
  */
 import { createHmac } from "node:crypto";
-import { readFileSync, writeFileSync, mkdirSync, readdirSync, unlinkSync, existsSync, statSync } from "node:fs";
+import { readFileSync, writeFileSync, renameSync, mkdirSync, readdirSync, unlinkSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { audit } from "./audit";
 import { prisma, hasDatabase } from "./prisma";
@@ -90,6 +90,11 @@ function serializeStore(store: any): string {
   }
   // Snapshot the audit ring alongside the store so the chain survives restarts
   out.__auditRing = globalThis.__50PICK_AUDIT_RING ?? [];
+  // Snapshot admin-tunable runtime configs (affiliate + proposals programs) —
+  // they live in their own globals, so without this they'd revert to defaults
+  // on every restart, silently undoing an operator's saved settings.
+  out.__affiliateConfig = (globalThis as { __50PICK_AFFILIATE_CONFIG?: unknown }).__50PICK_AFFILIATE_CONFIG;
+  out.__proposalsConfig = (globalThis as { __50PICK_PROPOSALS_CONFIG?: unknown }).__50PICK_PROPOSALS_CONFIG;
   return JSON.stringify(out);
 }
 
@@ -101,6 +106,16 @@ function deserializeStore(payload: string): Record<string, Map<unknown, unknown>
     globalThis.__50PICK_AUDIT_RING = parsed.__auditRing;
     delete parsed.__auditRing;
   }
+  // Restore admin-tunable runtime configs (affiliate + proposals).
+  const g = globalThis as { __50PICK_AFFILIATE_CONFIG?: unknown; __50PICK_PROPOSALS_CONFIG?: unknown };
+  if (parsed.__affiliateConfig && typeof parsed.__affiliateConfig === "object") {
+    g.__50PICK_AFFILIATE_CONFIG = parsed.__affiliateConfig;
+  }
+  delete parsed.__affiliateConfig;
+  if (parsed.__proposalsConfig && typeof parsed.__proposalsConfig === "object") {
+    g.__50PICK_PROPOSALS_CONFIG = parsed.__proposalsConfig;
+  }
+  delete parsed.__proposalsConfig;
   const restored: Record<string, Map<unknown, unknown>> = {};
   for (const [k, v] of Object.entries(parsed) as [string, any][]) {
     if (v && typeof v === "object" && v.__map === true && Array.isArray(v.entries)) {
@@ -157,14 +172,19 @@ function writeSnapshotNow(): void {
 }
 
 function writeEnvelopeToDisk(envelope: string): void {
-  ensureDir();
   const tmp = join(BACKUP_DIR, `${SNAPSHOT_FILE}.tmp`);
-  writeFileSync(tmp, envelope, "utf8");
   const dest = join(BACKUP_DIR, SNAPSHOT_FILE);
   try {
-    writeFileSync(dest, envelope, "utf8");
-    try { unlinkSync(tmp); } catch { /* ignore */ }
+    ensureDir();
+    // Write to a temp file, then rename — rename is atomic on the same
+    // filesystem, so a reader never sees a half-written snapshot, and a crash
+    // mid-write leaves the previous good snapshot intact. The whole sequence is
+    // guarded so a disk-full / permission error skips this cycle (the previous
+    // snapshot survives) instead of throwing into the debounced backup timer.
+    writeFileSync(tmp, envelope, "utf8");
+    renameSync(tmp, dest);
   } catch {
+    try { unlinkSync(tmp); } catch { /* ignore */ }
     return;
   }
   // Rolling history (12 most-recent snapshots, ~18 min at 1.5 s cadence)

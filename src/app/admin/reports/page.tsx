@@ -1,6 +1,6 @@
 import { AdminPageHead, AdminCard, FeedRow } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
-import { FileDown, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { getAuditPage } from "@/lib/server/audit";
 import { GenerateButton } from "./generate-button";
 
@@ -100,14 +100,6 @@ export default function AdminReportsPage() {
         title="Reports"
         sw="Ripoti"
         period={false}
-        actions={
-          <button
-            type="button"
-            className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border border-gold bg-gold/10 text-gold"
-          >
-            <FileDown size={12} aria-hidden /> Bulk export
-          </button>
-        }
       />
 
       <div className="px-4 lg:px-6 py-5 space-y-4">
@@ -149,14 +141,6 @@ export default function AdminReportsPage() {
                     <span className="font-mono text-micro tracking-wider text-text-tertiary">{t.cadence}</span>
                   </div>
                   <div className="flex justify-end gap-1.5 pt-2">
-                    <button
-                      type="button"
-                      disabled
-                      title="Preview wired in next iteration"
-                      className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border border-border bg-bg-elevated text-text-tertiary cursor-not-allowed"
-                    >
-                      Preview
-                    </button>
                     <GenerateButton id={t.id} />
                   </div>
                 </div>

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
+import { db } from "@/lib/server/store";
 import {
   addSource,
   removeSource,
@@ -11,9 +12,14 @@ import {
 } from "@/lib/server/source-registry";
 import type { MarketCategory } from "@/lib/server/market-service";
 
+const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+
 async function ensureAdmin() {
   const session = await currentSession();
   if (!session) redirect("/auth/admin");
+  // Role check here too — Server Actions bypass the admin layout's gate.
+  const u = db.user.findById(session.userId);
+  if (!u || !ADMIN_ROLES.has(u.role)) redirect("/auth/admin");
   return session;
 }
 

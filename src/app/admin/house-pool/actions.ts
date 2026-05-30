@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
+import { db } from "@/lib/server/store";
 import {
   topUpHousePool,
   withdrawHousePool,
@@ -10,9 +11,15 @@ import {
   type HousePoolConfig,
 } from "@/lib/server/house-pool";
 
+const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+
 async function ensureAdmin() {
   const s = await currentSession();
   if (!s) redirect("/auth/admin");
+  // Defence-in-depth: Server Actions can be invoked directly (bypassing the
+  // admin layout), so the ROLE must be checked here, not just session presence.
+  const u = db.user.findById(s.userId);
+  if (!u || !ADMIN_ROLES.has(u.role)) redirect("/auth/admin");
   return s;
 }
 

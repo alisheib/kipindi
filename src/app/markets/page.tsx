@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { Trophy, ArrowRight } from "lucide-react";
 import { MarketCard } from "@/components/markets/market-card";
 import { listMarkets, impliedYesPct, isClosedByTime, seedDemoMarkets, type MarketCategory } from "@/lib/server/market-service";
+import { getProposalsConfig } from "@/lib/server/proposals-config";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageRibbon } from "@/components/layout/page-ribbon";
 
@@ -64,10 +66,34 @@ export default function MarketsPage({ searchParams }: { searchParams: Promise<{ 
         ]}
       />
 
+      <ProposalEntryCard />
+
       <FilterBar searchParams={searchParams} />
 
       <SearchAwareGrid searchParams={searchParams} />
     </main>
+  );
+}
+
+/** Gold-accented entry point into Feature 2 (player market proposals). */
+function ProposalEntryCard() {
+  const cfg = getProposalsConfig();
+  if (!cfg.enabled) return null;
+  return (
+    <Link
+      href={"/proposals" as never}
+      className="group flex items-center gap-3.5 rounded-2xl border p-4 transition-colors hover:border-gold-500"
+      style={{ borderColor: "color-mix(in oklab, var(--gold-500) 30%, var(--border))", background: "color-mix(in oklab, var(--gold-500) 6%, var(--bg-elevated))" }}
+    >
+      <span className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-[11px] text-gold-fg" style={{ background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))" }}>
+        <Trophy size={22} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-display text-[14.5px] font-bold text-text">Propose Markets &amp; Get Paid</p>
+        <p className="font-display italic text-text-subtle text-[11.5px]">Pendekeza soko{cfg.prizeTzs > 0 ? ` · pata TZS ${cfg.prizeTzs.toLocaleString()}` : ""}</p>
+      </div>
+      <ArrowRight size={18} className="text-gold-300 transition-transform group-hover:translate-x-0.5" />
+    </Link>
   );
 }
 

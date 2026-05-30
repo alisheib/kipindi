@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChevronLeft, ShieldCheck, Check } from "lucide-react";
+import { ChevronLeft, ShieldCheck, Check, AlertCircle } from "lucide-react";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
 import { getKycStatus, startKyc } from "@/lib/server/kyc-service";
-import { submitNidaAction } from "./actions";
+import { submitNidaAction, attachDocumentAction, submitKycForReviewAction } from "./actions";
 
 export const metadata = { title: "Verify identity · Thibitisha" };
 
@@ -20,6 +20,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
   const nidaDone = !!kyc?.nidaVerifiedAt;
   const docsCount = kyc?.documents.length ?? 0;
   const submitted = kyc?.status === "PENDING_REVIEW" || kyc?.status === "APPROVED";
+  const rejected = kyc?.status === "REJECTED";
 
   return (
     <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
@@ -87,6 +88,24 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
           </p>
         </div>
       </header>
+
+      {rejected && (
+        <section role="alert" className="rounded-2xl border border-no-700 bg-no-500/[0.08] p-4 lg:p-5">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle size={18} className="mt-0.5 shrink-0 text-no-300" />
+            <div className="min-w-0">
+              <p className="font-display text-[14px] font-bold text-no-300">Verification needs another look · Imekataliwa</p>
+              <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
+                {kyc?.rejectReason ? <>Reason: <span className="font-semibold text-text">{String(kyc.rejectReason).replace(/_/g, " ").toLowerCase()}</span>. </> : null}
+                {kyc?.rejectNote ? `${kyc.rejectNote} ` : ""}
+                Please re-enter your details below and resubmit, or email{" "}
+                <a href="mailto:support@50pick.com?subject=KYC%20review" className="text-aqua-200 underline-offset-2 hover:underline">support@50pick.com</a>.
+                <span className="block italic text-text-subtle text-[11.5px] mt-0.5">Tafadhali jaribu tena au wasiliana na msaada.</span>
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <Step n={1} title="NIDA"      detail="National ID number"  done={nidaDone} active={!nidaDone} />
@@ -162,13 +181,26 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             and a <span className="font-bold text-text">selfie</span> holding the card.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <UploadSlot label="ID front · Mbele"    done={docsCount >= 1} />
-            <UploadSlot label="ID back · Nyuma"     done={docsCount >= 2} />
-            <UploadSlot label="Selfie · Picha yako" done={docsCount >= 3} />
+            <UploadSlot label="ID front · Mbele"    docType="NIDA_FRONT" done={docsCount >= 1} />
+            <UploadSlot label="ID back · Nyuma"     docType="NIDA_BACK"  done={docsCount >= 2} />
+            <UploadSlot label="Selfie · Picha yako" docType="SELFIE"     done={docsCount >= 3} />
           </div>
           <p className="text-[10.5px] italic text-text-subtle">
-            Document upload is stubbed in this build — the real uploader integrates with object storage in a later sprint.
+            Image upload uses demo storage in this build — tap each card to attach a sample, then submit for compliance review.
           </p>
+          <form action={submitKycForReviewAction}>
+            <button
+              type="submit"
+              disabled={docsCount < 3}
+              className={docsCount >= 3 ? "btn btn-gold btn-lg w-full" : "btn btn-ghost btn-lg w-full"}
+              style={{ borderRadius: 999 }}
+            >
+              Submit for review · Wasilisha
+            </button>
+            {docsCount < 3 && (
+              <p className="mt-2 text-[11px] text-text-subtle text-center">Attach all three documents to submit.</p>
+            )}
+          </form>
         </section>
       )}
 
@@ -230,23 +262,28 @@ function Step({ n, title, detail, done, active }: { n: number; title: string; de
   );
 }
 
-function UploadSlot({ label, done }: { label: string; done: boolean }) {
+function UploadSlot({ label, docType, done }: { label: string; docType: "NIDA_FRONT" | "NIDA_BACK" | "SELFIE"; done: boolean }) {
   return (
-    <div
-      className={`rounded-md border-2 border-dashed p-3.5 text-center ${
-        done ? "border-yes-700 bg-yes-500/[0.07]" : "border-border bg-bg-overlay/40"
-      }`}
-    >
-      <div
-        className={`mx-auto mb-1.5 h-6 w-6 inline-flex items-center justify-center rounded-pill ${
-          done ? "bg-yes-500 text-yes-950" : "bg-bg-overlay text-text-subtle border border-border"
+    <form action={attachDocumentAction}>
+      <input type="hidden" name="docType" value={docType} />
+      <button
+        type="submit"
+        disabled={done}
+        className={`w-full rounded-md border-2 border-dashed p-3.5 text-center transition-colors ${
+          done ? "border-yes-700 bg-yes-500/[0.07] cursor-default" : "border-border bg-bg-overlay/40 hover:border-gold-700 hover:bg-gold-500/[0.06] cursor-pointer"
         }`}
       >
-        {done ? <Check size={11} strokeWidth={3} /> : "+"}
-      </div>
-      <p className="font-display text-[12px] font-semibold text-text">{label}</p>
-      <p className="mt-0.5 font-mono text-[10.5px] text-text-subtle">{done ? "Uploaded" : "Tap to upload"}</p>
-    </div>
+        <span
+          className={`mx-auto mb-1.5 h-6 w-6 inline-flex items-center justify-center rounded-pill ${
+            done ? "bg-yes-500 text-yes-950" : "bg-bg-overlay text-text-subtle border border-border"
+          }`}
+        >
+          {done ? <Check size={11} strokeWidth={3} /> : "+"}
+        </span>
+        <span className="block font-display text-[12px] font-semibold text-text">{label}</span>
+        <span className="mt-0.5 block font-mono text-[10.5px] text-text-subtle">{done ? "Attached" : "Tap to attach"}</span>
+      </button>
+    </form>
   );
 }
 

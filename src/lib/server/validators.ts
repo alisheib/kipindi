@@ -129,11 +129,27 @@ export const DepositSchema = z.object({
 });
 export type DepositInput = z.infer<typeof DepositSchema>;
 
+/**
+ * TEMPORARY admin testing deposit — relaxes the TZS 2,000,000 single-deposit
+ * cap so an operator can fund a wallet with as much play-money as needed to
+ * test deposits / referrals / proposals. Gated to ADMIN roles in
+ * wallet-service and switchable off via ADMIN_TEST_DEPOSITS=false. Remove with
+ * the bypass when test funding is no longer needed.
+ */
+export const AdminDepositSchema = z.object({
+  provider: z.enum(["MPESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX", "CARD"]),
+  amount: z.number().int().min(500, "Minimum deposit is TZS 500").max(1_000_000_000, "Admin test-deposit cap is TZS 1,000,000,000"),
+  msisdn: tzPhone.optional(),
+});
+
 export const WithdrawSchema = z.object({
   provider: z.enum(["MPESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX", "BANK_TRANSFER"]),
   amount: withdrawAmount,
   msisdn: tzPhone.optional(),
-  otpCode,
+  // Optional until the licensed SMS provider (Selcom/Beem) is signed — the
+  // withdrawal is gated by KYC + AML + (planned) step-up SMS verification.
+  // We do NOT present an OTP field that isn't actually enforced.
+  otpCode: otpCode.optional(),
 });
 export type WithdrawInput = z.infer<typeof WithdrawSchema>;
 

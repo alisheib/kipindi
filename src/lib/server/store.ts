@@ -186,7 +186,8 @@ export type StoredNotification = {
     | "MATCH_START"
     | "RG"
     | "SECURITY"
-    | "AFFILIATE";
+    | "AFFILIATE"
+    | "PROPOSAL";
   titleEn: string;
   titleSw: string;
   bodyEn: string;
@@ -250,6 +251,47 @@ export type StoredReferralReward = {
   createdAt: string;
 };
 
+/**
+ * Player market proposal (Feature 2). A player proposes a market; the
+ * community up/down-votes (ranking only); an officer approves → it becomes a
+ * live Market; the proposer earns a fixed prize when it's both LISTED and
+ * RESOLVED. Vote tallies are denormalised onto up/down and kept in sync by
+ * the proposals service; individual votes live in `proposalVotes`.
+ */
+export type ProposalStatus = "REVIEW" | "CHANGES_REQUESTED" | "LISTED" | "RESOLVED" | "DECLINED";
+export type ProposalCategory = "sports" | "macro" | "weather" | "crypto" | "culture" | "infrastructure";
+
+export type StoredProposal = {
+  id: string;
+  proposerId: string;
+  titleEn: string;
+  titleSw: string | null;
+  description: string | null;
+  resolutionCriterion: string;
+  category: ProposalCategory;
+  resolutionDate: string;            // ISO date (YYYY-MM-DD)
+  status: ProposalStatus;
+  up: number;
+  down: number;
+  publishedMarketId: string | null;  // set when an officer approves & lists
+  prizePaidTzs: number;              // 0 until listed + resolved + paid
+  declineReason: string | null;
+  declineNote: string | null;
+  changeNote: string | null;         // officer "request changes" note
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type StoredProposalVote = {
+  id: string;                        // `${proposalId}:${userId}`
+  proposalId: string;
+  userId: string;
+  dir: "up" | "down";
+  createdAt: string;
+};
+
 declare global {
   // eslint-disable-next-line no-var
   var __50PICK_STORE: {
@@ -268,6 +310,8 @@ declare global {
     sourceOfFunds: Map<string, StoredSourceOfFunds>;
     affiliates: Map<string, StoredAffiliateAccount>;
     referralRewards: Map<string, StoredReferralReward>;
+    proposals: Map<string, StoredProposal>;
+    proposalVotes: Map<string, StoredProposalVote>;
   } | undefined;
 }
 
@@ -287,11 +331,15 @@ const store = globalThis.__50PICK_STORE ?? (globalThis.__50PICK_STORE = {
   sourceOfFunds: new Map(),
   affiliates: new Map(),
   referralRewards: new Map(),
+  proposals: new Map(),
+  proposalVotes: new Map(),
 });
 
 // Hot-reload safety: if a previous build created the global without the newer maps,
 // add them now. Without this, server-action calls into bets/mapigo crash with
 // "Cannot read properties of undefined" because the cached global is stale.
+if (!store.usersByPhone)  store.usersByPhone = new Map();
+if (!store.walletsByUser) store.walletsByUser = new Map();
 if (!store.bets)          store.bets = new Map();
 if (!store.mapigoRounds)  store.mapigoRounds = new Map();
 if (!store.mapigoBets)    store.mapigoBets = new Map();
@@ -299,6 +347,8 @@ if (!store.notifications) store.notifications = new Map();
 if (!store.sourceOfFunds) store.sourceOfFunds = new Map();
 if (!store.affiliates)      store.affiliates = new Map();
 if (!store.referralRewards) store.referralRewards = new Map();
+if (!store.proposals)       store.proposals = new Map();
+if (!store.proposalVotes)   store.proposalVotes = new Map();
 
 // Lazy import of the backup module — keeps store.ts clean of file-system imports
 // for clients that bundle this file (none currently, but future-proof).
@@ -525,5 +575,37 @@ export const db = {
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     listByRecruit: (recruitUserId: string): StoredReferralReward[] =>
       Array.from(store.referralRewards.values()).filter((r) => r.recruitUserId === recruitUserId),
+  },
+  proposal: {
+    create: (p: StoredProposal): StoredProposal => { store.proposals.set(p.id, p); tap(); return p; },
+    findById: (id: string): StoredProposal | null => store.proposals.get(id) ?? null,
+    findByMarketId: (marketId: string): StoredProposal | null => {
+      for (const p of store.proposals.values() as Iterable<StoredProposal>) if (p.publishedMarketId === marketId) return p;
+      return null;
+    },
+    update: (id: string, patch: Partial<StoredProposal>): StoredProposal | null => {
+      const p = store.proposals.get(id);
+      if (!p) return null;
+      const next: StoredProposal = { ...p, ...patch, updatedAt: new Date().toISOString() };
+      store.proposals.set(id, next);
+      tap();
+      return next;
+    },
+    list: (limit = 1000): StoredProposal[] =>
+      (Array.from(store.proposals.values()) as StoredProposal[])
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .slice(0, limit),
+    listByProposer: (proposerId: string): StoredProposal[] =>
+      (Array.from(store.proposals.values()) as StoredProposal[])
+        .filter((p) => p.proposerId === proposerId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+  },
+  proposalVote: {
+    get: (proposalId: string, userId: string): StoredProposalVote | null =>
+      store.proposalVotes.get(`${proposalId}:${userId}`) ?? null,
+    set: (v: StoredProposalVote): StoredProposalVote => { store.proposalVotes.set(v.id, v); tap(); return v; },
+    delete: (proposalId: string, userId: string): void => { store.proposalVotes.delete(`${proposalId}:${userId}`); tap(); },
+    listByProposal: (proposalId: string): StoredProposalVote[] =>
+      (Array.from(store.proposalVotes.values()) as StoredProposalVote[]).filter((v) => v.proposalId === proposalId),
   },
 };

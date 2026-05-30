@@ -39,7 +39,7 @@ export default function AdminOverviewPage() {
 
   return (
     <>
-      <AdminPageHead title="Overview" sw="Muhtasari" />
+      <AdminPageHead title="Overview" sw="Muhtasari" period={false} />
 
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* §A — KPI strip */}
@@ -136,10 +136,10 @@ export default function AdminOverviewPage() {
 
           <AdminCard title="Match-integrity alerts" sw="Tahadhari za uadilifu">
             <div className="flex items-baseline justify-between">
-              <span className="font-mono font-bold text-title-md tabular text-danger">0</span>
-              <span className="font-mono text-micro text-text-tertiary tracking-wider uppercase">last 24h</span>
+              <span className="font-mono font-bold text-title-md tabular text-text-tertiary">—</span>
+              <span className="font-mono text-micro text-text-tertiary tracking-wider uppercase">not yet live</span>
             </div>
-            <p className="text-caption text-text-tertiary">Sportradar feed · stub adapter</p>
+            <p className="text-caption text-text-tertiary">Monitoring activates when the Sportradar integrity feed is signed (pre-launch blocker).</p>
           </AdminCard>
         </div>
       </div>

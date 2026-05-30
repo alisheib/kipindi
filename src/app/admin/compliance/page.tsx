@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AdminPageHead, AdminCard, AdminKpi, AdminStackedBar, StatusPill, FeedRow } from "@/components/admin/admin-shell";
 import { AdminFunnelChart } from "@/components/admin/admin-charts";
 import { ShieldCheck, AlertTriangle, Download, Lock, HeartPulse } from "lucide-react";
@@ -49,21 +50,12 @@ export default function AdminCompliancePage() {
         title="Compliance"
         sw="Kanuni"
         actions={
-          <div className="flex gap-1.5 flex-wrap">
-            {[
-              { id: "gbt",  label: "Monthly report" },
-              { id: "tra",  label: "TRA tax" },
-              { id: "fiu",  label: "FIU SAR" },
-            ].map((b) => (
-              <button
-                key={b.id}
-                type="button"
-                className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border border-border bg-bg-elevated text-text-secondary hover:text-text"
-              >
-                <Download size={12} aria-hidden /> {b.label}
-              </button>
-            ))}
-          </div>
+          <Link
+            href="/admin/reports"
+            className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border border-gold bg-gold/10 text-gold hover:bg-gold/20 transition-colors"
+          >
+            <Download size={12} aria-hidden /> Generate reports →
+          </Link>
         }
       />
 

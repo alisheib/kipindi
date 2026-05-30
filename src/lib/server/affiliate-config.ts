@@ -134,5 +134,8 @@ export function setAffiliateConfig(updates: DeepPartial<AffiliateConfig>, office
     targetId: "global",
     payload: { before, after: merged, changes: updates },
   });
+  // Persist the change so it survives a restart (the backup envelope now
+  // captures this config). Fire-and-forget; never blocks the save.
+  import("./backup").then((m) => m.scheduleBackup()).catch(() => {});
   return { ok: true, config: deepClone(merged) };
 }

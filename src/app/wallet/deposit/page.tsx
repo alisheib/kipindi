@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowDownToLine, ChevronLeft } from "lucide-react";
+import { ArrowDownToLine, ChevronLeft, AlertCircle } from "lucide-react";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
+import { db } from "@/lib/server/store";
 import { depositAction } from "./actions";
+import { DepositAmount } from "./deposit-amount";
 
 export const metadata = { title: "Deposit · Amana" };
+
+const ADMIN_TEST_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
 
 const PROVIDERS = [
   { id: "MPESA",        name: "M-Pesa",        hue: 152 },
@@ -17,9 +21,20 @@ const PROVIDERS = [
 
 const QUICK_AMOUNTS = [1_000, 5_000, 10_000, 25_000, 50_000, 100_000];
 
-export default async function DepositPage() {
+export default async function DepositPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
+
+  const sp = await searchParams;
+  const errorMsg = sp.error ? decodeURIComponent(sp.error) : null;
+
+  // TEMPORARY admin test-funding: ADMIN-role accounts can deposit uncapped
+  // play-money to test deposits/referrals/proposals. Disable via
+  // ADMIN_TEST_DEPOSITS=false. Mirrors the wallet-service bypass.
+  const user = db.user.findById(session.userId);
+  const adminTest = !!user && ADMIN_TEST_ROLES.has(user.role) && process.env.ADMIN_TEST_DEPOSITS !== "false";
+  const maxAmount = adminTest ? 1_000_000_000 : 2_000_000;
+  const quickAmounts = adminTest ? [100_000, 1_000_000, 5_000_000, 20_000_000, 100_000_000] : QUICK_AMOUNTS;
 
   return (
     <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
@@ -55,6 +70,16 @@ export default async function DepositPage() {
         </div>
       </header>
 
+      {errorMsg && (
+        <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-no-700/60 bg-no-500/[0.10] px-4 py-3">
+          <AlertCircle size={16} className="mt-0.5 shrink-0 text-no-300" />
+          <div className="text-[12.5px] leading-snug">
+            <p className="font-display font-semibold text-text">Deposit didn&rsquo;t go through</p>
+            <p className="mt-0.5 text-text-muted">{errorMsg}</p>
+          </div>
+        </div>
+      )}
+
       <form action={depositAction} className="rounded-2xl border border-border bg-bg-elevated p-5 lg:p-6 space-y-5">
         {/* Provider grid */}
         <fieldset>
@@ -80,47 +105,8 @@ export default async function DepositPage() {
           </div>
         </fieldset>
 
-        {/* Amount */}
-        <div>
-          <label
-            htmlFor="amount"
-            className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2"
-          >
-            Amount · Kiasi
-          </label>
-          <div className="flex">
-            <span className="inline-flex items-center px-3 h-12 rounded-l-md border border-r-0 border-border bg-bg-overlay font-mono text-[13px] font-bold text-text-subtle">
-              TZS
-            </span>
-            <input
-              id="amount"
-              name="amount"
-              type="number"
-              required
-              min={500}
-              max={2_000_000}
-              step={500}
-              inputMode="numeric"
-              placeholder="10,000"
-              className="flex-1 h-12 px-3 rounded-r-md border border-border bg-bg-overlay font-display font-bold text-[20px] tabular-nums text-text focus:outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 transition-colors"
-            />
-          </div>
-          <div className="mt-2 grid grid-cols-3 sm:grid-cols-6 gap-1.5">
-            {QUICK_AMOUNTS.map((v) => (
-              <button
-                key={v}
-                type="button"
-                data-amount={v}
-                className="quick-amount h-8 rounded-pill border border-border bg-bg-overlay text-text-subtle hover:bg-gold-500/10 hover:text-gold-300 hover:border-gold-700 font-mono text-[11.5px] font-bold tabular-nums transition-colors"
-              >
-                {v >= 1_000 ? `${v / 1_000}K` : v}
-              </button>
-            ))}
-          </div>
-          <p className="mt-2 text-[11px] text-text-subtle">
-            Min TZS 500 · Max TZS 2,000,000 per deposit. Daily limits may apply.
-          </p>
-        </div>
+        {/* Amount — kit-styled control (no browser number spinner); chips override. */}
+        <DepositAmount max={maxAmount} quickAmounts={quickAmounts} adminTest={adminTest} />
 
         {/* Source phone */}
         <div>
@@ -161,16 +147,6 @@ export default async function DepositPage() {
           Test failure: amount ending in <span className="font-mono text-warning-fg">…13</span> is declined for QA.
         </span>
       </p>
-
-      {/* Progressive enhancement: quick-amount chips fill the input. */}
-      <script dangerouslySetInnerHTML={{ __html: `
-        document.addEventListener("click", function(e) {
-          var t = e.target.closest && e.target.closest(".quick-amount");
-          if (!t) return;
-          var input = document.getElementById("amount");
-          if (input) input.value = t.dataset.amount;
-        });
-      ` }} />
     </main>
   );
 }

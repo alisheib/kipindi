@@ -16,6 +16,16 @@
  *
  * The wire format is identical between modes so the only swap is the
  * inner branch — call sites don't change.
+ *
+ * KEEPING KNOWLEDGE IN SYNC (until live Claude + retrieval is wired):
+ *   When a player-facing page or feature is ADDED, RENAMED, or REMOVED, add or
+ *   update an intent branch in `stubReply()` below (keyword → reply + a
+ *   citation to the route). Current intents: deposits, conviction dial,
+ *   payouts/withdrawals, KYC, affiliate (Invite & Earn → /profile/invite),
+ *   proposals (→ /proposals), escalation. Treat this list as the chatbot's
+ *   knowledge index; a page without an intent here falls through to the
+ *   "I'm not sure" → support handoff. (Live mode replaces this with the
+ *   system prompt + web_search over the live site.)
  */
 
 import type { Citation, Lang, Message } from "@/components/chat/types";
@@ -26,7 +36,7 @@ const nextId = () => `m_${Date.now().toString(36)}_${__id++}`;
 /** Detect the user's language from their last message. Heuristic, not
  *  exhaustive — production swaps to a real classifier. */
 function detectLang(text: string): Lang {
-  const sw = /\b(habari|niko|vipi|chochote|amana|malipo|soko|dau|jaribu|asante|hapana|ndio|kucheza|mfumo|niulize|kusaidia)\b/i;
+  const sw = /\b(habari|niko|vipi|chochote|amana|malipo|soko|dau|jaribu|asante|hapana|ndio|kucheza|mfumo|niulize|kusaidia|alika|pendekez|tume|kiungo)\b/i;
   return sw.test(text) ? "sw" : "en";
 }
 
@@ -171,6 +181,42 @@ function stubReply(userText: string, lang: Lang): Reply {
         { n: 1, href: "/profile/kyc", label: "/profile/kyc" },
         { n: 2, href: "/legal/aml", label: "/legal/aml" },
       ],
+    };
+  }
+
+  // Affiliate / referral — "Invite & Earn" (/profile/invite).
+  if (/\b(referr?al|refer a friend|affiliate|invite|alika|tume|kiungo)\b/.test(t)) {
+    return {
+      role: "ai",
+      kind: "text_with_citations",
+      lang,
+      paragraphs: [
+        lang === "sw"
+          ? "Kila mchezaji ana kiungo cha kualika marafiki. Nenda {Wasifu → Alika upate} kupata kiungo chako na kukishiriki."
+          : "Every player gets a personal referral link. Open {Profile → Invite & Earn} to copy and share yours[1].",
+        lang === "sw"
+          ? "Rafiki anaposajili na kucheza, unaweza kupata tume, bonasi au tuzo — kulingana na mpango ulioko hai."
+          : "When a friend signs up with your link and plays, you can earn commission, a bonus, or a milestone prize — depending on which reward modes are currently live[1].",
+      ],
+      citations: [{ n: 1, href: "/profile/invite", label: "/profile/invite" }],
+    };
+  }
+
+  // Player market proposals — "Propose & get paid" (/proposals).
+  if (/\b(propos(e|al|als)|suggest a market|pendekez|get paid to)\b/.test(t)) {
+    return {
+      role: "ai",
+      kind: "text_with_citations",
+      lang,
+      paragraphs: [
+        lang === "sw"
+          ? "Unaweza kupendekeza soko jipya kwenye {Mapendekezo}. Wachezaji wengine wanapiga kura, lakini afisa ndiye anayeamua."
+          : "You can propose a new market on the {Proposals} board. Other players upvote it, but an officer always makes the final call[1].",
+        lang === "sw"
+          ? "Pendekezo lako likiorodheshwa na kutatuliwa, unapata tuzo iliyowekwa kwenye pochi yako."
+          : "If your proposal gets listed AND resolved, you're paid a fixed prize straight to your wallet[1].",
+      ],
+      citations: [{ n: 1, href: "/proposals", label: "/proposals" }],
     };
   }
 
