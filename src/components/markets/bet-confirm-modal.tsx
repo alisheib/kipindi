@@ -18,6 +18,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, ShieldCheck } from "lucide-react";
+import { haptics } from "@/lib/haptics";
 import { HouseLeanWarning } from "./house-lean-warning";
 import type { LeanLevel } from "@/lib/server/market-config";
 
@@ -254,7 +255,7 @@ export function BetConfirmModal({
             <button
               ref={confirmRef}
               type="button"
-              onClick={onConfirm}
+              onClick={() => { haptics.confirm(); onConfirm(); }}
               disabled={pending || remainingMs <= 0}
               className="btn btn-gold btn-md"
             >

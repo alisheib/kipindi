@@ -15,6 +15,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Trophy, X } from "lucide-react";
+import { haptics } from "@/lib/haptics";
 
 const EVENT_NAME = "50pick:celebrate";
 
@@ -67,6 +68,7 @@ export function WinCelebrationHost() {
       if (!detail) return;
       setPayload(detail);
       setOpen(true);
+      haptics.celebrate(); // the peak — same beat as the confetti burst
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => setOpen(false), 4_500);
     };

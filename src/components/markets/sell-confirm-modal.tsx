@@ -13,6 +13,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, AlertTriangle } from "lucide-react";
+import { haptics } from "@/lib/haptics";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 
@@ -148,7 +149,7 @@ export function SellConfirmModal({ open, pending, stake, value, onConfirm, onCan
             <button
               ref={confirmRef}
               type="button"
-              onClick={onConfirm}
+              onClick={() => { haptics.confirm(); onConfirm(); }}
               disabled={pending}
               className={`btn ${profit ? "btn-gold" : "btn-no"} btn-md`}
             >

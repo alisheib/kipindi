@@ -36,16 +36,24 @@ const DEFAULT_DURATION = 4_500;
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = React.useState<Toast[]>([]);
+  const [exiting, setExiting] = React.useState<string[]>([]);
   const timersRef = React.useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
-  const dismiss = React.useCallback((id: string) => {
+  const remove = React.useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
+    setExiting((prev) => prev.filter((x) => x !== id));
     const tm = timersRef.current.get(id);
-    if (tm) {
-      clearTimeout(tm);
-      timersRef.current.delete(id);
-    }
+    if (tm) { clearTimeout(tm); timersRef.current.delete(id); }
   }, []);
+
+  // Two-phase dismiss: mark exiting (plays the 200ms slide/fade-out) then remove,
+  // so toasts don't pop out instantly.
+  const dismiss = React.useCallback((id: string) => {
+    setExiting((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    const tm = timersRef.current.get(id);
+    if (tm) clearTimeout(tm);
+    timersRef.current.set(id, setTimeout(() => remove(id), 200));
+  }, [remove]);
 
   const toast = React.useCallback((input: ToastInput) => {
     const id = `t_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -82,7 +90,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastCtx.Provider value={value}>
       {children}
-      <ToastViewport toasts={toasts} onDismiss={dismiss} />
+      <ToastViewport toasts={toasts} exiting={exiting} onDismiss={dismiss} />
     </ToastCtx.Provider>
   );
 }
@@ -132,7 +140,7 @@ const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; 
   },
 };
 
-function ToastViewport({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: string) => void }) {
+function ToastViewport({ toasts, exiting, onDismiss }: { toasts: Toast[]; exiting: string[]; onDismiss: (id: string) => void }) {
   return (
     <div
       role="region"
@@ -140,19 +148,22 @@ function ToastViewport({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id:
       className="pointer-events-none fixed inset-x-0 top-0 z-[60] flex flex-col items-center gap-2 px-3 pt-3 sm:inset-x-auto sm:right-4 sm:top-4 sm:items-end sm:pt-0"
     >
       {toasts.map((t) => (
-        <ToastItem key={t.id} toast={t} onDismiss={() => onDismiss(t.id)} />
+        <ToastItem key={t.id} toast={t} exiting={exiting.includes(t.id)} onDismiss={() => onDismiss(t.id)} />
       ))}
     </div>
   );
 }
 
-function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
+function ToastItem({ toast, exiting, onDismiss }: { toast: Toast; exiting: boolean; onDismiss: () => void }) {
   const v = variantStyles[toast.variant ?? "default"];
   const [enter, setEnter] = React.useState(false);
   React.useEffect(() => {
     const id = requestAnimationFrame(() => setEnter(true));
     return () => cancelAnimationFrame(id);
   }, []);
+  // Visible only while entered AND not exiting → the shared transition animates
+  // it back out (slide up + fade + scale) before the parent unmounts it.
+  const visible = enter && !exiting;
 
   return (
     <div
@@ -162,7 +173,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
         "pointer-events-auto relative w-full max-w-[340px] overflow-hidden rounded-md border transition-all duration-200",
         "shadow-[var(--shadow-card)]",
         v.surface,
-        enter ? "translate-y-0 opacity-100 scale-100" : "-translate-y-2 opacity-0 scale-95",
+        visible ? "translate-y-0 opacity-100 scale-100" : "-translate-y-2 opacity-0 scale-95",
       )}
       style={{ background: "var(--bg-elevated)" }}
     >

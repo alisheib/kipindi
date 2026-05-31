@@ -21,8 +21,9 @@ export function AchievementToast({
   onDone?: () => void;
   durationMs?: number;
 }) {
+  const fired = React.useRef(false);
   React.useEffect(() => {
-    haptics.celebrate();                                  // same frame as seal-impress
+    if (!fired.current) { haptics.celebrate(); fired.current = true; } // once — survives StrictMode double-invoke
     const t = setTimeout(() => onDone?.(), durationMs);
     return () => clearTimeout(t);
   }, [durationMs, onDone]);

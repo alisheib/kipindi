@@ -21,6 +21,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { AlertTriangle, X } from "lucide-react";
+import { haptics } from "@/lib/haptics";
 
 type Tone = "claret" | "warning" | "gold";
 
@@ -127,7 +128,7 @@ export function ConfirmDialog({
               <button
                 ref={confirmBtn}
                 type="button"
-                onClick={() => { setOpen(false); onConfirm(); }}
+                onClick={() => { haptics.warning(); setOpen(false); onConfirm(); }}
                 className={confirmClass + " w-full"}
               >
                 {confirmLabel}
