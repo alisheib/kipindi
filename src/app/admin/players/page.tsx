@@ -72,7 +72,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                 defaultValue={query}
                 placeholder="Phone (+255…), display name, or usr_…"
                 aria-label="Search players"
-                className="w-full h-10 pl-9 pr-3 rounded-md bg-surface border border-border text-text font-mono text-body-sm focus:outline-none focus:border-border-focus"
+                className="w-full h-10 pl-9 pr-3 rounded-md bg-surface border border-border text-text font-mono text-body-sm focus:outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
               />
             </div>
             <label className="block">
@@ -82,7 +82,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                 defaultValue={statusFilter}
                 aria-label="Filter by status"
                 title="Filter by status"
-                className="h-10 px-3 rounded-md bg-surface border border-border text-text text-body-sm"
+                className="h-10 px-3 rounded-md bg-surface border border-border text-text text-body-sm outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
               >
                 <option value="">All statuses</option>
                 <option value="ACTIVE">Active</option>
@@ -93,11 +93,11 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                 <option value="CLOSED">Closed</option>
               </select>
             </label>
-            <button type="submit" className="h-10 px-4 rounded-md bg-royal text-onBrand font-semibold text-body-sm hover:bg-royal-hover transition-colors">
+            <button type="submit" className="btn btn-primary btn-md">
               Search
             </button>
             {(query || statusFilter) && (
-              <a href="/admin/players" className="h-10 px-4 inline-flex items-center rounded-md border border-border text-text-secondary text-body-sm hover:bg-surface-hover">
+              <a href="/admin/players" className="btn btn-ghost btn-md">
                 Clear
               </a>
             )}

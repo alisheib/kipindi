@@ -97,7 +97,7 @@ export function TotpSetupClient({ initiallyEnabled }: { initiallyEnabled: boolea
               placeholder="123 456"
               autoComplete="one-time-code"
               aria-label="6-digit verification code"
-              className="w-40 h-12 px-3 rounded-md bg-surface border border-border text-text font-mono text-title-sm tabular tracking-[0.2em] focus:outline-none focus:border-border-focus"
+              className="w-40 h-12 px-3 rounded-md bg-surface border border-border text-text font-mono text-title-sm tabular tracking-[0.2em] focus:outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
             />
           </label>
           <Button variant="primary" size="lg" leading={<ShieldCheck size={14} />} onClick={verify} loading={busy} disabled={code.length !== 6}>

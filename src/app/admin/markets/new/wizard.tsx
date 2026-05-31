@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { SteppedProgress } from "@/components/markets/stepped-progress";
 import { useToast } from "@/components/ui/toast";
+import { Button } from "@/components/ui/button";
 import { createMarketAction } from "@/app/markets/actions";
 
 const CATEGORIES = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"] as const;
@@ -102,39 +103,40 @@ export function NewMarketWizard() {
       )}
 
       <div className="flex items-center justify-between gap-3 pt-4 border-t border-border">
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="md"
           onClick={() => setStep((s) => Math.max(0, s - 1))}
           disabled={step === 0 || pending}
-          className="h-10 px-4 rounded-md border border-border bg-bg-elevated font-semibold text-text-muted hover:border-border-strong disabled:opacity-50"
         >
           Back
-        </button>
+        </Button>
         {step < 3 ? (
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="md"
             onClick={() => setStep((s) => Math.min(3, s + 1))}
             disabled={!canNext}
-            className="h-10 px-5 rounded-md bg-teal-500 font-semibold text-white hover:bg-teal-400 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Continue
-          </button>
+          </Button>
         ) : (
-          <button
-            type="button"
+          <Button
+            variant="gold"
+            size="md"
             onClick={submit}
             disabled={pending}
-            className="h-10 px-5 rounded-md bg-gradient-to-b from-gold-400 to-gold-600 font-bold text-gold-fg border border-gold-700 disabled:opacity-50"
+            loading={pending}
           >
             {pending ? "Publishing…" : "Publish market"}
-          </button>
+          </Button>
         )}
       </div>
     </div>
   );
 }
 
-const inputCls = "w-full h-11 px-3 rounded-md border border-border bg-bg-overlay font-sans text-text outline-none focus:border-teal-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
+const inputCls = "w-full h-11 px-3 rounded-md border border-border bg-bg-overlay font-sans text-text outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
 
 function Section({ title, sw, children }: { title: string; sw: string; children: React.ReactNode }) {
   return (

@@ -54,7 +54,7 @@ export function TotpVerifyForm() {
           autoComplete="one-time-code"
           autoFocus
           aria-label="6-digit verification code"
-          className="w-full h-14 px-4 rounded-md bg-surface border-2 border-border text-text font-mono text-display-3 tabular tracking-[0.3em] text-center focus:outline-none focus:border-gold transition-colors"
+          className="w-full h-14 px-4 rounded-md bg-surface border border-border text-text font-mono text-display-3 tabular tracking-[0.3em] text-center focus:outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
         />
       </label>
       <Button
