@@ -58,6 +58,24 @@ export async function startLoginOtpAction(formData: FormData) {
   redirect(`/auth/otp?purpose=login&phone=${encodeURIComponent(phoneRaw)}`);
 }
 
+/**
+ * Resend an OTP for the login-class purposes (login/withdraw/reauth), which
+ * only need the phone number. Register OTPs require the full sign-up payload,
+ * so those are handled by sending the user back to /auth/register instead.
+ */
+export async function resendOtpAction(formData: FormData) {
+  const phone = String(formData.get("phone") ?? "");
+  const purpose = String(formData.get("purpose") ?? "login") as "login" | "register" | "withdraw" | "reauth" | "self_exclusion";
+  const result = await requestLoginOtp({ phone });
+  const params = new URLSearchParams({ purpose, phone });
+  if (!result.ok) {
+    params.set("error", result.code === "NOT_FOUND" ? "no_account" : result.code === "RATE_LIMITED" ? "rate_limited" : "failed");
+  } else {
+    params.set("sent", "1");
+  }
+  redirect(`/auth/otp?${params.toString()}`);
+}
+
 export async function verifyLoginOtpAction(formData: FormData) {
   const phone = String(formData.get("phone") ?? "");
   const code = String(formData.get("code") ?? "");

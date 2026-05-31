@@ -11,12 +11,13 @@ import { ExportDataButton } from "./export-data-button";
 export const metadata = { title: "My account · Akaunti yangu" };
 export const dynamic = "force-dynamic";
 
-export default async function AccountPage() {
+export default async function AccountPage({ searchParams }: { searchParams?: Promise<{ error?: string }> }) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
 
   const user = db.user.findById(session.userId);
   const activity = getOwnActivity(session.userId, 50);
+  const sp = (await searchParams) ?? {};
 
   const statusTone =
     user?.status === "ACTIVE" ? "yes"
@@ -25,6 +26,11 @@ export default async function AccountPage() {
 
   return (
     <main className="mx-auto max-w-[840px] px-3 lg:px-6 py-6 space-y-5">
+      {sp.error && (
+        <div role="alert" className="rounded-xl border border-no-700 bg-no-500/10 px-4 py-3 text-[13px] text-no-300">
+          {sp.error}
+        </div>
+      )}
       <Link
         href="/profile"
         className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"

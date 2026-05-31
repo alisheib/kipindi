@@ -1,15 +1,17 @@
 import Link from "next/link";
 import { FiftyLockup } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
-import { verifyLoginOtpAction } from "../login/actions";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { verifyLoginOtpAction, resendOtpAction } from "../login/actions";
 
 export const metadata = { title: "Enter code · Weka msimbo" };
 
-export default async function OtpPage({ searchParams }: { searchParams: Promise<{ purpose?: string; phone?: string; error?: string }> }) {
+export default async function OtpPage({ searchParams }: { searchParams: Promise<{ purpose?: string; phone?: string; error?: string; sent?: string }> }) {
   const sp = await searchParams;
   const purpose = (sp.purpose ?? "login") as "login" | "register" | "withdraw" | "reauth" | "self_exclusion";
   const phone = sp.phone ?? "";
   const error = sp.error ?? "";
+  const sent = sp.sent === "1";
   const masked = phone ? phone.slice(0, 4) + "*****" + phone.slice(-2) : "+255*****";
   const errorMsg: Record<string, string> = {
     wrong_code: "Wrong code — try again. · Msimbo si sahihi.",
@@ -49,6 +51,12 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
             </div>
           )}
 
+          {sent && !error && (
+            <div role="status" className="rounded-md border border-yes-700 bg-yes-500/10 px-3 py-2.5 text-[13px] text-yes-300">
+              New code sent. · Msimbo mpya umetumwa.
+            </div>
+          )}
+
           <form action={verifyLoginOtpAction} className="space-y-3">
             <input type="hidden" name="phone" value={phone} />
             <input type="hidden" name="purpose" value={purpose} />
@@ -73,9 +81,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
                 Code valid for 5 minutes. <span className="italic">Msimbo ni kwa dakika 5.</span>
               </p>
             </label>
-            <button type="submit" className="btn btn-gold btn-lg w-full">
-              Verify · Thibitisha
-            </button>
+            <SubmitButton label="Verify · Thibitisha" pendingLabel="Verifying…" />
           </form>
 
           <div className="flex items-center justify-between border-t border-border pt-3">
@@ -85,12 +91,27 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
             >
               ← Change number
             </Link>
-            <Link
-              href={purpose === "register" ? "/auth/register" : "/auth/login"}
-              className="font-mono text-[12px] uppercase tracking-[0.14em] text-aqua-200 hover:text-aqua-100 transition-colors"
-            >
-              Resend code
-            </Link>
+            {purpose === "register" ? (
+              // A register OTP can't be re-issued without the original sign-up
+              // payload, so send the user back to start over (phone prefilled).
+              <Link
+                href={`/auth/register${phone ? `?phone=${encodeURIComponent(phone)}` : ""}`}
+                className="font-mono text-[12px] uppercase tracking-[0.14em] text-aqua-200 hover:text-aqua-100 transition-colors"
+              >
+                Start over
+              </Link>
+            ) : (
+              <form action={resendOtpAction}>
+                <input type="hidden" name="phone" value={phone} />
+                <input type="hidden" name="purpose" value={purpose} />
+                <button
+                  type="submit"
+                  className="font-mono text-[12px] uppercase tracking-[0.14em] text-aqua-200 hover:text-aqua-100 transition-colors"
+                >
+                  Resend code
+                </button>
+              </form>
+            )}
           </div>
         </section>
 

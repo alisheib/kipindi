@@ -220,7 +220,7 @@ export default function LeaderboardPage() {
 function TierBadge({ tier }: { tier: Tier }) {
   const cls = {
     sovereign: "tier-sovereign",
-    diamond:   "bg-gradient-to-br from-cyan-300 to-blue-400 text-slate-900",
+    diamond:   "tier-diamond",
     gold:      "bg-gold-500 text-gold-fg",
     silver:    "bg-slate-300 text-slate-900",
     bronze:    "bg-gold-700 text-gold-50",

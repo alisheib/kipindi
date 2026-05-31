@@ -15,8 +15,8 @@ export async function submitNidaAction(formData: FormData) {
     dob: String(formData.get("dob") ?? ""),
   });
   revalidatePath("/profile/kyc");
-  if (!result.ok) return { ok: false as const, error: result.error };
-  return { ok: true as const, data: result.data };
+  if (!result.ok) redirect(`/profile/kyc?error=${encodeURIComponent(result.error)}`);
+  redirect("/profile/kyc?nida=verified");
 }
 
 export async function attachDocumentAction(formData: FormData) {
@@ -35,5 +35,6 @@ export async function submitKycForReviewAction() {
   if (!session) redirect("/auth/login");
   const result = await submitForReview(session.userId);
   revalidatePath("/profile/kyc");
-  return result;
+  if (!result.ok) redirect(`/profile/kyc?error=${encodeURIComponent(result.error)}`);
+  redirect("/profile/kyc?submitted=1");
 }

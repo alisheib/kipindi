@@ -26,8 +26,10 @@ export async function setLimitsAction(formData: FormData) {
     realityCheckIntervalMin: parseInt(String(formData.get("realityCheckIntervalMin") ?? "30"), 10) || 30,
   });
   revalidatePath("/profile/responsible-gambling");
-  if (!result.ok) return { ok: false as const, error: result.error };
-  return { ok: true as const };
+  if (!result.ok) {
+    redirect(`/profile/responsible-gambling?error=${encodeURIComponent(result.error)}`);
+  }
+  redirect("/profile/responsible-gambling?saved=1");
 }
 
 export async function selfExcludeAction(formData: FormData) {
@@ -35,7 +37,7 @@ export async function selfExcludeAction(formData: FormData) {
   if (!session) redirect("/auth/login");
   const period = String(formData.get("period") ?? "");
   if (!(period in SELF_EXCLUSION_PERIODS_SEC)) {
-    return { ok: false as const, error: "Pick a valid period." };
+    redirect(`/profile/responsible-gambling?error=${encodeURIComponent("Pick a valid self-exclusion period.")}`);
   }
   selfExclude(session.userId, period as keyof typeof SELF_EXCLUSION_PERIODS_SEC);
   await destroySession();
@@ -47,7 +49,7 @@ export async function coolOffAction(formData: FormData) {
   if (!session) redirect("/auth/login");
   const period = String(formData.get("period") ?? "");
   if (!(period in COOLING_OFF_PERIODS_SEC)) {
-    return { ok: false as const, error: "Pick a valid period." };
+    redirect(`/profile/responsible-gambling?error=${encodeURIComponent("Pick a valid cooling-off period.")}`);
   }
   coolOff(session.userId, period as keyof typeof COOLING_OFF_PERIODS_SEC);
   await destroySession();

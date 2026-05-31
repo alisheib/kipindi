@@ -25,11 +25,12 @@ const COOLING_OFF_OPTIONS = [
   { id: "1w",  label: "1 week",   sw: "Wiki 1" },
 ];
 
-export default async function ResponsibleGamblingPage() {
+export default async function ResponsibleGamblingPage({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string }> }) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
   const rg = getRgSettings(session.userId);
   const hasPendingIncrease = rg.pendingIncreaseTo !== null && rg.pendingIncreaseEffectiveAt !== null;
+  const sp = await searchParams;
 
   return (
     <main className="mx-auto max-w-[840px] px-3 lg:px-6 py-6 space-y-5">
@@ -40,6 +41,17 @@ export default async function ResponsibleGamblingPage() {
         <ChevronLeft size={14} aria-hidden />
         Profile
       </Link>
+
+      {sp.error && (
+        <div role="alert" className="rounded-xl border border-no-700 bg-no-500/10 px-4 py-3 text-[13px] text-no-300">
+          {sp.error}
+        </div>
+      )}
+      {sp.saved && !sp.error && (
+        <div role="status" className="rounded-xl border border-yes-700 bg-yes-500/10 px-4 py-3 text-[13px] text-yes-300">
+          Limits saved. · Mipaka imehifadhiwa.
+        </div>
+      )}
 
       <header className="relative overflow-hidden rounded-2xl border border-border bg-bg-elevated">
         <div

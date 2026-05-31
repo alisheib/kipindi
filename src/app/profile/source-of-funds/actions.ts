@@ -20,11 +20,12 @@ export async function submitSourceOfFundsAction(formData: FormData) {
   const validSources: StoredSourceOfFunds["declaredSource"][] = ["salary", "business", "savings", "investments", "inheritance", "other"];
   const validBands: StoredSourceOfFunds["declaredAnnualIncomeBand"][] = ["under-12m", "12m-50m", "50m-200m", "over-200m"];
 
-  if (!validSources.includes(declaredSource)) return { ok: false as const, error: "Pick a source of funds." };
-  if (!validBands.includes(declaredAnnualIncomeBand)) return { ok: false as const, error: "Pick an annual income band." };
-  if (declaredOccupation.length < 2) return { ok: false as const, error: "Tell us your occupation." };
+  const fail = (msg: string) => redirect(`/profile/source-of-funds?error=${encodeURIComponent(msg)}`);
+  if (!validSources.includes(declaredSource)) fail("Pick a source of funds.");
+  if (!validBands.includes(declaredAnnualIncomeBand)) fail("Pick an annual income band.");
+  if (declaredOccupation.length < 2) fail("Tell us your occupation.");
   if (declaredSource === "other" && (!declaredOther || declaredOther.length < 10)) {
-    return { ok: false as const, error: "When source is 'other', describe it (at least 10 characters)." };
+    fail("When source is 'other', describe it (at least 10 characters).");
   }
 
   const record: StoredSourceOfFunds = {
@@ -51,5 +52,5 @@ export async function submitSourceOfFundsAction(formData: FormData) {
   });
 
   revalidatePath("/profile/source-of-funds");
-  return { ok: true as const };
+  redirect("/profile/source-of-funds?saved=1");
 }

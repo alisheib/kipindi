@@ -25,10 +25,11 @@ const BANDS = [
   { id: "over-200m", label: "Over TZS 200M" },
 ];
 
-export default async function SourceOfFundsPage() {
+export default async function SourceOfFundsPage({ searchParams }: { searchParams?: Promise<{ error?: string; saved?: string }> }) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
   const existing = db.sourceOfFunds.get(session.userId);
+  const sp = (await searchParams) ?? {};
   const statusTone =
     existing?.reviewStatus === "ACCEPTED" ? "yes"
     : existing?.reviewStatus === "REJECTED" ? "no"
@@ -43,6 +44,17 @@ export default async function SourceOfFundsPage() {
         <ChevronLeft size={14} aria-hidden />
         Profile
       </Link>
+
+      {sp.error && (
+        <div role="alert" className="rounded-xl border border-no-700 bg-no-500/10 px-4 py-3 text-[13px] text-no-300">
+          {sp.error}
+        </div>
+      )}
+      {sp.saved && !sp.error && (
+        <div role="status" className="rounded-xl border border-yes-700 bg-yes-500/10 px-4 py-3 text-[13px] text-yes-300">
+          Declaration saved. · Taarifa imehifadhiwa.
+        </div>
+      )}
 
       <header className="relative overflow-hidden rounded-2xl border border-border bg-bg-elevated">
         <div

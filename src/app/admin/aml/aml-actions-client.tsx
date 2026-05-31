@@ -54,25 +54,28 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-1.5">
-        <button
-          type="button"
+        <Button
+          size="sm"
+          variant="yes"
           onClick={() => submit("approve")}
           disabled={busy !== null}
+          loading={busy === "approve"}
+          leading={<Check size={12} aria-hidden />}
           aria-label="Approve transaction"
-          className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-success-bg/40 text-success border border-success-border hover:bg-success-bg font-semibold text-caption disabled:opacity-50"
         >
-          <Check size={12} aria-hidden /> Approve
-        </button>
-        <button
-          type="button"
+          Approve
+        </Button>
+        <Button
+          size="sm"
+          variant="danger"
           onClick={() => setExpanded((v) => !v)}
           aria-label="Reject transaction"
           aria-expanded={expanded ? "true" : "false"}
-          className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-danger-bg/40 text-danger border border-danger-border hover:bg-danger-bg font-semibold text-caption"
+          leading={<X size={12} aria-hidden />}
+          trailing={<ChevronDown size={11} aria-hidden className={expanded ? "rotate-180" : ""} />}
         >
-          <X size={12} aria-hidden /> Reject
-          <ChevronDown size={11} aria-hidden className={expanded ? "rotate-180" : ""} />
-        </button>
+          Reject
+        </Button>
       </div>
       {expanded && (
         <div className="flex items-start gap-1.5">
@@ -81,7 +84,7 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
             onChange={(e) => setReason(e.target.value)}
             placeholder="Rejection reason (required)"
             aria-label="Rejection reason"
-            className="flex-1 h-8 px-2 rounded-sm border border-border bg-surface text-text-secondary text-caption font-mono focus:outline-none focus:border-border-focus"
+            className="flex-1 h-8 px-2 rounded-md border border-border bg-surface text-text-secondary text-caption font-mono focus:outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
           />
           <Button size="sm" variant="danger" onClick={() => submit("reject")} loading={busy === "reject"}>
             Submit

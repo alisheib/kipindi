@@ -5,10 +5,11 @@ import { Chip } from "@/components/ui/chip";
 import { db } from "@/lib/server/store";
 import { getAuditForActor, type AuditCategory } from "@/lib/server/audit";
 import { exportUserData } from "@/lib/server/user-service";
-import { Download, ShieldCheck, AlertOctagon } from "lucide-react";
+import { ShieldCheck, AlertOctagon } from "lucide-react";
 import { formatTzs, formatTzsCompact } from "@/lib/utils";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { SuspendControls } from "./suspend-controls";
+import { ExportPlayerButton } from "./export-player-button";
 
 export const dynamic = "force-dynamic";
 
@@ -80,14 +81,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
         title="Player profile"
         sw="Wasifu wa mchezaji"
         period={false}
-        actions={
-          <a
-            href={`/admin/players/${id}?export=1`}
-            className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border border-border bg-bg-elevated text-text-secondary"
-          >
-            <Download size={12} aria-hidden /> Export user data · GDPR Art 15
-          </a>
-        }
+        actions={<ExportPlayerButton userId={id} />}
       />
 
       <div className="px-4 lg:px-6 py-5 space-y-4">

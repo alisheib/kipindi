@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
+import { buildDsarBundle } from "@/lib/server/privacy";
 
 /**
  * Privileged player-management actions. Each one:
@@ -39,6 +40,32 @@ async function requireAdmin(action: string): Promise<string> {
     throw new Error("Forbidden: admin role required.");
   }
   return session.userId;
+}
+
+/**
+ * GDPR Art. 15 export — returns the player's full data bundle as a JSON
+ * string the client turns into a download. Officer-gated + audited.
+ */
+export async function exportPlayerDataAction(userId: string): Promise<
+  { ok: true; payload: string; filename: string } | { ok: false; error: string }
+> {
+  const officerId = await requireAdmin("exportPlayerDataAction");
+  if (!userId) return { ok: false, error: "Missing user id." };
+  const bundle = buildDsarBundle(userId);
+  if (!bundle) return { ok: false, error: "Player not found." };
+  audit({
+    category: "COMPLIANCE",
+    action: "player.data_exported",
+    actorId: officerId,
+    targetType: "User",
+    targetId: userId,
+    payload: { article: "GDPR Art 15" },
+  });
+  return {
+    ok: true,
+    payload: JSON.stringify(bundle, null, 2),
+    filename: `player-${userId}-dsar.json`,
+  };
 }
 
 export async function suspendPlayerAction(formData: FormData) {

@@ -97,9 +97,9 @@ export function SuspendControls({
             type="button"
             aria-label="Cancel"
             onClick={() => { if (!pending) setMode(null); }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="dialog-scrim-anim absolute inset-0 bg-black/60 backdrop-blur-sm"
           />
-          <div className="relative z-10 w-full max-w-[420px] rounded-xl border border-border bg-bg-elevated p-5 shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)]">
+          <div className="dialog-anim relative z-10 w-full max-w-[420px] rounded-xl border border-border bg-bg-elevated p-5 shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)]">
             <p className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-gold-300 mb-1">
               {mode === "suspend" ? "Suspend · Simamisha" : "Restore · Rejesha"}
             </p>
@@ -121,7 +121,7 @@ export function SuspendControls({
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="Why are you taking this action?"
-                className="mt-1 w-full rounded-md border border-border bg-bg-overlay px-2.5 py-2 text-[13px] text-text"
+                className="mt-1 w-full rounded-md border border-border bg-bg-overlay px-2.5 py-2 text-[13px] text-text outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
                 rows={3}
                 maxLength={500}
                 autoFocus

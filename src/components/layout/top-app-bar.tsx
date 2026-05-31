@@ -41,6 +41,8 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
         { href: "/live",        label: t.nav.live },
         { href: "/positions",   label: POSITIONS },
         { href: "/wallet",      label: t.nav.wallet },
+        { href: "/proposals",   label: locale === "sw" ? "Pendekeza" : locale === "fr" ? "Proposer" : "Propose" },
+        { href: "/profile/invite", label: locale === "sw" ? "Alika" : locale === "fr" ? "Inviter" : "Invite" },
         { href: "/leaderboard", label: t.nav.leaderboard },
       ] as const)
     : ([
@@ -60,6 +62,8 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
             {NAV_ITEMS.map((it) => {
               const active = it.href === "/markets"
                 ? pathname === "/" || pathname.startsWith("/markets")
+                : it.href === "/proposals"
+                ? pathname.startsWith("/proposals")
                 : pathname === it.href;
               return (
                 <Link

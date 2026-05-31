@@ -181,12 +181,15 @@ export function AdminTopBar({ crumbs, session, activeKey }: { crumbs: string[]; 
       </nav>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        <input
-          aria-label="Search players, IDs, audit"
-          placeholder="Search players · IDs · audit · ⌘K"
-          readOnly
-          className="hidden md:block w-[260px] h-8 px-3 rounded-md bg-bg-sunken border border-border text-text-tertiary font-mono text-caption focus:outline-none"
-        />
+        <form action="/admin/players" method="get" className="hidden md:block">
+          <input
+            type="search"
+            name="q"
+            aria-label="Search players by phone, name, or ID"
+            placeholder="Search players · phone · usr_…"
+            className="w-[260px] h-8 px-3 rounded-md bg-bg-sunken border border-border text-text font-mono text-caption focus:outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
+          />
+        </form>
         <span className="font-mono text-micro tracking-[0.14em] uppercase px-2.5 h-7 inline-flex items-center rounded-md border border-border bg-surface text-text-secondary">
           ACTIVE
         </span>

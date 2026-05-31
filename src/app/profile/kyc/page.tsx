@@ -8,7 +8,7 @@ import { submitNidaAction, attachDocumentAction, submitKycForReviewAction } from
 
 export const metadata = { title: "Verify identity · Thibitisha" };
 
-export default async function KycPage({ searchParams }: { searchParams?: Promise<{ welcome?: string }> }) {
+export default async function KycPage({ searchParams }: { searchParams?: Promise<{ welcome?: string; error?: string; nida?: string; submitted?: string }> }) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
 
@@ -31,6 +31,22 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         <ChevronLeft size={14} aria-hidden />
         Profile
       </Link>
+
+      {sp.error && (
+        <div role="alert" className="rounded-xl border border-no-700 bg-no-500/10 px-4 py-3 text-[13px] text-no-300">
+          {sp.error}
+        </div>
+      )}
+      {sp.nida === "verified" && !sp.error && (
+        <div role="status" className="rounded-xl border border-yes-700 bg-yes-500/10 px-4 py-3 text-[13px] text-yes-300">
+          NIDA verified. Now attach your documents below. · NIDA imethibitishwa.
+        </div>
+      )}
+      {sp.submitted && !sp.error && (
+        <div role="status" className="rounded-xl border border-yes-700 bg-yes-500/10 px-4 py-3 text-[13px] text-yes-300">
+          Submitted for review. We&rsquo;ll notify you when it&rsquo;s decided. · Imewasilishwa.
+        </div>
+      )}
 
       {isWelcome && !submitted && !nidaDone && (
         <section className="rounded-2xl border border-gold-700 bg-gold-500/10 p-4 lg:p-5 flex flex-col sm:flex-row sm:items-center gap-3">

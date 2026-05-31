@@ -28,10 +28,10 @@ export async function closeAccountAction(formData: FormData) {
   if (!session) redirect("/auth/login");
   const confirm = String(formData.get("confirm") ?? "");
   if (confirm !== "CLOSE MY ACCOUNT") {
-    return { ok: false as const, error: "Type CLOSE MY ACCOUNT to confirm." };
+    redirect(`/profile/account?error=${encodeURIComponent("Type CLOSE MY ACCOUNT exactly to confirm.")}`);
   }
   const reason = String(formData.get("reason") ?? "").slice(0, 500);
   const result = await closeAccount(session.userId, reason || undefined);
-  if (!result.ok) return { ok: false as const, error: result.error };
+  if (!result.ok) redirect(`/profile/account?error=${encodeURIComponent(result.error)}`);
   redirect("/auth/login?closed=1");
 }

@@ -128,7 +128,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
               pattern="\d{9}"
               maxLength={9}
               placeholder="712 345 678"
-              className="flex-1 h-11 px-3 rounded-r-md border border-border bg-bg-overlay font-mono text-[13px] tabular-nums text-text focus:outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 transition-colors"
+              className="flex-1 h-11 px-3 rounded-r-md border border-border bg-bg-overlay font-mono text-[13px] tabular-nums text-text focus:outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
             />
           </div>
           <p className="mt-2 text-[11px] text-text-subtle">Leave blank to use your account number on file.</p>

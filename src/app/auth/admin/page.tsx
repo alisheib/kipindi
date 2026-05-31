@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ShieldCheck, Lock, Smartphone, ChevronRight } from "lucide-react";
 import { FiftyMark } from "@/components/brand";
+import { PhoneInput } from "@/components/ui/phone-input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { hasTotp } from "@/lib/server/totp";
@@ -69,22 +71,7 @@ export default async function AdminLoginPage() {
               >
                 Phone · Simu
               </label>
-              <div className="input-group">
-                <span className="prefix">+255</span>
-                <input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  required
-                  inputMode="numeric"
-                  pattern="[0-9]{9}"
-                  maxLength={9}
-                  placeholder="712 345 678"
-                  autoComplete="tel"
-                  className="input input-mono"
-                  onInput={undefined /* digits-only enforced by pattern + maxLength on the legacy admin shell */}
-                />
-              </div>
+              <PhoneInput id="phone" name="phone" required autoComplete="tel" size="lg" />
             </div>
             <div>
               <label
@@ -93,18 +80,17 @@ export default async function AdminLoginPage() {
               >
                 Password · Nenosiri
               </label>
-              <input
+              <PasswordInput
                 id="password"
                 name="password"
-                type="password"
                 required
                 minLength={8}
                 autoComplete="current-password"
                 placeholder="••••••••"
-                className="input"
+                size="lg"
               />
             </div>
-            <button type="submit" className="btn btn-gold btn-xl w-full" style={{ borderRadius: 999 }}>
+            <button type="submit" className="btn btn-gold btn-xl w-full rounded-full">
               <Lock size={15} aria-hidden />
               Sign in · Ingia
             </button>

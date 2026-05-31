@@ -150,7 +150,7 @@ export function NotificationsPanel() {
     }
   };
 
-  const handleDismiss = async (e: React.MouseEvent, id: string) => {
+  const handleDismiss = async (e: React.MouseEvent | React.KeyboardEvent, id: string) => {
     e.stopPropagation();
     await dismissNotifAction(id);
     await refresh();
@@ -268,6 +268,7 @@ export function NotificationsPanel() {
                       tabIndex={0}
                       aria-label="Dismiss"
                       onClick={(e) => handleDismiss(e, n.id)}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleDismiss(e, n.id); } }}
                       className="shrink-0 inline-flex h-6 w-6 items-center justify-center rounded-md text-text-subtle hover:text-text hover:bg-bg-overlay transition-colors"
                     >
                       <X size={12} />

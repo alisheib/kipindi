@@ -143,15 +143,13 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
             <input
               id="amount"
               name="amount"
-              type="number"
+              type="text"
               required
-              min={1_000}
-              max={5_000_000}
-              step={500}
               inputMode="numeric"
+              pattern="[0-9]*"
               placeholder="10,000"
               disabled={!kycApproved}
-              className="flex-1 h-12 px-3 rounded-r-md border border-border bg-bg-overlay font-display font-bold text-[20px] tabular-nums text-text focus:outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 transition-colors disabled:opacity-50"
+              className="flex-1 h-12 px-3 rounded-r-md border border-border bg-bg-overlay font-display font-bold text-[20px] tabular-nums text-text focus:outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors disabled:opacity-50"
             />
           </div>
           <p className="mt-2 text-[11px] text-text-subtle">
@@ -181,7 +179,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
               required
               placeholder="712 345 678"
               disabled={!kycApproved}
-              className="flex-1 h-11 px-3 rounded-r-md border border-border bg-bg-overlay font-mono text-[13px] tabular-nums text-text focus:outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 transition-colors disabled:opacity-50"
+              className="flex-1 h-11 px-3 rounded-r-md border border-border bg-bg-overlay font-mono text-[13px] tabular-nums text-text focus:outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors disabled:opacity-50"
             />
           </div>
         </div>
@@ -212,8 +210,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
         <button
           type="submit"
           disabled={!kycApproved}
-          className={kycApproved ? "btn btn-gold btn-lg w-full" : "btn btn-ghost btn-lg w-full"}
-          style={{ borderRadius: 999 }}
+          className="btn btn-gold btn-lg w-full rounded-full"
         >
           <ArrowUpFromLine size={16} />
           Confirm withdrawal · Thibitisha
