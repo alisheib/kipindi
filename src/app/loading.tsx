@@ -1,4 +1,4 @@
-import { SectionLoader } from "@/components/markets/brand-spinner";
+import { SectionLoader } from "@/components/brand";
 
 export default function RootLoading() {
   return (

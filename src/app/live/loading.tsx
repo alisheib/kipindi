@@ -1,4 +1,4 @@
-import { BrandSpinner } from "@/components/markets/brand-spinner";
+import { BrandSpinner } from "@/components/brand";
 
 export default function LiveLoading() {
   return (

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { AlertTriangle, X } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { resolveMarketAction } from "@/app/markets/actions";
-import { BrandSpinner } from "@/components/markets/brand-spinner";
+import { BrandSpinner } from "@/components/brand";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
 
 export function ResolveControls({ marketId, stage }: { marketId: string; stage: "stage1" | "stage2" }) {
