@@ -11,7 +11,6 @@
 import * as React from "react";
 import { CheckCircle2, AlertTriangle, AlertCircle, Trophy, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { haptics } from "@/lib/haptics";
 
 type ToastVariant = "default" | "success" | "warning" | "danger" | "gold";
 
@@ -57,14 +56,6 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       variant: input.variant ?? "default",
     };
     setToasts((prev) => [...prev, next].slice(-MAX_VISIBLE));
-    // Haptic punctuation, matched to the toast's meaning. `gold` = win/reward
-    // peak → celebrate; routine `default` toasts stay silent.
-    switch (next.variant) {
-      case "gold":    haptics.celebrate(); break;
-      case "success": haptics.success(); break;
-      case "warning": haptics.warning(); break;
-      case "danger":  haptics.error(); break;
-    }
     const tm = setTimeout(() => dismiss(id), next.durationMs);
     timersRef.current.set(id, tm);
     return id;

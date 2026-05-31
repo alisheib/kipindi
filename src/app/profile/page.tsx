@@ -10,6 +10,8 @@ import { ProfileNameEditor } from "@/components/profile/name-editor";
 import { currentSession } from "@/lib/server/auth-service";
 import { db, type StoredBet } from "@/lib/server/store";
 import { displayInitials } from "@/lib/display-label";
+import { BadgeShelf } from "@/components/badges/Badge";
+import { computeAchievementShelf } from "@/lib/server/achievements";
 
 export const metadata = { title: "Profile · Wasifu" };
 export const dynamic = "force-dynamic";
@@ -178,6 +180,19 @@ export default async function ProfilePage() {
           </div>
         </section>
       )}
+
+      {/* ── Achievements shelf */}
+      <section>
+        <h2 className="mb-3 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">
+          Achievements · Beji
+        </h2>
+        <div className="rounded-2xl border border-border bg-bg-elevated p-5">
+          <BadgeShelf items={computeAchievementShelf(user.id)} />
+          <p className="mt-4 text-center text-[11px] text-text-subtle">
+            More badges unlock as you predict, win, propose and invite. · Beji zaidi zinafunguliwa unapocheza.
+          </p>
+        </div>
+      </section>
 
       {/* ── Settings grid */}
       <section>

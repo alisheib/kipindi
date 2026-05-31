@@ -18,6 +18,7 @@
 import { useEffect, type ReactNode } from "react";
 import { I18nProvider, type Locale } from "@/lib/i18n";
 import { ToastProvider } from "@/components/ui/toast";
+import { getPrefs } from "@/lib/haptics";
 
 type Theme = "dark" | "light";
 
@@ -56,6 +57,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // class before paint. Just keep the React tree in sync after hydration.
   useEffect(() => {
     applyTheme(readTheme());
+    // Apply the user's in-app "Reduce motion" choice app-wide (only when they
+    // explicitly chose "off" — "system" is already handled by the media query).
+    try {
+      document.documentElement.classList.toggle("kp-reduce-motion", getPrefs().motion === "off");
+    } catch { /* ignore */ }
   }, []);
 
   return (

@@ -6,6 +6,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { getRgSettings } from "@/lib/server/responsible-gambling";
 import { setLimitsAction, selfExcludeAction, coolOffAction } from "./actions";
 import { SelfExcludeConfirm } from "@/components/rg/self-exclude-confirm";
+import { FeedbackSettings } from "@/components/settings/feedback-settings";
 import { formatTzs } from "@/lib/utils";
 
 export const metadata = { title: "Responsible gambling · Mchezo salama" };
@@ -85,6 +86,8 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           </p>
         </div>
       </header>
+
+      <FeedbackSettings />
 
       {/* DEPOSIT + TIME LIMITS */}
       <section className="rounded-2xl border border-border bg-bg-elevated p-5 lg:p-6 space-y-4">

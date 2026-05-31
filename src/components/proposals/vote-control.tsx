@@ -10,6 +10,7 @@ import { useState, useTransition } from "react";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { voteAction } from "@/app/proposals/actions";
 import { useToast } from "@/components/ui/toast";
+import { haptics } from "@/lib/haptics";
 
 type Dir = "up" | "down" | null;
 
@@ -38,8 +39,12 @@ export function VoteControl({
   const downColor = vote === "down" ? "var(--claret-300)" : "var(--text-subtle)";
   const scoreColor = vote === "up" ? "var(--gold-300)" : vote === "down" ? "var(--claret-300)" : "var(--text)";
 
+  const [pop, setPop] = useState(0);
+
   const click = (dir: "up" | "down") => {
     if (disabled) return;
+    haptics.select();
+    setPop((n) => n + 1); // re-trigger the count flourish
     const next: Dir = vote === dir ? null : dir;
     // Snapshot the live state *before* the optimistic update, so a failure rolls
     // back to exactly what the user saw — not to the render-time props, which the
@@ -98,7 +103,7 @@ export function VoteControl({
       style={{ flexDirection: horizontal ? "row" : "column", gap: 2, padding: 3 }}
     >
       <Btn dir="up" color={upColor} />
-      <span className="font-mono text-[13px] font-bold text-center" style={{ color: scoreColor, minWidth: 22 }}>
+      <span key={pop} className="vote-pop font-mono text-[13px] font-bold text-center" style={{ color: scoreColor, minWidth: 22 }}>
         {score}
       </span>
       <Btn dir="down" color={downColor} />

@@ -1,0 +1,344 @@
+/* ===========================================================================
+   50pick — globals.css ADDITIONS
+   Haptics-paired micro-motion + achievement badges.
+   Drop-in extension. Uses ONLY existing tokens (--ease-*, --dur-*, --gold-*,
+   --royal-*, --claret-*, --aqua-*, --yes-*, --no-*, --r-*, --shadow-*).
+   No new colors / fonts / radii / shadow scales. No new motion tokens.
+   Every @keyframes ships a prefers-reduced-motion branch.
+   =========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   §1  MICRO-ANIMATIONS
+   --------------------------------------------------------------------------- */
+
+/* 1.1 — Button / chip press pop. Layers on the kit's existing
+   `.btn:active { translateY(1px) }`. The scale gives the crisp tactile
+   "give" that pairs with the `tap` haptic. transform-only. */
+@keyframes press-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(0.955); }
+  100% { transform: scale(1); }
+}
+.press-pop { animation: press-pop var(--dur-flick) var(--ease-micro); }
+
+/* 1.2 — List / card entrance stagger. Reuses the kit `reveal-up` keyframe;
+   JS sets `--i` (item index, capped) and we derive the delay. Cap at 8 so
+   a 50-row leaderboard never feels like it's loading in slow motion. */
+.stagger-item {
+  animation: reveal-up var(--dur-arrive) var(--ease-arrive) both;
+  animation-delay: calc(min(var(--i, 0), 8) * 45ms);
+}
+
+/* 1.3 — Sliding tab / filter indicator. The gold underline TRANSLATES
+   between tabs instead of cutting. JS measures the active tab and sets
+   `--x` (px) + `--w` (px). transform + width-via-scale-free: we animate
+   left/transform only by positioning a fixed element and translating it. */
+.tab-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--gilt);
+  border-radius: var(--r-pill);
+  box-shadow: 0 0 8px color-mix(in oklab, var(--gilt) 55%, transparent);
+  width: var(--w, 0px);
+  transform: translateX(var(--x, 0px));
+  transition: transform var(--dur-quick) var(--ease-glide),
+              width var(--dur-quick) var(--ease-glide);
+  will-change: transform, width;
+}
+
+/* 1.4 — Optimistic vote: arrow press pop + count flash.
+   Arrow uses press-pop (above). The count reuses kit `count-up-flash`. */
+@keyframes vote-pop {
+  0%   { transform: translateY(0) scale(1); }
+  35%  { transform: translateY(-2px) scale(1.18); }
+  100% { transform: translateY(0) scale(1); }
+}
+.vote-pop { animation: vote-pop var(--dur-quick) var(--ease-arrive); }
+
+/* 1.5 — Toggle thumb travel + gold "turning ON" glow.
+   Thumb travel is transform-only. The glow is a one-shot box-shadow pulse. */
+@keyframes toggle-glow {
+  0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--gold-400) 60%, transparent); }
+  100% { box-shadow: 0 0 0 7px color-mix(in oklab, var(--gold-400) 0%, transparent); }
+}
+.kp-switch {
+  --tw: 18px;
+  position: relative;
+  width: 42px; height: 24px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-overlay);
+  cursor: pointer;
+  transition: background-color var(--dur-quick) var(--ease-glide),
+              border-color var(--dur-quick) var(--ease-glide);
+  flex-shrink: 0;
+}
+.kp-switch .kp-thumb {
+  position: absolute;
+  top: 50%; left: 3px;
+  width: 18px; height: 18px;
+  margin-top: -9px;
+  border-radius: 50%;
+  background: var(--pearl-200);
+  transition: transform var(--dur-quick) var(--ease-arrive),
+              background-color var(--dur-quick) var(--ease-glide);
+}
+.kp-switch[aria-checked="true"] {
+  background: color-mix(in oklab, var(--gold-500) 30%, var(--bg-overlay));
+  border-color: var(--border-gold);
+}
+.kp-switch[aria-checked="true"] .kp-thumb {
+  transform: translateX(var(--tw));
+  background: var(--gilt);
+  animation: toggle-glow var(--dur-arrive) var(--ease-glide);
+}
+.kp-switch:focus-visible { outline: 2px solid var(--aqua-300); outline-offset: 2px; }
+
+/* 1.6 — Value-changed: generalize the wallet pill's number-roll + delta-flash.
+   `.value-roll` is the wrapper; `.value-flash` flashes the gilt outline on any
+   TZS figure that changes (balance, pool, payout estimate). Reuses the kit
+   `count-up-flash` for the digits and mirrors `wbp-delta-fade` for the delta. */
+.value-roll { font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
+.value-flash { animation: count-up-flash var(--dur-glide) var(--ease-glide); }
+@keyframes value-delta-fade {
+  0%   { opacity: 0; transform: translateY(-2px); }
+  15%  { opacity: 1; transform: translateY(0); }
+  80%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-2px); }
+}
+.value-delta { animation: value-delta-fade 800ms var(--ease-glide) forwards; }
+
+/* 1.7 — Success checkmark stroke-draw. Gilt. Pairs with confirm/success.
+   Animates stroke-dashoffset (a presentation attr on the path → compositor
+   friendly enough on mid-range Android at this scale). */
+@keyframes check-draw {
+  from { stroke-dashoffset: var(--len, 48); }
+  to   { stroke-dashoffset: 0; }
+}
+@keyframes check-pop {
+  0%   { transform: scale(0.7); opacity: 0; }
+  60%  { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.check-draw .check-ring { animation: check-pop var(--dur-glide) var(--ease-arrive) both; transform-origin: center; }
+.check-draw .check-tick {
+  stroke-dasharray: var(--len, 48);
+  stroke-dashoffset: var(--len, 48);
+  animation: check-draw var(--dur-glide) var(--ease-glide) forwards;
+  animation-delay: 120ms;
+}
+
+/* 1.8 — Page / route transition. Light shared entrance — content rises a
+   hair on navigate. Fast (quick) so it never delays perceived load. */
+.route-enter { animation: reveal-up var(--dur-quick) var(--ease-glide) both; }
+
+/* 1.9 — Skeleton → content cross-fade. The skeleton fades out as the real
+   content fades up, instead of a hard pop. */
+@keyframes content-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.content-fade-in { animation: content-fade-in var(--dur-quick) var(--ease-glide) both; }
+.skel-fade-out { animation: scrim-fade var(--dur-quick) var(--ease-sink) reverse forwards; }
+
+/* ---------------------------------------------------------------------------
+   §2  BADGES & ACHIEVEMENTS  (sibling system to .tier-*)
+   --------------------------------------------------------------------------- */
+
+/* The badge "coin": a round heraldic medallion on royal, gilt rim, line-art
+   icon inside. Mirrors how .tier-badge is structured but larger, since these
+   are display objects on the profile shelf — not inline rank pips. */
+.badge {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--gilt);                          /* drives the line-art stroke via currentColor */
+  background:
+    radial-gradient(circle at 50% 32%, oklch(30% 0.165 268) 0%, oklch(20% 0.140 268) 70%, oklch(15% 0.130 268) 100%);
+  border: 1.5px solid var(--border-gold);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--gilt) 26%, transparent) inset,
+    var(--shadow-3);
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.badge::after {                                /* gilt inner hairline ring — the heraldic "coin edge" */
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  border: 0.5px solid color-mix(in oklab, var(--gilt) 40%, transparent);
+  pointer-events: none;
+}
+.badge-sm { width: 44px; height: 44px; }
+.badge-md { width: 64px; height: 64px; }
+.badge-lg { width: 92px; height: 92px; }
+.badge svg { width: 58%; height: 58%; display: block; }
+
+/* — State: UNLOCKED (full gilt) — the resting state above is already the
+   unlocked look; this just adds the earned glow + a subtle conduct breathe
+   that you can opt into on the freshly-unlocked coin. */
+.badge--unlocked { box-shadow: 0 0 0 1px color-mix(in oklab, var(--gilt) 30%, transparent) inset, var(--shadow-3), var(--glow-gold); }
+
+/* — State: LOCKED (ghosted outline) — desaturated, no gilt, reads as "not yet". */
+.badge--locked {
+  color: var(--text-subtle);
+  background: var(--bg-overlay);
+  border-color: var(--border);
+  box-shadow: none;
+  opacity: 0.78;
+}
+.badge--locked::after { border-color: color-mix(in oklab, var(--text-subtle) 22%, transparent); }
+.badge--locked .badge-gold-accent { stroke: var(--text-subtle) !important; fill: var(--text-subtle) !important; }
+
+/* — State: IN-PROGRESS — locked coin wrapped in a gilt progress ring.
+   The ring is an SVG (`.badge-ring`) the component renders; here we style
+   the count chip ("3 / 5") that sits under it. */
+.badge--progress {
+  color: var(--royal-ink-2);
+  background: var(--bg-overlay);
+  border-color: var(--border-strong);
+  box-shadow: none;
+}
+.badge-ring-track { stroke: var(--border); fill: none; }
+.badge-ring-arc {
+  stroke: var(--gilt);
+  fill: none;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: center;
+  transition: stroke-dashoffset var(--dur-stage) var(--ease-conduct);
+  filter: drop-shadow(0 0 3px color-mix(in oklab, var(--gilt) 45%, transparent));
+}
+
+/* Progress / tier count chip shared by badges + streaks. */
+.badge-count {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--gilt);
+}
+
+/* Tiered-badge ribbon (Connector 1/5/25 etc.) — a tiny roman-numeral mono
+   chip pinned to the coin's lower edge. */
+.badge-tier-pip {
+  position: absolute;
+  bottom: -3px; left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: var(--claret-700);
+  color: var(--claret-100);
+  border: 1px solid var(--gilt);
+}
+
+/* — Badge unlock moment — "seal stamped" beat. Reuses celebrate-pop on the
+   card + seal-impress on the coin. Quick + classy, NOT a slot machine. */
+.badge-unlock-card { animation: celebrate-pop var(--dur-arrive) var(--ease-arrive) both; }
+.badge-unlock-coin { animation: seal-impress var(--dur-glide) var(--ease-celebrate) both; }
+/* one slow gilt ray sweep behind the coin, then it stops — no infinite spin */
+@keyframes badge-seal-rays {
+  0%   { transform: rotate(0deg); opacity: 0; }
+  20%  { opacity: 0.5; }
+  100% { transform: rotate(140deg); opacity: 0; }
+}
+.badge-unlock-rays { animation: badge-seal-rays var(--dur-stage) var(--ease-glide) both; transform-origin: center; }
+
+/* ---------------------------------------------------------------------------
+   §3  STREAK / LEVEL FURNITURE (supporting the celebration ladder + Hot Streak)
+   --------------------------------------------------------------------------- */
+.streak-rail {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px 4px 8px;
+  border-radius: var(--r-pill);
+  background: color-mix(in oklab, var(--gold-500) 12%, var(--bg-elevated));
+  border: 1px solid color-mix(in oklab, var(--gold-400) 30%, var(--border));
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--gilt);
+}
+@keyframes streak-tick {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.22); }
+  100% { transform: scale(1); }
+}
+.streak-tick { animation: streak-tick var(--dur-quick) var(--ease-arrive); transform-origin: center; }
+
+/* ---------------------------------------------------------------------------
+   §4  WIN CELEBRATION LADDER
+   --------------------------------------------------------------------------- */
+/* All three tiers reuse EXISTING kit keyframes (count-up-flash, win-burst,
+   celebrate-pop, win-confetti, seal-impress, wc-ray-spin, wc-trophy-pulse).
+   These helpers just compose them. */
+/* No `both` fill: the card's resting state is fully visible (opacity:1);
+   the keyframe only plays the entrance, then reverts to the visible base. */
+.win-card        { animation: win-burst var(--dur-arrive) var(--ease-arrive); }
+.win-card-rare   { animation: celebrate-pop var(--dur-arrive) var(--ease-celebrate); }
+.win-seal        { animation: seal-impress var(--dur-glide) var(--ease-celebrate) both; animation-delay: 160ms; }
+.win-trophy-halo { animation: wc-trophy-pulse 2.4s var(--ease-conduct) infinite; }
+/* Calm gilt aura — a heraldic glow that breathes, NO rotation (replaces the
+   old spinning sunburst, which read slot-machine). */
+@keyframes win-aura-breathe {
+  0%, 100% { transform: scale(0.94); opacity: 0.5; }
+  50%      { transform: scale(1.05); opacity: 0.78; }
+}
+.win-aura-anim { animation: win-aura-breathe 4.6s var(--ease-conduct) infinite; }
+
+/* Confetti fleck — positioned + tossed by JS-set custom props (--cx, --cr).
+   Gilt / emerald / rose flecks only (heraldic chord), never rainbow. */
+.confetti-fleck {
+  position: absolute;
+  top: 0;
+  width: 7px; height: 11px;
+  border-radius: 1.5px;
+  will-change: transform, opacity;
+  animation: confetti-fall 1500ms var(--ease-glide) forwards;
+  animation-delay: var(--cd, 0ms);
+}
+
+/* ---------------------------------------------------------------------------
+   §5  REDUCED-MOTION BRANCHES (mandatory)
+   The kit already ships a global clamp that near-zeroes all durations. These
+   add intent on top: collapse motion to the END STATE so each moment still
+   "lands" calmly — no jank, no disappearing affordances.
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  /* presses / votes / streaks: no transform, just the resting state */
+  @keyframes press-pop   { from, to { transform: none; } }
+  @keyframes vote-pop    { from, to { transform: none; } }
+  @keyframes streak-tick { from, to { transform: none; } }
+  @keyframes toggle-glow { from, to { box-shadow: none; } }
+
+  /* stagger: everything arrives at once */
+  .stagger-item { animation-delay: 0ms !important; }
+
+  /* checkmark: show drawn, no draw */
+  .check-draw .check-tick { stroke-dashoffset: 0 !important; animation: none !important; }
+  .check-draw .check-ring { animation: none !important; transform: none; opacity: 1; }
+
+  /* value change: snap, keep the gilt flash subtle (color only, no shadow) */
+  @keyframes count-up-flash { from, to { color: var(--text); text-shadow: none; } }
+
+  /* badge unlock + win: fade to end state, no scale / no rays / no confetti */
+  @keyframes seal-impress  { from { opacity: 0; } to { opacity: 1; transform: none; filter: none; } }
+  @keyframes celebrate-pop { from { opacity: 0; } to { opacity: 1; transform: none; } }
+  @keyframes win-burst     { from { opacity: 0; } to { opacity: 1; transform: none; } }
+  .win-aura-anim, .badge-unlock-rays, .win-trophy-halo { animation: none !important; opacity: 0.4; }
+  .confetti-fleck { animation: none !important; display: none !important; }
+
+  /* tab indicator: jump, don't slide */
+  .tab-indicator { transition: none !important; }
+}

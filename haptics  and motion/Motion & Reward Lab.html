@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>50pick · Motion &amp; Reward Lab</title>
+<link rel="stylesheet" href="styles/kit.css" />
+<link rel="stylesheet" href="styles/additions.css" />
+<link rel="stylesheet" href="styles/lab.css" />
+</head>
+<body class="lab-body bg-damask">
+<div class="lab-shell">
+
+  <!-- ============================ NAV ============================ -->
+  <nav class="lab-nav" aria-label="Sections">
+    <div class="lab-nav-brand" id="navBrand"></div>
+    <div class="lab-nav-links">
+      <a class="lab-nav-link active" href="#overview"><span class="lab-nav-num">00</span><span class="txt">Overview</span></a>
+      <a class="lab-nav-link" href="#haptics"><span class="lab-nav-num">01</span><span class="txt">Haptics</span></a>
+      <a class="lab-nav-link" href="#motion"><span class="lab-nav-num">02</span><span class="txt">Micro-motion</span></a>
+      <a class="lab-nav-link" href="#badges"><span class="lab-nav-num">03</span><span class="txt">Badges</span></a>
+      <a class="lab-nav-link" href="#celebration"><span class="lab-nav-num">04</span><span class="txt">Win &amp; ladder</span></a>
+      <a class="lab-nav-link" href="#settings"><span class="lab-nav-num">05</span><span class="txt">Feedback settings</span></a>
+    </div>
+    <div class="lab-nav-status" id="navStatus"></div>
+  </nav>
+
+  <!-- ============================ MAIN ============================ -->
+  <main class="lab-main">
+    <div class="lab-wrap">
+
+      <!-- ===================== 00 · OVERVIEW ===================== -->
+      <section id="overview" class="lab-section" data-screen-label="Overview" style="border-top:none;padding-top:0;">
+        <div class="lab-hero">
+          <div class="lab-hero-mark" id="heroMark"></div>
+          <p class="gilt-eyebrow">50pick · Kipindi — design handoff</p>
+          <h1 class="display">Haptics, micro-motion &amp; achievements</h1>
+          <p>A tactile, alive, rewarding layer — built entirely on the kit you already ship. No new colours, fonts, radii, shadows, or motion tokens. Every animation replays here; every haptic fires on tap, with a pulse visualizer so the pattern is legible without a phone.</p>
+          <div class="lab-hero-meta">
+            <span class="chip chip-resolved">Tokens only</span>
+            <span class="chip">EN · SW bilingual</span>
+            <span class="chip chip-signal">60fps · transform/opacity</span>
+            <span class="chip">Reduced-motion + off-switch</span>
+          </div>
+        </div>
+
+        <div class="lab-grid lab-grid-2" style="margin-top:24px;">
+          <div class="lab-card">
+            <p class="gilt-eyebrow">How I approached it</p>
+            <p class="lab-lead" style="font-size:14.5px;margin-top:10px;">
+              I treated this as <b>completing</b> the kit, not extending it. Three systems, one family:
+              haptics are <em>punctuation</em> on the moments that matter; micro-motion makes the everyday
+              feel responsive; badges are a <em>sibling</em> to TierBadge — milestones, not rank.
+              The win-reveal is weighted heaviest: it must feel <b>earned</b>, never slot-machine.
+            </p>
+          </div>
+          <div class="note-card">
+            <h4>Do-not-do — confirmed</h4>
+            <ul>
+              <li>No new colour palettes, fonts, radii, or shadow scales. All values are existing OKLCH tokens.</li>
+              <li>No parallel motion system — micro-motion <b>reuses</b> kit keyframes (<code class="mono-tag">reveal-up</code>, <code class="mono-tag">count-up-flash</code>, <code class="mono-tag">seal-impress</code>…). Zero new motion tokens.</li>
+              <li>No full-colour illustration, mascots, or emoji. Badges are heraldic line-art, gilt-on-royal.</li>
+              <li>No compulsion loops. We celebrate <em>outcomes &amp; skill</em>, never nudge "play again".</li>
+              <li>Every keyframe ships a <code class="mono-tag">prefers-reduced-motion</code> branch; haptics + motion are user-disablable.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== 01 · HAPTICS ===================== -->
+      <section id="haptics" class="lab-section" data-screen-label="Haptics">
+        <p class="gilt-eyebrow">Request 01</p>
+        <h2 class="lab-h2 display">Haptics system</h2>
+        <p class="lab-lead">Seven named tokens mapped to product events. On Android/Chrome they fire the Web Vibration API; on iOS Safari they no-op and the paired animation carries the moment. Tap any token to feel it (on a supported device) and watch the pulse visualizer beat the exact <code class="mono-tag">vibrate()</code> pattern.</p>
+
+        <div class="lab-subhead">Haptic tokens <span class="mono-tag">src/lib/haptics.ts</span></div>
+        <div class="lab-card" id="hapticRows"></div>
+
+        <div class="lab-subhead">Event → pattern mapping</div>
+        <div class="lab-card lab-card-tight" style="overflow-x:auto;">
+          <table class="spec-table" id="eventMap"></table>
+        </div>
+
+        <div class="lab-grid lab-grid-2" style="margin-top:20px;">
+          <div class="note-card">
+            <h4>iOS fallback</h4>
+            <ul>
+              <li><code class="mono-tag">navigator.vibrate</code> is absent in Safari — <code class="mono-tag">fire()</code> silently no-ops.</li>
+              <li>Design so the <b>animation</b> always carries the moment (win-burst, seal-impress, value-flash) — feedback never depends on the motor.</li>
+              <li>Detected once via feature-check; no try/catch on the hot path.</li>
+            </ul>
+          </div>
+          <div class="note-card" style="border-color:color-mix(in oklab, var(--aqua-300) 30%, var(--border));background:color-mix(in oklab,var(--aqua-300) 6%, var(--bg-elevated));">
+            <h4 style="color:var(--aqua-200);">Restraint rules</h4>
+            <ul>
+              <li>Haptics are punctuation, not a drumbeat. No buzz on every tap or scroll.</li>
+              <li><b>Default ON</b> for money / outcome moments; <b>OFF</b> for routine taps &amp; selects.</li>
+              <li>Loss gets <b>no</b> haptic — dignified, never punitive.</li>
+              <li><code class="mono-tag">celebrate</code> is reserved for the genuine peak.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="code-drawer" data-code="haptics"></div>
+      </section>
+
+      <!-- ===================== 02 · MICRO-MOTION ===================== -->
+      <section id="motion" class="lab-section" data-screen-label="Micro-motion">
+        <p class="gilt-eyebrow">Request 02</p>
+        <h2 class="lab-h2 display">Micro-animation layer</h2>
+        <p class="lab-lead">The small everyday interactions, filled in. Each is transform/opacity-only for 60fps on mid-range Android, reuses an existing easing/duration token, and snaps to its end-state under reduced-motion. Hit <b>Replay</b> on any tile.</p>
+
+        <div class="lab-grid lab-grid-3" id="animGallery" style="margin-top:20px;"></div>
+
+        <div class="code-drawer" data-code="motion"></div>
+      </section>
+
+      <!-- ===================== 03 · BADGES ===================== -->
+      <section id="badges" class="lab-section" data-screen-label="Badges">
+        <p class="gilt-eyebrow">Request 03</p>
+        <h2 class="lab-h2 display">Badges &amp; achievements</h2>
+        <p class="lab-lead">A sibling to TierBadge: tiers are <em>rank</em>, achievements are <em>milestones</em> — same heraldic coin family, line-art icon, gilt-on-royal. Six ship first; the rest sit on a "coming soon" shelf so the goal set reads as aspirational, not mysterious.</p>
+
+        <div class="lab-subhead">Three states</div>
+        <div class="lab-card" id="badgeStates"></div>
+
+        <div class="lab-subhead">Ship-now set <span class="mono-tag">6 badges</span></div>
+        <div class="lab-card"><div class="badge-shelf" id="shipShelf"></div></div>
+
+        <div class="lab-subhead">Coming soon</div>
+        <div class="lab-card"><div class="badge-shelf" id="soonShelf"></div></div>
+
+        <div class="lab-subhead">On the profile <span class="mono-tag">/profile</span></div>
+        <div class="lab-card" id="profileMock"></div>
+
+        <div class="lab-grid lab-grid-2" style="margin-top:20px;">
+          <div class="lab-card">
+            <p class="gilt-eyebrow">On the leaderboard</p>
+            <p class="settings-desc" style="margin:8px 0 14px;">A small badge cluster sits next to the TierBadge on each row.</p>
+            <div id="lbRow"></div>
+          </div>
+          <div class="lab-card" style="display:flex;flex-direction:column;align-items:flex-start;gap:14px;">
+            <div>
+              <p class="gilt-eyebrow">The unlock moment</p>
+              <p class="settings-desc" style="margin:8px 0 0;">A quick "seal stamped" beat — <code class="mono-tag">celebrate-pop</code> + <code class="mono-tag">seal-impress</code> + the <code class="mono-tag">celebrate</code> haptic. Auto-dismisses. Not a slot machine.</p>
+            </div>
+            <button class="btn btn-gold btn-md" id="fireUnlock">Trigger unlock</button>
+          </div>
+        </div>
+
+        <div class="code-drawer" data-code="badges"></div>
+      </section>
+
+      <!-- ===================== 04 · WIN + LADDER ===================== -->
+      <section id="celebration" class="lab-section" data-screen-label="Win celebration">
+        <p class="gilt-eyebrow">Request 04 · the emotional peak</p>
+        <h2 class="lab-h2 display">Win celebration &amp; the ladder</h2>
+        <p class="lab-lead">Big moments should feel bigger than small ones — but every tier is built from <b>existing</b> keyframes, and none of it nudges you to bet again. The reward is the outcome itself: the payout, the seal, the share. Pick an intensity and replay.</p>
+
+        <div class="lab-grid" style="grid-template-columns: 1fr; margin-top:20px; gap:20px;">
+          <div class="celebrate-stage" id="celebrateStage"></div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <span class="settings-label" style="margin-right:6px;">Replay:</span>
+            <button class="btn btn-ghost btn-md" data-celebrate="micro">Micro</button>
+            <button class="btn btn-primary btn-md" data-celebrate="standard">Standard</button>
+            <button class="btn btn-gold btn-md" data-celebrate="rare">Rare · jackpot</button>
+          </div>
+        </div>
+
+        <div class="lab-subhead">The ladder — thresholds &amp; assets</div>
+        <div class="lab-grid lab-grid-3" id="ladderGrid"></div>
+        <p style="margin-top:16px;"><span class="flag">⚑ Product decision</span> <span class="settings-desc" style="display:inline;margin-left:8px;">Thresholds are proposed defaults — net-win × stake multiples plus absolute TZS floors. Sign-off needed before build.</span></p>
+      </section>
+
+      <!-- ===================== 05 · SETTINGS ===================== -->
+      <section id="settings" class="lab-section" data-screen-label="Feedback settings">
+        <p class="gilt-eyebrow">Request 04 · accessibility, first-class</p>
+        <h2 class="lab-h2 display">Sound &amp; feedback</h2>
+        <p class="lab-lead">A clean settings card — lives on <code class="mono-tag">/profile/responsible-gambling</code> or as its own row. These switches are <b>live</b> on this page: toggle them and the demos above change behaviour immediately. Persisted to <code class="mono-tag">localStorage</code> under <code class="mono-tag">50pick:feedback</code>.</p>
+
+        <div class="lab-card" id="settingsCard" style="margin-top:20px;max-width:620px;"></div>
+        <p class="settings-desc" style="margin-top:14px;">Reduced-motion also honours the OS setting via <code class="mono-tag">prefers-reduced-motion</code> when set to <b>System</b>. Sound is reserved for a future release.</p>
+      </section>
+
+      <footer style="border-top:1px solid var(--border);padding-top:28px;margin-top:40px;color:var(--text-subtle);font-size:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <span>50pick · Motion &amp; Reward Lab — kit-faithful handoff</span>
+        <span class="mono-tag">tokens only · EN·SW · reduced-motion ✓ · haptics ✓</span>
+      </footer>
+
+    </div>
+  </main>
+</div>
+
+<!-- Achievement toast mount -->
+<div id="toastMount" style="position:fixed;top:16px;right:16px;z-index:80;display:flex;flex-direction:column;gap:10px;pointer-events:none;"></div>
+
+<script src="js/data.js"></script>
+<script src="js/haptics.js"></script>
+<script src="js/svg-badges.js"></script>
+<script src="js/lab.js" defer></script>
+</body>
+</html>
