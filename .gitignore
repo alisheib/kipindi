@@ -37,3 +37,6 @@ tsconfig.tsbuildinfo
 50PICK - old/
 50Pick-old/
 50PICK-old/
+
+# Local QA screenshots
+scripts/_walkthrough/

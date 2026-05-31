@@ -25,7 +25,9 @@ export function computeAchievementShelf(userId: string): ShelfItem[] {
   const kyc = db.kyc.findByUserId(userId);
   const verified = kyc?.status === "APPROVED";
 
-  const recruits = getPlayerReferralSummary(userId).recruitCount;
+  // Defensive: never let the referral lookup crash the whole shelf render.
+  let recruits = 0;
+  try { recruits = getPlayerReferralSummary(userId).recruitCount; } catch { recruits = 0; }
   const listed = db.proposal.listByProposer(userId).some((p) => p.status === "LISTED" || p.status === "RESOLVED");
 
   // Connector — tiered 1 · 5 · 25.

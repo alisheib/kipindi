@@ -27,7 +27,8 @@ export function Badge({
   title?: string;     // tooltip / aria-label (bilingual at call site)
   className?: string;
 }) {
-  const pct = progress ? Math.min(1, progress.value / progress.max) : 0;
+  // Clamp to [0,1] and guard max<=0 → avoids NaN strokeDashoffset (silent render fail).
+  const pct = progress && progress.max > 0 ? Math.min(1, Math.max(0, progress.value / progress.max)) : 0;
   // Ring geometry for in-progress coins (drawn just inside the coin edge).
   const R = 30, C = 2 * Math.PI * R;
 
@@ -47,7 +48,7 @@ export function Badge({
         </svg>
       )}
 
-      {BADGE_ICONS[achievement]}
+      {BADGE_ICONS[achievement] ?? BADGE_ICONS.default}
 
       {state === "progress" && progress && !progress.tier && (
         <span className="badge-count" style={{ position: "absolute", bottom: -16 }}>
