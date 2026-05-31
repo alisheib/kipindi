@@ -1,4 +1,5 @@
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ExternalLink, Users, ShieldCheck, AlertCircle } from "lucide-react";
 import { listMarkets, seedDemoMarkets, impliedYesPct } from "@/lib/server/market-service";
 import { ProbabilityBar } from "@/components/markets/probability-bar";
@@ -40,13 +41,12 @@ export default function ResolverQueuePage() {
       />
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {within24h.length === 0 ? (
-          <AdminCard>
-            <div className="text-center py-10">
-              <p className="font-display text-[16px] font-semibold text-text">Queue is clear</p>
-              <p className="mt-1 text-[13px] italic text-text-subtle">Foleni ni tupu</p>
-              <p className="mt-3 text-[13px] text-text-muted">No markets within 24 hours of resolution.</p>
-            </div>
-          </AdminCard>
+          <EmptyState
+            kind="audit"
+            title="Queue is clear"
+            titleSw="Foleni ni tupu"
+            body="No markets within 24 hours of resolution."
+          />
         ) : (
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             {within24h.map((m) => {

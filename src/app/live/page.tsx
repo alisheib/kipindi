@@ -14,6 +14,7 @@ import Link from "next/link";
 import { listMarkets, impliedYesPct, seedDemoMarkets } from "@/lib/server/market-service";
 import { TippingBar, PulseRing } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
+import { EmptyState } from "@/components/ui/empty-state";
 import { LivePulseGrid } from "./pulse-grid";
 
 export const metadata = { title: "Live · Hai" };
@@ -101,13 +102,17 @@ export default function LivePage() {
         </header>
 
         {markets.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border bg-bg-elevated/40 p-20 text-center">
-            <p className="font-display text-[20px] font-semibold text-text">No markets live right now</p>
-            <p className="mt-1 text-[14px] italic text-text-subtle">Hakuna soko hai sasa hivi.</p>
-            <Link href={"/markets" as never} className="btn btn-gold btn-md mt-4">
-              Browse all markets →
-            </Link>
-          </div>
+          <EmptyState
+            kind="markets"
+            title="No markets live right now"
+            titleSw="Hakuna soko hai sasa hivi"
+            body="Live markets appear here the moment they open for trading."
+            action={
+              <Link href={"/markets" as never} className="btn btn-gold btn-md">
+                Browse all markets →
+              </Link>
+            }
+          />
         ) : (
           <>
             {/* Wall of TippingBars — every live market, animated reveal stagger */}

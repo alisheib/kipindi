@@ -6,6 +6,7 @@ import { Percent, Gift, Ticket, Megaphone, Pause, Check, ShieldCheck, ExternalLi
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { Toggle } from "@/components/ui/toggle";
+import { Avatar } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/toast";
 import type { AffiliateConfig, BonusRecipient, BonusTrigger, PrizeMilestone } from "@/lib/server/affiliate-config";
 import type { AdminAffiliateStats } from "@/lib/server/affiliate-service";
@@ -296,9 +297,7 @@ export function AffiliateAdminClient({ config, stats }: { config: AffiliateConfi
               stats.leaderboard.map((b, i) => (
                 <div key={b.userId} className={`flex items-center gap-3 px-4 py-2.5 ${i < stats.leaderboard.length - 1 ? "border-b border-border" : ""}`}>
                   <span className={`w-[22px] font-mono text-[14px] font-bold ${i === 0 ? "text-gold-400" : "text-text-subtle"}`}>{String(i + 1).padStart(2, "0")}</span>
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full font-mono text-[11px] font-bold text-royal-200" style={{ background: "color-mix(in oklab, var(--royal-500) 18%, transparent)" }}>
-                    {b.handle.replace(/[^a-z0-9]/gi, "").slice(0, 2).toUpperCase()}
-                  </span>
+                  <Avatar initials={b.handle.replace(/[^a-z0-9]/gi, "").slice(0, 2)} size="sm" seed={b.userId} />
                   <span className="flex-1 truncate font-mono text-[12.5px] font-semibold">{b.handle}</span>
                   <span className="font-mono text-[11.5px] text-text-muted">{b.recruits} recruits</span>
                   <span className="w-[80px] text-right font-mono text-[12.5px] font-semibold text-gold-300">{fmt(b.earnedTzs)}</span>

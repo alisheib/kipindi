@@ -4,6 +4,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { getPlayerReferralSummary } from "@/lib/server/affiliate-service";
 import { FiftyMark } from "@/components/brand";
 import { Chip } from "@/components/ui/chip";
+import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ReferralShare } from "./invite-client";
@@ -222,12 +223,7 @@ export default async function InvitePage() {
               key={i}
               className={`flex items-center gap-3 px-3.5 py-2.5 ${i < s.recruits.length - 1 ? "border-b border-border" : ""}`}
             >
-              <span
-                className="grid h-8 w-8 shrink-0 place-items-center rounded-full font-mono text-[11px] font-bold text-royal-200"
-                style={{ background: "color-mix(in oklab, var(--royal-500) 18%, transparent)" }}
-              >
-                {r.maskedName.slice(0, 2).toUpperCase()}
-              </span>
+              <Avatar initials={r.maskedName.slice(0, 2)} size="sm" seed={r.maskedName} />
               <div className="min-w-0 flex-1">
                 <p className="font-mono text-[12.5px] font-medium">{r.maskedName}</p>
                 <p className="font-mono text-[10px] text-text-subtle">joined {fmtDate(r.joinedAt)}</p>

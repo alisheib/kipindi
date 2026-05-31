@@ -9,21 +9,12 @@ import { AvatarUploader } from "@/components/profile/avatar-uploader";
 import { ProfileNameEditor } from "@/components/profile/name-editor";
 import { currentSession } from "@/lib/server/auth-service";
 import { db, type StoredBet } from "@/lib/server/store";
+import { displayInitials } from "@/lib/display-label";
 
 export const metadata = { title: "Profile · Wasifu" };
 export const dynamic = "force-dynamic";
 
 const fmtTzs = (n: number) => `TZS ${n.toLocaleString("en-US")}`;
-
-function initialsFor(displayName: string | null, phone: string): string {
-  if (displayName && displayName.trim().length > 0) {
-    const parts = displayName.trim().split(/\s+/).slice(0, 2);
-    return parts.map((p) => p[0]?.toUpperCase() ?? "").join("");
-  }
-  // Fall back to last 2 digits of phone
-  const tail = phone.replace(/\D/g, "").slice(-2);
-  return tail || "50";
-}
 
 /** Mask a Tanzanian E.164 phone for on-screen display per PDPA / GBT
  *  data-minimisation: keep prefix + 2 trailing digits, mask the rest. */
@@ -46,7 +37,7 @@ export default async function ProfilePage() {
   const wallet = db.wallet.findByUserId(user.id);
   const kyc = db.kyc.findByUserId(user.id);
   const positions = db.bet.findByUser(user.id, 500) as StoredBet[];
-  const initials = initialsFor(user.displayName, user.phoneE164);
+  const initials = displayInitials(user);
   const displayName = user.displayName ?? "Set your name";
 
   const kycLevel = kyc?.status ?? "NOT_STARTED";

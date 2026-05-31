@@ -11,6 +11,7 @@ import { db } from "@/lib/server/store";
 import { listPositionsForUser, listMarkets, seedDemoMarkets } from "@/lib/server/market-service";
 import { PriceChart, VolumeSparkline } from "@/components/markets/price-chart";
 import { Tooltip } from "@/components/ui/tooltip";
+import { Avatar } from "@/components/ui/avatar";
 import { PageRibbon } from "@/components/layout/page-ribbon";
 
 export const metadata = { title: "Leaderboard · Bingwa" };
@@ -187,9 +188,7 @@ export default function LeaderboardPage() {
                 </td>
                 <td className="p-3">
                   <div className="flex items-center gap-2">
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-pill bg-bg-overlay font-mono text-[11px] text-text-muted border border-border">
-                      {r.handle.slice(0, 2).toUpperCase()}
-                    </span>
+                    <Avatar initials={r.handle.slice(0, 2)} size="sm" seed={r.userId} />
                     <span className="font-medium text-text">{r.handle}</span>
                     <TierBadge tier={r.tier} />
                   </div>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { ArrowDownToLine, ArrowUpFromLine, Wallet as WalletIcon, Phone, CreditCard, Plus } from "lucide-react";
 import { FiftyMark } from "@/components/brand";
+import { EmptyState } from "@/components/ui/empty-state";
 import type { Transaction } from "@/lib/mock-data";
 
 const fmt = (n: number, currency = "TZS") => `${currency} ${n.toLocaleString("en-US")}`;
@@ -179,18 +180,19 @@ export function WalletPageClient({
             {transactions.map((t) => <TxnRow key={t.id} tx={t} />)}
           </section>
         ) : (
-          <section className="rounded-xl border border-border bg-bg-elevated p-10 text-center">
-            <p className="font-display text-[18px] font-semibold text-text">No activity yet</p>
-            <p className="mt-1 italic text-text-subtle">Hakuna shughuli bado</p>
-            <p className="mt-3 text-[13px] text-text-muted max-w-sm mx-auto">
-              Make your first deposit to start predicting.
-            </p>
-            {isAuthed && (
-              <Link href="/wallet/deposit" className="btn btn-gold btn-lg mt-5 inline-flex" style={{ borderRadius: 999 }}>
-                Deposit · Weka pesa
-              </Link>
-            )}
-          </section>
+          <EmptyState
+            kind="audit"
+            title="No activity yet"
+            titleSw="Hakuna shughuli bado"
+            body="Make your first deposit to start predicting."
+            action={
+              isAuthed ? (
+                <Link href="/wallet/deposit" className="btn btn-gold btn-md">
+                  Deposit · Weka pesa
+                </Link>
+              ) : undefined
+            }
+          />
         )
       )}
 
