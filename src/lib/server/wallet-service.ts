@@ -138,9 +138,18 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
     return { ok: false, error: friendlyDepositReason(result.reason), code: "INVALID" };
   }
 
-  // Credit wallet
-  const newBalance = wallet.balance + parse.data.amount;
-  db.wallet.update(wallet.id, { balance: newBalance });
+  // Credit wallet — under the per-wallet lock with a FRESH re-read, because the
+  // `wallet` captured above is stale after the awaited dispatch: a concurrent
+  // cash-out / payout / bet on the same wallet may have changed the balance in
+  // the meantime. Applying the +amount delta to the live balance (not the stale
+  // snapshot) prevents the deposit from clobbering those concurrent changes.
+  const newBalance = await withLock(`wallet:${userId}`, async () => {
+    const fresh = db.wallet.findByUserId(userId);
+    const base = fresh ? fresh.balance : wallet.balance;
+    const next = base + parse.data.amount;
+    if (fresh) db.wallet.update(fresh.id, { balance: next });
+    return next;
+  });
   db.txn.update(txnId, { status: "CONFIRMED", providerRef: result.providerRef, balanceAfter: newBalance, completedAt: new Date().toISOString() });
   audit({ category: "WALLET", action: "deposit.confirmed", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: result.providerRef, balanceAfter: newBalance } });
   notifyDeposit(userId, parse.data.amount, friendlyProvider(parse.data.provider));

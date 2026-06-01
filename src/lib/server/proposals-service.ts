@@ -123,7 +123,21 @@ export async function castVote(userId: string, proposalId: string, dir: "up" | "
     if (!p) return { ok: false as const, error: "Proposal not found." };
     if (!OPEN_STATES.includes(p.status)) return { ok: false as const, error: "Voting has closed for this proposal." };
 
-    // Record (or clear) this user's vote.
+    // O(1) incremental tally — back out this voter's previous effect and apply
+    // the new one. Correct by construction because the per-proposal lock above
+    // serialises every read-modify-write, so counts can't drift or race. (The
+    // old "recompute from a full scan" approach was O(votes) per vote → O(N²)
+    // on a hot poll; this keeps a 100k-click poll O(N) total.)
+    const existing = db.proposalVote.get(proposalId, userId); // O(1) keyed lookup
+    let up = p.up;
+    let down = p.down;
+    if (existing?.dir === "up") up--;
+    else if (existing?.dir === "down") down--;
+    if (dir === "up") up++;
+    else if (dir === "down") down++;
+    up = Math.max(0, up);
+    down = Math.max(0, down);
+
     if (dir === null) {
       db.proposalVote.delete(proposalId, userId);
     } else {
@@ -137,12 +151,6 @@ export async function castVote(userId: string, proposalId: string, dir: "up" | "
       db.proposalVote.set(v);
     }
 
-    // Recompute tallies from the authoritative vote store rather than mutating
-    // denormalized counters — this self-heals any prior drift and can never go
-    // negative or double-count a toggle.
-    const votes = db.proposalVote.listByProposal(proposalId);
-    const up = votes.filter((v) => v.dir === "up").length;
-    const down = votes.filter((v) => v.dir === "down").length;
     db.proposal.update(proposalId, { up, down });
     return { ok: true as const, up, down, myVote: dir };
   });
