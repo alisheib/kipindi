@@ -46,60 +46,26 @@ export default function LivePage() {
     timeLeft: timeLeftStr(m.resolutionAt),
   }));
 
-  const totalVolume = markets.reduce((s, m) => s + m.volume, 0);
-  const totalPredictors = markets.reduce((s, m) => s + m.predictors, 0);
   const tippingMarkets = markets.filter((m) => Math.abs(m.yesPct - 50) < 8).length;
 
   return (
     <div className="relative min-h-[calc(100vh-44px)]">
       <BrandTopo opacity={0.04} />
 
-      <div className="relative mx-auto max-w-[1280px] px-3 lg:px-6 py-6 lg:py-10 space-y-8">
-        {/* Hero — kit BannerSocial composition, simplified, theme-adaptive */}
-        <header className="relative rounded-xl border border-border overflow-hidden">
-          <div
-            className="absolute inset-0"
-            style={{ background: "var(--hero-grad-warm)" }}
-            aria-hidden
-          />
-          <BrandTopo id="live-hero" opacity={0.06} />
-          <div className="relative p-6 lg:p-10 flex flex-col lg:flex-row lg:items-end gap-6 lg:justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <PulseRing size={20} color="var(--hero-no-accent)">
-                  <span className="block w-2 h-2 rounded-full" style={{ background: "var(--hero-no-accent)" }} />
-                </PulseRing>
-                <p
-                  className="font-mono text-[11px] uppercase tracking-[0.20em] font-bold"
-                  style={{ color: "var(--hero-no-accent)" }}
-                >
-                  Live · Hai
-                </p>
-              </div>
-              <h1
-                className="font-display font-bold text-[34px] sm:text-[44px] lg:text-[56px] leading-[1.0] tracking-[-0.03em]"
-                style={{ color: "var(--hero-text-strong)" }}
-              >
-                The pulse of{" "}
-                <span style={{ color: "var(--hero-yes-accent)" }}>YES</span>
-                {" "}&{" "}
-                <span style={{ color: "var(--hero-no-accent)" }}>NO</span>.
-              </h1>
-              <p
-                className="mt-3 text-[14px] lg:text-[16px] italic max-w-[58ch]"
-                style={{ color: "var(--hero-text-muted)" }}
-              >
-                Mapigo ya YES na NO.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Stat label="Open markets" sw="Soko hai" value={String(markets.length)} />
-              <Stat label="Volume" sw="Ujazo" value={`TZS ${(totalVolume / 1000).toFixed(1)}k`} />
-              <Stat label="Predictors" sw="Watabiri" value={totalPredictors.toLocaleString()} />
-              <Stat label="Tipping" sw="Inayumba" value={String(tippingMarkets)} accent />
-            </div>
+      <div className="relative mx-auto max-w-[1280px] px-3 lg:px-6 py-6 space-y-5">
+        {/* Slim header — clicking Live lands straight on the questions, not a
+            marketing hero (that lives on the homepage). */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <PulseRing size={18} color="var(--no-400)">
+              <span className="block w-2 h-2 rounded-full" style={{ background: "var(--no-400)" }} />
+            </PulseRing>
+            <p className="font-mono text-[12px] uppercase tracking-[0.18em] font-bold text-text">Live · Hai</p>
           </div>
-        </header>
+          <p className="font-mono text-[10.5px] text-text-subtle tabular-nums whitespace-nowrap">
+            {markets.length} live{tippingMarkets > 0 ? ` · ${tippingMarkets} tipping` : ""}
+          </p>
+        </div>
 
         {markets.length === 0 ? (
           <EmptyState
@@ -149,16 +115,6 @@ export default function LivePage() {
           </>
         )}
       </div>
-    </div>
-  );
-}
-
-function Stat({ label, sw, value, accent }: { label: string; sw: string; value: string; accent?: boolean }) {
-  return (
-    <div className={`rounded-md border ${accent ? "border-warning-border bg-warning-bg/30" : "border-border bg-bg-elevated/60"} px-3.5 py-2 backdrop-blur-md`}>
-      <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle">{label}</p>
-      <p className={`font-display font-bold text-[18px] tabular-nums leading-tight ${accent ? "text-warning-fg" : "text-text"}`}>{value}</p>
-      <p className="font-mono text-[8px] uppercase tracking-[0.14em] text-text-subtle italic">{sw}</p>
     </div>
   );
 }

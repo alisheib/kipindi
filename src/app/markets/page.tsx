@@ -4,7 +4,6 @@ import { MarketCard } from "@/components/markets/market-card";
 import { listMarkets, impliedYesPct, isClosedByTime, seedDemoMarkets, type MarketCategory } from "@/lib/server/market-service";
 import { getProposalsConfig } from "@/lib/server/proposals-config";
 import { EmptyState } from "@/components/ui/empty-state";
-import { PageRibbon } from "@/components/layout/page-ribbon";
 
 export const metadata = { title: "Markets · Soko" };
 export const dynamic = "force-dynamic";
@@ -45,32 +44,27 @@ export default function MarketsPage({ searchParams }: { searchParams: Promise<{ 
   seedDemoMarkets();
   const allLive = listMarkets({ status: "LIVE" }).filter((m) => !isClosedByTime(m));
   const totalVolume = allLive.reduce((s, m) => s + m.yesPool + m.noPool, 0);
-  const totalPredictors = allLive.reduce((s, m) => s + m.predictorCount, 0);
   return (
-    <main className="mx-auto max-w-[1240px] px-3 lg:px-6 py-6 space-y-5">
-      <header className="space-y-1">
+    <main className="mx-auto max-w-[1240px] px-3 lg:px-6 py-6">
+      {/* Lean, content-first header — the marketing hero lives on the homepage. */}
+      <div className="mb-4 flex items-center justify-between gap-3">
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">Markets · Soko</p>
-        <h1 className="font-display text-[28px] font-bold text-text">Predict events. Not chance.</h1>
-        <p className="text-[15px] text-text-muted italic">Tabiri matukio. Si bahati.</p>
-      </header>
-
-      <PageRibbon
-        stats={[
-          { label: "Live", sw: "Hai", value: String(allLive.length), accent: "gold" },
-          { label: "Predictors", sw: "Watabiri", value: totalPredictors.toLocaleString("en-US") },
-          {
-            label: "In play",
-            sw: "Bwawani",
-            value: `TZS ${(totalVolume / 1000).toFixed(0)}k`,
-          },
-        ]}
-      />
+        <p className="font-mono text-[10.5px] text-text-subtle tabular-nums whitespace-nowrap">
+          {allLive.length} live · TZS {(totalVolume / 1000).toFixed(0)}k in play
+        </p>
+      </div>
 
       <ProposalEntryCard />
 
-      <FilterBar searchParams={searchParams} />
-
-      <SearchAwareGrid searchParams={searchParams} />
+      {/* Filters as a left column on desktop, stacked above the grid on mobile. */}
+      <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:gap-6">
+        <aside className="lg:w-[208px] lg:shrink-0 lg:sticky lg:top-[60px] lg:self-start">
+          <FilterBar searchParams={searchParams} />
+        </aside>
+        <div className="min-w-0 flex-1">
+          <SearchAwareGrid searchParams={searchParams} />
+        </div>
+      </div>
     </main>
   );
 }
@@ -111,9 +105,9 @@ async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: strin
     return qs ? `/markets?${qs}` : "/markets";
   };
   return (
-    <div className="space-y-2.5">
-      <nav aria-label="When does it close?" className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto">
-        <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle pr-1">When</span>
+    <div className="space-y-2.5 lg:space-y-4">
+      <nav aria-label="When does it close?" className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto lg:flex-col lg:items-stretch lg:gap-1 lg:mx-0 lg:px-0 lg:overflow-visible">
+        <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle pr-1 lg:pr-0 lg:mb-1">When</span>
         {WHEN_OPTIONS.map((o) => {
           const active = o.id === activeWhen;
           return (
@@ -121,7 +115,7 @@ async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: strin
               key={o.id}
               href={buildHref({ when: o.id })}
               className={
-                "inline-flex h-8 items-center rounded-pill border px-3.5 font-mono text-[12px] font-semibold whitespace-nowrap transition-colors " +
+                "inline-flex h-8 items-center rounded-pill border px-3.5 font-mono text-[12px] font-semibold whitespace-nowrap transition-colors lg:w-full lg:justify-start lg:rounded-md " +
                 (active
                   ? "border-gold-500 bg-gold-500/10 text-gold-300"
                   : "border-border bg-bg-elevated text-text-muted hover:border-gold-700 hover:text-text")
@@ -133,8 +127,8 @@ async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: strin
           );
         })}
       </nav>
-      <nav aria-label="Market categories" className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto">
-        <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle pr-1">Topic</span>
+      <nav aria-label="Market categories" className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto lg:flex-col lg:items-stretch lg:gap-1 lg:mx-0 lg:px-0 lg:overflow-visible">
+        <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle pr-1 lg:pr-0 lg:mb-1">Topic</span>
         {CATEGORIES.map((c) => {
           const active = c.id === activeCat;
           return (
@@ -142,7 +136,7 @@ async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: strin
               key={c.id}
               href={buildHref({ cat: c.id })}
               className={
-                "inline-flex h-8 items-center rounded-pill border px-3.5 font-mono text-[12px] font-semibold whitespace-nowrap transition-colors " +
+                "inline-flex h-8 items-center rounded-pill border px-3.5 font-mono text-[12px] font-semibold whitespace-nowrap transition-colors lg:w-full lg:justify-start lg:rounded-md " +
                 (active
                   ? "border-text bg-bg-overlay text-text"
                   : "border-border bg-bg-elevated text-text-muted hover:border-text hover:text-text")
