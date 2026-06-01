@@ -6,10 +6,10 @@ import { ConvictionDial } from "@/components/markets/conviction-dial";
 import { Countdown } from "@/components/markets/countdown";
 import { ShareButton } from "@/components/markets/share-button";
 import { NotifyPrompt } from "@/components/markets/notify-prompt";
-import { PriceChart } from "@/components/markets/price-chart";
+import { ProbabilityChart } from "@/components/markets/probability-chart";
 import { SellButton } from "@/components/markets/sell-button";
 import { cashOutValue, getMarket, impliedYesPct, isClosedByTime, listPositionsForMarket, listPositionsForUser, seedDemoMarkets } from "@/lib/server/market-service";
-import { getCompressedHistory, seedHistory } from "@/lib/server/market-history";
+import { getProbabilityChart, seedHistory } from "@/lib/server/market-history";
 import { currentSession } from "@/lib/server/auth-service";
 
 export const dynamic = "force-dynamic";
@@ -81,16 +81,10 @@ export default async function MarketDetail({
   // so the page swaps it out for an "awaiting settlement" card.
   const closedByTime = isClosedByTime(m) && !isResolved;
 
-  // History — seed if empty (legacy demo markets created before Sprint 23)
-  // and render the kit PriceChart with the compressed series.
+  // History — seed if empty (legacy demo markets), then build the signature
+  // ProbabilityChart's range-keyed series from real snapshots.
   seedHistory(m.id, m.yesPool, m.noPool);
-  const historyRaw = getCompressedHistory(m.id, 24);
-  const history = historyRaw.map((s) => ({
-    t: new Date(s.t).toLocaleString("en-GB", { day: "2-digit", month: "short" }),
-    yes: s.yes,
-  }));
-  // Replace the last X label with "today" for legibility
-  if (history.length > 0) history[history.length - 1] = { ...history[history.length - 1], t: "now" };
+  const probChart = getProbabilityChart(m.id);
 
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6">
@@ -146,17 +140,16 @@ export default async function MarketDetail({
             <KPI label="Resolves"   value={fmtTime(m.resolutionAt)} mono />
           </div>
 
-          {/* Probability over time — kit PriceChart on real history */}
-          {history.length > 1 && (
+          {/* Probability over time — the signature "tipping line" chart */}
+          {probChart.ranges.length > 0 && (
             <section className="mt-8 rounded-lg border border-border bg-bg-elevated p-4 lg:p-5">
-              <div className="flex items-baseline justify-between mb-3">
-                <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">Probability · Uwezekano</p>
-                  <p className="text-[12px] italic text-text-subtle">YES probability over time</p>
-                </div>
-                <p className="font-mono text-[11px] text-text-muted">{yesPct}% now</p>
-              </div>
-              <PriceChart data={history} height={180} />
+              <ProbabilityChart
+                series={probChart.series as Record<string, { t: string; p: number }[]>}
+                ranges={probChart.ranges}
+                defaultRange={probChart.ranges[probChart.ranges.length - 1]}
+                width={680}
+                height={260}
+              />
             </section>
           )}
 

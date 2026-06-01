@@ -4,6 +4,7 @@ import { MarketCard } from "@/components/markets/market-card";
 import { FiftyLockup } from "@/components/brand";
 import { HeroConstellation } from "@/components/landing/hero-constellation";
 import { listMarkets, impliedYesPct, seedDemoMarkets } from "@/lib/server/market-service";
+import { getCardChart } from "@/lib/server/market-history";
 import { getSession } from "@/lib/server/session";
 
 export const dynamic = "force-dynamic";
@@ -141,21 +142,26 @@ export default async function LandingPage() {
             </Link>
           </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {live.slice(0, 6).map((m) => (
-              <MarketCard
-                key={m.id}
-                id={m.id}
-                titleEn={m.titleEn}
-                titleSw={m.titleSw}
-                category={m.category}
-                yesPct={impliedYesPct(m)}
-                volume={m.yesPool + m.noPool}
-                predictors={m.predictorCount}
-                timeLeft={timeLeftStr(m.resolutionAt)}
-                status="LIVE"
-                sourceUrl={m.sourceUrl}
-              />
-            ))}
+            {live.slice(0, 6).map((m) => {
+              const cc = getCardChart(m.id);
+              return (
+                <MarketCard
+                  key={m.id}
+                  id={m.id}
+                  titleEn={m.titleEn}
+                  titleSw={m.titleSw}
+                  category={m.category}
+                  yesPct={impliedYesPct(m)}
+                  volume={m.yesPool + m.noPool}
+                  predictors={m.predictorCount}
+                  timeLeft={timeLeftStr(m.resolutionAt)}
+                  status="LIVE"
+                  sourceUrl={m.sourceUrl}
+                  spark={cc.spark}
+                  move24h={cc.move24h}
+                />
+              );
+            })}
           </div>
         </section>
       )}

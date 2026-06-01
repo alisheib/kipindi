@@ -103,3 +103,60 @@ export function seedHistory(marketId: string, currentYesPool: number, currentNoP
   }
   history.set(marketId, snaps);
 }
+
+// ── Chart data for the signature ProbabilityChart + card sparkline ──────────
+
+export type ProbRange = "1D" | "1W" | "1M" | "ALL";
+const RANGE_WINDOWS: { id: ProbRange; ms: number | null }[] = [
+  { id: "1D", ms: 24 * 3600_000 },
+  { id: "1W", ms: 7 * 24 * 3600_000 },
+  { id: "1M", ms: 30 * 24 * 3600_000 },
+  { id: "ALL", ms: null },
+];
+
+function compress<T>(arr: T[], n: number): T[] {
+  if (arr.length <= n) return arr.slice();
+  const out: T[] = [];
+  const step = (arr.length - 1) / (n - 1);
+  for (let i = 0; i < n; i++) out.push(arr[Math.round(i * step)]);
+  return out;
+}
+
+function labelFor(iso: string): string {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+/** Full detail chart: a range-keyed series of {t,p} (p in 0..100). Only includes
+ *  ranges that actually have ≥2 points, so the chart never shows a fake window. */
+export function getProbabilityChart(marketId: string): {
+  series: Partial<Record<ProbRange, { t: string; p: number }[]>>;
+  ranges: ProbRange[];
+} {
+  const all = getHistory(marketId);
+  if (all.length < 2) return { series: {}, ranges: [] };
+  const now = Date.now();
+  const series: Partial<Record<ProbRange, { t: string; p: number }[]>> = {};
+  const ranges: ProbRange[] = [];
+  for (const w of RANGE_WINDOWS) {
+    const slice = w.ms == null ? all : all.filter((s) => now - Date.parse(s.t) <= w.ms!);
+    if (slice.length < 2) continue;
+    const pts = compress(slice, 24).map((s) => ({ t: labelFor(s.t), p: Math.round(s.yes * 100) }));
+    pts[pts.length - 1] = { ...pts[pts.length - 1], t: "now" };
+    series[w.id] = pts;
+    ranges.push(w.id);
+  }
+  return { series, ranges };
+}
+
+/** Lightweight card data: a short yes% sparkline series + the 24h move (points).
+ *  move24h is undefined when there isn't enough history to compute it. */
+export function getCardChart(marketId: string): { spark: number[]; move24h?: number } {
+  const all = getHistory(marketId);
+  if (all.length < 2) return { spark: [] };
+  const spark = compress(all, 16).map((s) => Math.round(s.yes * 100));
+  const now = Date.now();
+  const dayAgo = all.find((s) => now - Date.parse(s.t) <= 24 * 3600_000) ?? all[0];
+  const cur = Math.round(all[all.length - 1].yes * 100);
+  return { spark, move24h: cur - Math.round(dayAgo.yes * 100) };
+}

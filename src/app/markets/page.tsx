@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Trophy, ArrowRight } from "lucide-react";
 import { MarketCard } from "@/components/markets/market-card";
 import { listMarkets, impliedYesPct, isClosedByTime, seedDemoMarkets, type MarketCategory } from "@/lib/server/market-service";
+import { getCardChart } from "@/lib/server/market-history";
 import { getProposalsConfig } from "@/lib/server/proposals-config";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -177,21 +178,26 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
   return (
     <>
       <section className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-        {live.map((m) => (
-          <MarketCard
-            key={m.id}
-            id={m.id}
-            titleEn={m.titleEn}
-            titleSw={m.titleSw}
-            category={m.category}
-            yesPct={impliedYesPct(m)}
-            volume={m.yesPool + m.noPool}
-            predictors={m.predictorCount}
-            timeLeft={timeLeftStr(m.resolutionAt)}
-            status="LIVE"
-            sourceUrl={m.sourceUrl}
-          />
-        ))}
+        {live.map((m) => {
+          const cc = getCardChart(m.id);
+          return (
+            <MarketCard
+              key={m.id}
+              id={m.id}
+              titleEn={m.titleEn}
+              titleSw={m.titleSw}
+              category={m.category}
+              yesPct={impliedYesPct(m)}
+              volume={m.yesPool + m.noPool}
+              predictors={m.predictorCount}
+              timeLeft={timeLeftStr(m.resolutionAt)}
+              status="LIVE"
+              sourceUrl={m.sourceUrl}
+              spark={cc.spark}
+              move24h={cc.move24h}
+            />
+          );
+        })}
         {live.length === 0 && (
           <div className="col-span-full">
             <EmptyState
@@ -230,6 +236,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
                 timeLeft={`Resolved ${m.resolvedOutcome}`}
                 status="RESOLVED"
                 sourceUrl={m.sourceUrl}
+                spark={getCardChart(m.id).spark}
               />
             ))}
           </div>
