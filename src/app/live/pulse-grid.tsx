@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { TippingBar } from "@/components/brand";
+import { TippingBar, BrandSpinner } from "@/components/brand";
 import { ExternalLink } from "lucide-react";
 
 type Market = {
@@ -24,13 +24,63 @@ type Market = {
  * Tipping markets (within 8 of 50/50) get a subtle warning-amber border
  * because they're the most contested — the most interesting stories.
  */
+const BATCH = 24;
+
 export function LivePulseGrid({ markets }: { markets: Market[] }) {
+  // Render in batches and append as the user scrolls — keeps the DOM light
+  // (a live wall can be thousands of bars) and gives a real "loading more"
+  // affordance instead of dumping everything at once.
+  const [count, setCount] = useState(() => Math.min(BATCH, markets.length));
+  const [appending, setAppending] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const busyRef = useRef(false);
+  const hasMore = count < markets.length;
+
+  useEffect(() => {
+    if (!hasMore) return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && !busyRef.current) {
+          busyRef.current = true;
+          setAppending(true);
+          // a short, kit-consistent loader beat, then reveal the next batch
+          window.setTimeout(() => {
+            setCount((c) => Math.min(c + BATCH, markets.length));
+            setAppending(false);
+            busyRef.current = false;
+          }, 350);
+        }
+      },
+      { rootMargin: "300px 0px" },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [hasMore, markets.length, count]); // re-arm after each append
+
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-      {markets.map((m, i) => (
-        <PulseCard key={m.id} market={m} index={i} />
-      ))}
-    </div>
+    <>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {markets.slice(0, count).map((m, i) => (
+          <PulseCard key={m.id} market={m} index={i} />
+        ))}
+      </div>
+
+      {hasMore && (
+        <div
+          ref={sentinelRef}
+          className="flex flex-col items-center gap-2.5 py-8"
+          aria-live="polite"
+          aria-busy={appending}
+        >
+          <BrandSpinner size={30} />
+          <p className="font-mono text-[10.5px] uppercase tracking-[0.16em] text-text-subtle">
+            Loading more · Inapakia zaidi
+          </p>
+        </div>
+      )}
+    </>
   );
 }
 

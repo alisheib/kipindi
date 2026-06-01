@@ -1,0 +1,262 @@
+/* ===========================================================================
+   50pick — globals.css ADDITIONS for the market surfaces
+   (Market card · Market detail terminal · Probability chart)
+
+   Append-only. Every value below resolves to an existing kit token from
+   globals.css — no new colours, fonts, radii, shadows, or motion tokens are
+   introduced. Each animated rule carries a prefers-reduced-motion branch.
+   =========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   1 · Probability chart — the signature "tipping line" chart
+   --------------------------------------------------------------------------- */
+
+.pchart {
+  position: relative;
+  width: 100%;
+  font-family: var(--font-mono);
+  user-select: none;
+}
+.pchart svg { display: block; width: 100%; height: auto; overflow: visible; }
+
+/* Background gridlines — quiet royal hairlines */
+.pchart-grid line { stroke: var(--border); stroke-width: 1; opacity: 0.45; }
+
+/* The 50% reference — heraldic gilt dashed "tipping" line. The brand pivot. */
+.pchart-tip       { stroke: var(--gilt); stroke-width: 1; stroke-dasharray: 2 5; opacity: 0.55; }
+.pchart-tip-cap   { fill: var(--gilt); font-size: 9px; letter-spacing: 0.14em; opacity: 0.7; }
+
+/* Axes */
+.pchart-axis      { fill: var(--text-subtle); font-size: 10px; letter-spacing: 0.06em; }
+
+/* The YES probability line. Single emerald stroke with a soft emerald glow —
+   the headline metric of every 50pick market is YES. */
+.pchart-line {
+  fill: none;
+  stroke: var(--yes-400);
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 5px color-mix(in oklab, var(--yes-400) 35%, transparent));
+}
+
+/* Draw-in on mount — standard SVG stroke draw; not a layout property, so no
+   reflow. Length (--pchart-len) is set per-instance by the component. */
+.pchart-line.is-drawn {
+  stroke-dasharray: var(--pchart-len);
+  stroke-dashoffset: var(--pchart-len);
+  animation: pchart-draw var(--dur-stage) var(--ease-glide) forwards;
+}
+@keyframes pchart-draw { to { stroke-dashoffset: 0; } }
+
+/* Live point — aqua SignalPip echo + gilt value flag */
+.pchart-dot       { fill: var(--aqua-300); }
+.pchart-dot-halo  { fill: none; stroke: var(--aqua-300); opacity: 0.5; animation: aqua-pulse 2.2s ease-in-out infinite; }
+
+/* Hover crosshair + readout */
+.pchart-cross     { stroke: var(--border-royal); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0; transition: opacity var(--ease-micro); }
+.pchart.is-hover .pchart-cross { opacity: 0.8; }
+.pchart-cross-dot { fill: var(--gilt); opacity: 0; transition: opacity var(--ease-micro); }
+.pchart.is-hover .pchart-cross-dot { opacity: 1; }
+
+.pchart-readout {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  background: var(--slate-950);
+  border: 1px solid var(--border-strong);
+  color: var(--pearl-50);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--ease-micro);
+  z-index: 5;
+}
+.pchart.is-hover .pchart-readout { opacity: 1; }
+.pchart-readout b { color: var(--yes-300); font-weight: 600; }
+.pchart-readout .lean-no { color: var(--no-300); }
+
+/* Range selector — reuse the kit's gold-underline-slides motion idea */
+.pchart-ranges { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--r-pill); background: var(--bg-overlay); border: 1px solid var(--border); }
+.pchart-range {
+  appearance: none; border: none; background: transparent; cursor: pointer;
+  font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+  color: var(--text-subtle); padding: 4px 11px; border-radius: var(--r-pill);
+  transition: color var(--ease-micro), background-color var(--ease-micro);
+}
+.pchart-range.is-active { color: var(--gold-fg); background: var(--gilt); }
+.pchart-range:not(.is-active):hover { color: var(--gilt); }
+
+@media (prefers-reduced-motion: reduce) {
+  .pchart-line.is-drawn { animation: none; stroke-dashoffset: 0; }
+  .pchart-dot-halo { animation: none; }
+}
+
+/* ---------------------------------------------------------------------------
+   2 · Micro sparkline (card variant of the chart)
+   --------------------------------------------------------------------------- */
+
+.spark { display: inline-block; line-height: 0; }
+.spark svg { display: block; overflow: visible; }
+.spark-line { fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.spark-line-yes { stroke: var(--yes-400); }
+.spark-line-no  { stroke: var(--no-400); }
+.spark-dot-yes  { fill: var(--yes-300); }
+.spark-dot-no   { fill: var(--no-300); }
+
+/* ---------------------------------------------------------------------------
+   3 · Market card — YES probability as hero
+   --------------------------------------------------------------------------- */
+
+.mcard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: var(--sp-4);
+  padding: var(--sp-5);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-card);
+  transition: transform var(--ease-micro), border-color var(--ease-micro), box-shadow var(--ease-micro);
+}
+.mcard:hover { border-color: var(--border-strong); box-shadow: var(--shadow-4); transform: translateY(-2px); }
+
+.mcard-top { display: flex; align-items: center; gap: var(--sp-2); }
+.mcard-cat { margin-left: auto; }
+
+.mcard-q { font-family: var(--font-display); font-size: var(--type-h3); line-height: 1.22; letter-spacing: -0.01em; color: var(--text); text-wrap: balance; }
+.mcard-q-sw { margin-top: 3px; font-size: var(--type-small); font-style: italic; color: var(--text-subtle); }
+
+/* The hero row: giant YES%, move chip, sparkline */
+.mcard-hero { display: flex; align-items: flex-end; gap: var(--sp-4); min-width: 0; flex-wrap: wrap; }
+.mcard-pct {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 56px;
+  line-height: 0.92;
+  letter-spacing: -0.03em;
+  color: var(--yes-300);
+  font-variant-numeric: tabular-nums;
+}
+.mcard-pct .unit { font-size: 26px; color: var(--yes-400); margin-left: 2px; letter-spacing: -0.02em; }
+.mcard-pct-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-subtle); margin-bottom: 6px; }
+
+.mcard-move {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+  padding: 3px 8px; border-radius: var(--r-pill);
+  font-variant-numeric: tabular-nums;
+}
+.mcard-move-up   { color: var(--yes-200); background: color-mix(in oklab, var(--yes-500) 18%, transparent); border: 1px solid color-mix(in oklab, var(--yes-500) 40%, transparent); }
+.mcard-move-down { color: var(--no-200);  background: color-mix(in oklab, var(--no-500)  18%, transparent); border: 1px solid color-mix(in oklab, var(--no-500)  40%, transparent); }
+.mcard-move-flat { color: var(--text-subtle); background: var(--bg-overlay); border: 1px solid var(--border); }
+.mcard-move svg { width: 11px; height: 11px; }
+
+.mcard-spark { margin-left: auto; align-self: center; }
+
+.mcard-actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+.mcard-actions .btn { min-width: 0; }
+.mcard-meta { display: flex; align-items: center; gap: var(--sp-3); font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); }
+.mcard-meta .dot-sep { width: 3px; height: 3px; border-radius: 50%; background: var(--border-strong); }
+
+/* ---------------------------------------------------------------------------
+   4 · Market detail — calm trading terminal
+   --------------------------------------------------------------------------- */
+
+.mterm { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: var(--sp-6); align-items: start; }
+@media (max-width: 880px) { .mterm { grid-template-columns: minmax(0, 1fr); } }
+
+.mterm-main { display: flex; flex-direction: column; gap: var(--sp-5); min-width: 0; }
+.mterm-rail { position: sticky; top: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-4); }
+@media (max-width: 880px) { .mterm-rail { position: static; } }
+
+.tpanel {
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-card);
+}
+.tpanel-pad { padding: var(--sp-5); }
+.tpanel-head { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-4) var(--sp-5); border-bottom: 1px solid var(--border); }
+.tpanel-title { font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gilt); }
+
+/* Question header */
+.mterm-q { font-family: var(--font-display); font-size: var(--type-h1); line-height: 1.14; letter-spacing: -0.02em; color: var(--text); text-wrap: balance; }
+.mterm-q-sw { margin-top: 6px; font-size: var(--type-h4); font-style: italic; color: var(--text-subtle); }
+
+/* Big % beside the chart */
+.mterm-hero { display: flex; align-items: baseline; gap: var(--sp-4); flex-wrap: wrap; }
+.mterm-pct { font-family: var(--font-display); font-weight: 800; font-size: var(--type-display-2); line-height: 0.9; letter-spacing: -0.03em; color: var(--yes-300); font-variant-numeric: tabular-nums; }
+.mterm-pct .unit { font-size: 0.5em; color: var(--yes-400); }
+.mterm-pct-cap { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-subtle); }
+
+/* Two-sided pool */
+.pool { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; border-radius: var(--r-md); overflow: hidden; border: 1px solid var(--border); }
+.pool-side { padding: var(--sp-4); display: flex; flex-direction: column; gap: 3px; }
+.pool-yes { background: color-mix(in oklab, var(--yes-500) 12%, var(--bg-elevated)); }
+.pool-no  { background: color-mix(in oklab, var(--no-500)  12%, var(--bg-elevated)); }
+.pool-cap { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; }
+.pool-yes .pool-cap { color: var(--yes-300); }
+.pool-no  .pool-cap { color: var(--no-300); }
+.pool-amt { font-family: var(--font-display); font-weight: 700; font-size: var(--type-h3); font-variant-numeric: tabular-nums; color: var(--text); }
+.pool-sub { font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); }
+
+/* Bet ticket rail */
+.ticket-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
+.ticket-tab {
+  appearance: none; cursor: pointer;
+  border-radius: var(--r-md); border: 1px solid var(--border);
+  background: var(--bg-overlay); color: var(--text-muted);
+  font-family: var(--font-body); font-weight: 700; font-size: 14px;
+  height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  transition: border-color var(--ease-micro), color var(--ease-micro), background-color var(--ease-micro);
+}
+.ticket-tab .t-pct { font-family: var(--font-mono); font-size: 12px; opacity: 0.8; }
+.ticket-tab.is-yes-active { border-color: color-mix(in oklab, var(--yes-500) 60%, transparent); background: color-mix(in oklab, var(--yes-500) 18%, transparent); color: var(--yes-200); }
+.ticket-tab.is-no-active  { border-color: color-mix(in oklab, var(--no-500)  60%, transparent); background: color-mix(in oklab, var(--no-500)  18%, transparent); color: var(--no-200); }
+
+.ticket-row { display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
+.ticket-row .label { color: var(--text-muted); }
+.ticket-row .val { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text); }
+.ticket-row .val-gilt { color: var(--gilt); }
+.ticket-quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-2); }
+.ticket-chip {
+  appearance: none; cursor: pointer; border-radius: var(--r-sm); border: 1px solid var(--border);
+  background: var(--bg-overlay); color: var(--text-muted);
+  font-family: var(--font-mono); font-size: 11px; font-weight: 600; height: 30px;
+  transition: border-color var(--ease-micro), color var(--ease-micro);
+}
+.ticket-chip:hover { border-color: var(--gilt); color: var(--gilt); }
+
+/* Position / P&L */
+.pnl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+.pnl-cell { padding: var(--sp-3); border-radius: var(--r-md); background: var(--bg-overlay); border: 1px solid var(--border); }
+.pnl-cap { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-subtle); }
+.pnl-val { margin-top: 4px; font-family: var(--font-mono); font-weight: 600; font-size: 17px; font-variant-numeric: tabular-nums; color: var(--text); }
+.pnl-val.up { color: var(--yes-300); }
+.pnl-val.down { color: var(--no-300); }
+
+/* Comments slot */
+.comment-slot { display: flex; flex-direction: column; gap: var(--sp-4); }
+.comment { display: flex; gap: var(--sp-3); }
+.comment-body { min-width: 0; }
+.comment-head { display: flex; align-items: center; gap: var(--sp-2); font-size: 12px; }
+.comment-name { font-weight: 600; color: var(--text); }
+.comment-time { font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); }
+.comment-text { margin-top: 3px; font-size: 13px; line-height: 1.5; color: var(--text-muted); }
+.comment-side { font-family: var(--font-mono); font-size: 10px; padding: 1px 6px; border-radius: var(--r-pill); }
+.comment-side-yes { color: var(--yes-300); background: color-mix(in oklab, var(--yes-500) 16%, transparent); }
+.comment-side-no  { color: var(--no-300);  background: color-mix(in oklab, var(--no-500)  16%, transparent); }
+
+/* Trust strip */
+.trust { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-4); padding: var(--sp-4) var(--sp-5); border-radius: var(--r-md); border: 1px solid var(--border); background: var(--bg-overlay); }
+.trust-item { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text-muted); }
+.trust-item svg { width: 16px; height: 16px; color: var(--gilt); flex-shrink: 0; }
+.trust-sep { width: 1px; height: 16px; background: var(--border); }

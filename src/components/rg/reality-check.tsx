@@ -137,16 +137,16 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL }: { 
           <button type="button" onClick={dismiss} className="btn btn-gold btn-lg w-full">
             Continue playing · Endelea
           </button>
-          <Link href="/profile/responsible-gambling" className="btn btn-ghost btn-lg w-full inline-flex">
+          <Link href="/profile/responsible-gambling" onClick={dismiss} className="btn btn-ghost btn-lg w-full inline-flex">
             <Clock size={14} aria-hidden />
             Set limits · Weka mipaka
           </Link>
           <div className="grid grid-cols-2 gap-2">
-            <Link href="/profile/responsible-gambling" className="btn btn-ghost btn-md w-full inline-flex">
+            <Link href="/profile/responsible-gambling#break" onClick={dismiss} className="btn btn-ghost btn-md w-full inline-flex">
               <Pause size={13} aria-hidden />
               Take a break
             </Link>
-            <Link href="/profile/responsible-gambling" className="btn btn-claret btn-md w-full inline-flex">
+            <Link href="/profile/responsible-gambling#exclude" onClick={dismiss} className="btn btn-claret btn-md w-full inline-flex">
               <Lock size={13} aria-hidden />
               Self-exclude
             </Link>

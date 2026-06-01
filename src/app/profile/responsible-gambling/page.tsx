@@ -128,7 +128,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
       </section>
 
       {/* COOLING-OFF */}
-      <section className="rounded-2xl border border-border bg-bg-elevated p-5 lg:p-6 space-y-3">
+      <section id="break" className="scroll-mt-20 rounded-2xl border border-border bg-bg-elevated p-5 lg:p-6 space-y-3">
         <div className="flex items-center gap-2">
           <Pause size={16} className="text-info-fg" />
           <h2 className="font-display text-[15px] font-semibold text-text">Take a break · Pumzika</h2>
@@ -163,7 +163,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
       </section>
 
       {/* SELF-EXCLUSION */}
-      <section className="rounded-2xl border border-no-700/60 bg-no-500/[0.06] p-5 lg:p-6 space-y-3">
+      <section id="exclude" className="scroll-mt-20 rounded-2xl border border-no-700/60 bg-no-500/[0.06] p-5 lg:p-6 space-y-3">
         <div className="flex items-center gap-2">
           <Lock size={16} className="text-no-300" />
           <h2 className="font-display text-[15px] font-semibold text-text">Self-exclude · Jizuie</h2>
