@@ -111,11 +111,11 @@ export function MarketCard({
         </div>
         {move24h !== undefined && live && <MoveChip move={move24h} />}
         {spark && spark.length > 1 && (
-          <span className="mcard-spark"><Sparkline data={spark} width={84} height={34} /></span>
+          <span className="mcard-spark"><Sparkline data={spark} width={72} height={28} /></span>
         )}
       </div>
 
-      <TippingBar yesPct={yesPct} height={20} resolved={status === "RESOLVED"} showLabels={false} recastOnHover={false} />
+      <TippingBar yesPct={yesPct} height={15} resolved={status === "RESOLVED"} showLabels={false} recastOnHover={false} />
 
       {live && (
         <div className="mcard-actions">
@@ -123,7 +123,7 @@ export function MarketCard({
             type="button"
             aria-label={`Back YES at ${yesPct}%`}
             onClick={(e) => { e.preventDefault(); window.location.href = `/markets/${id}?side=YES`; }}
-            className="btn btn-yes btn-lg"
+            className="btn btn-yes btn-md"
           >
             YES <span className="font-mono" style={{ opacity: 0.85, fontSize: 13 }}>{yesPct}</span>
           </button>
@@ -131,7 +131,7 @@ export function MarketCard({
             type="button"
             aria-label={`Back NO at ${100 - yesPct}%`}
             onClick={(e) => { e.preventDefault(); window.location.href = `/markets/${id}?side=NO`; }}
-            className="btn btn-no btn-lg"
+            className="btn btn-no btn-md"
           >
             NO <span className="font-mono" style={{ opacity: 0.85, fontSize: 13 }}>{100 - yesPct}</span>
           </button>
