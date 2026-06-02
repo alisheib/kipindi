@@ -33,7 +33,7 @@ export default function AdminOverviewPage() {
 
   // Provider mix flex shares — total deposits across the top 5 providers
   const provTotal = provs.reduce((s, p) => s + p.deposits, 0) || 1;
-  const provColors = ["var(--royal)", "var(--gold)", "#3a4a76", "#7588B1", "#A6B0C8"];
+  const provColors = ["var(--royal)", "var(--gold)", "var(--aqua-400)", "var(--claret-400)", "var(--slate-400)"];
 
   const conversion = kyc.registered === 0 ? 0 : (kyc.approved / kyc.registered) * 100;
 
@@ -113,7 +113,7 @@ export default function AdminOverviewPage() {
                 <AdminStackedBar
                   segments={provs.map((p, i) => ({
                     flex: Math.max(2, Math.round((p.deposits / provTotal) * 100)),
-                    color: provColors[i] ?? "#A6B0C8",
+                    color: provColors[i] ?? "var(--slate-400)",
                     label: p.provider.split("_")[0],
                   }))}
                 />

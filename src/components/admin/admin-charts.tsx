@@ -148,7 +148,7 @@ export function AdminAreaChart({
 export function AdminStackedBars({
   bars,
   height = 200,
-  colors = ["var(--royal)", "var(--gold)", "#3a4a76", "#7588B1", "#A6B0C8"],
+  colors = ["var(--royal)", "var(--gold)", "var(--aqua-400)", "var(--claret-400)", "var(--slate-400)"],
   legend,
 }: {
   bars: Array<{ label: string; segments: number[] }>;
