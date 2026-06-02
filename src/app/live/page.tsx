@@ -12,6 +12,7 @@
  */
 import Link from "next/link";
 import { listMarkets, impliedYesPct, seedDemoMarkets } from "@/lib/server/market-service";
+import { getCardChart } from "@/lib/server/market-history";
 import { TippingBar, PulseRing } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -44,6 +45,7 @@ export default function LivePage() {
     volume: m.yesPool + m.noPool,
     predictors: m.predictorCount,
     timeLeft: timeLeftStr(m.resolutionAt),
+    move24h: getCardChart(m.id).move24h,
   }));
 
   const tippingMarkets = markets.filter((m) => Math.abs(m.yesPct - 50) < 8).length;

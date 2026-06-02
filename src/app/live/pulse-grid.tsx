@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { TippingBar, BrandSpinner } from "@/components/brand";
-import { ExternalLink } from "lucide-react";
+import { BrandSpinner } from "@/components/brand";
+import { MarketCard } from "@/components/markets/market-card";
 
 type Market = {
   id: string;
@@ -14,6 +13,7 @@ type Market = {
   volume: number;
   predictors: number;
   timeLeft: string;
+  move24h?: number;
 };
 
 /**
@@ -84,11 +84,18 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
   );
 }
 
+/**
+ * The same canonical MarketCard used on /markets and the homepage — wrapped in
+ * an intersection-observer reveal so scrolling the live wall feels like it wakes
+ * up one card at a time (snaps in immediately under reduced-motion).
+ */
 function PulseCard({ market, index }: { market: Market; index: number }) {
-  const ref = useRef<HTMLAnchorElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
   const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) { setRevealed(true); return; }
     const el = ref.current;
     if (!el) return;
     const obs = new IntersectionObserver(
@@ -107,45 +114,27 @@ function PulseCard({ market, index }: { market: Market; index: number }) {
     return () => obs.disconnect();
   }, [index]);
 
-  const tipping = Math.abs(market.yesPct - 50) < 8;
-
   return (
-    <Link
+    <div
       ref={ref}
-      href={`/markets/${market.id}` as never}
-      className={`group relative block rounded-lg border bg-bg-elevated p-4 transition-all duration-stage hover:-translate-y-[2px] hover:shadow-e4 ${
-        tipping ? "border-warning-border" : "border-border hover:border-teal-500"
-      }`}
       style={{
         opacity: revealed ? 1 : 0,
         transform: revealed ? "translateY(0)" : "translateY(8px)",
-        transition: "opacity 600ms cubic-bezier(.2,.8,.2,1), transform 600ms cubic-bezier(.2,.8,.2,1), border-color 200ms",
+        transition: "opacity 600ms cubic-bezier(.2,.8,.2,1), transform 600ms cubic-bezier(.2,.8,.2,1)",
       }}
     >
-      <div className="flex items-center gap-2 mb-3">
-        <span className={`inline-flex items-center rounded-pill border px-2 py-0.5 text-[10px] font-mono uppercase tracking-[0.14em] ${
-          tipping ? "border-warning-border bg-warning-bg/40 text-warning-fg" : "border-border bg-bg-overlay text-text-muted"
-        }`}>
-          {tipping ? "tipping" : market.category}
-        </span>
-        <span className="font-mono text-[10px] text-text-subtle">{market.timeLeft}</span>
-        <ExternalLink size={12} className="ml-auto text-text-subtle opacity-0 group-hover:opacity-100 transition-opacity" />
-      </div>
-
-      <h3 className="font-display text-[14px] font-semibold leading-tight text-text mb-1 line-clamp-2 min-h-[34px]">
-        {market.titleEn}
-      </h3>
-      {market.titleSw && (
-        <p className="text-[11px] italic text-text-subtle line-clamp-1 mb-3">{market.titleSw}</p>
-      )}
-
-      <TippingBar yesPct={market.yesPct} height={14} animate={revealed} showLabels={false} />
-
-      <div className="mt-2.5 flex items-center justify-between font-mono text-[10px]">
-        <span className="text-yes-300 font-bold">YES {market.yesPct}%</span>
-        <span className="text-text-subtle">{market.predictors} predictors</span>
-        <span className="text-no-300 font-bold">{100 - market.yesPct}% NO</span>
-      </div>
-    </Link>
+      <MarketCard
+        id={market.id}
+        titleEn={market.titleEn}
+        titleSw={market.titleSw}
+        category={market.category}
+        yesPct={market.yesPct}
+        volume={market.volume}
+        predictors={market.predictors}
+        timeLeft={market.timeLeft}
+        status="LIVE"
+        move24h={market.move24h}
+      />
+    </div>
   );
 }

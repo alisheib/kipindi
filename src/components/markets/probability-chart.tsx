@@ -75,7 +75,10 @@ export function ProbabilityChart({
   const lastX = last ? x(n - 1) : padL;
   const tickIdx = n > 2 ? [0, Math.floor((n - 1) / 2), n - 1] : data.map((_, i) => i);
 
-  const onMove = (e: React.MouseEvent<SVGSVGElement>) => {
+  // Pointer scrubbing — works for mouse, touch and pen. `touch-action: pan-y`
+  // (set on the svg) lets the page still scroll vertically while we read the
+  // horizontal position, so dragging across the chart on mobile reads the value.
+  const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
     if (!n) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const px = ((e.clientX - rect.left) / rect.width) * width;
@@ -104,7 +107,7 @@ export function ProbabilityChart({
       </div>
 
       <div style={{ position: "relative" }}>
-        <svg viewBox={`0 0 ${width} ${height}`} onMouseMove={onMove} onMouseLeave={() => setHover(null)} role="img" aria-label={`YES probability over time, currently ${last ? last.p : 0} percent`}>
+        <svg viewBox={`0 0 ${width} ${height}`} onPointerMove={onMove} onPointerDown={onMove} onPointerLeave={() => setHover(null)} style={{ touchAction: "pan-y" }} role="img" aria-label={`YES probability over time, currently ${last ? last.p : 0} percent`}>
           <defs>
             <clipPath id={`above-${uid}`}><rect x="0" y={padT - 2} width={width} height={baseline - padT + 2} /></clipPath>
             <clipPath id={`below-${uid}`}><rect x="0" y={baseline} width={width} height={padT + H - baseline + 2} /></clipPath>
