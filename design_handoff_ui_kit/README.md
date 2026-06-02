@@ -90,6 +90,11 @@ and the `.mcard*` rules in `tokens/globals.css`.
 
 ---
 
+## 👉 Current ask
+**`REQUEST-next-round.md`** (top level) is the active brief: the **market-card
+system** (binary + multi-outcome + compact list-row) and the **identity / avatar
+system**. Read it first; the `briefs/` folder holds the earlier rounds for context.
+
 ## What we'd love from you
 
 The briefs in `briefs/` describe specific asks (market card, market detail,
