@@ -79,9 +79,9 @@ export function MarketCard({
             className={cn("chip", signal.kind === "hot" && "chip-objection", signal.kind === "soon" && "chip-pending", signal.kind === "tipping" && "chip-signal")}
             style={{ fontWeight: 700 }}
           >
-            {signal.kind === "hot" && <Flame size={10} aria-hidden />}
-            {signal.kind === "soon" && <Clock size={10} aria-hidden />}
-            {signal.kind === "tipping" && <Scale size={10} aria-hidden />}
+            {signal.kind === "hot" && <Flame size={9} aria-hidden />}
+            {signal.kind === "soon" && <Clock size={9} aria-hidden />}
+            {signal.kind === "tipping" && <Scale size={9} aria-hidden />}
             {signal.label}
           </span>
         )}
@@ -93,7 +93,7 @@ export function MarketCard({
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(sourceUrl, "_blank", "noopener,noreferrer"); }}
             className="text-text-subtle hover:text-text-muted transition-colors"
           >
-            <ExternalLink size={15} aria-hidden />
+            <ExternalLink size={13} aria-hidden />
           </button>
         )}
       </div>

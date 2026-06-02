@@ -1544,7 +1544,11 @@ html.kp-reduce-motion *::after {
 }
 .mcard:hover { border-color: var(--border-strong); box-shadow: var(--shadow-3); transform: translateY(-2px); }
 
-.mcard-top { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.mcard-top { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
+/* Card-scoped chips — smaller than the global chip so the status/signal/category
+   pills don't dominate the card. Only affects chips inside a market card. */
+.mcard .chip { font-size: 9.5px; padding: 2px 7px; gap: 3px; letter-spacing: 0.02em; }
+.mcard .chip .live-dot { width: 5px; height: 5px; }
 /* On a narrow card (e.g. 4-up on a smaller laptop) the sparkline is the first
    thing to fold away — the number + move chip stay the priority. */
 @container (max-width: 258px) { .mcard-spark { display: none; } }
@@ -1561,14 +1565,14 @@ html.kp-reduce-motion *::after {
 .mcard-pct {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 26px;
+  font-size: 22px;
   line-height: 1;
   letter-spacing: -0.03em;
   color: var(--yes-300);
   font-variant-numeric: tabular-nums;
 }
-.mcard-pct .unit { font-size: 13px; color: var(--yes-400); margin-left: 1px; letter-spacing: -0.02em; }
-.mcard-pct-label { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-subtle); }
+.mcard-pct .unit { font-size: 11px; color: var(--yes-400); margin-left: 1px; letter-spacing: -0.02em; }
+.mcard-pct-label { font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-subtle); }
 
 .mcard-move {
   display: inline-flex; align-items: center; gap: 3px;

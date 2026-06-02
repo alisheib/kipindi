@@ -135,7 +135,7 @@ export default function LeaderboardPage() {
   const consensus = buildConsensusSeries();
 
   return (
-    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
+    <main className="mx-auto max-w-[1480px] px-3 lg:px-6 py-6 space-y-6">
       <header>
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">Leaderboard · Bingwa</p>
         <h1 className="font-display text-[28px] font-bold text-text">Top predictors</h1>
