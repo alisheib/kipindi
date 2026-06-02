@@ -1,5 +1,10 @@
 # 50pick / Kipindi — UI Kit & Component Handoff
 
+> 🗑️ **TEMPORARY HANDOFF FOLDER — delete after Claude Design returns this round.**
+> This is a snapshot we share with the designer, not part of the app. Once the
+> `REQUEST-next-round.md` work is delivered, this whole `design_handoff_ui_kit/`
+> folder can be deleted.
+
 One folder, the whole front-end design system. Everything the platform renders
 is here: the **design tokens** (the single source of truth), the **shared kit
 primitives** (used everywhere, defined once), and **every feature** in its own
@@ -38,7 +43,7 @@ design_handoff_ui_kit/
 │  ├─ responsible-gaming/ ← reality-check, self-exclusion (regulatory)
 │  ├─ settings/         ← feedback/motion settings
 │  └─ admin/            ← operator console shell + charts
-└─ briefs/              ← the original art-direction briefs we sent you
+└─ REQUEST-next-round.md ← the current ask (read this)
 ```
 
 **Start with `tokens/TOKENS.md`**, then `tokens/globals.css`, then `kit/`,
@@ -93,12 +98,11 @@ and the `.mcard*` rules in `tokens/globals.css`.
 ## 👉 Current ask
 **`REQUEST-next-round.md`** (top level) is the active brief: the **market-card
 system** (binary + multi-outcome + compact list-row) and the **identity / avatar
-system**. Read it first; the `briefs/` folder holds the earlier rounds for context.
+system**. Read it first.
 
 ## What we'd love from you
 
-The briefs in `briefs/` describe specific asks (market card, market detail,
-probability chart, haptics, micro-animations, badges). In general: elevate the
-signature surfaces (market card, detail page, probability chart) into something
-unmistakably 50pick while staying inside the rules above. Reserve decoration for
-accents; let the data breathe.
+Elevate the signature surfaces (market card, detail page, probability chart) into
+something unmistakably 50pick while staying inside the rules above. Reserve
+decoration for accents; let the data breathe. See `REQUEST-next-round.md` for the
+specific deliverables this round.

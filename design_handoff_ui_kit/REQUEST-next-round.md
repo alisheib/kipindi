@@ -3,9 +3,9 @@
 **From:** 50pick / Kipindi product team
 **To:** Claude Design
 **What you have:** this entire folder *is* our live UI kit — `tokens/globals.css`
-(the system), `kit/` (shared primitives), `features/` (every surface), and the
-prior briefs in `briefs/`. **Design INTO this.** No new palettes, fonts, radii,
-shadow scales, or icon libraries — extend what's here.
+(the system), `kit/` (shared primitives), and `features/` (every surface).
+**Design INTO this.** No new palettes, fonts, radii, shadow scales, or icon
+libraries — extend what's here.
 
 > ⚠️ **Hard rule (unchanged):** stay 100% on our tokens + components. We are not
 > rebranding and we are **not copying Polymarket**. We're studying it for

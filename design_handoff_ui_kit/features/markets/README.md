@@ -27,6 +27,5 @@ discuss*. The **YES %** and the **probability chart** are the anchors.
 ## Notes for design
 - The pricing model is **pari-mutuel pools** (yesPool / noPool → implied %). The
   card/chart visualise that; don't assume an order-book.
-- The detail page composition brief is in `../../briefs/02-market-detail.md`;
-  the chart brief in `../../briefs/03-probability-chart.md`; the card brief in
-  `../../briefs/01-market-card.md`.
+- The current ask (the card *system* — binary + multi-outcome + compact row) is
+  in `../../REQUEST-next-round.md`.
