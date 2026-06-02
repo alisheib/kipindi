@@ -1612,6 +1612,10 @@ html.kp-reduce-motion *::after {
 @keyframes kp-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .kp-rise { animation: kp-rise 460ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 
+/* Generative identity wrapper (IdentityAvatar). The inner span carries the
+   fixed size + optional tier ring; this just keeps it inline + self-contained. */
+.crest-holder { display: inline-flex; position: relative; flex-shrink: 0; vertical-align: middle; line-height: 0; }
+
 /* Thin, on-theme scrollbar — used by the sticky filter rail so a long list
    scrolls inside the column instead of being clipped. */
 .kp-thin-scroll { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
