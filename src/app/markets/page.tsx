@@ -46,7 +46,7 @@ export default function MarketsPage({ searchParams }: { searchParams: Promise<{ 
   const allLive = listMarkets({ status: "LIVE" }).filter((m) => !isClosedByTime(m));
   const totalVolume = allLive.reduce((s, m) => s + m.yesPool + m.noPool, 0);
   return (
-    <main className="mx-auto max-w-[1240px] px-3 lg:px-6 py-6">
+    <main className="mx-auto max-w-[1480px] px-3 lg:px-6 py-6">
       {/* Lean, content-first header — the marketing hero lives on the homepage. */}
       <div className="mb-4 flex items-center justify-between gap-3">
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">Markets · Soko</p>
@@ -177,7 +177,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
 
   return (
     <>
-      <section className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+      <section className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 min-[1360px]:grid-cols-4">
         {live.map((m) => {
           const cc = getCardChart(m.id);
           return (
@@ -222,7 +222,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
       {resolved.length > 0 && (
         <section className="mt-10">
           <h2 className="mb-3 font-display text-[20px] font-semibold text-text">Recently resolved</h2>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 min-[1360px]:grid-cols-4">
             {resolved.map((m) => (
               <MarketCard
                 key={m.id}

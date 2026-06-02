@@ -2,7 +2,7 @@ import { BrandSpinner } from "@/components/brand";
 
 export default function MarketsLoading() {
   return (
-    <main className="mx-auto max-w-[1240px] px-3 lg:px-6 py-6">
+    <main className="mx-auto max-w-[1480px] px-3 lg:px-6 py-6">
       {/* Lean header — must match the live page (no marketing hero) so there's
           no layout jump when the real page swaps in. */}
       <div className="mb-4">
@@ -23,9 +23,9 @@ export default function MarketsLoading() {
               <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-muted">Loading markets · Inapakia</p>
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3" aria-hidden>
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="rounded-lg border border-border bg-bg-elevated p-4 kp-shimmer-track" style={{ height: 360 }} />
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 min-[1360px]:grid-cols-4" aria-hidden>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="rounded-md border border-border bg-bg-elevated p-4 kp-shimmer-track" style={{ height: 284 }} />
             ))}
           </div>
         </div>
