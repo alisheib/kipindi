@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
-import { buyPosition, cashOutPosition, resolveMarket, createMarket, type CreateMarketInput, type Side } from "@/lib/server/market-service";
+import { buyPosition, cashOutPosition, resolveMarket, createMarket, listPositionsForUser, type CreateMarketInput, type Side } from "@/lib/server/market-service";
+import { addComment, reportComment, deleteComment, type CommentSide } from "@/lib/server/comments-store";
 import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
@@ -106,4 +107,41 @@ export async function createMarketAction(formData: FormData) {
   revalidatePath("/admin/markets");
   revalidatePath("/markets");
   return { ok: true as const, market: m };
+}
+
+// ─── Market discussion (comments) ──────────────────────────────────────
+// Post-moderation: visible immediately, community report → auto-hide,
+// author/moderator soft-delete. See comments-store.ts.
+
+export async function postCommentAction(formData: FormData) {
+  const session = await currentSession();
+  if (!session) return { ok: false as const, error: "Sign in to comment · Ingia ili kutoa maoni." };
+  const marketId = String(formData.get("marketId") ?? "");
+  const body = String(formData.get("body") ?? "");
+  // Surface which side they hold as a small trust badge on the comment.
+  const open = listPositionsForUser(session.userId).filter((p) => p.marketId === marketId && p.status === "OPEN");
+  const side: CommentSide = open.length ? (open[open.length - 1].side as "YES" | "NO") : null;
+  const r = addComment(session.userId, marketId, body, side);
+  if (r.ok) revalidatePath(`/markets/${marketId}`);
+  return r;
+}
+
+export async function reportCommentAction(formData: FormData) {
+  const session = await currentSession();
+  if (!session) return { ok: false as const, error: "Sign in first." };
+  const marketId = String(formData.get("marketId") ?? "");
+  const commentId = String(formData.get("commentId") ?? "");
+  const r = reportComment(session.userId, commentId);
+  if (r.ok) revalidatePath(`/markets/${marketId}`);
+  return r;
+}
+
+export async function deleteCommentAction(formData: FormData) {
+  const session = await currentSession();
+  if (!session) return { ok: false as const, error: "Sign in first." };
+  const marketId = String(formData.get("marketId") ?? "");
+  const commentId = String(formData.get("commentId") ?? "");
+  const r = deleteComment(session.userId, commentId);
+  if (r.ok) revalidatePath(`/markets/${marketId}`);
+  return r;
 }

@@ -11,6 +11,8 @@ import { SellButton } from "@/components/markets/sell-button";
 import { cashOutValue, getMarket, impliedYesPct, isClosedByTime, listPositionsForMarket, listPositionsForUser, seedDemoMarkets } from "@/lib/server/market-service";
 import { getProbabilityChart, seedHistory } from "@/lib/server/market-history";
 import { currentSession } from "@/lib/server/auth-service";
+import { listComments } from "@/lib/server/comments-store";
+import { CommentsThread } from "@/components/markets/comments-thread";
 
 export const dynamic = "force-dynamic";
 
@@ -85,6 +87,7 @@ export default async function MarketDetail({
   // ProbabilityChart's range-keyed series from real snapshots.
   seedHistory(m.id, m.yesPool, m.noPool);
   const probChart = getProbabilityChart(m.id);
+  const comments = listComments(m.id, session?.userId ?? null);
 
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6">
@@ -265,6 +268,13 @@ export default async function MarketDetail({
           )}
         </aside>
       </div>
+
+      <CommentsThread
+        marketId={m.id}
+        initialComments={comments}
+        canPost={!!session}
+        signInHref={`/auth/login?next=${encodeURIComponent("/markets/" + m.id)}`}
+      />
     </main>
   );
 }
