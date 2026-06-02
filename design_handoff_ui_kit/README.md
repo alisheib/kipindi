@@ -21,33 +21,28 @@ import it, they don't copy it.
 
 ## How this folder is organised
 
+This is a **focused slice** for this round — only the files the card-system +
+identity work touches. The theme itself is complete: `globals.css` is the entire
+design system. (Ask us if you want any other component — the full kit is larger.)
+
 ```
 design_handoff_ui_kit/
-├─ README.md            ← you are here (system overview + index)
+├─ README.md                     ← you are here (overview + rules)
+├─ REQUEST-next-round.md         ← the current ask — read this
 ├─ tokens/
-│  ├─ globals.css       ← THE design system: OKLCH ramps, semantic vars,
-│  │                       type/space/radius/motion scales, component CSS
-│  └─ TOKENS.md         ← human-readable cheat-sheet of every token group
-├─ kit/                 ← shared primitives — ONE copy, used platform-wide
-│  ├─ brand/            ← logo/marks, brand spinner, signal pip, theme provider
-│  └─ ui/               ← button, chip, card, input, tabs, toast, avatar, …
-├─ features/            ← each product area, isolated
-│  ├─ markets/          ← the heart: cards, detail, charts, conviction dial …
-│  ├─ proposals/        ← community market proposals + voting
-│  ├─ badges/           ← achievements + tier badges
-│  ├─ chat/             ← AI help companion
-│  ├─ layout/           ← app shell, top bar, bottom nav, wallet pill …
-│  ├─ landing/          ← marketing hero
-│  ├─ onboarding/       ← first-visit primer
-│  ├─ profile/          ← avatar + name editing
-│  ├─ responsible-gaming/ ← reality-check, self-exclusion (regulatory)
-│  ├─ settings/         ← feedback/motion settings
-│  └─ admin/            ← operator console shell + charts
-└─ REQUEST-next-round.md ← the current ask (read this)
+│  ├─ globals.css                ← THE design system: OKLCH ramps, semantic
+│  │                                vars, type/space/radius/motion, component CSS
+│  └─ TOKENS.md                  ← human-readable cheat-sheet of the tokens
+├─ kit/
+│  ├─ brand/brand.tsx            ← marks + TippingBar + SignalPip (card language)
+│  └─ ui/{avatar,button,chip}.tsx ← the primitives this round builds on
+└─ features/markets/
+   ├─ market-card.tsx            ← the binary card to extend into a system
+   └─ probability-chart.tsx      ← the chart + sparkline language
 ```
 
-**Start with `tokens/TOKENS.md`**, then `tokens/globals.css`, then `kit/`,
-then whichever feature you're touching.
+**Start with `tokens/globals.css`** (the theme) and `TOKENS.md`, then
+`REQUEST-next-round.md` (the ask), then the components above.
 
 ---
 
