@@ -64,6 +64,7 @@ export const NAV_GROUPS: ReadonlyArray<{
     group: { en: "Compliance", sw: "Kanuni" },
     items: [
       { href: "/admin/compliance",      label: "Compliance",     key: "compliance" },
+      { href: "/admin/moderation",      label: "Comment moderation", key: "moderation" },
       { href: "/admin/aml",             label: "AML queue",      key: "aml" },
       { href: "/admin/self-exclusions", label: "Self-exclusions", key: "sx" },
       { href: "/admin/privacy",         label: "Privacy / DSAR", key: "privacy" },

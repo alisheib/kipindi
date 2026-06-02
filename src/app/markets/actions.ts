@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
 import { buyPosition, cashOutPosition, resolveMarket, createMarket, listPositionsForUser, type CreateMarketInput, type Side } from "@/lib/server/market-service";
-import { addComment, reportComment, deleteComment, type CommentSide } from "@/lib/server/comments-store";
+import { addComment, reportComment, deleteComment, restoreComment, type CommentSide } from "@/lib/server/comments-store";
 import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
@@ -142,6 +142,17 @@ export async function deleteCommentAction(formData: FormData) {
   const marketId = String(formData.get("marketId") ?? "");
   const commentId = String(formData.get("commentId") ?? "");
   const r = deleteComment(session.userId, commentId);
-  if (r.ok) revalidatePath(`/markets/${marketId}`);
+  if (r.ok) { revalidatePath(`/markets/${marketId}`); revalidatePath("/admin/moderation"); }
+  return r;
+}
+
+/** Moderator: clear an unfounded report / auto-hide and republish. */
+export async function restoreCommentAction(formData: FormData) {
+  const session = await currentSession();
+  if (!session) return { ok: false as const, error: "Sign in first." };
+  const commentId = String(formData.get("commentId") ?? "");
+  const marketId = String(formData.get("marketId") ?? "");
+  const r = restoreComment(session.userId, commentId);
+  if (r.ok) { revalidatePath(`/markets/${marketId}`); revalidatePath("/admin/moderation"); }
   return r;
 }

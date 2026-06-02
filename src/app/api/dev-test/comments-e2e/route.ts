@@ -9,7 +9,7 @@
 import { NextResponse } from "next/server";
 import { db, type StoredUser } from "@/lib/server/store";
 import { randomId } from "@/lib/server/crypto";
-import { addComment, listComments, reportComment, deleteComment, countComments } from "@/lib/server/comments-store";
+import { addComment, listComments, reportComment, deleteComment, countComments, listForModeration, restoreComment, moderationCount } from "@/lib/server/comments-store";
 
 function mkUser(role: StoredUser["role"] = "PLAYER"): StoredUser {
   const id = `usr_${randomId(12)}`;
@@ -73,6 +73,14 @@ export async function POST() {
     ok("author still sees own hidden", listComments(MK, author.id).some((c) => c.id === cid) === true);
     ok("mod still sees hidden", listComments(MK, mod.id).some((c) => c.id === cid) === true);
     ok("hidden excluded from count", countComments(MK) === 0, `count=${countComments(MK)}`);
+
+    // 4b · moderation queue (admin) — hidden comment shows up; mod can restore
+    ok("moderation queue includes the hidden comment", listForModeration().some((m) => m.id === cid));
+    ok("moderationCount ≥ 1", moderationCount() >= 1);
+    ok("non-mod cannot restore", restoreComment(viewer.id, cid).ok === false);
+    ok("mod restores (clears hide + reports)", restoreComment(mod.id, cid).ok === true);
+    ok("restored comment public again", listComments(MK, viewer.id).some((c) => c.id === cid) === true);
+    ok("restored comment left the queue", listForModeration().some((m) => m.id === cid) === false);
 
     // 5 · soft delete
     ok("non-owner non-mod can't delete", deleteComment(viewer.id, cid).ok === false);

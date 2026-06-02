@@ -100,6 +100,56 @@ export function countComments(marketId: string): number {
   return n;
 }
 
+/** A row in the admin moderation queue. */
+export type ModerationItem = {
+  id: string;
+  marketId: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
+  reports: number;
+  hidden: boolean;
+};
+
+/** Everything a moderator needs to review: comments that are hidden (auto or
+ *  manual) or carry at least one report, most-reported first. Across all
+ *  markets. Excludes already-deleted comments. */
+export function listForModeration(): ModerationItem[] {
+  const out: ModerationItem[] = [];
+  for (const c of comments.values()) {
+    if (c.deleted) continue;
+    if (!c.hidden && c.reports.size === 0) continue;
+    out.push({
+      id: c.id, marketId: c.marketId, authorName: c.authorName, body: c.body,
+      createdAt: c.createdAt, reports: c.reports.size, hidden: c.hidden,
+    });
+  }
+  // most-reported first, then hidden, then newest
+  out.sort((a, b) => b.reports - a.reports || Number(b.hidden) - Number(a.hidden) || (a.createdAt < b.createdAt ? 1 : -1));
+  return out;
+}
+
+export function moderationCount(): number {
+  let n = 0;
+  for (const c of comments.values()) if (!c.deleted && (c.hidden || c.reports.size > 0)) n++;
+  return n;
+}
+
+/** Moderator-only: clear an auto-hide / reports and make the comment public
+ *  again (the report was unfounded). */
+export function restoreComment(
+  userId: string,
+  commentId: string,
+): { ok: true } | { ok: false; error: string } {
+  const c = comments.get(commentId);
+  if (!c || c.deleted) return { ok: false, error: "Comment not found." };
+  if (!isMod(userId)) return { ok: false, error: "Not allowed." };
+  c.hidden = false;
+  c.reports.clear();
+  audit({ category: "COMPLIANCE", action: "comment.restore", actorId: userId, targetType: "Comment", targetId: commentId });
+  return { ok: true };
+}
+
 export function addComment(
   userId: string,
   marketId: string,
