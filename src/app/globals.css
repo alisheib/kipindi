@@ -1544,7 +1544,9 @@ html.kp-reduce-motion *::after {
 }
 .mcard:hover { border-color: var(--border-strong); box-shadow: var(--shadow-3); transform: translateY(-2px); }
 
-.mcard-top { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
+/* Single fixed-height row — chips never wrap, so everything below them (bar,
+   YES/NO buttons) stays on the same line across every card. */
+.mcard-top { display: flex; align-items: center; flex-wrap: nowrap; gap: 5px; overflow: hidden; min-height: 21px; }
 /* Card-scoped chips — smaller than the global chip so the status/signal/category
    pills don't dominate the card. Only affects chips inside a market card. */
 .mcard .chip { font-size: 9.5px; padding: 2px 7px; gap: 3px; letter-spacing: 0.02em; }
@@ -1557,7 +1559,10 @@ html.kp-reduce-motion *::after {
 /* Head: title on the left, probability on the right — one row, landscape.
    This is the move that makes the card a rectangle, not a stacked square. */
 .mcard-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.mcard-qwrap { min-width: 0; flex: 1 1 auto; }
+/* Fixed 3-line reserve (2 title lines + 1 Swahili line) regardless of how long
+   the actual question is — guarantees the tipping bar + YES/NO buttons sit at
+   the same height on every card. */
+.mcard-qwrap { min-width: 0; flex: 1 1 auto; min-height: 51px; }
 .mcard-q { font-family: var(--font-display); font-size: 13.5px; font-weight: 600; line-height: 1.28; letter-spacing: -0.01em; color: var(--text); text-wrap: balance; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.56em; }
 .mcard-q-sw { margin-top: 1px; font-size: 10.5px; font-style: italic; color: var(--text-subtle); display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
 
