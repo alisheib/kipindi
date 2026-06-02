@@ -9,6 +9,7 @@ import { useState, useTransition } from "react";
 import { Flag, Trash2, MessageCircle } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { haptics } from "@/lib/haptics";
+import { Avatar } from "@/components/ui/avatar";
 import { postCommentAction, reportCommentAction, deleteCommentAction } from "@/app/markets/actions";
 import type { CommentView } from "@/lib/server/comments-store";
 
@@ -27,11 +28,6 @@ function relTime(iso: string): string {
   const d = Math.floor(h / 24);
   if (d < 7) return `${d}d`;
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-}
-
-function initialOf(name: string): string {
-  const c = name.trim()[0];
-  return c ? c.toUpperCase() : "?";
 }
 
 export function CommentsThread({
@@ -155,12 +151,7 @@ export function CommentsThread({
         <ul className="space-y-3.5">
           {comments.map((c) => (
             <li key={c.id} className={`flex gap-3 ${c.hidden ? "opacity-60" : ""}`}>
-              <span
-                className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border bg-bg-overlay font-display text-[13px] font-bold text-text-muted"
-                aria-hidden
-              >
-                {initialOf(c.authorName)}
-              </span>
+              <Avatar initials={c.authorName} seed={c.authorName} size="sm" className="mt-0.5" />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="font-display text-[13.5px] font-semibold text-text">{c.authorName}</span>
