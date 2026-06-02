@@ -27,13 +27,13 @@ export default async function LandingPage() {
   const isAuthed = !!session;
 
   return (
-    <div className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6 lg:py-8 space-y-8 lg:space-y-10">
+    <div className="mx-auto max-w-[1480px] px-3 lg:px-6 py-6 lg:py-8 space-y-8 lg:space-y-10">
 
       {/* HERO — the kit's Hero Constellation. Seven dials breathing on
           their own phases, particle drift, tipping horizon, editorial
           captions on hover. The composition is the centerpiece; the
           headline + CTAs sit beside it. */}
-      <section className="relative grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-6 lg:gap-10 items-center">
+      <section className="relative mx-auto w-full max-w-[1240px] grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-6 lg:gap-10 items-center">
         <div className="flex flex-col gap-6 lg:gap-7 order-2 lg:order-1">
           <div className="flex items-center gap-3">
             <FiftyLockup size={22} />
@@ -141,8 +141,8 @@ export default async function LandingPage() {
               View all →
             </Link>
           </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {live.slice(0, 6).map((m) => {
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 min-[1360px]:grid-cols-4">
+            {live.slice(0, 8).map((m) => {
               const cc = getCardChart(m.id);
               return (
                 <MarketCard

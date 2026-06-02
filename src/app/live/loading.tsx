@@ -2,7 +2,7 @@ import { BrandSpinner } from "@/components/brand";
 
 export default function LiveLoading() {
   return (
-    <main className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6 space-y-5">
+    <main className="mx-auto max-w-[1480px] px-3 lg:px-6 py-6 space-y-5">
       {/* Slim header — matches the live page so the questions-first layout
           doesn't jump when the real content swaps in. */}
       <div className="flex items-center justify-between gap-3">
@@ -10,8 +10,8 @@ export default function LiveLoading() {
         <p className="font-mono text-[10.5px] text-text-subtle">Loading · Inapakia</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3" aria-hidden>
-        {Array.from({ length: 6 }).map((_, i) => (
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 min-[1360px]:grid-cols-4" aria-hidden>
+        {Array.from({ length: 8 }).map((_, i) => (
           <div
             key={i}
             className="rounded-lg border border-border bg-bg-elevated p-4 kp-shimmer-track"

@@ -61,7 +61,7 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 min-[1360px]:grid-cols-4">
         {markets.slice(0, count).map((m, i) => (
           <PulseCard key={m.id} market={m} index={i} />
         ))}
