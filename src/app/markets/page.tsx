@@ -59,7 +59,7 @@ export default function MarketsPage({ searchParams }: { searchParams: Promise<{ 
 
       {/* Filters as a left column on desktop, stacked above the grid on mobile. */}
       <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:gap-6">
-        <aside className="lg:w-[208px] lg:shrink-0 lg:sticky lg:top-[60px] lg:self-start">
+        <aside className="lg:w-[208px] lg:shrink-0 lg:sticky lg:top-[72px] lg:self-start lg:max-h-[calc(100dvh-84px)] lg:overflow-y-auto lg:overflow-x-hidden kp-thin-scroll lg:pb-3">
           <FilterBar searchParams={searchParams} />
         </aside>
         <div className="min-w-0 flex-1">
@@ -107,7 +107,7 @@ async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: strin
   };
   return (
     <div className="space-y-2.5 lg:space-y-4">
-      <nav aria-label="When does it close?" className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto lg:flex-col lg:items-stretch lg:gap-1 lg:mx-0 lg:px-0 lg:overflow-visible">
+      <nav aria-label="When does it close?" className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1 lg:mx-0 lg:px-0 lg:overflow-visible">
         <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle pr-1 lg:pr-0 lg:mb-1">When</span>
         {WHEN_OPTIONS.map((o) => {
           const active = o.id === activeWhen;
@@ -128,7 +128,7 @@ async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: strin
           );
         })}
       </nav>
-      <nav aria-label="Market categories" className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto lg:flex-col lg:items-stretch lg:gap-1 lg:mx-0 lg:px-0 lg:overflow-visible">
+      <nav aria-label="Market categories" className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1 lg:mx-0 lg:px-0 lg:overflow-visible">
         <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle pr-1 lg:pr-0 lg:mb-1">Topic</span>
         {CATEGORIES.map((c) => {
           const active = c.id === activeCat;

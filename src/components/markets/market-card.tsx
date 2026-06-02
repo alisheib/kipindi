@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { ExternalLink, Flame, Clock, Scale } from "lucide-react";
 import { TippingBar } from "@/components/brand";
-import { Sparkline } from "@/components/markets/probability-chart";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -55,7 +54,7 @@ function MoveChip({ move }: { move: number }) {
 }
 
 export function MarketCard({
-  id, titleEn, titleSw, category, yesPct, volume, predictors, timeLeft, status, sourceUrl, spark, move24h, className,
+  id, titleEn, titleSw, category, yesPct, volume, predictors, timeLeft, status, sourceUrl, move24h, className,
 }: Props) {
   const signal = getSignalBadge(status, yesPct, volume, predictors, timeLeft);
   const live = status === "LIVE";
@@ -99,23 +98,19 @@ export function MarketCard({
         )}
       </div>
 
-      <div>
-        <h3 className="mcard-q">{titleEn}</h3>
-        {titleSw && <p className="mcard-q-sw">{titleSw}</p>}
-      </div>
-
-      <div className="mcard-hero">
-        <div>
+      <div className="mcard-head">
+        <div className="mcard-qwrap">
+          <h3 className="mcard-q">{titleEn}</h3>
+          {titleSw && <p className="mcard-q-sw">{titleSw}</p>}
+        </div>
+        <div className="mcard-prob">
           <div className="mcard-pct-label">YES · Ndio</div>
           <div className="mcard-pct">{yesPct}<span className="unit">%</span></div>
+          {move24h !== undefined && live && <MoveChip move={move24h} />}
         </div>
-        {move24h !== undefined && live && <MoveChip move={move24h} />}
-        {spark && spark.length > 1 && (
-          <span className="mcard-spark"><Sparkline data={spark} width={72} height={28} /></span>
-        )}
       </div>
 
-      <TippingBar yesPct={yesPct} height={15} resolved={status === "RESOLVED"} showLabels={false} recastOnHover={false} />
+      <TippingBar yesPct={yesPct} height={7} resolved={status === "RESOLVED"} showLabels={false} recastOnHover={false} />
 
       {live && (
         <div className="mcard-actions">
