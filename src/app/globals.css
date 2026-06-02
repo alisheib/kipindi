@@ -1583,6 +1583,17 @@ html.kp-reduce-motion *::after {
 .mcard-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; font-family: var(--font-mono); font-size: 10px; color: var(--text-subtle); }
 .mcard-meta .dot-sep { width: 3px; height: 3px; border-radius: 50%; background: var(--border-strong); }
 
+/* Canonical market grid — keyed to a FIXED card width, not a fixed column
+   count. Every card is the same size everywhere (markets, live, home); the grid
+   simply fits as many columns as the available width allows. This is what makes
+   the card SHAPE identical across pages even though /markets has a filter rail
+   and /live does not. min(...,100%) guards against overflow on tiny screens. */
+.market-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(min(265px, 100%), 1fr));
+}
+
 /* Thin, on-theme scrollbar — used by the sticky filter rail so a long list
    scrolls inside the column instead of being clipped. */
 .kp-thin-scroll { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }

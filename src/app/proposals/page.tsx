@@ -41,7 +41,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
   const { proposals, totalProposals, totalVotes, enabled } = listBoard(session?.userId ?? null, filter);
 
   return (
-    <main className="mx-auto max-w-[860px] px-3 lg:px-6 py-6 space-y-3.5">
+    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-3.5">
       <h1 className="sr-only">Market Proposals · Mapendekezo</h1>
 
       <div>

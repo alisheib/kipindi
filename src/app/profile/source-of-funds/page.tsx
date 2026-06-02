@@ -36,7 +36,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
     : "warning";
 
   return (
-    <main className="mx-auto max-w-[680px] px-3 lg:px-6 py-6 space-y-5">
+    <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
       <Link
         href="/profile"
         className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"

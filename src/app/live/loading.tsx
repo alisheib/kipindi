@@ -10,7 +10,7 @@ export default function LiveLoading() {
         <p className="font-mono text-[10.5px] text-text-subtle">Loading · Inapakia</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 min-[1360px]:grid-cols-4" aria-hidden>
+      <div className="market-grid" aria-hidden>
         {Array.from({ length: 8 }).map((_, i) => (
           <div
             key={i}

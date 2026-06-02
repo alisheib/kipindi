@@ -97,7 +97,7 @@ export default async function InvitePage() {
   const shareText = "Join me on 50pick — predict and win. Use my link:";
 
   return (
-    <div className="mx-auto max-w-[680px] px-3 lg:px-6 py-6 space-y-3">
+    <div className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-3">
       <h1 className="sr-only">Invite &amp; Earn · Alika upate</h1>
 
       {/* Title row */}

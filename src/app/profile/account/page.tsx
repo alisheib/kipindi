@@ -25,7 +25,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
     : "no";
 
   return (
-    <main className="mx-auto max-w-[840px] px-3 lg:px-6 py-6 space-y-5">
+    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-5">
       {sp.error && (
         <div role="alert" className="rounded-xl border border-no-700 bg-no-500/10 px-4 py-3 text-[13px] text-no-300">
           {sp.error}

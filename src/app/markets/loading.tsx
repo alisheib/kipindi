@@ -23,7 +23,7 @@ export default function MarketsLoading() {
               <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-muted">Loading markets · Inapakia</p>
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 min-[1360px]:grid-cols-4" aria-hidden>
+          <div className="market-grid" aria-hidden>
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="rounded-md border border-border bg-bg-elevated p-4 kp-shimmer-track" style={{ height: 284 }} />
             ))}

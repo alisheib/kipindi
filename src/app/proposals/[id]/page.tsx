@@ -24,7 +24,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
   const showPrize = p.status === "RESOLVED" && p.prizePaidTzs > 0 && p.isMine;
 
   return (
-    <main className="mx-auto max-w-[620px] px-3 lg:px-6 py-6 space-y-3.5">
+    <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-3.5">
       {/* Head card */}
       <section className="rounded-2xl border border-border bg-bg-elevated p-4">
         <div className="mb-2.5 flex flex-wrap items-center gap-2">

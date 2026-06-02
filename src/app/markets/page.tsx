@@ -177,7 +177,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
 
   return (
     <>
-      <section className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 min-[1360px]:grid-cols-4">
+      <section className="market-grid">
         {live.map((m) => {
           const cc = getCardChart(m.id);
           return (
@@ -222,7 +222,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
       {resolved.length > 0 && (
         <section className="mt-10">
           <h2 className="mb-3 font-display text-[20px] font-semibold text-text">Recently resolved</h2>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 min-[1360px]:grid-cols-4">
+          <div className="market-grid">
             {resolved.map((m) => (
               <MarketCard
                 key={m.id}

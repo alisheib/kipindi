@@ -141,7 +141,7 @@ export default async function LandingPage() {
               View all →
             </Link>
           </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 min-[1360px]:grid-cols-4">
+          <div className="market-grid">
             {live.slice(0, 8).map((m) => {
               const cc = getCardChart(m.id);
               return (

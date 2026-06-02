@@ -53,7 +53,7 @@ export default async function ProfilePage() {
           : { tone: "warning", label: "Verify ID · Thibitisha" };
 
   return (
-    <main className="mx-auto max-w-[960px] px-3 lg:px-6 py-6 space-y-6">
+    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
       {/* Screen-reader-only h1 — gives the page proper landmark
           structure without disturbing the visual hierarchy (the
           display name + ProfileNameEditor sit prominently inside the
