@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { TippingBar } from "@/components/brand";
-import { Sparkline } from "@/components/markets/probability-chart";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { cn } from "@/lib/utils";
@@ -58,7 +57,7 @@ function MoveChip({ move }: { move: number }) {
 }
 
 export function MarketCard({
-  id, titleEn, titleSw, category, yesPct, volume, predictors, timeLeft, status, spark, move24h, traders, className,
+  id, titleEn, titleSw, category, yesPct, volume, predictors, timeLeft, status, move24h, traders, className,
 }: Props) {
   const signal = getSignalBadge(status, yesPct, volume, predictors, timeLeft);
   const live = status === "LIVE";
@@ -79,43 +78,38 @@ export function MarketCard({
             status === "VOIDED" && "chip-objection",
           )}
         >
-          {live && <span className="live-dot" style={{ width: 6, height: 6 }} />}
+          {live && <span className="live-dot" style={{ width: 5, height: 5 }} />}
           {live ? "Live" : isResolved ? "Resolved" : status === "VOIDED" ? "Void" : "Pending"}
         </span>
         {signal && (
           <span
             aria-label={signal.label}
             className={cn("chip", signal.kind === "hot" && "chip-objection", signal.kind === "soon" && "chip-pending", signal.kind === "tipping" && "chip-signal")}
-            style={{ fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 5 }}
+            style={{ fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 4 }}
           >
-            {signal.kind === "hot" && <I.hot s={11} />}
-            {signal.kind === "soon" && <I.soon s={11} />}
-            {signal.kind === "tipping" && <I.tipping s={11} />}
+            {signal.kind === "hot" && <I.hot s={10} />}
+            {signal.kind === "soon" && <I.soon s={10} />}
+            {signal.kind === "tipping" && <I.tipping s={10} />}
             {signal.label}
           </span>
         )}
-      </div>
-
-      <div className="mcardp-top" style={{ gap: 8 }}>
-        <span className="mcardp-catico"><CatIco /></span>
-        <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-subtle">{category}</span>
+        <span className="mcardp-catico" style={{ marginLeft: 2 }}><CatIco /></span>
+        <span className="mcardp-cat">{category}</span>
         {move24h !== undefined && live && <span style={{ marginLeft: "auto" }}><MoveChip move={move24h} /></span>}
       </div>
 
-      <div>
-        <h3 className="mcardp-q">{titleEn}</h3>
-        {titleSw && <p className="mcardp-q-sw">{titleSw}</p>}
-      </div>
-
-      <div className="mcardp-hero">
-        <div>
+      <div className="mcardp-head">
+        <div className="mcardp-qwrap">
+          <h3 className="mcardp-q">{titleEn}</h3>
+          {titleSw && <p className="mcardp-q-sw">{titleSw}</p>}
+        </div>
+        <div className="mcardp-prob">
           <div className="mcardp-pctcap">YES · Ndio</div>
           <div className="mcardp-pct">{yesPct}<span className="u">%</span></div>
         </div>
-        {spark && spark.length > 1 && <span className="mcardp-spark"><Sparkline data={spark} width={84} height={32} /></span>}
       </div>
 
-      <TippingBar yesPct={yesPct} height={16} resolved={isResolved} showLabels={false} recastOnHover={false} />
+      <TippingBar yesPct={yesPct} height={7} resolved={isResolved} showLabels={false} recastOnHover={false} />
 
       {live ? (
         <div className="mcardp-actions">
