@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Trophy, ArrowRight } from "lucide-react";
 import { MarketCard } from "@/components/markets/market-card";
-import { listMarkets, impliedYesPct, isClosedByTime, seedDemoMarkets, type MarketCategory } from "@/lib/server/market-service";
+import { listMarkets, impliedYesPct, isClosedByTime, seedDemoMarkets, traderSeedsByMarket, type MarketCategory } from "@/lib/server/market-service";
 import { getCardChart } from "@/lib/server/market-history";
 import { getProposalsConfig } from "@/lib/server/proposals-config";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -174,6 +174,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
     : liveAll.filter(x => x.ms <= whenCfg.cutoffMs!)
   ).map(x => x.m);
   const resolved = listMarkets({ status: "RESOLVED" }).slice(0, 6);
+  const traderMap = traderSeedsByMarket();
 
   return (
     <>
@@ -195,6 +196,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
               sourceUrl={m.sourceUrl}
               spark={cc.spark}
               move24h={cc.move24h}
+              traders={traderMap.get(m.id)}
             />
           );
         })}

@@ -11,7 +11,7 @@
  * this page.
  */
 import Link from "next/link";
-import { listMarkets, impliedYesPct, seedDemoMarkets } from "@/lib/server/market-service";
+import { listMarkets, impliedYesPct, seedDemoMarkets, traderSeedsByMarket } from "@/lib/server/market-service";
 import { getCardChart } from "@/lib/server/market-history";
 import { TippingBar, PulseRing } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
@@ -35,18 +35,24 @@ function timeLeftStr(iso: string): string {
 export default function LivePage() {
   seedDemoMarkets();
   const all = listMarkets({ status: "LIVE" });
+  const traderMap = traderSeedsByMarket();
   // Build a serialisable snapshot for the client component
-  const markets = all.map((m) => ({
-    id: m.id,
-    titleEn: m.titleEn,
-    titleSw: m.titleSw,
-    category: m.category,
-    yesPct: impliedYesPct(m),
-    volume: m.yesPool + m.noPool,
-    predictors: m.predictorCount,
-    timeLeft: timeLeftStr(m.resolutionAt),
-    move24h: getCardChart(m.id).move24h,
-  }));
+  const markets = all.map((m) => {
+    const cc = getCardChart(m.id);
+    return {
+      id: m.id,
+      titleEn: m.titleEn,
+      titleSw: m.titleSw,
+      category: m.category,
+      yesPct: impliedYesPct(m),
+      volume: m.yesPool + m.noPool,
+      predictors: m.predictorCount,
+      timeLeft: timeLeftStr(m.resolutionAt),
+      move24h: cc.move24h,
+      spark: cc.spark,
+      traders: traderMap.get(m.id),
+    };
+  });
 
   const tippingMarkets = markets.filter((m) => Math.abs(m.yesPct - 50) < 8).length;
 

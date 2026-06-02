@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { ExternalLink, Flame, Clock, Scale } from "lucide-react";
 import { TippingBar } from "@/components/brand";
+import { Sparkline } from "@/components/markets/probability-chart";
+import { IdentityAvatar } from "@/components/ui/identity-avatar";
+import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -20,6 +22,8 @@ type Props = {
   spark?: number[];
   /** 24h move in probability points (optional). */
   move24h?: number;
+  /** A few trader seeds (user ids) for the live crest-stack (optional). */
+  traders?: string[];
   className?: string;
 };
 
@@ -35,7 +39,7 @@ function getSignalBadge(
 
 const fmtTzs = (n: number) => `TZS ${n.toLocaleString("en-US")}`;
 
-/** Line-art move arrow (no emoji) — matches the handoff. */
+/** Line-art 24h move chip. */
 function MoveChip({ move }: { move: number }) {
   const dir = move > 0 ? "up" : move < 0 ? "down" : "flat";
   const cls = dir === "up" ? "mcard-move-up" : dir === "down" ? "mcard-move-down" : "mcard-move-flat";
@@ -54,13 +58,18 @@ function MoveChip({ move }: { move: number }) {
 }
 
 export function MarketCard({
-  id, titleEn, titleSw, category, yesPct, volume, predictors, timeLeft, status, sourceUrl, move24h, className,
+  id, titleEn, titleSw, category, yesPct, volume, predictors, timeLeft, status, spark, move24h, traders, className,
 }: Props) {
   const signal = getSignalBadge(status, yesPct, volume, predictors, timeLeft);
   const live = status === "LIVE";
+  const isResolved = status === "RESOLVED";
+  const CatIco = I[categoryGlyph(category)];
+  const go = (side: "YES" | "NO") => (e: React.MouseEvent) => { e.preventDefault(); window.location.href = `/markets/${id}?side=${side}`; };
   return (
-    <Link href={`/markets/${id}` as never} className={cn("mcard group", className)}>
-      <div className="mcard-top">
+    <Link href={`/markets/${id}` as never} className={cn("mcardp group", className)}>
+      <I.shield s={120} className="flourish" />
+
+      <div className="mcardp-top">
         <span
           className={cn(
             "chip",
@@ -71,73 +80,71 @@ export function MarketCard({
           )}
         >
           {live && <span className="live-dot" style={{ width: 6, height: 6 }} />}
-          {live ? "Live" : status === "RESOLVED" ? "Resolved" : status === "VOIDED" ? "Void" : "Pending"}
+          {live ? "Live" : isResolved ? "Resolved" : status === "VOIDED" ? "Void" : "Pending"}
         </span>
         {signal && (
           <span
             aria-label={signal.label}
             className={cn("chip", signal.kind === "hot" && "chip-objection", signal.kind === "soon" && "chip-pending", signal.kind === "tipping" && "chip-signal")}
-            style={{ fontWeight: 700 }}
+            style={{ fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 5 }}
           >
-            {signal.kind === "hot" && <Flame size={9} aria-hidden />}
-            {signal.kind === "soon" && <Clock size={9} aria-hidden />}
-            {signal.kind === "tipping" && <Scale size={9} aria-hidden />}
+            {signal.kind === "hot" && <I.hot s={11} />}
+            {signal.kind === "soon" && <I.soon s={11} />}
+            {signal.kind === "tipping" && <I.tipping s={11} />}
             {signal.label}
           </span>
         )}
-        <span className="chip mcard-cat">{category}</span>
-        {sourceUrl && (
-          <button
-            type="button"
-            aria-label="Open resolution source"
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(sourceUrl, "_blank", "noopener,noreferrer"); }}
-            className="text-text-subtle hover:text-text-muted transition-colors"
-          >
-            <ExternalLink size={13} aria-hidden />
-          </button>
-        )}
       </div>
 
-      <div className="mcard-head">
-        <div className="mcard-qwrap">
-          <h3 className="mcard-q">{titleEn}</h3>
-          {titleSw && <p className="mcard-q-sw">{titleSw}</p>}
-        </div>
-        <div className="mcard-prob">
-          <div className="mcard-pct-label">YES · Ndio</div>
-          <div className="mcard-pct">{yesPct}<span className="unit">%</span></div>
-          {move24h !== undefined && live && <MoveChip move={move24h} />}
-        </div>
+      <div className="mcardp-top" style={{ gap: 8 }}>
+        <span className="mcardp-catico"><CatIco /></span>
+        <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-subtle">{category}</span>
+        {move24h !== undefined && live && <span style={{ marginLeft: "auto" }}><MoveChip move={move24h} /></span>}
       </div>
 
-      <TippingBar yesPct={yesPct} height={7} resolved={status === "RESOLVED"} showLabels={false} recastOnHover={false} />
+      <div>
+        <h3 className="mcardp-q">{titleEn}</h3>
+        {titleSw && <p className="mcardp-q-sw">{titleSw}</p>}
+      </div>
 
-      {live && (
-        <div className="mcard-actions">
-          <button
-            type="button"
-            aria-label={`Back YES at ${yesPct}%`}
-            onClick={(e) => { e.preventDefault(); window.location.href = `/markets/${id}?side=YES`; }}
-            className="btn btn-yes btn-md"
-          >
+      <div className="mcardp-hero">
+        <div>
+          <div className="mcardp-pctcap">YES · Ndio</div>
+          <div className="mcardp-pct">{yesPct}<span className="u">%</span></div>
+        </div>
+        {spark && spark.length > 1 && <span className="mcardp-spark"><Sparkline data={spark} width={84} height={32} /></span>}
+      </div>
+
+      <TippingBar yesPct={yesPct} height={16} resolved={isResolved} showLabels={false} recastOnHover={false} />
+
+      {live ? (
+        <div className="mcardp-actions">
+          <button type="button" aria-label={`Back YES at ${yesPct}%`} onClick={go("YES")} className="btn btn-yes btn-md">
             YES <span className="font-mono" style={{ opacity: 0.85, fontSize: 13 }}>{yesPct}</span>
           </button>
-          <button
-            type="button"
-            aria-label={`Back NO at ${100 - yesPct}%`}
-            onClick={(e) => { e.preventDefault(); window.location.href = `/markets/${id}?side=NO`; }}
-            className="btn btn-no btn-md"
-          >
+          <button type="button" aria-label={`Back NO at ${100 - yesPct}%`} onClick={go("NO")} className="btn btn-no btn-md">
             NO <span className="font-mono" style={{ opacity: 0.85, fontSize: 13 }}>{100 - yesPct}</span>
           </button>
         </div>
+      ) : (
+        <div className="btn btn-ghost btn-md" style={{ justifyContent: "center", pointerEvents: "none", opacity: 0.85 }}>
+          <I.resolved s={15} /> {isResolved ? `Resolved ${yesPct >= 50 ? "YES" : "NO"}` : "Closed"}
+        </div>
       )}
 
-      <div className="mcard-meta">
-        <span>{fmtTzs(volume)} vol</span>
-        <span className="dot-sep" />
-        <span>{predictors.toLocaleString()} traders</span>
-        <span style={{ marginLeft: "auto" }}>{timeLeft}</span>
+      <div className="mcardp-meta">
+        {traders && traders.length > 0 && (
+          <span className="mcardp-traders">
+            <span className="av-stack">{traders.slice(0, 3).map((s) => <IdentityAvatar key={s} seed={s} size={20} kind="tipping" />)}</span>
+            <span className="t-txt"><b>{predictors.toLocaleString()}</b> traders</span>
+          </span>
+        )}
+        {(!traders || traders.length === 0) && <span><b style={{ color: "var(--text)" }}>{predictors.toLocaleString()}</b> traders</span>}
+        <span className="dot" style={{ marginLeft: traders && traders.length ? 4 : 0 }} />
+        <span>{fmtTzs(volume)}</span>
+        <span style={{ marginLeft: "auto" }} className={live ? "live" : undefined}>
+          {signal?.kind === "soon" ? <I.soon s={12} /> : null}{timeLeft}
+        </span>
       </div>
     </Link>
   );

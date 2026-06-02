@@ -306,6 +306,19 @@ export function listPositionsForMarket(marketId: string): StoredPosition[] {
   return Array.from(positions.values()).filter((p) => p.marketId === marketId);
 }
 
+/** One pass over all positions → up to `n` distinct trader user-ids per market.
+ *  Used by the card grids for the live trader crest-stack (cheap: O(positions),
+ *  not O(markets × positions)). */
+export function traderSeedsByMarket(n = 3): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+  for (const p of positions.values()) {
+    let arr = map.get(p.marketId);
+    if (!arr) { arr = []; map.set(p.marketId, arr); }
+    if (arr.length < n && !arr.includes(p.userId)) arr.push(p.userId);
+  }
+  return map;
+}
+
 /**
  * Auto-resolve expired Demo · markets. Demo markets exist for live
  * walk-throughs — the manager cannot wait for a human officer pair to

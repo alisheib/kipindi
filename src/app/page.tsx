@@ -3,7 +3,7 @@ import { ArrowRight, ShieldCheck, Smartphone, BarChart3 } from "lucide-react";
 import { MarketCard } from "@/components/markets/market-card";
 import { FiftyLockup } from "@/components/brand";
 import { HeroConstellation } from "@/components/landing/hero-constellation";
-import { listMarkets, impliedYesPct, seedDemoMarkets } from "@/lib/server/market-service";
+import { listMarkets, impliedYesPct, seedDemoMarkets, traderSeedsByMarket } from "@/lib/server/market-service";
 import { getCardChart } from "@/lib/server/market-history";
 import { getSession } from "@/lib/server/session";
 
@@ -23,6 +23,7 @@ function timeLeftStr(iso: string): string {
 export default async function LandingPage() {
   seedDemoMarkets();
   const live = listMarkets({ status: "LIVE" }).slice(0, 6);
+  const traderMap = traderSeedsByMarket();
   const session = await getSession();
   const isAuthed = !!session;
 
@@ -159,6 +160,7 @@ export default async function LandingPage() {
                   sourceUrl={m.sourceUrl}
                   spark={cc.spark}
                   move24h={cc.move24h}
+                  traders={traderMap.get(m.id)}
                 />
               );
             })}
