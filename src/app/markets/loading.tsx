@@ -24,8 +24,8 @@ export default function MarketsLoading() {
             </div>
           </div>
           <div className="market-grid" aria-hidden>
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="rounded-md border border-border bg-bg-elevated p-4 kp-shimmer-track" style={{ height: 284 }} />
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="rounded-md border border-border bg-bg-elevated p-4 kp-shimmer-track" style={{ height: 220 }} />
             ))}
           </div>
         </div>

@@ -85,44 +85,15 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
 }
 
 /**
- * The same canonical MarketCard used on /markets and the homepage — wrapped in
- * an intersection-observer reveal so scrolling the live wall feels like it wakes
- * up one card at a time (snaps in immediately under reduced-motion).
+ * The same canonical MarketCard used on /markets and the homepage. Entrance is
+ * a pure-CSS staggered rise (.kp-rise): the card renders visible and the
+ * animation always ends at opacity 1, so it can never get stuck as an empty
+ * container if JS is slow (the old intersection-observer reveal could). The
+ * stagger is capped so cards below the fold are visible within ~half a second.
  */
 function PulseCard({ market, index }: { market: Market; index: number }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [revealed, setRevealed] = useState(false);
-
-  useEffect(() => {
-    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) { setRevealed(true); return; }
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) {
-            setTimeout(() => setRevealed(true), Math.min(index, 12) * 60);
-            obs.disconnect();
-            break;
-          }
-        }
-      },
-      { rootMargin: "0px 0px -10% 0px", threshold: 0.1 },
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [index]);
-
   return (
-    <div
-      ref={ref}
-      style={{
-        opacity: revealed ? 1 : 0,
-        transform: revealed ? "translateY(0)" : "translateY(8px)",
-        transition: "opacity 600ms cubic-bezier(.2,.8,.2,1), transform 600ms cubic-bezier(.2,.8,.2,1)",
-      }}
-    >
+    <div className="kp-rise" style={{ animationDelay: `${Math.min(index, 10) * 45}ms` }}>
       <MarketCard
         id={market.id}
         titleEn={market.titleEn}
