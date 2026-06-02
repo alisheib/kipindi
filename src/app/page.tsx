@@ -33,7 +33,7 @@ export default async function LandingPage() {
           their own phases, particle drift, tipping horizon, editorial
           captions on hover. The composition is the centerpiece; the
           headline + CTAs sit beside it. */}
-      <section className="relative mx-auto w-full max-w-[1240px] grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-6 lg:gap-10 items-center">
+      <section className="relative grid grid-cols-1 lg:grid-cols-[minmax(0,600px)_1fr] gap-6 lg:gap-10 items-center">
         <div className="flex flex-col gap-6 lg:gap-7 order-2 lg:order-1">
           <div className="flex items-center gap-3">
             <FiftyLockup size={22} />
