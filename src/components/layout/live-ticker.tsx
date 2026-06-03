@@ -109,15 +109,12 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
         background: "linear-gradient(270deg, oklch(14% 0.11 268), oklch(14% 0.11 268 / 0))",
       }} />
 
-      {/* Marquee: two copies side-by-side, both animate left */}
-      <div style={{
-        display: "flex", alignItems: "center", height: "100%", paddingLeft: 80,
-        whiteSpace: "nowrap",
-      }}>
-        <div className="ticker-track" style={{ animationPlayState: paused ? "paused" : "running" }}>
-          <Items events={events} prefix="a" />
-          <Items events={events} prefix="b" />
-        </div>
+      {/* Marquee: ticker-track is the DIRECT child of the overflow container.
+           No flex wrapper — flex parents blockify inline-flex children,
+           preventing the track from expanding to content width. */}
+      <div className="ticker-track" style={{ paddingLeft: 80, animationPlayState: paused ? "paused" : "running" }}>
+        <Items events={events} prefix="a" />
+        <Items events={events} prefix="b" />
       </div>
     </div>
   );
