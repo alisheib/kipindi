@@ -1,106 +1,157 @@
 "use client";
 
 /**
- * Live ticker — 32px strip below the top bar showing recent platform activity.
- * Kit spec: "Live ticker (32px): pulsing red dot + rotating 'TZS X just
- * predicted YES on ...' copy." Uses CSS ticker-scroll animation for smooth
- * infinite marquee without JS timers.
+ * Live ticker — kit-spec 32px strip with scrolling platform activity.
+ * Professional marquee with:
+ *   - Pulsing live dot + "LIVE" label (anchored left)
+ *   - Smooth CSS marquee (ticker-scroll keyframe)
+ *   - Event chips: bet, win, resolve, milestone
+ *   - Amount + time-ago in mono tabular numerals
+ *   - Pauses on hover, respects prefers-reduced-motion
+ *   - Gilt separator dots between items
  */
 
 import { useEffect, useRef, useState } from "react";
 
-export type TickerItem = {
+export type TickerEvent = {
   id: string;
-  kind: "PREDICT" | "RESOLVE" | "DEPOSIT" | "WITHDRAW";
-  text: string;
+  kind: "bet" | "win" | "resolve" | "milestone";
+  side?: "YES" | "NO";
+  marketTitle: string;
   amount?: number;
+  timeAgo: string;
 };
 
-const KIND_LABEL: Record<TickerItem["kind"], { icon: string; color: string }> = {
-  PREDICT:  { icon: "NEW BET",   color: "var(--yes-300)" },
-  RESOLVE:  { icon: "RESOLVED",  color: "var(--gold-300)" },
-  DEPOSIT:  { icon: "DEPOSIT",   color: "var(--aqua-200)" },
-  WITHDRAW: { icon: "PAYOUT",    color: "var(--text-muted)" },
+const KIND_CONFIG: Record<TickerEvent["kind"], { label: string; color: string; bg: string; border: string }> = {
+  bet:       { label: "BET",      color: "var(--aqua-200)",  bg: "var(--aqua-500)",  border: "var(--aqua-500)" },
+  win:       { label: "WIN",      color: "var(--gold-200)",  bg: "var(--gold-500)",  border: "var(--gold-500)" },
+  resolve:   { label: "SETTLED",  color: "var(--yes-200)",   bg: "var(--yes-500)",   border: "var(--yes-500)" },
+  milestone: { label: "NEWS",     color: "var(--royal-200)", bg: "var(--royal-400)", border: "var(--royal-400)" },
 };
 
 function fmtAmount(n: number): string {
-  if (n >= 1_000_000) return `TZS ${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `TZS ${(n / 1_000).toFixed(0)}K`;
-  return `TZS ${n.toLocaleString()}`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
+  return n.toLocaleString();
 }
 
-export function LiveTicker({ items }: { items: TickerItem[] }) {
-  const trackRef = useRef<HTMLDivElement>(null);
+export function LiveTicker({ events }: { events: TickerEvent[] }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
   const [paused, setPaused] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
 
-  // Pause on hover for readability
   useEffect(() => {
-    const el = trackRef.current;
-    if (!el) return;
-    const enter = () => setPaused(true);
-    const leave = () => setPaused(false);
-    el.addEventListener("mouseenter", enter);
-    el.addEventListener("mouseleave", leave);
-    return () => { el.removeEventListener("mouseenter", enter); el.removeEventListener("mouseleave", leave); };
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReducedMotion(mq.matches);
+    const h = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
+    mq.addEventListener("change", h);
+    return () => mq.removeEventListener("change", h);
   }, []);
 
-  if (items.length === 0) return null;
+  if (events.length === 0) return null;
 
-  // Double the items for seamless loop
-  const doubled = [...items, ...items];
+  // Triple the events for seamless loop (ensures enough width to scroll continuously)
+  const tripled = [...events, ...events, ...events];
+  const speed = Math.max(events.length * 5, 30); // seconds for one full cycle
 
   return (
     <div
-      ref={trackRef}
+      ref={wrapRef}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
       className="relative overflow-hidden select-none"
       style={{
-        height: 32,
-        background: "oklch(14% 0.12 268)",
-        borderBottom: "1px solid oklch(22% 0.10 268)",
+        height: 34,
+        background: "linear-gradient(180deg, oklch(13% 0.11 268) 0%, oklch(15% 0.12 268) 100%)",
+        borderBottom: "1px solid oklch(20% 0.09 268)",
       }}
     >
+      {/* Anchored LIVE label on the left with fade */}
       <div
-        className="flex items-center gap-10 whitespace-nowrap h-full"
+        className="absolute left-0 top-0 bottom-0 z-10 flex items-center pl-4 pr-8"
         style={{
-          animation: `ticker-scroll ${items.length * 6}s linear infinite`,
+          background: "linear-gradient(90deg, oklch(14% 0.11 268) 60%, oklch(14% 0.11 268 / 0) 100%)",
+        }}
+      >
+        <span className="inline-flex items-center gap-1.5">
+          <span className="live-dot" style={{ width: 7, height: 7 }} />
+          <span
+            className="font-display text-[10px] font-bold uppercase tracking-[0.22em]"
+            style={{ color: "oklch(75% 0.24 25)" }}
+          >
+            Live
+          </span>
+        </span>
+      </div>
+
+      {/* Right edge fade */}
+      <div
+        className="absolute right-0 top-0 bottom-0 z-10 w-12 pointer-events-none"
+        style={{
+          background: "linear-gradient(270deg, oklch(14% 0.11 268) 0%, oklch(14% 0.11 268 / 0) 100%)",
+        }}
+      />
+
+      {/* Scrolling track */}
+      <div
+        className="flex items-center whitespace-nowrap h-full pl-20"
+        style={{
+          animation: reducedMotion ? "none" : `ticker-scroll ${speed}s linear infinite`,
           animationPlayState: paused ? "paused" : "running",
           width: "max-content",
         }}
       >
-        {doubled.map((item, i) => {
-          const meta = KIND_LABEL[item.kind];
+        {tripled.map((ev, i) => {
+          const cfg = KIND_CONFIG[ev.kind];
           return (
-            <span key={`${item.id}-${i}`} className="inline-flex items-center gap-2.5 pr-4">
-              {i % items.length === 0 && i === 0 && (
-                <span className="inline-flex items-center gap-1.5 mr-2">
-                  <span className="live-dot" style={{ width: 6, height: 6 }} />
-                  <span
-                    className="font-mono text-[9px] font-bold uppercase tracking-[0.18em]"
-                    style={{ color: "oklch(72% 0.20 25)" }}
-                  >
-                    Live
-                  </span>
-                </span>
-              )}
+            <span key={`${ev.id}-${i}`} className="inline-flex items-center gap-2 mr-1">
+              {/* Event chip */}
               <span
-                className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] rounded-sm px-1 py-px"
+                className="font-mono text-[8.5px] font-bold uppercase tracking-[0.12em] rounded-sm px-1.5 py-[1.5px] leading-none"
                 style={{
-                  color: meta.color,
-                  background: `color-mix(in oklab, ${meta.color} 12%, transparent)`,
-                  border: `1px solid color-mix(in oklab, ${meta.color} 22%, transparent)`,
+                  color: cfg.color,
+                  background: `color-mix(in oklab, ${cfg.bg} 14%, transparent)`,
+                  border: `1px solid color-mix(in oklab, ${cfg.border} 26%, transparent)`,
                 }}
               >
-                {meta.icon}
+                {cfg.label}
               </span>
-              <span className="font-mono text-[11px] text-text-muted">
-                {item.text}
-              </span>
-              {item.amount && (
-                <span className="font-mono text-[11px] font-semibold tabular-nums" style={{ color: meta.color }}>
-                  {fmtAmount(item.amount)}
+
+              {/* Side badge (YES/NO) */}
+              {ev.side && (
+                <span
+                  className="font-mono text-[8.5px] font-bold tracking-[0.08em]"
+                  style={{ color: ev.side === "YES" ? "var(--yes-300)" : "var(--no-300)" }}
+                >
+                  {ev.side}
                 </span>
               )}
-              <span style={{ width: 3, height: 3, borderRadius: "50%", background: "oklch(30% 0.06 268)" }} />
+
+              {/* Market title */}
+              <span
+                className="font-display text-[11px] text-text-muted"
+                style={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis" }}
+              >
+                {ev.marketTitle}
+              </span>
+
+              {/* Amount */}
+              {ev.amount != null && ev.amount > 0 && (
+                <span className="font-mono text-[10.5px] font-semibold tabular-nums" style={{ color: cfg.color }}>
+                  TZS {fmtAmount(ev.amount)}
+                </span>
+              )}
+
+              {/* Time ago */}
+              <span className="font-mono text-[9.5px] text-text-subtle tabular-nums">
+                {ev.timeAgo}
+              </span>
+
+              {/* Gilt separator dot */}
+              <span
+                className="inline-block mx-3 rounded-full"
+                style={{ width: 2.5, height: 2.5, background: "oklch(50% 0.10 80)", opacity: 0.5 }}
+              />
             </span>
           );
         })}

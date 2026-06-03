@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { TopAppBar } from "./top-app-bar";
-import { LiveTicker, type TickerItem } from "./live-ticker";
+import { LiveTicker } from "./live-ticker";
 import { BottomNav } from "./bottom-nav";
 import { PublicFooter } from "./public-footer";
 import { AuthFlash } from "./auth-flash";
@@ -9,7 +9,7 @@ import { WinCelebrationHost } from "@/components/markets/win-celebration";
 import { getSession } from "@/lib/server/session";
 import { db } from "@/lib/server/store";
 import { user as guestUser } from "@/lib/mock-data";
-import { tickerEvents } from "@/lib/mock-data";
+import { getTickerFeed } from "@/lib/server/ticker-feed";
 import { RealityCheckHost } from "@/components/rg/reality-check";
 import { getRgSettings } from "@/lib/server/responsible-gambling";
 import { displayLabel, displayInitials } from "@/lib/display-label";
@@ -53,7 +53,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-bg-base text-text">
       <TopAppBar user={topUser} />
-      <LiveTicker items={tickerEvents.map((e) => ({ id: e.id, kind: e.kind, text: e.text, amount: e.amount }))} />
+      <LiveTicker events={getTickerFeed()} />
       <main className="pb-[calc(56px+env(safe-area-inset-bottom))] xl:pb-0">
         {children}
       </main>
