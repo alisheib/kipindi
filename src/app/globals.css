@@ -570,6 +570,7 @@ body {
 }
 .ticker-track {
   display: inline-flex;
+  align-items: center;
   flex-shrink: 0;
   animation: ticker-scroll 70s linear infinite;
   will-change: transform;

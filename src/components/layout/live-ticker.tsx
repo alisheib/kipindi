@@ -114,7 +114,7 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
         display: "flex", alignItems: "center", height: "100%", paddingLeft: 80,
         whiteSpace: "nowrap",
       }}>
-        <div className="ticker-track" style={{ display: "flex", alignItems: "center", animationPlayState: paused ? "paused" : "running" }}>
+        <div className="ticker-track" style={{ animationPlayState: paused ? "paused" : "running" }}>
           <Items events={events} prefix="a" />
           <Items events={events} prefix="b" />
         </div>
