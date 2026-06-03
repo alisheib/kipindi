@@ -31,7 +31,7 @@ function getSignalBadge(
 ): { kind: "hot" | "soon" | "tipping"; label: string } | null {
   if (status !== "LIVE") return null;
   if (volume >= 30_000 || predictors >= 40) return { kind: "hot", label: "Hot" };
-  if (/^\d+m left$/.test(timeLeft) || /^\d+s left$/.test(timeLeft)) return { kind: "soon", label: "Ending soon" };
+  if (/^\d+m left$/.test(timeLeft) || /^\d+s left$/.test(timeLeft)) return { kind: "soon", label: "Soon" };
   if (Math.abs(yesPct - 50) <= 3) return { kind: "tipping", label: "Tipping" };
   return null;
 }
@@ -66,7 +66,6 @@ export function MarketCard({
   const go = (side: "YES" | "NO") => (e: React.MouseEvent) => { e.preventDefault(); window.location.href = `/markets/${id}?side=${side}`; };
   return (
     <Link href={`/markets/${id}` as never} className={cn("mcardp group", className)}>
-      <I.shield s={120} className="flourish" />
 
       <div className="mcardp-top">
         <span
@@ -85,11 +84,8 @@ export function MarketCard({
           <span
             aria-label={signal.label}
             className={cn("chip", signal.kind === "hot" && "chip-objection", signal.kind === "soon" && "chip-pending", signal.kind === "tipping" && "chip-signal")}
-            style={{ fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 4 }}
+            style={{ fontWeight: 700 }}
           >
-            {signal.kind === "hot" && <I.hot s={10} />}
-            {signal.kind === "soon" && <I.soon s={10} />}
-            {signal.kind === "tipping" && <I.tipping s={10} />}
             {signal.label}
           </span>
         )}
