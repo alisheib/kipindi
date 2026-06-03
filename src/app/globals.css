@@ -569,15 +569,17 @@ body {
   50%      { opacity: 1.0; box-shadow: 0 0 0 5px color-mix(in oklab, var(--aqua-300) 0%, transparent); }
 }
 .ticker-track {
-  width: max-content;
+  display: inline-flex;
+  flex-shrink: 0;
   animation: ticker-scroll 50s linear infinite;
+  will-change: transform;
 }
 @media (prefers-reduced-motion: reduce) {
-  .ticker-track { animation: none; }
+  .ticker-track { animation-play-state: paused; }
 }
 @keyframes ticker-scroll {
-  from { transform: translate3d(0, 0, 0); }
-  to   { transform: translate3d(-50%, 0, 0); }
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 @keyframes gold-shimmer {
   0%   { background-position: 200% 0; }

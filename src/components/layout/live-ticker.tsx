@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * Live ticker — kit-spec 34px strip with scrolling platform activity.
- * Uses pure CSS animation with duplicated content for seamless loop.
+ * Live ticker — 34px strip with infinite scrolling platform activity.
+ * Standard CSS marquee: two identical copies animate left continuously.
  */
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 export type TickerEvent = {
   id: string;
@@ -16,114 +16,108 @@ export type TickerEvent = {
   timeAgo: string;
 };
 
-const KIND_CONFIG: Record<TickerEvent["kind"], { label: string; color: string; bg: string; border: string }> = {
-  bet:       { label: "BET",      color: "var(--aqua-200)",  bg: "var(--aqua-500)",  border: "var(--aqua-500)" },
-  win:       { label: "WIN",      color: "var(--gold-200)",  bg: "var(--gold-500)",  border: "var(--gold-500)" },
-  resolve:   { label: "SETTLED",  color: "var(--yes-200)",   bg: "var(--yes-500)",   border: "var(--yes-500)" },
-  milestone: { label: "NEWS",     color: "var(--royal-200)", bg: "var(--royal-400)", border: "var(--royal-400)" },
+const CFG: Record<TickerEvent["kind"], { label: string; color: string; bg: string; border: string }> = {
+  bet:       { label: "BET",     color: "var(--aqua-200)",  bg: "var(--aqua-500)",  border: "var(--aqua-500)" },
+  win:       { label: "WIN",     color: "var(--gold-200)",  bg: "var(--gold-500)",  border: "var(--gold-500)" },
+  resolve:   { label: "SETTLED", color: "var(--yes-200)",   bg: "var(--yes-500)",   border: "var(--yes-500)" },
+  milestone: { label: "NEWS",    color: "var(--royal-200)", bg: "var(--royal-400)", border: "var(--royal-400)" },
 };
 
-function fmtAmount(n: number): string {
+function fmtAmt(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
   return n.toLocaleString();
 }
 
-function TickerItem({ ev }: { ev: TickerEvent }) {
-  const cfg = KIND_CONFIG[ev.kind];
+function Items({ events, prefix }: { events: TickerEvent[]; prefix: string }) {
   return (
-    <span className="inline-flex items-center gap-2 mr-1 shrink-0">
-      <span
-        className="font-mono text-[8.5px] font-bold uppercase tracking-[0.12em] rounded-sm px-1.5 py-[1.5px] leading-none"
-        style={{
-          color: cfg.color,
-          background: `color-mix(in oklab, ${cfg.bg} 14%, transparent)`,
-          border: `1px solid color-mix(in oklab, ${cfg.border} 26%, transparent)`,
-        }}
-      >
-        {cfg.label}
-      </span>
-      {ev.side && (
-        <span
-          className="font-mono text-[8.5px] font-bold tracking-[0.08em]"
-          style={{ color: ev.side === "YES" ? "var(--yes-300)" : "var(--no-300)" }}
-        >
-          {ev.side}
-        </span>
-      )}
-      <span
-        className="font-display text-[11px] text-text-muted"
-        style={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis" }}
-      >
-        {ev.marketTitle}
-      </span>
-      {ev.amount != null && ev.amount > 0 && (
-        <span className="font-mono text-[10.5px] font-semibold tabular-nums" style={{ color: cfg.color }}>
-          TZS {fmtAmount(ev.amount)}
-        </span>
-      )}
-      <span className="font-mono text-[9.5px] text-text-subtle tabular-nums">
-        {ev.timeAgo}
-      </span>
-      <span
-        className="inline-block mx-3 rounded-full shrink-0"
-        style={{ width: 2.5, height: 2.5, background: "oklch(50% 0.10 80)", opacity: 0.5 }}
-      />
-    </span>
+    <>
+      {events.map((ev) => {
+        const c = CFG[ev.kind];
+        return (
+          <span key={`${prefix}-${ev.id}`} className="inline-flex items-center gap-2 shrink-0" style={{ paddingRight: 28 }}>
+            <span
+              className="font-mono font-bold uppercase rounded-sm leading-none"
+              style={{
+                fontSize: 8.5, letterSpacing: "0.12em", padding: "2px 5px",
+                color: c.color,
+                background: `color-mix(in oklab, ${c.bg} 14%, transparent)`,
+                border: `1px solid color-mix(in oklab, ${c.border} 26%, transparent)`,
+              }}
+            >
+              {c.label}
+            </span>
+            {ev.side && (
+              <span className="font-mono font-bold" style={{ fontSize: 8.5, letterSpacing: "0.08em", color: ev.side === "YES" ? "var(--yes-300)" : "var(--no-300)" }}>
+                {ev.side}
+              </span>
+            )}
+            <span className="font-display" style={{ fontSize: 11, color: "var(--text-muted)", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {ev.marketTitle}
+            </span>
+            {ev.amount != null && ev.amount > 0 && (
+              <span className="font-mono font-semibold" style={{ fontSize: 10.5, color: c.color, fontVariantNumeric: "tabular-nums" }}>
+                TZS {fmtAmt(ev.amount)}
+              </span>
+            )}
+            <span className="font-mono" style={{ fontSize: 9.5, color: "var(--text-subtle)", fontVariantNumeric: "tabular-nums" }}>
+              {ev.timeAgo}
+            </span>
+            <span style={{ width: 2.5, height: 2.5, borderRadius: "50%", background: "var(--gilt)", opacity: 0.35, flexShrink: 0 }} />
+          </span>
+        );
+      })}
+    </>
   );
 }
 
 export function LiveTicker({ events }: { events: TickerEvent[] }) {
-  const wrapRef = useRef<HTMLDivElement>(null);
   const [paused, setPaused] = useState(false);
 
   if (events.length === 0) return null;
 
   return (
     <div
-      ref={wrapRef}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
-      className="relative overflow-hidden select-none"
       style={{
         height: 34,
-        background: "linear-gradient(180deg, oklch(13% 0.11 268) 0%, oklch(15% 0.12 268) 100%)",
+        background: "linear-gradient(180deg, oklch(13% 0.11 268), oklch(15% 0.12 268))",
         borderBottom: "1px solid oklch(20% 0.09 268)",
+        overflow: "hidden",
+        position: "relative",
+        userSelect: "none",
       }}
     >
-      {/* Anchored LIVE label */}
-      <div
-        className="absolute left-0 top-0 bottom-0 z-10 flex items-center pl-4 pr-8"
-        style={{
-          background: "linear-gradient(90deg, oklch(14% 0.11 268) 60%, oklch(14% 0.11 268 / 0) 100%)",
-        }}
-      >
-        <span className="inline-flex items-center gap-1.5">
+      {/* Fixed LIVE label */}
+      <div style={{
+        position: "absolute", left: 0, top: 0, bottom: 0, zIndex: 10,
+        display: "flex", alignItems: "center", paddingLeft: 16, paddingRight: 32,
+        background: "linear-gradient(90deg, oklch(14% 0.11 268) 60%, oklch(14% 0.11 268 / 0) 100%)",
+      }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <span className="live-dot" style={{ width: 7, height: 7 }} />
-          <span
-            className="font-display text-[10px] font-bold uppercase tracking-[0.22em]"
-            style={{ color: "oklch(75% 0.24 25)" }}
-          >
+          <span className="font-display" style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.22em", color: "oklch(75% 0.24 25)" }}>
             Live
           </span>
         </span>
       </div>
 
-      {/* Right edge fade */}
-      <div
-        className="absolute right-0 top-0 bottom-0 z-10 w-12 pointer-events-none"
-        style={{
-          background: "linear-gradient(270deg, oklch(14% 0.11 268) 0%, oklch(14% 0.11 268 / 0) 100%)",
-        }}
-      />
+      {/* Right fade */}
+      <div style={{
+        position: "absolute", right: 0, top: 0, bottom: 0, width: 48, zIndex: 10, pointerEvents: "none",
+        background: "linear-gradient(270deg, oklch(14% 0.11 268), oklch(14% 0.11 268 / 0))",
+      }} />
 
-      {/* Scrolling track — two copies side by side, CSS translates -50% */}
-      <div
-        className="ticker-track flex items-center whitespace-nowrap h-full pl-20"
-        style={{ animationPlayState: paused ? "paused" : "running" }}
-      >
-        {events.map((ev) => <TickerItem key={`a-${ev.id}`} ev={ev} />)}
-        {events.map((ev) => <TickerItem key={`b-${ev.id}`} ev={ev} />)}
+      {/* Marquee: two copies side-by-side, both animate left */}
+      <div style={{
+        display: "flex", alignItems: "center", height: "100%", paddingLeft: 80,
+        whiteSpace: "nowrap",
+      }}>
+        <div className="ticker-track" style={{ display: "flex", alignItems: "center", animationPlayState: paused ? "paused" : "running" }}>
+          <Items events={events} prefix="a" />
+          <Items events={events} prefix="b" />
+        </div>
       </div>
     </div>
   );
