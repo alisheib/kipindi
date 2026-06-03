@@ -1,17 +1,11 @@
 "use client";
 
 /**
- * Live ticker — kit-spec 32px strip with scrolling platform activity.
- * Professional marquee with:
- *   - Pulsing live dot + "LIVE" label (anchored left)
- *   - Smooth CSS marquee (ticker-scroll keyframe)
- *   - Event chips: bet, win, resolve, milestone
- *   - Amount + time-ago in mono tabular numerals
- *   - Pauses on hover, respects prefers-reduced-motion
- *   - Gilt separator dots between items
+ * Live ticker — kit-spec 34px strip with scrolling platform activity.
+ * Uses pure CSS animation with duplicated content for seamless loop.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 export type TickerEvent = {
   id: string;
@@ -35,17 +29,55 @@ function fmtAmount(n: number): string {
   return n.toLocaleString();
 }
 
+function TickerItem({ ev }: { ev: TickerEvent }) {
+  const cfg = KIND_CONFIG[ev.kind];
+  return (
+    <span className="inline-flex items-center gap-2 mr-1 shrink-0">
+      <span
+        className="font-mono text-[8.5px] font-bold uppercase tracking-[0.12em] rounded-sm px-1.5 py-[1.5px] leading-none"
+        style={{
+          color: cfg.color,
+          background: `color-mix(in oklab, ${cfg.bg} 14%, transparent)`,
+          border: `1px solid color-mix(in oklab, ${cfg.border} 26%, transparent)`,
+        }}
+      >
+        {cfg.label}
+      </span>
+      {ev.side && (
+        <span
+          className="font-mono text-[8.5px] font-bold tracking-[0.08em]"
+          style={{ color: ev.side === "YES" ? "var(--yes-300)" : "var(--no-300)" }}
+        >
+          {ev.side}
+        </span>
+      )}
+      <span
+        className="font-display text-[11px] text-text-muted"
+        style={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis" }}
+      >
+        {ev.marketTitle}
+      </span>
+      {ev.amount != null && ev.amount > 0 && (
+        <span className="font-mono text-[10.5px] font-semibold tabular-nums" style={{ color: cfg.color }}>
+          TZS {fmtAmount(ev.amount)}
+        </span>
+      )}
+      <span className="font-mono text-[9.5px] text-text-subtle tabular-nums">
+        {ev.timeAgo}
+      </span>
+      <span
+        className="inline-block mx-3 rounded-full shrink-0"
+        style={{ width: 2.5, height: 2.5, background: "oklch(50% 0.10 80)", opacity: 0.5 }}
+      />
+    </span>
+  );
+}
+
 export function LiveTicker({ events }: { events: TickerEvent[] }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [paused, setPaused] = useState(false);
-;
 
   if (events.length === 0) return null;
-
-  // Duplicate for seamless loop — ticker-scroll moves -50% so the second
-  // copy slides into view just as the first scrolls out
-  const doubled = [...events, ...events];
-  const speed = Math.max(events.length * 4, 30);
 
   return (
     <div
@@ -59,7 +91,7 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
         borderBottom: "1px solid oklch(20% 0.09 268)",
       }}
     >
-      {/* Anchored LIVE label on the left with fade */}
+      {/* Anchored LIVE label */}
       <div
         className="absolute left-0 top-0 bottom-0 z-10 flex items-center pl-4 pr-8"
         style={{
@@ -85,68 +117,13 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
         }}
       />
 
-      {/* Scrolling track */}
+      {/* Scrolling track — two copies side by side, CSS translates -50% */}
       <div
         className="ticker-track flex items-center whitespace-nowrap h-full pl-20"
-        style={{
-          animationDuration: `${speed}s`,
-          animationPlayState: paused ? "paused" : "running",
-        }}
+        style={{ animationPlayState: paused ? "paused" : "running" }}
       >
-        {doubled.map((ev, i) => {
-          const cfg = KIND_CONFIG[ev.kind];
-          return (
-            <span key={`${ev.id}-${i}`} className="inline-flex items-center gap-2 mr-1">
-              {/* Event chip */}
-              <span
-                className="font-mono text-[8.5px] font-bold uppercase tracking-[0.12em] rounded-sm px-1.5 py-[1.5px] leading-none"
-                style={{
-                  color: cfg.color,
-                  background: `color-mix(in oklab, ${cfg.bg} 14%, transparent)`,
-                  border: `1px solid color-mix(in oklab, ${cfg.border} 26%, transparent)`,
-                }}
-              >
-                {cfg.label}
-              </span>
-
-              {/* Side badge (YES/NO) */}
-              {ev.side && (
-                <span
-                  className="font-mono text-[8.5px] font-bold tracking-[0.08em]"
-                  style={{ color: ev.side === "YES" ? "var(--yes-300)" : "var(--no-300)" }}
-                >
-                  {ev.side}
-                </span>
-              )}
-
-              {/* Market title */}
-              <span
-                className="font-display text-[11px] text-text-muted"
-                style={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis" }}
-              >
-                {ev.marketTitle}
-              </span>
-
-              {/* Amount */}
-              {ev.amount != null && ev.amount > 0 && (
-                <span className="font-mono text-[10.5px] font-semibold tabular-nums" style={{ color: cfg.color }}>
-                  TZS {fmtAmount(ev.amount)}
-                </span>
-              )}
-
-              {/* Time ago */}
-              <span className="font-mono text-[9.5px] text-text-subtle tabular-nums">
-                {ev.timeAgo}
-              </span>
-
-              {/* Gilt separator dot */}
-              <span
-                className="inline-block mx-3 rounded-full"
-                style={{ width: 2.5, height: 2.5, background: "oklch(50% 0.10 80)", opacity: 0.5 }}
-              />
-            </span>
-          );
-        })}
+        {events.map((ev) => <TickerItem key={`a-${ev.id}`} ev={ev} />)}
+        {events.map((ev) => <TickerItem key={`b-${ev.id}`} ev={ev} />)}
       </div>
     </div>
   );
