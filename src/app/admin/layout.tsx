@@ -33,6 +33,7 @@ function activeKeyFromPath(path: string): string {
   if (path.startsWith("/admin/sources"))              return "sources";
   if (path.startsWith("/admin/config"))               return "config";
   if (path.startsWith("/admin/house-pool"))           return "house-pool";
+  if (path.startsWith("/admin/ai-polls"))             return "ai-polls";
   if (path.startsWith("/admin/candidates"))           return "candidates";
   if (path.startsWith("/admin/proposals"))            return "proposals";
   if (path.startsWith("/admin/markets"))              return "markets";
