@@ -40,3 +40,6 @@ tsconfig.tsbuildinfo
 
 # Local QA screenshots
 scripts/_walkthrough/
+
+# Test images (user reference, not for production)
+Test Images/

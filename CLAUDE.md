@@ -192,6 +192,15 @@ Already shipped (was on this list before):
   in `src/app/markets/actions.ts` runs inside every privileged Server
   Action, not just the layout.
 
+## Postponed features
+
+- **Hero slideshow / video background** — full-bleed Ken Burns image slideshow
+  for the landing page. Component built, 20 stock images sourced, spec written.
+  Waiting for professional video/images before activating. Everything lives in
+  [`docs/hero-slideshow-dev/`](docs/hero-slideshow-dev/) — see its README for
+  activation instructions. Full spec at
+  [`docs/HERO_VIDEO_BACKGROUND_SPEC.md`](docs/HERO_VIDEO_BACKGROUND_SPEC.md).
+
 ## UX commitments (kit-faithful)
 
 - **Every consequential mutation goes through the unified `OperationResultModal`**

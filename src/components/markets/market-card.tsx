@@ -101,10 +101,9 @@ export function MarketCard({
       <div className="mcardp-head">
         <div className="mcardp-qwrap">
           <h3 className="mcardp-q">{titleEn}</h3>
-          {titleSw && <p className="mcardp-q-sw">{titleSw}</p>}
         </div>
         <div className="mcardp-prob">
-          <div className="mcardp-pctcap">YES · Ndio</div>
+          <div className="mcardp-pctcap">YES</div>
           <div className="mcardp-pct">{yesPct}<span className="u">%</span></div>
         </div>
       </div>
@@ -127,17 +126,11 @@ export function MarketCard({
       )}
 
       <div className="mcardp-meta">
-        {traders && traders.length > 0 && (
-          <span className="mcardp-traders">
-            <span className="av-stack">{traders.slice(0, 3).map((s) => <IdentityAvatar key={s} seed={s} size={20} kind="tipping" />)}</span>
-            <span className="t-txt"><b>{predictors.toLocaleString()}</b> traders</span>
-          </span>
-        )}
-        {(!traders || traders.length === 0) && <span><b style={{ color: "var(--text)" }}>{predictors.toLocaleString()}</b> traders</span>}
-        <span className="dot" style={{ marginLeft: traders && traders.length ? 4 : 0 }} />
+        <span>{predictors.toLocaleString()} traders</span>
+        <span className="dot" />
         <span>{fmtTzs(volume)}</span>
         <span style={{ marginLeft: "auto" }} className={live ? "live" : undefined}>
-          {signal?.kind === "soon" ? <I.soon s={12} /> : null}{timeLeft}
+          {timeLeft}
         </span>
       </div>
     </Link>
