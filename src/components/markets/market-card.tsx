@@ -77,7 +77,7 @@ export function MarketCard({
             status === "VOIDED" && "chip-objection",
           )}
         >
-          {live && <span className="live-dot" style={{ width: 5, height: 5 }} />}
+          {live && <span className="live-dot" />}
           {live ? "Live" : isResolved ? "Resolved" : status === "VOIDED" ? "Void" : "Pending"}
         </span>
         {signal && (
