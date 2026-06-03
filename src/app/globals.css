@@ -517,16 +517,18 @@ body {
 .chip-signal   { background: color-mix(in oklab, var(--aqua-300) 18%, transparent); color: var(--aqua-200); border-color: var(--aqua-edge); }
 
 /* ---------- LiveDot + animations ---------- */
-/* Brightened so it actually glows against the saturated royal canvas:
-   higher base lightness (76% vs 72%), additional always-on outer halo,
-   and a stronger pulse expansion. */
+/* Bright red-orange pulsing dot. Uses opacity animation so it works
+   inside overflow:hidden containers (market cards). The dot itself
+   is always visible; the pulse is a brightness/opacity breathe. */
 .live-dot {
+  display: inline-block;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: oklch(76% 0.22 25);
-  box-shadow: 0 0 6px 1px color-mix(in oklab, oklch(76% 0.22 25) 65%, transparent);
+  background: oklch(68% 0.28 25);
+  box-shadow: 0 0 6px 2px oklch(68% 0.28 25 / 0.6);
   animation: live-pulse 1.4s ease-in-out infinite;
+  flex-shrink: 0;
 }
 /* Same technique as .live-dot but in the brand gold — used for the
    notification-bell unread indicator. The earlier dot used Tailwind's
@@ -560,14 +562,8 @@ body {
   }
 }
 @keyframes live-pulse {
-  0%, 100% {
-    opacity: 0.65;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.45);
-  }
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 1; }
 }
 @keyframes aqua-pulse {
   0%, 100% { opacity: 0.7; box-shadow: 0 0 0 0 var(--aqua-glow); }
