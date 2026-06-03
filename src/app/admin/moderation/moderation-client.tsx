@@ -42,7 +42,7 @@ export function ModerationQueue({ items }: { items: ModerationItem[] }) {
     <ul className="divide-y divide-border">
       {rows.map((c) => (
         <li key={c.id} className="flex gap-3 py-3.5">
-          <Avatar initials={c.authorName} seed={c.authorName} size="sm" className="mt-0.5" />
+          <Avatar initials={c.authorName.slice(0, 2).toUpperCase()} seed={c.authorId} size="sm" className="mt-0.5" />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <span className="font-display text-[13px] font-semibold text-text">{c.authorName}</span>

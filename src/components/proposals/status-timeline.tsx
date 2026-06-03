@@ -30,7 +30,7 @@ export function StatusTimeline({ current }: { current: number }) {
                       ? "color-mix(in oklab, var(--gold-500) 18%, transparent)"
                       : "var(--bg-overlay)",
                   border: "1.5px solid " + (done || now ? "var(--gold-600)" : "var(--border-strong)"),
-                  color: "oklch(24% 0.06 85)",
+                  color: done || now ? "var(--gold-fg, oklch(24% 0.06 85))" : "var(--text-subtle)",
                 }}
               >
                 {done && <Check size={12} strokeWidth={3} />}

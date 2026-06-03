@@ -104,7 +104,7 @@ export function CommentsThread({
   return (
     <section className="mt-8 rounded-lg border border-border bg-bg-elevated p-5 lg:p-6">
       <div className="mb-4 flex items-center gap-2">
-        <MessageCircle size={16} className="text-gilt" aria-hidden />
+        <MessageCircle size={16} className="text-gold-300" aria-hidden />
         <h2 className="font-display text-[17px] font-semibold text-text">Discussion</h2>
         <span className="font-display italic text-text-subtle text-[13px]">· Majadiliano</span>
         <span className="ml-auto font-mono text-[11px] text-text-subtle tabular-nums">{comments.length}</span>
@@ -151,7 +151,7 @@ export function CommentsThread({
         <ul className="space-y-3.5">
           {comments.map((c) => (
             <li key={c.id} className={`flex gap-3 ${c.hidden ? "opacity-60" : ""}`}>
-              <Avatar initials={c.authorName} seed={c.authorName} size="sm" className="mt-0.5" />
+              <Avatar initials={c.authorName.slice(0, 2).toUpperCase()} seed={c.authorId} size="sm" className="mt-0.5" />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="font-display text-[13.5px] font-semibold text-text">{c.authorName}</span>

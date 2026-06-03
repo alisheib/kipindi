@@ -28,6 +28,7 @@ type StoredComment = {
 /** The shape the UI consumes — viewer-relative flags, no internal Sets. */
 export type CommentView = {
   id: string;
+  authorId: string;
   authorName: string;
   body: string;
   side: CommentSide;
@@ -64,6 +65,7 @@ function toView(c: StoredComment, viewerId: string | null): CommentView {
   const viewerIsMod = viewerId ? isMod(viewerId) : false;
   return {
     id: c.id,
+    authorId: c.userId,
     authorName: c.authorName,
     body: c.body,
     side: c.side,
@@ -104,6 +106,7 @@ export function countComments(marketId: string): number {
 export type ModerationItem = {
   id: string;
   marketId: string;
+  authorId: string;
   authorName: string;
   body: string;
   createdAt: string;
@@ -120,8 +123,8 @@ export function listForModeration(): ModerationItem[] {
     if (c.deleted) continue;
     if (!c.hidden && c.reports.size === 0) continue;
     out.push({
-      id: c.id, marketId: c.marketId, authorName: c.authorName, body: c.body,
-      createdAt: c.createdAt, reports: c.reports.size, hidden: c.hidden,
+      id: c.id, marketId: c.marketId, authorId: c.userId, authorName: c.authorName,
+      body: c.body, createdAt: c.createdAt, reports: c.reports.size, hidden: c.hidden,
     });
   }
   // most-reported first, then hidden, then newest
