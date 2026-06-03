@@ -525,9 +525,9 @@ body {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: oklch(65% 0.30 25);
+  background: #e53e3e;
   flex-shrink: 0;
-  animation: live-pulse 1.5s ease-in-out infinite;
+  animation: live-pulse 1.4s ease-in-out infinite;
 }
 /* Same technique as .live-dot but in the brand gold — used for the
    notification-bell unread indicator. The earlier dot used Tailwind's
@@ -561,22 +561,20 @@ body {
   }
 }
 @keyframes live-pulse {
-  0%, 100% {
-    opacity: 0.35;
-    background: oklch(58% 0.24 25);
-  }
-  50% {
-    opacity: 1;
-    background: oklch(75% 0.32 25);
-  }
+  0%, 100% { opacity: 0.3; }
+  50%      { opacity: 1; }
 }
 @keyframes aqua-pulse {
   0%, 100% { opacity: 0.7; box-shadow: 0 0 0 0 var(--aqua-glow); }
   50%      { opacity: 1.0; box-shadow: 0 0 0 5px color-mix(in oklab, var(--aqua-300) 0%, transparent); }
 }
+.ticker-track {
+  width: max-content;
+  animation: ticker-scroll 60s linear infinite;
+}
 @keyframes ticker-scroll {
-  0%   { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
 }
 @keyframes gold-shimmer {
   0%   { background-position: 200% 0; }

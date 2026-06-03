@@ -38,21 +38,14 @@ function fmtAmount(n: number): string {
 export function LiveTicker({ events }: { events: TickerEvent[] }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [paused, setPaused] = useState(false);
-  const [reducedMotion, setReducedMotion] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReducedMotion(mq.matches);
-    const h = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
-    mq.addEventListener("change", h);
-    return () => mq.removeEventListener("change", h);
-  }, []);
+;
 
   if (events.length === 0) return null;
 
-  // Triple the events for seamless loop (ensures enough width to scroll continuously)
-  const tripled = [...events, ...events, ...events];
-  const speed = Math.max(events.length * 5, 30); // seconds for one full cycle
+  // Duplicate for seamless loop — ticker-scroll moves -50% so the second
+  // copy slides into view just as the first scrolls out
+  const doubled = [...events, ...events];
+  const speed = Math.max(events.length * 4, 30);
 
   return (
     <div
@@ -94,14 +87,13 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
 
       {/* Scrolling track */}
       <div
-        className="flex items-center whitespace-nowrap h-full pl-20"
+        className="ticker-track flex items-center whitespace-nowrap h-full pl-20"
         style={{
-          animation: reducedMotion ? "none" : `ticker-scroll ${speed}s linear infinite`,
+          animationDuration: `${speed}s`,
           animationPlayState: paused ? "paused" : "running",
-          width: "max-content",
         }}
       >
-        {tripled.map((ev, i) => {
+        {doubled.map((ev, i) => {
           const cfg = KIND_CONFIG[ev.kind];
           return (
             <span key={`${ev.id}-${i}`} className="inline-flex items-center gap-2 mr-1">
