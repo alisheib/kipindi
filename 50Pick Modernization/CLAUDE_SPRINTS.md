@@ -18,17 +18,23 @@ nav element left from the old look. Designers must validate with zero issues.
 - **Navigation (this batch):** top-nav links = kit royal active-pill (was mono-uppercase +
   gold underline); bottom-nav active = aqua (was gold). Nav now gold-free (gold = earned only).
 
-**In progress / next (large batches, in order):**
-1. Buttons — full audit vs kit `Btn`/`SideButton`.
-2. Forms & inputs — input/OTP/select/textarea/stepper vs `ds-forms.jsx`.
-3. Avatars + tier glyphs.
-4. Numbers audit (every amount/%/time mono-tabular) + progress light-sweep.
-5. Remaining flat panels → `.glass-panel` (market detail, deposit/withdraw bodies, profile,
-   proposals, admin) + decorated-header review.
-6. Dropdowns/menus (avatar menu, language toggle, notifications panel, period picker, selects).
-7. Motion: route-enter + staggered reveals (mount-guarded).
-8. Admin console full pass.
-9. Cleanup dead `.mcard*` CSS. Final QA + responsive + a11y + `data-motion`.
+**Overnight-sprint waves (2026-06-05):**
+- ✅ Wave A — `.glass-panel` across money + profile pages (deposit, withdraw, profile,
+  account, kyc, source-of-funds, responsible-gambling). Plus earlier: market detail.
+- ✅ Wave B — forms/inputs verified already kit-faithful (`ui/input.tsx`: prefix slot, mono,
+  error state, aqua focus ring). Buttons already conformant (Sprint 1).
+- ✅ Wave C — frosted-glass dropdowns (avatar menu + notifications panel; transparent inner
+  sections; blur-md scrims).
+
+**Still next (large batches, in order):**
+1. Wave D — avatars + tier glyphs vs kit `Avatar`; numbers audit (every amount/%/time mono).
+2. Wave E — progress bars traveling light-sweep (component-level: stepped/circular-progress)
+   + chip state polish. NOTE: no generic `.progress` CSS class exists; do at component level.
+3. Wave F — admin console pass (shell, KPI cards, charts, tables → glass + kit).
+4. Proposals list cards glass (have hover already — apply `.glass-panel` carefully).
+5. Remaining decorated headers review; language-toggle + period-picker dropdowns.
+6. Motion: route-enter + staggered reveals (mount-guarded — don't re-fire on filter).
+7. Cleanup dead `.mcard*` CSS (~globals.css 1543–1652). Final QA + responsive + a11y + `data-motion`.
 
 **Tracking:** every detail is a row in `VALIDATION_CHECKLIST.md` (sections A–N). Update status
 there as each lands. Keep this CURRENT STATE block + the Progress log at the bottom in sync.
@@ -281,3 +287,10 @@ utility in globals.css (top-lit royal radial gradient + `border-strong` + soft `
   hover/motion/popup only. Added AT-REST glass depth: `.mcard` resting (top-lit gradient +
   inner light-edge + soft shadow → cascades to all card grids), landing trust strip + icon
   tiles → frosted royal glass. F1 hero untouched. Build exit 0.
+- **2026-06-05 — Sprint 7 + market card + nav + overnight waves.** `.glass-panel` utility +
+  leaderboard/wallet/auth/help/fairness/live/positions panels. Market card → kit (corner
+  glyph watermark + blue hover) on the REAL class `.mcardp` (earlier `.mcard` edits were
+  DEAD — bare `.mcard` is unused). Navigation → kit + GOLD-FREE (top-nav royal active-pill,
+  bottom-nav aqua active). Market detail panels glassed. **Overnight waves A/B/C:** money+
+  profile pages glassed (A); forms/inputs verified kit-faithful (B); frosted dropdowns (C).
+  All build exit 0; Ali pushing as we go. Direction LOCKED = full kit conformance.
