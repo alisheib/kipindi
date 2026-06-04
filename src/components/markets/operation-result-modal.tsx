@@ -212,12 +212,12 @@ export function OperationResultModal({
         type="button"
         aria-label="Close"
         onClick={onClose}
-        className="absolute inset-0 bg-black/55 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 backdrop-blur-md"
         style={{ animation: "orm-fade 160ms ease-out" }}
       />
 
       <div
-        className="relative w-full max-w-[460px] rounded-2xl border border-border bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)] overflow-hidden"
+        className="relative w-full max-w-[460px] rounded-2xl border border-border-strong bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.06)] overflow-hidden"
         // `overflow-hidden` clips the gold auto-close strip to the
         // rounded corners; without it, the strip's `rounded-t-2xl`
         // can render slightly past the popup's `rounded-2xl` + 1 px

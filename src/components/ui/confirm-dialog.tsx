@@ -85,11 +85,11 @@ export function ConfirmDialog({
             type="button"
             aria-label={cancelLabel}
             onClick={() => setOpen(false)}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/60 backdrop-blur-md"
             style={{ animation: "cd-fade 160ms ease-out" }}
           />
           <div
-            className="relative w-full max-w-[440px] rounded-2xl border border-border bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)] p-5 lg:p-6"
+            className="relative w-full max-w-[440px] rounded-2xl border border-border-strong bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.06)] p-5 lg:p-6"
             style={{ animation: "cd-rise 200ms var(--ease-arrive)" }}
           >
             <button

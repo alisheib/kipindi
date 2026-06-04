@@ -68,12 +68,21 @@ so Sprint-1's `globals.css` work modernized most of it automatically.
   indicator (needs position measurement), toggle spring bezier (no production token yet).
 - Acceptance: `npm run build` exit 0.
 
-### Sprint 3 — Modals, sheets & overlays — ☐ TODO
-Animated entrance (spring scale-in), frosted scrim, rolling counters on amounts,
-auto-dismiss timing per kit. Files: `markets/operation-result-modal.tsx`,
-`markets/bet-confirm-modal.tsx`, `markets/sell-confirm-modal.tsx`, `ui/confirm-dialog.tsx`,
-`rg/reality-check.tsx`, `rg/self-exclude-confirm.tsx`, `onboarding/first-visit-primer.tsx`,
-`layout/notifications-panel.tsx`. Use existing `.dialog-anim`, `.sheet-anim`, scrim classes.
+### Sprint 3 — Modals, sheets & overlays — ✅ DONE (2026-06-04)
+Finding: the modal family was already strong (portaled, spring entrance via
+`--ease-arrive`/`orm-pop`, RAF-driven auto-close strips). Modernization = consistent
+**deeper frosted scrim + glass top-edge + stronger border** across the family.
+- `operation-result-modal.tsx` — scrim `blur-sm`→`blur-md`, `bg-black/55`→`/60`; card
+  `border-strong` + `inset 0 1px 0 rgba(255,255,255,.06)` glass edge.
+- `bet-confirm-modal.tsx` — same scrim + glass-edge treatment.
+- `sell-confirm-modal.tsx` — same.
+- `ui/confirm-dialog.tsx` — scrim `blur-sm`→`blur-md`; card border-strong + glass edge.
+- `rg/reality-check.tsx` — scrim blur `6px`→`12px`.
+- `onboarding/first-visit-primer.tsx` — already `blur-md` + strong shadow, no edit.
+- `rg/self-exclude-confirm.tsx` — inline (not a portal scrim), no edit.
+- Rolling counters on amounts deferred to Sprint 6 (WinCelebration owns the payout roll;
+  generic result rows stay static — final values, not live).
+- Acceptance: `npm run build` exit 0.
 
 ### Sprint 4 — Market surfaces — ☐ TODO
 The signature screens. Files: `markets/market-card.tsx`, `markets/conviction-dial.tsx`
@@ -124,4 +133,9 @@ classic Playwright suites to prove zero functional drift.
   `../50Pick ui v1/`. Committed as `UI v2 Sprint 1` (`e71f3d4`).
 - **2026-06-04 — Sprint 2 DONE.** Audited the `ui/` atom layer — already class/token
   driven, so Sprint 1 covered most. Only `card.tsx` interactive hover edited (modern
-  lift + blue frame + soft glow). Build exit 0. Committed as `UI v2 Sprint 2`.
+  lift + blue frame + soft glow). Build exit 0. Committed as `UI v2 Sprint 2` (`f2c4182`).
+- **2026-06-04 — Sprint 3 DONE.** Modal/overlay family already strong; applied consistent
+  deeper frosted scrim (`blur-md`/12px) + glass top-edge + border-strong to
+  operation-result, bet-confirm, sell-confirm, confirm-dialog, reality-check.
+  first-visit-primer already modern; self-exclude-confirm is inline. Build exit 0.
+  Committed as `UI v2 Sprint 3`.

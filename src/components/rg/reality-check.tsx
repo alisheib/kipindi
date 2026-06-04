@@ -81,7 +81,7 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL }: { 
     >
       <div
         className="absolute inset-0"
-        style={{ background: "oklch(11% 0.06 268 / 0.65)", backdropFilter: "blur(6px)" }}
+        style={{ background: "oklch(11% 0.06 268 / 0.68)", backdropFilter: "blur(12px)" }}
         onClick={dismiss}
         aria-hidden
       />

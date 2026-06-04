@@ -148,7 +148,7 @@ export function BetConfirmModal({
         aria-label="Cancel"
         onClick={() => { if (!pending) onCancel(); }}
         disabled={pending}
-        className="absolute inset-0 bg-black/55 backdrop-blur-sm transition-opacity disabled:cursor-wait"
+        className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity disabled:cursor-wait"
         style={{ animation: "bcm-fade 160ms ease-out" }}
       />
 
@@ -158,7 +158,7 @@ export function BetConfirmModal({
           `rounded-2xl` + 1px border lets the strip's ends protrude
           past the popup's curved corners (Ali's report). */}
       <div
-        className="relative w-full max-w-[440px] rounded-2xl border border-border bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)] overflow-hidden"
+        className="relative w-full max-w-[440px] rounded-2xl border border-border-strong bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.06)] overflow-hidden"
         // Kit `--ease-arrive` — same entry curve as the result modal,
         // so the pre-confirm and post-place beats feel like one
         // continuous motion language.

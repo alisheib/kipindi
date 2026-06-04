@@ -67,12 +67,12 @@ export function SellConfirmModal({ open, pending, stake, value, onConfirm, onCan
         aria-label="Cancel"
         onClick={() => { if (!pending) onCancel(); }}
         disabled={pending}
-        className="absolute inset-0 bg-black/55 backdrop-blur-sm transition-opacity disabled:cursor-wait"
+        className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity disabled:cursor-wait"
         style={{ animation: "scm-fade 160ms ease-out" }}
       />
 
       <div
-        className="relative w-full max-w-[440px] rounded-2xl border border-border bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)]"
+        className="relative w-full max-w-[440px] rounded-2xl border border-border-strong bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.06)]"
         style={{ animation: "scm-rise 200ms cubic-bezier(.2,.8,.2,1)" }}
       >
         <div className="p-5 lg:p-6">
