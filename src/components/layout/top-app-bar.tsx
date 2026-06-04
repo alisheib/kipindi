@@ -70,19 +70,14 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
                 <Link
                   key={it.href}
                   href={it.href}
+                  aria-current={active ? "page" : undefined}
                   className={cn(
-                    "relative h-12 px-2.5 inline-flex items-center whitespace-nowrap font-mono text-caption font-bold uppercase tracking-[0.12em] transition-colors",
-                    active ? "text-text" : "text-text-subtle hover:text-text",
+                    "h-8 px-3 inline-flex items-center whitespace-nowrap rounded-md text-[13.5px] transition-colors",
+                    active ? "font-semibold text-text" : "font-medium text-text-subtle hover:text-text",
                   )}
+                  style={active ? { background: "oklch(40% 0.08 264 / 0.45)" } : undefined}
                 >
                   {it.label}
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "absolute left-2 right-2 -bottom-px h-[2px] rounded-pill bg-gold-500 transition-opacity",
-                      active ? "opacity-100" : "opacity-0",
-                    )}
-                  />
                 </Link>
               );
             })}

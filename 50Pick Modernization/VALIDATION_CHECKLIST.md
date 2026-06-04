@@ -108,7 +108,8 @@ Run the app (`npm run dev`), open each surface, and compare against the kit's
 | # | Kit detail | Status | Where / note |
 |---|---|---|---|
 | I1 | Top nav 56px + sticky w/ blur | ✅ | `top-app-bar.tsx` sticky + `backdrop-blur-xl`; Sprint 7 added border-strong + glass top-light + depth shadow |
-| I2 | Bottom nav 64px, 5-up, active tint | ✅ | `layout/bottom-nav.tsx` |
+| I2 | Bottom nav 64px, 5-up, active tint | 🔄 | active tint gold → **aqua** (kit `--accent`); gold-free nav |
+| I5 | Top-nav links = kit style (body text, royal active-pill, no gold) | 🔄 | was mono-uppercase + gold underline → royal active-pill |
 | I3 | Live ticker (red pulse) | ✅ | `layout/live-ticker.tsx` |
 | I4 | **Balance-privacy eye** (Cash/CashEye) on nav pill, wallet, positions | ✅ | Sprint 5 — `ui/cash.tsx`; wired nav pill + top-bar eye + position-card + wallet (balance/pending/hold/txns). Global toggle (window flag + event + localStorage) |
 

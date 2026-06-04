@@ -63,7 +63,7 @@ function NavItem({ href, icon: Icon, label, active }: { href: string; icon: type
       href={href as never}
       className={cn(
         "flex-1 flex flex-col items-center justify-center gap-1 transition-colors",
-        active ? "text-gold-300" : "text-text-subtle hover:text-text-muted",
+        active ? "text-[var(--aqua-300)]" : "text-text-subtle hover:text-text-muted",
       )}
     >
       <Icon size={20} strokeWidth={active ? 2 : 1.5} />

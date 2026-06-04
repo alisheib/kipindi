@@ -5,6 +5,36 @@
 > Each sprint is a self-contained, build-verified unit. Update the **Progress log**
 > at the bottom when you finish work, and flip the sprint's status.
 
+## ⏱ CURRENT STATE (update every session — read first)
+
+**Goal:** drive the ENTIRE app to 100% kit conformance — no detail, number, form, font, or
+nav element left from the old look. Designers must validate with zero issues.
+
+**Done & committed (pushed by Ali as we go):**
+- S1 foundation atoms · S2 card.tsx · S3 modal scrims · S4 position-card · S5 balance-privacy
+  eye · S6 calm win celebration · S6.5 at-rest `.mcard`/landing glass · S7 `.glass-panel` +
+  leaderboard/wallet/auth/help/fairness/live/positions panels.
+- Market card → kit (corner glyph watermark + blue hover) on the real class `.mcardp`.
+- **Navigation (this batch):** top-nav links = kit royal active-pill (was mono-uppercase +
+  gold underline); bottom-nav active = aqua (was gold). Nav now gold-free (gold = earned only).
+
+**In progress / next (large batches, in order):**
+1. Buttons — full audit vs kit `Btn`/`SideButton`.
+2. Forms & inputs — input/OTP/select/textarea/stepper vs `ds-forms.jsx`.
+3. Avatars + tier glyphs.
+4. Numbers audit (every amount/%/time mono-tabular) + progress light-sweep.
+5. Remaining flat panels → `.glass-panel` (market detail, deposit/withdraw bodies, profile,
+   proposals, admin) + decorated-header review.
+6. Dropdowns/menus (avatar menu, language toggle, notifications panel, period picker, selects).
+7. Motion: route-enter + staggered reveals (mount-guarded).
+8. Admin console full pass.
+9. Cleanup dead `.mcard*` CSS. Final QA + responsive + a11y + `data-motion`.
+
+**Tracking:** every detail is a row in `VALIDATION_CHECKLIST.md` (sections A–N). Update status
+there as each lands. Keep this CURRENT STATE block + the Progress log at the bottom in sync.
+
+---
+
 ## DIRECTION LOCKED (2026-06-05): FULL KIT CONFORMANCE (polish)
 Ali chose **full faithful kit conformance**, NOT a bolder departure. Important context he
 now understands: the kit was **reverse-engineered from the live app** (`kit50.css`:
