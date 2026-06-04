@@ -132,7 +132,7 @@ export default async function MarketDetail({
           <TippingBar yesPct={yesPct} height={28} showLabels resolved={isResolved} />
 
           {!isResolved && (
-            <div className="mt-7 rounded-lg border border-border bg-bg-elevated p-5">
+            <div className="mt-7 rounded-lg glass-panel p-5">
               <Countdown to={m.resolutionAt} label="Closes in · Inafungwa baada ya" />
             </div>
           )}
@@ -145,7 +145,7 @@ export default async function MarketDetail({
 
           {/* Probability over time — the signature "tipping line" chart */}
           {probChart.ranges.length > 0 && (
-            <section className="mt-8 rounded-lg border border-border bg-bg-elevated p-4 lg:p-5">
+            <section className="mt-8 rounded-lg glass-panel p-4 lg:p-5">
               <div className="w-full overflow-hidden">
                 <ProbabilityChart
                   series={probChart.series as Record<string, { t: string; p: number }[]>}
@@ -157,7 +157,7 @@ export default async function MarketDetail({
             </section>
           )}
 
-          <section className="mt-8 rounded-lg border border-border bg-bg-elevated p-5">
+          <section className="mt-8 rounded-lg glass-panel p-5">
             <h2 className="font-display text-[17px] font-semibold text-text mb-2">Resolution criterion</h2>
             <p className="text-[14px] leading-relaxed text-text-muted whitespace-pre-line">{m.resolutionCriterion}</p>
             <p className="mt-3 font-mono text-[12px] text-text-subtle">
