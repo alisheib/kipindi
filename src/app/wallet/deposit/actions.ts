@@ -20,6 +20,6 @@ export async function depositAction(formData: FormData) {
   });
   revalidatePath("/wallet");
   // Surface failures instead of swallowing them — bounce back with the error.
-  if (!result.ok) redirect("/wallet/deposit?error=" + encodeURIComponent(result.error));
-  redirect(`/wallet?deposited=${result.data!.txnId}&amount=${amount}`);
+  if (!result.ok) redirect(("/wallet/deposit?error=" + encodeURIComponent(result.error)) as never);
+  redirect(`/wallet?deposited=${result.data!.txnId}&amount=${amount}` as never);
 }

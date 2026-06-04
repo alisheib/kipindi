@@ -21,6 +21,6 @@ export async function withdrawAction(formData: FormData) {
     msisdn: formData.get("msisdn") ? String(formData.get("msisdn")) : undefined,
   });
   revalidatePath("/wallet");
-  if (!result.ok) redirect("/wallet/withdraw?error=" + encodeURIComponent(result.error));
-  redirect(`/wallet?withdrawal=${result.data!.txnId}&status=${result.data!.status}&amount=${amount}`);
+  if (!result.ok) redirect(("/wallet/withdraw?error=" + encodeURIComponent(result.error)) as never);
+  redirect(`/wallet?withdrawal=${result.data!.txnId}&status=${result.data!.status}&amount=${amount}` as never);
 }

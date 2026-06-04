@@ -2,9 +2,7 @@
  * Admin shell — confidentiality band, grouped sidebar, top bar with crumbs.
  *
  * Inherits the 50pick design system: existing tokens, Sora/Inter/JBM fonts,
- * gold-positive / royal-active / muted-loss colour discipline. The wireframe
- * spec lives in `mapigo/admin-wf/awf-shell.jsx` (engineering view) and the
- * canonical visual reference is `mapigo/admin-wf/design-canvas.jsx`.
+ * gold-positive / royal-active / muted-loss colour discipline.
  */
 import Link from "next/link";
 import { db } from "@/lib/server/store";
