@@ -105,10 +105,10 @@ Run the app (`npm run dev`), open each surface, and compare against the kit's
 
 | # | Kit detail | Status | Where / note |
 |---|---|---|---|
-| I1 | Top nav 56px + sticky w/ blur | ✅/🔄 | `layout/top-app-bar.tsx` — Sprint 5 |
+| I1 | Top nav 56px + sticky w/ blur | ✅ | `top-app-bar.tsx` already `sticky` + `backdrop-blur-xl` |
 | I2 | Bottom nav 64px, 5-up, active tint | ✅ | `layout/bottom-nav.tsx` |
 | I3 | Live ticker (red pulse) | ✅ | `layout/live-ticker.tsx` |
-| I4 | **Balance-privacy eye** (Cash/CashEye) on nav pill, wallet, positions | ⬜ | Sprint 5 |
+| I4 | **Balance-privacy eye** (Cash/CashEye) on nav pill, wallet, positions | ✅ | Sprint 5 — `ui/cash.tsx`; wired nav pill + top-bar eye + position-card + wallet (balance/pending/hold/txns). Global toggle (window flag + event + localStorage) |
 
 ## J. Haptics & accessibility
 

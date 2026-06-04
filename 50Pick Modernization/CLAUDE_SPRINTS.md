@@ -108,12 +108,18 @@ flat **atoms** (buttons/cards/toasts/scrims) — fixed in Sprints 1–3. Remaini
 incremental polish + flat-spot hunts, NOT rebuilds. Don't fabricate work; audit, fix flat
 spots, leave good components alone.
 
-### Sprint 5 — Navigation & chrome — ☐ TODO
-Files: `layout/top-app-bar.tsx`, `layout/bottom-nav.tsx`, `layout/live-ticker.tsx`,
-`layout/avatar-menu.tsx`, `layout/wallet-balance-pill.tsx`, `layout/page-ribbon.tsx`,
-`layout/public-footer.tsx`, `layout/app-shell.tsx`, `ui/language-toggle.tsx`.
-**New:** balance-privacy eye toggle (`Cash`/`CashEye` pattern) on the nav balance pill,
-wallet, and position cards. Sticky nav with blur.
+### Sprint 5 — Navigation & chrome — ✅ DONE (2026-06-05)
+- **Balance-privacy eye — DONE (net-new feature).** New `ui/cash.tsx` exports
+  `Cash`, `CashEye`, `useCashHidden`, `setCashHidden`, `getCashHidden`. Global state via
+  `window.__cashHidden` + `cash-privacy` CustomEvent + localStorage (banking pattern).
+  Wired: nav (`top-app-bar.tsx` adds `<CashEye bare>`; `wallet-balance-pill.tsx` masks
+  number + suppresses delta), `position-card.tsx` (stake/final/payout), wallet page
+  (`wallet-client.tsx`: balance, pending/hold, transaction amounts). Pool sizes + buy-tray
+  figures intentionally NOT masked (flow figures, not the user's balance).
+- **Sticky-nav blur:** already present — `top-app-bar.tsx` header is `sticky top-0 ...
+  bg-bg-elevated/80 backdrop-blur-xl`. No edit. Other chrome (bottom-nav, ticker, footer)
+  is token-driven and inherits Sprint 1.
+- Acceptance: `npm run build` exit 0. ✓
 
 ### Sprint 6 — Celebrations & motion system — ☐ TODO
 Files: `markets/win-celebration.tsx`, `badges/AchievementToast.tsx`, `badges/Badge.tsx`,
@@ -159,3 +165,6 @@ classic Playwright suites to prove zero functional drift.
 - **2026-06-04 — Added `VALIDATION_CHECKLIST.md`** — designer-facing matrix of every kit
   detail → code location + status (per Ali's instruction that every kit detail be present
   for designers to validate). Keep it updated each sprint.
+- **2026-06-05 — Sprint 5 DONE.** Net-new balance-privacy eye (`ui/cash.tsx`) wired across
+  nav pill + top-bar toggle + position cards + wallet page. Sticky-nav blur already present.
+  Build exit 0. Committed as `UI v2 Sprint 5`.

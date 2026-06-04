@@ -6,6 +6,7 @@ import { ArrowDownToLine, ArrowUpFromLine, Wallet as WalletIcon, Phone, CreditCa
 import { FiftyMark } from "@/components/brand";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { Transaction } from "@/lib/mock-data";
+import { Cash } from "@/components/ui/cash";
 
 const fmt = (n: number, currency = "TZS") => `${currency} ${n.toLocaleString("en-US")}`;
 
@@ -37,7 +38,7 @@ function BalanceCard({
           data-balance={balance}
           className="mt-1.5 font-display text-[40px] lg:text-[48px] font-bold tabular-nums text-text leading-none tracking-[-0.02em]"
         >
-          {fmt(balance, currency)}
+          <Cash>{fmt(balance, currency)}</Cash>
         </p>
         <div className="mt-5 grid grid-cols-2 gap-3">
           <SubStat label="Pending" sw="Inasubiri" value={fmt(pending, currency)} />
@@ -52,7 +53,7 @@ function SubStat({ label, sw, value }: { label: string; sw: string; value: strin
   return (
     <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-3 py-2.5 backdrop-blur-md">
       <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle">{label}</p>
-      <p className="font-mono font-bold text-[13px] tabular-nums text-text-muted leading-tight">{value}</p>
+      <p className="font-mono font-bold text-[13px] tabular-nums text-text-muted leading-tight"><Cash>{value}</Cash></p>
       <p className="text-[10px] italic text-text-subtle">{sw}</p>
     </div>
   );
@@ -82,7 +83,7 @@ function TxnRow({ tx }: { tx: Transaction }) {
       </div>
       <div className="text-right shrink-0">
         <p className={`font-mono text-[14px] font-bold tabular-nums ${isCredit ? "text-yes-300" : "text-text"}`}>
-          {isCredit ? "+" : ""}{tx.amount.toLocaleString("en-US")}
+          <Cash>{`${isCredit ? "+" : ""}${tx.amount.toLocaleString("en-US")}`}</Cash>
         </p>
         <p className={`mt-0.5 font-mono text-[9px] uppercase tracking-[0.14em] font-semibold ${statusTone}`}>
           {tx.status}

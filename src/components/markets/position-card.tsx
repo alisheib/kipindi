@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { Cash } from "@/components/ui/cash";
 
 type Props = {
   marketId: string;
@@ -59,25 +60,27 @@ export function PositionCard({ marketId, marketTitle, side, stake, current, payo
           Settled positions show the actual final payout. */}
       {status === "OPEN" ? (
         <div className="grid grid-cols-2 gap-3">
-          <Stat label="Stake" value={`TZS ${fmt(stake)}`} />
+          <Stat label="Stake" value={`TZS ${fmt(stake)}`} money />
           <Stat label="Payout" value="At resolution" />
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-3">
-          <Stat label="Stake" value={`TZS ${fmt(stake)}`} />
-          <Stat label="Final" value={`TZS ${fmt(current)}`} />
-          <Stat label="Payout" value={`TZS ${fmt(payout)}`} tone={status === "WIN" ? "gold" : "default"} />
+          <Stat label="Stake" value={`TZS ${fmt(stake)}`} money />
+          <Stat label="Final" value={`TZS ${fmt(current)}`} money />
+          <Stat label="Payout" value={`TZS ${fmt(payout)}`} tone={status === "WIN" ? "gold" : "default"} money />
         </div>
       )}
     </Link>
   );
 }
 
-function Stat({ label, value, tone = "default" }: { label: string; value: string; tone?: "default" | "gold" }) {
+function Stat({ label, value, tone = "default", money }: { label: string; value: string; tone?: "default" | "gold"; money?: boolean }) {
   return (
     <div>
       <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{label}</p>
-      <p className={cn("font-mono text-[13px] font-semibold tabular-nums leading-tight", tone === "gold" ? "text-gold-300" : "text-text")}>{value}</p>
+      <p className={cn("font-mono text-[13px] font-semibold tabular-nums leading-tight", tone === "gold" ? "text-gold-300" : "text-text")}>
+        {money ? <Cash>{value}</Cash> : value}
+      </p>
     </div>
   );
 }
