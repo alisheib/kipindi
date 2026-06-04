@@ -127,6 +127,29 @@ Run the app (`npm run dev`), open each surface, and compare against the kit's
 | K1 | Admin shell, sidebar, confidential band, officer chip | ✅ | `components/admin/admin-shell.tsx` |
 | K2 | Glass KPI cards + refined tables + charts bloom | ⬜ | Sprint 7 |
 
+## M. Dropdowns, menus & selects (per Ali — "navigation dropdowns, every detail")
+
+| # | Kit detail | Status | Where / note |
+|---|---|---|---|
+| M1 | Avatar menu (top-right) — items, hover, gilt Invite/Propose rows | ⬜ | `layout/avatar-menu.tsx` — audit vs kit nav |
+| M2 | Language toggle EN/SW/FR dropdown | ⬜ | `ui/language-toggle.tsx` |
+| M3 | Notifications panel (bell dropdown) — rows, blur, deep-links | ⬜ | `layout/notifications-panel.tsx` — confirm frosted + row hover |
+| M4 | Period picker (admin 7d/28d/qtd) | ⬜ | `admin/period-picker.tsx` |
+| M5 | Select / dropdown inputs (forms) | ⬜ | vs `ds-forms.jsx Select` — chevron, focus ring, panel |
+| M6 | Bottom-nav active state + safe-area | ⬜ | `layout/bottom-nav.tsx` |
+
+## N. Fonts & labels (per element)
+
+| # | Kit detail | Status | Where / note |
+|---|---|---|---|
+| N1 | Headings = Sora (`font-display`), -0.02em tracking | ✅ | `.display`, components |
+| N2 | Body = Inter (`--font-sans`/body) | ✅ | `body`, components |
+| N3 | All numbers/amounts/%/time = JetBrains Mono tabular | ✅ | `.mono` / `font-mono` — audit any stray non-mono number |
+| N4 | Eyebrows = mono 10px uppercase 0.14–0.16em tracking | ✅ | `.gilt-eyebrow`, components |
+| N5 | Swahili line italic in `--text-subtle` under EN | ✅ | market card / items |
+| N6 | No emojis in UI copy | ✅ | invariant |
+| N7 | +30% string tolerance (SW/FR longer) | ✅ | enforced |
+
 ## L. Hard invariants (must never break — verify on every screen)
 
 | # | Invariant | Status |

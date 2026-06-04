@@ -20,7 +20,10 @@ detail everywhere, FIX DEVIATIONS, ensure 1:1, track in `VALIDATION_CHECKLIST.md
 - Card hover must be BLUE everywhere (gold reserved for wins) — `.mcardp` fixed; re-audit all.
 
 **Remaining conformance task list (systematic — do every one, verify, tick the matrix):**
-1. Cards: confirm `.mcard` vs `.mcardp` usage; one consistent kit treatment ("one way").
+1. Cards: ✅ RESOLVED — bare `.mcard*` is **DEAD** (no className uses it; verified by grep
+   `\bmcard\b(?!p)` → 0 hits). `.mcardp` is the one true market card and now has the kit
+   corner-glyph watermark + blue hover. TODO cleanup: delete the dead `.mcard*` block
+   (~globals.css 1543–1652) in a hygiene pass (low risk; nothing references it).
 2. Buttons: every variant vs kit `Btn`/`SideButton` (radius 8, inset highlight, motion). 
 3. Forms/inputs: `input`, OTP boxes, select, textarea, stepper vs `ds-forms.jsx`.
 4. Avatars: `identity-avatar` vs kit `Avatar` + tier glyphs.
