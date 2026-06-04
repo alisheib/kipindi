@@ -394,11 +394,7 @@ body {
   white-space: nowrap;
   user-select: none;
 }
-/* Modern motion (v2): rest → hover lift → tactile press. Same-hue glow is
-   layered per-variant below via an additional drop-shadow in the hover filter,
-   so the resting box-shadow (inset highlights + elevation) is never disturbed. */
-.btn:hover:not(:disabled)  { transform: translateY(-1px); }
-.btn:active:not(:disabled) { transform: translateY(0) scale(0.97); }
+.btn:active { transform: translateY(1px); }
 .btn:focus-visible { outline: 2px solid var(--aqua-300); outline-offset: 2px; box-shadow: 0 0 0 4px var(--aqua-glow); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
@@ -419,7 +415,7 @@ body {
   letter-spacing: 0.005em;
   text-shadow: 0 1px 0 oklch(20% 0.10 268 / 0.40);
 }
-.btn-primary:hover:not(:disabled) { filter: brightness(1.08) saturate(1.04) drop-shadow(0 6px 16px color-mix(in oklab, var(--teal-400) 30%, transparent)); }
+.btn-primary:hover:not(:disabled) { filter: brightness(1.08) saturate(1.04); }
 
 .btn-yes {
   background: linear-gradient(180deg, oklch(60% 0.17 152) 0%, oklch(48% 0.16 152) 100%);
@@ -429,7 +425,7 @@ body {
   box-shadow: 0 1px 0 oklch(72% 0.15 152) inset, 0 -1px 0 oklch(34% 0.12 152) inset, 0 2px 8px -2px oklch(20% 0.10 268 / 0.50);
   text-shadow: 0 1px 0 oklch(20% 0.10 152 / 0.35);
 }
-.btn-yes:hover:not(:disabled) { filter: brightness(1.06) drop-shadow(0 6px 16px color-mix(in oklab, var(--yes-400) 30%, transparent)); }
+.btn-yes:hover:not(:disabled) { filter: brightness(1.06); }
 
 .btn-no {
   background: linear-gradient(180deg, oklch(64% 0.20 22) 0%, oklch(54% 0.20 22) 100%);
@@ -439,7 +435,7 @@ body {
   box-shadow: 0 1px 0 oklch(76% 0.18 22) inset, 0 -1px 0 oklch(40% 0.16 22) inset, 0 2px 8px -2px oklch(20% 0.10 268 / 0.50);
   text-shadow: 0 1px 0 oklch(20% 0.10 22 / 0.35);
 }
-.btn-no:hover:not(:disabled) { filter: brightness(1.06) drop-shadow(0 6px 16px color-mix(in oklab, var(--no-400) 30%, transparent)); }
+.btn-no:hover:not(:disabled) { filter: brightness(1.06); }
 
 .btn-ghost {
   background: oklch(22% 0.110 268 / 0.40);
@@ -469,7 +465,7 @@ body {
   letter-spacing: 0.005em;
   text-shadow: 0 1px 0 oklch(96% 0.07 80 / 0.55);
 }
-.btn-gold:hover:not(:disabled) { filter: brightness(1.06) saturate(1.06) drop-shadow(0 6px 18px color-mix(in oklab, var(--gold-400) 38%, transparent)); }
+.btn-gold:hover:not(:disabled) { filter: brightness(1.06) saturate(1.06); }
 
 .btn-claret {
   background: linear-gradient(180deg, var(--claret-500) 0%, var(--claret-700) 100%);
@@ -483,7 +479,7 @@ body {
     0 10px 28px -10px oklch(38% 0.14 15 / 0.55);
   text-shadow: 0 1px 0 oklch(15% 0.06 15 / 0.45);
 }
-.btn-claret:hover:not(:disabled) { filter: brightness(1.08) saturate(1.04) drop-shadow(0 6px 16px color-mix(in oklab, var(--claret-500) 32%, transparent)); }
+.btn-claret:hover:not(:disabled) { filter: brightness(1.08) saturate(1.04); }
 
 .btn-aqua-ghost {
   background: color-mix(in oklab, var(--aqua-300) 12%, transparent);
@@ -606,14 +602,12 @@ body {
   position: absolute;
   inset: 0 auto 0 0;
   background: linear-gradient(90deg, var(--yes-600), var(--yes-500));
-  box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.18);
   transition: width var(--ease-stage);
 }
 .pbar-no {
   position: absolute;
   inset: 0 0 0 auto;
   background: linear-gradient(270deg, var(--no-600), var(--no-500));
-  box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.16);
   transition: width var(--ease-stage);
 }
 .pbar-large .pbar-label {
@@ -649,9 +643,8 @@ body {
   color: var(--text);
   font-family: var(--font-body);
   font-size: 14px;
-  transition: border-color var(--ease-micro), box-shadow var(--ease-micro), background-color var(--ease-micro);
+  transition: border-color var(--ease-micro), box-shadow var(--ease-micro);
 }
-.input:hover:not(:focus):not(:disabled) { border-color: var(--border-strong); }
 .input:focus {
   outline: none;
   border-color: var(--aqua-300);
@@ -740,20 +733,15 @@ body {
 }
 
 /* ---------- Toast (kit class) ---------- */
-/* v2 Dark Glass: frosted translucent panel with a 1px top light-edge.
-   backdrop-filter is GPU-accelerated and degrades gracefully (solid fill)
-   on the few engines without support. */
 .toast {
   display: flex;
   align-items: flex-start;
   gap: 12px;
   padding: 12px 14px;
-  border-radius: var(--r-lg);
-  border: 1px solid var(--border-strong);
-  background: color-mix(in oklab, var(--bg-elevated) 80%, transparent);
-  backdrop-filter: blur(14px) saturate(1.1);
-  -webkit-backdrop-filter: blur(14px) saturate(1.1);
-  box-shadow: 0 1px 0 oklch(98% 0.01 268 / 0.08) inset, var(--shadow-4);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-card);
   min-width: 280px;
   max-width: 360px;
 }
@@ -1553,7 +1541,7 @@ html.kp-reduce-motion *::after {
   transition: transform var(--ease-micro), border-color var(--ease-micro), box-shadow var(--ease-micro);
   container-type: inline-size; /* lets the card adapt its own content to its width */
 }
-.mcard:hover { border-color: var(--teal-400); box-shadow: var(--shadow-4), var(--glow-blue); transform: translateY(-3px); }
+.mcard:hover { border-color: var(--border-strong); box-shadow: var(--shadow-3); transform: translateY(-2px); }
 
 /* Single fixed-height row — chips never wrap, so everything below them (bar,
    YES/NO buttons) stays on the same line across every card. */
