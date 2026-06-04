@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowDownToLine, ChevronLeft, AlertCircle } from "lucide-react";
+import { ChevronLeft, AlertCircle } from "lucide-react";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
@@ -135,10 +136,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
         </div>
 
         {/* Submit */}
-        <button type="submit" className="btn btn-gold btn-lg w-full" style={{ borderRadius: 999 }}>
-          <ArrowDownToLine size={16} />
-          Confirm deposit · Thibitisha
-        </button>
+        <SubmitButton label="Confirm deposit · Thibitisha" pendingLabel="Processing deposit…" />
       </form>
 
       <p className="px-1 text-center text-[11.5px] text-text-subtle leading-relaxed">

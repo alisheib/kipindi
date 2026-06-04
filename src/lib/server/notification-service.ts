@@ -277,6 +277,32 @@ export function notifyProposalResolvedPaid(userId: string, opts: { titleEn: stri
   });
 }
 
+/** Refund receipt — when a market is voided and stakes are returned. */
+export function notifyRefund(userId: string, opts: { stake: number; marketTitle: string; marketId: string }) {
+  return notify({
+    userId,
+    kind: "DEPOSIT",
+    titleEn: `Refund · TZS ${opts.stake.toLocaleString()} returned`,
+    titleSw: `Kurudishiwa · TZS ${opts.stake.toLocaleString()}`,
+    bodyEn: `${opts.marketTitle.slice(0, 70)} was voided. Your stake has been returned.`,
+    bodySw: `Soko limebatilishwa. Dau lako limerudishwa.`,
+    href: `/markets/${opts.marketId}`,
+  });
+}
+
+/** Cashout receipt — when a player sells a position early. */
+export function notifyCashout(userId: string, opts: { amount: number; marketTitle: string; marketId: string }) {
+  return notify({
+    userId,
+    kind: "WIN",
+    titleEn: `Cashed out · TZS ${opts.amount.toLocaleString()}`,
+    titleSw: `Umetoa · TZS ${opts.amount.toLocaleString()}`,
+    bodyEn: `Early exit from ${opts.marketTitle.slice(0, 60)}. Funds in wallet.`,
+    bodySw: `Umetoka mapema. Pesa imo kwenye pochi yako.`,
+    href: `/markets/${opts.marketId}`,
+  });
+}
+
 export function notifyKyc(userId: string, status: "APPROVED" | "REJECTED" | "PENDING_REVIEW") {
   if (status === "APPROVED") {
     return notify({

@@ -22,7 +22,7 @@ import { isLockedOut } from "./responsible-gambling";
 import { rateCheck } from "./rate-limit";
 import { getEffectiveConfig, payoutForWhole, settledPayoutWhole } from "./market-config";
 import { recordSnapshot, seedHistory } from "./market-history";
-import { notifyBetPlaced, notifyWin, notifyLoss } from "./notification-service";
+import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout } from "./notification-service";
 import { onRecruitBet } from "./affiliate-service";
 import { seedMarket, settleHousePosition, canSeedNewMarket, getHousePoolSeedForMarket } from "./house-pool";
 import type { ServiceResult } from "./auth-service";
@@ -475,6 +475,7 @@ export async function repairOrphanedPositions(): Promise<{ repaired: number; ref
       amlReason: null,
       createdAt: p.settledAt, updatedAt: p.settledAt, completedAt: p.settledAt,
     });
+    notifyRefund(p.userId, { stake: p.stake, marketTitle: "Orphaned position", marketId: "" });
     audit({
       category: "WALLET",
       action: "position.orphan_refund",
@@ -584,6 +585,8 @@ export async function cashOutPosition(
       createdAt: now, updatedAt: now, completedAt: now,
     });
 
+    notifyCashout(userId, { amount: value, marketTitle: m.titleEn, marketId: m.id });
+
     audit({
       category: "BET",
       action: "market.position.cashed_out",
@@ -682,6 +685,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
         amlReason: null,
         createdAt: m.resolutionStage2At!, updatedAt: m.resolutionStage2At!, completedAt: m.resolutionStage2At!,
       });
+      notifyRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id });
     }
   } else {
     // Whole-pool pari-mutuel distribution.

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowUpFromLine, ChevronLeft, ShieldCheck, AlertCircle } from "lucide-react";
+import { ChevronLeft, ShieldCheck, AlertCircle } from "lucide-react";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
@@ -207,14 +208,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
           </div>
         </div>
 
-        <button
-          type="submit"
-          disabled={!kycApproved}
-          className="btn btn-gold btn-lg w-full rounded-full"
-        >
-          <ArrowUpFromLine size={16} />
-          Confirm withdrawal · Thibitisha
-        </button>
+        <SubmitButton label="Confirm withdrawal · Thibitisha" pendingLabel="Processing withdrawal…" />
       </form>
     </main>
   );
