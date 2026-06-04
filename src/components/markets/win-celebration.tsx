@@ -1,15 +1,19 @@
 "use client";
 
 /**
- * WinCelebration — gold-and-aqua confetti popup, fired when:
+ * WinCelebration — calm gilt celebration popup, fired when:
  *   • A position resolves WIN (notify-poller listens for matches)
  *   • A cash-out clears with net profit (sell-button fires on success)
  *
  * The component is mounted once via <WinCelebrationHost /> in AppShell. Any
  * client component can fire one with `dispatchWinCelebration({...})`. The
  * popup auto-dismisses after 4.5s; manual close + click-anywhere-outside
- * also work. Kit-faithful — gold gradient title, aqua finishing accent on
- * the divider, mono numerals for the payout.
+ * also work.
+ *
+ * Kit-faithful (DEVELOPER_REFERENCE invariant #7 + WinCelebration spec):
+ * the celebration is ONE gilt ray + a rolling counter on the payout — calm,
+ * never a casino. **No confetti / chips / dice / slot reels.** (v2 removed the
+ * old 60-piece confetti burst to comply with the kit.)
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -37,24 +41,29 @@ export function dispatchWinCelebration(p: WinCelebrationPayload) {
 
 const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 
-const CONFETTI_COUNT = 60;
-
-/** Deterministic-but-spread confetti specs — gold + aqua + pearl. */
-function buildConfetti(seed: number) {
-  const tones = ["var(--gold-300)", "var(--gold-500)", "var(--aqua-300)", "oklch(96% 0.005 240)"];
-  const out: Array<{ x: number; delay: number; color: string; size: number; rotate: number }> = [];
-  let s = seed;
-  for (let i = 0; i < CONFETTI_COUNT; i++) {
-    s = (s * 1103515245 + 12345) >>> 0;
-    out.push({
-      x: ((s % 1000) / 1000),
-      delay: ((s >> 8) % 600),
-      color: tones[(s >> 16) % tones.length],
-      size: 6 + ((s >> 18) % 6),
-      rotate: ((s >> 14) % 90) - 45,
-    });
-  }
-  return out;
+/** Rolling counter for the payout headline — counts up 0 → value on mount
+ *  (~900ms, ease-out-quart). Snaps instantly under prefers-reduced-motion.
+ *  Mirrors the WalletBalancePill tween so the "money landed" beat is
+ *  consistent across the app. Mounts fresh each time the popup opens. */
+function RollingAmount({ value }: { value: number }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    const reduce = typeof window !== "undefined"
+      && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) { setN(value); return; }
+    const dur = 900;
+    const start = performance.now();
+    let raf = 0;
+    const tick = () => {
+      const t = Math.min(1, (performance.now() - start) / dur);
+      const eased = 1 - Math.pow(1 - t, 4);
+      setN(Math.round(value * eased));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+  return <>TZS {n.toLocaleString("en-US")}</>;
 }
 
 export function WinCelebrationHost() {
@@ -68,7 +77,7 @@ export function WinCelebrationHost() {
       if (!detail) return;
       setPayload(detail);
       setOpen(true);
-      haptics.celebrate(); // the peak — same beat as the confetti burst
+      haptics.celebrate(); // the peak — fires with the gilt ray + counter roll
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => setOpen(false), 4_500);
     };
@@ -90,8 +99,6 @@ export function WinCelebrationHost() {
 
   if (typeof document === "undefined" || !open || !payload) return null;
 
-  const seed = (payload.amount * 31 + (payload.label?.length ?? 0)) >>> 0;
-  const confetti = buildConfetti(seed);
   const heading = payload.kind === "WIN" ? "Won!" : "Cashed out";
   const sub = payload.kind === "WIN" ? "Umeshinda" : "Umetoa";
 
@@ -107,34 +114,11 @@ export function WinCelebrationHost() {
         type="button"
         aria-label="Dismiss"
         onClick={() => setOpen(false)}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 backdrop-blur-md"
         style={{ animation: "win-burst 200ms ease-out both" }}
       />
 
-      {/* Confetti layer — origin at top-center of card */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        {confetti.map((c, i) => (
-          <span
-            key={i}
-            aria-hidden
-            style={{
-              position: "absolute",
-              left: "50%",
-              top: "20%",
-              width: c.size,
-              height: c.size * 0.4,
-              borderRadius: 1,
-              background: c.color,
-              transform: `rotate(${c.rotate}deg)`,
-              animation: `win-confetti 1800ms ${c.delay}ms cubic-bezier(.2,.8,.2,1) forwards`,
-              ["--x" as string]: c.x,
-              opacity: 0,
-            } as React.CSSProperties}
-          />
-        ))}
-      </div>
-
-      {/* Card */}
+      {/* Card — calm gilt celebration (no confetti, per kit invariant #7) */}
       <div
         className="relative z-10 w-full max-w-[380px] overflow-hidden rounded-2xl border border-gold-700 bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)]"
         style={{ animation: "win-burst 320ms cubic-bezier(.2,.8,.2,1) both" }}
@@ -191,7 +175,7 @@ export function WinCelebrationHost() {
               letterSpacing: "-0.02em",
             }}
           >
-            TZS {fmt(payload.amount)}
+            <RollingAmount value={payload.amount} />
           </p>
           {typeof payload.net === "number" && (
             <p className="mt-1.5 font-mono text-[13px] tabular-nums text-aqua-200">

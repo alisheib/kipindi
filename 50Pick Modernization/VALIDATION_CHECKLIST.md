@@ -56,7 +56,7 @@ Run the app (`npm run dev`), open each surface, and compare against the kit's
 | D1 | Portaled, scrim + raised card, spring entrance | ✅ | `operation-result-modal.tsx` |
 | D2 | **Frosted scrim (blur)** behind every modal | 🔄 | Sprint 3 (blur-md / 12px) |
 | D3 | Glass top-edge + strong border on modal cards | 🔄 | Sprint 3 |
-| D4 | Win modal: animated entrance + gilt ray + rolling counter (NO confetti) | ⬜ | Sprint 6 (`win-celebration.tsx`) |
+| D4 | Win modal: animated entrance + gilt ray + rolling counter (NO confetti) | 🔄 | Sprint 6 — `win-celebration.tsx`: **removed 60-piece confetti (was an invariant breach)**; kept gilt ray; payout now `RollingAmount` count-up; scrim blur-md |
 | D5 | Loss modal: calm glass dim, gentle fade, no harsh red | ✅ | `operation-result-modal` danger tone |
 | D6 | Confirm modals (bet/sell) + auto-close gold strip | ✅ | bet/sell-confirm modals |
 | D7 | Reality-check modal: calm, bilingual, KPI grid | ✅ | `rg/reality-check.tsx` (scrim deepened S3) |
@@ -97,7 +97,7 @@ Run the app (`npm run dev`), open each surface, and compare against the kit's
 | # | Kit detail | Status | Where / note |
 |---|---|---|---|
 | H1 | Mono tabular numbers for every amount/%/time/stat | ✅ | `.mono`, `font-mono` everywhere |
-| H2 | Rolling counter on change | ✅/⬜ | `.num-roll`/`.value-roll` exist; verify wired per surface (Sprint 6) |
+| H2 | Rolling counter on change | ✅ | WalletBalancePill tween + win-celebration `RollingAmount`; `.num-roll`/`.value-roll` available for more surfaces |
 | H3 | Route-enter transition + staggered card reveals | ✅/⬜ | `.route-enter`/`.reveal-up`/`.stagger-item` exist; verify wiring (Sprint 6) |
 | H4 | Skeleton shimmer → content | ✅ | `.skeleton`, `ui/skeleton.tsx` |
 
@@ -132,7 +132,7 @@ Run the app (`npm run dev`), open each surface, and compare against the kit's
 | L1 | YES=green/LEFT, NO=rose/RIGHT everywhere | ✅ |
 | L2 | Gold = earned only (resolved / payout button / dial needle) | ✅ |
 | L3 | Blue = chrome/focus/links/card-hover | ✅ |
-| L4 | No casino imagery (no confetti/chips/dice) | ✅ |
+| L4 | No casino imagery (no confetti/chips/dice) | ✅ | Sprint 6 removed the win-celebration confetti — now compliant |
 | L5 | Pool-share copy, never "guaranteed/risk-free" | ✅ |
 | L6 | Single dark theme (no light mode) | ➖ by design |
 | L7 | F1 wallpaper hero preserved (not HeroConstellation) | ✅ |

@@ -121,10 +121,19 @@ spots, leave good components alone.
   is token-driven and inherits Sprint 1.
 - Acceptance: `npm run build` exit 0. ✓
 
-### Sprint 6 — Celebrations & motion system — ☐ TODO
-Files: `markets/win-celebration.tsx`, `badges/AchievementToast.tsx`, `badges/Badge.tsx`,
-`brand/*` rolling number. Calm gilt ray + rolling counter (NO confetti/chips). Wire
-route-enter transitions + staggered card reveals (`.stagger-grid`/`.reveal-up`) on grids.
+### Sprint 6 — Celebrations & motion system — 🔄 IN PROGRESS (2026-06-05)
+- **`win-celebration.tsx` — kit-compliance fix + rolling counter (DONE).** The component
+  fired a **60-piece confetti burst — a direct violation of invariant #7** (no casino
+  imagery). Removed `CONFETTI_COUNT`/`buildConfetti`/the confetti layer; kept the gilt
+  ray (`wc-rays`) + trophy. Payout now uses a new `RollingAmount` count-up (0→value,
+  900ms ease-out-quart, snaps under reduced-motion). Scrim `blur-sm`→`blur-md`.
+  `.confetti-fleck`/`win-confetti`/`confetti-fall` remain in globals.css but are **dead
+  CSS** (no component references them → nothing renders). Optional cleanup later.
+- **Remaining this sprint:** wire route-enter + staggered grid reveals — `.market-grid`
+  uses a CSS class; do it so reveals fire on load but NOT on every filter change (needs
+  a mount-only / IntersectionObserver guard, else janky). Audit `badges/*` (achievement
+  toast/medallion) — likely already gilt/kit-faithful.
+- Acceptance: `npm run build` exit 0.
 
 ### Sprint 7 — Admin console — ☐ TODO
 Files: `components/admin/*` (`admin-shell.tsx`, `admin-charts.tsx`, `admin-mobile-nav.tsx`,
