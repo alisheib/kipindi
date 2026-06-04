@@ -176,6 +176,20 @@ give *resting* surfaces real Dark-Glass depth:
 > glance. For each remaining surface, ask "what's different when the user is NOT interacting?"
 > Apply resting glass depth (gradient fills, inner light-edge, soft elevation) — not just hover.
 
+### Sprint 7 — At-rest player-surface sweep + `.glass-panel` utility — 🔄 IN PROGRESS (2026-06-05)
+Continues the Sprint 6.5 learning across player pages. **New reusable `.glass-panel`**
+utility in globals.css (top-lit royal radial gradient + `border-strong` + soft `--shadow-3`
++ 1px inner light-edge; no backdrop-filter — sits on canvas). Swap flat
+`border border-border bg-bg-elevated` boxes → `glass-panel`.
+- Applied: leaderboard consensus panel + leaderboard table; wallet transactions panel +
+  self-exclusion/limits panel.
+- **Navbar polish (Ali asked):** `top-app-bar` header was already sticky + `backdrop-blur-xl`;
+  upgraded to `border-strong` + glass top-light + soft depth shadow under the bar.
+- **Remaining flat panels to glass (tracked):** help (header/cards), live, fairness,
+  positions, legal layout, auth pages, market detail panels, wallet withdraw/deposit headers.
+  Use `glass-panel` swap; skip loading/dashed/opacity-variant boxes.
+- Acceptance: `npm run build` exit 0 (verifying).
+
 ## Progress log
 
 - **2026-06-04 — Sprint 1 DONE.** Foundation atoms modernized in `src/app/globals.css`

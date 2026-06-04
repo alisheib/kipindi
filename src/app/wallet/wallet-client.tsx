@@ -177,7 +177,7 @@ export function WalletPageClient({
 
       {tab === "activity" && (
         transactions.length > 0 ? (
-          <section className="rounded-xl border border-border bg-bg-elevated overflow-hidden">
+          <section className="rounded-xl glass-panel overflow-hidden">
             {transactions.map((t) => <TxnRow key={t.id} tx={t} />)}
           </section>
         ) : (
@@ -263,7 +263,7 @@ export function WalletPageClient({
               </div>
             </div>
           ))}
-          <div className="rounded-xl border border-border bg-bg-elevated p-4 space-y-2">
+          <div className="rounded-xl glass-panel p-4 space-y-2">
             <p className="font-display text-[13.5px] font-semibold text-text">
               Self-exclusion <span className="text-text-subtle italic font-normal">· Kujitenga</span>
             </p>

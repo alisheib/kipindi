@@ -48,6 +48,7 @@ Run the app (`npm run dev`), open each surface, and compare against the kit's
 | C2 | Hover (locked blue): **lift + brand-blue frame + soft blue glow** | 🔄 | Sprint 1/2/4 (`.mcard`, `card.tsx`, `position-card`) |
 | C3 | Market card: **glass-royal panel** (at rest), title-left / %-right, micro bar | 🔄 | Sprint 6.5 — `.mcard` resting glass depth (cascades app-wide) |
 | C5 | Landing trust strip + icon tiles = frosted glass at rest | 🔄 | Sprint 6.5 — `app/page.tsx` |
+| C6 | Reusable `.glass-panel` for player section panels (at rest) | 🔄 | Sprint 7 — globals.css `.glass-panel`; applied to leaderboard + wallet; more pages tracked |
 | C4 | Position card hover lift | 🔄 | Sprint 4 |
 
 ## D. Modals, sheets, overlays
@@ -106,7 +107,7 @@ Run the app (`npm run dev`), open each surface, and compare against the kit's
 
 | # | Kit detail | Status | Where / note |
 |---|---|---|---|
-| I1 | Top nav 56px + sticky w/ blur | ✅ | `top-app-bar.tsx` already `sticky` + `backdrop-blur-xl` |
+| I1 | Top nav 56px + sticky w/ blur | ✅ | `top-app-bar.tsx` sticky + `backdrop-blur-xl`; Sprint 7 added border-strong + glass top-light + depth shadow |
 | I2 | Bottom nav 64px, 5-up, active tint | ✅ | `layout/bottom-nav.tsx` |
 | I3 | Live ticker (red pulse) | ✅ | `layout/live-ticker.tsx` |
 | I4 | **Balance-privacy eye** (Cash/CashEye) on nav pill, wallet, positions | ✅ | Sprint 5 — `ui/cash.tsx`; wired nav pill + top-bar eye + position-card + wallet (balance/pending/hold/txns). Global toggle (window flag + event + localStorage) |

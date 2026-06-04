@@ -152,7 +152,7 @@ export default function LeaderboardPage() {
 
       {/* Consensus shift chart — the kit's PriceChart applied platform-wide */}
       {consensus.length > 1 && (
-        <section className="rounded-xl border border-border bg-bg-elevated p-4 lg:p-5">
+        <section className="rounded-xl glass-panel p-4 lg:p-5">
           <div className="flex items-baseline justify-between mb-3">
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">
@@ -168,7 +168,7 @@ export default function LeaderboardPage() {
         </section>
       )}
 
-      <section className="overflow-x-auto rounded-xl border border-border bg-bg-elevated">
+      <section className="overflow-x-auto rounded-xl glass-panel">
         <table className="w-full text-[13px] min-w-[640px]">
           <thead className="border-b border-border bg-bg-overlay">
             <tr className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
