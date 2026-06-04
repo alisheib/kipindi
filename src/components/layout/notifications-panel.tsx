@@ -188,7 +188,7 @@ export function NotificationsPanel() {
         <>
           <div
             aria-hidden
-            className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm"
+            className="fixed inset-0 z-[60] bg-black/45 backdrop-blur-md"
             onClick={() => setOpen(false)}
           />
           <div
@@ -196,13 +196,13 @@ export function NotificationsPanel() {
             role="dialog"
             aria-label="Notifications"
             className={cn(
-              "fixed left-3 right-3 top-[calc(env(safe-area-inset-top)+72px)] z-[61] rounded-xl border border-border bg-bg-elevated overflow-hidden shadow-[0_24px_64px_-16px_rgba(0,0,0,0.55)] flex flex-col",
+              "fixed left-3 right-3 top-[calc(env(safe-area-inset-top)+72px)] z-[61] rounded-xl border border-border-strong bg-bg-elevated/85 backdrop-blur-xl overflow-hidden shadow-[0_24px_64px_-16px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.06)] flex flex-col",
               "max-h-[calc(100dvh-env(safe-area-inset-top)-72px-env(safe-area-inset-bottom)-72px)]",
               "sm:left-auto sm:right-4 sm:top-[64px] sm:w-[380px] sm:max-w-[calc(100vw-24px)] sm:max-h-[480px]",
             )}
             style={{ animation: "np-rise 180ms cubic-bezier(.2,.8,.2,1)" }}
           >
-            <div className="flex h-11 items-center justify-between border-b border-border bg-bg-elevated px-3 shrink-0">
+            <div className="flex h-11 items-center justify-between border-b border-border bg-transparent px-3 shrink-0">
               <p className="font-mono text-micro font-bold uppercase tracking-[0.18em] text-text">
                 Notifications · Arifa
               </p>
@@ -224,7 +224,7 @@ export function NotificationsPanel() {
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto overscroll-contain bg-bg-elevated">
+            <div className="flex-1 overflow-y-auto overscroll-contain bg-transparent">
               {items.map((n) => {
                 const Icon = iconFor(n.kind);
                 const isUnread = !n.readAt;

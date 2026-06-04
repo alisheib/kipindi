@@ -106,11 +106,11 @@ export function AvatarMenu({
       </button>
       {open && typeof document !== "undefined" && createPortal(
         <>
-          <div aria-hidden className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
+          <div aria-hidden className="fixed inset-0 z-[60] bg-black/45 backdrop-blur-md" onClick={() => setOpen(false)} />
           <div
             ref={menuRef}
             role="menu"
-            className="fixed left-3 right-3 top-[calc(env(safe-area-inset-top)+72px)] sm:left-auto sm:right-4 sm:top-[64px] sm:w-[280px] sm:max-w-[calc(100vw-24px)] max-h-[calc(100dvh-env(safe-area-inset-top)-72px-env(safe-area-inset-bottom)-72px)] sm:max-h-[calc(100dvh-100px)] overflow-y-auto rounded-xl border border-border bg-bg-elevated shadow-[0_24px_48px_-16px_rgba(0,0,0,0.55)] z-[61]"
+            className="fixed left-3 right-3 top-[calc(env(safe-area-inset-top)+72px)] sm:left-auto sm:right-4 sm:top-[64px] sm:w-[280px] sm:max-w-[calc(100vw-24px)] max-h-[calc(100dvh-env(safe-area-inset-top)-72px-env(safe-area-inset-bottom)-72px)] sm:max-h-[calc(100dvh-100px)] overflow-y-auto rounded-xl border border-border-strong bg-bg-elevated/85 backdrop-blur-xl shadow-[0_24px_48px_-16px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.06)] z-[61]"
           >
             <div className="px-3.5 py-3 border-b border-border flex items-center gap-3">
               <Avatar initials={initials} size="md" seed={seed ?? initials} src={avatarSrc ?? undefined} />
