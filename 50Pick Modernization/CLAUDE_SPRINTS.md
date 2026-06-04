@@ -5,6 +5,33 @@
 > Each sprint is a self-contained, build-verified unit. Update the **Progress log**
 > at the bottom when you finish work, and flip the sprint's status.
 
+## DIRECTION LOCKED (2026-06-05): FULL KIT CONFORMANCE (polish)
+Ali chose **full faithful kit conformance**, NOT a bolder departure. Important context he
+now understands: the kit was **reverse-engineered from the live app** (`kit50.css`:
+"production-matched tokens from the live screenshot"; `DEVELOPER_REFERENCE`: "palette,
+components, dial, copy preserved identically; refresh = surface/motion/detail only"). So
+conformance = a refined version of today's look, not a reinvention. Job = apply EVERY kit
+detail everywhere, FIX DEVIATIONS, ensure 1:1, track in `VALIDATION_CHECKLIST.md`.
+
+**Deviations found (fix these — they're why it "looked unchanged"):**
+- ✅ Live market cards use `.mcardp` (NOT `.mcard`) — earlier `.mcard` edits were dead.
+  Fixed: `.mcardp` got the kit corner glyph watermark + blue hover (was gold = wrong).
+- ⚠️ `.mcard` (the OTHER card class) — audit where it's used; may be dead or secondary.
+- Card hover must be BLUE everywhere (gold reserved for wins) — `.mcardp` fixed; re-audit all.
+
+**Remaining conformance task list (systematic — do every one, verify, tick the matrix):**
+1. Cards: confirm `.mcard` vs `.mcardp` usage; one consistent kit treatment ("one way").
+2. Buttons: every variant vs kit `Btn`/`SideButton` (radius 8, inset highlight, motion). 
+3. Forms/inputs: `input`, OTP boxes, select, textarea, stepper vs `ds-forms.jsx`.
+4. Avatars: `identity-avatar` vs kit `Avatar` + tier glyphs.
+5. Numbers: mono tabular everywhere (audit any non-mono amount/%).
+6. Bars/progress: generic progress = traveling light-sweep + leading node (kit); `.pbar` done.
+7. Flat panels → `.glass-panel` (remaining: market detail, wallet deposit/withdraw bodies,
+   profile, proposals, admin; skip decorated headers w/ their own bg layer).
+8. Nav/flows: top/bottom/ticker/avatar-menu/tabs/segmented vs `ds-brand-nav.jsx`.
+9. Chips/labels: variants + copy vs kit `Chip`.
+10. Motion: route-enter + staggered reveals (mount-guarded), haptics.
+
 ## Ground rules (never violate)
 
 1. **UI only.** No change to logic, routes, server actions, copy, data, or the

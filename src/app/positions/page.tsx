@@ -178,7 +178,7 @@ function SummaryCell({
     : tone === "gold" ? "text-gold-300"
     : "text-text";
   return (
-    <div className="rounded-xl border border-border bg-bg-elevated px-4 py-3.5">
+    <div className="rounded-xl glass-panel px-4 py-3.5">
       <div className="flex items-center gap-1.5">
         {icon}
         <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-semibold text-text-subtle">{label}</p>
