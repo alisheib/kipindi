@@ -25,7 +25,7 @@ export function PositionCard({ marketId, marketTitle, side, stake, current, payo
   return (
     <Link
       href={`/markets/${marketId}` as never}
-      className={cn("block w-full rounded-lg border border-border bg-bg-elevated p-4 transition-colors hover:border-border-strong", className)}
+      className={cn("block w-full rounded-lg border border-border bg-bg-elevated p-4 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-teal-400 hover:shadow-[var(--shadow-3),var(--glow-blue)]", className)}
     >
       <div className="mb-2.5 flex items-center justify-between">
         <span

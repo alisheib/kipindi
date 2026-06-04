@@ -25,6 +25,9 @@
 7. **No per-sprint screenshots** unless Ali asks.
 8. Spec sources, in priority order: `DEVELOPER_REFERENCE.md` → `THEME_AND_COMPONENTS.md`
    → `kit50.css`/`tokens.css` → the `ds-*.jsx` design references → `uploads/UI_MODERNIZATION_BRIEF.md`.
+9. **Every single kit detail is tracked in `VALIDATION_CHECKLIST.md`** so designers can
+   validate the build against the kit item-by-item. When you implement (or confirm) any
+   detail, update its row there (status + file). Nothing ships "untracked".
 
 ## Reference map
 
@@ -36,6 +39,7 @@
 | Design references (Babel-in-browser — port, don't ship) | `ds-*.jsx`, `kit50.jsx`, `features.jsx` |
 | Admin console handoff | `admin-handoff/`, `ds-admin.jsx` |
 | The classic UI being replaced (rollback reference) | `../50Pick ui v1/` |
+| **Designer validation matrix (every kit detail → code location)** | `VALIDATION_CHECKLIST.md` |
 
 ---
 
@@ -84,15 +88,25 @@ Finding: the modal family was already strong (portaled, spring entrance via
   generic result rows stay static — final values, not live).
 - Acceptance: `npm run build` exit 0.
 
-### Sprint 4 — Market surfaces — ☐ TODO
-The signature screens. Files: `markets/market-card.tsx`, `markets/conviction-dial.tsx`
-(refine: gold round handle, value bubble on drag, snap haptic, scale+ring on active),
-`markets/probability-bar.tsx` (**add the glowing gold boundary needle** that ties to the
-dial), `markets/position-card.tsx`, `markets/sell-button.tsx`, `markets/countdown.tsx`,
-`markets/house-lean-warning.tsx`, `markets/price-chart.tsx`, `markets/probability-chart.tsx`,
-`markets/market-stats.tsx`, `markets/stepped-progress.tsx`, `markets/circular-progress.tsx`,
-`markets/comments-thread.tsx`, `markets/share-button.tsx`. Progress bars get the traveling
-light-sweep + leading-edge node.
+### Sprint 4 — Market surfaces — ✅ DONE (2026-06-04)
+Finding: the *signature* surfaces were already fully kit-faithful/modern — leave them:
+- `probability-bar.tsx` → `brand.tsx TippingBar`: already has the **glowing gilt
+  boundary needle**, glowing YES/NO fills, tilt animation, resolved shimmer. No edit.
+- `conviction-dial.tsx`: already scales on drag (`knobScale`), squircle gradient knob,
+  neutral halo ring, grab/grabbing cursors, tilt. Exceeds spec + is betting-critical →
+  **NOT touched** (no logic risk).
+- `market-card.tsx` (`.mcard`): hover already modernized in Sprint 1.
+- **`position-card.tsx` — EDITED:** flat color-only hover → modern subtle lift
+  (`-translate-y-0.5`) + blue frame + soft `--glow-blue` (sized for dense lists).
+- Remaining (`sell-button`, `countdown`, `house-lean-warning`, charts, `market-stats`,
+  stepped/circular progress, comments, share) are token/class-driven and inherit Sprint 1.
+- Acceptance: `npm run build` exit 0.
+
+**KEY LEARNING for future sprints:** this codebase is *already largely modern* in its
+signature components (dial, bar, modals, win celebration). The "classic" feel came from
+flat **atoms** (buttons/cards/toasts/scrims) — fixed in Sprints 1–3. Remaining sprints are
+incremental polish + flat-spot hunts, NOT rebuilds. Don't fabricate work; audit, fix flat
+spots, leave good components alone.
 
 ### Sprint 5 — Navigation & chrome — ☐ TODO
 Files: `layout/top-app-bar.tsx`, `layout/bottom-nav.tsx`, `layout/live-ticker.tsx`,
@@ -138,4 +152,10 @@ classic Playwright suites to prove zero functional drift.
   deeper frosted scrim (`blur-md`/12px) + glass top-edge + border-strong to
   operation-result, bet-confirm, sell-confirm, confirm-dialog, reality-check.
   first-visit-primer already modern; self-exclude-confirm is inline. Build exit 0.
-  Committed as `UI v2 Sprint 3`.
+  Committed as `UI v2 Sprint 3` (`2fa32b1`).
+- **2026-06-04 — Sprint 4 DONE.** Signature surfaces (TippingBar gold needle, conviction
+  dial) already modern — left intact. `position-card.tsx` flat hover → modern lift+glow.
+  Build exit 0. Committed as `UI v2 Sprint 4`.
+- **2026-06-04 — Added `VALIDATION_CHECKLIST.md`** — designer-facing matrix of every kit
+  detail → code location + status (per Ali's instruction that every kit detail be present
+  for designers to validate). Keep it updated each sprint.
