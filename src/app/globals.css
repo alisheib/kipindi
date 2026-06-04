@@ -1549,7 +1549,11 @@ html.kp-reduce-motion *::after {
   padding: 13px;
   border-radius: var(--r-md);
   border: 1px solid var(--border);
-  background: var(--bg-elevated);
+  /* v2 Dark Glass — at-rest depth: subtle top-lit royal gradient + a 1px
+     inner light-edge + soft elevation, so cards read as layered glass panels
+     instead of flat fills (visible without hover). */
+  background: linear-gradient(180deg, oklch(25% 0.145 268) 0%, var(--bg-elevated) 62%);
+  box-shadow: var(--shadow-2), inset 0 1px 0 oklch(100% 0 0 / 0.05);
   transition: transform var(--ease-micro), border-color var(--ease-micro), box-shadow var(--ease-micro);
   container-type: inline-size; /* lets the card adapt its own content to its width */
 }

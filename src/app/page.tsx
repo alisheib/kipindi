@@ -208,9 +208,20 @@ export default async function LandingPage() {
         </section>
       )}
 
-      {/* TRUST STRIP — combined "how + why" in one tight row, no more 6-card scroll */}
-      <section className="rounded-xl border border-border bg-bg-elevated p-5 lg:p-7">
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-7">
+      {/* TRUST STRIP — combined "how + why" in one tight row, no more 6-card scroll.
+          v2 Dark Glass: top-lit royal glass panel + faint gilt/aqua corner glow
+          + 1px inner light-edge, so it reads as a premium frosted panel at rest. */}
+      <section
+        className="relative overflow-hidden rounded-2xl border border-border-strong p-5 lg:p-7"
+        style={{
+          background:
+            "radial-gradient(130% 150% at 0% 0%, oklch(27% 0.155 268) 0%, oklch(19% 0.12 268) 58%), " +
+            "radial-gradient(80% 120% at 100% 0%, oklch(40% 0.10 80 / 0.10), transparent 60%)",
+          backdropFilter: "blur(14px)",
+          boxShadow: "var(--shadow-3), inset 0 1px 0 rgba(255,255,255,0.06)",
+        }}
+      >
+        <div className="relative grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-7">
           <TrustItem
             icon={<BarChart3 size={20} />}
             n="01"
@@ -263,7 +274,13 @@ function TrustItem({
 
   const inner = (
     <div className="flex items-start gap-3.5">
-      <span className={`shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-md border border-border bg-bg-overlay ${accent}`}>
+      <span
+        className={`shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border-strong ${accent}`}
+        style={{
+          background: "linear-gradient(180deg, var(--bg-elevated2), var(--bg-overlay))",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
+        }}
+      >
         {icon}
       </span>
       <div className="min-w-0">

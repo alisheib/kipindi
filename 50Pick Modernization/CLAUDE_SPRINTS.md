@@ -158,6 +158,24 @@ classic Playwright suites to prove zero functional drift.
 
 ---
 
+### Sprint 6.5 — At-rest surface depth (landing visibility) — ✅ DONE (2026-06-05)
+**Driven by Ali feedback: "nothing changed in the landing."** Root cause: Sprints 1–6 were
+almost entirely **hover / motion / popup** states — invisible at rest / on a glance. Fix =
+give *resting* surfaces real Dark-Glass depth:
+- `.mcard` **resting** state (globals.css): top-lit royal gradient bg + 1px inner light-edge
+  (`inset 0 1px 0`) + soft `--shadow-2`. Cards now read as layered glass panels without
+  hovering. **Cascades to every card grid app-wide, incl. the landing live-markets row.**
+- Landing **trust strip** (`app/page.tsx`): flat `bg-bg-elevated` → frosted royal glass panel
+  (radial top-lit gradient + faint gilt corner glow + inner light-edge + `rounded-2xl`).
+- Landing **trust icon tiles**: flat → glass gradient + inner light-edge + `rounded-lg`.
+- F1 hero untouched (per lock).
+- Acceptance: `npm run build` exit 0 (verifying).
+
+> **KEY LEARNING (critical for remaining sprints):** modernization must change **at-rest
+> surfaces**, not only hover/motion/popups — non-technical stakeholders judge on a static
+> glance. For each remaining surface, ask "what's different when the user is NOT interacting?"
+> Apply resting glass depth (gradient fills, inner light-edge, soft elevation) — not just hover.
+
 ## Progress log
 
 - **2026-06-04 — Sprint 1 DONE.** Foundation atoms modernized in `src/app/globals.css`
@@ -180,4 +198,12 @@ classic Playwright suites to prove zero functional drift.
   for designers to validate). Keep it updated each sprint.
 - **2026-06-05 — Sprint 5 DONE.** Net-new balance-privacy eye (`ui/cash.tsx`) wired across
   nav pill + top-bar toggle + position cards + wallet page. Sticky-nav blur already present.
-  Build exit 0. Committed as `UI v2 Sprint 5`.
+  Build exit 0. Committed as `UI v2 Sprint 5` (`adfeb7c`, pushed by Ali).
+- **2026-06-05 — Sprint 6 (part 1) DONE.** Win celebration made kit-compliant: removed
+  60-piece confetti (invariant #7 breach), kept gilt ray, payout now `RollingAmount`
+  count-up, scrim blur-md. Ali confirmed: keep no-confetti. Route/stagger reveals deferred.
+  Build exit 0.
+- **2026-06-05 — Sprint 6.5 DONE.** Ali: "nothing changed in the landing" — S1–6 were
+  hover/motion/popup only. Added AT-REST glass depth: `.mcard` resting (top-lit gradient +
+  inner light-edge + soft shadow → cascades to all card grids), landing trust strip + icon
+  tiles → frosted royal glass. F1 hero untouched. Build exit 0.

@@ -44,9 +44,10 @@ Run the app (`npm run dev`), open each surface, and compare against the kit's
 
 | # | Kit detail | Status | Where / note |
 |---|---|---|---|
-| C1 | Card = elevated panel + hairline + inset top-highlight + soft shadow | ✅ | `ui/card.tsx`, `.mcard` |
+| C1 | Card = elevated panel + hairline + inset top-highlight + soft shadow | 🔄 | Sprint 6.5 — `.mcard` resting now top-lit gradient + inner light-edge + `--shadow-2` |
 | C2 | Hover (locked blue): **lift + brand-blue frame + soft blue glow** | 🔄 | Sprint 1/2/4 (`.mcard`, `card.tsx`, `position-card`) |
-| C3 | Market card: glass-royal panel, title-left / %-right, micro bar | ✅ | `markets/market-card.tsx` |
+| C3 | Market card: **glass-royal panel** (at rest), title-left / %-right, micro bar | 🔄 | Sprint 6.5 — `.mcard` resting glass depth (cascades app-wide) |
+| C5 | Landing trust strip + icon tiles = frosted glass at rest | 🔄 | Sprint 6.5 — `app/page.tsx` |
 | C4 | Position card hover lift | 🔄 | Sprint 4 |
 
 ## D. Modals, sheets, overlays
