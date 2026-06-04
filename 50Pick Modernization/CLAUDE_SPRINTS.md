@@ -15,8 +15,11 @@ nav element left from the old look. Designers must validate with zero issues.
   eye · S6 calm win celebration · S6.5 at-rest `.mcard`/landing glass · S7 `.glass-panel` +
   leaderboard/wallet/auth/help/fairness/live/positions panels.
 - Market card → kit (corner glyph watermark + blue hover) on the real class `.mcardp`.
-- **Navigation (this batch):** top-nav links = kit royal active-pill (was mono-uppercase +
-  gold underline); bottom-nav active = aqua (was gold). Nav now gold-free (gold = earned only).
+- **Navigation:** top-nav links = kit royal active-pill (was mono-uppercase + gold underline);
+  bottom-nav active = aqua (was gold). Nav now gold-free (gold = earned only).
+- **Overnight rounds:** Wave A (money+profile glass), B (forms verified), C (frosted dropdowns),
+  flat-solid YES/NO/gold buttons, market-detail glass, admin KPIs/cards + proposals glass,
+  AI chat panel frosted. Verified-conformant (no change): ticker, house-lean, avatars, inputs, numbers.
 
 **Overnight-sprint waves (2026-06-05):**
 - ✅ Wave A — `.glass-panel` across money + profile pages (deposit, withdraw, profile,
@@ -26,15 +29,22 @@ nav element left from the old look. Designers must validate with zero issues.
 - ✅ Wave C — frosted-glass dropdowns (avatar menu + notifications panel; transparent inner
   sections; blur-md scrims).
 
-**Still next (large batches, in order):**
-1. Wave D — avatars + tier glyphs vs kit `Avatar`; numbers audit (every amount/%/time mono).
-2. Wave E — progress bars traveling light-sweep (component-level: stepped/circular-progress)
-   + chip state polish. NOTE: no generic `.progress` CSS class exists; do at component level.
-3. Wave F — admin console pass (shell, KPI cards, charts, tables → glass + kit).
-4. Proposals list cards glass (have hover already — apply `.glass-panel` carefully).
-5. Remaining decorated headers review; language-toggle + period-picker dropdowns.
-6. Motion: route-enter + staggered reveals (mount-guarded — don't re-fire on filter).
-7. Cleanup dead `.mcard*` CSS (~globals.css 1543–1652). Final QA + responsive + a11y + `data-motion`.
+**Overnight sprint round 2 (2026-06-05) — Ali's named list + more:**
+- ✅ Card buttons: flat-solid kit fills (YES/NO/gold) — was the "old buttons" gradient look.
+- ✅ AI agent chat panel → frosted glass (`.cm-panel`).
+- ✅ Admin KPIs + AdminCard → glass (cascades all admin pages); proposals cards → glass.
+- ✅ Verified already-conformant (no change): live ticker/moving banner, house-lean warning,
+  IdentityAvatar (exceeds kit), inputs, numbers (mono everywhere). Wins/losses/cashouts go
+  through the frosted OperationResultModal + calm WinCelebration (done earlier).
+
+**Still next (lower priority — documented):**
+1. Wave E — progress bars traveling light-sweep (component-level: `stepped-progress.tsx`,
+   `circular-progress.tsx`, RG limit bars). No generic `.progress` CSS class — do at component.
+2. Wave F remainder — admin charts (`admin-charts.tsx`) + table row styling polish.
+3. Motion: route-enter + staggered reveals (mount-guarded — don't re-fire on filter changes).
+4. Chat sub-elements (send button, composer) + language-toggle/period-picker dropdown polish.
+5. Cleanup dead `.mcard*` CSS (~globals.css 1543–1652; confirmed unused). 
+6. Final QA: responsive (393/768/1024/1280/1440), a11y, `data-motion` throttle wiring.
 
 **Tracking:** every detail is a row in `VALIDATION_CHECKLIST.md` (sections A–N). Update status
 there as each lands. Keep this CURRENT STATE block + the Progress log at the bottom in sync.

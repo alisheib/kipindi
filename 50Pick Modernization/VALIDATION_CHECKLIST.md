@@ -153,6 +153,13 @@ Run the app (`npm run dev`), open each surface, and compare against the kit's
 | N6 | No emojis in UI copy | ✅ | invariant |
 | N7 | +30% string tolerance (SW/FR longer) | ✅ | enforced |
 
+## O. Avatars & identity
+
+| # | Kit detail | Status | Where / note |
+|---|---|---|---|
+| O1 | Deterministic per-seed avatar on royal axis + initials fallback | ✅ | `ui/identity-avatar.tsx` — generative heraldic crests (4 kinds), EXCEEDS kit |
+| O2 | Tier rings (bronze→sovereign) | ✅ | `TIER_RING` + ring prop |
+
 ## L. Hard invariants (must never break — verify on every screen)
 
 | # | Invariant | Status |
