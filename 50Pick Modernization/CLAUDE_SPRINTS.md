@@ -121,7 +121,7 @@ spots, leave good components alone.
   is token-driven and inherits Sprint 1.
 - Acceptance: `npm run build` exit 0. ✓
 
-### Sprint 6 — Celebrations & motion system — 🔄 IN PROGRESS (2026-06-05)
+### Sprint 6 — Celebrations & motion system — 🔄 PART 1 DONE (2026-06-05)
 - **`win-celebration.tsx` — kit-compliance fix + rolling counter (DONE).** The component
   fired a **60-piece confetti burst — a direct violation of invariant #7** (no casino
   imagery). Removed `CONFETTI_COUNT`/`buildConfetti`/the confetti layer; kept the gilt
@@ -129,11 +129,15 @@ spots, leave good components alone.
   900ms ease-out-quart, snaps under reduced-motion). Scrim `blur-sm`→`blur-md`.
   `.confetti-fleck`/`win-confetti`/`confetti-fall` remain in globals.css but are **dead
   CSS** (no component references them → nothing renders). Optional cleanup later.
-- **Remaining this sprint:** wire route-enter + staggered grid reveals — `.market-grid`
-  uses a CSS class; do it so reveals fire on load but NOT on every filter change (needs
-  a mount-only / IntersectionObserver guard, else janky). Audit `badges/*` (achievement
-  toast/medallion) — likely already gilt/kit-faithful.
-- Acceptance: `npm run build` exit 0.
+- **Ali's call (2026-06-05): KEEP kit-compliant — no confetti.** Confirmed via question.
+  Do not reintroduce confetti.
+- **Deferred to a careful pass (NOT done):** route-enter + staggered grid reveals.
+  `.market-grid` is a CSS class and the page re-renders on filter changes; a naive
+  `.stagger-grid` would re-animate every filter toggle. Route transitions need a
+  pathname-keyed client wrapper around `{children}` in `app-shell.tsx`, which forces a
+  remount (jank/scroll-loss risk). Do this deliberately with a mount-only/IntersectionObserver
+  guard + verify on real navigation before shipping. Badges audit also pending (likely fine).
+- Acceptance so far: `npm run build` exit 0 (celebration). Sprint stays 🔄 until reveals land.
 
 ### Sprint 7 — Admin console — ☐ TODO
 Files: `components/admin/*` (`admin-shell.tsx`, `admin-charts.tsx`, `admin-mobile-nav.tsx`,
