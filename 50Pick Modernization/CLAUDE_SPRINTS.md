@@ -51,15 +51,22 @@ Cascading stylesheet-level modernization (affects whole app at once).
 - **Market card** (`.mcard:hover`): deeper lift `-3px` + blue frame (`--teal-400`) + `--glow-blue`.
 - Acceptance: `npm run build` exit 0. ✓
 
-### Sprint 2 — Core atom components — ☐ TODO
-Port refinements into `src/components/ui/*` where CSS classes don't reach (structure,
-icons, motion props). Files: `button.tsx`, `card.tsx`, `chip.tsx`, `toast.tsx`,
-`input.tsx`, `password-input.tsx`, `phone-input.tsx`, `submit-button.tsx`, `avatar.tsx`,
-`identity-avatar.tsx`, `tabs.tsx`, `toggle.tsx`, `spinner.tsx`, `skeleton.tsx`,
-`countdown-pill.tsx`, `info-hint.tsx`, `tooltip.tsx`, `empty-state.tsx`, `glyphs.tsx`.
-First read each — many may already be fully driven by Sprint-1 CSS and need no change.
-- Add: chip micro-entrance + state pulse; tab active-indicator slide; toggle spring;
-  glassy `card.tsx` surface where elevated.
+### Sprint 2 — Core atom components — ✅ DONE (2026-06-04)
+Audited `src/components/ui/*`. Finding: the atom layer is already class/token-driven,
+so Sprint-1's `globals.css` work modernized most of it automatically.
+- `button.tsx` — pure `.btn`/`.btn-*` classes → fully covered by Sprint 1, no edit.
+- `chip.tsx` — token-driven inline styles → palette flows through, no edit.
+- `toggle.tsx` — thumb already slides on `--ease-stage`, kit-faithful, no edit.
+- `tabs.tsx` — gold active-underline + clean transitions already present, no edit.
+- **`card.tsx` — EDITED:** interactive hover upgraded to the modern card spec
+  (`-translate-y-1` + `border-teal-400` + `shadow-[var(--shadow-4),var(--glow-blue)]`),
+  consistent with `.mcard`.
+- Remaining atoms (`input`, `avatar`, `spinner`, `skeleton`, `tooltip`, `empty-state`,
+  `password/phone-input`, `submit-button`, `countdown-pill`, `info-hint`, `glyphs`) are
+  CSS/token-driven and inherit Sprint-1 styling; revisit only if a specific screen needs it.
+- Deferred niceties (optional, low priority): chip micro-entrance, tabs *sliding*
+  indicator (needs position measurement), toggle spring bezier (no production token yet).
+- Acceptance: `npm run build` exit 0.
 
 ### Sprint 3 — Modals, sheets & overlays — ☐ TODO
 Animated entrance (spring scale-in), frosted scrim, rolling counters on amounts,
@@ -114,4 +121,7 @@ classic Playwright suites to prove zero functional drift.
 - **2026-06-04 — Sprint 1 DONE.** Foundation atoms modernized in `src/app/globals.css`
   (buttons, toasts, probability bars, inputs, market-card hover). Build exit 0.
   Dependencies installed (`npm install`, ZIP had none). v1 archive created at
-  `../50Pick ui v1/`. Committed as `UI v2 Sprint 1`.
+  `../50Pick ui v1/`. Committed as `UI v2 Sprint 1` (`e71f3d4`).
+- **2026-06-04 — Sprint 2 DONE.** Audited the `ui/` atom layer — already class/token
+  driven, so Sprint 1 covered most. Only `card.tsx` interactive hover edited (modern
+  lift + blue frame + soft glow). Build exit 0. Committed as `UI v2 Sprint 2`.

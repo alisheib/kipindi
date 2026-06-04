@@ -26,7 +26,7 @@ export function Card({
         "rounded-lg bg-bg-elevated text-text",
         elevationClass[elevation],
         interactive &&
-          "transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-teal-500 hover:shadow-e3 cursor-pointer",
+          "transition-all duration-200 ease-out hover:-translate-y-1 hover:border-teal-400 hover:shadow-[var(--shadow-4),var(--glow-blue)] cursor-pointer",
         className,
       )}
       {...props}
