@@ -421,23 +421,25 @@ body {
 }
 .btn-primary:hover:not(:disabled) { filter: brightness(1.08) saturate(1.04) drop-shadow(0 6px 16px color-mix(in oklab, var(--teal-400) 30%, transparent)); }
 
+/* v2 kit: one flat-solid family — YES/NO/gold are SOLID fills (not gradients),
+   with a 1px inset top-highlight + soft shadow. (primary keeps its gradient.) */
 .btn-yes {
-  background: linear-gradient(180deg, oklch(60% 0.17 152) 0%, oklch(48% 0.16 152) 100%);
-  color: oklch(98% 0.02 152);
+  background: oklch(57% 0.155 150);
+  color: #fff;
   font-weight: 700;
-  border-color: oklch(40% 0.14 152);
-  box-shadow: 0 1px 0 oklch(72% 0.15 152) inset, 0 -1px 0 oklch(34% 0.12 152) inset, 0 2px 8px -2px oklch(20% 0.10 268 / 0.50);
-  text-shadow: 0 1px 0 oklch(20% 0.10 152 / 0.35);
+  border-color: transparent;
+  box-shadow: inset 0 1px 0 oklch(80% 0.14 152 / 0.40), 0 1px 2px oklch(10% 0.05 264 / 0.35);
+  text-shadow: 0 1px 0 oklch(20% 0.10 152 / 0.30);
 }
 .btn-yes:hover:not(:disabled) { filter: brightness(1.06) drop-shadow(0 6px 16px color-mix(in oklab, var(--yes-400) 30%, transparent)); }
 
 .btn-no {
-  background: linear-gradient(180deg, oklch(64% 0.20 22) 0%, oklch(54% 0.20 22) 100%);
-  color: oklch(98% 0.02 22);
+  background: oklch(56% 0.200 25);
+  color: #fff;
   font-weight: 700;
-  border-color: oklch(46% 0.18 22);
-  box-shadow: 0 1px 0 oklch(76% 0.18 22) inset, 0 -1px 0 oklch(40% 0.16 22) inset, 0 2px 8px -2px oklch(20% 0.10 268 / 0.50);
-  text-shadow: 0 1px 0 oklch(20% 0.10 22 / 0.35);
+  border-color: transparent;
+  box-shadow: inset 0 1px 0 oklch(80% 0.15 25 / 0.40), 0 1px 2px oklch(10% 0.05 264 / 0.35);
+  text-shadow: 0 1px 0 oklch(20% 0.10 22 / 0.30);
 }
 .btn-no:hover:not(:disabled) { filter: brightness(1.06) drop-shadow(0 6px 16px color-mix(in oklab, var(--no-400) 30%, transparent)); }
 
@@ -457,17 +459,13 @@ body {
 .btn-danger:hover:not(:disabled) { filter: brightness(1.08); }
 
 .btn-gold {
-  background: linear-gradient(180deg, oklch(86% 0.13 82) 0%, oklch(72% 0.14 80) 50%, oklch(58% 0.12 76) 100%);
-  color: oklch(18% 0.06 76);
+  background: oklch(76% 0.14 82);
+  color: oklch(20% 0.05 80);
   font-weight: 700;
-  border: 1px solid oklch(50% 0.10 76);
-  box-shadow:
-    0 1px 0 oklch(96% 0.07 80) inset,
-    0 -1px 0 oklch(40% 0.09 76) inset,
-    0 2px 6px -2px oklch(20% 0.06 76 / 0.45),
-    0 10px 28px -10px oklch(60% 0.13 78 / 0.55);
+  border-color: transparent;
+  box-shadow: inset 0 1px 0 oklch(95% 0.06 86 / 0.55), 0 1px 2px oklch(20% 0.06 76 / 0.40);
   letter-spacing: 0.005em;
-  text-shadow: 0 1px 0 oklch(96% 0.07 80 / 0.55);
+  text-shadow: 0 1px 0 oklch(96% 0.07 80 / 0.45);
 }
 .btn-gold:hover:not(:disabled) { filter: brightness(1.06) saturate(1.06) drop-shadow(0 6px 18px color-mix(in oklab, var(--gold-400) 38%, transparent)); }
 
