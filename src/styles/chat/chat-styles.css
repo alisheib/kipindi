@@ -84,7 +84,11 @@
 /* ---------- Panel chrome ----------------------------------------------- */
 
 .cm-panel {
-  background: var(--chat-canvas);
+  /* v2 Dark Glass — frosted translucent canvas so the AI agent panel reads as
+     a premium glass surface floating over the page. */
+  background: color-mix(in oklab, var(--chat-canvas) 86%, transparent);
+  backdrop-filter: blur(16px) saturate(1.1);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
   color: var(--chat-text);
   border: 1px solid var(--chat-border);
   border-radius: var(--r-lg);
@@ -92,7 +96,7 @@
   flex-direction: column;
   overflow: hidden;
   box-shadow:
-    0 1px 0 oklch(28% 0.090 268) inset,
+    0 1px 0 oklch(98% 0.01 268 / 0.08) inset,
     0 30px 80px -20px oklch(6% 0.090 268),
     0 12px 28px -10px oklch(6% 0.090 268 / 0.8);
   font-family: var(--font-body);

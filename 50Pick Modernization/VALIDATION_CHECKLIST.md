@@ -33,7 +33,7 @@ Run the app (`npm run dev`), open each surface, and compare against the kit's
 | # | Kit detail | Status | Where / note |
 |---|---|---|---|
 | B1 | One flat-solid family, radius 8, sizes sm/md/lg/xl (≥44px mobile) | ✅ | `.btn-sm..xl` |
-| B2 | Filled variants yes/no/gold + 1px top inset highlight | ✅ | `.btn-yes/no/gold` |
+| B2 | Filled variants yes/no/gold = **flat solid** (kit one-family) + 1px top inset highlight | 🔄 | flattened from gradients → solid kit fills (was the "old card buttons" look); cascades everywhere |
 | B3 | Hover → brightness + **lift (−1px)** + **same-hue glow** | 🔄 | Sprint 1 (drop-shadow glow) |
 | B4 | Press → **tactile scale-down** | 🔄 | Sprint 1 `scale(.97)` |
 | B5 | Chrome variants (primary/ghost/outline/aqua) share motion | ✅ | `.btn-primary/ghost/aqua-ghost` |
@@ -110,7 +110,9 @@ Run the app (`npm run dev`), open each surface, and compare against the kit's
 | I1 | Top nav 56px + sticky w/ blur | ✅ | `top-app-bar.tsx` sticky + `backdrop-blur-xl`; Sprint 7 added border-strong + glass top-light + depth shadow |
 | I2 | Bottom nav 64px, 5-up, active tint | 🔄 | active tint gold → **aqua** (kit `--accent`); gold-free nav |
 | I5 | Top-nav links = kit style (body text, royal active-pill, no gold) | 🔄 | was mono-uppercase + gold underline → royal active-pill |
-| I3 | Live ticker (red pulse) | ✅ | `layout/live-ticker.tsx` |
+| I3 | Live ticker / moving banner (red pulse, kind badges, mono amounts) | ✅ | `layout/live-ticker.tsx` — verified already modern/kit-faithful |
+| I7 | AI agent chat panel = frosted glass | 🔄 | `chat-styles.css .cm-panel` → translucent + backdrop-blur + light-edge |
+| I8 | House-lean warning (thin/negative) calm + bilingual | ✅ | `markets/house-lean-warning.tsx` — verified kit-faithful |
 | I4 | **Balance-privacy eye** (Cash/CashEye) on nav pill, wallet, positions | ✅ | Sprint 5 — `ui/cash.tsx`; wired nav pill + top-bar eye + position-card + wallet (balance/pending/hold/txns). Global toggle (window flag + event + localStorage) |
 
 ## J. Haptics & accessibility
