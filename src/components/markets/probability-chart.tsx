@@ -30,7 +30,7 @@ function smoothPath(pts: number[][]): string {
 export function ProbabilityChart({
   series,
   defaultRange,
-  width = 640,
+  width: widthProp,
   height = 256,
   ranges = ["1D", "1W", "1M", "ALL"],
 }: {
@@ -44,6 +44,23 @@ export function ProbabilityChart({
   const [range, setRange] = useState(defaultRange || ranges[ranges.length - 2] || ranges[0]);
   const [hover, setHover] = useState<number | null>(null);
   const lineRef = useRef<SVGPathElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [measuredWidth, setMeasuredWidth] = useState(widthProp ?? 640);
+
+  useEffect(() => {
+    if (widthProp) return; // explicit width takes priority
+    if (!wrapRef.current) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const e of entries) {
+        const w = Math.round(e.contentRect.width);
+        if (w > 0) setMeasuredWidth(w);
+      }
+    });
+    ro.observe(wrapRef.current);
+    return () => ro.disconnect();
+  }, [widthProp]);
+
+  const width = widthProp ?? measuredWidth;
 
   const data = series[range] || [];
   const padL = 34, padR = 14, padT = 16, padB = 24;
@@ -91,7 +108,7 @@ export function ProbabilityChart({
   const hvLeanNo = hv ? hv.p < 50 : false;
 
   return (
-    <div className={"pchart" + (hover != null ? " is-hover" : "")}>
+    <div ref={wrapRef} className={"pchart" + (hover != null ? " is-hover" : "")}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
         <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
           <SignalPip size={7} />

@@ -146,13 +146,14 @@ export default async function MarketDetail({
           {/* Probability over time — the signature "tipping line" chart */}
           {probChart.ranges.length > 0 && (
             <section className="mt-8 rounded-lg border border-border bg-bg-elevated p-4 lg:p-5">
-              <ProbabilityChart
-                series={probChart.series as Record<string, { t: string; p: number }[]>}
-                ranges={probChart.ranges}
-                defaultRange={probChart.ranges[probChart.ranges.length - 1]}
-                width={680}
-                height={260}
-              />
+              <div className="w-full overflow-hidden">
+                <ProbabilityChart
+                  series={probChart.series as Record<string, { t: string; p: number }[]>}
+                  ranges={probChart.ranges}
+                  defaultRange={probChart.ranges[probChart.ranges.length - 1]}
+                  height={260}
+                />
+              </div>
             </section>
           )}
 
