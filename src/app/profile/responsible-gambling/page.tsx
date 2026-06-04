@@ -90,7 +90,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
       <FeedbackSettings />
 
       {/* DEPOSIT + TIME LIMITS */}
-      <section className="rounded-2xl border border-border bg-bg-elevated p-5 lg:p-6 space-y-4">
+      <section className="rounded-2xl glass-panel p-5 lg:p-6 space-y-4">
         <div className="flex items-center gap-2">
           <Clock size={16} className="text-info-fg" />
           <h2 className="font-display text-[15px] font-semibold text-text">Deposit &amp; session limits</h2>
@@ -128,7 +128,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
       </section>
 
       {/* COOLING-OFF */}
-      <section id="break" className="scroll-mt-20 rounded-2xl border border-border bg-bg-elevated p-5 lg:p-6 space-y-3">
+      <section id="break" className="scroll-mt-20 rounded-2xl glass-panel p-5 lg:p-6 space-y-3">
         <div className="flex items-center gap-2">
           <Pause size={16} className="text-info-fg" />
           <h2 className="font-display text-[15px] font-semibold text-text">Take a break · Pumzika</h2>

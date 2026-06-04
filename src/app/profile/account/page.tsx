@@ -67,7 +67,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
       </header>
 
       {/* PROFILE SUMMARY */}
-      <section className="rounded-2xl border border-border bg-bg-elevated p-5 space-y-3">
+      <section className="rounded-2xl glass-panel p-5 space-y-3">
         <h2 className="font-display text-[15px] font-semibold text-text">Profile</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <Item label="Display name" value={user?.displayName ?? "—"} />
@@ -98,7 +98,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
       </section>
 
       {/* OWN ACTIVITY FEED */}
-      <section className="rounded-2xl border border-border bg-bg-elevated p-5 space-y-3">
+      <section className="rounded-2xl glass-panel p-5 space-y-3">
         <div className="flex items-center gap-2">
           <Activity size={15} className="text-info-fg" />
           <h2 className="font-display text-[15px] font-semibold text-text">My activity</h2>
@@ -138,7 +138,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
       </section>
 
       {/* DATA EXPORT — GDPR Art 15 / PDPA */}
-      <section className="rounded-2xl border border-border bg-bg-elevated p-5 space-y-2.5">
+      <section className="rounded-2xl glass-panel p-5 space-y-2.5">
         <div className="flex items-center gap-2">
           <Download size={15} className="text-info-fg" />
           <h2 className="font-display text-[15px] font-semibold text-text">

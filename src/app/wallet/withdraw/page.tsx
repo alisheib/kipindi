@@ -105,7 +105,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
 
       <form
         action={withdrawAction}
-        className={`rounded-2xl border border-border bg-bg-elevated p-5 lg:p-6 space-y-5 ${kycApproved ? "" : "opacity-60"}`}
+        className={`rounded-2xl glass-panel p-5 lg:p-6 space-y-5 ${kycApproved ? "" : "opacity-60"}`}
       >
         <fieldset disabled={!kycApproved}>
           <legend className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">

@@ -186,7 +186,7 @@ export default async function ProfilePage() {
         <h2 className="mb-3 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">
           Achievements · Beji
         </h2>
-        <div className="rounded-2xl border border-border bg-bg-elevated p-5">
+        <div className="rounded-2xl glass-panel p-5">
           <BadgeShelf items={computeAchievementShelf(user.id)} />
           <p className="mt-4 text-center text-[11px] text-text-subtle">
             More badges unlock as you predict, win, propose and invite. · Beji zaidi zinafunguliwa unapocheza.

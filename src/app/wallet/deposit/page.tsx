@@ -81,7 +81,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
         </div>
       )}
 
-      <form action={depositAction} className="rounded-2xl border border-border bg-bg-elevated p-5 lg:p-6 space-y-5">
+      <form action={depositAction} className="rounded-2xl glass-panel p-5 lg:p-6 space-y-5">
         {/* Provider grid */}
         <fieldset>
           <legend className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">

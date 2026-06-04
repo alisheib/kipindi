@@ -130,7 +130,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       </section>
 
       {!nidaDone && (
-        <section className="rounded-2xl border border-border bg-bg-elevated p-5 lg:p-6 space-y-4">
+        <section className="rounded-2xl glass-panel p-5 lg:p-6 space-y-4">
           <div className="flex items-center gap-2">
             <ShieldCheck size={18} className="text-info-fg" strokeWidth={1.75} />
             <h2 className="font-display text-[15px] font-semibold text-text">Step 1 · NIDA verification</h2>
@@ -183,7 +183,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       )}
 
       {nidaDone && !submitted && (
-        <section className="rounded-2xl border border-border bg-bg-elevated p-5 lg:p-6 space-y-3">
+        <section className="rounded-2xl glass-panel p-5 lg:p-6 space-y-3">
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1 rounded-pill border border-yes-700 bg-yes-500/10 px-2.5 py-0.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.1em] text-yes-300">
               <Check size={11} strokeWidth={2.5} />
