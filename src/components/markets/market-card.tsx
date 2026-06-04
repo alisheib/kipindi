@@ -66,6 +66,8 @@ export function MarketCard({
   const go = (side: "YES" | "NO") => (e: React.MouseEvent) => { e.preventDefault(); window.location.href = `/markets/${id}?side=${side}`; };
   return (
     <Link href={`/markets/${id}` as never} className={cn("mcardp group", className)}>
+      {/* Kit signature — large faint category glyph watermark (brightens on hover). */}
+      <span className="mcardp-watermark" aria-hidden><CatIco /></span>
 
       <div className="mcardp-top">
         <span

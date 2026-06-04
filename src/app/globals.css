@@ -1655,7 +1655,14 @@ html.kp-reduce-motion *::after {
     linear-gradient(180deg, oklch(24% 0.145 268) 0%, var(--bg-elevated) 42%);
   border: 1px solid var(--border); box-shadow: var(--shadow-card); overflow: hidden; isolation: isolate; transition: transform var(--ease-glide), border-color var(--ease-glide), box-shadow var(--ease-glide); }
 .mcardp::before { content:""; position:absolute; inset:0; border-radius: inherit; padding:1px; background: linear-gradient(180deg, oklch(70% 0.12 268 / 0.35), transparent 40%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events:none; }
-.mcardp:hover { transform: translateY(-2px); border-color: var(--border-gold); box-shadow: var(--shadow-4), var(--glow-gold); }
+.mcardp:hover { transform: translateY(-3px); border-color: var(--teal-400); box-shadow: var(--shadow-4), var(--glow-blue); }
+/* Kit signature (features.jsx MarketCard) — large faint category glyph
+   watermark in the top-right corner; brightens to brand-blue on hover.
+   Real content sits above it via the z-index rule. */
+.mcardp-watermark { position: absolute; top: -14px; right: -12px; color: var(--border-strong); opacity: 0.08; pointer-events: none; z-index: 0; transition: opacity .22s var(--ease-glide), color .22s var(--ease-glide); }
+.mcardp-watermark svg { width: 92px; height: 92px; }
+.mcardp:hover .mcardp-watermark { opacity: 0.20; color: var(--teal-400); }
+.mcardp > *:not(.mcardp-watermark) { position: relative; z-index: 1; }
 .mcardp-top { display: flex; align-items: center; flex-wrap: nowrap; gap: 5px; min-height: 20px; }
 .mcardp .chip { font-size: 9px; padding: 2px 6px; gap: 3px; letter-spacing: 0.02em; white-space: nowrap; flex-shrink: 0; }
 .mcardp .chip .live-dot { width: 5px; height: 5px; }
