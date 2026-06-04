@@ -255,7 +255,7 @@ export function AdminKpi({
   spark?: boolean;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-bg-elevated p-4 flex flex-col gap-2 min-h-[120px]">
+    <div className="rounded-lg glass-panel p-4 flex flex-col gap-2 min-h-[120px]">
       <div className="flex items-center justify-between">
         <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-tertiary">{label}</span>
         {pulse && (
@@ -317,7 +317,7 @@ export function AdminCard({
   className?: string;
 } & Omit<React.HTMLAttributes<HTMLElement>, "children" | "title">) {
   return (
-    <div {...rest} className={["rounded-lg border border-border bg-bg-elevated", padding, className ?? ""].join(" ")}>
+    <div {...rest} className={["rounded-lg glass-panel", padding, className ?? ""].join(" ")}>
       {(title || action) && (
         <div className="flex items-start justify-between mb-3 gap-3">
           <div className="min-w-0">

@@ -138,7 +138,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
 
 function ProposalCard({ p, disabled }: { p: ProposalView; disabled?: boolean }) {
   return (
-    <div className="group flex items-start gap-3 rounded-2xl border border-border bg-bg-elevated p-3.5 transition-all hover:-translate-y-0.5 hover:border-teal-500/60 hover:shadow-e3">
+    <div className="group flex items-start gap-3 rounded-2xl glass-panel p-3.5 transition-all hover:-translate-y-0.5 hover:border-teal-400 hover:shadow-[var(--shadow-4),var(--glow-blue)]">
       <VoteControl proposalId={p.id} up={p.up} down={p.down} myVote={p.myVote} disabled={disabled} />
       <Link href={`/proposals/${p.id}` as never} className="min-w-0 flex-1">
         <div className="mb-1.5 flex flex-wrap items-center gap-2">
