@@ -33,7 +33,7 @@ export function AuthFlash() {
     // Clear the query so a refresh doesn't re-toast.
     const url = new URL(window.location.href);
     url.searchParams.delete("welcome");
-    router.replace(url.pathname + (url.search ? url.search : ""));
+    router.replace((url.pathname + (url.search ? url.search : "")) as never);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -23,15 +23,14 @@ const SKEW_STEPS = 1;
 
 declare global {
   // eslint-disable-next-line no-var
-  var __50PICK_STORE: any | undefined;
+  var __50PICK_TOTP_SECRETS: Map<string, string> | undefined;
 }
 
 function ensureMap(): Map<string, string> {
-  if (!globalThis.__50PICK_STORE) globalThis.__50PICK_STORE = {};
-  if (!globalThis.__50PICK_STORE.totpSecrets) {
-    globalThis.__50PICK_STORE.totpSecrets = new Map<string, string>();
+  if (!globalThis.__50PICK_TOTP_SECRETS) {
+    globalThis.__50PICK_TOTP_SECRETS = new Map<string, string>();
   }
-  return globalThis.__50PICK_STORE.totpSecrets;
+  return globalThis.__50PICK_TOTP_SECRETS;
 }
 
 /** RFC 4648 base32 encode (no padding chars stripped, since otpauth tolerates either). */

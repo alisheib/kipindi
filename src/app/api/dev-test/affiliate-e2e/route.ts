@@ -7,7 +7,7 @@
  * Returns 404 in production. POST with no body.
  */
 import { NextResponse } from "next/server";
-import { db, type StoredUser } from "@/lib/server/store";
+import { db, type StoredUser, type StoredNotification, type StoredTxn } from "@/lib/server/store";
 import { randomId } from "@/lib/server/crypto";
 import {
   setAffiliateConfig,
@@ -74,7 +74,7 @@ function mkUser(opts?: { displayName?: string; balance?: number }): StoredUser {
 const balOf = (userId: string) => db.wallet.findByUserId(userId)?.balance ?? 0;
 const rewardsTo = (userId: string) =>
   db.referralReward.list(5000).filter((r) => r.recipientUserId === userId && r.status === "PAID");
-const notifsFor = (userId: string) => db.notification.findByUser(userId, 50).filter((n) => n.kind === "AFFILIATE");
+const notifsFor = (userId: string) => (db.notification.findByUser(userId, 50) as StoredNotification[]).filter((n) => n.kind === "AFFILIATE");
 
 export async function POST() {
   if (process.env.NODE_ENV === "production") {
@@ -196,7 +196,7 @@ export async function POST() {
     ok("account.totalEarned == sum(PAID to referrer)", acctEarned === paidToRef, `acct=${acctEarned} ledger=${paidToRef}`);
     const bonusTxns = db.txn
       .findByUser(refUser.id, 500)
-      .filter((t) => t.type === "BONUS_CREDIT" && t.status === "CONFIRMED");
+      .filter((t: StoredTxn) => t.type === "BONUS_CREDIT" && t.status === "CONFIRMED");
     ok("every credit posted a CONFIRMED BONUS_CREDIT txn", bonusTxns.length >= 3, `txns=${bonusTxns.length}`);
     ok("referrer got reward notifications", notifsFor(refUser.id).some((n) => /earned|reward|bonus/i.test(n.titleEn)));
 

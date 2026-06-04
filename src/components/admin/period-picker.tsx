@@ -31,7 +31,7 @@ export function PeriodPicker() {
         return (
           <Link
             key={s.id}
-            href={href(s.id)}
+            href={href(s.id) as never}
             scroll={false}
             className={[
               "px-2.5 h-7 inline-flex items-center border-r border-border last:border-r-0 transition-colors cursor-pointer select-none",

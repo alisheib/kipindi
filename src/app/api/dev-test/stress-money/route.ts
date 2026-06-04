@@ -23,7 +23,7 @@ export async function POST(req: Request) {
 
   // 1. A live market to cash out of.
   const m = createMarket({
-    titleEn: "Stress money market", titleSw: null, category: "macro",
+    titleEn: "Stress money market", titleSw: null as unknown as string, category: "macro",
     sourceUrl: "https://bot.go.tz", resolutionCriterion: "Resolves at the date from the official source.",
     resolutionAt: new Date(Date.now() + 7 * 864e5).toISOString(), proposedBy: "stress",
   });
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
   const posIds: (string | null)[] = [];
   for (let i = 0; i < N; i++) {
     const r = await buyPosition(users[i], { marketId: m.id, side: (i % 2 ? "NO" : "YES") as Side, stake: STAKE });
-    posIds.push(r.ok ? r.data.positionId : null);
+    posIds.push(r.ok ? r.data!.positionId : null);
   }
 
   // 4. THE STORM — every user deposits AND cashes out, all at once.

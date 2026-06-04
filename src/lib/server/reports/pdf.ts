@@ -1,3 +1,4 @@
+// @ts-expect-error pdfkit has no declaration file
 import PDFDocument from "pdfkit";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -42,7 +43,7 @@ const F = {
 };
 
 type DocCtx = {
-  doc: PDFKit.PDFDocument;
+  doc: InstanceType<typeof PDFDocument>;
   pageW: number;
   pageH: number;
   contentX: number;

@@ -95,7 +95,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
               // A register OTP can't be re-issued without the original sign-up
               // payload, so send the user back to start over (phone prefilled).
               <Link
-                href={`/auth/register${phone ? `?phone=${encodeURIComponent(phone)}` : ""}`}
+                href={`/auth/register${phone ? `?phone=${encodeURIComponent(phone)}` : ""}` as never}
                 className="font-mono text-[12px] uppercase tracking-[0.14em] text-aqua-200 hover:text-aqua-100 transition-colors"
               >
                 Start over

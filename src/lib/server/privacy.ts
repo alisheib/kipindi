@@ -103,7 +103,7 @@ export function buildDsarBundle(userId: string): Record<string, unknown> | null 
   const txns = db.txn.findByUser(userId, 10_000);
   const bets = db.bet.findByUser(userId, 10_000);
   const mapigoBets = db.mapigoBet.findByUser(userId, 10_000);
-  const kyc = db.kyc.findByUser(userId);
+  const kyc = db.kyc.findByUserId(userId);
   const responsible = db.responsible.get(userId);
   const notifications = db.notification.findByUser(userId, 1000);
 

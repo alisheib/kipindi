@@ -280,7 +280,7 @@ function Step({ n, title, detail, done, active }: { n: number; title: string; de
 
 function UploadSlot({ label, docType, done }: { label: string; docType: "NIDA_FRONT" | "NIDA_BACK" | "SELFIE"; done: boolean }) {
   return (
-    <form action={attachDocumentAction}>
+    <form action={attachDocumentAction as unknown as (formData: FormData) => void}>
       <input type="hidden" name="docType" value={docType} />
       <button
         type="submit"

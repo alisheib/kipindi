@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { AdminPageHead, AdminKpi, AdminCard, FeedRow } from "@/components/admin/admin-shell";
 import { Avatar } from "@/components/ui/avatar";
 import { Chip } from "@/components/ui/chip";
-import { db } from "@/lib/server/store";
+import { db, type StoredTxn, type StoredBet, type StoredMapigoBet } from "@/lib/server/store";
 import { getAuditForActor, type AuditCategory } from "@/lib/server/audit";
 import { exportUserData } from "@/lib/server/user-service";
 import { ShieldCheck, AlertOctagon } from "lucide-react";
@@ -47,18 +47,21 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   const kyc = db.kyc.findByUserId(id);
   const rg = db.responsible.get(id);
   const data = exportUserData(id);
+  const txns = data.transactions as StoredTxn[];
+  const bets = data.bets as StoredBet[];
+  const mapigoBets = data.mapigoBets as StoredMapigoBet[];
   const audit = getAuditForActor(id, 200);
 
-  const lifetimeStakes = data.transactions.filter((t) => t.type === "BET_PLACED" && t.status === "CONFIRMED").reduce((s, t) => s + Math.abs(t.amount), 0);
-  const lifetimePayouts = data.transactions.filter((t) => (t.type === "BET_PAYOUT" || t.type === "CASHOUT") && t.status === "CONFIRMED").reduce((s, t) => s + Math.abs(t.amount), 0);
-  const lifetimeDeposits = data.transactions.filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED").reduce((s, t) => s + t.amount, 0);
-  const lifetimeWithdrawals = data.transactions.filter((t) => t.type === "WITHDRAWAL" && t.status === "CONFIRMED").reduce((s, t) => s + Math.abs(t.amount), 0);
+  const lifetimeStakes = txns.filter((t) => t.type === "BET_PLACED" && t.status === "CONFIRMED").reduce((s, t) => s + Math.abs(t.amount), 0);
+  const lifetimePayouts = txns.filter((t) => (t.type === "BET_PAYOUT" || t.type === "CASHOUT") && t.status === "CONFIRMED").reduce((s, t) => s + Math.abs(t.amount), 0);
+  const lifetimeDeposits = txns.filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED").reduce((s, t) => s + t.amount, 0);
+  const lifetimeWithdrawals = txns.filter((t) => t.type === "WITHDRAWAL" && t.status === "CONFIRMED").reduce((s, t) => s + Math.abs(t.amount), 0);
   const ngr = lifetimeStakes - lifetimePayouts;
-  const betsCount = data.bets.length + data.mapigoBets.length;
-  const lastBet = [...data.bets, ...data.mapigoBets].sort((a, b) => b.placedAt.localeCompare(a.placedAt))[0]?.placedAt;
+  const betsCount = bets.length + mapigoBets.length;
+  const lastBet = [...bets, ...mapigoBets].sort((a, b) => b.placedAt.localeCompare(a.placedAt))[0]?.placedAt;
 
   // Risk score — simple proxy: deposit cycling rate, AML hits, late-night sessions, declined cards
-  const riskScore = computeRiskScore(data.transactions.length, lifetimeWithdrawals, kyc?.status === "APPROVED");
+  const riskScore = computeRiskScore(txns.length, lifetimeWithdrawals, kyc?.status === "APPROVED");
   const riskBand = riskScore >= 70 ? "high" : riskScore >= 40 ? "medium" : "low";
 
   const initials = displayInitials(user);
@@ -68,7 +71,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   const TABS = [
     { id: "activity",     label: "Activity",         count: audit.length },
     { id: "bets",         label: "Bets",             count: betsCount },
-    { id: "transactions", label: "Transactions",     count: data.transactions.length },
+    { id: "transactions", label: "Transactions",     count: txns.length },
     { id: "kyc",          label: "KYC",              count: undefined },
     { id: "limits",       label: "Limits",           count: undefined },
     { id: "exclusion",    label: "Self-exclusion",   count: undefined },
@@ -121,9 +124,9 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
         {/* §B — Quick stats strip */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <AdminKpi label="Lifetime deposit"    sw="Jumla ya amana"        value={`TZS ${formatTzsCompact(lifetimeDeposits).replace("TZS ", "")}`} gold delta={wallet ? `wallet ${formatTzs(wallet.balance)}` : "—"} />
-          <AdminKpi label="Lifetime withdrawal" sw="Jumla ya utoaji"       value={`TZS ${formatTzsCompact(lifetimeWithdrawals).replace("TZS ", "")}`} delta={`${data.transactions.filter((t) => t.type === "WITHDRAWAL").length} txns`} />
+          <AdminKpi label="Lifetime withdrawal" sw="Jumla ya utoaji"       value={`TZS ${formatTzsCompact(lifetimeWithdrawals).replace("TZS ", "")}`} delta={`${txns.filter((t) => t.type === "WITHDRAWAL").length} txns`} />
           <AdminKpi label="NGR contribution"    sw="Mchango wa mapato"     value={`TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`} gold delta={`bets ${betsCount}`} />
-          <AdminKpi label="Last bet"            sw="Dau la mwisho"         value={lastBet ? new Date(lastBet).toLocaleDateString("en-GB") : "never"} delta={lastBet ? `${data.bets.length} match · ${data.mapigoBets.length} mapigo` : "—"} />
+          <AdminKpi label="Last bet"            sw="Dau la mwisho"         value={lastBet ? new Date(lastBet).toLocaleDateString("en-GB") : "never"} delta={lastBet ? `${bets.length} match · ${mapigoBets.length} mapigo` : "—"} />
         </div>
 
         {/* §C — Tabs */}
@@ -175,7 +178,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.bets.slice(0, 30).map((b) => (
+                    {bets.slice(0, 30).map((b) => (
                       <tr key={b.id} className="border-b border-border-subtle/50 last:border-b-0">
                         <td className="py-2 pr-3 font-mono whitespace-nowrap">{b.placedAt.replace("T", " ").slice(0, 19)}</td>
                         <td className="py-2 pr-3">{b.matchLabel} <span className="text-text-tertiary">· {b.windowLabel}</span></td>
@@ -185,7 +188,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                         <td className={["py-2 pl-3 font-mono tabular text-right", b.status === "WON" ? "text-gold" : "text-text-tertiary"].join(" ")}>{b.returnAmount ? formatTzs(b.returnAmount) : "—"}</td>
                       </tr>
                     ))}
-                    {data.bets.length === 0 && <tr><td colSpan={6} className="py-6 text-center text-text-tertiary">No bets placed.</td></tr>}
+                    {bets.length === 0 && <tr><td colSpan={6} className="py-6 text-center text-text-tertiary">No bets placed.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -203,7 +206,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.transactions.slice(0, 30).map((t) => (
+                    {txns.slice(0, 30).map((t) => (
                       <tr key={t.id} className="border-b border-border-subtle/50 last:border-b-0">
                         <td className="py-2 pr-3 font-mono whitespace-nowrap">{t.createdAt.replace("T", " ").slice(0, 19)}</td>
                         <td className="py-2 pr-3 font-medium text-text">{t.type}</td>
@@ -212,7 +215,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                         <td className={["py-2 pl-3 font-mono tabular text-right", t.amount >= 0 ? "text-gold" : "text-text-secondary"].join(" ")}>{formatTzs(t.amount)}</td>
                       </tr>
                     ))}
-                    {data.transactions.length === 0 && <tr><td colSpan={5} className="py-6 text-center text-text-tertiary">No transactions.</td></tr>}
+                    {txns.length === 0 && <tr><td colSpan={5} className="py-6 text-center text-text-tertiary">No transactions.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -261,7 +264,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
             </p>
             <div className="flex items-center gap-1 flex-wrap">
               {/* Live actions (wired this sprint) */}
-              <SuspendControls userId={data.user.id} currentStatus={data.user.status} />
+              <SuspendControls userId={data.user!.id} currentStatus={data.user!.status} />
               {/* Stubbed actions — need the two-officer flow */}
               <ActionBtn label="Freeze wallet" />
               <ActionBtn label="Refund" />

@@ -39,9 +39,9 @@ export async function startLoginAction(formData: FormData) {
   // round-trip when present so the visitor lands back on the page they
   // tried to reach (e.g. /wallet, /positions). Falls back to home.
   if (result.data?.role && result.data.role !== "PLAYER" && result.data.role !== "AGENT") {
-    redirect(safeNext.startsWith("/admin") ? safeNext : "/admin");
+    redirect((safeNext.startsWith("/admin") ? safeNext : "/admin") as never);
   }
-  redirect(safeNext || "/?welcome=back");
+  redirect((safeNext || "/?welcome=back") as never);
 }
 
 /** Legacy OTP login — re-enable once SMS goes live. */

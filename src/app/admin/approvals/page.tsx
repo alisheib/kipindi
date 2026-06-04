@@ -1,15 +1,15 @@
 import { AdminPageHead, AdminCard, AdminKpi, FeedRow } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
 import { ShieldCheck, AlertTriangle } from "lucide-react";
-import { db } from "@/lib/server/store";
+import { db, type StoredTxn, type StoredSourceOfFunds } from "@/lib/server/store";
 import { getAuditPage } from "@/lib/server/audit";
 
 export const metadata = { title: "Admin · Two-person approvals" };
 export const dynamic = "force-dynamic";
 
 export default function AdminApprovalsPage() {
-  const aml = db.txn.listByStatus("AML_REVIEW");
-  const sof = db.sourceOfFunds.listPending();
+  const aml = db.txn.listByStatus("AML_REVIEW") as StoredTxn[];
+  const sof = db.sourceOfFunds.listPending() as StoredSourceOfFunds[];
   const recent = getAuditPage({ category: "ADMIN", limit: 60 });
 
   return (

@@ -37,7 +37,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
   const pending = w?.pending ?? 0;
   const hold = w?.hold ?? 0;
   const currency = w?.currency ?? "TZS";
-  const txns: Transaction[] = db.txn.findByUser(session.userId, 50).map(adaptTxn);
+  const txns: Transaction[] = (db.txn.findByUser(session.userId, 50) as StoredTxn[]).map(adaptTxn);
 
   return (
     <>

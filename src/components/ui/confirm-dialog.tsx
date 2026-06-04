@@ -63,7 +63,7 @@ export function ConfirmDialog({
 
   // Clone the trigger so clicking it opens the dialog, but it can't
   // submit the surrounding form directly.
-  const triggerEl = React.cloneElement(trigger, {
+  const triggerEl = React.cloneElement(trigger as React.ReactElement<Record<string, unknown>>, {
     type: "button",
     onClick: (e: React.MouseEvent) => {
       e.preventDefault();

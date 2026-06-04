@@ -8,7 +8,7 @@ export async function fetchMyNotifications(): Promise<{ items: StoredNotificatio
   const session = await currentSession();
   if (!session) return { items: [], unread: 0 };
   return {
-    items: listForUser(session.userId, 30),
+    items: listForUser(session.userId, 30) as StoredNotification[],
     unread: unreadCount(session.userId),
   };
 }

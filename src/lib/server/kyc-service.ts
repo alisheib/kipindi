@@ -82,7 +82,7 @@ export async function submitNidaStep(userId: string, input: z.input<typeof KycNi
 export async function attachDocument(userId: string, docType: "NIDA_FRONT" | "NIDA_BACK" | "SELFIE", storageKey: string): Promise<ServiceResult> {
   const k = db.kyc.findByUserId(userId);
   if (!k) return { ok: false, error: "Start KYC first.", code: "NOT_FOUND" };
-  const docs = [...k.documents.filter((d) => d.docType !== docType), { docType, storageKey, uploadedAt: new Date().toISOString() }];
+  const docs = [...k.documents.filter((d: { docType: string }) => d.docType !== docType), { docType, storageKey, uploadedAt: new Date().toISOString() }];
   db.kyc.upsert({ ...k, documents: docs, updatedAt: new Date().toISOString() });
   audit({ category: "KYC", action: "kyc.document.uploaded", actorId: userId, targetType: "Kyc", targetId: k.id, payload: { docType, storageKey } });
   return { ok: true };

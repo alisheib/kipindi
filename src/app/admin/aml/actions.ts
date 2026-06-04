@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { currentSession } from "@/lib/server/auth-service";
-import { db } from "@/lib/server/store";
+import { db, type StoredTxn } from "@/lib/server/store";
 import { audit, getAuditPage } from "@/lib/server/audit";
 
 import { TWO_PERSON_THRESHOLD_TZS } from "./constants";
@@ -26,7 +26,7 @@ function findFirstSignature(txnId: string): { actorId: string | null; at: string
   const entries = getAuditPage({ category: "ADMIN", limit: 200 });
   const sig = entries.find((e) => e.action === "aml.approve.stage1" && e.targetId === txnId);
   if (!sig) return null;
-  return { actorId: sig.actorId, at: sig.at };
+  return { actorId: sig.actorId, at: sig.createdAt };
 }
 
 /**
@@ -45,7 +45,7 @@ export async function approveAmlAction(formData: FormData) {
   const reason = String(formData.get("reason") ?? "").trim().slice(0, 500);
   if (!txnId) return { ok: false as const, error: "Missing transaction id." };
 
-  const all = db.txn.listByStatus("AML_REVIEW");
+  const all = db.txn.listByStatus("AML_REVIEW") as StoredTxn[];
   const txn = all.find((t) => t.id === txnId);
   if (!txn) return { ok: false as const, error: "Transaction not in AML_REVIEW." };
 
@@ -118,7 +118,7 @@ export async function rejectAmlAction(formData: FormData) {
   if (!txnId) return { ok: false as const, error: "Missing transaction id." };
   if (reason.length < 5) return { ok: false as const, error: "Reason is required (≥ 5 chars)." };
 
-  const all = db.txn.listByStatus("AML_REVIEW");
+  const all = db.txn.listByStatus("AML_REVIEW") as StoredTxn[];
   const txn = all.find((t) => t.id === txnId);
   if (!txn) return { ok: false as const, error: "Transaction not in AML_REVIEW." };
 

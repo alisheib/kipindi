@@ -7,7 +7,7 @@
  * 404 in production. POST, no body.
  */
 import { NextResponse } from "next/server";
-import { db, type StoredUser } from "@/lib/server/store";
+import { db, type StoredUser, type StoredNotification } from "@/lib/server/store";
 import { randomId } from "@/lib/server/crypto";
 import { setAffiliateConfig, getAffiliateConfig, type AffiliateConfig } from "@/lib/server/affiliate-config";
 import { ensureAffiliateAccount, bindRecruit } from "@/lib/server/affiliate-service";
@@ -83,7 +83,7 @@ export async function POST() {
     }
 
     // ── Notifications reached the referrer ──────────────────────────────
-    const notifs = listForUser(R.id, 50).filter((n) => n.kind === "AFFILIATE");
+    const notifs = (listForUser(R.id, 50) as StoredNotification[]).filter((n) => n.kind === "AFFILIATE");
     ok("referrer received affiliate notifications (join + rewards)", notifs.length >= 2, `count=${notifs.length}`);
 
     // ── Ledger ↔ wallet consistency for this referrer ───────────────────

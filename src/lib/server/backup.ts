@@ -23,7 +23,7 @@
 import { createHmac } from "node:crypto";
 import { readFileSync, writeFileSync, renameSync, mkdirSync, readdirSync, unlinkSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { audit } from "./audit";
+import { audit, type AuditEntry } from "./audit";
 import { prisma, hasDatabase } from "./prisma";
 
 // Backup directory — point at a Railway volume mount in production so
@@ -42,9 +42,7 @@ const SNAPSHOT_FILE  = "store.snapshot.json";
 
 declare global {
   // eslint-disable-next-line no-var
-  var __50PICK_STORE: any | undefined;
-  // eslint-disable-next-line no-var
-  var __50PICK_AUDIT_RING: any[] | undefined;
+  var __50PICK_AUDIT_RING: AuditEntry[] | undefined;
   // eslint-disable-next-line no-var
   var __50PICK_BACKUP_TIMER: ReturnType<typeof setTimeout> | undefined;
   // eslint-disable-next-line no-var
@@ -332,7 +330,7 @@ function applyEnvelope(rawEnvelope: string): { restored: boolean; reason: string
     audit({ category: "SYSTEM", action: "backup.restore.deserialize_failed", actorId: null, targetType: null, targetId: null, payload: { error: String(e) } });
     return { restored: false, reason: "snapshot deserialize failed" };
   }
-  if (!globalThis.__50PICK_STORE) globalThis.__50PICK_STORE = {};
+  if (!globalThis.__50PICK_STORE) (globalThis as any).__50PICK_STORE = {};
   for (const [k, v] of Object.entries(restored)) {
     (globalThis.__50PICK_STORE as any)[k] = v;
   }

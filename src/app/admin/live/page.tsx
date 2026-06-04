@@ -7,11 +7,23 @@ import { matches } from "@/lib/mock-data";
 import { activePlayers, moneyFlowSeries, grossGamingRevenue } from "@/lib/server/analytics";
 import { formatTzs, formatTzsCompact } from "@/lib/utils";
 
+type MatchStub = {
+  id: string;
+  status: string;
+  league: string;
+  home: { shortName: string };
+  away: { shortName: string };
+  homeScore: number;
+  awayScore: number;
+  minute: number;
+  windows: { pool: number }[];
+};
+
 export const metadata = { title: "Admin · Live ops" };
 export const dynamic = "force-dynamic";
 
 export default function AdminLivePage() {
-  const liveMatches = matches.filter((m) => m.status === "live");
+  const liveMatches = (matches as MatchStub[]).filter((m) => m.status === "live");
   const openRounds = db.mapigoRound.listOpen();
   const ggr = grossGamingRevenue("today");
   const active = activePlayers("today");

@@ -183,7 +183,7 @@ export function I18nProvider({ children, initial = "en" }: { children: ReactNode
     // server-rendered text stays in the previous language.
     try { router.refresh(); } catch { /* SSR or test env */ }
   };
-  return <I18nContext.Provider value={{ locale, t: dict[locale], setLocale }}>{children}</I18nContext.Provider>;
+  return <I18nContext.Provider value={{ locale, t: dict[locale] as Dict, setLocale }}>{children}</I18nContext.Provider>;
 }
 
 export function useT() {

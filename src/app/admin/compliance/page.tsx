@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AdminPageHead, AdminCard, AdminKpi, AdminStackedBar, StatusPill, FeedRow } from "@/components/admin/admin-shell";
 import { AdminFunnelChart } from "@/components/admin/admin-charts";
 import { ShieldCheck, AlertTriangle, Download, Lock, HeartPulse } from "lucide-react";
-import { db } from "@/lib/server/store";
+import { db, type StoredTxn } from "@/lib/server/store";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
 import { kycFunnel, rgRosterCounts } from "@/lib/server/analytics";
 import { detectHarmMarkersForAllUsers } from "@/lib/server/responsible-gambling";
@@ -24,7 +24,7 @@ export default function AdminCompliancePage() {
   const chain = verifyChain();
   const kyc = kycFunnel();
   const rg = rgRosterCounts();
-  const aml = db.txn.listByStatus("AML_REVIEW");
+  const aml = db.txn.listByStatus("AML_REVIEW") as StoredTxn[];
   const recentAml = aml.slice(0, 5);
   const recentApprovals = getAuditPage({ category: "ADMIN", limit: 50 }).filter((e) => e.action.startsWith("aml.")).slice(0, 8);
   const integrityAlerts = getAuditPage({ category: "BET", limit: 50 }).filter((e) => e.action.startsWith("integrity.alert.")).slice(0, 3);

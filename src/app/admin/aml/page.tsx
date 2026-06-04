@@ -1,6 +1,6 @@
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
-import { db } from "@/lib/server/store";
+import { db, type StoredTxn } from "@/lib/server/store";
 import { formatTzs } from "@/lib/utils";
 import { AlertTriangle, Activity, Users } from "lucide-react";
 import { AmlActionRow } from "./aml-actions-client";
@@ -12,12 +12,12 @@ export const metadata = { title: "Admin · AML queue" };
 export const dynamic = "force-dynamic";
 
 export default function AdminAmlPage() {
-  const inReview = db.txn.listByStatus("AML_REVIEW");
+  const inReview = db.txn.listByStatus("AML_REVIEW") as StoredTxn[];
   const flags = detectSuspiciousBets();
   // Track which txns already have a stage-1 signature (waiting on second officer)
   const stage1 = new Map<string, { actorId: string | null; at: string }>();
   for (const e of getAuditPage({ category: "ADMIN", limit: 200 })) {
-    if (e.action === "aml.approve.stage1" && e.targetId) stage1.set(e.targetId, { actorId: e.actorId, at: e.at });
+    if (e.action === "aml.approve.stage1" && e.targetId) stage1.set(e.targetId, { actorId: e.actorId, at: e.createdAt });
   }
 
   return (
