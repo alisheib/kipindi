@@ -93,7 +93,7 @@ export default function LivePage() {
             <LivePulseGrid markets={markets} />
 
             {/* Cross-cut callout */}
-            <section className="rounded-xl border border-border bg-bg-elevated p-5 lg:p-6">
+            <section className="rounded-xl glass-panel p-5 lg:p-6">
               <div className="flex flex-wrap items-baseline gap-2 mb-2">
                 <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-yes-300">Price Competition · pool model</p>
               </div>
@@ -107,7 +107,7 @@ export default function LivePage() {
 
             {/* Static snapshot of one bar at scale — for the "this is the brand" moment */}
             {markets[0] && (
-              <section className="rounded-xl border border-border bg-bg-elevated p-6 lg:p-10">
+              <section className="rounded-xl glass-panel p-6 lg:p-10">
                 <div className="flex flex-wrap items-baseline gap-2 mb-3">
                   <p className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-text-subtle">Most contested · Lililo na shaka zaidi</p>
                 </div>

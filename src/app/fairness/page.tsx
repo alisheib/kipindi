@@ -33,7 +33,7 @@ export default function FairnessPage() {
       </header>
 
       {/* How it works */}
-      <section className="rounded-lg border border-border bg-bg-elevated p-5 space-y-4">
+      <section className="rounded-lg glass-panel p-5 space-y-4">
         <div className="flex items-baseline justify-between flex-wrap gap-2">
           <h2 className="font-display text-[20px] font-semibold text-text">How it works</h2>
           <span className="font-mono text-[11px] tracking-[0.16em] uppercase text-text-subtle">FATF R.10 · POCA Cap 423 §16</span>

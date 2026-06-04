@@ -97,7 +97,7 @@ export default function HelpPage() {
         />
       </section>
 
-      <section className="rounded-2xl border border-border bg-bg-elevated p-5 lg:p-6 space-y-2">
+      <section className="rounded-2xl glass-panel p-5 lg:p-6 space-y-2">
         <h2 className="font-display text-[15px] font-semibold text-text">
           Frequently asked <span className="text-text-subtle italic font-normal">· Maswali</span>
         </h2>
