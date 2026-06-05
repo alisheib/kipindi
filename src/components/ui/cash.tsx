@@ -20,7 +20,7 @@
  */
 
 import * as React from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { cn } from "@/lib/utils";
 
 const EVENT = "cash-privacy";
@@ -115,7 +115,7 @@ export function CashEye({
         className,
       )}
     >
-      {hidden ? <EyeOff size={size} /> : <Eye size={size} />}
+      {hidden ? <I.eyeOff s={size} /> : <I.eye s={size} />}
     </button>
   );
 }

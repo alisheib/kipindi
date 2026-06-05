@@ -6,7 +6,7 @@
  * Works as both controlled and uncontrolled (form-native).
  */
 import * as React from "react";
-import { Check } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 
 export function Checkbox({
   defaultChecked,
@@ -78,7 +78,7 @@ export function Checkbox({
           marginTop: 1,
         }}
       >
-        {on && <Check size={13} strokeWidth={3} style={{ color: "#06130d" }} />}
+        {on && <I.check s={13} style={{ color: "#06130d", strokeWidth: 3 }} />}
       </span>
       {label && <span style={{ lineHeight: 1.4 }}>{label}</span>}
     </label>

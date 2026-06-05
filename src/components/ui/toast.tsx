@@ -9,7 +9,7 @@
  * - Stack of up to 4 visible at once
  */
 import * as React from "react";
-import { CheckCircle2, AlertTriangle, AlertCircle, Trophy, X } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { cn } from "@/lib/utils";
 import { haptics } from "@/lib/haptics";
 
@@ -110,31 +110,31 @@ export function useToast(): ToastContextValue {
 const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; surface: string; rail: string }> = {
   default: {
     bar: "bg-aqua-300",
-    icon: <CheckCircle2 size={16} className="text-aqua-300" />,
+    icon: <span className="text-aqua-300"><I.checkCircle s={16} /></span>,
     surface: "bg-bg-elevated border-aqua-edge",
     rail: "bg-aqua-300",
   },
   success: {
     bar: "bg-yes-500",
-    icon: <CheckCircle2 size={16} className="text-yes-300" />,
+    icon: <span className="text-yes-300"><I.checkCircle s={16} /></span>,
     surface: "bg-bg-elevated border-yes-700/60",
     rail: "bg-yes-500",
   },
   warning: {
     bar: "bg-gold-500",
-    icon: <AlertTriangle size={16} className="text-gold-300" />,
+    icon: <span className="text-gold-300"><I.warning s={16} /></span>,
     surface: "bg-bg-elevated border-gold-700/60",
     rail: "bg-gold-500",
   },
   danger: {
     bar: "bg-no-500",
-    icon: <AlertCircle size={16} className="text-no-300" />,
+    icon: <span className="text-no-300"><I.alertCircle s={16} /></span>,
     surface: "bg-bg-elevated border-no-700/60",
     rail: "bg-no-500",
   },
   gold: {
     bar: "bg-gold-500",
-    icon: <Trophy size={16} className="text-gold-300" />,
+    icon: <span className="text-gold-300"><I.trophy s={16} /></span>,
     surface: "bg-bg-elevated border-gold-700",
     rail: "bg-gold-500",
   },
@@ -201,7 +201,7 @@ function ToastItem({ toast, exiting, onDismiss }: { toast: Toast; exiting: boole
         className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
         aria-label="Dismiss"
       >
-        <X size={14} />
+        <I.x s={14} />
       </button>
       <div className="absolute inset-x-0 bottom-0 h-[3px] bg-border/30" aria-hidden>
         <div
