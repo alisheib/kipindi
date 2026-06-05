@@ -1,105 +1,233 @@
-# 50pick UI v2 — Modernization Plan (Phase 2)
+# 50pick UI v2 — Dark Glass Kit Rebuild Plan (Phase 3)
 
-> **Created:** 2026-06-05 — replaces CLAUDE_SPRINTS.md as the active plan.
-> Previous sprints (1–12) completed the foundation. This plan drives **pixel-perfect
-> kit conformance** across every component, page, and responsive breakpoint.
+> **Updated:** 2026-06-05. This is the ONLY active plan document.
+> **Goal:** Pass designer evaluation. Every component rebuilt from kit specs.
 
-## Where we are now
+## Git workflow
+- Repo already initialized, remote `origin` → `https://github.com/alisheib/kipindi.git`
+- Branch: `main`. Just `git push` after each sprint.
+- **DO NOT run `git init`** — repo already has history.
+- **DO NOT force push** — normal `git push` only.
 
-**Completed (Phase 1, Sprints 1–12):**
-- Glass-panel utility, market card glyph watermark + blue hover glow
-- YES/NO/Gold buttons: gradient fills + inset shadows + hover glows
-- Top nav: 56px, kit backdrop formula, deeper shadow
-- Frosted modals/dropdowns/toasts, balance-privacy eye
-- Route transitions + staggered card reveals
-- Progress light-sweep, admin chart bloom
-- data-motion throttle, dead CSS cleanup
-- Wallet gold labels + gold-tinted border
+## What's done (Sprints 1–18, all pushed)
 
-**Compliance grade from audit: C+ (57% strict / 82% functional)**
-The foundation is right but dozens of pixel-precise details are off.
+Foundation layer complete: glass-panel utility, gradient YES/NO/Gold buttons,
+frosted modals/dropdowns/toasts, route transitions, stagger animations,
+data-motion throttle, dead CSS cleanup, admin shell precision, atom precision
+(input/toggle/empty-state/chip/tabs), flat panel sweep, ticker font sizes,
+market filter rail blue active states, deeper card gradients, thicker pbar fills.
 
-## Final destination (100% kit conformance)
+**What's NOT done — the reason this plan exists:**
 
-Every component matches kit50.css + ds-*.jsx specs exactly:
-- Tokens: all colors via `var(--token)`, zero hardcoded oklch in components
-- Sizes: exact px from kit (not Tailwind approximations)
-- Shadows: kit shadow strings verbatim
-- Animations: kit timing + easing
-- Responsive: all pages work at 393/768/1024/1280/1440
-- Designers can validate the build against the kit with zero issues
+The app still looks like the OLD 50pick with CSS tweaks on top. The new kit
+(`ds-*.jsx` + `kit50.css` + `features.jsx`) defines a COMPLETELY different
+visual language. We need to go component by component, read the kit spec,
+and REWRITE the app component to match exactly. Not tweak — rewrite.
 
 ---
 
-## Sprint 13 — Atom component precision (input, toggle, empty-state, chip, tabs)
+## Kit reference files (read before each sprint)
 
-| Item | Kit spec | Current | Fix |
-|------|----------|---------|-----|
-| Input focus color | `--brand-500` blue | `--aqua-300` teal | Swap token |
-| Input focus shadow | `oklch(63% 0.18 262 / 0.25)` | `--aqua-glow` | Use exact oklch |
-| Input error bg | `oklch(58% 0.2 25 / 0.2)` | `bg-no-500/5` | Fix opacity |
-| Toggle width | 44px | 46px | Fix to 44 |
-| Toggle off thumb | white/light | `text-subtle` | Fix to light |
-| Empty-state bg | solid `bg-elevated` | 40% transparent | Remove transparency |
-| Empty-state icon size | 46px | 56px (w-14) | Fix to 46 |
-| Empty-state icon color | `text-faint` | `teal-300` hardcoded | Use token |
-| Empty-state border | `border-strong` dashed | `border-border` dashed | Fix token |
-| Chip live color | `var(--live-400)` | hardcoded oklch | Use token |
-| Tabs segmented gap | 2px | gap-1 (4px) | Fix to gap-0.5 |
-| Tabs segmented active | `oklch(40% 0.08 264 / 0.55)` | bg-bg-elevated | Fix color |
-
-## Sprint 14 — Admin shell precision
-
-| Item | Kit spec | Current | Fix |
-|------|----------|---------|-----|
-| Sidebar width | 216px | 220px | Fix |
-| Sidebar padding | 18px 14px | px-3 py-4 | Fix |
-| Badge padding | 1px 5px | px-1.5 py-0.5 | Fix |
-| Badge radius | 4px (r-xs) | 8px (rounded-sm) | Fix |
-| Admin topbar | backdrop blur+saturate | flat bg-elevated | Add blur |
-| AdminBlock | flat bg-sunken | — | Add glass |
-| AdminFunnel | flat bg-sunken | — | Add glass |
-
-## Sprint 15 — Flat panel sweep (13+ pages)
-
-All remaining `border border-border bg-bg-elevated` rounded sections → glass-panel:
-- auth/otp, auth/forgot-password, auth/admin, admin/totp-verify
-- markets/[id] (prediction cards, sign-in panel, KPI, closed notice)
-- help page cards + links
-- profile/page menu links
-- profile/account table wrapper
-- proposals/page hero card
-- fairness empty state
-
-## Sprint 16 — Live ticker + responsive QA
-
-| Item | Kit spec | Current | Fix |
-|------|----------|---------|-----|
-| Ticker label | 10.5px | 8.5px | Enlarge |
-| Ticker title | 12px | 11px | Enlarge |
-| Responsive check | 393/768/1024/1280/1440 | untested | Verify |
-
-## Sprint 17 — Final build + cleanup + designer handoff
-
-- Run `npm run build` — must exit 0
-- Delete CLAUDE_SPRINTS.md (replaced by this doc)
-- Update VALIDATION_CHECKLIST.md with all final statuses
-- Document any remaining optional polish items
+| File | What it defines |
+|------|-----------------|
+| `kit50.css` | ALL tokens (colors, shadows, radii, motion, type scale) — source of truth |
+| `kit50.jsx` | Icon set, Chip, ConvictionBar, Cash/CashEye, SideButton, Btn, RollNum |
+| `ds-brand-nav.jsx` | TopNav, BottomNav, LiveTicker, Tabs, Segmented, Logo |
+| `ds-forms.jsx` | Input, OtpBoxes, Select, Switch, Checkbox, Radio, Stepper, Scroller |
+| `ds-atoms2.jsx` | Loaders, Avatar+TierBadge, ProgressBar, Tooltip, Skeleton |
+| `ds-betting.jsx` | BetDial, BetDialRound, ConvictionSlider — the signature dial |
+| `ds-charts.jsx` | ProbabilityChart, Sparkline, PoolDepth, ConvictionDial gauge |
+| `ds-overlays.jsx` | Modals, NotificationPanel, Toast, AvatarStack, StateCard |
+| `ds-wallet.jsx` | Wallet balance card, transaction rows, deposit/withdraw |
+| `ds-admin.jsx` | Admin shell, sidebar, KPI cards, tables, charts |
+| `features.jsx` | MarketCard, BuyTray, PositionCard, ButtonShowcase, WinLoss |
+| `ds-flagship.jsx` | Market detail page (enhanced chart, order book) |
+| `ds-leaderboard.jsx` | Leaderboard (podium, rows, sparklines, tier badges) |
+| `ds-positions.jsx` | Positions page (portfolio rows, P&L, status) |
+| `ds-hero.jsx` | Landing hero (constellation, particles, rolling counter) |
+| `ds-illustrations.jsx` | Empty states, how-it-works line art |
 
 ---
 
-## Progress log
+## Phase 3 Sprints — Component-by-Component Kit Rebuild
 
-- **Sprint 13 DONE.** Atom precision: input focus brand-500 + exact oklch shadow,
-  toggle 44px + white thumb, empty-state 300px/46px/text-faint, chip semantic tokens,
-  tabs segmented 2px gap + kit active bg. Build exit 0.
-- **Sprint 14 DONE.** Admin shell: sidebar 216px + 18×14px padding + panel bg,
-  nav active oklch(40% 0.12 268 / 0.5), badge 1×5px padding + 4px radius,
-  topbar 56px + backdrop blur(14px) saturate(1.3). Build exit 0.
-- **Sprint 15 DONE.** Flat panel sweep: auth/otp + forgot-password → glass-panel,
-  market detail sign-in → border-strong, help header/cards/links → glass + border-strong,
-  profile hero + logout → glass/border-strong, account header → border-strong. Build exit 0.
-- **Sprint 16 DONE.** Live ticker: badge label 8.5→10.5px, side label 8.5→10.5px,
-  market title 11→12px. All match kit ds-brand-nav.jsx spec. Build exit 0.
-- **Sprint 17 DONE.** Deleted CLAUDE_SPRINTS.md, build exit 0, all sprints committed.
-  **Phase 2 COMPLETE — pixel-precise kit conformance across all atoms, admin, pages.**
+### Sprint 19 — TopNav (REBUILD from ds-brand-nav.jsx)
+Read `ds-brand-nav.jsx TopNav`. Rewrite `src/components/layout/top-app-bar.tsx`:
+- Exact height, padding, gap, background color-mix, backdrop blur+saturate
+- Logo size and spacing
+- Nav links: exact font-size, weight, active pill background, padding, radius
+- **Language toggle: if kit shows INLINE (not dropdown), convert to inline**
+- Wallet balance pill: exact border, bg, font, gold icon
+- Notification bell: exact size, badge position
+- Avatar trigger: exact size, ring
+- Mobile breakpoint: what hides/shows
+
+### Sprint 20 — BottomNav (REBUILD from ds-brand-nav.jsx)
+Read `ds-brand-nav.jsx BottomNav`. Rewrite `src/components/layout/bottom-nav.tsx`:
+- Exact height (64px), grid layout, background, border
+- Active/inactive colors (accent-400 vs text-subtle)
+- Icon size (21px), label size (10px), gap (4px)
+- Active font-weight (600) vs inactive (500)
+- Safe-area padding
+
+### Sprint 21 — LiveTicker (REBUILD from ds-brand-nav.jsx)
+Read `ds-brand-nav.jsx LiveTicker`. Rewrite `src/components/layout/live-ticker.tsx`:
+- Exact height (32px), background, border, overflow
+- Label styling: font, size, color, letter-spacing
+- Ticker animation: exact keyframe (tickerUp 2.8s)
+- Item font sizes, colors, gaps
+
+### Sprint 22 — MarketCard (REBUILD from features.jsx)
+Read `features.jsx MarketCard`. Rewrite `src/components/markets/market-card.tsx` + CSS:
+- Card: exact padding, border, radius, background gradient, resting shadow
+- Hover: exact blue glow shadow string, transform, border-color, transition timing
+- Title: exact font-size (15px), weight (600), line-height (1.34)
+- YES %: exact font-size (28px), weight (700), color
+- Category watermark: exact size, position, opacity, hover behavior
+- YES/NO buttons: exact height, font, gradient, inset shadow
+- Trader avatars: overlap styling
+- Probability bar height in card
+- Footer meta: font, spacing
+
+### Sprint 23 — Buttons (REBUILD from kit50.jsx Btn + features.jsx ButtonShowcase)
+Read `kit50.jsx Btn` + `features.jsx ButtonShowcase`. Rewrite globals.css `.btn*`:
+- Every variant: primary, yes, no, gold, ghost, outline, aqua-ghost, claret
+- Exact radius (8px), sizes (sm 30, md 38/44, lg 46/50, xl 56)
+- Exact gradient fills, inset highlights, text shadows
+- Hover: exact brightness, lift, same-hue glow shadow strings
+- Press: exact scale, brightness, inset shadow
+- Disabled: exact opacity (.45)
+- Loading: spinner replaces leading icon
+- Border thickness for each variant
+
+### Sprint 24 — Inputs & Forms (REBUILD from ds-forms.jsx)
+Read `ds-forms.jsx`. Rewrite `src/components/ui/input.tsx` + form elements:
+- Input: exact height (44px md), radius (12px), background (bg-inset), border
+- Focus: exact brand-500 border + oklch shadow
+- Prefix slot: exact styling
+- Select: chevron, focus ring, panel styling
+- Switch/Checkbox/Radio: exact sizes, colors, animations
+- Stepper: exact styling
+- Textarea: exact styling
+- OTP boxes: exact styling
+
+### Sprint 25 — Avatars & Identity (REBUILD from ds-atoms2.jsx)
+Read `ds-atoms2.jsx Avatar`. Verify `src/components/ui/identity-avatar.tsx`:
+- Gradient generation: exact oklch values
+- Blob shapes: exact opacity (0.45, 0.30)
+- Text: exact font, shadow
+- Tier ring: exact border width, inner shadow
+- Tier glyph badge: exact positioning, border
+- All 6 sizes: exact px
+
+### Sprint 26 — Modals & Overlays (REBUILD from ds-overlays.jsx)
+Read `ds-overlays.jsx`. Verify all modal components:
+- Scrim: exact blur, opacity, color
+- Card: exact border, radius, shadow, glass edge
+- Entrance animation: exact keyframe, timing
+- OperationResultModal: crest, eyebrow, headline, detail rows, CTAs
+- BetConfirmModal, SellConfirmModal: exact styling
+- ConfirmDialog: exact styling
+- WinCelebration: gilt ray, rolling counter, NO confetti
+- RealityCheck: exact styling
+
+### Sprint 27 — Toasts & Notifications (REBUILD from ds-overlays.jsx)
+Read `ds-overlays.jsx Toast + NotificationPanel`. Verify:
+- Toast: exact width (320px), background (bg-elevated2), border-strong
+- Left rail: 3px colored per variant
+- Icon circle: 28px, bg-inset, correct color per kind
+- Progress strip: exact styling
+- NotificationPanel: exact width (340px), row styling, deep-links
+- Empty state in panel
+
+### Sprint 28 — Chips & Pills (REBUILD from kit50.jsx Chip)
+Read `kit50.jsx Chip`. Verify `src/components/ui/chip.tsx`:
+- Every variant: exact background tint %, color token, border tint %
+- Live dot: exact size (6px), pulse animation
+- Sizes: exact heights, padding, font-size
+- Letter-spacing: exact value (0.06em)
+
+### Sprint 29 — Progress Bars & Dial (REBUILD from kit50.jsx + ds-charts.jsx)
+Read `kit50.jsx ConvictionBar` + `ds-charts.jsx`. Verify:
+- Probability bar: exact gradient fills, gold needle, height variants
+- Resolved shimmer: exact animation
+- ConvictionDial: exact arc, needle, mono value display
+- Generic progress: exact gradient + glow + traveling light-sweep
+
+### Sprint 30 — Wallet Page (REBUILD from ds-wallet.jsx)
+Read `ds-wallet.jsx`. Rewrite `src/app/wallet/wallet-client.tsx`:
+- Balance card: exact gradient, border (gold-tinted), inset shadow, outer shadow
+- Label: exact gold-300 color, mono 10.5px
+- Balance: exact font-size (38px), weight, tracking
+- Sub-stats: exact styling
+- Buttons: exact deposit (gold lg) + withdraw (ghost lg)
+- Transaction rows: exact grid layout, columns, colors
+- Status badges per transaction type
+
+### Sprint 31 — Leaderboard (REBUILD from ds-leaderboard.jsx)
+Read `ds-leaderboard.jsx`. Verify `src/app/leaderboard/`:
+- Podium: exact styling
+- Row: exact grid, columns, font sizes
+- Tier badges: exact colors
+- Sparklines: exact styling
+- Glass panel wrapping
+
+### Sprint 32 — Market Detail (REBUILD from ds-flagship.jsx)
+Read `ds-flagship.jsx`. Verify `src/app/markets/[id]/page.tsx`:
+- Chart area: exact styling
+- Buy tray: exact dial + stake + payout layout
+- Criterion panel, stats, countdown
+- Comments section
+
+### Sprint 33 — Admin Pages (REBUILD from ds-admin.jsx)
+Read `ds-admin.jsx`. Verify all `src/app/admin/**`:
+- KPI cards: exact styling
+- Tables: exact row hover, header, border
+- Charts: bloom filter, area fill
+- Sidebar navigation: exact link styling
+
+### Sprint 34 — Auth Pages (REBUILD from ds-foundations.jsx patterns)
+Read `ds-foundations.jsx` auth patterns. Verify:
+- Login/Register: exact card, input, button layout
+- OTP: exact box styling
+- Forgot password: exact styling
+
+### Sprint 35 — Landing & Hero (chrome only, keep F1 bg)
+Verify `src/app/page.tsx`:
+- Trust strip: exact glass styling
+- Icon tiles: exact glass styling
+- "Pick a side now" section: exact heading, grid
+- Footer: exact styling
+
+### Sprint 36 — Page Width Consistency + Responsive
+- Audit ALL pages for max-width consistency
+- 393 / 768 / 1024 / 1280 / 1440 viewport check
+- Fix any width mismatches between pages
+- Bottom nav safe-area on all mobile views
+
+### Sprint 37 — Animations & Motion
+- Route-enter: verify timing matches kit
+- Card stagger: verify capped at 8
+- data-motion throttle: verify 3 tiers work
+- prefers-reduced-motion: verify all animations collapse
+- Skeleton shimmer: exact gradient + timing
+- Toast entrance: exact animation
+
+### Sprint 38 — Final QA + Build + Designer Handoff
+- `npm run build` must exit 0
+- Run responsive overflow test script
+- Verify all hard invariants (YES=green/left, NO=rose/right, gold=earned, no casino, etc.)
+- Update this plan with final status
+
+---
+
+## Rules for every sprint
+
+1. **Read the kit file FIRST** before touching any app code
+2. **Keep same sizes** unless kit explicitly specifies different — don't change what works
+3. **Apply new DESIGN** (colors, gradients, shadows, glow, borders) from kit
+4. `npm run build` must exit 0 after every sprint
+5. `git add` specific files, `git commit`, `git push` after each sprint
+6. **NO `git init`** — repo already has full history
+7. **UI only** — no logic, routes, server actions, or data changes
+8. **No screenshots** unless explicitly asked
