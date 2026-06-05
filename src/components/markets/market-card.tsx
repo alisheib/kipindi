@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { TippingBar } from "@/components/brand";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
@@ -57,27 +58,48 @@ function MoveChip({ move }: { move: number }) {
   );
 }
 
-/** Small info icon that opens a brief "how betting works" popup. */
+/** Small info icon that opens a brief "how betting works" popup.
+ *  Portaled to body because the card has overflow:hidden (watermark bleed). */
 function HowItWorks() {
   const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [pos, setPos] = useState({ top: 0, right: 0 });
+
+  const toggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.top - 8, right: window.innerWidth - r.right });
+    }
+    setOpen((v) => !v);
+  };
+
   return (
-    <span className="relative" style={{ zIndex: 2 }}>
+    <>
       <button
+        ref={btnRef}
         type="button"
         aria-label="How it works"
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen((v) => !v); }}
+        onClick={toggle}
         className="inline-flex items-center justify-center rounded-sm transition-colors hover:text-text-muted"
-        style={{ width: 18, height: 18, color: "var(--text-faint)" }}
+        style={{ width: 18, height: 18, color: "var(--text-faint)", position: "relative", zIndex: 2 }}
       >
         <I.info s={13} />
       </button>
-      {open && (
+      {open && typeof document !== "undefined" && createPortal(
         <>
           <div className="fixed inset-0 z-[90]" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); }} />
           <div
             onClick={(e) => e.stopPropagation()}
-            className="absolute right-0 bottom-6 z-[91] w-[260px] rounded-xl border border-border-strong p-3.5"
-            style={{ background: "var(--bg-elevated2)", boxShadow: "0 16px 40px -8px oklch(6% 0.08 264 / 0.7)" }}
+            className="fixed z-[91] w-[260px] rounded-xl border border-border-strong p-3.5"
+            style={{
+              bottom: `calc(100vh - ${pos.top}px)`,
+              right: pos.right,
+              background: "var(--bg-elevated2)",
+              boxShadow: "0 16px 40px -8px oklch(6% 0.08 264 / 0.7)",
+              animation: "orm-rise 160ms ease-out",
+            }}
           >
             <button
               type="button"
@@ -95,9 +117,10 @@ function HowItWorks() {
               Payout depends on the final pool, not the odds shown now. Only stake what you can afford. 18+.
             </p>
           </div>
-        </>
+        </>,
+        document.body,
       )}
-    </span>
+    </>
   );
 }
 
