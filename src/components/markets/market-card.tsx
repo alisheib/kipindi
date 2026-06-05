@@ -121,10 +121,10 @@ function HowItWorks() {
             </button>
             <p className="font-display text-[13px] font-bold text-text" style={{ marginBottom: 6 }}>How it works</p>
             <p className="text-[11.5px] leading-[1.55] text-text-muted">
-              Pick <span className="font-bold text-yes-300">YES</span> or <span className="font-bold text-no-300">NO</span>. Your stake joins the pool. If your side wins, you share the losing pool minus a <span className="font-mono font-semibold text-text">9%</span> operator margin.
+              Pick <span className="font-bold text-yes-300">YES</span> or <span className="font-bold text-no-300">NO</span>. Your stake joins the pool. If your side wins, you share the losing pool minus the operator margin.
             </p>
             <p className="text-[10.5px] leading-[1.5] text-text-subtle italic" style={{ marginTop: 6 }}>
-              Payout depends on the final pool, not the odds shown now. Only stake what you can afford. 18+.
+              Payout depends on the final pool, not the current odds. Only stake what you can afford to lose. 18+.
             </p>
           </div>
         </>,
