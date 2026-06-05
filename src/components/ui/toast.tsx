@@ -170,23 +170,21 @@ function ToastItem({ toast, exiting, onDismiss }: { toast: Toast; exiting: boole
       role="status"
       className={cn(
         // Kit toast — 280..360 max width, .toast surface, .shadow-card
-        "pointer-events-auto relative w-full max-w-[340px] overflow-hidden rounded-md border transition-all duration-200",
+        "pointer-events-auto relative w-full max-w-[320px] overflow-hidden rounded-md border transition-all duration-200",
         "shadow-[var(--shadow-card)]",
         v.surface,
         visible ? "translate-y-0 opacity-100 scale-100" : "-translate-y-2 opacity-0 scale-95",
       )}
       style={{
-        background: "color-mix(in oklab, var(--bg-elevated) 92%, var(--teal-500) 8%)",
-        backdropFilter: "blur(14px) saturate(1.1)",
-        WebkitBackdropFilter: "blur(14px) saturate(1.1)",
+        background: "var(--bg-elevated2)",
       }}
     >
       {/* Heraldic rail — 3px wide, gilt-tinted accent at the leading edge */}
       <div className={cn("absolute left-0 top-0 bottom-0 w-[3px]", v.rail)} aria-hidden />
 
       <div className="flex items-start gap-3 py-3 pl-4 pr-8">
-        <div className="mt-0.5 shrink-0 inline-flex h-[22px] w-[22px] items-center justify-center rounded-pill"
-             style={{ background: "color-mix(in oklab, var(--bg-overlay) 55%, transparent)" }}>
+        <div className="mt-0.5 shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-pill"
+             style={{ background: "var(--bg-inset)" }}>
           {v.icon}
         </div>
         <div className="min-w-0 flex-1">

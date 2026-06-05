@@ -120,7 +120,7 @@ export function WinCelebrationHost() {
 
       {/* Card — calm gilt celebration (no confetti, per kit invariant #7) */}
       <div
-        className="relative z-10 w-full max-w-[380px] overflow-hidden rounded-2xl border border-gold-700 bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)]"
+        className="relative z-10 w-full max-w-[380px] overflow-hidden rounded-xl border border-gold-700 bg-bg-elevated shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65)]"
         style={{ animation: "win-burst 320ms cubic-bezier(.2,.8,.2,1) both" }}
       >
         <div

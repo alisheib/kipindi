@@ -89,7 +89,7 @@ export function ConfirmDialog({
             style={{ animation: "cd-fade 160ms ease-out" }}
           />
           <div
-            className="relative w-full max-w-[440px] rounded-2xl border border-border-strong bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.06)] p-5 lg:p-6"
+            className="relative w-full max-w-[440px] rounded-xl border border-border-strong bg-bg-elevated shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65),inset_0_1px_0_rgba(255,255,255,0.06)] p-5 lg:p-6"
             style={{ animation: "cd-rise 200ms var(--ease-arrive)" }}
           >
             <button

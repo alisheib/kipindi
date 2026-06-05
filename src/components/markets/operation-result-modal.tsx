@@ -217,7 +217,7 @@ export function OperationResultModal({
       />
 
       <div
-        className="relative w-full max-w-[460px] rounded-2xl border border-border-strong bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.06)] overflow-hidden"
+        className="relative w-full max-w-[460px] rounded-xl border border-border-strong bg-bg-elevated shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65),inset_0_1px_0_rgba(255,255,255,0.06)] overflow-hidden"
         // `overflow-hidden` clips the gold auto-close strip to the
         // rounded corners; without it, the strip's `rounded-t-2xl`
         // can render slightly past the popup's `rounded-2xl` + 1 px
