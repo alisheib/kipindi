@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Avatar } from "@/components/ui/avatar";
-import { User, Wallet, Receipt, ShieldCheck, LogOut, Gift, Trophy } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -133,12 +133,12 @@ export function AvatarMenu({
               </div>
             </div>
             <ul className="py-1">
-              <Item href="/profile"        icon={User}        label="Profile"      sw="Wasifu" />
-              <Item href="/wallet"         icon={Wallet}      label="Wallet"       sw="Pochi" />
-              <Item href="/profile/invite" icon={Gift}        label="Invite & Earn" sw="Alika upate" accent />
-              <Item href="/proposals"      icon={Trophy}      label="Propose & earn" sw="Pendekeza" accent />
-              <Item href="/positions"      icon={Receipt}     label="Positions"    sw="Madau" />
-              <Item href="/profile/kyc"    icon={ShieldCheck} label="Verify ID"    sw="Thibitisha" />
+              <Item href="/profile"        icon={I.profile}      label="Profile"      sw="Wasifu" />
+              <Item href="/wallet"         icon={I.wallet}       label="Wallet"       sw="Pochi" />
+              <Item href="/profile/invite" icon={I.gift}         label="Invite & Earn" sw="Alika upate" accent />
+              <Item href="/proposals"      icon={I.trophy}       label="Propose & earn" sw="Pendekeza" accent />
+              <Item href="/positions"      icon={I.receipt}      label="Positions"    sw="Madau" />
+              <Item href="/profile/kyc"    icon={I.shieldcheck}  label="Verify ID"    sw="Thibitisha" />
             </ul>
             <div className="border-t border-border">
               <ConfirmDialog
@@ -160,7 +160,7 @@ export function AvatarMenu({
                     type="button"
                     className="w-full flex items-center gap-2.5 px-3.5 py-2.5 font-display text-body-sm font-semibold text-no-300 hover:bg-no-500/10 transition-colors text-left"
                   >
-                    <LogOut size={15} strokeWidth={1.75} aria-hidden />
+                    <I.logOut s={15} aria-hidden />
                     Sign out · Toka
                   </button>
                 }
@@ -177,7 +177,7 @@ export function AvatarMenu({
   );
 }
 
-function Item({ href, icon: Icon, label, sw, accent }: { href: string; icon: typeof User; label: string; sw: string; accent?: boolean }) {
+function Item({ href, icon: Ico, label, sw, accent }: { href: string; icon: (p: { s?: number; className?: string }) => React.ReactElement; label: string; sw: string; accent?: boolean }) {
   return (
     <li>
       <Link
@@ -187,7 +187,7 @@ function Item({ href, icon: Icon, label, sw, accent }: { href: string; icon: typ
           accent ? "hover:bg-gold-500/10" : "hover:bg-bg-overlay",
         )}
       >
-        <Icon size={15} strokeWidth={1.75} className={accent ? "text-gold-300" : "text-text-subtle"} />
+        <span className={accent ? "text-gold-300" : "text-text-subtle"}><Ico s={15} /></span>
         {label}
         <span className="text-text-subtle italic font-normal text-label">· {sw}</span>
       </Link>
