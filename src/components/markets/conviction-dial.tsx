@@ -739,14 +739,13 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
                 y1={trackY - 4} y2={trackY + trackH + 4}
                 stroke="var(--bar-track-border)" strokeWidth="1" />
 
-          {/* Tachymeter detents — small pearl ticks at 1.5×, 2×, 3×, 4×, 5×
-              both sides. Per the gilt-budget rule, these use pearl-muted
-              (not gilt) so gold stays reserved for resolved + commit +
-              verdict moments. Positions are the inverse of the multiplier
-              curve: pos = 0.5 ± 0.5·√((m−1)/4).  */}
-          {[1.5, 2, 3, 4, 5].flatMap((m) => {
-            const dist = Math.sqrt(Math.max(0, (m - 1) / 4));
-            const isEdge = m === 5;
+          {/* Tachymeter detents — TZS amount ticks at meaningful stake
+              levels. Positions use the inverse of the multiplier curve:
+              pos = 0.5 ± 0.5·√((m−1)/(maxMult-1)). */}
+          {[1000, 5000, 10000, 25000, 50000, 100000].flatMap((tzs) => {
+            const m = tzs / baseStake;
+            const dist = Math.sqrt(Math.max(0, (m - 1) / (maxMultiplier - 1)));
+            const isEdge = tzs === baseStake * maxMultiplier;
             return ["YES", "NO"].map((s) => {
               const px = s === "YES" ? (0.5 - 0.5 * dist) * width : (0.5 + 0.5 * dist) * width;
               return (
@@ -758,10 +757,6 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
                     strokeWidth={isEdge ? 1 : 0.75}
                     opacity={isEdge ? 0.55 : 0.32}
                   />
-                  {/* The 5× ticks are at pos=0 and pos=1, where the knob
-                      lives at maximum conviction — labeling them would
-                      collide with the knob squircle. The tick alone is
-                      enough; the multiplier on the knob face shows 5.00×. */}
                   {!isEdge && (
                     <text
                       x={px} y={trackY - 8}
@@ -773,7 +768,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
                       opacity={0.55}
                       letterSpacing="0.04em"
                     >
-                      {m % 1 === 0 ? `${m}×` : `${m.toFixed(1)}×`}
+                      {tzs >= 1000 ? `${tzs / 1000}k` : String(tzs)}
                     </text>
                   )}
                 </g>

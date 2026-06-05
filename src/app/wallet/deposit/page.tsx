@@ -142,9 +142,6 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
 
       <p className="px-1 text-center text-[11.5px] text-text-subtle leading-relaxed">
         Funds typically arrive within 60 seconds. Provider may charge a separate fee.
-        <span className="block mt-1 text-[10.5px] text-text-subtle/80">
-          Test failure: amount ending in <span className="font-mono text-warning-fg">…13</span> is declined for QA.
-        </span>
       </p>
     </main>
   );

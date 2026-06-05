@@ -156,7 +156,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
           </div>
           <p className="mt-2 text-[11px] text-text-subtle">
             Min TZS 1,000 · Max TZS 5,000,000 per withdrawal.
-            Amounts ≥ <span className="font-mono text-text-muted">TZS 1,000,000</span> trigger AML review (typically 2 hours).
+            Amounts ≥ <span className="font-mono text-text-muted">TZS 1,000,000</span> may require AML review (up to 24 hours).
           </p>
         </div>
 
