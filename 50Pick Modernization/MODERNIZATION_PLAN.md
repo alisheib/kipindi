@@ -1,8 +1,9 @@
 # 50pick UI v2 — Dark Glass Kit Rebuild
 
 > **Last updated:** 2026-06-05
-> **Status:** Phase 3 + 3b + 3c complete. 50 sprints on `main`, all pushed.
+> **Status:** Phase 3 + 3b + 3c complete. 55 sprints on `main`, all pushed.
 > **Pre-release validation:** Zero crash bugs. Zero undefined references. Build clean.
+> **Demo-ready:** Yes. All routes exist, all features wired, all loading states use kit spinners.
 
 ## What happened
 

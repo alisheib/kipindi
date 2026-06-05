@@ -1668,12 +1668,12 @@ html.kp-reduce-motion *::after {
    sparkline, trader crest-stack) fit authentically. Title-left / YES%-right
    head keeps it landscape; fixed title reserve keeps bars aligned across cards. */
 .mcardp { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 14px 15px 13px; border-radius: var(--r-md); background: var(--bg-elevated);
-  border: 1px solid var(--border); box-shadow: 0 1px 2px oklch(8% 0.07 264 / 0.35); overflow: hidden; isolation: isolate; transition: transform .2s var(--ease-stage), border-color .2s var(--ease-micro), box-shadow .2s var(--ease-stage); cursor: pointer; }
+  border: 1px solid var(--border); box-shadow: 0 1px 2px oklch(8% 0.07 264 / 0.35); overflow: hidden; isolation: isolate; transition: transform .22s var(--ease-stage), border-color .22s var(--ease-stage), box-shadow .22s var(--ease-stage); cursor: pointer; }
 .mcardp:hover { transform: translateY(-3px); border-color: var(--brand-500); box-shadow: 0 0 0 1px var(--brand-500), 0 14px 34px oklch(8% 0.08 264 / 0.6), 0 0 30px oklch(63% 0.18 262 / 0.24); }
 /* Kit signature (features.jsx MarketCard) — large faint category glyph
    watermark in the top-right corner; brightens to brand-blue on hover.
    Real content sits above it via the z-index rule. */
-.mcardp-watermark { position: absolute; bottom: -18px; right: -14px; color: var(--border-strong); opacity: 0.055; pointer-events: none; z-index: 0; transition: opacity .28s var(--ease-stage), color .28s, transform .28s var(--ease-stage); }
+.mcardp-watermark { position: absolute; bottom: -18px; right: -14px; color: var(--border-strong); opacity: 0.055; pointer-events: none; z-index: 0; transition: opacity .22s var(--ease-stage), color .22s var(--ease-stage), transform .22s var(--ease-stage), filter .22s var(--ease-stage); }
 .mcardp-watermark svg { width: 140px; height: 140px; }
 .mcardp:hover .mcardp-watermark { opacity: 0.22; color: var(--brand-400); transform: scale(1.06); filter: drop-shadow(0 0 18px oklch(63% 0.18 262 / 0.35)); }
 .mcardp > *:not(.mcardp-watermark) { position: relative; z-index: 1; }
