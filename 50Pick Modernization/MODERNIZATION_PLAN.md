@@ -236,15 +236,20 @@ actual component rewrites where old patterns persisted.
 - [x] glass-panel — bg-elevated, border (not border-strong), r-lg
 - [x] BottomNav — fixed xl:hidden override (inline display:grid bug)
 
+### Done (Phase 3b continued)
+- [x] Platform-wide rounded-xl sweep (0 remaining rounded-2xl)
+- [x] Platform-wide brand-500 focus ring sweep (0 remaining aqua refs)
+- [x] Page-level cards: border (was border-strong) on all profile/wallet pages
+- [x] Position card: brand-500 hover + blue glow (was teal-400)
+- [x] Reality check modal: kit WarnModal rebuild (15.5px title, gold rail, icon box)
+- [x] KYC page: bg-inset inputs + brand-500 focus + rounded-xl header
+- [x] Wallet deposit/withdraw: bg-inset payment rail cards
+- [x] Admin pages: brand-500 focus on all inputs/selects/textareas + rounded-xl
+
 ### Remaining (Phase 3b)
-- [ ] KYC page — use Input component, tier progress styling
-- [ ] Admin pages — tables, KPI cards (ds-admin.jsx)
-- [ ] Market detail — buy tray, stats panel (ds-flagship.jsx)
-- [ ] Positions page — portfolio rows, P&L (ds-positions.jsx)
-- [ ] Wallet deposit/withdraw — Radio component for payment rails
-- [ ] Profile pages — old input patterns
-- [ ] Focus rings — brand-500 globally (remaining aqua references)
-- [ ] `.input-group` legacy usage — 5+ files
+- [ ] Market detail buy tray fine-tuning (ds-flagship.jsx)
+- [ ] Admin KPI card + table row hover styling (ds-admin.jsx)
+- [ ] Positions page stat grid styling (ds-positions.jsx)
 
 ---
 
