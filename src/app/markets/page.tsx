@@ -116,11 +116,12 @@ async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: strin
               key={o.id}
               href={buildHref({ when: o.id })}
               className={
-                "inline-flex h-8 items-center rounded-pill border px-3.5 font-mono text-[12px] font-semibold whitespace-nowrap transition-colors lg:w-full lg:justify-start lg:rounded-md " +
+                "inline-flex h-8 items-center rounded-md border px-3.5 font-mono text-[12px] font-semibold whitespace-nowrap transition-all lg:w-full lg:justify-start " +
                 (active
-                  ? "border-gold-500 bg-gold-500/10 text-gold-300"
-                  : "border-border bg-bg-elevated text-text-muted hover:border-gold-700 hover:text-text")
+                  ? "border-brand-500 text-text"
+                  : "border-border bg-bg-elevated/60 text-text-muted hover:border-brand-400 hover:text-text")
               }
+              style={active ? { background: "oklch(40% 0.12 262 / 0.35)", boxShadow: "0 0 10px oklch(63% 0.18 262 / 0.15)" } : undefined}
             >
               {o.label}
               <span className="ml-1.5 italic font-normal text-[10.5px] text-text-subtle">· {o.sw}</span>
@@ -137,11 +138,12 @@ async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: strin
               key={c.id}
               href={buildHref({ cat: c.id })}
               className={
-                "inline-flex h-8 items-center rounded-pill border px-3.5 font-mono text-[12px] font-semibold whitespace-nowrap transition-colors lg:w-full lg:justify-start lg:rounded-md " +
+                "inline-flex h-8 items-center rounded-md border px-3.5 font-mono text-[12px] font-semibold whitespace-nowrap transition-all lg:w-full lg:justify-start " +
                 (active
-                  ? "border-text bg-bg-overlay text-text"
-                  : "border-border bg-bg-elevated text-text-muted hover:border-text hover:text-text")
+                  ? "border-brand-500 text-text"
+                  : "border-border bg-bg-elevated/60 text-text-muted hover:border-brand-400 hover:text-text")
               }
+              style={active ? { background: "oklch(40% 0.12 262 / 0.35)", boxShadow: "0 0 10px oklch(63% 0.18 262 / 0.15)" } : undefined}
             >
               {c.label}
             </a>
