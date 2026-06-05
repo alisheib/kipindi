@@ -7,6 +7,8 @@
 import Link from "next/link";
 import { db } from "@/lib/server/store";
 import { AdminMobileNavTrigger } from "./admin-mobile-nav";
+import { AdminSidebarNav } from "./admin-sidebar-nav";
+import { NAV_GROUPS } from "./admin-nav-groups";
 import { PeriodPicker } from "./period-picker";
 
 export type AdminSession = {
@@ -15,71 +17,7 @@ export type AdminSession = {
   role: string;
 };
 
-export const NAV_GROUPS: ReadonlyArray<{
-  group: { en: string; sw: string };
-  items: ReadonlyArray<{ href: string; label: string; key: string; badge?: string }>;
-}> = [
-  {
-    group: { en: "Overview", sw: "Muhtasari" },
-    items: [
-      { href: "/admin",      label: "Overview", key: "overview" },
-      { href: "/admin/live", label: "Live ops", key: "live" },
-    ],
-  },
-  {
-    group: { en: "Money", sw: "Pesa" },
-    items: [
-      { href: "/admin/finance", label: "Finance", key: "finance" },
-      { href: "/admin/reports", label: "Reports", key: "reports" },
-    ],
-  },
-  {
-    group: { en: "Players", sw: "Wachezaji" },
-    items: [
-      { href: "/admin/players",         label: "Roster",  key: "players" },
-      { href: "/admin/players/cohorts", label: "Cohorts", key: "cohorts" },
-    ],
-  },
-  {
-    group: { en: "Markets", sw: "Soko" },
-    items: [
-      { href: "/admin/ai-polls",        label: "AI poll generation", key: "ai-polls" },
-      { href: "/admin/candidates",     label: "AI candidates", key: "candidates" },
-      { href: "/admin/proposals",      label: "Player proposals", key: "proposals" },
-      { href: "/admin/markets",        label: "Curation queue", key: "markets" },
-      { href: "/admin/resolver-queue", label: "Resolver queue", key: "resolver" },
-      { href: "/admin/sources",        label: "Sources & categories", key: "sources" },
-      { href: "/admin/config",         label: "Rates & fees", key: "config" },
-      { href: "/admin/house-pool",    label: "House pool", key: "house-pool" },
-    ],
-  },
-  {
-    group: { en: "Growth", sw: "Ukuaji" },
-    items: [
-      { href: "/admin/affiliate", label: "Affiliate", key: "affiliate" },
-    ],
-  },
-  {
-    group: { en: "Compliance", sw: "Kanuni" },
-    items: [
-      { href: "/admin/compliance",      label: "Compliance",     key: "compliance" },
-      { href: "/admin/moderation",      label: "Comment moderation", key: "moderation" },
-      { href: "/admin/aml",             label: "AML queue",      key: "aml" },
-      { href: "/admin/self-exclusions", label: "Self-exclusions", key: "sx" },
-      { href: "/admin/privacy",         label: "Privacy / DSAR", key: "privacy" },
-      { href: "/admin/retention",       label: "Retention",      key: "retention" },
-      { href: "/admin/audit",           label: "Audit log",      key: "audit" },
-    ],
-  },
-  {
-    group: { en: "System", sw: "Mfumo" },
-    items: [
-      { href: "/admin/system",    label: "System",    key: "system" },
-      { href: "/admin/approvals", label: "Approvals", key: "approvals" },
-      { href: "/admin/2fa/setup", label: "2FA setup", key: "2fa" },
-    ],
-  },
-];
+export { NAV_GROUPS } from "./admin-nav-groups";
 
 /** Session-id prefix for the confidential band — short, anonymisable. */
 function shortSessionLabel(s: AdminSession): string {
@@ -125,37 +63,7 @@ export function AdminSidebar({ activeKey }: { activeKey: string }) {
         <span aria-hidden className="h-3.5 w-3.5 rounded-pill border-[1.5px] border-gold" />
         <span className="font-display font-bold text-body-sm text-text">50pick · admin</span>
       </Link>
-      {NAV_GROUPS.map((g) => (
-        <div key={g.group.en}>
-          <div className="px-2 pt-3 pb-1.5 font-mono text-micro uppercase tracking-[0.18em] text-text-tertiary">
-            {g.group.en} · {g.group.sw}
-          </div>
-          {g.items.map((it) => {
-            const badge = (badges as Record<string, string | undefined>)[it.key];
-            const active = it.key === activeKey;
-            return (
-              <Link
-                key={it.key}
-                href={it.href as never}
-                className={[
-                  "flex items-center justify-between rounded-md px-2.5 py-2 text-body-sm transition-colors",
-                  active
-                    ? "text-text font-semibold"
-                    : "text-text-subtle hover:text-text",
-                ].join(" ")}
-                style={active ? { background: "oklch(40% 0.12 268 / 0.5)" } : undefined}
-              >
-                <span>{it.label}</span>
-                {badge && (
-                  <span className="bg-gold text-gold-fg font-mono text-micro leading-none" style={{ padding: "1px 5px", borderRadius: 4 }}>
-                    {badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </div>
-      ))}
+      <AdminSidebarNav badges={badges} fallbackKey={activeKey} />
       <div className="mt-auto pt-3 border-t border-dashed border-border-subtle text-caption text-text-tertiary px-2">
         <div>v2.4 · deployed {new Date().toISOString().slice(0, 10)}</div>
         <div className="mt-1">EN · SW · FR</div>
