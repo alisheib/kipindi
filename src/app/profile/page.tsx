@@ -64,7 +64,7 @@ export default async function ProfilePage() {
       </h1>
       {/* ── Hero — kit-faithful: tilted FiftyMark watermark, OKLCH gradient,
             mono-stamped meta, picture uploader badge. No Kipindi tokens. */}
-      <section className="relative overflow-hidden rounded-xl border border-border-strong bg-bg-elevated">
+      <section className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated">
         {/* Layered background — emerald → rose tilt + mark watermark */}
         <div
           className="absolute inset-0"

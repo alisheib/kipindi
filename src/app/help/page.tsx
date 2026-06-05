@@ -41,7 +41,7 @@ const FAQS: { q: string; a: string }[] = [
 export default function HelpPage() {
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-5">
-      <header className="relative overflow-hidden rounded-xl border border-border-strong bg-bg-elevated">
+      <header className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated">
         <div
           className="absolute inset-0"
           aria-hidden

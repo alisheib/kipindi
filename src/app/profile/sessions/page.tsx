@@ -36,7 +36,7 @@ export default async function SessionsPage() {
         Profile
       </Link>
 
-      <header className="relative overflow-hidden rounded-xl border border-border-strong bg-bg-elevated">
+      <header className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated">
         <div
           className="absolute inset-0"
           aria-hidden
