@@ -106,7 +106,7 @@ export function MarketCard({
         </div>
       </div>
 
-      <TippingBar yesPct={yesPct} height={10} resolved={isResolved} showLabels={false} recastOnHover={false} />
+      <TippingBar yesPct={yesPct} height={7} resolved={isResolved} showLabels={false} recastOnHover={false} />
 
       {live ? (
         <div className="mcardp-actions">
