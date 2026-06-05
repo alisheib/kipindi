@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { TippingBar } from "@/components/brand";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
@@ -52,6 +53,51 @@ function MoveChip({ move }: { move: number }) {
         </svg>
       )}
       {move > 0 ? "+" : ""}{move}<span style={{ opacity: 0.7 }}>pt</span>
+    </span>
+  );
+}
+
+/** Small info icon that opens a brief "how betting works" popup. */
+function HowItWorks() {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="relative" style={{ zIndex: 2 }}>
+      <button
+        type="button"
+        aria-label="How it works"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen((v) => !v); }}
+        className="inline-flex items-center justify-center rounded-sm transition-colors hover:text-text-muted"
+        style={{ width: 18, height: 18, color: "var(--text-faint)" }}
+      >
+        <I.info s={13} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-[90]" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); }} />
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="absolute right-0 bottom-6 z-[91] w-[260px] rounded-lg p-3.5 shadow-[0_12px_36px_-8px_rgba(0,0,0,0.5)]"
+            style={{ background: "#fff", color: "#1a1a2e" }}
+          >
+            <button
+              type="button"
+              aria-label="Close"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); }}
+              className="absolute right-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-sm hover:bg-black/10 transition-colors"
+              style={{ color: "#666" }}
+            >
+              <I.x s={12} />
+            </button>
+            <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>How it works</p>
+            <p style={{ fontSize: 11.5, lineHeight: 1.55, color: "#444" }}>
+              Pick YES or NO. Your stake joins the pool. If your side wins, you share the losing pool minus a 9% operator margin.
+            </p>
+            <p style={{ fontSize: 11, lineHeight: 1.5, color: "#888", marginTop: 6, fontStyle: "italic" }}>
+              Payout depends on the final pool, not the odds shown now. Only stake what you can afford. 18+.
+            </p>
+          </div>
+        </>
+      )}
     </span>
   );
 }
@@ -127,8 +173,9 @@ export function MarketCard({
         <span>{predictors.toLocaleString()} traders</span>
         <span className="dot" />
         <span>{fmtTzs(volume)}</span>
-        <span style={{ marginLeft: "auto" }} className={live ? "live" : undefined}>
+        <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6 }} className={live ? "live" : undefined}>
           {timeLeft}
+          {live && <HowItWorks />}
         </span>
       </div>
     </Link>
