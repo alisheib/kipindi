@@ -6,7 +6,6 @@
  * can verify each resolution against its public source.
  */
 import Link from "next/link";
-import { ExternalLink, ShieldCheck, Users } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { listMarkets, seedDemoMarkets } from "@/lib/server/market-service";
 
@@ -113,7 +112,7 @@ export default function FairnessPage() {
                     <td className="p-3">
                       <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-teal-300 hover:text-teal-200 underline">
                         Source
-                        <ExternalLink size={11} aria-hidden />
+                        <I.ext s={11} />
                       </a>
                     </td>
                   </tr>

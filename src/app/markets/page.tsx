@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Trophy, ArrowRight } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
 import { listMarkets, impliedYesPct, isClosedByTime, seedDemoMarkets, traderSeedsByMarket, type MarketCategory } from "@/lib/server/market-service";

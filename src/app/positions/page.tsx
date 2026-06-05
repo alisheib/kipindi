@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { TrendingUp, TrendingDown, Coins, Clock } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { PositionCard } from "@/components/markets/position-card";
 import { SellButton } from "@/components/markets/sell-button";

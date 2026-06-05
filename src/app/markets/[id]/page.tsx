@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ExternalLink, Users, TrendingUp } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { TippingBar } from "@/components/brand";
 import { ConvictionDial } from "@/components/markets/conviction-dial";
@@ -117,7 +116,7 @@ export default async function MarketDetail({
             className="inline-flex items-center gap-1 ml-auto text-[12px] font-mono text-text-muted hover:text-text"
           >
             Source
-            <ExternalLink size={12} aria-hidden />
+            <I.ext s={12} />
           </a>
           <ShareButton marketId={m.id} title={m.titleEn} />
         </div>
@@ -139,8 +138,8 @@ export default async function MarketDetail({
           )}
 
           <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3">
-            <KPI label="Volume"     value={fmtTzs(m.yesPool + m.noPool)} icon={<I.trendingUp s={14} />} />
-            <KPI label="Predictors" value={String(totalPredictorCount)}   icon={<I.users s={14} />} />
+            <KPI label="Volume"     value={fmtTzs(m.yesPool + m.noPool)} icon={<I.chart s={14} />} />
+            <KPI label="Predictors" value={String(totalPredictorCount)}  icon={<I.users s={14} />} />
             <KPI label="Resolves"   value={fmtTime(m.resolutionAt)} mono />
           </div>
 

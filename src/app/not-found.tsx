@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Compass, ArrowRight } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 
@@ -62,7 +61,7 @@ export default function NotFound() {
         href="/markets"
         className="mt-6 inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200"
       >
-        <Compass size={12} />
+        <I.globe s={12} />
         Browse open markets
         <I.arrowRight s={12} />
       </Link>

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ArrowRight, ShieldCheck, Smartphone, BarChart3 } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
 import { FiftyLockup } from "@/components/brand";
@@ -176,10 +175,10 @@ export default async function LandingPage() {
         <section>
           <div className="mb-4 flex items-baseline justify-between">
             <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">Live · Hai</p>
-              <h2 className="font-display text-[24px] md:text-[28px] font-semibold text-text">Pick a side now</h2>
+              <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold" style={{ color: "var(--live-400)" }}>Live · Hai</p>
+              <h2 className="font-display text-[26px] md:text-[30px] font-bold text-text">Pick a side now</h2>
             </div>
-            <Link href={"/markets" as never} className="font-mono text-[12px] uppercase tracking-[0.16em] text-yes-300 hover:text-yes-200">
+            <Link href={"/markets" as never} className="font-mono text-[12px] uppercase tracking-[0.16em] text-accent-400 hover:text-accent-300">
               View all →
             </Link>
           </div>
@@ -224,7 +223,7 @@ export default async function LandingPage() {
       >
         <div className="relative grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-7">
           <TrustItem
-            icon={<BarChart3 size={20} />}
+            icon={<I.chart s={20} />}
             n="01"
             en="Pick a side, stake TZS"
             sw="Chagua upande, weka dau"
@@ -241,7 +240,7 @@ export default async function LandingPage() {
             href="/fairness"
           />
           <TrustItem
-            icon={<Smartphone size={20} />}
+            icon={<I.phone s={20} />}
             n="03"
             en="Get paid via M-Pesa"
             sw="Pata malipo kwa M-Pesa"

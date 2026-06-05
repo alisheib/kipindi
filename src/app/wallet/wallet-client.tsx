@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowDownToLine, ArrowUpFromLine, Wallet as WalletIcon, Phone, CreditCard, Plus } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -27,7 +26,7 @@ function BalanceCard({
       </div>
       <div className="relative z-10 p-5 lg:p-6">
         <div className="flex items-center gap-1.5 text-gold-300">
-          <WalletIcon size={13} />
+          <I.wallet s={13} />
           <p className="font-mono text-[10.5px] uppercase tracking-[0.16em] font-bold">Available · Salio</p>
         </div>
         <p
@@ -49,8 +48,8 @@ function BalanceCard({
 function SubStat({ label, sw, value }: { label: string; sw: string; value: string }) {
   return (
     <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-3 py-2.5 backdrop-blur-md">
-      <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle">{label}</p>
-      <p className="font-mono font-bold text-[13px] tabular-nums text-text-muted leading-tight"><Cash>{value}</Cash></p>
+      <p className="font-mono text-[9.5px] uppercase tracking-[0.10em] text-text-faint">{label}</p>
+      <p className="font-mono font-bold text-[14px] tabular-nums text-text leading-tight"><Cash>{value}</Cash></p>
       <p className="text-[10px] italic text-text-subtle">{sw}</p>
     </div>
   );
@@ -67,8 +66,8 @@ function TxnRow({ tx }: { tx: Transaction }) {
     isCredit ? "bg-yes-500/10 text-yes-300" : "bg-no-500/10 text-no-300";
   return (
     <div className="flex items-center gap-3 py-3 px-3 border-b border-border last:border-b-0">
-      <span className={`inline-flex h-8 w-8 items-center justify-center rounded-md shrink-0 ${arrowBg}`}>
-        {isCredit ? <ArrowDownToLine size={14} /> : <ArrowUpFromLine size={14} />}
+      <span className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-md shrink-0 ${arrowBg}`}>
+        {isCredit ? <I.arrowDown s={16} /> : <I.arrowUp s={16} />}
       </span>
       <div className="flex-1 min-w-0">
         <p className="font-display text-[13.5px] font-semibold text-text leading-tight truncate">
@@ -134,11 +133,11 @@ export function WalletPageClient({
         {isAuthed && (
           <div className="flex items-center gap-2 shrink-0">
             <Link href="/wallet/deposit" className="btn btn-gold btn-md inline-flex" style={{ borderRadius: "var(--r-pill)" }}>
-              <ArrowDownToLine size={14} />
+              <I.arrowDown s={14} />
               Deposit
             </Link>
             <Link href="/wallet/withdraw" className="btn btn-ghost btn-md inline-flex" style={{ borderRadius: "var(--r-pill)" }}>
-              <ArrowUpFromLine size={14} />
+              <I.arrowUp s={14} />
               Withdraw
             </Link>
           </div>
@@ -211,7 +210,7 @@ export function WalletPageClient({
                 <div className="min-w-0">
                   <p className="font-display text-[13.5px] font-semibold text-text leading-tight truncate">{m.name}</p>
                   <p className="mt-0.5 font-mono text-[11px] text-text-subtle tabular-nums">
-                    <Phone size={10} className="inline mr-1" aria-hidden />
+                    <I.phone s={10} className="inline mr-1" />
                     {m.phone}
                   </p>
                 </div>
@@ -231,7 +230,7 @@ export function WalletPageClient({
             aria-disabled
             className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-bg-elevated/30 p-6 text-text-subtle/70 cursor-not-allowed"
           >
-            <CreditCard size={15} />
+            <I.receipt s={15} />
             <span className="font-display text-[13px] font-semibold">Add a card · Ongeza kadi</span>
             <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-subtle">Coming soon</span>
           </div>

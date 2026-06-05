@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { AlertOctagon, RotateCcw, ArrowRight } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 
@@ -43,7 +42,7 @@ export default function GlobalError({
         <FiftyMark size={64} />
       </div>
       <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-no-700 bg-no-500/10 text-no-300">
-        <AlertOctagon size={18} aria-hidden />
+        <I.alertCircle s={18} />
       </div>
       <p className="font-mono text-[10px] font-bold uppercase tracking-[0.20em] text-no-300">
         Something went wrong · Hitilafu imetokea
@@ -72,7 +71,7 @@ export default function GlobalError({
           onClick={() => reset()}
           className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-royal px-4 font-semibold text-onBrand text-[13px] transition-colors hover:bg-royal-hover"
         >
-          <RotateCcw size={14} aria-hidden />
+          <I.bolt s={14} />
           Try again · Jaribu tena
         </button>
         <Link
