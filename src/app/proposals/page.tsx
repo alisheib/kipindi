@@ -125,7 +125,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
           titleSw="Bado hakuna mapendekezo"
           body={`Be the first to propose a market. If it gets listed and resolved, you earn TZS ${cfg.prizeTzs.toLocaleString()}.`}
           action={enabled ? (
-            <Link href={"/proposals/new" as never}><Button variant="gold" size="md" leading={<I.plus s={14} />}>Create proposal · Pendekeza</Button></Link>
+            <Link href={"/proposals/new" as never}><Button variant="gold" size="sm" leading={<I.plus s={12} />}>Create · Pendekeza</Button></Link>
           ) : undefined}
         />
       ) : (

@@ -91,11 +91,12 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
     case "markets":
       return (
         <svg viewBox="0 0 56 56" {...s} width="56" height="56">
-          {/* Two stacked tipping bars */}
-          <rect x="6" y="14" width="44" height="8" rx="4" stroke="currentColor" />
-          <rect x="6" y="34" width="44" height="8" rx="4" stroke="currentColor" />
-          <line x1="20" y1="11" x2="20" y2="25" stroke="currentColor" />
-          <line x1="36" y1="31" x2="36" y2="45" stroke="var(--gold-400)" />
+          {/* Scales of justice — markets/proposals */}
+          <line x1="28" y1="8" x2="28" y2="44" />
+          <line x1="14" y1="16" x2="42" y2="16" />
+          <path d="M14 16 L10 28 a8 4 0 0 0 8 0 Z" />
+          <path d="M42 16 L38 28 a8 4 0 0 0 8 0 Z" stroke="var(--gold-400)" />
+          <line x1="20" y1="44" x2="36" y2="44" />
         </svg>
       );
     case "positions":
