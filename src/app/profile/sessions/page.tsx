@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { ChevronLeft, MonitorSmartphone, LogOut, ShieldCheck } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { getSession } from "@/lib/server/session";
 
@@ -32,7 +33,7 @@ export default async function SessionsPage() {
         href="/profile"
         className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
       >
-        <ChevronLeft size={14} aria-hidden />
+        <I.chevronLeft s={14} />
         Profile
       </Link>
 
@@ -93,7 +94,7 @@ export default async function SessionsPage() {
       </section>
 
       <section className="flex items-start gap-2.5 rounded-xl border border-info-border bg-info-bg/[0.10] p-4">
-        <ShieldCheck size={16} className="mt-0.5 shrink-0 text-info-fg" />
+        <I.shieldcheck s={16} />
         <div className="text-[12px] text-text-muted leading-snug space-y-1">
           <p className="font-display font-semibold text-text">Multi-device tracking (production)</p>
           <p>

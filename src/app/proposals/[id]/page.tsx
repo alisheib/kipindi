@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight, Trophy, XCircle, Pencil } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { currentSession } from "@/lib/server/auth-service";
 import { getProposalDetail, timelineStep } from "@/lib/server/proposals-service";
 import { getProposalsConfig } from "@/lib/server/proposals-config";
@@ -56,7 +57,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
       )}
       {p.status === "CHANGES_REQUESTED" && p.changeNote && (
         <section className="rounded-xl border p-4" style={{ borderColor: "color-mix(in oklab, var(--royal-500) 30%, var(--border))", background: "color-mix(in oklab, var(--royal-500) 8%, var(--bg-elevated))" }}>
-          <div className="mb-1.5 flex items-center gap-2 text-royal-200"><Pencil size={16} /><p className="text-[13px] font-bold">Changes requested</p></div>
+          <div className="mb-1.5 flex items-center gap-2 text-royal-200"><I.edit s={16} /><p className="text-[13px] font-bold">Changes requested</p></div>
           <p className="text-[12.5px] leading-relaxed text-text-muted">{p.changeNote}</p>
         </section>
       )}
@@ -66,7 +67,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
         <section className="relative overflow-hidden rounded-xl border p-5 text-center" style={{ borderColor: "var(--gold-700)", background: "linear-gradient(160deg, var(--bg-elevated), var(--royal-950))" }}>
           <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "linear-gradient(180deg, transparent, color-mix(in oklab, var(--gold-700) 16%, transparent))" }} />
           <div className="relative">
-            <span className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full text-gold-fg" style={{ background: "linear-gradient(135deg, var(--gold-400), var(--gold-700))" }}><Trophy size={24} /></span>
+            <span className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full text-gold-fg" style={{ background: "linear-gradient(135deg, var(--gold-400), var(--gold-700))" }}><I.trophy s={24} /></span>
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">Your proposal resolved</p>
             <p className="mt-1 font-display text-[20px] font-bold">You earned a prize</p>
             <p className="my-1 font-mono text-[28px] font-bold text-gold-300">+TZS {p.prizePaidTzs.toLocaleString()}</p>
@@ -83,7 +84,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
           {open && <p className="mt-1 text-[12px] text-text-subtle">An officer reviews next · Subiri ukaguzi.</p>}
           {p.publishedMarketId && (
             <Link href={`/markets/${p.publishedMarketId}` as never}>
-              <Button variant={p.status === "RESOLVED" ? "gold" : "ghost"} size="md" fullWidth className="mt-3" trailing={<ArrowRight size={15} />}>
+              <Button variant={p.status === "RESOLVED" ? "gold" : "ghost"} size="md" fullWidth className="mt-3" trailing={<I.arrowRight s={15} />}>
                 {p.status === "RESOLVED" ? "View the resolved market" : "View the live market"}
               </Button>
             </Link>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChevronLeft, UserCircle2, Download, AlertOctagon, Activity } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
@@ -35,7 +36,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
         href="/profile"
         className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
       >
-        <ChevronLeft size={14} aria-hidden />
+        <I.chevronLeft s={14} />
         Profile
       </Link>
 
@@ -100,7 +101,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
       {/* OWN ACTIVITY FEED */}
       <section className="rounded-xl glass-panel p-5 space-y-3">
         <div className="flex items-center gap-2">
-          <Activity size={15} className="text-info-fg" />
+          <I.activity s={15} />
           <h2 className="font-display text-[15px] font-semibold text-text">My activity</h2>
           <span className="ml-auto font-mono text-[11px] text-text-subtle tabular-nums">
             {activity.length} events
@@ -140,7 +141,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
       {/* DATA EXPORT — GDPR Art 15 / PDPA */}
       <section className="rounded-xl glass-panel p-5 space-y-2.5">
         <div className="flex items-center gap-2">
-          <Download size={15} className="text-info-fg" />
+          <I.download s={15} />
           <h2 className="font-display text-[15px] font-semibold text-text">
             Export my data <span className="text-text-subtle italic font-normal">· Pakua data yangu</span>
           </h2>

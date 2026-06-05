@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, ShieldCheck, Smartphone, BarChart3 } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
 import { FiftyLockup } from "@/components/brand";
 import { listMarkets, impliedYesPct, seedDemoMarkets, traderSeedsByMarket } from "@/lib/server/market-service";
@@ -126,7 +127,7 @@ export default async function LandingPage() {
                     style={{ height: 48, padding: "0 26px", fontSize: 15, borderRadius: 999 }}
                   >
                     Browse markets
-                    <ArrowRight size={16} aria-hidden />
+                    <I.arrowRight s={16} />
                   </Link>
                   <Link
                     href={"/positions" as never}
@@ -144,7 +145,7 @@ export default async function LandingPage() {
                     style={{ height: 48, padding: "0 26px", fontSize: 15, borderRadius: 999 }}
                   >
                     Create account
-                    <ArrowRight size={16} aria-hidden />
+                    <I.arrowRight s={16} />
                   </Link>
                   <Link
                     href={"/auth/login" as never}
@@ -231,7 +232,7 @@ export default async function LandingPage() {
             tone="yes"
           />
           <TrustItem
-            icon={<ShieldCheck size={20} />}
+            icon={<I.shieldcheck s={20} />}
             n="02"
             en="Two-officer resolution"
             sw="Utatuzi wa maafisa wawili"

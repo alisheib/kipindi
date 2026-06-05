@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { Percent, Ticket, Gift, Users, Coins, Info, Share2 } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { currentSession } from "@/lib/server/auth-service";
 import { getPlayerReferralSummary } from "@/lib/server/affiliate-service";
 import { FiftyMark } from "@/components/brand";
@@ -73,7 +74,7 @@ function Kpi({ label, value, sub, gold }: { label: string; value: string; sub: s
     <div className="rounded-xl glass-panel p-3.5">
       <div className="mb-2 flex items-center justify-between">
         <Cap>{label}</Cap>
-        <span className="text-text-subtle">{gold ? <Coins size={14} /> : <Users size={14} />}</span>
+        <span className="text-text-subtle">{gold ? <I.coins s={14} /> : <I.users s={14} />}</span>
       </div>
       <div className={`font-mono text-[24px] font-bold leading-none tracking-[-0.02em] ${gold ? "text-gold-300" : "text-text"}`}>
         {value}
@@ -164,7 +165,7 @@ export default async function InvitePage() {
             borderColor: "color-mix(in oklab, var(--warning-500) 30%, transparent)",
           }}
         >
-          <span className="shrink-0" style={{ color: "oklch(84% 0.15 80)" }}><Info size={16} /></span>
+          <span className="shrink-0" style={{ color: "oklch(84% 0.15 80)" }}><I.info s={16} /></span>
           <p className="text-[12px] leading-relaxed text-text-muted">
             The program is paused right now. Your link still works — rewards resume when it&rsquo;s back on.{" "}
             <span className="font-display italic text-text-subtle">Mpango umesimama kwa sasa.</span>
@@ -243,7 +244,7 @@ export default async function InvitePage() {
           body="Share your link to invite your first friend. They'll appear here once they join."
           action={
             <a href="#referral-share">
-              <Button variant="gold" size="md" leading={<Share2 size={14} />}>
+              <Button variant="gold" size="md" leading={<I.share s={14} />}>
                 Share your link
               </Button>
             </a>

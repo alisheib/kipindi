@@ -7,6 +7,7 @@
  */
 import Link from "next/link";
 import { ExternalLink, ShieldCheck, Users } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { listMarkets, seedDemoMarkets } from "@/lib/server/market-service";
 
 export const metadata = { title: "Resolution attestation · Uthibitisho" };
@@ -100,11 +101,11 @@ export default function FairnessPage() {
                     </td>
                     <td className="p-3 font-mono text-[11px] text-text-muted">
                       <div className="flex items-center gap-1">
-                        <Users size={11} />
+                        <I.users s={11} />
                         <span>{m.resolutionStage1By?.slice(0, 12) ?? "—"}…</span>
                       </div>
                       <div className="flex items-center gap-1 mt-0.5">
-                        <ShieldCheck size={11} />
+                        <I.shieldcheck s={11} />
                         <span>{m.resolutionStage2By?.slice(0, 12) ?? "—"}…</span>
                       </div>
                     </td>

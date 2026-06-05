@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ExternalLink, Users, TrendingUp } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { TippingBar } from "@/components/brand";
 import { ConvictionDial } from "@/components/markets/conviction-dial";
 import { Countdown } from "@/components/markets/countdown";
@@ -138,8 +139,8 @@ export default async function MarketDetail({
           )}
 
           <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3">
-            <KPI label="Volume"     value={fmtTzs(m.yesPool + m.noPool)} icon={<TrendingUp size={14} />} />
-            <KPI label="Predictors" value={String(totalPredictorCount)}   icon={<Users size={14} />} />
+            <KPI label="Volume"     value={fmtTzs(m.yesPool + m.noPool)} icon={<I.trendingUp s={14} />} />
+            <KPI label="Predictors" value={String(totalPredictorCount)}   icon={<I.users s={14} />} />
             <KPI label="Resolves"   value={fmtTime(m.resolutionAt)} mono />
           </div>
 

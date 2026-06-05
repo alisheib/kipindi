@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChevronLeft, ShieldCheck, AlertCircle } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
@@ -34,7 +35,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
         href="/wallet"
         className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
       >
-        <ChevronLeft size={14} aria-hidden />
+        <I.chevronLeft s={14} />
         Wallet
       </Link>
 
@@ -77,7 +78,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
 
       {errorMsg && (
         <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-no-700/60 bg-no-500/[0.10] px-4 py-3">
-          <AlertCircle size={16} className="mt-0.5 shrink-0 text-no-300" />
+          <I.alertCircle s={16} />
           <div className="text-[12.5px] leading-snug">
             <p className="font-display font-semibold text-text">Withdrawal didn&rsquo;t go through</p>
             <p className="mt-0.5 text-text-muted">{errorMsg}</p>
@@ -87,7 +88,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
 
       {!kycApproved && (
         <div className="flex items-start gap-2.5 rounded-xl border border-warning-border bg-warning-bg/30 p-4">
-          <ShieldCheck size={18} className="mt-0.5 shrink-0 text-warning-fg" />
+          <I.shieldcheck s={18} />
           <div className="min-w-0">
             <p className="font-display font-semibold text-text">Verify your identity first</p>
             <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
@@ -187,7 +188,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
         </div>
 
         <div className="flex items-start gap-2.5 rounded-md border border-info-border bg-info-bg/30 px-3 py-2.5 text-[12.5px] leading-snug">
-          <ShieldCheck size={14} className="mt-0.5 shrink-0 text-info-fg" />
+          <I.shieldcheck s={14} />
           <div>
             <p className="font-display font-semibold text-text">Secured by KYC &amp; AML · Imelindwa</p>
             <p className="mt-0.5 text-text-muted">
@@ -199,7 +200,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
         </div>
 
         <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg/30 px-3 py-2.5 text-[12.5px] leading-snug">
-          <AlertCircle size={14} className="mt-0.5 shrink-0 text-warning-fg" />
+          <I.alertCircle s={14} />
           <div>
             <p className="font-display font-semibold text-text">Tax notice · Notisi ya kodi</p>
             <p className="mt-0.5 text-text-muted">

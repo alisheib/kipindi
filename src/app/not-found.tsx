@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Compass, ArrowRight } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 
 export const metadata = { title: "Page not found · Hakuna ukurasa" };
@@ -63,7 +64,7 @@ export default function NotFound() {
       >
         <Compass size={12} />
         Browse open markets
-        <ArrowRight size={12} />
+        <I.arrowRight s={12} />
       </Link>
     </main>
   );

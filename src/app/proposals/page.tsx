@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Trophy, Plus, ChevronRight, ArrowRight, Coins, Info } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { currentSession } from "@/lib/server/auth-service";
 import { listBoard, type BoardFilter, type ProposalView } from "@/lib/server/proposals-service";
 import { getProposalsConfig } from "@/lib/server/proposals-config";
@@ -58,7 +59,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
         <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(120% 90% at 100% 0%, color-mix(in oklab, var(--gold-500) 12%, transparent), transparent 60%)" }} />
         <div className="relative flex items-center gap-3">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[11px] text-gold-fg" style={{ background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))" }}>
-            <Trophy size={22} />
+            <I.trophy s={22} />
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-[14px] font-bold">Propose &amp; get paid <span className="font-normal italic text-text-subtle">· Pendekeza upate</span></p>
@@ -81,7 +82,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
 
       {!enabled && (
         <div className="flex gap-2.5 rounded-xl border p-3" style={{ background: "color-mix(in oklab, var(--warning-500) 12%, transparent)", borderColor: "color-mix(in oklab, var(--warning-500) 30%, transparent)" }}>
-          <span className="shrink-0" style={{ color: "oklch(84% 0.15 80)" }}><Info size={16} /></span>
+          <span className="shrink-0" style={{ color: "oklch(84% 0.15 80)" }}><I.info s={16} /></span>
           <p className="text-[12px] leading-relaxed text-text-muted">Proposals are paused right now — the board is read-only. <span className="font-display italic text-text-subtle">Mapendekezo yamesimama kwa sasa.</span></p>
         </div>
       )}
@@ -151,9 +152,9 @@ function ProposalCard({ p, disabled }: { p: ProposalView; disabled?: boolean }) 
         {p.description && <p className="mt-1.5 text-[12.5px] leading-relaxed text-text-muted line-clamp-2">{p.description}</p>}
         <div className="mt-2.5 flex items-center gap-3.5 font-mono text-[11px] text-text-subtle">
           <span>by {p.proposerMasked}</span>
-          {p.status === "LISTED" && <span className="flex items-center gap-1 text-royal-200">View market <ArrowRight size={12} /></span>}
-          {p.status === "RESOLVED" && p.prizePaidTzs > 0 && <span className="flex items-center gap-1 text-gold-300"><Coins size={12} /> +{p.prizePaidTzs.toLocaleString()} earned</span>}
-          <ChevronRight size={14} className="ml-auto text-text-subtle group-hover:text-royal-200" />
+          {p.status === "LISTED" && <span className="flex items-center gap-1 text-royal-200">View market <I.arrowRight s={12} /></span>}
+          {p.status === "RESOLVED" && p.prizePaidTzs > 0 && <span className="flex items-center gap-1 text-gold-300"><I.coins s={12} /> +{p.prizePaidTzs.toLocaleString()} earned</span>}
+          <I.chevronRight s={14} />
         </div>
       </Link>
     </div>

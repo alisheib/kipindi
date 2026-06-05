@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AlertOctagon } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { closeAccountAction } from "./actions";
 
 export function CloseAccountForm() {

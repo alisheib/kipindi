@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Info, Calendar } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { Input, Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
@@ -45,7 +46,7 @@ export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: 
       {/* Guidelines */}
       <div className="rounded-xl border p-3.5" style={{ borderColor: "color-mix(in oklab, var(--royal-500) 30%, var(--border))", background: "color-mix(in oklab, var(--royal-500) 8%, var(--bg-elevated))" }}>
         <div className="mb-1.5 flex items-center gap-2">
-          <span className="text-royal-200"><Info size={16} /></span>
+          <span className="text-royal-200"><I.info s={16} /></span>
           <p className="text-[13px] font-bold text-royal-200">What makes a good proposal · Mwongozo</p>
         </div>
         <p className="text-[12px] leading-relaxed text-text-muted">
@@ -53,7 +54,7 @@ export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: 
           <span className="font-display italic text-text-subtle">Maswali ya wazi yenye chanzo cha kuaminika.</span>
         </p>
         <p className="mt-2.5 flex items-center gap-1.5 text-[11.5px] text-text-muted">
-          <Info size={13} className="text-gold-400" />
+          <I.info s={13} />
           <span className="font-mono">{openCount} of {rateLimit}</span> open proposals used · <span className="font-display italic text-text-subtle">mapendekezo {openCount} kati ya {rateLimit}</span>
         </p>
       </div>

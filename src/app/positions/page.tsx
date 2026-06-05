@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { TrendingUp, TrendingDown, Coins, Clock } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { PositionCard } from "@/components/markets/position-card";
 import { SellButton } from "@/components/markets/sell-button";
 import { listPositionsForUser, getMarket, seedDemoMarkets, cashOutValue } from "@/lib/server/market-service";
@@ -59,7 +60,7 @@ export default async function PositionsPage() {
             label="At risk"   sw="Hatarini"
             value={fmtTzs(openStake)}
             sub={`${open.length} open`}
-            icon={<Clock size={13} className="text-text-subtle" />}
+            icon={<I.clock s={13} />}
           />
           <SummaryCell
             label="Live value" sw="Thamani sasa"
@@ -69,21 +70,21 @@ export default async function PositionsPage() {
               : `−${fmtTzs(openStake - openLiveValue)} unrealised`}
             tone={openLiveValue >= openStake ? "yes" : "no"}
             icon={openLiveValue >= openStake
-              ? <TrendingUp size={13} className="text-yes-300" />
-              : <TrendingDown size={13} className="text-no-300" />}
+              ? <I.trendingUp s={13} />
+              : <I.trendingDown s={13} />}
           />
           <SummaryCell
             label="Settled P&L" sw="Faida ya jumla"
             value={(settledNet >= 0 ? "+" : "−") + fmtTzs(Math.abs(settledNet))}
             sub={`${wins}W · ${losses}L · ${cashOuts}C`}
             tone={settledNet >= 0 ? "gold" : "no"}
-            icon={<Coins size={13} className={settledNet >= 0 ? "text-gold-300" : "text-no-300"} />}
+            icon={<I.coins s={13} />}
           />
           <SummaryCell
             label="Win rate" sw="Asilimia ya ushindi"
             value={settled.length > 0 ? `${Math.round((wins / settled.length) * 100)}%` : "—"}
             sub={`${settled.length} settled`}
-            icon={<TrendingUp size={13} className="text-text-subtle" />}
+            icon={<I.trendingUp s={13} />}
           />
         </section>
       )}

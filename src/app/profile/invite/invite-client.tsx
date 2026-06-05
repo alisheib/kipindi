@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Link2, Copy, Check, Share2, MessageCircle, MessageSquare } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 
@@ -56,11 +57,11 @@ export function ReferralShare({ link, shareText }: { link: string; shareText: st
           className="m-[5px] flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-bg-overlay px-3 text-[12.5px] font-semibold text-text transition-colors hover:bg-bg-elevated"
           style={{ height: 38 }}
         >
-          {copied ? <Check size={14} className="text-yes-300" /> : <Copy size={14} />}
+          {copied ? <I.check s={14} /> : <I.copy s={14} />}
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
-      <Button variant="gold" size="lg" fullWidth leading={<Share2 size={17} />} onClick={share}>
+      <Button variant="gold" size="lg" fullWidth leading={<I.share s={17} />} onClick={share}>
         Share with Friends · Shiriki
       </Button>
       <div className="mt-2.5 flex gap-2">
@@ -74,7 +75,7 @@ export function ReferralShare({ link, shareText }: { link: string; shareText: st
             SMS
           </Button>
         </a>
-        <Button variant="ghost" size="md" fullWidth leading={<Copy size={14} />} className="flex-1 text-[12px]" onClick={copy}>
+        <Button variant="ghost" size="md" fullWidth leading={<I.copy s={14} />} className="flex-1 text-[12px]" onClick={copy}>
           Copy link
         </Button>
       </div>

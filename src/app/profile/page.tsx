@@ -4,6 +4,7 @@ import {
   ChevronRight, ShieldCheck, Sliders, LogOut, Check, UserCircle2,
   FileSignature, MonitorSmartphone, HeartPulse, Wallet, Sparkles, Gift,
 } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { AvatarUploader } from "@/components/profile/avatar-uploader";
 import { ProfileNameEditor } from "@/components/profile/name-editor";
@@ -113,7 +114,7 @@ export default async function ProfilePage() {
                     boxShadow: "0 0 0 3px oklch(60% 0.13 86 / 0.18)",
                   }}
                 >
-                  <ShieldCheck size={11} strokeWidth={2.6} />
+                  <I.shieldcheck s={11} />
                   {user.role === "ADMIN" ? "ADMIN · Msimamizi"
                     : user.role === "COMPLIANCE" ? "COMPLIANCE · Ufuatiliaji"
                     : user.role === "MODERATOR" ? "MODERATOR · Mwangalizi"
@@ -136,7 +137,7 @@ export default async function ProfilePage() {
             label="Balance"
             sw="Salio"
             value={wallet ? fmtTzs(wallet.balance) : "—"}
-            icon={<Wallet size={14} className="text-gold-400" />}
+            icon={<I.wallet s={14} />}
           />
           <Stat
             label="Open"
@@ -148,7 +149,7 @@ export default async function ProfilePage() {
             label="Settled"
             sw="Imekamilika"
             value={String(positions.filter((p) => p.status !== "PENDING_CONFIRMATION" && p.status !== "PLACED").length)}
-            icon={<Check size={14} className="text-text-muted" strokeWidth={2.5} />}
+            icon={<I.check s={14} />}
           />
         </div>
       </section>
@@ -157,7 +158,7 @@ export default async function ProfilePage() {
       {kycLevel !== "APPROVED" && (
         <section className="rounded-xl border border-warning-border bg-warning-bg/30 p-5">
           <div className="flex items-start gap-3">
-            <ShieldCheck size={20} className="mt-0.5 text-warning-fg shrink-0" strokeWidth={1.75} />
+            <I.shieldcheck s={20} />
             <div className="min-w-0">
               <p className="font-display text-[15px] font-semibold text-text leading-tight">
                 Verify your identity · Thibitisha kitambulisho
@@ -224,7 +225,7 @@ export default async function ProfilePage() {
             <p className="mt-0.5 text-[12px] text-text-subtle">See you soon · Tutaonana</p>
           </span>
         </span>
-        <ChevronRight size={16} className="text-text-subtle group-hover:text-no-300 transition-colors" />
+        <I.chevronRight s={16} />
       </a>
     </main>
   );
@@ -270,7 +271,7 @@ function Step({ n, title, detail, active, done }: { n: number; title: string; de
     <div className={`rounded-md border p-3 ${cls}`}>
       <div className="flex items-center gap-2">
         <span className={`h-5 w-5 inline-flex items-center justify-center rounded-pill font-mono text-[10px] font-bold ${numCls}`}>
-          {done ? <Check size={11} strokeWidth={3} /> : n}
+          {done ? <I.check s={11} /> : n}
         </span>
         <span className="font-display text-[12px] font-semibold text-text">{title}</span>
       </div>
@@ -306,7 +307,7 @@ function SettingRow({ icon: Icon, title, sw, subtitle, href, accent, badge }: { 
         </p>
         <p className="mt-0.5 text-[11.5px] text-text-subtle leading-snug">{subtitle}</p>
       </div>
-      <ChevronRight size={16} className="text-text-subtle group-hover:text-text-muted shrink-0" />
+      <I.chevronRight s={16} />
     </Link>
   );
 }

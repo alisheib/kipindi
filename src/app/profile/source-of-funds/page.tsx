@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChevronLeft, ShieldCheck, FileSignature } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
@@ -41,7 +42,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
         href="/profile"
         className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
       >
-        <ChevronLeft size={14} aria-hidden />
+        <I.chevronLeft s={14} />
         Profile
       </Link>
 
@@ -71,7 +72,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
         </div>
         <div className="relative z-10 p-5 lg:p-6">
           <div className="flex items-center gap-2 mb-1">
-            <ShieldCheck size={14} className="text-info-fg" />
+            <I.shieldcheck s={14} />
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-info-fg">
               AML · Enhanced due diligence
             </p>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChevronLeft, ShieldCheck, Check, AlertCircle } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
 import { getKycStatus, startKyc } from "@/lib/server/kyc-service";
@@ -28,7 +29,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         href="/profile"
         className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
       >
-        <ChevronLeft size={14} aria-hidden />
+        <I.chevronLeft s={14} />
         Profile
       </Link>
 
@@ -87,7 +88,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         </div>
         <div className="relative z-10 p-5 lg:p-6">
           <div className="flex items-center gap-2 mb-1">
-            <ShieldCheck size={14} className="text-info-fg" />
+            <I.shieldcheck s={14} />
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-info-fg">
               Identity verification
             </p>
@@ -108,7 +109,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       {rejected && (
         <section role="alert" className="rounded-xl border border-no-700 bg-no-500/[0.08] p-4 lg:p-5">
           <div className="flex items-start gap-2.5">
-            <AlertCircle size={18} className="mt-0.5 shrink-0 text-no-300" />
+            <I.alertCircle s={18} />
             <div className="min-w-0">
               <p className="font-display text-[14px] font-bold text-no-300">Verification needs another look · Imekataliwa</p>
               <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
@@ -132,7 +133,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       {!nidaDone && (
         <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-4">
           <div className="flex items-center gap-2">
-            <ShieldCheck size={18} className="text-info-fg" strokeWidth={1.75} />
+            <I.shieldcheck s={18} />
             <h2 className="font-display text-[15px] font-semibold text-text">Step 1 · NIDA verification</h2>
           </div>
           <form action={submitNidaAction} className="space-y-4">
@@ -186,7 +187,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-3">
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1 rounded-pill border border-yes-700 bg-yes-500/10 px-2.5 py-0.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.1em] text-yes-300">
-              <Check size={11} strokeWidth={2.5} />
+              <I.check s={11} />
               NIDA verified
             </span>
           </div>
@@ -269,7 +270,7 @@ function Step({ n, title, detail, done, active }: { n: number; title: string; de
     <div className={`rounded-md border p-3 ${cls}`}>
       <div className="flex items-center gap-2">
         <span className={`h-5 w-5 inline-flex items-center justify-center rounded-pill font-mono text-[10px] font-bold ${numCls}`}>
-          {done ? <Check size={11} strokeWidth={3} /> : n}
+          {done ? <I.check s={11} /> : n}
         </span>
         <span className="font-display text-[12px] font-semibold text-text">{title}</span>
       </div>
@@ -294,7 +295,7 @@ function UploadSlot({ label, docType, done }: { label: string; docType: "NIDA_FR
             done ? "bg-yes-500 text-yes-950" : "bg-bg-overlay text-text-subtle border border-border"
           }`}
         >
-          {done ? <Check size={11} strokeWidth={3} /> : "+"}
+          {done ? <I.check s={11} /> : "+"}
         </span>
         <span className="block font-display text-[12px] font-semibold text-text">{label}</span>
         <span className="mt-0.5 block font-mono text-[10.5px] text-text-subtle">{done ? "Attached" : "Tap to attach"}</span>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Trophy, ArrowRight } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
 import { listMarkets, impliedYesPct, isClosedByTime, seedDemoMarkets, traderSeedsByMarket, type MarketCategory } from "@/lib/server/market-service";
 import { getCardChart } from "@/lib/server/market-history";
@@ -81,13 +82,13 @@ function ProposalEntryCard() {
       style={{ borderColor: "color-mix(in oklab, var(--gold-500) 30%, var(--border))", background: "color-mix(in oklab, var(--gold-500) 6%, var(--bg-elevated))" }}
     >
       <span className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-[11px] text-gold-fg" style={{ background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))" }}>
-        <Trophy size={22} />
+        <I.trophy s={22} />
       </span>
       <div className="min-w-0 flex-1">
         <p className="font-display text-[14.5px] font-bold text-text">Propose Markets &amp; Get Paid</p>
         <p className="font-display italic text-text-subtle text-[11.5px]">Pendekeza soko{cfg.prizeTzs > 0 ? ` · pata TZS ${cfg.prizeTzs.toLocaleString()}` : ""}</p>
       </div>
-      <ArrowRight size={18} className="text-gold-300 transition-transform group-hover:translate-x-0.5" />
+      <I.arrowRight s={18} />
     </Link>
   );
 }

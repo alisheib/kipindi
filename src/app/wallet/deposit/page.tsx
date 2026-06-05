@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChevronLeft, AlertCircle } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
@@ -43,7 +44,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
         href="/wallet"
         className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
       >
-        <ChevronLeft size={14} aria-hidden />
+        <I.chevronLeft s={14} />
         Wallet
       </Link>
 
@@ -73,7 +74,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
 
       {errorMsg && (
         <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-no-700/60 bg-no-500/[0.10] px-4 py-3">
-          <AlertCircle size={16} className="mt-0.5 shrink-0 text-no-300" />
+          <I.alertCircle s={16} />
           <div className="text-[12.5px] leading-snug">
             <p className="font-display font-semibold text-text">Deposit didn&rsquo;t go through</p>
             <p className="mt-0.5 text-text-muted">{errorMsg}</p>

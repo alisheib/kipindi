@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ChevronLeft, ShieldQuestion, Phone, Mail } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { FiftyLockup } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 
@@ -21,7 +22,7 @@ export default function ForgotPasswordPage() {
             href="/auth/login"
             className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
           >
-            <ChevronLeft size={14} aria-hidden />
+            <I.chevronLeft s={14} />
             Back to sign in
           </Link>
 

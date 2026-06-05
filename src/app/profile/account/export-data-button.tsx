@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { Download } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { exportDataAction } from "./actions";
 
 export function ExportDataButton() {
@@ -32,7 +33,7 @@ export function ExportDataButton() {
     }
   };
   return (
-    <Button variant="primary" size="lg" leading={<Download size={14} />} onClick={click} loading={loading}>
+    <Button variant="primary" size="lg" leading={<I.download s={14} />} onClick={click} loading={loading}>
       Download my data (JSON) · Pakua
     </Button>
   );

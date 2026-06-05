@@ -1,4 +1,5 @@
 import { Phone, Mail, MessageCircle, ShieldCheck, Wallet, Trophy, ChevronDown } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 
 export const metadata = { title: "Help · Msaada" };
@@ -123,21 +124,21 @@ export default function HelpPage() {
 
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <QuickLinkCard
-          icon={<ShieldCheck size={15} />}
+          icon={<I.shieldcheck s={15} />}
           title="Responsible gambling"
           titleSw="Kucheza kwa busara"
           sub="Limits · break · self-exclude"
           href="/profile/responsible-gambling"
         />
         <QuickLinkCard
-          icon={<Wallet size={15} />}
+          icon={<I.wallet s={15} />}
           title="Wallet help"
           titleSw="Msaada wa pochi"
           sub="Deposit · withdraw · holds"
           href="/wallet"
         />
         <QuickLinkCard
-          icon={<Trophy size={15} />}
+          icon={<I.trophy s={15} />}
           title="My positions"
           titleSw="Madau yangu"
           sub="Open · settled · cash-out"

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ArrowDownToLine, ArrowUpFromLine, Wallet as WalletIcon, Phone, CreditCard, Plus } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { Transaction } from "@/lib/mock-data";

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { AlertOctagon, RotateCcw, ArrowRight } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 
 /**
@@ -79,7 +80,7 @@ export default function GlobalError({
           className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-bg-elevated px-4 text-[13px] text-text-secondary transition-colors hover:bg-bg-overlay"
         >
           Back to markets
-          <ArrowRight size={14} aria-hidden />
+          <I.arrowRight s={14} />
         </Link>
         <Link
           href="/help"

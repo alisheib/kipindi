@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ScrollText } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 
 const LEGAL_NAV: Array<{ href: string; en: string; sw: string }> = [

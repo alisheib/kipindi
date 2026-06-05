@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChevronLeft, ShieldCheck, Clock, Pause, Lock, AlertTriangle } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
 import { getRgSettings } from "@/lib/server/responsible-gambling";
@@ -39,7 +40,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
         href="/profile"
         className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
       >
-        <ChevronLeft size={14} aria-hidden />
+        <I.chevronLeft s={14} />
         Profile
       </Link>
 
@@ -69,7 +70,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
         </div>
         <div className="relative z-10 p-5 lg:p-6">
           <div className="flex items-center gap-2 mb-1">
-            <ShieldCheck size={14} className="text-yes-300" />
+            <I.shieldcheck s={14} />
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-yes-300">
               Player protection
             </p>
@@ -92,7 +93,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
       {/* DEPOSIT + TIME LIMITS */}
       <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-4">
         <div className="flex items-center gap-2">
-          <Clock size={16} className="text-info-fg" />
+          <I.clock s={16} />
           <h2 className="font-display text-[15px] font-semibold text-text">Deposit &amp; session limits</h2>
         </div>
         <p className="text-[12px] text-text-muted leading-snug">
@@ -101,7 +102,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
         </p>
         {hasPendingIncrease && (
           <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg/30 p-3 text-[12px]">
-            <AlertTriangle size={14} className="mt-0.5 shrink-0 text-warning-fg" />
+            <I.warning s={14} />
             <div>
               <p className="font-display font-semibold text-text">
                 Pending increase to {formatTzs(rg.pendingIncreaseTo!)}
@@ -165,7 +166,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
       {/* SELF-EXCLUSION */}
       <section id="exclude" className="scroll-mt-20 rounded-xl border border-no-700/60 bg-no-500/[0.06] p-5 lg:p-6 space-y-3">
         <div className="flex items-center gap-2">
-          <Lock size={16} className="text-no-300" />
+          <I.lock s={16} />
           <h2 className="font-display text-[15px] font-semibold text-text">Self-exclude · Jizuie</h2>
           <span className="ml-auto inline-flex items-center rounded-pill border border-no-700 bg-no-500/10 px-2.5 py-0.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.1em] text-no-300">
             One-way
