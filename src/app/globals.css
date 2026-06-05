@@ -1675,7 +1675,7 @@ html.kp-reduce-motion *::after {
    Real content sits above it via the z-index rule. */
 .mcardp-watermark { position: absolute; bottom: -18px; right: -14px; color: var(--border-strong); opacity: 0.055; pointer-events: none; z-index: 0; transition: opacity .28s var(--ease-stage), color .28s, transform .28s var(--ease-stage); }
 .mcardp-watermark svg { width: 140px; height: 140px; }
-.mcardp:hover .mcardp-watermark { opacity: 0.14; color: var(--brand-400); transform: scale(1.06); }
+.mcardp:hover .mcardp-watermark { opacity: 0.22; color: var(--brand-400); transform: scale(1.06); filter: drop-shadow(0 0 18px oklch(63% 0.18 262 / 0.35)); }
 .mcardp > *:not(.mcardp-watermark) { position: relative; z-index: 1; }
 .mcardp-top { display: flex; align-items: center; flex-wrap: nowrap; gap: 5px; min-height: 20px; }
 .mcardp .chip { font-size: 9px; padding: 2px 6px; gap: 3px; letter-spacing: 0.02em; white-space: nowrap; flex-shrink: 0; }
