@@ -1,4 +1,4 @@
-import { Phone, Mail, MessageCircle, ShieldCheck, Wallet, Trophy, ChevronDown } from "lucide-react";
+import { Mail } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 
@@ -68,7 +68,7 @@ export default function HelpPage() {
 
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <ContactCard
-          icon={<Phone size={15} />}
+          icon={<I.phone s={15} />}
           tone="yes"
           title="Call us"
           titleSw="Tupigie"
@@ -88,7 +88,7 @@ export default function HelpPage() {
           href="mailto:support@50pick.com"
         />
         <ContactCard
-          icon={<MessageCircle size={15} />}
+          icon={<I.comment s={15} />}
           tone="gold"
           title="Live chat"
           titleSw="Mazungumzo ya moja kwa moja"
@@ -110,11 +110,9 @@ export default function HelpPage() {
             >
               <summary className="cursor-pointer list-none flex items-start justify-between gap-3 font-display text-[13.5px] font-semibold text-text">
                 <span>{f.q}</span>
-                <ChevronDown
-                  size={14}
-                  aria-hidden
-                  className="mt-1 shrink-0 text-text-subtle transition-transform group-open:rotate-180"
-                />
+                <span className="mt-1 shrink-0 text-text-subtle transition-transform group-open:rotate-180">
+                  <I.chevronDown s={14} />
+                </span>
               </summary>
               <p className="mt-2 text-[12.5px] text-text-muted leading-relaxed">{f.a}</p>
             </details>

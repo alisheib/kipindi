@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChevronLeft, ShieldCheck, AlertCircle } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { FiftyMark } from "@/components/brand";

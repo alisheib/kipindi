@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowRight, Trophy, XCircle, Pencil } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { currentSession } from "@/lib/server/auth-service";
 import { getProposalDetail, timelineStep } from "@/lib/server/proposals-service";
@@ -51,7 +50,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
       {/* Declined / changes-requested notice */}
       {p.status === "DECLINED" && (
         <section className="rounded-xl border p-4" style={{ borderColor: "color-mix(in oklab, var(--claret-500) 30%, var(--border))", background: "color-mix(in oklab, var(--claret-500) 7%, var(--bg-elevated))" }}>
-          <div className="mb-1.5 flex items-center gap-2 text-claret-300"><XCircle size={16} /><p className="text-[13px] font-bold">Declined · Imekataliwa</p></div>
+          <div className="mb-1.5 flex items-center gap-2 text-claret-300"><I.void s={16} /><p className="text-[13px] font-bold">Declined · Imekataliwa</p></div>
           <p className="text-[12.5px] leading-relaxed text-text-muted">Reason: {p.declineReason}.{p.declineNote ? ` ${p.declineNote}` : ""}</p>
         </section>
       )}
