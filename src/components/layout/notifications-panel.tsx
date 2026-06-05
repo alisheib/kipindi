@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
-import { Bell, Trophy, Coins, ShieldCheck, ArrowDownToLine, ArrowUpFromLine, Activity, TrendingDown, Ticket, X } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { cn } from "@/lib/utils";
 import { fetchMyNotifications, markNotifReadAction, markAllReadAction, dismissNotifAction } from "@/app/_actions/notifications";
 import type { StoredNotification } from "@/lib/server/store";
@@ -15,19 +15,19 @@ import type { StoredNotification } from "@/lib/server/store";
 
 const iconFor = (k: StoredNotification["kind"]) => {
   switch (k) {
-    case "WIN":          return Trophy;
-    case "LOSS":         return TrendingDown;
-    case "BET_PLACED":   return Ticket;
-    case "DEPOSIT":      return ArrowDownToLine;
-    case "WITHDRAW":     return ArrowUpFromLine;
-    case "KYC":          return ShieldCheck;
-    case "ROUND_RESULT": return Activity;
-    case "MATCH_START":  return Coins;
-    case "RG":           return ShieldCheck;
-    case "SECURITY":     return ShieldCheck;
-    case "AFFILIATE":    return Coins;
-    case "PROPOSAL":     return Trophy;
-    default:             return Coins;
+    case "WIN":          return I.trophy;
+    case "LOSS":         return I.trendingDown;
+    case "BET_PLACED":   return I.ticket;
+    case "DEPOSIT":      return I.arrowDown;
+    case "WITHDRAW":     return I.arrowUp;
+    case "KYC":          return I.shieldcheck;
+    case "ROUND_RESULT": return I.activity;
+    case "MATCH_START":  return I.coins;
+    case "RG":           return I.shieldcheck;
+    case "SECURITY":     return I.shieldcheck;
+    case "AFFILIATE":    return I.coins;
+    case "PROPOSAL":     return I.trophy;
+    default:             return I.coins;
   }
 };
 
@@ -174,7 +174,7 @@ export function NotificationsPanel() {
           open ? "bg-bg-overlay text-text" : "text-text-subtle hover:text-text hover:bg-bg-overlay",
         )}
       >
-        <Bell size={20} strokeWidth={1.75} />
+        <I.bell s={20} />
         {unread > 0 && (
           <span
             aria-hidden
@@ -227,7 +227,7 @@ export function NotificationsPanel() {
                   onClick={() => setOpen(false)}
                   className="h-7 w-7 inline-flex items-center justify-center rounded-md text-text-subtle hover:text-text hover:bg-bg-overlay transition-colors"
                 >
-                  <X size={14} strokeWidth={2} />
+                  <I.x s={14} />
                 </button>
               </div>
             </div>
@@ -249,7 +249,7 @@ export function NotificationsPanel() {
                       "h-9 w-9 rounded-md inline-flex items-center justify-center shrink-0 border",
                       tintFor(n.kind),
                     )}>
-                      <Icon size={15} strokeWidth={1.75} />
+                      <Icon s={15} />
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">

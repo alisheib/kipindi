@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, Radio, ListChecks, Trophy, User, LogIn } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 
 export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
@@ -16,19 +16,20 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
     profile: locale === "sw" ? "Wasifu" : locale === "fr" ? "Profil" : "Profile",
     signIn: t.common.signIn,
   };
+
   const items = isAuthed
     ? [
-        { href: "/markets",     icon: LayoutGrid, label: L.markets },
-        { href: "/live",        icon: Radio,      label: L.live },
-        { href: "/positions",   icon: ListChecks, label: L.positions },
-        { href: "/leaderboard", icon: Trophy,     label: L.leaderboard },
-        { href: "/profile",     icon: User,       label: L.profile },
+        { href: "/markets",     glyph: "chart" as const,      label: L.markets },
+        { href: "/live",        glyph: "bolt" as const,       label: L.live },
+        { href: "/positions",   glyph: "portfolio" as const,  label: L.positions },
+        { href: "/leaderboard", glyph: "trophy" as const,     label: L.leaderboard },
+        { href: "/profile",     glyph: "profile" as const,    label: L.profile },
       ]
     : [
-        { href: "/markets",     icon: LayoutGrid, label: L.markets },
-        { href: "/live",        icon: Radio,      label: L.live },
-        { href: "/leaderboard", icon: Trophy,     label: L.leaderboard },
-        { href: "/auth/login",  icon: LogIn,      label: L.signIn },
+        { href: "/markets",     glyph: "chart" as const,      label: L.markets },
+        { href: "/live",        glyph: "bolt" as const,       label: L.live },
+        { href: "/leaderboard", glyph: "trophy" as const,     label: L.leaderboard },
+        { href: "/auth/login",  glyph: "logIn" as const,      label: L.signIn },
       ];
 
   const isActive = (href: string) => {
@@ -54,7 +55,7 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
     >
       {items.map((it) => {
         const on = isActive(it.href);
-        const Icon = it.icon;
+        const Ico = I[it.glyph];
         return (
           <Link
             key={it.href}
@@ -69,7 +70,7 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
               textDecoration: "none",
             }}
           >
-            <Icon size={21} strokeWidth={on ? 2 : 1.5} />
+            <Ico s={21} />
             <span style={{ fontSize: 10, fontWeight: on ? 600 : 500 }}>{it.label}</span>
           </Link>
         );
