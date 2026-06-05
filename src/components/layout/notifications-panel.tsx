@@ -278,7 +278,7 @@ export function NotificationsPanel() {
                       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleDismiss(e, n.id); } }}
                       className="shrink-0 inline-flex h-6 w-6 items-center justify-center rounded-md text-text-subtle hover:text-text hover:bg-bg-overlay transition-colors"
                     >
-                      <X size={12} />
+                      <I.x s={12} />
                     </span>
                   </button>
                 );
