@@ -33,7 +33,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
             </p>
           </div>
         </div>
-        <nav aria-label="Legal sections" className="rounded-xl border border-border bg-bg-elevated overflow-hidden">
+        <nav aria-label="Legal sections" className="rounded-xl glass-panel overflow-hidden">
           {LEGAL_NAV.map((n, i) => (
             <Link
               key={n.href}

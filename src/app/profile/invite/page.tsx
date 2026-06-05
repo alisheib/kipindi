@@ -184,7 +184,7 @@ export default async function InvitePage() {
       </div>
 
       {/* How it works */}
-      <section className="rounded-2xl border border-border bg-bg-elevated p-4">
+      <section className="rounded-2xl glass-panel p-4">
         <p className="font-display text-[15px] font-bold leading-tight">
           How it works <span className="font-normal italic text-text-subtle text-[12px]">· Inavyofanya kazi</span>
         </p>

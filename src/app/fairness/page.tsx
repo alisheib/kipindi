@@ -71,7 +71,7 @@ export default function FairnessPage() {
             <p className="mt-1 text-[13px] italic text-text-subtle">Bado hakuna soko lililotatuliwa.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border bg-bg-elevated">
+          <div className="overflow-x-auto rounded-lg glass-panel">
             <table className="w-full text-[13px]">
               <thead className="border-b border-border bg-bg-overlay">
                 <tr className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
