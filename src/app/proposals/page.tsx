@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Trophy, Plus, ChevronRight, ArrowRight, Coins, Info } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { currentSession } from "@/lib/server/auth-service";
 import { listBoard, type BoardFilter, type ProposalView } from "@/lib/server/proposals-service";
@@ -69,13 +68,13 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
           </div>
           {enabled && (
             <Link href={"/proposals/new" as never} className="hidden sm:block">
-              <Button variant="gold" size="md" leading={<Plus size={15} />}>Create · Pendekeza</Button>
+              <Button variant="gold" size="md" leading={<I.plus s={15} />}>Create · Pendekeza</Button>
             </Link>
           )}
         </div>
         {enabled && (
           <Link href={"/proposals/new" as never} className="sm:hidden">
-            <Button variant="gold" size="lg" fullWidth leading={<Plus size={16} />} className="mt-3">Create proposal · Pendekeza</Button>
+            <Button variant="gold" size="lg" fullWidth leading={<I.plus s={16} />} className="mt-3">Create proposal · Pendekeza</Button>
           </Link>
         )}
       </section>
@@ -125,7 +124,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
           titleSw="Bado hakuna mapendekezo"
           body={`Be the first to propose a market. If it gets listed and resolved, you earn TZS ${cfg.prizeTzs.toLocaleString()}.`}
           action={enabled ? (
-            <Link href={"/proposals/new" as never}><Button variant="gold" size="md" leading={<Plus size={14} />}>Create proposal · Pendekeza</Button></Link>
+            <Link href={"/proposals/new" as never}><Button variant="gold" size="md" leading={<I.plus s={14} />}>Create proposal · Pendekeza</Button></Link>
           ) : undefined}
         />
       ) : (
