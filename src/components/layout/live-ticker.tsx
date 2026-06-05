@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * Live ticker — kit-faithful (ds-brand-nav.jsx LiveTicker).
- * 32px strip, vertical cycling animation (tickerUp 2.8s), clean mono text.
+ * Live ticker — 32px strip with infinite horizontal marquee.
+ * Kit tokens (bg-inset, border, live-400, mono) + horizontal scroll.
  */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 export type TickerEvent = {
   id: string;
@@ -33,65 +33,66 @@ function formatEvent(ev: TickerEvent): string {
   return `${amt}${verb} ${side}on ${ev.marketTitle}`.trim();
 }
 
-export function LiveTicker({ events }: { events: TickerEvent[] }) {
-  const [idx, setIdx] = useState(0);
+function Items({ events, prefix }: { events: TickerEvent[]; prefix: string }) {
+  return (
+    <>
+      {events.map((ev) => (
+        <span key={`${prefix}-${ev.id}`} className="inline-flex items-center gap-2.5 shrink-0" style={{ paddingRight: 32 }}>
+          <span
+            className="font-mono"
+            style={{ fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap" }}
+          >
+            {formatEvent(ev)}
+          </span>
+          <span style={{ width: 2.5, height: 2.5, borderRadius: "50%", background: "var(--gilt)", opacity: 0.35, flexShrink: 0 }} />
+        </span>
+      ))}
+    </>
+  );
+}
 
-  useEffect(() => {
-    if (events.length === 0) return;
-    const t = setInterval(() => setIdx((x) => (x + 1) % events.length), 2800);
-    return () => clearInterval(t);
-  }, [events.length]);
+export function LiveTicker({ events }: { events: TickerEvent[] }) {
+  const [paused, setPaused] = useState(false);
 
   if (events.length === 0) return null;
 
   return (
     <div
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
       style={{
         height: 32,
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        padding: "0 20px",
         background: "var(--bg-inset)",
         borderBottom: "1px solid var(--border)",
         overflow: "hidden",
+        position: "relative",
+        userSelect: "none",
       }}
     >
-      {/* LIVE label */}
-      <span
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          fontFamily: "var(--font-mono)",
-          fontVariantNumeric: "tabular-nums",
-          fontSize: 10.5,
-          fontWeight: 600,
-          letterSpacing: "0.1em",
-          color: "var(--live-400)",
-          flexShrink: 0,
-        }}
-      >
-        <span className="live-dot" style={{ width: 6, height: 6 }} />
-        LIVE
-      </span>
+      {/* Fixed LIVE label */}
+      <div style={{
+        position: "absolute", left: 0, top: 0, bottom: 0, zIndex: 10,
+        display: "flex", alignItems: "center", paddingLeft: 16, paddingRight: 32,
+        background: "linear-gradient(90deg, var(--bg-inset) 60%, oklch(11% 0.11 268 / 0) 100%)",
+      }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <span className="live-dot" style={{ width: 6, height: 6 }} />
+          <span className="font-mono" style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--live-400)" }}>
+            LIVE
+          </span>
+        </span>
+      </div>
 
-      {/* Vertical cycling ticker — kit tickerUp 2.8s */}
-      <div style={{ position: "relative", flex: 1, height: 16, overflow: "hidden" }}>
-        <div
-          key={idx}
-          style={{
-            position: "absolute",
-            fontFamily: "var(--font-mono)",
-            fontVariantNumeric: "tabular-nums",
-            fontSize: 12,
-            color: "var(--text-muted)",
-            whiteSpace: "nowrap",
-            animation: "tickerUp 2.8s ease-in-out",
-          }}
-        >
-          {formatEvent(events[idx])}
-        </div>
+      {/* Right fade */}
+      <div style={{
+        position: "absolute", right: 0, top: 0, bottom: 0, width: 48, zIndex: 10, pointerEvents: "none",
+        background: "linear-gradient(270deg, var(--bg-inset), oklch(11% 0.11 268 / 0))",
+      }} />
+
+      {/* Horizontal marquee */}
+      <div className="ticker-track" style={{ paddingLeft: 80, animationPlayState: paused ? "paused" : "running" }}>
+        <Items events={events} prefix="a" />
+        <Items events={events} prefix="b" />
       </div>
     </div>
   );
