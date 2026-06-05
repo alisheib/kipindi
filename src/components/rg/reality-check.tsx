@@ -15,7 +15,7 @@
  */
 import * as React from "react";
 import Link from "next/link";
-import { Clock, Pause, Lock, X, ShieldCheck } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 
 const SESSION_START_KEY  = "kp_session_started_at";
 const LAST_PROMPT_KEY    = "kp_reality_check_last";
@@ -105,7 +105,7 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL }: { 
                 display: "grid", placeItems: "center", color: "var(--gold-300)", flexShrink: 0,
               }}
             >
-              <Clock size={18} />
+              <I.clock s={18} />
             </span>
             <div>
               <h2
@@ -128,7 +128,7 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL }: { 
             aria-label="Dismiss"
             className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors shrink-0"
           >
-            <X size={16} />
+            <I.x s={16} />
           </button>
         </div>
 
@@ -142,16 +142,16 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL }: { 
             Continue playing · Endelea
           </button>
           <Link href="/profile/responsible-gambling" onClick={dismiss} className="btn btn-ghost btn-lg w-full inline-flex">
-            <Clock size={14} aria-hidden />
+            <I.clock s={14} />
             Set limits · Weka mipaka
           </Link>
           <div className="grid grid-cols-2 gap-2">
             <Link href="/profile/responsible-gambling#break" onClick={dismiss} className="btn btn-ghost btn-md w-full inline-flex">
-              <Pause size={13} aria-hidden />
+              <I.pause s={13} />
               Take a break
             </Link>
             <Link href="/profile/responsible-gambling#exclude" onClick={dismiss} className="btn btn-claret btn-md w-full inline-flex">
-              <Lock size={13} aria-hidden />
+              <I.lock s={13} />
               Self-exclude
             </Link>
           </div>

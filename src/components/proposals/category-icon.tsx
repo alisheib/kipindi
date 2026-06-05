@@ -1,5 +1,6 @@
 /** Category → lucide icon, shared across proposal screens. */
 import { Trophy, TrendingUp, CloudSun, Bitcoin, Music, Building2 } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import type { ProposalCategory } from "@/lib/server/store";
 
 const MAP = {

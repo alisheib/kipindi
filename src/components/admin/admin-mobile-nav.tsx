@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 
 type NavItem = { href: string; label: string; key: string; badge?: string };
 type NavGroup = { group: { en: string; sw: string }; items: ReadonlyArray<NavItem> };
@@ -19,7 +20,7 @@ export function AdminMobileNavTrigger({ groups, badges, activeKey }: { groups: R
         onClick={() => setOpen(true)}
         className="lg:hidden inline-flex h-9 w-9 items-center justify-center rounded-md text-text-secondary hover:bg-surface-hover"
       >
-        <Menu size={18} />
+        <I.menu s={18} />
       </button>
       {open && typeof document !== "undefined" && createPortal(
         <>
@@ -40,7 +41,7 @@ export function AdminMobileNavTrigger({ groups, badges, activeKey }: { groups: R
                 onClick={() => setOpen(false)}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-tertiary hover:bg-surface-hover"
               >
-                <X size={16} />
+                <I.x s={16} />
               </button>
             </div>
             <nav className="flex-1 px-3 py-3 flex flex-col gap-1">

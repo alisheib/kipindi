@@ -4,6 +4,7 @@
  * claret for declined. Never betting green/red.
  */
 import { Flame, Check, Trophy, Clock, XCircle, Pencil } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { Chip } from "@/components/ui/chip";
 import type { ProposalStatus } from "@/lib/server/store";
 

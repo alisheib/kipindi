@@ -8,6 +8,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Loader2 } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { updateProfileBasicsAction } from "@/app/profile/actions";
 
@@ -89,7 +90,7 @@ export function ProfileNameEditor({
           <span className="text-text-subtle italic">{fallbackPlaceholder}</span>
         )}
       </span>
-      <Pencil size={13} className="text-text-subtle group-hover:text-gold-300 transition-colors" />
+      <I.edit s={13} />
     </button>
   );
 }

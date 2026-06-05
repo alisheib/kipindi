@@ -12,7 +12,7 @@
  */
 
 import { useRef } from "react";
-import { Lock } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export function SelfExcludeConfirm() {
@@ -50,7 +50,7 @@ export function SelfExcludeConfirm() {
           type="button"
           className="btn btn-claret btn-md inline-flex items-center gap-1.5"
         >
-          <Lock size={13} aria-hidden />
+          <I.lock s={13} />
           Self-exclude · Jizuie
         </button>
       }

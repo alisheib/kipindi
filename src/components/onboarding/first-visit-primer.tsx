@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
 import { ChevronRight, X } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { FiftyMark, TippingBar, GiltCorner } from "@/components/brand";
 
 const STORAGE_KEY = "50pick-primer-seen";
@@ -306,7 +307,7 @@ export function FirstVisitPrimer() {
             aria-label="Skip"
             className="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
           >
-            <X size={14} />
+            <I.x s={14} />
           </button>
         </div>
 

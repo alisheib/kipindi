@@ -8,6 +8,7 @@
  */
 import { useState, useTransition } from "react";
 import { ChevronUp, ChevronDown } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { voteAction } from "@/app/proposals/actions";
 import { useToast } from "@/components/ui/toast";
 import { haptics } from "@/lib/haptics";

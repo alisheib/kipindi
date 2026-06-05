@@ -3,6 +3,7 @@
  * Resolved → Paid. Done/current steps use gold; future steps are muted.
  */
 import { Check } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 
 const STEPS: Array<[string, string]> = [
   ["Submitted", "Imewasilishwa"],
@@ -33,7 +34,7 @@ export function StatusTimeline({ current }: { current: number }) {
                   color: done || now ? "var(--gold-fg, oklch(24% 0.06 85))" : "var(--text-subtle)",
                 }}
               >
-                {done && <Check size={12} strokeWidth={3} />}
+                {done && <I.check s={12} />}
                 {now && <span className="h-[7px] w-[7px] rounded-full" style={{ background: "var(--gold-400)" }} />}
               </span>
               {i < STEPS.length - 1 && (

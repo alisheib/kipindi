@@ -8,6 +8,7 @@
  */
 import { useEffect, useState } from "react";
 import { Vibrate, Sparkles } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { Toggle } from "@/components/ui/toggle";
 import { getPrefs, setPrefs, haptics } from "@/lib/haptics";
 
@@ -49,7 +50,7 @@ export function FeedbackSettings() {
 
       <div className="divide-y divide-border/60">
         <Row
-          icon={<Vibrate size={16} className="text-gold-300" />}
+          icon={<I.activity s={16} />}
           title="Haptic feedback"
           sw="Mguso wa mtetemo"
           subtitle="A short buzz on key money &amp; outcome moments (phones only)."
