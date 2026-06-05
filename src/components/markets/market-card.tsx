@@ -202,7 +202,7 @@ export function MarketCard({
       )}
 
       <div className="mcardp-meta">
-        <span>{predictors.toLocaleString()} traders</span>
+        <span>{predictors.toLocaleString()} predictors</span>
         <span className="dot" />
         <span>{fmtTzs(volume)}</span>
         <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6 }} className={live ? "live" : undefined}>
