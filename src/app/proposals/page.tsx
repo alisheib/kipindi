@@ -44,10 +44,17 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-3.5">
       <h1 className="sr-only">Market Proposals · Mapendekezo</h1>
 
-      <div>
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">Market Proposals · Mapendekezo</p>
-        <h2 className="mt-1 font-display text-[22px] font-bold leading-tight">Vote for the markets you want to see</h2>
-        <p className="font-display italic text-text-subtle text-[13px]">Pigia kura soko unayotaka</p>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">Market Proposals · Mapendekezo</p>
+          <h2 className="mt-1 font-display text-[22px] font-bold leading-tight">Vote for the markets you want to see</h2>
+          <p className="font-display italic text-text-subtle text-[13px]">Pigia kura soko unayotaka</p>
+        </div>
+        {enabled && (
+          <Link href={"/proposals/new" as never} className="shrink-0">
+            <Button variant="gold" size="md" leading={<I.sparkle s={15} />}>Create · Pendekeza</Button>
+          </Link>
+        )}
       </div>
 
       {/* Reward banner */}
@@ -58,7 +65,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
         <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(120% 90% at 100% 0%, color-mix(in oklab, var(--gold-500) 12%, transparent), transparent 60%)" }} />
         <div className="relative flex items-center gap-3">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[11px] text-gold-fg" style={{ background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))" }}>
-            <I.trophy s={22} />
+            <I.sparkle s={22} />
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-[14px] font-bold">Propose &amp; get paid <span className="font-normal italic text-text-subtle">· Pendekeza upate</span></p>
