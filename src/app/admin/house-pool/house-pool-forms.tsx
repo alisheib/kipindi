@@ -13,7 +13,7 @@ import type { HousePoolConfig } from "@/lib/server/house-pool";
  *  server-coupled admin-shell module into this client component. */
 function Card({ title, children }: { title?: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-border bg-bg-elevated p-4">
+    <div className="rounded-lg glass-panel p-4">
       {title && <p className="font-display font-semibold text-body-sm text-text leading-tight mb-3">{title}</p>}
       {children}
     </div>

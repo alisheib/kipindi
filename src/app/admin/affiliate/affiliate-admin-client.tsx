@@ -20,7 +20,7 @@ function Cap({ children }: { children: React.ReactNode }) {
 
 function Kpi({ label, value, sub, gold }: { label: string; value: string; sub: string; gold?: boolean }) {
   return (
-    <div className="rounded-2xl border border-border bg-bg-elevated p-4">
+    <div className="rounded-2xl glass-panel p-4">
       <div className="mb-2 flex items-center justify-between">
         <Cap>{label}</Cap>
         <span className="text-text-subtle">{gold ? <Coins size={14} /> : <Users size={14} />}</span>

@@ -97,7 +97,7 @@ export default function AdminConfigPage() {
           </p>
 
           <div className="space-y-4">
-            <div className="rounded-md border border-border bg-bg-overlay p-4">
+            <div className="rounded-md glass-panel p-4">
               <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-3">Add override</p>
               <MarketOverrideForm globalConfig={config} />
             </div>
