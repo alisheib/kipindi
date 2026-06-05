@@ -666,6 +666,7 @@ body {
   font-size: 14px;
   transition: border-color var(--ease-micro), box-shadow var(--ease-micro), background-color var(--ease-micro);
 }
+.input::placeholder { color: var(--text-subtle); opacity: 0.7; }
 .input:hover:not(:focus):not(:disabled) { border-color: var(--border-strong); }
 .input:focus {
   outline: none;
@@ -701,6 +702,34 @@ body {
   padding-left: 0;
 }
 .input-group .input:focus { box-shadow: none; }
+
+/* ---------- Form refinements — native input polish ---------- */
+/* Hide native number spinners */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type="number"] { -moz-appearance: textfield; }
+/* Style date/time inputs on the royal canvas */
+input[type="date"], input[type="time"], input[type="datetime-local"] { color-scheme: dark; }
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(0.7) hue-rotate(200deg); cursor: pointer; }
+/* Select — kit-styled dropdown arrow */
+select { color-scheme: dark; }
+/* Textarea */
+textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  outline: none;
+  transition: border-color var(--ease-micro), box-shadow var(--ease-micro);
+}
+textarea:focus { border-color: var(--brand-500); box-shadow: 0 0 0 3px oklch(63% 0.18 262 / 0.25); }
+textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 
 /* ---------- Avatar ---------- */
 .avatar {

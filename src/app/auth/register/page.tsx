@@ -173,6 +173,7 @@ export default async function RegisterPage({
                     size="lg"
                     min="1900-01-01"
                     max={maxStr}
+                    placeholder="YYYY-MM-DD"
                   />
                 );
               })()}
