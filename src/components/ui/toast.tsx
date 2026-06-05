@@ -110,31 +110,31 @@ export function useToast(): ToastContextValue {
 const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; surface: string; rail: string }> = {
   default: {
     bar: "bg-aqua-300",
-    icon: <span className="text-aqua-300"><I.checkCircle s={16} /></span>,
+    icon: <span className="text-aqua-300"><I.checkCircle s={18} /></span>,
     surface: "bg-bg-elevated border-aqua-edge",
     rail: "bg-aqua-300",
   },
   success: {
     bar: "bg-yes-500",
-    icon: <span className="text-yes-300"><I.checkCircle s={16} /></span>,
+    icon: <span className="text-yes-300"><I.checkCircle s={18} /></span>,
     surface: "bg-bg-elevated border-yes-700/60",
     rail: "bg-yes-500",
   },
   warning: {
     bar: "bg-gold-500",
-    icon: <span className="text-gold-300"><I.warning s={16} /></span>,
+    icon: <span className="text-gold-300"><I.warning s={18} /></span>,
     surface: "bg-bg-elevated border-gold-700/60",
     rail: "bg-gold-500",
   },
   danger: {
     bar: "bg-no-500",
-    icon: <span className="text-no-300"><I.alertCircle s={16} /></span>,
+    icon: <span className="text-no-300"><I.alertCircle s={18} /></span>,
     surface: "bg-bg-elevated border-no-700/60",
     rail: "bg-no-500",
   },
   gold: {
     bar: "bg-gold-500",
-    icon: <span className="text-gold-300"><I.trophy s={16} /></span>,
+    icon: <span className="text-gold-300"><I.trophy s={18} /></span>,
     surface: "bg-bg-elevated border-gold-700",
     rail: "bg-gold-500",
   },

@@ -97,11 +97,11 @@ const TONE: Record<OperationVariant, { fg: string; bg: string; brd: string; shad
 };
 
 function CrestIcon({ variant, color }: { variant: OperationVariant; color: string }) {
-  const Icon = variant === "success" ? Check
-            : variant === "danger"  ? X
-            : variant === "warning" ? AlertTriangle
-            :                          Info;
-  return <Icon size={36} strokeWidth={2.5} style={{ color }} />;
+  const glyph = variant === "success" ? I.check
+              : variant === "danger"  ? I.x
+              : variant === "warning" ? I.warning
+              :                         I.info;
+  return <span style={{ color }}>{glyph({ s: 36, sw: 2.5 })}</span>;
 }
 
 export function OperationResultModal({
@@ -233,7 +233,7 @@ export function OperationResultModal({
             dismiss are guaranteed to land on the same frame. No CSS
             animation that could race against the timer. */}
         {variant === "success" && (
-          <div className="absolute inset-x-0 top-0 h-1 overflow-hidden rounded-t-2xl" aria-hidden>
+          <div className="absolute inset-x-0 top-0 h-1 overflow-hidden rounded-t-xl" aria-hidden>
             <div
               ref={stripRef}
               className="h-full w-full origin-left"

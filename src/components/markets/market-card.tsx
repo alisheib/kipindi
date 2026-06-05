@@ -111,10 +111,10 @@ export function MarketCard({
       {live ? (
         <div className="mcardp-actions">
           <button type="button" aria-label={`Back YES at ${yesPct}%`} onClick={go("YES")} className="btn btn-yes btn-md">
-            YES <span className="font-mono" style={{ opacity: 0.85, fontSize: 13 }}>{yesPct}</span>
+            YES <span className="font-mono" style={{ opacity: 0.92, fontSize: 14 }}>{yesPct}</span>
           </button>
           <button type="button" aria-label={`Back NO at ${100 - yesPct}%`} onClick={go("NO")} className="btn btn-no btn-md">
-            NO <span className="font-mono" style={{ opacity: 0.85, fontSize: 13 }}>{100 - yesPct}</span>
+            NO <span className="font-mono" style={{ opacity: 0.92, fontSize: 14 }}>{100 - yesPct}</span>
           </button>
         </div>
       ) : (

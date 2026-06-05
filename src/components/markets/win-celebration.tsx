@@ -127,7 +127,7 @@ export function WinCelebrationHost() {
           aria-hidden
           className="absolute inset-x-0 top-0 h-1"
           style={{
-            background: "linear-gradient(90deg, var(--gold-500), var(--aqua-300), var(--gold-500))",
+            background: "linear-gradient(90deg, var(--gold-500), var(--gold-300), var(--gold-500))",
           }}
         />
         <div className="p-6 text-center relative">
@@ -150,23 +150,23 @@ export function WinCelebrationHost() {
             }}
           />
           <div
-            className="relative inline-flex items-center justify-center h-12 w-12 rounded-pill border border-gold-700 bg-gold-500/15 text-gold-300 mb-3"
+            className="relative inline-flex items-center justify-center h-14 w-14 rounded-pill border border-gold-700 bg-gold-500/15 text-gold-300 mb-3"
             style={{
               boxShadow: "0 0 0 6px color-mix(in oklab, var(--gold-300) 18%, transparent)",
               animation: "wc-trophy-pulse 2.4s ease-in-out infinite",
             }}
           >
-            <I.trophy s={22} />
+            <I.trophy s={26} />
           </div>
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] font-bold text-gold-300">
             {payload.kind === "WIN" ? "Position won · Madau yamefanikiwa" : "Cashed out · Umetoa kabla"}
           </p>
-          <h2 className="mt-1 font-display text-[34px] font-bold text-text leading-none tracking-[-0.02em]">
+          <h2 className="mt-1 font-display text-[23px] font-bold text-text leading-none tracking-[-0.02em]">
             {heading} <span className="text-text-subtle italic font-normal text-[18px]">· {sub}</span>
           </h2>
           <div aria-hidden className="claret-rule" />
           <p
-            className="font-mono font-bold text-[40px] tabular-nums leading-none"
+            className="font-mono font-bold text-[36px] tabular-nums leading-none"
             style={{
               background: "linear-gradient(180deg, var(--gold-300), var(--gold-500))",
               WebkitBackgroundClip: "text",
@@ -178,7 +178,7 @@ export function WinCelebrationHost() {
             <RollingAmount value={payload.amount} />
           </p>
           {typeof payload.net === "number" && (
-            <p className="mt-1.5 font-mono text-[13px] tabular-nums text-aqua-200">
+            <p className="mt-1.5 font-mono text-[13px] tabular-nums text-gold-300">
               {payload.net >= 0 ? "+" : "−"}TZS {fmt(Math.abs(payload.net))} <span className="text-text-subtle">net</span>
             </p>
           )}

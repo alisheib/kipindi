@@ -1699,7 +1699,7 @@ html.kp-reduce-motion *::after {
 .mcardp-traders .t-txt { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
 .mcardp-traders .t-txt b { color: var(--text); font-weight:600; }
 .mcardp-actions { display:grid; grid-template-columns:1fr 1fr; gap: 8px; margin: 15px 0 13px; }
-.mcardp-actions .btn { height: 38px; font-size: 13.5px; min-width: 0; padding: 0 12px; letter-spacing: 0.04em; }
+.mcardp-actions .btn { height: 44px; font-size: 15px; min-width: 0; padding: 0 12px; letter-spacing: 0.06em; }
 .mcardp-meta { display:flex; align-items:center; flex-wrap: nowrap; gap: 7px; font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); white-space: nowrap; overflow: hidden; }
 .mcardp-meta .dot { width:3px;height:3px;border-radius:50%;background:var(--border-strong); }
 .mcardp-meta .live { color: var(--yes-300); display:inline-flex; align-items:center; gap:5px; }

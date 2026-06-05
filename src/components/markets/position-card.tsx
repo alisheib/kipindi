@@ -77,8 +77,8 @@ export function PositionCard({ marketId, marketTitle, side, stake, current, payo
 function Stat({ label, value, tone = "default", money }: { label: string; value: string; tone?: "default" | "gold"; money?: boolean }) {
   return (
     <div>
-      <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{label}</p>
-      <p className={cn("font-mono text-[13px] font-semibold tabular-nums leading-tight", tone === "gold" ? "text-gold-300" : "text-text")}>
+      <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{label}</p>
+      <p className={cn("font-mono text-[13.5px] font-bold tabular-nums leading-tight", tone === "gold" ? "text-gold-300" : "text-text")}>
         {money ? <Cash>{value}</Cash> : value}
       </p>
     </div>
