@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertCircle } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { FiftyLockup } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { Field } from "@/components/ui/input";
@@ -102,10 +102,9 @@ export default async function LoginPage({
                   : "border-warning-border bg-warning-bg/30")
               }
             >
-              <AlertCircle
-                size={16}
-                className={"mt-0.5 shrink-0 " + (errorPanel.tone === "danger" ? "text-no-300" : "text-gold-300")}
-              />
+              <span className={"mt-0.5 shrink-0 " + (errorPanel.tone === "danger" ? "text-no-300" : "text-gold-300")}>
+                <I.alertCircle s={16} />
+              </span>
               <div className="text-[12.5px] leading-snug">
                 <p className="font-display font-semibold text-text">{errorPanel.title}</p>
                 <p className="mt-0.5 text-text-muted">{errorPanel.body}</p>

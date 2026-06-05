@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertCircle, Check } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FiftyLockup, FiftyMark } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
@@ -111,10 +111,9 @@ export default async function RegisterPage({
                   : "border-warning-border bg-warning-bg/30")
               }
             >
-              <AlertCircle
-                size={16}
-                className={"mt-0.5 shrink-0 " + (errorPanel.tone === "danger" ? "text-no-300" : "text-gold-300")}
-              />
+              <span className={"mt-0.5 shrink-0 " + (errorPanel.tone === "danger" ? "text-no-300" : "text-gold-300")}>
+                <I.alertCircle s={16} />
+              </span>
               <div className="text-[12.5px] leading-snug">
                 <p className="font-display font-semibold text-text">{errorPanel.title}</p>
                 <p className="mt-0.5 text-text-muted">{errorPanel.body}</p>
@@ -136,7 +135,7 @@ export default async function RegisterPage({
               <Field label="Referral code · auto-filled">
                 <div className="input-group">
                   <span className="prefix" style={{ color: "var(--gold-400)" }}>
-                    <Check size={14} />
+                    <I.check s={14} />
                   </span>
                   <input className="input input-mono" readOnly value={refCode.toUpperCase()} style={{ color: "var(--gold-300)", fontWeight: 600 }} aria-label="Referral code" />
                 </div>
