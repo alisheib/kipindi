@@ -424,24 +424,26 @@ body {
 /* v2 kit: one flat-solid family — YES/NO/gold are SOLID fills (not gradients),
    with a 1px inset top-highlight + soft shadow. (primary keeps its gradient.) */
 .btn-yes {
-  background: oklch(57% 0.155 150);
+  background: linear-gradient(180deg, oklch(64% 0.16 150), oklch(54% 0.15 150));
   color: #fff;
   font-weight: 700;
+  letter-spacing: 0.05em;
   border-color: transparent;
-  box-shadow: inset 0 1px 0 oklch(80% 0.14 152 / 0.40), 0 1px 2px oklch(10% 0.05 264 / 0.35);
+  box-shadow: inset 0 1px 0 oklch(85% 0.13 152 / 0.50), 0 2px 6px oklch(10% 0.05 264 / 0.4);
   text-shadow: 0 1px 0 oklch(20% 0.10 152 / 0.30);
 }
-.btn-yes:hover:not(:disabled) { filter: brightness(1.06) drop-shadow(0 6px 16px color-mix(in oklab, var(--yes-400) 30%, transparent)); }
+.btn-yes:hover:not(:disabled) { filter: brightness(1.08); box-shadow: inset 0 1px 0 oklch(85% 0.13 152 / 0.50), 0 8px 20px color-mix(in oklab, var(--yes-400) 35%, transparent); }
 
 .btn-no {
-  background: oklch(56% 0.200 25);
+  background: linear-gradient(180deg, oklch(61% 0.20 25), oklch(51% 0.19 25));
   color: #fff;
   font-weight: 700;
+  letter-spacing: 0.05em;
   border-color: transparent;
-  box-shadow: inset 0 1px 0 oklch(80% 0.15 25 / 0.40), 0 1px 2px oklch(10% 0.05 264 / 0.35);
+  box-shadow: inset 0 1px 0 oklch(85% 0.15 25 / 0.50), 0 2px 6px oklch(10% 0.05 264 / 0.4);
   text-shadow: 0 1px 0 oklch(20% 0.10 22 / 0.30);
 }
-.btn-no:hover:not(:disabled) { filter: brightness(1.06) drop-shadow(0 6px 16px color-mix(in oklab, var(--no-400) 30%, transparent)); }
+.btn-no:hover:not(:disabled) { filter: brightness(1.08); box-shadow: inset 0 1px 0 oklch(85% 0.15 25 / 0.50), 0 8px 20px color-mix(in oklab, var(--no-400) 35%, transparent); }
 
 .btn-ghost {
   background: oklch(22% 0.110 268 / 0.40);
@@ -459,15 +461,15 @@ body {
 .btn-danger:hover:not(:disabled) { filter: brightness(1.08); }
 
 .btn-gold {
-  background: oklch(76% 0.14 82);
-  color: oklch(20% 0.05 80);
+  background: linear-gradient(180deg, oklch(80% 0.14 82), oklch(70% 0.15 80));
+  color: oklch(18% 0.06 80);
   font-weight: 700;
   border-color: transparent;
-  box-shadow: inset 0 1px 0 oklch(95% 0.06 86 / 0.55), 0 1px 2px oklch(20% 0.06 76 / 0.40);
-  letter-spacing: 0.005em;
+  box-shadow: inset 0 1px 0 oklch(95% 0.06 86 / 0.60), 0 2px 6px oklch(20% 0.06 76 / 0.45);
+  letter-spacing: 0.02em;
   text-shadow: 0 1px 0 oklch(96% 0.07 80 / 0.45);
 }
-.btn-gold:hover:not(:disabled) { filter: brightness(1.06) saturate(1.06) drop-shadow(0 6px 18px color-mix(in oklab, var(--gold-400) 38%, transparent)); }
+.btn-gold:hover:not(:disabled) { filter: brightness(1.08) saturate(1.06); box-shadow: inset 0 1px 0 oklch(95% 0.06 86 / 0.60), 0 8px 22px color-mix(in oklab, var(--gold-400) 40%, transparent); }
 
 .btn-claret {
   background: linear-gradient(180deg, var(--claret-500) 0%, var(--claret-700) 100%);
@@ -1544,7 +1546,8 @@ html.kp-reduce-motion *::after {
 .glass-panel {
   background: radial-gradient(130% 150% at 0% 0%, oklch(26% 0.150 268) 0%, oklch(19% 0.120 268) 58%);
   border: 1px solid var(--border-strong);
-  box-shadow: var(--shadow-3), inset 0 1px 0 oklch(100% 0 0 / 0.06);
+  box-shadow: 0 8px 24px -6px oklch(6% 0.08 268 / 0.45), inset 0 1px 0 oklch(100% 0 0 / 0.08);
+  border-radius: var(--r-xl);
 }
 
 /* v2 kit — traveling light-sweep for active progress fills (limits, KYC steps,
@@ -1622,15 +1625,15 @@ html.kp-reduce-motion *::after {
    head keeps it landscape; fixed title reserve keeps bars aligned across cards. */
 .mcardp { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 14px 15px; border-radius: var(--r-lg); background:
     linear-gradient(180deg, oklch(24% 0.145 268) 0%, var(--bg-elevated) 42%);
-  border: 1px solid var(--border); box-shadow: var(--shadow-card); overflow: hidden; isolation: isolate; transition: transform var(--ease-glide), border-color var(--ease-glide), box-shadow var(--ease-glide); }
+  border: 1px solid var(--border); box-shadow: 0 1px 2px oklch(8% 0.07 264 / 0.35), inset 0 1px 0 oklch(100% 0 0 / 0.06); overflow: hidden; isolation: isolate; transition: transform .2s var(--ease-stage), border-color .2s var(--ease-micro), box-shadow .2s var(--ease-stage); }
 .mcardp::before { content:""; position:absolute; inset:0; border-radius: inherit; padding:1px; background: linear-gradient(180deg, oklch(70% 0.12 268 / 0.35), transparent 40%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events:none; }
-.mcardp:hover { transform: translateY(-3px); border-color: var(--teal-400); box-shadow: var(--shadow-4), var(--glow-blue); }
+.mcardp:hover { transform: translateY(-3px); border-color: var(--brand-500); box-shadow: 0 0 0 1px var(--brand-500), 0 14px 34px oklch(8% 0.08 264 / 0.6), 0 0 30px oklch(63% 0.18 262 / 0.24); }
 /* Kit signature (features.jsx MarketCard) — large faint category glyph
    watermark in the top-right corner; brightens to brand-blue on hover.
    Real content sits above it via the z-index rule. */
 .mcardp-watermark { position: absolute; top: -14px; right: -12px; color: var(--border-strong); opacity: 0.08; pointer-events: none; z-index: 0; transition: opacity .22s var(--ease-glide), color .22s var(--ease-glide); }
-.mcardp-watermark svg { width: 92px; height: 92px; }
-.mcardp:hover .mcardp-watermark { opacity: 0.20; color: var(--teal-400); }
+.mcardp-watermark svg { width: 96px; height: 96px; }
+.mcardp:hover .mcardp-watermark { opacity: 0.25; color: var(--brand-400); }
 .mcardp > *:not(.mcardp-watermark) { position: relative; z-index: 1; }
 .mcardp-top { display: flex; align-items: center; flex-wrap: nowrap; gap: 5px; min-height: 20px; }
 .mcardp .chip { font-size: 9px; padding: 2px 6px; gap: 3px; letter-spacing: 0.02em; white-space: nowrap; flex-shrink: 0; }

@@ -53,8 +53,15 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
       ] as const);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border-strong bg-bg-elevated/75 backdrop-blur-xl shadow-[0_1px_0_rgba(255,255,255,0.05)_inset,0_10px_30px_-18px_rgba(0,0,0,0.7)]">
-      <div className="mx-auto max-w-[1480px] flex items-center justify-between gap-2 px-3 lg:px-6 h-12">
+    <header className="sticky top-0 z-40 border-b border-border-strong"
+      style={{
+        background: "color-mix(in oklab, var(--panel) 78%, transparent)",
+        backdropFilter: "blur(14px) saturate(1.3)",
+        WebkitBackdropFilter: "blur(14px) saturate(1.3)",
+        boxShadow: "inset 0 1px 0 oklch(100% 0 0 / 0.06), 0 12px 32px -12px oklch(6% 0.08 268 / 0.6)",
+      }}
+    >
+      <div className="mx-auto max-w-[1480px] flex items-center justify-between gap-2 px-3 lg:px-6 h-14">
         <div className="flex min-w-0 items-center gap-3">
           <Link href="/" aria-label="50pick home" className="shrink-0 hover:opacity-90 transition-opacity">
             <FiftyLockup size={20} />

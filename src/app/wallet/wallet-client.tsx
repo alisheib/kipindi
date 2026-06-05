@@ -14,24 +14,29 @@ function BalanceCard({
   balance, pending, hold, currency,
 }: { balance: number; pending: number; hold: number; currency: string }) {
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-border-strong bg-bg-elevated">
+    <section className="relative overflow-hidden rounded-2xl bg-bg-elevated"
+      style={{
+        border: "1px solid oklch(78% 0.13 80 / 0.30)",
+        boxShadow: "inset 0 1px 0 oklch(92% 0.06 84 / 0.15), 0 12px 34px oklch(8% 0.05 264 / 0.5)",
+      }}
+    >
       <div
         className="absolute inset-0"
         aria-hidden
         style={{
           background:
-            "radial-gradient(900px 360px at 100% 0%, oklch(58% 0.13 80 / 0.18), transparent 60%), " +
-            "radial-gradient(700px 320px at 0% 100%, oklch(45% 0.10 152 / 0.18), transparent 60%), " +
-            "linear-gradient(135deg, oklch(22% 0.140 268) 0%, oklch(30% 0.165 268) 100%)",
+            "radial-gradient(900px 360px at 100% 0%, oklch(58% 0.13 80 / 0.22), transparent 60%), " +
+            "radial-gradient(700px 320px at 0% 100%, oklch(45% 0.10 152 / 0.22), transparent 60%), " +
+            "linear-gradient(135deg, oklch(23% 0.075 268) 0%, oklch(16% 0.05 268) 100%)",
         }}
       />
       <div className="absolute -right-8 -bottom-8 opacity-[0.07]" aria-hidden>
         <FiftyMark size={220} />
       </div>
       <div className="relative z-10 p-5 lg:p-6">
-        <div className="flex items-center gap-1.5 text-text-subtle">
-          <WalletIcon size={13} className="text-gold-300" />
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold">Available · Salio</p>
+        <div className="flex items-center gap-1.5 text-gold-300">
+          <WalletIcon size={13} />
+          <p className="font-mono text-[10.5px] uppercase tracking-[0.16em] font-bold">Available · Salio</p>
         </div>
         <p
           data-testid="wallet-balance"
