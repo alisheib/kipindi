@@ -18,7 +18,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Trophy, X } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { haptics } from "@/lib/haptics";
 
 const EVENT_NAME = "50pick:celebrate";
@@ -156,7 +156,7 @@ export function WinCelebrationHost() {
               animation: "wc-trophy-pulse 2.4s ease-in-out infinite",
             }}
           >
-            <Trophy size={22} aria-hidden />
+            <I.trophy s={22} />
           </div>
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] font-bold text-gold-300">
             {payload.kind === "WIN" ? "Position won · Madau yamefanikiwa" : "Cashed out · Umetoa kabla"}
@@ -201,7 +201,7 @@ export function WinCelebrationHost() {
           aria-label="Close"
           className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
         >
-          <X size={14} />
+          <I.x s={14} />
         </button>
       </div>
     </div>,

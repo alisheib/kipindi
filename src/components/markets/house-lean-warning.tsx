@@ -11,7 +11,7 @@
  *
  * The kit voice forbids hyperbole — this is a calm, factual disclosure.
  */
-import { AlertTriangle, AlertCircle } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import type { LeanLevel } from "@/lib/server/market-config";
 
 export function HouseLeanWarning({
@@ -35,7 +35,7 @@ export function HouseLeanWarning({
         role="status"
         className="mt-3 flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg/30 px-3 py-2.5 text-[12px] leading-snug"
       >
-        <AlertTriangle size={14} className="mt-0.5 shrink-0 text-warning-fg" />
+        <I.warning s={14} />
         <div className="min-w-0">
           <p className="font-display font-semibold text-text">
             Heavy lean — thin profit
@@ -61,7 +61,7 @@ export function HouseLeanWarning({
       role="alert"
       className="mt-3 flex items-start gap-2.5 rounded-md border border-no-700 bg-no-500/[0.10] px-3 py-2.5 text-[12px] leading-snug"
     >
-      <AlertCircle size={14} className="mt-0.5 shrink-0 text-no-300" />
+      <I.alertCircle s={14} />
       <div className="min-w-0">
         <p className="font-display font-semibold text-text">
           Heavy lean — net loss after fees

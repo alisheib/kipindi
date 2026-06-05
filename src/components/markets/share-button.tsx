@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { Share2, Check, X } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 
 /**
@@ -59,7 +59,7 @@ export function ShareButton({
         aria-haspopup="dialog"
         className="inline-flex h-9 items-center gap-1.5 rounded-pill border border-border bg-bg-elevated px-3 text-[12px] font-mono uppercase tracking-[0.14em] text-text-muted hover:border-border-strong hover:text-text transition-colors"
       >
-        {copied ? <Check size={13} aria-hidden /> : <Share2 size={13} aria-hidden />}
+        {copied ? <I.check s={13} /> : <I.share s={13} />}
         {copied ? "Copied" : "Share"}
       </button>
 
@@ -84,7 +84,7 @@ export function ShareButton({
                 aria-label="Close"
                 className="inline-flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:bg-bg-overlay"
               >
-                <X size={14} />
+                <I.x s={14} />
               </button>
             </div>
             <div className="p-2">
@@ -95,7 +95,7 @@ export function ShareButton({
                   className="w-full flex items-center gap-3 px-3 py-3 rounded-md hover:bg-bg-overlay text-left transition-colors"
                 >
                   <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-teal-500/15 text-teal-300">
-                    <Share2 size={16} />
+                    <I.share s={16} />
                   </span>
                   <span>
                     <span className="block text-[14px] font-semibold text-text">System share</span>
@@ -124,7 +124,7 @@ export function ShareButton({
                 className="w-full flex items-center gap-3 px-3 py-3 rounded-md hover:bg-bg-overlay text-left transition-colors"
               >
                 <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-bg-overlay text-text-muted">
-                  {copied ? <Check size={16} className="text-yes-300" /> : <LinkMark />}
+                  {copied ? <I.check s={16} /> : <LinkMark />}
                 </span>
                 <span>
                   <span className="block text-[14px] font-semibold text-text">{copied ? "Copied" : "Copy link"}</span>

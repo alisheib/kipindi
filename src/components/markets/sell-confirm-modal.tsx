@@ -12,7 +12,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, AlertTriangle } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { haptics } from "@/lib/haptics";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
@@ -91,7 +91,7 @@ export function SellConfirmModal({ open, pending, stake, value, onConfirm, onCan
               aria-label="Cancel"
               className="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
             >
-              <X size={16} />
+              <I.x s={16} />
             </button>
           </div>
 
@@ -125,7 +125,7 @@ export function SellConfirmModal({ open, pending, stake, value, onConfirm, onCan
           </div>
 
           <div className="mt-3 flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg/30 p-3">
-            <AlertTriangle size={14} className="mt-0.5 shrink-0 text-warning-fg" aria-hidden />
+            <I.warning s={14} />
             <p className="text-[12px] text-text-muted leading-snug">
               {profit
                 ? <>Locking in <strong className="text-text">TZS {fmt(net)} profit</strong> now means you give up any further upside if the market resolves your way.</>

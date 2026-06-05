@@ -6,7 +6,7 @@
  * authors + moderators can delete. Bilingual, on-theme, reduced-motion safe.
  */
 import { useState, useTransition } from "react";
-import { Flag, Trash2, MessageCircle } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { haptics } from "@/lib/haptics";
 import { Avatar } from "@/components/ui/avatar";
@@ -104,7 +104,7 @@ export function CommentsThread({
   return (
     <section className="mt-8 rounded-lg border border-border bg-bg-elevated p-5 lg:p-6">
       <div className="mb-4 flex items-center gap-2">
-        <MessageCircle size={16} className="text-gold-300" aria-hidden />
+        <I.comment s={16} />
         <h2 className="font-display text-[17px] font-semibold text-text">Discussion</h2>
         <span className="font-display italic text-text-subtle text-[13px]">· Majadiliano</span>
         <span className="ml-auto font-mono text-[11px] text-text-subtle tabular-nums">{comments.length}</span>
@@ -177,7 +177,7 @@ export function CommentsThread({
                       className="inline-flex items-center gap-1 font-mono text-[10.5px] text-text-subtle hover:text-warning-fg transition-colors disabled:opacity-50"
                       aria-label="Report comment"
                     >
-                      <Flag size={11} aria-hidden />
+                      <I.flag s={11} />
                       {c.reportedByMe ? "Reported" : "Report"}
                     </button>
                   )}
@@ -189,7 +189,7 @@ export function CommentsThread({
                       className="inline-flex items-center gap-1 font-mono text-[10.5px] text-text-subtle hover:text-danger-fg transition-colors disabled:opacity-50"
                       aria-label="Delete comment"
                     >
-                      <Trash2 size={11} aria-hidden />
+                      <I.trash s={11} />
                       Delete
                     </button>
                   )}

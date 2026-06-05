@@ -12,7 +12,7 @@
  */
 
 import * as React from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { cn } from "@/lib/utils";
 
 type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, "type" | "size"> & {
@@ -72,7 +72,7 @@ export function PasswordInput({
           onClick={() => setReveal(r => !r)}
           className="inline-flex items-center justify-center px-3 bg-bg-elevated border-l border-border text-text-subtle hover:text-text transition-colors shrink-0"
         >
-          {reveal ? <EyeOff size={16} aria-hidden /> : <Eye size={16} aria-hidden />}
+          {reveal ? <I.eyeOff s={16} /> : <I.eye s={16} />}
         </button>
       </span>
 

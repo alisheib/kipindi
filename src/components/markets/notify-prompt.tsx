@@ -11,7 +11,7 @@
  * upgrade this to register a push subscription instead.
  */
 import { useEffect, useState } from "react";
-import { Bell, BellRing, BellOff } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 
 const KEY = "50pick-notify-markets";
 
@@ -93,7 +93,7 @@ export function NotifyPrompt({ marketId, marketTitle }: { marketId: string; mark
   if (permission === "denied") {
     return (
       <div className="flex items-center gap-2 rounded-md border border-border bg-bg-overlay px-3 py-2 text-[11px] text-text-subtle">
-        <BellOff size={14} className="shrink-0" />
+        <I.bellOff s={14} />
         <span>Notifications blocked. Enable them in your browser settings to get a ping when this market resolves.</span>
       </div>
     );
@@ -111,7 +111,7 @@ export function NotifyPrompt({ marketId, marketTitle }: { marketId: string; mark
           : "border-border bg-bg-elevated text-text-muted hover:border-border-strong hover:text-text"
       } disabled:opacity-50`}
     >
-      {watching ? <BellRing size={14} aria-hidden /> : <Bell size={14} aria-hidden />}
+      {watching ? <I.bellRing s={14} /> : <I.bell s={14} />}
       {watching ? "Watching · I'll ping you on resolve" : "Notify me when this resolves"}
     </button>
   );

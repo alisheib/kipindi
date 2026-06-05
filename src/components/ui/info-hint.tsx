@@ -16,7 +16,7 @@
  */
 
 import { Tooltip } from "./tooltip";
-import { Info } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 
 export function InfoHint({
   label,

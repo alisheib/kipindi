@@ -17,7 +17,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, ShieldCheck } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { haptics } from "@/lib/haptics";
 import { HouseLeanWarning } from "./house-lean-warning";
 import type { LeanLevel } from "@/lib/server/market-config";
@@ -198,7 +198,7 @@ export function BetConfirmModal({
               aria-label="Cancel"
               className="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
             >
-              <X size={16} />
+              <I.x s={16} />
             </button>
           </div>
 
@@ -236,7 +236,7 @@ export function BetConfirmModal({
 
           {/* Quote-hold caption */}
           <div className="mt-4 flex items-center gap-2 text-[12px] text-text-subtle">
-            <ShieldCheck size={14} className="text-gold-400" aria-hidden />
+            <I.shieldcheck s={14} />
             <span>
               Price locked for <strong className="font-mono text-gold-300">{seconds}s</strong> · then re-aim on the dial.
             </span>

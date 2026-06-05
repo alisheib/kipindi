@@ -27,7 +27,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, X, AlertTriangle, Info } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 
 const DEFAULT_AUTO_CLOSE_MS = 5_000;
 
@@ -253,7 +253,7 @@ export function OperationResultModal({
           aria-label="Close"
           className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
         >
-          <X size={16} />
+          <I.x s={16} />
         </button>
 
         <div className="p-6 lg:p-7 text-center">
