@@ -22,31 +22,24 @@ function fmtAmt(n: number) {
   return n.toLocaleString();
 }
 
-function formatEvent(ev: TickerEvent): string {
-  const amt = ev.amount && ev.amount > 0 ? `TZS ${fmtAmt(ev.amount)} ` : "";
-  const side = ev.side ? `${ev.side} ` : "";
-  const verb =
-    ev.kind === "bet" ? "predicted"
-    : ev.kind === "win" ? "won on"
-    : ev.kind === "resolve" ? "settled"
-    : "";
-  return `${amt}${verb} ${side}on ${ev.marketTitle}`.trim();
-}
 
 function Items({ events, prefix }: { events: TickerEvent[]; prefix: string }) {
   return (
     <>
-      {events.map((ev) => (
-        <span key={`${prefix}-${ev.id}`} className="inline-flex items-center gap-2.5 shrink-0" style={{ paddingRight: 32 }}>
-          <span
-            className="font-mono"
-            style={{ fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap" }}
-          >
-            {formatEvent(ev)}
+      {events.map((ev) => {
+        const amt = ev.amount && ev.amount > 0 ? `TZS ${fmtAmt(ev.amount)} ` : "";
+        const verb = ev.kind === "bet" ? "predicted" : ev.kind === "win" ? "won on" : ev.kind === "resolve" ? "settled" : "";
+        return (
+          <span key={`${prefix}-${ev.id}`} className="inline-flex items-center gap-1.5 shrink-0 font-mono" style={{ paddingRight: 32, fontSize: 12, whiteSpace: "nowrap" }}>
+            <span style={{ color: "var(--text-muted)" }}>{amt}{verb} </span>
+            {ev.side && (
+              <span style={{ fontWeight: 700, color: ev.side === "YES" ? "var(--yes-400)" : "var(--no-400)" }}>{ev.side}</span>
+            )}
+            <span style={{ color: "var(--text-muted)" }}> on {ev.marketTitle}</span>
+            <span style={{ width: 2.5, height: 2.5, borderRadius: "50%", background: "var(--gilt)", opacity: 0.35, flexShrink: 0, marginLeft: 8 }} />
           </span>
-          <span style={{ width: 2.5, height: 2.5, borderRadius: "50%", background: "var(--gilt)", opacity: 0.35, flexShrink: 0 }} />
-        </span>
-      ))}
+        );
+      })}
     </>
   );
 }
