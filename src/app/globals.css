@@ -395,28 +395,25 @@ body {
   font-family: var(--font-body);
   font-weight: 600;
   border: 1px solid transparent;
-  border-radius: var(--r-md);
+  border-radius: var(--r-sm);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--sp-2);
-  transition: transform var(--ease-micro), background-color var(--ease-micro), border-color var(--ease-micro), box-shadow var(--ease-micro), filter var(--ease-micro);
+  gap: 8px;
+  transition: transform .1s var(--ease-micro), box-shadow .16s var(--ease-micro), filter .12s, background .16s;
   white-space: nowrap;
   user-select: none;
 }
-/* Modern motion (v2): rest → hover lift → tactile press. Same-hue glow is
-   layered per-variant below via an additional drop-shadow in the hover filter,
-   so the resting box-shadow (inset highlights + elevation) is never disturbed. */
 .btn:hover:not(:disabled)  { transform: translateY(-1px); }
-.btn:active:not(:disabled) { transform: translateY(0) scale(0.97); }
+.btn:active:not(:disabled) { transform: translateY(1px) scale(0.97); filter: brightness(0.93); }
 .btn:focus-visible { outline: 2px solid var(--aqua-300); outline-offset: 2px; box-shadow: 0 0 0 4px var(--aqua-glow); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
-.btn-sm { height: 30px; padding: 0 12px; font-size: 13px; }
-.btn-md { height: 38px; padding: 0 16px; font-size: 14px; }
-.btn-lg { height: 46px; padding: 0 20px; font-size: 15px; }
-.btn-xl { height: 56px; padding: 0 24px; font-size: 16px; border-radius: var(--r-lg); }
+.btn-sm { height: 30px; padding: 0 18px; font-size: 13px; }
+.btn-md { height: 38px; padding: 0 18px; font-size: 14px; }
+.btn-lg { height: 46px; padding: 0 18px; font-size: 15px; }
+.btn-xl { height: 56px; padding: 0 24px; font-size: 16.5px; }
 
 .btn-primary {
   background: linear-gradient(180deg, oklch(60% 0.20 268) 0%, oklch(48% 0.20 268) 100%);
@@ -435,52 +432,48 @@ body {
 /* v2 kit: one flat-solid family — YES/NO/gold are SOLID fills (not gradients),
    with a 1px inset top-highlight + soft shadow. (primary keeps its gradient.) */
 .btn-yes {
-  background: linear-gradient(180deg, oklch(64% 0.16 150), oklch(54% 0.15 150));
+  background: oklch(57% 0.155 150);
   color: #fff;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   border-color: transparent;
-  box-shadow: inset 0 1px 0 oklch(85% 0.13 152 / 0.50), 0 2px 6px oklch(10% 0.05 264 / 0.4);
-  text-shadow: 0 1px 0 oklch(20% 0.10 152 / 0.30);
+  box-shadow: inset 0 1px 0 oklch(80% 0.14 152 / 0.4), 0 1px 2px oklch(10% 0.05 264 / 0.35);
+  text-shadow: 0 1px 1px oklch(20% 0.1 264 / 0.32);
 }
-.btn-yes:hover:not(:disabled) { filter: brightness(1.08); box-shadow: inset 0 1px 0 oklch(85% 0.13 152 / 0.50), 0 8px 20px color-mix(in oklab, var(--yes-400) 35%, transparent); }
+.btn-yes:hover:not(:disabled) { filter: brightness(1.07); box-shadow: inset 0 1px 0 oklch(80% 0.14 152 / 0.4), 0 5px 16px oklch(60% 0.16 150 / 0.5); }
 
 .btn-no {
-  background: linear-gradient(180deg, oklch(61% 0.20 25), oklch(51% 0.19 25));
+  background: oklch(56% 0.200 25);
   color: #fff;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   border-color: transparent;
-  box-shadow: inset 0 1px 0 oklch(85% 0.15 25 / 0.50), 0 2px 6px oklch(10% 0.05 264 / 0.4);
-  text-shadow: 0 1px 0 oklch(20% 0.10 22 / 0.30);
+  box-shadow: inset 0 1px 0 oklch(80% 0.15 25 / 0.4), 0 1px 2px oklch(10% 0.05 264 / 0.35);
+  text-shadow: 0 1px 1px oklch(20% 0.1 264 / 0.32);
 }
-.btn-no:hover:not(:disabled) { filter: brightness(1.08); box-shadow: inset 0 1px 0 oklch(85% 0.15 25 / 0.50), 0 8px 20px color-mix(in oklab, var(--no-400) 35%, transparent); }
+.btn-no:hover:not(:disabled) { filter: brightness(1.07); box-shadow: inset 0 1px 0 oklch(80% 0.15 25 / 0.4), 0 5px 16px oklch(57% 0.20 25 / 0.5); }
 
 .btn-ghost {
-  background: oklch(22% 0.110 268 / 0.40);
+  background: transparent;
   color: var(--text);
-  border-color: var(--border-strong);
-  backdrop-filter: blur(6px);
+  border-color: var(--border);
 }
 .btn-ghost:hover:not(:disabled) {
-  background: oklch(28% 0.130 268 / 0.55);
-  border-color: var(--gilt);
-  color: var(--gilt);
+  background: oklch(40% 0.07 264 / 0.35);
 }
 
 .btn-danger { background: var(--danger-500); color: white; }
 .btn-danger:hover:not(:disabled) { filter: brightness(1.08); }
 
 .btn-gold {
-  background: linear-gradient(180deg, oklch(80% 0.14 82), oklch(70% 0.15 80));
-  color: oklch(18% 0.06 80);
+  background: var(--gold-500);
+  color: var(--gold-text);
   font-weight: 700;
   border-color: transparent;
-  box-shadow: inset 0 1px 0 oklch(95% 0.06 86 / 0.60), 0 2px 6px oklch(20% 0.06 76 / 0.45);
+  box-shadow: inset 0 1px 0 oklch(95% 0.06 86 / 0.55), 0 1px 2px oklch(10% 0.05 262 / 0.35);
   letter-spacing: 0.02em;
-  text-shadow: 0 1px 0 oklch(96% 0.07 80 / 0.45);
 }
-.btn-gold:hover:not(:disabled) { filter: brightness(1.08) saturate(1.06); box-shadow: inset 0 1px 0 oklch(95% 0.06 86 / 0.60), 0 8px 22px color-mix(in oklab, var(--gold-400) 40%, transparent); }
+.btn-gold:hover:not(:disabled) { filter: brightness(1.07); box-shadow: inset 0 1px 0 oklch(95% 0.06 86 / 0.55), 0 5px 16px oklch(80% 0.13 82 / 0.5); }
 
 .btn-claret {
   background: linear-gradient(180deg, var(--claret-500) 0%, var(--claret-700) 100%);
@@ -496,11 +489,19 @@ body {
 }
 .btn-claret:hover:not(:disabled) { filter: brightness(1.08) saturate(1.04) drop-shadow(0 6px 16px color-mix(in oklab, var(--claret-500) 32%, transparent)); }
 
+.btn-outline {
+  background: transparent;
+  color: var(--brand-300);
+  border: 1px solid var(--brand-500);
+}
+.btn-outline:hover:not(:disabled) {
+  background: oklch(40% 0.07 264 / 0.25);
+}
+
 .btn-aqua-ghost {
   background: color-mix(in oklab, var(--aqua-300) 12%, transparent);
   color: var(--aqua-200);
   border: 1px solid var(--aqua-edge);
-  backdrop-filter: blur(6px);
 }
 .btn-aqua-ghost:hover:not(:disabled) {
   background: color-mix(in oklab, var(--aqua-300) 22%, transparent);
