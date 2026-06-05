@@ -10,7 +10,7 @@ export function SteppedProgress({ steps, current, className }: { steps: number; 
       {Array.from({ length: steps }).map((_, i) => (
         <div
           key={i}
-          className="flex-1 h-1 rounded-pill transition-colors"
+          className={cn("flex-1 h-1 rounded-pill transition-colors", i === current && "prog-sweep")}
           style={{
             background: i < current ? "var(--teal-400)" : i === current ? "var(--teal-500)" : "var(--bg-overlay)",
             boxShadow: i === current ? "0 0 8px -1px color-mix(in oklab, var(--teal-400) 60%, transparent)" : "none",

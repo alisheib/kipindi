@@ -1568,6 +1568,21 @@ html.kp-reduce-motion *::after {
   box-shadow: var(--shadow-3), inset 0 1px 0 oklch(100% 0 0 / 0.06);
 }
 
+/* v2 kit — traveling light-sweep for active progress fills (limits, KYC steps,
+   objection window). Add `.prog-sweep` to a filled bar segment. */
+@keyframes progSweep { 0% { transform: translateX(-130%); } 100% { transform: translateX(360%); } }
+.prog-sweep { position: relative; overflow: hidden; }
+.prog-sweep::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, oklch(100% 0 0 / 0.40), transparent);
+  transform: translateX(-130%);
+  animation: progSweep 1.6s var(--ease-stage) infinite;
+  pointer-events: none;
+}
+[data-motion="reduced"] .prog-sweep::after,
+[data-motion="minimal"] .prog-sweep::after { animation: none; }
+@media (prefers-reduced-motion: reduce) { .prog-sweep::after { animation: none; } }
+
 /* Single fixed-height row — chips never wrap, so everything below them (bar,
    YES/NO buttons) stays on the same line across every card. */
 .mcard-top { display: flex; align-items: center; flex-wrap: nowrap; gap: 5px; overflow: hidden; min-height: 21px; }
