@@ -653,11 +653,11 @@ body {
 /* ---------- Input ---------- */
 .input {
   width: 100%;
-  height: 42px;
+  height: 44px;
   padding: 0 14px;
   border-radius: var(--r-md);
   border: 1px solid var(--border);
-  background: var(--bg-elevated);
+  background: var(--bg-inset);
   color: var(--text);
   font-family: var(--font-body);
   font-size: 14px;
@@ -666,8 +666,8 @@ body {
 .input:hover:not(:focus):not(:disabled) { border-color: var(--border-strong); }
 .input:focus {
   outline: none;
-  border-color: var(--aqua-300);
-  box-shadow: 0 0 0 3px var(--aqua-glow);
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px oklch(63% 0.18 262 / 0.25);
 }
 .input.input-mono { font-family: var(--font-mono); }
 
@@ -676,13 +676,13 @@ body {
   align-items: center;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--bg-elevated);
+  background: var(--bg-inset);
   transition: border-color var(--ease-micro), box-shadow var(--ease-micro);
   overflow: hidden;
 }
 .input-group:focus-within {
-  border-color: var(--aqua-300);
-  box-shadow: 0 0 0 3px var(--aqua-glow);
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px oklch(63% 0.18 262 / 0.25);
 }
 .input-group .prefix {
   padding: 0 10px 0 14px;
