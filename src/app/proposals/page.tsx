@@ -44,17 +44,17 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-3.5">
       <h1 className="sr-only">Market Proposals · Mapendekezo</h1>
 
-      <div className="flex items-end justify-between gap-3">
-        <div>
+      <div>
+        <div className="flex items-center justify-between gap-3">
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">Market Proposals · Mapendekezo</p>
-          <h2 className="mt-1 font-display text-[22px] font-bold leading-tight">Vote for the markets you want to see</h2>
-          <p className="font-display italic text-text-subtle text-[13px]">Pigia kura soko unayotaka</p>
+          {enabled && (
+            <Link href={"/proposals/new" as never} className="shrink-0">
+              <Button variant="gold" size="md" leading={<I.plus s={15} />}>Create · Pendekeza</Button>
+            </Link>
+          )}
         </div>
-        {enabled && (
-          <Link href={"/proposals/new" as never} className="shrink-0 hidden sm:block">
-            <Button variant="gold" size="md" leading={<I.plus s={15} />}>Create · Pendekeza</Button>
-          </Link>
-        )}
+        <h2 className="mt-1 font-display text-[22px] font-bold leading-tight">Vote for the markets you want to see</h2>
+        <p className="font-display italic text-text-subtle text-[13px]">Pigia kura soko unayotaka</p>
       </div>
 
       {/* Reward banner — compact info strip + mobile CTA */}
