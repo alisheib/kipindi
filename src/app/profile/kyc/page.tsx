@@ -72,7 +72,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         </section>
       )}
 
-      <header className="relative overflow-hidden rounded-2xl border border-border-strong bg-bg-elevated">
+      <header className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated">
         <div
           className="absolute inset-0"
           aria-hidden
@@ -331,7 +331,8 @@ function Field({
         maxLength={maxLength}
         min={min}
         max={max}
-        className="w-full h-11 px-3 rounded-md border border-border bg-bg-overlay font-mono text-[13px] tabular-nums text-text focus:outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 transition-colors"
+        className="w-full h-11 px-3.5 rounded-md border border-border font-mono text-[13px] tabular-nums text-text focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
+        style={{ background: "var(--bg-inset)" }}
       />
       {hint && <p className="mt-1.5 text-[11px] text-text-subtle">{hint}</p>}
     </div>

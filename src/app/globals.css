@@ -227,7 +227,7 @@
   --surface-selected: oklch(50% 0.20 268);
   --surface-disabled: oklch(36% 0.16 268);
   --border-subtle:  oklch(46% 0.18 268);
-  --border-focus:   var(--aqua-300);
+  --border-focus:   var(--brand-500);
   --border-divider: var(--border);
 
   --text-primary:   var(--text);
@@ -408,7 +408,7 @@ body {
 }
 .btn:hover:not(:disabled)  { transform: translateY(-1px); }
 .btn:active:not(:disabled) { transform: translateY(1px) scale(0.97); filter: brightness(0.93); }
-.btn:focus-visible { outline: 2px solid var(--aqua-300); outline-offset: 2px; box-shadow: 0 0 0 4px var(--aqua-glow); }
+.btn:focus-visible { outline: 2px solid var(--brand-500); outline-offset: 2px; box-shadow: 0 0 0 4px oklch(63% 0.18 262 / 0.25); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .btn-sm { height: 30px; padding: 0 18px; font-size: 13px; }
@@ -857,13 +857,13 @@ body {
   .wc-rays { animation: none !important; opacity: 0.5; }
 }
 
-/* Aqua focus ring opt-in for inputs / ghost buttons that aren't using the
+/* Brand focus ring opt-in for inputs / ghost buttons that aren't using the
    `.input` class directly. */
 .aqua-focus:focus-visible,
 .aqua-focus:focus-within {
-  outline: 2px solid var(--aqua-300);
+  outline: 2px solid var(--brand-500);
   outline-offset: 2px;
-  box-shadow: 0 0 0 4px var(--aqua-glow);
+  box-shadow: 0 0 0 4px oklch(63% 0.18 262 / 0.25);
 }
 
 /* Defensive baseline — any keyboard-focusable element that doesn't
@@ -875,7 +875,7 @@ body {
    :where() keeps specificity at 0,0,0 so component-level overrides
    still win without !important. */
 :where(a, button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
-  outline: 2px solid var(--aqua-300);
+  outline: 2px solid var(--brand-500);
   outline-offset: 2px;
 }
 
@@ -1158,7 +1158,7 @@ body {
   background: var(--gilt);
   animation: toggle-glow var(--dur-arrive) var(--ease-glide);
 }
-.kp-switch:focus-visible { outline: 2px solid var(--aqua-300); outline-offset: 2px; }
+.kp-switch:focus-visible { outline: 2px solid var(--brand-500); outline-offset: 2px; }
 
 /* 1.6 — Value-changed: generalize the wallet pill's number-roll + delta-flash.
    `.value-roll` is the wrapper; `.value-flash` flashes the gilt outline on any

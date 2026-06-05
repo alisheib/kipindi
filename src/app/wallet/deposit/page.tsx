@@ -91,7 +91,8 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
             {PROVIDERS.map((p, i) => (
               <label
                 key={p.id}
-                className="relative flex flex-col items-center gap-2 px-2 py-3.5 rounded-md border border-border bg-bg-overlay hover:border-gold-700 cursor-pointer transition-colors has-[:checked]:border-gold-500 has-[:checked]:bg-gold-500/10"
+                className="relative flex flex-col items-center gap-2 px-2 py-3.5 rounded-md border border-border cursor-pointer transition-colors hover:border-gold-700 has-[:checked]:border-gold-500 has-[:checked]:bg-gold-500/10"
+                style={{ background: "var(--bg-inset)" }}
               >
                 <input type="radio" name="provider" value={p.id} required defaultChecked={i === 0} className="sr-only peer" />
                 <span

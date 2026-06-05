@@ -221,6 +221,33 @@ Verify `src/app/page.tsx`:
 
 ---
 
+## Phase 3b — Deep Component Rebuild (post-Sprint 38)
+
+Sprints 19-38 applied tokens + surface styling. Phase 3b goes deeper:
+actual component rewrites where old patterns persisted.
+
+### Done (Phase 3b)
+- [x] `--live-400` token added to globals.css
+- [x] Chip.tsx fully rebuilt — height-based, 700 weight, kit oklch tints
+- [x] Toggle.tsx rebuilt — accent-500 on, bg-inset off, no border
+- [x] Checkbox.tsx created — 19x19, accent-500 fill, dark check icon
+- [x] Register page checkboxes swapped to kit Checkbox
+- [x] OTP page input — bg-inset, brand-500 focus, r-md
+- [x] glass-panel — bg-elevated, border (not border-strong), r-lg
+- [x] BottomNav — fixed xl:hidden override (inline display:grid bug)
+
+### Remaining (Phase 3b)
+- [ ] KYC page — use Input component, tier progress styling
+- [ ] Admin pages — tables, KPI cards (ds-admin.jsx)
+- [ ] Market detail — buy tray, stats panel (ds-flagship.jsx)
+- [ ] Positions page — portfolio rows, P&L (ds-positions.jsx)
+- [ ] Wallet deposit/withdraw — Radio component for payment rails
+- [ ] Profile pages — old input patterns
+- [ ] Focus rings — brand-500 globally (remaining aqua references)
+- [ ] `.input-group` legacy usage — 5+ files
+
+---
+
 ## Rules for every sprint
 
 1. **Read the kit file FIRST** before touching any app code
