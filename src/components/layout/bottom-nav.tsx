@@ -42,12 +42,10 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
   return (
     <nav
       aria-label="Primary"
-      className="xl:hidden fixed inset-x-0 bottom-0 z-40"
+      className="xl:hidden fixed inset-x-0 bottom-0 z-40 grid items-center"
       style={{
         height: 64,
-        display: "grid",
         gridTemplateColumns: `repeat(${items.length}, 1fr)`,
-        alignItems: "center",
         padding: "0 6px",
         paddingBottom: "env(safe-area-inset-bottom)",
         background: "var(--panel)",
