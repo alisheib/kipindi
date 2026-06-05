@@ -513,24 +513,26 @@ body {
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
+  gap: 5px;
+  height: 21px;
+  padding: 0 8px;
   border-radius: var(--r-pill);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  border: 1px solid var(--border-strong);
-  background: oklch(50% 0.20 268);
-  color: var(--text);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  background: oklch(34% 0.09 268 / 0.5);
+  color: var(--text-muted);
 }
-.chip-yes      { background: color-mix(in oklab, var(--yes-500) 22%, transparent); color: oklch(94% 0.10 152); border-color: color-mix(in oklab, var(--yes-500) 50%, transparent); }
-.chip-no       { background: color-mix(in oklab, var(--no-500)  22%, transparent); color: oklch(94% 0.08 22);  border-color: color-mix(in oklab, var(--no-500)  50%, transparent); }
-.chip-live     { background: color-mix(in oklab, var(--danger-500) 22%, transparent); color: oklch(94% 0.10 25); border-color: color-mix(in oklab, var(--danger-500) 50%, transparent); }
-.chip-resolved { background: color-mix(in oklab, var(--gold-500) 24%, transparent); color: var(--gilt); border-color: color-mix(in oklab, var(--gilt) 60%, transparent); }
-.chip-pending  { background: oklch(54% 0.18 268); color: oklch(96% 0.012 268); border-color: oklch(70% 0.16 268); }
-.chip-objection{ background: color-mix(in oklab, var(--gold-300) 22%, transparent); color: var(--gilt); border-color: color-mix(in oklab, var(--gilt) 50%, transparent); }
+.chip-yes      { background: oklch(52% 0.15 150 / 0.22); color: var(--yes-300); border-color: oklch(61% 0.16 150 / 0.5); }
+.chip-no       { background: oklch(50% 0.19 25 / 0.22);  color: var(--no-300);  border-color: oklch(58% 0.2 25 / 0.5); }
+.chip-live     { height: 23px; padding: 0 9px; font-size: 11px; background: oklch(55% 0.20 25 / 0.30); color: oklch(96% 0.04 25); border-color: oklch(62% 0.20 25 / 0.6); }
+.chip-resolved { height: 23px; padding: 0 9px; font-size: 11px; background: linear-gradient(180deg, var(--gold-300), var(--gold-500)); color: oklch(24% 0.06 80); border-color: oklch(60% 0.10 78); }
+.chip-pending  { height: 23px; padding: 0 9px; font-size: 11px; background: oklch(54% 0.165 262 / 0.26); color: var(--brand-300); border-color: oklch(63% 0.18 262 / 0.55); }
+.chip-objection{ height: 23px; padding: 0 9px; font-size: 11px; background: oklch(72% 0.13 80 / 0.22); color: var(--gold-300); border-color: oklch(80% 0.13 80 / 0.5); }
 .chip-politics { background: var(--claret-soft); color: var(--claret-200); border-color: var(--claret-edge); }
-.chip-signal   { background: color-mix(in oklab, var(--aqua-300) 18%, transparent); color: var(--aqua-200); border-color: var(--aqua-edge); }
+.chip-signal   { background: oklch(74% 0.11 195 / 0.20); color: var(--aqua-300); border-color: oklch(78% 0.10 195 / 0.5); }
 
 /* ---------- LiveDot + animations ---------- */
 /* Bright red-orange pulsing dot. Uses opacity animation so it works
@@ -538,8 +540,8 @@ body {
    is always visible; the pulse is a brightness/opacity breathe. */
 .live-dot {
   display: inline-block;
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: #e53e3e;
   flex-shrink: 0;
