@@ -82,19 +82,20 @@ function HowItWorks() {
         type="button"
         aria-label="How it works"
         onClick={toggle}
-        className="inline-flex items-center justify-center rounded-sm transition-all"
+        className="inline-flex items-center justify-center rounded-md transition-all"
         style={{
-          width: 18,
-          height: 18,
-          color: open ? "var(--brand-400)" : "var(--text-faint)",
-          background: open ? "oklch(63% 0.18 262 / 0.15)" : "transparent",
+          width: 22,
+          height: 22,
+          color: open ? "var(--brand-300)" : "var(--text-subtle)",
+          background: open ? "oklch(63% 0.18 262 / 0.18)" : "oklch(40% 0.08 264 / 0.25)",
+          border: `1px solid ${open ? "var(--brand-500)" : "var(--border)"}`,
           position: "relative",
           zIndex: 2,
         }}
-        onMouseEnter={(e) => { if (!open) { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "oklch(63% 0.18 262 / 0.08)"; } }}
-        onMouseLeave={(e) => { if (!open) { e.currentTarget.style.color = "var(--text-faint)"; e.currentTarget.style.background = "transparent"; } }}
+        onMouseEnter={(e) => { if (!open) { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.borderColor = "var(--brand-400)"; e.currentTarget.style.background = "oklch(63% 0.18 262 / 0.12)"; } }}
+        onMouseLeave={(e) => { if (!open) { e.currentTarget.style.color = "var(--text-subtle)"; e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.background = "oklch(40% 0.08 264 / 0.25)"; } }}
       >
-        <I.info s={13} />
+        <I.info s={12} />
       </button>
       {open && typeof document !== "undefined" && createPortal(
         <>
