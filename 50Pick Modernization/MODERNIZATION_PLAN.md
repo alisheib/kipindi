@@ -246,10 +246,22 @@ actual component rewrites where old patterns persisted.
 - [x] Wallet deposit/withdraw: bg-inset payment rail cards
 - [x] Admin pages: brand-500 focus on all inputs/selects/textareas + rounded-xl
 
-### Remaining (Phase 3b)
-- [ ] Market detail buy tray fine-tuning (ds-flagship.jsx)
-- [ ] Admin KPI card + table row hover styling (ds-admin.jsx)
-- [ ] Positions page stat grid styling (ds-positions.jsx)
+### Done (Phase 3b — deep rebuild round 2)
+- [x] Kit icon set: 50+ new glyphs in glyphs.tsx (kit50.jsx parity)
+- [x] LiveTicker: horizontal marquee with kit tokens (user preference)
+- [x] Input component: rounded-lg (12px), bg-inset
+- [x] PasswordInput: brand-500 focus, rounded-lg
+- [x] Notification badge: repositioned close to bell (top:4 right:4)
+- [x] Admin KPI cards: mono 21px value, 9.5px label
+- [x] Market detail positions: kit border/bg tokens
+- [x] Font stack verified: Sora + Inter + JetBrains Mono
+
+### Remaining (Phase 3b — systematic audit)
+- [ ] Replace lucide-react with kit glyphs in nav, cards, modals, auth
+- [ ] Market detail buy tray (ds-flagship.jsx)
+- [ ] Admin table row hover + chart bloom (ds-admin.jsx)
+- [ ] Positions stat grid (ds-positions.jsx)
+- [ ] Responsive audit: 393/768/1024/1280/1440
 
 ---
 
