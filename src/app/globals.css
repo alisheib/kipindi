@@ -193,6 +193,9 @@
   --bg-elevated:   oklch(22% 0.140 268);   /* elevated card */
   --bg-overlay:    oklch(11% 0.110 268);   /* sunken / hover-down */
   --bg-royal-soft: oklch(30% 0.165 268);   /* highlighted surface (modal, hero) */
+  --bg-inset:      oklch(11% 0.110 268);   /* sunken input / toggle track */
+  --bg-elevated2:  oklch(26% 0.150 268);   /* second-elevation card */
+  --panel:         oklch(20% 0.130 268);   /* nav / sidebar chrome */
   --border:        oklch(34% 0.130 268);
   --border-strong: oklch(44% 0.150 268);
   --border-royal:  oklch(56% 0.170 268);
@@ -200,7 +203,15 @@
   --text:          oklch(98% 0.012 268);
   --text-muted:    oklch(86% 0.040 268);
   --text-subtle:   oklch(70% 0.080 268);
+  --text-faint:    oklch(60% 0.090 268);
   --gilt:          oklch(86% 0.13 82);
+
+  /* Brand blue — kit tokens (hue 262): nav active pill, focus ring, card-hover glow */
+  --brand-600: oklch(54% 0.165 262);
+  --brand-500: oklch(63% 0.180 262);
+  --brand-400: oklch(72% 0.160 262);
+  --brand-300: oklch(82% 0.120 262);
+  --brand-soft: oklch(34% 0.120 262);
   --gilt-strong:   oklch(80% 0.14 80);
   --shadow-card:   0 1px 2px oklch(6% 0.06 268 / 0.55), 0 10px 28px -10px oklch(4% 0.04 268 / 0.70);
   --shadow-royal:  0 14px 44px -14px oklch(4% 0.04 268 / 0.78);

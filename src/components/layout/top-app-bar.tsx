@@ -26,15 +26,7 @@ export type TopAppBarUser = {
 export function TopAppBar({ user }: { user: TopAppBarUser }) {
   const pathname = usePathname();
   const { t, locale } = useT();
-  // Public visitors see only the routes they can actually open without
-  // a session. Wallet + Positions require auth — surfacing them in the
-  // nav and then bouncing the click to /auth/login is a worse UX than
-  // hiding the entry until the visitor is signed in.
-  // Locale-aware labels — wire the toggle so flipping the chip actually
-  // re-labels the visible chrome. Most of the app uses a "bilingual at
-  // all times" pattern ("Place bet · Weka dau"); these top-bar nav
-  // items are an exception that the toggle genuinely flips. The
-  // dictionary in @/lib/i18n.tsx has SW + FR for every key below.
+
   const POSITIONS = locale === "sw" ? "Madau" : locale === "fr" ? "Paris" : "Positions";
   const NAV_ITEMS = user.isAuthed
     ? ([
@@ -53,61 +45,77 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
       ] as const);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border-strong"
+    <header
+      className="sticky top-0 z-40"
       style={{
+        height: 56,
         background: "color-mix(in oklab, var(--panel) 78%, transparent)",
         backdropFilter: "blur(14px) saturate(1.3)",
         WebkitBackdropFilter: "blur(14px) saturate(1.3)",
-        boxShadow: "inset 0 1px 0 oklch(100% 0 0 / 0.06), 0 12px 32px -12px oklch(6% 0.08 268 / 0.6)",
+        borderBottom: "1px solid var(--border)",
       }}
     >
-      <div className="mx-auto max-w-[1480px] flex items-center justify-between gap-2 px-3 lg:px-6 h-14">
-        <div className="flex min-w-0 items-center gap-3">
-          <Link href="/" aria-label="50pick home" className="shrink-0 hover:opacity-90 transition-opacity">
-            <FiftyLockup size={20} />
-          </Link>
-          <nav className="ml-3 hidden xl:flex items-center" aria-label="Primary">
-            {NAV_ITEMS.map((it) => {
-              const active = it.href === "/markets"
-                ? pathname === "/" || pathname.startsWith("/markets")
-                : it.href === "/proposals"
-                ? pathname.startsWith("/proposals")
-                : pathname === it.href;
-              return (
-                <Link
-                  key={it.href}
-                  href={it.href}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "h-8 px-3 inline-flex items-center whitespace-nowrap rounded-md text-[13.5px] transition-colors",
-                    active ? "font-semibold text-text" : "font-medium text-text-subtle hover:text-text",
-                  )}
-                  style={active ? { background: "oklch(40% 0.08 264 / 0.45)" } : undefined}
-                >
-                  {it.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          {user.isAuthed && user.balance !== null && user.balance !== undefined && (
-            <>
-              <WalletBalancePill balance={user.balance} />
-              <CashEye bare size={15} className="hidden sm:inline-flex" />
-            </>
-          )}
-          <NotificationsPanel />
-          <LanguageToggle />
-          <AvatarMenu
-            initials={user.initials}
-            name={user.name}
-            phone={user.phone}
-            isAuthed={user.isAuthed}
-            avatarSrc={user.avatarSrc ?? null}
-            seed={user.seed}
-          />
-        </div>
+      <div className="mx-auto max-w-[1480px] flex items-center h-full gap-5 px-5">
+        {/* Brand lockup — kit: BrandLockup size={30} */}
+        <Link href="/" aria-label="50pick home" className="shrink-0 hover:opacity-90 transition-opacity">
+          <FiftyLockup size={30} />
+        </Link>
+
+        {/* Nav links — kit: gap 2, marginLeft 10 */}
+        <nav className="ml-2.5 hidden xl:flex items-center gap-0.5" aria-label="Primary">
+          {NAV_ITEMS.map((it) => {
+            const active = it.href === "/markets"
+              ? pathname === "/" || pathname.startsWith("/markets")
+              : it.href === "/proposals"
+              ? pathname.startsWith("/proposals")
+              : pathname === it.href;
+            return (
+              <Link
+                key={it.href}
+                href={it.href}
+                aria-current={active ? "page" : undefined}
+                className="whitespace-nowrap transition-colors"
+                style={{
+                  padding: "7px 12px",
+                  borderRadius: "var(--r-sm)",
+                  fontSize: 13.5,
+                  fontWeight: active ? 600 : 500,
+                  color: active ? "var(--text)" : "var(--text-subtle)",
+                  background: active ? "oklch(40% 0.08 264 / 0.4)" : "transparent",
+                }}
+              >
+                {it.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Language toggle — kit: inline EN/SW/FR pills */}
+        <LanguageToggle />
+
+        {/* Wallet balance pill — kit: bg-inset, gold-tinted border */}
+        {user.isAuthed && user.balance !== null && user.balance !== undefined && (
+          <>
+            <WalletBalancePill balance={user.balance} />
+            <CashEye bare size={14} className="hidden sm:inline-flex text-[var(--gold-300)]" />
+          </>
+        )}
+
+        {/* Notifications bell */}
+        <NotificationsPanel />
+
+        {/* Avatar menu */}
+        <AvatarMenu
+          initials={user.initials}
+          name={user.name}
+          phone={user.phone}
+          isAuthed={user.isAuthed}
+          avatarSrc={user.avatarSrc ?? null}
+          seed={user.seed}
+        />
       </div>
     </header>
   );

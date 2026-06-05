@@ -101,8 +101,20 @@ export function AvatarMenu({
         aria-expanded={open ? "true" : "false"}
         onClick={() => setOpen((v) => !v)}
         className="rounded-pill focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
+        style={{
+          width: 34,
+          height: 34,
+          borderRadius: 999,
+          border: "1.5px solid var(--brand-500)",
+          padding: 0,
+          overflow: "hidden",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "linear-gradient(135deg, var(--bg-elevated2), var(--bg-inset))",
+        }}
       >
-        <Avatar initials={initials} size="md" seed={seed ?? initials} src={avatarSrc ?? undefined} />
+        <Avatar initials={initials} size="sm" seed={seed ?? initials} src={avatarSrc ?? undefined} />
       </button>
       {open && typeof document !== "undefined" && createPortal(
         <>

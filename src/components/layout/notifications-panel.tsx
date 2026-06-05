@@ -174,13 +174,20 @@ export function NotificationsPanel() {
           open ? "bg-bg-overlay text-text" : "text-text-subtle hover:text-text hover:bg-bg-overlay",
         )}
       >
-        <Bell size={16} strokeWidth={1.75} />
+        <Bell size={20} strokeWidth={1.75} />
         {unread > 0 && (
-          // Kit `gold-dot` — same box-shadow halo technique as the
-          // .live-dot used on /live. Reads as a crisp circle at all
-          // sizes; the older animate-ping ring rendered as a fuzzy
-          // smudge at 6 px.
-          <span aria-hidden className="gold-dot absolute right-1 top-1" />
+          <span
+            aria-hidden
+            style={{
+              position: "absolute",
+              top: -1,
+              right: -1,
+              width: 7,
+              height: 7,
+              borderRadius: 9,
+              background: "var(--no-400)",
+            }}
+          />
         )}
       </button>
 
