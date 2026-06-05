@@ -58,7 +58,7 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
       <div className="mx-auto max-w-[1480px] flex items-center h-full gap-5 px-5">
         {/* Brand lockup — kit: BrandLockup size={30} */}
         <Link href="/" aria-label="50pick home" className="shrink-0 hover:opacity-90 transition-opacity">
-          <FiftyLockup size={30} />
+          <FiftyLockup size={22} />
         </Link>
 
         {/* Nav links — kit: gap 2, marginLeft 10 */}
