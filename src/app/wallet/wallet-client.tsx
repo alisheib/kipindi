@@ -14,22 +14,13 @@ function BalanceCard({
   balance, pending, hold, currency,
 }: { balance: number; pending: number; hold: number; currency: string }) {
   return (
-    <section className="relative overflow-hidden rounded-2xl bg-bg-elevated"
+    <section className="relative overflow-hidden rounded-2xl"
       style={{
-        border: "1px solid oklch(78% 0.13 80 / 0.30)",
+        background: "linear-gradient(135deg, oklch(23% 0.075 268), oklch(16% 0.05 268))",
+        border: "1px solid oklch(78% 0.13 80 / 0.3)",
         boxShadow: "inset 0 1px 0 oklch(92% 0.06 84 / 0.15), 0 12px 34px oklch(8% 0.05 264 / 0.5)",
       }}
     >
-      <div
-        className="absolute inset-0"
-        aria-hidden
-        style={{
-          background:
-            "radial-gradient(900px 360px at 100% 0%, oklch(58% 0.13 80 / 0.22), transparent 60%), " +
-            "radial-gradient(700px 320px at 0% 100%, oklch(45% 0.10 152 / 0.22), transparent 60%), " +
-            "linear-gradient(135deg, oklch(23% 0.075 268) 0%, oklch(16% 0.05 268) 100%)",
-        }}
-      />
       <div className="absolute -right-8 -bottom-8 opacity-[0.07]" aria-hidden>
         <FiftyMark size={220} />
       </div>
@@ -41,7 +32,7 @@ function BalanceCard({
         <p
           data-testid="wallet-balance"
           data-balance={balance}
-          className="mt-1.5 font-display text-[40px] lg:text-[48px] font-bold tabular-nums text-text leading-none tracking-[-0.02em]"
+          className="mt-1.5 font-mono text-[38px] font-bold tabular-nums text-text leading-none tracking-[-0.02em]"
         >
           <Cash>{fmt(balance, currency)}</Cash>
         </p>
