@@ -93,44 +93,48 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL }: { 
           animation: "win-burst 320ms cubic-bezier(.2,.8,.2,1) both",
         }}
       >
+        {/* Kit WarnModal: 2px colored rail at top */}
+        <div aria-hidden style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "var(--gold-300)", opacity: 0.7, borderRadius: "var(--r-lg) var(--r-lg) 0 0" }} />
+
         <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <ShieldCheck size={18} style={{ color: "var(--gilt)" }} />
-            <p className="gilt-eyebrow">Reality check · Tafakari</p>
+          <div className="flex items-center gap-2.5">
+            <span
+              style={{
+                width: 32, height: 32, borderRadius: "var(--r-sm)",
+                background: "var(--bg-inset)", border: "1px solid var(--border)",
+                display: "grid", placeItems: "center", color: "var(--gold-300)", flexShrink: 0,
+              }}
+            >
+              <Clock size={18} />
+            </span>
+            <div>
+              <h2
+                id="reality-check-title"
+                className="font-display font-bold leading-tight text-text"
+                style={{ fontSize: 15.5 }}
+              >
+                You&apos;ve been playing for{" "}
+                <span className="font-mono" style={{ color: "var(--gold-300)" }}>{elapsedMin}</span>{" "}
+                {elapsedMin === 1 ? "minute" : "minutes"}
+              </h2>
+              <p style={{ fontSize: 11.5, fontStyle: "italic", color: "var(--text-subtle)" }}>
+                Umekuwa ukicheza kwa dakika {elapsedMin}
+              </p>
+            </div>
           </div>
           <button
             type="button"
             onClick={dismiss}
             aria-label="Dismiss"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors shrink-0"
           >
             <X size={16} />
           </button>
         </div>
 
-        {/* Gilt rule under the eyebrow — heraldic kit furniture */}
-        <div aria-hidden className="claret-rule" style={{ margin: 0 }} />
-
-        <div className="space-y-1.5">
-          <h2
-            id="reality-check-title"
-            className="font-display font-bold leading-tight text-text"
-            style={{ fontSize: "var(--type-h2)", letterSpacing: "-0.02em", margin: 0 }}
-          >
-            You&apos;ve been playing for{" "}
-            <span className="gilt-num" style={{ fontSize: "var(--type-h2)" }}>
-              {elapsedMin}
-            </span>{" "}
-            {elapsedMin === 1 ? "minute" : "minutes"}.
-          </h2>
-          <p className="text-text-muted italic" style={{ fontSize: "var(--type-small)" }}>
-            Umekuwa ukicheza kwa dakika {elapsedMin}.
-          </p>
-        </div>
-
-        <p className="text-text-muted" style={{ fontSize: "var(--type-small)", lineHeight: 1.6 }}>
+        <p style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.55 }}>
           Most people play for fun. If it stops feeling fun, take a break.
-          <span className="block italic text-text-subtle">Kama haifurahishi tena, pumzika.</span>
+          <span className="block italic text-text-subtle" style={{ marginTop: 2 }}>Kama haifurahishi tena, pumzika.</span>
         </p>
 
         <div className="grid grid-cols-1 gap-2 pt-1">
