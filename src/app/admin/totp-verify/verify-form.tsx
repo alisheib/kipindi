@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { ShieldCheck } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { verifyAdminTotpAction } from "./actions";
 
 export function TotpVerifyForm() {
@@ -62,7 +63,7 @@ export function TotpVerifyForm() {
         variant="primary"
         size="xl"
         fullWidth
-        leading={<ShieldCheck size={16} />}
+        leading={<I.shieldcheck s={16} />}
         onClick={submit}
         loading={busy}
         disabled={code.length !== 6}

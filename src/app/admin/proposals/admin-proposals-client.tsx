@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Trophy, Pause, Check, CheckCircle2, XCircle, Pencil, Info, ChevronUp, ChevronDown, Coins, FileText } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { Toggle } from "@/components/ui/toggle";
@@ -22,7 +23,7 @@ function Cap({ children }: { children: React.ReactNode }) {
 function Kpi({ label, value, sub, gold }: { label: string; value: string; sub: string; gold?: boolean }) {
   return (
     <div className="rounded-xl border border-border bg-bg-elevated p-4">
-      <div className="mb-2 flex items-center justify-between"><Cap>{label}</Cap><span className="text-text-subtle">{gold ? <Coins size={14} /> : <FileText size={14} />}</span></div>
+      <div className="mb-2 flex items-center justify-between"><Cap>{label}</Cap><span className="text-text-subtle">{gold ? <I.coins s={14} /> : <FileText size={14} />}</span></div>
       <div className={`font-mono text-[24px] font-bold leading-none tracking-[-0.02em] ${gold ? "text-gold-300" : "text-text"}`}>{value}</div>
       <div className="mt-1.5 font-mono text-[10.5px] text-text-subtle">{sub}</div>
     </div>
@@ -99,7 +100,7 @@ export function AdminProposalsClient({ config, stats, queue }: { config: Proposa
           </div>
           <div className="mt-1 text-[12.5px] text-text-muted">Review queue · <span className="italic">Foleni ya ukaguzi</span> · /admin/proposals</div>
         </div>
-        <Button variant="gold" size="md" leading={<Check size={15} />} loading={pending} onClick={saveConfig}>Save · Hifadhi</Button>
+        <Button variant="gold" size="md" leading={<I.check s={15} />} loading={pending} onClick={saveConfig}>Save · Hifadhi</Button>
       </div>
 
       {/* KPIs */}
@@ -174,7 +175,7 @@ export function AdminProposalsClient({ config, stats, queue }: { config: Proposa
                 );
               })}
             </div>
-            <p className="flex items-center gap-1.5 text-[11.5px] text-text-subtle"><Info size={13} />Votes only rank the queue — the officer makes the final call.</p>
+            <p className="flex items-center gap-1.5 text-[11.5px] text-text-subtle"><I.info s={13} />Votes only rank the queue — the officer makes the final call.</p>
 
             <div className="h-px bg-border" />
 
@@ -183,7 +184,7 @@ export function AdminProposalsClient({ config, stats, queue }: { config: Proposa
             ) : !declining ? (
               <div className="flex flex-wrap gap-2">
                 <Button variant="gold" size="md" loading={pending} leading={<CheckCircle2 size={15} />} onClick={approve}>Approve &amp; list · Orodhesha</Button>
-                <Button variant="ghost" size="md" loading={pending} leading={<Pencil size={15} />} onClick={sendBack}>Request changes</Button>
+                <Button variant="ghost" size="md" loading={pending} leading={<I.edit s={15} />} onClick={sendBack}>Request changes</Button>
                 <Button variant="ghost" size="md" leading={<XCircle size={15} />} onClick={() => setDeclining(true)} className="!text-claret-300">Decline</Button>
               </div>
             ) : (
@@ -212,7 +213,7 @@ export function AdminProposalsClient({ config, stats, queue }: { config: Proposa
       <div className="overflow-hidden rounded-xl border border-border bg-bg-elevated">
         <div className="flex items-center gap-3.5 border-b border-border px-4 py-3.5" style={{ background: on ? "transparent" : "color-mix(in oklab, var(--warning-500) 8%, transparent)" }}>
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px]" style={{ background: on ? "color-mix(in oklab, var(--gold-500) 16%, transparent)" : "color-mix(in oklab, var(--warning-500) 20%, transparent)", color: on ? "var(--gold-300)" : "oklch(84% 0.15 80)" }}>
-            {on ? <Trophy size={21} /> : <Pause size={21} />}
+            {on ? <I.trophy s={21} /> : <I.pause s={21} />}
           </span>
           <div className="flex-1">
             <div className="text-[15px] font-bold">Proposals feature · master switch</div>

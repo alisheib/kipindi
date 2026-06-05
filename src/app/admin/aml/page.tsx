@@ -3,6 +3,7 @@ import { Chip } from "@/components/ui/chip";
 import { db, type StoredTxn } from "@/lib/server/store";
 import { formatTzs } from "@/lib/utils";
 import { AlertTriangle, Activity, Users } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { AmlActionRow } from "./aml-actions-client";
 import { detectSuspiciousBets } from "@/lib/server/analytics";
 import { TWO_PERSON_THRESHOLD_TZS } from "./constants";
@@ -60,7 +61,7 @@ export default function AdminAmlPage() {
                         {formatTzs(Math.abs(t.amount))}
                         {requiresTwo && (
                           <Chip size="sm" variant="warning" className="ml-2">
-                            <Users size={10} className="mr-1" /> 2-officer
+                            <I.users s={10} /> 2-officer
                           </Chip>
                         )}
                         {sig && (
@@ -87,7 +88,7 @@ export default function AdminAmlPage() {
 
         <AdminCard className="border-warning-border bg-warning-bg/15">
           <div className="flex items-start gap-3">
-            <AlertTriangle size={18} className="text-warning shrink-0 mt-0.5" />
+            <I.warning s={18} />
             <div className="text-caption text-text-secondary">
               <p className="text-text font-bold">Two-person approval (production)</p>
               <p>In production, approve / reject for amounts ≥ TZS 5M requires (a) the on-shift compliance officer, plus (b) the AML lead. Both clicks are recorded in the <code>ADMIN</code> audit category with the reviewer&apos;s user-id, IP, and reason. This build records the single approval in audit so the workflow can be lifted directly when the second-officer flow is wired.</p>
@@ -98,7 +99,7 @@ export default function AdminAmlPage() {
         <AdminCard padding="p-0">
           <div className="px-4 py-3 border-b border-border-subtle flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Activity size={16} className="text-warning" />
+              <I.activity s={16} />
               <p className="font-bold text-text">Suspicious-bet detector · Tabia za shaka</p>
               <span className="text-caption text-text-tertiary">stake spike ≥ 10× user 30-day median; or velocity ≥ 100/24h</span>
             </div>

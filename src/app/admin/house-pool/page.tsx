@@ -1,4 +1,5 @@
 import { Landmark, ArrowUpFromLine, ArrowDownToLine, Settings2, AlertTriangle } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { getHousePoolStats, getHousePoolLedger } from "@/lib/server/house-pool";
 import { getGlobalConfig } from "@/lib/server/market-config";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
@@ -25,7 +26,7 @@ export default function HousePoolPage() {
         actions={
           stats.isLow ? (
             <Chip size="sm" variant="danger">
-              <AlertTriangle size={12} /> Low reserve
+              <I.warning s={12} /> Low reserve
             </Chip>
           ) : (
             <Chip size="sm" variant="resolved">Active</Chip>

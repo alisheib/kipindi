@@ -1,5 +1,6 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { ExternalLink, ShieldCheck } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { listSources, listDisabledCategories, seedDefaultSources } from "@/lib/server/source-registry";
 import type { MarketCategory } from "@/lib/server/market-service";
 import { ToggleSource, RemoveSource, ToggleCategory, AddSourceForm } from "./source-controls";
@@ -117,7 +118,7 @@ export default function AdminSourcesPage() {
 
         <AdminCard className="border-info-border bg-info-bg/15">
           <div className="flex items-start gap-3">
-            <ShieldCheck size={18} className="text-info shrink-0 mt-0.5" />
+            <I.shieldcheck s={18} />
             <div className="text-caption text-text-secondary space-y-1">
               <p className="text-text font-bold">Why source-gating matters</p>
               <p>

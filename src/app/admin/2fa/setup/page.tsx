@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
 import { Smartphone } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { hasTotp } from "@/lib/server/totp";

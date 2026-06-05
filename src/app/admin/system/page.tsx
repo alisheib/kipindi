@@ -1,5 +1,6 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { Database, ShieldCheck, KeyRound, Server } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { SystemActions } from "./system-client";
 import { db } from "@/lib/server/store";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
@@ -62,7 +63,7 @@ export default async function AdminSystemPage() {
 
           <AdminCard title="Audit chain integrity" sw="Mlolongo · uadilifu">
             <div className="flex items-start gap-2 mb-3">
-              <ShieldCheck size={16} className="text-success mt-0.5 shrink-0" />
+              <I.shieldcheck s={16} />
               <p className="text-caption text-text-secondary">
                 Each audit entry is HMAC-chained to the previous one. Walking the chain from genesis to head should return
                 valid; any break would indicate tampering or restoration from a non-matching backup.

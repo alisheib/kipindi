@@ -1,6 +1,7 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
 import { Lock, Pause } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { db } from "@/lib/server/store";
 import { rgRosterCounts } from "@/lib/server/analytics";
 
@@ -101,9 +102,9 @@ export default function AdminSelfExclusionsPage() {
                     <td className="py-2 pr-3 font-mono whitespace-nowrap">{r.phoneE164}</td>
                     <td className="py-2 pr-3">
                       {r.status === "self_exclusion" ? (
-                        <Chip size="sm" variant="danger"><Lock size={10} className="mr-1" /> excluded</Chip>
+                        <Chip size="sm" variant="danger"><I.lock s={10} /> excluded</Chip>
                       ) : (
-                        <Chip size="sm" variant="warning"><Pause size={10} className="mr-1" /> cooling-off</Chip>
+                        <Chip size="sm" variant="warning"><I.pause s={10} /> cooling-off</Chip>
                       )}
                     </td>
                     <td className="py-2 pr-3 font-mono whitespace-nowrap">{new Date(r.until).toLocaleString("en-GB")}</td>

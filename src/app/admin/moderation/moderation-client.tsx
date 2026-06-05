@@ -8,6 +8,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Flag, RotateCcw, Trash2, ExternalLink } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { Avatar } from "@/components/ui/avatar";
 import { Chip } from "@/components/ui/chip";
@@ -47,7 +48,7 @@ export function ModerationQueue({ items }: { items: ModerationItem[] }) {
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <span className="font-display text-[13px] font-semibold text-text">{c.authorName}</span>
               <Chip className="chip-objection" style={{ fontSize: 9.5, padding: "1px 7px" }}>
-                <Flag size={10} aria-hidden /> {c.reports} report{c.reports === 1 ? "" : "s"}
+                <I.flag s={10} /> {c.reports} report{c.reports === 1 ? "" : "s"}
               </Chip>
               {c.hidden && <Chip className="chip-pending" style={{ fontSize: 9.5, padding: "1px 7px" }}>auto-hidden</Chip>}
               <Link
@@ -73,7 +74,7 @@ export function ModerationQueue({ items }: { items: ModerationItem[] }) {
                 disabled={pending}
                 className="inline-flex items-center gap-1.5 rounded-md border border-no-700 bg-no-500/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-no-300 hover:bg-no-500/20 transition-colors disabled:opacity-50"
               >
-                <Trash2 size={12} aria-hidden /> Remove
+                <I.trash s={12} /> Remove
               </button>
             </div>
           </div>

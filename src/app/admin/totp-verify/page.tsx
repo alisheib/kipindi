@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { ShieldCheck, KeyRound } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
@@ -58,7 +59,7 @@ export default async function AdminTotpVerifyPage() {
         </section>
 
         <section className="flex items-start gap-2.5 rounded-xl border border-info-border bg-info-bg/[0.10] p-3.5">
-          <ShieldCheck size={14} className="text-info-fg shrink-0 mt-0.5" />
+          <I.shieldcheck s={14} />
           <p className="text-[12px] text-text-muted">
             The admin session lasts 8 hours after this verification. Every admin sign-in (success + fail)
             is recorded in the <span className="font-mono text-text-muted">SECURITY</span> audit category.

@@ -9,6 +9,7 @@ import { db } from "@/lib/server/store";
 import { listDsarRequests } from "@/lib/server/privacy";
 import { ExportDsarBundleButton, FulfillDsarButton } from "./dsar-controls";
 import { ShieldQuestion } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 
 export const metadata = { title: "Admin · Privacy / DSAR" };
 export const dynamic = "force-dynamic";

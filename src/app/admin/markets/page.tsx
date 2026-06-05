@@ -1,5 +1,6 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { ExternalLink, Plus, Search } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import Link from "next/link";
 import { listMarkets, impliedYesPct, seedDemoMarkets, type MarketCategory } from "@/lib/server/market-service";
 import { ProbabilityBar } from "@/components/markets/probability-bar";
@@ -66,7 +67,7 @@ export default async function AdminMarketsPage({
             href="/admin/markets/new"
             className="inline-flex h-8 items-center gap-1.5 rounded-md bg-teal-500 px-3 font-semibold text-white text-[12px] hover:bg-teal-400 transition-colors"
           >
-            <Plus size={14} />
+            <I.plus s={14} />
             New market
           </Link>
         }

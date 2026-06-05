@@ -9,6 +9,7 @@ import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-she
 import { Chip } from "@/components/ui/chip";
 import { db } from "@/lib/server/store";
 import { Archive, AlertCircle } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 
 export const metadata = { title: "Admin · Data retention" };
 export const dynamic = "force-dynamic";
@@ -110,7 +111,7 @@ export default function AdminRetentionPage() {
           </AdminCard>
           <AdminCard className="border-warning-border bg-warning-bg/15">
             <div className="flex items-start gap-3">
-              <AlertCircle size={18} className="text-warning shrink-0 mt-0.5" />
+              <I.alertCircle s={18} />
               <div className="text-caption text-text-secondary space-y-1">
                 <p className="text-text font-bold">Erasure-vs-AML conflict</p>
                 <p>

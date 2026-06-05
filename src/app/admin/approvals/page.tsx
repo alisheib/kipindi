@@ -1,6 +1,7 @@
 import { AdminPageHead, AdminCard, AdminKpi, FeedRow } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
 import { ShieldCheck, AlertTriangle } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { db, type StoredTxn, type StoredSourceOfFunds } from "@/lib/server/store";
 import { getAuditPage } from "@/lib/server/audit";
 
@@ -19,7 +20,7 @@ export default function AdminApprovalsPage() {
         sw="Idhini ya watu wawili"
         actions={
           <span className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border border-gold bg-gold/10 text-gold">
-            <ShieldCheck size={12} aria-hidden /> Co-sign required
+            <I.shieldcheck s={12} /> Co-sign required
           </span>
         }
       />
@@ -40,7 +41,7 @@ export default function AdminApprovalsPage() {
         >
           {aml.length === 0 ? (
             <div className="flex items-center gap-3 py-4">
-              <ShieldCheck size={18} className="text-success" />
+              <I.shieldcheck s={18} />
               <p className="text-caption text-text-secondary">Queue empty. New AML triggers appear here for first review.</p>
             </div>
           ) : (
@@ -75,7 +76,7 @@ export default function AdminApprovalsPage() {
         <AdminCard title="Source-of-funds declarations · pending review" sw="Tamko za asili ya pesa">
           {sof.length === 0 ? (
             <div className="flex items-center gap-3 py-4">
-              <ShieldCheck size={18} className="text-success" />
+              <I.shieldcheck s={18} />
               <p className="text-caption text-text-secondary">No SOF declarations pending. Players auto-trigger this when cumulative deposits exceed TZS 5M / 30 days.</p>
             </div>
           ) : (
@@ -124,7 +125,7 @@ export default function AdminApprovalsPage() {
 
         <AdminCard className="border-warning-border bg-warning-bg/15">
           <div className="flex items-start gap-3">
-            <AlertTriangle size={18} className="text-warning shrink-0 mt-0.5" />
+            <I.warning s={18} />
             <div className="text-caption text-text-secondary space-y-1">
               <p className="text-text font-bold">Production rule</p>
               <p>

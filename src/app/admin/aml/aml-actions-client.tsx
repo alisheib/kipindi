@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { Check, X, ChevronDown } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { approveAmlAction, rejectAmlAction } from "./actions";
 import { useRouter } from "next/navigation";
 import { formatTzs } from "@/lib/utils";
@@ -60,7 +61,7 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
           onClick={() => submit("approve")}
           disabled={busy !== null}
           loading={busy === "approve"}
-          leading={<Check size={12} aria-hidden />}
+          leading={<I.check s={12} />}
           aria-label="Approve transaction"
         >
           Approve
@@ -71,8 +72,8 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
           onClick={() => setExpanded((v) => !v)}
           aria-label="Reject transaction"
           aria-expanded={expanded ? "true" : "false"}
-          leading={<X size={12} aria-hidden />}
-          trailing={<ChevronDown size={11} aria-hidden className={expanded ? "rotate-180" : ""} />}
+          leading={<I.x s={12} />}
+          trailing={<I.chevronDown s={11} />}
         >
           Reject
         </Button>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { ShieldCheck, Trash2, KeyRound } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { provisionTotpAction, verifyTotpAction, removeTotpAction } from "./actions";
 
 export function TotpSetupClient({ initiallyEnabled }: { initiallyEnabled: boolean }) {
@@ -63,7 +64,7 @@ export function TotpSetupClient({ initiallyEnabled }: { initiallyEnabled: boolea
           <Button variant="secondary" size="md" leading={<KeyRound size={14} />} onClick={start} loading={busy}>
             Re-provision (new QR)
           </Button>
-          <Button variant="danger" size="md" leading={<Trash2 size={14} />} onClick={remove} loading={busy}>
+          <Button variant="danger" size="md" leading={<I.trash s={14} />} onClick={remove} loading={busy}>
             Remove 2FA
           </Button>
         </div>
@@ -100,7 +101,7 @@ export function TotpSetupClient({ initiallyEnabled }: { initiallyEnabled: boolea
               className="w-40 h-12 px-3 rounded-md bg-surface border border-border text-text font-mono text-title-sm tabular tracking-[0.2em] focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
             />
           </label>
-          <Button variant="primary" size="lg" leading={<ShieldCheck size={14} />} onClick={verify} loading={busy} disabled={code.length !== 6}>
+          <Button variant="primary" size="lg" leading={<I.shieldcheck s={14} />} onClick={verify} loading={busy} disabled={code.length !== 6}>
             Verify and enable
           </Button>
         </div>

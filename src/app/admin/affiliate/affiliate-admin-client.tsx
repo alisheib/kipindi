@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Percent, Gift, Ticket, Megaphone, Pause, Check, ShieldCheck, ExternalLink, Coins, Users } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { Toggle } from "@/components/ui/toggle";
@@ -23,7 +24,7 @@ function Kpi({ label, value, sub, gold }: { label: string; value: string; sub: s
     <div className="rounded-xl glass-panel p-4">
       <div className="mb-2 flex items-center justify-between">
         <Cap>{label}</Cap>
-        <span className="text-text-subtle">{gold ? <Coins size={14} /> : <Users size={14} />}</span>
+        <span className="text-text-subtle">{gold ? <I.coins s={14} /> : <I.users s={14} />}</span>
       </div>
       <div className={`font-mono text-[24px] font-bold leading-none tracking-[-0.02em] ${gold ? "text-gold-300" : "text-text"}`}>{value}</div>
       <div className="mt-1.5 font-mono text-[10.5px] text-text-subtle">{sub}</div>
@@ -167,7 +168,7 @@ export function AffiliateAdminClient({ config, stats }: { config: AffiliateConfi
             Referral rewards · <span className="italic">Mpango wa marafiki</span> · /admin/affiliate
           </div>
         </div>
-        <Button variant="gold" size="md" leading={<Check size={15} />} loading={pending} onClick={save}>
+        <Button variant="gold" size="md" leading={<I.check s={15} />} loading={pending} onClick={save}>
           Save · Hifadhi
         </Button>
       </div>
@@ -187,7 +188,7 @@ export function AffiliateAdminClient({ config, stats }: { config: AffiliateConfi
             color: on ? "var(--royal-300)" : "oklch(84% 0.15 80)",
           }}
         >
-          {on ? <Megaphone size={23} /> : <Pause size={23} />}
+          {on ? <Megaphone size={23} /> : <I.pause s={23} />}
         </span>
         <div className="flex-1 min-w-0">
           <div className="text-[16px] font-bold">
@@ -274,7 +275,7 @@ export function AffiliateAdminClient({ config, stats }: { config: AffiliateConfi
             style={{ borderColor: "color-mix(in oklab, var(--no-500) 28%, var(--border))", background: "color-mix(in oklab, var(--no-500) 6%, var(--bg-elevated))" }}
           >
             <div className="mb-2 flex items-center gap-2">
-              <span className="text-no-300"><ShieldCheck size={16} /></span>
+              <span className="text-no-300"><I.shieldcheck s={16} /></span>
               <div className="text-[13px] font-bold text-no-300">Compliance note · Kumbuka</div>
             </div>
             <div className="mb-2.5 text-[11.5px] leading-relaxed text-text-muted">

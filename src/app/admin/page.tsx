@@ -1,6 +1,7 @@
 import { AdminPageHead, AdminKpi, AdminCard, FeedRow, AdminFunnel, AdminStackedBar } from "@/components/admin/admin-shell";
 import { AdminAreaChart } from "@/components/admin/admin-charts";
 import { Activity } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { db } from "@/lib/server/store";
 import { getAuditPage, type AuditCategory } from "@/lib/server/audit";
 import { activePlayers, grossGamingRevenue, netGamingRevenue, kycFunnel, providerSummary, rgRosterCounts, moneyFlowSeries } from "@/lib/server/analytics";
@@ -83,7 +84,7 @@ export default function AdminOverviewPage() {
               ))}
               {recent.length === 0 && (
                 <div className="py-6 text-center text-caption text-text-tertiary">
-                  <Activity size={20} className="mx-auto mb-1.5 opacity-40" />
+                  <I.activity s={20} />
                   No activity in the last cycle.
                 </div>
               )}

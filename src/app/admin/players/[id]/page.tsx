@@ -6,6 +6,7 @@ import { db, type StoredTxn, type StoredBet, type StoredMapigoBet } from "@/lib/
 import { getAuditForActor, type AuditCategory } from "@/lib/server/audit";
 import { exportUserData } from "@/lib/server/user-service";
 import { ShieldCheck, AlertOctagon } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { formatTzs, formatTzsCompact } from "@/lib/utils";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { SuspendControls } from "./suspend-controls";
@@ -275,7 +276,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
             </div>
           </div>
           <p className="text-caption text-text-tertiary mt-3 flex items-center gap-1.5">
-            <ShieldCheck size={12} aria-hidden />
+            <I.shieldcheck s={12} />
             Suspend / Restore are live + audited. The remaining actions need the two-officer queue (next iteration).
           </p>
         </AdminCard>
@@ -347,7 +348,7 @@ function ExclusionTab({ rg }: { rg: ReturnType<typeof db.responsible.get> }) {
       ) : <p className="text-caption text-text-tertiary">No self-exclusion active.</p>}
       {rg.coolingOffUntil && (
         <div className="rounded-md border border-warning-border bg-warning-bg/20 p-4 flex items-start gap-2.5">
-          <ShieldCheck size={16} className="text-warning shrink-0 mt-0.5" />
+          <I.shieldcheck s={16} />
           <div className="text-caption text-text-secondary">
             <p className="font-bold text-text">Cooling-off period</p>
             <p>Until {new Date(rg.coolingOffUntil).toLocaleString("en-GB")}.</p>

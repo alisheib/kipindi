@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AdminPageHead, AdminCard, AdminKpi, AdminStackedBar, StatusPill, FeedRow } from "@/components/admin/admin-shell";
 import { AdminFunnelChart } from "@/components/admin/admin-charts";
 import { ShieldCheck, AlertTriangle, Download, Lock, HeartPulse } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { db, type StoredTxn } from "@/lib/server/store";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
 import { kycFunnel, rgRosterCounts } from "@/lib/server/analytics";
@@ -54,7 +55,7 @@ export default function AdminCompliancePage() {
             href="/admin/reports"
             className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border border-gold bg-gold/10 text-gold hover:bg-gold/20 transition-colors"
           >
-            <Download size={12} aria-hidden /> Generate reports →
+            <I.download s={12} /> Generate reports →
           </Link>
         }
       />
@@ -176,7 +177,7 @@ export default function AdminCompliancePage() {
           <AdminCard title="Match-integrity alerts · 30 days" sw="Tahadhari za uadilifu">
             {integrityAlerts.length === 0 ? (
               <div className="flex items-center gap-3 py-4">
-                <ShieldCheck size={18} className="text-success" />
+                <I.shieldcheck s={18} />
                 <p className="text-caption text-text-secondary">No integrity alerts in the last 30 days. Sportradar feed: stub adapter.</p>
               </div>
             ) : (
@@ -229,7 +230,7 @@ export default function AdminCompliancePage() {
         {/* §E — Operational notes */}
         <AdminCard className="border-info-border bg-info-bg/15">
           <div className="flex items-start gap-3">
-            <AlertTriangle size={18} className="text-info shrink-0 mt-0.5" />
+            <I.warning s={18} />
             <div className="text-caption text-text-secondary space-y-1">
               <p className="text-text font-bold">Inspector mode</p>
               <p>
@@ -246,7 +247,7 @@ export default function AdminCompliancePage() {
         <PlayerSafetyPanel />
 
         <p className="text-caption text-text-tertiary text-center pt-3 flex items-center justify-center gap-1.5">
-          <Lock size={11} aria-hidden /> Confidential · screen and contents are subject to operational access logging.
+          <I.lock s={11} /> Confidential · screen and contents are subject to operational access logging.
         </p>
       </div>
     </>

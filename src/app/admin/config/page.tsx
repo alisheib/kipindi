@@ -1,5 +1,6 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { Settings2, AlertCircle } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { getGlobalConfig, listMarketOverrides } from "@/lib/server/market-config";
 import { getMarket, seedDemoMarkets } from "@/lib/server/market-service";
 import { getAuditPage } from "@/lib/server/audit";
@@ -199,7 +200,7 @@ export default function AdminConfigPage() {
 
         <AdminCard className="border-warning-border bg-warning-bg/15">
           <div className="flex items-start gap-3">
-            <AlertCircle size={18} className="text-warning shrink-0 mt-0.5" />
+            <I.alertCircle s={18} />
             <div className="text-caption text-text-secondary">
               <p className="text-text font-bold">Live markets keep their config at place-time</p>
               <p>

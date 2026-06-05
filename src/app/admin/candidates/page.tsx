@@ -1,6 +1,7 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
 import { Brain, FileCheck, ShieldAlert, Coins, ChevronRight } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { listCandidates, countByState, recordSpend, type Candidate } from "@/lib/server/market-candidate";
 import { CandidateActions } from "./candidate-actions";
 
@@ -202,7 +203,7 @@ function CandidateRow({
             {c.sources.length} sources
           </span>
           <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
-            <Coins size={10} className="inline -mt-0.5 mr-0.5" />
+            <I.coins s={10} />
             ${c.costUsd.toFixed(2)}
           </span>
         </div>

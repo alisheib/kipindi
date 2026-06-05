@@ -1,6 +1,7 @@
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ExternalLink, Users, ShieldCheck, AlertCircle } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { listMarkets, seedDemoMarkets, impliedYesPct } from "@/lib/server/market-service";
 import { ProbabilityBar } from "@/components/markets/probability-bar";
 import { CircularProgress } from "@/components/markets/circular-progress";
@@ -95,13 +96,13 @@ export default function ResolverQueuePage() {
 
                   <div className="px-4 py-3 border-b border-border">
                     <div className="flex items-center gap-2 mb-2">
-                      <Users size={14} className="text-text-muted" />
+                      <I.users s={14} />
                       <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-semibold text-text-muted">Two-officer rule</span>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-[12px]">
                       <div className={`rounded-md border p-2 ${stage1 ? "border-yes-700 bg-yes-500/10" : "border-border bg-bg-overlay"}`}>
                         <div className="flex items-center gap-1.5">
-                          <ShieldCheck size={12} className={stage1 ? "text-yes-300" : "text-text-subtle"} />
+                          <I.shieldcheck s={12} />
                           <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Stage 1</span>
                         </div>
                         <p className={`mt-1 font-mono text-[11px] ${stage1 ? "text-yes-300" : "text-text-subtle"}`}>
@@ -110,7 +111,7 @@ export default function ResolverQueuePage() {
                       </div>
                       <div className="rounded-md border border-border bg-bg-overlay p-2">
                         <div className="flex items-center gap-1.5">
-                          <AlertCircle size={12} className="text-text-subtle" />
+                          <I.alertCircle s={12} />
                           <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Stage 2</span>
                         </div>
                         <p className="mt-1 font-mono text-[11px] text-text-subtle">{stage1 ? "ready for 2nd officer" : "unlocks after stage 1"}</p>

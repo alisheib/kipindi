@@ -1,6 +1,7 @@
 import { AdminPageHead, AdminCard, FeedRow } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
 import { ShieldCheck } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { getAuditPage } from "@/lib/server/audit";
 import { GenerateButton } from "./generate-button";
 
@@ -153,7 +154,7 @@ export default function AdminReportsPage() {
         <AdminCard title="Generation log" sw="Kumbukumbu ya kuzalisha">
           {generated.length === 0 ? (
             <div className="flex items-center gap-3 py-4">
-              <ShieldCheck size={18} className="text-text-tertiary" />
+              <I.shieldcheck s={18} />
               <p className="text-caption text-text-secondary">
                 No reports generated yet. Each generated report is logged here with reviewer, timestamp,
                 period covered, and a signed receipt the regulator can verify.

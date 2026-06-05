@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, X } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { resolveMarketAction } from "@/app/markets/actions";
 import { BrandSpinner } from "@/components/brand";
@@ -193,10 +194,10 @@ function SettleConfirm({
           aria-label="Close"
           className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
         >
-          <X size={16} aria-hidden />
+          <I.x s={16} />
         </button>
         <div className="mb-3 flex items-start gap-2.5">
-          <AlertTriangle size={20} className="mt-0.5 shrink-0 text-claret-300" aria-hidden />
+          <I.warning s={20} />
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-claret-300">
               Irreversible · Hatua ya mwisho

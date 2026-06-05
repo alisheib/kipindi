@@ -4,6 +4,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { db } from "@/lib/server/store";
 import { formatTzs } from "@/lib/utils";
 import { Search } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 
 export const metadata = { title: "Admin · Players" };

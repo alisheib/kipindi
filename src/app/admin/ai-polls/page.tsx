@@ -1,6 +1,7 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
 import { Bot, ShieldAlert, FileCheck, Coins, Sparkles, Clock, AlertTriangle } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import {
   listAIPolls,
   countAIPollsByState,
@@ -234,7 +235,7 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
             {poll.sources.length} sources
           </span>
           <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
-            <Coins size={10} className="inline -mt-0.5 mr-0.5" />
+            <I.coins s={10} />
             {fmtUsd(poll.costUsd)}
           </span>
           {poll.regenerationCount > 0 && (
@@ -245,7 +246,7 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
           )}
           {poll.latencyMs > 0 && (
             <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
-              <Clock size={10} className="inline -mt-0.5 mr-0.5" />
+              <I.clock s={10} />
               {(poll.latencyMs / 1000).toFixed(1)}s
             </span>
           )}
@@ -295,7 +296,7 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
         {/* Filter reasons (if any) */}
         {poll.filterReasons.length > 0 && (
           <div className="mt-2 flex items-start gap-1.5">
-            <AlertTriangle size={12} className="text-[oklch(80%_0.18_25)] mt-0.5 shrink-0" />
+            <I.warning s={12} />
             <FilterReasonChips reasons={poll.filterReasons} />
           </div>
         )}
