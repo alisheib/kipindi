@@ -51,37 +51,31 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
           <p className="font-display italic text-text-subtle text-[13px]">Pigia kura soko unayotaka</p>
         </div>
         {enabled && (
-          <Link href={"/proposals/new" as never} className="shrink-0">
-            <Button variant="gold" size="md" leading={<I.sparkle s={15} />}>Create · Pendekeza</Button>
+          <Link href={"/proposals/new" as never} className="shrink-0 hidden sm:block">
+            <Button variant="gold" size="md" leading={<I.plus s={15} />}>Create · Pendekeza</Button>
           </Link>
         )}
       </div>
 
-      {/* Reward banner */}
+      {/* Reward banner — compact info strip + mobile CTA */}
       <section
-        className="relative overflow-hidden rounded-xl border border-border p-4"
+        className="relative overflow-hidden rounded-xl border border-border p-3.5"
         style={{ background: "linear-gradient(150deg, var(--bg-elevated), var(--royal-950))" }}
       >
         <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(120% 90% at 100% 0%, color-mix(in oklab, var(--gold-500) 12%, transparent), transparent 60%)" }} />
         <div className="relative flex items-center gap-3">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[11px] text-gold-fg" style={{ background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))" }}>
-            <I.sparkle s={22} />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-[14px] font-bold">Propose &amp; get paid <span className="font-normal italic text-text-subtle">· Pendekeza upate</span></p>
+          <span className="text-gold-300"><I.sparkle s={18} /></span>
+          <p className="text-[13px] flex-1 min-w-0">
+            <span className="font-bold text-text">Propose &amp; get paid</span>{" "}
+            <span className="italic text-text-subtle">· Pendekeza upate</span>
             {cfg.prizeTzs > 0 && (
-              <p className="mt-0.5 text-[12px] font-semibold text-gold-300">Earn TZS {cfg.prizeTzs.toLocaleString()} for each proposal listed &amp; resolved</p>
+              <span className="block sm:inline sm:ml-2 text-[12px] font-semibold text-gold-300">TZS {cfg.prizeTzs.toLocaleString()} per listed market</span>
             )}
-          </div>
-          {enabled && (
-            <Link href={"/proposals/new" as never} className="hidden sm:block">
-              <Button variant="gold" size="md" leading={<I.plus s={15} />}>Create · Pendekeza</Button>
-            </Link>
-          )}
+          </p>
         </div>
         {enabled && (
           <Link href={"/proposals/new" as never} className="sm:hidden">
-            <Button variant="gold" size="lg" fullWidth leading={<I.plus s={16} />} className="mt-3">Create proposal · Pendekeza</Button>
+            <Button variant="gold" size="md" fullWidth leading={<I.plus s={15} />} className="mt-3">Create proposal · Pendekeza</Button>
           </Link>
         )}
       </section>
