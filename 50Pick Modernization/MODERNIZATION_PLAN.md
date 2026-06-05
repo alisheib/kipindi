@@ -90,4 +90,16 @@ All remaining `border border-border bg-bg-elevated` rounded sections → glass-p
 
 ## Progress log
 
-_(Update as sprints complete)_
+- **Sprint 13 DONE.** Atom precision: input focus brand-500 + exact oklch shadow,
+  toggle 44px + white thumb, empty-state 300px/46px/text-faint, chip semantic tokens,
+  tabs segmented 2px gap + kit active bg. Build exit 0.
+- **Sprint 14 DONE.** Admin shell: sidebar 216px + 18×14px padding + panel bg,
+  nav active oklch(40% 0.12 268 / 0.5), badge 1×5px padding + 4px radius,
+  topbar 56px + backdrop blur(14px) saturate(1.3). Build exit 0.
+- **Sprint 15 DONE.** Flat panel sweep: auth/otp + forgot-password → glass-panel,
+  market detail sign-in → border-strong, help header/cards/links → glass + border-strong,
+  profile hero + logout → glass/border-strong, account header → border-strong. Build exit 0.
+- **Sprint 16 DONE.** Live ticker: badge label 8.5→10.5px, side label 8.5→10.5px,
+  market title 11→12px. All match kit ds-brand-nav.jsx spec. Build exit 0.
+- **Sprint 17 DONE.** Deleted CLAUDE_SPRINTS.md, build exit 0, all sprints committed.
+  **Phase 2 COMPLETE — pixel-precise kit conformance across all atoms, admin, pages.**

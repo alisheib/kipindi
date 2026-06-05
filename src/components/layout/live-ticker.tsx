@@ -39,7 +39,7 @@ function Items({ events, prefix }: { events: TickerEvent[]; prefix: string }) {
             <span
               className="font-mono font-bold uppercase rounded-sm leading-none"
               style={{
-                fontSize: 8.5, letterSpacing: "0.12em", padding: "2px 5px",
+                fontSize: 10.5, letterSpacing: "0.10em", padding: "2px 5px",
                 color: c.color,
                 background: `color-mix(in oklab, ${c.bg} 14%, transparent)`,
                 border: `1px solid color-mix(in oklab, ${c.border} 26%, transparent)`,
@@ -48,11 +48,11 @@ function Items({ events, prefix }: { events: TickerEvent[]; prefix: string }) {
               {c.label}
             </span>
             {ev.side && (
-              <span className="font-mono font-bold" style={{ fontSize: 8.5, letterSpacing: "0.08em", color: ev.side === "YES" ? "var(--yes-300)" : "var(--no-300)" }}>
+              <span className="font-mono font-bold" style={{ fontSize: 10.5, letterSpacing: "0.08em", color: ev.side === "YES" ? "var(--yes-300)" : "var(--no-300)" }}>
                 {ev.side}
               </span>
             )}
-            <span className="font-display" style={{ fontSize: 11, color: "var(--text-muted)", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span className="font-display" style={{ fontSize: 12, color: "var(--text-muted)", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {ev.marketTitle}
             </span>
             {ev.amount != null && ev.amount > 0 && (
