@@ -39,7 +39,7 @@ export function FeedbackSettings() {
   };
 
   return (
-    <section className="rounded-2xl border border-border bg-bg-elevated p-5">
+    <section className="rounded-xl border border-border bg-bg-elevated p-5">
       <h2 className="mb-1 font-display text-[15px] font-bold text-text">
         Sound &amp; feedback <span className="font-normal italic text-text-subtle text-[12px]">· Mguso na mwendo</span>
       </h2>

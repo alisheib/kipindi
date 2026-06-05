@@ -77,7 +77,7 @@ export default async function LoginPage({
         </Link>
 
         <section
-          className="rounded-2xl glass-panel p-6 space-y-5"
+          className="rounded-xl glass-panel p-6 space-y-5"
         >
           <div>
             <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-gold-300">

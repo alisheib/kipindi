@@ -208,7 +208,7 @@ export default async function MarketDetail({
               // dial is gated behind a clear "sign in to bet" CTA so the
               // mutation surface only opens for an authenticated session.
               <div
-                className="rounded-2xl border border-border-strong bg-bg-elevated p-6 text-center"
+                className="rounded-xl border border-border bg-bg-elevated p-6 text-center"
                 style={{
                   background:
                     "radial-gradient(420px 160px at 50% 0%, oklch(45% 0.10 240 / 0.20), transparent 60%), " +
