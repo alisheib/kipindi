@@ -265,7 +265,7 @@ export function AdminKpi({
   return (
     <div className="rounded-lg glass-panel p-4 flex flex-col gap-2 min-h-[120px]">
       <div className="flex items-center justify-between">
-        <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-tertiary">{label}</span>
+        <span className="font-mono uppercase text-text-tertiary" style={{ fontSize: 9.5, letterSpacing: "0.08em" }}>{label}</span>
         {pulse && (
           <span className="inline-flex items-center gap-1 text-micro text-gold font-mono uppercase tracking-wider">
             <span className="h-1.5 w-1.5 rounded-pill bg-gold inline-block" />
@@ -275,9 +275,10 @@ export function AdminKpi({
       </div>
       <div
         className={[
-          "font-display font-bold tabular leading-none text-title-lg",
+          "font-mono font-bold tabular-nums leading-none",
           gold ? "text-gold" : "text-text",
         ].join(" ")}
+        style={{ fontSize: 21 }}
       >
         {value}
       </div>

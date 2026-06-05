@@ -39,12 +39,12 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
   return (
     <span
       className={cn(
-        "flex items-stretch rounded-md border bg-bg-overlay overflow-hidden focus-within:border-brand-500 focus-within:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors",
+        "flex items-stretch rounded-lg border overflow-hidden focus-within:border-[var(--brand-500)] focus-within:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors",
         heightCls[size],
         errored ? "border-no-500" : "border-border",
         containerClassName,
       )}
-      style={errored ? { background: "oklch(58% 0.2 25 / 0.08)" } : undefined}
+      style={errored ? { background: "oklch(58% 0.2 25 / 0.08)" } : { background: "var(--bg-inset)" }}
     >
       {prefix !== undefined && (
         <span

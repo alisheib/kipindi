@@ -37,7 +37,7 @@ export function ExportPlayerButton({ userId }: { userId: string }) {
       onClick={click}
       disabled={loading}
       aria-busy={loading}
-      className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border border-border bg-bg-elevated text-text-secondary hover:text-text hover:border-aqua-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border border-border bg-bg-elevated text-text-secondary hover:text-text hover:border-[var(--brand-500)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
     >
       <Download size={12} aria-hidden /> {loading ? "Exporting…" : "Export user data · GDPR Art 15"}
     </button>

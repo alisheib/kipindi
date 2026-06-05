@@ -180,8 +180,8 @@ export function NotificationsPanel() {
             aria-hidden
             style={{
               position: "absolute",
-              top: -1,
-              right: -1,
+              top: 4,
+              right: 4,
               width: 7,
               height: 7,
               borderRadius: 9,

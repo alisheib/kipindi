@@ -166,14 +166,14 @@ export default async function MarketDetail({
           </section>
 
           {myPositions.length > 0 && (
-            <section className="mt-6 rounded-lg border border-teal-700 bg-teal-900/20 p-5 space-y-3">
+            <section className="mt-6 rounded-xl border border-border bg-bg-elevated p-5 space-y-3">
               <h2 className="font-display text-[15px] font-semibold text-text">Your positions</h2>
               {myPositions.map((p) => {
                 const liveValue = !isResolved && m.status === "LIVE" && p.status === "OPEN"
                   ? cashOutValue({ side: p.side, stake: p.stake }, { id: m.id, yesPool: m.yesPool, noPool: m.noPool }).value
                   : null;
                 return (
-                  <div key={p.id} className="rounded-md border border-teal-800/60 bg-bg-elevated/60 p-3 space-y-2">
+                  <div key={p.id} className="rounded-md border border-border bg-bg-overlay/40 p-3 space-y-2">
                     <div className="flex items-center justify-between gap-2 font-mono text-[12px]">
                       <span className={p.side === "YES" ? "text-yes-300 font-bold" : "text-no-300 font-bold"}>{p.side}</span>
                       <span className="text-text-muted">stake {fmtTzs(p.stake)}</span>
