@@ -128,7 +128,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
 
   const distFromCenter = Math.abs(pos - 0.5) * 2;
   const conviction = distFromCenter * distFromCenter; // ease-in
-  const maxMultiplier = 5;
+  const maxMultiplier = 200;
   const isNeutral = distFromCenter < NEUTRAL_BAND;
   // Per management spec (license review · 2026-05):
   // slide LEFT → YES, slide RIGHT → NO. Inverted from the original
@@ -180,7 +180,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
   const stake = exactStake !== null
     ? exactStake
     : exactMultiplier !== null
-      ? Math.max(baseStake, Math.min(baseStake * 5, Math.round(baseStake * exactMultiplier)))
+      ? Math.max(baseStake, Math.min(baseStake * maxMultiplier, Math.round(baseStake * exactMultiplier)))
       : stakeFromSlider;
   // Knob multiplier target — when a lock is set, derive truthfully
   // from the typed unit. Otherwise use pos-derived geometry. Tween
@@ -221,11 +221,11 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
    *  a coherent { side, 1.00×, TZS 500, Place button } state. */
   const posFromStake = useCallback((tzs: number): number => {
     const minDial = baseStake;          // multiplier 1 → baseStake
-    const maxDial = baseStake * 5;      // multiplier 5 → baseStake × 5
+    const maxDial = baseStake * maxMultiplier; // multiplier 200 → baseStake × 200
     const clamped = Math.max(minDial, Math.min(maxDial, tzs));
     const mult = clamped / baseStake;
-    // Inverse of (1 + 4·dist²) → dist = √((mult−1)/4)
-    const dist = Math.sqrt(Math.max(0, (mult - 1) / 4));
+    // Inverse of (1 + (maxMult-1)·dist²) → dist = √((mult−1)/(maxMult-1))
+    const dist = Math.sqrt(Math.max(0, (mult - 1) / (maxMultiplier - 1)));
     // Side priority: editingSideRef (captured on focus) wins so an
     // in-flight edit can't accidentally cross the centre. Otherwise
     // preserve the current pos's side; default to YES if neutral.
@@ -244,7 +244,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
   // what they're keying), but the slider clamps + the input flashes
   // an "out of range — will adjust" hint until blur or correction.
   const minDial = baseStake;
-  const maxDial = baseStake * 5;
+  const maxDial = baseStake * maxMultiplier;
   const typedNumber = (() => {
     const n = parseInt(stakeText.replace(/[^\d]/g, ""), 10);
     return Number.isFinite(n) ? n : 0;
@@ -253,9 +253,9 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
   const isUnderMin = editingStake && typedNumber > 0 && typedNumber < minDial;
   const isOutOfRange = isOverMax || isUnderMin;
 
-  // Multiplier input range: [1.00, 5.00] matches the dial's geometry.
+  // Multiplier input range: [1.00, 200.00] matches the dial's geometry.
   const MULT_MIN = 1;
-  const MULT_MAX = 5;
+  const MULT_MAX = 200;
   const typedMult = (() => {
     const n = parseFloat(multText);
     return Number.isFinite(n) ? n : 0;
@@ -945,7 +945,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
           Multiplier · Mara
           <InfoHint
             size={10}
-            label="How strong your conviction is — 1× is a base bet, 5× is the maximum. Higher conviction means higher stake AND higher payout share if you're right. · Imani ya juu, dau kubwa."
+            label="How strong your conviction is — 1× is a base bet (TZS 500), drag further for up to TZS 100,000. Higher conviction means higher stake AND higher payout share if you're right. · Imani ya juu, dau kubwa."
           />
         </p>
         <div className="text-right min-w-0">

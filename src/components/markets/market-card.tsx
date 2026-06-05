@@ -82,8 +82,17 @@ function HowItWorks() {
         type="button"
         aria-label="How it works"
         onClick={toggle}
-        className="inline-flex items-center justify-center rounded-sm transition-colors hover:text-text-muted"
-        style={{ width: 18, height: 18, color: "var(--text-faint)", position: "relative", zIndex: 2 }}
+        className="inline-flex items-center justify-center rounded-sm transition-all"
+        style={{
+          width: 18,
+          height: 18,
+          color: open ? "var(--brand-400)" : "var(--text-faint)",
+          background: open ? "oklch(63% 0.18 262 / 0.15)" : "transparent",
+          position: "relative",
+          zIndex: 2,
+        }}
+        onMouseEnter={(e) => { if (!open) { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "oklch(63% 0.18 262 / 0.08)"; } }}
+        onMouseLeave={(e) => { if (!open) { e.currentTarget.style.color = "var(--text-faint)"; e.currentTarget.style.background = "transparent"; } }}
       >
         <I.info s={13} />
       </button>
