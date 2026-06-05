@@ -81,9 +81,9 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       style={{
-        height: 34,
-        background: "linear-gradient(180deg, oklch(13% 0.11 268), oklch(15% 0.12 268))",
-        borderBottom: "1px solid oklch(20% 0.09 268)",
+        height: 32,
+        background: "var(--bg-inset)",
+        borderBottom: "1px solid var(--border)",
         overflow: "hidden",
         position: "relative",
         userSelect: "none",
@@ -93,12 +93,12 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
       <div style={{
         position: "absolute", left: 0, top: 0, bottom: 0, zIndex: 10,
         display: "flex", alignItems: "center", paddingLeft: 16, paddingRight: 32,
-        background: "linear-gradient(90deg, oklch(14% 0.11 268) 60%, oklch(14% 0.11 268 / 0) 100%)",
+        background: "linear-gradient(90deg, var(--bg-inset) 60%, oklch(11% 0.11 268 / 0) 100%)",
       }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <span className="live-dot" style={{ width: 7, height: 7 }} />
-          <span className="font-display" style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.22em", color: "oklch(75% 0.24 25)" }}>
-            Live
+          <span className="font-mono" style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--live-400)" }}>
+            LIVE
           </span>
         </span>
       </div>
@@ -106,7 +106,7 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
       {/* Right fade */}
       <div style={{
         position: "absolute", right: 0, top: 0, bottom: 0, width: 48, zIndex: 10, pointerEvents: "none",
-        background: "linear-gradient(270deg, oklch(14% 0.11 268), oklch(14% 0.11 268 / 0))",
+        background: "linear-gradient(270deg, var(--bg-inset), oklch(11% 0.11 268 / 0))",
       }} />
 
       {/* Marquee: ticker-track is the DIRECT child of the overflow container.
