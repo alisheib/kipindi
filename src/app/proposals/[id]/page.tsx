@@ -26,7 +26,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
   return (
     <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-3.5">
       {/* Head card */}
-      <section className="rounded-2xl border border-border bg-bg-elevated p-4">
+      <section className="rounded-2xl glass-panel p-4">
         <div className="mb-2.5 flex flex-wrap items-center gap-2">
           <StatusBadge status={p.status} isHot={p.isHot} />
           <Chip variant="neutral"><CategoryIcon category={p.category} />{CATEGORY_LABEL[p.category]}</Chip>
@@ -42,7 +42,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
       </section>
 
       {/* Resolution criterion */}
-      <section className="rounded-2xl border border-border bg-bg-elevated p-4">
+      <section className="rounded-2xl glass-panel p-4">
         <p className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.12em] font-bold text-text-subtle">Resolution criterion · Vigezo</p>
         <p className="text-[13px] leading-relaxed text-text-muted">{p.resolutionCriterion}</p>
       </section>
@@ -77,7 +77,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
 
       {/* Timeline / market link */}
       {p.status !== "DECLINED" && (
-        <section className="rounded-2xl border border-border bg-bg-elevated p-4">
+        <section className="rounded-2xl glass-panel p-4">
           <p className="mb-3 font-mono text-[9.5px] uppercase tracking-[0.12em] font-bold text-text-subtle">Status · Hali</p>
           <StatusTimeline current={timelineStep(p)} />
           {open && <p className="mt-1 text-[12px] text-text-subtle">An officer reviews next · Subiri ukaguzi.</p>}

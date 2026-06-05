@@ -38,7 +38,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
         Wallet
       </Link>
 
-      <header className="relative overflow-hidden rounded-2xl border border-border bg-bg-elevated">
+      <header className="relative overflow-hidden rounded-2xl border border-border-strong bg-bg-elevated">
         <div
           className="absolute inset-0"
           aria-hidden

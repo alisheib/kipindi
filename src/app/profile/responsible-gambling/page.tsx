@@ -54,7 +54,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
         </div>
       )}
 
-      <header className="relative overflow-hidden rounded-2xl border border-border bg-bg-elevated">
+      <header className="relative overflow-hidden rounded-2xl border border-border-strong bg-bg-elevated">
         <div
           className="absolute inset-0"
           aria-hidden
@@ -145,7 +145,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
               name="period"
               aria-label="Cooling-off period"
               title="Cooling-off period"
-              className="h-10 px-3 rounded-md border border-border bg-bg-overlay text-text text-[13px] focus:outline-none focus:border-gold-500"
+              className="h-10 px-3 rounded-md border border-border bg-bg-overlay text-text text-[13px] focus:outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
             >
               {COOLING_OFF_OPTIONS.map((o) => (
                 <option key={o.id} value={o.id}>{o.label} · {o.sw}</option>
@@ -188,7 +188,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
               name="period"
               aria-label="Self-exclusion period"
               title="Self-exclusion period"
-              className="h-10 px-3 rounded-md border border-border bg-bg-overlay text-text text-[13px] focus:outline-none focus:border-gold-500"
+              className="h-10 px-3 rounded-md border border-border bg-bg-overlay text-text text-[13px] focus:outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
             >
               {SELF_EXCLUSION_OPTIONS.map((o) => (
                 <option key={o.id} value={o.id}>{o.label} · {o.sw}</option>

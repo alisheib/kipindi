@@ -72,7 +72,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         </section>
       )}
 
-      <header className="relative overflow-hidden rounded-2xl border border-border bg-bg-elevated">
+      <header className="relative overflow-hidden rounded-2xl border border-border-strong bg-bg-elevated">
         <div
           className="absolute inset-0"
           aria-hidden

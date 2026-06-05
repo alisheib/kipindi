@@ -70,7 +70,7 @@ function Cap({ children, className = "" }: { children: React.ReactNode; classNam
 
 function Kpi({ label, value, sub, gold }: { label: string; value: string; sub: string; gold?: boolean }) {
   return (
-    <div className="rounded-xl border border-border bg-bg-elevated p-3.5">
+    <div className="rounded-xl glass-panel p-3.5">
       <div className="mb-2 flex items-center justify-between">
         <Cap>{label}</Cap>
         <span className="text-text-subtle">{gold ? <Coins size={14} /> : <Users size={14} />}</span>
@@ -112,7 +112,7 @@ export default async function InvitePage() {
 
       {/* Hero — gold earnings ring + adaptive promises */}
       <section
-        className="relative overflow-hidden rounded-2xl border border-border p-[18px]"
+        className="relative overflow-hidden rounded-2xl border border-border-strong p-[18px]"
         style={{ background: "linear-gradient(150deg, var(--bg-elevated), var(--royal-950))" }}
       >
         <div
@@ -217,7 +217,7 @@ export default async function InvitePage() {
       {/* Recruits */}
       <Cap className="!mt-1">Your referrals · Marafiki wako</Cap>
       {s.recruits.length > 0 ? (
-        <div className="overflow-hidden rounded-2xl border border-border bg-bg-elevated">
+        <div className="overflow-hidden rounded-2xl glass-panel">
           {s.recruits.map((r, i) => (
             <div
               key={i}

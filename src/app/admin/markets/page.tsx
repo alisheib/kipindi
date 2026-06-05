@@ -88,7 +88,7 @@ export default async function AdminMarketsPage({
                 defaultValue={query}
                 placeholder="Search title (EN / SW) or mkt_… id"
                 aria-label="Search markets"
-                className="w-full h-10 pl-9 pr-3 rounded-md bg-surface border border-border text-text font-mono text-body-sm focus:outline-none focus:border-border-focus"
+                className="w-full h-10 pl-9 pr-3 rounded-md bg-surface border border-border text-text font-mono text-body-sm focus:outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
               />
             </div>
             <label className="block">
@@ -98,7 +98,7 @@ export default async function AdminMarketsPage({
                 defaultValue={statusFilter}
                 aria-label="Filter by status"
                 title="Filter by status"
-                className="h-10 px-3 rounded-md bg-surface border border-border text-text text-body-sm"
+                className="h-10 px-3 rounded-md bg-surface border border-border text-text text-body-sm focus:outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
               >
                 <option value="">All statuses</option>
                 {STATUS_OPTIONS.map((s) => (
@@ -113,7 +113,7 @@ export default async function AdminMarketsPage({
                 defaultValue={categoryFilter}
                 aria-label="Filter by category"
                 title="Filter by category"
-                className="h-10 px-3 rounded-md bg-surface border border-border text-text text-body-sm"
+                className="h-10 px-3 rounded-md bg-surface border border-border text-text text-body-sm focus:outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
               >
                 <option value="">All categories</option>
                 {CATEGORY_OPTIONS.map((c) => (
