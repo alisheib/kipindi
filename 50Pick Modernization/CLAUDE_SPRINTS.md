@@ -7,6 +7,13 @@
 
 ## ⏱ CURRENT STATE (update every session — read first)
 
+> **Latest (2026-06-05, overnight):** platform-wide visible flat panels are now ALL on
+> `.glass-panel` (incl. fairness table, legal nav, invite). Buttons flat-solid kit. Nav
+> gold-free. Chat/dropdowns/modals frosted. Cards = kit glyph + blue hover. Progress
+> light-sweep. Verified-conformant: avatars, inputs, numbers, ticker, house-lean.
+> **Remaining (fresh session, risk-flagged):** admin-charts SVG · route/stagger motion ·
+> dead `.mcard*` CSS deletion · final responsive/a11y/`data-motion` QA.
+
 **Goal:** drive the ENTIRE app to 100% kit conformance — no detail, number, form, font, or
 nav element left from the old look. Designers must validate with zero issues.
 
