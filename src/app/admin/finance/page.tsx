@@ -99,7 +99,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
                     <span className="w-6 font-mono text-text-tertiary">#{i + 1}</span>
                     <span className="w-28 font-mono text-text truncate">p_{t.userId.slice(-6)}</span>
                     <div className="flex-1 h-3 bg-bg-sunken rounded-sm relative overflow-hidden">
-                      <div className="absolute inset-y-0 left-0 bg-gold/70" style={{ width: `${pct}%` }} />
+                      <div className="absolute inset-y-0 left-0 bg-gold/70 prog-sweep" style={{ width: `${pct}%` }} />
                     </div>
                     <span className="font-mono text-text-secondary tabular w-20 text-right">{formatTzsCompact(t.ngr)}</span>
                   </div>

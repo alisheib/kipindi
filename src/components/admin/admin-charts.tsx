@@ -83,6 +83,13 @@ export function AdminAreaChart({
           <stop offset="0%" stopColor={fillVar} stopOpacity={fillOpacity} />
           <stop offset="100%" stopColor={fillVar} stopOpacity="0" />
         </linearGradient>
+        <filter id="kp-line-bloom" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
       </defs>
       {/* Y-axis grid */}
       {yTicks.map((t, i) => {
@@ -112,7 +119,7 @@ export function AdminAreaChart({
           </g>
         );
       })}
-      {/* Area + line */}
+      {/* Area + line with soft bloom */}
       <path d={areaPath} fill="url(#kp-area-grad)" />
       <path
         d={linePath}
@@ -122,8 +129,10 @@ export function AdminAreaChart({
         strokeLinejoin="round"
         strokeLinecap="round"
         vectorEffect="non-scaling-stroke"
+        filter="url(#kp-line-bloom)"
       />
-      {/* End-point dot */}
+      {/* End-point dot with glow */}
+      <circle cx={xs[xs.length - 1]} cy={ys[ys.length - 1]} r="5" fill={strokeVar} opacity="0.3" />
       <circle cx={xs[xs.length - 1]} cy={ys[ys.length - 1]} r="3.5" fill={strokeVar} />
       {/* X-axis labels */}
       {xLabels && xLabels.length > 0 && (
@@ -245,7 +254,7 @@ export function AdminFunnelChart({
             <span className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary w-24 shrink-0">{s.label}</span>
             <div className="flex-1 h-7 bg-bg-sunken rounded-sm relative overflow-hidden">
               <div
-                className="absolute inset-y-0 left-0 bg-royal/70 rounded-sm flex items-center justify-end pr-2"
+                className="absolute inset-y-0 left-0 bg-royal/70 rounded-sm flex items-center justify-end pr-2 prog-sweep"
                 style={{ width: `${pct}%` }}
               >
                 <span className="font-mono text-micro tabular text-white">{s.value.toLocaleString()}</span>

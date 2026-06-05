@@ -124,7 +124,7 @@ export function QualityBadges({ indicators, overall }: { indicators: QualityIndi
         </span>
         <div className="flex-1 h-1.5 bg-bg-overlay rounded-pill overflow-hidden">
           <div
-            className="h-full rounded-pill transition-all"
+            className="h-full rounded-pill transition-all prog-sweep"
             style={{
               width: `${overall}%`,
               backgroundColor: overall >= 80 ? "var(--yes-500)" : overall >= 50 ? "var(--warning-500)" : "var(--danger-500)",
