@@ -1,17 +1,9 @@
 /**
- * Toggle — switch atom. The kit shipped no switch; this is the canonical one
- * (flagged NEW in the affiliate design handoff → COMPONENTS.md).
- *
- *  - `gold`  → the master money-lever (gold gradient when on)
- *  - default → indigo/royal when on, for sub-toggles
- *  - off     → --bg-overlay
- *
- * Pure kit tokens, kit easing. Accessible: role="switch" + aria-checked,
- * keyboard-operable as a native <button>.
+ * Toggle / Switch — kit-faithful (ds-forms.jsx Switch).
+ * 44x26, accent-500 when on, bg-inset when off, white thumb.
+ * `gold` variant available for master money-lever toggles.
  */
 "use client";
-
-import * as React from "react";
 
 export function Toggle({
   on,
@@ -34,31 +26,32 @@ export function Toggle({
       aria-label={ariaLabel}
       disabled={disabled}
       onClick={onClick}
-      className="relative shrink-0 rounded-pill transition-all disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-elevated"
+      className="relative shrink-0 rounded-pill focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-elevated"
       style={{
         width: 44,
         height: 26,
+        border: "none",
         cursor: disabled ? "not-allowed" : "pointer",
-        border: "1px solid " + (on ? (gold ? "var(--gold-700)" : "var(--royal-500)") : "var(--border-strong)"),
+        opacity: disabled ? 0.5 : 1,
         background: on
           ? gold
             ? "linear-gradient(180deg, var(--gold-400), var(--gold-600))"
-            : "var(--royal-500)"
-          : "var(--bg-overlay)",
-        transition: "all var(--ease-stage)",
+            : "var(--accent-500)"
+          : "var(--bg-inset)",
+        transition: "background .18s cubic-bezier(0.2, 0.8, 0.2, 1)",
       }}
     >
       <span
         style={{
           position: "absolute",
-          top: 2,
-          left: on ? 20 : 2,
+          top: 3,
+          left: on ? 21 : 3,
           width: 20,
           height: 20,
-          borderRadius: "50%",
-          background: on ? (gold ? "oklch(24% 0.06 85)" : "white") : "oklch(88% 0.01 268)",
+          borderRadius: 999,
+          background: "#fff",
+          transition: "left .18s cubic-bezier(0.2, 0.8, 0.2, 1)",
           boxShadow: "0 1px 3px oklch(10% 0.05 264 / 0.5)",
-          transition: "all var(--ease-stage)",
         }}
       />
     </button>

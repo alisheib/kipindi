@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AlertCircle, Check } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { FiftyLockup, FiftyMark } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { Field, Input } from "@/components/ui/input";
@@ -202,31 +203,21 @@ export default async function RegisterPage({
               />
             </Field>
 
-            <fieldset className="space-y-2 pt-1">
-              <label className="flex items-start gap-2 cursor-pointer">
-                <input type="checkbox" name="acceptAge" required className="mt-0.5 h-4 w-4 accent-gold-500" />
-                <span className="text-[13px] text-text-muted">
-                  I confirm I am 18 or older.{" "}
-                  <span className="italic text-text-subtle">Ninathibitisha nina miaka 18+.</span>
-                </span>
-              </label>
-              <label className="flex items-start gap-2 cursor-pointer">
-                <input type="checkbox" name="acceptTerms" required className="mt-0.5 h-4 w-4 accent-gold-500" />
-                <span className="text-[13px] text-text-muted">
-                  I accept the{" "}
-                  <Link href="/legal/terms" className="text-aqua-200 underline-offset-2 hover:underline">Terms</Link>
-                  {" "}and{" "}
-                  <Link href="/legal/privacy" className="text-aqua-200 underline-offset-2 hover:underline">Privacy</Link>.
-                  <span className="italic text-text-subtle ml-1">Ninakubali Sheria na Faragha.</span>
-                </span>
-              </label>
-              <label className="flex items-start gap-2 cursor-pointer">
-                <input type="checkbox" name="marketingOptIn" className="mt-0.5 h-4 w-4 accent-gold-500" />
-                <span className="text-[13px] text-text-muted">
-                  Send me product updates (optional).{" "}
-                  <span className="italic text-text-subtle">Nipe matangazo (hiari).</span>
-                </span>
-              </label>
+            <fieldset className="space-y-2.5 pt-1">
+              <Checkbox
+                name="acceptAge"
+                required
+                label={<span className="text-[13px] text-text-muted">I confirm I am 18 or older. <span className="italic text-text-subtle">Ninathibitisha nina miaka 18+.</span></span>}
+              />
+              <Checkbox
+                name="acceptTerms"
+                required
+                label={<span className="text-[13px] text-text-muted">I accept the{" "}<Link href="/legal/terms" className="text-aqua-200 underline-offset-2 hover:underline">Terms</Link>{" "}and{" "}<Link href="/legal/privacy" className="text-aqua-200 underline-offset-2 hover:underline">Privacy</Link>. <span className="italic text-text-subtle">Ninakubali Sheria na Faragha.</span></span>}
+              />
+              <Checkbox
+                name="marketingOptIn"
+                label={<span className="text-[13px] text-text-muted">Send me product updates (optional). <span className="italic text-text-subtle">Nipe matangazo (hiari).</span></span>}
+              />
             </fieldset>
 
             <SubmitButton label="Create account · Fungua akaunti" pendingLabel="Creating account…" />

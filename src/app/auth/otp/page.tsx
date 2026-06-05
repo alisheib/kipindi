@@ -29,7 +29,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
         </Link>
 
         <section
-          className="rounded-2xl glass-panel p-6 space-y-5"
+          className="rounded-xl glass-panel p-6 space-y-5"
         >
           <div>
             <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-gold-300">
@@ -73,8 +73,18 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
                 maxLength={6}
                 autoComplete="one-time-code"
                 placeholder="• • • • • •"
-                className="input input-mono w-full text-center"
-                style={{ height: 64, fontSize: 28, letterSpacing: "0.6em" }}
+                className="w-full text-center font-mono font-semibold outline-none transition-colors"
+                style={{
+                  height: 52,
+                  fontSize: 20,
+                  letterSpacing: "0.3em",
+                  borderRadius: "var(--r-md)",
+                  background: "var(--bg-inset)",
+                  border: "1px solid var(--border)",
+                  color: "var(--text)",
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = "var(--brand-500)"; e.currentTarget.style.boxShadow = "0 0 0 3px oklch(63% 0.18 262 / 0.25)"; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
               />
               <p className="mt-1.5 text-[11px] text-text-subtle">
                 Code valid for 5 minutes. <span className="italic">Msimbo ni kwa dakika 5.</span>

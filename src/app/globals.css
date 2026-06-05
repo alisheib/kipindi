@@ -204,6 +204,7 @@
   --text-muted:    oklch(86% 0.040 268);
   --text-subtle:   oklch(70% 0.080 268);
   --text-faint:    oklch(60% 0.090 268);
+  --live-400:      oklch(64% 0.20 25);
   --gilt:          oklch(86% 0.13 82);
 
   /* Brand blue — kit tokens (hue 262): nav active pill, focus ring, card-hover glow */
@@ -1558,10 +1559,10 @@ html.kp-reduce-motion *::after {
    inner light-edge). No backdrop-filter: these sit on the page canvas, so the
    top-lit gradient + light-edge carry the depth without GPU cost on big panels. */
 .glass-panel {
-  background: radial-gradient(130% 150% at 0% 0%, oklch(26% 0.150 268) 0%, oklch(19% 0.120 268) 58%);
-  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
   box-shadow: 0 8px 24px -6px oklch(6% 0.08 268 / 0.45), inset 0 1px 0 oklch(100% 0 0 / 0.08);
-  border-radius: var(--r-xl);
+  border-radius: var(--r-lg);
 }
 
 /* v2 kit — traveling light-sweep for active progress fills (limits, KYC steps,
