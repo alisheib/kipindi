@@ -36,7 +36,7 @@ export function Toggle({
       onClick={onClick}
       className="relative shrink-0 rounded-pill transition-all disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-elevated"
       style={{
-        width: 46,
+        width: 44,
         height: 26,
         cursor: disabled ? "not-allowed" : "pointer",
         border: "1px solid " + (on ? (gold ? "var(--gold-700)" : "var(--royal-500)") : "var(--border-strong)"),
@@ -52,11 +52,12 @@ export function Toggle({
         style={{
           position: "absolute",
           top: 2,
-          left: on ? 22 : 2,
+          left: on ? 20 : 2,
           width: 20,
           height: 20,
           borderRadius: "50%",
-          background: on ? (gold ? "oklch(24% 0.06 85)" : "white") : "var(--text-subtle)",
+          background: on ? (gold ? "oklch(24% 0.06 85)" : "white") : "oklch(88% 0.01 268)",
+          boxShadow: "0 1px 3px oklch(10% 0.05 264 / 0.5)",
           transition: "all var(--ease-stage)",
         }}
       />

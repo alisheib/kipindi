@@ -36,7 +36,7 @@ export function Tabs({
       <div
         role="tablist"
         className={cn(
-          "inline-flex items-center gap-1 rounded-md bg-bg-overlay p-1 border border-border",
+          "inline-flex items-center gap-0.5 rounded-lg bg-bg-inset p-[3px] border border-border",
           className,
         )}
       >
@@ -50,11 +50,12 @@ export function Tabs({
               type="button"
               onClick={() => onChange(t.value)}
               className={cn(
-                "h-8 px-3.5 rounded-sm text-[13px] font-display font-semibold transition-colors duration-100",
+                "h-8 px-3 rounded-md text-[12.5px] font-mono font-semibold transition-colors duration-100",
                 active
-                  ? "bg-bg-elevated text-text shadow-e1"
+                  ? "text-text"
                   : "text-text-muted hover:text-text",
               )}
+              style={active ? { background: "oklch(40% 0.08 264 / 0.55)" } : undefined}
             >
               {t.labelEn}
               {t.count !== undefined && (

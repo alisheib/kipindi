@@ -35,16 +35,17 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "rounded-lg border border-dashed border-border bg-bg-elevated/40 px-6 py-10 text-center max-w-[420px] mx-auto",
+        "rounded-lg border border-dashed border-border-strong bg-bg-elevated px-6 py-6 text-center max-w-[300px] mx-auto",
         className,
       )}
     >
-      <div className="mx-auto mb-4 w-14 h-14 grid place-items-center text-teal-300" aria-hidden>
+      <div className="mx-auto mb-4 grid place-items-center rounded-full border border-border" aria-hidden
+        style={{ width: 46, height: 46, background: "var(--bg-inset)", color: "var(--text-faint)" }}>
         {illustration ?? <DefaultIllustration kind={kind} />}
       </div>
-      <p className="font-display text-[16px] font-semibold text-text">{title}</p>
+      <p className="font-display text-[15.5px] font-semibold text-text">{title}</p>
       {titleSw && <p className="mt-0.5 text-[12px] italic text-text-subtle">{titleSw}</p>}
-      {body && <p className="mt-2 text-[13px] leading-relaxed text-text-muted">{body}</p>}
+      {body && <p className="mt-2 text-[12.5px] leading-relaxed text-text-subtle">{body}</p>}
       {bodySw && <p className="mt-1 text-[12px] italic text-text-subtle">{bodySw}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
