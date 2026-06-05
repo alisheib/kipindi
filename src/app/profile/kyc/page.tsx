@@ -49,7 +49,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       )}
 
       {isWelcome && !submitted && !nidaDone && (
-        <section className="rounded-2xl border border-gold-700 bg-gold-500/10 p-4 lg:p-5 flex flex-col sm:flex-row sm:items-center gap-3">
+        <section className="rounded-xl border border-gold-700 bg-gold-500/10 p-4 lg:p-5 flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="flex-1">
             <p className="font-display text-[14px] font-bold text-gold-300">
               Welcome to 50pick · Karibu
@@ -106,7 +106,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       </header>
 
       {rejected && (
-        <section role="alert" className="rounded-2xl border border-no-700 bg-no-500/[0.08] p-4 lg:p-5">
+        <section role="alert" className="rounded-xl border border-no-700 bg-no-500/[0.08] p-4 lg:p-5">
           <div className="flex items-start gap-2.5">
             <AlertCircle size={18} className="mt-0.5 shrink-0 text-no-300" />
             <div className="min-w-0">
@@ -130,7 +130,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       </section>
 
       {!nidaDone && (
-        <section className="rounded-2xl glass-panel p-5 lg:p-6 space-y-4">
+        <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-4">
           <div className="flex items-center gap-2">
             <ShieldCheck size={18} className="text-info-fg" strokeWidth={1.75} />
             <h2 className="font-display text-[15px] font-semibold text-text">Step 1 · NIDA verification</h2>
@@ -183,7 +183,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       )}
 
       {nidaDone && !submitted && (
-        <section className="rounded-2xl glass-panel p-5 lg:p-6 space-y-3">
+        <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-3">
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1 rounded-pill border border-yes-700 bg-yes-500/10 px-2.5 py-0.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.1em] text-yes-300">
               <Check size={11} strokeWidth={2.5} />
@@ -221,7 +221,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       )}
 
       {submitted && (
-        <section className="rounded-2xl border border-gold-700 bg-gold-500/10 p-5 lg:p-6 text-center space-y-2">
+        <section className="rounded-xl border border-gold-700 bg-gold-500/10 p-5 lg:p-6 text-center space-y-2">
           <p className="font-display text-[16px] font-bold text-gold-300">
             {kyc?.status === "APPROVED" ? "Identity verified" : "Submitted for review"}
           </p>

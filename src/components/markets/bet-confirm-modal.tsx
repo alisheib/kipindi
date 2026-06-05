@@ -155,7 +155,7 @@ export function BetConfirmModal({
       {/* Card — `overflow-hidden` clips the gold countdown strip to
           the popup's rounded corners. Without it, subpixel mismatch
           between the strip's `rounded-t-2xl` and the popup's
-          `rounded-2xl` + 1px border lets the strip's ends protrude
+          `rounded-xl` + 1px border lets the strip's ends protrude
           past the popup's curved corners (Ali's report). */}
       <div
         className="relative w-full max-w-[440px] rounded-xl border border-border-strong bg-bg-elevated shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65),inset_0_1px_0_rgba(255,255,255,0.06)] overflow-hidden"

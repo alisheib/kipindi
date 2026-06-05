@@ -21,7 +21,7 @@ function Cap({ children }: { children: React.ReactNode }) {
 }
 function Kpi({ label, value, sub, gold }: { label: string; value: string; sub: string; gold?: boolean }) {
   return (
-    <div className="rounded-2xl border border-border bg-bg-elevated p-4">
+    <div className="rounded-xl border border-border bg-bg-elevated p-4">
       <div className="mb-2 flex items-center justify-between"><Cap>{label}</Cap><span className="text-text-subtle">{gold ? <Coins size={14} /> : <FileText size={14} />}</span></div>
       <div className={`font-mono text-[24px] font-bold leading-none tracking-[-0.02em] ${gold ? "text-gold-300" : "text-text"}`}>{value}</div>
       <div className="mt-1.5 font-mono text-[10.5px] text-text-subtle">{sub}</div>
@@ -112,7 +112,7 @@ export function AdminProposalsClient({ config, stats, queue }: { config: Proposa
 
       {/* Queue + review */}
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1.3fr_1fr]">
-        <div className="overflow-hidden rounded-2xl border border-border bg-bg-elevated">
+        <div className="overflow-hidden rounded-xl border border-border bg-bg-elevated">
           <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
             <div className="text-[14px] font-bold">Queue · sorted by votes</div>
             <div className="flex gap-1.5">
@@ -145,7 +145,7 @@ export function AdminProposalsClient({ config, stats, queue }: { config: Proposa
 
         {/* Review panel */}
         {sel ? (
-          <div className="flex flex-col gap-3.5 rounded-2xl border border-border bg-bg-elevated p-4">
+          <div className="flex flex-col gap-3.5 rounded-xl border border-border bg-bg-elevated p-4">
             <div>
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <StatusBadge status={sel.status} />
@@ -195,7 +195,7 @@ export function AdminProposalsClient({ config, stats, queue }: { config: Proposa
                       style={reason === r ? { borderColor: "color-mix(in oklab, var(--claret-500) 44%, transparent)", background: "color-mix(in oklab, var(--claret-500) 16%, transparent)", color: "var(--claret-300)" } : { borderColor: "var(--border)", color: "var(--text-muted)" }}>{r}</button>
                   ))}
                 </div>
-                <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional note to the proposer (logged) · Ujumbe" className="mb-3 min-h-[56px] w-full resize-none rounded-md border border-border bg-bg-elevated px-3 py-2 text-[13px] text-text outline-none focus:border-aqua-300" />
+                <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional note to the proposer (logged) · Ujumbe" className="mb-3 min-h-[56px] w-full resize-none rounded-md border border-border bg-bg-elevated px-3 py-2 text-[13px] text-text outline-none focus:border-[var(--brand-500)]" />
                 <div className="flex gap-2">
                   <Button variant="ghost" size="md" onClick={resetReview}>Cancel</Button>
                   <Button variant="danger" size="md" fullWidth disabled={!reason} loading={pending} onClick={decline}>Confirm decline{reason ? ` · ${reason}` : ""}</Button>
@@ -204,12 +204,12 @@ export function AdminProposalsClient({ config, stats, queue }: { config: Proposa
             )}
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-border bg-bg-elevated/40 p-10 text-center text-[13px] text-text-subtle">Select a proposal to review.</div>
+          <div className="rounded-xl border border-dashed border-border bg-bg-elevated/40 p-10 text-center text-[13px] text-text-subtle">Select a proposal to review.</div>
         )}
       </div>
 
       {/* Config */}
-      <div className="overflow-hidden rounded-2xl border border-border bg-bg-elevated">
+      <div className="overflow-hidden rounded-xl border border-border bg-bg-elevated">
         <div className="flex items-center gap-3.5 border-b border-border px-4 py-3.5" style={{ background: on ? "transparent" : "color-mix(in oklab, var(--warning-500) 8%, transparent)" }}>
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px]" style={{ background: on ? "color-mix(in oklab, var(--gold-500) 16%, transparent)" : "color-mix(in oklab, var(--warning-500) 20%, transparent)", color: on ? "var(--gold-300)" : "oklch(84% 0.15 80)" }}>
             {on ? <Trophy size={21} /> : <Pause size={21} />}

@@ -54,7 +54,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
         </div>
       )}
 
-      <header className="relative overflow-hidden rounded-2xl border border-border-strong bg-bg-elevated">
+      <header className="relative overflow-hidden rounded-xl border border-border-strong bg-bg-elevated">
         <div
           className="absolute inset-0"
           aria-hidden
@@ -90,7 +90,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
       <FeedbackSettings />
 
       {/* DEPOSIT + TIME LIMITS */}
-      <section className="rounded-2xl glass-panel p-5 lg:p-6 space-y-4">
+      <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-4">
         <div className="flex items-center gap-2">
           <Clock size={16} className="text-info-fg" />
           <h2 className="font-display text-[15px] font-semibold text-text">Deposit &amp; session limits</h2>
@@ -128,7 +128,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
       </section>
 
       {/* COOLING-OFF */}
-      <section id="break" className="scroll-mt-20 rounded-2xl glass-panel p-5 lg:p-6 space-y-3">
+      <section id="break" className="scroll-mt-20 rounded-xl glass-panel p-5 lg:p-6 space-y-3">
         <div className="flex items-center gap-2">
           <Pause size={16} className="text-info-fg" />
           <h2 className="font-display text-[15px] font-semibold text-text">Take a break · Pumzika</h2>
@@ -145,7 +145,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
               name="period"
               aria-label="Cooling-off period"
               title="Cooling-off period"
-              className="h-10 px-3 rounded-md border border-border bg-bg-overlay text-text text-[13px] focus:outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
+              className="h-10 px-3 rounded-md border border-border bg-bg-overlay text-text text-[13px] focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
             >
               {COOLING_OFF_OPTIONS.map((o) => (
                 <option key={o.id} value={o.id}>{o.label} · {o.sw}</option>
@@ -163,7 +163,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
       </section>
 
       {/* SELF-EXCLUSION */}
-      <section id="exclude" className="scroll-mt-20 rounded-2xl border border-no-700/60 bg-no-500/[0.06] p-5 lg:p-6 space-y-3">
+      <section id="exclude" className="scroll-mt-20 rounded-xl border border-no-700/60 bg-no-500/[0.06] p-5 lg:p-6 space-y-3">
         <div className="flex items-center gap-2">
           <Lock size={16} className="text-no-300" />
           <h2 className="font-display text-[15px] font-semibold text-text">Self-exclude · Jizuie</h2>
@@ -188,7 +188,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
               name="period"
               aria-label="Self-exclusion period"
               title="Self-exclusion period"
-              className="h-10 px-3 rounded-md border border-border bg-bg-overlay text-text text-[13px] focus:outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
+              className="h-10 px-3 rounded-md border border-border bg-bg-overlay text-text text-[13px] focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
             >
               {SELF_EXCLUSION_OPTIONS.map((o) => (
                 <option key={o.id} value={o.id}>{o.label} · {o.sw}</option>

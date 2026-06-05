@@ -84,7 +84,7 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
             onChange={(e) => setReason(e.target.value)}
             placeholder="Rejection reason (required)"
             aria-label="Rejection reason"
-            className="flex-1 h-8 px-2 rounded-md border border-border bg-surface text-text-secondary text-caption font-mono focus:outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
+            className="flex-1 h-8 px-2 rounded-md border border-border bg-surface text-text-secondary text-caption font-mono focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
           />
           <Button size="sm" variant="danger" onClick={() => submit("reject")} loading={busy === "reject"}>
             Submit

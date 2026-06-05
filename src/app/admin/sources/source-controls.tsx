@@ -129,7 +129,7 @@ export function AddSourceForm() {
   }
 
   const inputCls =
-    "w-full h-10 px-3 rounded-md border border-border bg-bg-overlay font-sans text-text outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors";
+    "w-full h-10 px-3 rounded-md border border-border bg-bg-overlay font-sans text-text outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors";
 
   return (
     <form onSubmit={onSubmit} className="rounded-lg border border-border bg-bg-elevated p-4 space-y-3">

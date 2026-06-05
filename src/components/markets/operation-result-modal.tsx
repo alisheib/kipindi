@@ -220,7 +220,7 @@ export function OperationResultModal({
         className="relative w-full max-w-[460px] rounded-xl border border-border-strong bg-bg-elevated shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65),inset_0_1px_0_rgba(255,255,255,0.06)] overflow-hidden"
         // `overflow-hidden` clips the gold auto-close strip to the
         // rounded corners; without it, the strip's `rounded-t-2xl`
-        // can render slightly past the popup's `rounded-2xl` + 1 px
+        // can render slightly past the popup's `rounded-xl` + 1 px
         // border edge (same bug Ali caught on BetConfirmModal).
         //
         // Kit `--ease-arrive` is the gentle overshoot reserved for

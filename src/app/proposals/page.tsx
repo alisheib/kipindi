@@ -52,7 +52,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
 
       {/* Reward banner */}
       <section
-        className="relative overflow-hidden rounded-2xl border border-border p-4"
+        className="relative overflow-hidden rounded-xl border border-border p-4"
         style={{ background: "linear-gradient(150deg, var(--bg-elevated), var(--royal-950))" }}
       >
         <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(120% 90% at 100% 0%, color-mix(in oklab, var(--gold-500) 12%, transparent), transparent 60%)" }} />
@@ -138,7 +138,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
 
 function ProposalCard({ p, disabled }: { p: ProposalView; disabled?: boolean }) {
   return (
-    <div className="group flex items-start gap-3 rounded-2xl glass-panel p-3.5 transition-all hover:-translate-y-0.5 hover:border-teal-400 hover:shadow-[var(--shadow-4),var(--glow-blue)]">
+    <div className="group flex items-start gap-3 rounded-xl glass-panel p-3.5 transition-all hover:-translate-y-0.5 hover:border-teal-400 hover:shadow-[var(--shadow-4),var(--glow-blue)]">
       <VoteControl proposalId={p.id} up={p.up} down={p.down} myVote={p.myVote} disabled={disabled} />
       <Link href={`/proposals/${p.id}` as never} className="min-w-0 flex-1">
         <div className="mb-1.5 flex flex-wrap items-center gap-2">

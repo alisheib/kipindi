@@ -15,7 +15,7 @@ export default function ForgotPasswordPage() {
         </Link>
 
         <section
-          className="rounded-2xl glass-panel p-6 space-y-5"
+          className="rounded-xl glass-panel p-6 space-y-5"
         >
           <Link
             href="/auth/login"

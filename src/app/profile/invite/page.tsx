@@ -112,7 +112,7 @@ export default async function InvitePage() {
 
       {/* Hero — gold earnings ring + adaptive promises */}
       <section
-        className="relative overflow-hidden rounded-2xl border border-border-strong p-[18px]"
+        className="relative overflow-hidden rounded-xl border border-border-strong p-[18px]"
         style={{ background: "linear-gradient(150deg, var(--bg-elevated), var(--royal-950))" }}
       >
         <div
@@ -184,7 +184,7 @@ export default async function InvitePage() {
       </div>
 
       {/* How it works */}
-      <section className="rounded-2xl glass-panel p-4">
+      <section className="rounded-xl glass-panel p-4">
         <p className="font-display text-[15px] font-bold leading-tight">
           How it works <span className="font-normal italic text-text-subtle text-[12px]">· Inavyofanya kazi</span>
         </p>
@@ -217,7 +217,7 @@ export default async function InvitePage() {
       {/* Recruits */}
       <Cap className="!mt-1">Your referrals · Marafiki wako</Cap>
       {s.recruits.length > 0 ? (
-        <div className="overflow-hidden rounded-2xl glass-panel">
+        <div className="overflow-hidden rounded-xl glass-panel">
           {s.recruits.map((r, i) => (
             <div
               key={i}

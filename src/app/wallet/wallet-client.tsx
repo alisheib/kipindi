@@ -14,7 +14,7 @@ function BalanceCard({
   balance, pending, hold, currency,
 }: { balance: number; pending: number; hold: number; currency: string }) {
   return (
-    <section className="relative overflow-hidden rounded-2xl"
+    <section className="relative overflow-hidden rounded-xl"
       style={{
         background: "linear-gradient(135deg, oklch(23% 0.075 268), oklch(16% 0.05 268))",
         border: "1px solid oklch(78% 0.13 80 / 0.3)",

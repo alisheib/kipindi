@@ -251,7 +251,7 @@ export default async function MarketDetail({
             // the next /markets hit auto-resolves on the server. For
             // production markets it lasts until the human resolver
             // queue confirms. Either way, no more bets accepted.
-            <div className="rounded-2xl border border-warning-border bg-warning-bg/30 p-6 text-center">
+            <div className="rounded-xl border border-warning-border bg-warning-bg/30 p-6 text-center">
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-warning-fg">
                 Closed · Awaiting settlement
               </p>

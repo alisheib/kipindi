@@ -26,7 +26,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
   return (
     <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-3.5">
       {/* Head card */}
-      <section className="rounded-2xl glass-panel p-4">
+      <section className="rounded-xl glass-panel p-4">
         <div className="mb-2.5 flex flex-wrap items-center gap-2">
           <StatusBadge status={p.status} isHot={p.isHot} />
           <Chip variant="neutral"><CategoryIcon category={p.category} />{CATEGORY_LABEL[p.category]}</Chip>
@@ -42,20 +42,20 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
       </section>
 
       {/* Resolution criterion */}
-      <section className="rounded-2xl glass-panel p-4">
+      <section className="rounded-xl glass-panel p-4">
         <p className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.12em] font-bold text-text-subtle">Resolution criterion · Vigezo</p>
         <p className="text-[13px] leading-relaxed text-text-muted">{p.resolutionCriterion}</p>
       </section>
 
       {/* Declined / changes-requested notice */}
       {p.status === "DECLINED" && (
-        <section className="rounded-2xl border p-4" style={{ borderColor: "color-mix(in oklab, var(--claret-500) 30%, var(--border))", background: "color-mix(in oklab, var(--claret-500) 7%, var(--bg-elevated))" }}>
+        <section className="rounded-xl border p-4" style={{ borderColor: "color-mix(in oklab, var(--claret-500) 30%, var(--border))", background: "color-mix(in oklab, var(--claret-500) 7%, var(--bg-elevated))" }}>
           <div className="mb-1.5 flex items-center gap-2 text-claret-300"><XCircle size={16} /><p className="text-[13px] font-bold">Declined · Imekataliwa</p></div>
           <p className="text-[12.5px] leading-relaxed text-text-muted">Reason: {p.declineReason}.{p.declineNote ? ` ${p.declineNote}` : ""}</p>
         </section>
       )}
       {p.status === "CHANGES_REQUESTED" && p.changeNote && (
-        <section className="rounded-2xl border p-4" style={{ borderColor: "color-mix(in oklab, var(--royal-500) 30%, var(--border))", background: "color-mix(in oklab, var(--royal-500) 8%, var(--bg-elevated))" }}>
+        <section className="rounded-xl border p-4" style={{ borderColor: "color-mix(in oklab, var(--royal-500) 30%, var(--border))", background: "color-mix(in oklab, var(--royal-500) 8%, var(--bg-elevated))" }}>
           <div className="mb-1.5 flex items-center gap-2 text-royal-200"><Pencil size={16} /><p className="text-[13px] font-bold">Changes requested</p></div>
           <p className="text-[12.5px] leading-relaxed text-text-muted">{p.changeNote}</p>
         </section>
@@ -63,7 +63,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
 
       {/* Resolved celebration for the proposer */}
       {showPrize && (
-        <section className="relative overflow-hidden rounded-2xl border p-5 text-center" style={{ borderColor: "var(--gold-700)", background: "linear-gradient(160deg, var(--bg-elevated), var(--royal-950))" }}>
+        <section className="relative overflow-hidden rounded-xl border p-5 text-center" style={{ borderColor: "var(--gold-700)", background: "linear-gradient(160deg, var(--bg-elevated), var(--royal-950))" }}>
           <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "linear-gradient(180deg, transparent, color-mix(in oklab, var(--gold-700) 16%, transparent))" }} />
           <div className="relative">
             <span className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full text-gold-fg" style={{ background: "linear-gradient(135deg, var(--gold-400), var(--gold-700))" }}><Trophy size={24} /></span>
@@ -77,7 +77,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
 
       {/* Timeline / market link */}
       {p.status !== "DECLINED" && (
-        <section className="rounded-2xl glass-panel p-4">
+        <section className="rounded-xl glass-panel p-4">
           <p className="mb-3 font-mono text-[9.5px] uppercase tracking-[0.12em] font-bold text-text-subtle">Status · Hali</p>
           <StatusTimeline current={timelineStep(p)} />
           {open && <p className="mt-1 text-[12px] text-text-subtle">An officer reviews next · Subiri ukaguzi.</p>}

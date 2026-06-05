@@ -45,7 +45,7 @@ export default async function AdminLoginPage() {
         </header>
 
         <section
-          className="relative overflow-hidden rounded-2xl border border-gold-700 bg-bg-elevated p-5 lg:p-6 space-y-4"
+          className="relative overflow-hidden rounded-xl border border-gold-700 bg-bg-elevated p-5 lg:p-6 space-y-4"
           style={{ boxShadow: "0 0 0 1px color-mix(in oklab, var(--gilt) 30%, transparent) inset" }}
         >
           <div className="absolute -right-6 -top-6 opacity-[0.06]" aria-hidden>

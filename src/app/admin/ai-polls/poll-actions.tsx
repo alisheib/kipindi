@@ -77,7 +77,7 @@ export function GenerateForm() {
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
         placeholder="Optional: guide the AI with specific instructions (e.g. 'Focus on Premier League football this weekend')"
-        className="w-full rounded-md border border-border bg-bg-overlay px-3 py-2 text-[13px] text-text placeholder:text-text-subtle outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
+        className="w-full rounded-md border border-border bg-bg-overlay px-3 py-2 text-[13px] text-text placeholder:text-text-subtle outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
         rows={2}
       />
       <div className="flex items-center gap-3">
@@ -356,7 +356,7 @@ function RejectForm({ pollId, onClose }: { pollId: string; onClose: () => void }
       <select
         value={reason}
         onChange={(e) => setReason(e.target.value)}
-        className="w-full h-9 rounded-md border border-border bg-bg-overlay px-2 text-[12.5px] text-text mb-2 outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
+        className="w-full h-9 rounded-md border border-border bg-bg-overlay px-2 text-[12.5px] text-text mb-2 outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
       >
         {REJECT_REASONS.map((r) => (
           <option key={r.id} value={r.id}>{r.label}</option>
@@ -366,7 +366,7 @@ function RejectForm({ pollId, onClose }: { pollId: string; onClose: () => void }
         value={note}
         onChange={(e) => setNote(e.target.value)}
         placeholder="Optional note for the audit log…"
-        className="w-full rounded-md border border-border bg-bg-overlay px-2 py-1.5 text-[12px] text-text mb-2 outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
+        className="w-full rounded-md border border-border bg-bg-overlay px-2 py-1.5 text-[12px] text-text mb-2 outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
         rows={2}
       />
       <div className="grid grid-cols-2 gap-2">
@@ -408,7 +408,7 @@ function EditForm({ poll, onClose }: { poll: StoredAIPoll; onClose: () => void }
     });
   };
 
-  const inputCls = "w-full rounded-md border border-border bg-bg-overlay px-2 py-1.5 text-[12.5px] text-text outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors";
+  const inputCls = "w-full rounded-md border border-border bg-bg-overlay px-2 py-1.5 text-[12.5px] text-text outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors";
 
   return (
     <div className="mt-2 z-10 rounded-md border border-border bg-bg-elevated p-3 shadow-lg w-[360px] space-y-2">

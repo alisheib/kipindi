@@ -186,7 +186,7 @@ function SettleConfirm({
         onClick={onCancel}
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
       />
-      <div className="relative w-full max-w-[460px] rounded-2xl border border-border bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)] p-5 lg:p-6">
+      <div className="relative w-full max-w-[460px] rounded-xl border border-border bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)] p-5 lg:p-6">
         <button
           type="button"
           onClick={onCancel}

@@ -119,7 +119,7 @@ function RejectForm({
       <select
         value={reason}
         onChange={(e) => setReason(e.target.value)}
-        className="w-full h-9 rounded-md border border-border bg-bg-overlay px-2 text-[12.5px] text-text mb-2 outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
+        className="w-full h-9 rounded-md border border-border bg-bg-overlay px-2 text-[12.5px] text-text mb-2 outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
       >
         {REJECT_REASONS.map((r) => (
           <option key={r.id} value={r.id}>{r.label}</option>
@@ -129,7 +129,7 @@ function RejectForm({
         value={note}
         onChange={(e) => setNote(e.target.value)}
         placeholder="Optional note for the audit log…"
-        className="w-full rounded-md border border-border bg-bg-overlay px-2 py-1.5 text-[12px] text-text mb-2 outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
+        className="w-full rounded-md border border-border bg-bg-overlay px-2 py-1.5 text-[12px] text-text mb-2 outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
         rows={2}
       />
       <div className="grid grid-cols-2 gap-2">

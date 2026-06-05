@@ -41,7 +41,7 @@ const FAQS: { q: string; a: string }[] = [
 export default function HelpPage() {
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-5">
-      <header className="relative overflow-hidden rounded-2xl border border-border-strong bg-bg-elevated">
+      <header className="relative overflow-hidden rounded-xl border border-border-strong bg-bg-elevated">
         <div
           className="absolute inset-0"
           aria-hidden
@@ -97,7 +97,7 @@ export default function HelpPage() {
         />
       </section>
 
-      <section className="rounded-2xl glass-panel p-5 lg:p-6 space-y-2">
+      <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-2">
         <h2 className="font-display text-[15px] font-semibold text-text">
           Frequently asked <span className="text-text-subtle italic font-normal">· Maswali</span>
         </h2>

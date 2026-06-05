@@ -77,7 +77,7 @@ function ProposalEntryCard() {
   return (
     <Link
       href={"/proposals" as never}
-      className="group flex items-center gap-3.5 rounded-2xl border p-4 transition-colors hover:border-gold-500"
+      className="group flex items-center gap-3.5 rounded-xl border p-4 transition-colors hover:border-gold-500"
       style={{ borderColor: "color-mix(in oklab, var(--gold-500) 30%, var(--border))", background: "color-mix(in oklab, var(--gold-500) 6%, var(--bg-elevated))" }}
     >
       <span className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-[11px] text-gold-fg" style={{ background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))" }}>

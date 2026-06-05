@@ -56,7 +56,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
         </div>
       )}
 
-      <header className="relative overflow-hidden rounded-2xl border border-border-strong bg-bg-elevated">
+      <header className="relative overflow-hidden rounded-xl border border-border-strong bg-bg-elevated">
         <div
           className="absolute inset-0"
           aria-hidden
@@ -108,7 +108,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
         </section>
       )}
 
-      <section className="rounded-2xl glass-panel p-5 lg:p-6 space-y-5">
+      <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-5">
         <div className="flex items-center gap-2">
           <FileSignature size={16} className="text-info-fg" />
           <h2 className="font-display text-[15px] font-semibold text-text">Declaration · Tamko</h2>

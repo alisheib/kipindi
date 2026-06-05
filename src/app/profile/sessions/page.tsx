@@ -36,7 +36,7 @@ export default async function SessionsPage() {
         Profile
       </Link>
 
-      <header className="relative overflow-hidden rounded-2xl border border-border-strong bg-bg-elevated">
+      <header className="relative overflow-hidden rounded-xl border border-border-strong bg-bg-elevated">
         <div
           className="absolute inset-0"
           aria-hidden
@@ -65,7 +65,7 @@ export default async function SessionsPage() {
         </div>
       </header>
 
-      <section className="rounded-2xl border border-info-border bg-info-bg/[0.10] p-5 space-y-3">
+      <section className="rounded-xl border border-info-border bg-info-bg/[0.10] p-5 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <MonitorSmartphone size={16} className="text-info-fg" />

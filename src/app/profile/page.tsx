@@ -64,7 +64,7 @@ export default async function ProfilePage() {
       </h1>
       {/* ── Hero — kit-faithful: tilted FiftyMark watermark, OKLCH gradient,
             mono-stamped meta, picture uploader badge. No Kipindi tokens. */}
-      <section className="relative overflow-hidden rounded-2xl border border-border-strong bg-bg-elevated">
+      <section className="relative overflow-hidden rounded-xl border border-border-strong bg-bg-elevated">
         {/* Layered background — emerald → rose tilt + mark watermark */}
         <div
           className="absolute inset-0"
@@ -186,7 +186,7 @@ export default async function ProfilePage() {
         <h2 className="mb-3 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">
           Achievements · Beji
         </h2>
-        <div className="rounded-2xl glass-panel p-5">
+        <div className="rounded-xl glass-panel p-5">
           <BadgeShelf items={computeAchievementShelf(user.id)} />
           <p className="mt-4 text-center text-[11px] text-text-subtle">
             More badges unlock as you predict, win, propose and invite. · Beji zaidi zinafunguliwa unapocheza.

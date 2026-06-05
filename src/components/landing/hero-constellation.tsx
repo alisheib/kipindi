@@ -155,7 +155,7 @@ export function HeroConstellation({ height = 540 }: { height?: number }) {
   return (
     <div
       ref={wrapRef}
-      className="relative overflow-hidden rounded-2xl"
+      className="relative overflow-hidden rounded-xl"
       style={{
         height,
         background:

@@ -20,7 +20,7 @@ function Cap({ children }: { children: React.ReactNode }) {
 
 function Kpi({ label, value, sub, gold }: { label: string; value: string; sub: string; gold?: boolean }) {
   return (
-    <div className="rounded-2xl glass-panel p-4">
+    <div className="rounded-xl glass-panel p-4">
       <div className="mb-2 flex items-center justify-between">
         <Cap>{label}</Cap>
         <span className="text-text-subtle">{gold ? <Coins size={14} /> : <Users size={14} />}</span>
@@ -89,7 +89,7 @@ function RewardCard({
   const active = on && !disabled;
   return (
     <div
-      className="overflow-hidden rounded-2xl border bg-bg-elevated transition-opacity"
+      className="overflow-hidden rounded-xl border bg-bg-elevated transition-opacity"
       style={{
         borderColor: active ? "color-mix(in oklab, var(--royal-500) 30%, var(--border))" : "var(--border)",
         opacity: disabled ? 0.5 : 1,
@@ -174,7 +174,7 @@ export function AffiliateAdminClient({ config, stats }: { config: AffiliateConfi
 
       {/* Master switch */}
       <div
-        className="flex items-center gap-4 rounded-2xl border p-4"
+        className="flex items-center gap-4 rounded-xl border p-4"
         style={{
           borderColor: on ? "color-mix(in oklab, var(--royal-500) 28%, var(--border))" : "color-mix(in oklab, var(--warning-500) 36%, var(--border))",
           background: on ? "var(--bg-elevated)" : "color-mix(in oklab, var(--warning-500) 8%, var(--bg-elevated))",
@@ -270,7 +270,7 @@ export function AffiliateAdminClient({ config, stats }: { config: AffiliateConfi
         {/* Compliance + leaderboard */}
         <div className="flex flex-col gap-3">
           <div
-            className="rounded-2xl border p-4"
+            className="rounded-xl border p-4"
             style={{ borderColor: "color-mix(in oklab, var(--no-500) 28%, var(--border))", background: "color-mix(in oklab, var(--no-500) 6%, var(--bg-elevated))" }}
           >
             <div className="mb-2 flex items-center gap-2">
@@ -286,7 +286,7 @@ export function AffiliateAdminClient({ config, stats }: { config: AffiliateConfi
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-border bg-bg-elevated">
+          <div className="overflow-hidden rounded-xl border border-border bg-bg-elevated">
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div className="text-[14px] font-bold">Referral leaderboard</div>
               <Cap>Top affiliates</Cap>
@@ -309,7 +309,7 @@ export function AffiliateAdminClient({ config, stats }: { config: AffiliateConfi
       </div>
 
       {/* Ledger */}
-      <div className="overflow-hidden rounded-2xl border border-border bg-bg-elevated">
+      <div className="overflow-hidden rounded-xl border border-border bg-bg-elevated">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div className="text-[14px] font-bold">
             Payout ledger · <span className="font-normal italic text-text-subtle text-[12px]">Daftari la malipo</span>

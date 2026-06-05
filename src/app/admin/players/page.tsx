@@ -72,7 +72,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                 defaultValue={query}
                 placeholder="Phone (+255…), display name, or usr_…"
                 aria-label="Search players"
-                className="w-full h-10 pl-9 pr-3 rounded-md bg-surface border border-border text-text font-mono text-body-sm focus:outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
+                className="w-full h-10 pl-9 pr-3 rounded-md bg-surface border border-border text-text font-mono text-body-sm focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
               />
             </div>
             <label className="block">
@@ -82,7 +82,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                 defaultValue={statusFilter}
                 aria-label="Filter by status"
                 title="Filter by status"
-                className="h-10 px-3 rounded-md bg-surface border border-border text-text text-body-sm outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
+                className="h-10 px-3 rounded-md bg-surface border border-border text-text text-body-sm outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
               >
                 <option value="">All statuses</option>
                 <option value="ACTIVE">Active</option>

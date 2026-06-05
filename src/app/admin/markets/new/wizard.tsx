@@ -136,7 +136,7 @@ export function NewMarketWizard() {
   );
 }
 
-const inputCls = "w-full h-11 px-3 rounded-md border border-border bg-bg-overlay font-sans text-text outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
+const inputCls = "w-full h-11 px-3 rounded-md border border-border bg-bg-overlay font-sans text-text outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
 
 function Section({ title, sw, children }: { title: string; sw: string; children: React.ReactNode }) {
   return (
