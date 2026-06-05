@@ -29,11 +29,12 @@ export function InfoHint({
 }) {
   return (
     <Tooltip label={label} className={className}>
-      <Info
-        size={size}
+      <span
         aria-hidden
         className="inline-block align-[-0.1em] text-text-subtle hover:text-text-muted ml-1 cursor-help transition-colors"
-      />
+      >
+        <I.info s={size} />
+      </span>
       <span className="sr-only">{typeof label === "string" ? label : "Info"}</span>
     </Tooltip>
   );
