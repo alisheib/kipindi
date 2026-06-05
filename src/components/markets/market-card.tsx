@@ -76,23 +76,22 @@ function HowItWorks() {
           <div className="fixed inset-0 z-[90]" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); }} />
           <div
             onClick={(e) => e.stopPropagation()}
-            className="absolute right-0 bottom-6 z-[91] w-[260px] rounded-lg p-3.5 shadow-[0_12px_36px_-8px_rgba(0,0,0,0.5)]"
-            style={{ background: "#fff", color: "#1a1a2e" }}
+            className="absolute right-0 bottom-6 z-[91] w-[260px] rounded-xl border border-border-strong p-3.5"
+            style={{ background: "var(--bg-elevated2)", boxShadow: "0 16px 40px -8px oklch(6% 0.08 264 / 0.7)" }}
           >
             <button
               type="button"
               aria-label="Close"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); }}
-              className="absolute right-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-sm hover:bg-black/10 transition-colors"
-              style={{ color: "#666" }}
+              className="absolute right-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-sm text-text-subtle hover:text-text transition-colors"
             >
               <I.x s={12} />
             </button>
-            <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>How it works</p>
-            <p style={{ fontSize: 11.5, lineHeight: 1.55, color: "#444" }}>
-              Pick YES or NO. Your stake joins the pool. If your side wins, you share the losing pool minus a 9% operator margin.
+            <p className="font-display text-[13px] font-bold text-text" style={{ marginBottom: 6 }}>How it works</p>
+            <p className="text-[11.5px] leading-[1.55] text-text-muted">
+              Pick <span className="font-bold text-yes-300">YES</span> or <span className="font-bold text-no-300">NO</span>. Your stake joins the pool. If your side wins, you share the losing pool minus a <span className="font-mono font-semibold text-text">9%</span> operator margin.
             </p>
-            <p style={{ fontSize: 11, lineHeight: 1.5, color: "#888", marginTop: 6, fontStyle: "italic" }}>
+            <p className="text-[10.5px] leading-[1.5] text-text-subtle italic" style={{ marginTop: 6 }}>
               Payout depends on the final pool, not the odds shown now. Only stake what you can afford. 18+.
             </p>
           </div>
