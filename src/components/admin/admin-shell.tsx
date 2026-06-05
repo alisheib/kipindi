@@ -119,7 +119,8 @@ export function getSidebarBadges(): Record<string, string | undefined> {
 export function AdminSidebar({ activeKey }: { activeKey: string }) {
   const badges = getSidebarBadges();
   return (
-    <aside className="hidden lg:flex w-[220px] shrink-0 bg-bg-elevated border-r border-border-divider px-3 py-4 flex-col gap-1 sticky top-0 self-start max-h-screen overflow-y-auto">
+    <aside className="hidden lg:flex shrink-0 border-r border-border flex-col gap-1 sticky top-0 self-start max-h-screen overflow-y-auto"
+      style={{ width: 216, padding: "18px 14px", background: "var(--panel)" }}>
       <Link href="/admin" className="flex items-center gap-2 px-2 pb-3 mb-2 border-b border-dashed border-border-subtle">
         <span aria-hidden className="h-3.5 w-3.5 rounded-pill border-[1.5px] border-gold" />
         <span className="font-display font-bold text-body-sm text-text">50pick · admin</span>
@@ -139,13 +140,14 @@ export function AdminSidebar({ activeKey }: { activeKey: string }) {
                 className={[
                   "flex items-center justify-between rounded-md px-2.5 py-2 text-body-sm transition-colors",
                   active
-                    ? "bg-surface-pressed text-royal font-semibold"
-                    : "text-text-secondary hover:bg-surface-hover hover:text-text",
+                    ? "text-text font-semibold"
+                    : "text-text-subtle hover:text-text",
                 ].join(" ")}
+                style={active ? { background: "oklch(40% 0.12 268 / 0.5)" } : undefined}
               >
                 <span>{it.label}</span>
                 {badge && (
-                  <span className="bg-gold text-gold-fg font-mono text-micro px-1.5 py-0.5 rounded-sm leading-none">
+                  <span className="bg-gold text-gold-fg font-mono text-micro leading-none" style={{ padding: "1px 5px", borderRadius: 4 }}>
                     {badge}
                   </span>
                 )}
@@ -165,7 +167,13 @@ export function AdminSidebar({ activeKey }: { activeKey: string }) {
 export function AdminTopBar({ crumbs, session, activeKey }: { crumbs: string[]; session: AdminSession; activeKey: string }) {
   const badges = getSidebarBadges();
   return (
-    <div className="flex items-center justify-between px-4 lg:px-6 h-12 border-b border-border-divider bg-bg-elevated gap-3">
+    <div className="flex items-center justify-between px-4 lg:px-6 border-b border-border gap-3"
+      style={{
+        height: 56,
+        background: "color-mix(in oklab, var(--panel) 78%, transparent)",
+        backdropFilter: "blur(14px) saturate(1.3)",
+        WebkitBackdropFilter: "blur(14px) saturate(1.3)",
+      }}>
       <div className="flex items-center gap-2 min-w-0">
         <AdminMobileNavTrigger groups={NAV_GROUPS} badges={badges} activeKey={activeKey} />
       <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-body-sm text-text-tertiary min-w-0 overflow-hidden">
