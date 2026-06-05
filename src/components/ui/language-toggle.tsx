@@ -59,37 +59,44 @@ export function LanguageToggle() {
         <ChevronDown size={11} aria-hidden className={cn("transition-transform", open && "rotate-180")} />
       </button>
       {open && typeof document !== "undefined" && createPortal(
-        <div
-          ref={menuRef}
-          role="menu"
-          aria-label="Language"
-          className="fixed left-3 right-3 top-[calc(env(safe-area-inset-top)+72px)] sm:left-auto sm:right-4 sm:top-[64px] sm:min-w-[180px] sm:max-w-[calc(100vw-24px)] rounded-xl border border-border bg-bg-elevated z-[61] shadow-[0_18px_42px_-14px_rgba(0,0,0,0.55)]"
-        >
-          {LANGS.map((l) => {
-            const active = l.value === locale;
-            return (
-              <button
-                key={l.value}
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setLocale(l.value);
-                  setOpen(false);
-                }}
-                className={cn(
-                  "w-full text-left flex items-center justify-between gap-3 px-3.5 py-2.5 font-display text-[13px] transition-colors",
-                  active ? "bg-bg-overlay text-text font-semibold" : "text-text-muted hover:bg-bg-overlay hover:text-text",
-                )}
-              >
-                <span className="flex flex-col leading-tight">
-                  <span>{l.native}</span>
-                  {l.value !== "en" && <span className="font-mono text-[10.5px] text-text-subtle">{l.label}</span>}
-                </span>
-                {active && <Check size={14} className="text-gold-300 shrink-0" />}
-              </button>
-            );
-          })}
-        </div>,
+        <>
+          <div aria-hidden className="fixed inset-0 z-[60] bg-black/45 backdrop-blur-md sm:bg-transparent sm:backdrop-blur-none" onClick={() => setOpen(false)} />
+          <div
+            ref={menuRef}
+            role="menu"
+            aria-label="Language"
+            className="fixed left-3 right-3 top-[calc(env(safe-area-inset-top)+72px)] sm:left-auto sm:right-4 sm:top-[64px] sm:min-w-[180px] sm:max-w-[calc(100vw-24px)] rounded-xl border border-border-strong bg-bg-elevated/85 backdrop-blur-xl z-[61] overflow-hidden shadow-[0_24px_48px_-16px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.06)]"
+            style={{ animation: "lang-rise 180ms cubic-bezier(.2,.8,.2,1)" }}
+          >
+            {LANGS.map((l) => {
+              const active = l.value === locale;
+              return (
+                <button
+                  key={l.value}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setLocale(l.value);
+                    setOpen(false);
+                  }}
+                  className={cn(
+                    "w-full text-left flex items-center justify-between gap-3 px-3.5 py-2.5 font-display text-[13px] transition-colors border-b border-border last:border-b-0",
+                    active ? "bg-bg-overlay text-text font-semibold" : "text-text-muted hover:bg-bg-overlay hover:text-text",
+                  )}
+                >
+                  <span className="flex flex-col leading-tight">
+                    <span>{l.native}</span>
+                    {l.value !== "en" && <span className="font-mono text-[10.5px] text-text-subtle">{l.label}</span>}
+                  </span>
+                  {active && <Check size={14} className="text-gold-300 shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
+          <style>{`
+            @keyframes lang-rise { from { transform: translateY(-6px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+          `}</style>
+        </>,
         document.body,
       )}
     </div>

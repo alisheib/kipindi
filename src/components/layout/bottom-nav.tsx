@@ -46,7 +46,8 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
   return (
     <nav
       aria-label="Primary"
-      className="xl:hidden fixed inset-x-0 bottom-0 z-40 bg-bg-elevated/95 backdrop-blur-xl border-t border-border pb-[env(safe-area-inset-bottom)]"
+      className="xl:hidden fixed inset-x-0 bottom-0 z-40 bg-bg-elevated/95 backdrop-blur-xl border-t border-border-strong pb-[env(safe-area-inset-bottom)]"
+      style={{ boxShadow: "inset 0 1px 0 oklch(100% 0 0 / 0.06), 0 -8px 24px -8px oklch(8% 0.06 268 / 0.35)" }}
     >
       <div className="flex items-stretch justify-around h-14">
         {items.map((it) => (

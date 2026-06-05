@@ -25,7 +25,8 @@ export function PeriodPicker() {
   };
 
   return (
-    <div className="inline-flex border border-border rounded-md overflow-hidden bg-bg-elevated font-mono text-micro">
+    <div className="inline-flex border border-border-strong rounded-lg overflow-hidden font-mono text-micro"
+         style={{ background: "radial-gradient(130% 150% at 0% 0%, oklch(22% 0.120 268) 0%, oklch(17% 0.090 268) 58%)", boxShadow: "var(--shadow-2), inset 0 1px 0 oklch(100% 0 0 / 0.05)" }}>
       {SEGMENTS.map((s) => {
         const isActive = s.id === activeId;
         return (
@@ -34,11 +35,15 @@ export function PeriodPicker() {
             href={href(s.id) as never}
             scroll={false}
             className={[
-              "px-2.5 h-7 inline-flex items-center border-r border-border last:border-r-0 transition-colors cursor-pointer select-none",
+              "px-3 h-8 inline-flex items-center border-r border-border last:border-r-0 transition-all cursor-pointer select-none",
               isActive
-                ? "bg-royal text-white font-bold"
-                : "text-text-secondary hover:bg-bg-sunken hover:text-text",
+                ? "text-white font-bold"
+                : "text-text-subtle hover:text-text",
             ].join(" ")}
+            style={isActive ? {
+              background: "linear-gradient(180deg, oklch(32% 0.155 268) 0%, oklch(25% 0.140 268) 100%)",
+              boxShadow: "inset 0 1px 0 oklch(100% 0 0 / 0.08), 0 0 8px -2px oklch(55% 0.18 268 / 0.4)",
+            } : { background: "transparent" }}
           >
             {s.label}
           </Link>
