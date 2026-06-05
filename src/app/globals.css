@@ -1393,6 +1393,29 @@ html.kp-reduce-motion *::after {
   scroll-behavior: auto !important;
 }
 
+/* ---------------------------------------------------------------------------
+   §6  data-motion THROTTLE (mid-tier Android)
+   Set via JS: `document.documentElement.setAttribute("data-motion", level)`.
+   "full" = all animations (default). "reduced" = loops off, enters kept.
+   "minimal" = same as kp-reduce-motion (near-instant everything).
+   --------------------------------------------------------------------------- */
+[data-motion="reduced"] .live-dot,
+[data-motion="reduced"] .cm-bubble::after,
+[data-motion="reduced"] .cm-status-dot,
+[data-motion="reduced"] .wc-rays,
+[data-motion="reduced"] .win-aura-anim,
+[data-motion="reduced"] .hm-halo-pulse { animation: none !important; }
+[data-motion="reduced"] .stagger-item { animation-delay: 0ms !important; }
+[data-motion="reduced"] .market-grid > * { animation-delay: 0ms !important; }
+
+[data-motion="minimal"] *,
+[data-motion="minimal"] *::before,
+[data-motion="minimal"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
 
 /* =====================================================================
    APPENDED: Claude Design — market surfaces (card / detail / probability

@@ -52,6 +52,16 @@ function readInitialLocale(): Locale {
   return v === "sw" || v === "fr" ? v : "en";
 }
 
+/** Heuristic: mid-tier Android ≤4 cores or ≤4GB RAM or explicit Save-Data. */
+function detectLowEnd(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const nav = navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean } };
+  if (nav.connection?.saveData) return true;
+  if (nav.hardwareConcurrency && nav.hardwareConcurrency <= 4) return true;
+  if (nav.deviceMemory && nav.deviceMemory <= 4) return true;
+  return false;
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   // Theme is purely a side-effect — the boot-script already applied the
   // class before paint. Just keep the React tree in sync after hydration.
@@ -60,7 +70,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // Apply the user's in-app "Reduce motion" choice app-wide (only when they
     // explicitly chose "off" — "system" is already handled by the media query).
     try {
-      document.documentElement.classList.toggle("kp-reduce-motion", getPrefs().motion === "off");
+      const prefs = getPrefs();
+      const userOff = prefs.motion === "off";
+      document.documentElement.classList.toggle("kp-reduce-motion", userOff);
+      // data-motion throttle for mid-tier Android: "full" | "reduced" | "minimal".
+      // User explicit off → "minimal"; low-end device → "reduced"; else "full".
+      const motionLevel = userOff
+        ? "minimal"
+        : detectLowEnd()
+          ? "reduced"
+          : "full";
+      document.documentElement.setAttribute("data-motion", motionLevel);
     } catch { /* ignore */ }
   }, []);
 

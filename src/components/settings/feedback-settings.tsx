@@ -34,6 +34,7 @@ export function FeedbackSettings() {
     setPrefs({ motion: nextReduce ? "off" : "system" });
     if (typeof document !== "undefined") {
       document.documentElement.classList.toggle("kp-reduce-motion", nextReduce);
+      document.documentElement.setAttribute("data-motion", nextReduce ? "minimal" : "full");
     }
   };
 
