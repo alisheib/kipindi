@@ -429,16 +429,16 @@
   grid-template-columns: 1fr 36px;
   gap: 8px;
   align-items: end;
-  background: var(--chat-elevated);
-  border: 1px solid var(--chat-border);
+  background: var(--bg-inset);
+  border: 1px solid var(--chat-border-strong);
   border-radius: var(--r-md);
-  padding: 6px 6px 6px 12px;
+  padding: 6px 6px 6px 14px;
   transition: border-color var(--ease-glide), box-shadow var(--ease-glide);
-  box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.04);
+  box-shadow: inset 0 2px 4px oklch(6% 0.08 268 / 0.4);
 }
 .cm-composer:focus-within {
-  border-color: var(--pearl-soft);
-  box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.04), 0 0 0 3px var(--pearl-soft);
+  border-color: var(--brand-500);
+  box-shadow: inset 0 2px 4px oklch(6% 0.08 268 / 0.4), 0 0 0 3px oklch(63% 0.18 262 / 0.2);
 }
 .cm-composer textarea {
   border: none;
@@ -458,22 +458,22 @@
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  background: var(--pearl);
-  color: var(--chat-canvas);
-  border: 1px solid var(--pearl-strong);
+  background: var(--brand-500);
+  color: #fff;
+  border: 1px solid var(--brand-400);
   display: grid;
   place-items: center;
   cursor: pointer;
   transition: background var(--ease-glide), transform var(--ease-glide), box-shadow var(--ease-glide);
-  box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.15);
+  box-shadow: inset 0 1px 0 oklch(72% 0.16 262 / 0.4);
 }
 .cm-send:hover {
-  background: var(--pearl-strong);
+  background: var(--brand-400);
   transform: translateY(-1px);
-  box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.15), 0 4px 12px -4px oklch(86% 0.040 268 / 0.35);
+  box-shadow: inset 0 1px 0 oklch(72% 0.16 262 / 0.4), 0 4px 14px -4px oklch(63% 0.18 262 / 0.4);
 }
 .cm-send:active { transform: translateY(1px) scale(0.96); }
-.cm-send:focus-visible { outline: 2px solid var(--pearl); outline-offset: 2px; }
+.cm-send:focus-visible { outline: 2px solid var(--brand-500); outline-offset: 2px; }
 .cm-send:disabled {
   background: var(--chat-overlay);
   color: var(--chat-text-subtle);
