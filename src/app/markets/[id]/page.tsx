@@ -232,14 +232,14 @@ export default async function MarketDetail({
                   <a
                     href={`/auth/register?next=${encodeURIComponent("/markets/" + m.id)}`}
                     className="btn btn-gold btn-md"
-                    style={{ borderRadius: 999 }}
+                    style={{ borderRadius: "var(--r-pill)" }}
                   >
                     Sign up
                   </a>
                   <a
                     href={`/auth/login?next=${encodeURIComponent("/markets/" + m.id)}`}
                     className="btn btn-ghost btn-md"
-                    style={{ borderRadius: 999 }}
+                    style={{ borderRadius: "var(--r-pill)" }}
                   >
                     Sign in
                   </a>

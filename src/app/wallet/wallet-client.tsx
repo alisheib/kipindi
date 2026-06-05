@@ -133,11 +133,11 @@ export function WalletPageClient({
         </div>
         {isAuthed && (
           <div className="flex items-center gap-2 shrink-0">
-            <Link href="/wallet/deposit" className="btn btn-gold btn-md inline-flex" style={{ borderRadius: 999 }}>
+            <Link href="/wallet/deposit" className="btn btn-gold btn-md inline-flex" style={{ borderRadius: "var(--r-pill)" }}>
               <ArrowDownToLine size={14} />
               Deposit
             </Link>
-            <Link href="/wallet/withdraw" className="btn btn-ghost btn-md inline-flex" style={{ borderRadius: 999 }}>
+            <Link href="/wallet/withdraw" className="btn btn-ghost btn-md inline-flex" style={{ borderRadius: "var(--r-pill)" }}>
               <ArrowUpFromLine size={14} />
               Withdraw
             </Link>

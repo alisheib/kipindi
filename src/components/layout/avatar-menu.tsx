@@ -76,7 +76,7 @@ export function AvatarMenu({
         <Link
           href="/auth/login"
           className="btn btn-ghost btn-sm hidden sm:inline-flex"
-          style={{ borderRadius: 999 }}
+          style={{ borderRadius: "var(--r-pill)" }}
           aria-label={t.common.signIn}
         >
           {t.common.signIn}
@@ -84,7 +84,7 @@ export function AvatarMenu({
         <Link
           href="/auth/register"
           className="btn btn-gold btn-sm"
-          style={{ borderRadius: 999 }}
+          style={{ borderRadius: "var(--r-pill)" }}
           aria-label={ACCOUNT_LABEL}
         >
           {SIGN_UP_LABEL}

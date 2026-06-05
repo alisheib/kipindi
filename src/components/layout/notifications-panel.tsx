@@ -245,11 +245,16 @@ export function NotificationsPanel() {
                       isUnread && "bg-gold-500/[0.04]",
                     )}
                   >
-                    <span className={cn(
-                      "h-9 w-9 rounded-md inline-flex items-center justify-center shrink-0 border",
-                      tintFor(n.kind),
-                    )}>
-                      <Icon s={15} />
+                    <span
+                      className="shrink-0 inline-flex items-center justify-center border"
+                      style={{
+                        width: 30, height: 30,
+                        borderRadius: "var(--r-sm)",
+                        background: "var(--bg-inset)",
+                        borderColor: "var(--border)",
+                      }}
+                    >
+                      <Icon s={16} />
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">

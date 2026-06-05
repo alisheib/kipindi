@@ -66,7 +66,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
           <Link
             href="/markets"
             className="btn btn-gold btn-lg whitespace-nowrap"
-            style={{ borderRadius: 999 }}
+            style={{ borderRadius: "var(--r-pill)" }}
           >
             Skip for now · Browse markets
           </Link>
@@ -166,7 +166,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               min="1900-01-01"
               max={new Date(new Date().getFullYear() - 18, new Date().getMonth(), new Date().getDate()).toISOString().slice(0, 10)}
             />
-            <button type="submit" className="btn btn-gold btn-lg w-full" style={{ borderRadius: 999 }}>
+            <button type="submit" className="btn btn-gold btn-lg w-full" style={{ borderRadius: "var(--r-pill)" }}>
               Verify NIDA · Thibitisha
             </button>
           </form>
@@ -210,7 +210,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               type="submit"
               disabled={docsCount < 3}
               className={docsCount >= 3 ? "btn btn-gold btn-lg w-full" : "btn btn-ghost btn-lg w-full"}
-              style={{ borderRadius: 999 }}
+              style={{ borderRadius: "var(--r-pill)" }}
             >
               Submit for review · Wasilisha
             </button>

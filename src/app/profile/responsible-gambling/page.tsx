@@ -121,7 +121,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           <Field name="sessionTimeLimitMin"      label="Session time (minutes)"   defaultValue={rg.sessionTimeLimitMin}      placeholder="e.g. 60" />
           <Field name="realityCheckIntervalMin"  label="Reality check (min 5, max 120)"  defaultValue={rg.realityCheckIntervalMin}  placeholder="30" min={5} max={120} step={5} />
           <div className="sm:col-span-2 pt-2">
-            <button type="submit" className="btn btn-gold btn-md" style={{ borderRadius: 999 }}>
+            <button type="submit" className="btn btn-gold btn-md" style={{ borderRadius: "var(--r-pill)" }}>
               Save limits · Hifadhi
             </button>
           </div>

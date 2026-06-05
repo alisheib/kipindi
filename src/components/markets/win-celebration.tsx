@@ -189,7 +189,7 @@ export function WinCelebrationHost() {
             type="button"
             onClick={() => setOpen(false)}
             className="btn btn-gold btn-md mt-5"
-            style={{ borderRadius: 999 }}
+            style={{ borderRadius: "var(--r-pill)" }}
           >
             Continue · Endelea
           </button>

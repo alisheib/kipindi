@@ -211,7 +211,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
             </p>
           </div>
 
-          <button type="submit" className="btn btn-gold btn-lg w-full" style={{ borderRadius: 999 }}>
+          <button type="submit" className="btn btn-gold btn-lg w-full" style={{ borderRadius: "var(--r-pill)" }}>
             <FileSignature size={16} />
             Submit declaration · Wasilisha
           </button>

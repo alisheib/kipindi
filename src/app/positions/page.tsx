@@ -179,12 +179,12 @@ function SummaryCell({
     : tone === "gold" ? "text-gold-300"
     : "text-text";
   return (
-    <div className="rounded-xl glass-panel px-4 py-3.5">
+    <div className="rounded-xl border border-border bg-bg-elevated px-4 py-3.5">
       <div className="flex items-center gap-1.5">
-        {icon}
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-semibold text-text-subtle">{label}</p>
+        {icon && <span className="text-text-subtle">{icon}</span>}
+        <p className="font-mono uppercase text-text-subtle" style={{ fontSize: 9.5, letterSpacing: "0.08em", fontWeight: 600 }}>{label}</p>
       </div>
-      <p className={`mt-1 font-display text-[19px] font-bold tabular-nums leading-tight ${valueClass}`}>{value}</p>
+      <p className={`mt-1.5 font-mono text-[18px] font-bold tabular-nums leading-tight ${valueClass}`}>{value}</p>
       <p className="text-[11px] italic text-text-subtle">{sw}</p>
       <p className="mt-1 font-mono text-[10.5px] tabular-nums text-text-muted">{sub}</p>
     </div>
