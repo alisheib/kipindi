@@ -91,28 +91,13 @@ export function ResolveControls({ marketId, stage }: { marketId: string; stage: 
   return (
     <>
       <div className="grid grid-cols-3 gap-2">
-        <button
-          type="button"
-          onClick={() => submit("YES")}
-          disabled={pending}
-          className="h-10 rounded-md bg-yes-500 font-bold text-yes-950 transition-colors hover:bg-yes-400 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
+        <button type="button" onClick={() => submit("YES")} disabled={pending} className="btn btn-yes btn-md w-full">
           Resolve YES
         </button>
-        <button
-          type="button"
-          onClick={() => submit("NO")}
-          disabled={pending}
-          className="h-10 rounded-md bg-no-500 font-bold text-white transition-colors hover:bg-no-400 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
+        <button type="button" onClick={() => submit("NO")} disabled={pending} className="btn btn-no btn-md w-full">
           Resolve NO
         </button>
-        <button
-          type="button"
-          onClick={() => submit("VOID")}
-          disabled={pending}
-          className="h-10 rounded-md border border-border bg-bg-overlay font-bold text-text-muted transition-colors hover:border-border-strong disabled:opacity-50 disabled:cursor-not-allowed"
-        >
+        <button type="button" onClick={() => submit("VOID")} disabled={pending} className="btn btn-ghost btn-md w-full">
           Void
         </button>
       </div>
