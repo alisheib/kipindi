@@ -57,7 +57,7 @@ export default async function SessionsPage() {
               Active sessions
             </p>
           </div>
-          <h1 className="font-display text-[24px] lg:text-[26px] font-bold text-text leading-tight tracking-[-0.02em]">
+          <h1 className="font-display text-[26px] lg:text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
             Devices &amp; sessions <span className="text-text-subtle italic font-normal text-[18px]">· Vifaa</span>
           </h1>
           <p className="mt-1 text-[13px] text-text-muted">

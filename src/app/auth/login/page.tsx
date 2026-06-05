@@ -83,7 +83,7 @@ export default async function LoginPage({
             <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-gold-300">
               Sign in · Ingia
             </p>
-            <h1 className="mt-1.5 font-display text-[26px] font-bold leading-tight text-text tracking-[-0.02em]">
+            <h1 className="mt-1.5 font-display text-[28px] font-bold leading-tight text-text tracking-[-0.02em]">
               Continue with your phone
             </h1>
             <p className="mt-1.5 text-[13.5px] text-text-muted">
@@ -160,7 +160,7 @@ export default async function LoginPage({
             No account?{" "}
             <Link
               href={"/auth/register" as never}
-              className="font-semibold text-aqua-200 hover:text-aqua-100 underline-offset-2 hover:underline"
+              className="font-semibold text-accent-400 hover:text-accent-300 underline-offset-2 hover:underline"
             >
               Create one · Fungua akaunti
             </Link>

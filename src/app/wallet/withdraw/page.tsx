@@ -140,7 +140,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
             Amount · Kiasi
           </label>
           <div className="flex">
-            <span className="inline-flex items-center px-3 h-12 rounded-l-md border border-r-0 border-border bg-bg-overlay font-mono text-[13px] font-bold text-text-subtle">
+            <span className="inline-flex items-center px-3 h-11 rounded-l-md border border-r-0 border-border bg-bg-overlay font-mono text-[13px] font-bold text-text-subtle">
               TZS
             </span>
             <input
@@ -152,7 +152,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
               pattern="[0-9]*"
               placeholder="10,000"
               disabled={!kycApproved}
-              className="flex-1 h-12 px-3 rounded-r-md border border-border bg-bg-overlay font-display font-bold text-[20px] tabular-nums text-text focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors disabled:opacity-50"
+              className="flex-1 h-11 px-3 rounded-r-md border border-border bg-bg-overlay font-display font-bold text-[20px] tabular-nums text-text focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors disabled:opacity-50"
             />
           </div>
           <p className="mt-2 text-[11px] text-text-subtle">

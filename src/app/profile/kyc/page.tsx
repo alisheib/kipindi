@@ -92,7 +92,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               Identity verification
             </p>
           </div>
-          <h1 className="font-display text-[24px] lg:text-[26px] font-bold text-text leading-tight tracking-[-0.02em]">
+          <h1 className="font-display text-[26px] lg:text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
             Verify your NIDA · Thibitisha NIDA
           </h1>
           <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose">
@@ -115,7 +115,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                 {kyc?.rejectReason ? <>Reason: <span className="font-semibold text-text">{String(kyc.rejectReason).replace(/_/g, " ").toLowerCase()}</span>. </> : null}
                 {kyc?.rejectNote ? `${kyc.rejectNote} ` : ""}
                 Please re-enter your details below and resubmit, or email{" "}
-                <a href="mailto:support@50pick.com?subject=KYC%20review" className="text-aqua-200 underline-offset-2 hover:underline">support@50pick.com</a>.
+                <a href="mailto:support@50pick.com?subject=KYC%20review" className="text-accent-400 underline-offset-2 hover:underline">support@50pick.com</a>.
                 <span className="block italic text-text-subtle text-[11.5px] mt-0.5">Tafadhali jaribu tena au wasiliana na msaada.</span>
               </p>
             </div>

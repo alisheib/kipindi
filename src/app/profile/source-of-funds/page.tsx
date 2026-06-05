@@ -77,7 +77,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
               AML · Enhanced due diligence
             </p>
           </div>
-          <h1 className="font-display text-[24px] lg:text-[26px] font-bold text-text leading-tight tracking-[-0.02em]">
+          <h1 className="font-display text-[26px] lg:text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
             Source of funds <span className="text-text-subtle italic font-normal text-[18px]">· Asili ya pesa</span>
           </h1>
           <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose">

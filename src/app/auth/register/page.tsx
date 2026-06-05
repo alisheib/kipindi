@@ -66,7 +66,7 @@ export default async function RegisterPage({
             <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-gold-300">
               Create account · Fungua akaunti
             </p>
-            <h1 className="mt-1.5 font-display text-[26px] font-bold leading-tight text-text tracking-[-0.02em]">
+            <h1 className="mt-1.5 font-display text-[28px] font-bold leading-tight text-text tracking-[-0.02em]">
               Welcome to 50pick
             </h1>
             <p className="mt-1.5 text-[13.5px] text-text-muted">
@@ -212,7 +212,7 @@ export default async function RegisterPage({
               <Checkbox
                 name="acceptTerms"
                 required
-                label={<span className="text-[13px] text-text-muted">I accept the{" "}<Link href="/legal/terms" className="text-aqua-200 underline-offset-2 hover:underline">Terms</Link>{" "}and{" "}<Link href="/legal/privacy" className="text-aqua-200 underline-offset-2 hover:underline">Privacy</Link>. <span className="italic text-text-subtle">Ninakubali Sheria na Faragha.</span></span>}
+                label={<span className="text-[13px] text-text-muted">I accept the{" "}<Link href="/legal/terms" className="text-accent-400 underline-offset-2 hover:underline">Terms</Link>{" "}and{" "}<Link href="/legal/privacy" className="text-accent-400 underline-offset-2 hover:underline">Privacy</Link>. <span className="italic text-text-subtle">Ninakubali Sheria na Faragha.</span></span>}
               />
               <Checkbox
                 name="marketingOptIn"
@@ -227,7 +227,7 @@ export default async function RegisterPage({
             Already have an account?{" "}
             <Link
               href={"/auth/login" as never}
-              className="font-semibold text-aqua-200 hover:text-aqua-100 underline-offset-2 hover:underline"
+              className="font-semibold text-accent-400 hover:text-accent-300 underline-offset-2 hover:underline"
             >
               Sign in · Ingia
             </Link>

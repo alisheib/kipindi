@@ -30,7 +30,7 @@ export default function ForgotPasswordPage() {
             <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-gold-300">
               Forgot password · Umesahau nenosiri?
             </p>
-            <h1 className="mt-1.5 font-display text-[24px] font-bold leading-tight text-text tracking-[-0.02em]">
+            <h1 className="mt-1.5 font-display text-[28px] font-bold leading-tight text-text tracking-[-0.02em]">
               Recover your account
             </h1>
             <p className="mt-1.5 text-[13.5px] text-text-muted">
@@ -94,7 +94,7 @@ export default function ForgotPasswordPage() {
             Remembered it?{" "}
             <Link
               href="/auth/login"
-              className="font-semibold text-aqua-200 hover:text-aqua-100 underline-offset-2 hover:underline"
+              className="font-semibold text-accent-400 hover:text-accent-300 underline-offset-2 hover:underline"
             >
               Sign in · Ingia
             </Link>

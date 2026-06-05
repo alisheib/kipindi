@@ -46,7 +46,7 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
 
   return (
     <header
-      className="sticky top-0 z-40"
+      className="sticky top-0 z-30"
       style={{
         height: 56,
         background: "color-mix(in oklab, var(--panel) 78%, transparent)",

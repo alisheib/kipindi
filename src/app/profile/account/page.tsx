@@ -60,7 +60,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
               My account
             </p>
           </div>
-          <h1 className="font-display text-[24px] lg:text-[26px] font-bold text-text leading-tight tracking-[-0.02em]">
+          <h1 className="font-display text-[26px] lg:text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
             Akaunti yangu
           </h1>
           <p className="mt-1 text-[13px] italic text-text-subtle">My account</p>

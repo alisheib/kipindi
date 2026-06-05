@@ -55,7 +55,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-bg-base text-text">
       <TopAppBar user={topUser} />
       <LiveTicker events={getTickerFeed()} />
-      <main className="pb-[calc(56px+env(safe-area-inset-bottom))] xl:pb-0">
+      <main className="pb-[calc(64px+env(safe-area-inset-bottom))] xl:pb-0">
         <RouteTransition>{children}</RouteTransition>
       </main>
       <PublicFooter />

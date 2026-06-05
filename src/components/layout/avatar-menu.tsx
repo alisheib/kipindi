@@ -100,7 +100,7 @@ export function AvatarMenu({
         aria-label="Account menu"
         aria-expanded={open ? "true" : "false"}
         onClick={() => setOpen((v) => !v)}
-        className="rounded-pill focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
+        className="rounded-pill focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
         style={{
           width: 34,
           height: 34,

@@ -35,7 +35,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
             <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-gold-300">
               Verification · Uthibitisho
             </p>
-            <h1 className="mt-1.5 font-display text-[26px] font-bold leading-tight text-text tracking-[-0.02em]">
+            <h1 className="mt-1.5 font-display text-[28px] font-bold leading-tight text-text tracking-[-0.02em]">
               Enter the 6-digit code
             </h1>
             <p className="mt-1.5 text-[13.5px] text-text-muted">
@@ -105,7 +105,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
               // payload, so send the user back to start over (phone prefilled).
               <Link
                 href={`/auth/register${phone ? `?phone=${encodeURIComponent(phone)}` : ""}` as never}
-                className="font-mono text-[12px] uppercase tracking-[0.14em] text-aqua-200 hover:text-aqua-100 transition-colors"
+                className="font-mono text-[12px] uppercase tracking-[0.14em] text-accent-400 hover:text-accent-300 transition-colors"
               >
                 Start over
               </Link>
@@ -115,7 +115,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
                 <input type="hidden" name="purpose" value={purpose} />
                 <button
                   type="submit"
-                  className="font-mono text-[12px] uppercase tracking-[0.14em] text-aqua-200 hover:text-aqua-100 transition-colors"
+                  className="font-mono text-[12px] uppercase tracking-[0.14em] text-accent-400 hover:text-accent-300 transition-colors"
                 >
                   Resend code
                 </button>

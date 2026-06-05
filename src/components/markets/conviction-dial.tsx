@@ -692,7 +692,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
         onKeyDown={closedNow ? undefined : onKeyDown}
         onPointerEnter={closedNow ? undefined : () => setHover(true)}
         onPointerLeave={closedNow ? undefined : () => setHover(false)}
-        className={`relative w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 rounded-md touch-none transition-opacity ${closedNow ? "opacity-40" : ""}`}
+        className={`relative w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-md touch-none transition-opacity ${closedNow ? "opacity-40" : ""}`}
         style={{ height, cursor: closedNow ? "not-allowed" : (dragging ? "grabbing" : "grab") }}
       >
         <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} className="block overflow-visible">

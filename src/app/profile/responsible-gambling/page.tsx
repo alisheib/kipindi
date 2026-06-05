@@ -75,7 +75,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
               Player protection
             </p>
           </div>
-          <h1 className="font-display text-[24px] lg:text-[26px] font-bold text-text leading-tight tracking-[-0.02em]">
+          <h1 className="font-display text-[26px] lg:text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
             Responsible gambling <span className="text-text-subtle italic font-normal text-[18px]">· Mchezo salama</span>
           </h1>
           <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose">
@@ -199,8 +199,8 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           <SelfExcludeConfirm />
         </form>
         <p className="font-mono text-[11px] text-text-subtle pt-1">
-          Need help now? Tanzania Helpline · <a href="tel:+255222115811" className="text-aqua-200 underline-offset-2 hover:underline">+255 22 211 5811</a>.
-          International support at <a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="text-aqua-200 underline-offset-2 hover:underline">begambleaware.org</a>.
+          Need help now? Tanzania Helpline · <a href="tel:+255222115811" className="text-accent-400 underline-offset-2 hover:underline">+255 22 211 5811</a>.
+          International support at <a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="text-accent-400 underline-offset-2 hover:underline">begambleaware.org</a>.
         </p>
       </section>
     </main>
