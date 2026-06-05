@@ -218,6 +218,38 @@ Already shipped (was on this list before):
   `MODERATOR`) pill so the operator can see at a glance that
   `ADMIN_BOOTSTRAP_PHONES` wired up.
 
+## Dark Glass Kit Rebuild (Phase 3 + 3b) — June 2026
+
+The entire UI was rebuilt from the design kit in `50Pick Modernization/`.
+34 commits on `main` covering:
+
+- **All tokens** updated: `--panel`, `--bg-inset`, `--bg-elevated2`, `--brand-*`,
+  `--live-400`, `--text-faint` added to globals.css
+- **All components** use kit icons from `src/components/ui/glyphs.tsx` (75+ SVGs
+  at 1.85px stroke). Lucide-react removed from all player-facing files.
+- **All focus rings** brand-500 (zero aqua-300 remaining)
+- **All border radii** rounded-xl / 16px (zero rounded-2xl remaining)
+- **Buttons** solid fills, r-sm, kit inset highlights + glow
+- **Chips** rebuilt: height-based, 700 weight, 0.06em tracking, uppercase
+- **Inputs** bg-inset, 44px, rounded-lg (12px), brand-500 focus
+- **Modals** rounded-xl, oklch shadows
+- **Toggle/Switch** accent-500/bg-inset, **Checkbox** 19x19 accent-500
+- **Form polish**: no native spinners, styled date inputs, textarea
+
+**Read [`50Pick Modernization/MODERNIZATION_PLAN.md`](50Pick%20Modernization/MODERNIZATION_PLAN.md)
+for the full status and remaining items.**
+
+## Git workflow — ALWAYS commit AND push
+
+```
+git add <files>
+git commit -m "Sprint NN: short title"
+git push
+```
+
+**Never leave commits unpushed.** Railway auto-redeploys on push.
+Ali checks the live site, not local — unpushed work is invisible to him.
+
 ## Memory
 
 `C:\Users\Ali\.claude\projects\C--Users-Ali\memory\MEMORY.md` indexes
