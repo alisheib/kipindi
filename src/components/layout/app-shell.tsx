@@ -6,6 +6,7 @@ import { PublicFooter } from "./public-footer";
 import { AuthFlash } from "./auth-flash";
 import { NotifyPoller } from "@/components/markets/notify-poller";
 import { WinCelebrationHost } from "@/components/markets/win-celebration";
+import { RouteTransition } from "@/components/ui/route-transition";
 import { getSession } from "@/lib/server/session";
 import { db } from "@/lib/server/store";
 import { user as guestUser } from "@/lib/mock-data";
@@ -55,7 +56,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <TopAppBar user={topUser} />
       <LiveTicker events={getTickerFeed()} />
       <main className="pb-[calc(56px+env(safe-area-inset-bottom))] xl:pb-0">
-        {children}
+        <RouteTransition>{children}</RouteTransition>
       </main>
       <PublicFooter />
       <BottomNav isAuthed={!!session} />
