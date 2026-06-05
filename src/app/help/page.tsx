@@ -41,7 +41,7 @@ const FAQS: { q: string; a: string }[] = [
 export default function HelpPage() {
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-5">
-      <header className="relative overflow-hidden rounded-2xl border border-border bg-bg-elevated">
+      <header className="relative overflow-hidden rounded-2xl border border-border-strong bg-bg-elevated">
         <div
           className="absolute inset-0"
           aria-hidden
@@ -169,7 +169,7 @@ function ContactCard({
     : tone === "info"  ? "border-info-border bg-info-bg/30 text-info-fg"
     :                    "border-gold-700 bg-gold-500/10 text-gold-300";
   const card = (
-    <div className="rounded-xl border border-border bg-bg-elevated p-4 space-y-2 hover:border-gold-700 transition-colors h-full">
+    <div className="rounded-xl glass-panel p-4 space-y-2 hover:border-gold-700 transition-colors h-full">
       <div className="flex items-center gap-2">
         <span className={`inline-flex h-7 w-7 items-center justify-center rounded-md border ${tintCls}`}>
           {icon}
@@ -198,7 +198,7 @@ function QuickLinkCard({
   return (
     <a
       href={href}
-      className="flex items-center gap-3 rounded-xl border border-border bg-bg-elevated p-4 hover:border-gold-700 hover:bg-bg-overlay transition-colors"
+      className="flex items-center gap-3 rounded-xl glass-panel p-4 hover:border-gold-700 transition-colors"
     >
       <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-gold-500/10 text-gold-300 shrink-0">
         {icon}

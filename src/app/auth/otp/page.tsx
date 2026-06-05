@@ -29,8 +29,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
         </Link>
 
         <section
-          className="rounded-2xl border border-border bg-bg-elevated p-6 space-y-5"
-          style={{ boxShadow: "var(--shadow-card)" }}
+          className="rounded-2xl glass-panel p-6 space-y-5"
         >
           <div>
             <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-gold-300">

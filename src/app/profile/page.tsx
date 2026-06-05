@@ -64,7 +64,7 @@ export default async function ProfilePage() {
       </h1>
       {/* ── Hero — kit-faithful: tilted FiftyMark watermark, OKLCH gradient,
             mono-stamped meta, picture uploader badge. No Kipindi tokens. */}
-      <section className="relative overflow-hidden rounded-2xl border border-border bg-bg-elevated">
+      <section className="relative overflow-hidden rounded-2xl border border-border-strong bg-bg-elevated">
         {/* Layered background — emerald → rose tilt + mark watermark */}
         <div
           className="absolute inset-0"
@@ -213,7 +213,7 @@ export default async function ProfilePage() {
       {/* ── Sign out */}
       <a
         href="/auth/logout"
-        className="group inline-flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-bg-elevated px-4 py-3.5 hover:border-no-700 transition-colors"
+        className="group inline-flex w-full items-center justify-between gap-3 rounded-xl glass-panel px-4 py-3.5 hover:border-no-700 transition-colors"
       >
         <span className="inline-flex items-center gap-3">
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-no-500/10 text-no-300 group-hover:bg-no-500/20 transition-colors">

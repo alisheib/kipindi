@@ -15,8 +15,7 @@ export default function ForgotPasswordPage() {
         </Link>
 
         <section
-          className="rounded-2xl border border-border bg-bg-elevated p-6 space-y-5"
-          style={{ boxShadow: "var(--shadow-card)" }}
+          className="rounded-2xl glass-panel p-6 space-y-5"
         >
           <Link
             href="/auth/login"
