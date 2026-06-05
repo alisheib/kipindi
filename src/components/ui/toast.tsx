@@ -175,7 +175,11 @@ function ToastItem({ toast, exiting, onDismiss }: { toast: Toast; exiting: boole
         v.surface,
         visible ? "translate-y-0 opacity-100 scale-100" : "-translate-y-2 opacity-0 scale-95",
       )}
-      style={{ background: "var(--bg-elevated)" }}
+      style={{
+        background: "color-mix(in oklab, var(--bg-elevated) 92%, var(--teal-500) 8%)",
+        backdropFilter: "blur(14px) saturate(1.1)",
+        WebkitBackdropFilter: "blur(14px) saturate(1.1)",
+      }}
     >
       {/* Heraldic rail — 3px wide, gilt-tinted accent at the leading edge */}
       <div className={cn("absolute left-0 top-0 bottom-0 w-[3px]", v.rail)} aria-hidden />
@@ -201,11 +205,12 @@ function ToastItem({ toast, exiting, onDismiss }: { toast: Toast; exiting: boole
       >
         <X size={14} />
       </button>
-      <div className="absolute inset-x-0 bottom-0 h-1 bg-border/40">
+      <div className="absolute inset-x-0 bottom-0 h-[3px] bg-border/30" aria-hidden>
         <div
-          className={cn("h-full origin-left", v.bar)}
+          className={cn("h-full origin-left relative", v.bar)}
           style={{
             animation: `toast-bar ${toast.durationMs}ms linear forwards`,
+            boxShadow: "0 0 6px 0 currentColor",
           }}
         />
       </div>
