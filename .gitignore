@@ -1,0 +1,46 @@
+node_modules
+.next
+out
+dist
+.DS_Store
+*.log
+.env
+.env.local
+.env.*.local
+# Notepad / VS Code "save as" can append .txt — refuse those too.
+.env.local.txt
+.env.*.txt
+.prisma-smoke-probe.mjs
+coverage
+.vercel
+next-env.d.ts
+prisma/migrations/dev.db*
+.idea
+.vscode/*
+!.vscode/extensions.json
+
+# Test artifacts (regenerated on every run)
+scripts/mobile-audit/
+
+# Local store snapshots (Railway uses /data/50pick-backups via STORE_BACKUP_DIR)
+.50pick-backups/
+.kipindi-backups/
+
+# Local screenshot output
+.50pick-shots/
+
+# TS incremental cache
+tsconfig.tsbuildinfo
+
+# Old design kits — local backups, never committed
+50Pick  - old/
+50PICK - old/
+50Pick-old/
+50PICK-old/
+
+# Local QA screenshots
+scripts/_walkthrough/
+
+# Test images (user reference, not for production)
+Test Images/
+F1 Tetsing image/

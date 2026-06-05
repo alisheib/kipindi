@@ -1,0 +1,450 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/toast";
+import {
+  generatePollAction,
+  approvePollAction,
+  rejectPollAction,
+  editPollAction,
+  publishPollAction,
+  deletePollAction,
+  seedFixturesAction,
+} from "./actions";
+import type { StoredAIPoll, QualityIndicator, FilterReason } from "@/lib/server/ai-poll-generation";
+
+/* ─── Generate form ─── */
+
+const CATEGORIES = [
+  { id: "sports", label: "Sports" },
+  { id: "macro", label: "Macro / Economy" },
+  { id: "weather", label: "Weather" },
+  { id: "crypto", label: "Crypto" },
+  { id: "culture", label: "Culture" },
+  { id: "infrastructure", label: "Infrastructure" },
+] as const;
+
+export function GenerateForm() {
+  const [pending, start] = useTransition();
+  const [category, setCategory] = useState("sports");
+  const [prompt, setPrompt] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const generate = () => {
+    setGenerating(true);
+    start(async () => {
+      const fd = new FormData();
+      fd.set("category", category);
+      fd.set("prompt", prompt);
+      const r = await generatePollAction(fd);
+      setGenerating(false);
+      if (r.ok) {
+        const state = r.poll.state;
+        if (state === "PENDING_REVIEW") {
+          toast({ title: "Poll generated", description: "Ready for review.", variant: "success" });
+        } else if (state === "FILTERED") {
+          toast({ title: "Poll filtered", description: `Quality too low: ${r.poll.filterReasons.join(", ")}`, variant: "warning" });
+        } else if (state === "VALIDATION_FAILED") {
+          toast({ title: "Generation failed", description: r.poll.filterReasons.join(", "), variant: "danger" });
+        }
+      }
+      router.refresh();
+    });
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        {CATEGORIES.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => setCategory(c.id)}
+            className={`px-3 py-1.5 rounded-pill text-[12px] font-mono uppercase tracking-[0.1em] border transition-colors ${
+              category === c.id
+                ? "border-gold bg-gold/10 text-gold-300"
+                : "border-border bg-bg-overlay text-text-muted hover:border-text-subtle"
+            }`}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+      <textarea
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        placeholder="Optional: guide the AI with specific instructions (e.g. 'Focus on Premier League football this weekend')"
+        className="w-full rounded-md border border-border bg-bg-overlay px-3 py-2 text-[13px] text-text placeholder:text-text-subtle outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
+        rows={2}
+      />
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={generate}
+          disabled={pending || generating}
+          className="btn btn-gold btn-sm rounded-pill min-w-[160px]"
+        >
+          {generating ? (
+            <span className="flex items-center gap-2">
+              <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
+              Generating…
+            </span>
+          ) : (
+            "Generate poll"
+          )}
+        </button>
+        <span className="text-[11px] text-text-subtle font-mono">
+          Category: {category}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Quality indicators display ─── */
+
+export function QualityBadges({ indicators, overall }: { indicators: QualityIndicator[]; overall: number }) {
+  const statusColor = (s: "good" | "warning" | "bad") =>
+    s === "good" ? "var(--yes-300)" : s === "warning" ? "oklch(82% 0.16 80)" : "oklch(80% 0.18 25)";
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-2">
+        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
+          Overall quality
+        </span>
+        <span
+          className="font-mono text-[13px] font-bold tabular-nums"
+          style={{ color: overall >= 80 ? "var(--yes-300)" : overall >= 50 ? "oklch(82% 0.16 80)" : "oklch(80% 0.18 25)" }}
+        >
+          {overall}%
+        </span>
+        <div className="flex-1 h-1.5 bg-bg-overlay rounded-pill overflow-hidden">
+          <div
+            className="h-full rounded-pill transition-all"
+            style={{
+              width: `${overall}%`,
+              backgroundColor: overall >= 80 ? "var(--yes-500)" : overall >= 50 ? "var(--warning-500)" : "var(--danger-500)",
+            }}
+          />
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {indicators.map((q, i) => (
+          <span
+            key={i}
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-pill text-[10px] font-mono border"
+            style={{
+              color: statusColor(q.status),
+              borderColor: `color-mix(in oklab, ${statusColor(q.status)} 30%, transparent)`,
+              background: `color-mix(in oklab, ${statusColor(q.status)} 8%, transparent)`,
+            }}
+          >
+            <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: statusColor(q.status) }} />
+            {q.label}: {q.score}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Filter reasons display ─── */
+
+const REASON_LABELS: Record<string, string> = {
+  empty_title: "Empty title",
+  empty_criterion: "Empty resolution criterion",
+  invalid_date: "Invalid resolution date",
+  past_date: "Resolution date is in the past",
+  no_options: "No betting options",
+  duplicate_options: "Duplicate options detected",
+  too_few_options: "Too few options (need 2+)",
+  invalid_category: "Unknown category",
+  banned_category: "Banned category (policy)",
+  low_confidence: "Low AI confidence",
+  title_too_long: "Title too long",
+  criterion_too_long: "Criterion too long",
+  xss_detected: "XSS / injection detected",
+  null_bytes: "Null bytes detected",
+  duplicate_poll: "Duplicate of existing poll",
+  no_sources: "No valid sources",
+  invalid_source_url: "Invalid source URL",
+  malformed_response: "Malformed AI response",
+  provider_error: "AI provider error",
+};
+
+export function FilterReasonChips({ reasons }: { reasons: FilterReason[] }) {
+  if (reasons.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {reasons.map((r, i) => (
+        <span
+          key={i}
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-pill text-[10px] font-mono border border-danger-500/30 bg-danger-500/8 text-[oklch(80%_0.18_25)]"
+        >
+          {REASON_LABELS[r] ?? r}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/* ─── Review actions (approve / reject / edit / regenerate) ─── */
+
+export function ReviewActions({ poll }: { poll: StoredAIPoll }) {
+  const [pending, start] = useTransition();
+  const [showReject, setShowReject] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const approve = () => {
+    start(async () => {
+      const fd = new FormData();
+      fd.set("id", poll.id);
+      const r = await approvePollAction(fd);
+      if (!r.ok) toast({ title: "Could not approve", description: r.error, variant: "danger" });
+      else toast({ title: "Approved", description: "Poll ready to publish.", variant: "success" });
+      router.refresh();
+    });
+  };
+
+  const regenerate = () => {
+    start(async () => {
+      const fd = new FormData();
+      fd.set("category", poll.requestCategory);
+      fd.set("prompt", poll.requestPrompt);
+      fd.set("regenerationOf", poll.id);
+      const r = await generatePollAction(fd);
+      if (r.ok) toast({ title: "Regenerated", description: `New poll: ${r.poll.state}`, variant: "success" });
+      router.refresh();
+    });
+  };
+
+  return (
+    <div className="flex flex-col gap-2 min-w-[160px]">
+      <button onClick={approve} disabled={pending} className="btn btn-gold btn-sm rounded-pill">
+        {pending ? "Processing…" : "Approve"}
+      </button>
+      <button onClick={() => setShowEdit((v) => !v)} disabled={pending} className="btn btn-ghost btn-sm rounded-pill">
+        Edit…
+      </button>
+      <button onClick={regenerate} disabled={pending} className="btn btn-ghost btn-sm rounded-pill">
+        Regenerate
+      </button>
+      <button onClick={() => setShowReject((v) => !v)} disabled={pending} className="btn btn-ghost btn-sm rounded-pill text-[oklch(80%_0.18_25)]">
+        Reject…
+      </button>
+
+      {showReject && <RejectForm pollId={poll.id} onClose={() => setShowReject(false)} />}
+      {showEdit && <EditForm poll={poll} onClose={() => setShowEdit(false)} />}
+    </div>
+  );
+}
+
+/* ─── Publish actions ─── */
+
+export function PublishActions({ poll }: { poll: StoredAIPoll }) {
+  const [pending, start] = useTransition();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const publish = () => {
+    start(async () => {
+      const fd = new FormData();
+      fd.set("id", poll.id);
+      const r = await publishPollAction(fd);
+      if (!r.ok) toast({ title: "Publish failed", description: r.error, variant: "danger" });
+      else toast({ title: "Published", description: `Market ${r.marketId} created.`, variant: "success" });
+      router.refresh();
+    });
+  };
+
+  return (
+    <button onClick={publish} disabled={pending} className="btn btn-gold btn-sm rounded-pill min-w-[120px]">
+      {pending ? "Publishing…" : "Publish as market"}
+    </button>
+  );
+}
+
+/* ─── Delete actions (for filtered/failed/rejected) ─── */
+
+export function DeleteAction({ pollId }: { pollId: string }) {
+  const [pending, start] = useTransition();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const del = () => {
+    start(async () => {
+      const fd = new FormData();
+      fd.set("id", pollId);
+      const r = await deletePollAction(fd);
+      if (!r.ok) toast({ title: "Delete failed", description: r.error, variant: "danger" });
+      else toast({ title: "Deleted", variant: "default" });
+      router.refresh();
+    });
+  };
+
+  return (
+    <button onClick={del} disabled={pending} className="btn btn-ghost btn-sm rounded-pill text-text-subtle hover:text-[oklch(80%_0.18_25)]">
+      {pending ? "Deleting…" : "Delete"}
+    </button>
+  );
+}
+
+/* ─── Seed fixtures button ─── */
+
+export function SeedFixturesButton() {
+  const [pending, start] = useTransition();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const seed = () => {
+    start(async () => {
+      const r = await seedFixturesAction();
+      if (r.ok) toast({ title: "Fixtures seeded", description: `${r.count} polls created.`, variant: "success" });
+      router.refresh();
+    });
+  };
+
+  return (
+    <button onClick={seed} disabled={pending} className="btn btn-ghost btn-sm rounded-pill text-[12px]">
+      {pending ? "Seeding…" : "Seed fixtures"}
+    </button>
+  );
+}
+
+/* ─── Reject sub-form ─── */
+
+const REJECT_REASONS = [
+  { id: "banned_category", label: "Banned category" },
+  { id: "low_confidence", label: "Low quality" },
+  { id: "duplicate_poll", label: "Duplicate" },
+  { id: "malformed_response", label: "Malformed" },
+  { id: "empty_title", label: "Missing content" },
+] as const;
+
+function RejectForm({ pollId, onClose }: { pollId: string; onClose: () => void }) {
+  const [pending, start] = useTransition();
+  const [reason, setReason] = useState<string>("low_confidence");
+  const [note, setNote] = useState("");
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const submit = () => {
+    start(async () => {
+      const fd = new FormData();
+      fd.set("id", pollId);
+      fd.set("reasons", reason);
+      fd.set("note", note);
+      const r = await rejectPollAction(fd);
+      if (!r.ok) toast({ title: "Reject failed", description: r.error, variant: "danger" });
+      else toast({ title: "Rejected", variant: "default" });
+      onClose();
+      router.refresh();
+    });
+  };
+
+  return (
+    <div className="mt-2 z-10 rounded-md border border-border bg-bg-elevated p-3 shadow-lg w-[280px]">
+      <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-2">
+        Reject reason
+      </p>
+      <select
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        className="w-full h-9 rounded-md border border-border bg-bg-overlay px-2 text-[12.5px] text-text mb-2 outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
+      >
+        {REJECT_REASONS.map((r) => (
+          <option key={r.id} value={r.id}>{r.label}</option>
+        ))}
+      </select>
+      <textarea
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="Optional note for the audit log…"
+        className="w-full rounded-md border border-border bg-bg-overlay px-2 py-1.5 text-[12px] text-text mb-2 outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors"
+        rows={2}
+      />
+      <div className="grid grid-cols-2 gap-2">
+        <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">Cancel</button>
+        <button type="button" onClick={submit} disabled={pending} className="btn btn-no btn-sm">
+          {pending ? "Rejecting…" : "Reject"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Edit sub-form ─── */
+
+function EditForm({ poll, onClose }: { poll: StoredAIPoll; onClose: () => void }) {
+  const [pending, start] = useTransition();
+  const [titleEn, setTitleEn] = useState(poll.titleEn);
+  const [titleSw, setTitleSw] = useState(poll.titleSw);
+  const [category, setCategory] = useState(poll.category);
+  const [criterion, setCriterion] = useState(poll.resolutionCriterion);
+  const [resAt, setResAt] = useState(poll.resolutionAt ? new Date(poll.resolutionAt).toISOString().slice(0, 16) : "");
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const submit = () => {
+    start(async () => {
+      const fd = new FormData();
+      fd.set("id", poll.id);
+      fd.set("titleEn", titleEn);
+      fd.set("titleSw", titleSw);
+      fd.set("category", category);
+      fd.set("resolutionCriterion", criterion);
+      fd.set("resolutionAt", new Date(resAt).toISOString());
+      const r = await editPollAction(fd);
+      if (!r.ok) toast({ title: "Edit failed", description: r.error, variant: "danger" });
+      else toast({ title: "Updated", description: "Poll re-validated.", variant: "success" });
+      onClose();
+      router.refresh();
+    });
+  };
+
+  const inputCls = "w-full rounded-md border border-border bg-bg-overlay px-2 py-1.5 text-[12.5px] text-text outline-none focus:border-aqua-300 focus:shadow-[0_0_0_3px_var(--aqua-glow)] transition-colors";
+
+  return (
+    <div className="mt-2 z-10 rounded-md border border-border bg-bg-elevated p-3 shadow-lg w-[360px] space-y-2">
+      <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle">
+        Edit poll
+      </p>
+      <label className="block">
+        <span className="text-[10px] text-text-subtle">Title (EN)</span>
+        <input type="text" value={titleEn} onChange={(e) => setTitleEn(e.target.value)} className={inputCls} />
+      </label>
+      <label className="block">
+        <span className="text-[10px] text-text-subtle">Title (SW)</span>
+        <input type="text" value={titleSw} onChange={(e) => setTitleSw(e.target.value)} className={inputCls} />
+      </label>
+      <label className="block">
+        <span className="text-[10px] text-text-subtle">Category</span>
+        <select value={category} onChange={(e) => setCategory(e.target.value)} className={inputCls + " h-9"}>
+          {CATEGORIES.map((c) => (
+            <option key={c.id} value={c.id}>{c.label}</option>
+          ))}
+        </select>
+      </label>
+      <label className="block">
+        <span className="text-[10px] text-text-subtle">Resolution criterion</span>
+        <textarea value={criterion} onChange={(e) => setCriterion(e.target.value)} className={inputCls} rows={2} />
+      </label>
+      <label className="block">
+        <span className="text-[10px] text-text-subtle">Resolves at</span>
+        <input type="datetime-local" value={resAt} onChange={(e) => setResAt(e.target.value)} className={inputCls} />
+      </label>
+      <div className="grid grid-cols-2 gap-2 pt-1">
+        <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">Cancel</button>
+        <button type="button" onClick={submit} disabled={pending} className="btn btn-gold btn-sm">
+          {pending ? "Saving…" : "Save & re-validate"}
+        </button>
+      </div>
+    </div>
+  );
+}

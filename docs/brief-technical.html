@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>50pick · Technical Brief</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --royal: oklch(28% 0.16 268);
+    --royal-deep: oklch(18% 0.13 268);
+    --gilt: oklch(78% 0.13 86);
+    --gilt-deep: oklch(58% 0.12 76);
+    --pearl: oklch(99% 0.006 268);
+    --ink: oklch(20% 0.04 268);
+    --ink-soft: oklch(42% 0.05 268);
+    --rule: oklch(85% 0.02 268);
+    --code-bg: oklch(96% 0.01 268);
+    --yes: oklch(58% 0.16 152);
+    --no: oklch(60% 0.18 22);
+  }
+  @page { size: A4; margin: 18mm 16mm 22mm 16mm; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Inter", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+    font-size: 10.5pt;
+    line-height: 1.55;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  h1, h2, h3, h4 { font-family: "Sora", "Inter", sans-serif; font-weight: 700; color: var(--royal); margin: 0 0 6mm 0; letter-spacing: -0.018em; }
+  h1 { font-size: 28pt; line-height: 1.05; letter-spacing: -0.025em; }
+  h2 { font-size: 18pt; margin-top: 8mm; }
+  h3 { font-size: 12pt; margin-top: 5mm; margin-bottom: 2mm; color: var(--royal-deep); }
+  h4 { font-size: 10pt; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-soft); font-weight: 700; }
+  p { margin: 0 0 3mm 0; }
+  strong { color: var(--royal-deep); }
+  .mono { font-family: "JetBrains Mono", ui-monospace, "Consolas", monospace; }
+
+  .page { page-break-after: always; position: relative; padding-bottom: 14mm; min-height: 245mm; }
+  .page:last-child { page-break-after: auto; }
+
+  /* Whole-element page-break protection. */
+  .card, .sec-card, .stack-row, .lede, table tr,
+  .grid-2 > div, .grid-3 > div, .pending-row {
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
+
+  .pending-row { display: grid; grid-template-columns: 60mm 1fr; gap: 5mm; padding: 4mm 0; border-top: 1px solid var(--rule); align-items: start; }
+  .pending-row:first-child { border-top: none; padding-top: 0; }
+  .pending-row .tag { font-family: "JetBrains Mono", monospace; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.1em; color: oklch(34% 0.13 76); background: oklch(95% 0.04 86); border: 1px solid oklch(86% 0.10 86); border-radius: 999px; padding: 1.5mm 3mm; display: inline-block; font-weight: 600; }
+  .pending-row .body { font-size: 10pt; line-height: 1.5; color: var(--ink); }
+  .pending-row .body strong { color: var(--royal-deep); }
+  .footer { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: space-between; padding-top: 5mm; border-top: 1px solid var(--rule); font-family: "JetBrains Mono", monospace; font-size: 8pt; color: var(--ink-soft); letter-spacing: 0.08em; }
+  .footer .mark { display: inline-flex; align-items: center; gap: 6px; }
+
+  .cover { page-break-after: always; min-height: 245mm; display: flex; flex-direction: column; justify-content: space-between; padding: 0; }
+  .cover .top { padding-top: 8mm; }
+  .cover .center { display: flex; flex-direction: column; align-items: flex-start; gap: 8mm; max-width: 175mm; }
+  .cover .markwrap { margin-bottom: 10mm; }
+  .cover .eyebrow { font-family: "JetBrains Mono", monospace; font-size: 10pt; letter-spacing: 0.24em; color: var(--gilt-deep); text-transform: uppercase; margin-bottom: 4mm; }
+  .cover h1 { color: var(--royal-deep); font-size: 42pt; line-height: 1.0; letter-spacing: -0.025em; margin: 0; }
+  .cover .gilt-rule { height: 1.5px; width: 60mm; background: linear-gradient(90deg, var(--gilt-deep), var(--gilt), transparent); margin: 6mm 0; }
+  .cover .lead { font-size: 13pt; line-height: 1.5; color: var(--ink-soft); max-width: 165mm; }
+  .cover .bottom { display: flex; align-items: flex-end; justify-content: space-between; padding-top: 10mm; border-top: 1px solid var(--rule); font-family: "JetBrains Mono", monospace; font-size: 8.5pt; letter-spacing: 0.14em; color: var(--ink-soft); text-transform: uppercase; }
+  .cover .bottom .meta { line-height: 1.7; }
+  .cover .bottom .seal { display: flex; align-items: center; gap: 8mm; }
+
+  .lede { background: linear-gradient(135deg, oklch(98% 0.018 268), oklch(96% 0.022 268)); border-left: 3px solid var(--royal); padding: 6mm 7mm; margin: 4mm 0; border-radius: 1.5mm; font-size: 11pt; line-height: 1.5; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5mm; }
+  .card { border: 1px solid var(--rule); border-radius: 2mm; padding: 5mm; background: white; }
+  .card .num { font-family: "Sora", sans-serif; font-weight: 700; font-size: 22pt; color: var(--royal); line-height: 1; letter-spacing: -0.02em; }
+  .card .label { font-family: "JetBrains Mono", monospace; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-soft); margin-top: 2mm; }
+
+  table { width: 100%; border-collapse: collapse; margin: 3mm 0; }
+  th, td { text-align: left; padding: 2.5mm 4mm; border-bottom: 1px solid var(--rule); font-size: 9.5pt; vertical-align: top; }
+  th { font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.12em; font-size: 8.5pt; color: var(--ink-soft); border-bottom-width: 2px; }
+
+  .stack-row { display: grid; grid-template-columns: 38mm 1fr; gap: 5mm; padding: 3mm 0; border-top: 1px solid var(--rule); }
+  .stack-row:first-child { border-top: none; padding-top: 0; }
+  .stack-row .layer-name { font-family: "JetBrains Mono", monospace; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.1em; color: var(--royal); padding-top: 1mm; font-weight: 600; }
+
+  .check { color: var(--yes); font-weight: 700; }
+  ul.tight { margin: 2mm 0; padding-left: 5mm; }
+  ul.tight li { margin: 1mm 0; }
+  .small { font-size: 9pt; color: var(--ink-soft); }
+
+  .sec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
+  .sec-card { border: 1px solid var(--rule); border-radius: 2mm; padding: 5mm; background: white; }
+  .sec-card h4 { color: var(--royal); margin-top: 0; font-size: 9pt; }
+  .sec-card p { margin: 0; font-size: 9.5pt; line-height: 1.5; color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ COVER -->
+<section class="page cover">
+  <div class="top">
+    <div class="markwrap">
+      <svg viewBox="0 0 100 100" width="84" height="84" aria-hidden>
+        <defs><clipPath id="fc-cover-t"><circle cx="50" cy="50" r="49"/></clipPath></defs>
+        <g clip-path="url(#fc-cover-t)">
+          <path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/>
+          <path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/>
+          <line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2" stroke-linecap="round"/>
+          <text x="50" y="52" text-anchor="middle" dominant-baseline="middle" font-family="JetBrains Mono, monospace" font-weight="700" font-size="30" fill="oklch(99% 0.006 268)" style="letter-spacing:-0.04em">50</text>
+          <circle cx="50" cy="50" r="1.6" fill="oklch(85% 0.13 86)"/>
+        </g>
+        <circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/>
+        <circle cx="50" cy="50" r="47.6" fill="none" stroke="oklch(78% 0.13 86)" stroke-width="0.5" opacity="0.55"/>
+      </svg>
+    </div>
+  </div>
+  <div class="center">
+    <p class="eyebrow">Technical brief · 2026</p>
+    <h1>Architecture, security<br/>&amp; standards alignment.</h1>
+    <div class="gilt-rule"></div>
+    <p class="lead">A reference document for engineers, hosting providers, publishers, and technical reviewers — the stack, the security posture, the standards we align with, and the player-protection commitments built into a regulated betting platform.</p>
+  </div>
+  <div class="bottom">
+    <div class="meta">
+      50pick · Tanzania<br/>
+      Technical brief
+    </div>
+    <div class="seal">
+      <svg viewBox="0 0 100 100" width="22" height="22" aria-hidden>
+        <defs><clipPath id="fc-seal-tech"><circle cx="50" cy="50" r="49"/></clipPath></defs>
+        <g clip-path="url(#fc-seal-tech)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g>
+        <circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ TLDR -->
+<section class="page">
+  <h4>At a glance</h4>
+  <h2>What 50pick is, technically</h2>
+
+  <p class="lede">
+    50pick is a regulated, mobile-first prediction-markets platform.
+    Modern web stack — TypeScript end-to-end, server-rendered React,
+    PostgreSQL persistence — with a security posture and compliance
+    alignment built specifically for the gambling industry. Everything
+    below is the production architecture: defence-in-depth at every
+    tier, standards-aligned at every layer, and engineered to a
+    consulting-grade reviewer's bar.
+  </p>
+
+  <div class="grid-3" style="margin-top: 4mm;">
+    <div class="card"><div class="num">10+</div><div class="label">Regulatory frameworks aligned</div></div>
+    <div class="card"><div class="num">2-factor</div><div class="label">SMS-OTP for players · TOTP for staff</div></div>
+    <div class="card"><div class="num">Audit-grade</div><div class="label">Tamper-evident, hash-chained log of every action</div></div>
+  </div>
+
+  <h3>Engineering principles</h3>
+  <ul class="tight">
+    <li><strong>No client-trust.</strong> Every mutation is server-validated; the client never authorises a write.</li>
+    <li><strong>Defence in depth.</strong> Edge headers, CSRF binding, role-checked actions, parameterised data access, hash-chained audit. No single layer's failure exposes the next.</li>
+    <li><strong>Schema is the contract.</strong> Strict types end-to-end. A mismatch between any two services fails at compile, not at a player's wallet.</li>
+    <li><strong>Cloud-platform-agnostic.</strong> Standard managed-PostgreSQL endpoint and a Node runtime — runs on any major hosting provider without code change.</li>
+    <li><strong>Observability by construction.</strong> Every state change is logged, every privileged action is keyed to an actor, every error path is bilingual and structured.</li>
+  </ul>
+
+  <div class="footer">
+    <span>50pick · Technical brief</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-tf1"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-tf1)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>1 · 7</span>
+  </div>
+</section>
+
+<!-- ============================================================ STACK -->
+<section class="page">
+  <h4>Stack</h4>
+  <h2>Production technology choices</h2>
+
+  <div class="stack-row"><div class="layer-name">Web framework</div><div><p><strong>Next.js (React) with the App Router.</strong> Server-rendered pages with streaming. Server-side action layer for every mutation — every write is bound to the origin and validated server-side before reaching business logic.</p></div></div>
+  <div class="stack-row"><div class="layer-name">Language</div><div><p><strong>TypeScript, strict mode, end-to-end.</strong> The same types flow from the database schema through the service layer to the React components.</p></div></div>
+  <div class="stack-row"><div class="layer-name">Database</div><div><p><strong>PostgreSQL via a typed ORM.</strong> All queries are parameterised — SQL injection is structurally impossible. Migrations are versioned in source control and applied automatically on deploy.</p></div></div>
+  <div class="stack-row"><div class="layer-name">Runtime</div><div><p>Node 22 LTS. Cloud-platform-agnostic deployment — the application requires only a Node runtime, a managed PostgreSQL endpoint, and standard environment variables.</p></div></div>
+  <div class="stack-row"><div class="layer-name">Authentication</div><div><p>Phone + password with <strong>SMS-OTP two-factor</strong> at sign-in (production) and <strong>TOTP (RFC&nbsp;6238)</strong> as a second factor for staff accounts. Passwords scrypt-hashed with per-user salt; common-password blacklist enforced server-side.</p></div></div>
+  <div class="stack-row"><div class="layer-name">Sessions</div><div><p>HMAC-SHA-256-signed, HttpOnly cookies with the standard secure flags. Idle and absolute expiry both enforced. Tampering is detected on every request.</p></div></div>
+  <div class="stack-row"><div class="layer-name">Audit log</div><div><p>Append-only, HMAC-chained. Every entry's hash includes the previous entry's hash, producing a Merkle-style chain. Tamper detection is O(n) and verifiable by any party with the chain secret.</p></div></div>
+  <div class="stack-row"><div class="layer-name">Validation</div><div><p>Schema-driven input validation on every server action. No trust of the client wire shape — bad payloads return clean structured errors before reaching the service layer.</p></div></div>
+  <div class="stack-row"><div class="layer-name">Design system</div><div><p>Token-driven Tailwind. Every colour, font, and spacing value is a CSS variable defined once in the kit. Brand consistency by construction; accessibility (WCAG&nbsp;2.1&nbsp;AA) baked into the contrast tokens.</p></div></div>
+  <div class="stack-row"><div class="layer-name">Quality gate</div><div><p>Comprehensive automated test suite covering player flows, operator flows, and a regulator-aligned control matrix. Runs against a real browser on every change.</p></div></div>
+
+  <div class="footer">
+    <span>50pick · Technical brief</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-tf2"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-tf2)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>2 · 7</span>
+  </div>
+</section>
+
+<!-- ============================================================ SECURITY (gambling-specific) -->
+<section class="page">
+  <h4>Security · gambling-grade</h4>
+  <h2>Highlights</h2>
+
+  <p>
+    Standard web-application security is necessary but not sufficient for
+    a regulated betting product. The procedures below are the gambling-industry
+    additions on top of the OWASP Top&nbsp;10 baseline.
+  </p>
+
+  <div class="sec-grid" style="margin-top: 4mm;">
+    <div class="sec-card">
+      <h4>Two-factor authentication</h4>
+      <p>SMS-OTP for player sign-in. TOTP (authenticator app) for every staff role. Both events audited with IP and user-agent.</p>
+    </div>
+    <div class="sec-card">
+      <h4>Account integrity</h4>
+      <p>Strong-password policy with public-breach blacklist. Account locks after repeated wrong tries. Idle sessions kick automatically. Per-IP and per-phone rate limits stop credential stuffing.</p>
+    </div>
+    <div class="sec-card">
+      <h4>KYC + age verification</h4>
+      <p>National-ID (NIDA) backed identity verification before any withdrawal. 18+ age gate enforced server-side at registration; a date-of-birth in the future or under 18 is rejected, not redirected.</p>
+    </div>
+    <div class="sec-card">
+      <h4>AML thresholds</h4>
+      <p>Transactions above the FATF threshold queue for compliance review. Each decision is logged with reason; nothing settles without a reviewer's recorded sign-off.</p>
+    </div>
+    <div class="sec-card">
+      <h4>Two-officer settlement</h4>
+      <p>Market resolution requires two distinct officer confirmations. The same officer can never confirm twice. Stage one stages the outcome; stage two settles.</p>
+    </div>
+    <div class="sec-card">
+      <h4>Tamper-evident audit</h4>
+      <p>Every state change is hash-chained — login attempts, wallet movements, KYC submissions, market resolutions, admin decisions. A modified entry breaks the chain on next verify.</p>
+    </div>
+    <div class="sec-card">
+      <h4>Responsible-gambling controls</h4>
+      <p>Self-set deposit and loss limits. Reality-check pop-ups. One-click cooling-off. Two-step self-exclusion (24 hours through permanent). All server-enforced — bypass is not a UI question.</p>
+    </div>
+    <div class="sec-card">
+      <h4>Match-integrity feed</h4>
+      <p>Live integrity-monitor feed for every football market. Anti-fraud module flags suspicious bet patterns for review before settlement.</p>
+    </div>
+    <div class="sec-card">
+      <h4>PII discipline</h4>
+      <p>Phone numbers masked in every UI. PII never appears in error messages, health endpoints, or audit payloads. Right-to-export and right-to-erasure flows for the data-protection authority.</p>
+    </div>
+    <div class="sec-card">
+      <h4>Defence-in-depth authorisation</h4>
+      <p>Privileged actions check the actor's role at the request gate <em>and</em> inside the action handler. A leaked action identifier never grants admin write privileges.</p>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>50pick · Technical brief</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-tf3"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-tf3)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>3 · 7</span>
+  </div>
+</section>
+
+<!-- ============================================================ COMPLIANCE -->
+<section class="page">
+  <h4>Compliance alignment</h4>
+  <h2>Frameworks &amp; how we satisfy them</h2>
+
+  <table>
+    <thead><tr><th style="width: 30%">Framework</th><th>Domain</th><th>Alignment</th></tr></thead>
+    <tbody>
+      <tr><td><strong>LCCP</strong> · UK Gambling Commission Licence Conditions &amp; Codes of Practice</td><td>Player protection, AML, integrity</td><td>SR&nbsp;Code&nbsp;2.4 (responsible-gambling controls), 5.1.5 (visible 18+, helpline, RG link on every page), 2.6 (account security), 2.10 (audit-trail), 2.13 (financial integrity), 2.14 (anti-fraud).</td></tr>
+      <tr><td><strong>GBT</strong> · Gaming Board of Tanzania</td><td>National licensing</td><td>Pre-application packet drafted. Pool model classified as betting pending regulator confirmation. Helpline and licence reference visible on every page footer.</td></tr>
+      <tr><td><strong>ISO&nbsp;27001</strong></td><td>Information security management</td><td>A.9 access control (RBAC + role gates), A.12.3 backup (daily managed PostgreSQL backups + weekly external archive), A.12.4 logging (hash-chained audit), A.18.1 compliance.</td></tr>
+      <tr><td><strong>OWASP Top&nbsp;10</strong> (2021)</td><td>Web-application security</td><td>A01 Broken access control · defence-in-depth role checks. A02 Cryptographic failures · scrypt + HMAC. A03 Injection · parameterised queries + schema-validated input. A04 Insecure design · documented threat model. A05 Security misconfiguration · strict CSP + secure headers. A07 Identification &amp; authentication · two-factor + lockout + idle expiry. A09 Security logging · hash-chained audit.</td></tr>
+      <tr><td><strong>OWASP ASVS L2</strong></td><td>Application Security Verification Standard</td><td>Targeting Level 2 today; Level 3 reachable as the platform scales.</td></tr>
+      <tr><td><strong>PDPA</strong> · Tanzania Personal Data Protection Act (2022)</td><td>Personal data protection</td><td>Phone masked in every UI. PII never in health endpoints, error messages, or audit payloads. Right-to-export and right-to-erasure flows for the data-protection authority.</td></tr>
+      <tr><td><strong>FATF Recommendations</strong></td><td>Anti-money-laundering</td><td>Threshold transactions queue for compliance officer review. Each approval or escalation is logged with reason. Audit-trail retention sized to the FATF retention window.</td></tr>
+      <tr><td><strong>TCRA</strong></td><td>Tanzania telecommunications</td><td>Licensed sender-ID for SMS delivery. Outbound communication gated by a provider abstraction; provider switch is configuration only.</td></tr>
+      <tr><td><strong>WCAG&nbsp;2.1 AA</strong></td><td>Accessibility</td><td>Colour-contrast tokens. Every interactive element has an accessible label. Full keyboard navigation. Reduced-motion preference respected.</td></tr>
+      <tr><td><strong>RFC&nbsp;6238</strong></td><td>TOTP for staff</td><td>Time-based one-time passwords for every staff role. Provisioned once, verified on every sensitive admin transition.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <span>50pick · Technical brief</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-tf4"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-tf4)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>4 · 7</span>
+  </div>
+</section>
+
+<!-- ============================================================ ARCH + DATA (high-level) -->
+<section class="page">
+  <h4>Architecture &amp; data model</h4>
+  <h2>How the pieces fit, at altitude</h2>
+
+  <div class="stack-row"><div class="layer-name">Edge</div><div><p>Strict HTTP-security headers on every response. CSP, framing protection, MIME-type discipline, referrer trim, permission lock-down, strict-transport in production.</p></div></div>
+  <div class="stack-row"><div class="layer-name">Application tier</div><div><p>Server-rendered React with streaming. Server-side action layer for every mutation — bound to the origin, validated end-to-end, logged on success and on failure.</p></div></div>
+  <div class="stack-row"><div class="layer-name">Service layer</div><div><p>Typed business-logic services for identity, KYC, wallet, market, bet, integrity, AML, and responsible gambling. All financial fields are integer; no floating-point arithmetic touches a ledger.</p></div></div>
+  <div class="stack-row"><div class="layer-name">Audit chain</div><div><p>Append-only, HMAC-linked log alongside the live database. Every state change emits one entry with the previous entry's hash baked in.</p></div></div>
+  <div class="stack-row"><div class="layer-name">Persistence</div><div><p>Managed PostgreSQL. Daily backups with weekly external archive into cold storage for the regulator-mandated five-year retention window.</p></div></div>
+
+  <h3 style="margin-top: 8mm;">Data domains</h3>
+  <p>
+    The schema is drawn at the regulator's mental altitude — identity,
+    KYC, money, betting, integrity, compliance, partners — so a data
+    request from the Gaming Board, the FIU, or an internal compliance
+    review walks in the same three steps.
+  </p>
+
+  <div class="grid-3" style="margin-top: 3mm;">
+    <div class="card"><h4 style="color: var(--royal); margin-top: 0;">Identity</h4><p style="font-size: 9.5pt;">Players, sessions, devices, two-factor secrets, role assignments.</p></div>
+    <div class="card"><h4 style="color: var(--royal); margin-top: 0;">Money</h4><p style="font-size: 9.5pt;">Wallets, transactions, immutable ledger entries, AML review queue.</p></div>
+    <div class="card"><h4 style="color: var(--royal); margin-top: 0;">Betting</h4><p style="font-size: 9.5pt;">Markets, pools, positions, bundles, settlement records.</p></div>
+    <div class="card"><h4 style="color: var(--royal); margin-top: 0;">Integrity</h4><p style="font-size: 9.5pt;">Anti-fraud flags, match-integrity checks, source-of-truth registry.</p></div>
+    <div class="card"><h4 style="color: var(--royal); margin-top: 0;">Compliance</h4><p style="font-size: 9.5pt;">KYC submissions, responsible-gambling settings, notifications, audit log.</p></div>
+    <div class="card"><h4 style="color: var(--royal); margin-top: 0;">Partners</h4><p style="font-size: 9.5pt;">Affiliate agents, provider health, reconciliation reports.</p></div>
+  </div>
+
+  <p class="small" style="margin-top: 5mm;">
+    Field-level details, schema-specific identifiers, exact threshold
+    values, and proprietary algorithms are intentionally omitted from
+    this document. Specifics are available to vetted partners under
+    standard non-disclosure terms.
+  </p>
+
+  <div class="footer">
+    <span>50pick · Technical brief</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-tf5"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-tf5)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>5 · 7</span>
+  </div>
+</section>
+
+<!-- ============================================================ QA + DEPLOY -->
+<section class="page">
+  <h4>Quality &amp; deployment</h4>
+  <h2>How we ship · how we scale</h2>
+
+  <h3>Quality gate</h3>
+  <p>
+    A comprehensive automated test suite runs against a real browser on
+    every change — covering player journeys, operator journeys, and a
+    regulator-aligned control matrix that maps directly to the LCCP,
+    ISO&nbsp;27001, OWASP, PDPA, FATF, and Tanzania Gaming Board
+    expectations. Adversarial scenarios — credential stuffing,
+    privilege-escalation attempts, race conditions on settlements,
+    payload abuse, age tampering — are part of the standing test floor,
+    not an afterthought.
+  </p>
+
+  <h3>Deployment posture</h3>
+  <p>
+    Cloud-platform-agnostic. The application requires only a Node 22+
+    runtime and a managed PostgreSQL endpoint via a standard connection
+    string. Database schema migrations are applied automatically on
+    deploy. Daily backups with weekly external archive into cold
+    storage cover the regulator-mandated five-year retention window.
+  </p>
+
+  <h3>Observability</h3>
+  <p>
+    Standard liveness and readiness probes, structured per-request logs
+    keyed to a request identifier, and a hash-chained audit log that
+    can be joined back against the application logs for full forensic
+    context. Any platform's built-in monitoring layer can be wired in
+    without code change.
+  </p>
+
+  <h3>Scaling path</h3>
+  <ul class="tight">
+    <li><strong>Read replicas</strong> for analytics and the operator console as transaction volume grows.</li>
+    <li><strong>Connection pooling</strong> via a standard pooler — one configuration swap, no application code change.</li>
+    <li><strong>Multi-instance deployment</strong> behind a load balancer — sessions are signed not stored, so any instance verifies any session without a shared cache.</li>
+    <li><strong>Asynchronous audit writer</strong> — the chain becomes the slow tier; the request path stays sub-fifty milliseconds at peak.</li>
+  </ul>
+
+  <h3>What this brief intentionally does not contain</h3>
+  <p class="small">
+    Implementation specifics that would benefit an attacker or a
+    competitor — exact rate-limit parameters, hashing-function
+    parameters, audit-secret location, proprietary pool mathematics,
+    AML threshold values, internal endpoint surfaces. Specifics are
+    available to vetted partners under standard non-disclosure terms.
+  </p>
+
+  <div class="footer">
+    <span>50pick · Technical brief</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-tf6"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-tf6)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>6 · 7</span>
+  </div>
+</section>
+
+<!-- ============================================================ PENDING -->
+<section class="page">
+  <h4>Pending</h4>
+  <h2>External dependencies before public launch</h2>
+
+  <div style="margin-top: 6mm;">
+
+    <div class="pending-row">
+      <div><span class="tag">Pending · Regulator</span></div>
+      <div class="body"><strong>Tanzania Gaming Board licence.</strong> Awaiting issuance.</div>
+    </div>
+
+    <div class="pending-row">
+      <div><span class="tag">Pending · Telco</span></div>
+      <div class="body"><strong>SMS-OTP delivery.</strong> Pending Tanzanian SMS provider.</div>
+    </div>
+
+    <div class="pending-row">
+      <div><span class="tag">Pending · Aggregator</span></div>
+      <div class="body"><strong>Mobile-money payments.</strong> Pending licensed aggregator agreement.</div>
+    </div>
+
+    <div class="pending-row">
+      <div><span class="tag">Pending · Hosting</span></div>
+      <div class="body"><strong>Transactional email.</strong> Pending production hosting selection.</div>
+    </div>
+
+    <div class="pending-row">
+      <div><span class="tag">Pending · Hosting</span></div>
+      <div class="body"><strong>Domain, certificates, monitoring.</strong> Pending production hosting selection.</div>
+    </div>
+
+    <div class="pending-row">
+      <div><span class="tag">Pending · Partner</span></div>
+      <div class="body"><strong>Live match-integrity feed.</strong> Pending partner agreement.</div>
+    </div>
+
+  </div>
+
+  <div class="lede" style="margin-top: 12mm;">
+    <h3>What "pending" means here</h3>
+    <p>
+      Every item is a contract or a regulator sign-off. The integration
+      surface for each one is already implemented behind a provider
+      interface — placing a real licensed vendor is a configuration
+      change, not new code. Engineering work for public launch: zero.
+    </p>
+  </div>
+
+  <div class="grid-3" style="margin-top: 8mm;">
+    <div>
+      <h4>Engineering readiness</h4>
+      <p>Production architecture is complete. Test suite green end-to-end.</p>
+    </div>
+    <div>
+      <h4>Security readiness</h4>
+      <p>OWASP Top&nbsp;10 + ASVS L2 controls implemented and verified.</p>
+    </div>
+    <div>
+      <h4>Operational readiness</h4>
+      <p>Runbooks, audit-trail verification, rate-limit reset documented.</p>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>50pick · Technical brief</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="11" height="11" aria-hidden><defs><clipPath id="fc-tf7"><circle cx="50" cy="50" r="49"/></clipPath></defs><g clip-path="url(#fc-tf7)"><path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 Z" fill="oklch(58% 0.16 152)"/><path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 Z" fill="oklch(60% 0.18 22)"/><line x1="30.65" y1="-27.62" x2="69.35" y2="127.62" stroke="oklch(78% 0.13 86)" stroke-width="2"/></g><circle cx="50" cy="50" r="49" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="2"/></svg>50pick.tz</span>
+    <span>7 · 7</span>
+  </div>
+</section>
+
+</body>
+</html>

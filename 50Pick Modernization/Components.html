@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>50pick — Component refresh (sporty · your colors)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" />
+<style>
+  html, body { margin: 0; padding: 0; background: #14111f; }
+  #root { width: 100vw; height: 100vh; }
+  * { -webkit-font-smoothing: antialiased; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes lpulse { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+    <rect width="400" height="400" rx="40" fill="#1a1530"/>
+    <rect x="110" y="140" width="180" height="120" rx="14" fill="#241d3c" stroke="#3a3258" stroke-width="2"/>
+    <rect x="110" y="140" width="180" height="6" rx="3" fill="#c89b3c"/>
+    <rect x="128" y="210" width="68" height="30" rx="8" fill="#3fae7e"/>
+    <rect x="204" y="210" width="68" height="30" rx="8" fill="#d96670"/>
+    <text x="200" y="125" font-family="sans-serif" font-size="20" font-weight="700" fill="#e8c878" text-anchor="middle">50pick</text>
+  </svg>
+</template>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="components.jsx"></script>
+<script type="text/babel">
+  function ComponentsApp() {
+    return (
+      <DesignCanvas>
+        <DCSection id="card" title="Market card" subtitle="Recreated from your screenshot — your exact navy/green/red/gold. Confirm the colours read right.">
+          <DCArtboard id="mcard" label="Market card · your colours" width={430} height={400} style={{ background: T.page }}><MarketCardKept /></DCArtboard>
+        </DCSection>
+        <DCSection id="blab" title="Button enhancements" subtitle="Your green/red, 5 nicer treatments — hover & press, then pick one.">
+          <DCArtboard id="btnlab" label="Enhancement options" width={480} height={560} style={{ background: T.page }}><ButtonLab /></DCArtboard>
+        </DCSection>
+        <DCSection id="btn" title="Buttons · full system" subtitle="Sporty — solid gold CTA, filled YES/NO, blue secondary, sizes & states.">
+          <DCArtboard id="btns" label="Buttons · all states" width={680} height={580} style={{ background: T.page }}><ButtonsBoard /></DCArtboard>
+        </DCSection>
+        <DCSection id="stat" title="Stats" subtitle="Big bold mono odds, rolling counters, pool meter. Gold = value to you.">
+          <DCArtboard id="stats" label="Stats · refreshed" width={540} height={620} style={{ background: T.page }}><StatsBoard /></DCArtboard>
+        </DCSection>
+        <DCSection id="pop" title="Popups" subtitle="Clean flat modals — subtle dim, no heavy glass. Confirm · Win · Loss · Toasts.">
+          <DCArtboard id="confirm" label="Bet confirm" width={480} height={560} style={{ background: T.page }}><ConfirmPopup /></DCArtboard>
+          <DCArtboard id="win" label="Win (auto-plays)" width={480} height={560} style={{ background: T.page }}><WinPopup /></DCArtboard>
+          <DCArtboard id="loss" label="Loss" width={480} height={560} style={{ background: T.page }}><LossPopup /></DCArtboard>
+          <DCArtboard id="toasts" label="Toasts" width={440} height={360} style={{ background: T.page }}><ToastsPopup /></DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<ComponentsApp />);
+</script>
+</body>
+</html>

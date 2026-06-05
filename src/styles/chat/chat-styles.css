@@ -1,0 +1,772 @@
+/* ===========================================================================
+   AI Help Companion — chat surface styles
+   Component-level CSS. Every value sourced from kit/tokens.css OR the
+   royal-indigo extension in chat-tokens.css. No orphan colors.
+   =========================================================================== */
+
+/* ---------- Bubble (the entry-point FAB) ------------------------------- */
+
+.cm-bubble {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background:
+    radial-gradient(120% 120% at 30% 25%, oklch(24% 0.115 268), var(--chat-canvas) 70%);
+  border: 1px solid var(--chat-border);
+  box-shadow:
+    0 1px 0 oklch(35% 0.090 268) inset,
+    0 10px 28px -10px oklch(8% 0.080 268),
+    0 2px 6px -2px oklch(8% 0.080 268 / 0.6);
+  color: var(--pearl);
+  cursor: pointer;
+  transition: transform var(--ease-glide), box-shadow var(--ease-glide), border-color var(--ease-glide);
+}
+.cm-bubble:hover {
+  transform: translateY(-1px);
+  border-color: var(--chat-border-strong);
+  box-shadow:
+    0 1px 0 oklch(38% 0.095 268) inset,
+    0 14px 32px -10px oklch(8% 0.080 268),
+    0 2px 8px -2px oklch(8% 0.080 268 / 0.7);
+}
+.cm-bubble:active { transform: translateY(0); }
+.cm-bubble:focus-visible {
+  outline: 2px solid var(--pearl);
+  outline-offset: 3px;
+}
+.cm-bubble.cm-bubble-pressed {
+  transform: scale(0.96);
+  border-color: var(--pearl-soft);
+}
+.cm-bubble.cm-bubble-mobile { width: 52px; height: 52px; }
+.cm-bubble::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1.5px solid oklch(72% 0.11 152 / 0.3);
+  animation: cm-bubble-ring 3s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes cm-bubble-ring {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50%      { opacity: 0.7; transform: scale(1.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cm-bubble::after { animation: none; opacity: 0.3; }
+}
+
+/* Unread pip */
+.cm-bubble-pip {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--pearl);
+  color: var(--chat-canvas);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--chat-canvas);
+  box-shadow: 0 2px 6px -1px oklch(8% 0.080 268 / 0.6);
+}
+
+/* ---------- Panel chrome ----------------------------------------------- */
+
+.cm-panel {
+  /* v2 Dark Glass — frosted translucent canvas so the AI agent panel reads as
+     a premium glass surface floating over the page. */
+  background: color-mix(in oklab, var(--chat-canvas) 86%, transparent);
+  backdrop-filter: blur(16px) saturate(1.1);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
+  color: var(--chat-text);
+  border: 1px solid var(--chat-border);
+  border-radius: var(--r-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow:
+    0 1px 0 oklch(98% 0.01 268 / 0.08) inset,
+    0 30px 80px -20px oklch(6% 0.090 268),
+    0 12px 28px -10px oklch(6% 0.090 268 / 0.8);
+  font-family: var(--font-body);
+}
+.cm-panel-desktop {
+  width: 420px;
+  height: 600px;
+  animation: cm-panel-pop var(--ease-arrive) both;
+}
+.cm-panel-sheet { width: 100%; height: 100%; border-radius: 20px 20px 0 0; }
+
+@keyframes cm-panel-pop {
+  from { opacity: 0; transform: translateY(12px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes cm-panel-pop { from { opacity: 0; } to { opacity: 1; } }
+}
+
+.cm-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 16px 14px;
+  border-bottom: 1px solid var(--chat-border);
+  background: linear-gradient(180deg,
+    oklch(22% 0.120 268) 0%,
+    var(--chat-canvas) 100%);
+  position: relative;
+}
+.cm-header::after {
+  content: "";
+  position: absolute;
+  inset: auto 16px 0 16px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, oklch(72% 0.11 152 / 0.25) 50%, transparent 100%);
+}
+.cm-header-titles {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.cm-header-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  color: var(--chat-text);
+}
+.cm-header-sub {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--chat-text-subtle);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cm-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: oklch(72% 0.11 152);
+  box-shadow:
+    0 0 0 0 oklch(72% 0.11 152 / 0.4),
+    0 0 6px 1px oklch(72% 0.11 152 / 0.3);
+  animation: cm-status-pulse 2.4s ease-in-out infinite;
+}
+@keyframes cm-status-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 0 oklch(72% 0.11 152 / 0.4),
+      0 0 6px 1px oklch(72% 0.11 152 / 0.3);
+  }
+  50% {
+    box-shadow:
+      0 0 0 4px oklch(72% 0.11 152 / 0),
+      0 0 10px 2px oklch(72% 0.11 152 / 0.5);
+  }
+}
+.cm-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--chat-text-muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background var(--ease-glide), color var(--ease-glide), border-color var(--ease-glide);
+}
+.cm-close:hover {
+  background: var(--chat-overlay);
+  color: var(--chat-text);
+  border-color: var(--chat-border);
+}
+.cm-close:focus-visible {
+  outline: 2px solid var(--pearl);
+  outline-offset: 2px;
+}
+
+/* ---------- Bot avatar mark ------------------------------------------- */
+
+.cm-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background:
+    radial-gradient(120% 120% at 30% 25%, oklch(28% 0.120 268), oklch(18% 0.110 268) 75%);
+  border: 1px solid var(--chat-border-strong);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: var(--pearl);
+}
+.cm-avatar-lg { width: 40px; height: 40px; border-radius: 10px; }
+.cm-avatar-sm { width: 24px; height: 24px; border-radius: 6px; }
+
+/* ---------- Message list ---------------------------------------------- */
+
+.cm-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 16px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--chat-border-strong) transparent;
+}
+.cm-list::-webkit-scrollbar { width: 6px; }
+.cm-list::-webkit-scrollbar-thumb { background: var(--chat-border-strong); border-radius: 999px; }
+
+.cm-row {
+  display: flex;
+  gap: 8px;
+  max-width: 100%;
+}
+.cm-row-ai { align-items: flex-end; }
+.cm-row-user { justify-content: flex-end; }
+
+/* AI bubble — left, indigo elevated, pearl-tinted edge */
+.cm-bubble-ai {
+  background: var(--chat-elevated);
+  border: 1px solid var(--chat-border);
+  border-radius: 14px 14px 14px 4px;
+  padding: 10px 14px;
+  max-width: 78%;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--chat-text);
+  text-wrap: pretty;
+}
+.cm-bubble-ai p { margin: 0; }
+.cm-bubble-ai p + p { margin-top: 8px; }
+.cm-bubble-ai .cm-num,
+.cm-bubble-ai code {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: var(--pearl-strong);
+}
+
+/* Player bubble — right, indigo overlay, GILT EDGE (the only gilt allowed
+   on this surface besides the escalate pill) */
+.cm-bubble-user {
+  background: var(--chat-overlay);
+  border: 1px solid var(--gilt-edge);
+  border-radius: 14px 14px 4px 14px;
+  padding: 10px 14px;
+  max-width: 78%;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--chat-text);
+  box-shadow: 0 0 0 1px oklch(86% 0.13 82 / 0.08) inset;
+}
+.cm-bubble-user .cm-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Entry animation — stagger via CSS counter */
+.cm-row {
+  animation: cm-msg-arrive var(--ease-arrive) both;
+}
+/* User send pop — slight scale + translate */
+.cm-row-user {
+  animation: cm-msg-send 320ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes cm-msg-arrive {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes cm-msg-send {
+  from { opacity: 0; transform: translateY(8px) scale(0.95); }
+  50%  { transform: translateY(-2px) scale(1.01); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cm-row, .cm-row-user { animation: cm-msg-fade 120ms linear both; }
+  @keyframes cm-msg-fade { from { opacity: 0; } to { opacity: 1; } }
+}
+
+/* ---------- Typing indicator ----------------------------------------- */
+
+.cm-typing {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 14px 16px;
+}
+.cm-typing span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: oklch(72% 0.11 152);
+  animation: cm-typing-pulse 1.4s ease-in-out infinite;
+  box-shadow: 0 0 4px oklch(72% 0.11 152 / 0.3);
+}
+.cm-typing span:nth-child(2) { animation-delay: 0.18s; }
+.cm-typing span:nth-child(3) { animation-delay: 0.36s; }
+@keyframes cm-typing-pulse {
+  0%, 80%, 100% { opacity: 0.25; transform: translateY(0) scale(0.85); }
+  40%           { opacity: 1.0;  transform: translateY(-3px) scale(1.1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cm-typing span { animation: none; opacity: 0.7; }
+}
+
+/* ---------- Inline citations ----------------------------------------- */
+
+.cm-cite {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  vertical-align: baseline;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--pearl);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--gilt-edge);
+  padding: 0 3px;
+  margin: 0 1px;
+  border-radius: 2px;
+  transition: border-color var(--ease-glide), color var(--ease-glide);
+  position: relative;
+  top: -1px;
+}
+.cm-cite:hover { color: var(--pearl-strong); border-bottom-color: var(--gilt-edge-hover); }
+.cm-cite::before { content: "["; opacity: 0.6; }
+.cm-cite::after  { content: "]"; opacity: 0.6; }
+
+.cm-sources {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--chat-border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cm-source-row {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--chat-text-muted);
+  font-family: var(--font-body);
+  align-items: baseline;
+}
+.cm-source-row .cm-source-n {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--pearl);
+}
+.cm-source-row a {
+  color: var(--chat-text-muted);
+  border-bottom: 1px solid var(--gilt-edge);
+  text-decoration: none;
+}
+.cm-source-row a:hover { color: var(--chat-text); border-bottom-color: var(--gilt-edge-hover); }
+
+/* ---------- Composer -------------------------------------------------- */
+
+.cm-composer-wrap {
+  border-top: 1px solid var(--chat-border);
+  background: var(--chat-canvas);
+  padding: 12px 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cm-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cm-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--chat-border);
+  background: var(--chat-elevated);
+  color: var(--chat-text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--ease-glide), border-color var(--ease-glide), color var(--ease-glide);
+  white-space: nowrap;
+  text-align: left;
+  font-family: var(--font-body);
+}
+.cm-chip:hover { background: var(--chat-overlay); border-color: var(--pearl-soft); color: var(--chat-text); }
+.cm-chip:focus-visible { outline: 2px solid var(--pearl); outline-offset: 2px; }
+.cm-chip-sw {
+  font-style: italic;
+  color: var(--pearl);
+  border-color: var(--pearl-soft);
+}
+
+.cm-composer {
+  display: grid;
+  grid-template-columns: 1fr 36px;
+  gap: 8px;
+  align-items: end;
+  background: var(--chat-elevated);
+  border: 1px solid var(--chat-border);
+  border-radius: var(--r-md);
+  padding: 6px 6px 6px 12px;
+  transition: border-color var(--ease-glide), box-shadow var(--ease-glide);
+}
+.cm-composer:focus-within {
+  border-color: var(--pearl-soft);
+  box-shadow: 0 0 0 3px var(--pearl-soft);
+}
+.cm-composer textarea {
+  border: none;
+  background: transparent;
+  color: var(--chat-text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.4;
+  padding: 8px 0;
+  resize: none;
+  outline: none;
+  max-height: 96px;
+  min-height: 24px;
+}
+.cm-composer textarea::placeholder { color: var(--chat-text-subtle); }
+.cm-send {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--pearl);
+  color: var(--chat-canvas);
+  border: 1px solid var(--pearl-strong);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background var(--ease-glide), transform var(--ease-glide);
+}
+.cm-send:hover { background: var(--pearl-strong); }
+.cm-send:active { transform: translateY(1px); }
+.cm-send:focus-visible { outline: 2px solid var(--pearl); outline-offset: 2px; }
+.cm-send:disabled {
+  background: var(--chat-overlay);
+  color: var(--chat-text-subtle);
+  border-color: var(--chat-border);
+  cursor: not-allowed;
+}
+
+/* ---------- Escalate-to-human pill (claret, heraldic) ---------------- */
+
+.cm-escalate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--claret-hover), var(--claret));
+  color: oklch(96% 0.02 12);
+  border: 1px solid var(--claret-edge);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  box-shadow:
+    0 1px 0 oklch(60% 0.16 12) inset,
+    0 4px 14px -4px oklch(30% 0.12 12);
+  transition: transform var(--ease-glide), filter var(--ease-glide);
+}
+.cm-escalate:hover { filter: brightness(1.08); }
+.cm-escalate:active { transform: translateY(1px); }
+.cm-escalate:focus-visible { outline: 2px solid var(--pearl); outline-offset: 2px; }
+
+/* ---------- Escalate handoff card divider ---------------------------- */
+
+.cm-handoff {
+  margin: 6px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
+}
+.cm-handoff-rule {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--chat-text-subtle);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.cm-handoff-rule::before,
+.cm-handoff-rule::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--chat-border), transparent);
+}
+.cm-handoff-card {
+  background: var(--chat-elevated);
+  border: 1px solid var(--chat-border);
+  border-radius: var(--r-md);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cm-handoff-card .cm-handoff-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--chat-text);
+}
+.cm-handoff-card .cm-handoff-body {
+  font-size: 12px;
+  color: var(--chat-text-muted);
+  line-height: 1.5;
+}
+.cm-handoff-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--chat-text-subtle);
+}
+.cm-handoff-meta .cm-num { font-variant-numeric: tabular-nums; color: var(--pearl); }
+
+/* ---------- RG-redirect template ------------------------------------- */
+
+.cm-rg-card {
+  background:
+    linear-gradient(180deg, oklch(20% 0.115 268) 0%, var(--chat-elevated) 100%);
+  border: 1px solid var(--chat-border-strong);
+  border-left: 3px solid var(--pearl);
+  border-radius: var(--r-md);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cm-rg-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: var(--pearl);
+}
+.cm-rg-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--chat-text);
+  letter-spacing: -0.005em;
+}
+.cm-rg-body {
+  font-size: 13px;
+  color: var(--chat-text-muted);
+  line-height: 1.55;
+}
+.cm-rg-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cm-rg-primary {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--pearl);
+  color: var(--chat-canvas);
+  border: 1px solid var(--pearl-strong);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0 14px;
+}
+.cm-rg-secondary {
+  height: 36px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--chat-text-muted);
+  border: 1px solid var(--chat-border);
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0 14px;
+}
+.cm-rg-secondary:hover { background: var(--chat-overlay); color: var(--chat-text); }
+
+/* ---------- Disclosure (Powered by Claude · Mfumo wa AI) ------------ */
+
+.cm-disclosure {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--chat-text-subtle);
+  text-align: center;
+  padding: 6px 14px 10px;
+  letter-spacing: 0.02em;
+  border-top: 1px solid var(--chat-border);
+  background: var(--chat-canvas);
+}
+.cm-disclosure .cm-dot { padding: 0 4px; opacity: 0.6; }
+
+/* ---------- Empty state ---------------------------------------------- */
+
+.cm-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+  padding: 24px 8px 8px;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 20%, oklch(22% 0.12 268 / 0.5), transparent);
+}
+.cm-empty-mark {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: radial-gradient(120% 120% at 30% 25%, oklch(28% 0.120 268), oklch(17% 0.115 268) 75%);
+  border: 1px solid var(--chat-border-strong);
+  display: grid;
+  place-items: center;
+  color: var(--pearl);
+  margin: 0 auto;
+}
+/* Bare variant — drops the indigo plate so a self-framed mark (HelpMark)
+   can sit clean. HelpMark already has its own coin ring + outer
+   hairline, so a second plate around it looked fussy. */
+.cm-empty-mark-bare {
+  width: auto;
+  height: auto;
+  background: transparent;
+  border: none;
+}
+.cm-empty-greeting {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: -0.015em;
+  color: var(--chat-text);
+  text-align: center;
+  line-height: 1.35;
+}
+.cm-empty-greeting .cm-sw {
+  display: block;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--chat-text-muted);
+  margin-top: 4px;
+}
+.cm-empty-sub {
+  font-size: 12px;
+  color: var(--chat-text-muted);
+  text-align: center;
+  line-height: 1.55;
+  text-wrap: pretty;
+  padding: 0 8px;
+}
+.cm-empty-starters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 6px;
+}
+.cm-empty-starter {
+  text-align: left;
+  background: var(--chat-elevated);
+  border: 1px solid var(--chat-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--chat-text-muted);
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: background var(--ease-glide), border-color var(--ease-glide), color var(--ease-glide), transform 120ms ease-out;
+  animation: cm-starter-in 360ms cubic-bezier(0.16, 0.84, 0.36, 1) both;
+}
+.cm-empty-starter:nth-child(1) { animation-delay: 100ms; }
+.cm-empty-starter:nth-child(2) { animation-delay: 180ms; }
+.cm-empty-starter:nth-child(3) { animation-delay: 260ms; }
+.cm-empty-starter:nth-child(4) { animation-delay: 340ms; }
+.cm-empty-starter:active { transform: scale(0.97); }
+@keyframes cm-starter-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.cm-empty-starter:hover {
+  background: var(--chat-overlay);
+  border-color: var(--pearl-soft);
+  color: var(--chat-text);
+}
+.cm-empty-starter.cm-sw-tile {
+  font-style: italic;
+  color: var(--pearl);
+}
+
+/* ---------- Sheet motion (mobile entry) ------------------------------ */
+
+.cm-sheet-anim {
+  animation: cm-sheet-up var(--ease-conduct) both;
+}
+@keyframes cm-sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cm-sheet-anim { animation: cm-sheet-fade 120ms linear both; }
+  @keyframes cm-sheet-fade { from { opacity: 0; } to { opacity: 1; } }
+}
+
+/* Backdrop scrim on mobile sheet */
+.cm-scrim {
+  position: absolute;
+  inset: 0;
+  background: oklch(8% 0.080 268 / 0.55);
+  backdrop-filter: blur(2px);
+}
+
+/* ---------- HelpMark halo pulse (variant="halo" fallback) -----------
+   The ship-it default for HelpMark is "gilt" (headphones), which does
+   not use this class. The halo variant is the no-headphones fallback —
+   defined here so it stays reduced-motion safe if marketing ever
+   switches the FAB to that variant. */
+.hm-halo-pulse {
+  animation: hm-halo-pulse 3s ease-in-out infinite;
+  transform-origin: center;
+}
+@keyframes hm-halo-pulse {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 0.8; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hm-halo-pulse { animation: none; opacity: 0.6; }
+}

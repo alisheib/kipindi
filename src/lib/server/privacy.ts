@@ -1,0 +1,145 @@
+/**
+ * Privacy operations — DSAR (Data Subject Access Request) + erasure.
+ *
+ * Aligns with:
+ *  - Tanzania Personal Data Protection Act (PDPA) 2022 §29 (right of access)
+ *                                              §30 (right of correction)
+ *                                              §31 (right of erasure)
+ *  - GDPR Art. 15 (access), Art. 17 (erasure)
+ *
+ * SLA: 30 calendar days from request to fulfilment (PDPA + GDPR aligned).
+ *
+ * In production this writes to a `dsar_request` Postgres table; here it lives on
+ * `globalThis.__50PICK_DSAR_QUEUE` so it survives module reloads in dev.
+ */
+import { audit } from "./audit";
+import { db } from "./store";
+
+export type DsarType = "ACCESS" | "ERASURE" | "CORRECTION" | "PORTABILITY";
+export type DsarStatus = "PENDING" | "FULFILLED" | "REJECTED";
+
+export type DsarRequest = {
+  id: string;
+  userId: string;
+  type: DsarType;
+  status: DsarStatus;
+  reason: string | null;
+  requestedAt: string;
+  fulfilledAt: string | null;
+  fulfilledBy: string | null;
+  /** Filename of the export payload, if access type. */
+  exportRef: string | null;
+};
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __50PICK_DSAR_QUEUE: DsarRequest[] | undefined;
+}
+const queue: DsarRequest[] = globalThis.__50PICK_DSAR_QUEUE ?? (globalThis.__50PICK_DSAR_QUEUE = []);
+
+/** Player-initiated request (called from /profile/account export/close flow). */
+export function fileDsarRequest(opts: { userId: string; type: DsarType; reason?: string }): DsarRequest {
+  const r: DsarRequest = {
+    id: `dsar_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+    userId: opts.userId,
+    type: opts.type,
+    status: "PENDING",
+    reason: opts.reason ?? null,
+    requestedAt: new Date().toISOString(),
+    fulfilledAt: null,
+    fulfilledBy: null,
+    exportRef: null,
+  };
+  queue.push(r);
+  audit({
+    category: "ADMIN",
+    action: "privacy.dsar.filed",
+    actorId: opts.userId,
+    targetType: "DsarRequest",
+    targetId: r.id,
+    payload: { type: r.type, reason: r.reason },
+  });
+  return r;
+}
+
+/** Officer marks a DSAR fulfilled. */
+export function fulfillDsarRequest(opts: { id: string; officerId: string; exportRef?: string | null }): DsarRequest | null {
+  const r = queue.find((x) => x.id === opts.id);
+  if (!r) return null;
+  r.status = "FULFILLED";
+  r.fulfilledAt = new Date().toISOString();
+  r.fulfilledBy = opts.officerId;
+  r.exportRef = opts.exportRef ?? null;
+  audit({
+    category: "ADMIN",
+    action: "privacy.dsar.fulfilled",
+    actorId: opts.officerId,
+    targetType: "DsarRequest",
+    targetId: r.id,
+    payload: { type: r.type, userId: r.userId, exportRef: r.exportRef },
+  });
+  return r;
+}
+
+export function listDsarRequests(filter?: { status?: DsarStatus }): DsarRequest[] {
+  return queue
+    .filter((r) => !filter?.status || r.status === filter.status)
+    .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
+}
+
+/**
+ * Build a full DSAR access bundle for a user. Returns a serialisable object
+ * containing every piece of data the platform holds about that user. The
+ * output is deliberately verbose — we choose oversharing over undersharing
+ * so the DSAR does not fail on appeal.
+ *
+ * Excludes: secrets (server seeds we own, OTP hashes — not the user's data,
+ * those are crypto material), other users' data, internal hash chain links.
+ */
+export function buildDsarBundle(userId: string): Record<string, unknown> | null {
+  const user = db.user.findById(userId);
+  if (!user) return null;
+  const wallet = db.wallet.findByUserId(userId);
+  const txns = db.txn.findByUser(userId, 10_000);
+  const bets = db.bet.findByUser(userId, 10_000);
+  const mapigoBets = db.mapigoBet.findByUser(userId, 10_000);
+  const kyc = db.kyc.findByUserId(userId);
+  const responsible = db.responsible.get(userId);
+  const notifications = db.notification.findByUser(userId, 1000);
+
+  return {
+    generatedAt: new Date().toISOString(),
+    schemaVersion: 1,
+    user: {
+      id: user.id,
+      phoneE164: user.phoneE164,
+      role: user.role,
+      status: user.status,
+      locale: user.locale,
+      displayName: user.displayName,
+      dob: user.dob,
+      region: user.region,
+      acceptedTermsVersion: user.acceptedTermsVersion,
+      acceptedTermsAt: user.acceptedTermsAt,
+      marketingOptIn: user.marketingOptIn,
+      twoFactorEnabled: user.twoFactorEnabled,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      lastLoginAt: user.lastLoginAt,
+      closedAt: user.closedAt,
+    },
+    wallet,
+    transactions: txns,
+    matchBets: bets,
+    mapigoBets,
+    kyc,
+    responsibleGambling: responsible,
+    notificationsCount: notifications.length,
+    rights: {
+      access: "Granted (this document).",
+      correction: "Submit a correction request via /profile/account or by contacting privacy@kipindi.tz.",
+      erasure: "Available 7 years after account closure subject to AML retention requirements (POCA Cap 423 §16).",
+      portability: "This bundle is the portability format (machine-readable JSON).",
+    },
+  };
+}

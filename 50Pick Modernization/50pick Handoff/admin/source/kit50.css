@@ -1,0 +1,153 @@
+/* ============================================================
+   50pick — production-matched tokens (from the live screenshot + kit README)
+   Deep navy-indigo chrome · YES emerald (left) · NO rose (right)
+   · gold = needle + payouts + resolved · teal-green chrome accent
+   Hues locked. Dark is default.
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* fonts */
+  --font-display: 'Sora', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* ---- surfaces (snapped 1:1 to production globals.css — royal indigo #060a50) ---- */
+  --bg:           oklch(15% 0.130 268);
+  --bg-elevated:  oklch(22% 0.140 268);
+  --bg-elevated2: oklch(26% 0.150 268);
+  --bg-inset:     oklch(11% 0.110 268);
+  --bg-overlay:   oklch(11% 0.110 268);
+  --bg-royal-soft:oklch(30% 0.165 268);
+  --panel:        oklch(20% 0.130 268);
+  --border:       oklch(34% 0.130 268);
+  --border-strong:oklch(44% 0.150 268);
+  --border-gold:  oklch(78% 0.13 80);
+
+  /* ---- text (production values) ---- */
+  --text:        oklch(98% 0.012 268);
+  --text-muted:  oklch(86% 0.040 268);
+  --text-subtle: oklch(70% 0.080 268);
+  --text-faint:  oklch(60% 0.090 268);
+
+  /* ---- YES emerald (hue 152) — production ---- */
+  --yes-700: oklch(44% 0.14 152);
+  --yes-600: oklch(52% 0.16 152);
+  --yes-500: oklch(62% 0.17 152);
+  --yes-400: oklch(72% 0.16 152);
+  --yes-300: oklch(80% 0.14 152);
+  --yes-soft: oklch(30% 0.075 152);
+
+  /* ---- NO rose (hue 22) — production ---- */
+  --no-700: oklch(44% 0.17 22);
+  --no-600: oklch(52% 0.19 22);
+  --no-500: oklch(62% 0.20 22);
+  --no-400: oklch(72% 0.18 22);
+  --no-300: oklch(80% 0.14 22);
+  --no-soft: oklch(31% 0.105 22);
+
+  /* ---- gold (hue 76–80) — production champagne ---- */
+  --gold-600: oklch(64% 0.13 76);
+  --gold-500: oklch(72% 0.14 78);
+  --gold-400: oklch(80% 0.14 78);
+  --gold-300: oklch(86% 0.13 80);
+  --gold-200: oklch(90% 0.10 80);
+  --gold-text: oklch(20% 0.05 80);
+  --gold-soft: oklch(34% 0.075 78);
+
+  /* ---- aqua chrome accent (VIEW ALL, live label, links, focus) — matches globals.css aqua-* ---- */
+  --accent-600: oklch(52% 0.100 195);
+  --accent-500: oklch(62% 0.110 195);
+  --accent-400: oklch(72% 0.110 195);
+  --accent-soft: oklch(32% 0.070 195);
+
+  /* ---- BRAND BLUE — soon chip, focus ring, card-hover glow, info ---- */
+  --brand-600: oklch(54% 0.165 262);
+  --brand-500: oklch(63% 0.180 262);
+  --brand-400: oklch(72% 0.160 262);
+  --brand-300: oklch(82% 0.120 262);
+  --brand-soft: oklch(34% 0.120 262);
+
+  /* ---- live indicator (red, per globals .live-dot) ---- */
+  --live-400: oklch(64% 0.20 25);
+
+  /* ---- info / soon (brand blue) ---- */
+  --soon-400: var(--brand-400);
+  --soon-soft: var(--brand-soft);
+
+  /* ---- radius (kit scale) ---- */
+  --r-xs: 4px; --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 24px; --r-pill: 999px;
+
+  /* ---- motion (kit easings) ---- */
+  --ease-micro: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-stage: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-celebrate: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+* { box-sizing: border-box; }
+/* subtle film grain on every screen surface (≈1.5%) — adds depth vs flat fills */
+.kit-screen { position: relative; }
+.kit-screen::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0; opacity: 0.025;
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxNDAnIGhlaWdodD0nMTQwJz48ZmlsdGVyIGlkPSduJz48ZmVUdXJidWxlbmNlIHR5cGU9J2ZyYWN0YWxOb2lzZScgYmFzZUZyZXF1ZW5jeT0nMC44NScgbnVtT2N0YXZlcz0nMicgc3RpdGNoVGlsZXM9J3N0aXRjaCcvPjwvZmlsdGVyPjxyZWN0IHdpZHRoPScxNDAnIGhlaWdodD0nMTQwJyBmaWx0ZXI9J3VybCgjbiknLz48L3N2Zz4=");
+}
+.kit-screen > * { position: relative; z-index: 1; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.disp { font-family: var(--font-display); letter-spacing: -0.02em; }
+.body { font-family: var(--font-body); }
+
+/* hide scrollbars inside artboards */
+.kit-screen *::-webkit-scrollbar { display: none; }
+.kit-screen * { scrollbar-width: none; }
+
+/* custom scroller (opt-in via .ds-scroll) */
+.ds-scroll { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+.ds-scroll::-webkit-scrollbar { display: block; width: 8px; }
+.ds-scroll::-webkit-scrollbar-track { background: var(--bg-inset); border-radius: 999px; }
+.ds-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
+.ds-scroll:hover::-webkit-scrollbar-thumb { background: var(--brand-500); }
+
+@keyframes lpulse { 0%,100% { opacity: 0.5; box-shadow: 0 0 0 0 currentColor; } 50% { opacity: 1; box-shadow: 0 0 6px 1px currentColor; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes goldShimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+@keyframes barReveal { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes typing { 0%,60%,100% { transform: translateY(0); opacity: .4; } 30% { transform: translateY(-4px); opacity: 1; } }
+@keyframes lightSweep { 0% { transform: translateX(-120%); } 100% { transform: translateX(360%); } }
+@keyframes routeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.route-in { animation: routeIn 0.32s var(--ease-stage) both; }
+@keyframes cardRise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.stagger-grid > * { animation: cardRise 0.44s var(--ease-stage) both; }
+.stagger-grid > *:nth-child(1) { animation-delay: 0.04s; } .stagger-grid > *:nth-child(2) { animation-delay: 0.09s; }
+.stagger-grid > *:nth-child(3) { animation-delay: 0.14s; } .stagger-grid > *:nth-child(4) { animation-delay: 0.19s; }
+.stagger-grid > *:nth-child(5) { animation-delay: 0.24s; } .stagger-grid > *:nth-child(6) { animation-delay: 0.29s; }
+.stagger-grid > *:nth-child(n+7) { animation-delay: 0.33s; }
+/* focus-visible — keyboard accessibility on every interactive element (QA #4) */
+:where(button, a, input, textarea, select, summary, [role="button"], [role="checkbox"], [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid var(--accent-400); outline-offset: 2px; border-radius: 3px;
+}
+@keyframes edgePulse { 0%,100% { transform: translate(-50%,-50%) scale(1); opacity: 1; } 50% { transform: translate(-50%,-50%) scale(1.25); opacity: 0.7; } }
+@keyframes pop { 0% { transform: scale(0.92); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes tickerUp { 0% { transform: translateY(16px); opacity: 0; } 12% { transform: translateY(0); opacity: 1; } 88% { opacity: 1; } 100% { transform: translateY(-16px); opacity: 0; } }
+@keyframes dotBounce { 0%,80%,100% { transform: translateY(0); opacity: 0.5; } 40% { transform: translateY(-6px); opacity: 1; } }
+@keyframes barSlide { 0% { transform: translateX(-120%); } 100% { transform: translateX(360%); } }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@keyframes liftIn { from { transform: translateY(6px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
+@keyframes hcDrift { 0% { transform: translate3d(0, 14vh, 0); } 100% { transform: translate3d(0, -120%, 0); } }
+@keyframes hcVerdictIn { 0% { opacity: 0; transform: translateX(18px); } 100% { opacity: 1; transform: translateX(0); } }
+@keyframes aquaPulse { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+/* ---- Motion level (reviewer #8): full | reduced | minimal ----
+   Default --motion-level:full. Host sets data-motion on <html> to throttle
+   looping decorative motion on mid-tier devices / battery saver.
+   reduced = kill ambient loops (sweep, flicker, shimmer, breathe) but keep
+   functional transitions. minimal = collapse essentially everything. */
+:root { --motion-level: full; }
+[data-motion="reduced"] [style*="lightSweep"],
+[data-motion="reduced"] [style*="goldShimmer"], [data-motion="reduced"] [style*="shimmer"],
+[data-motion="reduced"] [style*="edgePulse"], [data-motion="reduced"] [style*="barSlide"],
+[data-motion="reduced"] [style*="csrf-breathe"], [data-motion="reduced"] [style*="aqua-pulse"] { animation: none !important; }
+[data-motion="minimal"] *, [data-motion="minimal"] *::before, [data-motion="minimal"] *::after {
+  animation: none !important; transition-duration: .001ms !important;
+}

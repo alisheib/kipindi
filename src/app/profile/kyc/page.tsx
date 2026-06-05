@@ -1,0 +1,339 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { ChevronLeft, ShieldCheck, Check, AlertCircle } from "lucide-react";
+import { FiftyMark } from "@/components/brand";
+import { currentSession } from "@/lib/server/auth-service";
+import { getKycStatus, startKyc } from "@/lib/server/kyc-service";
+import { submitNidaAction, attachDocumentAction, submitKycForReviewAction } from "./actions";
+
+export const metadata = { title: "Verify identity · Thibitisha" };
+
+export default async function KycPage({ searchParams }: { searchParams?: Promise<{ welcome?: string; error?: string; nida?: string; submitted?: string }> }) {
+  const session = await currentSession();
+  if (!session) redirect("/auth/login");
+
+  await startKyc(session.userId);
+  const kyc = await getKycStatus(session.userId);
+
+  const sp = (await searchParams) ?? {};
+  const isWelcome = sp.welcome === "new";
+  const nidaDone = !!kyc?.nidaVerifiedAt;
+  const docsCount = kyc?.documents.length ?? 0;
+  const submitted = kyc?.status === "PENDING_REVIEW" || kyc?.status === "APPROVED";
+  const rejected = kyc?.status === "REJECTED";
+
+  return (
+    <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
+      <Link
+        href="/profile"
+        className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
+      >
+        <ChevronLeft size={14} aria-hidden />
+        Profile
+      </Link>
+
+      {sp.error && (
+        <div role="alert" className="rounded-xl border border-no-700 bg-no-500/10 px-4 py-3 text-[13px] text-no-300">
+          {sp.error}
+        </div>
+      )}
+      {sp.nida === "verified" && !sp.error && (
+        <div role="status" className="rounded-xl border border-yes-700 bg-yes-500/10 px-4 py-3 text-[13px] text-yes-300">
+          NIDA verified. Now attach your documents below. · NIDA imethibitishwa.
+        </div>
+      )}
+      {sp.submitted && !sp.error && (
+        <div role="status" className="rounded-xl border border-yes-700 bg-yes-500/10 px-4 py-3 text-[13px] text-yes-300">
+          Submitted for review. We&rsquo;ll notify you when it&rsquo;s decided. · Imewasilishwa.
+        </div>
+      )}
+
+      {isWelcome && !submitted && !nidaDone && (
+        <section className="rounded-2xl border border-gold-700 bg-gold-500/10 p-4 lg:p-5 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex-1">
+            <p className="font-display text-[14px] font-bold text-gold-300">
+              Welcome to 50pick · Karibu
+            </p>
+            <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
+              You can <span className="font-bold text-text">browse markets and place bets right away</span>.
+              Verify your identity later — withdrawals unlock once KYC is approved.
+              <span className="block italic text-text-subtle text-[11.5px] mt-0.5">
+                Unaweza kuanza kuweka dau sasa hivi. Thibitisha NIDA kabla ya kutoa pesa.
+              </span>
+            </p>
+          </div>
+          <Link
+            href="/markets"
+            className="btn btn-gold btn-lg whitespace-nowrap"
+            style={{ borderRadius: 999 }}
+          >
+            Skip for now · Browse markets
+          </Link>
+        </section>
+      )}
+
+      <header className="relative overflow-hidden rounded-2xl border border-border bg-bg-elevated">
+        <div
+          className="absolute inset-0"
+          aria-hidden
+          style={{
+            background:
+              "radial-gradient(800px 320px at 100% 0%, oklch(45% 0.10 240 / 0.18), transparent 60%), " +
+              "linear-gradient(135deg, oklch(22% 0.140 268) 0%, oklch(30% 0.165 268) 100%)",
+          }}
+        />
+        <div className="absolute -right-6 -top-6 opacity-[0.06]" aria-hidden>
+          <FiftyMark size={180} />
+        </div>
+        <div className="relative z-10 p-5 lg:p-6">
+          <div className="flex items-center gap-2 mb-1">
+            <ShieldCheck size={14} className="text-info-fg" />
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-info-fg">
+              Identity verification
+            </p>
+          </div>
+          <h1 className="font-display text-[24px] lg:text-[26px] font-bold text-text leading-tight tracking-[-0.02em]">
+            Verify your NIDA · Thibitisha NIDA
+          </h1>
+          <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose">
+            We verify against the National Identification Authority before withdrawals.
+            Required by the Tanzania Gaming Act and the Personal Data Protection Act.
+            <span className="block italic text-text-subtle text-[12px] mt-1">
+              Tunathibitisha NIDA kabla ya kutoa pesa.
+            </span>
+          </p>
+        </div>
+      </header>
+
+      {rejected && (
+        <section role="alert" className="rounded-2xl border border-no-700 bg-no-500/[0.08] p-4 lg:p-5">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle size={18} className="mt-0.5 shrink-0 text-no-300" />
+            <div className="min-w-0">
+              <p className="font-display text-[14px] font-bold text-no-300">Verification needs another look · Imekataliwa</p>
+              <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
+                {kyc?.rejectReason ? <>Reason: <span className="font-semibold text-text">{String(kyc.rejectReason).replace(/_/g, " ").toLowerCase()}</span>. </> : null}
+                {kyc?.rejectNote ? `${kyc.rejectNote} ` : ""}
+                Please re-enter your details below and resubmit, or email{" "}
+                <a href="mailto:support@50pick.com?subject=KYC%20review" className="text-aqua-200 underline-offset-2 hover:underline">support@50pick.com</a>.
+                <span className="block italic text-text-subtle text-[11.5px] mt-0.5">Tafadhali jaribu tena au wasiliana na msaada.</span>
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <Step n={1} title="NIDA"      detail="National ID number"  done={nidaDone} active={!nidaDone} />
+        <Step n={2} title="Documents" detail="Front · back · selfie" done={docsCount >= 3} active={nidaDone && docsCount < 3} />
+        <Step n={3} title="Review"    detail="Compliance approval"  done={kyc?.status === "APPROVED"} active={submitted && kyc?.status !== "APPROVED"} />
+      </section>
+
+      {!nidaDone && (
+        <section className="rounded-2xl glass-panel p-5 lg:p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <ShieldCheck size={18} className="text-info-fg" strokeWidth={1.75} />
+            <h2 className="font-display text-[15px] font-semibold text-text">Step 1 · NIDA verification</h2>
+          </div>
+          <form action={submitNidaAction} className="space-y-4">
+            <Field
+              id="nida"
+              label="NIDA number · Nambari ya NIDA"
+              hint="20 digits, exactly as on your card"
+              type="text"
+              required
+              pattern="\d{20}"
+              maxLength={20}
+              inputMode="numeric"
+              placeholder="00000000000000000000"
+            />
+            <Field
+              id="fullName"
+              label="Full name · Jina kamili"
+              hint="As printed on the NIDA card"
+              type="text"
+              required
+              minLength={3}
+              maxLength={100}
+            />
+            <Field
+              id="dob"
+              label="Date of birth · Tarehe ya kuzaliwa"
+              hint="Must match NIDA exactly. 18+ required."
+              type="date"
+              required
+              min="1900-01-01"
+              max={new Date(new Date().getFullYear() - 18, new Date().getMonth(), new Date().getDate()).toISOString().slice(0, 10)}
+            />
+            <button type="submit" className="btn btn-gold btn-lg w-full" style={{ borderRadius: 999 }}>
+              Verify NIDA · Thibitisha
+            </button>
+          </form>
+          <details className="border-t border-border pt-3 text-[12.5px] text-text-muted">
+            <summary className="font-display font-semibold text-text cursor-pointer">
+              Why we ask · Kwa nini tunaomba
+            </summary>
+            <p className="mt-1.5 leading-snug">
+              The Gaming Board of Tanzania requires identity verification for every account
+              that wagers real money. Your NIDA is checked against the National Identification
+              Authority. We never share your number with third parties.
+            </p>
+          </details>
+        </section>
+      )}
+
+      {nidaDone && !submitted && (
+        <section className="rounded-2xl glass-panel p-5 lg:p-6 space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 rounded-pill border border-yes-700 bg-yes-500/10 px-2.5 py-0.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.1em] text-yes-300">
+              <Check size={11} strokeWidth={2.5} />
+              NIDA verified
+            </span>
+          </div>
+          <h2 className="font-display text-[15px] font-semibold text-text">Step 2 · Upload documents</h2>
+          <p className="text-[12.5px] text-text-muted leading-snug">
+            We need a clear photo of the <span className="font-bold text-text">front</span>,
+            the <span className="font-bold text-text">back</span> of your NIDA card,
+            and a <span className="font-bold text-text">selfie</span> holding the card.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <UploadSlot label="ID front · Mbele"    docType="NIDA_FRONT" done={docsCount >= 1} />
+            <UploadSlot label="ID back · Nyuma"     docType="NIDA_BACK"  done={docsCount >= 2} />
+            <UploadSlot label="Selfie · Picha yako" docType="SELFIE"     done={docsCount >= 3} />
+          </div>
+          <p className="text-[10.5px] italic text-text-subtle">
+            Image upload uses demo storage in this build — tap each card to attach a sample, then submit for compliance review.
+          </p>
+          <form action={submitKycForReviewAction}>
+            <button
+              type="submit"
+              disabled={docsCount < 3}
+              className={docsCount >= 3 ? "btn btn-gold btn-lg w-full" : "btn btn-ghost btn-lg w-full"}
+              style={{ borderRadius: 999 }}
+            >
+              Submit for review · Wasilisha
+            </button>
+            {docsCount < 3 && (
+              <p className="mt-2 text-[11px] text-text-subtle text-center">Attach all three documents to submit.</p>
+            )}
+          </form>
+        </section>
+      )}
+
+      {submitted && (
+        <section className="rounded-2xl border border-gold-700 bg-gold-500/10 p-5 lg:p-6 text-center space-y-2">
+          <p className="font-display text-[16px] font-bold text-gold-300">
+            {kyc?.status === "APPROVED" ? "Identity verified" : "Submitted for review"}
+          </p>
+          <p className="text-[12.5px] text-text-muted leading-snug">
+            {kyc?.status === "APPROVED"
+              ? "You can now deposit and withdraw freely."
+              : "Compliance is reviewing. Most reviews finish within 2 hours during business hours."}
+            <span className="block italic text-text-subtle text-[11.5px] mt-0.5">
+              {kyc?.status === "APPROVED"
+                ? "Sasa unaweza kuweka na kutoa pesa."
+                : "Ukaguzi unaendelea — utakamilika ndani ya saa 2."}
+            </span>
+          </p>
+        </section>
+      )}
+
+      <div className="flex items-center justify-between pt-1">
+        <Link
+          href="/profile"
+          className="font-mono text-[12px] uppercase tracking-[0.14em] text-text-subtle hover:text-text"
+        >
+          ← Profile
+        </Link>
+        <Link
+          href="/wallet"
+          className="font-display text-[13px] font-semibold text-gold-300 hover:text-gold-200 transition-colors"
+        >
+          Need to deposit? · Wallet
+        </Link>
+      </div>
+    </main>
+  );
+}
+
+function Step({ n, title, detail, done, active }: { n: number; title: string; detail: string; done?: boolean; active?: boolean }) {
+  const cls =
+    done   ? "border-yes-700 bg-yes-500/10"
+    : active ? "border-gold-700 bg-gold-500/10"
+    :          "border-border bg-bg-overlay";
+  const numCls =
+    done   ? "bg-yes-500 text-yes-950"
+    : active ? "bg-gold-500 text-gold-fg"
+    :          "bg-bg-overlay text-text-subtle border border-border";
+  return (
+    <div className={`rounded-md border p-3 ${cls}`}>
+      <div className="flex items-center gap-2">
+        <span className={`h-5 w-5 inline-flex items-center justify-center rounded-pill font-mono text-[10px] font-bold ${numCls}`}>
+          {done ? <Check size={11} strokeWidth={3} /> : n}
+        </span>
+        <span className="font-display text-[12px] font-semibold text-text">{title}</span>
+      </div>
+      <p className="mt-1 text-[11px] text-text-muted">{detail}</p>
+    </div>
+  );
+}
+
+function UploadSlot({ label, docType, done }: { label: string; docType: "NIDA_FRONT" | "NIDA_BACK" | "SELFIE"; done: boolean }) {
+  return (
+    <form action={attachDocumentAction as unknown as (formData: FormData) => void}>
+      <input type="hidden" name="docType" value={docType} />
+      <button
+        type="submit"
+        disabled={done}
+        className={`w-full rounded-md border-2 border-dashed p-3.5 text-center transition-colors ${
+          done ? "border-yes-700 bg-yes-500/[0.07] cursor-default" : "border-border bg-bg-overlay/40 hover:border-gold-700 hover:bg-gold-500/[0.06] cursor-pointer"
+        }`}
+      >
+        <span
+          className={`mx-auto mb-1.5 h-6 w-6 inline-flex items-center justify-center rounded-pill ${
+            done ? "bg-yes-500 text-yes-950" : "bg-bg-overlay text-text-subtle border border-border"
+          }`}
+        >
+          {done ? <Check size={11} strokeWidth={3} /> : "+"}
+        </span>
+        <span className="block font-display text-[12px] font-semibold text-text">{label}</span>
+        <span className="mt-0.5 block font-mono text-[10.5px] text-text-subtle">{done ? "Attached" : "Tap to attach"}</span>
+      </button>
+    </form>
+  );
+}
+
+function Field({
+  id, label, hint, type, pattern, inputMode, placeholder,
+  required: req = true, minLength, maxLength, min, max,
+}: {
+  id: string; label: string; hint?: string; type: string;
+  pattern?: string; inputMode?: "numeric" | "text"; placeholder?: string;
+  required?: boolean; minLength?: number; maxLength?: number; min?: string; max?: string;
+}) {
+  return (
+    <div>
+      <label
+        htmlFor={id}
+        className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2"
+      >
+        {label}
+      </label>
+      <input
+        id={id}
+        name={id}
+        type={type}
+        pattern={pattern}
+        inputMode={inputMode}
+        placeholder={placeholder}
+        required={req}
+        minLength={minLength}
+        maxLength={maxLength}
+        min={min}
+        max={max}
+        className="w-full h-11 px-3 rounded-md border border-border bg-bg-overlay font-mono text-[13px] tabular-nums text-text focus:outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 transition-colors"
+      />
+      {hint && <p className="mt-1.5 text-[11px] text-text-subtle">{hint}</p>}
+    </div>
+  );
+}

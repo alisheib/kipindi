@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>50pick — Design System</title>
+<link rel="stylesheet" href="kit50.css" />
+<style>
+  html, body { margin: 0; padding: 0; background: oklch(13% 0.07 264); }
+  #root { width: 100vw; height: 100vh; }
+  body { -webkit-font-smoothing: antialiased; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+    <rect width="400" height="400" rx="40" fill="#141a44"/>
+    <rect x="120" y="120" width="160" height="160" rx="20" fill="#1c2356" stroke="#3a52b0" stroke-width="2.5"/>
+    <path d="M160 165h34" stroke="#54d6a6" stroke-width="9" stroke-linecap="round"/>
+    <path d="M160 165v26h15a13 13 0 010 26h-15" stroke="#54d6a6" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <path d="M210 220v-44l18 12 18-12" stroke="#e8c878" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <text x="200" y="108" font-family="sans-serif" font-size="22" font-weight="700" fill="#fff" text-anchor="middle">50pick · DS</text>
+  </svg>
+</template>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="kit50.jsx"></script>
+<script type="text/babel" src="ds-brand-nav.jsx"></script>
+<script type="text/babel" src="ds-charts.jsx"></script>
+<script type="text/babel" src="ds-atoms2.jsx"></script>
+<script type="text/babel" src="ds-foundations.jsx"></script>
+<script type="text/babel" src="ds-showcase.jsx"></script>
+<script type="text/babel" src="ds-forms.jsx"></script>
+<script type="text/babel" src="ds-betting.jsx"></script>
+<script type="text/babel" src="ds-news-ai.jsx"></script>
+<script type="text/babel" src="ds-flagship.jsx"></script>
+<script type="text/babel" src="ds-overlays.jsx"></script>
+<script type="text/babel" src="ds-badges.jsx"></script>
+<script type="text/babel" src="ds-hero.jsx"></script>
+<script type="text/babel" src="ds-leaderboard.jsx"></script>
+<script type="text/babel" src="ds-wallet.jsx"></script>
+<script type="text/babel" src="ds-positions.jsx"></script>
+<script type="text/babel" src="ds-mobile.jsx"></script>
+<script type="text/babel" src="ds-auth.jsx"></script>
+<script type="text/babel" src="ds-trade.jsx"></script>
+<script type="text/babel" src="ds-admin.jsx"></script>
+<script type="text/babel" src="ds-illustrations.jsx"></script>
+<script type="text/babel" src="real-dial-linear.jsx"></script>
+<script type="text/babel" src="real-dial-round.jsx"></script>
+<script type="text/babel" src="real-dial-board.jsx"></script>
+<script type="text/babel" src="features.jsx"></script>
+<script type="text/babel">
+  // Look boards up by NAME on window (never a bare identifier) so a single chunk that
+  // fails to fetch can't throw a ReferenceError and blank the whole canvas — it shows a
+  // contained placeholder for just that artboard instead.
+  const A = (id, label, w, h, name) => {
+    const C = window[name];
+    return <DCArtboard id={id} label={label} width={w} height={h} style={{ background: 'var(--bg)' }}>
+      {typeof C === 'function'
+        ? <C />
+        : <div style={{ height: '100%', minHeight: 160, display: 'grid', placeItems: 'center', textAlign: 'center', padding: 24, color: 'var(--text-faint, #8a93b0)', fontFamily: 'ui-monospace, monospace', fontSize: 12, lineHeight: 1.6 }}>
+            <div><div style={{ fontWeight: 700, marginBottom: 4 }}>{label}</div>Module “{name}” didn’t load.<br/>Refresh to retry.</div>
+          </div>}
+    </DCArtboard>;
+  };
+  // Catches any render-time error so the canvas degrades gracefully instead of going blank.
+  class Boundary extends React.Component {
+    constructor(p) { super(p); this.state = { err: null }; }
+    static getDerivedStateFromError(err) { return { err }; }
+    render() {
+      if (this.state.err) return <div style={{ padding: 40, color: '#cdd5ee', fontFamily: 'ui-monospace, monospace', fontSize: 13, lineHeight: 1.7 }}>
+        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>50pick — Design System</div>
+        A module failed to load. Refresh the preview to retry.<br/>
+        <span style={{ color: '#7e88a8' }}>{String(this.state.err && this.state.err.message || this.state.err)}</span>
+      </div>;
+      return this.props.children;
+    }
+  }
+  function DS() {
+    return (
+      <Boundary><DesignCanvas>
+        <DCSection id="hero" title="00 · Landing — Hero Constellation" subtitle="Signature landing: read-only dial constellation on a gilt field, drift particles, hover tooltips, rolling predictor counter, cycling verdict tape.">
+          {A('herocon', 'Landing hero — constellation', 1280, 720, 'HeroBoard')}
+        </DCSection>
+        <DCSection id="flagship" title="00b · Flagship — Market Detail" subtitle="The system composed into a shippable, international-grade screen: live chart with last price, order-book depth, trade tape, sticky buy tray.">
+          {A('marketpro', 'Market Detail — assembled', 1280, 1000, 'MarketDetailPro')}
+        </DCSection>
+        <DCSection id="foundations" title="01 · Foundations" subtitle="Color · type · spacing · radius · elevation · motion · haptics — your exact OKLCH palette.">
+          {A('color', 'Color', 560, 760, 'FoundationColor')}
+          {A('type', 'Type', 620, 620, 'FoundationType')}
+          {A('scale', 'Spacing · Radius · Elevation', 620, 560, 'FoundationScale')}
+          {A('motion', 'Motion · Haptics', 640, 600, 'FoundationMotion')}
+        </DCSection>
+        <DCSection id="brand" title="02 · Brand & Navigation" subtitle="Logo lockups + app icon, top nav, news banner, live ticker, AI assistant, tabs, segmented, bottom nav.">
+          {A('logo', 'Logo & app icon', 640, 540, 'LogoShowcase')}
+          {A('nav', 'Navigation chrome', 980, 560, 'NavBoard')}
+          {A('newsai', 'News banner & AI assistant', 760, 640, 'NewsAiBoard')}
+        </DCSection>
+        <DCSection id="atoms" title="03 · Atoms" subtitle="Buttons, chips, inputs, avatars, progress, tooltip, probability bars.">
+          {A('buttons', 'Buttons (locked)', 720, 560, 'ButtonShowcase')}
+          {A('atoms', 'Inputs · avatars · progress · bars', 640, 720, 'AtomsBoard')}
+          {A('loaders', 'Loaders & spinners', 560, 480, 'LoadersBoard')}
+        </DCSection>
+        <DCSection id="charts" title="04 · Charts & the Dial" subtitle="Probability chart, sparkline, pool depth, conviction dial (linear + round).">
+          {A('charts', 'Charts & dial', 640, 820, 'ChartsBoard')}
+        </DCSection>
+        <DCSection id="betting" title="04b · The betting dial (main feature)" subtitle="Production component — unchanged mechanic. One gesture sets side + conviction multiplier (1×–5×). Round (final) + linear variants.">
+          {A('betdial', 'Conviction dial — real component', 820, 900, 'RealDialBoard')}
+        </DCSection>
+        <DCSection id="forms" title="05 · Form fields & controls" subtitle="Inputs, stepper, select, switch, checkbox, radio, textarea — all states.">
+          {A('forms', 'Form fields & controls', 640, 720, 'FormsBoard')}
+          {A('scroller', 'Scroller', 480, 520, 'Scroller')}
+        </DCSection>
+        <DCSection id="textclauses" title="06 · Text & legal clauses" subtitle="Text styles + standing responsible-gaming / resolution clauses, EN + Swahili.">
+          {A('textclauses', 'Text & clauses', 640, 760, 'TextClauses')}
+        </DCSection>
+        <DCSection id="components" title="07 · Components" subtitle="Market card, buy tray, positions, leaderboard, resolution.">
+          {A('pickaside', 'Market grid + how it works', 1340, 760, 'PickASide')}
+          {A('buytray', 'Buy tray', 420, 560, 'BuyTray')}
+          {A('poslead', 'Positions + leaderboard', 680, 620, 'PositionsLeaderboard')}
+          {A('resolve', 'Resolution panel', 540, 540, 'ResolutionPanel')}
+        </DCSection>
+        <DCSection id="hover" title="08 · Card hover (locked: blue)" subtitle="Gold reserved for win/payout; blue keeps hover cohesive.">
+          {A('hovercompare', 'Hover frame — blue chosen', 820, 620, 'HoverCompare')}
+        </DCSection>
+        <DCSection id="moments" title="09 · Resolution moments & toasts" subtitle="Win (gold, rolling counter) · loss (calm) · toasts. No casino imagery.">
+          {A('winloss', 'Win · Loss · Toasts', 720, 760, 'WinLoss')}
+        </DCSection>
+        <DCSection id="overlays" title="09b · Notifications, popups & avatars" subtitle="Bell dropdown, toast popups, confirm dialog, presence avatars + stacks.">
+          {A('overlays', 'Notifications · popups · avatars', 1180, 640, 'OverlaysBoard')}
+        </DCSection>
+        <DCSection id="states" title="09c · States" subtitle="Empty / no-data, loading skeletons in context, error, offline — bilingual.">
+          {A('states', 'Empty · loading · error · offline', 1040, 680, 'StatesBoard')}
+        </DCSection>
+        <DCSection id="warnings" title="09d · Responsible play & warnings" subtitle="Session reality-check, stake limits, cooling-off, high-stake & balance guards — compliance-grade.">
+          {A('warnings', 'Responsible play & warnings', 1100, 660, 'WarningsBoard')}
+        </DCSection>
+        <DCSection id="badges" title="09e · Achievements & badges" subtitle="Gilt-on-royal coins, locked/progress/unlocked, badge shelf, achievement toast, countdown pill.">
+          {A('badges', 'Achievements & badges', 920, 720, 'BadgesBoard')}
+        </DCSection>
+        <DCSection id="leaderboard" title="09f · Leaderboard (page)" subtitle="Podium, tier stats, ranked rows with accuracy / points / 7-day movement — your row highlighted.">
+          {A('leaderboard', 'Leaderboard — page', 1280, 720, 'LeaderboardBoard')}
+        </DCSection>
+        <DCSection id="wallet" title="09g · Wallet (page)" subtitle="Balance hero, mobile-money rails (M-Pesa/Airtel/Tigo), transaction history with status chips.">
+          {A('wallet', 'Wallet — page', 1280, 700, 'WalletBoard')}
+        </DCSection>
+        <DCSection id="positions" title="09h · Positions (page)" subtitle="Portfolio summary + position cards (open / won / lost) with P&L, conviction bar, sell action.">
+          {A('positions', 'Positions — page', 1280, 640, 'PositionsBoard')}
+        </DCSection>
+        <DCSection id="mobile" title="11 · Mobile (393px)" subtitle="Mobile-first: stacked market detail (dial above chart), betslip bottom sheet, 1-col grid, bottom nav.">
+          {A('mobile', 'Mobile — 393px screens', 1320, 880, 'MobileBoard')}
+        </DCSection>
+        <DCSection id="auth" title="12 · Auth (first screens)" subtitle="Login, register, phone OTP, password reset — mobile-first, bilingual, +255 phone field.">
+          {A('auth', 'Auth — 393px screens', 1740, 800, 'AuthBoard')}
+        </DCSection>
+        <DCSection id="trade" title="13 · Comments & trade actions" subtitle="Market discussion thread, early-sell confirm modal, operation-result moment.">
+          {A('trade', 'Comments · sell · result', 920, 720, 'TradeBoard')}
+        </DCSection>
+        <DCSection id="admin" title="14 · Admin (operator console)" subtitle="Sidebar + topbar shell, KPI cards, volume chart, two-officer resolver queue, markets table.">
+          {A('admin', 'Admin — operator console', 1280, 760, 'AdminBoard')}
+        </DCSection>
+        <DCSection id="illustrations" title="15 · Illustrations" subtitle="Line-art empty states (unique per surface) + how-it-works onboarding. Category watermarks on market cards.">
+          {A('illustrations', 'Illustrations — empty states & onboarding', 1040, 640, 'IllustrationsBoard')}
+        </DCSection>
+        <DCSection id="patterns" title="10 · Patterns" subtitle="Betslip sheet (hold-to-confirm), KYC step, reality check, empty state.">
+          {A('patterns', 'Patterns', 680, 760, 'Patterns')}
+        </DCSection>
+      </DesignCanvas></Boundary>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<DS />);
+</script>
+</body>
+</html>

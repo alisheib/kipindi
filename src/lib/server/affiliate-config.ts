@@ -1,0 +1,141 @@
+/**
+ * Affiliate / referral program config — the admin money-lever.
+ *
+ * One global config object. A master `enabled` switch plus three
+ * independently-toggleable reward modes (commission / bonus / prize), each
+ * with its own rates, amounts and caps. Mirrors `market-config.ts`: every
+ * mutation is HMAC-audited for the GBT inspector trail and the object
+ * persists across hot-reloads via `globalThis.__50PICK_AFFILIATE_CONFIG`,
+ * which the backup module snapshots alongside the store.
+ *
+ * Brand/compliance note: referral rewards are a regulated inducement under
+ * Gaming Board of Tanzania guidance. The master switch lets the operator run
+ * the whole program dark, or enable only the modes they've cleared.
+ */
+import { audit } from "./audit";
+
+export type BonusRecipient = "NEW" | "REFERRER" | "BOTH";
+export type BonusTrigger = "SIGNUP" | "FIRST_DEPOSIT";
+export type PrizeMilestone = "FIRST_BET" | "DEPOSIT_THRESHOLD";
+
+export type AffiliateConfig = {
+  /** Master switch. When false, links still resolve (recruits still bind to
+   *  their referrer) but NO new rewards accrue and players see a paused
+   *  banner. This is the lever the operator flips to run the program dark. */
+  enabled: boolean;
+
+  commission: {
+    enabled: boolean;
+    /** Share of the operator margin a recruit generates that the referrer
+     *  earns, as a fraction 0..1 (e.g. 0.50 = 50%). */
+    rate: number;
+    /** How long after a recruit joins commission keeps accruing, in months. */
+    windowMonths: number;
+    /** Max total commission earnable from a single recruit, in TZS. 0 = uncapped. */
+    capPerRecruitTzs: number;
+  };
+
+  bonus: {
+    enabled: boolean;
+    recipient: BonusRecipient;
+    /** Credit to the newly-recruited player, in TZS. */
+    newAmountTzs: number;
+    /** Credit to the referrer, in TZS. */
+    referrerAmountTzs: number;
+    trigger: BonusTrigger;
+  };
+
+  prize: {
+    enabled: boolean;
+    milestone: PrizeMilestone;
+    /** Only used when milestone === DEPOSIT_THRESHOLD. */
+    depositThresholdTzs: number;
+    /** Fixed prize paid to the referrer when a recruit hits the milestone. */
+    amountTzs: number;
+    /** Max number of milestone prizes a single referrer can earn. 0 = uncapped. */
+    capPerReferrer: number;
+  };
+};
+
+/**
+ * Defaults match the Claude Design spec (Active, all three modes on):
+ * commission 50% for 24 months capped at TZS 250,000/recruit; bonus TZS 2,000
+ * to both on first deposit; prize TZS 5,000 on a recruit's first bet, max 20.
+ * The operator can pause or retune any of this at /admin/affiliate.
+ */
+export const DEFAULT_AFFILIATE_CONFIG: AffiliateConfig = {
+  enabled: true,
+  commission: { enabled: true, rate: 0.5, windowMonths: 24, capPerRecruitTzs: 250_000 },
+  bonus: { enabled: true, recipient: "BOTH", newAmountTzs: 2_000, referrerAmountTzs: 2_000, trigger: "FIRST_DEPOSIT" },
+  prize: { enabled: true, milestone: "FIRST_BET", depositThresholdTzs: 10_000, amountTzs: 5_000, capPerReferrer: 20 },
+};
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __50PICK_AFFILIATE_CONFIG: AffiliateConfig | undefined;
+}
+
+function deepClone(c: AffiliateConfig): AffiliateConfig {
+  return {
+    enabled: c.enabled,
+    commission: { ...c.commission },
+    bonus: { ...c.bonus },
+    prize: { ...c.prize },
+  };
+}
+
+const stored =
+  globalThis.__50PICK_AFFILIATE_CONFIG ??
+  (globalThis.__50PICK_AFFILIATE_CONFIG = deepClone(DEFAULT_AFFILIATE_CONFIG));
+
+export function getAffiliateConfig(): AffiliateConfig {
+  return deepClone(globalThis.__50PICK_AFFILIATE_CONFIG ?? stored);
+}
+
+/** Deep-merge a partial update onto the current config. */
+function mergeConfig(base: AffiliateConfig, u: DeepPartial<AffiliateConfig>): AffiliateConfig {
+  return {
+    enabled: u.enabled ?? base.enabled,
+    commission: { ...base.commission, ...(u.commission ?? {}) },
+    bonus: { ...base.bonus, ...(u.bonus ?? {}) },
+    prize: { ...base.prize, ...(u.prize ?? {}) },
+  };
+}
+
+type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? Partial<T[K]> : T[K] };
+
+function validate(c: AffiliateConfig): { ok: true } | { ok: false; reason: string } {
+  // Commission rate is a hard regulated ceiling: never let the referrer cut
+  // exceed 100% of margin, and keep the demo guidance at ≤ 100%.
+  if (c.commission.rate < 0 || c.commission.rate > 1) return { ok: false, reason: "Commission rate must be 0–100%." };
+  if (c.commission.windowMonths < 1 || c.commission.windowMonths > 60) return { ok: false, reason: "Commission window must be 1–60 months." };
+  if (c.commission.capPerRecruitTzs < 0 || c.commission.capPerRecruitTzs > 50_000_000) return { ok: false, reason: "Per-recruit cap must be 0–50,000,000 TZS." };
+  if (c.bonus.newAmountTzs < 0 || c.bonus.newAmountTzs > 1_000_000) return { ok: false, reason: "New-player bonus must be 0–1,000,000 TZS." };
+  if (c.bonus.referrerAmountTzs < 0 || c.bonus.referrerAmountTzs > 1_000_000) return { ok: false, reason: "Referrer bonus must be 0–1,000,000 TZS." };
+  if (c.prize.amountTzs < 0 || c.prize.amountTzs > 1_000_000) return { ok: false, reason: "Prize amount must be 0–1,000,000 TZS." };
+  if (c.prize.depositThresholdTzs < 0 || c.prize.depositThresholdTzs > 50_000_000) return { ok: false, reason: "Deposit threshold must be 0–50,000,000 TZS." };
+  if (c.prize.capPerReferrer < 0 || c.prize.capPerReferrer > 10_000) return { ok: false, reason: "Prize cap must be 0–10,000." };
+  return { ok: true };
+}
+
+export function setAffiliateConfig(updates: DeepPartial<AffiliateConfig>, officerId: string):
+  | { ok: true; config: AffiliateConfig }
+  | { ok: false; error: string } {
+  const before = getAffiliateConfig();
+  const merged = mergeConfig(before, updates);
+  const v = validate(merged);
+  if (!v.ok) return { ok: false, error: v.reason };
+  globalThis.__50PICK_AFFILIATE_CONFIG = merged;
+  audit({
+    category: "ADMIN",
+    action: "affiliate.config.updated",
+    actorId: officerId,
+    targetType: "AffiliateConfig",
+    targetId: "global",
+    payload: { before, after: merged, changes: updates },
+  });
+  // Persist the change so it survives a restart (the backup envelope now
+  // captures this config). Fire-and-forget; never blocks the save.
+  import("./backup").then((m) => m.scheduleBackup()).catch(() => {});
+  return { ok: true, config: deepClone(merged) };
+}
