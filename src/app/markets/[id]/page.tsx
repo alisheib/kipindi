@@ -161,7 +161,7 @@ export default async function MarketDetail({
             <h2 className="font-display text-[17px] font-semibold text-text mb-2">Resolution criterion</h2>
             <p className="text-[14px] leading-relaxed text-text-muted whitespace-pre-line">{m.resolutionCriterion}</p>
             <p className="mt-3 font-mono text-[12px] text-text-subtle">
-              Source · <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-text underline">{m.sourceUrl}</a>
+              Source · <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-text underline break-all">{m.sourceUrl}</a>
             </p>
           </section>
 

@@ -553,7 +553,7 @@ body {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #e53e3e;
+  background: var(--live-400);
   flex-shrink: 0;
   animation: live-pulse 1.4s ease-in-out infinite;
 }
