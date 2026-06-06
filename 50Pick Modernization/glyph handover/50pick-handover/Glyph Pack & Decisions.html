@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>50pick — Glyph Pack & Design Decisions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:           oklch(15% 0.130 268);
+    --bg-elevated:  oklch(22% 0.140 268);
+    --bg-elevated2: oklch(26% 0.150 268);
+    --bg-inset:     oklch(11% 0.110 268);
+    --panel:        oklch(20% 0.130 268);
+    --border:       oklch(34% 0.130 268);
+    --border-strong:oklch(44% 0.150 268);
+    --text:        oklch(98% 0.012 268);
+    --text-muted:  oklch(86% 0.040 268);
+    --text-subtle: oklch(70% 0.080 268);
+    --text-faint:  oklch(60% 0.090 268);
+    --gold-400: oklch(80% 0.14 78);
+    --gold-300: oklch(86% 0.13 80);
+    --gold-soft: oklch(34% 0.075 78);
+    --accent-400: oklch(72% 0.110 195);
+    --accent-soft: oklch(32% 0.070 195);
+    --brand-500: oklch(63% 0.180 262);
+    --brand-400: oklch(72% 0.160 262);
+    --brand-soft: oklch(34% 0.120 262);
+    --yes-400: oklch(72% 0.16 152);
+    --no-400: oklch(72% 0.18 22);
+    --font-display:'Sora',system-ui,sans-serif;
+    --font-body:'Inter',system-ui,sans-serif;
+    --font-mono:'JetBrains Mono',ui-monospace,monospace;
+    --r-sm:8px; --r-md:12px; --r-lg:16px; --r-xl:24px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:var(--font-body); font-size:15px; line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .disp{font-family:var(--font-display);letter-spacing:-0.02em;}
+  .mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums;}
+
+  /* ---- layout ---- */
+  .wrap{max-width:1180px;margin:0 auto;padding:0 32px;}
+  header.hero{
+    padding:64px 0 40px; border-bottom:1px solid var(--border);
+    background:
+      radial-gradient(900px 380px at 78% -120px, oklch(30% 0.165 268 / .55), transparent 70%),
+      radial-gradient(620px 300px at 8% -80px, var(--accent-soft), transparent 72%);
+  }
+  .eyebrow{
+    font-family:var(--font-mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--accent-400);display:flex;align-items:center;gap:10px;
+  }
+  .eyebrow::before{content:"";width:26px;height:1px;background:var(--accent-400);display:inline-block;}
+  h1.title{font-family:var(--font-display);font-weight:700;font-size:44px;line-height:1.05;margin:16px 0 14px;}
+  h1.title .gilt{color:var(--gold-300);}
+  .lede{font-size:17px;color:var(--text-muted);max-width:680px;}
+  .meta-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px;}
+  .meta-chip{
+    font-family:var(--font-mono);font-size:11.5px;letter-spacing:.04em;
+    padding:6px 11px;border-radius:999px;border:1px solid var(--border-strong);
+    color:var(--text-muted);background:oklch(20% 0.13 268 / .6);display:inline-flex;align-items:center;gap:7px;
+  }
+  .dot{width:7px;height:7px;border-radius:50%;display:inline-block;}
+
+  /* ---- sticky nav ---- */
+  nav.toc{
+    position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);
+    background:oklch(13% 0.12 268 / .82);border-bottom:1px solid var(--border);
+  }
+  nav.toc .wrap{display:flex;gap:6px;flex-wrap:wrap;padding-top:11px;padding-bottom:11px;}
+  nav.toc a{
+    font-size:13px;font-weight:600;color:var(--text-subtle);text-decoration:none;
+    padding:7px 13px;border-radius:999px;transition:all .12s cubic-bezier(.2,.8,.2,1);
+  }
+  nav.toc a:hover{color:var(--text);background:oklch(24% 0.14 268 / .7);}
+
+  section{padding:54px 0;border-bottom:1px solid var(--border);}
+  .sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:8px;}
+  .sec-num{font-family:var(--font-mono);font-size:13px;color:var(--gold-300);}
+  h2.sec-title{font-family:var(--font-display);font-weight:700;font-size:28px;margin:0;}
+  .sec-sub{color:var(--text-muted);max-width:760px;margin:10px 0 32px;font-size:15px;}
+
+  /* ---- construction card ---- */
+  .build{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:stretch;}
+  @media(max-width:820px){.build{grid-template-columns:1fr;}}
+  .panel{
+    background:linear-gradient(180deg, oklch(23% 0.14 268 / .55), oklch(20% 0.13 268 / .55));
+    border:1px solid var(--border);border-radius:var(--r-lg);padding:24px;
+    box-shadow:inset 0 1px 0 oklch(98% .012 268 / .08), 0 4px 18px oklch(8% .08 268 / .35);
+  }
+  pre.code{
+    margin:0;background:var(--bg-inset);border:1px solid var(--border);border-radius:var(--r-md);
+    padding:16px 18px;overflow:auto;font-family:var(--font-mono);font-size:12.5px;line-height:1.7;
+    color:var(--text-muted);
+  }
+  pre.code .k{color:var(--accent-400);}
+  pre.code .v{color:var(--gold-300);}
+  .spec-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:13px;}
+  .spec-list li{display:flex;gap:12px;font-size:14px;color:var(--text-muted);}
+  .spec-list li b{color:var(--text);font-weight:600;}
+  .spec-list svg{flex:none;color:var(--gold-300);margin-top:2px;}
+
+  /* ---- glyph grid ---- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));gap:16px;}
+  .gcard{
+    background:linear-gradient(180deg, oklch(22.5% 0.14 268 / .5), oklch(19.5% 0.13 268 / .5));
+    border:1px solid var(--border);border-radius:var(--r-lg);padding:18px;
+    box-shadow:inset 0 1px 0 oklch(98% .012 268 / .07), 0 3px 14px oklch(8% .08 268 / .3);
+    transition:transform .2s cubic-bezier(.4,0,.2,1), border-color .2s, box-shadow .2s;
+    cursor:pointer;position:relative;
+  }
+  .gcard:hover{
+    transform:translateY(-3px);border-color:var(--brand-500);
+    box-shadow:inset 0 1px 0 oklch(98% .012 268 / .1), 0 14px 34px oklch(8% .1 268 / .5), 0 0 22px var(--brand-soft);
+  }
+  .gcard .preview{
+    display:flex;align-items:flex-end;gap:22px;justify-content:center;
+    background:var(--bg-inset);border:1px solid var(--border);border-radius:var(--r-md);
+    padding:22px 16px 16px;margin-bottom:14px;color:var(--text);
+  }
+  .gcard .preview .lg{color:var(--text);}
+  .gcard .preview .sm{color:var(--text-muted);}
+  .size-tag{font-family:var(--font-mono);font-size:9px;color:var(--text-faint);text-align:center;margin-top:6px;letter-spacing:.05em;}
+  .pcell{display:flex;flex-direction:column;align-items:center;}
+  .gkey{font-family:var(--font-mono);font-size:14px;font-weight:600;color:var(--gold-300);}
+  .gmean{font-size:13px;color:var(--text-muted);margin:4px 0 0;line-height:1.45;}
+  .gref{
+    display:inline-block;margin-top:10px;font-family:var(--font-mono);font-size:10.5px;
+    color:var(--text-subtle);border:1px solid var(--border);border-radius:999px;padding:3px 9px;
+  }
+  .copyhint{
+    position:absolute;top:14px;right:14px;font-family:var(--font-mono);font-size:10px;
+    color:var(--text-faint);opacity:0;transition:opacity .15s;letter-spacing:.04em;
+  }
+  .gcard:hover .copyhint{opacity:1;}
+  .gcard.copied .copyhint{opacity:1;color:var(--yes-400);}
+
+  /* ---- validation strip ---- */
+  .vstrip{
+    background:var(--bg-inset);border:1px solid var(--border);border-radius:var(--r-lg);
+    padding:8px 6px;overflow-x:auto;
+  }
+  .vrow{display:flex;align-items:center;gap:0;min-width:min-content;}
+  .vrow .cell{
+    display:flex;flex-direction:column;align-items:center;gap:7px;padding:14px 12px;
+    border-right:1px solid oklch(34% .13 268 / .4);color:var(--text-muted);min-width:74px;
+  }
+  .vrow .cell:last-child{border-right:none;}
+  .vrow .cell .lbl{font-family:var(--font-mono);font-size:9px;color:var(--text-faint);max-width:64px;text-align:center;line-height:1.2;}
+  .vrow.r14 .cell{color:var(--text);}
+  .strip-label{font-family:var(--font-mono);font-size:11px;color:var(--text-subtle);margin:0 0 10px;letter-spacing:.04em;}
+
+  /* ---- on-color demo chips ---- */
+  .ctx-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px;}
+  .ctx-chip{
+    display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:999px;
+    font-size:12.5px;font-weight:600;border:1px solid var(--border);background:oklch(22% .14 268 / .55);
+  }
+  .ctx-chip.gold{color:var(--gold-300);border-color:oklch(78% .13 80 / .4);background:var(--gold-soft);}
+  .ctx-chip.aqua{color:var(--accent-400);border-color:oklch(72% .11 195 / .4);background:var(--accent-soft);}
+  .ctx-chip.brand{color:var(--brand-400);border-color:oklch(63% .18 262 / .4);background:var(--brand-soft);}
+  .ctx-chip.yes{color:var(--yes-400);}
+  .ctx-chip.no{color:var(--no-400);}
+
+  /* ---- decisions ---- */
+  .dcard{
+    background:linear-gradient(180deg, oklch(22.5% 0.14 268 / .5), oklch(19.5% 0.13 268 / .5));
+    border:1px solid var(--border);border-radius:var(--r-lg);padding:24px 26px;margin-bottom:16px;
+    box-shadow:inset 0 1px 0 oklch(98% .012 268 / .07);
+  }
+  .dcard h3{font-family:var(--font-display);font-size:19px;margin:0 0 4px;display:flex;align-items:center;gap:12px;}
+  .dtag{
+    font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:.04em;
+    padding:4px 10px;border-radius:999px;flex:none;
+  }
+  .dtag.decided{color:var(--yes-400);border:1px solid oklch(72% .16 152 / .45);background:oklch(30% .075 152);}
+  .dtag.q{color:var(--gold-300);border:1px solid oklch(78% .13 80 / .4);background:var(--gold-soft);}
+  .dcard .ask{color:var(--text-subtle);font-size:13.5px;margin:0 0 16px;font-style:italic;}
+  .dcard .ans{color:var(--text-muted);font-size:14.5px;}
+  .dcard .ans b{color:var(--text);font-weight:600;}
+  .dcard .ans strong.call{color:var(--gold-300);font-weight:700;}
+  .spec-table{width:100%;border-collapse:collapse;margin:16px 0 4px;font-size:13px;}
+  .spec-table th,.spec-table td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top;}
+  .spec-table th{font-family:var(--font-mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--text-subtle);font-weight:600;}
+  .spec-table td.mono{color:var(--gold-300);}
+  .spec-table tr:last-child td{border-bottom:none;}
+  ul.tidy{margin:10px 0 0;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:9px;}
+  ul.tidy li{display:flex;gap:11px;font-size:14px;color:var(--text-muted);}
+  ul.tidy li::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--gold-300);flex:none;margin-top:8px;}
+  .kill::before{background:var(--no-400)!important;}
+  .keep::before{background:var(--yes-400)!important;}
+
+  footer{padding:48px 0 80px;color:var(--text-faint);font-size:13px;}
+  footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px;}
+  a.inline{color:var(--accent-400);text-decoration:none;border-bottom:1px solid oklch(72% .11 195 / .35);}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">50pick · Dark Glass kit · handover</div>
+    <h1 class="title">Glyph pack <span class="gilt">+</span> design-authority decisions</h1>
+    <p class="lede">30 net-new line glyphs drawn to the kit's exact construction (24×24 · 1.9 stroke · round joins · <span class="mono">currentColor</span>), plus the canonical calls on surfaces, scale, theme, motion, gold budget and chips — so engineering can finish the lucide purge and the unify refactors without guessing.</p>
+    <div class="meta-row">
+      <span class="meta-chip"><span class="dot" style="background:var(--gold-300)"></span>10 player glyphs</span>
+      <span class="meta-chip"><span class="dot" style="background:var(--brand-400)"></span>20 admin glyphs</span>
+      <span class="meta-chip"><span class="dot" style="background:var(--accent-400)"></span>3 empty-state line-arts</span>
+      <span class="meta-chip"><span class="dot" style="background:var(--yes-400)"></span>6 decisions resolved</span>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <a href="#build">Construction</a>
+    <a href="#player">Player glyphs</a>
+    <a href="#admin">Admin glyphs</a>
+    <a href="#validate">Validation</a>
+    <a href="#empty">Empty states</a>
+    <a href="#decisions">Part B · decisions</a>
+    <a href="#partc">Part C · polish</a>
+  </div>
+</nav>
+
+<!-- CONSTRUCTION -->
+<section id="build">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">A · 00</span><h2 class="sec-title">Construction — matches glyphs.tsx exactly</h2></div>
+    <p class="sec-sub">Every glyph below is the inner markup (the children of <span class="mono">&lt;G&gt;</span>). Paste as <span class="mono">key: (p) =&gt; &lt;G {...p}&gt;…&lt;/G&gt;</span>. Optical weight, corner feel and radius conventions are tuned to sit beside <span class="mono">economy</span>, <span class="mono">crypto</span>, <span class="mono">shieldcheck</span>, <span class="mono">wallet</span>, <span class="mono">trophy</span>.</p>
+    <div class="build">
+      <div class="panel">
+        <pre class="code"><span class="k">const</span> G = ({ children, s, ...p }) =&gt; (
+  &lt;svg <span class="k">viewBox</span>=<span class="v">"0 0 24 24"</span> <span class="k">width</span>={s||24} <span class="k">height</span>={s||24}
+       <span class="k">fill</span>=<span class="v">"none"</span> <span class="k">stroke</span>=<span class="v">"currentColor"</span> <span class="k">strokeWidth</span>=<span class="v">"1.9"</span>
+       <span class="k">strokeLinecap</span>=<span class="v">"round"</span> <span class="k">strokeLinejoin</span>=<span class="v">"round"</span> {...p}&gt;
+    {children}
+  &lt;/svg&gt;
+);</pre>
+      </div>
+      <div class="panel">
+        <ul class="spec-list" id="spec-list"></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PLAYER GLYPHS -->
+<section id="player">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">A1 · player</span><h2 class="sec-title">Player-facing glyphs</h2></div>
+    <p class="sec-sub">Priority set — unblocks the player pages (help, auth, account, profile, invite). Tap any card to copy its <span class="mono">key: (p) =&gt; …</span> line.</p>
+    <div class="grid" id="grid-a1"></div>
+  </div>
+</section>
+
+<!-- ADMIN GLYPHS -->
+<section id="admin">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">A2 · admin</span><h2 class="sec-title">Admin glyphs</h2></div>
+    <p class="sec-sub">Completes the purge across the admin console — keys, infra, treasury, documents, AI, compliance, moderation, ledger flows and legal.</p>
+    <div class="grid" id="grid-a2"></div>
+  </div>
+</section>
+
+<!-- VALIDATION -->
+<section id="validate">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">A · QA</span><h2 class="sec-title">Validation strip</h2></div>
+    <p class="sec-sub">The whole set at <b>14px</b> (chip / table-row size) and <b>22px</b> (toolbar size) on the royal canvas, to confirm legibility at the small end and crispness at the large end.</p>
+    <p class="strip-label">// 14px — chips &amp; table rows</p>
+    <div class="vstrip"><div class="vrow r14" id="strip14"></div></div>
+    <p class="strip-label" style="margin-top:22px;">// 22px — toolbars &amp; headers</p>
+    <div class="vstrip"><div class="vrow r22" id="strip22"></div></div>
+    <div class="ctx-row">
+      <span class="ctx-chip gold" id="cx1">resolved · win</span>
+      <span class="ctx-chip aqua" id="cx2">referral link</span>
+      <span class="ctx-chip brand" id="cx3">deposit</span>
+      <span class="ctx-chip" id="cx4" style="color:var(--text-muted)">api key</span>
+      <span class="ctx-chip no" id="cx5">declined</span>
+      <span class="ctx-chip" id="cx6" style="color:var(--text-muted)">source of funds</span>
+    </div>
+  </div>
+</section>
+
+<!-- EMPTY STATES (Part C bonus) -->
+<section id="empty">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">C · bonus</span><h2 class="sec-title">Empty-state line-arts</h2></div>
+    <p class="sec-sub">Part C asked us to confirm the empty-state set. Rather than confirm in prose, here's a proposed trio drawn in the same line family (≈64px, 1.9 stroke scaled) for markets / positions / leaderboard. Same construction, just a larger viewBox — drop straight into the empty panels.</p>
+    <div class="grid" id="grid-empty" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr));"></div>
+  </div>
+</section>
+
+<!-- DECISIONS -->
+<section id="decisions">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">Part B</span><h2 class="sec-title">Design-authority decisions</h2></div>
+    <p class="sec-sub">One canonical call per item so the wide-ripple refactors are safe to run. Decisions are grounded in the kit invariants and the production tokens in <span class="mono">kit50.css</span>.</p>
+    <div id="decisions-list"></div>
+  </div>
+</section>
+
+<!-- PART C -->
+<section id="partc">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">Part C</span><h2 class="sec-title">Polish — gaps flagged against the kit</h2></div>
+    <div id="partc-list"></div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>50pick — Dark Glass · glyph pack &amp; decisions · delivered for the lucide purge + unify refactors</span>
+    <span class="mono">paste targets → <a class="inline" href="glyphs-additions.tsx">glyphs-additions.tsx</a> · <a class="inline" href="DESIGN_AUTHORITY_DECISIONS.md">DECISIONS.md</a></span>
+  </div>
+</footer>
+
+<script>
+/* ============================ GLYPH DATA ============================ */
+/* markup = inner children of <G>. 24x24 grid, 1.9 stroke, round caps/joins. */
+const GLYPHS = [
+  /* ---------- A1 · player ---------- */
+  {k:"mail", g:"A1", mean:"Envelope — help, forgot-password, account", ref:"Mail",
+   m:`<rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><path d="M3 7l8.4 5.4a1.9 1.9 0 0 0 2 0L22 7"/>`},
+  {k:"calendar", g:"A1", mean:"Date — proposals/new, account DOB", ref:"Calendar",
+   m:`<rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M3 9.5h18"/><path d="M8 2.5v4M16 2.5v4"/>`},
+  {k:"device", g:"A1", mean:"A logged-in device — profile · sessions", ref:"MonitorSmartphone",
+   m:`<rect x="2.5" y="4" width="12" height="9.5" rx="2"/><path d="M6 17.5h5"/><path d="M8.5 13.5V17.5"/><rect x="16" y="9" width="5.5" height="11.5" rx="1.6"/><path d="M18.4 18h.7"/>`},
+  {k:"vibrate", g:"A1", mean:"Haptics toggle — settings · sound & feedback", ref:"Vibrate",
+   m:`<rect x="9" y="5" width="6" height="14" rx="1.6"/><path d="M5.5 8.5l-1.5 3.5 1.5 3.5"/><path d="M18.5 8.5l1.5 3.5-1.5 3.5"/>`},
+  {k:"smartphone", g:"A1", mean:"Mobile handset (distinct from phone call-handset)", ref:"Smartphone",
+   m:`<rect x="5.5" y="2.5" width="13" height="19" rx="2.6"/><path d="M10 18.5h4"/>`},
+  {k:"shieldQuestion", g:"A1", mean:"Shield + query — recovery / “why we ask”", ref:"ShieldQuestion",
+   m:`<path d="M12 3l7 2.5v5c0 5-3.4 8.4-7 9.5-3.6-1.1-7-4.5-7-9.5v-5z"/><path d="M9.7 9.6a2.6 2.6 0 0 1 4.4 1.6c0 1.6-2.1 1.7-2.1 3"/><path d="M12 16.4h.01"/>`},
+  {k:"fileSignature", g:"A1", mean:"Document being signed — SOF declaration", ref:"FileSignature",
+   m:`<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/><path d="M14 3v5h5"/><path d="M8 16.5c.8-1.3 1.5-1.3 2 0 .4-1.4 1.1-1.7 1.9-.8"/><path d="M8 19.5h6.5"/>`},
+  {k:"percent", g:"A1", mean:"Percentage — affiliate commission", ref:"Percent",
+   m:`<path d="M19 5L5 19"/><circle cx="7" cy="7" r="2.3"/><circle cx="17" cy="17" r="2.3"/>`},
+  {k:"link", g:"A1", mean:"Chain link — referral link", ref:"Link2",
+   m:`<path d="M9 17H7.4a5 5 0 0 1 0-10H9"/><path d="M15 7h1.6a5 5 0 0 1 0 10H15"/><path d="M8 12h8"/>`},
+  {k:"messageWhatsapp", g:"A1", mean:"WhatsApp share — profile · invite", ref:"(MessageCircle today)",
+   m:`<path d="M4 12a8 8 0 1 1 3.3 6.45L4 19.5l1.1-3.2A7.9 7.9 0 0 1 4 12z"/><path d="M9.4 9c-.2 0-.5.1-.6.4-.3.5-.6 1.1-.5 1.8.2 1.6 1.3 3 2.8 3.8.7.4 1.4.5 2 .4.4 0 .9-.4 1-.8.1-.3 0-.5-.2-.7l-1-.7c-.2-.1-.4-.1-.6.1l-.4.4c-.7-.4-1.3-1-1.6-1.7l.4-.4c.2-.2.2-.4.1-.6l-.6-1c-.1-.2-.3-.3-.5-.3z"/>`},
+
+  /* ---------- A2 · admin ---------- */
+  {k:"keyRound", g:"A2", mean:"API key / TOTP", ref:"KeyRound",
+   m:`<circle cx="7.5" cy="15.5" r="4"/><path d="M10.4 12.7L20 3.1"/><path d="M16.5 6.6l2.4 2.4M14.6 8.5l1.9 1.9"/>`},
+  {k:"megaphone", g:"A2", mean:"Affiliate / promotion", ref:"Megaphone",
+   m:`<path d="M4 11l15-4.5v11L4 13z"/><path d="M11 16.5a2.7 2.7 0 0 1-5.2-1.4"/><path d="M19 9.5a2.5 2.5 0 0 1 0 4"/>`},
+  {k:"database", g:"A2", mean:"Data / snapshot", ref:"Database",
+   m:`<ellipse cx="12" cy="5.5" rx="7.5" ry="3"/><path d="M4.5 5.5v13c0 1.66 3.36 3 7.5 3s7.5-1.34 7.5-3v-13"/><path d="M4.5 12c0 1.66 3.36 3 7.5 3s7.5-1.34 7.5-3"/>`},
+  {k:"server", g:"A2", mean:"System / infra", ref:"Server",
+   m:`<rect x="3" y="3.5" width="18" height="7" rx="2"/><rect x="3" y="13.5" width="18" height="7" rx="2"/><path d="M6.5 7h.01M6.5 17h.01"/><path d="M10.5 7h6.5M10.5 17h6.5"/>`},
+  {k:"landmark", g:"A2", mean:"Bank / house-pool treasury", ref:"Landmark",
+   m:`<path d="M12 3l8.5 4.5H3.5z"/><path d="M3.5 7.5h17"/><path d="M6 11v6.5M10 11v6.5M14 11v6.5M18 11v6.5"/><path d="M3 21h18"/>`},
+  {k:"fileText", g:"A2", mean:"Report / document", ref:"FileText",
+   m:`<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M8.5 12.5h7M8.5 16h5"/>`},
+  {k:"fileCheck", g:"A2", mean:"Verified document / candidate approved", ref:"FileCheck",
+   m:`<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M8.6 14.6l1.8 1.8 3.5-3.9"/>`},
+  {k:"fileSpreadsheet", g:"A2", mean:"XLSX export", ref:"FileSpreadsheet",
+   m:`<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M8 13h8M8 17h8M12 13v4"/>`},
+  {k:"brain", g:"A2", mean:"AI market generation", ref:"Brain",
+   m:`<path d="M12 4.5A3 3 0 0 0 9 7 3 3 0 0 0 6.5 11 2.8 2.8 0 0 0 6.5 15.5 3 3 0 0 0 9.5 19 2.6 2.6 0 0 0 12 20.5"/><path d="M12 4.5A3 3 0 0 1 15 7 3 3 0 0 1 17.5 11 2.8 2.8 0 0 1 17.5 15.5 3 3 0 0 1 14.5 19 2.6 2.6 0 0 1 12 20.5"/><path d="M12 4.5V20.5"/><path d="M9.3 10.2c1 .4 1.5 1.2 1.5 2.3M14.7 10.2c-1 .4-1.5 1.2-1.5 2.3"/>`},
+  {k:"bot", g:"A2", mean:"AI assistant / poll bot", ref:"Bot",
+   m:`<path d="M12 8V4.5H8.5"/><circle cx="12" cy="3.5" r="1.1" fill="currentColor" stroke="none"/><rect x="4" y="8" width="16" height="12" rx="2.5"/><path d="M2 14h2M20 14h2"/><path d="M9 13v2M15 13v2"/>`},
+  {k:"shieldAlert", g:"A2", mean:"Compliance alert", ref:"ShieldAlert",
+   m:`<path d="M12 3l7 2.5v5c0 5-3.4 8.4-7 9.5-3.6-1.1-7-4.5-7-9.5v-5z"/><path d="M12 8.5v4.2M12 16h.01"/>`},
+  {k:"shieldOff", g:"A2", mean:"Suspended / unprotected", ref:"ShieldOff",
+   m:`<path d="M12 3l7 2.5v5c0 5-3.4 8.4-7 9.5-3.6-1.1-7-4.5-7-9.5v-5z"/><path d="M4.8 4.5l14.4 14.4"/>`},
+  {k:"heartPulse", g:"A2", mean:"Responsible-gambling health", ref:"HeartPulse",
+   m:`<path d="M19 14c1.5-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7z"/><path d="M3.4 12h6l.6-1.2 2 4.6 2-7 1.5 3.6h5.2"/>`},
+  {k:"rotateCcw", g:"A2", mean:"Restore / undo (moderation)", ref:"RotateCcw",
+   m:`<path d="M3 12a9 9 0 1 0 2.6-6.3L3 8"/><path d="M3 3.5V8h4.5"/>`},
+  {k:"archive", g:"A2", mean:"Retention / archive", ref:"Archive",
+   m:`<rect x="3" y="4" width="18" height="4.6" rx="1.5"/><path d="M4.5 8.6V18a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8.6"/><path d="M9.5 12.2h5"/>`},
+  {k:"xCircle", g:"A2", mean:"Declined / reject (circle variant)", ref:"XCircle",
+   m:`<circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/>`},
+  {k:"alertOctagon", g:"A2", mean:"Stop / critical (octagon)", ref:"AlertOctagon",
+   m:`<path d="M8.4 2.5h7.2L21.5 8.4v7.2L15.6 21.5H8.4L2.5 15.6V8.4z"/><path d="M12 8v4.5M12 16h.01"/>`},
+  {k:"arrowUpFromLine", g:"A2", mean:"Withdraw / payout out", ref:"ArrowUpFromLine",
+   m:`<path d="M18 9l-6-6-6 6"/><path d="M12 3v13.5"/><path d="M5 21h14"/>`},
+  {k:"arrowDownToLine", g:"A2", mean:"Deposit / funds in", ref:"ArrowDownToLine",
+   m:`<path d="M12 3v13.5"/><path d="M6 10.5l6 6 6-6"/><path d="M5 21h14"/>`},
+  {k:"scrollText", g:"A2", mean:"Legal / terms", ref:"ScrollText",
+   m:`<path d="M15 12h-5M15 8h-5"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h11a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1h-9a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/>`},
+];
+
+const EMPTIES = [
+  {k:"emptyMarkets", title:"No markets yet", mean:"markets list — nothing live in this category",
+   m:`<path d="M32 6v20"/><path d="M16 11h32"/><path d="M16 11l-6.5 15a6.5 6.5 0 0 0 13 0z"/><path d="M48 11l-6.5 15a6.5 6.5 0 0 0 13 0z"/><path d="M22 52h20"/><path d="M32 26v26"/><circle cx="50" cy="50" r="2" fill="currentColor" stroke="none"/>`},
+  {k:"emptyPositions", title:"No open positions", mean:"portfolio — you haven't staked anything",
+   m:`<rect x="8" y="18" width="48" height="34" rx="4"/><path d="M22 18v-3a4 4 0 0 1 4-4h12a4 4 0 0 1 4 4v3"/><path d="M8 32h48"/><path d="M37 32v6h-10v-6"/><path d="M24 45h7"/>`},
+  {k:"emptyLeaderboard", title:"Leaderboard is quiet", mean:"ranking — no players ranked this round",
+   m:`<path d="M19 12h26v9a13 13 0 0 1-26 0z"/><path d="M19 16h-7v3a7 7 0 0 0 7 7M45 16h7v3a7 7 0 0 1-7 7"/><path d="M32 34v6M25 52h14M27 52l1.5-8h7l1.5 8"/><path d="M32 20l1.4 2.9 3.2.4-2.3 2.2.6 3.1L32 29.3l-2.9 1.3.6-3.1-2.3-2.2 3.2-.4z" fill="currentColor" stroke="none"/>`},
+];
+
+/* ====================== DECISIONS DATA (Part B) ====================== */
+const DECISIONS = [
+  {id:"B1", title:"Canonical elevated-surface primitive", tag:"resolved",
+   ask:"Collapse .mcardp / .glass-panel / <Card> / .tpanel into ONE surface — confirm exact rest + hover values.",
+   html:`<p class="ans">Adopt a single <b>.surface</b> primitive; the other three become modifier classes (<span class="mono">.surface--market</span>, <span class="mono">--panel</span>, <span class="mono">--inset</span>) that only override fill. Values below are pulled straight from <span class="mono">kit50.css</span> + the Surfaces spec (Appendix C/D), so nothing visual shifts.</p>
+   <table class="spec-table"><thead><tr><th>Property</th><th>Rest</th><th>Hover</th></tr></thead><tbody>
+   <tr><td>Background</td><td class="mono">var(--bg-elevated)</td><td class="mono">unchanged</td></tr>
+   <tr><td>Border</td><td class="mono">1px var(--border)</td><td class="mono">1px var(--brand-500)</td></tr>
+   <tr><td>Inner light-edge</td><td class="mono">inset 0 1px 0 oklch(98% .012 268 / .08)</td><td class="mono">/ .10</td></tr>
+   <tr><td>Shadow</td><td class="mono">0 2px 8px oklch(8% .08 268 / .35)</td><td class="mono">0 14px 34px / .5</td></tr>
+   <tr><td>Lift</td><td class="mono">none</td><td class="mono">translateY(-3px)</td></tr>
+   <tr><td>Glow</td><td class="mono">none</td><td class="mono">0 0 22px var(--brand-soft)</td></tr>
+   <tr><td>Radius</td><td class="mono">var(--r-lg) = 16px</td><td class="mono">—</td></tr>
+   <tr><td>Transition</td><td class="mono" colspan="2">200ms var(--ease-stage)</td></tr>
+   </tbody></table>
+   <p class="ans" style="margin-top:14px;"><strong class="call">Gradient vs flat:</strong> flat fill is canonical. The only modifier allowed a gradient is <span class="mono">.surface--market</span> (market cards), which keeps its subtle gilt-bloom on hover (gold shadow at ≤18% alpha). All other surfaces are flat — flat reads cleaner and is cheaper to composite on mid-tier Android.</p>`},
+
+  {id:"B2", title:"Single authoritative spacing + radius scale", tag:"resolved",
+   ask:"CSS --sp-* and Tailwind disagree (--sp-2=8 vs tw 2=12; --r-md=12 vs tw md=8). Confirm one px scale.",
+   html:`<p class="ans">Lock to a strict <b>4px base</b> where the token index = step. Align <b>both</b> CSS tokens and the Tailwind theme to this — Tailwind is the one currently off, so it changes to match CSS.</p>
+   <table class="spec-table"><thead><tr><th>Spacing</th><th>px</th><th> </th><th>Radius</th><th>px</th></tr></thead><tbody>
+   <tr><td class="mono">sp-1</td><td>4</td><td></td><td class="mono">r-xs</td><td>4</td></tr>
+   <tr><td class="mono">sp-2</td><td>8</td><td></td><td class="mono">r-sm</td><td>8</td></tr>
+   <tr><td class="mono">sp-3</td><td>12</td><td></td><td class="mono">r-md</td><td>12</td></tr>
+   <tr><td class="mono">sp-4</td><td>16</td><td></td><td class="mono">r-lg</td><td>16</td></tr>
+   <tr><td class="mono">sp-5</td><td>20</td><td></td><td class="mono">r-xl</td><td>24</td></tr>
+   <tr><td class="mono">sp-6 … sp-16</td><td>24·28·32·36·40·44·48·52·56·60·64</td><td></td><td class="mono">r-pill</td><td>999</td></tr>
+   </tbody></table>
+   <p class="ans" style="margin-top:14px;"><strong class="call">Buttons</strong> use <span class="mono">r-sm = 8px</span> (matches the existing button family). The conflicting <span class="mono">--r-phone:30px</span> stays as a one-off device token, outside the scale. Rule going forward: <b>token index × 4 = px</b> for spacing — no more bare Tailwind integers that don't map.</p>`},
+
+  {id:"B3", title:"Light mode — keep or kill", tag:"resolved",
+   ask:"Dormant light/dark engine ships but only dark-royal renders. Delete it, or spec a light theme?",
+   html:`<p class="ans"><strong class="call">Kill it.</strong> The kit is a single dark-royal theme by invariant — gilt-on-royal, the gold budget, the YES/NO emerald/rose semantics and every glow value are tuned for a dark canvas and would all need re-deriving for light. There is no product reason to carry a second theme.</p>
+   <ul class="tidy">
+   <li class="kill">Delete the dormant theme engine, the <span class="mono">data-theme</span> switch and all unused light tokens.</li>
+   <li class="kill">Drop any <span class="mono">@media (prefers-color-scheme)</span> branches — do not auto-flip.</li>
+   <li class="keep">Keep <span class="mono">color-scheme: dark</span> on <span class="mono">:root</span> so native form controls / scrollbars render dark.</li>
+   </ul>`},
+
+  {id:"B4", title:"Motion tiers for mid-tier Android", tag:"resolved",
+   ask:"At data-motion:reduced, which ambient loops stay vs stop? (Default: reduced stops all ambient.)",
+   html:`<p class="ans">Refine the default slightly: <b>reduced</b> stops everything <i>decorative</i>, but keeps the <b>one</b> loop that carries live meaning — the status-dot pulse — in a cheap opacity-only form. <b>minimal</b> stops literally everything.</p>
+   <table class="spec-table"><thead><tr><th>Ambient loop</th><th>reduced</th><th>minimal</th></tr></thead><tbody>
+   <tr><td>Ticker marquee</td><td>stop → static / tap-advance</td><td>stop</td></tr>
+   <tr><td>Probability-bar resolved shimmer</td><td>stop → flat gold fill</td><td>stop</td></tr>
+   <tr><td>Gold-shimmer / pulse</td><td>stop</td><td>stop</td></tr>
+   <tr><td>Hero dial breathe</td><td>stop</td><td>stop</td></tr>
+   <tr><td>Progress light-sweep</td><td>stop</td><td>stop</td></tr>
+   <tr><td>Status-dot pulse (live)</td><td><b style="color:var(--yes-400)">keep</b> — opacity only, drop box-shadow bloom</td><td>stop → solid dot</td></tr>
+   </tbody></table>
+   <p class="ans" style="margin-top:14px;">Functional transitions (route-in, sheet open, bar reveal, hover/press) stay at all tiers except <span class="mono">minimal</span>, which collapses them to ~0ms. This matches the existing <span class="mono">[data-motion]</span> CSS — only the status-dot needs a <span class="mono">reduced</span> carve-out added.</p>`},
+
+  {id:"B5", title:"Gold budget — proposal upvote", tag:"resolved",
+   ask:"Upvote currently uses gold. Kit rule = gold for resolved-wins / payout / dial-needle only. Move it?",
+   html:`<p class="ans"><strong class="call">Move upvote off gold.</strong> Gold is sacred — earned/resolved/payout/needle only (invariant #2). An upvote is a community endorsement, not a payout moment, so spending gold there dilutes the signal.</p>
+   <ul class="tidy">
+   <li>Active / upvoted state → <b style="color:var(--accent-400)">aqua chrome</b> (<span class="mono">--accent-400</span>, hue 195). Aqua is already the "community / navigational value" accent (VIEW ALL, section links, live label), so it reads as a value signal without touching the gold budget.</li>
+   <li>Rest state → <span class="mono">--text-subtle</span> outline; count in mono. Brand-blue is the fallback if aqua ever clashes in-context, but aqua is the call.</li>
+   </ul>`},
+
+  {id:"B6", title:"Chips — micro-bounce or static", tag:"resolved",
+   ask:"Status/category chips: add kit micro-bounce entrance + state-change pulse, or keep static?",
+   html:`<p class="ans">Split the difference by intent:</p>
+   <ul class="tidy">
+   <li class="kill"><b>No entrance animation</b> on list render. In a long market list, dozens of chips bouncing in is exactly the over-animation you avoided — keep them static on mount.</li>
+   <li class="keep"><b>Yes to a single state-change pulse</b>, but only when a chip mutates <i>in place</i> (e.g. <span class="mono">live → resolved</span>, <span class="mono">soon → live</span>): one <span class="mono">pop</span> at <span class="mono">--ease-micro</span>, gated to <span class="mono">data-motion:full</span> only.</li>
+   </ul>
+   <p class="ans" style="margin-top:12px;">Net: lists stay calm; the rare meaningful transition gets a beat of attention. Honors reduced/minimal automatically.</p>`},
+];
+
+const PARTC = [
+  {title:"Empty-state line-arts — confirmed + delivered", tag:"resolved",
+   html:`<p class="ans">Confirmed as a set of three (markets / positions / leaderboard), drawn above in the kit line family. They share the 1.9 stroke and round joins, just on a larger viewBox so they read at ~64px in an empty panel. Centered, single-color <span class="mono">--text-subtle</span>, no fill except the small accent dot/star.</p>`},
+  {title:"Win-celebration — calm gilt-ray + rolling counter is final", tag:"resolved",
+   html:`<p class="ans"><strong class="call">Final, no change.</strong> The calm gilt-ray + rolling mono counter is correct and on-invariant (#7 — no casino imagery, no confetti/chips/dice). Gold is legitimately earned here, so the single gilt ray is the right and only flourish. Don't reintroduce confetti.</p>`},
+  {title:"Surfaces still reading “classic” — flagged", tag:"flag",
+   html:`<ul class="tidy">
+   <li>The <b>4-way surface fragmentation</b> (B1) is the biggest "classic" tell — once collapsed to one primitive, hover/elevation will finally be consistent platform-wide.</li>
+   <li><b>Upvote-gold</b> (B5) reads classic against the gold budget — fix with the aqua move.</li>
+   <li>Any remaining <b>lucide 2px-stroke icons</b> sitting next to the 1.9 kit glyphs read subtly heavier — the Part A pack closes that gap; swap player surfaces first, then admin.</li>
+   <li>Watch for <b>bare Tailwind radius/spacing integers</b> that don't map to the B2 scale — those produce the off-by-a-few-px corners that read "generic".</li>
+   </ul>`},
+];
+
+/* ============================ RENDER ============================ */
+const SVGNS="http://www.w3.org/2000/svg";
+function makeSvg(markup, size){
+  const s=document.createElementNS(SVGNS,"svg");
+  s.setAttribute("viewBox","0 0 24 24");
+  s.setAttribute("width",size); s.setAttribute("height",size);
+  s.setAttribute("fill","none"); s.setAttribute("stroke","currentColor");
+  s.setAttribute("stroke-width","1.9");
+  s.setAttribute("stroke-linecap","round"); s.setAttribute("stroke-linejoin","round");
+  s.innerHTML=markup;
+  return s;
+}
+function makeSvgVB(markup, size, vb){
+  const s=document.createElementNS(SVGNS,"svg");
+  s.setAttribute("viewBox","0 0 "+vb+" "+vb);
+  s.setAttribute("width",size); s.setAttribute("height",size);
+  s.setAttribute("fill","none"); s.setAttribute("stroke","currentColor");
+  s.setAttribute("stroke-width","1.9");
+  s.setAttribute("stroke-linecap","round"); s.setAttribute("stroke-linejoin","round");
+  s.innerHTML=markup;
+  return s;
+}
+
+/* spec list */
+const SPECS=[
+  ["24×24 grid","every path drawn on the 24-unit box"],
+  ["1.9px stroke","matches the kit exactly — lighter than lucide's 2.0"],
+  ["currentColor","fill:none; inherits text color (tiny accent dots may fill)"],
+  ["Round caps + joins","strokeLinecap & strokeLinejoin = round"],
+  ["12–22px legible","validated at 14px (rows) and 22px (toolbars)"],
+];
+const tick=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>`;
+document.getElementById("spec-list").innerHTML=SPECS.map(s=>
+  `<li>${tick}<span><b>${s[0]}</b> — ${s[1]}</span></li>`).join("");
+
+/* glyph cards */
+function buildCards(groupId, group){
+  const host=document.getElementById(groupId);
+  GLYPHS.filter(g=>g.g===group).forEach(g=>{
+    const card=document.createElement("div");
+    card.className="gcard";
+    card.innerHTML=`
+      <span class="copyhint">click to copy →</span>
+      <div class="preview">
+        <div class="pcell"><span class="lg"></span><span class="size-tag">22px</span></div>
+        <div class="pcell"><span class="sm"></span><span class="size-tag">14px</span></div>
+      </div>
+      <div class="gkey">${g.k}</div>
+      <p class="gmean">${g.mean}</p>
+      <span class="gref">lucide · ${g.ref}</span>`;
+    card.querySelector(".lg").appendChild(makeSvg(g.m,22));
+    card.querySelector(".sm").appendChild(makeSvg(g.m,14));
+    const snippet=`${g.k}: (p: GlyphProps) => <G {...p}>${g.m}</G>,`;
+    card.addEventListener("click",()=>{
+      navigator.clipboard?.writeText(snippet);
+      card.classList.add("copied");
+      card.querySelector(".copyhint").textContent="copied ✓";
+      setTimeout(()=>{card.classList.remove("copied");card.querySelector(".copyhint").textContent="click to copy →";},1400);
+    });
+    host.appendChild(card);
+  });
+}
+buildCards("grid-a1","A1");
+buildCards("grid-a2","A2");
+
+/* validation strips */
+function buildStrip(id,size){
+  const host=document.getElementById(id);
+  GLYPHS.forEach(g=>{
+    const cell=document.createElement("div");
+    cell.className="cell";
+    cell.appendChild(makeSvg(g.m,size));
+    const lbl=document.createElement("div");
+    lbl.className="lbl"; lbl.textContent=g.k;
+    cell.appendChild(lbl);
+    host.appendChild(cell);
+  });
+}
+buildStrip("strip14",14);
+buildStrip("strip22",22);
+
+/* context chips get a real glyph */
+function chipGlyph(id,key,size){
+  const g=GLYPHS.find(x=>x.k===key);
+  const el=document.getElementById(id);
+  el.prepend(makeSvg(g.m,size||14));
+}
+chipGlyph("cx1","fileCheck");        // resolved-ish doc; gold context
+chipGlyph("cx2","link");
+chipGlyph("cx3","arrowDownToLine");
+chipGlyph("cx4","keyRound");
+chipGlyph("cx5","xCircle");
+chipGlyph("cx6","fileSignature");
+
+/* empty-state cards */
+const eHost=document.getElementById("grid-empty");
+EMPTIES.forEach(e=>{
+  const card=document.createElement("div");
+  card.className="gcard";
+  card.style.cursor="default";
+  card.innerHTML=`
+    <div class="preview" style="padding:30px 16px;color:var(--text-subtle)"><div class="pcell"><span class="art"></span></div></div>
+    <div class="gkey">${e.k}</div>
+    <p class="gmean"><b style="color:var(--text)">${e.title}</b> — ${e.mean}</p>`;
+  card.querySelector(".art").appendChild(makeSvgVB(e.m,64,64));
+  eHost.appendChild(card);
+});
+
+/* decisions */
+function tagHtml(tag){
+  if(tag==="resolved") return `<span class="dtag decided">✓ decided</span>`;
+  if(tag==="flag") return `<span class="dtag q">⚑ flag</span>`;
+  return `<span class="dtag q">needs call</span>`;
+}
+document.getElementById("decisions-list").innerHTML=DECISIONS.map(d=>`
+  <div class="dcard">
+    <h3><span class="mono" style="color:var(--accent-400);font-size:15px">${d.id}</span> ${d.title} ${tagHtml(d.tag)}</h3>
+    <p class="ask">“${d.ask}”</p>
+    ${d.html}
+  </div>`).join("");
+document.getElementById("partc-list").innerHTML=PARTC.map(d=>`
+  <div class="dcard">
+    <h3>${d.title} ${tagHtml(d.tag)}</h3>
+    ${d.html}
+  </div>`).join("");
+</script>
+</body>
+</html>
