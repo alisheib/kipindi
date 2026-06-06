@@ -333,12 +333,10 @@
   --bar-label-tipping:    var(--text-muted);
 }
 
-/* The kit specifies: "No dark mode — single light royal theme." We retire
-   the previous [data-theme="light"] override block. Everything renders on
-   the canonical sapphire-royal canvas. */
+/* Single dark-royal theme by invariant (DESIGN_AUTHORITY B3 — light mode killed).
+   The theme engine is gone; everything renders on the canonical royal canvas. */
 
 html { color-scheme: dark; background: var(--bg); }
-html.light, [data-theme="light"] { color-scheme: dark; }
 
 * { box-sizing: border-box; }
 
@@ -1454,14 +1452,13 @@ html.kp-reduce-motion *::after {
    "full" = all animations (default). "reduced" = loops off, enters kept.
    "minimal" = same as kp-reduce-motion (near-instant everything).
    --------------------------------------------------------------------------- */
-[data-motion="reduced"] .live-dot,
+/* B4 (Claude Design): at the `reduced` tier, stop ALL decorative loops EXCEPT
+   the live status-dot — which keeps a cheap OPACITY-ONLY pulse (no box-shadow).
+   "minimal" stops everything (handled by the universal clamp below). */
 [data-motion="reduced"] .cm-bubble::after,
-[data-motion="reduced"] .cm-status-dot,
 [data-motion="reduced"] .wc-rays,
 [data-motion="reduced"] .win-aura-anim,
 [data-motion="reduced"] .hm-halo-pulse,
-/* Heavy ambient loops also stop at the "reduced" tier (mid-tier Android) —
-   previously only "minimal" killed these, defeating the throttle. */
 [data-motion="reduced"] .ticker-track,
 [data-motion="reduced"] .prog-sweep::after,
 [data-motion="reduced"] .pbar-resolved::after,
@@ -1469,6 +1466,10 @@ html.kp-reduce-motion *::after {
 [data-motion="reduced"] .gold-dot,
 [data-motion="reduced"] .pchart-dot-halo,
 [data-motion="reduced"] .settling-bar::before { animation: none !important; }
+/* live status-dot — KEPT at reduced, opacity-only (no box-shadow GPU cost) */
+@keyframes dot-pulse-soft { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+[data-motion="reduced"] .live-dot,
+[data-motion="reduced"] .cm-status-dot { animation: dot-pulse-soft 1.6s ease-in-out infinite !important; box-shadow: none !important; }
 
 /* Sticky top-bar frosted blur — DESKTOP ONLY. On phones the bar is near-opaque
    (set inline on .app-topbar) with NO backdrop-filter, so it doesn't re-raster

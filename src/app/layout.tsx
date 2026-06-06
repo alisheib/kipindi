@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Sora, Inter, JetBrains_Mono } from "next/font/google";
-import Script from "next/script";
-import { ThemeProvider, themeBootScript } from "@/components/theme-provider";
+import { ThemeProvider } from "@/components/theme-provider";
 import { AppShell } from "@/components/layout/app-shell";
 import { ChatRoot } from "@/components/chat/ChatRoot";
 import { FirstVisitPrimer } from "@/components/onboarding/first-visit-primer";
@@ -42,10 +41,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F8FAFD" },
-    { media: "(prefers-color-scheme: dark)", color: "#050817" },
-  ],
+  themeColor: "#050817",
 };
 
 import { cookies } from "next/headers";
@@ -57,11 +53,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={lang} suppressHydrationWarning className={`${sora.variable} ${inter.variable} ${jbm.variable}`}>
       <body className="font-sans antialiased">
-        <Script
-          id="theme-boot"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{ __html: themeBootScript }}
-        />
         <ThemeProvider>
           <AppShell>{children}</AppShell>
           {/* AI Help Companion — floats on every authed page. The

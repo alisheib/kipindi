@@ -78,7 +78,7 @@ export default async function SessionsPage() {
             href="/auth/logout"
             className="inline-flex h-9 items-center gap-1.5 rounded-pill border border-no-700 bg-no-500/10 px-4 font-display font-semibold text-[12.5px] text-no-300 hover:bg-no-500/20 transition-colors"
           >
-            <LogOut size={13} />
+            <I.logOut s={13} />
             Sign out
           </Link>
         </div>

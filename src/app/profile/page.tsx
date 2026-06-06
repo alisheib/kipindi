@@ -197,13 +197,13 @@ export default async function ProfilePage() {
           Account · Akaunti
         </h2>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-          <SettingRow icon={Gift}              title="Invite & Earn"       sw="Alika upate"     subtitle="Refer friends · earn rewards"         href="/profile/invite" accent badge="New" />
-          <SettingRow icon={UserCircle2}       title="My account"          sw="Akaunti yangu"   subtitle="Activity · Export · Close"            href="/profile/account" />
-          <SettingRow icon={Sliders}           title="Responsible gambling" sw="Vikomo"          subtitle="Limits · Self-exclusion"              href="/profile/responsible-gambling" />
-          <SettingRow icon={ShieldCheck}       title="Verify ID"           sw="Thibitisha"      subtitle="NIDA · documents · review"            href="/profile/kyc" />
-          <SettingRow icon={FileSignature}     title="Source of funds"     sw="Asili ya fedha"  subtitle="AML declaration"                      href="/profile/source-of-funds" />
-          <SettingRow icon={MonitorSmartphone} title="Active sessions"     sw="Vifaa"           subtitle="Devices · Sign out everywhere"        href="/profile/sessions" />
-          <SettingRow icon={HeartPulse}        title="Help & support"      sw="Msaada"          subtitle="FAQ · Helpline · Email"               href="/help" />
+          <SettingRow icon={I.gift}            title="Invite & Earn"       sw="Alika upate"     subtitle="Refer friends · earn rewards"         href="/profile/invite" accent badge="New" />
+          <SettingRow icon={I.user}            title="My account"          sw="Akaunti yangu"   subtitle="Activity · Export · Close"            href="/profile/account" />
+          <SettingRow icon={I.settings}        title="Responsible gambling" sw="Vikomo"          subtitle="Limits · Self-exclusion"              href="/profile/responsible-gambling" />
+          <SettingRow icon={I.shieldcheck}     title="Verify ID"           sw="Thibitisha"      subtitle="NIDA · documents · review"            href="/profile/kyc" />
+          <SettingRow icon={I.fileSignature}   title="Source of funds"     sw="Asili ya fedha"  subtitle="AML declaration"                      href="/profile/source-of-funds" />
+          <SettingRow icon={I.device}          title="Active sessions"     sw="Vifaa"           subtitle="Devices · Sign out everywhere"        href="/profile/sessions" />
+          <SettingRow icon={I.heartPulse}      title="Help & support"      sw="Msaada"          subtitle="FAQ · Helpline · Email"               href="/help" />
         </div>
       </section>
 
@@ -276,7 +276,7 @@ function Step({ n, title, detail, active, done }: { n: number; title: string; de
   );
 }
 
-function SettingRow({ icon: Icon, title, sw, subtitle, href, accent, badge }: { icon: typeof Sliders; title: string; sw: string; subtitle: string; href: string; accent?: boolean; badge?: string }) {
+function SettingRow({ icon: Icon, title, sw, subtitle, href, accent, badge }: { icon: (typeof I)[keyof typeof I]; title: string; sw: string; subtitle: string; href: string; accent?: boolean; badge?: string }) {
   return (
     <Link
       href={href as never}
@@ -290,7 +290,7 @@ function SettingRow({ icon: Icon, title, sw, subtitle, href, accent, badge }: { 
         className={`inline-flex h-10 w-10 items-center justify-center rounded-md shrink-0 transition-colors ${accent ? "text-gold-fg" : "bg-gold-500/10 text-gold-300 group-hover:bg-gold-500/15"}`}
         style={accent ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))" } : undefined}
       >
-        <Icon size={17} strokeWidth={1.75} />
+        <Icon s={17} />
       </span>
       <div className="flex-1 min-w-0">
         <p className="font-display text-[13.5px] font-semibold text-text leading-tight flex items-center gap-2">

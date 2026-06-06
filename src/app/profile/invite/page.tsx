@@ -19,7 +19,7 @@ function compact(n: number): string {
   return String(n);
 }
 
-const PROMISE_ICON = { percent: Percent, ticket: Ticket, gift: Gift } as const;
+const PROMISE_ICON = { percent: I.percent, ticket: I.ticket, gift: I.gift } as const;
 
 /** Gold earnings ring — a brand-correct progress dial (NOT the betting
  *  ConfidenceDial, which is green/red). Pure kit tokens. */
@@ -141,7 +141,7 @@ export default async function InvitePage() {
                       className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[7px] text-gold-300"
                       style={{ background: "color-mix(in oklab, var(--gold-500) 16%, transparent)" }}
                     >
-                      <PIcon size={14} />
+                      <PIcon s={14} />
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-medium leading-snug">{p.en}</p>
