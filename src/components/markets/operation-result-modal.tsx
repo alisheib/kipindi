@@ -101,7 +101,7 @@ function CrestIcon({ variant, color }: { variant: OperationVariant; color: strin
               : variant === "danger"  ? I.x
               : variant === "warning" ? I.warning
               :                         I.info;
-  return <span style={{ color }}>{glyph({ s: 36, sw: 2.5 })}</span>;
+  return <span style={{ color }}>{glyph({ s: 36 })}</span>;
 }
 
 export function OperationResultModal({
