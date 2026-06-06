@@ -159,3 +159,35 @@ mid-tier hardware it targets. Fix: add those to the reduced allowlist or pause a
 5. **Polish:** MED/LOW remainder.
 
 _Each wave: build + tsc verify, commit, update this doc._
+
+---
+
+## FINAL REGRESSION SWEEP — 2026-06-06 (post Wave 5c)
+
+Full re-check after the admin lucide purge. Authoritative gates, run fresh:
+
+| Gate | Result |
+|---|---|
+| `npx tsc --noEmit` | **exit 0 — clean** |
+| `npm run build` (Turbopack, `ignoreBuildErrors:false`) | **exit 0 — all routes compiled** |
+| `lucide-react` imports in `src` | **0** (only a single explanatory comment in `glyphs.tsx:62`, no import) |
+| Working tree | **clean** — everything committed |
+
+### Wave status (icons / kit conformance track)
+- **Wave 1–4** — strict-eval critical + high + perf + consistency fixes: **DONE**.
+- **Wave 5a** — glyph pack from Claude Design integrated into `glyphs.tsx` (30 glyphs + 3 empty-state line-arts, `GL` wrapper, `size` alias): **DONE**.
+- **Wave 5b** — PLAYER surfaces lucide→glyph: **DONE** (proposals, profile, auth, help, legal, onboarding, settings, invite, account, sessions, KYC, source-of-funds, responsible-gambling).
+- **Wave 5c** — ADMIN surfaces lucide→glyph (33 files): **DONE**, committed `fc0afe2`.
+- **Net result:** the entire platform (player + admin) draws every icon from the designer-validated glyph set. **Nothing from outside the kit.**
+
+### Commit trail (this track)
+- `fc0afe2` — Wave 5c: admin lucide purge → kit glyphs (`I.*`)
+- `cec713f` — Eval: record B1/B2 resolution + lucide status
+- `da19ead` — Eval: glyphs accept `size` alias (de-risked remaining swaps)
+
+### Still open (deliberately deferred — NOT regressions)
+- **B1** — collapse to one `.surface` primitive. Recommended: keep current glass after a run-the-app visual check; cosmetic only.
+- **B6** — in-place chip pop animation. Optional polish.
+- **MED/LOW** items from the eval body above (inline-style overload, `/help` anchors, `MarketCard` server-island, raw `<img>` avatar, oversized files, dead CSS). None block; none are UI-kit conformance gaps.
+
+**Bottom line:** No regressions. Type-safe, builds clean, fully lucide-free, kit-conformant across player + admin. Safe for designer validation and for Ali to push.
