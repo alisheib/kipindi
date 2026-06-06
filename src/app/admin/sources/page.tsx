@@ -1,5 +1,4 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
-import { ExternalLink, ShieldCheck } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { listSources, listDisabledCategories, seedDefaultSources } from "@/lib/server/source-registry";
 import type { MarketCategory } from "@/lib/server/market-service";
@@ -98,7 +97,7 @@ export default function AdminSourcesPage() {
                           className="inline-flex items-center gap-1 font-mono text-[12px] text-teal-300 hover:text-teal-200"
                         >
                           {s.domain}
-                          <ExternalLink size={11} aria-hidden />
+                          <I.ext size={11} aria-hidden />
                         </a>
                       </td>
                       <td className="p-3 text-text-tertiary max-w-[420px]">{s.rationale}</td>

@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Percent, Gift, Ticket, Megaphone, Pause, Check, ShieldCheck, ExternalLink, Coins, Users } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
@@ -84,7 +83,7 @@ function Seg<T extends string>({ value, onChange, options }: { value: T; onChang
 function RewardCard({
   icon: Icon, title, sw, desc, on, onToggle, disabled, children,
 }: {
-  icon: typeof Percent; title: string; sw: string; desc: string;
+  icon: (typeof I)[keyof typeof I]; title: string; sw: string; desc: string;
   on: boolean; onToggle: () => void; disabled?: boolean; children?: React.ReactNode;
 }) {
   const active = on && !disabled;
@@ -188,7 +187,7 @@ export function AffiliateAdminClient({ config, stats }: { config: AffiliateConfi
             color: on ? "var(--royal-300)" : "oklch(84% 0.15 80)",
           }}
         >
-          {on ? <Megaphone size={23} /> : <I.pause s={23} />}
+          {on ? <I.megaphone size={23} /> : <I.pause s={23} />}
         </span>
         <div className="flex-1 min-w-0">
           <div className="text-[16px] font-bold">
@@ -219,7 +218,7 @@ export function AffiliateAdminClient({ config, stats }: { config: AffiliateConfi
           <Cap>Reward modes · independently toggleable · Njia za zawadi</Cap>
 
           <RewardCard
-            icon={Percent} title="Commission" sw="Tume"
+            icon={I.percent} title="Commission" sw="Tume"
             desc="Referrer earns a share of the operator margin their recruits generate."
             on={c.commission.enabled} onToggle={() => patchCommission({ enabled: !c.commission.enabled })} disabled={!on}
           >
@@ -232,7 +231,7 @@ export function AffiliateAdminClient({ config, stats }: { config: AffiliateConfi
           </RewardCard>
 
           <RewardCard
-            icon={Gift} title="Bonus / discount" sw="Bonasi"
+            icon={I.gift} title="Bonus / discount" sw="Bonasi"
             desc="Sign-up or first-deposit credit to the new player and/or referrer."
             on={c.bonus.enabled} onToggle={() => patchBonus({ enabled: !c.bonus.enabled })} disabled={!on}
           >
@@ -251,7 +250,7 @@ export function AffiliateAdminClient({ config, stats }: { config: AffiliateConfi
           </RewardCard>
 
           <RewardCard
-            icon={Ticket} title="Prize" sw="Tuzo"
+            icon={I.ticket} title="Prize" sw="Tuzo"
             desc="A fixed reward to the referrer when a recruit hits a milestone."
             on={c.prize.enabled} onToggle={() => patchPrize({ enabled: !c.prize.enabled })} disabled={!on}
           >

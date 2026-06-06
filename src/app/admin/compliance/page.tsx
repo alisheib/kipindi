@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { AdminPageHead, AdminCard, AdminKpi, AdminStackedBar, StatusPill, FeedRow } from "@/components/admin/admin-shell";
 import { AdminFunnelChart } from "@/components/admin/admin-charts";
-import { ShieldCheck, AlertTriangle, Download, Lock, HeartPulse } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { db, type StoredTxn } from "@/lib/server/store";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
@@ -264,7 +263,7 @@ function PlayerSafetyPanel() {
       sw="Alama za hatari"
       action={
         <div className="flex items-center gap-2">
-          <HeartPulse size={14} className="text-warning" />
+          <I.heartPulse size={14} className="text-warning" />
           <span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">LCCP §3.4.1</span>
         </div>
       }

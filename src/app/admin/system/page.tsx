@@ -1,5 +1,4 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
-import { Database, ShieldCheck, KeyRound, Server } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { SystemActions } from "./system-client";
 import { db } from "@/lib/server/store";
@@ -52,7 +51,7 @@ export default async function AdminSystemPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <AdminCard title="Backup" sw="Nakala">
             <div className="flex items-start gap-2 mb-3">
-              <Database size={16} className="text-royal mt-0.5 shrink-0" />
+              <I.database size={16} className="text-royal mt-0.5 shrink-0" />
               <p className="text-caption text-text-secondary">
                 The in-memory store auto-snapshots to disk on every mutation (debounced 1.5s, last 12 snapshots kept).
                 Click below to force an immediate snapshot — useful before a planned restart.
@@ -80,7 +79,7 @@ export default async function AdminSystemPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <AdminCard title="Persistence" sw="Hifadhi · Postgres">
             <div className="flex items-start gap-2 mb-3">
-              <Server
+              <I.server
                 size={16}
                 className={
                   dbConnected ? "text-success mt-0.5 shrink-0"
@@ -150,7 +149,7 @@ export default async function AdminSystemPage() {
 
           <AdminCard title="Bootstrap admins" sw="Wasimamizi wa kuanzishia">
             <div className="flex items-start gap-2 mb-3">
-              <KeyRound size={16} className={bootstrap.length > 0 ? "text-success mt-0.5 shrink-0" : "text-warning-fg mt-0.5 shrink-0"} />
+              <I.keyRound size={16} className={bootstrap.length > 0 ? "text-success mt-0.5 shrink-0" : "text-warning-fg mt-0.5 shrink-0"} />
               <div className="text-caption text-text-secondary leading-relaxed">
                 {bootstrap.length > 0 ? (
                   <>

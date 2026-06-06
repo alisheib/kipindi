@@ -3,7 +3,6 @@ import { Chip } from "@/components/ui/chip";
 import { Avatar } from "@/components/ui/avatar";
 import { db } from "@/lib/server/store";
 import { formatTzs } from "@/lib/utils";
-import { Search } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 
@@ -67,7 +66,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
         <AdminCard>
           <form className="flex flex-wrap gap-2">
             <div className="relative flex-1 min-w-0 sm:min-w-[260px]">
-              <Search size={14} aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+              <I.search size={14} aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
               <input
                 name="q"
                 defaultValue={query}

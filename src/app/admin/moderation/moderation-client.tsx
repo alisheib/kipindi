@@ -7,7 +7,6 @@
  */
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Flag, RotateCcw, Trash2, ExternalLink } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { Avatar } from "@/components/ui/avatar";
@@ -55,7 +54,7 @@ export function ModerationQueue({ items }: { items: ModerationItem[] }) {
                 href={`/markets/${c.marketId}` as never}
                 className="inline-flex items-center gap-1 font-mono text-[10.5px] text-text-subtle hover:text-text-muted"
               >
-                {c.marketId} <ExternalLink size={11} aria-hidden />
+                {c.marketId} <I.ext size={11} aria-hidden />
               </Link>
             </div>
             <p className="mt-0.5 whitespace-pre-line break-words text-[13.5px] leading-relaxed text-text-muted">{c.body}</p>
@@ -66,7 +65,7 @@ export function ModerationQueue({ items }: { items: ModerationItem[] }) {
                 disabled={pending}
                 className="inline-flex items-center gap-1.5 rounded-md border border-yes-700 bg-yes-500/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-yes-300 hover:bg-yes-500/20 transition-colors disabled:opacity-50"
               >
-                <RotateCcw size={12} aria-hidden /> Restore
+                <I.rotateCcw size={12} aria-hidden /> Restore
               </button>
               <button
                 type="button"

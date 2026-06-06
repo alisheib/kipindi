@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { ShieldCheck, Trash2, KeyRound } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { provisionTotpAction, verifyTotpAction, removeTotpAction } from "./actions";
 
@@ -61,7 +60,7 @@ export function TotpSetupClient({ initiallyEnabled }: { initiallyEnabled: boolea
           Two-factor authentication is enabled on this account. Codes refresh every 30 seconds.
         </p>
         <div className="flex gap-2 flex-wrap">
-          <Button variant="secondary" size="md" leading={<KeyRound size={14} />} onClick={start} loading={busy}>
+          <Button variant="secondary" size="md" leading={<I.keyRound size={14} />} onClick={start} loading={busy}>
             Re-provision (new QR)
           </Button>
           <Button variant="danger" size="md" leading={<I.trash s={14} />} onClick={remove} loading={busy}>
@@ -114,7 +113,7 @@ export function TotpSetupClient({ initiallyEnabled }: { initiallyEnabled: boolea
       <p className="text-body-sm text-text-secondary">
         Click below to provision a new QR code. Scan it with Google Authenticator, Authy, 1Password, or Bitwarden.
       </p>
-      <Button variant="primary" size="lg" leading={<KeyRound size={14} />} onClick={start} loading={busy}>
+      <Button variant="primary" size="lg" leading={<I.keyRound size={14} />} onClick={start} loading={busy}>
         Provision authenticator
       </Button>
     </div>

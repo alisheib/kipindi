@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
-import { ShieldOff, ShieldCheck } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { suspendPlayerAction, restorePlayerAction } from "./actions";
 
@@ -71,7 +70,7 @@ export function SuspendControls({
           disabled={pending}
           className={`${btnBase} border-no-700 bg-no-500/15 text-no-300 hover:bg-no-500/25 transition-colors`}
         >
-          <ShieldOff size={11} aria-hidden />
+          <I.shieldOff size={11} aria-hidden />
           Suspend player
         </button>
       )}

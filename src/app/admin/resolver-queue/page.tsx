@@ -1,6 +1,5 @@
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ExternalLink, Users, ShieldCheck, AlertCircle } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { listMarkets, seedDemoMarkets, impliedYesPct } from "@/lib/server/market-service";
 import { ProbabilityBar } from "@/components/markets/probability-bar";
@@ -80,7 +79,7 @@ export default function ResolverQueuePage() {
                         <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{m.category}</span>
                         <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1 font-mono text-[11px] text-teal-300 hover:text-teal-200">
                           Source
-                          <ExternalLink size={11} />
+                          <I.ext size={11} />
                         </a>
                       </div>
                       <h3 className="mt-1 font-display text-[15px] font-semibold leading-tight text-text line-clamp-2">{m.titleEn}</h3>

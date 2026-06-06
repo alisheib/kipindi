@@ -1,6 +1,5 @@
 import { AdminPageHead, AdminKpi, AdminCard, FeedRow, AdminFunnel, AdminStackedBar } from "@/components/admin/admin-shell";
 import { AdminAreaChart } from "@/components/admin/admin-charts";
-import { Activity } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { db } from "@/lib/server/store";
 import { getAuditPage, type AuditCategory } from "@/lib/server/audit";

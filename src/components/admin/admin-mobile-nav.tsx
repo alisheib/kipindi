@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 
 type NavItem = { href: string; label: string; key: string; badge?: string };

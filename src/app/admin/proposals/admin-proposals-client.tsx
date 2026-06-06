@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Trophy, Pause, Check, CheckCircle2, XCircle, Pencil, Info, ChevronUp, ChevronDown, Coins, FileText } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
@@ -23,7 +22,7 @@ function Cap({ children }: { children: React.ReactNode }) {
 function Kpi({ label, value, sub, gold }: { label: string; value: string; sub: string; gold?: boolean }) {
   return (
     <div className="rounded-xl border border-border bg-bg-elevated p-4">
-      <div className="mb-2 flex items-center justify-between"><Cap>{label}</Cap><span className="text-text-subtle">{gold ? <I.coins s={14} /> : <FileText size={14} />}</span></div>
+      <div className="mb-2 flex items-center justify-between"><Cap>{label}</Cap><span className="text-text-subtle">{gold ? <I.coins s={14} /> : <I.fileText size={14} />}</span></div>
       <div className={`font-mono text-[24px] font-bold leading-none tracking-[-0.02em] ${gold ? "text-gold-300" : "text-text"}`}>{value}</div>
       <div className="mt-1.5 font-mono text-[10.5px] text-text-subtle">{sub}</div>
     </div>
@@ -165,8 +164,8 @@ export function AdminProposalsClient({ config, stats, queue }: { config: Proposa
 
             {/* Vote stats — rank only */}
             <div className="flex gap-2.5">
-              {[["Upvotes", sel.up, "var(--gold-300)", ChevronUp], ["Downvotes", sel.down, "var(--claret-300)", ChevronDown], ["Score", sel.score, "var(--text)", FileText]].map(([l, v, col, Ic]) => {
-                const Icon = Ic as typeof ChevronUp;
+              {[["Upvotes", sel.up, "var(--gold-300)", I.chevronUp], ["Downvotes", sel.down, "var(--claret-300)", I.chevronDown], ["Score", sel.score, "var(--text)", I.fileText]].map(([l, v, col, Ic]) => {
+                const Icon = Ic as (typeof I)[keyof typeof I];
                 return (
                   <div key={l as string} className="flex-1 rounded-md bg-bg-overlay p-3">
                     <div className="flex items-center gap-1"><Cap><span className="inline-flex items-center gap-1"><Icon size={11} />{l as string}</span></Cap></div>
@@ -183,9 +182,9 @@ export function AdminProposalsClient({ config, stats, queue }: { config: Proposa
               <p className="text-[12.5px] text-text-muted">This proposal is <strong>{sel.status.toLowerCase().replace("_", " ")}</strong> — no further action.</p>
             ) : !declining ? (
               <div className="flex flex-wrap gap-2">
-                <Button variant="gold" size="md" loading={pending} leading={<CheckCircle2 size={15} />} onClick={approve}>Approve &amp; list · Orodhesha</Button>
+                <Button variant="gold" size="md" loading={pending} leading={<I.checkCircle size={15} />} onClick={approve}>Approve &amp; list · Orodhesha</Button>
                 <Button variant="ghost" size="md" loading={pending} leading={<I.edit s={15} />} onClick={sendBack}>Request changes</Button>
-                <Button variant="ghost" size="md" leading={<XCircle size={15} />} onClick={() => setDeclining(true)} className="!text-claret-300">Decline</Button>
+                <Button variant="ghost" size="md" leading={<I.xCircle size={15} />} onClick={() => setDeclining(true)} className="!text-claret-300">Decline</Button>
               </div>
             ) : (
               <div>

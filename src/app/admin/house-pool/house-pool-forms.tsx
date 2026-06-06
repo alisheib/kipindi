@@ -2,7 +2,6 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowDownToLine, ArrowUpFromLine, Settings2 } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { Input, Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -56,7 +55,7 @@ function TopUpForm() {
   return (
     <Card>
       <div className="flex items-center gap-2 mb-3">
-        <ArrowDownToLine size={14} className="text-yes-300" />
+        <I.arrowDownToLine size={14} className="text-yes-300" />
         <p className="font-display text-body-sm font-semibold text-text">Top up reserve</p>
       </div>
       <form onSubmit={onSubmit} className="flex gap-2">
@@ -94,7 +93,7 @@ function WithdrawForm() {
   return (
     <Card>
       <div className="flex items-center gap-2 mb-3">
-        <ArrowUpFromLine size={14} className="text-no-300" />
+        <I.arrowUpFromLine size={14} className="text-no-300" />
         <p className="font-display text-body-sm font-semibold text-text">Withdraw from reserve</p>
       </div>
       <form onSubmit={onSubmit} className="flex gap-2">
@@ -131,7 +130,7 @@ function PoolConfigForm({ config }: { config: HousePoolConfig }) {
   return (
     <Card>
       <div className="flex items-center gap-2 mb-3">
-        <Settings2 size={14} className="text-text-tertiary" />
+        <I.settings size={14} className="text-text-tertiary" />
         <p className="font-display font-semibold text-body-sm text-text">Pool configuration</p>
       </div>
       <form onSubmit={onSubmit} className="grid grid-cols-1 sm:grid-cols-3 gap-3">

@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
-import { Smartphone } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
@@ -43,7 +42,7 @@ export default async function TotpSetupPage() {
 
         <AdminCard>
           <div className="flex items-center gap-2 mb-3">
-            <Smartphone size={16} className="text-royal" />
+            <I.smartphone size={16} className="text-royal" />
             <h2 className="font-display font-bold text-body-sm text-text">Authenticator app</h2>
           </div>
           <TotpSetupClient initiallyEnabled={enabled} />

@@ -5,7 +5,6 @@ import { Chip } from "@/components/ui/chip";
 import { db, type StoredTxn, type StoredBet, type StoredMapigoBet } from "@/lib/server/store";
 import { getAuditForActor, type AuditCategory } from "@/lib/server/audit";
 import { exportUserData } from "@/lib/server/user-service";
-import { ShieldCheck, AlertOctagon } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { formatTzs, formatTzsCompact } from "@/lib/utils";
 import { displayLabel, displayInitials } from "@/lib/display-label";
@@ -339,7 +338,7 @@ function ExclusionTab({ rg }: { rg: ReturnType<typeof db.responsible.get> }) {
     <div className="space-y-3">
       {rg.selfExclusionUntil ? (
         <div className="rounded-md border-2 border-danger/40 bg-danger-bg/15 p-4 flex items-start gap-2.5">
-          <AlertOctagon size={16} className="text-danger shrink-0 mt-0.5" />
+          <I.alertOctagon size={16} className="text-danger shrink-0 mt-0.5" />
           <div className="text-caption text-text-secondary">
             <p className="font-bold text-text">Self-exclusion active</p>
             <p>Until {new Date(rg.selfExclusionUntil).toLocaleString("en-GB")}. One-way until expiry — only the player can re-enable after the period ends.</p>

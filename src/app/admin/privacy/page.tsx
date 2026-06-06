@@ -8,7 +8,6 @@ import { Chip } from "@/components/ui/chip";
 import { db } from "@/lib/server/store";
 import { listDsarRequests } from "@/lib/server/privacy";
 import { ExportDsarBundleButton, FulfillDsarButton } from "./dsar-controls";
-import { ShieldQuestion } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 
 export const metadata = { title: "Admin · Privacy / DSAR" };
@@ -131,7 +130,7 @@ export default function AdminPrivacyPage() {
 
         <AdminCard className="border-info-border bg-info-bg/15">
           <div className="flex items-start gap-3">
-            <ShieldQuestion size={18} className="text-info shrink-0 mt-0.5" />
+            <I.shieldQuestion size={18} className="text-info shrink-0 mt-0.5" />
             <div className="text-caption text-text-secondary space-y-1">
               <p className="text-text font-bold">Legal frame</p>
               <p>

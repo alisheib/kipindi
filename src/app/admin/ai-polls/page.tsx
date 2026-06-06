@@ -1,6 +1,5 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
-import { Bot, ShieldAlert, FileCheck, Coins, Sparkles, Clock, AlertTriangle } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import {
   listAIPolls,
@@ -87,7 +86,7 @@ export default function AdminAIPollsPage() {
         {/* Info banner + generate form */}
         <AdminCard>
           <div className="flex items-start gap-3 mb-4">
-            <Bot size={18} className="text-royal mt-0.5 shrink-0" />
+            <I.bot size={18} className="text-royal mt-0.5 shrink-0" />
             <div className="flex-1 text-caption text-text-secondary leading-relaxed">
               Generate prediction-market polls using AI. The mock provider simulates
               realistic Claude responses including clean, incomplete, malformed,
@@ -227,11 +226,11 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
           <Chip size="sm" variant={STATE_VARIANT[poll.state]}>{poll.state}</Chip>
           <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{poll.category}</span>
           <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
-            <ShieldAlert size={10} className="inline -mt-0.5 mr-0.5" />
+            <I.shieldAlert size={10} className="inline -mt-0.5 mr-0.5" />
             confidence {poll.confidence}
           </span>
           <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
-            <FileCheck size={10} className="inline -mt-0.5 mr-0.5" />
+            <I.fileCheck size={10} className="inline -mt-0.5 mr-0.5" />
             {poll.sources.length} sources
           </span>
           <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
@@ -240,7 +239,7 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
           </span>
           {poll.regenerationCount > 0 && (
             <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
-              <Sparkles size={10} className="inline -mt-0.5 mr-0.5" />
+              <I.sparkle size={10} className="inline -mt-0.5 mr-0.5" />
               regen #{poll.regenerationCount}
             </span>
           )}

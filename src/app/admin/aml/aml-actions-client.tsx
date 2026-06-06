@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { Check, X, ChevronDown } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { approveAmlAction, rejectAmlAction } from "./actions";
 import { useRouter } from "next/navigation";

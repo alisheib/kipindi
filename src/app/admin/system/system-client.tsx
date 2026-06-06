@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { Database, ShieldCheck, CheckCircle2, AlertTriangle } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { backupNowAction, verifyChainAction } from "./actions";
 
@@ -30,12 +29,12 @@ export function SystemActions({ kind }: { kind: "backup" | "verify-chain" }) {
     };
     return (
       <div className="space-y-2">
-        <Button variant="primary" size="lg" leading={<Database size={14} />} onClick={click} loading={loading}>
+        <Button variant="primary" size="lg" leading={<I.database size={14} />} onClick={click} loading={loading}>
           Backup now
         </Button>
         {result && (
           <p className="text-caption flex items-center gap-1.5 text-text-secondary">
-            <CheckCircle2 size={12} className="text-success" />
+            <I.checkCircle size={12} className="text-success" />
             {result}
           </p>
         )}
@@ -66,7 +65,7 @@ export function SystemActions({ kind }: { kind: "backup" | "verify-chain" }) {
       </Button>
       {result && (
         <p className="text-caption flex items-center gap-1.5 text-text-secondary">
-          {result.startsWith("Chain valid") ? <CheckCircle2 size={12} className="text-success" /> : <I.warning s={12} />}
+          {result.startsWith("Chain valid") ? <I.checkCircle size={12} className="text-success" /> : <I.warning s={12} />}
           {result}
         </p>
       )}

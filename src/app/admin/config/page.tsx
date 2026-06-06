@@ -1,5 +1,4 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
-import { Settings2, AlertCircle } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { getGlobalConfig, listMarketOverrides } from "@/lib/server/market-config";
 import { getMarket, seedDemoMarkets } from "@/lib/server/market-service";
@@ -48,7 +47,7 @@ export default function AdminConfigPage() {
         {/* Pari-mutuel formula */}
         <AdminCard className="border-info-border bg-info-bg/15">
           <div className="flex items-start gap-3">
-            <Settings2 size={18} className="text-info shrink-0 mt-0.5" />
+            <I.settings size={18} className="text-info shrink-0 mt-0.5" />
             <div className="text-caption text-text-secondary space-y-1.5">
               <p className="text-text font-bold">Whole-pool distribution model</p>
               <p>

@@ -1,6 +1,5 @@
 import { AdminPageHead, AdminCard, AdminKpi, FeedRow } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
-import { ShieldCheck, AlertTriangle } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { db, type StoredTxn, type StoredSourceOfFunds } from "@/lib/server/store";
 import { getAuditPage } from "@/lib/server/audit";

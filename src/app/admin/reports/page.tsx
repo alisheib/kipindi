@@ -1,6 +1,5 @@
 import { AdminPageHead, AdminCard, FeedRow } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
-import { ShieldCheck } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { getAuditPage } from "@/lib/server/audit";
 import { GenerateButton } from "./generate-button";

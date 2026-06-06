@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { FileSpreadsheet, FileText } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 
@@ -74,7 +73,7 @@ export function GenerateButton({ id }: { id: string }) {
         aria-label="Download Excel report"
         className="btn btn-yes btn-sm rounded-pill"
       >
-        <FileSpreadsheet size={13} aria-hidden />
+        <I.fileSpreadsheet size={13} aria-hidden />
         <span className="ml-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em]">
           {busy === "xlsx" ? "…" : "Excel"}
         </span>
@@ -87,7 +86,7 @@ export function GenerateButton({ id }: { id: string }) {
         aria-label="Download PDF report"
         className="btn btn-claret btn-sm rounded-pill"
       >
-        <FileText size={13} aria-hidden />
+        <I.fileText size={13} aria-hidden />
         <span className="ml-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em]">
           {busy === "pdf" ? "…" : "PDF"}
         </span>

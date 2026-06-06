@@ -1,5 +1,4 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
-import { ExternalLink, Plus, Search } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import Link from "next/link";
 import { listMarkets, impliedYesPct, seedDemoMarkets, type MarketCategory } from "@/lib/server/market-service";
@@ -83,7 +82,7 @@ export default async function AdminMarketsPage({
         <AdminCard>
           <form className="flex flex-wrap gap-2">
             <div className="relative flex-1 min-w-0 sm:min-w-[260px]">
-              <Search size={14} aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+              <I.search size={14} aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
               <input
                 name="q"
                 defaultValue={query}
@@ -178,7 +177,7 @@ export default async function AdminMarketsPage({
                       </td>
                       <td className="p-3">
                         <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-teal-300 hover:text-teal-200">
-                          <ExternalLink size={11} />
+                          <I.ext size={11} />
                         </a>
                       </td>
                     </tr>

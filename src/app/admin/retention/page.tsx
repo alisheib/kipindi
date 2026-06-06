@@ -8,7 +8,6 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
 import { db } from "@/lib/server/store";
-import { Archive, AlertCircle } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 
 export const metadata = { title: "Admin · Data retention" };
@@ -98,7 +97,7 @@ export default function AdminRetentionPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <AdminCard className="border-info-border bg-info-bg/15">
             <div className="flex items-start gap-3">
-              <Archive size={18} className="text-info shrink-0 mt-0.5" />
+              <I.archive size={18} className="text-info shrink-0 mt-0.5" />
               <div className="text-caption text-text-secondary space-y-1">
                 <p className="text-text font-bold">Automated purge (production)</p>
                 <p>

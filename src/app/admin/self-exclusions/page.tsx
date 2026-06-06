@@ -1,6 +1,5 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
-import { Lock, Pause } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { db } from "@/lib/server/store";
 import { rgRosterCounts } from "@/lib/server/analytics";

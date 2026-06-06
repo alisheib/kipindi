@@ -1,6 +1,5 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
-import { Brain, FileCheck, ShieldAlert, Coins, ChevronRight } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { listCandidates, countByState, recordSpend, type Candidate } from "@/lib/server/market-candidate";
 import { CandidateActions } from "./candidate-actions";
@@ -69,7 +68,7 @@ export default function AdminCandidatesPage() {
 
         <AdminCard>
           <div className="flex items-start gap-3">
-            <Brain size={18} className="text-royal mt-0.5 shrink-0" />
+            <I.brain size={18} className="text-royal mt-0.5 shrink-0" />
             <div className="flex-1 text-caption text-text-secondary leading-relaxed">
               The pipeline runs in four layers — extract, filter, cross-verify,
               score. Candidates scoring ≥&nbsp;75 land here in <strong>Pending
@@ -195,11 +194,11 @@ function CandidateRow({
           <Chip size="sm" variant={STATE_VARIANT[c.state]}>{c.state}</Chip>
           <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{c.category}</span>
           <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
-            <ShieldAlert size={10} className="inline -mt-0.5 mr-0.5" />
+            <I.shieldAlert size={10} className="inline -mt-0.5 mr-0.5" />
             confidence {c.confidence}
           </span>
           <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
-            <FileCheck size={10} className="inline -mt-0.5 mr-0.5" />
+            <I.fileCheck size={10} className="inline -mt-0.5 mr-0.5" />
             {c.sources.length} sources
           </span>
           <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
