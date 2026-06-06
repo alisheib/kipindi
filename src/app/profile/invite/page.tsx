@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { Percent, Ticket, Gift, Users, Coins, Info, Share2 } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { currentSession } from "@/lib/server/auth-service";
 import { getPlayerReferralSummary } from "@/lib/server/affiliate-service";

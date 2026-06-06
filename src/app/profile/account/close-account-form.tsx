@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { AlertOctagon } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { closeAccountAction } from "./actions";
 
@@ -39,7 +38,7 @@ export function CloseAccountForm() {
         disabled={!canSubmit}
         className="btn btn-claret btn-md inline-flex items-center gap-1.5"
       >
-        <AlertOctagon size={13} aria-hidden />
+        <I.alertOctagon s={13} />
         Permanently close my account
       </button>
     </form>

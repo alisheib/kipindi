@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { Download } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { exportDataAction } from "./actions";
 

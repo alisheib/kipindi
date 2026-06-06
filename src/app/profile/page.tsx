@@ -1,9 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import {
-  ChevronRight, ShieldCheck, Sliders, LogOut, Check, UserCircle2,
-  FileSignature, MonitorSmartphone, HeartPulse, Wallet, Sparkles, Gift,
-} from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { AvatarUploader } from "@/components/profile/avatar-uploader";
@@ -143,7 +139,7 @@ export default async function ProfilePage() {
             label="Open"
             sw="Hai"
             value={String(positions.filter((p) => p.status === "PENDING_CONFIRMATION" || p.status === "PLACED").length)}
-            icon={<Sparkles size={14} className="text-yes-300" />}
+            icon={<I.sparkle s={14} className="text-yes-300" />}
           />
           <Stat
             label="Settled"
@@ -218,7 +214,7 @@ export default async function ProfilePage() {
       >
         <span className="inline-flex items-center gap-3">
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-no-500/10 text-no-300 group-hover:bg-no-500/20 transition-colors">
-            <LogOut size={16} strokeWidth={1.75} />
+            <I.logOut s={16} />
           </span>
           <span>
             <p className="font-display text-[14px] font-semibold text-text leading-tight">Sign out · Toka</p>

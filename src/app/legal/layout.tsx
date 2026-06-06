@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ScrollText } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 
@@ -28,7 +27,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
             <FiftyMark size={120} />
           </div>
           <div className="relative z-10 flex items-center gap-2">
-            <ScrollText size={14} className="text-gold-300" aria-hidden />
+            <I.scrollText s={14} className="text-gold-300" />
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
               Legal · Sheria
             </p>
