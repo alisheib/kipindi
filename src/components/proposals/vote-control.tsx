@@ -7,7 +7,6 @@
  * Optimistic: the score updates instantly, then reconciles with the server.
  */
 import { useState, useTransition } from "react";
-import { ChevronUp, ChevronDown } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { voteAction } from "@/app/proposals/actions";
 import { useToast } from "@/components/ui/toast";
@@ -94,7 +93,7 @@ export function VoteControl({
             : "transparent",
       }}
     >
-      {dir === "up" ? <ChevronUp size={18} strokeWidth={2.4} /> : <ChevronDown size={18} strokeWidth={2.4} />}
+      {dir === "up" ? <I.chevronUp s={18} /> : <I.chevronDown s={18} />}
     </button>
   );
 

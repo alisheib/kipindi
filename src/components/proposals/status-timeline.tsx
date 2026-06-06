@@ -2,7 +2,6 @@
  * StatusTimeline — vertical stepper: Submitted → Under review → Listed →
  * Resolved → Paid. Done/current steps use gold; future steps are muted.
  */
-import { Check } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 
 const STEPS: Array<[string, string]> = [
