@@ -6,6 +6,23 @@
 > Verdict: **NOT yet "super stable" — strong bones, but 3 critical real bugs + several
 > high issues must be fixed first.**
 
+## ✅ FIXES APPLIED (2026-06-06) — build + tsc clean, types now ENFORCED
+- **Wave 1 (CRITICAL) DONE** `453adce`: C1 `--accent-*` defined + tailwind mapped; C2 `--gold-text`→`--gold-fg`;
+  C3 `operation-result-modal` `sw` prop removed; tsconfig excludes design-ref folders;
+  **`ignoreBuildErrors: false`** (build now fails on any type error). `tsc` clean.
+- **Wave 2 (HIGH) DONE** `a0fc1aa`: gold-as-accent → brand-blue (tabs underline, `.tab-indicator`,
+  toggle focus ring, chip selected ring); dead route `/match/[id]`→`/markets/[id]`;
+  bet-confirm + operation-result modals overflow-safe (overlay scrolls, card `my-auto`).
+- **Wave 3 (perf) DONE** `49a4ed2`: sticky nav blur desktop-only (phones opaque, no per-frame
+  re-raster); trust-strip blur removed; `data-motion="reduced"` now stops ticker/prog-sweep/
+  pbar-shimmer/mark-breathe/gold-dot/pchart-halo/settling-bar loops.
+
+**Remaining (Wave 4 consistency / Wave 5 polish) — WIDE-RIPPLE, do per fresh session:**
+lucide→glyphs on ~8 player files (H2) · one card system + Tailwind-vs-CSS scale unify (H6/H7 — shift
+spacing everywhere, needs careful visual check) · `as never` typed-routes (H4 — architectural) ·
+dead theme engine (H5) · dead CSS/tokens · MED/LOW (hardcoded colors, market-card nowrap clip,
+source-URL break-all, /help anchors, MarketCard client→server island, next/image avatar).
+
 ## Ground truth
 - `npm install` ✅ · `next build` ✅ **— but** `next.config.ts` has `typescript.ignoreBuildErrors: true`,
   which MASKS a real `tsc` error (see C1). So "build passes" ≠ "type-clean".
