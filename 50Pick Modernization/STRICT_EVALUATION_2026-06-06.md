@@ -23,6 +23,32 @@ spacing everywhere, needs careful visual check) · `as never` typed-routes (H4 �
 dead theme engine (H5) · dead CSS/tokens · MED/LOW (hardcoded colors, market-card nowrap clip,
 source-URL break-all, /help anchors, MarketCard client→server island, next/image avatar).
 
+## Part B refactor status (post Claude Design decisions, 2026-06-06)
+- **B5 DONE** (`2e7cf17`): proposal upvote gold → aqua.
+- **B3 DONE** (`b5ee01f`): light-mode engine killed (theme-provider trimmed to locale+motion;
+  boot script + light theme-color + `.light` CSS removed; `color-scheme: dark` kept).
+- **B4 DONE** (`b5ee01f`): `data-motion=reduced` stops all decorative loops EXCEPT the live
+  status-dot (opacity-only).
+- **B6**: primary directive (no entrance bounce in lists) already satisfied; in-place `pop`
+  is optional low-value polish (deferred).
+- **B2 — RESOLVED (no risky change):** the CSS tokens ALREADY equal the canonical scale
+  Claude Design specced — `--sp-N = N×4` (4·8·12·16·20·24·32·40·48·64) and
+  `--r-* = xs4/sm8/md12/lg16/xl24/pill` (globals.css 177–181), live on all 53 `var(--r-*)` +
+  21 `var(--sp-*)` usages. The ONLY divergence is the **bespoke Tailwind config** (spacing
+  `2`=12px…`12`=128px; radius `md`=8…). Re-scaling Tailwind to canonical would **shrink
+  spacing app-wide** (`p-9` 64→36px) and re-round every corner — an app-wide regression risk,
+  NOT a blind edit. **Call: leave Tailwind as the components' rendered scale; canonical lives
+  in the CSS tokens.** Full Tailwind alignment, if ever wanted, = a watched run-the-app pass.
+- **B1 — needs a watched pass:** collapsing `.mcardp`/`.glass-panel`/`<Card>`/`.tpanel` into
+  one `.surface` changes fill/hover/elevation on cards platform-wide (`.glass-panel` is a
+  radial-gradient+border-strong; the `.surface` spec is flat `--bg-elevated`+`--border`).
+  Implementable, but verify screen-by-screen (run the app), not blind.
+
+## Lucide purge status
+- **Player surfaces: 100% lucide-free** (verified). Glyph pack (30 + 3 empty-states) integrated.
+- **Admin (~32 files): pending** — de-risked by the `size` alias + typed `I` (tsc catches
+  missing names AND wrong keys). Operator-only; low visibility. Per Ali, prioritized B1/B2 over it.
+
 ## Ground truth
 - `npm install` ✅ · `next build` ✅ **— but** `next.config.ts` has `typescript.ignoreBuildErrors: true`,
   which MASKS a real `tsc` error (see C1). So "build passes" ≠ "type-clean".
