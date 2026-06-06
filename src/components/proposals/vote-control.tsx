@@ -35,9 +35,9 @@ export function VoteControl({
   const [tally, setTally] = useState({ up, down });
 
   const score = tally.up - tally.down;
-  const upColor = vote === "up" ? "var(--gold-300)" : "var(--text-subtle)";
+  const upColor = vote === "up" ? "var(--accent-400)" : "var(--text-subtle)";
   const downColor = vote === "down" ? "var(--claret-300)" : "var(--text-subtle)";
-  const scoreColor = vote === "up" ? "var(--gold-300)" : vote === "down" ? "var(--claret-300)" : "var(--text)";
+  const scoreColor = vote === "up" ? "var(--accent-400)" : vote === "down" ? "var(--claret-300)" : "var(--text)";
 
   const [pop, setPop] = useState(0);
 
@@ -88,7 +88,7 @@ export function VoteControl({
         background:
           vote === dir
             ? dir === "up"
-              ? "color-mix(in oklab, var(--gold-500) 18%, transparent)"
+              ? "color-mix(in oklab, var(--accent-500) 18%, transparent)"
               : "color-mix(in oklab, var(--claret-500) 18%, transparent)"
             : "transparent",
       }}
