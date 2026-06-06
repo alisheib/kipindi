@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChevronLeft, UserCircle2, Download, AlertOctagon, Activity } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
@@ -55,7 +54,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
         </div>
         <div className="relative z-10 p-5 lg:p-6">
           <div className="flex items-center gap-2 mb-1">
-            <UserCircle2 size={14} className="text-info-fg" />
+            <I.user s={14} className="text-info-fg" />
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-info-fg">
               My account
             </p>
@@ -158,7 +157,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
       {/* CLOSE ACCOUNT — GDPR Art 17 */}
       <section className="rounded-xl border border-no-700/60 bg-no-500/[0.06] p-5 space-y-3">
         <div className="flex items-center gap-2">
-          <AlertOctagon size={15} className="text-no-300" />
+          <I.alertOctagon s={15} className="text-no-300" />
           <h2 className="font-display text-[15px] font-semibold text-text">
             Close my account <span className="text-text-subtle italic font-normal">· Funga akaunti</span>
           </h2>

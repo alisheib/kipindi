@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ChevronLeft, ShieldQuestion, Phone, Mail } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { FiftyLockup } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
@@ -41,7 +40,7 @@ export default function ForgotPasswordPage() {
 
           <div className="rounded-xl border border-warning-border bg-warning-bg/20 p-4">
             <div className="flex items-start gap-2.5">
-              <ShieldQuestion size={18} className="mt-0.5 shrink-0 text-warning-fg" aria-hidden />
+              <I.shieldQuestion s={18} className="mt-0.5 shrink-0 text-warning-fg" />
               <div className="text-[13px] text-text-muted leading-relaxed">
                 <p className="font-display font-semibold text-text mb-1">
                   Self-serve reset is coming soon
@@ -64,7 +63,7 @@ export default function ForgotPasswordPage() {
               className="flex items-start gap-3 rounded-xl border border-border bg-bg-overlay p-4 hover:border-gold-700 transition-colors"
             >
               <span className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-gold-500/10 text-gold-300 shrink-0">
-                <Phone size={18} aria-hidden />
+                <I.phone s={18} />
               </span>
               <div className="min-w-0">
                 <p className="font-display font-semibold text-text">Helpline · 0800 11 0011</p>
@@ -79,7 +78,7 @@ export default function ForgotPasswordPage() {
               className="flex items-start gap-3 rounded-xl border border-border bg-bg-overlay p-4 hover:border-gold-700 transition-colors"
             >
               <span className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-gold-500/10 text-gold-300 shrink-0">
-                <Mail size={18} aria-hidden />
+                <I.mail s={18} />
               </span>
               <div className="min-w-0">
                 <p className="font-display font-semibold text-text">support@50pick.com</p>

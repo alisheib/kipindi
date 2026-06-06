@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChevronLeft, ShieldCheck, Clock, Pause, Lock, AlertTriangle } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
@@ -131,7 +130,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
       {/* COOLING-OFF */}
       <section id="break" className="scroll-mt-20 rounded-xl glass-panel p-5 lg:p-6 space-y-3">
         <div className="flex items-center gap-2">
-          <Pause size={16} className="text-info-fg" />
+          <I.pause s={16} className="text-info-fg" />
           <h2 className="font-display text-[15px] font-semibold text-text">Take a break · Pumzika</h2>
         </div>
         <p className="text-[12px] text-text-muted leading-snug">
@@ -157,7 +156,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
             type="submit"
             className="inline-flex h-10 items-center gap-1.5 px-4 rounded-pill border border-border bg-bg-elevated font-display font-semibold text-[12.5px] text-text hover:bg-bg-overlay transition-colors"
           >
-            <Pause size={13} />
+            <I.pause s={13} />
             Start break
           </button>
         </form>

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { ChevronLeft, MonitorSmartphone, LogOut, ShieldCheck } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { getSession } from "@/lib/server/session";
@@ -52,7 +51,7 @@ export default async function SessionsPage() {
         </div>
         <div className="relative z-10 p-5 lg:p-6">
           <div className="flex items-center gap-2 mb-1">
-            <MonitorSmartphone size={14} className="text-info-fg" />
+            <I.device s={14} className="text-info-fg" />
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-info-fg">
               Active sessions
             </p>
@@ -69,7 +68,7 @@ export default async function SessionsPage() {
       <section className="rounded-xl border border-info-border bg-info-bg/[0.10] p-5 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <MonitorSmartphone size={16} className="text-info-fg" />
+            <I.device s={16} className="text-info-fg" />
             <p className="font-display text-[14.5px] font-semibold text-text">{device} · {browser}</p>
             <span className="inline-flex items-center rounded-pill border border-yes-700 bg-yes-500/10 px-2.5 py-0.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.1em] text-yes-300">
               This device

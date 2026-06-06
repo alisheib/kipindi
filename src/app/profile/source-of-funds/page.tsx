@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChevronLeft, ShieldCheck, FileSignature } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
@@ -111,7 +110,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
 
       <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-5">
         <div className="flex items-center gap-2">
-          <FileSignature size={16} className="text-info-fg" />
+          <I.fileSignature s={16} className="text-info-fg" />
           <h2 className="font-display text-[15px] font-semibold text-text">Declaration · Tamko</h2>
         </div>
 
@@ -212,7 +211,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
           </div>
 
           <button type="submit" className="btn btn-gold btn-lg w-full" style={{ borderRadius: "var(--r-pill)" }}>
-            <FileSignature size={16} />
+            <I.fileSignature s={16} />
             Submit declaration · Wasilisha
           </button>
         </form>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ShieldCheck, Lock, Smartphone, ChevronRight } from "lucide-react";
+import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -53,7 +53,7 @@ export default async function AdminLoginPage() {
           </div>
 
           <div className="relative flex items-start gap-2.5 pb-3 border-b border-border">
-            <ShieldCheck size={16} className="text-gold-300 shrink-0 mt-0.5" />
+            <I.shieldcheck s={16} className="text-gold-300 shrink-0 mt-0.5" />
             <div className="text-[12.5px] text-text-muted">
               <p className="font-display font-semibold text-text">
                 For ADMIN, COMPLIANCE, MODERATOR roles only
@@ -91,13 +91,13 @@ export default async function AdminLoginPage() {
               />
             </div>
             <button type="submit" className="btn btn-gold btn-xl w-full rounded-full">
-              <Lock size={15} aria-hidden />
+              <I.lock s={15} />
               Sign in · Ingia
             </button>
           </form>
 
           <div className="relative flex items-center gap-2 pt-3 border-t border-border font-mono text-[11px] text-text-subtle">
-            <Smartphone size={11} aria-hidden />
+            <I.smartphone s={11} />
             <span>If TOTP is enabled on your account you will be prompted next.</span>
           </div>
         </section>
@@ -110,7 +110,7 @@ export default async function AdminLoginPage() {
             <p className="font-display text-[13.5px] font-semibold text-text">I&apos;m a player, not staff</p>
             <p className="mt-0.5 text-[11.5px] text-text-subtle">Sign in to your player account instead</p>
           </div>
-          <ChevronRight size={16} className="text-text-subtle group-hover:text-text transition-colors" />
+          <I.chevronRight s={16} className="text-text-subtle group-hover:text-text transition-colors" />
         </Link>
 
         <p className="text-center font-mono text-[11px] text-text-subtle">

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Link2, Copy, Check, Share2, MessageCircle, MessageSquare } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
@@ -48,7 +47,7 @@ export function ReferralShare({ link, shareText }: { link: string; shareText: st
       </p>
       <div className="input-group mb-2.5">
         <span className="prefix" style={{ color: "var(--gold-400)" }}>
-          <Link2 size={14} />
+          <I.link s={14} />
         </span>
         <input className="input input-mono" readOnly value={link} style={{ fontWeight: 500 }} aria-label="Referral link" />
         <button
@@ -66,12 +65,12 @@ export function ReferralShare({ link, shareText }: { link: string; shareText: st
       </Button>
       <div className="mt-2.5 flex gap-2">
         <a href={waHref} target="_blank" rel="noopener noreferrer" className="flex-1">
-          <Button variant="ghost" size="md" fullWidth leading={<MessageCircle size={14} />} className="text-[12px]">
+          <Button variant="ghost" size="md" fullWidth leading={<I.messageWhatsapp s={14} />} className="text-[12px]">
             WhatsApp
           </Button>
         </a>
         <a href={smsHref} className="flex-1">
-          <Button variant="ghost" size="md" fullWidth leading={<MessageSquare size={14} />} className="text-[12px]">
+          <Button variant="ghost" size="md" fullWidth leading={<I.comment s={14} />} className="text-[12px]">
             SMS
           </Button>
         </a>
