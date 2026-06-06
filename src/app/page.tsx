@@ -217,7 +217,6 @@ export default async function LandingPage() {
           background:
             "radial-gradient(130% 150% at 0% 0%, oklch(27% 0.155 268) 0%, oklch(19% 0.12 268) 58%), " +
             "radial-gradient(80% 120% at 100% 0%, oklch(40% 0.10 80 / 0.10), transparent 60%)",
-          backdropFilter: "blur(14px)",
           boxShadow: "var(--shadow-3), inset 0 1px 0 oklch(100% 0 0 / 0.06)",
         }}
       >

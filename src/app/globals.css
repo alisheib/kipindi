@@ -1459,7 +1459,27 @@ html.kp-reduce-motion *::after {
 [data-motion="reduced"] .cm-status-dot,
 [data-motion="reduced"] .wc-rays,
 [data-motion="reduced"] .win-aura-anim,
-[data-motion="reduced"] .hm-halo-pulse { animation: none !important; }
+[data-motion="reduced"] .hm-halo-pulse,
+/* Heavy ambient loops also stop at the "reduced" tier (mid-tier Android) —
+   previously only "minimal" killed these, defeating the throttle. */
+[data-motion="reduced"] .ticker-track,
+[data-motion="reduced"] .prog-sweep::after,
+[data-motion="reduced"] .pbar-resolved::after,
+[data-motion="reduced"] .mark-breathe,
+[data-motion="reduced"] .gold-dot,
+[data-motion="reduced"] .pchart-dot-halo,
+[data-motion="reduced"] .settling-bar::before { animation: none !important; }
+
+/* Sticky top-bar frosted blur — DESKTOP ONLY. On phones the bar is near-opaque
+   (set inline on .app-topbar) with NO backdrop-filter, so it doesn't re-raster
+   the scrolling content every frame on mid-tier Android. */
+@media (min-width: 1024px) {
+  .app-topbar {
+    background: color-mix(in oklab, var(--panel) 78%, transparent) !important;
+    backdrop-filter: blur(12px) saturate(1.15);
+    -webkit-backdrop-filter: blur(12px) saturate(1.15);
+  }
+}
 [data-motion="reduced"] .stagger-item { animation-delay: 0ms !important; }
 [data-motion="reduced"] .market-grid > * { animation-delay: 0ms !important; }
 

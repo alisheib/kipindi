@@ -46,12 +46,13 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
 
   return (
     <header
-      className="sticky top-0 z-30"
+      className="sticky top-0 z-30 app-topbar"
       style={{
         height: 56,
-        background: "color-mix(in oklab, var(--panel) 78%, transparent)",
-        backdropFilter: "blur(14px) saturate(1.3)",
-        WebkitBackdropFilter: "blur(14px) saturate(1.3)",
+        // Near-opaque on mobile (no blur → no per-scroll-frame re-raster GPU
+        // cost on mid-tier Android). The frosted blur is applied only ≥1024px
+        // via the `.app-topbar` rule in globals.css.
+        background: "color-mix(in oklab, var(--panel) 92%, transparent)",
         borderBottom: "1px solid var(--border)",
       }}
     >
