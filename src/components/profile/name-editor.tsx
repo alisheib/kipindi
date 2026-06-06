@@ -7,7 +7,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Loader2 } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { updateProfileBasicsAction } from "@/app/profile/actions";
@@ -73,7 +73,7 @@ export function ProfileNameEditor({
           placeholder="Your name"
           className="font-display text-[24px] md:text-[28px] font-bold leading-tight tracking-[-0.02em] text-text bg-transparent border-b border-gold-500 focus:outline-none px-0 min-w-0 max-w-full flex-1"
         />
-        {pending && <Loader2 size={16} className="text-text-subtle animate-spin" />}
+        {pending && <span className="inline-flex text-text-subtle"><Spinner size={16} /></span>}
       </div>
     );
   }

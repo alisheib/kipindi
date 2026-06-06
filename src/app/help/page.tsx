@@ -1,4 +1,3 @@
-import { Mail } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 
@@ -78,7 +77,7 @@ export default function HelpPage() {
           href="tel:+255222115811"
         />
         <ContactCard
-          icon={<Mail size={15} />}
+          icon={<I.mail s={15} />}
           tone="info"
           title="Email"
           titleSw="Barua pepe"

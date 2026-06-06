@@ -12,7 +12,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Trash2, Loader2 } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 import { I } from "@/components/ui/glyphs";
 import { Avatar } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/toast";
@@ -128,7 +128,7 @@ export function AvatarUploader({
         aria-label="Change profile photo"
         className="absolute -bottom-1 -right-1 inline-flex h-7 w-7 items-center justify-center rounded-pill border border-border bg-bg-elevated text-text-muted hover:text-text hover:border-gold-500 transition-colors disabled:opacity-50 shadow-e2"
       >
-        {pending ? <Loader2 size={13} className="animate-spin" /> : <I.camera s={13} />}
+        {pending ? <Spinner size={13} /> : <I.camera s={13} />}
       </button>
 
       {/* Clear button — only when an avatar exists */}
@@ -139,7 +139,7 @@ export function AvatarUploader({
           aria-label="Remove profile photo"
           className="absolute -top-1 -right-1 inline-flex h-6 w-6 items-center justify-center rounded-pill border border-border bg-bg-elevated text-text-subtle hover:text-no-300 hover:border-no-700 transition-colors shadow-e2"
         >
-          <Trash2 size={11} strokeWidth={2} />
+          <I.trash s={11} />
         </button>
       )}
     </div>

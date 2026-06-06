@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { Input, Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -105,7 +104,7 @@ export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: 
       <div>
         <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5">Resolution date · Tarehe ya utatuzi <Req /></span>
         <span className="input-group">
-          <span className="prefix"><Calendar size={14} /></span>
+          <span className="prefix"><I.calendar s={14} /></span>
           <input className="input input-mono" type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="Resolution date" />
         </span>
       </div>

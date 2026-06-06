@@ -7,7 +7,6 @@
  * pref store (localStorage) and applies the in-app reduce-motion class live.
  */
 import { useEffect, useState } from "react";
-import { Vibrate, Sparkles } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { Toggle } from "@/components/ui/toggle";
 import { getPrefs, setPrefs, haptics } from "@/lib/haptics";
@@ -58,7 +57,7 @@ export function FeedbackSettings() {
           onToggle={toggleHaptics}
         />
         <Row
-          icon={<Sparkles size={16} className="text-gold-300" />}
+          icon={<I.sparkle s={16} className="text-gold-300" />}
           title="Reduce motion"
           sw="Punguza mwendo"
           subtitle="Calms animations across the app. We also honour your device setting."
