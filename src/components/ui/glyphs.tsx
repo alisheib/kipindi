@@ -6,14 +6,16 @@
  */
 import type { SVGProps } from "react";
 
-type GlyphProps = { s?: number } & Omit<SVGProps<SVGSVGElement>, "ref">;
+/* `s` is the kit size prop; `size` is accepted as a lucide-compatible alias so
+   icons swap from lucide → I.* without renaming every call site's prop. */
+type GlyphProps = { s?: number; size?: number } & Omit<SVGProps<SVGSVGElement>, "ref">;
 
-const G = ({ children, s, ...p }: GlyphProps & { children: React.ReactNode }) => (
-  <svg viewBox="0 0 24 24" width={s || 24} height={s || 24} fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden {...p}>{children}</svg>
+const G = ({ children, s, size, ...p }: GlyphProps & { children: React.ReactNode }) => (
+  <svg viewBox="0 0 24 24" width={s ?? size ?? 24} height={s ?? size ?? 24} fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden {...p}>{children}</svg>
 );
 
-const GL = ({ children, s = 64, ...p }: GlyphProps & { children: React.ReactNode }) => (
-  <svg viewBox="0 0 64 64" width={s} height={s} fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden {...p}>{children}</svg>
+const GL = ({ children, s, size, ...p }: GlyphProps & { children: React.ReactNode }) => (
+  <svg viewBox="0 0 64 64" width={s ?? size ?? 64} height={s ?? size ?? 64} fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden {...p}>{children}</svg>
 );
 export const I = {
   /* categories */
