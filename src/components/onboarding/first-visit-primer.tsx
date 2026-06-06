@@ -14,7 +14,6 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
-import { ChevronRight, X } from "lucide-react";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark, TippingBar, GiltCorner } from "@/components/brand";
 
@@ -367,7 +366,7 @@ export function FirstVisitPrimer() {
               {step === CARDS.length - 1
                 ? lang === "sw" ? "Sawa" : "Got it"
                 : lang === "sw" ? "Endelea" : "Next"}
-              {step < CARDS.length - 1 && <ChevronRight size={14} aria-hidden />}
+              {step < CARDS.length - 1 && <I.chevronRight s={14} />}
             </button>
           </div>
         </div>
