@@ -206,18 +206,18 @@ export function OperationResultModal({
       role={variant === "danger" ? "alertdialog" : "dialog"}
       aria-modal="true"
       aria-label={title}
-      className="fixed inset-0 z-[100] flex items-center justify-center px-3"
+      className="fixed inset-0 z-[100] flex justify-center px-3 py-4 overflow-y-auto"
     >
       <button
         type="button"
         aria-label="Close"
         onClick={onClose}
-        className="absolute inset-0 bg-black/60 backdrop-blur-md"
+        className="fixed inset-0 bg-black/60 backdrop-blur-md"
         style={{ animation: "orm-fade 160ms ease-out" }}
       />
 
       <div
-        className="relative w-full max-w-[460px] rounded-xl border border-border-strong bg-bg-elevated shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65),inset_0_1px_0_rgba(255,255,255,0.06)] overflow-hidden"
+        className="relative my-auto w-full max-w-[460px] rounded-xl border border-border-strong bg-bg-elevated shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65),inset_0_1px_0_rgba(255,255,255,0.06)] overflow-hidden"
         // `overflow-hidden` clips the gold auto-close strip to the
         // rounded corners; without it, the strip's `rounded-t-2xl`
         // can render slightly past the popup's `rounded-xl` + 1 px

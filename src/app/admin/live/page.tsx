@@ -86,7 +86,7 @@ export default function AdminLivePage() {
                         <td className="py-2 pr-3"><Chip size="sm" variant="gold">●&nbsp;{m.minute}&apos;</Chip></td>
                         <td className="py-2 pr-3 font-mono tabular text-right text-gold">{formatTzs(totalPool)}</td>
                         <td className="py-2 pl-3 text-right">
-                          <a href={`/match/${m.id}`} className="font-mono text-micro tracking-[0.10em] uppercase text-royal hover:underline">view →</a>
+                          <a href={`/markets/${m.id}`} className="font-mono text-micro tracking-[0.10em] uppercase text-royal hover:underline">view →</a>
                         </td>
                       </tr>
                     );

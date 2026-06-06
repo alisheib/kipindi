@@ -121,7 +121,7 @@ export function Tabs({
               aria-hidden
               className={cn(
                 "absolute left-2 right-2 -bottom-px h-[2px] rounded-pill transition-opacity duration-100",
-                active ? "bg-gold-400 opacity-100" : "opacity-0",
+                active ? "bg-[var(--brand-500)] opacity-100" : "opacity-0",
               )}
             />
           </button>

@@ -74,7 +74,7 @@ export function Chip({
     <span
       className={cn(
         "inline-flex items-center gap-[5px] rounded-pill font-bold whitespace-nowrap border uppercase",
-        selected && "ring-1 ring-gold-400 ring-offset-1 ring-offset-bg-elevated",
+        selected && "ring-1 ring-[var(--brand-400)] ring-offset-1 ring-offset-bg-elevated",
         className,
       )}
       style={{

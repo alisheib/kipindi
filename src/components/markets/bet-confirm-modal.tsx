@@ -140,7 +140,7 @@ export function BetConfirmModal({
       role="dialog"
       aria-modal="true"
       aria-label="Confirm prediction"
-      className="fixed inset-0 z-[100] flex items-center justify-center px-3"
+      className="fixed inset-0 z-[100] flex justify-center px-3 py-4 overflow-y-auto"
     >
       {/* Scrim */}
       <button
@@ -148,7 +148,7 @@ export function BetConfirmModal({
         aria-label="Cancel"
         onClick={() => { if (!pending) onCancel(); }}
         disabled={pending}
-        className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity disabled:cursor-wait"
+        className="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity disabled:cursor-wait"
         style={{ animation: "bcm-fade 160ms ease-out" }}
       />
 
@@ -158,7 +158,7 @@ export function BetConfirmModal({
           `rounded-xl` + 1px border lets the strip's ends protrude
           past the popup's curved corners (Ali's report). */}
       <div
-        className="relative w-full max-w-[440px] rounded-xl border border-border-strong bg-bg-elevated shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65),inset_0_1px_0_rgba(255,255,255,0.06)] overflow-hidden"
+        className="relative my-auto w-full max-w-[440px] rounded-xl border border-border-strong bg-bg-elevated shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65),inset_0_1px_0_rgba(255,255,255,0.06)] overflow-hidden"
         // Kit `--ease-arrive` — same entry curve as the result modal,
         // so the pre-confirm and post-place beats feel like one
         // continuous motion language.
