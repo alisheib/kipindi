@@ -42,8 +42,8 @@ async function register(page, phone, ref) {
   await page.fill('input[name="dob"]', "1990-01-01");
   await page.fill('input[name="password"]', PW);
   await page.fill('input[name="passwordConfirm"]', PW);
-  await page.check('input[name="acceptAge"]');
-  await page.check('input[name="acceptTerms"]');
+  await page.check('input[name="acceptAge"]', { force: true });
+  await page.check('input[name="acceptTerms"]', { force: true });
   return page;
 }
 async function submitRegister(page) {

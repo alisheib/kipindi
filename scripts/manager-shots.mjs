@@ -71,8 +71,8 @@ async function ensureAuth(ctx) {
   await p.goto(`${BASE}/auth/register`, { waitUntil: "networkidle" });
   await p.fill('input[name="phone"]', tail);
   await p.fill('input[name="dob"]', "1990-01-15");
-  await p.check('input[name="acceptAge"]');
-  await p.check('input[name="acceptTerms"]');
+  await p.check('input[name="acceptAge"]', { force: true });
+  await p.check('input[name="acceptTerms"]', { force: true });
   await p.click('button[type="submit"]');
   await p.waitForURL(/\/auth\/otp/, { timeout: 10_000 });
   const r = await fetch(`${BASE}/api/dev-test/last-otp?phone=${encodeURIComponent(phoneE164)}`);

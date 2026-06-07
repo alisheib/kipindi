@@ -24,8 +24,8 @@ async function registerViaUI(browser, { ref } = {}) {
     await p.fill('input[name="dob"]', "1995-06-15");
     await p.fill('input[name="password"]', "Tanzania#2026x");
     await p.fill('input[name="passwordConfirm"]', "Tanzania#2026x");
-    await p.check('input[name="acceptAge"]');
-    await p.check('input[name="acceptTerms"]');
+    await p.check('input[name="acceptAge"]', { force: true });
+    await p.check('input[name="acceptTerms"]', { force: true });
     await Promise.all([p.waitForURL((u) => !u.pathname.includes("/auth/register"), { timeout: 12000 }).catch(() => {}), p.locator('button[type="submit"]').click()]);
     const landed = !p.url().includes("/auth/register");
     await p.close();

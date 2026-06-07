@@ -33,8 +33,8 @@ try {
     await pp.fill('input[name="dob"]', "1994-03-03");
     await pp.fill('input[name="password"]', "Tanzania#2026x");
     await pp.fill('input[name="passwordConfirm"]', "Tanzania#2026x");
-    await pp.check('input[name="acceptAge"]');
-    await pp.check('input[name="acceptTerms"]');
+    await pp.check('input[name="acceptAge"]', { force: true });
+    await pp.check('input[name="acceptTerms"]', { force: true });
     await Promise.all([pp.waitForURL((u) => !u.pathname.includes("/auth/register"), { timeout: 12000 }).catch(() => {}), pp.locator('button[type="submit"]').click()]);
     const isPlayer = !pp.url().includes("/auth/register");
     log("A.fresh player registered (PLAYER role)", isPlayer, pp.url());

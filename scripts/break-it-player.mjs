@@ -36,8 +36,8 @@ async function register(ctx) {
   await p.fill('input[name="dob"]', "1990-01-15");
   await p.fill('input[name="password"]', "TestPass123!");
   await p.fill('input[name="passwordConfirm"]', "TestPass123!");
-  await p.check('input[name="acceptAge"]');
-  await p.check('input[name="acceptTerms"]');
+  await p.check('input[name="acceptAge"]', { force: true });
+  await p.check('input[name="acceptTerms"]', { force: true });
   await Promise.all([
     p.waitForURL(u => !/auth\/register/.test(u.toString()), { timeout: 15_000 }).catch(() => null),
     p.click('button[type="submit"]'),
@@ -547,8 +547,8 @@ console.log("\n=== O · TIME / AGE TAMPERING ===");
   await pp.fill('input[name="dob"]', "2020-01-15");   // 5-year-old
   await pp.fill('input[name="password"]', "TestPass123!");
   await pp.fill('input[name="passwordConfirm"]', "TestPass123!");
-  await pp.check('input[name="acceptAge"]');
-  await pp.check('input[name="acceptTerms"]');
+  await pp.check('input[name="acceptAge"]', { force: true });
+  await pp.check('input[name="acceptTerms"]', { force: true });
   await Promise.all([
     pp.waitForURL(u => !/auth\/register$/.test(u.toString()), { timeout: 8_000 }).catch(() => null),
     pp.click('button[type="submit"]'),
@@ -575,8 +575,8 @@ console.log("\n=== P · BOT / AUTOMATION ===");
     await pp.fill('input[name="dob"]', "1990-01-15");
     await pp.fill('input[name="password"]', "TestPass123!");
     await pp.fill('input[name="passwordConfirm"]', "TestPass123!");
-    await pp.check('input[name="acceptAge"]');
-    await pp.check('input[name="acceptTerms"]');
+    await pp.check('input[name="acceptAge"]', { force: true });
+    await pp.check('input[name="acceptTerms"]', { force: true });
     await Promise.all([
       pp.waitForURL(u => !/auth\/register$/.test(u.toString()), { timeout: 6_000 }).catch(() => null),
       pp.click('button[type="submit"]'),

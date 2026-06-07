@@ -38,8 +38,8 @@ async function reg(ctx, tail, pwd) {
   await p.fill('input[name="dob"]', "1990-01-15");
   await p.fill('input[name="password"]', pwd);
   await p.fill('input[name="passwordConfirm"]', pwd);
-  await p.check('input[name="acceptAge"]');
-  await p.check('input[name="acceptTerms"]');
+  await p.check('input[name="acceptAge"]', { force: true });
+  await p.check('input[name="acceptTerms"]', { force: true });
   await p.click('button[type="submit"]');
   await p.waitForTimeout(900);
   await p.close();

@@ -39,8 +39,8 @@ async function fillRegister(p, opts) {
   });
   await p.fill('input[name="password"]', opts.password ?? "TestPass123!");
   await p.fill('input[name="passwordConfirm"]', opts.confirm ?? opts.password ?? "TestPass123!");
-  await p.check('input[name="acceptAge"]');
-  await p.check('input[name="acceptTerms"]');
+  await p.check('input[name="acceptAge"]', { force: true });
+  await p.check('input[name="acceptTerms"]', { force: true });
   await Promise.all([
     p.waitForURL(u => !/auth\/register$/.test(u.toString()) || u.toString().includes("error="), { timeout: 8_000 }).catch(() => null),
     p.click('button[type="submit"]'),

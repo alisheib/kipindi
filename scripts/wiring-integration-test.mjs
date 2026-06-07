@@ -47,8 +47,8 @@ async function reg(ctx, tail, password) {
   await p.fill('input[name="dob"]', "1990-01-15");
   await p.fill('input[name="password"]', password);
   await p.fill('input[name="passwordConfirm"]', password);
-  await p.check('input[name="acceptAge"]');
-  await p.check('input[name="acceptTerms"]');
+  await p.check('input[name="acceptAge"]', { force: true });
+  await p.check('input[name="acceptTerms"]', { force: true });
   await Promise.all([
     p.waitForURL(u => !/auth\/register$/.test(u.toString()), { timeout: 10_000 }).catch(() => null),
     p.click('button[type="submit"]'),

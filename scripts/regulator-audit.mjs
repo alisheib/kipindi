@@ -38,8 +38,8 @@ async function register(ctx, opts = {}) {
   await p.fill('input[name="dob"]', opts.dob || "1990-01-15");
   await p.fill('input[name="password"]', password);
   await p.fill('input[name="passwordConfirm"]', opts.confirm ?? password);
-  await p.check('input[name="acceptAge"]');
-  await p.check('input[name="acceptTerms"]');
+  await p.check('input[name="acceptAge"]', { force: true });
+  await p.check('input[name="acceptTerms"]', { force: true });
   await Promise.all([
     p.waitForURL(u => !/auth\/register$/.test(u.toString()), { timeout: 8_000 }).catch(() => null),
     p.click('button[type="submit"]'),
@@ -88,8 +88,8 @@ console.log("\n=== A · AUTHENTICATION SECURITY ===");
     });
     await p.fill('input[name="password"]', pw);
     await p.fill('input[name="passwordConfirm"]', pw);
-    await p.check('input[name="acceptAge"]');
-    await p.check('input[name="acceptTerms"]');
+    await p.check('input[name="acceptAge"]', { force: true });
+    await p.check('input[name="acceptTerms"]', { force: true });
     await Promise.all([
       p.waitForURL(u => !/auth\/register$/.test(u.toString()) || u.toString().includes("error="), { timeout: 8_000 }).catch(() => null),
       p.click('button[type="submit"]'),

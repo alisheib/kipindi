@@ -46,8 +46,8 @@ async function reg(ctx, tail, pwd) {
   await p.fill('input[name="dob"]', "1990-01-15");
   await p.fill('input[name="password"]', pwd);
   await p.fill('input[name="passwordConfirm"]', pwd);
-  await p.check('input[name="acceptAge"]');
-  await p.check('input[name="acceptTerms"]');
+  await p.check('input[name="acceptAge"]', { force: true });
+  await p.check('input[name="acceptTerms"]', { force: true });
   await p.click('button[type="submit"]');
   await p.waitForTimeout(900);
   await p.close();
@@ -95,8 +95,8 @@ try {
     await p.fill('input[name="password"]', longPwd);
     await p.fill('input[name="passwordConfirm"]', longPwd);
     await p.fill('input[name="dob"]', "1990-01-15");
-    await p.check('input[name="acceptAge"]');
-    await p.check('input[name="acceptTerms"]');
+    await p.check('input[name="acceptAge"]', { force: true });
+    await p.check('input[name="acceptTerms"]', { force: true });
     await p.click('button[type="submit"]');
     await p.waitForTimeout(900);
     // Either accepted (and now on /profile/kyc) or rejected with sane error.
@@ -427,8 +427,8 @@ try {
       await p.fill('input[name="dob"]', "1990-01-15");
       await p.fill('input[name="password"]', "Rate!2026");
       await p.fill('input[name="passwordConfirm"]', "Rate!2026");
-      await p.check('input[name="acceptAge"]');
-      await p.check('input[name="acceptTerms"]');
+      await p.check('input[name="acceptAge"]', { force: true });
+      await p.check('input[name="acceptTerms"]', { force: true });
       await p.click('button[type="submit"]');
       await p.waitForTimeout(300);
       // After submit, either lands on /profile/kyc (success) or back on

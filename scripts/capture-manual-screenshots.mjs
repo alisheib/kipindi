@@ -34,8 +34,8 @@ async function fillRegister(p, opts) {
   await p.fill('input[name="dob"]', opts.dob ?? "1990-01-15");
   await p.fill('input[name="password"]', opts.password ?? "DemoPlayer!2026");
   await p.fill('input[name="passwordConfirm"]', opts.password ?? "DemoPlayer!2026");
-  await p.check('input[name="acceptAge"]');
-  await p.check('input[name="acceptTerms"]');
+  await p.check('input[name="acceptAge"]', { force: true });
+  await p.check('input[name="acceptTerms"]', { force: true });
 }
 
 const phoneTail = (offset = 0) => "7" + String((Date.now() + offset) % 100_000_000).padStart(8, "0");

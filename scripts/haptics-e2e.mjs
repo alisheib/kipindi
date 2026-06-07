@@ -20,7 +20,7 @@ await fetch(`${BASE}/api/dev-test/reset-rate-limits`, { method: "POST" }).catch(
 await p.goto(`${BASE}/auth/register`, { waitUntil: "domcontentloaded" }); await p.waitForTimeout(400);
 await p.locator("#phone").click(); await p.locator("#phone").pressSequentially(PH, { delay: 8 });
 await p.fill('input[name="dob"]', "1990-01-01"); await p.fill('input[name="password"]', PW); await p.fill('input[name="passwordConfirm"]', PW);
-await p.check('input[name="acceptAge"]'); await p.check('input[name="acceptTerms"]');
+await p.check('input[name="acceptAge"]', { force: true }); await p.check('input[name="acceptTerms"]', { force: true });
 await p.locator('form button[type="submit"]').click(); await p.waitForURL("**/profile/kyc**", { timeout: 20000 }).catch(()=>{});
 
 // ---- vibrate support present in chromium ----

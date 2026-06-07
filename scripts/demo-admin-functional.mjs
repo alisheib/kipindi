@@ -50,8 +50,8 @@ const adminPwd = "AdminDemo!2026Strong";
   await p.fill('input[name="dob"]', "1985-04-12");
   await p.fill('input[name="password"]', adminPwd);
   await p.fill('input[name="passwordConfirm"]', adminPwd);
-  await p.check('input[name="acceptAge"]');
-  await p.check('input[name="acceptTerms"]');
+  await p.check('input[name="acceptAge"]', { force: true });
+  await p.check('input[name="acceptTerms"]', { force: true });
   await Promise.all([
     p.waitForURL(u => !/auth\/register$/.test(u.toString()), { timeout: 8_000 }).catch(() => null),
     p.click('button[type="submit"]'),
