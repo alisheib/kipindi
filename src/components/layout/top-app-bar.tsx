@@ -101,7 +101,7 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
         {user.isAuthed && user.balance !== null && user.balance !== undefined && (
           <>
             <WalletBalancePill balance={user.balance} />
-            <CashEye bare size={14} className="hidden sm:inline-flex text-[var(--gold-300)]" />
+            <CashEye bare size={14} className="inline-flex text-[var(--gold-300)]" />
           </>
         )}
 

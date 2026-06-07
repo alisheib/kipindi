@@ -96,7 +96,7 @@ export function WalletBalancePill({ balance }: { balance: number }) {
       href="/wallet"
       aria-label={hidden ? "Wallet · balance hidden" : `Wallet · TZS ${balance.toLocaleString("en-US")}`}
       className={cn(
-        "hidden sm:inline-flex items-center rounded-pill font-mono tabular-nums font-bold text-text transition-colors transition-shadow",
+        "inline-flex items-center rounded-pill font-mono tabular-nums font-bold text-text transition-colors transition-shadow",
         flashing
           ? "text-gold-300 shadow-[0_0_0_3px_color-mix(in_oklab,var(--gold-300)_22%,transparent)]"
           : "hover:text-gold-300",
