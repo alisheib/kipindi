@@ -343,6 +343,11 @@ html {
      our type scale is deliberate and tested at mobile widths. */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /* Hard backstop against horizontal page scroll on phones: decorative bleeds
+     (corner watermarks, glows) and edge clusters must never make the page
+     swipe sideways. `clip` (not hidden) doesn't create a scroll container, so
+     the sticky top bar keeps working. */
+  overflow-x: clip;
 }
 
 * { box-sizing: border-box; }
