@@ -107,6 +107,19 @@ export function ProbabilityChart({
   const hv = hover != null ? data[hover] : null;
   const hvLeanNo = hv ? hv.p < 50 : false;
 
+  // Edge-aware horizontal anchoring so the readout + value flag never spill past
+  // (and get clipped by) the chart's edges. Near the start we align the box's
+  // LEFT edge to the point (it opens rightward, into the chart); near the end we
+  // align its RIGHT edge (opens leftward); in the middle we center it. `gap` is
+  // the px offset between the point and the box on the center→edge transition.
+  const edgeShift = (frac: number, gap = 0, yShift = "0") => {
+    if (frac < 0.2) return `translate(${gap}px, ${yShift})`;
+    if (frac > 0.8) return `translate(calc(-100% - ${gap}px), ${yShift})`;
+    return `translate(-50%, ${yShift})`;
+  };
+  const hoverFrac = hover != null ? x(hover) / width : 0.5;
+  const lastFrac = last ? lastX / width : 1;
+
   return (
     <div ref={wrapRef} className={"pchart" + (hover != null ? " is-hover" : "")}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
@@ -171,14 +184,14 @@ export function ProbabilityChart({
         </svg>
 
         {hv && (
-          <div className="pchart-readout" style={{ left: `${(x(hover!) / width) * 100}%` }}>
+          <div className="pchart-readout" style={{ left: `${(x(hover!) / width) * 100}%`, transform: edgeShift(hoverFrac) }}>
             <span style={{ color: "var(--text-subtle)" }}>{hv.t}</span>{"  "}
             <b className={hvLeanNo ? "lean-no" : undefined}>{hv.p}%</b>
             <span style={{ color: "var(--text-subtle)" }}> · {hvLeanNo ? "leans no" : "leans yes"}</span>
           </div>
         )}
         {last && (
-          <div style={{ position: "absolute", top: `${(lastY / height) * 100}%`, left: `${(lastX / width) * 100}%`, transform: "translate(10px, -50%)", fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 600, color: "var(--gilt)", pointerEvents: "none", whiteSpace: "nowrap" }}>
+          <div style={{ position: "absolute", top: `${(lastY / height) * 100}%`, left: `${(lastX / width) * 100}%`, transform: edgeShift(lastFrac, 10, "-50%"), fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 600, color: "var(--gilt)", pointerEvents: "none", whiteSpace: "nowrap" }}>
             {last.p}%
           </div>
         )}
