@@ -422,6 +422,7 @@ body {
   gap: 8px;
   transition: transform .1s var(--ease-micro), box-shadow .16s var(--ease-micro), filter .12s, background .16s;
   white-space: nowrap;
+  -webkit-user-select: none;
   user-select: none;
 }
 .btn:hover:not(:disabled)  { transform: translateY(-1px); }
@@ -857,7 +858,7 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   opacity: 0;
   visibility: hidden;
   transition: opacity 120ms ease-out, visibility 0s linear 120ms, transform 120ms ease-out;
-  z-index: 1500;
+  z-index: 1600;
 }
 .kp-tooltip-popover::after {
   content: "";
@@ -1093,6 +1094,25 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 /* ---------- Slide-up entrance (share popover, mobile nav) ---------- */
 .kp-slide-up { animation: kp-slide-up var(--dur-arrive) var(--ease-arrive) both; }
 @keyframes kp-slide-up { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* ---------- Skeleton shimmer ----------------------------------------------
+   The loading sheen swept across PageLoader rows + the markets/live/leaderboard
+   grid placeholders. Quiet pearl highlight (NOT gilt — gold is reserved for
+   wins). Without this the skeletons were dead static boxes. Auto-disabled under
+   reduce-motion (OS pref + in-app switch) and the `minimal` motion tier; kept at
+   `reduced` since it's a single GPU-cheap transform shown only briefly. */
+.kp-shimmer-track { position: relative; overflow: hidden; }
+.kp-shimmer-track::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, color-mix(in oklab, var(--pearl-50) 9%, transparent) 50%, transparent 100%);
+  transform: translateX(-100%);
+  animation: kp-shimmer 1.5s ease-in-out infinite;
+}
+@keyframes kp-shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .kp-shimmer-track::after { animation: none; } }
+[data-motion="minimal"] .kp-shimmer-track::after { animation: none; }
 
 /* ---------- Reduced-motion respect ---------- */
 @media (prefers-reduced-motion: reduce) {
@@ -1525,6 +1545,7 @@ html.kp-reduce-motion *::after {
   position: relative;
   width: 100%;
   font-family: var(--font-mono);
+  -webkit-user-select: none;
   user-select: none;
 }
 .pchart svg { display: block; width: 100%; height: auto; overflow: visible; }

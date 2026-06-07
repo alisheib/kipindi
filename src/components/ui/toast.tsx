@@ -64,7 +64,20 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       durationMs: input.durationMs ?? DEFAULT_DURATION,
       variant: input.variant ?? "default",
     };
-    setToasts((prev) => [...prev, next].slice(-MAX_VISIBLE));
+    setToasts((prev) => {
+      const merged = [...prev, next];
+      // Flood guard: when more than MAX_VISIBLE pile up, drop the oldest — and
+      // CLEAR their pending dismiss timers so a sliced-off toast can't fire a
+      // late no-op setState (orphan timers were the only leak under rapid bursts).
+      if (merged.length > MAX_VISIBLE) {
+        for (const d of merged.slice(0, merged.length - MAX_VISIBLE)) {
+          const tm = timersRef.current.get(d.id);
+          if (tm) { clearTimeout(tm); timersRef.current.delete(d.id); }
+        }
+        return merged.slice(-MAX_VISIBLE);
+      }
+      return merged;
+    });
     // Haptic punctuation, matched to the toast's meaning. `gold` = win/reward
     // peak → celebrate; routine `default` toasts stay silent.
     switch (next.variant) {
@@ -145,7 +158,7 @@ function ToastViewport({ toasts, exiting, onDismiss }: { toasts: Toast[]; exitin
     <div
       role="region"
       aria-label="Notifications"
-      className="pointer-events-none fixed inset-x-0 top-0 z-[60] flex flex-col items-center gap-2 px-3 pt-3 sm:inset-x-auto sm:right-4 sm:top-4 sm:items-end sm:pt-0"
+      className="pointer-events-none fixed inset-x-0 top-0 z-[1800] flex flex-col items-center gap-2 px-3 pt-3 sm:inset-x-auto sm:right-4 sm:top-4 sm:items-end sm:pt-0"
     >
       {toasts.map((t) => (
         <ToastItem key={t.id} toast={t} exiting={exiting.includes(t.id)} onDismiss={() => onDismiss(t.id)} />
