@@ -555,9 +555,28 @@ export async function cashOutPosition(
 
     const now = new Date().toISOString();
 
-    // Pull the stake out of the corresponding side's pool.
-    if (p.side === "YES") m.yesPool = Math.max(0, m.yesPool - p.stake);
-    else                  m.noPool  = Math.max(0, m.noPool  - p.stake);
+    // Conservation: the pools must drop by exactly `value` — the amount credited
+    // to the wallet — so cashing out can never MINT money. (The old code removed
+    // only `p.stake`, leaving the winnings-portion in the opposing pool to be
+    // paid out a second time → a money leak in the player's favour.)
+    // Economic split: the stake returns from the player's OWN pool; any winnings
+    // (value − stake) come from the OPPOSING pool — the losing side funds the
+    // winning side. Clamp so neither pool goes negative, then sweep any rounding
+    // residual from whichever pool still has room so the total removed === value.
+    // cashOutValue caps value ≤ grossPool, so the two pools can always cover it.
+    const ownYes = p.side === "YES";
+    let ownDebit = Math.min(ownYes ? m.yesPool : m.noPool, Math.min(value, p.stake));
+    let oppDebit = Math.min(ownYes ? m.noPool : m.yesPool, Math.max(0, value - ownDebit));
+    let residual = value - ownDebit - oppDebit;
+    if (residual > 0) {
+      const ownRoom = (ownYes ? m.yesPool : m.noPool) - ownDebit;
+      const addOwn = Math.min(ownRoom, residual);
+      ownDebit += addOwn; residual -= addOwn;
+      const oppRoom = (ownYes ? m.noPool : m.yesPool) - oppDebit;
+      oppDebit += Math.min(oppRoom, residual);
+    }
+    if (ownYes) { m.yesPool = Math.max(0, m.yesPool - ownDebit); m.noPool = Math.max(0, m.noPool - oppDebit); }
+    else        { m.noPool  = Math.max(0, m.noPool  - ownDebit); m.yesPool = Math.max(0, m.yesPool - oppDebit); }
     m.updatedAt = now;
     markets.set(m.id, m);
     recordSnapshot(m.id, m.yesPool, m.noPool);
