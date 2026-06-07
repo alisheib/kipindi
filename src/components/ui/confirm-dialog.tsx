@@ -48,17 +48,44 @@ export function ConfirmDialog({
   const [open, setOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
   const confirmBtn = React.useRef<HTMLButtonElement>(null);
+  const panelRef = React.useRef<HTMLDivElement>(null);
+  const prevFocus = React.useRef<HTMLElement | null>(null);
 
   React.useEffect(() => { setMounted(true); }, []);
 
   React.useEffect(() => {
     if (!open) return;
+    // Remember what had focus so we can hand it back when the dialog closes
+    // (keyboard/screen-reader users land back on the trigger, not on <body>).
+    prevFocus.current = document.activeElement as HTMLElement | null;
     const t = setTimeout(() => confirmBtn.current?.focus(), 30);
+    const focusables = () =>
+      Array.from(
+        panelRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      );
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { e.preventDefault(); setOpen(false); }
+      if (e.key === "Escape") { e.preventDefault(); setOpen(false); return; }
+      if (e.key !== "Tab") return;
+      // Focus trap: keep Tab cycling inside the dialog instead of leaking to the
+      // page behind the scrim.
+      const f = focusables();
+      if (f.length === 0) return;
+      const first = f[0], last = f[f.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || !panelRef.current?.contains(active))) {
+        e.preventDefault(); last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault(); first.focus();
+      }
     };
     window.addEventListener("keydown", onKey);
-    return () => { clearTimeout(t); window.removeEventListener("keydown", onKey); };
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("keydown", onKey);
+      prevFocus.current?.focus?.();
+    };
   }, [open]);
 
   // Clone the trigger so clicking it opens the dialog, but it can't
@@ -89,6 +116,7 @@ export function ConfirmDialog({
             style={{ animation: "cd-fade 160ms ease-out" }}
           />
           <div
+            ref={panelRef}
             className="relative w-full max-w-[360px] rounded-xl border border-border-strong bg-bg-elevated shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65),inset_0_1px_0_rgba(255,255,255,0.06)] p-5 lg:p-6"
             style={{ animation: "cd-rise 200ms var(--ease-arrive)" }}
           >
