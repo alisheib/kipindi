@@ -206,7 +206,7 @@ export function OperationResultModal({
       role={variant === "danger" ? "alertdialog" : "dialog"}
       aria-modal="true"
       aria-label={title}
-      className="fixed inset-0 z-[100] flex justify-center px-3 py-4 overflow-y-auto"
+      className="fixed inset-0 z-[100] flex justify-center px-3 py-4 overflow-y-auto overscroll-contain"
     >
       <button
         type="button"

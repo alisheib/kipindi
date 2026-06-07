@@ -140,7 +140,7 @@ export function BetConfirmModal({
       role="dialog"
       aria-modal="true"
       aria-label="Confirm prediction"
-      className="fixed inset-0 z-[100] flex justify-center px-3 py-4 overflow-y-auto"
+      className="fixed inset-0 z-[100] flex justify-center px-3 py-4 overflow-y-auto overscroll-contain"
     >
       {/* Scrim */}
       <button

@@ -41,6 +41,11 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
+  // viewport-fit=cover lets the app draw under the notch/home-indicator and is
+  // REQUIRED for env(safe-area-inset-*) to return real values on iOS. Without it
+  // the bottom-nav / sheets / menus that pad with safe-area-inset-bottom collapse
+  // to 0 and sit flush against the home indicator on notched iPhones.
+  viewportFit: "cover",
   themeColor: "#050817",
 };
 

@@ -222,6 +222,7 @@
 .cm-list {
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 18px 16px 8px;
   display: flex;
   flex-direction: column;

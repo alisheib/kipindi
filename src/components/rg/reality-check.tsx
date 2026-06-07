@@ -86,7 +86,7 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL }: { 
         aria-hidden
       />
       <div
-        className="relative w-full max-w-md max-h-[calc(100dvh-env(safe-area-inset-bottom)-24px)] overflow-y-auto rounded-xl bg-bg-elevated p-5 sm:p-6 space-y-4"
+        className="relative w-full max-w-md max-h-[calc(100dvh-env(safe-area-inset-bottom)-24px)] overflow-y-auto overscroll-contain rounded-xl bg-bg-elevated p-5 sm:p-6 space-y-4"
         style={{
           border: "1px solid var(--gilt)",
           boxShadow: "var(--shadow-royal), 0 0 0 1px color-mix(in oklab, var(--gilt) 30%, transparent) inset",

@@ -336,7 +336,14 @@
 /* Single dark-royal theme by invariant (DESIGN_AUTHORITY B3 — light mode killed).
    The theme engine is gone; everything renders on the canonical royal canvas. */
 
-html { color-scheme: dark; background: var(--bg); }
+html {
+  color-scheme: dark;
+  background: var(--bg);
+  /* Stop iOS from auto-inflating font sizes on rotation / reader heuristics —
+     our type scale is deliberate and tested at mobile widths. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
 
 * { box-sizing: border-box; }
 
@@ -349,6 +356,10 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   font-feature-settings: "ss01", "cv11";
+  /* Remove the grey/blue tap-flash on mobile — every interactive surface here
+     supplies its own :active / pressed feedback, so the native flash only reads
+     as jank. */
+  -webkit-tap-highlight-color: transparent;
 }
 
 .mono    { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }

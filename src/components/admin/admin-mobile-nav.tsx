@@ -27,7 +27,7 @@ export function AdminMobileNavTrigger({ groups, badges, activeKey }: { groups: R
           <aside
             role="dialog"
             aria-label="Admin navigation"
-            className="fixed left-0 top-0 z-popover h-[100dvh] w-[280px] max-w-[80vw] bg-bg-elevated border-r border-border-divider shadow-e5 flex flex-col kp-slide-up overflow-y-auto pb-[env(safe-area-inset-bottom)]"
+            className="fixed left-0 top-0 z-popover h-[100dvh] w-[280px] max-w-[80vw] bg-bg-elevated border-r border-border-divider shadow-e5 flex flex-col kp-slide-up overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]"
           >
             <div className="flex items-center justify-between px-3 py-3 border-b border-border-divider sticky top-0 bg-bg-elevated">
               <Link href="/admin" onClick={() => setOpen(false)} className="flex items-center gap-2">
