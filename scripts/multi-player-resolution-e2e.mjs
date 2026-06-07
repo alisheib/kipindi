@@ -40,8 +40,11 @@ async function reg(ctx, tail, password) {
   await p.fill('input[name="dob"]', "1990-01-15");
   await p.fill('input[name="password"]', password);
   await p.fill('input[name="passwordConfirm"]', password);
-  await p.check('input[name="acceptAge"]');
-  await p.check('input[name="acceptTerms"]');
+  // The kit Checkbox renders an sr-only, aria-hidden native input behind a
+  // styled label (the label intercepts pointer events). force:true clicks the
+  // input directly, firing its onChange → toggle. (Real users click the label.)
+  await p.check('input[name="acceptAge"]', { force: true });
+  await p.check('input[name="acceptTerms"]', { force: true });
   await Promise.all([
     p.waitForURL(u => !/auth\/register$/.test(u.toString()), { timeout: 10_000 }).catch(() => null),
     p.click('button[type="submit"]'),
@@ -78,7 +81,8 @@ async function readBal(ctx) {
 }
 
 async function placeBet(ctx, marketHref, fraction, side) {
-  // fraction <0.5 = NO, >0.5 = YES; magnitude = stake fraction.
+  // Conviction dial maps slide LEFT (pos<0.5) → YES, slide RIGHT (pos>0.5) → NO
+  // (see conviction-dial.tsx). So YES intents use fraction<0.5, NO use >0.5.
   const p = await ctx.newPage();
   await p.goto(`${BASE}${marketHref}`, { waitUntil: "networkidle" });
   await p.waitForTimeout(700);
@@ -138,10 +142,10 @@ try {
 
   const password = "MultiPlayerDemo!2026";
   const players = [
-    { tag: "A", side: "YES", frac: 0.65, tail: phoneTail(1)   },
-    { tag: "B", side: "YES", frac: 0.78, tail: phoneTail(2)   },
-    { tag: "C", side: "NO",  frac: 0.30, tail: phoneTail(3)   },
-    { tag: "D", side: "NO",  frac: 0.20, tail: phoneTail(4)   },
+    { tag: "A", side: "YES", frac: 0.30, tail: phoneTail(1)   },
+    { tag: "B", side: "YES", frac: 0.18, tail: phoneTail(2)   },
+    { tag: "C", side: "NO",  frac: 0.70, tail: phoneTail(3)   },
+    { tag: "D", side: "NO",  frac: 0.82, tail: phoneTail(4)   },
   ];
   const officers = [
     { tag: "OFFICER-A", tail: phoneTail(5) },
