@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FiftyLockup } from "@/components/brand";
+import { FiftyLockup, FiftyMark } from "@/components/brand";
 import { LanguageToggle } from "@/components/ui/language-toggle";
 import { NotificationsPanel } from "@/components/layout/notifications-panel";
 import { AvatarMenu } from "@/components/layout/avatar-menu";
@@ -59,7 +59,10 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
       <div className="mx-auto max-w-[1480px] flex items-center h-full gap-2 px-3 sm:gap-5 sm:px-5">
         {/* Brand lockup — kit: BrandLockup size={30} */}
         <Link href="/" aria-label="50pick home" className="shrink-0 hover:opacity-90 transition-opacity">
-          <FiftyLockup size={22} />
+          {/* Mark-only on phones to leave room for the wallet pill + eye + bell
+              + avatar; full wordmark lockup from sm: up. */}
+          <span className="inline-flex sm:hidden"><FiftyMark size={26} /></span>
+          <span className="hidden sm:inline-flex"><FiftyLockup size={22} /></span>
         </Link>
 
         {/* Nav links — kit: gap 2, marginLeft 10 */}
