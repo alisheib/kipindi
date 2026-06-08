@@ -728,6 +728,21 @@ body {
 .input-group .input:focus { box-shadow: none; }
 
 /* ---------- Form refinements — native input polish ---------- */
+
+/* iOS Safari auto-zoom prevention — Safari zooms the viewport when an
+   <input> with font-size < 16px receives focus. This makes every modal
+   and popup appear "zoomed in" and users have to pinch-out to dismiss.
+   Force 16px on mobile for ALL interactive form elements. The visual
+   difference from 13-14px is negligible but the UX difference is night
+   and day. Radio/checkbox/hidden excluded (not text inputs). */
+@media screen and (max-width: 768px) {
+  input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 /* Hide native number spinners */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
