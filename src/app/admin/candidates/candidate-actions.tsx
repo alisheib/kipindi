@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
+import { Select } from "@/components/ui/select";
 import { approveCandidateAction, rejectCandidateAction, publishCandidateAction } from "./actions";
 
 const REJECT_REASONS = [
@@ -116,15 +117,14 @@ function RejectForm({
       <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-2">
         Reject reason
       </p>
-      <select
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-        className="w-full h-9 rounded-md border border-border bg-bg-overlay px-2 text-[12.5px] text-text mb-2 outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
-      >
-        {REJECT_REASONS.map((r) => (
-          <option key={r.id} value={r.id}>{r.label}</option>
-        ))}
-      </select>
+      <div className="mb-2">
+        <Select
+          value={reason}
+          onChange={setReason}
+          size="sm"
+          options={REJECT_REASONS.map((r) => ({ value: r.id, label: r.label }))}
+        />
+      </div>
       <textarea
         value={note}
         onChange={(e) => setNote(e.target.value)}

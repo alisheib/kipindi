@@ -6,6 +6,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { getRgSettings } from "@/lib/server/responsible-gambling";
 import { setLimitsAction, selfExcludeAction, coolOffAction } from "./actions";
 import { SelfExcludeConfirm } from "@/components/rg/self-exclude-confirm";
+import { Select } from "@/components/ui/select";
 import { FeedbackSettings } from "@/components/settings/feedback-settings";
 import { formatTzs } from "@/lib/utils";
 
@@ -137,21 +138,16 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           A short, one-way pause. You will be signed out and cannot bet, deposit, or sign in until it ends.
         </p>
         <form action={coolOffAction} className="flex flex-wrap items-end gap-2">
-          <label className="block">
+          <div>
             <span className="block font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">
               Break length
             </span>
-            <select
+            <Select
               name="period"
-              aria-label="Cooling-off period"
-              title="Cooling-off period"
-              className="h-11 px-3 rounded-lg border border-border bg-[var(--bg-inset)] font-mono text-[16px] text-text focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
-            >
-              {COOLING_OFF_OPTIONS.map((o) => (
-                <option key={o.id} value={o.id}>{o.label} · {o.sw}</option>
-              ))}
-            </select>
-          </label>
+              defaultValue={COOLING_OFF_OPTIONS[0].id}
+              options={COOLING_OFF_OPTIONS.map((o) => ({ value: o.id, label: `${o.label} · ${o.sw}` }))}
+            />
+          </div>
           <button
             type="submit"
             className="inline-flex h-10 items-center gap-1.5 px-4 rounded-pill border border-border bg-bg-elevated font-display font-semibold text-[12.5px] text-text hover:bg-bg-overlay transition-colors"
@@ -180,21 +176,16 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           </span>
         </p>
         <form action={selfExcludeAction} className="flex flex-wrap items-end gap-2">
-          <label className="block">
+          <div>
             <span className="block font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">
               Exclusion period
             </span>
-            <select
+            <Select
               name="period"
-              aria-label="Self-exclusion period"
-              title="Self-exclusion period"
-              className="h-11 px-3 rounded-lg border border-border bg-[var(--bg-inset)] font-mono text-[16px] text-text focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
-            >
-              {SELF_EXCLUSION_OPTIONS.map((o) => (
-                <option key={o.id} value={o.id}>{o.label} · {o.sw}</option>
-              ))}
-            </select>
-          </label>
+              defaultValue={SELF_EXCLUSION_OPTIONS[0].id}
+              options={SELF_EXCLUSION_OPTIONS.map((o) => ({ value: o.id, label: `${o.label} · ${o.sw}` }))}
+            />
+          </div>
           <SelfExcludeConfirm />
         </form>
         <p className="font-mono text-[11px] text-text-subtle pt-1">
