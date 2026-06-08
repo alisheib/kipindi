@@ -130,24 +130,24 @@ export function SuspendControls({
                 {reason.trim().length} / 500
               </span>
             </label>
-            <div className="mt-4 grid grid-cols-1 xs:grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => { if (!pending) setMode(null); }}
-                className="btn btn-ghost btn-md whitespace-normal h-auto min-h-[38px]"
-                disabled={pending}
-              >
-                Cancel · Ghairi
-              </button>
+            <div className="mt-4 flex flex-col gap-2">
               <button
                 type="button"
                 onClick={submit}
                 disabled={pending || reason.trim().length < 5}
-                className={`${mode === "suspend" ? "btn btn-no btn-md" : "btn btn-gold btn-md"} whitespace-normal h-auto min-h-[38px]`}
+                className={`${mode === "suspend" ? "btn btn-no btn-lg" : "btn btn-gold btn-lg"} w-full`}
               >
                 {pending
                   ? "Working…"
                   : mode === "suspend" ? "Suspend · Simamisha" : "Restore · Rejesha"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { if (!pending) setMode(null); }}
+                className="btn btn-ghost btn-md w-full"
+                disabled={pending}
+              >
+                Cancel · Ghairi
               </button>
             </div>
           </div>

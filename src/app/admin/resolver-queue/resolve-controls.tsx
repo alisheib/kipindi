@@ -201,12 +201,12 @@ function SettleConfirm({
             Hatua hii haiwezi kubatilishwa.
           </p>
         </div>
-        <div className="grid grid-cols-1 xs:grid-cols-2 gap-2">
-          <button type="button" onClick={onCancel} className="btn btn-ghost btn-md w-full whitespace-normal h-auto min-h-[38px]">
-            Not yet · Bado
-          </button>
-          <button type="button" onClick={onConfirm} className="btn btn-claret btn-md w-full whitespace-normal h-auto min-h-[38px]" autoFocus>
+        <div className="flex flex-col gap-2">
+          <button type="button" onClick={onConfirm} className="btn btn-claret btn-lg w-full" autoFocus>
             Yes, {verb.toLowerCase()}
+          </button>
+          <button type="button" onClick={onCancel} className="btn btn-ghost btn-md w-full">
+            Not yet · Bado
           </button>
         </div>
       </div>

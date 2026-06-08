@@ -147,21 +147,21 @@ export function ConfirmDialog({
               {body}
             </div>
 
-            <div className="grid grid-cols-1 xs:grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="btn btn-ghost btn-md w-full whitespace-normal h-auto min-h-[38px]"
-              >
-                {cancelLabel}
-              </button>
+            <div className="flex flex-col gap-2">
               <button
                 ref={confirmBtn}
                 type="button"
                 onClick={() => { haptics.warning(); setOpen(false); onConfirm(); }}
-                className={confirmClass + " w-full whitespace-normal h-auto min-h-[38px]"}
+                className={confirmClass + " w-full"}
               >
                 {confirmLabel}
+              </button>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="btn btn-ghost btn-md w-full"
+              >
+                {cancelLabel}
               </button>
             </div>
           </div>

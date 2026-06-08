@@ -369,11 +369,11 @@ function RejectForm({ pollId, onClose }: { pollId: string; onClose: () => void }
         className="w-full rounded-md border border-border bg-bg-overlay px-2 py-1.5 text-[12px] text-text mb-2 outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
         rows={2}
       />
-      <div className="grid grid-cols-1 xs:grid-cols-2 gap-2">
-        <button type="button" onClick={onClose} className="btn btn-ghost btn-sm whitespace-normal h-auto min-h-[30px]">Cancel</button>
-        <button type="button" onClick={submit} disabled={pending} className="btn btn-no btn-sm whitespace-normal h-auto min-h-[30px]">
+      <div className="flex flex-col gap-2">
+        <button type="button" onClick={submit} disabled={pending} className="btn btn-no btn-md w-full">
           {pending ? "Rejecting…" : "Reject"}
         </button>
+        <button type="button" onClick={onClose} className="btn btn-ghost btn-sm w-full">Cancel</button>
       </div>
     </div>
   );
@@ -439,11 +439,11 @@ function EditForm({ poll, onClose }: { poll: StoredAIPoll; onClose: () => void }
         <span className="text-[10px] text-text-subtle">Resolves at</span>
         <input type="datetime-local" value={resAt} onChange={(e) => setResAt(e.target.value)} className={inputCls} />
       </label>
-      <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 pt-1">
-        <button type="button" onClick={onClose} className="btn btn-ghost btn-sm whitespace-normal h-auto min-h-[30px]">Cancel</button>
-        <button type="button" onClick={submit} disabled={pending} className="btn btn-gold btn-sm whitespace-normal h-auto min-h-[30px]">
+      <div className="flex flex-col gap-2 pt-1">
+        <button type="button" onClick={submit} disabled={pending} className="btn btn-gold btn-md w-full">
           {pending ? "Saving…" : "Save & re-validate"}
         </button>
+        <button type="button" onClick={onClose} className="btn btn-ghost btn-sm w-full">Cancel</button>
       </div>
     </div>
   );

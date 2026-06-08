@@ -139,23 +139,23 @@ export function SellConfirmModal({ open, pending, stake, value, onConfirm, onCan
             </p>
           </div>
 
-          <div className="mt-5 grid grid-cols-1 xs:grid-cols-[1fr_1.4fr] gap-2">
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={pending}
-              className="btn btn-ghost btn-md whitespace-normal h-auto min-h-[38px]"
-            >
-              Keep position · Endelea
-            </button>
+          <div className="mt-5 flex flex-col gap-2">
             <button
               ref={confirmRef}
               type="button"
               onClick={() => { haptics.confirm(); onConfirm(); }}
               disabled={pending}
-              className={`btn ${profit ? "btn-gold" : "btn-no"} btn-md whitespace-normal h-auto min-h-[38px]`}
+              className={`btn ${profit ? "btn-gold" : "btn-no"} btn-lg w-full`}
             >
               {pending ? "Selling…" : `Sell · TZS ${fmt(value)}`}
+            </button>
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={pending}
+              className="btn btn-ghost btn-md w-full"
+            >
+              Keep position · Endelea
             </button>
           </div>
         </div>
