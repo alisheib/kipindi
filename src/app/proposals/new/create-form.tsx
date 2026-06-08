@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { Input, Field } from "@/components/ui/input";
+import { DateSelect } from "@/components/ui/date-select";
 import { Button } from "@/components/ui/button";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
 import { useToast } from "@/components/ui/toast";
@@ -103,10 +104,12 @@ export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: 
 
       <div>
         <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5">Resolution date · Tarehe ya utatuzi <Req /></span>
-        <span className="input-group">
-          <span className="prefix"><I.calendar s={14} /></span>
-          <input className="input input-mono" type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="Resolution date" />
-        </span>
+        <DateSelect
+          value={date}
+          onChange={setDate}
+          min={new Date().toISOString().slice(0, 10)}
+          max={`${new Date().getFullYear() + 2}-12-31`}
+        />
       </div>
 
       <Button variant="gold" size="lg" fullWidth disabled={!valid} loading={pending} onClick={submit}>

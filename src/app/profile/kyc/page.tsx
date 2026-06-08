@@ -4,6 +4,7 @@ import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
 import { getKycStatus, startKyc } from "@/lib/server/kyc-service";
+import { DateSelect } from "@/components/ui/date-select";
 import { submitNidaAction, attachDocumentAction, submitKycForReviewAction } from "./actions";
 
 export const metadata = { title: "Verify identity · Thibitisha" };
@@ -156,15 +157,19 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               minLength={3}
               maxLength={100}
             />
-            <Field
-              id="dob"
-              label="Date of birth · Tarehe ya kuzaliwa"
-              hint="Must match NIDA exactly. 18+ required."
-              type="date"
-              required
-              min="1900-01-01"
-              max={new Date(new Date().getFullYear() - 18, new Date().getMonth(), new Date().getDate()).toISOString().slice(0, 10)}
-            />
+            <div>
+              <label htmlFor="dob" className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
+                Date of birth · Tarehe ya kuzaliwa
+              </label>
+              <DateSelect
+                name="dob"
+                id="dob"
+                required
+                min="1930-01-01"
+                max={new Date(new Date().getFullYear() - 18, new Date().getMonth(), new Date().getDate()).toISOString().slice(0, 10)}
+              />
+              <p className="mt-1.5 text-[11px] text-text-subtle">Must match NIDA exactly. 18+ required.</p>
+            </div>
             <button type="submit" className="btn btn-gold btn-lg w-full" style={{ borderRadius: "var(--r-pill)" }}>
               Verify NIDA · Thibitisha
             </button>

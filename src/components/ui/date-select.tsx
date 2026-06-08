@@ -13,7 +13,7 @@
  * focus ring, mono font for day/year, body font for month names).
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 const MONTHS = [
@@ -38,15 +38,19 @@ function daysInMonth(month: number, year: number): number {
 
 type Props = {
   /** Hidden input name for the ISO date value. */
-  name: string;
+  name?: string;
   id?: string;
   required?: boolean;
   /** Minimum allowed date (ISO string). */
   min?: string;
   /** Maximum allowed date (ISO string). */
   max?: string;
-  /** Default value (ISO string). */
+  /** Default value (ISO string) — uncontrolled mode. */
   defaultValue?: string;
+  /** Controlled value (ISO string). */
+  value?: string;
+  /** Called with ISO string when the date changes — controlled mode. */
+  onChange?: (iso: string) => void;
 };
 
 const selectCls = cn(
@@ -56,11 +60,11 @@ const selectCls = cn(
   "transition-colors",
 );
 
-export function DateSelect({ name, id, required, min, max, defaultValue }: Props) {
-  const parsed = defaultValue ? defaultValue.split("-") : [];
-  const [year, setYear] = useState(parsed[0] ?? "");
-  const [month, setMonth] = useState(parsed[1] ?? "");
-  const [day, setDay] = useState(parsed[2] ?? "");
+export function DateSelect({ name, id, required, min, max, defaultValue, value, onChange }: Props) {
+  const initial = (value ?? defaultValue ?? "").split("-");
+  const [year, setYear] = useState(initial[0] ?? "");
+  const [month, setMonth] = useState(initial[1] ?? "");
+  const [day, setDay] = useState(initial[2] ?? "");
 
   const minYear = min ? parseInt(min.slice(0, 4), 10) : 1930;
   const maxYear = max ? parseInt(max.slice(0, 4), 10) : new Date().getFullYear();
@@ -85,6 +89,13 @@ export function DateSelect({ name, id, required, min, max, defaultValue }: Props
     year && month && effectiveDay
       ? `${year}-${month.padStart(2, "0")}-${String(effectiveDay).padStart(2, "0")}`
       : "";
+
+  // Fire onChange for controlled mode whenever the composed ISO changes.
+  const prevIso = useRef(isoValue);
+  if (isoValue !== prevIso.current) {
+    prevIso.current = isoValue;
+    onChange?.(isoValue);
+  }
 
   return (
     <div className="flex gap-2">
