@@ -78,13 +78,20 @@ password right now.
 
 ## Persistence
 
-In-memory `Map`s in `store.ts`, snapshot to disk every 1.5 s
-(`src/lib/server/backup.ts`). Snapshots land in
-`STORE_BACKUP_DIR` (default `.50pick-backups/` — wiped on Railway
-redeploys unless you mount a volume; see [`RAILWAY.md`](RAILWAY.md)).
+In-memory `Map`s in `store.ts`, snapshot to Postgres every 500 ms
+(`src/lib/server/backup.ts`). **Wallet and transaction mutations use
+`tapCritical()` for immediate flush** — near-zero data loss window for
+financial operations. Non-financial mutations use debounced `tap()`.
 
-This will not survive 6M clicks/month. Postgres swap is described in
-[`RAILWAY_DB_README.md`](RAILWAY_DB_README.md).
+All wallet mutations are protected by `withLock("wallet:{userId}")` —
+`deposit`, `withdraw`, `creditInternal`, `buyPosition`, `cashOut`,
+`resolveMarket`, and AML reject refund. Zero unprotected balance
+read-modify-write sequences remain.
+
+Full Prisma entity migration (converting 358 `db.*` calls across 73
+files to async per-row Prisma queries) is the next architectural step.
+The current snapshot approach is production-safe for a single Railway
+instance but needs advisory locks for multi-instance scaling.
 
 ## Deploy workflow
 
@@ -108,6 +115,7 @@ Required Railway env vars (set in service → Variables):
 | `SMS_SENDER_ID` | TCRA-licensed sender ID once SMS goes live |
 | `NODE_ENV` | `production` on Railway |
 | `NEXT_PUBLIC_APP_URL` | `https://kipindi-production.up.railway.app` |
+| `TESTER_BOOTSTRAP_PHONES` | comma-separated E.164 list — auto-fund 100K TZS on register |
 
 ## Test scripts
 
@@ -195,11 +203,13 @@ Already shipped (was on this list before):
 ## Postponed features
 
 - **Hero slideshow / video background** — full-bleed Ken Burns image slideshow
-  for the landing page. Component built, 20 stock images sourced, spec written.
-  Waiting for professional video/images before activating. Everything lives in
-  [`docs/hero-slideshow-dev/`](docs/hero-slideshow-dev/) — see its README for
-  activation instructions. Full spec at
-  [`docs/HERO_VIDEO_BACKGROUND_SPEC.md`](docs/HERO_VIDEO_BACKGROUND_SPEC.md).
+  for the landing page. Component built at `src/components/landing/hero-slideshow.tsx`,
+  20 WebP images in `public/hero/slides/`. Waiting for professional album before
+  activating. See [`docs/hero-slideshow-dev/`](docs/hero-slideshow-dev/) for
+  wiring instructions.
+- **Full Prisma entity migration** — converting in-memory `db.*` calls to async
+  Prisma per-row queries. Schema ready, snapshot durability already hardened.
+  Multi-session project (358 calls across 73 files).
 
 ## UX commitments (kit-faithful)
 
@@ -234,10 +244,42 @@ The entire UI was rebuilt from the design kit in `50Pick Modernization/`.
 - **Inputs** bg-inset, 44px, rounded-lg (12px), brand-500 focus
 - **Modals** rounded-xl, oklch shadows
 - **Toggle/Switch** accent-500/bg-inset, **Checkbox** 19x19 accent-500
-- **Form polish**: no native spinners, styled date inputs, textarea
+- **Form polish**: no native spinners, textarea
+- **DateSelect** (`src/components/ui/date-select.tsx`) — segmented DD/MM/YYYY
+  input + calendar popup with year grid. Replaces native `<input type="date">`
+  everywhere. 926 unit tests pass.
+- **Select** (`src/components/ui/select.tsx`) — dark glass dropdown replaces
+  every native `<select>`. Keyboard nav, portaled, form-submission compatible.
+- **useModalLock** (`src/lib/use-modal-lock.ts`) — body scroll lock + viewport
+  zoom reset for all portaled modals (Android pinch-zoom fix).
 
 **Read [`50Pick Modernization/MODERNIZATION_PLAN.md`](50Pick%20Modernization/MODERNIZATION_PLAN.md)
 for the full status and remaining items.**
+
+## Security hardening (June 2026 sprint)
+
+- **CSP**: `unsafe-eval` removed from script-src. `unsafe-inline` kept
+  (required by Next.js hydration).
+- **Secrets**: production throws FATAL if `SESSION_SECRET` or `OTP_PEPPER`
+  missing. Dev-only fallbacks unreachable in production.
+- **Dev-test endpoints**: hard-blocked at the edge (proxy.ts) in production,
+  on top of per-route `NODE_ENV` check. 25 endpoints, double-gated.
+- **Async scrypt**: all password/OTP hashing uses `scryptAsync` (promisified).
+  Event loop never blocked by crypto operations.
+- **Webhook secrets**: no hardcoded fallback in production. Empty string →
+  `verifyWebhookSignature` returns `missing-secret`.
+- **AML race conditions**: `approveAmlAction` wrapped in `withLock("aml-txn:{id}")`.
+  `rejectAmlAction` wallet refund wrapped in `withLock("wallet:{userId}")`.
+- **Database constraints**: `@@unique([provider, providerRef])` on Transaction.
+  CHECK constraint comments for wallet balance >= 0 (apply after migration).
+
+## Accessibility (June 2026 sprint)
+
+- Skip-to-content link (`app-shell.tsx` → `#main-content`)
+- All focus rings: brand-500 (zero gold/teal/aqua remaining)
+- iOS Safari auto-zoom prevented: 16px minimum on all inputs (`globals.css`)
+- PWA manifest (`public/manifest.json`) + apple-web-app metadata
+- OG + Twitter card metadata on all pages via root layout
 
 ## Git workflow — ALWAYS commit AND push
 
