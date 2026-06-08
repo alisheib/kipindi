@@ -227,7 +227,7 @@ export default async function MarketDetail({
                     Andika namba ya simu ili kuweka dau.
                   </span>
                 </p>
-                <div className="mt-4 grid grid-cols-2 gap-2">
+                <div className="mt-4 grid grid-cols-1 xs:grid-cols-2 gap-2">
                   <a
                     href={`/auth/register?next=${encodeURIComponent("/markets/" + m.id)}`}
                     className="btn btn-gold btn-md"

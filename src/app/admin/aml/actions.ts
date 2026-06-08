@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { currentSession } from "@/lib/server/auth-service";
 import { db, type StoredTxn } from "@/lib/server/store";
 import { audit, getAuditPage } from "@/lib/server/audit";
+import { withLock } from "@/lib/server/locks";
 
 import { TWO_PERSON_THRESHOLD_TZS } from "./constants";
 
@@ -45,30 +46,57 @@ export async function approveAmlAction(formData: FormData) {
   const reason = String(formData.get("reason") ?? "").trim().slice(0, 500);
   if (!txnId) return { ok: false as const, error: "Missing transaction id." };
 
-  const all = db.txn.listByStatus("AML_REVIEW") as StoredTxn[];
-  const txn = all.find((t) => t.id === txnId);
-  if (!txn) return { ok: false as const, error: "Transaction not in AML_REVIEW." };
+  // Lock the transaction to prevent TOCTOU — two officers clicking
+  // approve simultaneously could both read AML_REVIEW status and both
+  // flip to CONFIRMED, bypassing the two-person rule.
+  return withLock(`aml-txn:${txnId}`, async () => {
+    const all = db.txn.listByStatus("AML_REVIEW") as StoredTxn[];
+    const txn = all.find((t) => t.id === txnId);
+    if (!txn) return { ok: false as const, error: "Transaction not in AML_REVIEW." };
 
-  const requiresTwo = Math.abs(txn.amount) >= TWO_PERSON_THRESHOLD_TZS;
-  if (requiresTwo) {
-    const first = findFirstSignature(txnId);
-    if (!first) {
-      // First-stage approval: don't release the funds yet.
+    const requiresTwo = Math.abs(txn.amount) >= TWO_PERSON_THRESHOLD_TZS;
+    if (requiresTwo) {
+      const first = findFirstSignature(txnId);
+      if (!first) {
+        audit({
+          category: "ADMIN",
+          action: "aml.approve.stage1",
+          actorId: session.userId,
+          targetType: "Transaction",
+          targetId: txnId,
+          payload: { amount: txn.amount, reason: reason || null, threshold: TWO_PERSON_THRESHOLD_TZS },
+        });
+        revalidatePath("/admin/aml");
+        return { ok: true as const, stage: "stage1" as const, message: "Stage 1 recorded — second officer required to release." };
+      }
+      if (first.actorId === session.userId) {
+        return { ok: false as const, error: "Second-officer approval must come from a different reviewer." };
+      }
+      db.txn.update(txnId, {
+        status: "CONFIRMED",
+        completedAt: new Date().toISOString(),
+        amlReason: reason || txn.amlReason,
+      });
       audit({
         category: "ADMIN",
-        action: "aml.approve.stage1",
+        action: "aml.approved",
         actorId: session.userId,
         targetType: "Transaction",
         targetId: txnId,
-        payload: { amount: txn.amount, reason: reason || null, threshold: TWO_PERSON_THRESHOLD_TZS },
+        payload: {
+          amount: txn.amount,
+          reason: reason || null,
+          twoPersonApproval: "complete",
+          firstOfficer: first.actorId,
+          firstOfficerAt: first.at,
+          secondOfficer: session.userId,
+        },
       });
       revalidatePath("/admin/aml");
-      return { ok: true as const, stage: "stage1" as const, message: "Stage 1 recorded — second officer required to release." };
+      return { ok: true as const, stage: "complete" as const };
     }
-    if (first.actorId === session.userId) {
-      return { ok: false as const, error: "Second-officer approval must come from a different reviewer." };
-    }
-    // Stage-2: release the funds.
+
+    // Below threshold — single-officer approval.
     db.txn.update(txnId, {
       status: "CONFIRMED",
       completedAt: new Date().toISOString(),
@@ -80,35 +108,11 @@ export async function approveAmlAction(formData: FormData) {
       actorId: session.userId,
       targetType: "Transaction",
       targetId: txnId,
-      payload: {
-        amount: txn.amount,
-        reason: reason || null,
-        twoPersonApproval: "complete",
-        firstOfficer: first.actorId,
-        firstOfficerAt: first.at,
-        secondOfficer: session.userId,
-      },
+      payload: { amount: txn.amount, reason: reason || null, twoPersonApproval: "below-threshold" },
     });
     revalidatePath("/admin/aml");
     return { ok: true as const, stage: "complete" as const };
-  }
-
-  // Below threshold — single-officer approval.
-  db.txn.update(txnId, {
-    status: "CONFIRMED",
-    completedAt: new Date().toISOString(),
-    amlReason: reason || txn.amlReason,
   });
-  audit({
-    category: "ADMIN",
-    action: "aml.approved",
-    actorId: session.userId,
-    targetType: "Transaction",
-    targetId: txnId,
-    payload: { amount: txn.amount, reason: reason || null, twoPersonApproval: "below-threshold" },
-  });
-  revalidatePath("/admin/aml");
-  return { ok: true as const, stage: "complete" as const };
 }
 
 export async function rejectAmlAction(formData: FormData) {
@@ -123,10 +127,16 @@ export async function rejectAmlAction(formData: FormData) {
   if (!txn) return { ok: false as const, error: "Transaction not in AML_REVIEW." };
 
   // Reverse the held funds back to wallet (if it's a withdrawal that placed a hold)
-  // and mark FAILED with the reason.
-  const wallet = db.wallet.findByUserId(txn.userId);
-  if (wallet && txn.type === "WITHDRAWAL") {
-    db.wallet.update(wallet.id, { balance: wallet.balance + Math.abs(txn.amount) });
+  // and mark FAILED with the reason. Wrapped in withLock to prevent TOCTOU — a
+  // concurrent bet/deposit/withdrawal on the same wallet could otherwise read the
+  // same stale balance and clobber the refund.
+  if (txn.type === "WITHDRAWAL") {
+    await withLock(`wallet:${txn.userId}`, async () => {
+      const wallet = db.wallet.findByUserId(txn.userId);
+      if (wallet) {
+        db.wallet.update(wallet.id, { balance: wallet.balance + Math.abs(txn.amount) });
+      }
+    });
   }
   db.txn.update(txnId, {
     status: "FAILED",

@@ -128,7 +128,7 @@ export function ShareButton({
                 </span>
                 <span>
                   <span className="block text-[14px] font-semibold text-text">{copied ? "Copied" : "Copy link"}</span>
-                  <span className="block font-mono text-[11px] text-text-subtle truncate max-w-[220px]">{url.replace(/^https?:\/\//, "")}</span>
+                  <span className="block font-mono text-[11px] text-text-subtle truncate max-w-full">{url.replace(/^https?:\/\//, "")}</span>
                 </span>
               </button>
             </div>
