@@ -131,7 +131,7 @@ async function issueOtp(phone: string, purpose: "login" | "register" | "withdraw
   const otp = db.otp.create({
     id: `otp_${randomId(12)}`,
     phoneE164: phone,
-    hashedCode: hashOtp(code, salt),
+    hashedCode: await hashOtp(code, salt),
     salt,
     purpose,
     attempts: 0,
@@ -170,7 +170,7 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
     return { ok: false, error: "Too many wrong attempts. Request a new code.", code: "TOO_MANY_ATTEMPTS" };
   }
 
-  if (!verifyOtp(code, otp.salt, otp.hashedCode)) {
+  if (!(await verifyOtp(code, otp.salt, otp.hashedCode))) {
     db.otp.incrementAttempts(otp.id);
     audit({ category: "SECURITY", action: "otp.verify.wrong_code", actorId: null, targetType: "Otp", targetId: otp.id, ip: meta.ip });
     return { ok: false, error: "Wrong code.", code: "INVALID" };
@@ -326,7 +326,7 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
   }
 
   const salt = randomId(16);
-  const hash = hashPassword(input.password, salt);
+  const hash = await hashPassword(input.password, salt);
 
   // First-admin bootstrap: any phone listed in ADMIN_BOOTSTRAP_PHONES gets
   // the ADMIN role + ACTIVE status (no KYC) the moment they sign up.
@@ -456,7 +456,7 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
   if (!user.passwordHash || !user.passwordSalt) {
     return { ok: false, error: "This account has no password yet. Use the OTP flow or contact support.", code: "INVALID" };
   }
-  if (!verifyPassword(input.password, user.passwordSalt, user.passwordHash)) {
+  if (!(await verifyPassword(input.password, user.passwordSalt, user.passwordHash))) {
     const nextCount = (user.failedLoginCount ?? 0) + 1;
     const shouldLock = nextCount >= LOCKOUT_MAX_FAILS;
     const patch: Partial<typeof user> = {

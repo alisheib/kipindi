@@ -13,6 +13,28 @@ const config: NextConfig = {
   // few CJS-only edge cases. Both work cleanly as plain Node imports
   // when treated as externals.
   serverExternalPackages: ["pdfkit", "exceljs"],
+  images: {
+    formats: ["image/webp", "image/avif"],
+    minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days
+  },
+  // Long-lived cache for static assets (fonts, images, JS chunks).
+  // Next.js auto-hashes _next/static paths, so 1-year immutable is safe.
+  async headers() {
+    return [
+      {
+        source: "/:all*(svg|jpg|jpeg|png|webp|avif|ico|woff|woff2)",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
+      {
+        source: "/_next/static/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
+    ];
+  },
 };
 
 export default config;

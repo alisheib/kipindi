@@ -53,9 +53,18 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   }
   return (
     <div className="min-h-screen bg-bg-base text-text">
+      {/* Skip-to-content — WCAG 2.4.1. Visually hidden until focused,
+          then overlays the top-left so keyboard/screen-reader users can
+          bypass the nav on every page load. */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[9999] focus:rounded-md focus:bg-brand-500 focus:px-4 focus:py-2 focus:text-white focus:text-sm focus:font-semibold focus:outline-none focus:shadow-lg"
+      >
+        Skip to content
+      </a>
       <TopAppBar user={topUser} />
       <LiveTicker events={getTickerFeed()} />
-      <main className="pb-[calc(64px+env(safe-area-inset-bottom))] xl:pb-0">
+      <main id="main-content" className="pb-[calc(64px+env(safe-area-inset-bottom))] xl:pb-0">
         <RouteTransition>{children}</RouteTransition>
       </main>
       <PublicFooter />

@@ -39,8 +39,10 @@ export async function POST(req: Request) {
   }
 
   const envName = KNOWN_PROVIDERS[provider];
-  // Dev fallback so the test suite can sign + verify deterministically.
-  const secret = process.env[envName] ?? "dev-only-webhook-secret-replace-in-prod";
+  const secret = process.env[envName]
+    ?? (process.env.NODE_ENV === "production"
+        ? ""  // empty string → verifyWebhookSignature returns missing-secret
+        : "dev-only-webhook-secret-replace-in-prod");
 
   const result = verifyWebhookSignature({ body, signatureHex: signature, secret, timestamp });
   if (!result.valid) {

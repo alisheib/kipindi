@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { Sora, Inter, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppShell } from "@/components/layout/app-shell";
-import { ChatRoot } from "@/components/chat/ChatRoot";
-import { FirstVisitPrimer } from "@/components/onboarding/first-visit-primer";
+import { LazyOverlays } from "@/components/layout/lazy-overlays";
 import "./globals.css";
 
 const sora = Sora({
@@ -60,13 +60,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="font-sans antialiased">
         <ThemeProvider>
           <AppShell>{children}</AppShell>
-          {/* AI Help Companion — floats on every authed page. The
-              component self-hides on /auth/* and /admin/* via a
-              pathname guard, so it can sit at the root level here. */}
-          <ChatRoot />
-          {/* First-visit primer — shows once per browser. Self-hides
-              on /auth/* + /admin/* and after localStorage flag set. */}
-          <FirstVisitPrimer />
+          {/* Lazy-loaded overlay components — ChatRoot + FirstVisitPrimer
+              are portaled and not needed for FCP. The client wrapper uses
+              dynamic() with ssr:false to defer their JS from the initial
+              bundle. */}
+          <Suspense fallback={null}>
+            <LazyOverlays />
+          </Suspense>
         </ThemeProvider>
       </body>
     </html>

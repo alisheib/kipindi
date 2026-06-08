@@ -64,7 +64,12 @@ async function isSessionCookieValid(token: string | undefined): Promise<boolean>
   const mac = token.slice(dot + 1);
   // Web Crypto HMAC. Same key as src/lib/server/crypto.ts's
   // sessionSecret() — dev fallback string + prod env var.
-  const secret = process.env.SESSION_SECRET || "dev-only-secret-replace-in-prod-32chars-minimum";
+  // Production: SESSION_SECRET MUST be set. Dev: deterministic fallback
+  // so `npm run dev` works without .env.local (same value as crypto.ts).
+  const secret = process.env.SESSION_SECRET
+    || (process.env.NODE_ENV === "production"
+        ? (() => { throw new Error("FATAL: SESSION_SECRET not set in production"); })()
+        : "dev-only-secret-replace-in-prod-32chars-minimum");
   try {
     const key = await crypto.subtle.importKey(
       "raw",
@@ -112,9 +117,12 @@ const PROD_HEADERS: Record<string, string> = {
   "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
 };
 
+// CSP: 'unsafe-inline' is required for Next.js hydration scripts and
+// Tailwind's runtime style injection. 'unsafe-eval' is NOT needed and
+// has been removed — it was the main vector for XSS payload execution.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com data:",
   "img-src 'self' data: blob:",
@@ -136,6 +144,16 @@ function withSecurityHeaders(res: NextResponse): NextResponse {
 
 export async function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
+
+  // Hard-block dev-test endpoints in production at the edge — defence in
+  // depth on top of the per-route NODE_ENV check. Even if NODE_ENV is
+  // misconfigured, the middleware blocks the request before it reaches
+  // the handler. Returns a real 404 (not JSON) so scanners don't see
+  // a different shape than other missing routes.
+  if (pathname.startsWith("/api/dev-test") && process.env.NODE_ENV === "production") {
+    return withSecurityHeaders(new NextResponse("Not Found", { status: 404 }));
+  }
+
   const cookie = req.cookies.get(SESSION_COOKIE)?.value;
 
   // Auth gate — short-circuit before paying the cost of the

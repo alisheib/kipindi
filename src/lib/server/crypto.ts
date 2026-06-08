@@ -8,7 +8,14 @@
  *  - HMAC-SHA-256 for cookie integrity (>= 256-bit security)
  *  - Constant-time comparison via `timingSafeEqual` to prevent timing attacks
  */
-import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
+import { promisify } from "node:util";
+
+const scryptAsync = promisify(scrypt) as (
+  password: string | Buffer,
+  salt: string | Buffer,
+  keylen: number,
+) => Promise<Buffer>;
 
 /**
  * Lazily resolve the secrets so module evaluation during `next build` (which sets
@@ -21,9 +28,19 @@ function requireSecret(name: "SESSION_SECRET" | "OTP_PEPPER"): string {
   const v = process.env[name];
   if (v) return v;
   // Allow the build phase (page data collection) to evaluate modules without secrets.
-  if (process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build") {
-    throw new Error(`${name} must be set in production`);
+  if (process.env.NEXT_PHASE === "phase-production-build") {
+    return `__build-phase-placeholder-${name}__`;
   }
+  // In production, refuse to serve traffic without real secrets.
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      `FATAL: ${name} is not set. The server cannot start without it. ` +
+      `Set it in Railway → service → Variables before deploying.`
+    );
+  }
+  // Dev-only: deterministic fallback so local `npm run dev` works
+  // without .env.local. NEVER used in production — the guard above
+  // throws before this line is reached.
   return name === "SESSION_SECRET"
     ? "dev-only-secret-replace-in-prod-32chars-minimum"
     : "dev-only-pepper-replace-in-prod";
@@ -49,14 +66,14 @@ export function generateOtp(): string {
 }
 
 /** Hash an OTP for storage (scrypt + pepper; we never store cleartext OTPs). */
-export function hashOtp(code: string, salt: string): string {
-  const derived = scryptSync(`${otpPepper()}:${code}`, salt, 32);
+export async function hashOtp(code: string, salt: string): Promise<string> {
+  const derived = await scryptAsync(`${otpPepper()}:${code}`, salt, 32);
   return derived.toString("hex");
 }
 
 /** Constant-time OTP verify. */
-export function verifyOtp(code: string, salt: string, hashedHex: string): boolean {
-  const expected = scryptSync(`${otpPepper()}:${code}`, salt, 32);
+export async function verifyOtp(code: string, salt: string, hashedHex: string): Promise<boolean> {
+  const expected = await scryptAsync(`${otpPepper()}:${code}`, salt, 32);
   const actual = Buffer.from(hashedHex, "hex");
   if (expected.length !== actual.length) return false;
   return timingSafeEqual(expected, actual);
@@ -88,13 +105,14 @@ export function verifySession<T = Record<string, unknown>>(token: string | undef
   }
 }
 
-/** Hash a password (scrypt + per-user salt). */
-export function hashPassword(password: string, salt: string): string {
-  return scryptSync(password, salt, 64).toString("hex");
+/** Hash a password (scrypt + per-user salt). Async to avoid blocking the event loop. */
+export async function hashPassword(password: string, salt: string): Promise<string> {
+  const derived = await scryptAsync(password, salt, 64);
+  return derived.toString("hex");
 }
 
-export function verifyPassword(password: string, salt: string, hashedHex: string): boolean {
-  const expected = scryptSync(password, salt, 64);
+export async function verifyPassword(password: string, salt: string, hashedHex: string): Promise<boolean> {
+  const expected = await scryptAsync(password, salt, 64);
   const actual = Buffer.from(hashedHex, "hex");
   if (expected.length !== actual.length) return false;
   return timingSafeEqual(expected, actual);
