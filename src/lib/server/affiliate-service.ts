@@ -132,9 +132,9 @@ export function resolveReferralPreview(code: string): { referrerName: string; ne
 }
 
 // ── Wallet credit (internal) ─────────────────────────────────────────────
-/** Credit a referral reward to a wallet via the shared, atomic credit path. */
-function creditWallet(userId: string, amount: number, description: string): boolean {
-  return creditInternal(userId, amount, { description }) !== null;
+/** Credit a referral reward to a wallet via the shared, locked credit path. */
+async function creditWallet(userId: string, amount: number, description: string): Promise<boolean> {
+  return (await creditInternal(userId, amount, { description })) !== null;
 }
 
 function recordReward(input: {
@@ -251,7 +251,7 @@ function referrerSharesIp(referrerUserId: string, ip: string): boolean {
 // ── Reward payers (idempotent, capped, config-gated) ─────────────────────
 
 /** Pay the sign-up / first-deposit bonus once per recruit. */
-function payBonus(opts: { referrerUserId: string; recruitUserId: string; held: boolean }): void {
+async function payBonus(opts: { referrerUserId: string; recruitUserId: string; held: boolean }): Promise<void> {
   const cfg = getAffiliateConfig();
   if (!cfg.enabled || !cfg.bonus.enabled) return;
   // Idempotency — only one bonus per recruit, ever.
@@ -261,12 +261,12 @@ function payBonus(opts: { referrerUserId: string; recruitUserId: string; held: b
   const status: StoredReferralReward["status"] = opts.held ? "HELD" : "PAID";
   const triggerLabel = cfg.bonus.trigger === "SIGNUP" ? "sign-up" : "deposit";
 
-  const payTo = (userId: string, amount: number, who: "new" | "referrer") => {
+  const payTo = async (userId: string, amount: number, who: "new" | "referrer") => {
     if (amount <= 0) return;
     // If the credit can't land (frozen/missing wallet), record the reward as
     // HELD rather than PAID — otherwise the ledger claims money was paid that
     // never moved, and the held queue lets an officer retry it.
-    const credited = status === "PAID" ? creditWallet(userId, amount, `Referral bonus · ${triggerLabel}`) : false;
+    const credited = status === "PAID" ? await creditWallet(userId, amount, `Referral bonus · ${triggerLabel}`) : false;
     const finalStatus: StoredReferralReward["status"] = status === "PAID" && !credited ? "HELD" : status;
     recordReward({
       referrerUserId: opts.referrerUserId,
@@ -281,12 +281,12 @@ function payBonus(opts: { referrerUserId: string; recruitUserId: string; held: b
     if (finalStatus === "PAID") notifyReferralReward(userId, { type: "BONUS", amountTzs: amount });
   };
 
-  if (cfg.bonus.recipient === "NEW" || cfg.bonus.recipient === "BOTH") payTo(opts.recruitUserId, cfg.bonus.newAmountTzs, "new");
-  if (cfg.bonus.recipient === "REFERRER" || cfg.bonus.recipient === "BOTH") payTo(opts.referrerUserId, cfg.bonus.referrerAmountTzs, "referrer");
+  if (cfg.bonus.recipient === "NEW" || cfg.bonus.recipient === "BOTH") await payTo(opts.recruitUserId, cfg.bonus.newAmountTzs, "new");
+  if (cfg.bonus.recipient === "REFERRER" || cfg.bonus.recipient === "BOTH") await payTo(opts.referrerUserId, cfg.bonus.referrerAmountTzs, "referrer");
 }
 
 /** Pay the milestone prize to the referrer once per recruit. */
-function payPrize(opts: { referrerUserId: string; recruitUserId: string; milestoneLabel: string }): void {
+async function payPrize(opts: { referrerUserId: string; recruitUserId: string; milestoneLabel: string }): Promise<void> {
   const cfg = getAffiliateConfig();
   if (!cfg.enabled || !cfg.prize.enabled || cfg.prize.amountTzs <= 0) return;
   // One prize per recruit.
@@ -297,7 +297,7 @@ function payPrize(opts: { referrerUserId: string; recruitUserId: string; milesto
     const prizeCount = db.referralReward.listByReferrer(opts.referrerUserId).filter((r) => r.type === "PRIZE").length;
     if (prizeCount >= cfg.prize.capPerReferrer) return;
   }
-  const credited = creditWallet(opts.referrerUserId, cfg.prize.amountTzs, `Referral prize · ${opts.milestoneLabel}`);
+  const credited = await creditWallet(opts.referrerUserId, cfg.prize.amountTzs, `Referral prize · ${opts.milestoneLabel}`);
   recordReward({
     referrerUserId: opts.referrerUserId,
     recruitUserId: opts.recruitUserId,
@@ -317,7 +317,7 @@ function payPrize(opts: { referrerUserId: string; recruitUserId: string; milesto
  * operator margin on this stake) and fires the FIRST_BET milestone prize.
  * `operatorCommissionRate` is the effective per-market commission fraction.
  */
-export function onRecruitBet(recruitUserId: string, opts: { stake: number; operatorCommissionRate: number }): void {
+export async function onRecruitBet(recruitUserId: string, opts: { stake: number; operatorCommissionRate: number }): Promise<void> {
   const recruit = db.user.findById(recruitUserId);
   const referrerUserId = recruit?.recruitedBy;
   if (!referrerUserId) return;
@@ -326,7 +326,7 @@ export function onRecruitBet(recruitUserId: string, opts: { stake: number; opera
 
   // First-bet milestone prize.
   if (cfg.prize.enabled && cfg.prize.milestone === "FIRST_BET") {
-    payPrize({ referrerUserId, recruitUserId, milestoneLabel: "first bet" });
+    await payPrize({ referrerUserId, recruitUserId, milestoneLabel: "first bet" });
   }
 
   // Commission accrual.
@@ -355,7 +355,7 @@ export function onRecruitBet(recruitUserId: string, opts: { stake: number; opera
     }
     if (cut <= 0) return;
 
-    const credited = creditWallet(referrerUserId, cut, "Referral commission");
+    const credited = await creditWallet(referrerUserId, cut, "Referral commission");
     recordReward({
       referrerUserId,
       recruitUserId,
@@ -375,7 +375,7 @@ export function onRecruitBet(recruitUserId: string, opts: { stake: number; opera
  * configured trigger) and the DEPOSIT_THRESHOLD milestone prize.
  * `cumulativeDepositsTzs` includes this deposit.
  */
-export function onRecruitDeposit(recruitUserId: string, opts: { cumulativeDepositsTzs: number }): void {
+export async function onRecruitDeposit(recruitUserId: string, opts: { cumulativeDepositsTzs: number }): Promise<void> {
   const recruit = db.user.findById(recruitUserId);
   const referrerUserId = recruit?.recruitedBy;
   if (!referrerUserId) return;
@@ -383,10 +383,10 @@ export function onRecruitDeposit(recruitUserId: string, opts: { cumulativeDeposi
   if (!cfg.enabled) return;
 
   if (cfg.bonus.enabled && cfg.bonus.trigger === "FIRST_DEPOSIT") {
-    payBonus({ referrerUserId, recruitUserId, held: false });
+    await payBonus({ referrerUserId, recruitUserId, held: false });
   }
   if (cfg.prize.enabled && cfg.prize.milestone === "DEPOSIT_THRESHOLD" && opts.cumulativeDepositsTzs >= cfg.prize.depositThresholdTzs) {
-    payPrize({ referrerUserId, recruitUserId, milestoneLabel: "deposit milestone" });
+    await payPrize({ referrerUserId, recruitUserId, milestoneLabel: "deposit milestone" });
   }
 }
 

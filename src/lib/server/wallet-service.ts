@@ -277,44 +277,48 @@ export function listTransactions(userId: string, limit = 50) {
  * Credit an internal (non-deposit) amount to a wallet — used by promotional
  * money flows: affiliate rewards and player-proposal prizes. Posts a CONFIRMED
  * transaction so the credit has immutable history like every other money
- * movement. Synchronous + atomic (single read-modify-write, no await between),
- * so concurrent callers can't lose an update under Node's single thread.
+ * movement. Wrapped in withLock to prevent concurrent credits from reading the
+ * same stale balance and clobbering each other (e.g. affiliate reward + proposal
+ * prize firing simultaneously for the same user).
+ *
  * Returns the new balance, or null if the wallet is missing/frozen or the
  * amount is non-positive.
  */
-export function creditInternal(
+export async function creditInternal(
   userId: string,
   amount: number,
   opts: { description: string; type?: StoredTxn["type"] },
-): number | null {
+): Promise<number | null> {
   if (!Number.isFinite(amount) || amount <= 0) return null;
-  const wallet = db.wallet.findByUserId(userId);
-  if (!wallet || wallet.status !== "ACTIVE") return null;
-  const newBalance = wallet.balance + amount;
-  db.wallet.update(wallet.id, { balance: newBalance });
-  const now = new Date().toISOString();
-  db.txn.create({
-    id: `txn_${randomId(12)}`,
-    walletId: wallet.id,
-    userId,
-    type: opts.type ?? "BONUS_CREDIT",
-    status: "CONFIRMED",
-    amount,
-    fee: 0,
-    taxWithheld: 0,
-    balanceAfter: newBalance,
-    currency: "TZS",
-    provider: "INTERNAL",
-    providerRef: null,
-    msisdn: null,
-    description: opts.description,
-    betId: null,
-    amlReason: null,
-    createdAt: now,
-    updatedAt: now,
-    completedAt: now,
+  return withLock(`wallet:${userId}`, async () => {
+    const wallet = db.wallet.findByUserId(userId);
+    if (!wallet || wallet.status !== "ACTIVE") return null;
+    const newBalance = wallet.balance + amount;
+    db.wallet.update(wallet.id, { balance: newBalance });
+    const now = new Date().toISOString();
+    db.txn.create({
+      id: `txn_${randomId(12)}`,
+      walletId: wallet.id,
+      userId,
+      type: opts.type ?? "BONUS_CREDIT",
+      status: "CONFIRMED",
+      amount,
+      fee: 0,
+      taxWithheld: 0,
+      balanceAfter: newBalance,
+      currency: "TZS",
+      provider: "INTERNAL",
+      providerRef: null,
+      msisdn: null,
+      description: opts.description,
+      betId: null,
+      amlReason: null,
+      createdAt: now,
+      updatedAt: now,
+      completedAt: now,
+    });
+    return newBalance;
   });
-  return newBalance;
 }
 
 function friendlyProvider(p: string): string {

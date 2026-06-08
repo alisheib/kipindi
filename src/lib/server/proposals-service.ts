@@ -290,7 +290,7 @@ export function declineProposal(proposalId: string, officerId: string, reason: D
  * player proposal, pay the proposer the fixed prize (listed AND resolved).
  * Idempotent; skips VOID outcomes and zero-prize config.
  */
-export function onMarketResolved(marketId: string, opts: { voided: boolean }): void {
+export async function onMarketResolved(marketId: string, opts: { voided: boolean }): Promise<void> {
   const p = db.proposal.findByMarketId(marketId);
   if (!p) return;
   if (p.status === "RESOLVED" || p.prizePaidTzs > 0) return; // already settled
@@ -306,7 +306,7 @@ export function onMarketResolved(marketId: string, opts: { voided: boolean }): v
     // Only record the prize as paid if the credit actually landed. Otherwise we
     // mark the proposal RESOLVED with prizePaidTzs 0 and audit the failure so an
     // officer can settle manually — never claim a payout that didn't move.
-    const credited = creditInternal(p.proposerId, prize, { description: `Proposal prize · "${p.titleEn.slice(0, 50)}"` }) !== null;
+    const credited = (await creditInternal(p.proposerId, prize, { description: `Proposal prize · "${p.titleEn.slice(0, 50)}"` })) !== null;
     if (credited) {
       db.proposal.update(p.id, { status: "RESOLVED", prizePaidTzs: prize });
       audit({ category: "WALLET", action: "proposal.prize_paid", actorId: null, targetType: "Proposal", targetId: p.id, payload: { proposerId: p.proposerId, prize, marketId } });

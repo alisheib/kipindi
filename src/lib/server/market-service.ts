@@ -774,7 +774,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   // settlement. VOID outcomes mark the proposal resolved without a prize.
   try {
     const { onMarketResolved } = await import("./proposals-service");
-    onMarketResolved(m.id, { voided: opts.outcome === "VOID" });
+    await onMarketResolved(m.id, { voided: opts.outcome === "VOID" });
   } catch { /* proposal prize must never break settlement */ }
 
   return { ok: true, data: { stage: "complete", winnersPaid } };
