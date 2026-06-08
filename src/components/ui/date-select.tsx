@@ -260,7 +260,7 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
       {/* ── Calendar popup ──────────────────────────────────────────── */}
       {mounted && calOpen && createPortal(
         <div role="dialog" aria-modal="true" aria-label="Pick a date"
-          className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center">
+          className="fixed inset-0 z-[120] flex items-center justify-center p-3">
 
           {/* Scrim */}
           <button type="button" aria-label="Close" onClick={() => setCalOpen(false)}
@@ -268,11 +268,11 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
 
           {/* Card */}
           <div
-            className="relative w-full sm:max-w-[340px] rounded-t-xl sm:rounded-xl border border-border-strong bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)] overflow-hidden"
-            style={{ animation: "cd-rise 200ms var(--ease-arrive)", paddingBottom: "env(safe-area-inset-bottom)" }}
+            className="relative w-[calc(100%-24px)] max-w-[320px] rounded-xl border border-border-strong bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)] overflow-hidden"
+            style={{ animation: "cd-rise 200ms var(--ease-arrive)", marginBottom: "env(safe-area-inset-bottom, 0px)" }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
               {calView === "days" ? (<>
                 <button type="button" onClick={prevMonth} disabled={!canPrev}
                   className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors disabled:opacity-30"
@@ -296,12 +296,12 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
 
             {/* Day grid or Year grid */}
             {calView === "days" ? (<>
-              <div className="grid grid-cols-7 px-3 pt-3 pb-1">
+              <div className="grid grid-cols-7 px-3 pt-2 pb-1">
                 {DAY_LABELS.map((l) => (
                   <span key={l} className="text-center font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle font-bold">{l}</span>
                 ))}
               </div>
-              <div className="grid grid-cols-7 gap-1 px-3 pb-4">
+              <div className="grid grid-cols-7 gap-0.5 px-2.5 pb-3">
                 {grid.map((cell, i) => {
                   if (!cell) return <span key={`e-${i}`} />;
                   const isSel = parsed && parsed.y === viewYear && parsed.m === viewMonth && parsed.d === cell.day;
@@ -310,7 +310,7 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
                     <button key={cell.day} type="button" disabled={cell.disabled}
                       onClick={() => pickDay(viewYear, viewMonth, cell.day)}
                       className={cn(
-                        "h-10 rounded-lg font-mono text-[14px] tabular-nums transition-all",
+                        "h-9 rounded-md font-mono text-[13px] tabular-nums transition-all",
                         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
                         isSel ? "bg-gold-500 text-gold-fg font-bold shadow-[0_0_12px_oklch(72%_0.14_78_/_0.4)]"
                           : cell.disabled ? "text-text-subtle/30 cursor-not-allowed"
@@ -328,7 +328,7 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
             )}
 
             {/* Footer */}
-            <div className="border-t border-border px-4 py-3 flex items-center justify-between">
+            <div className="border-t border-border px-3 py-2.5 flex items-center justify-between">
               <button type="button" onClick={() => setCalOpen(false)}
                 className="font-mono text-[12px] uppercase tracking-[0.12em] text-text-subtle hover:text-text transition-colors">
                 Cancel
@@ -355,12 +355,12 @@ function YearGrid({ years, viewYear, selectedYear, onPick }: {
   const activeRef = useRef<HTMLButtonElement>(null);
   useEffect(() => { activeRef.current?.scrollIntoView({ block: "center", behavior: "instant" }); }, []);
   return (
-    <div className="grid grid-cols-4 gap-1.5 p-3 max-h-[280px] overflow-y-auto overscroll-contain">
+    <div className="grid grid-cols-4 gap-1 p-3 max-h-[240px] overflow-y-auto overscroll-contain">
       {years.map((y) => (
         <button key={y} ref={y === viewYear ? activeRef : undefined} type="button"
           onClick={() => onPick(y)}
           className={cn(
-            "h-10 rounded-lg font-mono text-[14px] tabular-nums transition-all",
+            "h-8 rounded-md font-mono text-[13px] tabular-nums transition-all",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
             y === viewYear ? "bg-gold-500 text-gold-fg font-bold shadow-[0_0_12px_oklch(72%_0.14_78_/_0.4)]"
               : y === selectedYear ? "ring-1 ring-gold-500/50 text-gold-300"
