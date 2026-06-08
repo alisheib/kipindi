@@ -19,6 +19,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/ui/glyphs";
 import { haptics } from "@/lib/haptics";
+import { useModalLock } from "@/lib/use-modal-lock";
 import { HouseLeanWarning } from "./house-lean-warning";
 import type { LeanLevel } from "@/lib/server/market-config";
 
@@ -42,6 +43,7 @@ type Props = {
 export function BetConfirmModal({
   open, side, stake, multiplier, payout, ratio, lean, pending, marketTitle, onConfirm, onCancel,
 }: Props) {
+  useModalLock(open);
   const [mounted, setMounted] = useState(false);
   const [remainingMs, setRemainingMs] = useState(QUOTE_HOLD_MS);
   const startedAtRef = useRef<number>(0);

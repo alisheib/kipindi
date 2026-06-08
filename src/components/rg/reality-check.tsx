@@ -16,6 +16,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
+import { useModalLock } from "@/lib/use-modal-lock";
 
 const SESSION_START_KEY  = "kp_session_started_at";
 const LAST_PROMPT_KEY    = "kp_reality_check_last";
@@ -23,6 +24,7 @@ const DEFAULT_INTERVAL   = 30; // minutes
 
 export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL }: { enabled: boolean; intervalMin?: number }) {
   const [open, setOpen] = React.useState(false);
+  useModalLock(open);
   const [elapsedMin, setElapsedMin] = React.useState(0);
 
   React.useEffect(() => {

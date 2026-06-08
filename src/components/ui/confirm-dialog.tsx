@@ -22,6 +22,7 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/ui/glyphs";
 import { haptics } from "@/lib/haptics";
+import { useModalLock } from "@/lib/use-modal-lock";
 
 type Tone = "claret" | "warning" | "gold";
 
@@ -46,6 +47,7 @@ export function ConfirmDialog({
   onConfirm,
 }: Props) {
   const [open, setOpen] = React.useState(false);
+  useModalLock(open);
   const [mounted, setMounted] = React.useState(false);
   const confirmBtn = React.useRef<HTMLButtonElement>(null);
   const panelRef = React.useRef<HTMLDivElement>(null);

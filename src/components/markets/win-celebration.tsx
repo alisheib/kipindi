@@ -20,6 +20,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/ui/glyphs";
 import { haptics } from "@/lib/haptics";
+import { useModalLock } from "@/lib/use-modal-lock";
 
 const EVENT_NAME = "50pick:celebrate";
 
@@ -68,6 +69,7 @@ function RollingAmount({ value }: { value: number }) {
 
 export function WinCelebrationHost() {
   const [open, setOpen] = useState(false);
+  useModalLock(open);
   const [payload, setPayload] = useState<WinCelebrationPayload | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 

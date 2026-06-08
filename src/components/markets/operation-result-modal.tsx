@@ -28,6 +28,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/ui/glyphs";
+import { useModalLock } from "@/lib/use-modal-lock";
 
 const DEFAULT_AUTO_CLOSE_MS = 5_000;
 
@@ -109,6 +110,7 @@ export function OperationResultModal({
   primaryLabel, secondaryLabel, onPrimary, onSecondary, onClose,
   autoCloseMs,
 }: Props) {
+  useModalLock(open);
   const [mounted, setMounted] = useState(false);
   const closeRef = useRef(onClose);
   useEffect(() => { closeRef.current = onClose; }, [onClose]);

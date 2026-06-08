@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/ui/glyphs";
 import { haptics } from "@/lib/haptics";
+import { useModalLock } from "@/lib/use-modal-lock";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 
@@ -27,6 +28,7 @@ type Props = {
 };
 
 export function SellConfirmModal({ open, pending, stake, value, onConfirm, onCancel }: Props) {
+  useModalLock(open);
   const [mounted, setMounted] = useState(false);
   const confirmRef = useRef<HTMLButtonElement>(null);
 
