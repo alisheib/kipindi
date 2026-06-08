@@ -1,34 +1,31 @@
 "use client";
 
 /**
- * DateSelect — kit-faithful date picker using 3 dropdown selects
- * (day, month, year). Replaces the native <input type="date"> which
- * renders inconsistently across mobile browsers and looks foreign
- * to the dark glass kit.
+ * DateSelect — kit-faithful date picker using 3 dropdown selects.
+ * Replaces native <input type="date"> which renders inconsistently
+ * across mobile browsers. Uses short month names (Jan–Dec) so the
+ * component fits on 320px phones.
  *
- * Outputs an ISO date string (YYYY-MM-DD) via a hidden input so it
- * works with progressive-enhancement form submissions (Server Actions).
- *
- * Design: matches the Input atom (bg-inset, border-border, brand-500
- * focus ring, mono font for day/year, body font for month names).
+ * Supports both uncontrolled (name + hidden input for Server Actions)
+ * and controlled (value + onChange) modes.
  */
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 const MONTHS = [
-  { value: "01", label: "Jan", long: "January" },
-  { value: "02", label: "Feb", long: "February" },
-  { value: "03", label: "Mar", long: "March" },
-  { value: "04", label: "Apr", long: "April" },
-  { value: "05", label: "May", long: "May" },
-  { value: "06", label: "Jun", long: "June" },
-  { value: "07", label: "Jul", long: "July" },
-  { value: "08", label: "Aug", long: "August" },
-  { value: "09", label: "Sep", long: "September" },
-  { value: "10", label: "Oct", long: "October" },
-  { value: "11", label: "Nov", long: "November" },
-  { value: "12", label: "Dec", long: "December" },
+  { value: "01", label: "Jan" },
+  { value: "02", label: "Feb" },
+  { value: "03", label: "Mar" },
+  { value: "04", label: "Apr" },
+  { value: "05", label: "May" },
+  { value: "06", label: "Jun" },
+  { value: "07", label: "Jul" },
+  { value: "08", label: "Aug" },
+  { value: "09", label: "Sep" },
+  { value: "10", label: "Oct" },
+  { value: "11", label: "Nov" },
+  { value: "12", label: "Dec" },
 ];
 
 function daysInMonth(month: number, year: number): number {
@@ -37,34 +34,36 @@ function daysInMonth(month: number, year: number): number {
 }
 
 type Props = {
-  /** Hidden input name for the ISO date value. */
   name?: string;
   id?: string;
   required?: boolean;
-  /** Minimum allowed date (ISO string). */
   min?: string;
-  /** Maximum allowed date (ISO string). */
   max?: string;
-  /** Default value (ISO string) — uncontrolled mode. */
   defaultValue?: string;
-  /** Controlled value (ISO string). */
   value?: string;
-  /** Called with ISO string when the date changes — controlled mode. */
   onChange?: (iso: string) => void;
 };
 
+// Shared select styling — matches the Input atom (bg-inset, border, focus ring).
+// pr-7 leaves room for the custom chevron; bg-no-repeat positions it right.
 const selectCls = cn(
-  "appearance-none bg-[var(--bg-inset)] border border-border rounded-lg px-3 h-12",
-  "font-mono text-[15px] text-text outline-none cursor-pointer",
+  "appearance-none bg-[var(--bg-inset)] border border-border rounded-lg",
+  "pl-2.5 pr-7 h-12 text-[16px] text-text outline-none cursor-pointer",
   "focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)]",
   "transition-colors",
+  // Custom chevron via encoded SVG background — works on every browser,
+  // no extra DOM element needed.
+  "bg-no-repeat bg-[length:12px_12px] bg-[position:right_8px_center]",
 );
+
+// Inline SVG chevron as a CSS background — tiny, no network request.
+const chevronBg = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5l3 3 3-3'/%3E%3C/svg%3E")`;
 
 export function DateSelect({ name, id, required, min, max, defaultValue, value, onChange }: Props) {
   const initial = (value ?? defaultValue ?? "").split("-");
-  const [year, setYear] = useState(initial[0] ?? "");
-  const [month, setMonth] = useState(initial[1] ?? "");
   const [day, setDay] = useState(initial[2] ?? "");
+  const [month, setMonth] = useState(initial[1] ?? "");
+  const [year, setYear] = useState(initial[0] ?? "");
 
   const minYear = min ? parseInt(min.slice(0, 4), 10) : 1930;
   const maxYear = max ? parseInt(max.slice(0, 4), 10) : new Date().getFullYear();
@@ -82,29 +81,33 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
     return out;
   }, [maxDay]);
 
-  // Auto-correct day if month/year change makes it invalid
-  const effectiveDay = day && parseInt(day, 10) > maxDay ? String(maxDay) : day;
+  // Auto-correct day if month/year change makes it invalid (e.g. Feb 30 → Feb 28)
+  const effectiveDay = day && parseInt(day, 10) > maxDay ? String(maxDay).padStart(2, "0") : day;
 
   const isoValue =
     year && month && effectiveDay
-      ? `${year}-${month.padStart(2, "0")}-${String(effectiveDay).padStart(2, "0")}`
+      ? `${year}-${month.padStart(2, "0")}-${effectiveDay.padStart(2, "0")}`
       : "";
 
-  // Fire onChange for controlled mode whenever the composed ISO changes.
+  // Fire onChange in useEffect (not during render) to avoid React anti-patterns.
   const prevIso = useRef(isoValue);
-  if (isoValue !== prevIso.current) {
-    prevIso.current = isoValue;
-    onChange?.(isoValue);
-  }
+  useEffect(() => {
+    if (isoValue !== prevIso.current) {
+      prevIso.current = isoValue;
+      onChange?.(isoValue);
+    }
+  }, [isoValue, onChange]);
+
+  const bgStyle = { backgroundImage: chevronBg };
 
   return (
     <div className="flex gap-2">
-      {/* Day */}
       <select
         aria-label="Day"
         value={effectiveDay}
         onChange={(e) => setDay(e.target.value)}
-        className={cn(selectCls, "w-[72px] shrink-0")}
+        className={cn(selectCls, "w-[68px] shrink-0 font-mono tabular-nums")}
+        style={bgStyle}
         required={required}
       >
         <option value="" disabled>DD</option>
@@ -113,36 +116,37 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
         ))}
       </select>
 
-      {/* Month */}
       <select
         aria-label="Month"
         value={month}
         onChange={(e) => setMonth(e.target.value)}
         className={cn(selectCls, "flex-1 min-w-0")}
+        style={bgStyle}
         required={required}
       >
         <option value="" disabled>Month</option>
         {MONTHS.map((m) => (
-          <option key={m.value} value={m.value}>{m.long}</option>
+          <option key={m.value} value={m.value}>{m.label}</option>
         ))}
       </select>
 
-      {/* Year */}
       <select
         aria-label="Year"
         value={year}
         onChange={(e) => setYear(e.target.value)}
-        className={cn(selectCls, "w-[90px] shrink-0")}
+        className={cn(selectCls, "w-[84px] shrink-0 font-mono tabular-nums")}
+        style={bgStyle}
         required={required}
       >
-        <option value="" disabled>YYYY</option>
+        <option value="" disabled>Year</option>
         {years.map((y) => (
           <option key={y} value={String(y)}>{y}</option>
         ))}
       </select>
 
-      {/* Hidden input carries the ISO value for form submission */}
-      <input type="hidden" name={name} id={id} value={isoValue} />
+      {/* Hidden input for form submission — required ensures the form
+          can't submit until all 3 dropdowns are filled. */}
+      <input type="hidden" name={name} id={id} value={isoValue} required={required} />
     </div>
   );
 }
