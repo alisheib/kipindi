@@ -80,6 +80,9 @@ function Seg({ value, onChange, onNext, onPrev, maxLen, placeholder, width, aria
       ref={ref}
       type="text"
       inputMode="numeric"
+      autoComplete="off"
+      data-1p-ignore
+      data-lpignore="true"
       value={value}
       placeholder={placeholder}
       aria-label={ariaLabel}
@@ -101,7 +104,13 @@ function Seg({ value, onChange, onNext, onPrev, maxLen, placeholder, width, aria
         if (e.key === "Backspace" && value === "") { e.preventDefault(); onPrev(); }
         if (e.key === "/") { e.preventDefault(); onNext(); }
       }}
-      onFocus={(e) => e.target.select()}
+      onFocus={(e) => {
+        // Delay select so it fires AFTER the browser finishes cursor
+        // positioning — immediate select() is unreliable on mobile.
+        const el = e.target;
+        requestAnimationFrame(() => el.select());
+      }}
+      onClick={(e) => (e.target as HTMLInputElement).select()}
     />
   );
 }
