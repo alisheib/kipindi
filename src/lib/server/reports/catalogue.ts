@@ -171,27 +171,33 @@ export function buildTraTax(generatorId: string): Report {
     playerId: string; phone: string; nida: string;
     grossWinnings: number; taxWithheld: number; netPaid: number; withdrawalCount: number;
   };
+  // Single-pass: aggregate txn data by userId from the full txn list.
+  const agg = new Map<string, { gross: number; tax: number; wdCount: number }>();
+  for (const t of db.txn.listAll()) {
+    if (t.status !== "CONFIRMED") continue;
+    const e = agg.get(t.userId) ?? { gross: 0, tax: 0, wdCount: 0 };
+    if (t.type === "BET_PAYOUT" || t.type === "CASHOUT") e.gross += Math.abs(t.amount);
+    e.tax += (t.taxWithheld || 0);
+    if (t.type === "WITHDRAWAL") e.wdCount++;
+    agg.set(t.userId, e);
+  }
   const rows: Row[] = [];
   let totalGross = 0, totalTax = 0, totalNet = 0;
-  for (const u of db.user.list()) {
-    const ts = db.txn.findByUser(u.id, 5_000);
-    const grossWinnings = ts
-      .filter((t) => (t.type === "BET_PAYOUT" || t.type === "CASHOUT") && t.status === "CONFIRMED")
-      .reduce((s, t) => s + Math.abs(t.amount), 0);
-    if (grossWinnings === 0) continue;
-    const tax = ts.reduce((s, t) => s + (t.taxWithheld || 0), 0);
-    const wdCount = ts.filter((t) => t.type === "WITHDRAWAL" && t.status === "CONFIRMED").length;
-    const kyc = db.kyc.findByUserId(u.id);
+  for (const [userId, { gross, tax, wdCount }] of agg) {
+    if (gross === 0) continue;
+    const u = db.user.findById(userId);
+    if (!u) continue;
+    const kyc = db.kyc.findByUserId(userId);
     const nida = kyc?.nidaNumber ? `${kyc.nidaNumber.slice(0, 4)}…${kyc.nidaNumber.slice(-4)}` : "—";
-    const net = grossWinnings - tax;
+    const net = gross - tax;
     rows.push({
-      playerId: u.id,
+      playerId: userId,
       phone: `${u.phoneE164.slice(0, 4)}*****${u.phoneE164.slice(-2)}`,
       nida,
-      grossWinnings, taxWithheld: tax, netPaid: net,
+      grossWinnings: gross, taxWithheld: tax, netPaid: net,
       withdrawalCount: wdCount,
     });
-    totalGross += grossWinnings;
+    totalGross += gross;
     totalTax += tax;
     totalNet += net;
   }
@@ -255,22 +261,27 @@ export function buildFiuSar(generatorId: string): Report {
     playerId: string; phone: string; triggerKind: string; amount: number;
     txnId: string; triggerAt: string; reviewStatus: string;
   };
+  // Single-pass over all transactions — no per-user loop.
   const rows: Row[] = [];
-  for (const u of db.user.list()) {
-    const ts = db.txn.findByUser(u.id, 5_000);
-    for (const t of ts) {
-      if (Math.abs(t.amount) >= cutoff || t.status === "AML_REVIEW") {
-        rows.push({
-          playerId: u.id,
-          phone: `${u.phoneE164.slice(0, 4)}*****${u.phoneE164.slice(-2)}`,
-          triggerKind: Math.abs(t.amount) >= cutoff ? "Threshold breach" : "AML review",
-          amount: Math.abs(t.amount),
-          txnId: t.id,
-          triggerAt: t.createdAt,
-          reviewStatus: t.status,
-        });
-      }
+  // Cache user lookups to avoid repeated findById for the same user.
+  const userCache = new Map<string, { phone: string } | null>();
+  for (const t of db.txn.listAll()) {
+    if (Math.abs(t.amount) < cutoff && t.status !== "AML_REVIEW") continue;
+    if (!userCache.has(t.userId)) {
+      const u = db.user.findById(t.userId);
+      userCache.set(t.userId, u ? { phone: `${u.phoneE164.slice(0, 4)}*****${u.phoneE164.slice(-2)}` } : null);
     }
+    const cached = userCache.get(t.userId);
+    if (!cached) continue;
+    rows.push({
+      playerId: t.userId,
+      phone: cached.phone,
+      triggerKind: Math.abs(t.amount) >= cutoff ? "Threshold breach" : "AML review",
+      amount: Math.abs(t.amount),
+      txnId: t.id,
+      triggerAt: t.createdAt,
+      reviewStatus: t.status,
+    });
   }
   return {
     title: "Financial Intelligence Unit · Suspicious-Activity Report",

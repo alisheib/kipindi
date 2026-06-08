@@ -520,8 +520,13 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
   const trackH = 12;
   const trackY = height / 2 - trackH / 2;
   const knobR = 28;
+  // SVG horizontal padding — gives the halo glow, drop shadow, and
+  // breathing ring room to render past the track edges without being
+  // clipped by the container's overflow-hidden. The viewBox extends
+  // PAD px on each side; the container stays the same visual width.
+  const PAD = 40;
   const knobScale = 1 + 0.08 * conviction + (dragging ? 0.04 : 0);
-  const needleX = pos * (width - knobR * 2) + knobR;
+  const needleX = PAD + pos * (width - knobR * 2) + knobR;
   const tilt = (pos - 0.5) * 18;
   // YES fills the LEFT half (pos < 0.5), NO fills the RIGHT half (pos > 0.5).
   // Matches the side-derivation flip above.
@@ -707,7 +712,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
         className={`relative w-full overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-md touch-none transition-opacity ${closedNow ? "opacity-40" : ""}`}
         style={{ height, cursor: closedNow ? "not-allowed" : (dragging ? "grabbing" : "grab") }}
       >
-        <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} className="block overflow-visible">
+        <svg viewBox={`0 0 ${width + PAD * 2} ${height}`} width="100%" height={height} className="block overflow-visible">
           <defs>
             {/* YES gradient: bright at LEFT (knob), dim at centre. */}
             <linearGradient id={`csrf-yes-${marketId}`} x1="1" x2="0">
@@ -733,14 +738,15 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
             </filter>
           </defs>
 
+          {/* Track group — offset by PAD so the track aligns with the
+              container while the viewBox extends PAD px on each side for
+              the knob's halo/shadow to render without clipping. */}
+          <g transform={`translate(${PAD}, 0)`}>
           {/* Track */}
           <rect x="0" y={trackY} width={width} height={trackH} rx={trackH / 2}
                 fill="var(--bar-track)" stroke="var(--bar-track-border)" strokeWidth="1" />
 
-          {/* Inactive-side hint tint — always-on emerald wash on the LEFT
-              half and rose wash on the RIGHT half so the binary symmetry
-              of the dial is legible at rest, before any drag. Sits BELOW
-              the side fills (which paint over the hint when chosen). */}
+          {/* Inactive-side hint tint */}
           <rect x="0" y={trackY} width={width / 2} height={trackH} rx={trackH / 2}
                 fill="oklch(58% 0.16 152)" opacity="0.10" />
           <rect x={width / 2} y={trackY} width={width / 2} height={trackH} rx={trackH / 2}
@@ -751,9 +757,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
                 y1={trackY - 4} y2={trackY + trackH + 4}
                 stroke="var(--bar-track-border)" strokeWidth="1" />
 
-          {/* Tachymeter detents — TZS amount ticks at meaningful stake
-              levels. Positions use the inverse of the multiplier curve:
-              pos = 0.5 ± 0.5·√((m−1)/(maxMult-1)). */}
+          {/* Tachymeter detents */}
           {[1000, 5000, 10000, 25000, 50000, 100000].flatMap((tzs) => {
             const m = tzs / baseStake;
             const dist = Math.sqrt(Math.max(0, (m - 1) / (maxMultiplier - 1)));
@@ -798,6 +802,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
             <rect x={width / 2} y={trackY} width={noFillW} height={trackH} rx={trackH / 2}
                   fill={`url(#csrf-no-${marketId})`} />
           )}
+          </g>{/* end track group */}
 
           {/* Conviction halo — softened curve. Peaks at ~70% conviction
               and eases back to ~55% at the extremes so the glow stops

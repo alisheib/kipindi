@@ -27,12 +27,16 @@ const jbm = JetBrains_Mono({
   display: "swap",
 });
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://kipindi-production.up.railway.app";
+const APP_DESC = "Tanzania-licensed prediction markets. Pick YES or NO on real events — winners share the losing pool. Mobile-first, bilingual EN/SW.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(APP_URL),
   title: {
     default: "50pick — Predict events. Not chance.",
     template: "%s · 50pick",
   },
-  description: "Tanzania-licensed binary price-competition markets. Price Competition pool — winners share losers' stake. Mobile-first.",
+  description: APP_DESC,
   applicationName: "50pick",
   formatDetection: { telephone: false, email: false, address: false },
   manifest: "/manifest.json",
@@ -43,6 +47,18 @@ export const metadata: Metadata = {
   },
   robots: { index: true, follow: true },
   other: { "mobile-web-app-capable": "yes" },
+  openGraph: {
+    type: "website",
+    siteName: "50pick",
+    title: "50pick — Predict events. Not chance.",
+    description: APP_DESC,
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary",
+    title: "50pick — Predict events. Not chance.",
+    description: APP_DESC,
+  },
 };
 
 export const viewport: Viewport = {
