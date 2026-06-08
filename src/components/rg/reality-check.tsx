@@ -43,6 +43,14 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL }: { 
       const now = Date.now();
       const sinceLast = now - lastPromptAt;
       if (sinceLast >= intervalMs) {
+        // Defer if a critical modal (bet confirm, sell confirm, etc.)
+        // is open — slamming a reality check on top of a money-handling
+        // confirmation is disorienting. The check fires on the next tick
+        // (30s later) when the modal has likely been dismissed. The
+        // lastPromptAt is NOT updated, so the check isn't lost.
+        const hasOpenModal = document.querySelector('[role="dialog"][aria-modal="true"]');
+        if (hasOpenModal) return;
+
         const sessionMin = Math.floor((now - startedAt) / 60_000);
         setElapsedMin(sessionMin);
         setOpen(true);
