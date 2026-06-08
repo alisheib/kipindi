@@ -358,6 +358,15 @@ function tap() {
   import("./backup").then((m) => m.scheduleBackup()).catch(() => {});
 }
 
+/** Immediate flush — for money-handling mutations (wallet, transaction).
+ *  Bypasses debounce so the Postgres snapshot reflects the new balance
+ *  within milliseconds. If this process crashes right after a wallet
+ *  debit, the snapshot in Postgres already includes it — worst-case
+ *  data loss drops from 500ms to near-zero for financial operations. */
+function tapCritical() {
+  import("./backup").then((m) => m.flushNow()).catch(() => {});
+}
+
 // On first import in this process, restore from the latest snapshot.
 // Source order: Postgres (if DATABASE_URL set) → on-disk file → fresh.
 // Idempotent — restoreLatestAsync self-guards via __50PICK_BACKUP_RESTORED.
@@ -425,28 +434,32 @@ export const db = {
       const id = store.walletsByUser.get(userId);
       return id ? store.wallets.get(id) ?? null : null;
     },
-    create: (w: StoredWallet) => { store.wallets.set(w.id, w); store.walletsByUser.set(w.userId, w.id); tap(); return w; },
+    /** All wallets — analytics only (wallet liability total). */
+    listAll: (): StoredWallet[] => Array.from(store.wallets.values()),
+    create: (w: StoredWallet) => { store.wallets.set(w.id, w); store.walletsByUser.set(w.userId, w.id); tapCritical(); return w; },
     update: (id: string, patch: Partial<StoredWallet>) => {
       const w = store.wallets.get(id);
       if (!w) return null;
       const next = { ...w, ...patch, updatedAt: new Date().toISOString() };
       store.wallets.set(id, next);
-      tap();
+      tapCritical();
       return next;
     },
   },
   txn: {
-    create: (t: StoredTxn) => { store.txns.set(t.id, t); tap(); return t; },
+    create: (t: StoredTxn) => { store.txns.set(t.id, t); tapCritical(); return t; },
     findByUser: (userId: string, limit = 50) => Array.from(store.txns.values()).filter((t) => t.userId === userId).slice(-limit).reverse(),
     update: (id: string, patch: Partial<StoredTxn>) => {
       const t = store.txns.get(id);
       if (!t) return null;
       const next = { ...t, ...patch, updatedAt: new Date().toISOString() };
       store.txns.set(id, next);
-      tap();
+      tapCritical();
       return next;
     },
     listByStatus: (status: StoredTxn["status"]) => Array.from(store.txns.values()).filter((t) => t.status === status),
+    /** All transactions — analytics only. Avoids the user-by-user N+1 walk. */
+    listAll: (): StoredTxn[] => Array.from(store.txns.values()),
   },
   responsible: {
     get: (userId: string) => store.responsible.get(userId) ?? null,

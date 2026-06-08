@@ -24,14 +24,8 @@ function periodToMs(p: Period): number {
 
 function txnsInPeriod(period: Period): StoredTxn[] {
   const cutoff = Date.now() - periodToMs(period);
-  // Snapshot all txns in period — db doesn't expose a list-all, so we walk via users.
-  const all: StoredTxn[] = [];
-  for (const u of db.user.list()) {
-    for (const t of db.txn.findByUser(u.id, 5_000)) {
-      if (new Date(t.createdAt).getTime() >= cutoff) all.push(t);
-    }
-  }
-  return all;
+  // Single-pass over all transactions — O(T) instead of O(U × T/U).
+  return db.txn.listAll().filter((t) => new Date(t.createdAt).getTime() >= cutoff);
 }
 
 /**
@@ -105,12 +99,11 @@ export function activePlayers(period: Period = "today"): number {
   return new Set(ts.map((t) => t.userId)).size;
 }
 
-/** Sum of all wallet balances across all users. */
+/** Sum of all wallet balances across all users. Single-pass over wallets. */
 export function walletLiabilityTotal(): number {
   let total = 0;
-  for (const u of db.user.list()) {
-    const w = db.wallet.findByUserId(u.id);
-    if (w && w.status === "ACTIVE") total += w.balance;
+  for (const w of db.wallet.listAll()) {
+    if (w.status === "ACTIVE") total += w.balance;
   }
   return total;
 }
@@ -201,15 +194,23 @@ export function userStatusCounts(): Record<StoredUser["status"], number> {
   );
 }
 
-/** Top-N players by lifetime NGR contribution (anonymised id). */
+/** Top-N players by lifetime NGR contribution (anonymised id).
+ *  Single-pass over all transactions, grouped by userId. */
 export function topNgrContributors(n = 10): Array<{ userId: string; lifetimeStakes: number; lifetimePayouts: number; ngr: number }> {
+  const map = new Map<string, { stakes: number; payouts: number }>();
+  for (const t of db.txn.listAll()) {
+    if (t.status !== "CONFIRMED") continue;
+    const isStake = t.type === "BET_PLACED";
+    const isPayout = t.type === "BET_PAYOUT" || t.type === "CASHOUT";
+    if (!isStake && !isPayout) continue;
+    const e = map.get(t.userId) ?? { stakes: 0, payouts: 0 };
+    if (isStake) e.stakes += Math.abs(t.amount);
+    else e.payouts += Math.abs(t.amount);
+    map.set(t.userId, e);
+  }
   const out: Array<{ userId: string; lifetimeStakes: number; lifetimePayouts: number; ngr: number }> = [];
-  for (const u of db.user.list()) {
-    const ts = db.txn.findByUser(u.id, 5_000);
-    const stakes = ts.filter((t) => t.type === "BET_PLACED" && t.status === "CONFIRMED").reduce((s, t) => s + Math.abs(t.amount), 0);
-    const payouts = ts.filter((t) => (t.type === "BET_PAYOUT" || t.type === "CASHOUT") && t.status === "CONFIRMED").reduce((s, t) => s + Math.abs(t.amount), 0);
-    if (stakes === 0 && payouts === 0) continue;
-    out.push({ userId: u.id, lifetimeStakes: stakes, lifetimePayouts: payouts, ngr: stakes - payouts });
+  for (const [userId, e] of map) {
+    out.push({ userId, lifetimeStakes: e.stakes, lifetimePayouts: e.payouts, ngr: e.stakes - e.payouts });
   }
   return out.sort((a, b) => b.ngr - a.ngr).slice(0, n);
 }
@@ -345,6 +346,7 @@ export type SuspiciousFlag = {
   multiple: number;
 };
 
+/** Single-pass suspicious-bet detection — groups by userId first, then analyses. */
 export function detectSuspiciousBets(opts: { multiple?: number; velocityThreshold?: number } = {}): SuspiciousFlag[] {
   const multiple = opts.multiple ?? 10;
   const velocityThreshold = opts.velocityThreshold ?? 100;
@@ -352,9 +354,17 @@ export function detectSuspiciousBets(opts: { multiple?: number; velocityThreshol
   const recentCutoff = now - 7 * 24 * 3600_000;
   const baselineCutoff = now - 30 * 24 * 3600_000;
 
+  // Single-pass: group confirmed BET_PLACED txns by userId.
+  const byUser = new Map<string, StoredTxn[]>();
+  for (const t of db.txn.listAll()) {
+    if (t.type !== "BET_PLACED" || t.status !== "CONFIRMED") continue;
+    const arr = byUser.get(t.userId) ?? [];
+    arr.push(t);
+    byUser.set(t.userId, arr);
+  }
+
   const flags: SuspiciousFlag[] = [];
-  for (const u of db.user.list()) {
-    const userTxns = db.txn.findByUser(u.id, 2_000).filter((t) => t.type === "BET_PLACED" && t.status === "CONFIRMED");
+  for (const [userId, userTxns] of byUser) {
     const baseline = userTxns
       .filter((t) => new Date(t.createdAt).getTime() >= baselineCutoff)
       .map((t) => Math.abs(t.amount))
@@ -368,7 +378,7 @@ export function detectSuspiciousBets(opts: { multiple?: number; velocityThreshol
       const ratio = stake / median;
       if (ratio >= multiple) {
         flags.push({
-          userId: u.id,
+          userId,
           txnId: t.id,
           betId: t.betId ?? null,
           type: "STAKE_SPIKE",
@@ -384,7 +394,7 @@ export function detectSuspiciousBets(opts: { multiple?: number; velocityThreshol
     const last24h = userTxns.filter((t) => new Date(t.createdAt).getTime() >= now - 24 * 3600_000);
     if (last24h.length >= velocityThreshold) {
       flags.push({
-        userId: u.id,
+        userId,
         txnId: last24h[0].id,
         betId: last24h[0].betId ?? null,
         type: "VELOCITY",

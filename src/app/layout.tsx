@@ -35,6 +35,14 @@ export const metadata: Metadata = {
   description: "Tanzania-licensed binary price-competition markets. Price Competition pool — winners share losers' stake. Mobile-first.",
   applicationName: "50pick",
   formatDetection: { telephone: false, email: false, address: false },
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "50pick",
+  },
+  robots: { index: true, follow: true },
+  other: { "mobile-web-app-capable": "yes" },
 };
 
 export const viewport: Viewport = {

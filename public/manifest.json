@@ -1,0 +1,19 @@
+{
+  "name": "50pick — Predict events. Not chance.",
+  "short_name": "50pick",
+  "description": "Tanzania-licensed prediction markets. Pick YES or NO, winners share the losing pool.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050817",
+  "theme_color": "#050817",
+  "orientation": "portrait-primary",
+  "categories": ["entertainment", "finance"],
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    }
+  ]
+}

@@ -36,7 +36,7 @@ const BACKUP_DIR =
   process.env.FIFTYPICK_BACKUP_DIR ??
   process.env.KIPINDI_BACKUP_DIR ??
   join(process.cwd(), ".50pick-backups");
-const DEBOUNCE_MS    = 1_500;
+const DEBOUNCE_MS    = 500;
 const MAX_SNAPSHOTS  = 12; // ~ last 18 minutes at 1.5s cadence
 const SNAPSHOT_FILE  = "store.snapshot.json";
 
@@ -253,6 +253,34 @@ export function scheduleBackup(): void {
       });
     }
   }, DEBOUNCE_MS);
+}
+
+/**
+ * Immediate flush — for critical money-handling mutations (wallet debit/credit,
+ * bet placement, settlement). Bypasses the debounce and writes to Postgres
+ * synchronously (fire-and-forget but without the 500ms delay). If the write
+ * fails, the debounced backup will retry on the next cycle.
+ *
+ * Call from store.ts `tapCritical()` instead of `tap()` for wallet/txn writes.
+ */
+export function flushNow(): void {
+  // Cancel any pending debounced write — we're writing right now.
+  if (globalThis.__50PICK_BACKUP_TIMER) {
+    clearTimeout(globalThis.__50PICK_BACKUP_TIMER);
+    globalThis.__50PICK_BACKUP_TIMER = undefined;
+  }
+  try {
+    writeSnapshotNow();
+  } catch (err) {
+    audit({
+      category: "SYSTEM",
+      action: "backup.flush.failed",
+      actorId: null,
+      targetType: null,
+      targetId: null,
+      payload: { error: String((err as Error)?.message ?? err) },
+    });
+  }
 }
 
 /** Restore from the latest snapshot. Idempotent — safe to call many times.
