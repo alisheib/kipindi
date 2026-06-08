@@ -82,7 +82,7 @@ export default function AdminOverviewPage() {
                 />
               ))}
               {recent.length === 0 && (
-                <div className="py-6 text-center text-caption text-text-tertiary">
+                <div className="py-6 flex flex-col items-center gap-2 text-caption text-text-tertiary">
                   <I.activity s={20} />
                   No activity in the last cycle.
                 </div>

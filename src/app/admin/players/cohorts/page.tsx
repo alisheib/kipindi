@@ -104,7 +104,7 @@ export default function AdminCohortsPage() {
                   const pct = total === 0 ? 0 : Math.round((count / total) * 100);
                   return (
                     <div key={region} className="flex items-center gap-2 text-caption">
-                      <span className="w-32 truncate text-text">{region}</span>
+                      <span className="w-20 sm:w-28 truncate text-text">{region}</span>
                       <div className="flex-1 h-3 bg-bg-sunken rounded-sm relative overflow-hidden">
                         <div className="absolute inset-y-0 left-0 bg-gold/70" style={{ width: `${Math.max(2, pct)}%` }} />
                       </div>
@@ -145,7 +145,7 @@ export default function AdminCohortsPage() {
                 const h = Math.round((count / max) * 100);
                 return (
                   <div key={month} className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
-                    <div className="w-full bg-bg-sunken rounded-sm relative" style={{ height: "100%" }}>
+                    <div className="w-full bg-bg-sunken rounded-sm relative flex-1">
                       <div className="absolute inset-x-0 bottom-0 bg-royal/80 rounded-sm" style={{ height: `${h}%` }} />
                     </div>
                     <span className="font-mono text-micro tabular text-text-tertiary">{month.slice(2)}</span>

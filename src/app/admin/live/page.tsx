@@ -41,7 +41,7 @@ export default function AdminLivePage() {
         period={false}
         actions={
           <span className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border border-gold bg-gold/10 text-gold">
-            <span className="h-1.5 w-1.5 rounded-pill bg-gold inline-block" />
+            <span className="h-1.5 w-1.5 rounded-full bg-gold inline-block" />
             polling · 5s
           </span>
         }
@@ -121,7 +121,7 @@ export default function AdminLivePage() {
 
         {/* Wallet activity */}
         <AdminCard title="Wallet activity · last 30" sw="Shughuli za pochi" action={<a href="/admin/audit?category=WALLET" className="font-mono text-micro tracking-[0.10em] uppercase text-royal">all →</a>}>
-          <div className="max-h-[280px] overflow-y-auto">
+          <div className="max-h-[300px] overflow-y-auto">
             {walletEvents.length === 0 ? (
               <p className="text-caption text-text-tertiary py-3 text-center">No wallet activity.</p>
             ) : walletEvents.map((e) => (

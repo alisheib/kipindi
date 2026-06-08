@@ -102,7 +102,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
               </a>
             )}
           </form>
-          <p className="text-caption text-text-tertiary">
+          <p className="mt-2 text-caption text-text-tertiary">
             {filtered.length} of {counts.total} {counts.total === 1 ? "player" : "players"}
           </p>
         </AdminCard>
