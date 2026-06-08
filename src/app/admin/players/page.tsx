@@ -1,6 +1,7 @@
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
 import { Avatar } from "@/components/ui/avatar";
+import { Select } from "@/components/ui/select";
 import { db } from "@/lib/server/store";
 import { formatTzs } from "@/lib/utils";
 import { I } from "@/components/ui/glyphs";
@@ -75,24 +76,23 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                 className="w-full h-10 pl-9 pr-3 rounded-md bg-surface border border-border text-text font-mono text-body-sm focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
               />
             </div>
-            <label className="block">
-              <span className="sr-only">Status filter</span>
-              <select
+            <div className="w-[180px]">
+              <Select
                 name="status"
                 defaultValue={statusFilter}
-                aria-label="Filter by status"
-                title="Filter by status"
-                className="h-10 px-3 rounded-md bg-surface border border-border text-text text-body-sm outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
-              >
-                <option value="">All statuses</option>
-                <option value="ACTIVE">Active</option>
-                <option value="PENDING_KYC">Pending KYC</option>
-                <option value="SUSPENDED">Suspended</option>
-                <option value="SELF_EXCLUDED">Self-excluded</option>
-                <option value="COOLED_OFF">Cooled off</option>
-                <option value="CLOSED">Closed</option>
-              </select>
-            </label>
+                size="sm"
+                placeholder="All statuses"
+                options={[
+                  { value: "", label: "All statuses" },
+                  { value: "ACTIVE", label: "Active" },
+                  { value: "PENDING_KYC", label: "Pending KYC" },
+                  { value: "SUSPENDED", label: "Suspended" },
+                  { value: "SELF_EXCLUDED", label: "Self-excluded" },
+                  { value: "COOLED_OFF", label: "Cooled off" },
+                  { value: "CLOSED", label: "Closed" },
+                ]}
+              />
+            </div>
             <button type="submit" className="btn btn-primary btn-md">
               Search
             </button>

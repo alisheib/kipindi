@@ -1,5 +1,6 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { I } from "@/components/ui/glyphs";
+import { Select } from "@/components/ui/select";
 import Link from "next/link";
 import { listMarkets, impliedYesPct, seedDemoMarkets, type MarketCategory } from "@/lib/server/market-service";
 import { ProbabilityBar } from "@/components/markets/probability-bar";
@@ -91,36 +92,14 @@ export default async function AdminMarketsPage({
                 className="w-full h-10 pl-9 pr-3 rounded-md bg-surface border border-border text-text font-mono text-body-sm focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
               />
             </div>
-            <label className="block">
-              <span className="sr-only">Status filter</span>
-              <select
-                name="status"
-                defaultValue={statusFilter}
-                aria-label="Filter by status"
-                title="Filter by status"
-                className="h-10 px-3 rounded-md bg-surface border border-border text-text text-body-sm focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
-              >
-                <option value="">All statuses</option>
-                {STATUS_OPTIONS.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="sr-only">Category filter</span>
-              <select
-                name="category"
-                defaultValue={categoryFilter}
-                aria-label="Filter by category"
-                title="Filter by category"
-                className="h-10 px-3 rounded-md bg-surface border border-border text-text text-body-sm focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
-              >
-                <option value="">All categories</option>
-                {CATEGORY_OPTIONS.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </label>
+            <div className="w-[160px]">
+              <Select name="status" defaultValue={statusFilter} size="sm" placeholder="All statuses"
+                options={[{ value: "", label: "All statuses" }, ...STATUS_OPTIONS.map((s) => ({ value: s, label: s }))]} />
+            </div>
+            <div className="w-[160px]">
+              <Select name="category" defaultValue={categoryFilter} size="sm" placeholder="All categories"
+                options={[{ value: "", label: "All categories" }, ...CATEGORY_OPTIONS.map((c) => ({ value: c, label: c }))]} />
+            </div>
             <button type="submit" className="h-10 px-4 rounded-md bg-royal text-onBrand font-semibold text-body-sm hover:bg-royal-hover transition-colors">
               Search
             </button>
