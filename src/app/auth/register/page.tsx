@@ -6,6 +6,7 @@ import { BrandTopo } from "@/components/brand-topo";
 import { Field, Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { PasswordInput } from "@/components/ui/password-input";
+import { DateSelect } from "@/components/ui/date-select";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { resolveReferralPreview } from "@/lib/server/affiliate-service";
 import { startRegisterAction } from "./actions";
@@ -153,26 +154,16 @@ export default async function RegisterPage({
 
             <Field label="Date of birth · Tarehe ya kuzaliwa" hint="You must be 18 or older. Lazima uwe na miaka 18+.">
               {(() => {
-                // Browser-side guards on the date input. min=1900-01-01
-                // blocks the "year 0019" trap (where typing just "19"
-                // for the year produced a 2000-year-old user and a
-                // confusing "18 or older" message). max=18 years ago
-                // means the browser validates age before the form even
-                // submits — server still re-checks.
                 const today = new Date();
                 const maxDob = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
                 const maxStr = `${maxDob.getFullYear()}-${String(maxDob.getMonth() + 1).padStart(2, "0")}-${String(maxDob.getDate()).padStart(2, "0")}`;
                 return (
-                  <Input
-                    id="dob"
+                  <DateSelect
                     name="dob"
-                    type="date"
+                    id="dob"
                     required
-                    mono
-                    size="lg"
-                    min="1900-01-01"
+                    min="1930-01-01"
                     max={maxStr}
-                    placeholder="YYYY-MM-DD"
                   />
                 );
               })()}
