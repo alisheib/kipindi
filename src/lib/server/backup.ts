@@ -77,7 +77,7 @@ function getSecret(): string {
 }
 
 /** Convert Map → array for JSON-encoding. */
-function serializeStore(store: any): string {
+function serializeStore(store: Record<string, unknown>): string {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(store)) {
     if (v instanceof Map) {
@@ -115,12 +115,13 @@ function deserializeStore(payload: string): Record<string, Map<unknown, unknown>
   }
   delete parsed.__proposalsConfig;
   const restored: Record<string, Map<unknown, unknown>> = {};
-  for (const [k, v] of Object.entries(parsed) as [string, any][]) {
-    if (v && typeof v === "object" && v.__map === true && Array.isArray(v.entries)) {
-      restored[k] = new Map(v.entries);
+  for (const [k, v] of Object.entries(parsed) as [string, unknown][]) {
+    const rec = v as Record<string, unknown> | null;
+    if (rec && typeof rec === "object" && rec.__map === true && Array.isArray(rec.entries)) {
+      restored[k] = new Map(rec.entries as [unknown, unknown][]);
     } else {
       // Fallback: shallow assignment; new schema fields added later will use defaults.
-      restored[k] = v;
+      restored[k] = v as Map<unknown, unknown>;
     }
   }
   return restored;
@@ -358,9 +359,14 @@ function applyEnvelope(rawEnvelope: string): { restored: boolean; reason: string
     audit({ category: "SYSTEM", action: "backup.restore.deserialize_failed", actorId: null, targetType: null, targetId: null, payload: { error: String(e) } });
     return { restored: false, reason: "snapshot deserialize failed" };
   }
-  if (!globalThis.__50PICK_STORE) (globalThis as any).__50PICK_STORE = {};
+  if (!globalThis.__50PICK_STORE) {
+    // Bootstrap a fresh store shell — the full shape is filled by the
+    // restored entries below + rebuildIndexes().
+    globalThis.__50PICK_STORE = Object.create(null);
+  }
+  const store = globalThis.__50PICK_STORE!;
   for (const [k, v] of Object.entries(restored)) {
-    (globalThis.__50PICK_STORE as any)[k] = v;
+    (store as Record<string, unknown>)[k] = v;
   }
   rebuildIndexes();
   audit({ category: "SYSTEM", action: "backup.restored", actorId: null, targetType: null, targetId: null, payload: { ts: envelope.ts } });
