@@ -105,12 +105,22 @@ function Seg({ value, onChange, onNext, onPrev, maxLen, placeholder, width, aria
         if (e.key === "/") { e.preventDefault(); onNext(); }
       }}
       onFocus={(e) => {
-        // Delay select so it fires AFTER the browser finishes cursor
-        // positioning — immediate select() is unreliable on mobile.
         const el = e.target;
         requestAnimationFrame(() => el.select());
       }}
       onClick={(e) => (e.target as HTMLInputElement).select()}
+      onBlur={() => {
+        // Pad incomplete segments on blur: "5" → "05", "3" → "03"
+        if (value && value.length < maxLen) {
+          if (maxLen === 2) {
+            onChange(value.padStart(2, "0"));
+          }
+          // Year with < 4 digits: clear it (e.g. "12" is not a valid year)
+          if (maxLen === 4) {
+            onChange("");
+          }
+        }
+      }}
     />
   );
 }
@@ -189,8 +199,20 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
 
   const openCal = () => {
     setCalView("days");
-    if (parsed) { setViewYear(parsed.y); setViewMonth(parsed.m); }
-    else { setViewYear(maxParsed?.y ?? now.getFullYear() - 25); setViewMonth(maxParsed?.m ?? 6); }
+    if (parsed) {
+      setViewYear(parsed.y); setViewMonth(parsed.m);
+    } else {
+      // Smart default: if min is in the future (proposals), start at min.
+      // If max is in the past (DOB), start at max. Otherwise near today.
+      const nowMs = now.getTime();
+      if (minParsed && new Date(minParsed.y, minParsed.m - 1, minParsed.d).getTime() >= nowMs) {
+        setViewYear(minParsed.y); setViewMonth(minParsed.m);
+      } else if (maxParsed && new Date(maxParsed.y, maxParsed.m - 1, maxParsed.d).getTime() <= nowMs) {
+        setViewYear(maxParsed.y); setViewMonth(maxParsed.m);
+      } else {
+        setViewYear(now.getFullYear()); setViewMonth(now.getMonth() + 1);
+      }
+    }
     setCalOpen(true);
   };
 
