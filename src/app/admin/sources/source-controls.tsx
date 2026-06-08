@@ -3,6 +3,7 @@
 import { useTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
+import { Select } from "@/components/ui/select";
 import { addSourceAction, removeSourceAction, toggleSourceAction, toggleCategoryAction } from "./actions";
 
 const CATEGORIES = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"] as const;
@@ -143,14 +144,11 @@ export function AddSourceForm() {
           <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-1">Label</span>
           <input name="label" required placeholder="Bank of Tanzania" className={inputCls} />
         </label>
-        <label className="block">
+        <div>
           <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-1">Category</span>
-          <select name="category" required className={inputCls}>
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </label>
+          <Select name="category" defaultValue={CATEGORIES[0]}
+            options={CATEGORIES.map((c) => ({ value: c, label: c }))} />
+        </div>
         <label className="block md:col-span-2">
           <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-1">Rationale (≥ 1 line)</span>
           <textarea name="rationale" required rows={2} placeholder="Why this source is authoritative for this category." className={`${inputCls} h-auto py-2 resize-none`} />

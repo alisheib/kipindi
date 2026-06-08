@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
+import { Select } from "@/components/ui/select";
 import {
   generatePollAction,
   approvePollAction,
@@ -353,15 +354,10 @@ function RejectForm({ pollId, onClose }: { pollId: string; onClose: () => void }
       <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-2">
         Reject reason
       </p>
-      <select
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-        className="w-full h-9 rounded-md border border-border bg-bg-overlay px-2 text-[12.5px] text-text mb-2 outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
-      >
-        {REJECT_REASONS.map((r) => (
-          <option key={r.id} value={r.id}>{r.label}</option>
-        ))}
-      </select>
+      <div className="mb-2">
+        <Select value={reason} onChange={setReason} size="sm"
+          options={REJECT_REASONS.map((r) => ({ value: r.id, label: r.label }))} />
+      </div>
       <textarea
         value={note}
         onChange={(e) => setNote(e.target.value)}
@@ -423,14 +419,11 @@ function EditForm({ poll, onClose }: { poll: StoredAIPoll; onClose: () => void }
         <span className="text-[10px] text-text-subtle">Title (SW)</span>
         <input type="text" value={titleSw} onChange={(e) => setTitleSw(e.target.value)} className={inputCls} />
       </label>
-      <label className="block">
-        <span className="text-[10px] text-text-subtle">Category</span>
-        <select value={category} onChange={(e) => setCategory(e.target.value)} className={inputCls + " h-9"}>
-          {CATEGORIES.map((c) => (
-            <option key={c.id} value={c.id}>{c.label}</option>
-          ))}
-        </select>
-      </label>
+      <div>
+        <span className="text-[10px] text-text-subtle block mb-1">Category</span>
+        <Select value={category} onChange={setCategory} size="sm"
+          options={CATEGORIES.map((c) => ({ value: c.id, label: c.label }))} />
+      </div>
       <label className="block">
         <span className="text-[10px] text-text-subtle">Resolution criterion</span>
         <textarea value={criterion} onChange={(e) => setCriterion(e.target.value)} className={inputCls} rows={2} />

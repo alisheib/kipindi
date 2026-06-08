@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Select } from "@/components/ui/select";
 import { SteppedProgress } from "@/components/markets/stepped-progress";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
@@ -63,9 +64,8 @@ export function NewMarketWizard() {
             <input value={titleSw} onChange={(e) => setTitleSw(e.target.value)} disabled={pending} className={inputCls} placeholder="Je, TZS itaimarika dhidi ya USD?" />
           </Field>
           <Field label="Category">
-            <select value={category} onChange={(e) => setCategory(e.target.value as typeof CATEGORIES[number])} disabled={pending} className={inputCls}>
-              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
+            <Select value={category} onChange={(v) => setCategory(v as typeof CATEGORIES[number])}
+              options={CATEGORIES.map((c) => ({ value: c, label: c }))} />
           </Field>
         </Section>
       )}
