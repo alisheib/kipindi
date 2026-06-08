@@ -132,9 +132,6 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
   const [yyyy, setYyyy] = useState(parsed ? String(parsed.y) : "");
   const [invalid, setInvalid] = useState(false);
 
-  const ddRef = useRef<HTMLInputElement>(null);
-  const mmRef = useRef<HTMLInputElement>(null);
-  const yyRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Sync segments from external value (controlled mode)
