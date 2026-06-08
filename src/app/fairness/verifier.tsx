@@ -61,7 +61,7 @@ export function FairnessVerifier() {
     }
   };
 
-  const fieldClass = "w-full h-9 px-3 rounded-md bg-surface border border-border text-text font-mono text-caption focus:outline-none focus:border-gold";
+  const fieldClass = "w-full h-11 px-3 rounded-lg border border-border bg-[var(--bg-inset)] text-text font-mono text-[16px] focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors";
 
   return (
     <div className="space-y-2">
