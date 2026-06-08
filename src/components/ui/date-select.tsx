@@ -167,48 +167,29 @@ export function DateSelect({
     }
   };
 
-  // Masked input — slashes are FIXED, user can only type digits into
-  // DD, MM, YYYY slots. The mask is always "DD/MM/YYYY" shape.
+  // Free-form input with auto-slash convenience. The user can type and
+  // delete freely — slashes are a HINT, not a hard mask. On blur, we
+  // parse whatever they typed (DD/MM/YYYY, DDMMYYYY, ISO, dashes, dots).
+  // Auto-slash fires ONLY on forward typing (growing length) so it never
+  // fights the user's backspace.
+  const prevLen = useRef(0);
   const onInput = (raw: string) => {
-    // Extract only digits from whatever was typed/pasted
-    const digits = raw.replace(/\D/g, "").slice(0, 8);
-    // Rebuild the masked string: DD/MM/YYYY
-    let masked = "";
-    for (let i = 0; i < digits.length; i++) {
-      if (i === 2 || i === 4) masked += "/";
-      masked += digits[i];
+    // Strip non-digit, non-separator chars
+    let cleaned = raw.replace(/[^0-9/\-.]/g, "").slice(0, 10);
+    // Auto-insert slashes only when the string is GROWING (typing forward)
+    if (cleaned.length > prevLen.current) {
+      if (/^\d{3}$/.test(cleaned)) cleaned = cleaned.slice(0, 2) + "/" + cleaned.slice(2);
+      if (/^\d{2}\/\d{3}$/.test(cleaned)) cleaned = cleaned.slice(0, 5) + "/" + cleaned.slice(5);
     }
-    setText(masked);
+    prevLen.current = cleaned.length;
+    setText(cleaned);
     setInvalid(false);
   };
 
-  // Handle Enter key — commit if valid
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
       (e.target as HTMLInputElement).blur();
-    }
-    // Backspace: if cursor is right after a slash, skip over it
-    if (e.key === "Backspace") {
-      const input = e.target as HTMLInputElement;
-      const pos = input.selectionStart ?? 0;
-      if (pos === 3 || pos === 6) {
-        // Cursor is right after "/" — move cursor back one more to delete the digit before the slash
-        e.preventDefault();
-        const digits = text.replace(/\D/g, "");
-        const idx = pos === 3 ? 1 : 3; // which digit to remove (0-indexed in digits string)
-        const newDigits = digits.slice(0, idx) + digits.slice(idx + 1);
-        let masked = "";
-        for (let i = 0; i < newDigits.length; i++) {
-          if (i === 2 || i === 4) masked += "/";
-          masked += newDigits[i];
-        }
-        setText(masked);
-        // Set cursor position after React re-render
-        requestAnimationFrame(() => {
-          input.setSelectionRange(pos - 1, pos - 1);
-        });
-      }
     }
   };
 
