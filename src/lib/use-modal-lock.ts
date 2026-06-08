@@ -3,23 +3,25 @@
 /**
  * useModalLock — body scroll lock + viewport zoom reset for modals.
  *
- * On Android, users accidentally pinch-zoom the page. When a `fixed inset-0`
- * modal opens, it renders at the full layout viewport, but the user's visual
- * viewport is zoomed in — they only see a portion of the modal and have to
- * zoom out to reach the buttons. This hook:
+ * Fixes two Android-specific issues:
  *
- *   1. Temporarily sets `maximum-scale=1` on the viewport meta tag to snap
- *      the zoom back to 1× when the modal opens.
- *   2. Adds `overflow: hidden` to `<html>` to prevent background scroll.
- *   3. Restores both on close.
+ *   1. Pinch-zoom: users accidentally zoom the page. Modals render at the
+ *      layout viewport but the visual viewport is zoomed in — buttons are
+ *      off-screen. Fix: snap maximum-scale=1 on open.
+ *
+ *   2. Horizontal overflow: if any page element bleeds wider than the
+ *      viewport (e.g. SVG overflow-visible, wide table), `fixed inset-0`
+ *      fills the layout viewport (wider than screen), and the modal card
+ *      appears shifted/clipped. Fix: reset horizontal scroll to 0 and
+ *      lock overflow on both <html> and <body>.
  *
  * Call with `useModalLock(open)` in every portaled modal component.
  */
 import { useEffect } from "react";
 
-// Track nested modal count so we only restore when the LAST modal closes.
 let lockCount = 0;
 let savedMaxScale: string | null = null;
+let savedScrollX = 0;
 
 function getViewportMeta(): HTMLMetaElement | null {
   return document.querySelector('meta[name="viewport"]');
@@ -30,21 +32,32 @@ export function useModalLock(open: boolean) {
     if (!open) return;
 
     lockCount++;
-
-    // --- Body scroll lock ---
     const html = document.documentElement;
-    // Only apply on first lock (don't double-set)
-    if (lockCount === 1) {
-      html.style.overflow = "hidden";
+    const body = document.body;
 
-      // --- Viewport zoom reset (Android pinch-zoom fix) ---
+    if (lockCount === 1) {
+      // --- Kill horizontal scroll FIRST ---
+      // On Android, horizontal overflow makes `fixed inset-0` position
+      // relative to the wider layout viewport, not the visible screen.
+      // Scrolling back to x=0 before locking ensures the modal is
+      // centered on the actual screen.
+      savedScrollX = window.scrollX;
+      if (window.scrollX !== 0) {
+        window.scrollTo(0, window.scrollY);
+      }
+
+      // --- Lock scroll on both html AND body ---
+      // Some Android browsers (Samsung Internet, older Chrome) only
+      // respect overflow:hidden on <body>, not <html>. Belt and braces.
+      html.style.overflow = "hidden";
+      body.style.overflow = "hidden";
+
+      // --- Viewport zoom reset ---
       const meta = getViewportMeta();
       if (meta) {
         const content = meta.getAttribute("content") ?? "";
-        // Save original maximum-scale value
         const match = content.match(/maximum-scale\s*=\s*([\d.]+)/);
         savedMaxScale = match ? match[1] : null;
-        // Set maximum-scale=1 to snap zoom back to 1×
         if (savedMaxScale && savedMaxScale !== "1") {
           meta.setAttribute(
             "content",
@@ -59,6 +72,13 @@ export function useModalLock(open: boolean) {
       if (lockCount <= 0) {
         lockCount = 0;
         html.style.overflow = "";
+        body.style.overflow = "";
+
+        // Restore horizontal scroll position
+        if (savedScrollX !== 0) {
+          window.scrollTo(savedScrollX, window.scrollY);
+          savedScrollX = 0;
+        }
 
         // Restore original maximum-scale
         if (savedMaxScale && savedMaxScale !== "1") {

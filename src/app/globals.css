@@ -346,7 +346,9 @@ html {
   /* Hard backstop against horizontal page scroll on phones: decorative bleeds
      (corner watermarks, glows) and edge clusters must never make the page
      swipe sideways. `clip` (not hidden) doesn't create a scroll container, so
-     the sticky top bar keeps working. */
+     the sticky top bar keeps working. `hidden` fallback for Android < 90
+     where `clip` isn't supported. */
+  overflow-x: hidden;
   overflow-x: clip;
 }
 
@@ -354,6 +356,10 @@ html {
 
 body {
   margin: 0;
+  /* Belt-and-braces: some Android browsers only respect overflow on body,
+     not html. Ensure neither axis can scroll sideways. */
+  overflow-x: hidden;
+  overflow-x: clip;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
