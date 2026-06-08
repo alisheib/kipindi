@@ -357,9 +357,13 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
     closedAt: null,
   });
 
-  // Auto-create wallet at the configured starter balance.
+  // Auto-create wallet. Tester phones get 100K TZS for QA sessions;
+  // everyone else gets the configured starter balance (default 0).
+  const testerPhones = new Set(
+    (process.env.TESTER_BOOTSTRAP_PHONES ?? "").split(",").map(s => s.trim()).filter(Boolean),
+  );
   const { getEffectiveConfig } = await import("./market-config");
-  const starterBalance = getEffectiveConfig().starterBalanceTzs ?? 0;
+  const starterBalance = testerPhones.has(phone) ? 100_000 : (getEffectiveConfig().starterBalanceTzs ?? 0);
   db.wallet.create({
     id: `wlt_${randomId(12)}`,
     userId: user.id,
