@@ -8,7 +8,7 @@
  * for DOB entry spanning 1930–2008). Dark glass kit styling throughout.
  */
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/ui/glyphs";
 import { useModalLock } from "@/lib/use-modal-lock";
@@ -154,7 +154,7 @@ export function DateSelect({
         aria-expanded={open}
       >
         <I.calendar s={16} />
-        <span className="font-mono text-[16px] tabular-nums flex-1">{displayLabel}</span>
+        <span className={cn("font-mono text-[16px] tabular-nums flex-1", !parsed && required && "italic")}>{displayLabel}</span>
         <svg viewBox="0 0 12 12" width={10} height={10} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M3 4.5l3 3 3-3" /></svg>
       </button>
 
@@ -253,27 +253,12 @@ export function DateSelect({
                 </div>
               </>
             ) : (
-              /* Year grid — 4 columns, scrollable */
-              <div className="grid grid-cols-4 gap-1.5 p-3 max-h-[280px] overflow-y-auto overscroll-contain">
-                {yearGrid.map((y) => (
-                  <button
-                    key={y}
-                    type="button"
-                    onClick={() => { setViewYear(y); setView("days"); }}
-                    className={cn(
-                      "h-10 rounded-lg font-mono text-[14px] tabular-nums transition-all",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
-                      y === viewYear
-                        ? "bg-gold-500 text-gold-fg font-bold shadow-[0_0_12px_oklch(72%_0.14_78_/_0.4)]"
-                        : y === parsed?.y
-                          ? "ring-1 ring-gold-500/50 text-gold-300"
-                          : "text-text hover:bg-bg-overlay",
-                    )}
-                  >
-                    {y}
-                  </button>
-                ))}
-              </div>
+              <YearGrid
+                years={yearGrid}
+                viewYear={viewYear}
+                selectedYear={parsed?.y ?? null}
+                onPick={(y) => { setViewYear(y); setView("days"); }}
+              />
             )}
 
             {/* Footer */}
@@ -296,5 +281,46 @@ export function DateSelect({
         document.body,
       )}
     </>
+  );
+}
+
+/** Year grid with auto-scroll to the active year on mount. */
+function YearGrid({ years, viewYear, selectedYear, onPick }: {
+  years: number[];
+  viewYear: number;
+  selectedYear: number | null;
+  onPick: (y: number) => void;
+}) {
+  const activeRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    // Scroll the highlighted year into the center of the scrollable area.
+    activeRef.current?.scrollIntoView({ block: "center", behavior: "instant" });
+  }, []);
+  return (
+    <div className="grid grid-cols-4 gap-1.5 p-3 max-h-[280px] overflow-y-auto overscroll-contain">
+      {years.map((y) => {
+        const isCurrent = y === viewYear;
+        const isSelected = y === selectedYear;
+        return (
+          <button
+            key={y}
+            ref={isCurrent ? activeRef : undefined}
+            type="button"
+            onClick={() => onPick(y)}
+            className={cn(
+              "h-10 rounded-lg font-mono text-[14px] tabular-nums transition-all",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
+              isCurrent
+                ? "bg-gold-500 text-gold-fg font-bold shadow-[0_0_12px_oklch(72%_0.14_78_/_0.4)]"
+                : isSelected
+                  ? "ring-1 ring-gold-500/50 text-gold-300"
+                  : "text-text hover:bg-bg-overlay",
+            )}
+          >
+            {y}
+          </button>
+        );
+      })}
+    </div>
   );
 }
