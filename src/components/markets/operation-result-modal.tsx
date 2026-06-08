@@ -317,12 +317,12 @@ export function OperationResultModal({
             </div>
           )}
 
-          <div className={`mt-5 grid gap-2 ${secondaryLabel ? "grid-cols-[1fr_1.4fr]" : "grid-cols-1"}`}>
+          <div className={`mt-5 grid gap-2 ${secondaryLabel ? "grid-cols-1 xs:grid-cols-[1fr_1.4fr]" : "grid-cols-1"}`}>
             {secondaryLabel && (
               <button
                 type="button"
                 onClick={() => { onSecondary?.(); onClose(); }}
-                className="btn btn-ghost btn-md"
+                className="btn btn-ghost btn-md whitespace-normal h-auto min-h-[38px]"
               >
                 {secondaryLabel}
               </button>
@@ -330,7 +330,7 @@ export function OperationResultModal({
             <button
               type="button"
               onClick={() => { onPrimary?.(); onClose(); }}
-              className={`btn ${tone.primaryBtn} btn-md`}
+              className={`btn ${tone.primaryBtn} btn-md whitespace-normal h-auto min-h-[38px]`}
               autoFocus
             >
               {primaryLabel ?? "Done · Sawa"}

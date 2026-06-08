@@ -107,17 +107,17 @@ export function ConfirmDialog({
     <>
       {triggerEl}
       {mounted && open && createPortal(
-        <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-[100] flex items-center justify-center px-3">
+        <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-[100] flex justify-center px-3 py-4 overflow-y-auto overscroll-contain">
           <button
             type="button"
             aria-label={cancelLabel}
             onClick={() => setOpen(false)}
-            className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            className="fixed inset-0 bg-black/60 backdrop-blur-md"
             style={{ animation: "cd-fade 160ms ease-out" }}
           />
           <div
             ref={panelRef}
-            className="relative w-full max-w-[360px] rounded-xl border border-border-strong bg-bg-elevated shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65),inset_0_1px_0_rgba(255,255,255,0.06)] p-5 lg:p-6"
+            className="relative my-auto w-full max-w-[360px] rounded-xl border border-border-strong bg-bg-elevated shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65),inset_0_1px_0_rgba(255,255,255,0.06)] p-5 lg:p-6"
             style={{ animation: "cd-rise 200ms var(--ease-arrive)" }}
           >
             <button
@@ -145,11 +145,11 @@ export function ConfirmDialog({
               {body}
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 xs:grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="btn btn-ghost btn-md w-full"
+                className="btn btn-ghost btn-md w-full whitespace-normal h-auto min-h-[38px]"
               >
                 {cancelLabel}
               </button>
@@ -157,7 +157,7 @@ export function ConfirmDialog({
                 ref={confirmBtn}
                 type="button"
                 onClick={() => { haptics.warning(); setOpen(false); onConfirm(); }}
-                className={confirmClass + " w-full"}
+                className={confirmClass + " w-full whitespace-normal h-auto min-h-[38px]"}
               >
                 {confirmLabel}
               </button>

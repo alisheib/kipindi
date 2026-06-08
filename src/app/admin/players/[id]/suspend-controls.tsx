@@ -91,15 +91,15 @@ export function SuspendControls({
           role="dialog"
           aria-modal="true"
           aria-label={mode === "suspend" ? "Suspend player" : "Restore player"}
-          className="fixed inset-0 z-[100] flex items-center justify-center px-4"
+          className="fixed inset-0 z-[100] flex justify-center px-4 py-4 overflow-y-auto overscroll-contain"
         >
           <button
             type="button"
             aria-label="Cancel"
             onClick={() => { if (!pending) setMode(null); }}
-            className="dialog-scrim-anim absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="dialog-scrim-anim fixed inset-0 bg-black/60 backdrop-blur-sm"
           />
-          <div className="dialog-anim relative z-10 w-full max-w-[420px] rounded-xl border border-border bg-bg-elevated p-5 shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)]">
+          <div className="dialog-anim relative z-10 my-auto w-full max-w-[420px] rounded-xl border border-border bg-bg-elevated p-5 shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)]">
             <p className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-gold-300 mb-1">
               {mode === "suspend" ? "Suspend · Simamisha" : "Restore · Rejesha"}
             </p>
@@ -130,11 +130,11 @@ export function SuspendControls({
                 {reason.trim().length} / 500
               </span>
             </label>
-            <div className="mt-4 grid grid-cols-2 gap-2">
+            <div className="mt-4 grid grid-cols-1 xs:grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => { if (!pending) setMode(null); }}
-                className="btn btn-ghost btn-md"
+                className="btn btn-ghost btn-md whitespace-normal h-auto min-h-[38px]"
                 disabled={pending}
               >
                 Cancel · Ghairi
@@ -143,7 +143,7 @@ export function SuspendControls({
                 type="button"
                 onClick={submit}
                 disabled={pending || reason.trim().length < 5}
-                className={mode === "suspend" ? "btn btn-no btn-md" : "btn btn-gold btn-md"}
+                className={`${mode === "suspend" ? "btn btn-no btn-md" : "btn btn-gold btn-md"} whitespace-normal h-auto min-h-[38px]`}
               >
                 {pending
                   ? "Working…"

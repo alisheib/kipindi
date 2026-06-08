@@ -174,11 +174,11 @@ export default async function MarketDetail({
                   : null;
                 return (
                   <div key={p.id} className="rounded-md border border-border bg-bg-overlay/40 p-3 space-y-2">
-                    <div className="flex items-center justify-between gap-2 font-mono text-[12px]">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[12px]">
                       <span className={p.side === "YES" ? "text-yes-300 font-bold" : "text-no-300 font-bold"}>{p.side}</span>
                       <span className="text-text-muted">stake {fmtTzs(p.stake)}</span>
                       <span className="text-gold-300">→ {fmtTzs(p.finalPayout ?? p.potentialPayout)}</span>
-                      <span className="text-text-subtle">[{p.status === "CASHED_OUT" ? "CASHED" : p.status}]</span>
+                      <span className="text-text-subtle ml-auto">[{p.status === "CASHED_OUT" ? "CASHED" : p.status}]</span>
                     </div>
                     {liveValue !== null && (
                       <SellButton

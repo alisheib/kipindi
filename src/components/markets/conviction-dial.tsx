@@ -445,7 +445,10 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
       setDragging(false);
       dragModeRef.current = { kind: "idle" };
     };
-    window.addEventListener("pointermove", move);
+    // `passive: false` on pointermove so e.preventDefault() actually
+    // works on mobile — passive listeners silently ignore it, and
+    // Chrome 56+ defaults touch listeners to passive on window.
+    window.addEventListener("pointermove", move, { passive: false });
     window.addEventListener("pointerup", up);
     window.addEventListener("pointercancel", up);
     return () => {
@@ -456,6 +459,10 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
   }, [dragging, setFromClientX]);
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // Prevent default FIRST — stops mobile browsers from initiating
+    // scroll, pull-to-refresh, or long-press menus that compete with
+    // the drag gesture. Must fire before any state updates.
+    e.preventDefault();
     setDragging(true);
     // Always exit any in-flight input edit — clicking the dial is
     // unambiguously a "done with both inputs" intent.
@@ -474,7 +481,12 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
       dragModeRef.current = { kind: "committed", startX: e.clientX };
       setFromClientX(e.clientX);
     }
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    // Capture on the CONTAINER div, not e.target — e.target may be
+    // an SVG child (<path>, <text>) where setPointerCapture is buggy
+    // on mobile WebKit/Blink, silently firing pointercancel and
+    // ending the drag mid-slide. The container div is a regular
+    // HTMLElement with reliable capture support.
+    trackRef.current?.setPointerCapture(e.pointerId);
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -1006,7 +1018,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
       {/* Compact place-bet pill — opens the confirm modal. Sits inline with
           a hint instead of taking the full width with a giant gold slab. */}
       <div className="mt-4 flex items-center gap-3">
-        <p className="flex-1 text-[11px] text-text-subtle leading-snug">
+        <p className="flex-1 min-w-0 text-[11px] text-text-subtle leading-snug">
           {closedNow
             ? "Market closed · Soko limefungwa"
             : side === "NEUTRAL"
@@ -1022,10 +1034,10 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
             : side === "NEUTRAL" ? "Drag the dial to commit"
             : `Place ${side} for TZS ${fmt(stake)}`
           }
-          className={closedNow ? "btn btn-ghost btn-md" : (side === "NEUTRAL" ? "btn btn-ghost btn-md" : "btn btn-gold btn-md")}
+          className={`${closedNow ? "btn btn-ghost btn-md" : (side === "NEUTRAL" ? "btn btn-ghost btn-md" : "btn btn-gold btn-md")} whitespace-normal`}
           // 44 px min-height meets WCAG 2.5.5 tap-target on mobile;
           // btn-md alone caps at 38 px.
-          style={{ borderRadius: 999, minWidth: 168, minHeight: 44, fontVariantNumeric: "tabular-nums" }}
+          style={{ borderRadius: 999, minWidth: 140, minHeight: 44, fontVariantNumeric: "tabular-nums" }}
         >
           {closedNow
             ? "Closed · awaiting settle"

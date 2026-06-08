@@ -120,7 +120,7 @@ export function SellButton({
             ? "Market closed — awaiting settlement"
             : `Cash out for TZS ${fmt(value)}`
         }
-        className={`btn ${closedNow ? "btn-ghost" : btnVariant} btn-md w-full`}
+        className={`btn ${closedNow ? "btn-ghost" : btnVariant} btn-md w-full whitespace-normal h-auto`}
         style={{ justifyContent: "space-between", minHeight: 44 }}
       >
         <span>

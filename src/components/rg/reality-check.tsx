@@ -145,12 +145,12 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL }: { 
             <I.clock s={14} />
             Set limits · Weka mipaka
           </Link>
-          <div className="grid grid-cols-2 gap-2">
-            <Link href="/profile/responsible-gambling#break" onClick={dismiss} className="btn btn-ghost btn-md w-full inline-flex">
+          <div className="grid grid-cols-1 xs:grid-cols-2 gap-2">
+            <Link href="/profile/responsible-gambling#break" onClick={dismiss} className="btn btn-ghost btn-md w-full inline-flex whitespace-normal h-auto min-h-[38px]">
               <I.pause s={13} />
               Take a break
             </Link>
-            <Link href="/profile/responsible-gambling#exclude" onClick={dismiss} className="btn btn-claret btn-md w-full inline-flex">
+            <Link href="/profile/responsible-gambling#exclude" onClick={dismiss} className="btn btn-claret btn-md w-full inline-flex whitespace-normal h-auto min-h-[38px]">
               <I.lock s={13} />
               Self-exclude
             </Link>

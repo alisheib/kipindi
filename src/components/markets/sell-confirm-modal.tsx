@@ -60,19 +60,19 @@ export function SellConfirmModal({ open, pending, stake, value, onConfirm, onCan
       role="dialog"
       aria-modal="true"
       aria-label="Confirm cash-out"
-      className="fixed inset-0 z-[100] flex items-center justify-center px-3"
+      className="fixed inset-0 z-[100] flex justify-center px-3 py-4 overflow-y-auto overscroll-contain"
     >
       <button
         type="button"
         aria-label="Cancel"
         onClick={() => { if (!pending) onCancel(); }}
         disabled={pending}
-        className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity disabled:cursor-wait"
+        className="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity disabled:cursor-wait"
         style={{ animation: "scm-fade 160ms ease-out" }}
       />
 
       <div
-        className="relative w-full max-w-[440px] rounded-xl border border-border-strong bg-bg-elevated shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65),inset_0_1px_0_rgba(255,255,255,0.06)]"
+        className="relative my-auto w-full max-w-[440px] rounded-xl border border-border-strong bg-bg-elevated shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65),inset_0_1px_0_rgba(255,255,255,0.06)]"
         style={{ animation: "scm-rise 200ms cubic-bezier(.2,.8,.2,1)" }}
       >
         <div className="p-5 lg:p-6">
@@ -137,12 +137,12 @@ export function SellConfirmModal({ open, pending, stake, value, onConfirm, onCan
             </p>
           </div>
 
-          <div className="mt-5 grid grid-cols-[1fr_1.4fr] gap-2">
+          <div className="mt-5 grid grid-cols-1 xs:grid-cols-[1fr_1.4fr] gap-2">
             <button
               type="button"
               onClick={onCancel}
               disabled={pending}
-              className="btn btn-ghost btn-md"
+              className="btn btn-ghost btn-md whitespace-normal h-auto min-h-[38px]"
             >
               Keep position · Endelea
             </button>
@@ -151,7 +151,7 @@ export function SellConfirmModal({ open, pending, stake, value, onConfirm, onCan
               type="button"
               onClick={() => { haptics.confirm(); onConfirm(); }}
               disabled={pending}
-              className={`btn ${profit ? "btn-gold" : "btn-no"} btn-md`}
+              className={`btn ${profit ? "btn-gold" : "btn-no"} btn-md whitespace-normal h-auto min-h-[38px]`}
             >
               {pending ? "Selling…" : `Sell · TZS ${fmt(value)}`}
             </button>

@@ -163,15 +163,15 @@ function SettleConfirm({
       role="alertdialog"
       aria-modal="true"
       aria-label="Confirm settlement"
-      className="fixed inset-0 z-modal flex items-center justify-center px-3"
+      className="fixed inset-0 z-modal flex justify-center px-3 py-4 overflow-y-auto overscroll-contain"
     >
       <button
         type="button"
         aria-label="Cancel"
         onClick={onCancel}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm"
       />
-      <div className="relative w-full max-w-[460px] rounded-xl border border-border bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)] p-5 lg:p-6">
+      <div className="relative my-auto w-full max-w-[460px] rounded-xl border border-border bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)] p-5 lg:p-6">
         <button
           type="button"
           onClick={onCancel}
@@ -201,11 +201,11 @@ function SettleConfirm({
             Hatua hii haiwezi kubatilishwa.
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={onCancel} className="btn btn-ghost btn-md w-full">
+        <div className="grid grid-cols-1 xs:grid-cols-2 gap-2">
+          <button type="button" onClick={onCancel} className="btn btn-ghost btn-md w-full whitespace-normal h-auto min-h-[38px]">
             Not yet · Bado
           </button>
-          <button type="button" onClick={onConfirm} className="btn btn-claret btn-md w-full" autoFocus>
+          <button type="button" onClick={onConfirm} className="btn btn-claret btn-md w-full whitespace-normal h-auto min-h-[38px]" autoFocus>
             Yes, {verb.toLowerCase()}
           </button>
         </div>
