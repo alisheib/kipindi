@@ -116,11 +116,13 @@ export function DateSelect({
   const isoValue = controlled ? (value ?? "") : internal;
   const parsed = isoValue ? parseIso(isoValue) : null;
 
-  // Text input state — the raw string the user sees/types
+  // Text input state — masked "DD/MM/YYYY" format with fixed slashes
   const [text, setText] = useState(parsed ? toDisplay(parsed) : "");
   const [editing, setEditing] = useState(false);
   const [invalid, setInvalid] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Show placeholder mask when empty
+  const displayPlaceholder = "DD/MM/YYYY";
 
   // Sync display text when value changes externally (controlled mode)
   useEffect(() => {
@@ -165,21 +167,19 @@ export function DateSelect({
     }
   };
 
-  // Handle typing — auto-insert slashes for DD/MM/YYYY convenience
+  // Masked input — slashes are FIXED, user can only type digits into
+  // DD, MM, YYYY slots. The mask is always "DD/MM/YYYY" shape.
   const onInput = (raw: string) => {
-    // Strip non-digit/slash/dash/dot
-    let cleaned = raw.replace(/[^0-9/\-.]/g, "");
-    // Auto-insert slashes: after 2 digits, after 4 digits
-    if (/^\d{3}$/.test(cleaned)) cleaned = cleaned.slice(0, 2) + "/" + cleaned.slice(2);
-    if (/^\d{2}\/\d{3}$/.test(cleaned)) cleaned = cleaned.slice(0, 5) + "/" + cleaned.slice(5);
-    setText(cleaned.slice(0, 10));
-    setInvalid(false);
-
-    // Live validation — if it looks complete, check immediately
-    const p = parseTyped(cleaned);
-    if (p && isInRange(p, minParsed, maxParsed)) {
-      setInvalid(false);
+    // Extract only digits from whatever was typed/pasted
+    const digits = raw.replace(/\D/g, "").slice(0, 8);
+    // Rebuild the masked string: DD/MM/YYYY
+    let masked = "";
+    for (let i = 0; i < digits.length; i++) {
+      if (i === 2 || i === 4) masked += "/";
+      masked += digits[i];
     }
+    setText(masked);
+    setInvalid(false);
   };
 
   // Handle Enter key — commit if valid
@@ -187,6 +187,28 @@ export function DateSelect({
     if (e.key === "Enter") {
       e.preventDefault();
       (e.target as HTMLInputElement).blur();
+    }
+    // Backspace: if cursor is right after a slash, skip over it
+    if (e.key === "Backspace") {
+      const input = e.target as HTMLInputElement;
+      const pos = input.selectionStart ?? 0;
+      if (pos === 3 || pos === 6) {
+        // Cursor is right after "/" — move cursor back one more to delete the digit before the slash
+        e.preventDefault();
+        const digits = text.replace(/\D/g, "");
+        const idx = pos === 3 ? 1 : 3; // which digit to remove (0-indexed in digits string)
+        const newDigits = digits.slice(0, idx) + digits.slice(idx + 1);
+        let masked = "";
+        for (let i = 0; i < newDigits.length; i++) {
+          if (i === 2 || i === 4) masked += "/";
+          masked += newDigits[i];
+        }
+        setText(masked);
+        // Set cursor position after React re-render
+        requestAnimationFrame(() => {
+          input.setSelectionRange(pos - 1, pos - 1);
+        });
+      }
     }
   };
 
@@ -201,10 +223,14 @@ export function DateSelect({
   const [viewYear, setViewYear] = useState(parsed?.y ?? maxYear);
   const [viewMonth, setViewMonth] = useState(parsed?.m ?? now.getMonth() + 1);
 
-  // Reset calendar view when opening
+  // Reset calendar view when opening. If the user typed something in
+  // the text field but hasn't blurred yet, parse THAT first so the
+  // calendar opens to the right month — not a stale committed value.
   const openCal = () => {
     setCalView("days");
-    if (parsed) { setViewYear(parsed.y); setViewMonth(parsed.m); }
+    const fromText = text ? parseTyped(text) : null;
+    const target = fromText ?? parsed;
+    if (target) { setViewYear(target.y); setViewMonth(target.m); }
     else {
       setViewYear(maxParsed?.y ?? now.getFullYear() - 25);
       setViewMonth(maxParsed?.m ?? 6);
@@ -269,7 +295,7 @@ export function DateSelect({
           ref={inputRef}
           type="text"
           inputMode="numeric"
-          placeholder={placeholder}
+          placeholder={displayPlaceholder}
           value={text}
           onChange={(e) => onInput(e.target.value)}
           onFocus={() => setEditing(true)}
