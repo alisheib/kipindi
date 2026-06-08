@@ -132,9 +132,9 @@ function RejectForm({
         className="w-full rounded-md border border-border bg-bg-overlay px-2 py-1.5 text-[12px] text-text mb-2 outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
         rows={2}
       />
-      <div className="grid grid-cols-2 gap-2">
-        <button type="button" onClick={onCancel} className="btn btn-ghost btn-sm">Cancel</button>
-        <button type="button" onClick={() => onSubmit(reason, note)} className="btn btn-no btn-sm">Reject</button>
+      <div className="grid grid-cols-1 xs:grid-cols-2 gap-2">
+        <button type="button" onClick={onCancel} className="btn btn-ghost btn-sm whitespace-normal h-auto min-h-[30px]">Cancel</button>
+        <button type="button" onClick={() => onSubmit(reason, note)} className="btn btn-no btn-sm whitespace-normal h-auto min-h-[30px]">Reject</button>
       </div>
     </div>
   );
