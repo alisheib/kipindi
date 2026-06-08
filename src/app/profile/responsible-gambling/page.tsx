@@ -145,7 +145,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
               name="period"
               aria-label="Cooling-off period"
               title="Cooling-off period"
-              className="h-10 px-3 rounded-md border border-border bg-bg-overlay text-text text-[13px] focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
+              className="h-11 px-3 rounded-lg border border-border bg-[var(--bg-inset)] font-mono text-[16px] text-text focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
             >
               {COOLING_OFF_OPTIONS.map((o) => (
                 <option key={o.id} value={o.id}>{o.label} · {o.sw}</option>
@@ -188,7 +188,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
               name="period"
               aria-label="Self-exclusion period"
               title="Self-exclusion period"
-              className="h-10 px-3 rounded-md border border-border bg-bg-overlay text-text text-[13px] focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
+              className="h-11 px-3 rounded-lg border border-border bg-[var(--bg-inset)] font-mono text-[16px] text-text focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
             >
               {SELF_EXCLUSION_OPTIONS.map((o) => (
                 <option key={o.id} value={o.id}>{o.label} · {o.sw}</option>
@@ -230,7 +230,7 @@ function Field({
         step={step}
         defaultValue={defaultValue ?? ""}
         placeholder={placeholder}
-        className="w-full h-10 px-3 rounded-md border border-border bg-bg-overlay font-mono text-[13px] tabular-nums text-text focus:outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 transition-colors"
+        className="w-full w-full h-11 px-3 rounded-lg border border-border bg-[var(--bg-inset)] font-mono text-[16px] tabular-nums text-text focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
       />
     </label>
   );

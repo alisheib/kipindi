@@ -197,7 +197,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
               maxLength={500}
               defaultValue={existing?.declaredOther ?? ""}
               placeholder="Describe the source of funds in your own words"
-              className="w-full p-3 rounded-md border border-border bg-bg-overlay text-text text-[13px] focus:outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 transition-colors"
+              className="w-full p-3 rounded-md border border-border bg-bg-overlay text-text text-[13px] focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
             />
           </div>
 
@@ -244,7 +244,7 @@ function Field({
         maxLength={maxLength}
         defaultValue={defaultValue}
         placeholder={placeholder}
-        className="w-full h-10 px-3 rounded-md border border-border bg-bg-overlay text-text text-[13px] focus:outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 transition-colors"
+        className="w-full h-10 px-3 rounded-md border border-border bg-bg-overlay text-text text-[13px] focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
       />
     </label>
   );

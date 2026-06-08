@@ -1,14 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { logout } from "@/lib/server/auth-service";
 
-// Resolve the redirect base from the incoming request itself so we never
-// fall back to `localhost` in production if NEXT_PUBLIC_APP_URL drops or
-// is misconfigured on the host. NextRequest exposes the resolved URL
-// (including any reverse-proxy / Railway-edge rewrites), which is the
-// only ground truth at runtime.
+const COOKIE_NAME = "kp_session";
+
 async function redirectHome(req: NextRequest) {
   await logout();
-  return NextResponse.redirect(new URL("/", req.url));
+  const res = NextResponse.redirect(new URL("/", req.url));
+  // Explicitly clear the session cookie on the redirect response.
+  // cookies().delete() inside destroySession sets the cookie on the
+  // *implicit* response, but Route Handler redirects create a NEW
+  // response object — the delete doesn't carry over. Belt-and-braces:
+  // clear it on the actual response that reaches the browser.
+  res.cookies.set(COOKIE_NAME, "", { path: "/", maxAge: 0 });
+  return res;
 }
 
 export async function POST(req: NextRequest) {
@@ -16,6 +20,5 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  // Convenience for non-JS browsers / direct nav
   return redirectHome(req);
 }
