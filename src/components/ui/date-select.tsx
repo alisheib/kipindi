@@ -132,7 +132,7 @@ export function DateSelect({
 
   const minParsed = min ? parseIso(min) : null;
   const maxParsed = max ? parseIso(max) : null;
-  const minYear = minParsed?.y ?? 1930;
+  const minYear = minParsed?.y ?? 1900;
   const maxYear = maxParsed?.y ?? new Date().getFullYear();
 
   // Commit a parsed date
@@ -158,6 +158,10 @@ export function DateSelect({
       commit(p);
     } else {
       setInvalid(true);
+      // Clear the hidden input so a stale valid value doesn't get
+      // submitted while the field shows a red "invalid" state.
+      if (!controlled) setInternal("");
+      onChange?.("");
     }
   };
 
