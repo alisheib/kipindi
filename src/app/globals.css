@@ -1574,6 +1574,10 @@ html.kp-reduce-motion *::after {
   -webkit-user-select: none;
   user-select: none;
 }
+/* overflow: visible lets the line's end-dot and hover crosshair render past
+   the chart bounds. The parent wrapper MUST have overflow: hidden to prevent
+   page-wide horizontal overflow on Android. */
+.pchart { overflow: hidden; }
 .pchart svg { display: block; width: 100%; height: auto; overflow: visible; }
 
 /* Background gridlines — quiet royal hairlines */
@@ -1658,7 +1662,7 @@ html.kp-reduce-motion *::after {
    2 · Micro sparkline (card variant of the chart)
    --------------------------------------------------------------------------- */
 
-.spark { display: inline-block; line-height: 0; }
+.spark { display: inline-block; line-height: 0; overflow: hidden; }
 .spark svg { display: block; overflow: visible; }
 .spark-line { fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
 .spark-line-yes { stroke: var(--yes-400); }
