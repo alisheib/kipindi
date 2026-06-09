@@ -87,6 +87,28 @@ const SUBMIT_POLL_TOOL = {
   },
 };
 
+/** Per-category "hot topic" steering so every category yields strong, current,
+ *  debate-worthy markets — not weak or obvious ones. These are prompts to think
+ *  along, NOT facts to assert; with web search on the model confirms specifics. */
+const CATEGORY_GUIDANCE: Record<string, string> = {
+  sports:
+    "Tanzanian Premier League title + relegation race (Simba SC, Young Africans/Yanga, Azam FC), CAF Champions League / Confederation Cup ties involving Tanzanian clubs, Taifa Stars / Serengeti Boys fixtures and AFCON 2027 (co-hosted by Tanzania, Kenya, Uganda) preparations, plus marquee global fixtures (Premier League title & top-4, UEFA Champions League, NBA Finals, F1 championship) when timely.",
+  macro:
+    "Bank of Tanzania policy/CBR rate decisions, TZS/USD exchange-rate thresholds, year-on-year inflation prints (NBS), quarterly GDP growth, tourist-arrival records, EWURA fuel-price caps, and DSE all-share index levels.",
+  weather:
+    "TMA seasonal forecasts and monthly rainfall totals for Dar es Salaam, Dodoma, Arusha, Mwanza and the Masika / Vuli rains; El Niño / La Niña effects; Kilimanjaro and coastal anomalies.",
+  crypto:
+    "Bitcoin and Ethereum price thresholds by a dated close (CoinGecko/CoinMarketCap), major network upgrades, ETF flows, and Tanzanian/African crypto-regulation milestones.",
+  culture:
+    "Bongo Flava — Diamond Platnumz, Harmonize, Zuchu, Rayvanny — album drops, awards (Tanzania Music Awards, AFRIMMA), record streaming or YouTube milestones; Fiesta tour, Sauti za Busara, Swahili film (AMVCA), and Miss Tanzania.",
+  infrastructure:
+    "SGR (Standard Gauge Railway) phase openings Dar–Morogoro–Dodoma–Tabora–Mwanza, Julius Nyerere Hydropower (JNHPP) units coming online, DART/BRT bus phases, JNIA Terminal upgrades, Bagamoyo & Dar port expansion, and major bridge/road commissionings.",
+  tech:
+    "Tanzania's digital economy — mobile-money milestones and interoperability (M-Pesa, Airtel Money, Mixx by Yas/Tigo, HaloPesa), TCRA spectrum/5G rollouts, Starlink and satellite-internet availability, the 2Africa / EASSy subsea cables, fintech & startup funding rounds, data-centre launches, NIDA/e-government digital ID, and AI adoption by banks/telcos.",
+  other:
+    "A genuinely interesting, verifiable real-world event with broad public interest in Tanzania that doesn't fit the other categories.",
+};
+
 function buildSystemPrompt(opts: {
   nowIso: string;
   minLeadHours: number;
@@ -95,23 +117,29 @@ function buildSystemPrompt(opts: {
 }): string {
   const earliest = new Date(Date.now() + opts.minLeadHours * 3_600_000).toISOString();
   const latest = new Date(Date.now() + opts.maxLeadDays * 86_400_000).toISOString();
-  return `You are the 50pick poll generator — a Tanzania-licensed pari-mutuel prediction-market platform.
+  return `You are the 50pick poll generator — the sharpest prediction-market question writer in Tanzania, working for a GBT-licensed pari-mutuel platform.
 
-Your job: generate ONE high-quality YES/NO prediction-market question for the given category, then submit it by calling the submit_poll tool.
+Your job: generate ONE excellent YES/NO prediction-market question for the given category, then submit it by calling the submit_poll tool.
 
 CURRENT DATE/TIME (authoritative — trust this over your own sense of "now"): ${opts.nowIso}
 
+WHAT MAKES A GREAT 50pick MARKET (aim for ALL of these):
+- HOT & topical: tied to a real, named, upcoming event people are already talking about. No vague or evergreen filler.
+- GENUINELY UNCERTAIN: the outcome should be a real coin-flip-ish debate, not near-certain either way — that's what makes both YES and NO attract money.
+- CRISP & SPECIFIC: a named subject, a concrete threshold/condition, and a precise resolution moment. Avoid "soon", "a lot", "significantly".
+- CLEANLY RESOLVABLE: one authoritative public source settles it with zero ambiguity.
+
 HARD RULES:
 1. The question MUST have a clear, binary YES/NO outcome.
-2. The event MUST still be genuinely open right now — it must NOT have already happened or already been decided. ${opts.webSearch ? "Use web search to confirm the event is still upcoming and unresolved." : "Be conservative: if you are not certain an event is still in the future, do not use it."}
+2. The event MUST still be genuinely open right now — it must NOT have already happened or been decided. ${opts.webSearch ? "Use web search to confirm the event is real, still upcoming, and unresolved, and to pin down exact names, dates and figures." : "Be conservative: if you are not certain an event is still in the future, do not use it."}
 3. resolutionAt MUST be between ${earliest} and ${latest} (i.e. ${opts.minLeadHours}h to ${opts.maxLeadDays}d from now). Never a past date.
 4. resolutionCriterion MUST name a specific, publicly verifiable source (official body, regulator, data provider, or major news agency) and the exact condition for a YES.
 5. Provide at least one REAL, reachable source URL. ${opts.webSearch ? "Only use URLs you actually found via web search — never invent one." : "Only cite well-known official domains you are confident exist."}
 6. NEVER generate questions about: politics, elections, religion, violence, war, adult content, or the death/health of any individual. These are banned under the GBT license.
-7. Prefer Tanzania and East Africa topics. Global topics are fine for crypto, weather, and major world sport.
-8. titleEn under 200 characters. Always include titleSw (Kiswahili).
-9. options MUST be exactly two: a "YES" and a "NO", each with a short description.
-10. Set confidence 0-100 honestly based on how clear and resolvable the question is.
+7. Anchor in Tanzania / East Africa wherever possible. Global topics are welcome for crypto, weather, and major world sport.
+8. titleEn under 200 characters. Always include a natural, fluent titleSw (Kiswahili) — translate the meaning, don't transliterate.
+9. options MUST be exactly two — "YES" and "NO" — each with a short, concrete description of what that outcome means.
+10. Set confidence 0-100 honestly: how clean, unambiguous and well-sourced is the resolution? Lower it if the source or condition is fuzzy.
 
 Call submit_poll exactly once with the finished poll. Do not write any prose outside the tool call.`;
 }
@@ -131,9 +159,10 @@ export class ClaudeProvider implements AIProvider {
     const category = VALID_CATEGORIES.includes(req.category) ? req.category : "other";
     const nowIso = new Date().toISOString();
 
+    const guidance = CATEGORY_GUIDANCE[category] ?? CATEGORY_GUIDANCE.other;
     const userPrompt = req.prompt
-      ? `Generate a ${category} prediction market. Additional guidance: ${req.prompt}`
-      : `Generate a fresh, timely ${category} prediction-market question relevant to Tanzania or East Africa (global topics are fine for crypto, weather, and major world sport). It must be about an event that is still upcoming as of ${nowIso}.`;
+      ? `Generate a HOT ${category} prediction market. Steer toward: ${guidance}\n\nAdditional operator guidance (takes priority): ${req.prompt}`
+      : `Generate a fresh, HOT, genuinely-uncertain ${category} prediction-market question, anchored in Tanzania / East Africa (global topics are fine for crypto, weather, and major world sport). It must be about a real event still upcoming as of ${nowIso}.\n\nGood angles for this category: ${guidance}`;
 
     try {
       const client = new Anthropic({ apiKey: this.apiKey });

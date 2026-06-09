@@ -27,6 +27,7 @@ const CATEGORIES = [
   { id: "crypto", label: "Crypto" },
   { id: "culture", label: "Culture" },
   { id: "infrastructure", label: "Infrastructure" },
+  { id: "tech", label: "Tech" },
 ] as const;
 
 export function GenerateForm() {
@@ -235,7 +236,8 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
           onClick={() => { const v = !webSearch; setWebSearch(v); save({ webSearchEnabled: v }); }}
           disabled={pending}
           role="switch"
-          aria-checked={webSearch}
+          aria-label="Toggle live web search grounding"
+          aria-checked={webSearch ? "true" : "false"}
           className={`relative shrink-0 ml-3 h-6 w-11 rounded-full transition-colors ${webSearch ? "bg-[var(--brand-500)]" : "bg-bg-inset border border-border"}`}
         >
           <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${webSearch ? "translate-x-[22px]" : "translate-x-0.5"}`} />
