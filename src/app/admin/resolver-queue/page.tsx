@@ -1,4 +1,5 @@
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
+import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { EmptyState } from "@/components/ui/empty-state";
 import { I } from "@/components/ui/glyphs";
 import { Select } from "@/components/ui/select";
@@ -34,7 +35,7 @@ function timeUntil(iso: string): { label: string; tone: "default" | "soon" | "ov
 export default async function ResolverQueuePage({
   searchParams,
 }: {
-  searchParams: Promise<{ window?: string; category?: string; q?: string }>;
+  searchParams: Promise<{ window?: string; category?: string; q?: string; page?: string }>;
 }) {
   seedDemoMarkets();
   const sp = await searchParams;
@@ -59,6 +60,10 @@ export default async function ResolverQueuePage({
     return true;
   }).sort((a, b) => Date.parse(a.resolutionAt) - Date.parse(b.resolutionAt));
 
+  // Paginate
+  const page = parsePage(sp.page, pending.length);
+  const paged = pending.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const baseHref = buildBaseHref("/admin/resolver-queue", { window: sp.window, category: sp.category, q: sp.q });
   const hasFilter = windowFilter !== "24h" || !!categoryFilter || !!query;
 
   return (
@@ -105,7 +110,7 @@ export default async function ResolverQueuePage({
           />
         ) : (
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-            {pending.map((m) => {
+            {paged.map((m) => {
               const t = timeUntil(m.resolutionAt);
               const yes = impliedYesPct(m);
               const stage1 = !!m.resolutionStage1By;
@@ -182,6 +187,7 @@ export default async function ResolverQueuePage({
             })}
           </div>
         )}
+        <AdminPagination total={pending.length} page={page} baseHref={baseHref} />
       </div>
     </>
   );
