@@ -20,7 +20,10 @@
 
 import { randomId } from "./crypto";
 import { audit } from "./audit";
-import { getAIProvider, type AIPollGeneration, type AIProviderResponse, type GenerateRequest } from "./ai-provider";
+import { getAIProvider, type AIPollGeneration, type AIProviderResponse } from "./ai-provider";
+import { getAIPollConfig } from "./ai-poll-config";
+import { listMarkets } from "./market-service";
+import { listSources, seedDefaultSources } from "./source-registry";
 
 /* ─── Types ─── */
 
@@ -39,6 +42,8 @@ export type FilterReason =
   | "empty_criterion"
   | "invalid_date"
   | "past_date"
+  | "resolution_too_soon"
+  | "resolution_too_far"
   | "no_options"
   | "duplicate_options"
   | "too_few_options"
@@ -119,7 +124,6 @@ const VALID_CATEGORIES = new Set(["sports", "macro", "weather", "crypto", "cultu
 const BANNED_CATEGORIES = new Set(["politics", "religion", "adult", "violence"]);
 const MAX_TITLE_LENGTH = 200;
 const MAX_CRITERION_LENGTH = 1000;
-const MIN_CONFIDENCE_THRESHOLD = 50;
 const CONFIDENCE_AUTO_APPROVE_HINT = 85; // shows green in UI, admin still must approve
 
 /* ─── Sanitisation ─── */
@@ -147,6 +151,32 @@ function isValidDate(dateStr: string): boolean {
   if (!dateStr) return false;
   const d = new Date(dateStr);
   return !isNaN(d.getTime());
+}
+
+/** Fingerprint a title for duplicate detection: lower-case, strip everything
+ *  but letters/digits/spaces, collapse runs of whitespace. So "Will Simba SC
+ *  win?" and "will simba sc win" collapse to the same key. */
+function normaliseTitle(s: string): string {
+  return (s ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Is this URL's host on the operator's enabled trusted-source registry (any
+ *  category)? Soft accuracy signal only — the officer curates the registry. */
+function isOnTrustedRegistry(url: string): boolean {
+  let host: string;
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  seedDefaultSources();
+  return listSources({ enabledOnly: true }).some(
+    (src) => host === src.domain || host.endsWith(`.${src.domain}`),
+  );
 }
 
 /* ─── Validation + filtering ─── */
@@ -214,15 +244,30 @@ function validateAndFilter(gen: AIPollGeneration | null | undefined, rawResponse
     quality.push({ label: "Resolution criterion", score: 90, status: "good" });
   }
 
-  // Date validation
+  // Date validation — must be a valid date, in the future, and inside the
+  // operator-configured lead-time window (not resolving in an hour, not in
+  // three years). This is the core "never an expired poll" guarantee.
+  const cfg = getAIPollConfig();
   if (!isValidDate(sanitised.resolutionAt)) {
     reasons.push("invalid_date");
     quality.push({ label: "Resolution date", score: 0, status: "bad" });
-  } else if (new Date(sanitised.resolutionAt).getTime() < Date.now()) {
-    reasons.push("past_date");
-    quality.push({ label: "Resolution date", score: 10, status: "bad" });
   } else {
-    quality.push({ label: "Resolution date", score: 100, status: "good" });
+    const resTime = new Date(sanitised.resolutionAt).getTime();
+    const now = Date.now();
+    const minTime = now + cfg.minLeadTimeHours * 3_600_000;
+    const maxTime = now + cfg.maxLeadTimeDays * 86_400_000;
+    if (resTime < now) {
+      reasons.push("past_date");
+      quality.push({ label: "Resolution date (in the past)", score: 0, status: "bad" });
+    } else if (resTime < minTime) {
+      reasons.push("resolution_too_soon");
+      quality.push({ label: `Resolution date (under ${cfg.minLeadTimeHours}h away)`, score: 15, status: "bad" });
+    } else if (resTime > maxTime) {
+      reasons.push("resolution_too_far");
+      quality.push({ label: `Resolution date (over ${cfg.maxLeadTimeDays}d away)`, score: 35, status: "warning" });
+    } else {
+      quality.push({ label: "Resolution date", score: 100, status: "good" });
+    }
   }
 
   // Options validation
@@ -269,14 +314,23 @@ function validateAndFilter(gen: AIPollGeneration | null | undefined, rawResponse
   } else {
     sanitised.sources = validSources;
     quality.push({ label: "Sources", score: Math.min(100, validSources.length * 50), status: validSources.length >= 2 ? "good" : "warning" });
+    // Trusted-source signal — soft (officer curates the registry). A source on
+    // the operator's enabled trusted-source list is a strong accuracy signal;
+    // an unknown domain is a flag to scrutinise, not an automatic reject.
+    const trustedCount = validSources.filter((s) => isOnTrustedRegistry(s.url)).length;
+    quality.push({
+      label: trustedCount > 0 ? "Trusted source" : "Source not on trusted registry",
+      score: trustedCount > 0 ? 100 : 45,
+      status: trustedCount > 0 ? "good" : "warning",
+    });
   }
 
   // Invalid source URLs in original
   const badUrls = (gen.sources ?? []).filter((s) => !isValidUrl(s.url));
   if (badUrls.length > 0) reasons.push("invalid_source_url");
 
-  // Confidence
-  if (sanitised.confidence < MIN_CONFIDENCE_THRESHOLD) {
+  // Confidence — threshold is operator-controlled (stricter = fewer, cleaner polls).
+  if (sanitised.confidence < cfg.minConfidence) {
     reasons.push("low_confidence");
     quality.push({ label: "AI confidence", score: sanitised.confidence, status: "bad" });
   } else {
@@ -287,24 +341,51 @@ function validateAndFilter(gen: AIPollGeneration | null | undefined, rawResponse
     });
   }
 
-  // Duplicate check against existing polls
-  for (const existing of polls.values()) {
-    if (
-      existing.state !== "VALIDATION_FAILED" &&
-      existing.state !== "FILTERED" &&
-      existing.state !== "REJECTED" &&
-      existing.titleEn.toLowerCase() === sanitised.titleEn.toLowerCase()
-    ) {
+  // Duplicate check — normalised (case / punctuation / whitespace insensitive)
+  // against both prior polls (still in play) AND already-live markets, so the
+  // board never carries two near-identical questions.
+  const fingerprint = normaliseTitle(sanitised.titleEn);
+  if (fingerprint) {
+    const dupPoll = Array.from(polls.values()).some(
+      (existing) =>
+        existing.state !== "VALIDATION_FAILED" &&
+        existing.state !== "FILTERED" &&
+        existing.state !== "REJECTED" &&
+        normaliseTitle(existing.titleEn) === fingerprint,
+    );
+    const dupMarket = !dupPoll && listMarkets().some((m) => normaliseTitle(m.titleEn) === fingerprint);
+    if (dupPoll || dupMarket) {
       reasons.push("duplicate_poll");
-      quality.push({ label: "Uniqueness (duplicate detected)", score: 0, status: "bad" });
-      break;
+      quality.push({
+        label: dupMarket ? "Uniqueness (duplicates a live market)" : "Uniqueness (duplicate detected)",
+        score: 0,
+        status: "bad",
+      });
     }
   }
 
-  // Calculate overall quality
-  const hardFails = reasons.filter((r) =>
-    ["empty_title", "malformed_response", "banned_category", "null_bytes", "xss_detected"].includes(r)
-  );
+  // Calculate overall quality. Hard fails can NEVER reach review regardless
+  // of how the other indicators score — these are integrity / policy / "this
+  // poll is unbettable" violations. Expired or too-soon dates are hard fails:
+  // a poll that has already resolved or resolves in minutes must never list.
+  const HARD_FAIL_REASONS: FilterReason[] = [
+    "empty_title",
+    "empty_criterion",
+    "malformed_response",
+    "banned_category",
+    "null_bytes",
+    "xss_detected",
+    "invalid_date",
+    "past_date",
+    "resolution_too_soon",
+    "resolution_too_far",
+    "no_options",
+    "too_few_options",
+    "no_sources",
+    "duplicate_poll",
+    "low_confidence",
+  ];
+  const hardFails = reasons.filter((r) => HARD_FAIL_REASONS.includes(r));
   const overallQuality = hardFails.length > 0
     ? 0
     : quality.length > 0
@@ -504,6 +585,77 @@ function copyGenerationToPoll(poll: StoredAIPoll, gen: AIPollGeneration) {
   poll.sources = gen.sources;
   poll.confidence = gen.confidence;
   poll.reasoning = gen.reasoning;
+}
+
+const BATCH_CATEGORIES = ["sports", "macro", "weather", "crypto", "culture", "infrastructure"];
+
+/**
+ * Generate a batch of polls in one operator action. Count is clamped to the
+ * configured `maxBatchPerRun` ceiling (runaway / accidental-100k-burn guard).
+ * Runs sequentially so in-batch duplicates are caught (each poll sees the ones
+ * generated before it) and the API isn't hammered in parallel.
+ */
+export async function generateAIPollBatch(opts: {
+  count: number;
+  categories?: string[];
+  prompt?: string;
+  actorId: string;
+}): Promise<{ generated: StoredAIPoll[]; summary: Record<AIPollState, number> }> {
+  const cfg = getAIPollConfig();
+  const requested = Number.isFinite(opts.count) ? Math.floor(opts.count) : 1;
+  const n = Math.max(1, Math.min(cfg.maxBatchPerRun, requested));
+  const cats = opts.categories && opts.categories.length > 0 ? opts.categories : BATCH_CATEGORIES;
+
+  audit({
+    category: "ADMIN",
+    action: "aipoll.batch_started",
+    actorId: opts.actorId,
+    targetType: "AIPoll",
+    targetId: "batch",
+    payload: { requested, clampedTo: n, categories: cats },
+  });
+
+  const generated: StoredAIPoll[] = [];
+  const summary: Record<AIPollState, number> = {
+    GENERATING: 0, VALIDATION_FAILED: 0, FILTERED: 0,
+    PENDING_REVIEW: 0, EDITING: 0, APPROVED: 0, REJECTED: 0, PUBLISHED: 0,
+  };
+  for (let i = 0; i < n; i++) {
+    const category = cats[i % cats.length];
+    const poll = await generateAIPoll({ category, prompt: opts.prompt, actorId: opts.actorId });
+    generated.push(poll);
+    summary[poll.state]++;
+  }
+  return { generated, summary };
+}
+
+/** Progress toward today's poll target — drives the admin KPI + "batch to
+ *  target" button. "Today" is UTC-day based on createdAt. */
+export function aiPollDailyProgress(): {
+  target: number;
+  createdToday: number;
+  reachedReviewToday: number;
+  publishedToday: number;
+  remaining: number;
+} {
+  const cfg = getAIPollConfig();
+  const today = new Date().toISOString().slice(0, 10);
+  let createdToday = 0;
+  let reachedReviewToday = 0;
+  let publishedToday = 0;
+  for (const p of polls.values()) {
+    if (p.createdAt.slice(0, 10) !== today) continue;
+    createdToday++;
+    if (["PENDING_REVIEW", "EDITING", "APPROVED", "PUBLISHED"].includes(p.state)) reachedReviewToday++;
+    if (p.state === "PUBLISHED") publishedToday++;
+  }
+  return {
+    target: cfg.dailyTarget,
+    createdToday,
+    reachedReviewToday,
+    publishedToday,
+    remaining: Math.max(0, cfg.dailyTarget - publishedToday),
+  };
 }
 
 /** Admin approves a PENDING_REVIEW poll. */

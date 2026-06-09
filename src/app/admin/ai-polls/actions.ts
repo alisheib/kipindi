@@ -7,6 +7,7 @@ import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import {
   generateAIPoll,
+  generateAIPollBatch,
   approveAIPoll,
   rejectAIPoll,
   editAIPoll,
@@ -16,6 +17,7 @@ import {
   getAIPoll,
   type FilterReason,
 } from "@/lib/server/ai-poll-generation";
+import { updateAIPollConfig } from "@/lib/server/ai-poll-config";
 import {
   ingestCandidate,
   filterCandidate,
@@ -64,6 +66,55 @@ export async function generatePollAction(formData: FormData) {
 
   revalidatePath("/admin/ai-polls");
   return { ok: true as const, poll };
+}
+
+/* ─── Generate batch ─── */
+
+export async function generatePollBatchAction(formData: FormData) {
+  const officerId = await requireAdmin("generatePollBatchAction");
+  const count = Number(formData.get("count") ?? "3");
+  const prompt = String(formData.get("prompt") ?? "");
+  const catsRaw = String(formData.get("categories") ?? "");
+  const categories = catsRaw ? catsRaw.split(",").map((c) => c.trim()).filter(Boolean) : undefined;
+
+  const { generated, summary } = await generateAIPollBatch({
+    count,
+    categories,
+    prompt: prompt || undefined,
+    actorId: officerId,
+  });
+
+  revalidatePath("/admin/ai-polls");
+  return { ok: true as const, total: generated.length, summary };
+}
+
+/* ─── Update config ─── */
+
+export async function updatePollConfigAction(formData: FormData) {
+  const officerId = await requireAdmin("updatePollConfigAction");
+
+  const num = (k: string): number | undefined => {
+    if (!formData.has(k)) return undefined;
+    const n = Number(formData.get(k));
+    return Number.isFinite(n) ? n : undefined;
+  };
+
+  const config = updateAIPollConfig(
+    {
+      webSearchEnabled: formData.has("webSearchEnabled")
+        ? formData.get("webSearchEnabled") === "true"
+        : undefined,
+      dailyTarget: num("dailyTarget"),
+      minLeadTimeHours: num("minLeadTimeHours"),
+      maxLeadTimeDays: num("maxLeadTimeDays"),
+      minConfidence: num("minConfidence"),
+      maxBatchPerRun: num("maxBatchPerRun"),
+    },
+    officerId,
+  );
+
+  revalidatePath("/admin/ai-polls");
+  return { ok: true as const, config };
 }
 
 /* ─── Approve ─── */

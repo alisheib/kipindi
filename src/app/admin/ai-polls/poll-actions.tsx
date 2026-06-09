@@ -6,6 +6,8 @@ import { useToast } from "@/components/ui/toast";
 import { Select } from "@/components/ui/select";
 import {
   generatePollAction,
+  generatePollBatchAction,
+  updatePollConfigAction,
   approvePollAction,
   rejectPollAction,
   editPollAction,
@@ -14,6 +16,7 @@ import {
   seedFixturesAction,
 } from "./actions";
 import type { StoredAIPoll, QualityIndicator, FilterReason } from "@/lib/server/ai-poll-generation";
+import type { AIPollConfig } from "@/lib/server/ai-poll-config";
 
 /* ─── Generate form ─── */
 
@@ -105,6 +108,155 @@ export function GenerateForm() {
   );
 }
 
+/* ─── Batch generate ─── */
+
+export function BatchGenerateForm({ maxBatch, remaining }: { maxBatch: number; remaining: number }) {
+  const [pending, start] = useTransition();
+  const suggested = Math.min(maxBatch, Math.max(1, remaining || 3));
+  const [count, setCount] = useState(String(suggested));
+  const [prompt, setPrompt] = useState("");
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const run = () => {
+    start(async () => {
+      const fd = new FormData();
+      fd.set("count", count);
+      fd.set("prompt", prompt);
+      const r = await generatePollBatchAction(fd);
+      if (r.ok) {
+        toast({
+          title: `Batch complete — ${r.total} generated`,
+          description: `${r.summary.PENDING_REVIEW} to review · ${r.summary.FILTERED + r.summary.VALIDATION_FAILED} filtered`,
+          variant: "success",
+        });
+      }
+      router.refresh();
+    });
+  };
+
+  return (
+    <div className="flex flex-wrap items-end gap-3 pt-3 mt-3 border-t border-border/60">
+      <label className="block">
+        <span className="text-[10px] text-text-subtle block mb-1 font-mono uppercase tracking-[0.12em]">
+          Batch count (max {maxBatch})
+        </span>
+        <input
+          type="number"
+          min={1}
+          max={maxBatch}
+          value={count}
+          onChange={(e) => setCount(e.target.value)}
+          className="w-24 rounded-md border border-border bg-bg-overlay px-2 py-1.5 text-[13px] text-text outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
+        />
+      </label>
+      <input
+        type="text"
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        placeholder="Optional guidance applied to every poll in the batch"
+        className="flex-1 min-w-[220px] rounded-md border border-border bg-bg-overlay px-3 py-2 text-[13px] text-text placeholder:text-text-subtle outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
+      />
+      <button
+        type="button"
+        onClick={run}
+        disabled={pending}
+        className="btn btn-ghost btn-sm rounded-pill min-w-[150px]"
+      >
+        {pending ? (
+          <span className="flex items-center gap-2">
+            <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
+            Generating batch…
+          </span>
+        ) : (
+          "Generate batch"
+        )}
+      </button>
+      <span className="text-[11px] text-text-subtle font-mono">
+        Cycles across categories. Each poll runs the full 4-layer pipeline.
+      </span>
+    </div>
+  );
+}
+
+/* ─── Config panel ─── */
+
+export function ConfigPanel({ config }: { config: AIPollConfig }) {
+  const [pending, start] = useTransition();
+  const [webSearch, setWebSearch] = useState(config.webSearchEnabled);
+  const [dailyTarget, setDailyTarget] = useState(String(config.dailyTarget));
+  const [minLead, setMinLead] = useState(String(config.minLeadTimeHours));
+  const [maxLead, setMaxLead] = useState(String(config.maxLeadTimeDays));
+  const [minConf, setMinConf] = useState(String(config.minConfidence));
+  const [maxBatch, setMaxBatch] = useState(String(config.maxBatchPerRun));
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const save = (override?: Partial<{ webSearchEnabled: boolean }>) => {
+    start(async () => {
+      const fd = new FormData();
+      fd.set("webSearchEnabled", String(override?.webSearchEnabled ?? webSearch));
+      fd.set("dailyTarget", dailyTarget);
+      fd.set("minLeadTimeHours", minLead);
+      fd.set("maxLeadTimeDays", maxLead);
+      fd.set("minConfidence", minConf);
+      fd.set("maxBatchPerRun", maxBatch);
+      const r = await updatePollConfigAction(fd);
+      if (r.ok) toast({ title: "Settings saved", variant: "success" });
+      router.refresh();
+    });
+  };
+
+  const numField = (label: string, hint: string, value: string, set: (v: string) => void) => (
+    <label className="block">
+      <span className="text-[10px] text-text-subtle block mb-1 font-mono uppercase tracking-[0.12em]">{label}</span>
+      <input
+        type="number"
+        value={value}
+        onChange={(e) => set(e.target.value)}
+        className="w-full rounded-md border border-border bg-bg-overlay px-2 py-1.5 text-[13px] text-text outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
+      />
+      <span className="text-[10px] text-text-subtle">{hint}</span>
+    </label>
+  );
+
+  return (
+    <div className="space-y-3">
+      {/* Web search toggle */}
+      <div className="flex items-center justify-between rounded-md border border-border bg-bg-overlay px-3 py-2.5">
+        <div className="min-w-0">
+          <p className="text-[12.5px] font-semibold text-text">Live web search grounding</p>
+          <p className="text-[11px] text-text-subtle leading-snug">
+            Grounds every poll in real current events + real source URLs. Off = the model uses its training memory only.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => { const v = !webSearch; setWebSearch(v); save({ webSearchEnabled: v }); }}
+          disabled={pending}
+          role="switch"
+          aria-checked={webSearch}
+          className={`relative shrink-0 ml-3 h-6 w-11 rounded-full transition-colors ${webSearch ? "bg-[var(--brand-500)]" : "bg-bg-inset border border-border"}`}
+        >
+          <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${webSearch ? "translate-x-[22px]" : "translate-x-0.5"}`} />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+        {numField("Daily target", "Polls/day goal (1–1,000,000)", dailyTarget, setDailyTarget)}
+        {numField("Min confidence", "Floor 0–100 to reach review", minConf, setMinConf)}
+        {numField("Max per batch", "Cap on one batch run", maxBatch, setMaxBatch)}
+        {numField("Min lead time (h)", "Earliest a poll may resolve", minLead, setMinLead)}
+        {numField("Max horizon (d)", "Latest a poll may resolve", maxLead, setMaxLead)}
+      </div>
+
+      <button type="button" onClick={() => save()} disabled={pending} className="btn btn-gold btn-sm rounded-pill min-w-[140px]">
+        {pending ? "Saving…" : "Save settings"}
+      </button>
+    </div>
+  );
+}
+
 /* ─── Quality indicators display ─── */
 
 export function QualityBadges({ indicators, overall }: { indicators: QualityIndicator[]; overall: number }) {
@@ -160,6 +312,8 @@ const REASON_LABELS: Record<string, string> = {
   empty_criterion: "Empty resolution criterion",
   invalid_date: "Invalid resolution date",
   past_date: "Resolution date is in the past",
+  resolution_too_soon: "Resolves too soon (under lead-time floor)",
+  resolution_too_far: "Resolves too far out (over horizon)",
   no_options: "No betting options",
   duplicate_options: "Duplicate options detected",
   too_few_options: "Too few options (need 2+)",

@@ -5,12 +5,16 @@ import {
   listAIPolls,
   countAIPollsByState,
   aiPollSpend,
+  aiPollDailyProgress,
   type StoredAIPoll,
   type AIPollState,
 } from "@/lib/server/ai-poll-generation";
+import { getAIPollConfig } from "@/lib/server/ai-poll-config";
 import { getAIProvider } from "@/lib/server/ai-provider";
 import {
   GenerateForm,
+  BatchGenerateForm,
+  ConfigPanel,
   QualityBadges,
   FilterReasonChips,
   ReviewActions,
@@ -43,6 +47,8 @@ function fmtDate(iso: string) {
 export default function AdminAIPollsPage() {
   const counts = countAIPollsByState();
   const spend = aiPollSpend();
+  const progress = aiPollDailyProgress();
+  const config = getAIPollConfig();
   const pending = listAIPolls({ state: "PENDING_REVIEW" });
   const approved = listAIPolls({ state: "APPROVED" });
   const recent = listAIPolls().slice(0, 40);
@@ -58,17 +64,18 @@ export default function AdminAIPollsPage() {
         {/* KPI strip */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <AdminKpi
+            label="Published today"
+            sw="Zilizochapishwa leo"
+            value={`${progress.publishedToday} / ${progress.target.toLocaleString()}`}
+            delta={progress.remaining > 0 ? `${progress.remaining.toLocaleString()} to target` : "target met"}
+            pulse={progress.remaining > 0}
+          />
+          <AdminKpi
             label="Pending review"
             sw="Inasubiri ukaguzi"
             value={counts.PENDING_REVIEW.toLocaleString()}
             delta={`${counts.GENERATING} generating`}
             pulse={counts.PENDING_REVIEW > 0}
-          />
-          <AdminKpi
-            label="Approved"
-            sw="Yaliyoidhinishwa"
-            value={counts.APPROVED.toLocaleString()}
-            delta={`${counts.PUBLISHED} published`}
           />
           <AdminKpi
             label="Filtered + rejected"
@@ -104,6 +111,21 @@ export default function AdminAIPollsPage() {
             </div>
           </div>
           <GenerateForm />
+          <BatchGenerateForm maxBatch={config.maxBatchPerRun} remaining={progress.remaining} />
+        </AdminCard>
+
+        {/* Controls — operator-tunable generation settings */}
+        <AdminCard>
+          <div className="flex items-center gap-2 mb-3">
+            <I.bot size={16} className="text-royal shrink-0" />
+            <div>
+              <p className="font-display font-semibold text-body-sm text-text">Generation settings</p>
+              <p className="text-caption italic text-text-tertiary">
+                Controls volume, accuracy strictness, and cost. Saved live — no deploy needed.
+              </p>
+            </div>
+          </div>
+          <ConfigPanel config={config} />
         </AdminCard>
 
         {/* Pending review queue */}
