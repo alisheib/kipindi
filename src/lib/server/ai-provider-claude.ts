@@ -12,7 +12,9 @@
  */
 import type { AIProvider, AIProviderResponse, AIPollGeneration, GenerateRequest } from "./ai-provider";
 
-const MODEL = "claude-sonnet-4-6-20250514";
+// Use Haiku for cost efficiency — polls don't need Sonnet-level reasoning.
+// Haiku 4.5 handles structured JSON output well at ~10x lower cost.
+const MODEL = "claude-haiku-4-5-20251001";
 
 const VALID_CATEGORIES = [
   "sports", "macro", "weather", "crypto", "culture", "infrastructure", "tech", "other",
@@ -118,9 +120,11 @@ export class ClaudeProvider implements AIProvider {
         latencyMs,
       };
     } catch (err) {
+      console.error("[50pick-polls] Claude API error:", err);
       return {
         ok: false,
         error: `Claude API error: ${(err as Error).message}`,
+        rawResponse: String(err),
         tokensUsed: 0,
         costUsd: 0,
         latencyMs: Date.now() - start,
