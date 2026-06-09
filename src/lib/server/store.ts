@@ -140,38 +140,6 @@ export type StoredBet = {
   settledAt: string | null;
 };
 
-export type StoredMapigoRound = {
-  id: string;
-  number: number;
-  status: "OPEN" | "SETTLED";
-  result: "SPIKE" | "DRIFT" | "CALM" | null;
-  pool: number;
-  poolByCall: { SPIKE: number; DRIFT: number; CALM: number };
-  payRate: { SPIKE: number; DRIFT: number; CALM: number };
-  participants: number;
-  startedAt: string;
-  endedAt: string | null;
-  /** Provably-fair: SHA-256 of serverSeed, published when round opens. */
-  serverSeedHash: string | null;
-  /** Provably-fair: revealed only after settle so anyone can verify the commit. */
-  serverSeed: string | null;
-  /** Provably-fair: nonce mixed into the HMAC. */
-  nonce: number;
-};
-
-export type StoredMapigoBet = {
-  id: string;
-  userId: string;
-  roundId: string;
-  call: "SPIKE" | "DRIFT" | "CALM";
-  stake: number;
-  potentialReturn: number;
-  status: "PLACED" | "WON" | "LOST";
-  returnAmount: number | null;
-  placedAt: string;
-  settledAt: string | null;
-};
-
 export type StoredNotification = {
   id: string;
   userId: string;
@@ -304,8 +272,6 @@ declare global {
     txns: Map<string, StoredTxn>;
     responsible: Map<string, StoredResponsibleGambling>;
     bets: Map<string, StoredBet>;
-    mapigoRounds: Map<string, StoredMapigoRound>;
-    mapigoBets: Map<string, StoredMapigoBet>;
     notifications: Map<string, StoredNotification>;
     sourceOfFunds: Map<string, StoredSourceOfFunds>;
     affiliates: Map<string, StoredAffiliateAccount>;
@@ -325,8 +291,6 @@ const store = globalThis.__50PICK_STORE ?? (globalThis.__50PICK_STORE = {
   txns: new Map(),
   responsible: new Map(),
   bets: new Map(),
-  mapigoRounds: new Map(),
-  mapigoBets: new Map(),
   notifications: new Map(),
   sourceOfFunds: new Map(),
   affiliates: new Map(),
@@ -336,13 +300,11 @@ const store = globalThis.__50PICK_STORE ?? (globalThis.__50PICK_STORE = {
 });
 
 // Hot-reload safety: if a previous build created the global without the newer maps,
-// add them now. Without this, server-action calls into bets/mapigo crash with
+// add them now. Without this, server-action calls into bets crash with
 // "Cannot read properties of undefined" because the cached global is stale.
 if (!store.usersByPhone)  store.usersByPhone = new Map();
 if (!store.walletsByUser) store.walletsByUser = new Map();
 if (!store.bets)          store.bets = new Map();
-if (!store.mapigoRounds)  store.mapigoRounds = new Map();
-if (!store.mapigoBets)    store.mapigoBets = new Map();
 if (!store.notifications) store.notifications = new Map();
 if (!store.sourceOfFunds) store.sourceOfFunds = new Map();
 if (!store.affiliates)      store.affiliates = new Map();
@@ -485,33 +447,6 @@ export const db = {
       if (!b) return null;
       const next = { ...b, ...patch };
       store.bets.set(id, next);
-      tap();
-      return next;
-    },
-  },
-  mapigoRound: {
-    create: (r: StoredMapigoRound) => { store.mapigoRounds.set(r.id, r); tap(); return r; },
-    findById: (id: string) => store.mapigoRounds.get(id) ?? null,
-    listOpen: () => Array.from(store.mapigoRounds.values()).filter((r) => r.status === "OPEN"),
-    list: (limit = 20) => Array.from(store.mapigoRounds.values()).sort((a, b) => b.number - a.number).slice(0, limit),
-    update: (id: string, patch: Partial<StoredMapigoRound>) => {
-      const r = store.mapigoRounds.get(id);
-      if (!r) return null;
-      const next = { ...r, ...patch };
-      store.mapigoRounds.set(id, next);
-      tap();
-      return next;
-    },
-  },
-  mapigoBet: {
-    create: (b: StoredMapigoBet) => { store.mapigoBets.set(b.id, b); tap(); return b; },
-    findByUser: (userId: string, limit = 50) => Array.from(store.mapigoBets.values()).filter((b) => b.userId === userId).sort((a, b) => b.placedAt.localeCompare(a.placedAt)).slice(0, limit),
-    findByRound: (roundId: string) => Array.from(store.mapigoBets.values()).filter((b) => b.roundId === roundId),
-    update: (id: string, patch: Partial<StoredMapigoBet>) => {
-      const b = store.mapigoBets.get(id);
-      if (!b) return null;
-      const next = { ...b, ...patch };
-      store.mapigoBets.set(id, next);
       tap();
       return next;
     },

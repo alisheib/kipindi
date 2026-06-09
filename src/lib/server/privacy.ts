@@ -102,7 +102,6 @@ export function buildDsarBundle(userId: string): Record<string, unknown> | null 
   const wallet = db.wallet.findByUserId(userId);
   const txns = db.txn.findByUser(userId, 10_000);
   const bets = db.bet.findByUser(userId, 10_000);
-  const mapigoBets = db.mapigoBet.findByUser(userId, 10_000);
   const kyc = db.kyc.findByUserId(userId);
   const responsible = db.responsible.get(userId);
   const notifications = db.notification.findByUser(userId, 1000);
@@ -131,7 +130,6 @@ export function buildDsarBundle(userId: string): Record<string, unknown> | null 
     wallet,
     transactions: txns,
     matchBets: bets,
-    mapigoBets,
     kyc,
     responsibleGambling: responsible,
     notificationsCount: notifications.length,

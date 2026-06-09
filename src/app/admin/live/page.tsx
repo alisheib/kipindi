@@ -24,7 +24,6 @@ export const dynamic = "force-dynamic";
 
 export default function AdminLivePage() {
   const liveMatches = (matches as MatchStub[]).filter((m) => m.status === "live");
-  const openRounds = db.mapigoRound.listOpen();
   const ggr = grossGamingRevenue("today");
   const active = activePlayers("today");
   const flow = moneyFlowSeries("today", 24);
@@ -53,7 +52,6 @@ export default function AdminLivePage() {
           <AdminKpi label="Active players · live" sw="Wachezaji hai"   value={active.toLocaleString()} pulse />
           <AdminKpi label="GGR · 24h"             sw="Mapato"           value={`TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`} gold />
           <AdminKpi label="Live matches"           sw="Mechi za moja"    value={liveMatches.length} pulse={liveMatches.length > 0} />
-          <AdminKpi label="Open Mapigo rounds"     sw="Raundi za Mapigo" value={openRounds.length} pulse={openRounds.length > 0} />
         </div>
 
         {/* Active matches */}

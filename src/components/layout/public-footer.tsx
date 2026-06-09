@@ -2,7 +2,7 @@
  * Unified public footer. Visible on every player-facing page.
  * Carries the regulator-required disclosures: 18+ badge, license stub,
  * problem-gambling helpline, GDPR/PDPA rights links, and a link to the
- * provably-fair verifier.
+ * resolution attestation page.
  *
  * LCCP §SR Code 5.1.5 (visible age + RG messaging on every page).
  */
@@ -53,7 +53,7 @@ export function PublicFooter() {
         </FooterCol>
 
         <FooterCol heading="Fairness" sw="Uadilifu">
-          <FooterLink href="/fairness">Provably-fair Mapigo</FooterLink>
+          <FooterLink href="/fairness">Resolution attestation</FooterLink>
           <FooterLink href="/proposals">Propose markets &amp; get paid</FooterLink>
           <FooterLink href="/legal/terms">Game RTP &amp; rules</FooterLink>
           <FooterLink href="/help">Help &amp; support</FooterLink>

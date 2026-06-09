@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { AdminPageHead, AdminKpi, AdminCard, FeedRow } from "@/components/admin/admin-shell";
 import { Avatar } from "@/components/ui/avatar";
 import { Chip } from "@/components/ui/chip";
-import { db, type StoredTxn, type StoredBet, type StoredMapigoBet } from "@/lib/server/store";
+import { db, type StoredTxn, type StoredBet } from "@/lib/server/store";
 import { getAuditForActor, type AuditCategory } from "@/lib/server/audit";
 import { exportUserData } from "@/lib/server/user-service";
 import { I } from "@/components/ui/glyphs";
@@ -49,7 +49,6 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   const data = exportUserData(id);
   const txns = data.transactions as StoredTxn[];
   const bets = data.bets as StoredBet[];
-  const mapigoBets = data.mapigoBets as StoredMapigoBet[];
   const audit = getAuditForActor(id, 200);
 
   const lifetimeStakes = txns.filter((t) => t.type === "BET_PLACED" && t.status === "CONFIRMED").reduce((s, t) => s + Math.abs(t.amount), 0);
@@ -57,8 +56,8 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   const lifetimeDeposits = txns.filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED").reduce((s, t) => s + t.amount, 0);
   const lifetimeWithdrawals = txns.filter((t) => t.type === "WITHDRAWAL" && t.status === "CONFIRMED").reduce((s, t) => s + Math.abs(t.amount), 0);
   const ngr = lifetimeStakes - lifetimePayouts;
-  const betsCount = bets.length + mapigoBets.length;
-  const lastBet = [...bets, ...mapigoBets].sort((a, b) => b.placedAt.localeCompare(a.placedAt))[0]?.placedAt;
+  const betsCount = bets.length;
+  const lastBet = bets.sort((a, b) => b.placedAt.localeCompare(a.placedAt))[0]?.placedAt;
 
   // Risk score — simple proxy: deposit cycling rate, AML hits, late-night sessions, declined cards
   const riskScore = computeRiskScore(txns.length, lifetimeWithdrawals, kyc?.status === "APPROVED");
@@ -126,7 +125,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
           <AdminKpi label="Lifetime deposit"    sw="Jumla ya amana"        value={`TZS ${formatTzsCompact(lifetimeDeposits).replace("TZS ", "")}`} gold delta={wallet ? `wallet ${formatTzs(wallet.balance)}` : "—"} />
           <AdminKpi label="Lifetime withdrawal" sw="Jumla ya utoaji"       value={`TZS ${formatTzsCompact(lifetimeWithdrawals).replace("TZS ", "")}`} delta={`${txns.filter((t) => t.type === "WITHDRAWAL").length} txns`} />
           <AdminKpi label="NGR contribution"    sw="Mchango wa mapato"     value={`TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`} gold delta={`bets ${betsCount}`} />
-          <AdminKpi label="Last bet"            sw="Dau la mwisho"         value={lastBet ? new Date(lastBet).toLocaleDateString("en-GB") : "never"} delta={lastBet ? `${bets.length} match · ${mapigoBets.length} mapigo` : "—"} />
+          <AdminKpi label="Last bet"            sw="Dau la mwisho"         value={lastBet ? new Date(lastBet).toLocaleDateString("en-GB") : "never"} delta={lastBet ? `${bets.length} bets` : "—"} />
         </div>
 
         {/* §C — Tabs */}

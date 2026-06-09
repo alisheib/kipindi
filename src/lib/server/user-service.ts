@@ -22,7 +22,6 @@ export type UserDataExport = {
   wallet: ReturnType<typeof db.wallet.findByUserId>;
   responsibleGambling: ReturnType<typeof db.responsible.get>;
   bets: ReturnType<typeof db.bet.findByUser>;
-  mapigoBets: ReturnType<typeof db.mapigoBet.findByUser>;
   transactions: ReturnType<typeof db.txn.findByUser>;
   auditEntries: AuditEntry[];
 };
@@ -36,7 +35,6 @@ export function exportUserData(userId: string): UserDataExport {
     wallet: db.wallet.findByUserId(userId),
     responsibleGambling: db.responsible.get(userId),
     bets: db.bet.findByUser(userId, 1000),
-    mapigoBets: db.mapigoBet.findByUser(userId, 1000),
     transactions: db.txn.findByUser(userId, 1000),
     auditEntries: getAuditForActor(userId, 1000),
   };
