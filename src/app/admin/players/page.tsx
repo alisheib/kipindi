@@ -1,4 +1,5 @@
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
+import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { Chip } from "@/components/ui/chip";
 import { Avatar } from "@/components/ui/avatar";
 import { Select } from "@/components/ui/select";
@@ -19,10 +20,12 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "danger" | "neutral
   CLOSED: "neutral",
 };
 
-export default async function AdminPlayersPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string }> }) {
+export default async function AdminPlayersPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; sort?: string; dir?: string; page?: string }> }) {
   const sp = await searchParams;
   const query = (sp.q ?? "").trim().toLowerCase();
   const statusFilter = sp.status ?? "";
+  const sortField = (["joined", "login", "balance"] as const).includes(sp.sort as never) ? sp.sort! : "joined";
+  const sortDir = sp.dir === "asc" ? "asc" : "desc";
 
   const all = db.user.list();
   const filtered = all.filter((u) => {
@@ -37,6 +40,26 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
       displayLabel(u).toLowerCase().includes(query)
     );
   });
+
+  // Sort
+  filtered.sort((a, b) => {
+    let cmp = 0;
+    if (sortField === "balance") {
+      const wa = db.wallet.findByUserId(a.id);
+      const wb = db.wallet.findByUserId(b.id);
+      cmp = (wa?.balance ?? 0) - (wb?.balance ?? 0);
+    } else if (sortField === "login") {
+      cmp = (a.lastLoginAt ?? "").localeCompare(b.lastLoginAt ?? "");
+    } else {
+      cmp = a.createdAt.localeCompare(b.createdAt);
+    }
+    return sortDir === "asc" ? cmp : -cmp;
+  });
+
+  // Paginate
+  const page = parsePage(sp.page, filtered.length);
+  const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const baseHref = buildBaseHref("/admin/players", { q: sp.q, status: sp.status, sort: sp.sort, dir: sp.dir });
 
   const counts = {
     total: all.length,
@@ -115,14 +138,14 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                   <th className="text-left p-3">Player</th>
                   <th className="text-left p-3">Phone</th>
                   <th className="text-left p-3">Status</th>
-                  <th className="text-right p-3">Wallet</th>
-                  <th className="text-left p-3">Joined</th>
-                  <th className="text-left p-3">Last login</th>
+                  <SortTh field="balance" label="Wallet" current={sortField} dir={sortDir} align="right" sp={sp} />
+                  <SortTh field="joined" label="Joined" current={sortField} dir={sortDir} sp={sp} />
+                  <SortTh field="login" label="Last login" current={sortField} dir={sortDir} sp={sp} />
                   <th className="text-left p-3">Drill-down</th>
                 </tr>
               </thead>
               <tbody className="text-text-secondary">
-                {filtered.map((u) => {
+                {paged.map((u) => {
                   const wallet = db.wallet.findByUserId(u.id);
                   const label = displayLabel(u);
                   const initials = displayInitials(u);
@@ -159,6 +182,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
               </tbody>
             </table>
           </div>
+          <AdminPagination total={filtered.length} page={page} baseHref={baseHref} />
         </AdminCard>
 
         <AdminCard className="border-info-border bg-info-bg/15">
@@ -169,5 +193,23 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
         </AdminCard>
       </div>
     </>
+  );
+}
+
+function SortTh({ field, label, current, dir, align, sp }: { field: string; label: string; current: string; dir: string; align?: string; sp: Record<string, string | undefined> }) {
+  const isActive = current === field;
+  const nextDir = isActive && dir === "desc" ? "asc" : "desc";
+  const params = new URLSearchParams();
+  if (sp.q) params.set("q", sp.q);
+  if (sp.status) params.set("status", sp.status);
+  params.set("sort", field);
+  params.set("dir", nextDir);
+  return (
+    <th className={`${align === "right" ? "text-right" : "text-left"} p-3`}>
+      <a href={`/admin/players?${params.toString()}`} className={`inline-flex items-center gap-1 hover:text-text ${isActive ? "text-text" : ""}`}>
+        {label}
+        {isActive && <span className="text-brand-300">{dir === "asc" ? "↑" : "↓"}</span>}
+      </a>
+    </th>
   );
 }

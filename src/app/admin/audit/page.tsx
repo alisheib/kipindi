@@ -1,4 +1,5 @@
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
+import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { GenerateButton } from "../reports/generate-button";
 import { getAuditPage, verifyChain, type AuditCategory } from "@/lib/server/audit";
 import { MarketStats, type Stat } from "@/components/markets/market-stats";
@@ -24,7 +25,7 @@ const CAT_VARIANT: Record<AuditCategory, "yes" | "no" | "live" | "resolved" | "p
 export default async function AdminAuditPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string; actorId?: string }>;
+  searchParams: Promise<{ category?: string; actorId?: string; page?: string }>;
 }) {
   const sp = await searchParams;
   // Validate against the closed CATEGORIES set so a stray ?category=BOGUS
@@ -38,8 +39,11 @@ export default async function AdminAuditPage({
   // actorId: shape-check (usr_…) so the panel doesn't try to render a
   // hostile string back into the page.
   const actorId = typeof sp.actorId === "string" && /^[a-zA-Z0-9_]{4,40}$/.test(sp.actorId) ? sp.actorId : undefined;
-  const entries = getAuditPage({ limit: 500, category, actorId });
+  const allFiltered = getAuditPage({ limit: 100_000, category, actorId });
   const allEntries = getAuditPage({ limit: 100_000 });
+  const page = parsePage(sp.page, allFiltered.length);
+  const entries = allFiltered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const baseHref = buildBaseHref("/admin/audit", { category: sp.category, actorId: sp.actorId });
   const chain = verifyChain();
 
   // KPI stats — last 24h activity by category
@@ -80,7 +84,7 @@ export default async function AdminAuditPage({
             </span>
           )}
           <span className="ml-auto font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
-            {entries.length} entries
+            {allFiltered.length.toLocaleString()} entries
           </span>
         </div>
         {invalidCategory && (
@@ -136,6 +140,7 @@ export default async function AdminAuditPage({
               </tbody>
             </table>
           </div>
+          <AdminPagination total={allFiltered.length} page={page} baseHref={baseHref} />
         </AdminCard>
       </div>
     </>

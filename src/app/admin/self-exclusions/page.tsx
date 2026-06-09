@@ -1,4 +1,5 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
+import { AdminPagination, PER_PAGE, parsePage } from "@/components/admin/admin-pagination";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { db } from "@/lib/server/store";
@@ -47,8 +48,15 @@ function buildRoster(): RosterRow[] {
   return out.sort((a, b) => a.until.localeCompare(b.until));
 }
 
-export default function AdminSelfExclusionsPage() {
+export default async function AdminSelfExclusionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const sp = await searchParams;
   const roster = buildRoster();
+  const page = parsePage(sp.page, roster.length);
+  const paged = roster.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   const counts = rgRosterCounts();
 
   return (
@@ -92,7 +100,7 @@ export default function AdminSelfExclusionsPage() {
                 </tr>
               </thead>
               <tbody>
-                {roster.map((r) => (
+                {paged.map((r) => (
                   <tr key={r.userId} className="border-b border-border-subtle/40 last:border-b-0">
                     <td className="py-2 pr-3">
                       <a href={`/admin/players/${r.userId}`} className="font-medium text-text hover:text-royal hover:underline">{r.displayName ?? "—"}</a>
@@ -119,6 +127,7 @@ export default function AdminSelfExclusionsPage() {
               </tbody>
             </table>
           </div>
+          <AdminPagination total={roster.length} page={page} baseHref="/admin/self-exclusions" />
         </AdminCard>
 
         <AdminCard className="border-info-border bg-info-bg/15">

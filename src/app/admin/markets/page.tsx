@@ -1,4 +1,5 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
+import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { I } from "@/components/ui/glyphs";
 import { Select } from "@/components/ui/select";
 import Link from "next/link";
@@ -26,7 +27,7 @@ function timeLeftStr(iso: string): string {
 export default async function AdminMarketsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; category?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; category?: string; page?: string }>;
 }) {
   seedDemoMarkets();
   const sp = await searchParams;
@@ -49,6 +50,11 @@ export default async function AdminMarketsPage({
       (m.titleSw ?? "").toLowerCase().includes(query)
     );
   });
+
+  // Paginate
+  const page = parsePage(sp.page, filtered.length);
+  const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const baseHref = buildBaseHref("/admin/markets", { q: sp.q, status: sp.status, category: sp.category });
 
   const live = all.filter((m) => m.status === "LIVE");
   const closed = all.filter((m) => m.status === "CLOSED");
@@ -129,7 +135,7 @@ export default async function AdminMarketsPage({
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((m) => {
+                {paged.map((m) => {
                   const yes = impliedYesPct(m);
                   return (
                     <tr key={m.id} className="border-b border-border last:border-b-0 align-top">
@@ -170,6 +176,7 @@ export default async function AdminMarketsPage({
               </tbody>
             </table>
           </div>
+          <AdminPagination total={filtered.length} page={page} baseHref={baseHref} />
         </AdminCard>
       </div>
     </>

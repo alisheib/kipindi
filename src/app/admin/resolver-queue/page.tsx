@@ -1,7 +1,8 @@
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { EmptyState } from "@/components/ui/empty-state";
 import { I } from "@/components/ui/glyphs";
-import { listMarkets, seedDemoMarkets, impliedYesPct } from "@/lib/server/market-service";
+import { Select } from "@/components/ui/select";
+import { listMarkets, seedDemoMarkets, impliedYesPct, type MarketCategory } from "@/lib/server/market-service";
 import { ProbabilityBar } from "@/components/markets/probability-bar";
 import { CircularProgress } from "@/components/markets/circular-progress";
 import { ResolveControls } from "./resolve-controls";
@@ -10,6 +11,15 @@ export const metadata = { title: "Admin · Resolver queue" };
 export const dynamic = "force-dynamic";
 
 const fmtTime = (iso: string) => new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
+
+const WINDOW_OPTIONS = [
+  { value: "24h", label: "Next 24 hours" },
+  { value: "48h", label: "Next 48 hours" },
+  { value: "7d", label: "Next 7 days" },
+  { value: "all", label: "All pending" },
+] as const;
+
+const CATEGORY_OPTIONS: readonly MarketCategory[] = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"];
 
 function timeUntil(iso: string): { label: string; tone: "default" | "soon" | "overdue" } {
   const ms = Date.parse(iso) - Date.now();
@@ -21,16 +31,35 @@ function timeUntil(iso: string): { label: string; tone: "default" | "soon" | "ov
   return { label: `${Math.floor(h / 24)}d`, tone: "default" };
 }
 
-export default function ResolverQueuePage() {
+export default async function ResolverQueuePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ window?: string; category?: string; q?: string }>;
+}) {
   seedDemoMarkets();
-  // Markets within 24h of resolutionAt OR closed waiting for second-officer
+  const sp = await searchParams;
+  const windowFilter = (WINDOW_OPTIONS as readonly { value: string }[]).some((o) => o.value === sp.window) ? sp.window! : "24h";
+  const categoryFilter = (CATEGORY_OPTIONS as readonly string[]).includes(sp.category ?? "") ? sp.category as MarketCategory : "";
+  const query = (sp.q ?? "").trim().toLowerCase();
+
   const now = Date.now();
-  const within24h = listMarkets().filter((m) => {
+  const windowMs = windowFilter === "48h" ? 48 * 3600_000
+    : windowFilter === "7d" ? 7 * 24 * 3600_000
+    : windowFilter === "all" ? Infinity
+    : 24 * 3600_000;
+
+  const pending = listMarkets().filter((m) => {
     const due = Date.parse(m.resolutionAt);
-    if (m.status === "CLOSED") return true;          // awaiting stage-2 second-officer
-    if (m.status === "LIVE") return due - now < 24 * 3600_000; // due within 24h
+    if (m.status === "CLOSED") return true;
+    if (m.status === "LIVE") return windowMs === Infinity || due - now < windowMs;
     return false;
+  }).filter((m) => {
+    if (categoryFilter && m.category !== categoryFilter) return false;
+    if (query && !m.titleEn.toLowerCase().includes(query) && !(m.titleSw ?? "").toLowerCase().includes(query)) return false;
+    return true;
   }).sort((a, b) => Date.parse(a.resolutionAt) - Date.parse(b.resolutionAt));
+
+  const hasFilter = windowFilter !== "24h" || !!categoryFilter || !!query;
 
   return (
     <>
@@ -38,9 +67,36 @@ export default function ResolverQueuePage() {
         title="Resolver queue"
         sw="Foleni ya utatuzi"
         period={false}
+        actions={<span className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">{pending.length} markets</span>}
       />
       <div className="px-4 lg:px-6 py-5 space-y-4">
-        {within24h.length === 0 ? (
+        {/* Filters */}
+        <AdminCard>
+          <form className="flex flex-wrap gap-2">
+            <div className="relative flex-1 min-w-0 sm:min-w-[200px]">
+              <I.search size={14} aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+              <input
+                name="q"
+                defaultValue={query}
+                placeholder="Search title…"
+                aria-label="Search resolver queue"
+                className="w-full h-10 pl-9 pr-3 rounded-md bg-surface border border-border text-text font-mono text-body-sm focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
+              />
+            </div>
+            <div className="w-[160px]">
+              <Select name="window" defaultValue={windowFilter} size="sm" placeholder="Time window"
+                options={WINDOW_OPTIONS.map((o) => ({ value: o.value, label: o.label }))} />
+            </div>
+            <div className="w-[150px]">
+              <Select name="category" defaultValue={categoryFilter} size="sm" placeholder="All categories"
+                options={[{ value: "", label: "All categories" }, ...CATEGORY_OPTIONS.map((c) => ({ value: c, label: c }))]} />
+            </div>
+            <button type="submit" className="btn btn-primary btn-md">Filter</button>
+            {hasFilter && <a href="/admin/resolver-queue" className="btn btn-ghost btn-md">Clear</a>}
+          </form>
+        </AdminCard>
+
+        {pending.length === 0 ? (
           <EmptyState
             kind="audit"
             title="Queue is clear"
@@ -49,7 +105,7 @@ export default function ResolverQueuePage() {
           />
         ) : (
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-            {within24h.map((m) => {
+            {pending.map((m) => {
               const t = timeUntil(m.resolutionAt);
               const yes = impliedYesPct(m);
               const stage1 = !!m.resolutionStage1By;
