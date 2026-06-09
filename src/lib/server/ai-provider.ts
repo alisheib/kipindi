@@ -449,6 +449,8 @@ export class MockClaudeProvider implements AIProvider {
 
 /* ─── Provider factory — swap mock → real here ─── */
 
+import { ClaudeProvider } from "./ai-provider-claude";
+
 let _provider: AIProvider | null = null;
 
 export function getAIProvider(): AIProvider {
@@ -456,8 +458,6 @@ export function getAIProvider(): AIProvider {
 
   // Use real Claude when API key is set, mock otherwise (dev/test)
   if (process.env.ANTHROPIC_API_KEY) {
-    // Dynamic import to keep the Anthropic SDK out of the client bundle
-    const { ClaudeProvider } = require("./ai-provider-claude") as { ClaudeProvider: new (key: string) => AIProvider };
     _provider = new ClaudeProvider(process.env.ANTHROPIC_API_KEY);
     return _provider;
   }
