@@ -35,6 +35,13 @@ const MOBILE_BREAKPOINT = 768;
 const CHAT_STORAGE_KEY = "50pick-chat-history";
 const CHAT_HISTORY_LIMIT = 40;
 
+/** Clear chat history — called on logout/session-revoke so the next
+ *  user on the same browser doesn't see the previous conversation. */
+export function clearChatHistory(): void {
+  if (typeof window === "undefined") return;
+  try { window.sessionStorage.removeItem(CHAT_STORAGE_KEY); } catch {}
+}
+
 function loadHistory(): Message[] {
   if (typeof window === "undefined") return [];
   try {
@@ -186,6 +193,16 @@ export function ChatRoot() {
     },
     [messages],
   );
+
+  // When navigating to auth pages (logout/revoke), clear chat history
+  // so the next session doesn't see the previous user's conversation.
+  useEffect(() => {
+    if (pathname && HIDE_ON.test(pathname)) {
+      clearChatHistory();
+      setMessages([]);
+      setOpen(false);
+    }
+  }, [pathname]);
 
   if (pathname && HIDE_ON.test(pathname)) return null;
 
