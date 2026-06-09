@@ -2,7 +2,7 @@ import { BrandSpinner } from "@/components/brand";
 
 export default function MarketsLoading() {
   return (
-    <main className="mx-auto max-w-[1480px] px-3 lg:px-6 py-6">
+    <main className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6">
       {/* Lean header — must match the live page (no marketing hero) so there's
           no layout jump when the real page swaps in. */}
       <div className="mb-4">

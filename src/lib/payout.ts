@@ -65,8 +65,8 @@ export function payoutFor(input: PayoutInput): PayoutResult {
   const netPool = grossPool * (1 - fee);
   if (winningPool <= 0 || input.stake <= 0) return { payout: 0, net: 0, share: 0, ratio: 0 };
   const share = input.stake / winningPool;
-  const payout = Math.round(share * netPool);
-  return { payout, net: payout - input.stake, share, ratio: payout / input.stake };
+  const payout = Math.max(0, Math.round(share * netPool));
+  return { payout, net: payout - input.stake, share, ratio: input.stake > 0 ? payout / input.stake : 0 };
 }
 
 /** Categorise payout-to-stake ratio for the inline warning. */

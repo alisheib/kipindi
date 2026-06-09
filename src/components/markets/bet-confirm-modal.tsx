@@ -182,7 +182,7 @@ export function BetConfirmModal({
           />
         </div>
 
-        <div className="p-5 lg:p-6">
+        <div className="p-5 lg:p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)]">
           <div className="flex items-start justify-between gap-3 mb-4">
             <div className="min-w-0">
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">

@@ -60,6 +60,7 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
           <Link
             key={it.href}
             href={it.href as never}
+            aria-label={it.label}
             aria-current={on ? "page" : undefined}
             style={{
               display: "flex",

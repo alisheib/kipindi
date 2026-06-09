@@ -56,7 +56,7 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
         borderBottom: "1px solid var(--border)",
       }}
     >
-      <div className="mx-auto max-w-[1480px] flex items-center h-full gap-2 px-3 sm:gap-5 sm:px-5">
+      <div className="mx-auto max-w-[1280px] flex items-center h-full gap-2 px-3 sm:gap-5 sm:px-5">
         {/* Brand lockup — kit: BrandLockup size={30} */}
         <Link href="/" aria-label="50pick home" className="shrink-0 hover:opacity-90 transition-opacity">
           {/* Mark-only on phones to leave room for the wallet pill + eye + bell

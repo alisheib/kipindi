@@ -2,7 +2,7 @@ import { BrandSpinner } from "@/components/brand";
 
 export default function LiveLoading() {
   return (
-    <main className="mx-auto max-w-[1480px] px-3 lg:px-6 py-6 space-y-5">
+    <main className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6 space-y-5">
       {/* Slim header — matches the live page so the questions-first layout
           doesn't jump when the real content swaps in. */}
       <div className="flex items-center justify-between gap-3">

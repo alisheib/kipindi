@@ -123,7 +123,7 @@ export function WalletPageClient({
   const [tab, setTab] = useState<typeof TABS[number]["v"]>("activity");
 
   return (
-    <main className="mx-auto max-w-[960px] px-3 lg:px-6 py-6 space-y-6">
+    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
       <header className="flex items-end justify-between gap-3">
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">Wallet · Pochi</p>

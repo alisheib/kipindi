@@ -97,17 +97,17 @@ export function notifyWin(userId: string, amount: number, label: string, href = 
 }
 
 /**
- * Loss receipt — kit-faithful copy reframes the loss as "the pool grew"
- * (per the design system's responsibility-first language rule).
+ * Loss receipt — direct, respectful language. No euphemisms that could
+ * delay the player's awareness of their loss (LCCP harm-prevention).
  */
 export function notifyLoss(userId: string, opts: { stake: number; marketTitle: string; marketId: string }) {
   return notify({
     userId,
     kind: "LOSS",
-    titleEn: `Pool grew · TZS ${opts.stake.toLocaleString()} contributed`,
-    titleSw: `Bwawa limeongezeka · TZS ${opts.stake.toLocaleString()}`,
-    bodyEn: `${opts.marketTitle.slice(0, 70)} · the call didn't land this time.`,
-    bodySw: `Wakati huu hujashinda. Jaribu tena.`,
+    titleEn: `Bet lost · TZS ${opts.stake.toLocaleString()}`,
+    titleSw: `Dau limepotea · TZS ${opts.stake.toLocaleString()}`,
+    bodyEn: `${opts.marketTitle.slice(0, 70)} · your side didn't win. Review your limits any time.`,
+    bodySw: `Upande wako haukushinda. Kagua vikomo vyako wakati wowote.`,
     href: `/markets/${opts.marketId}`,
   });
 }

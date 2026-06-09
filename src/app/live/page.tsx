@@ -60,7 +60,7 @@ export default function LivePage() {
     <div className="relative min-h-[calc(100vh-44px)]">
       <BrandTopo opacity={0.04} />
 
-      <div className="relative mx-auto max-w-[1480px] px-3 lg:px-6 py-6 space-y-5">
+      <div className="relative mx-auto max-w-[1280px] px-3 lg:px-6 py-6 space-y-5">
         {/* Slim header — clicking Live lands straight on the questions, not a
             marketing hero (that lives on the homepage). */}
         <div className="flex items-center justify-between gap-3">

@@ -32,7 +32,7 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
   // Disable later by setting ADMIN_TEST_DEPOSITS=false (or remove this block).
   const ADMIN_TEST_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
   const depositor = db.user.findById(userId);
-  const adminTest = !!depositor && ADMIN_TEST_ROLES.has(depositor.role) && process.env.ADMIN_TEST_DEPOSITS !== "false";
+  const adminTest = !!depositor && ADMIN_TEST_ROLES.has(depositor.role) && process.env.ADMIN_TEST_DEPOSITS === "true";
 
   const parse = (adminTest ? AdminDepositSchema : DepositSchema).safeParse(input);
   if (!parse.success) return { ok: false, error: parse.error.errors[0]?.message ?? "Invalid input", code: "INVALID" };
@@ -41,7 +41,8 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
   if (!wallet) return { ok: false, error: "Wallet not found.", code: "NOT_FOUND" };
   if (wallet.status !== "ACTIVE") return { ok: false, error: "Wallet frozen.", code: "SUSPENDED" };
 
-  // Self-exclusion / cooling-off lockout
+  // Self-exclusion / cooling-off lockout — enforced even for admin test-funding
+  // so a self-excluded player cannot receive deposits regardless of role.
   const lockout = isLockedOut(userId);
   if (lockout.locked) {
     audit({ category: "COMPLIANCE", action: "deposit.lockout_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { reason: lockout.reason, until: lockout.until } });

@@ -77,7 +77,7 @@ function squirclePath(r: number) {
 }
 
 const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
-const NEUTRAL_BAND = 0.04;
+const NEUTRAL_BAND = 0.01;
 
 type Props = {
   marketId: string;
@@ -93,9 +93,12 @@ type Props = {
    *  state on the next render so the player sees the transition without
    *  a hard refresh. */
   resolutionAt?: string;
+  /** Player's current spendable balance — used to show an inline
+   *  "insufficient balance" warning BEFORE they tap Place, not after. */
+  balance?: number;
 };
 
-export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, initial = 0.5, marketTitle, resolutionAt }: Props) {
+export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, initial = 0.5, marketTitle, resolutionAt, balance }: Props) {
   const [pos, setPos] = useState(initial);
   const [dragging, setDragging] = useState(false);
   const [hover, setHover] = useState(false);
@@ -1020,6 +1023,19 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
         </div>
       )}
 
+      {/* Inline balance warning — shown BEFORE the player taps Place so
+          they know immediately rather than seeing an error after the click. */}
+      {side !== "NEUTRAL" && balance !== undefined && stake > balance && (
+        <div className="mt-3 rounded-md border border-no-700 bg-no-500/10 px-3 py-2">
+          <p className="text-[11px] font-medium text-no-300">
+            Insufficient balance · Salio halitoshi
+          </p>
+          <p className="text-[10px] text-text-subtle mt-0.5">
+            You need TZS {fmt(stake)} but have TZS {fmt(balance)}. Deposit to continue.
+          </p>
+        </div>
+      )}
+
       {/* Compact place-bet pill — opens the confirm modal. Sits inline with
           a hint instead of taking the full width with a giant gold slab. */}
       <div className="mt-4 flex items-center gap-3">
@@ -1028,12 +1044,14 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
             ? "Market closed · Soko limefungwa"
             : side === "NEUTRAL"
               ? "Drag the dial · Vuta dial kuanza"
-              : "Pool-share payout. Confirm in a popup."}
+              : balance !== undefined && stake > balance
+                ? "Top up your wallet to place this stake."
+                : "Pool-share payout. Confirm in a popup."}
         </p>
         <button
           type="button"
           onClick={closedNow ? undefined : openConfirm}
-          disabled={closedNow || pending || side === "NEUTRAL"}
+          disabled={closedNow || pending || side === "NEUTRAL" || (balance !== undefined && stake > balance)}
           aria-label={
             closedNow ? "Market closed — awaiting settlement"
             : side === "NEUTRAL" ? "Drag the dial to commit"

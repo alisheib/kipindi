@@ -245,6 +245,8 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
     };
     positions.set(positionId, position);
 
+    // Pool mutation inside the wallet lock — safe for single-instance.
+    // Production must use a market-level lock or DB row lock for multi-instance.
     if (opts.side === "YES") market.yesPool += opts.stake;
     else                     market.noPool  += opts.stake;
     market.predictorCount += 1;
@@ -289,7 +291,9 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
     // configured share of that. Best-effort; never blocks the bet.
     try {
       onRecruitBet(userId, { stake: opts.stake, operatorCommissionRate: stakeCfg.commissionRate });
-    } catch { /* affiliate accrual must never break bet placement */ }
+    } catch (err) {
+      audit({ category: "SYSTEM", action: "affiliate.accrual_error", actorId: userId, targetType: "Position", targetId: positionId, payload: { error: String(err) } });
+    }
 
     return { ok: true as const, data: { positionId, balance: newBalance, payoutIfWin } };
   });
@@ -624,6 +628,7 @@ export async function cashOutPosition(
 }
 
 export async function resolveMarket(opts: { marketId: string; outcome: Side | "VOID"; officerId: string }): Promise<ServiceResult<{ stage: "stage1" | "complete"; winnersPaid?: number }>> {
+  return withLock(`market:${opts.marketId}`, async () => {
   const m = markets.get(opts.marketId);
   if (!m) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
   if (m.status === "RESOLVED" || m.status === "VOIDED") return { ok: false, error: "Market already resolved.", code: "INVALID" };
@@ -778,6 +783,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   } catch { /* proposal prize must never break settlement */ }
 
   return { ok: true, data: { stage: "complete", winnersPaid } };
+  }); // end withLock market
 }
 
 /** Seed the demo with a deep, varied catalogue and top up automatically

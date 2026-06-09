@@ -46,7 +46,7 @@ export default function MarketsPage({ searchParams }: { searchParams: Promise<{ 
   const allLive = listMarkets({ status: "LIVE" }).filter((m) => !isClosedByTime(m));
   const totalVolume = allLive.reduce((s, m) => s + m.yesPool + m.noPool, 0);
   return (
-    <main className="mx-auto max-w-[1480px] px-3 lg:px-6 py-6">
+    <main className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6">
       {/* Lean, content-first header — the marketing hero lives on the homepage. */}
       <div className="mb-4 flex items-center justify-between gap-3">
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">Markets · Soko</p>

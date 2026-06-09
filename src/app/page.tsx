@@ -168,7 +168,7 @@ export default async function LandingPage() {
       </section>
 
       {/* Rest of page — centered container */}
-      <div className="mx-auto max-w-[1480px] px-3 lg:px-6 space-y-8 lg:space-y-10">
+      <div className="mx-auto max-w-[1280px] px-3 lg:px-6 space-y-8 lg:space-y-10">
 
       {/* LIVE MARKETS — surfaced immediately, no scroll-the-marketing-page-first */}
       {live.length > 0 && (
