@@ -77,7 +77,7 @@ function squirclePath(r: number) {
 }
 
 const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
-const NEUTRAL_BAND = 0.01;
+const NEUTRAL_BAND = 0.005;
 
 type Props = {
   marketId: string;
@@ -175,6 +175,15 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
     setExactStakeState(null);
     setExactMultiplierState(null);
   }, []);
+
+  // When the user has typed an exact value, honour their side intent
+  // even if the geometric position sits inside the narrow neutral band
+  // (e.g. typed exactly 1.00×). posFromStake floors position outside
+  // the band, but this is the safety net for rounding edge cases.
+  const hasTypedValue = exactStake !== null || exactMultiplier !== null;
+  const effectiveSide: Side = (side === "NEUTRAL" && hasTypedValue)
+    ? (pos <= 0.5 ? "YES" : "NO")
+    : side;
 
   // The effective stake — what gets sent to the server, what's
   // displayed, what powers the payout projection. Priority:
@@ -363,10 +372,10 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
   // Whole-pool projection — payout AND warning level. Single source of
   // truth lives in `@/lib/payout` so the dial, the confirm modal, the
   // position card, and the server settlement engine never disagree.
-  const proj = side === "NEUTRAL"
+  const proj = effectiveSide === "NEUTRAL"
     ? { payout: 0, ratio: 0 }
-    : payoutFor({ yesPool, noPool, side, stake });
-  const lean: LeanLevel = side === "NEUTRAL" ? "fair" : leanFor(proj.ratio);
+    : payoutFor({ yesPool, noPool, side: effectiveSide, stake });
+  const lean: LeanLevel = effectiveSide === "NEUTRAL" ? "fair" : leanFor(proj.ratio);
   const payoutRolled = useRollingNumber(proj.payout);
   const payoutDisplay = Math.max(0, Math.round(payoutRolled));
 
@@ -378,16 +387,16 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
     ? rawStrength
     : 0.7 - (rawStrength - 0.7) * 0.5;
   const strength = Math.max(0, (distFromCenter - NEUTRAL_BAND) / (1 - NEUTRAL_BAND));
-  const sideHue = side === "YES" ? 152 : side === "NO" ? 22 : 240;
-  const sideChroma = side === "NEUTRAL" ? 0 : side === "YES" ? 0.16 : 0.18;
+  const sideHue = effectiveSide === "YES" ? 152 : effectiveSide === "NO" ? 22 : 240;
+  const sideChroma = effectiveSide === "NEUTRAL" ? 0 : effectiveSide === "YES" ? 0.16 : 0.18;
 
   const knobBg    = `oklch(${22 + 4 * strength}% ${0.012 + sideChroma * 0.4 * strength} ${sideHue})`;
   const knobBgTop = `oklch(${32 + 6 * strength}% ${0.012 + sideChroma * 0.5 * strength} ${sideHue})`;
-  const ringColor = side === "NEUTRAL"
+  const ringColor = effectiveSide === "NEUTRAL"
     ? "oklch(45% 0.013 240)"
-    : side === "YES" ? "oklch(58% 0.16 152)" : "oklch(60% 0.18 22)";
+    : effectiveSide === "YES" ? "oklch(58% 0.16 152)" : "oklch(60% 0.18 22)";
   const sideAccent = ringColor;
-  const sideText = side === "YES" ? "oklch(80% 0.13 152)" : side === "NO" ? "oklch(80% 0.14 22)" : "oklch(75% 0.012 240)";
+  const sideText = effectiveSide === "YES" ? "oklch(80% 0.13 152)" : effectiveSide === "NO" ? "oklch(80% 0.14 22)" : "oklch(75% 0.012 240)";
 
   // RAF-throttled pos update — pointermove can fire > 60 fps on
   // high-rate trackpads, and each setState cascades through the
@@ -549,8 +558,8 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
   } | null>(null);
 
   const openConfirm = () => {
-    if (side === "NEUTRAL" || pending) return;
-    setLockedQuote({ stake, side, multiplier: multiplierTarget });
+    if (effectiveSide === "NEUTRAL" || pending) return;
+    setLockedQuote({ stake, side: effectiveSide, multiplier: multiplierTarget });
     setConfirmOpen(true);
   };
 
@@ -680,8 +689,8 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
         <span
           className="transition-colors duration-200"
           style={{
-            color: side === "YES" ? "oklch(75% 0.13 152)" : "var(--text-subtle)",
-            fontWeight: side === "YES" ? 700 : 400,
+            color: effectiveSide === "YES" ? "oklch(75% 0.13 152)" : "var(--text-subtle)",
+            fontWeight: effectiveSide === "YES" ? 700 : 400,
           }}
         >
           YES
@@ -690,8 +699,8 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
         <span
           className="transition-colors duration-200"
           style={{
-            color: side === "NO" ? "oklch(75% 0.16 22)" : "var(--text-subtle)",
-            fontWeight: side === "NO" ? 700 : 400,
+            color: effectiveSide === "NO" ? "oklch(75% 0.16 22)" : "var(--text-subtle)",
+            fontWeight: effectiveSide === "NO" ? 700 : 400,
           }}
         >
           NO
@@ -706,7 +715,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={ariaValue}
-        aria-valuetext={`${side === "NEUTRAL" ? "Neutral" : side}, ${multiplierTarget.toFixed(2)} times, TZS ${fmt(stake)}`}
+        aria-valuetext={`${effectiveSide === "NEUTRAL" ? "Neutral" : effectiveSide}, ${multiplierTarget.toFixed(2)} times, TZS ${fmt(stake)}`}
         aria-disabled={closedNow ? "true" : "false"}
         onPointerDown={closedNow ? undefined : onPointerDown}
         onKeyDown={closedNow ? undefined : onKeyDown}
@@ -847,7 +856,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
                     fontFamily="JetBrains Mono, monospace" fontWeight="500"
                     fontSize="7.5" fill={sideText}
                     letterSpacing="0.16em" opacity="0.9">
-                {side === "NEUTRAL" ? "· · ·" : side}
+                {effectiveSide === "NEUTRAL" ? "· · ·" : effectiveSide}
               </text>
             </g>
           </g>
@@ -862,13 +871,13 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
       <div className="grid grid-cols-[1fr_auto] gap-2 sm:gap-3 mt-5 items-center">
         <div className="min-w-0">
           <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mb-1">
-            {side === "NEUTRAL" ? "No conviction" : "You are picking"}
+            {effectiveSide === "NEUTRAL" ? "No conviction" : "You are picking"}
           </p>
           <p
             className="font-display font-bold text-[15px] sm:text-[22px] leading-[1.05] break-words"
             style={{ color: sideText, letterSpacing: "-0.025em" }}
           >
-            {side === "NEUTRAL" ? "Pick side" : `${side}`}
+            {effectiveSide === "NEUTRAL" ? "Pick side" : `${effectiveSide}`}
           </p>
         </div>
         <div className="text-right min-w-0">
@@ -1010,7 +1019,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
           During placement the player sees their stake, multiplier, and side;
           the actual payout is communicated post-resolution via notification
           + the Positions page. */}
-      {side !== "NEUTRAL" && (
+      {effectiveSide !== "NEUTRAL" && (
         <div className="mt-3 rounded-md border border-border bg-bg-overlay px-3 py-2.5">
           <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mb-1">
             Payout · Lipo
@@ -1025,7 +1034,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
 
       {/* Inline balance warning — shown BEFORE the player taps Place so
           they know immediately rather than seeing an error after the click. */}
-      {side !== "NEUTRAL" && balance !== undefined && stake > balance && (
+      {effectiveSide !== "NEUTRAL" && balance !== undefined && stake > balance && (
         <div className="mt-3 rounded-md border border-no-700 bg-no-500/10 px-3 py-2">
           <p className="text-[11px] font-medium text-no-300">
             Insufficient balance · Salio halitoshi
@@ -1042,7 +1051,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
         <p className="flex-1 min-w-0 text-[11px] text-text-subtle leading-snug">
           {closedNow
             ? "Market closed · Soko limefungwa"
-            : side === "NEUTRAL"
+            : effectiveSide === "NEUTRAL"
               ? "Drag the dial · Vuta dial kuanza"
               : balance !== undefined && stake > balance
                 ? "Top up your wallet to place this stake."
@@ -1051,24 +1060,24 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
         <button
           type="button"
           onClick={closedNow ? undefined : openConfirm}
-          disabled={closedNow || pending || side === "NEUTRAL" || (balance !== undefined && stake > balance)}
+          disabled={closedNow || pending || effectiveSide === "NEUTRAL" || (balance !== undefined && stake > balance)}
           aria-label={
             closedNow ? "Market closed — awaiting settlement"
-            : side === "NEUTRAL" ? "Drag the dial to commit"
-            : `Place ${side} for TZS ${fmt(stake)}`
+            : effectiveSide === "NEUTRAL" ? "Drag the dial to commit"
+            : `Place ${effectiveSide} for TZS ${fmt(stake)}`
           }
-          className={`${closedNow ? "btn btn-ghost btn-md" : (side === "NEUTRAL" ? "btn btn-ghost btn-md" : "btn btn-gold btn-md")} whitespace-normal`}
+          className={`${closedNow ? "btn btn-ghost btn-md" : (effectiveSide === "NEUTRAL" ? "btn btn-ghost btn-md" : "btn btn-gold btn-md")} whitespace-normal`}
           // 44 px min-height meets WCAG 2.5.5 tap-target on mobile;
           // btn-md alone caps at 38 px.
           style={{ borderRadius: 999, minWidth: 140, minHeight: 44, fontVariantNumeric: "tabular-nums" }}
         >
           {closedNow
             ? "Closed · awaiting settle"
-            : side === "NEUTRAL"
+            : effectiveSide === "NEUTRAL"
               ? "—"
               : (
                 <>
-                  <span>Place {side}</span>
+                  <span>Place {effectiveSide}</span>
                   <span className="font-mono opacity-90">TZS {fmt(stake)}</span>
                 </>
               )}
@@ -1080,7 +1089,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
         // Display the LOCKED quote captured at modal open — never
         // the live `side`/`stake`/`multiplier` that the player could
         // have shifted under the modal.
-        side={lockedQuote?.side ?? (side === "NEUTRAL" ? "YES" : side)}
+        side={lockedQuote?.side ?? (effectiveSide === "NEUTRAL" ? "YES" : effectiveSide)}
         stake={lockedQuote?.stake ?? stake}
         multiplier={lockedQuote?.multiplier ?? multiplierTarget}
         payout={proj.payout}
