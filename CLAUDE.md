@@ -146,7 +146,37 @@ Required Railway env vars (set in service → Variables):
 | `NEXT_PUBLIC_APP_URL` | `https://kipindi-production.up.railway.app` |
 | `TESTER_BOOTSTRAP_PHONES` | comma-separated E.164 list — auto-fund 100K TZS on register |
 | `ADMIN_TEST_DEPOSITS` | `true` to enable uncapped admin deposits; unset = enabled in dev only |
-| `ANTHROPIC_API_KEY` | Anthropic API key for live chatbot (Claude Haiku 4.5). Omit = stub mode |
+| `ANTHROPIC_API_KEY` | Anthropic API key — powers chatbot + poll generation. Omit = stub mode |
+
+## Activating Claude AI features (chatbot + poll generation)
+
+Both features share one API key from **console.anthropic.com** (pay-per-token,
+separate from any claude.ai subscription).
+
+### Setup steps
+
+1. Go to **console.anthropic.com** → sign up or log in
+2. **Billing** → add payment method → buy credits ($20–$100)
+3. **Settings → API Keys → Create Key** → name it `kipindi-production`
+4. Copy the key (starts with `sk-ant-api03-...`) — shown only once
+5. **Railway** → kipindi service → **Variables** → add `ANTHROPIC_API_KEY` = the key
+6. Railway auto-redeploys — both features go live
+
+### What activates
+
+| Feature | Model | Cost/call | Code path |
+|---------|-------|-----------|-----------|
+| **Chatbot** (AI Help widget) | `claude-haiku-4-5` | ~$0.001 | `src/app/_actions/chat.ts` — checks key, calls API, falls back to stub |
+| **Poll generation** (4-layer pipeline) | `claude-sonnet-4-6` | ~$0.01–0.05 | `src/lib/server/ai-provider.ts` — swap `MockClaudeProvider` → `ClaudeProvider` |
+
+The chatbot activates **instantly** when the key is set (no code change needed).
+The poll pipeline currently uses `MockClaudeProvider` — uncomment the factory at
+`ai-provider.ts:457-462` to switch to real Claude once the key is live.
+
+### Cost estimate
+
+At typical usage (500 chat messages/day + 50 poll generations/day):
+~$2–5/day. Credits expire 1 year after purchase.
 
 ## Test scripts
 
