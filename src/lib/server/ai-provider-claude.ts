@@ -10,6 +10,7 @@
  *
  * L1 happens here; L2–L4 happen in ai-poll-generation.ts.
  */
+import Anthropic from "@anthropic-ai/sdk";
 import type { AIProvider, AIProviderResponse, AIPollGeneration, GenerateRequest } from "./ai-provider";
 
 // Use Haiku for cost efficiency — polls don't need Sonnet-level reasoning.
@@ -55,7 +56,7 @@ JSON SCHEMA (output exactly this structure):
 }`;
 
 export class ClaudeProvider implements AIProvider {
-  name = "claude-sonnet";
+  name = "claude-haiku";
   private apiKey: string;
 
   constructor(apiKey: string) {
@@ -70,7 +71,6 @@ export class ClaudeProvider implements AIProvider {
       : `Generate a ${category} prediction market question relevant to Tanzania or East Africa. If the category is crypto or weather, global topics are fine. Make it interesting and timely (June 2026).`;
 
     try {
-      const { default: Anthropic } = await import("@anthropic-ai/sdk");
       const client = new Anthropic({ apiKey: this.apiKey });
 
       const resp = await client.messages.create({
