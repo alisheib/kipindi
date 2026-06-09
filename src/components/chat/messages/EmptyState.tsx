@@ -11,7 +11,7 @@
  * as the first thing inside the panel.
  */
 
-import { HelpMark } from "../HelpMark";
+import { FiftyMark } from "@/components/brand";
 
 export function EmptyState({ onPick }: { onPick: (text: string) => void }) {
   const starters: Array<{ text: string; sw: boolean }> = [
@@ -23,7 +23,7 @@ export function EmptyState({ onPick }: { onPick: (text: string) => void }) {
   return (
     <div className="cm-empty">
       <div className="cm-empty-mark cm-empty-mark-bare">
-        <HelpMark size={56} aria-label="50pick Help" />
+        <FiftyMark size={56} />
       </div>
       <div className="cm-empty-greeting">
         Habari <span style={{ opacity: 0.5 }}>·</span> Hi.

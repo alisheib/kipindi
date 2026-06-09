@@ -13,7 +13,7 @@
  */
 
 import { useEffect, useRef } from "react";
-import { HelpMark } from "./HelpMark";
+import { FiftyMark } from "@/components/brand";
 import { AiMessage, UserMessage, TypingMessage } from "./messages/Bubbles";
 import { EmptyState } from "./messages/EmptyState";
 import { RgRedirectCard } from "./messages/RgRedirectCard";
@@ -88,7 +88,7 @@ export function ChatPanel({ lang, messages, pending, onClose, onSend, variant }:
       aria-label="50pick Help chat"
     >
       <div className="cm-header">
-        <HelpMark size={36} aria-label="50pick Help" />
+        <FiftyMark size={36} />
         <div className="cm-header-titles">
           <div className="cm-header-name">{t.name}</div>
           <div className="cm-header-sub">

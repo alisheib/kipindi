@@ -8,7 +8,7 @@
  */
 
 import Link from "next/link";
-import { HelpMark } from "../HelpMark";
+import { FiftyMark } from "@/components/brand";
 import type { Lang } from "../types";
 
 export function RgRedirectCard({ lang = "en" }: { lang?: Lang }) {
@@ -30,7 +30,7 @@ export function RgRedirectCard({ lang = "en" }: { lang?: Lang }) {
         };
   return (
     <div className="cm-row cm-row-ai">
-      <HelpMark size={22} aria-label="50pick Help" />
+      <FiftyMark size={22} />
       <div
         className="cm-bubble-ai"
         style={{ padding: 0, background: "transparent", border: "none", maxWidth: "88%" }}

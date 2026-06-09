@@ -2,7 +2,7 @@
  * Message bubble components — AI (left), user (right gilt-edge), typing.
  */
 
-import { HelpMark } from "../HelpMark";
+import { FiftyMark } from "@/components/brand";
 
 export function AiMessage({
   children,
@@ -13,7 +13,7 @@ export function AiMessage({
 }) {
   return (
     <div className="cm-row cm-row-ai">
-      {withAvatar && <HelpMark size={22} aria-label="50pick Help" />}
+      {withAvatar && <FiftyMark size={22} />}
       <div className="cm-bubble-ai">{children}</div>
     </div>
   );
@@ -30,7 +30,7 @@ export function UserMessage({ children }: { children: React.ReactNode }) {
 export function TypingMessage() {
   return (
     <div className="cm-row cm-row-ai" aria-live="polite" aria-label="50pick Help is typing">
-      <HelpMark size={22} aria-label="50pick Help" />
+      <FiftyMark size={22} />
       <div className="cm-bubble-ai" style={{ padding: 0 }}>
         <div className="cm-typing">
           <span />

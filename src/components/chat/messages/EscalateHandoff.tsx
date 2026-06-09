@@ -11,7 +11,7 @@
  * accidentally announce itself as not-human to the player.
  */
 
-import { HelpMark } from "../HelpMark";
+import { FiftyMark } from "@/components/brand";
 import { Num } from "./Primitives";
 
 export function EscalateHandoff({
@@ -26,7 +26,7 @@ export function EscalateHandoff({
       <div className="cm-handoff-rule">Handing to support · Tunakukabidhi timu ya msaada</div>
       <div className="cm-handoff-card">
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <HelpMark size={36} aria-label="50pick Help" />
+          <FiftyMark size={36} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="cm-handoff-title">A specialist will take this from here</div>
             <div className="cm-handoff-meta">
