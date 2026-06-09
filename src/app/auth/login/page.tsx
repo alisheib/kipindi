@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { I } from "@/components/ui/glyphs";
 import { FiftyLockup } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
@@ -21,6 +22,10 @@ export default async function LoginPage({
   // page renders. Avoiding redirect() inside the page itself sidesteps a
   // Next.js 16 dev-mode hook-count mismatch on hot reload.
   const sp = await searchParams;
+  // Detect session-revoked flash (another device signed in)
+  const jar = await cookies();
+  const wasRevoked = jar.get("kp_revoked")?.value === "1";
+  if (wasRevoked) try { jar.delete("kp_revoked"); } catch {}
   const phoneDefault = (sp.phone ?? "").replace(/^\+255/, "").replace(/\D+/g, "").slice(0, 9);
   const retrySec = Number.parseInt(sp.retry ?? "", 10);
   // ?next= is set by the proxy when an unauthed user hits a protected
@@ -32,6 +37,12 @@ export default async function LoginPage({
   const nextSafe = nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : "";
 
   const errorPanel = (() => {
+    if (wasRevoked) return {
+      tone: "warning" as const,
+      title: "Signed out · Umetolewa",
+      body: "Your account was signed in on another device. Only one session is allowed at a time for your security.",
+      cta: null,
+    };
     switch (sp.error) {
       case "no_account":
         return {

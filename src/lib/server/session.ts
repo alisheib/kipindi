@@ -26,6 +26,19 @@ const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;            // 7-day absolute cap
 const IDLE_TIMEOUT_MS = 24 * 60 * 60 * 1000;               // 24 h since last activity
 const REFRESH_THROTTLE_MS = 5 * 60 * 1000;                 // resign cookie at most every 5 min
 
+// ── Server-side session registry ─────────────────────────────────────
+// Maps userId → activeSessionId. A new login for the same user replaces
+// the entry, which invalidates ALL prior sessions on any device. This
+// enforces single-active-session per account — critical for a gambling
+// platform where concurrent logins on the same account can lead to
+// balance confusion, shared betting, and regulatory non-compliance.
+declare global {
+  // eslint-disable-next-line no-var
+  var __50PICK_ACTIVE_SESSIONS: Map<string, string> | undefined;
+}
+const activeSessions: Map<string, string> =
+  globalThis.__50PICK_ACTIVE_SESSIONS ?? (globalThis.__50PICK_ACTIVE_SESSIONS = new Map());
+
 export async function createSession(data: Omit<SessionData, "iat" | "exp" | "sessionId" | "lastSeenAt">) {
   const now = Date.now();
   const session: SessionData = {
@@ -44,13 +57,18 @@ export async function createSession(data: Omit<SessionData, "iat" | "exp" | "ses
     path: "/",
     maxAge: Math.floor(SESSION_TTL_MS / 1000),
   });
+  // Register as the ONLY active session for this user. Any previous
+  // session (on another device) is now invalid — getSession() will
+  // reject it on the next request.
+  const previousSessionId = activeSessions.get(data.userId);
+  activeSessions.set(data.userId, session.sessionId);
   audit({
     category: "AUTH",
     action: "session.created",
     actorId: data.userId,
     targetType: "Session",
     targetId: session.sessionId,
-    payload: { role: data.role, kyc: data.kycStatus },
+    payload: { role: data.role, kyc: data.kycStatus, revokedPrior: previousSessionId ?? null },
   });
   return session;
 }
@@ -62,6 +80,28 @@ export async function getSession(): Promise<SessionData | null> {
   if (!session) return null;
 
   const now = Date.now();
+  // Single-active-session check — if another device logged in after
+  // this session was created, the registry entry was replaced. This
+  // session is no longer the active one → force sign-out.
+  const activeId = activeSessions.get(session.userId);
+  if (activeId && activeId !== session.sessionId) {
+    try {
+      jar.delete(COOKIE_NAME);
+      // Short-lived flash cookie so the login page can explain WHY
+      // the user was signed out (rather than a silent redirect).
+      jar.set("kp_revoked", "1", { httpOnly: false, path: "/", maxAge: 30 });
+    } catch { /* read-only context */ }
+    audit({
+      category: "AUTH",
+      action: "session.revoked_by_newer_login",
+      actorId: session.userId,
+      targetType: "Session",
+      targetId: session.sessionId,
+      payload: { replacedBy: activeId },
+    });
+    return null;
+  }
+
   // Absolute expiry — hard 7-day cap. Without this, a tampered cookie
   // with a far-future exp could survive indefinitely.
   if (session.exp && now > session.exp) {
@@ -112,10 +152,19 @@ export async function getSession(): Promise<SessionData | null> {
 }
 
 export async function destroySession() {
-  const session = await getSession();
+  // Read the cookie directly (not via getSession which would check the
+  // registry and potentially return null for a revoked session — we still
+  // want to clean up the cookie and audit the explicit logout).
   const jar = await cookies();
+  const token = jar.get(COOKIE_NAME)?.value;
+  const session = verifySession<SessionData>(token);
   jar.delete(COOKIE_NAME);
   if (session) {
+    // Only clear the registry if THIS session is still the active one.
+    // If another device already replaced it, don't clear their session.
+    if (activeSessions.get(session.userId) === session.sessionId) {
+      activeSessions.delete(session.userId);
+    }
     audit({
       category: "AUTH",
       action: "session.destroyed",
