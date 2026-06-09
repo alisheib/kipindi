@@ -8,6 +8,7 @@ import {
   type StoredAIPoll,
   type AIPollState,
 } from "@/lib/server/ai-poll-generation";
+import { getAIProvider } from "@/lib/server/ai-provider";
 import {
   GenerateForm,
   QualityBadges,
@@ -88,11 +89,18 @@ export default function AdminAIPollsPage() {
           <div className="flex items-start gap-3 mb-4">
             <I.bot size={18} className="text-royal mt-0.5 shrink-0" />
             <div className="flex-1 text-caption text-text-secondary leading-relaxed">
-              Generate prediction-market polls using AI. The mock provider simulates
-              realistic Claude responses including clean, incomplete, malformed,
-              and edge-case outputs. Polls passing validation land in <strong>Pending
-              review</strong> for your sign-off. AI never publishes — the officer&apos;s
-              approval is the only path to a live market.
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-mono text-micro uppercase tracking-wide font-bold">Provider:</span>
+                <Chip size="sm" variant={getAIProvider().name.includes("mock") ? "warning" : "success"}>
+                  {getAIProvider().name}
+                </Chip>
+                {getAIProvider().name.includes("mock") && (
+                  <span className="text-warning-fg text-micro">Set ANTHROPIC_API_KEY in Railway to use real Claude</span>
+                )}
+              </div>
+              Generate prediction-market polls using Claude AI. Polls passing the 4-layer
+              validation pipeline land in <strong>Pending review</strong> for your sign-off.
+              AI never publishes — the officer&apos;s approval is the only path to a live market.
             </div>
           </div>
           <GenerateForm />
