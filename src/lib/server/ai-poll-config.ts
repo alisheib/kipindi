@@ -53,7 +53,9 @@ function defaults(): AIPollConfig {
       : true,
     dailyTarget: envInt("AI_POLL_DAILY_TARGET", 3, 0, 1_000_000),
     minLeadTimeHours: envInt("AI_POLL_MIN_LEAD_HOURS", 24, 1, 24 * 365),
-    maxLeadTimeDays: envInt("AI_POLL_MAX_LEAD_DAYS", 180, 1, 365 * 3),
+    // 240d (~8 months) so naturally year-end-framed markets (e.g. "by 31 Dec")
+    // pass when generated mid-year, while still capping runaway long-dated polls.
+    maxLeadTimeDays: envInt("AI_POLL_MAX_LEAD_DAYS", 240, 1, 365 * 3),
     minConfidence: envInt("AI_POLL_MIN_CONFIDENCE", 60, 0, 100),
     maxBatchPerRun: envInt("AI_POLL_MAX_BATCH", 25, 1, 200),
   };
