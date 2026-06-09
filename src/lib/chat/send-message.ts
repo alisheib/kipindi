@@ -257,16 +257,22 @@ function stubReply(userText: string, lang: Lang): Reply {
  */
 export async function sendMessage(history: Message[], userText: string): Promise<Message> {
   const lang = detectLang(userText);
-  // Simulate model latency. Live mode drops this and awaits the SDK.
+
+  // Pre-filter at-risk language — always route to RG card, never free-text
+  if (isAtRiskLanguage(userText)) {
+    return { id: nextId(), role: "ai", kind: "rg_redirect", lang };
+  }
+
+  // ─── LIVE MODE — via server action (chatWithClaude) ──────────────
+  // ChatRoot calls chatWithClaude first; if it returns text, we wrap
+  // it here. If it returns null (no API key or error), we fall through
+  // to stub mode. This separation keeps the Anthropic SDK server-only.
+  // The caller (ChatRoot) handles this — see handleSend in ChatRoot.tsx.
+
+  // ─── STUB MODE — keyword matching fallback ───────────────────────
   await new Promise((r) => setTimeout(r, 600));
   const reply = stubReply(userText, lang);
   return { ...reply, id: nextId() } as Message;
-  // ─── LIVE MODE (later) ────────────────────────────────────────────
-  // if (process.env.ANTHROPIC_API_KEY) {
-  //   const client = new Anthropic();
-  //   const resp = await client.messages.create({ ... });
-  //   return parseAndStructure(resp, lang);
-  // }
 }
 
 /** Helper for the client — generates the user-side Message envelope. */

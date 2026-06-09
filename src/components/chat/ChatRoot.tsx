@@ -21,6 +21,7 @@ import { ChatBubble } from "./ChatBubble";
 import { ChatPanel } from "./ChatPanel";
 import type { Message } from "./types";
 import { buildUserMessage, sendMessage } from "@/lib/chat/send-message";
+import { chatWithClaude } from "@/app/_actions/chat";
 
 const HIDE_ON = /^\/(auth|admin)(\/|$)/;
 const MOBILE_BREAKPOINT = 768;
@@ -125,7 +126,17 @@ export function ChatRoot() {
       setLang(user.lang);
       setPending(true);
       try {
-        const reply = await sendMessage([...messages, user], text);
+        // Try live Claude first (server action), fall back to stub
+        const historyForClaude = [...messages, user]
+          .filter((m) => m.role === "user" || (m.role === "ai" && m.kind === "text"))
+          .map((m) => ({
+            role: (m.role === "user" ? "user" : "assistant") as "user" | "assistant",
+            content: m.role === "user" ? m.text : (m as { text: string }).text,
+          }));
+        const liveResult = await chatWithClaude(historyForClaude, text);
+        const reply: Message = liveResult
+          ? { id: `m_${Date.now().toString(36)}`, role: "ai", kind: "text", lang: user.lang, text: liveResult.text }
+          : await sendMessage([...messages, user], text);
         // Per the design spec, surface the escalate-to-support card
         // after 2 consecutive unresolved AI text replies — at that
         // point the bot is clearly not helping and we should hand the
