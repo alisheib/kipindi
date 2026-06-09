@@ -154,7 +154,14 @@ export function AvatarMenu({
                 }
                 confirmLabel="Yes, sign out"
                 cancelLabel="Stay signed in"
-                onConfirm={() => { window.location.href = "/auth/logout"; }}
+                onConfirm={() => {
+                  // POST to prevent CSRF — GET logout is intentionally neutered.
+                  const f = document.createElement("form");
+                  f.method = "POST";
+                  f.action = "/auth/logout";
+                  document.body.appendChild(f);
+                  f.submit();
+                }}
                 trigger={
                   <button
                     type="button"

@@ -99,7 +99,13 @@ export async function getSession(): Promise<SessionData | null> {
       jar.delete(COOKIE_NAME);
       // Short-lived flash cookie so the login page can explain WHY
       // the user was signed out (rather than a silent redirect).
-      jar.set("kp_revoked", "1", { httpOnly: false, path: "/", maxAge: 30 });
+      jar.set("kp_revoked", "1", {
+        httpOnly: false,
+        path: "/",
+        maxAge: 30,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+      });
     } catch { /* read-only context */ }
     audit({
       category: "AUTH",

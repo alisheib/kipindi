@@ -1,6 +1,8 @@
 "use server";
 
 import type { Message } from "@/components/chat/types";
+import { getSession } from "@/lib/server/session";
+import { rateCheck } from "@/lib/server/rate-limit";
 
 const SYSTEM_PROMPT = `You are the 50pick Help assistant — a friendly, concise AI concierge for a Tanzania-licensed prediction-market platform.
 
@@ -40,6 +42,15 @@ export async function chatWithClaude(
   userText: string,
 ): Promise<{ text: string } | null> {
   if (!process.env.ANTHROPIC_API_KEY) return null;
+
+  // Auth gate — unauthenticated callers must not burn API credits.
+  const session = await getSession();
+  if (!session) return null;
+
+  // Rate limit — prevent a single user from spamming the API.
+  const rl = rateCheck(session.userId, "chat.send");
+  if (!rl.allowed) return null;
+
   try {
     const { default: Anthropic } = await import("@anthropic-ai/sdk");
     const client = new Anthropic();

@@ -74,13 +74,15 @@ export default async function SessionsPage() {
               This device
             </span>
           </div>
-          <Link
-            href="/auth/logout"
-            className="inline-flex h-9 items-center gap-1.5 rounded-pill border border-no-700 bg-no-500/10 px-4 font-display font-semibold text-[12.5px] text-no-300 hover:bg-no-500/20 transition-colors"
-          >
-            <I.logOut s={13} />
-            Sign out
-          </Link>
+          <form action="/auth/logout" method="POST" className="inline-flex">
+            <button
+              type="submit"
+              className="inline-flex h-9 items-center gap-1.5 rounded-pill border border-no-700 bg-no-500/10 px-4 font-display font-semibold text-[12.5px] text-no-300 hover:bg-no-500/20 transition-colors"
+            >
+              <I.logOut s={13} />
+              Sign out
+            </button>
+          </form>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <Item label="Session id" value={<span className="font-mono break-all">{session.sessionId.slice(0, 22)}…</span>} />

@@ -15,13 +15,16 @@ export async function withLock<T>(key: string, fn: () => Promise<T>): Promise<T>
   let release!: () => void;
   const next = new Promise<void>((resolve) => { release = resolve; });
   // chain: when prev finishes, our turn begins; we release `next` when done.
-  locks.set(key, prev.then(() => next));
+  const tail = prev.then(() => next);
+  locks.set(key, tail);
   await prev;
   try {
     return await fn();
   } finally {
     release();
-    // garbage-collect: only delete if our `next` is still the tail
-    if (locks.get(key) === prev.then(() => next)) locks.delete(key);
+    // garbage-collect: only delete if our `tail` is still the latest entry.
+    // (Previous code called `.then()` again, creating a new Promise that
+    // could never === the stored one — locks were never cleaned up.)
+    if (locks.get(key) === tail) locks.delete(key);
   }
 }

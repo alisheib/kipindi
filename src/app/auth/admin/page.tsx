@@ -63,7 +63,6 @@ export default async function AdminLoginPage() {
           </div>
 
           <form action={startLoginAction} className="relative space-y-3">
-            <input type="hidden" name="returnTo" value="/admin" />
             <div>
               <label
                 htmlFor="phone"

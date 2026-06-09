@@ -29,7 +29,6 @@ export async function startRegisterAction(formData: FormData) {
       error: result.code === "ALREADY_EXISTS" ? "exists"
         : result.code === "RATE_LIMITED" ? "rate_limited"
         : "invalid",
-      message: result.error,
     });
     redirect(`/auth/register?${params.toString()}`);
   }

@@ -3,11 +3,11 @@ import { headers, cookies } from "next/headers";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { hasTotp } from "@/lib/server/totp";
+import { verifySession, signSession } from "@/lib/server/crypto";
 import { ConfidentialBand, AdminSidebar, AdminTopBar, type AdminSession } from "@/components/admin/admin-shell";
+import { TOTP_COOKIE_NAME, TOTP_TTL_SEC } from "@/lib/server/totp-cookie";
 
 const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
-const TOTP_COOKIE = "kp_admin_totp";
-const TOTP_TTL_SEC = 60 * 60 * 8; // 8h — must match totp-verify/actions.ts
 
 /**
  * Routes inside /admin/* that DON'T require an admin TOTP cookie:
@@ -76,10 +76,25 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const activeKey = activeKeyFromPath(path);
   const crumbs = crumbsFromPath(path);
 
-  // TOTP gate — non-demo admins with TOTP enabled must verify before browsing
+  // TOTP gate — non-demo admins with TOTP enabled must verify before browsing.
+  // The cookie is HMAC-signed with userId + sessionId to prevent forgery.
   if (hasTotp(session.userId) && !TOTP_EXEMPT.has(path)) {
     const jar = await cookies();
-    if (!jar.get(TOTP_COOKIE)) {
+    const raw = jar.get(TOTP_COOKIE_NAME)?.value;
+    const totpData = verifySession<{
+      userId: string;
+      sessionId: string;
+      verifiedAt: number;
+      exp: number;
+    }>(raw);
+    // Reject if missing, tampered, expired, or bound to a different user/session.
+    if (
+      !totpData ||
+      totpData.userId !== session.userId ||
+      totpData.sessionId !== session.sessionId
+    ) {
+      // Clear stale/invalid cookie so the verify page starts clean.
+      try { jar.delete(TOTP_COOKIE_NAME); } catch {}
       redirect("/admin/totp-verify");
     }
     // Sliding refresh: re-issue the TOTP cookie on activity so an actively
@@ -87,7 +102,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     // mid-shift. Mirrors the session sliding refresh; best-effort, since a
     // static/read-only render context can't write cookies (it just skips).
     try {
-      jar.set(TOTP_COOKIE, "1", {
+      const refreshed = {
+        ...totpData,
+        exp: Date.now() + TOTP_TTL_SEC * 1000,
+      };
+      jar.set(TOTP_COOKIE_NAME, signSession(refreshed), {
         httpOnly: true,
         sameSite: "lax",
         secure: process.env.NODE_ENV === "production",

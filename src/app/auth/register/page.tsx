@@ -16,7 +16,7 @@ export const metadata = { title: "Create account · Fungua akaunti" };
 export default async function RegisterPage({
   searchParams,
 }: {
-  searchParams: Promise<{ phone?: string; error?: string; message?: string; ref?: string }>;
+  searchParams: Promise<{ phone?: string; error?: string; ref?: string }>;
 }) {
   // Bounce-authed-users guard lives in src/app/auth/layout.tsx so the
   // redirect happens before any page hooks run (avoids a Next.js 16
@@ -47,7 +47,7 @@ export default async function RegisterPage({
     return {
       tone: "danger" as const,
       title: "Could not create account",
-      body: sp.message ?? "Check the form fields and try again.",
+      body: "Check the form fields and try again.",
       cta: null,
     };
   })();

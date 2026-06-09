@@ -207,22 +207,24 @@ export default async function ProfilePage() {
         </div>
       </section>
 
-      {/* ── Sign out */}
-      <a
-        href="/auth/logout"
-        className="group inline-flex w-full items-center justify-between gap-3 rounded-xl glass-panel px-4 py-3.5 hover:border-no-700 transition-colors"
-      >
-        <span className="inline-flex items-center gap-3">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-no-500/10 text-no-300 group-hover:bg-no-500/20 transition-colors">
-            <I.logOut s={16} />
+      {/* ── Sign out (POST to prevent CSRF — GET logout is neutered) */}
+      <form action="/auth/logout" method="POST">
+        <button
+          type="submit"
+          className="group inline-flex w-full items-center justify-between gap-3 rounded-xl glass-panel px-4 py-3.5 hover:border-no-700 transition-colors"
+        >
+          <span className="inline-flex items-center gap-3">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-no-500/10 text-no-300 group-hover:bg-no-500/20 transition-colors">
+              <I.logOut s={16} />
+            </span>
+            <span className="text-left">
+              <p className="font-display text-[14px] font-semibold text-text leading-tight">Sign out · Toka</p>
+              <p className="mt-0.5 text-[12px] text-text-subtle">See you soon · Tutaonana</p>
+            </span>
           </span>
-          <span>
-            <p className="font-display text-[14px] font-semibold text-text leading-tight">Sign out · Toka</p>
-            <p className="mt-0.5 text-[12px] text-text-subtle">See you soon · Tutaonana</p>
-          </span>
-        </span>
-        <I.chevronRight s={16} />
-      </a>
+          <I.chevronRight s={16} />
+        </button>
+      </form>
     </main>
   );
 }

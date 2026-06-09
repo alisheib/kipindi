@@ -42,6 +42,8 @@ export const RATE_RULES: Record<string, RateRule> = {
   // Capacities above are per-phone; these add a separate ceiling per IP.
   "auth.register.ip": { capacity: 10, refillPerMin: 0.5 }, // 10 fresh phones per IP per ~20 min
   "auth.login.ip":    { capacity: 25, refillPerMin: 5 },   // looser — multiple devices share an IP
+  "totp.verify":   { capacity: 5,  refillPerMin: 0.5 },   // 5 attempts per 10 min — prevents 6-digit brute force
+  "chat.send":     { capacity: 10, refillPerMin: 2 },     // 10 messages burst, 2/min steady
   "kyc.submit":    { capacity: 5,  refillPerMin: 0.5 },
   "wallet.deposit":{ capacity: 20, refillPerMin: 4 },
   "wallet.withdraw":{ capacity: 6, refillPerMin: 0.5 },
