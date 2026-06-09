@@ -62,6 +62,13 @@ export async function getSession(): Promise<SessionData | null> {
   if (!session) return null;
 
   const now = Date.now();
+  // Absolute expiry — hard 7-day cap. Without this, a tampered cookie
+  // with a far-future exp could survive indefinitely.
+  if (session.exp && now > session.exp) {
+    try { jar.delete(COOKIE_NAME); } catch { /* read-only context */ }
+    audit({ category: "AUTH", action: "session.expired", actorId: session.userId, targetType: "Session", targetId: session.sessionId });
+    return null;
+  }
   // Idle timeout — kick the session if it hasn't been seen in 24h, even
   // though the absolute exp may still be hours away. LCCP / GBT
   // account-protection: idle browsers that left the tab open should not
@@ -92,7 +99,7 @@ export async function getSession(): Promise<SessionData | null> {
         sameSite: "lax",
         secure: process.env.NODE_ENV === "production",
         path: "/",
-        maxAge: Math.floor((session.exp - now) / 1000),
+        maxAge: Math.max(0, Math.floor((session.exp - now) / 1000)),
       });
     } catch {
       // Read-only / static-render contexts can't write cookies — fall

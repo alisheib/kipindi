@@ -16,6 +16,7 @@ import { sms, otpMessage } from "./sms";
 import { LoginRequestSchema, OtpVerifySchema, RegisterSchema } from "./validators";
 import type { z } from "zod";
 import { createSession, destroySession, getSession, type SessionData } from "./session";
+import { withLock } from "./locks";
 
 /** Phone numbers Ali wants auto-promoted to ADMIN on first registration.
  *  Set ADMIN_BOOTSTRAP_PHONES=+255712345678,+255700000000 in env. */
@@ -160,22 +161,37 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
   const rl = rateCheck(phone, "otp.verify");
   if (!rl.allowed) return { ok: false, error: "Too many attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
 
-  const otp = db.otp.findActive(phone, purpose);
-  if (!otp) {
+  // Try ALL active OTPs for this phone+purpose, not just the most recent.
+  // SMS delivery is unreliable — the user might receive OTP #1 after OTP #2
+  // arrives. Checking only the newest OTP rejects the older (but valid) code,
+  // causing "wrong code" errors that users report as "sign-in doesn't work."
+  const allActive = db.otp.findAllActive(phone, purpose);
+  if (allActive.length === 0) {
     audit({ category: "SECURITY", action: "otp.verify.no_active", actorId: null, targetType: "Phone", targetId: phone, ip: meta.ip });
     return { ok: false, error: "Code expired or not found.", code: "EXPIRED" };
   }
-  if (otp.attempts >= 5) {
-    audit({ category: "SECURITY", action: "otp.verify.too_many_attempts", actorId: null, targetType: "Otp", targetId: otp.id });
+  // Check if ANY active OTP has exhausted attempts
+  const freshOtps = allActive.filter((o) => o.attempts < 5);
+  if (freshOtps.length === 0) {
+    audit({ category: "SECURITY", action: "otp.verify.too_many_attempts", actorId: null, targetType: "Otp", targetId: allActive[0].id });
     return { ok: false, error: "Too many wrong attempts. Request a new code.", code: "TOO_MANY_ATTEMPTS" };
   }
 
-  if (!(await verifyOtp(code, otp.salt, otp.hashedCode))) {
-    db.otp.incrementAttempts(otp.id);
-    audit({ category: "SECURITY", action: "otp.verify.wrong_code", actorId: null, targetType: "Otp", targetId: otp.id, ip: meta.ip });
+  let matched: typeof freshOtps[0] | null = null;
+  for (const otp of freshOtps) {
+    if (await verifyOtp(code, otp.salt, otp.hashedCode)) {
+      matched = otp;
+      break;
+    }
+  }
+  if (!matched) {
+    // Increment attempts on the most recent OTP only
+    db.otp.incrementAttempts(freshOtps[0].id);
+    audit({ category: "SECURITY", action: "otp.verify.wrong_code", actorId: null, targetType: "Otp", targetId: freshOtps[0].id, ip: meta.ip });
     return { ok: false, error: "Wrong code.", code: "INVALID" };
   }
-  db.otp.consume(otp.id);
+  // Consume the matched OTP (and all others for this phone+purpose to prevent reuse)
+  for (const o of allActive) db.otp.consume(o.id);
 
   // Find or create user
   let user = db.user.findByPhone(phone);
@@ -320,6 +336,10 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
     }
   }
 
+  // Serialise per-phone to prevent duplicate-user race: two concurrent
+  // registrations both pass findByPhone before either writes the user.
+  return withLock(`register:${phone}`, async () => {
+
   if (db.user.findByPhone(phone)) {
     audit({ category: "AUTH", action: "register.duplicate_phone", actorId: null, targetType: "Phone", targetId: phone, ip: meta.ip });
     return { ok: false, error: "An account with that phone already exists.", code: "ALREADY_EXISTS" };
@@ -403,6 +423,7 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
   });
 
   return { ok: true, data: { userId: user.id, role: user.role } };
+  }); // end withLock register
 }
 
 export type PasswordLoginInput = { phone: string; password: string };
@@ -460,12 +481,20 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
   if (!user.passwordHash || !user.passwordSalt) {
     return { ok: false, error: "This account has no password yet. Use the OTP flow or contact support.", code: "INVALID" };
   }
-  if (!(await verifyPassword(input.password, user.passwordSalt, user.passwordHash))) {
-    const nextCount = (user.failedLoginCount ?? 0) + 1;
+
+  // Serialise password verification + counter update per user to prevent
+  // concurrent wrong-password logins from losing increment counts (two
+  // requests both read failedLoginCount=3, both write 4 → should be 5).
+  return withLock(`login:${user.id}`, async () => {
+  // Re-read user inside the lock for fresh failedLoginCount
+  const freshUser = db.user.findById(user.id) ?? user;
+
+  if (!(await verifyPassword(input.password, user.passwordSalt!, user.passwordHash!))) {
+    const nextCount = (freshUser.failedLoginCount ?? 0) + 1;
     const shouldLock = nextCount >= LOCKOUT_MAX_FAILS;
     const patch: Partial<typeof user> = {
       failedLoginCount: shouldLock ? 0 : nextCount,
-      lockedUntil: shouldLock ? new Date(Date.now() + LOCKOUT_DURATION_MS).toISOString() : user.lockedUntil ?? null,
+      lockedUntil: shouldLock ? new Date(Date.now() + LOCKOUT_DURATION_MS).toISOString() : freshUser.lockedUntil ?? null,
     };
     db.user.update(user.id, patch);
     audit({
@@ -521,4 +550,5 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
   });
 
   return { ok: true, data: { userId: user.id, role: effectiveRole } };
+  }); // end withLock login
 }

@@ -412,6 +412,15 @@ export const db = {
       }
       return null;
     },
+    /** Return ALL active (unconsumed, unexpired) OTPs for a phone+purpose,
+     *  ordered most-recent-first. Used by verifyOtpAndAuth to accept any
+     *  valid OTP regardless of delivery order. */
+    findAllActive: (phone: string, purpose: string): StoredOtp[] => {
+      const now = Date.now();
+      return Array.from(store.otps.values())
+        .filter((o) => o.phoneE164 === phone && o.purpose === purpose && !o.consumedAt && new Date(o.expiresAt).getTime() > now)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    },
     consume: (id: string) => {
       const o = store.otps.get(id);
       if (!o) return null;
