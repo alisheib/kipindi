@@ -42,31 +42,60 @@ EN + SW (FR also wired), regulator-ready.
 | Postgres swap walkthrough | [`RAILWAY_DB_README.md`](RAILWAY_DB_README.md) |
 | Flow architecture (every redirect + gate) | [`docs/FLOWS.md`](docs/FLOWS.md) |
 
-## Auth — current state
+## Auth — current state (June 2026 hardened)
 
-**Phone + password** (interim). The OTP code paths in
-`auth-service.ts` (`requestLoginOtp`, `requestRegisterOtp`,
-`verifyOtpAndAuth`) are preserved verbatim — switch back by routing
-`/auth/login` and `/auth/register` to `startLoginOtpAction` /
-`startRegisterOtpAction` once SMS goes live.
+**Phone + password** (interim). OTP code paths preserved — switch back
+once SMS provider (Selcom/Beem) is signed.
 
-- `registerWithPassword` and `loginWithPassword` in `auth-service.ts`
-  hash with scrypt (16-byte per-user salt).
-- `startLoginAction` and `startRegisterAction` in
-  `src/app/auth/{login,register}/actions.ts` are the password forms.
-- Phone input is digits-only via [`src/components/ui/phone-input.tsx`](src/components/ui/phone-input.tsx).
+### Registration flow
+```
+Form → Zod (phone, DOB 18+, terms) → password rules (min 8, common
+blacklist) → rate limit (per-phone + per-IP) → withLock(register:{phone})
+→ duplicate check → scrypt hash → create user + wallet → affiliate bind
+→ createSession → redirect
+```
+
+### Login flow
+```
+Form → Zod phone → rate limit (per-phone + per-IP) → find user
+→ check status (self-excluded/suspended/closed) → check lockout (5
+fails → 30 min) → withLock(login:{userId}) → re-read fresh counter
+→ verify password → on fail: increment + maybe lock → on success:
+clear counter → admin bootstrap check → createSession → redirect
+```
+
+### Session system
+- **Single active session per account.** New login on any device
+  instantly revokes all prior sessions. The revoked device sees
+  "Signed out — your account was signed in on another device."
+- Server-side registry (`userId → activeSessionId`) in globalThis.
+  Self-heals after Railway restart (first device to request claims slot).
+- HMAC-SHA-256 signed HttpOnly cookie, SameSite=Lax, Secure in prod.
+- 7-day absolute expiry + 24h idle timeout + 5-min refresh throttle.
+- Every session event audited (create, expire, idle, revoke, destroy).
+
+### OTP verification (for future SMS)
+- Checks ALL active OTPs for a phone+purpose, not just the newest.
+  Fixes SMS delivery-order mismatch (user receives OTP #1 after #2).
+- On match: consumes ALL active OTPs for that phone+purpose.
+- On no match: increments attempt counter on most recent OTP only.
+
+### Race condition protection
+- `withLock("register:{phone}")` — prevents duplicate user creation
+- `withLock("login:{userId}")` — serialises password check + counter update
+- Rate limit per-phone + per-IP on both login and register
+
+### Chat history
+Chat (`sessionStorage`) is cleared on logout/session-revoke so the next
+user on the same browser starts fresh.
 
 ### Admin bootstrap
-
-Set `ADMIN_BOOTSTRAP_PHONES=+255712345678,+255700000000` in Railway env.
-Any phone in that comma-separated list, when registered through the
-normal `/auth/register` form, gets `role: ADMIN` + `status: ACTIVE`
-immediately. Use this to seed the manager account.
+Set `ADMIN_BOOTSTRAP_PHONES=+255712345678,...` in Railway env.
+Auto-promotes on both register AND login (idempotent, never demotes).
 
 ### Roles
-
-`PLAYER | AGENT | MODERATOR | ADMIN | COMPLIANCE | SUPPORT`. Anything
-other than `PLAYER` / `AGENT` redirects to `/admin` after login.
+`PLAYER | AGENT | MODERATOR | ADMIN | COMPLIANCE | SUPPORT`. Non-player
+redirects to `/admin` after login.
 
 ## SMS — currently dummy
 
@@ -116,6 +145,8 @@ Required Railway env vars (set in service → Variables):
 | `NODE_ENV` | `production` on Railway |
 | `NEXT_PUBLIC_APP_URL` | `https://kipindi-production.up.railway.app` |
 | `TESTER_BOOTSTRAP_PHONES` | comma-separated E.164 list — auto-fund 100K TZS on register |
+| `ADMIN_TEST_DEPOSITS` | `true` to enable uncapped admin deposits; unset = enabled in dev only |
+| `ANTHROPIC_API_KEY` | Anthropic API key for live chatbot (Claude Haiku 4.5). Omit = stub mode |
 
 ## Test scripts
 
@@ -141,6 +172,7 @@ hit dev-only helpers under `/api/dev-test/*` (returns 404 in production).
 | `capture-manual-screenshots.mjs` | 19 screenshots (10 player + 9 admin) for the user manuals. |
 | `generate-pdfs.mjs` | Render the 4 production PDFs (operator brief, technical brief, player manual, admin manual). |
 | `rasterize-pdfs-for-audit.mjs` | Per-page PNGs of every PDF for visual audit before delivery. |
+| `auth-stress.js` | 100+ concurrent auth requests — duplicate registration race, login counter corruption, brute-force lockout, malformed input flood. |
 
 ### Dev-test helpers
 
@@ -227,6 +259,17 @@ Already shipped (was on this list before):
 - **Profile page** displays a yellow `ADMIN` (or `COMPLIANCE` /
   `MODERATOR`) pill so the operator can see at a glance that
   `ADMIN_BOOTSTRAP_PHONES` wired up.
+- **Conviction dial** — `NEUTRAL_BAND = 0.005` (threshold ~1.005×). Any
+  intentional movement shows full feedback (payout section, side label,
+  active button). `effectiveSide` overrides geometric neutral when user
+  has typed a value. Pre-click "Insufficient balance" warning when
+  `stake > balance`.
+- **Viewport consistency** — 3-tier max-width system:
+  `1280px` (grid pages) / `1080px` (content pages) / `640px` (forms).
+- **Positions page** — All/Open/Settled tab filter via URL params.
+- **Account activity** — category filter chips (dynamic from actual data).
+- **Bottom nav** — `aria-label` on every link.
+- **Bet confirm modal** — `safe-area-inset-bottom` padding for notched phones.
 
 ## Dark Glass Kit Rebuild (Phase 3 + 3b) — June 2026
 
@@ -272,6 +315,30 @@ for the full status and remaining items.**
   `rejectAmlAction` wallet refund wrapped in `withLock("wallet:{userId}")`.
 - **Database constraints**: `@@unique([provider, providerRef])` on Transaction.
   CHECK constraint comments for wallet balance >= 0 (apply after migration).
+- **Single active session**: server-side registry prevents concurrent logins.
+  New login revokes all prior sessions; revoked device sees explanation.
+- **Auth race conditions**: `withLock("register:{phone}")` prevents duplicate
+  users; `withLock("login:{userId}")` serialises failed-count updates.
+- **Payout floor**: `Math.max(0, ...)` prevents negative payout on settlement.
+- **Market-level lock**: `withLock("market:{id}")` on `resolveMarket` prevents
+  concurrent settlement of the same market.
+- **Negative amount guard**: deposit/withdraw actions reject `amount <= 0`.
+- **Admin test deposits**: gated by `ADMIN_TEST_DEPOSITS === "true"` (whitelist)
+  in production; defaults to enabled in dev/staging when unset.
+- **Loss notifications**: direct language ("Bet lost · TZS X") — no euphemistic
+  framing that could delay awareness of losses (LCCP harm-prevention).
+
+## Chatbot (AI Help Companion)
+
+- **Stub mode** (default): keyword-matching in `src/lib/chat/send-message.ts`.
+  Covers deposits, dial, payouts, KYC, referrals, proposals.
+- **Live mode**: set `ANTHROPIC_API_KEY` in Railway env. Server action
+  `src/app/_actions/chat.ts` calls Claude Haiku 4.5 with a 50pick-specific
+  system prompt. Falls back to stub on API error.
+- **Icon**: gilt chat bubble (FAB) + FiftyMark brand coin (panel/avatars).
+- **Chat history**: cleared on logout/session-revoke. Stored in sessionStorage.
+- **At-risk language**: always routes to the RG redirect card, never free-text.
+- **Betting advice**: refuses to recommend YES or NO on any market.
 
 ## Accessibility (June 2026 sprint)
 
