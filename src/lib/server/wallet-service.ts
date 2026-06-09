@@ -32,7 +32,9 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
   // Disable later by setting ADMIN_TEST_DEPOSITS=false (or remove this block).
   const ADMIN_TEST_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
   const depositor = db.user.findById(userId);
-  const adminTest = !!depositor && ADMIN_TEST_ROLES.has(depositor.role) && process.env.ADMIN_TEST_DEPOSITS === "true";
+  const adminTestEnv = process.env.ADMIN_TEST_DEPOSITS;
+  const adminTestAllowed = adminTestEnv === "true" || (adminTestEnv === undefined && process.env.NODE_ENV !== "production");
+  const adminTest = !!depositor && ADMIN_TEST_ROLES.has(depositor.role) && adminTestAllowed;
 
   const parse = (adminTest ? AdminDepositSchema : DepositSchema).safeParse(input);
   if (!parse.success) return { ok: false, error: parse.error.errors[0]?.message ?? "Invalid input", code: "INVALID" };
