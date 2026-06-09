@@ -80,11 +80,21 @@ export async function getSession(): Promise<SessionData | null> {
   if (!session) return null;
 
   const now = Date.now();
-  // Single-active-session check — if another device logged in after
-  // this session was created, the registry entry was replaced. This
-  // session is no longer the active one → force sign-out.
+  // Single-active-session check.
+  //
+  // Three states:
+  //   a) Registry has THIS sessionId → valid, proceed
+  //   b) Registry has a DIFFERENT sessionId → revoked by newer login
+  //   c) Registry has NO entry for this user → process restarted, registry
+  //      was lost. Self-heal: register this session as the active one.
+  //      The first device to make a request after restart "claims" the slot;
+  //      the second device finds a mismatch and gets revoked. Equivalent to
+  //      "the device the user is actually using survives."
   const activeId = activeSessions.get(session.userId);
-  if (activeId && activeId !== session.sessionId) {
+  if (!activeId) {
+    // Self-heal after restart — claim the slot
+    activeSessions.set(session.userId, session.sessionId);
+  } else if (activeId !== session.sessionId) {
     try {
       jar.delete(COOKIE_NAME);
       // Short-lived flash cookie so the login page can explain WHY
