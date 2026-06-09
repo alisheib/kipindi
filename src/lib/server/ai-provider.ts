@@ -454,12 +454,13 @@ let _provider: AIProvider | null = null;
 export function getAIProvider(): AIProvider {
   if (_provider) return _provider;
 
-  // Production: uncomment when Claude subscription is active
-  // if (process.env.ANTHROPIC_API_KEY) {
-  //   const { ClaudeProvider } = require("./ai-provider-claude");
-  //   _provider = new ClaudeProvider(process.env.ANTHROPIC_API_KEY);
-  //   return _provider;
-  // }
+  // Use real Claude when API key is set, mock otherwise (dev/test)
+  if (process.env.ANTHROPIC_API_KEY) {
+    // Dynamic import to keep the Anthropic SDK out of the client bundle
+    const { ClaudeProvider } = require("./ai-provider-claude") as { ClaudeProvider: new (key: string) => AIProvider };
+    _provider = new ClaudeProvider(process.env.ANTHROPIC_API_KEY);
+    return _provider;
+  }
 
   _provider = new MockClaudeProvider();
   return _provider;
