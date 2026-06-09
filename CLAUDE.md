@@ -267,8 +267,7 @@ Already shipped (was on this list before):
 - **Hero slideshow / video background** — full-bleed Ken Burns image slideshow
   for the landing page. Component built at `src/components/landing/hero-slideshow.tsx`,
   20 WebP images in `public/hero/slides/`. Waiting for professional album before
-  activating. See [`docs/hero-slideshow-dev/`](docs/hero-slideshow-dev/) for
-  wiring instructions.
+  activating.
 - **Full Prisma entity migration** — converting in-memory `db.*` calls to async
   Prisma per-row queries. Schema ready, snapshot durability already hardened.
   Multi-session project (358 calls across 73 files).
@@ -303,7 +302,7 @@ Already shipped (was on this list before):
 
 ## Dark Glass Kit Rebuild (Phase 3 + 3b) — June 2026
 
-The entire UI was rebuilt from the design kit in `50Pick Modernization/`.
+The entire UI was rebuilt from the original design kit (Phase 3 + 3b complete).
 34 commits on `main` covering:
 
 - **All tokens** updated: `--panel`, `--bg-inset`, `--bg-elevated2`, `--brand-*`,
@@ -326,8 +325,7 @@ The entire UI was rebuilt from the design kit in `50Pick Modernization/`.
 - **useModalLock** (`src/lib/use-modal-lock.ts`) — body scroll lock + viewport
   zoom reset for all portaled modals (Android pinch-zoom fix).
 
-**Read [`50Pick Modernization/MODERNIZATION_PLAN.md`](50Pick%20Modernization/MODERNIZATION_PLAN.md)
-for the full status and remaining items.**
+Modernization is complete — all tokens, components, and focus rings updated.
 
 ## Security hardening (June 2026 sprint)
 
