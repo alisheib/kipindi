@@ -95,13 +95,10 @@ export default async function SessionsPage() {
       <section className="flex items-start gap-2.5 rounded-xl border border-info-border bg-info-bg/[0.10] p-4">
         <I.shieldcheck s={16} />
         <div className="text-[12px] text-text-muted leading-snug space-y-1">
-          <p className="font-display font-semibold text-text">Multi-device tracking (production)</p>
+          <p className="font-display font-semibold text-text">Session security</p>
           <p>
-            This build keeps one session cookie per browser. Production stores every session in
-            the <span className="font-mono text-text-muted">Session</span> Postgres table, so you
-            can see all devices currently signed in (current phone, the other phone, the browser
-            at the office) and revoke any of them remotely. Revocation invalidates the cookie and
-            forces a fresh OTP on the next request from that device.
+            Your session is tied to this browser. Sign out above to end it, or use a different
+            device to sign in separately. Each sign-in requires a fresh OTP for your protection.
           </p>
         </div>
       </section>

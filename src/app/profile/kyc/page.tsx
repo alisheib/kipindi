@@ -207,7 +207,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             <UploadSlot label="Selfie · Picha yako" docType="SELFIE"     done={docsCount >= 3} />
           </div>
           <p className="text-[10.5px] italic text-text-subtle">
-            Image upload uses demo storage in this build — tap each card to attach a sample, then submit for compliance review.
+            Tap each card to attach a photo, then submit for compliance review.
           </p>
           <form action={submitKycForReviewAction}>
             <button

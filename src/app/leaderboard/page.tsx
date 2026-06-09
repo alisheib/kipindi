@@ -131,7 +131,8 @@ function buildConsensusSeries(): { t: string; yes: number }[] {
 export default function LeaderboardPage() {
   seedDemoMarkets();
   const real = buildLeaderboard();
-  const rows = real.length >= 6 ? real : syntheticLeaderboard();
+  const isSynthetic = real.length < 6;
+  const rows = isSynthetic ? syntheticLeaderboard() : real;
   const consensus = buildConsensusSeries();
 
   return (
@@ -169,6 +170,11 @@ export default function LeaderboardPage() {
       )}
 
       <section className="overflow-x-auto rounded-xl glass-panel">
+        {isSynthetic && (
+          <div className="px-4 py-2 border-b border-border bg-bg-overlay/50">
+            <p className="text-[11px] text-text-subtle italic">Sample data · rankings update as players join and predict.</p>
+          </div>
+        )}
         <table className="w-full text-[13px] min-w-[640px]">
           <thead className="border-b border-border bg-bg-overlay">
             <tr className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">

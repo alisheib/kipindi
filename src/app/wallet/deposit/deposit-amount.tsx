@@ -77,9 +77,7 @@ export function DepositAmount({
       </div>
 
       <p className="mt-2 text-[11px] text-text-subtle">
-        {adminTest
-          ? "Admin test funding · deposit any amount to test the wallet, referrals & proposals. (Temporary — disable with ADMIN_TEST_DEPOSITS=false.)"
-          : "Min TZS 500 · Max TZS 2,000,000 per deposit. Daily limits may apply."}
+        Min TZS 500 · Max TZS 2,000,000 per deposit. Daily limits may apply.
       </p>
     </div>
   );

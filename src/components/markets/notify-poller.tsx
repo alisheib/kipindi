@@ -158,8 +158,11 @@ export function NotifyPoller() {
         /* network — try again later */
       }
       // Stay tight while there's at least one watched market; otherwise
-      // fall back to the idle cadence.
+      // fall back to the idle cadence. Re-read from localStorage (not the
+      // cached `watch` from before the async fetch) so pruned markets are
+      // reflected in the cadence decision.
       const stillWatching = readWatch().length > 0;
+      if (cancelled) return;
       timer = setTimeout(tick, stillWatching ? ACTIVE_POLL_MS : IDLE_POLL_MS);
     };
 

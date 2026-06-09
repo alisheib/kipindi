@@ -34,7 +34,7 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "Is the platform fair? · Mfumo huu uko sawa?",
-    a: "Every market move is recorded into a HMAC-chained audit trail. Resolutions cite a public source URL. The whole-pool math is published in the Terms and surfaced on the admin /admin/config page; tax + commission rates are visible to everyone.",
+    a: "Every market move is recorded into a HMAC-chained audit trail. Resolutions cite a public source URL. The whole-pool math is published in the Terms of Service; tax + commission rates are visible on every market.",
   },
 ];
 
@@ -92,8 +92,8 @@ export default function HelpPage() {
           title="Live chat"
           titleSw="Mazungumzo ya moja kwa moja"
           value="In-app"
-          sub="Coming soon"
-          subSw="Inakuja hivi karibuni"
+          sub="Tap the chat bubble"
+          subSw="Bonyeza kiputo cha mazungumzo"
         />
       </section>
 
@@ -178,7 +178,7 @@ function ContactCard({
       </div>
       <p className="font-display font-bold text-[15px] text-text break-all">{value}</p>
       <p className="text-[11.5px] text-text-subtle">{sub}</p>
-      {subSw && <p className="text-[11px] italic text-text-tertiary">{subSw}</p>}
+      {subSw && <p className="text-[11px] italic text-text-subtle">{subSw}</p>}
     </div>
   );
   return href ? <a href={href} className="block">{card}</a> : card;
@@ -203,7 +203,7 @@ function QuickLinkCard({
       </span>
       <div className="flex-1 min-w-0">
         <p className="font-display text-[13px] font-semibold text-text truncate">{title}</p>
-        {titleSw && <p className="text-[11px] italic text-text-tertiary truncate">{titleSw}</p>}
+        {titleSw && <p className="text-[11px] italic text-text-subtle truncate">{titleSw}</p>}
         <p className="mt-0.5 text-[11px] text-text-subtle">{sub}</p>
       </div>
     </a>
