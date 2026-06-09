@@ -11,13 +11,16 @@ import { ExportDataButton } from "./export-data-button";
 export const metadata = { title: "My account · Akaunti yangu" };
 export const dynamic = "force-dynamic";
 
-export default async function AccountPage({ searchParams }: { searchParams?: Promise<{ error?: string }> }) {
+export default async function AccountPage({ searchParams }: { searchParams?: Promise<{ error?: string; act?: string }> }) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
 
   const user = db.user.findById(session.userId);
-  const activity = getOwnActivity(session.userId, 50);
+  const allActivity = getOwnActivity(session.userId, 50);
   const sp = (await searchParams) ?? {};
+  const actFilter = sp.act ?? "all";
+  const activityCategories = [...new Set(allActivity.map((e) => e.category))].sort();
+  const activity = actFilter === "all" ? allActivity : allActivity.filter((e) => e.category === actFilter);
 
   const statusTone =
     user?.status === "ACTIVE" ? "yes"
@@ -106,6 +109,28 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
             {activity.length} events
           </span>
         </div>
+        {activityCategories.length > 1 && (
+          <nav className="flex flex-wrap items-center gap-1.5" aria-label="Activity category filter">
+            {[{ id: "all", label: "All" }, ...activityCategories.map((c) => ({ id: c, label: c }))].map((f) => {
+              const on = actFilter === f.id;
+              return (
+                <Link
+                  key={f.id}
+                  href={`/profile/account${f.id === "all" ? "" : `?act=${f.id}`}` as never}
+                  className={
+                    "inline-flex h-7 items-center rounded-md border px-3 font-mono text-[11px] font-semibold whitespace-nowrap transition-all " +
+                    (on
+                      ? "border-brand-500 text-text"
+                      : "border-border bg-bg-elevated/60 text-text-muted hover:border-brand-400 hover:text-text")
+                  }
+                  style={on ? { background: "oklch(40% 0.12 262 / 0.35)" } : undefined}
+                >
+                  {f.label}
+                </Link>
+              );
+            })}
+          </nav>
+        )}
         <div className="overflow-x-auto rounded-md border border-border">
           <table className="w-full text-[12px]">
             <thead>

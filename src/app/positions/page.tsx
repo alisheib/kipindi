@@ -12,10 +12,12 @@ export const dynamic = "force-dynamic";
 
 const fmtTzs = (n: number) => `TZS ${Math.round(n).toLocaleString("en-US")}`;
 
-export default async function PositionsPage() {
+export default async function PositionsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   seedDemoMarkets();
   const session = await currentSession();
   if (!session) redirect("/auth/login");
+  const sp = await searchParams;
+  const activeTab: "open" | "settled" | "all" = (["open", "settled", "all"] as const).includes(sp.tab as "open" | "settled" | "all") ? (sp.tab as "open" | "settled" | "all") : "all";
 
   const positions = listPositionsForUser(session.userId);
   const open = positions.filter((p) => p.status === "OPEN");
@@ -51,6 +53,37 @@ export default async function PositionsPage() {
         <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">Your predictions</h1>
         <p className="text-[15px] italic text-text-subtle">Utabiri wako</p>
       </header>
+
+      {/* Tab filter — All / Open / Settled (matches markets page filter pattern) */}
+      {positions.length > 0 && (
+        <nav className="flex flex-wrap items-center gap-1.5" aria-label="Position filter">
+          {([
+            { id: "all", label: "All", sw: "Zote", count: positions.length },
+            { id: "open", label: "Open", sw: "Hai", count: open.length },
+            { id: "settled", label: "Settled", sw: "Imekamilika", count: settled.length },
+          ] as const).map((t) => {
+            const on = activeTab === t.id;
+            return (
+              <Link
+                key={t.id}
+                href={`/positions${t.id === "all" ? "" : `?tab=${t.id}`}` as never}
+                className={
+                  "inline-flex h-8 items-center rounded-md border px-3.5 font-mono text-[12px] font-semibold whitespace-nowrap transition-all " +
+                  (on
+                    ? "border-brand-500 text-text"
+                    : "border-border bg-bg-elevated/60 text-text-muted hover:border-brand-400 hover:text-text")
+                }
+                style={on ? { background: "oklch(40% 0.12 262 / 0.35)", boxShadow: "0 0 10px oklch(63% 0.18 262 / 0.15)" } : undefined}
+                aria-current={on ? "page" : undefined}
+              >
+                {t.label}
+                <span className="ml-1.5 italic font-normal text-[10.5px] text-text-subtle">· {t.sw}</span>
+                <span className="ml-1.5 font-mono text-[10px] tabular-nums opacity-60">{t.count}</span>
+              </Link>
+            );
+          })}
+        </nav>
+      )}
 
       {/* P&L summary strip — only render when the user has any positions */}
       {positions.length > 0 && (
@@ -88,7 +121,7 @@ export default async function PositionsPage() {
         </section>
       )}
 
-      <Section title="Open" sw="Hai" count={open.length}>
+      {(activeTab === "all" || activeTab === "open") && <Section title="Open" sw="Hai" count={open.length}>
         {open.length === 0 ? (
           <Empty
             kind="positions"
@@ -129,9 +162,9 @@ export default async function PositionsPage() {
             })}
           </div>
         )}
-      </Section>
+      </Section>}
 
-      <Section title="Settled" sw="Imekamilika" count={settled.length}>
+      {(activeTab === "all" || activeTab === "settled") && <Section title="Settled" sw="Imekamilika" count={settled.length}>
         {settled.length === 0 ? (
           <Empty
             kind="default"
@@ -160,7 +193,7 @@ export default async function PositionsPage() {
             })}
           </div>
         )}
-      </Section>
+      </Section>}
     </main>
   );
 }
