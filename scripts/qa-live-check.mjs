@@ -19,8 +19,10 @@ page.on("console", (m) => {
 page.on("pageerror", (e) => consoleErrors.push("pageerror: " + e.message));
 
 // ── 1. Date field: type into DOB on /auth/register ──────────────────
-await page.goto(`${BASE}/auth/register`, { waitUntil: "networkidle" });
+await page.goto(`${BASE}/auth/register`, { waitUntil: "domcontentloaded" });
 const day = page.getByLabel("Day");
+await day.waitFor({ state: "visible", timeout: 20000 });
+await page.waitForTimeout(500); // let hydration attach handlers
 await day.click();
 await page.keyboard.type("10051990", { delay: 60 }); // d=10 m=05 y=1990 with auto-advance
 const dval = await page.getByLabel("Day").inputValue();
@@ -57,13 +59,13 @@ ok(`"10" auto-advances to Month`, monthFocused);
 ok(`backspace on empty Month hops to Day`, dayFocusedAfterHop && (await page.getByLabel("Day").inputValue()) === "10");
 
 // ── 2. Markets page: default + New tab, demo hidden ─────────────────
-await page.goto(`${BASE}/markets`, { waitUntil: "networkidle" });
+await page.goto(`${BASE}/markets`, { waitUntil: "domcontentloaded" });
 const bodyDefault = await page.locator("body").innerText();
 ok(`/markets renders (has 'Markets')`, bodyDefault.includes("Markets") || bodyDefault.includes("Soko"));
 ok(`/markets hides demo polls`, !bodyDefault.includes("Demo ·"), `found Demo ·`);
 ok(`/markets shows 'New' tab`, bodyDefault.includes("New") && bodyDefault.includes("Mpya"));
 
-await page.goto(`${BASE}/markets?when=new`, { waitUntil: "networkidle" });
+await page.goto(`${BASE}/markets?when=new`, { waitUntil: "domcontentloaded" });
 const bodyNew = await page.locator("body").innerText();
 ok(`/markets?when=new renders, no demos`, !bodyNew.includes("Demo ·"));
 // New pill active (aria-current or active styling) — check it exists & is a link
