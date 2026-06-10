@@ -60,7 +60,7 @@ export async function updateGlobalConfigAction(formData: FormData) {
   if (max !== undefined) updates.maxStake = max;
   if (thin !== undefined) updates.thinProfitRatio = thin;
   if (starter !== undefined) updates.starterBalanceTzs = starter;
-  const r = setGlobalConfig(updates, s.userId);
+  const r = await setGlobalConfig(updates, s.userId);
   revalidatePath("/admin/config");
   return r;
 }
@@ -81,7 +81,7 @@ export async function setMarketOverrideAction(formData: FormData) {
   if (Object.keys(updates).length === 0) {
     return { ok: false as const, error: "No values to update." };
   }
-  const r = setMarketOverride(marketId, updates, s.userId);
+  const r = await setMarketOverride(marketId, updates, s.userId);
   revalidatePath("/admin/config");
   return r;
 }
@@ -90,7 +90,7 @@ export async function clearMarketOverrideAction(formData: FormData) {
   const s = await ensureAdmin();
   const marketId = String(formData.get("marketId") ?? "").trim();
   if (!marketId) return { ok: false as const, error: "Missing market id." };
-  clearMarketOverride(marketId, s.userId);
+  await clearMarketOverride(marketId, s.userId);
   revalidatePath("/admin/config");
   return { ok: true as const };
 }

@@ -18,7 +18,7 @@ export default async function AdminTotpVerifyPage() {
   const isAdmin = u && ADMIN_ROLES.has(u.role);
   if (!isAdmin) redirect("/");
 
-  if (!hasTotp(session.userId)) {
+  if (!(await hasTotp(session.userId))) {
     redirect("/admin/2fa/setup");
   }
 

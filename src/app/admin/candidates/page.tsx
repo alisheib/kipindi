@@ -48,16 +48,16 @@ export default async function AdminCandidatesPage({
   }>;
 }) {
   const sp = await searchParams;
-  const counts = countByState();
-  const spend = recordSpend();
-  const totalAll = countCandidatesTotal();
+  const counts = await countByState();
+  const spend = await recordSpend();
+  const totalAll = await countCandidatesTotal();
 
-  const pending = listCandidates({ state: "PENDING_REVIEW" });
-  const approved = listCandidates({ state: "APPROVED" });
+  const pending = await listCandidates({ state: "PENDING_REVIEW" });
+  const approved = await listCandidates({ state: "APPROVED" });
 
   // Build filter for "all activity" table
   const dateRange = datePresetToRange(sp.date ?? "");
-  const filtered = listCandidates({
+  const filtered = await listCandidates({
     state: (sp.state as CandidateState) || undefined,
     category: sp.category || undefined,
     search: sp.q || undefined,

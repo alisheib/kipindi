@@ -14,7 +14,7 @@ export async function POST() {
     return NextResponse.json({ ok: false, error: "Not available" }, { status: 404 });
   }
 
-  const seeded = seedAIPollFixtures();
+  const seeded = await seedAIPollFixtures();
   return NextResponse.json({
     ok: true,
     seeded: seeded.length,

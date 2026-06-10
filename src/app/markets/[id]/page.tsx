@@ -84,11 +84,21 @@ export default async function MarketDetail({
   // so the page swaps it out for an "awaiting settlement" card.
   const closedByTime = isClosedByTime(m) && !isResolved;
 
+  // Pre-compute cash-out values for positions (cashOutValue is async)
+  const positionCashOutValues = new Map<string, number | null>();
+  for (const p of myPositions) {
+    if (!isResolved && m.status === "LIVE" && p.status === "OPEN") {
+      positionCashOutValues.set(p.id, (await cashOutValue({ side: p.side, stake: p.stake }, { id: m.id, yesPool: m.yesPool, noPool: m.noPool })).value);
+    } else {
+      positionCashOutValues.set(p.id, null);
+    }
+  }
+
   // History — seed if empty (legacy demo markets), then build the signature
   // ProbabilityChart's range-keyed series from real snapshots.
-  seedHistory(m.id, m.yesPool, m.noPool);
-  const probChart = getProbabilityChart(m.id);
-  const comments = listComments(m.id, session?.userId ?? null);
+  await seedHistory(m.id, m.yesPool, m.noPool);
+  const probChart = await getProbabilityChart(m.id);
+  const comments = await listComments(m.id, session?.userId ?? null);
 
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6">
@@ -170,9 +180,7 @@ export default async function MarketDetail({
             <section className="mt-6 rounded-xl border border-border bg-bg-elevated p-5 space-y-3">
               <h2 className="font-display text-[15px] font-semibold text-text">Your positions</h2>
               {myPositions.map((p) => {
-                const liveValue = !isResolved && m.status === "LIVE" && p.status === "OPEN"
-                  ? cashOutValue({ side: p.side, stake: p.stake }, { id: m.id, yesPool: m.yesPool, noPool: m.noPool }).value
-                  : null;
+                const liveValue = positionCashOutValues.get(p.id) ?? null;
                 return (
                   <div key={p.id} className="rounded-md border border-border bg-bg-overlay/40 p-3 space-y-2">
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[12px]">

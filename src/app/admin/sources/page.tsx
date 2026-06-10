@@ -9,11 +9,11 @@ export const dynamic = "force-dynamic";
 
 const CATEGORIES: MarketCategory[] = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"];
 
-export default function AdminSourcesPage() {
-  seedDefaultSources();
-  const all = listSources();
+export default async function AdminSourcesPage() {
+  await seedDefaultSources();
+  const all = await listSources();
   const enabled = all.filter((s) => s.enabled);
-  const disabledCats = new Set(listDisabledCategories());
+  const disabledCats = new Set(await listDisabledCategories());
 
   // Group by category for the table
   const grouped = CATEGORIES.map((c) => ({

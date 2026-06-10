@@ -30,7 +30,7 @@ export async function verifyAdminTotpAction(formData: FormData) {
   if (!/^\d{6}$/.test(code)) {
     return { ok: false as const, error: "Enter the 6-digit code from your authenticator app." };
   }
-  const ok = verifyTotp(session.userId, code);
+  const ok = await verifyTotp(session.userId, code);
   if (!ok) {
     audit({
       category: "SECURITY",

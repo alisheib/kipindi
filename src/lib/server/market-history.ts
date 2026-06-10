@@ -7,9 +7,12 @@
  * Capped per-market at MAX_POINTS (~14 days of activity at the kind of
  * volumes we see in demo). Older points get evicted FIFO.
  *
- * Persists across hot-reloads via globalThis.__50PICK_MARKET_HISTORY,
- * same backup pattern as the audit ring + market store.
+ * DAL pattern: all exported functions are async and routed through a
+ * HistoryStore interface. When USE_PRISMA_DAL is set and a database is
+ * available, the Prisma implementation will back to a JSON column on
+ * PredictionMarket. Until then both paths use the same in-memory Map.
  */
+import { prisma, hasDatabase } from "./prisma";
 
 export type MarketSnapshot = {
   /** ISO timestamp */
@@ -33,7 +36,81 @@ declare global {
 const history: Map<string, MarketSnapshot[]> =
   globalThis.__50PICK_MARKET_HISTORY ?? (globalThis.__50PICK_MARKET_HISTORY = new Map());
 
-export function recordSnapshot(marketId: string, yesPool: number, noPool: number) {
+// ---------------------------------------------------------------------------
+// HistoryStore interface — async so that Prisma-backed impls can be swapped in
+// ---------------------------------------------------------------------------
+
+interface HistoryStore {
+  get(marketId: string): Promise<MarketSnapshot[]>;
+  append(marketId: string, snap: MarketSnapshot): Promise<void>;
+  hasHistory(marketId: string): Promise<boolean>;
+  /** Bulk-set history for a market (used by seedHistory). */
+  setAll(marketId: string, snaps: MarketSnapshot[]): Promise<void>;
+}
+
+// ---------------------------------------------------------------------------
+// Memory implementation — wraps the existing globalThis Map
+// ---------------------------------------------------------------------------
+
+const memoryStore: HistoryStore = {
+  async get(marketId) {
+    return history.get(marketId) ?? [];
+  },
+  async append(marketId, snap) {
+    const arr = history.get(marketId) ?? [];
+    arr.push(snap);
+    if (arr.length > MAX_POINTS) arr.splice(0, arr.length - MAX_POINTS);
+    history.set(marketId, arr);
+  },
+  async hasHistory(marketId) {
+    return (history.get(marketId)?.length ?? 0) > 0;
+  },
+  async setAll(marketId, snaps) {
+    history.set(marketId, snaps);
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Prisma implementation — TODO: back with a `history Json` column on
+// PredictionMarket once the schema is updated. For now, duplicates the
+// memory impl so the feature-flag switch is wired but both paths behave
+// identically.
+// ---------------------------------------------------------------------------
+
+const prismaStore: HistoryStore = {
+  // TODO: read from PredictionMarket.history JSON column
+  async get(marketId) {
+    return history.get(marketId) ?? [];
+  },
+  // TODO: append to PredictionMarket.history JSON column
+  async append(marketId, snap) {
+    const arr = history.get(marketId) ?? [];
+    arr.push(snap);
+    if (arr.length > MAX_POINTS) arr.splice(0, arr.length - MAX_POINTS);
+    history.set(marketId, arr);
+  },
+  // TODO: check PredictionMarket.history JSON column
+  async hasHistory(marketId) {
+    return (history.get(marketId)?.length ?? 0) > 0;
+  },
+  // TODO: write PredictionMarket.history JSON column
+  async setAll(marketId, snaps) {
+    history.set(marketId, snaps);
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Feature-flag switch
+// ---------------------------------------------------------------------------
+
+const USE_PRISMA = !!process.env.USE_PRISMA_DAL && hasDatabase();
+const store: HistoryStore = USE_PRISMA ? prismaStore : memoryStore;
+
+// ---------------------------------------------------------------------------
+// Exported functions — all async, delegate to store
+// ---------------------------------------------------------------------------
+
+export async function recordSnapshot(marketId: string, yesPool: number, noPool: number): Promise<void> {
   const total = yesPool + noPool;
   const snap: MarketSnapshot = {
     t: new Date().toISOString(),
@@ -42,21 +119,18 @@ export function recordSnapshot(marketId: string, yesPool: number, noPool: number
     noPool,
     volume: total,
   };
-  const arr = history.get(marketId) ?? [];
-  arr.push(snap);
-  if (arr.length > MAX_POINTS) arr.splice(0, arr.length - MAX_POINTS);
-  history.set(marketId, arr);
+  await store.append(marketId, snap);
 }
 
-export function getHistory(marketId: string): MarketSnapshot[] {
-  return history.get(marketId) ?? [];
+export async function getHistory(marketId: string): Promise<MarketSnapshot[]> {
+  return store.get(marketId);
 }
 
 /** Compress the raw history to roughly N points spread evenly across time
  *  so the PriceChart stays readable at any scale. Always includes the first
  *  + last actual snapshots so the line lands on the real current value. */
-export function getCompressedHistory(marketId: string, targetPoints = 24): MarketSnapshot[] {
-  const all = history.get(marketId) ?? [];
+export async function getCompressedHistory(marketId: string, targetPoints = 24): Promise<MarketSnapshot[]> {
+  const all = await store.get(marketId);
   if (all.length === 0) return [];
   if (all.length <= targetPoints) return all.slice();
 
@@ -74,8 +148,8 @@ export function getCompressedHistory(marketId: string, targetPoints = 24): Marke
  * isn't visibly empty on first paint. Generates a smooth random walk landing
  * on the current YES probability. Idempotent — only seeds if no history yet.
  */
-export function seedHistory(marketId: string, currentYesPool: number, currentNoPool: number, points = 16) {
-  if ((history.get(marketId)?.length ?? 0) > 0) return;
+export async function seedHistory(marketId: string, currentYesPool: number, currentNoPool: number, points = 16): Promise<void> {
+  if (await store.hasHistory(marketId)) return;
   const total = currentYesPool + currentNoPool;
   const endYes = total > 0 ? currentYesPool / total : 0.5;
   const startYes = Math.max(0.10, Math.min(0.90, endYes + (Math.cos(marketId.length) * 0.18)));
@@ -101,7 +175,7 @@ export function seedHistory(marketId: string, currentYesPool: number, currentNoP
       volume: v,
     });
   }
-  history.set(marketId, snaps);
+  await store.setAll(marketId, snaps);
 }
 
 // ── Chart data for the signature ProbabilityChart + card sparkline ──────────
@@ -129,11 +203,11 @@ function labelFor(iso: string): string {
 
 /** Full detail chart: a range-keyed series of {t,p} (p in 0..100). Only includes
  *  ranges that actually have ≥2 points, so the chart never shows a fake window. */
-export function getProbabilityChart(marketId: string): {
+export async function getProbabilityChart(marketId: string): Promise<{
   series: Partial<Record<ProbRange, { t: string; p: number }[]>>;
   ranges: ProbRange[];
-} {
-  const all = getHistory(marketId);
+}> {
+  const all = await getHistory(marketId);
   if (all.length < 2) return { series: {}, ranges: [] };
   const now = Date.now();
   const series: Partial<Record<ProbRange, { t: string; p: number }[]>> = {};
@@ -151,8 +225,8 @@ export function getProbabilityChart(marketId: string): {
 
 /** Lightweight card data: a short yes% sparkline series + the 24h move (points).
  *  move24h is undefined when there isn't enough history to compute it. */
-export function getCardChart(marketId: string): { spark: number[]; move24h?: number } {
-  const all = getHistory(marketId);
+export async function getCardChart(marketId: string): Promise<{ spark: number[]; move24h?: number }> {
+  const all = await getHistory(marketId);
   if (all.length < 2) return { spark: [] };
   const spark = compress(all, 16).map((s) => Math.round(s.yes * 100));
   const now = Date.now();

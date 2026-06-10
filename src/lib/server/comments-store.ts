@@ -9,6 +9,7 @@
 import { maskName } from "@/lib/server/affiliate-service";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
+import { prisma, hasDatabase } from "./prisma";
 
 export type CommentSide = "YES" | "NO" | null;
 
@@ -47,6 +48,90 @@ declare global {
 const comments: Map<string, StoredComment> =
   globalThis.__50PICK_COMMENTS ?? (globalThis.__50PICK_COMMENTS = new Map());
 
+// ---------------------------------------------------------------------------
+// DAL interface + implementations
+// ---------------------------------------------------------------------------
+
+interface CommentStore {
+  get(id: string): Promise<StoredComment | null>;
+  set(c: StoredComment): Promise<void>;
+  values(): Promise<StoredComment[]>;
+  listForMarket(marketId: string): Promise<StoredComment[]>;
+}
+
+const memoryStore: CommentStore = {
+  async get(id) { return comments.get(id) ?? null; },
+  async set(c) { comments.set(c.id, c); },
+  async values() { return Array.from(comments.values()); },
+  async listForMarket(marketId) {
+    return Array.from(comments.values()).filter((c) => c.marketId === marketId);
+  },
+};
+
+function pc() {
+  const c = prisma();
+  if (!c) throw new Error("comments-store: DATABASE_URL required");
+  return c;
+}
+
+/** Prisma row → StoredComment (reports JSON array → Set) */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toStored(row: any): StoredComment {
+  return {
+    id: row.id,
+    marketId: row.marketId,
+    userId: row.userId,
+    authorName: row.authorName,
+    body: row.body,
+    side: (row.side as CommentSide) ?? null,
+    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+    reports: new Set(Array.isArray(row.reports) ? row.reports as string[] : []),
+    hidden: !!row.hidden,
+    deleted: !!row.deleted,
+  };
+}
+
+const prismaStore: CommentStore = {
+  async get(id) {
+    const row = await pc().comment.findUnique({ where: { id } });
+    return row ? toStored(row) : null;
+  },
+  async set(c) {
+    const data = {
+      marketId: c.marketId,
+      userId: c.userId,
+      authorName: c.authorName,
+      body: c.body,
+      side: c.side,
+      reports: Array.from(c.reports),
+      hidden: c.hidden,
+      deleted: c.deleted,
+      createdAt: new Date(c.createdAt),
+    };
+    await pc().comment.upsert({
+      where: { id: c.id },
+      create: { id: c.id, ...data },
+      update: data,
+    });
+  },
+  async values() {
+    const rows = await pc().comment.findMany();
+    return rows.map(toStored);
+  },
+  async listForMarket(marketId) {
+    const rows = await pc().comment.findMany({
+      where: { marketId },
+      orderBy: { createdAt: "desc" },
+    });
+    return rows.map(toStored);
+  },
+};
+
+const usePrisma = process.env.USE_PRISMA_DAL === "true" && hasDatabase();
+const store: CommentStore = usePrisma ? prismaStore : memoryStore;
+
+// ---------------------------------------------------------------------------
+
 export const COMMENT_MAX_LEN = 500;
 const REPORT_HIDE_THRESHOLD = 3;
 const MOD_ROLES = new Set(["MODERATOR", "ADMIN", "COMPLIANCE"]);
@@ -56,13 +141,13 @@ function newId(): string {
   return `cm_${Date.now().toString(36)}_${(seq++).toString(36)}`;
 }
 
-function isMod(userId: string): boolean {
-  const u = db.user.findById(userId);
+async function isMod(userId: string): Promise<boolean> {
+  const u = await db.user.findById(userId);
   return !!u && MOD_ROLES.has(u.role);
 }
 
-function toView(c: StoredComment, viewerId: string | null): CommentView {
-  const viewerIsMod = viewerId ? isMod(viewerId) : false;
+async function toView(c: StoredComment, viewerId: string | null): Promise<CommentView> {
+  const viewerIsMod = viewerId ? await isMod(viewerId) : false;
   return {
     id: c.id,
     authorId: c.userId,
@@ -80,24 +165,25 @@ function toView(c: StoredComment, viewerId: string | null): CommentView {
 
 /** Public list for a market, newest first. Hidden/deleted comments are dropped
  *  for everyone except their author (who sees their own, labelled) and mods. */
-export function listComments(marketId: string, viewerId: string | null): CommentView[] {
-  const viewerIsMod = viewerId ? isMod(viewerId) : false;
+export async function listComments(marketId: string, viewerId: string | null): Promise<CommentView[]> {
+  const viewerIsMod = viewerId ? await isMod(viewerId) : false;
+  const all = await store.listForMarket(marketId);
   const out: CommentView[] = [];
-  for (const c of comments.values()) {
-    if (c.marketId !== marketId) continue;
+  for (const c of all) {
     if (c.deleted && !viewerIsMod) continue;
     if (c.hidden && !viewerIsMod && c.userId !== viewerId) continue;
-    out.push(toView(c, viewerId));
+    out.push(await toView(c, viewerId));
   }
   out.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)); // newest first
   return out;
 }
 
 /** Count of visible comments (for the section header / card meta). */
-export function countComments(marketId: string): number {
+export async function countComments(marketId: string): Promise<number> {
+  const all = await store.listForMarket(marketId);
   let n = 0;
-  for (const c of comments.values()) {
-    if (c.marketId === marketId && !c.deleted && !c.hidden) n++;
+  for (const c of all) {
+    if (!c.deleted && !c.hidden) n++;
   }
   return n;
 }
@@ -117,9 +203,10 @@ export type ModerationItem = {
 /** Everything a moderator needs to review: comments that are hidden (auto or
  *  manual) or carry at least one report, most-reported first. Across all
  *  markets. Excludes already-deleted comments. */
-export function listForModeration(): ModerationItem[] {
+export async function listForModeration(): Promise<ModerationItem[]> {
+  const all = await store.values();
   const out: ModerationItem[] = [];
-  for (const c of comments.values()) {
+  for (const c of all) {
     if (c.deleted) continue;
     if (!c.hidden && c.reports.size === 0) continue;
     out.push({
@@ -132,39 +219,41 @@ export function listForModeration(): ModerationItem[] {
   return out;
 }
 
-export function moderationCount(): number {
+export async function moderationCount(): Promise<number> {
+  const all = await store.values();
   let n = 0;
-  for (const c of comments.values()) if (!c.deleted && (c.hidden || c.reports.size > 0)) n++;
+  for (const c of all) if (!c.deleted && (c.hidden || c.reports.size > 0)) n++;
   return n;
 }
 
 /** Moderator-only: clear an auto-hide / reports and make the comment public
  *  again (the report was unfounded). */
-export function restoreComment(
+export async function restoreComment(
   userId: string,
   commentId: string,
-): { ok: true } | { ok: false; error: string } {
-  const c = comments.get(commentId);
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const c = await store.get(commentId);
   if (!c || c.deleted) return { ok: false, error: "Comment not found." };
-  if (!isMod(userId)) return { ok: false, error: "Not allowed." };
+  if (!(await isMod(userId))) return { ok: false, error: "Not allowed." };
   c.hidden = false;
   c.reports.clear();
+  await store.set(c);
   audit({ category: "COMPLIANCE", action: "comment.restore", actorId: userId, targetType: "Comment", targetId: commentId });
   return { ok: true };
 }
 
-export function addComment(
+export async function addComment(
   userId: string,
   marketId: string,
   rawBody: string,
   side: CommentSide,
-): { ok: true; comment: CommentView } | { ok: false; error: string } {
+): Promise<{ ok: true; comment: CommentView } | { ok: false; error: string }> {
   const body = rawBody.trim().replace(/\s+\n/g, "\n");
   if (body.length === 0) return { ok: false, error: "Say something first · Andika kitu kwanza." };
   if (body.length > COMMENT_MAX_LEN) {
     return { ok: false, error: `Keep it under ${COMMENT_MAX_LEN} characters · Punguza maandishi.` };
   }
-  const user = db.user.findById(userId);
+  const user = await db.user.findById(userId);
   if (!user) return { ok: false, error: "Sign in to comment · Ingia ili kutoa maoni." };
 
   const c: StoredComment = {
@@ -179,16 +268,16 @@ export function addComment(
     hidden: false,
     deleted: false,
   };
-  comments.set(c.id, c);
+  await store.set(c);
   audit({ category: "COMPLIANCE", action: "comment.post", actorId: userId, targetType: "Market", targetId: marketId, payload: { commentId: c.id } });
-  return { ok: true, comment: toView(c, userId) };
+  return { ok: true, comment: await toView(c, userId) };
 }
 
-export function reportComment(
+export async function reportComment(
   userId: string,
   commentId: string,
-): { ok: true; hidden: boolean } | { ok: false; error: string } {
-  const c = comments.get(commentId);
+): Promise<{ ok: true; hidden: boolean } | { ok: false; error: string }> {
+  const c = await store.get(commentId);
   if (!c || c.deleted) return { ok: false, error: "Comment not found." };
   if (c.userId === userId) return { ok: false, error: "You can't report your own comment." };
   c.reports.add(userId);
@@ -196,19 +285,21 @@ export function reportComment(
     c.hidden = true;
     audit({ category: "COMPLIANCE", action: "comment.auto_hidden", actorId: null, targetType: "Comment", targetId: commentId, payload: { reports: c.reports.size } });
   }
+  await store.set(c);
   audit({ category: "COMPLIANCE", action: "comment.report", actorId: userId, targetType: "Comment", targetId: commentId });
   return { ok: true, hidden: c.hidden };
 }
 
-export function deleteComment(
+export async function deleteComment(
   userId: string,
   commentId: string,
-): { ok: true } | { ok: false; error: string } {
-  const c = comments.get(commentId);
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const c = await store.get(commentId);
   if (!c || c.deleted) return { ok: false, error: "Comment not found." };
-  const allowed = c.userId === userId || isMod(userId);
+  const allowed = c.userId === userId || (await isMod(userId));
   if (!allowed) return { ok: false, error: "Not allowed." };
   c.deleted = true;
+  await store.set(c);
   audit({ category: "COMPLIANCE", action: "comment.delete", actorId: userId, targetType: "Comment", targetId: commentId, payload: { byMod: c.userId !== userId } });
   return { ok: true };
 }

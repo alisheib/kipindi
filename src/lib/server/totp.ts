@@ -16,6 +16,7 @@
  */
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { audit } from "./audit";
+import { prisma, hasDatabase } from "./prisma";
 
 const STEP_SECONDS = 30;
 const DIGITS = 6;
@@ -26,12 +27,56 @@ declare global {
   var __50PICK_TOTP_SECRETS: Map<string, string> | undefined;
 }
 
-function ensureMap(): Map<string, string> {
-  if (!globalThis.__50PICK_TOTP_SECRETS) {
-    globalThis.__50PICK_TOTP_SECRETS = new Map<string, string>();
-  }
-  return globalThis.__50PICK_TOTP_SECRETS;
+const secrets: Map<string, string> =
+  globalThis.__50PICK_TOTP_SECRETS ?? (globalThis.__50PICK_TOTP_SECRETS = new Map());
+
+// ---------------------------------------------------------------------------
+// DAL interface + implementations
+// ---------------------------------------------------------------------------
+
+interface TotpStore {
+  get(userId: string): Promise<string | undefined>;
+  set(userId: string, secret: string): Promise<void>;
+  has(userId: string): Promise<boolean>;
+  delete(userId: string): Promise<void>;
 }
+
+const memoryStore: TotpStore = {
+  async get(userId) { return secrets.get(userId); },
+  async set(userId, secret) { secrets.set(userId, secret); },
+  async has(userId) { return secrets.has(userId); },
+  async delete(userId) { secrets.delete(userId); },
+};
+
+function pc() {
+  const c = prisma();
+  if (!c) throw new Error("totp: DATABASE_URL required");
+  return c;
+}
+
+const prismaStore: TotpStore = {
+  async get(userId) {
+    const row = await pc().totpSecret.findUnique({ where: { userId } });
+    return row?.secret;
+  },
+  async set(userId, secret) {
+    await pc().totpSecret.upsert({
+      where: { userId },
+      create: { userId, secret },
+      update: { secret },
+    });
+  },
+  async has(userId) {
+    const row = await pc().totpSecret.findUnique({ where: { userId }, select: { userId: true } });
+    return !!row;
+  },
+  async delete(userId) {
+    await pc().totpSecret.delete({ where: { userId } }).catch(() => {});
+  },
+};
+
+const usePrisma = process.env.USE_PRISMA_DAL === "true" && hasDatabase();
+const store: TotpStore = usePrisma ? prismaStore : memoryStore;
 
 /** RFC 4648 base32 encode (no padding chars stripped, since otpauth tolerates either). */
 function base32Encode(buf: Buffer): string {
@@ -89,10 +134,10 @@ function totpAt(secret: Buffer, time: number): string {
  * Provision a fresh TOTP secret for `userId` and return the otpauth URI for
  * QR-code rendering. Existing secret (if any) is replaced.
  */
-export function provisionTotp(userId: string, accountLabel: string, issuer = "50pick"): { secretBase32: string; otpauthUrl: string } {
+export async function provisionTotp(userId: string, accountLabel: string, issuer = "50pick"): Promise<{ secretBase32: string; otpauthUrl: string }> {
   const secret = randomBytes(20);
   const secretBase32 = base32Encode(secret);
-  ensureMap().set(userId, secretBase32);
+  await store.set(userId, secretBase32);
   const params = new URLSearchParams({
     secret: secretBase32,
     issuer,
@@ -111,12 +156,12 @@ export function provisionTotp(userId: string, accountLabel: string, issuer = "50
   return { secretBase32, otpauthUrl: url };
 }
 
-export function hasTotp(userId: string): boolean {
-  return ensureMap().has(userId);
+export async function hasTotp(userId: string): Promise<boolean> {
+  return store.has(userId);
 }
 
-export function removeTotp(userId: string): void {
-  ensureMap().delete(userId);
+export async function removeTotp(userId: string): Promise<void> {
+  await store.delete(userId);
   audit({ category: "SECURITY", action: "totp.removed", actorId: userId, targetType: "User", targetId: userId });
 }
 
@@ -124,8 +169,8 @@ export function removeTotp(userId: string): void {
  * Verify a 6-digit code against the user's stored secret.
  * Returns true if any of the windows in [-SKEW_STEPS .. +SKEW_STEPS] matches.
  */
-export function verifyTotp(userId: string, code: string): boolean {
-  const secretBase32 = ensureMap().get(userId);
+export async function verifyTotp(userId: string, code: string): Promise<boolean> {
+  const secretBase32 = await store.get(userId);
   if (!secretBase32) return false;
   const secret = base32Decode(secretBase32);
   const now = Math.floor(Date.now() / 1000);

@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const poll = getAIPoll(id);
+  const poll = await getAIPoll(id);
   return { title: poll ? `AI Poll · ${poll.titleEn || poll.id.slice(0, 8)}` : "Poll not found" };
 }
 
@@ -43,7 +43,7 @@ function fmtDate(iso: string) {
 
 export default async function PollDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const poll = getAIPoll(id);
+  const poll = await getAIPoll(id);
   if (!poll) notFound();
 
   const canReview = poll.state === "PENDING_REVIEW";

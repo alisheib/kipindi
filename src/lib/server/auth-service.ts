@@ -231,7 +231,7 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
     // `starterBalanceTzs` config knob; defaults to 0 (no free funds).
     const { db: dbRef } = await import("./store");
     const { getEffectiveConfig } = await import("./market-config");
-    const starterBalance = getEffectiveConfig().starterBalanceTzs ?? 0;
+    const starterBalance = (await getEffectiveConfig()).starterBalanceTzs ?? 0;
     dbRef.wallet.create({
       id: `wlt_${randomId(12)}`,
       userId: user.id,
@@ -383,7 +383,7 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
     (process.env.TESTER_BOOTSTRAP_PHONES ?? "").split(",").map(s => s.trim()).filter(Boolean),
   );
   const { getEffectiveConfig } = await import("./market-config");
-  const starterBalance = testerPhones.has(phone) ? 100_000 : (getEffectiveConfig().starterBalanceTzs ?? 0);
+  const starterBalance = testerPhones.has(phone) ? 100_000 : ((await getEffectiveConfig()).starterBalanceTzs ?? 0);
   await db.wallet.create({
     id: `wlt_${randomId(12)}`,
     userId: user.id,

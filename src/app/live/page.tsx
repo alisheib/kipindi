@@ -37,8 +37,8 @@ export default async function LivePage() {
   const all = await listMarkets({ status: "LIVE" });
   const traderMap = await traderSeedsByMarket();
   // Build a serialisable snapshot for the client component
-  const markets = all.map((m) => {
-    const cc = getCardChart(m.id);
+  const markets = await Promise.all(all.map(async (m) => {
+    const cc = await getCardChart(m.id);
     return {
       id: m.id,
       titleEn: m.titleEn,
@@ -52,7 +52,7 @@ export default async function LivePage() {
       spark: cc.spark,
       traders: traderMap.get(m.id),
     };
-  });
+  }));
 
   const tippingMarkets = markets.filter((m) => Math.abs(m.yesPct - 50) < 8).length;
 

@@ -36,14 +36,25 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
   for (const p of open) {
     const m = marketMap.get(p.marketId);
     if (m && m.status === "LIVE") {
-      openLiveValue += cashOutValue(
+      openLiveValue += (await cashOutValue(
         { side: p.side, stake: p.stake },
         { id: m.id, yesPool: m.yesPool, noPool: m.noPool },
-      ).value;
+      )).value;
     } else {
       openLiveValue += p.potentialPayout;
     }
   }
+  // Pre-compute cash-out values for open positions (cashOutValue is async)
+  const openCashOutValues = new Map<string, number | null>();
+  for (const p of open) {
+    const m = marketMap.get(p.marketId);
+    if (m && m.status === "LIVE") {
+      openCashOutValues.set(p.id, (await cashOutValue({ side: p.side, stake: p.stake }, { id: m.id, yesPool: m.yesPool, noPool: m.noPool })).value);
+    } else {
+      openCashOutValues.set(p.id, null);
+    }
+  }
+
   const settledNet = settled.reduce((s, p) => {
     if (p.status === "WIN" || p.status === "CASHED_OUT") return s + ((p.finalPayout ?? 0) - p.stake);
     if (p.status === "LOSS") return s - p.stake;
@@ -142,9 +153,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
             {open.map((p) => {
               const m = marketMap.get(p.marketId);
               if (!m) return null;
-              const liveValue = m.status === "LIVE"
-                ? cashOutValue({ side: p.side, stake: p.stake }, { id: m.id, yesPool: m.yesPool, noPool: m.noPool }).value
-                : null;
+              const liveValue = openCashOutValues.get(p.id) ?? null;
               return (
                 <div key={p.id} className="space-y-2">
                   <PositionCard

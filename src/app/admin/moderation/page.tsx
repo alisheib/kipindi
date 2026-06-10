@@ -5,8 +5,8 @@ import { ModerationQueue } from "./moderation-client";
 export const metadata = { title: "Admin · Comment moderation" };
 export const dynamic = "force-dynamic";
 
-export default function AdminModerationPage() {
-  const items = listForModeration();
+export default async function AdminModerationPage() {
+  const items = await listForModeration();
   const reported = items.filter((i) => !i.hidden).length;
   const hidden = items.filter((i) => i.hidden).length;
   return (

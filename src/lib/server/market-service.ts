@@ -94,12 +94,12 @@ export function impliedYesPct(m: Pick<StoredMarket, "yesPool" | "noPool">): numb
  *
  * Marketid is optional; without it we use the global config.
  */
-export function projectedPayout(
+export async function projectedPayout(
   m: Pick<StoredMarket, "yesPool" | "noPool"> & { id?: string },
   side: Side,
   stake: number,
-): number {
-  const cfg = getEffectiveConfig(m.id);
+): Promise<number> {
+  const cfg = await getEffectiveConfig(m.id);
   const r = payoutForWhole({ yesPool: m.yesPool, noPool: m.noPool, side, stake }, cfg);
   return r.payout;
 }
@@ -141,7 +141,7 @@ export async function createMarket(input: CreateMarketInput) {
 
   // Seed house liquidity — equal on both sides. Returns 0 if reserve
   // is empty or seeding is disabled (seedPerSide = 0).
-  const houseSeed = seedMarket(id);
+  const houseSeed = await seedMarket(id);
 
   const m: StoredMarket = {
     id,
@@ -202,7 +202,7 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
   }
 
   // Stake bounds come from runtime config — global with optional per-market override.
-  const stakeCfg = getEffectiveConfig(opts.marketId);
+  const stakeCfg = await getEffectiveConfig(opts.marketId);
   if (!Number.isInteger(opts.stake) || opts.stake < stakeCfg.minStake || opts.stake > stakeCfg.maxStake) {
     return { ok: false, error: `Stake must be a whole number between TZS ${stakeCfg.minStake.toLocaleString()} and TZS ${stakeCfg.maxStake.toLocaleString()}.`, code: "INVALID" };
   }
@@ -221,7 +221,7 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
     const newBalance = wallet.balance - opts.stake;
     await db.wallet.update(wallet.id, { balance: newBalance });
 
-    const payoutIfWin = projectedPayout(market, opts.side, opts.stake);
+    const payoutIfWin = await projectedPayout(market, opts.side, opts.stake);
     const positionId = `pos_${randomId(10)}`;
     const placedAt = new Date().toISOString();
     const position: StoredPosition = {
@@ -365,10 +365,10 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
     recordSnapshot(m.id, m.yesPool, m.noPool);
 
     let winnersPaid = 0;
-    const settleCfg = getEffectiveConfig(m.id);
+    const settleCfg = await getEffectiveConfig(m.id);
 
     // Settle house virtual position for this demo market
-    const demoHouseSettle = settleHousePosition(
+    const demoHouseSettle = await settleHousePosition(
       m.id, outcome, m.yesPool + m.noPool, settleCfg.reserveRate,
     );
 
@@ -499,11 +499,11 @@ export const CASHOUT_SLIPPAGE = 0.09;
  * Caller passes the live market pools; we use the same whole-pool formula
  * that the resolver uses, then knock CASHOUT_SLIPPAGE off the gross.
  */
-export function cashOutValue(
+export async function cashOutValue(
   position: Pick<StoredPosition, "side" | "stake">,
   market: Pick<StoredMarket, "id" | "yesPool" | "noPool">,
-): { value: number; ratio: number; gross: number } {
-  const cfg = getEffectiveConfig(market.id);
+): Promise<{ value: number; ratio: number; gross: number }> {
+  const cfg = await getEffectiveConfig(market.id);
   const winningPool = position.side === "YES" ? market.yesPool : market.noPool;
   if (winningPool <= 0) return { value: 0, ratio: 0, gross: 0 };
   const grossPool = market.yesPool + market.noPool;
@@ -542,7 +542,7 @@ export async function cashOutPosition(
     const wallet = await db.wallet.findByUserId(userId);
     if (!wallet) return { ok: false as const, error: "Wallet not found.", code: "NOT_FOUND" as const };
 
-    const { value, gross } = cashOutValue(p, m);
+    const { value, gross } = await cashOutValue(p, m);
     if (value <= 0) {
       return { ok: false as const, error: "Current cash-out value is zero — your side has no live pool.", code: "INVALID" as const };
     }
@@ -660,12 +660,12 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   recordSnapshot(m.id, m.yesPool, m.noPool);
 
   let winnersPaid = 0;
-  const settleCfg = getEffectiveConfig(m.id);
+  const settleCfg = await getEffectiveConfig(m.id);
   const grossPool = m.yesPool + m.noPool;
   const winningPool = opts.outcome === "YES" ? m.yesPool : opts.outcome === "NO" ? m.noPool : 0;
 
   // Settle the house's virtual position — runs for both VOID and real outcomes.
-  const houseSettle = settleHousePosition(
+  const houseSettle = await settleHousePosition(
     m.id,
     opts.outcome === "VOID" ? "VOID" : opts.outcome,
     grossPool,
@@ -832,7 +832,7 @@ export async function seedDemoMarkets() {
     for (const s of refreshSeed) {
       try {
         const m = await createMarket(s);
-        seedHistory(m.id, m.yesPool, m.noPool);
+        await seedHistory(m.id, m.yesPool, m.noPool);
       } catch { /* ignore duplicates */ }
     }
   }
@@ -970,7 +970,7 @@ export async function seedDemoMarkets() {
     try {
       const m = await createMarket(s);
       // Seed a believable history walk so the PriceChart isn't empty on first paint.
-      seedHistory(m.id, m.yesPool, m.noPool);
+      await seedHistory(m.id, m.yesPool, m.noPool);
     } catch {
       // Ignore — likely already present from a prior partial seed.
     }

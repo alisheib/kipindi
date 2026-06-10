@@ -29,7 +29,7 @@ export async function topUpAction(formData: FormData) {
   if (!Number.isFinite(amount) || amount <= 0) {
     return { ok: false as const, error: "Enter a positive amount." };
   }
-  const r = topUpHousePool(amount, s.userId);
+  const r = await topUpHousePool(amount, s.userId);
   revalidatePath("/admin/house-pool");
   return r;
 }
@@ -40,7 +40,7 @@ export async function withdrawAction(formData: FormData) {
   if (!Number.isFinite(amount) || amount <= 0) {
     return { ok: false as const, error: "Enter a positive amount." };
   }
-  const r = withdrawHousePool(amount, s.userId);
+  const r = await withdrawHousePool(amount, s.userId);
   revalidatePath("/admin/house-pool");
   return r;
 }
@@ -68,7 +68,7 @@ export async function updateHousePoolConfigAction(formData: FormData) {
     return { ok: false as const, error: "No values to update." };
   }
 
-  const r = setHousePoolConfig(updates, s.userId);
+  const r = await setHousePoolConfig(updates, s.userId);
   revalidatePath("/admin/house-pool");
   return r;
 }

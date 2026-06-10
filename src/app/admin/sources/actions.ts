@@ -32,7 +32,7 @@ export async function addSourceAction(formData: FormData) {
   if (!domain || !label || !rationale) {
     return { ok: false as const, error: "Domain, label and rationale are required." };
   }
-  addSource({ domain, label, category, rationale, addedBy: session.userId });
+  await addSource({ domain, label, category, rationale, addedBy: session.userId });
   revalidatePath("/admin/sources");
   return { ok: true as const };
 }
@@ -41,7 +41,7 @@ export async function toggleSourceAction(formData: FormData) {
   const session = await ensureAdmin();
   const id = String(formData.get("id") ?? "");
   const enabled = String(formData.get("enabled") ?? "false") === "true";
-  setSourceEnabled(id, enabled, session.userId);
+  await setSourceEnabled(id, enabled, session.userId);
   revalidatePath("/admin/sources");
   return { ok: true as const };
 }
@@ -49,7 +49,7 @@ export async function toggleSourceAction(formData: FormData) {
 export async function removeSourceAction(formData: FormData) {
   const session = await ensureAdmin();
   const id = String(formData.get("id") ?? "");
-  removeSource(id, session.userId);
+  await removeSource(id, session.userId);
   revalidatePath("/admin/sources");
   return { ok: true as const };
 }
@@ -58,7 +58,7 @@ export async function toggleCategoryAction(formData: FormData) {
   const session = await ensureAdmin();
   const category = String(formData.get("category") ?? "") as MarketCategory;
   const enabled = String(formData.get("enabled") ?? "false") === "true";
-  setCategoryEnabled(category, enabled, session.userId);
+  await setCategoryEnabled(category, enabled, session.userId);
   revalidatePath("/admin/sources");
   return { ok: true as const };
 }

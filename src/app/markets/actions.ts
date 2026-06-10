@@ -98,8 +98,8 @@ export async function createMarketAction(formData: FormData) {
     return { ok: false as const, error: "Title, source URL, and resolution time are required." };
   }
   // Source-trust gate — only enabled, on-registry sources can publish a market.
-  seedDefaultSources();
-  const trust = isSourceTrusted(input.sourceUrl, input.category);
+  await seedDefaultSources();
+  const trust = await isSourceTrusted(input.sourceUrl, input.category);
   if (!trust.ok) {
     return { ok: false as const, error: `Source not approved · ${trust.reason}. Add or enable it at /admin/sources.` };
   }
@@ -121,7 +121,7 @@ export async function postCommentAction(formData: FormData) {
   // Surface which side they hold as a small trust badge on the comment.
   const open = (await listPositionsForUser(session.userId)).filter((p) => p.marketId === marketId && p.status === "OPEN");
   const side: CommentSide = open.length ? (open[open.length - 1].side as "YES" | "NO") : null;
-  const r = addComment(session.userId, marketId, body, side);
+  const r = await addComment(session.userId, marketId, body, side);
   if (r.ok) revalidatePath(`/markets/${marketId}`);
   return r;
 }
@@ -131,7 +131,7 @@ export async function reportCommentAction(formData: FormData) {
   if (!session) return { ok: false as const, error: "Sign in first." };
   const marketId = String(formData.get("marketId") ?? "");
   const commentId = String(formData.get("commentId") ?? "");
-  const r = reportComment(session.userId, commentId);
+  const r = await reportComment(session.userId, commentId);
   if (r.ok) revalidatePath(`/markets/${marketId}`);
   return r;
 }
@@ -141,7 +141,7 @@ export async function deleteCommentAction(formData: FormData) {
   if (!session) return { ok: false as const, error: "Sign in first." };
   const marketId = String(formData.get("marketId") ?? "");
   const commentId = String(formData.get("commentId") ?? "");
-  const r = deleteComment(session.userId, commentId);
+  const r = await deleteComment(session.userId, commentId);
   if (r.ok) { revalidatePath(`/markets/${marketId}`); revalidatePath("/admin/moderation"); }
   return r;
 }
@@ -152,7 +152,7 @@ export async function restoreCommentAction(formData: FormData) {
   if (!session) return { ok: false as const, error: "Sign in first." };
   const commentId = String(formData.get("commentId") ?? "");
   const marketId = String(formData.get("marketId") ?? "");
-  const r = restoreComment(session.userId, commentId);
+  const r = await restoreComment(session.userId, commentId);
   if (r.ok) { revalidatePath(`/markets/${marketId}`); revalidatePath("/admin/moderation"); }
   return r;
 }

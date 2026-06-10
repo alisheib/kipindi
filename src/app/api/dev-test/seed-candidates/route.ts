@@ -21,7 +21,7 @@ export async function POST() {
     return NextResponse.json({ ok: false, error: "Not available" }, { status: 404 });
   }
 
-  seedDefaultSources();
+  await seedDefaultSources();
 
   const now = Date.now();
   const inDays = (d: number) => new Date(now + d * 24 * 3600_000).toISOString();
@@ -118,7 +118,7 @@ export async function POST() {
 
   for (const f of fixtures) {
     // Layer 1 — extract
-    const c = ingestCandidate({
+    const c = await ingestCandidate({
       category: f.category,
       proposedTitleEn: f.proposedTitleEn,
       proposedTitleSw: f.proposedTitleSw,
@@ -131,16 +131,16 @@ export async function POST() {
     });
 
     if (f.landAt === "FILTERED_OUT_LAYER2") {
-      filterCandidate(c.id, { passes: false, reason: f.rejectReason, note: "Layer 2 hard reject" });
+      await filterCandidate(c.id, { passes: false, reason: f.rejectReason, note: "Layer 2 hard reject" });
       seeded.push({ id: c.id, state: "FILTERED_OUT", title: c.proposedTitleEn });
       continue;
     }
 
     // Layer 2 — pass
-    filterCandidate(c.id, { passes: true });
+    await filterCandidate(c.id, { passes: true });
 
     // Layer 3 — cross-verify (always single confirming source for fixtures)
-    attachVerification(c.id, {
+    await attachVerification(c.id, {
       confirmingSources: [
         { url: f.sources[0].url, publisher: f.sources[0].publisher, retrievedAt: new Date().toISOString() },
       ],
@@ -149,7 +149,7 @@ export async function POST() {
     });
 
     // Layer 4 — score
-    scoreCandidate(c.id, {
+    await scoreCandidate(c.id, {
       confidence: f.confidence ?? 80,
       tokensSpent: 320,
       costUsd: 0.008,

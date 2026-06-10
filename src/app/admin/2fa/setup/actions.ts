@@ -19,7 +19,7 @@ async function requireAdmin() {
 export async function provisionTotpAction() {
   const { session, user } = await requireAdmin();
   const label = user?.displayName ?? user?.phoneE164 ?? session.userId.slice(0, 12);
-  const result = provisionTotp(session.userId, label);
+  const result = await provisionTotp(session.userId, label);
   return { ok: true as const, ...result };
 }
 
@@ -29,7 +29,7 @@ export async function verifyTotpAction(formData: FormData) {
   if (!/^\d{6}$/.test(code)) {
     return { ok: false as const, error: "Enter the 6-digit code from your authenticator app." };
   }
-  const ok = verifyTotp(session.userId, code);
+  const ok = await verifyTotp(session.userId, code);
   if (!ok) return { ok: false as const, error: "Code didn't match. Try again — codes refresh every 30 seconds." };
   revalidatePath("/admin/2fa/setup");
   return { ok: true as const };
@@ -37,12 +37,12 @@ export async function verifyTotpAction(formData: FormData) {
 
 export async function removeTotpAction() {
   const { session } = await requireAdmin();
-  removeTotp(session.userId);
+  await removeTotp(session.userId);
   revalidatePath("/admin/2fa/setup");
   return { ok: true as const };
 }
 
 export async function checkTotpAction(): Promise<{ enabled: boolean }> {
   const { session } = await requireAdmin();
-  return { enabled: hasTotp(session.userId) };
+  return { enabled: await hasTotp(session.userId) };
 }

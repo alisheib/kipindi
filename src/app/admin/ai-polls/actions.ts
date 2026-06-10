@@ -124,7 +124,7 @@ export async function approvePollAction(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const note = String(formData.get("note") ?? "");
 
-  const poll = approveAIPoll(id, { officerId, note: note || undefined });
+  const poll = await approveAIPoll(id, { officerId, note: note || undefined });
   if (!poll) return { ok: false as const, error: "Poll not found or not in review state." };
 
   revalidatePath("/admin/ai-polls");
@@ -141,7 +141,7 @@ export async function rejectPollAction(formData: FormData) {
 
   const reasons = reasonsStr ? reasonsStr.split(",") as FilterReason[] : ["malformed_response" as FilterReason];
 
-  const poll = rejectAIPoll(id, { officerId, reasons, note: note || undefined });
+  const poll = await rejectAIPoll(id, { officerId, reasons, note: note || undefined });
   if (!poll) return { ok: false as const, error: "Poll not found or not in reviewable state." };
 
   revalidatePath("/admin/ai-polls");
@@ -180,14 +180,14 @@ export async function publishPollAction(formData: FormData) {
   const officerId = await requireAdmin("publishPollAction");
   const id = String(formData.get("id") ?? "");
 
-  const poll = getAIPoll(id);
+  const poll = await getAIPoll(id);
   if (!poll) return { ok: false as const, error: "Poll not found." };
   if (poll.state !== "APPROVED") return { ok: false as const, error: "Poll must be approved before publishing." };
   if (!poll.titleEn) return { ok: false as const, error: "Poll has no title." };
   if (!poll.resolutionAt) return { ok: false as const, error: "Poll has no resolution date." };
 
   // Create a market candidate through the existing pipeline
-  const candidate = ingestCandidate({
+  const candidate = await ingestCandidate({
     category: (poll.category === "tech" || poll.category === "other" ? "macro" : poll.category) as "sports" | "macro" | "weather" | "crypto" | "culture" | "infrastructure",
     proposedTitleEn: poll.titleEn,
     proposedTitleSw: poll.titleSw || undefined,
@@ -204,22 +204,22 @@ export async function publishPollAction(formData: FormData) {
   });
 
   // Fast-track through the candidate pipeline (already validated by AI poll service)
-  filterCandidate(candidate.id, { passes: true });
-  attachVerification(candidate.id, {
+  await filterCandidate(candidate.id, { passes: true });
+  await attachVerification(candidate.id, {
     confirmingSources: [],
     tokensSpent: 0,
     costUsd: 0,
   });
-  scoreCandidate(candidate.id, {
+  await scoreCandidate(candidate.id, {
     confidence: poll.confidence,
     tokensSpent: 0,
     costUsd: 0,
     rubric: { aiPollQuality: poll.overallQuality },
   });
-  approveCandidate(candidate.id, { officerId, note: `Auto-approved from AI poll ${poll.id}` });
+  await approveCandidate(candidate.id, { officerId, note: `Auto-approved from AI poll ${poll.id}` });
 
   // Create the actual market
-  seedDefaultSources();
+  await seedDefaultSources();
   const marketCategory = poll.category === "infrastructure" ? "macro"
     : poll.category === "tech" ? "tech"
     : poll.category === "other" ? "other"
@@ -235,8 +235,8 @@ export async function publishPollAction(formData: FormData) {
     proposedBy: officerId,
   });
 
-  markPublished(candidate.id, market.id, officerId);
-  markAIPollPublished(poll.id, {
+  await markPublished(candidate.id, market.id, officerId);
+  await markAIPollPublished(poll.id, {
     candidateId: candidate.id,
     marketId: market.id,
     officerId,
@@ -254,7 +254,7 @@ export async function deletePollAction(formData: FormData) {
   const officerId = await requireAdmin("deletePollAction");
   const id = String(formData.get("id") ?? "");
 
-  const ok = deleteAIPoll(id, officerId);
+  const ok = await deleteAIPoll(id, officerId);
   if (!ok) return { ok: false as const, error: "Poll not found or not in a deletable state." };
 
   revalidatePath("/admin/ai-polls");
@@ -265,7 +265,7 @@ export async function deletePollAction(formData: FormData) {
 
 export async function seedFixturesAction() {
   const officerId = await requireAdmin("seedFixturesAction");
-  const seeded = seedAIPollFixtures();
+  const seeded = await seedAIPollFixtures();
   revalidatePath("/admin/ai-polls");
   return { ok: true as const, count: seeded.length };
 }

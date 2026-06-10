@@ -15,8 +15,8 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminConfigPage() {
   await seedDemoMarkets();
-  const config = getGlobalConfig();
-  const overrides = listMarketOverrides();
+  const config = await getGlobalConfig();
+  const overrides = await listMarketOverrides();
   const overrideMarketNames = new Map<string, string>();
   for (const { marketId } of overrides) {
     const m = await getMarket(marketId);

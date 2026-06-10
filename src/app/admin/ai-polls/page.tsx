@@ -62,18 +62,18 @@ export default async function AdminAIPollsPage({
   }>;
 }) {
   const sp = await searchParams;
-  const counts = countAIPollsByState();
-  const spend = aiPollSpend();
-  const progress = aiPollDailyProgress();
+  const counts = await countAIPollsByState();
+  const spend = await aiPollSpend();
+  const progress = await aiPollDailyProgress();
   const config = getAIPollConfig();
-  const totalAll = countAIPollsTotal();
+  const totalAll = await countAIPollsTotal();
 
-  const pending = listAIPolls({ state: "PENDING_REVIEW" });
-  const approved = listAIPolls({ state: "APPROVED" });
+  const pending = await listAIPolls({ state: "PENDING_REVIEW" });
+  const approved = await listAIPolls({ state: "APPROVED" });
 
   // Build filter for the "all activity" table
   const dateRange = datePresetToRange(sp.date ?? "");
-  const filtered = listAIPolls({
+  const filtered = await listAIPolls({
     state: (sp.state as AIPollState) || undefined,
     category: sp.category || undefined,
     search: sp.q || undefined,

@@ -11,10 +11,10 @@ export const metadata = { title: "House Pool · Admin" };
 const fmtTzs = (n: number) => `TZS ${n.toLocaleString("en-US")}`;
 const fmtPct = (n: number) => `${(n * 100).toFixed(1)}%`;
 
-export default function HousePoolPage() {
-  const stats = getHousePoolStats();
-  const ledger = getHousePoolLedger(30);
-  const cfg = getGlobalConfig();
+export default async function HousePoolPage() {
+  const stats = await getHousePoolStats();
+  const ledger = await getHousePoolLedger(30);
+  const cfg = await getGlobalConfig();
   const totalFee = cfg.taxRate + cfg.commissionRate + cfg.reserveRate + cfg.aggregatorRate;
 
   return (

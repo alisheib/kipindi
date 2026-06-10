@@ -3,29 +3,32 @@
  * so winners always have a losing-side pool to draw from.
  *
  * Architecture:
- *   • The house injects equal liquidity on both YES and NO sides when a
+ *   * The house injects equal liquidity on both YES and NO sides when a
  *     market opens. This is NOT a real bet — it's virtual liquidity.
- *   • At settlement, the house's LOSING-side stake is consumed by winners
+ *   * At settlement, the house's LOSING-side stake is consumed by winners
  *     (that's the cost of providing liquidity). The house's WINNING-side
  *     stake returns to the reserve.
- *   • A configurable % of every settled market's gross pool is routed to
+ *   * A configurable % of every settled market's gross pool is routed to
  *     the reserve to replenish it over time.
  *
  * Fee split (all dynamic, configured in RateConfig):
- *   grossPool × taxRate           → TRA (Tanzania Revenue Authority)
- *   grossPool × commissionRate    → 50pick operating profit
- *   grossPool × reserveRate       → house liquidity reserve
- *   grossPool × aggregatorRate    → payment aggregator (Selcom/Pesapal/etc)
+ *   grossPool x taxRate           -> TRA (Tanzania Revenue Authority)
+ *   grossPool x commissionRate    -> 50pick operating profit
+ *   grossPool x reserveRate       -> house liquidity reserve
+ *   grossPool x aggregatorRate    -> payment aggregator (Selcom/Pesapal/etc)
  *
  * Admin controls:
- *   • View balance, top-up, withdraw
- *   • Set default seed amount per market
- *   • Set minimum reserve (alert threshold)
- *   • View ledger history
+ *   * View balance, top-up, withdraw
+ *   * Set default seed amount per market
+ *   * Set minimum reserve (alert threshold)
+ *   * View ledger history
  *
- * Persists across hot-reloads via globalThis, same pattern as market-config.
+ * DAL: ledger entries are feature-flagged between in-memory array and
+ * Prisma HousePoolLedger table (USE_PRISMA_DAL=true + DATABASE_URL).
+ * Balance, config, and seeds remain in-memory (ephemeral state).
  */
 import { audit } from "./audit";
+import { prisma, hasDatabase } from "./prisma";
 
 export type HousePoolConfig = {
   /** TZS injected per side (YES + NO) when a market opens. Total seed = 2x this. */
@@ -60,7 +63,7 @@ export type HousePoolLedgerEntry = {
 type HousePoolStore = {
   balance: number;
   config: HousePoolConfig;
-  /** Virtual positions the house holds in each market: marketId → perSide seed amount. */
+  /** Virtual positions the house holds in each market: marketId -> perSide seed amount. */
   seeds: Map<string, number>;
   ledger: HousePoolLedgerEntry[];
 };
@@ -81,45 +84,115 @@ const pool: HousePoolStore =
 
 let ledgerSeq = pool.ledger.length;
 
-function pushLedger(entry: Omit<HousePoolLedgerEntry, "id" | "createdAt">): HousePoolLedgerEntry {
+// ---------------------------------------------------------------------------
+// Ledger DAL — feature-flagged between memory array and Prisma table
+// ---------------------------------------------------------------------------
+
+export interface HousePoolLedgerStore {
+  append(entry: HousePoolLedgerEntry): Promise<void>;
+  list(limit: number): Promise<HousePoolLedgerEntry[]>;
+}
+
+// --- Memory implementation (wraps existing pool.ledger array) ---
+
+const memoryLedger: HousePoolLedgerStore = {
+  async append(entry) {
+    pool.ledger.push(entry);
+    // Cap the in-memory ledger to 500 entries (FIFO)
+    if (pool.ledger.length > 500) pool.ledger.splice(0, pool.ledger.length - 500);
+  },
+  async list(limit) {
+    return pool.ledger.slice(-limit).reverse();
+  },
+};
+
+// --- Prisma implementation ---
+
+function pc() {
+  const c = prisma();
+  if (!c) throw new Error("house-pool: DATABASE_URL required");
+  return c;
+}
+
+const prismaLedger: HousePoolLedgerStore = {
+  async append(entry) {
+    await pc().housePoolLedger.create({
+      data: {
+        id: entry.id,
+        type: entry.type,
+        amount: entry.amount,
+        balanceAfter: entry.balanceAfter,
+        marketId: entry.marketId,
+        note: entry.note,
+        actorId: entry.actorId,
+        createdAt: new Date(entry.createdAt),
+      },
+    });
+  },
+  async list(limit) {
+    const rows = await pc().housePoolLedger.findMany({
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      type: r.type as HousePoolLedgerEntry["type"],
+      amount: Number(r.amount),
+      balanceAfter: Number(r.balanceAfter),
+      marketId: r.marketId,
+      note: r.note,
+      actorId: r.actorId,
+      createdAt: r.createdAt.toISOString(),
+    }));
+  },
+};
+
+// --- Feature-flag switch ---
+
+const usePrisma = process.env.USE_PRISMA_DAL === "true" && hasDatabase();
+const ledgerStore: HousePoolLedgerStore = usePrisma ? prismaLedger : memoryLedger;
+
+// ---------------------------------------------------------------------------
+// Internal helper — builds and persists a ledger entry
+// ---------------------------------------------------------------------------
+
+async function pushLedger(entry: Omit<HousePoolLedgerEntry, "id" | "createdAt">): Promise<HousePoolLedgerEntry> {
   const e: HousePoolLedgerEntry = {
     ...entry,
     id: `hpl_${++ledgerSeq}_${Date.now().toString(36)}`,
     createdAt: new Date().toISOString(),
   };
-  pool.ledger.push(e);
-  // Cap the in-memory ledger to 500 entries (FIFO)
-  if (pool.ledger.length > 500) pool.ledger.splice(0, pool.ledger.length - 500);
+  await ledgerStore.append(e);
   return e;
 }
 
-// ─── Read ────────────────────────────────────────────────────────────────────
+// --- Read ----
 
-export function getHousePoolBalance(): number {
+export async function getHousePoolBalance(): Promise<number> {
   return pool.balance;
 }
 
-export function getHousePoolConfig(): HousePoolConfig {
+export async function getHousePoolConfig(): Promise<HousePoolConfig> {
   return { ...pool.config };
 }
 
-export function getHousePoolSeedForMarket(marketId: string): number {
+export async function getHousePoolSeedForMarket(marketId: string): Promise<number> {
   return pool.seeds.get(marketId) ?? 0;
 }
 
-export function getHousePoolLedger(limit = 50): HousePoolLedgerEntry[] {
-  return pool.ledger.slice(-limit).reverse();
+export async function getHousePoolLedger(limit = 50): Promise<HousePoolLedgerEntry[]> {
+  return ledgerStore.list(limit);
 }
 
-export function getHousePoolStats(): {
+export async function getHousePoolStats(): Promise<{
   balance: number;
   config: HousePoolConfig;
   activeSeeds: number;
   totalSeeded: number;
   isLow: boolean;
-} {
+}> {
   let totalSeeded = 0;
-  for (const v of pool.seeds.values()) totalSeeded += v * 2; // per-side × 2
+  for (const v of pool.seeds.values()) totalSeeded += v * 2; // per-side x 2
   return {
     balance: pool.balance,
     config: { ...pool.config },
@@ -129,12 +202,12 @@ export function getHousePoolStats(): {
   };
 }
 
-// ─── Admin mutations ─────────────────────────────────────────────────────────
+// --- Admin mutations ---
 
-export function topUpHousePool(amount: number, officerId: string): { ok: true; balance: number } | { ok: false; error: string } {
+export async function topUpHousePool(amount: number, officerId: string): Promise<{ ok: true; balance: number } | { ok: false; error: string }> {
   if (!Number.isFinite(amount) || amount <= 0) return { ok: false, error: "Amount must be positive." };
   pool.balance += amount;
-  pushLedger({
+  await pushLedger({
     type: "TOP_UP",
     amount,
     balanceAfter: pool.balance,
@@ -153,11 +226,11 @@ export function topUpHousePool(amount: number, officerId: string): { ok: true; b
   return { ok: true, balance: pool.balance };
 }
 
-export function withdrawHousePool(amount: number, officerId: string): { ok: true; balance: number } | { ok: false; error: string } {
+export async function withdrawHousePool(amount: number, officerId: string): Promise<{ ok: true; balance: number } | { ok: false; error: string }> {
   if (!Number.isFinite(amount) || amount <= 0) return { ok: false, error: "Amount must be positive." };
   if (amount > pool.balance) return { ok: false, error: `Insufficient reserve. Balance: TZS ${pool.balance.toLocaleString()}.` };
   pool.balance -= amount;
-  pushLedger({
+  await pushLedger({
     type: "WITHDRAW",
     amount: -amount,
     balanceAfter: pool.balance,
@@ -176,17 +249,17 @@ export function withdrawHousePool(amount: number, officerId: string): { ok: true
   return { ok: true, balance: pool.balance };
 }
 
-export function setHousePoolConfig(
+export async function setHousePoolConfig(
   updates: Partial<HousePoolConfig>,
   officerId: string,
-): { ok: true; config: HousePoolConfig } | { ok: false; error: string } {
+): Promise<{ ok: true; config: HousePoolConfig } | { ok: false; error: string }> {
   if (updates.seedPerSide !== undefined) {
     if (!Number.isFinite(updates.seedPerSide) || updates.seedPerSide < 0)
-      return { ok: false, error: "Seed per side must be ≥ 0." };
+      return { ok: false, error: "Seed per side must be >= 0." };
   }
   if (updates.minReserve !== undefined) {
     if (!Number.isFinite(updates.minReserve) || updates.minReserve < 0)
-      return { ok: false, error: "Min reserve must be ≥ 0." };
+      return { ok: false, error: "Min reserve must be >= 0." };
   }
   const before = { ...pool.config };
   pool.config = { ...pool.config, ...updates };
@@ -201,17 +274,17 @@ export function setHousePoolConfig(
   return { ok: true, config: { ...pool.config } };
 }
 
-// ─── Market lifecycle hooks ──────────────────────────────────────────────────
+// --- Market lifecycle hooks ---
 
 /**
  * Seed a market with house liquidity. Called by createMarket.
- * Deducts seedPerSide × 2 from the reserve and records a per-market virtual
+ * Deducts seedPerSide x 2 from the reserve and records a per-market virtual
  * position. Returns the per-side amount (to be added to yesPool + noPool).
  *
  * If reserve is insufficient, seeds whatever is available (split evenly).
  * If reserve is 0 or seedPerSide is 0, returns 0 (no seeding).
  */
-export function seedMarket(marketId: string): number {
+export async function seedMarket(marketId: string): Promise<number> {
   const cfg = pool.config;
   if (cfg.seedPerSide <= 0) return 0;
 
@@ -224,7 +297,7 @@ export function seedMarket(marketId: string): number {
   pool.balance -= perSide * 2;
   pool.seeds.set(marketId, perSide);
 
-  pushLedger({
+  await pushLedger({
     type: "SEED_OUT",
     amount: -(perSide * 2),
     balanceAfter: pool.balance,
@@ -246,12 +319,12 @@ export function seedMarket(marketId: string): number {
  *
  * Returns the amount credited back to the reserve.
  */
-export function settleHousePosition(
+export async function settleHousePosition(
   marketId: string,
   outcome: "YES" | "NO" | "VOID",
   grossPool: number,
   reserveRate: number,
-): { returnedToReserve: number; reserveFee: number; lossAbsorbed: number } {
+): Promise<{ returnedToReserve: number; reserveFee: number; lossAbsorbed: number }> {
   const perSide = pool.seeds.get(marketId) ?? 0;
 
   // 1. Reserve fee from the gross pool (configurable %)
@@ -267,11 +340,11 @@ export function settleHousePosition(
 
     if (returned > 0) {
       pool.balance += returned;
-      pushLedger({ type: "SETTLE_RETURN", amount: returned, balanceAfter: pool.balance, marketId, note: "Void — full refund", actorId: "system" });
+      await pushLedger({ type: "SETTLE_RETURN", amount: returned, balanceAfter: pool.balance, marketId, note: "Void — full refund", actorId: "system" });
     }
     if (reserveFee > 0) {
       pool.balance += reserveFee;
-      pushLedger({ type: "RESERVE_FEE", amount: reserveFee, balanceAfter: pool.balance, marketId, note: `Reserve fee ${(reserveRate * 100).toFixed(1)}%`, actorId: "system" });
+      await pushLedger({ type: "RESERVE_FEE", amount: reserveFee, balanceAfter: pool.balance, marketId, note: `Reserve fee ${(reserveRate * 100).toFixed(1)}%`, actorId: "system" });
     }
     return { returnedToReserve: returned, reserveFee, lossAbsorbed: 0 };
   }
@@ -285,16 +358,16 @@ export function settleHousePosition(
 
   if (returned > 0) {
     pool.balance += returned;
-    pushLedger({ type: "SETTLE_RETURN", amount: returned, balanceAfter: pool.balance, marketId, note: `Winning-side return (${outcome})`, actorId: "system" });
+    await pushLedger({ type: "SETTLE_RETURN", amount: returned, balanceAfter: pool.balance, marketId, note: `Winning-side return (${outcome})`, actorId: "system" });
   }
   if (lossAbsorbed > 0) {
     // Accounting-only: the losing seed was already consumed by player payouts and
     // was never part of the reserve balance, so the reserve is unchanged here.
-    pushLedger({ type: "LOSS_ABSORBED", amount: -lossAbsorbed, balanceAfter: pool.balance, marketId, note: `Losing-side absorbed (${outcome === "YES" ? "NO" : "YES"})`, actorId: "system" });
+    await pushLedger({ type: "LOSS_ABSORBED", amount: -lossAbsorbed, balanceAfter: pool.balance, marketId, note: `Losing-side absorbed (${outcome === "YES" ? "NO" : "YES"})`, actorId: "system" });
   }
   if (reserveFee > 0) {
     pool.balance += reserveFee;
-    pushLedger({ type: "RESERVE_FEE", amount: reserveFee, balanceAfter: pool.balance, marketId, note: `Reserve fee ${(reserveRate * 100).toFixed(1)}%`, actorId: "system" });
+    await pushLedger({ type: "RESERVE_FEE", amount: reserveFee, balanceAfter: pool.balance, marketId, note: `Reserve fee ${(reserveRate * 100).toFixed(1)}%`, actorId: "system" });
   }
 
   return { returnedToReserve: returned, reserveFee, lossAbsorbed };
@@ -303,7 +376,7 @@ export function settleHousePosition(
 /**
  * Check if the reserve is low enough to block market creation.
  */
-export function canSeedNewMarket(): { ok: true } | { ok: false; reason: string } {
+export async function canSeedNewMarket(): Promise<{ ok: true } | { ok: false; reason: string }> {
   const cfg = pool.config;
   if (!cfg.pauseMarketsOnLowReserve) return { ok: true };
   if (cfg.minReserve > 0 && pool.balance < cfg.minReserve) {

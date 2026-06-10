@@ -6,11 +6,13 @@
  * toggled active/inactive globally so e.g. "only sports + crypto" mode is
  * one click.
  *
- * In production this is a Postgres table; here it persists via a backup
- * snapshot just like the audit ring + market store.
+ * DAL layer: feature-flagged switch between in-memory Map and Prisma
+ * TrustedSource table. USE_PRISMA_DAL=true flips to Prisma.
+ * Disabled categories remain ephemeral in-memory (not entity data).
  */
 import { audit } from "./audit";
 import { randomId } from "./crypto";
+import { prisma, hasDatabase } from "./prisma";
 import type { MarketCategory } from "./market-service";
 
 export type TrustedSource = {
@@ -37,9 +39,97 @@ const sources: Map<string, TrustedSource> =
 const disabledCategories: Set<MarketCategory> =
   globalThis.__50PICK_DISABLED_CATEGORIES ?? (globalThis.__50PICK_DISABLED_CATEGORIES = new Set());
 
+// ---------------------------------------------------------------------------
+// DAL interface + implementations
+// ---------------------------------------------------------------------------
+
+interface SourceStore {
+  values(): Promise<TrustedSource[]>;
+  get(id: string): Promise<TrustedSource | null>;
+  set(s: TrustedSource): Promise<void>;
+  delete(id: string): Promise<void>;
+  size(): Promise<number>;
+}
+
+const memoryStore: SourceStore = {
+  async values() { return Array.from(sources.values()); },
+  async get(id) { return sources.get(id) ?? null; },
+  async set(s) { sources.set(s.id, s); },
+  async delete(id) { sources.delete(id); },
+  async size() { return sources.size; },
+};
+
+function pc() {
+  const c = prisma();
+  if (!c) throw new Error("source-registry: DATABASE_URL required");
+  return c;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toTrustedSource(r: any): TrustedSource {
+  return {
+    id: r.id,
+    domain: r.domain,
+    label: r.label,
+    category: r.category as MarketCategory,
+    rationale: r.rationale,
+    enabled: r.enabled,
+    addedBy: r.addedBy,
+    addedAt: r.addedAt instanceof Date ? r.addedAt.toISOString() : String(r.addedAt),
+  };
+}
+
+const prismaStore: SourceStore = {
+  async values() {
+    const rows = await pc().trustedSource.findMany();
+    return rows.map(toTrustedSource);
+  },
+  async get(id) {
+    const r = await pc().trustedSource.findUnique({ where: { id } });
+    return r ? toTrustedSource(r) : null;
+  },
+  async set(s) {
+    await pc().trustedSource.upsert({
+      where: { id: s.id },
+      create: {
+        id: s.id,
+        domain: s.domain,
+        label: s.label,
+        category: s.category,
+        rationale: s.rationale,
+        enabled: s.enabled,
+        addedBy: s.addedBy,
+        addedAt: new Date(s.addedAt),
+      },
+      update: {
+        domain: s.domain,
+        label: s.label,
+        category: s.category,
+        rationale: s.rationale,
+        enabled: s.enabled,
+        addedBy: s.addedBy,
+        addedAt: new Date(s.addedAt),
+      },
+    });
+  },
+  async delete(id) {
+    await pc().trustedSource.delete({ where: { id } }).catch(() => {});
+  },
+  async size() {
+    return pc().trustedSource.count();
+  },
+};
+
+const usePrisma = process.env.USE_PRISMA_DAL === "true" && hasDatabase();
+const store: SourceStore = usePrisma ? prismaStore : memoryStore;
+
+// ---------------------------------------------------------------------------
+// Exported functions (all async)
+// ---------------------------------------------------------------------------
+
 /** Seed the default Tanzania-relevant trusted sources on first call. */
-export function seedDefaultSources() {
-  if (sources.size > 0) return;
+export async function seedDefaultSources() {
+  if ((await store.size()) > 0) return;
   const seed: Array<Omit<TrustedSource, "id" | "addedAt">> = [
     { domain: "bot.go.tz",          label: "Bank of Tanzania",                category: "macro",    rationale: "Official central bank — exchange rates + MPC decisions",  enabled: true,  addedBy: "system" },
     { domain: "tra.go.tz",          label: "Tanzania Revenue Authority",      category: "macro",    rationale: "Official tax + customs body",                              enabled: true,  addedBy: "system" },
@@ -56,25 +146,25 @@ export function seedDefaultSources() {
       addedAt: new Date().toISOString(),
       ...s,
     };
-    sources.set(row.id, row);
+    await store.set(row);
   }
 }
 
-export function listSources(filter?: { category?: MarketCategory; enabledOnly?: boolean }): TrustedSource[] {
-  return Array.from(sources.values())
+export async function listSources(filter?: { category?: MarketCategory; enabledOnly?: boolean }): Promise<TrustedSource[]> {
+  return (await store.values())
     .filter((s) => !filter?.category || s.category === filter.category)
     .filter((s) => !filter?.enabledOnly || s.enabled)
     .sort((a, b) => a.category.localeCompare(b.category) || a.label.localeCompare(b.label));
 }
 
-export function addSource(input: Omit<TrustedSource, "id" | "addedAt" | "enabled"> & { enabled?: boolean }): TrustedSource {
+export async function addSource(input: Omit<TrustedSource, "id" | "addedAt" | "enabled"> & { enabled?: boolean }): Promise<TrustedSource> {
   const row: TrustedSource = {
     id: `src_${randomId(8)}`,
     addedAt: new Date().toISOString(),
     enabled: input.enabled ?? true,
     ...input,
   };
-  sources.set(row.id, row);
+  await store.set(row);
   audit({
     category: "ADMIN",
     action: "source.added",
@@ -86,11 +176,11 @@ export function addSource(input: Omit<TrustedSource, "id" | "addedAt" | "enabled
   return row;
 }
 
-export function setSourceEnabled(id: string, enabled: boolean, officerId: string) {
-  const s = sources.get(id);
+export async function setSourceEnabled(id: string, enabled: boolean, officerId: string) {
+  const s = await store.get(id);
   if (!s) return null;
   s.enabled = enabled;
-  sources.set(id, s);
+  await store.set(s);
   audit({
     category: "ADMIN",
     action: enabled ? "source.enabled" : "source.disabled",
@@ -102,10 +192,10 @@ export function setSourceEnabled(id: string, enabled: boolean, officerId: string
   return s;
 }
 
-export function removeSource(id: string, officerId: string) {
-  const s = sources.get(id);
+export async function removeSource(id: string, officerId: string) {
+  const s = await store.get(id);
   if (!s) return null;
-  sources.delete(id);
+  await store.delete(id);
   audit({
     category: "ADMIN",
     action: "source.removed",
@@ -117,15 +207,15 @@ export function removeSource(id: string, officerId: string) {
   return s;
 }
 
-export function isCategoryDisabled(c: MarketCategory): boolean {
+export async function isCategoryDisabled(c: MarketCategory): Promise<boolean> {
   return disabledCategories.has(c);
 }
 
-export function listDisabledCategories(): MarketCategory[] {
+export async function listDisabledCategories(): Promise<MarketCategory[]> {
   return Array.from(disabledCategories.values());
 }
 
-export function setCategoryEnabled(c: MarketCategory, enabled: boolean, officerId: string) {
+export async function setCategoryEnabled(c: MarketCategory, enabled: boolean, officerId: string) {
   if (enabled) disabledCategories.delete(c);
   else disabledCategories.add(c);
   audit({
@@ -142,15 +232,15 @@ export function setCategoryEnabled(c: MarketCategory, enabled: boolean, officerI
  * Verify whether a market's source URL belongs to an enabled trusted-source
  * domain in the right category. Used by createMarket to gate publish.
  */
-export function isSourceTrusted(url: string, category: MarketCategory): { ok: boolean; reason?: string } {
-  if (isCategoryDisabled(category)) return { ok: false, reason: `Category ${category} is disabled` };
+export async function isSourceTrusted(url: string, category: MarketCategory): Promise<{ ok: boolean; reason?: string }> {
+  if (await isCategoryDisabled(category)) return { ok: false, reason: `Category ${category} is disabled` };
   let host: string;
   try {
     host = new URL(url).hostname.toLowerCase();
   } catch {
     return { ok: false, reason: "Invalid URL" };
   }
-  const match = listSources({ enabledOnly: true }).find(
+  const match = (await listSources({ enabledOnly: true })).find(
     (s) => s.category === category && (host === s.domain || host.endsWith(`.${s.domain}`)),
   );
   if (!match) return { ok: false, reason: `No enabled trusted source for ${category} matching ${host}` };

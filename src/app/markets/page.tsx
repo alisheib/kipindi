@@ -177,12 +177,14 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
   ).map(x => x.m);
   const resolved = (await listMarkets({ status: "RESOLVED" })).slice(0, 6);
   const traderMap = await traderSeedsByMarket();
+  const allForCharts = [...live, ...resolved];
+  const cardCharts = new Map(await Promise.all(allForCharts.map(async (m) => [m.id, await getCardChart(m.id)] as const)));
 
   return (
     <>
       <section className="market-grid">
         {live.map((m) => {
-          const cc = getCardChart(m.id);
+          const cc = cardCharts.get(m.id) ?? { spark: [] };
           return (
             <MarketCard
               key={m.id}
@@ -240,7 +242,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
                 timeLeft={`Resolved ${m.resolvedOutcome}`}
                 status="RESOLVED"
                 sourceUrl={m.sourceUrl}
-                spark={getCardChart(m.id).spark}
+                spark={(cardCharts.get(m.id) ?? { spark: [] }).spark}
               />
             ))}
           </div>

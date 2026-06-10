@@ -60,7 +60,7 @@ function fundedPlayer(name: string, balance: number): string {
 }
 function hash(s: string): number { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) | 0; return h; }
 
-function publishPoll(poll: StoredAIPoll, officerId: string): string {
+async function publishPoll(poll: StoredAIPoll, officerId: string): Promise<string> {
   const candidate = ingestCandidate({
     category: (poll.category === "tech" || poll.category === "other" ? "macro" : poll.category) as
       "sports" | "macro" | "weather" | "crypto" | "culture" | "infrastructure",
@@ -82,7 +82,7 @@ function publishPoll(poll: StoredAIPoll, officerId: string): string {
     resolutionAt: poll.resolutionAt, proposedBy: officerId,
   });
   markPublished(candidate.id, market.id, officerId);
-  markAIPollPublished(poll.id, { candidateId: candidate.id, marketId: market.id, officerId });
+  await markAIPollPublished(poll.id, { candidateId: candidate.id, marketId: market.id, officerId });
   return market.id;
 }
 
@@ -117,23 +117,25 @@ check("every reviewable poll has a Swahili title", reviewable.every((p) => p.tit
 // 2 · REVIEW — approve half, reject half
 console.log("\n--- 2 · REVIEW (approve some, reject some) ---");
 const approved: StoredAIPoll[] = [];
-reviewable.forEach((poll, i) => {
+for (let i = 0; i < reviewable.length; i++) {
+  const poll = reviewable[i];
   if (i % 2 === 0) {
-    const a = approveAIPoll(poll.id, { officerId: OFFICER, note: "Strong, clean market." });
+    const a = await approveAIPoll(poll.id, { officerId: OFFICER, note: "Strong, clean market." });
     if (a?.state === "APPROVED") { approved.push(a); console.log(`  APPROVE  ${a.titleEn.slice(0, 66)}`); }
   } else {
-    rejectAIPoll(poll.id, { officerId: OFFICER, reasons: ["officer_decision" as FilterReason], note: "Holding for today." });
+    await rejectAIPoll(poll.id, { officerId: OFFICER, reasons: ["officer_decision" as FilterReason], note: "Holding for today." });
     console.log(`  REJECT   ${poll.titleEn.slice(0, 66)}`);
   }
-});
-const c = countAIPollsByState();
+}
+const c = await countAIPollsByState();
 check("approvals recorded", c.APPROVED === approved.length && approved.length >= 1, `approved=${c.APPROVED}`);
 check("rejections recorded", c.REJECTED >= 1, `rejected=${c.REJECTED}`);
 
 // 3 · PUBLISH approved → live markets
 console.log("\n--- 3 · PUBLISH (approved → live markets) ---");
 const before = listMarkets().length;
-const marketIds = approved.map((p) => publishPoll(p, OFFICER));
+const marketIds: string[] = [];
+for (const p of approved) { marketIds.push(await publishPoll(p, OFFICER)); }
 const liveMarkets = listMarkets({ status: "LIVE" }).filter((m) => marketIds.includes(m.id));
 check("a live market was created per approved poll", liveMarkets.length === approved.length, `${liveMarkets.length}/${approved.length}`);
 check("market count grew by the number published", listMarkets().length === before + approved.length);
@@ -175,7 +177,7 @@ check("Baraka's wallet debited to 92,000", db.wallet.findByUserId(brian)!.balanc
 const broke = await buyPosition(brian, { marketId: m1, side: "NO", stake: 999_999 });
 check("over-balance bet rejected, wallet intact", broke.ok === false && db.wallet.findByUserId(brian)!.balance === 92_000, broke.ok ? "ALLOWED!" : broke.error);
 
-console.log(`\n  M1 implied YES: ${impliedYesPct(afterM1)}%   ·   daily progress: ${JSON.stringify(aiPollDailyProgress())}`);
+console.log(`\n  M1 implied YES: ${impliedYesPct(afterM1)}%   ·   daily progress: ${JSON.stringify(await aiPollDailyProgress())}`);
 console.log("\n" + "=".repeat(72));
 console.log(`LIVE FULL-FLOW   PASS: ${pass}   FAIL: ${fail}   ·   API cost $${totalCost.toFixed(4)}`);
 console.log("=".repeat(72) + "\n");

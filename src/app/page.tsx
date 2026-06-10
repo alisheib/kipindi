@@ -23,6 +23,7 @@ export default async function LandingPage() {
   seedDemoMarkets();
   const live = (await listMarkets({ status: "LIVE" })).slice(0, 6);
   const traderMap = await traderSeedsByMarket();
+  const cardCharts = new Map(await Promise.all(live.map(async (m) => [m.id, await getCardChart(m.id)] as const)));
   const session = await getSession();
   const isAuthed = !!session;
 
@@ -184,7 +185,7 @@ export default async function LandingPage() {
           </div>
           <div className="market-grid">
             {live.slice(0, 8).map((m) => {
-              const cc = getCardChart(m.id);
+              const cc = cardCharts.get(m.id) ?? { spark: [] };
               return (
                 <MarketCard
                   key={m.id}

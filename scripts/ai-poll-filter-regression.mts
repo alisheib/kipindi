@@ -86,7 +86,7 @@ updateAIPollConfig({
 }, ACTOR);
 
 // First, seed the built-in fixtures (covers PENDING_REVIEW, APPROVED, FILTERED, REJECTED, etc.)
-const fixtures = seedAIPollFixtures();
+const fixtures = await seedAIPollFixtures();
 check("Built-in fixtures seeded", fixtures.length > 0, `${fixtures.length} polls`);
 
 // Generate many polls through the real pipeline using fake provider
@@ -144,7 +144,7 @@ check("Batch generation completed", batchResult.generated.length === 10, `${batc
 
 // Now backdate some polls to test date filtering
 // Grab all polls and modify createdAt on some
-const allPolls = listAIPolls();
+const allPolls = await listAIPolls();
 const totalCount = allPolls.length;
 check("Total polls created", totalCount >= 60, `${totalCount} polls total`);
 
@@ -161,11 +161,11 @@ check("All generated polls have today's date", todayPolls.length === totalCount,
 
 section("PHASE 2: Filter by state");
 
-const counts = countAIPollsByState();
+const counts = await countAIPollsByState();
 const stateNames: AIPollState[] = ["GENERATING", "VALIDATION_FAILED", "FILTERED", "PENDING_REVIEW", "EDITING", "APPROVED", "REJECTED", "PUBLISHED"];
 
 for (const state of stateNames) {
-  const filtered = listAIPolls({ state });
+  const filtered = await listAIPolls({ state });
   check(`State filter: ${state}`, filtered.length === counts[state], `expected ${counts[state]}, got ${filtered.length}`);
   // Verify every returned poll actually has that state
   const allCorrectState = filtered.every(p => p.state === state);
@@ -175,13 +175,13 @@ for (const state of stateNames) {
 section("PHASE 3: Filter by category");
 
 for (const cat of CATEGORIES) {
-  const filtered = listAIPolls({ category: cat });
+  const filtered = await listAIPolls({ category: cat });
   const allCorrectCat = filtered.every(p => p.category === cat);
   check(`Category filter: ${cat}`, allCorrectCat, `${filtered.length} polls`);
 }
 
 // Non-existent category
-const noSuch = listAIPolls({ category: "nonexistent" });
+const noSuch = await listAIPolls({ category: "nonexistent" });
 check("Non-existent category returns empty", noSuch.length === 0);
 
 section("PHASE 4: Text search");
@@ -189,7 +189,7 @@ section("PHASE 4: Text search");
 // Search by title keyword
 const sportsPoll = allPolls.find(p => p.titleEn.includes("sports"));
 if (sportsPoll) {
-  const searchResults = listAIPolls({ search: "sports" });
+  const searchResults = await listAIPolls({ search: "sports" });
   check("Search 'sports' returns results", searchResults.length > 0, `${searchResults.length} matches`);
   const allContain = searchResults.every(p =>
     [p.titleEn, p.titleSw, p.category, p.id, p.resolutionCriterion, p.reasoning]
@@ -201,45 +201,45 @@ if (sportsPoll) {
 // Search by poll ID (partial)
 const firstPoll = allPolls[0];
 const idFragment = firstPoll.id.slice(0, 12);
-const idSearch = listAIPolls({ search: idFragment });
+const idSearch = await listAIPolls({ search: idFragment });
 check(`Search by ID fragment '${idFragment}'`, idSearch.length >= 1, `${idSearch.length} matches`);
 check("  - first result is the correct poll", idSearch.some(p => p.id === firstPoll.id));
 
 // Search for something that doesn't exist
-const noResults = listAIPolls({ search: "xyzzy_nonexistent_gibberish_12345" });
+const noResults = await listAIPolls({ search: "xyzzy_nonexistent_gibberish_12345" });
 check("Search for gibberish returns empty", noResults.length === 0);
 
 // Case-insensitive search
-const upperSearch = listAIPolls({ search: "SPORTS" });
-const lowerSearch = listAIPolls({ search: "sports" });
+const upperSearch = await listAIPolls({ search: "SPORTS" });
+const lowerSearch = await listAIPolls({ search: "sports" });
 check("Search is case-insensitive", upperSearch.length === lowerSearch.length);
 
 // Search with whitespace
-const spaceySearch = listAIPolls({ search: "  sports  " });
+const spaceySearch = await listAIPolls({ search: "  sports  " });
 check("Search trims whitespace", spaceySearch.length === lowerSearch.length);
 
 section("PHASE 5: Combined filters");
 
 // State + category
-const pendingSports = listAIPolls({ state: "PENDING_REVIEW", category: "sports" });
+const pendingSports = await listAIPolls({ state: "PENDING_REVIEW", category: "sports" });
 check("State=PENDING_REVIEW + category=sports",
   pendingSports.every(p => p.state === "PENDING_REVIEW" && p.category === "sports"),
   `${pendingSports.length} matches`);
 
 // State + search
-const pendingSearch = listAIPolls({ state: "PENDING_REVIEW", search: "crypto" });
+const pendingSearch = await listAIPolls({ state: "PENDING_REVIEW", search: "crypto" });
 check("State=PENDING_REVIEW + search='crypto'",
   pendingSearch.every(p => p.state === "PENDING_REVIEW"),
   `${pendingSearch.length} matches`);
 
 // Category + search
-const weatherSearch = listAIPolls({ category: "weather", search: "weather" });
+const weatherSearch = await listAIPolls({ category: "weather", search: "weather" });
 check("Category=weather + search='weather'",
   weatherSearch.every(p => p.category === "weather"),
   `${weatherSearch.length} matches`);
 
 // All three
-const triple = listAIPolls({ state: "PENDING_REVIEW", category: "sports", search: "test" });
+const triple = await listAIPolls({ state: "PENDING_REVIEW", category: "sports", search: "test" });
 check("Triple filter (state + category + search)",
   triple.every(p => p.state === "PENDING_REVIEW" && p.category === "sports"),
   `${triple.length} matches`);
@@ -253,30 +253,30 @@ const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()
 const weekAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).toISOString();
 
 // Today filter — all polls were just created so should match
-const todayFiltered = listAIPolls({ dateFrom: todayStart, dateTo: tomorrowStart });
+const todayFiltered = await listAIPolls({ dateFrom: todayStart, dateTo: tomorrowStart });
 check("Date filter: today returns all polls", todayFiltered.length === totalCount, `${todayFiltered.length} of ${totalCount}`);
 
 // Yesterday filter — none should match (all created now)
-const yesterdayFiltered = listAIPolls({ dateFrom: yesterdayStart, dateTo: todayStart });
+const yesterdayFiltered = await listAIPolls({ dateFrom: yesterdayStart, dateTo: todayStart });
 check("Date filter: yesterday returns 0 (all created today)", yesterdayFiltered.length === 0, `got ${yesterdayFiltered.length}`);
 
 // Last 7 days — should include all
-const weekFiltered = listAIPolls({ dateFrom: weekAgo });
+const weekFiltered = await listAIPolls({ dateFrom: weekAgo });
 check("Date filter: last 7 days returns all", weekFiltered.length === totalCount, `${weekFiltered.length}`);
 
 // Future date — should return 0
 const futureStart = new Date(now.getFullYear() + 1, 0, 1).toISOString();
-const futureFiltered = listAIPolls({ dateFrom: futureStart });
+const futureFiltered = await listAIPolls({ dateFrom: futureStart });
 check("Date filter: future date returns 0", futureFiltered.length === 0);
 
 // Date + state
-const todayPending = listAIPolls({ state: "PENDING_REVIEW", dateFrom: todayStart, dateTo: tomorrowStart });
+const todayPending = await listAIPolls({ state: "PENDING_REVIEW", dateFrom: todayStart, dateTo: tomorrowStart });
 check("Date + state filter combo",
   todayPending.every(p => p.state === "PENDING_REVIEW"),
   `${todayPending.length} pending today`);
 
 // Date + category + search
-const fullCombo = listAIPolls({
+const fullCombo = await listAIPolls({
   category: "sports",
   search: "test",
   dateFrom: todayStart,
@@ -289,7 +289,7 @@ check("Full combo: category + search + date",
 section("PHASE 7: Pagination simulation");
 
 const PER_PAGE = 50;
-const allFiltered = listAIPolls();
+const allFiltered = await listAIPolls();
 const totalPages = Math.ceil(allFiltered.length / PER_PAGE);
 
 check("Total polls > PER_PAGE requires pagination", allFiltered.length > PER_PAGE || totalPages >= 1,
@@ -312,7 +312,7 @@ if (totalPages > 1) {
 }
 
 // Filtered pagination
-const pendingAll = listAIPolls({ state: "PENDING_REVIEW" });
+const pendingAll = await listAIPolls({ state: "PENDING_REVIEW" });
 const pendingPage1 = pendingAll.slice(0, PER_PAGE);
 check("Filtered pagination: PENDING_REVIEW page 1",
   pendingPage1.length <= PER_PAGE,
@@ -321,7 +321,7 @@ check("Filtered pagination: PENDING_REVIEW page 1",
 section("PHASE 8: Sort order");
 
 // Verify results are sorted newest first
-const sorted = listAIPolls();
+const sorted = await listAIPolls();
 let sortOk = true;
 for (let i = 1; i < sorted.length; i++) {
   if (sorted[i].createdAt > sorted[i - 1].createdAt) {
@@ -332,7 +332,7 @@ for (let i = 1; i < sorted.length; i++) {
 check("Results sorted newest first (descending createdAt)", sortOk);
 
 // Same for filtered results
-const filteredSorted = listAIPolls({ category: "sports" });
+const filteredSorted = await listAIPolls({ category: "sports" });
 let filteredSortOk = true;
 for (let i = 1; i < filteredSorted.length; i++) {
   if (filteredSorted[i].createdAt > filteredSorted[i - 1].createdAt) {
@@ -346,7 +346,7 @@ section("PHASE 9: Detail page / getAIPoll");
 
 // Get a specific poll by ID
 const targetPoll = allPolls[0];
-const fetched = getAIPoll(targetPoll.id);
+const fetched = await getAIPoll(targetPoll.id);
 check("getAIPoll returns correct poll", fetched?.id === targetPoll.id);
 check("  - has title", !!fetched?.titleEn || fetched?.state === "FILTERED");
 check("  - has state", !!fetched?.state);
@@ -354,20 +354,20 @@ check("  - has createdAt", !!fetched?.createdAt);
 check("  - has category", !!fetched?.category || fetched?.state === "FILTERED");
 
 // Non-existent poll
-const ghost = getAIPoll("nonexistent_poll_id_12345");
+const ghost = await getAIPoll("nonexistent_poll_id_12345");
 check("getAIPoll returns null for non-existent ID", ghost === null);
 
 // Verify all polls are fetchable by ID
 let allFetchable = true;
 for (const p of allPolls) {
-  const got = getAIPoll(p.id);
+  const got = await getAIPoll(p.id);
   if (!got || got.id !== p.id) { allFetchable = false; break; }
 }
 check("All polls fetchable by ID", allFetchable, `${allPolls.length} verified`);
 
 section("PHASE 10: countAIPollsTotal + countAIPollsByState consistency");
 
-const totalByCount = countAIPollsTotal();
+const totalByCount = await countAIPollsTotal();
 check("countAIPollsTotal matches listAIPolls length", totalByCount === allPolls.length,
   `count=${totalByCount}, list=${allPolls.length}`);
 
@@ -378,27 +378,27 @@ check("Sum of state counts equals total", stateCountSum === totalByCount,
 section("PHASE 11: Edge cases");
 
 // Empty filter = all
-const emptyFilter = listAIPolls({});
+const emptyFilter = await listAIPolls({});
 check("Empty filter object returns all polls", emptyFilter.length === totalCount);
 
 // Undefined filter = all
-const undefFilter = listAIPolls(undefined);
+const undefFilter = await listAIPolls(undefined);
 check("Undefined filter returns all polls", undefFilter.length === totalCount);
 
 // Empty string search = all (should be ignored)
-const emptySearch = listAIPolls({ search: "" });
+const emptySearch = await listAIPolls({ search: "" });
 check("Empty string search returns all polls", emptySearch.length === totalCount);
 
 // Whitespace-only search = all
-const wsSearch = listAIPolls({ search: "   " });
+const wsSearch = await listAIPolls({ search: "   " });
 check("Whitespace-only search returns all polls", wsSearch.length === totalCount);
 
 /* ─── Summary ─── */
 
 console.log(`\n${"=".repeat(60)}`);
 console.log(`  RESULTS: ${pass} passed / ${fail} failed / ${total} total`);
-console.log(`  Polls in store: ${countAIPollsTotal()}`);
-const finalCounts = countAIPollsByState();
+console.log(`  Polls in store: ${await countAIPollsTotal()}`);
+const finalCounts = await countAIPollsByState();
 console.log(`  By state: ${JSON.stringify(finalCounts)}`);
 console.log(`${"=".repeat(60)}\n`);
 

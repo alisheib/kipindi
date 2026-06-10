@@ -25,6 +25,7 @@ import { getAIProvider, type AIPollGeneration, type AIProviderResponse } from ".
 import { getAIPollConfig } from "./ai-poll-config";
 import { listMarkets } from "./market-service";
 import { listSources, seedDefaultSources } from "./source-registry";
+import { prisma, hasDatabase } from "./prisma";
 
 /* ─── Types ─── */
 
@@ -119,6 +120,139 @@ declare global {
 const polls: Map<string, StoredAIPoll> =
   globalThis.__50PICK_AI_POLLS ?? (globalThis.__50PICK_AI_POLLS = new Map());
 
+// ---------------------------------------------------------------------------
+// DAL interface + implementations
+// ---------------------------------------------------------------------------
+
+interface AIPollStore {
+  get(id: string): Promise<StoredAIPoll | null>;
+  set(poll: StoredAIPoll): Promise<void>;
+  delete(id: string): Promise<boolean>;
+  values(): Promise<StoredAIPoll[]>;
+  size(): Promise<number>;
+}
+
+const memoryStore: AIPollStore = {
+  async get(id) { return polls.get(id) ?? null; },
+  async set(poll) { polls.set(poll.id, poll); },
+  async delete(id) { return polls.delete(id); },
+  async values() { return Array.from(polls.values()); },
+  async size() { return polls.size; },
+};
+
+function pc() {
+  const c = prisma();
+  if (!c) throw new Error("ai-poll-generation: DATABASE_URL required");
+  return c;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toStoredAIPoll(r: any): StoredAIPoll {
+  return {
+    id: r.id,
+    state: r.state as AIPollState,
+    requestCategory: r.requestCategory,
+    requestPrompt: r.requestPrompt,
+    generation: r.generation as AIPollGeneration | null,
+    rawResponse: r.rawResponse ?? null,
+    filterReasons: (r.filterReasons ?? []) as FilterReason[],
+    qualityIndicators: (r.qualityIndicators ?? []) as QualityIndicator[],
+    overallQuality: r.overallQuality,
+    titleEn: r.titleEn,
+    titleSw: r.titleSw,
+    category: r.category,
+    resolutionCriterion: r.resolutionCriterion,
+    resolutionAt: r.resolutionAt instanceof Date ? r.resolutionAt.toISOString() : String(r.resolutionAt ?? ""),
+    options: (r.options ?? []) as StoredAIPoll["options"],
+    sources: (r.sources ?? []) as StoredAIPoll["sources"],
+    confidence: r.confidence,
+    reasoning: r.reasoning,
+    reviewedBy: r.reviewedBy ?? null,
+    reviewedAt: r.reviewedAt instanceof Date ? r.reviewedAt.toISOString() : (r.reviewedAt ?? null),
+    reviewNote: r.reviewNote ?? null,
+    rejectReasons: (r.rejectReasons ?? []) as FilterReason[],
+    publishedMarketId: r.publishedMarketId ?? null,
+    publishedCandidateId: r.publishedCandidateId ?? null,
+    tokensUsed: r.tokensUsed,
+    costUsd: Number(r.costUsd),
+    latencyMs: r.latencyMs,
+    regenerationOf: r.regenerationOf ?? null,
+    regenerationCount: r.regenerationCount,
+    createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+    updatedAt: r.updatedAt instanceof Date ? r.updatedAt.toISOString() : String(r.updatedAt),
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toPrismaData(p: StoredAIPoll): any {
+  return {
+    id: p.id,
+    state: p.state as "GENERATING" | "VALIDATION_FAILED" | "FILTERED" | "PENDING_REVIEW" | "EDITING" | "APPROVED" | "REJECTED" | "PUBLISHED",
+    requestCategory: p.requestCategory,
+    requestPrompt: p.requestPrompt,
+    generation: p.generation ?? undefined,
+    rawResponse: p.rawResponse,
+    filterReasons: p.filterReasons,
+    qualityIndicators: p.qualityIndicators,
+    overallQuality: p.overallQuality,
+    titleEn: p.titleEn,
+    titleSw: p.titleSw,
+    category: p.category,
+    resolutionCriterion: p.resolutionCriterion,
+    resolutionAt: p.resolutionAt ? new Date(p.resolutionAt) : new Date(0),
+    options: p.options,
+    sources: p.sources,
+    confidence: p.confidence,
+    reasoning: p.reasoning,
+    reviewedBy: p.reviewedBy,
+    reviewedAt: p.reviewedAt ? new Date(p.reviewedAt) : null,
+    reviewNote: p.reviewNote,
+    rejectReasons: p.rejectReasons,
+    publishedMarketId: p.publishedMarketId,
+    publishedCandidateId: p.publishedCandidateId,
+    tokensUsed: p.tokensUsed,
+    costUsd: p.costUsd,
+    latencyMs: p.latencyMs,
+    regenerationOf: p.regenerationOf,
+    regenerationCount: p.regenerationCount,
+    createdAt: new Date(p.createdAt),
+  };
+}
+
+const prismaStore: AIPollStore = {
+  async get(id) {
+    const r = await pc().aIPoll.findUnique({ where: { id } });
+    return r ? toStoredAIPoll(r) : null;
+  },
+  async set(poll) {
+    const data = toPrismaData(poll);
+    const { id: _id, ...updateData } = data;
+    await pc().aIPoll.upsert({
+      where: { id: poll.id },
+      create: data,
+      update: updateData,
+    });
+  },
+  async delete(id) {
+    try {
+      await pc().aIPoll.delete({ where: { id } });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  async values() {
+    const rows = await pc().aIPoll.findMany();
+    return rows.map(toStoredAIPoll);
+  },
+  async size() {
+    return pc().aIPoll.count();
+  },
+};
+
+const usePrisma = process.env.USE_PRISMA_DAL === "true" && hasDatabase();
+const store: AIPollStore = usePrisma ? prismaStore : memoryStore;
+
 /* ─── Constants ─── */
 
 const VALID_CATEGORIES = new Set(["sports", "macro", "weather", "crypto", "culture", "infrastructure", "tech", "other"]);
@@ -170,15 +304,15 @@ function normaliseTitle(s: string): string {
 
 /** Is this URL's host on the operator's enabled trusted-source registry (any
  *  category)? Soft accuracy signal only — the officer curates the registry. */
-function isOnTrustedRegistry(url: string): boolean {
+async function isOnTrustedRegistry(url: string): Promise<boolean> {
   let host: string;
   try {
     host = new URL(url).hostname.toLowerCase();
   } catch {
     return false;
   }
-  seedDefaultSources();
-  return listSources({ enabledOnly: true }).some(
+  await seedDefaultSources();
+  return (await listSources({ enabledOnly: true })).some(
     (src) => host === src.domain || host.endsWith(`.${src.domain}`),
   );
 }
@@ -346,7 +480,8 @@ async function validateAndFilter(gen: AIPollGeneration | null | undefined, rawRe
     // Trusted-source signal — soft (officer curates the registry). A source on
     // the operator's enabled trusted-source list is a strong accuracy signal;
     // an unknown domain is a flag to scrutinise, not an automatic reject.
-    const trustedCount = validSources.filter((s) => isOnTrustedRegistry(s.url)).length;
+    const trustedFlags = await Promise.all(validSources.map((s) => isOnTrustedRegistry(s.url)));
+    const trustedCount = trustedFlags.filter(Boolean).length;
     quality.push({
       label: trustedCount > 0 ? "Trusted source" : "Source not on trusted registry",
       score: trustedCount > 0 ? 100 : 45,
@@ -377,7 +512,8 @@ async function validateAndFilter(gen: AIPollGeneration | null | undefined, rawRe
   // board never carries two near-identical questions.
   const fingerprint = normaliseTitle(sanitised.titleEn);
   if (fingerprint) {
-    const dupPoll = Array.from(polls.values()).some(
+    const allPolls = await store.values();
+    const dupPoll = allPolls.some(
       (existing) =>
         existing.state !== "VALIDATION_FAILED" &&
         existing.state !== "FILTERED" &&
@@ -441,9 +577,10 @@ export type AIPollFilter = {
   dateTo?: string;     // ISO date string
 };
 
-export function listAIPolls(filter?: AIPollFilter): StoredAIPoll[] {
+export async function listAIPolls(filter?: AIPollFilter): Promise<StoredAIPoll[]> {
   const q = filter?.search?.trim().toLowerCase();
-  return Array.from(polls.values())
+  const all = await store.values();
+  return all
     .filter((p) => {
       if (filter?.state && p.state !== filter.state) return false;
       if (filter?.category && p.category !== filter.category) return false;
@@ -459,26 +596,28 @@ export function listAIPolls(filter?: AIPollFilter): StoredAIPoll[] {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-export function countAIPollsTotal(): number {
-  return polls.size;
+export async function countAIPollsTotal(): Promise<number> {
+  return store.size();
 }
 
-export function getAIPoll(id: string): StoredAIPoll | null {
-  return polls.get(id) ?? null;
+export async function getAIPoll(id: string): Promise<StoredAIPoll | null> {
+  return store.get(id);
 }
 
-export function countAIPollsByState(): Record<AIPollState, number> {
+export async function countAIPollsByState(): Promise<Record<AIPollState, number>> {
   const out: Record<AIPollState, number> = {
     GENERATING: 0, VALIDATION_FAILED: 0, FILTERED: 0,
     PENDING_REVIEW: 0, EDITING: 0, APPROVED: 0, REJECTED: 0, PUBLISHED: 0,
   };
-  for (const p of polls.values()) out[p.state]++;
+  const all = await store.values();
+  for (const p of all) out[p.state]++;
   return out;
 }
 
-export function aiPollSpend(): { totalTokens: number; totalUsd: number; totalGenerations: number } {
+export async function aiPollSpend(): Promise<{ totalTokens: number; totalUsd: number; totalGenerations: number }> {
   let tokens = 0, usd = 0, gens = 0;
-  for (const p of polls.values()) {
+  const all = await store.values();
+  for (const p of all) {
     tokens += p.tokensUsed;
     usd += p.costUsd;
     gens++;
@@ -494,7 +633,7 @@ export async function generateAIPoll(opts: {
   regenerationOf?: string;
 }): Promise<StoredAIPoll> {
   const now = new Date().toISOString();
-  const parentPoll = opts.regenerationOf ? polls.get(opts.regenerationOf) : null;
+  const parentPoll = opts.regenerationOf ? await store.get(opts.regenerationOf) : null;
 
   const poll: StoredAIPoll = {
     id: `aipoll_${randomId(12)}`,
@@ -529,7 +668,7 @@ export async function generateAIPoll(opts: {
     createdAt: now,
     updatedAt: now,
   };
-  polls.set(poll.id, poll);
+  await store.set(poll);
   scheduleBackup();
 
   audit({
@@ -551,7 +690,7 @@ export async function generateAIPoll(opts: {
     poll.filterReasons = ["provider_error"];
     poll.rawResponse = String(err);
     poll.updatedAt = new Date().toISOString();
-    polls.set(poll.id, poll);
+    await store.set(poll);
   scheduleBackup();
 
     audit({
@@ -575,7 +714,7 @@ export async function generateAIPoll(opts: {
     poll.filterReasons = ["provider_error"];
     poll.rawResponse = response.error ?? response.rawResponse ?? "Unknown provider error";
     poll.updatedAt = new Date().toISOString();
-    polls.set(poll.id, poll);
+    await store.set(poll);
   scheduleBackup();
 
     audit({
@@ -603,7 +742,7 @@ export async function generateAIPoll(opts: {
     poll.filterReasons = ["malformed_response"];
     poll.rawResponse = `Validation error: ${String(err)}`;
     poll.updatedAt = new Date().toISOString();
-    polls.set(poll.id, poll);
+    await store.set(poll);
   scheduleBackup();
     audit({
       category: "ADMIN",
@@ -626,7 +765,7 @@ export async function generateAIPoll(opts: {
       copyGenerationToPoll(poll, validation.sanitised);
     }
     poll.updatedAt = new Date().toISOString();
-    polls.set(poll.id, poll);
+    await store.set(poll);
   scheduleBackup();
 
     audit({
@@ -644,7 +783,7 @@ export async function generateAIPoll(opts: {
   poll.state = "PENDING_REVIEW";
   copyGenerationToPoll(poll, validation.sanitised);
   poll.updatedAt = new Date().toISOString();
-  polls.set(poll.id, poll);
+  await store.set(poll);
   scheduleBackup();
 
   audit({
@@ -714,19 +853,20 @@ export async function generateAIPollBatch(opts: {
 
 /** Progress toward today's poll target — drives the admin KPI + "batch to
  *  target" button. "Today" is UTC-day based on createdAt. */
-export function aiPollDailyProgress(): {
+export async function aiPollDailyProgress(): Promise<{
   target: number;
   createdToday: number;
   reachedReviewToday: number;
   publishedToday: number;
   remaining: number;
-} {
+}> {
   const cfg = getAIPollConfig();
   const today = new Date().toISOString().slice(0, 10);
   let createdToday = 0;
   let reachedReviewToday = 0;
   let publishedToday = 0;
-  for (const p of polls.values()) {
+  const all = await store.values();
+  for (const p of all) {
     if (p.createdAt.slice(0, 10) !== today) continue;
     createdToday++;
     if (["PENDING_REVIEW", "EDITING", "APPROVED", "PUBLISHED"].includes(p.state)) reachedReviewToday++;
@@ -742,8 +882,8 @@ export function aiPollDailyProgress(): {
 }
 
 /** Admin approves a PENDING_REVIEW poll. */
-export function approveAIPoll(id: string, opts: { officerId: string; note?: string }): StoredAIPoll | null {
-  const poll = polls.get(id);
+export async function approveAIPoll(id: string, opts: { officerId: string; note?: string }): Promise<StoredAIPoll | null> {
+  const poll = await store.get(id);
   if (!poll || poll.state !== "PENDING_REVIEW") return null;
 
   poll.state = "APPROVED";
@@ -751,7 +891,7 @@ export function approveAIPoll(id: string, opts: { officerId: string; note?: stri
   poll.reviewedAt = new Date().toISOString();
   poll.reviewNote = opts.note ?? null;
   poll.updatedAt = new Date().toISOString();
-  polls.set(poll.id, poll);
+  await store.set(poll);
   scheduleBackup();
 
   audit({
@@ -766,8 +906,8 @@ export function approveAIPoll(id: string, opts: { officerId: string; note?: stri
 }
 
 /** Admin rejects a poll (from PENDING_REVIEW or EDITING). */
-export function rejectAIPoll(id: string, opts: { officerId: string; reasons: FilterReason[]; note?: string }): StoredAIPoll | null {
-  const poll = polls.get(id);
+export async function rejectAIPoll(id: string, opts: { officerId: string; reasons: FilterReason[]; note?: string }): Promise<StoredAIPoll | null> {
+  const poll = await store.get(id);
   if (!poll || (poll.state !== "PENDING_REVIEW" && poll.state !== "EDITING")) return null;
 
   poll.state = "REJECTED";
@@ -776,7 +916,7 @@ export function rejectAIPoll(id: string, opts: { officerId: string; reasons: Fil
   poll.reviewNote = opts.note ?? null;
   poll.rejectReasons = opts.reasons;
   poll.updatedAt = new Date().toISOString();
-  polls.set(poll.id, poll);
+  await store.set(poll);
   scheduleBackup();
 
   audit({
@@ -800,7 +940,7 @@ export async function editAIPoll(id: string, opts: {
   resolutionAt?: string;
   options?: Array<{ label: string; descriptionEn?: string; descriptionSw?: string }>;
 }): Promise<StoredAIPoll | null> {
-  const poll = polls.get(id);
+  const poll = await store.get(id);
   if (!poll || (poll.state !== "PENDING_REVIEW" && poll.state !== "EDITING")) return null;
 
   if (opts.titleEn !== undefined) poll.titleEn = sanitise(opts.titleEn);
@@ -834,7 +974,7 @@ export async function editAIPoll(id: string, opts: {
   poll.filterReasons = revalidation.reasons;
   poll.state = "PENDING_REVIEW";
   poll.updatedAt = new Date().toISOString();
-  polls.set(poll.id, poll);
+  await store.set(poll);
   scheduleBackup();
 
   audit({
@@ -849,15 +989,15 @@ export async function editAIPoll(id: string, opts: {
 }
 
 /** Mark an APPROVED poll as PUBLISHED — links to a market candidate. */
-export function markAIPollPublished(id: string, opts: { candidateId: string; marketId: string; officerId: string }): StoredAIPoll | null {
-  const poll = polls.get(id);
+export async function markAIPollPublished(id: string, opts: { candidateId: string; marketId: string; officerId: string }): Promise<StoredAIPoll | null> {
+  const poll = await store.get(id);
   if (!poll || poll.state !== "APPROVED") return null;
 
   poll.state = "PUBLISHED";
   poll.publishedCandidateId = opts.candidateId;
   poll.publishedMarketId = opts.marketId;
   poll.updatedAt = new Date().toISOString();
-  polls.set(poll.id, poll);
+  await store.set(poll);
   scheduleBackup();
 
   audit({
@@ -872,12 +1012,12 @@ export function markAIPollPublished(id: string, opts: { candidateId: string; mar
 }
 
 /** Delete a poll (only FILTERED / VALIDATION_FAILED / REJECTED). */
-export function deleteAIPoll(id: string, officerId: string): boolean {
-  const poll = polls.get(id);
+export async function deleteAIPoll(id: string, officerId: string): Promise<boolean> {
+  const poll = await store.get(id);
   if (!poll) return false;
   if (!["FILTERED", "VALIDATION_FAILED", "REJECTED"].includes(poll.state)) return false;
 
-  polls.delete(id);
+  await store.delete(id);
   scheduleBackup();
   audit({
     category: "ADMIN",
@@ -891,7 +1031,7 @@ export function deleteAIPoll(id: string, officerId: string): boolean {
 }
 
 /** Seed fixture polls for testing — covers all states and edge cases. */
-export function seedAIPollFixtures(): StoredAIPoll[] {
+export async function seedAIPollFixtures(): Promise<StoredAIPoll[]> {
   const now = new Date().toISOString();
   const seeded: StoredAIPoll[] = [];
 
@@ -1006,7 +1146,8 @@ export function seedAIPollFixtures(): StoredAIPoll[] {
   ];
 
   for (const f of fixtures) {
-    if (polls.has(f.id)) continue;
+    const existing = await store.get(f.id);
+    if (existing) continue;
     const poll: StoredAIPoll = {
       id: f.id,
       state: f.state,
@@ -1040,7 +1181,7 @@ export function seedAIPollFixtures(): StoredAIPoll[] {
       createdAt: now,
       updatedAt: now,
     };
-    polls.set(poll.id, poll);
+    await store.set(poll);
   scheduleBackup();
     seeded.push(poll);
   }

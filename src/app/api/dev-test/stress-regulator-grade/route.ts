@@ -142,7 +142,7 @@ async function provisionUsers(prefix: string, count: number, fundEach: number) {
 }
 
 async function provisionMarkets(adminId: string, count: number, prefix: string) {
-  seedDefaultSources();
+  await seedDefaultSources();
   const ids: string[] = [];
   const nowMs = Date.now();
   for (let i = 0; i < count; i++) {

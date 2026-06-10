@@ -11,11 +11,17 @@
  *
  * Persists across hot-reloads via `globalThis.__50PICK_MARKET_CONFIG`,
  * same backup pattern as the audit ring + market store.
+ *
+ * DAL: All exported functions are async for DAL consistency. Config data
+ * remains in-memory for now (pure configuration, not entity data).
+ * // TODO Phase 6: back with SystemConfig Prisma table
  */
 import { audit } from "./audit";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { prisma, hasDatabase } from "./prisma";
 
 export type RateConfig = {
-  /** Tax rate (e.g. 0.04 = 4%). Going to TRA per Income Tax Act §80. */
+  /** Tax rate (e.g. 0.04 = 4%). Going to TRA per Income Tax Act $80. */
   taxRate: number;
   /** Operator commission (e.g. 0.05 = 5%). 50pick keeps this. */
   commissionRate: number;
@@ -69,7 +75,7 @@ const store =
   });
 
 /** Read merged config — per-market overrides on top of global. */
-export function getEffectiveConfig(marketId?: string): RateConfig {
+export async function getEffectiveConfig(marketId?: string): Promise<RateConfig> {
   if (marketId) {
     const over = store.perMarket.get(marketId);
     if (over) return { ...store.global, ...over };
@@ -77,11 +83,11 @@ export function getEffectiveConfig(marketId?: string): RateConfig {
   return { ...store.global };
 }
 
-export function getGlobalConfig(): RateConfig {
+export async function getGlobalConfig(): Promise<RateConfig> {
   return { ...store.global };
 }
 
-export function listMarketOverrides(): Array<{ marketId: string; over: Partial<RateConfig> }> {
+export async function listMarketOverrides(): Promise<Array<{ marketId: string; over: Partial<RateConfig> }>> {
   return Array.from(store.perMarket.entries()).map(([marketId, over]) => ({ marketId, over }));
 }
 
@@ -89,22 +95,22 @@ export function listMarketOverrides(): Array<{ marketId: string; over: Partial<R
 function validate(updates: Partial<RateConfig>): { ok: true } | { ok: false; reason: string } {
   if (updates.taxRate !== undefined) {
     if (Number.isNaN(updates.taxRate) || updates.taxRate < 0 || updates.taxRate > 0.20) {
-      return { ok: false, reason: "Tax rate must be 0–20%." };
+      return { ok: false, reason: "Tax rate must be 0-20%." };
     }
   }
   if (updates.commissionRate !== undefined) {
     if (Number.isNaN(updates.commissionRate) || updates.commissionRate < 0 || updates.commissionRate > 0.20) {
-      return { ok: false, reason: "Commission rate must be 0–20%." };
+      return { ok: false, reason: "Commission rate must be 0-20%." };
     }
   }
   if (updates.reserveRate !== undefined) {
     if (Number.isNaN(updates.reserveRate) || updates.reserveRate < 0 || updates.reserveRate > 0.10) {
-      return { ok: false, reason: "Reserve rate must be 0–10%." };
+      return { ok: false, reason: "Reserve rate must be 0-10%." };
     }
   }
   if (updates.aggregatorRate !== undefined) {
     if (Number.isNaN(updates.aggregatorRate) || updates.aggregatorRate < 0 || updates.aggregatorRate > 0.10) {
-      return { ok: false, reason: "Aggregator rate must be 0–10%." };
+      return { ok: false, reason: "Aggregator rate must be 0-10%." };
     }
   }
   // Combined ceiling: tax + commission + reserve + aggregator < 30%
@@ -117,30 +123,29 @@ function validate(updates: Partial<RateConfig>): { ok: true } | { ok: false; rea
   }
   if (updates.minStake !== undefined) {
     if (updates.minStake < 100 || !Number.isFinite(updates.minStake)) {
-      return { ok: false, reason: "Min stake must be ≥ TZS 100." };
+      return { ok: false, reason: "Min stake must be >= TZS 100." };
     }
   }
   if (updates.maxStake !== undefined) {
     if (updates.maxStake < 1000 || !Number.isFinite(updates.maxStake)) {
-      return { ok: false, reason: "Max stake must be ≥ TZS 1,000." };
+      return { ok: false, reason: "Max stake must be >= TZS 1,000." };
     }
   }
   if (updates.thinProfitRatio !== undefined) {
     if (updates.thinProfitRatio < 1.0 || updates.thinProfitRatio > 2.0) {
-      return { ok: false, reason: "Thin-profit threshold must be 1.0–2.0." };
+      return { ok: false, reason: "Thin-profit threshold must be 1.0-2.0." };
     }
   }
   if (updates.starterBalanceTzs !== undefined) {
     if (!Number.isFinite(updates.starterBalanceTzs) || updates.starterBalanceTzs < 0 || updates.starterBalanceTzs > 5_000_000) {
-      return { ok: false, reason: "Starter balance must be 0–5,000,000 TZS." };
+      return { ok: false, reason: "Starter balance must be 0-5,000,000 TZS." };
     }
   }
   return { ok: true };
 }
 
-export function setGlobalConfig(updates: Partial<RateConfig>, officerId: string):
-  | { ok: true; config: RateConfig }
-  | { ok: false; error: string } {
+export async function setGlobalConfig(updates: Partial<RateConfig>, officerId: string):
+  Promise<{ ok: true; config: RateConfig } | { ok: false; error: string }> {
   const v = validate(updates);
   if (!v.ok) return { ok: false, error: v.reason };
   const before = { ...store.global };
@@ -156,9 +161,8 @@ export function setGlobalConfig(updates: Partial<RateConfig>, officerId: string)
   return { ok: true, config: { ...store.global } };
 }
 
-export function setMarketOverride(marketId: string, updates: Partial<RateConfig>, officerId: string):
-  | { ok: true; config: RateConfig }
-  | { ok: false; error: string } {
+export async function setMarketOverride(marketId: string, updates: Partial<RateConfig>, officerId: string):
+  Promise<{ ok: true; config: RateConfig } | { ok: false; error: string }> {
   const v = validate(updates);
   if (!v.ok) return { ok: false, error: v.reason };
   const before = store.perMarket.get(marketId) ?? {};
@@ -172,10 +176,10 @@ export function setMarketOverride(marketId: string, updates: Partial<RateConfig>
     targetId: marketId,
     payload: { before, after: merged, changes: updates },
   });
-  return { ok: true, config: getEffectiveConfig(marketId) };
+  return { ok: true, config: await getEffectiveConfig(marketId) };
 }
 
-export function clearMarketOverride(marketId: string, officerId: string): { ok: true } {
+export async function clearMarketOverride(marketId: string, officerId: string): Promise<{ ok: true }> {
   const before = store.perMarket.get(marketId);
   store.perMarket.delete(marketId);
   audit({
@@ -192,8 +196,8 @@ export function clearMarketOverride(marketId: string, officerId: string): { ok: 
 /**
  * Whole-pool pari-mutuel payout.
  *
- *   netPool = (yesPool + noPool) × (1 - tax - commission)
- *   payout  = (myStake / winningSidePool) × netPool
+ *   netPool = (yesPool + noPool) x (1 - tax - commission)
+ *   payout  = (myStake / winningSidePool) x netPool
  *
  * IMPORTANT: under heavy lean (winning side dominates), payout/stake can
  * approach (1 - tax - commission). At extremes (e.g. 95%+ favorite wins)

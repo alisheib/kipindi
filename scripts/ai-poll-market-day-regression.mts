@@ -60,7 +60,7 @@ const ok = (gen: AIPollGeneration): AIProviderResponse =>
 
 /** Replicates publishPollAction's service chain (auth wrapper aside) so we
  *  test the real candidate→market path, not a stand-in. */
-function publishPoll(poll: StoredAIPoll, officerId: string): { marketId: string; candidateId: string } {
+async function publishPoll(poll: StoredAIPoll, officerId: string): Promise<{ marketId: string; candidateId: string }> {
   const candidate = ingestCandidate({
     category: (poll.category === "tech" || poll.category === "other" ? "macro" : poll.category) as
       "sports" | "macro" | "weather" | "crypto" | "culture" | "infrastructure",
@@ -84,7 +84,7 @@ function publishPoll(poll: StoredAIPoll, officerId: string): { marketId: string;
     resolutionAt: poll.resolutionAt, proposedBy: officerId,
   });
   markPublished(candidate.id, market.id, officerId);
-  markAIPollPublished(poll.id, { candidateId: candidate.id, marketId: market.id, officerId });
+  await markAIPollPublished(poll.id, { candidateId: candidate.id, marketId: market.id, officerId });
   return { marketId: market.id, candidateId: candidate.id };
 }
 
@@ -131,19 +131,19 @@ check("duplicate poll filtered (duplicate_poll)",
 // ── REVIEW: officer works the pending queue ──
 console.log("\n--- REVIEW · approve / reject / edit ---");
 const [poll1, poll2, poll3, poll4] = pendingAfterBatch; // Simba, BTC, Dar rainfall, SGR
-const a1 = approveAIPoll(poll1.id, { officerId: OFFICER, note: "Strong domestic market." });
-const a2 = approveAIPoll(poll2.id, { officerId: OFFICER, note: "Clear crypto threshold." });
+const a1 = await approveAIPoll(poll1.id, { officerId: OFFICER, note: "Strong domestic market." });
+const a2 = await approveAIPoll(poll2.id, { officerId: OFFICER, note: "Clear crypto threshold." });
 check("approve poll #1 → APPROVED", a1?.state === "APPROVED", a1?.state);
 check("approve poll #2 → APPROVED", a2?.state === "APPROVED", a2?.state);
 
-const r3 = rejectAIPoll(poll3.id, { officerId: OFFICER, reasons: ["officer_decision" as never], note: "Holding weather markets today." });
+const r3 = await rejectAIPoll(poll3.id, { officerId: OFFICER, reasons: ["officer_decision" as never], note: "Holding weather markets today." });
 check("reject poll #3 → REJECTED", r3?.state === "REJECTED", r3?.state);
 
 const e4 = await editAIPoll(poll4.id, { officerId: OFFICER, titleEn: "Will the SGR Dodoma–Singida line open commercial service within 120 days?" });
 check("edit poll #4 stays in review after re-validate", e4?.state === "PENDING_REVIEW", e4?.state);
 check("edited title persisted", e4?.titleEn.includes("commercial service") === true);
 
-const counts = countAIPollsByState();
+const counts = await countAIPollsByState();
 check("state tally: APPROVED=2", counts.APPROVED === 2, String(counts.APPROVED));
 check("state tally: PENDING_REVIEW=1 (the edited SGR poll)", counts.PENDING_REVIEW === 1, String(counts.PENDING_REVIEW));
 check("state tally: REJECTED=1", counts.REJECTED === 1, String(counts.REJECTED));
@@ -152,8 +152,8 @@ check("state tally: FILTERED=4", counts.FILTERED === 4, String(counts.FILTERED))
 // ── PUBLISH: approved polls become live markets ──
 console.log("\n--- PUBLISH · approved polls → live markets ---");
 const marketsBefore = listMarkets().length;
-const pub1 = publishPoll(listAIPolls({ state: "APPROVED" })[0], OFFICER);
-const pub2 = publishPoll(listAIPolls({ state: "APPROVED" })[0], OFFICER); // next remaining approved
+const pub1 = await publishPoll((await listAIPolls({ state: "APPROVED" }))[0], OFFICER);
+const pub2 = await publishPoll((await listAIPolls({ state: "APPROVED" }))[0], OFFICER); // next remaining approved
 const marketsAfter = listMarkets();
 check("two new markets created", marketsAfter.length === marketsBefore + 2, `+${marketsAfter.length - marketsBefore}`);
 check("published market #1 is LIVE", marketsAfter.some((m) => m.id === pub1.marketId && m.status === "LIVE"));
@@ -161,31 +161,31 @@ check("published market #2 is LIVE", marketsAfter.some((m) => m.id === pub2.mark
 const liveMkt = marketsAfter.find((m) => m.id === pub1.marketId)!;
 check("live market resolves in the future", new Date(liveMkt.resolutionAt).getTime() > Date.now());
 check("live market carries a source URL", !!liveMkt.sourceUrl);
-check("both polls now PUBLISHED", countAIPollsByState().PUBLISHED === 2, String(countAIPollsByState().PUBLISHED));
-check("no APPROVED polls left in queue", countAIPollsByState().APPROVED === 0, String(countAIPollsByState().APPROVED));
+check("both polls now PUBLISHED", (await countAIPollsByState()).PUBLISHED === 2, String((await countAIPollsByState()).PUBLISHED));
+check("no APPROVED polls left in queue", (await countAIPollsByState()).APPROVED === 0, String((await countAIPollsByState()).APPROVED));
 
 // ── PROGRESS: daily KPI ──
 console.log("\n--- PROGRESS · daily target KPI ---");
-const prog = aiPollDailyProgress();
+const prog = await aiPollDailyProgress();
 check("createdToday counts the whole batch", prog.createdToday === queue.length, String(prog.createdToday));
 check("publishedToday === 2", prog.publishedToday === 2, String(prog.publishedToday));
 check("target met (2 published ≥ target 3? remaining shown)", prog.remaining === Math.max(0, prog.target - 2), `remaining=${prog.remaining}`);
 
 // ── CLEANUP: delete terminal, refuse in-play ──
 console.log("\n--- CLEANUP · deletions ---");
-const aFiltered = listAIPolls({ state: "FILTERED" })[0];
-check("delete a FILTERED poll succeeds", deleteAIPoll(aFiltered.id, OFFICER) === true);
-const aPending = listAIPolls({ state: "PENDING_REVIEW" })[0];
-check("delete an in-play PENDING poll is refused", deleteAIPoll(aPending.id, OFFICER) === false);
-const aPublished = listAIPolls({ state: "PUBLISHED" })[0];
-check("delete a PUBLISHED poll is refused", deleteAIPoll(aPublished.id, OFFICER) === false);
+const aFiltered = (await listAIPolls({ state: "FILTERED" }))[0];
+check("delete a FILTERED poll succeeds", (await deleteAIPoll(aFiltered.id, OFFICER)) === true);
+const aPending = (await listAIPolls({ state: "PENDING_REVIEW" }))[0];
+check("delete an in-play PENDING poll is refused", (await deleteAIPoll(aPending.id, OFFICER)) === false);
+const aPublished = (await listAIPolls({ state: "PUBLISHED" }))[0];
+check("delete a PUBLISHED poll is refused", (await deleteAIPoll(aPublished.id, OFFICER)) === false);
 
 // ── GUARDS: illegal transitions refused ──
 console.log("\n--- GUARDS · illegal transitions ---");
-check("approve a FILTERED poll returns null", approveAIPoll(listAIPolls({ state: "FILTERED" })[0].id, { officerId: OFFICER }) === null);
-check("reject a PUBLISHED poll returns null", rejectAIPoll(listAIPolls({ state: "PUBLISHED" })[0].id, { officerId: OFFICER, reasons: [] }) === null);
+check("approve a FILTERED poll returns null", (await approveAIPoll((await listAIPolls({ state: "FILTERED" }))[0].id, { officerId: OFFICER })) === null);
+check("reject a PUBLISHED poll returns null", (await rejectAIPoll((await listAIPolls({ state: "PUBLISHED" }))[0].id, { officerId: OFFICER, reasons: [] })) === null);
 check("markPublished on a non-approved poll returns null",
-  markAIPollPublished(listAIPolls({ state: "PUBLISHED" })[0].id, { candidateId: "x", marketId: "y", officerId: OFFICER }) === null);
+  (await markAIPollPublished((await listAIPolls({ state: "PUBLISHED" }))[0].id, { candidateId: "x", marketId: "y", officerId: OFFICER })) === null);
 
 // ── AUDIT: officer actions on the chain ──
 console.log("\n--- AUDIT · trail ---");
