@@ -193,7 +193,7 @@ type ValidationResult = {
   sanitised: AIPollGeneration | null;
 };
 
-function validateAndFilter(gen: AIPollGeneration | null | undefined, rawResponse: string | null): ValidationResult {
+async function validateAndFilter(gen: AIPollGeneration | null | undefined, rawResponse: string | null): Promise<ValidationResult> {
   const reasons: FilterReason[] = [];
   const quality: QualityIndicator[] = [];
 
@@ -384,7 +384,7 @@ function validateAndFilter(gen: AIPollGeneration | null | undefined, rawResponse
         existing.state !== "REJECTED" &&
         normaliseTitle(existing.titleEn) === fingerprint,
     );
-    const dupMarket = !dupPoll && listMarkets().some((m) => normaliseTitle(m.titleEn) === fingerprint);
+    const dupMarket = !dupPoll && (await listMarkets()).some((m) => normaliseTitle(m.titleEn) === fingerprint);
     if (dupPoll || dupMarket) {
       reasons.push("duplicate_poll");
       quality.push({
@@ -597,7 +597,7 @@ export async function generateAIPoll(opts: {
   // VALIDATION_FAILED rather than letting the server action crash.
   let validation: ValidationResult;
   try {
-    validation = validateAndFilter(response.generation, response.rawResponse ?? null);
+    validation = await validateAndFilter(response.generation, response.rawResponse ?? null);
   } catch (err) {
     poll.state = "VALIDATION_FAILED";
     poll.filterReasons = ["malformed_response"];
@@ -791,7 +791,7 @@ export function rejectAIPoll(id: string, opts: { officerId: string; reasons: Fil
 }
 
 /** Admin edits a PENDING_REVIEW poll — moves to EDITING then back to PENDING_REVIEW. */
-export function editAIPoll(id: string, opts: {
+export async function editAIPoll(id: string, opts: {
   officerId: string;
   titleEn?: string;
   titleSw?: string;
@@ -799,7 +799,7 @@ export function editAIPoll(id: string, opts: {
   resolutionCriterion?: string;
   resolutionAt?: string;
   options?: Array<{ label: string; descriptionEn?: string; descriptionSw?: string }>;
-}): StoredAIPoll | null {
+}): Promise<StoredAIPoll | null> {
   const poll = polls.get(id);
   if (!poll || (poll.state !== "PENDING_REVIEW" && poll.state !== "EDITING")) return null;
 
@@ -817,7 +817,7 @@ export function editAIPoll(id: string, opts: {
   }
 
   // Re-validate after edit
-  const revalidation = validateAndFilter({
+  const revalidation = await validateAndFilter({
     titleEn: poll.titleEn,
     titleSw: poll.titleSw || undefined,
     category: poll.category,

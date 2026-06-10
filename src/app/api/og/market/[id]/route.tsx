@@ -19,9 +19,9 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  seedDemoMarkets();
+  await seedDemoMarkets();
   const { id } = await params;
-  const m = getMarket(id);
+  const m = await getMarket(id);
   if (!m) return new Response("Not found", { status: 404 });
   const yes = impliedYesPct(m);
 

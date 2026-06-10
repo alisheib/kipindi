@@ -57,7 +57,7 @@ function seededWalk(seed: string, length: number, max = 100_000): number[] {
 async function buildLeaderboard() {
   const out: Row[] = [];
   for (const u of await db.user.list()) {
-    const positions = listPositionsForUser(u.id, 5_000).filter((p) => p.status !== "OPEN");
+    const positions = (await listPositionsForUser(u.id, 5_000)).filter((p) => p.status !== "OPEN");
     if (positions.length === 0) continue;
     const staked = positions.reduce((s, p) => s + p.stake, 0);
     const paidOut = positions.reduce((s, p) => s + (p.finalPayout ?? 0), 0);
@@ -113,8 +113,8 @@ function syntheticLeaderboard(): Row[] {
 /** Build a "consensus shift" series — average market YES probability across
  *  all live markets over the last 14 days. Currently we don't snapshot
  *  history, so we synthesize a plausible series from the current pools. */
-function buildConsensusSeries(): { t: string; yes: number }[] {
-  const live = listMarkets({ status: "LIVE" });
+async function buildConsensusSeries(): Promise<{ t: string; yes: number }[]> {
+  const live = await listMarkets({ status: "LIVE" });
   if (live.length === 0) return [];
   // Walk that ends near the current crowd consensus
   const end = live.reduce((s, m) => s + (m.yesPool / Math.max(1, m.yesPool + m.noPool)), 0) / live.length;
@@ -129,11 +129,11 @@ function buildConsensusSeries(): { t: string; yes: number }[] {
 }
 
 export default async function LeaderboardPage() {
-  seedDemoMarkets();
+  await seedDemoMarkets();
   const real = await buildLeaderboard();
   const isSynthetic = real.length < 6;
   const rows = isSynthetic ? syntheticLeaderboard() : real;
-  const consensus = buildConsensusSeries();
+  const consensus = await buildConsensusSeries();
 
   return (
     <main className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6 space-y-6">

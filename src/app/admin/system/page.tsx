@@ -23,8 +23,8 @@ export default async function AdminSystemPage() {
   const smsHealth = smsHealthSnapshot();
   const totalUsers = (await db.user.list()).length;
   const buckets = rateLimitSnapshot();
-  const liveMarkets = listMarkets({ status: "LIVE" }).length;
-  const resolvedMarkets = listMarkets({ status: "RESOLVED" }).length;
+  const liveMarkets = (await listMarkets({ status: "LIVE" })).length;
+  const resolvedMarkets = (await listMarkets({ status: "RESOLVED" })).length;
   const dbBackend: "postgres" | "disk-only" = hasDatabase() ? "postgres" : "disk-only";
   const health = dbHealth();
   // Active reachability ping — runs SELECT 1 + a StoreSnapshot probe

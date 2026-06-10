@@ -41,9 +41,9 @@ function timeLeftStr(iso: string): string {
   return `${m}m left`;
 }
 
-export default function MarketsPage({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string }> }) {
-  seedDemoMarkets();
-  const allLive = listMarkets({ status: "LIVE" }).filter((m) => !isClosedByTime(m));
+export default async function MarketsPage({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string }> }) {
+  await seedDemoMarkets();
+  const allLive = (await listMarkets({ status: "LIVE" })).filter((m) => !isClosedByTime(m));
   const totalVolume = allLive.reduce((s, m) => s + m.yesPool + m.noPool, 0);
   return (
     <main className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6">
@@ -163,7 +163,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
   // Sort by closest-to-resolution first so the demo-friendly minute-scale
   // markets float to the top. Past-resolution markets sink (they're in the
   // resolver queue, not the live grid).
-  const liveAll = listMarkets({ status: "LIVE", category: cat })
+  const liveAll = (await listMarkets({ status: "LIVE", category: cat }))
     // Filter out markets whose clock has already passed but the
     // resolver hasn't yet acted — they're closed-by-time, not bettable,
     // and showing them in the LIVE grid produces a confused UX where
@@ -175,8 +175,8 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
     ? liveAll
     : liveAll.filter(x => x.ms <= whenCfg.cutoffMs!)
   ).map(x => x.m);
-  const resolved = listMarkets({ status: "RESOLVED" }).slice(0, 6);
-  const traderMap = traderSeedsByMarket();
+  const resolved = (await listMarkets({ status: "RESOLVED" })).slice(0, 6);
+  const traderMap = await traderSeedsByMarket();
 
   return (
     <>

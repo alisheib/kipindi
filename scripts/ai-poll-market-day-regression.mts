@@ -139,7 +139,7 @@ check("approve poll #2 → APPROVED", a2?.state === "APPROVED", a2?.state);
 const r3 = rejectAIPoll(poll3.id, { officerId: OFFICER, reasons: ["officer_decision" as never], note: "Holding weather markets today." });
 check("reject poll #3 → REJECTED", r3?.state === "REJECTED", r3?.state);
 
-const e4 = editAIPoll(poll4.id, { officerId: OFFICER, titleEn: "Will the SGR Dodoma–Singida line open commercial service within 120 days?" });
+const e4 = await editAIPoll(poll4.id, { officerId: OFFICER, titleEn: "Will the SGR Dodoma–Singida line open commercial service within 120 days?" });
 check("edit poll #4 stays in review after re-validate", e4?.state === "PENDING_REVIEW", e4?.state);
 check("edited title persisted", e4?.titleEn.includes("commercial service") === true);
 

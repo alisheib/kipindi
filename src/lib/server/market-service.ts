@@ -26,6 +26,7 @@ import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout } f
 import { onRecruitBet } from "./affiliate-service";
 import { seedMarket, settleHousePosition, canSeedNewMarket, getHousePoolSeedForMarket } from "./house-pool";
 import type { ServiceResult } from "./auth-service";
+import { marketStore, positionStore } from "./market-dal";
 
 /** @deprecated Kept for backwards compat — use getEffectiveConfig instead. */
 export const OPERATOR_MARGIN = 0.09;
@@ -76,14 +77,6 @@ export type StoredPosition = {
   settledAt: string | null;
 };
 
-declare global {
-  // eslint-disable-next-line no-var
-  var __50PICK_MARKETS: Map<string, StoredMarket> | undefined;
-  // eslint-disable-next-line no-var
-  var __50PICK_POSITIONS: Map<string, StoredPosition> | undefined;
-}
-const markets: Map<string, StoredMarket> = globalThis.__50PICK_MARKETS ?? (globalThis.__50PICK_MARKETS = new Map());
-const positions: Map<string, StoredPosition> = globalThis.__50PICK_POSITIONS ?? (globalThis.__50PICK_POSITIONS = new Map());
 
 /** Implied probability of YES side based on pool weight. Even-split when pools are zero. */
 export function impliedYesPct(m: Pick<StoredMarket, "yesPool" | "noPool">): number {
@@ -111,15 +104,15 @@ export function projectedPayout(
   return r.payout;
 }
 
-export function listMarkets(filter?: { status?: MarketStatus; category?: MarketCategory }): StoredMarket[] {
-  return Array.from(markets.values())
+export async function listMarkets(filter?: { status?: MarketStatus; category?: MarketCategory }) {
+  return (await marketStore.values())
     .filter((m) => !filter?.status   || m.status === filter.status)
     .filter((m) => !filter?.category || m.category === filter.category)
     .sort((a, b) => a.resolutionAt.localeCompare(b.resolutionAt));
 }
 
-export function getMarket(id: string): StoredMarket | null {
-  return markets.get(id) ?? null;
+export async function getMarket(id: string) {
+  return (await marketStore.get(id)) ?? null;
 }
 
 /** A market is "closed by time" once resolutionAt has passed, regardless
@@ -142,7 +135,7 @@ export type CreateMarketInput = {
   proposedBy: string;
 };
 
-export function createMarket(input: CreateMarketInput): StoredMarket {
+export async function createMarket(input: CreateMarketInput) {
   const now = new Date().toISOString();
   const id = `mkt_${randomId(10)}`;
 
@@ -170,7 +163,7 @@ export function createMarket(input: CreateMarketInput): StoredMarket {
     createdAt: now,
     updatedAt: now,
   };
-  markets.set(m.id, m);
+  await marketStore.set(m);
   audit({
     category: "ADMIN",
     action: "market.created",
@@ -215,7 +208,7 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
   }
   if (opts.side !== "YES" && opts.side !== "NO") return { ok: false, error: "Invalid side.", code: "INVALID" };
 
-  const market = markets.get(opts.marketId);
+  const market = await marketStore.get(opts.marketId);
   if (!market) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
   if (market.status !== "LIVE") return { ok: false, error: "Market is not accepting predictions.", code: "INVALID" };
   if (Date.parse(market.resolutionAt) <= Date.now()) return { ok: false, error: "Market has closed.", code: "INVALID" };
@@ -243,7 +236,7 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
       placedAt,
       settledAt: null,
     };
-    positions.set(positionId, position);
+    await positionStore.set(position);
 
     // Pool mutation inside the wallet lock — safe for single-instance.
     // Production must use a market-level lock or DB row lock for multi-instance.
@@ -251,7 +244,7 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
     else                     market.noPool  += opts.stake;
     market.predictorCount += 1;
     market.updatedAt = placedAt;
-    markets.set(market.id, market);
+    await marketStore.set(market);
     // Snapshot the new pool for the per-market history chart.
     recordSnapshot(market.id, market.yesPool, market.noPool);
 
@@ -299,23 +292,20 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
   });
 }
 
-export function listPositionsForUser(userId: string, limit = 100): StoredPosition[] {
-  return Array.from(positions.values())
-    .filter((p) => p.userId === userId)
-    .sort((a, b) => b.placedAt.localeCompare(a.placedAt))
-    .slice(0, limit);
+export async function listPositionsForUser(userId: string, limit = 100) {
+  return positionStore.listForUser(userId, limit);
 }
 
-export function listPositionsForMarket(marketId: string): StoredPosition[] {
-  return Array.from(positions.values()).filter((p) => p.marketId === marketId);
+export async function listPositionsForMarket(marketId: string) {
+  return positionStore.listForMarket(marketId);
 }
 
 /** One pass over all positions → up to `n` distinct trader user-ids per market.
  *  Used by the card grids for the live trader crest-stack (cheap: O(positions),
  *  not O(markets × positions)). */
-export function traderSeedsByMarket(n = 3): Map<string, string[]> {
+export async function traderSeedsByMarket(n = 3) {
   const map = new Map<string, string[]>();
-  for (const p of positions.values()) {
+  for (const p of await positionStore.values()) {
     let arr = map.get(p.marketId);
     if (!arr) { arr = []; map.set(p.marketId, arr); }
     if (arr.length < n && !arr.includes(p.userId)) arr.push(p.userId);
@@ -346,7 +336,7 @@ export function traderSeedsByMarket(n = 3): Map<string, string[]> {
 export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: number }> {
   let resolved = 0;
   const now = Date.now();
-  for (const m of markets.values()) {
+  for (const m of await marketStore.values()) {
     if (!m.titleEn.startsWith("Demo · ")) continue;
     if (m.status !== "LIVE") continue;
     if (Date.parse(m.resolutionAt) > now) continue;
@@ -371,7 +361,7 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
     m.resolvedOutcome = outcome;
     m.status = "RESOLVED";
     m.updatedAt = m.resolutionStage2At;
-    markets.set(m.id, m);
+    await marketStore.set(m);
     recordSnapshot(m.id, m.yesPool, m.noPool);
 
     let winnersPaid = 0;
@@ -383,7 +373,7 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
     );
 
     const winningPool = outcome === "YES" ? m.yesPool : m.noPool;
-    const myPositions = listPositionsForMarket(m.id);
+    const myPositions = await listPositionsForMarket(m.id);
     for (const p of myPositions) {
       const w = await db.wallet.findByUserId(p.userId);
       if (!w) continue;
@@ -395,7 +385,7 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
         const newBal = w.balance + payout;
         await db.wallet.update(w.id, { balance: newBal });
         p.status = "WIN"; p.finalPayout = payout; p.settledAt = m.resolutionStage2At!;
-        positions.set(p.id, p);
+        await positionStore.set(p);
         await db.txn.create({
           id: `txn_${randomId(12)}`,
           walletId: w.id, userId: p.userId,
@@ -412,7 +402,7 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
         notifyWin(p.userId, payout, m.titleEn, "/positions");
       } else {
         p.status = "LOSS"; p.finalPayout = 0; p.settledAt = m.resolutionStage2At!;
-        positions.set(p.id, p);
+        await positionStore.set(p);
         notifyLoss(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id });
       }
     }
@@ -455,9 +445,9 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
 export async function repairOrphanedPositions(): Promise<{ repaired: number; refundedTzs: number }> {
   let repaired = 0;
   let refundedTzs = 0;
-  for (const p of positions.values()) {
+  for (const p of await positionStore.values()) {
     if (p.status !== "OPEN") continue;
-    if (markets.has(p.marketId)) continue; // market still exists → nothing to repair
+    if (await marketStore.has(p.marketId)) continue; // market still exists → nothing to repair
     // Orphaned — refund the stake to the wallet, mark VOID, audit.
     const w = await db.wallet.findByUserId(p.userId);
     if (!w) continue;
@@ -466,7 +456,7 @@ export async function repairOrphanedPositions(): Promise<{ repaired: number; ref
     p.status = "VOID";
     p.finalPayout = p.stake;
     p.settledAt = new Date().toISOString();
-    positions.set(p.id, p);
+    await positionStore.set(p);
     await db.txn.create({
       id: `txn_${randomId(12)}`,
       walletId: w.id, userId: p.userId,
@@ -531,7 +521,7 @@ export async function cashOutPosition(
   positionId: string,
 ): Promise<ServiceResult<{ value: number; balance: number }>> {
   // Cheap pre-lock fast-fail (avoids taking the lock for obviously-bad calls).
-  const pre = positions.get(positionId);
+  const pre = await positionStore.get(positionId);
   if (!pre) return { ok: false, error: "Position not found.", code: "NOT_FOUND" };
   if (pre.userId !== userId) return { ok: false, error: "Not your position.", code: "INVALID" };
 
@@ -540,12 +530,12 @@ export async function cashOutPosition(
     // position (and credited the wallet) at an await point between the pre-lock
     // read above and acquiring the lock. Validating the live state here is what
     // prevents a double-settle / double-credit.
-    const p = positions.get(positionId);
+    const p = await positionStore.get(positionId);
     if (!p) return { ok: false as const, error: "Position not found.", code: "NOT_FOUND" as const };
     if (p.userId !== userId) return { ok: false as const, error: "Not your position.", code: "INVALID" as const };
     if (p.status !== "OPEN") return { ok: false as const, error: "Position is no longer open.", code: "INVALID" as const };
 
-    const m = markets.get(p.marketId);
+    const m = await marketStore.get(p.marketId);
     if (!m) return { ok: false as const, error: "Market not found.", code: "NOT_FOUND" as const };
     if (m.status !== "LIVE") return { ok: false as const, error: "Cash-out only available while the market is LIVE.", code: "INVALID" as const };
 
@@ -582,14 +572,14 @@ export async function cashOutPosition(
     if (ownYes) { m.yesPool = Math.max(0, m.yesPool - ownDebit); m.noPool = Math.max(0, m.noPool - oppDebit); }
     else        { m.noPool  = Math.max(0, m.noPool  - ownDebit); m.yesPool = Math.max(0, m.yesPool - oppDebit); }
     m.updatedAt = now;
-    markets.set(m.id, m);
+    await marketStore.set(m);
     recordSnapshot(m.id, m.yesPool, m.noPool);
 
     // Mark the position closed.
     p.status = "CASHED_OUT";
     p.finalPayout = value;
     p.settledAt = now;
-    positions.set(p.id, p);
+    await positionStore.set(p);
 
     // Credit wallet + record the txn.
     const newBalance = wallet.balance + value;
@@ -629,7 +619,7 @@ export async function cashOutPosition(
 
 export async function resolveMarket(opts: { marketId: string; outcome: Side | "VOID"; officerId: string }): Promise<ServiceResult<{ stage: "stage1" | "complete"; winnersPaid?: number }>> {
   return withLock(`market:${opts.marketId}`, async () => {
-  const m = markets.get(opts.marketId);
+  const m = await marketStore.get(opts.marketId);
   if (!m) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
   if (m.status === "RESOLVED" || m.status === "VOIDED") return { ok: false, error: "Market already resolved.", code: "INVALID" };
 
@@ -639,7 +629,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
     m.resolvedOutcome = opts.outcome;
     m.status = "CLOSED";
     m.updatedAt = m.resolutionStage1At;
-    markets.set(m.id, m);
+    await marketStore.set(m);
     audit({
       category: "ADMIN",
       action: "market.resolve.stage1",
@@ -665,7 +655,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   m.objectionsClosedAt = new Date(Date.now() + 24 * 3600_000).toISOString();
   m.status = opts.outcome === "VOID" ? "VOIDED" : "RESOLVED";
   m.updatedAt = m.resolutionStage2At;
-  markets.set(m.id, m);
+  await marketStore.set(m);
   // Snapshot at the moment of resolution — final point on the chart.
   recordSnapshot(m.id, m.yesPool, m.noPool);
 
@@ -685,7 +675,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   // Settle only OPEN positions. A CASHED_OUT (or otherwise already-settled)
   // position has already paid out and had its stake removed from the pool —
   // re-settling it here would double-credit the player.
-  const myPositions = listPositionsForMarket(m.id).filter((p) => p.status === "OPEN");
+  const myPositions = (await listPositionsForMarket(m.id)).filter((p) => p.status === "OPEN");
   if (opts.outcome === "VOID") {
     // Refund everyone
     for (const p of myPositions) {
@@ -696,7 +686,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
       p.status = "VOID";
       p.finalPayout = p.stake;
       p.settledAt = m.resolutionStage2At!;
-      positions.set(p.id, p);
+      await positionStore.set(p);
       await db.txn.create({
         id: `txn_${randomId(12)}`,
         walletId: w.id, userId: p.userId,
@@ -726,7 +716,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
         const updated = await db.wallet.update(w.id, { balance: w.balance + payout });
         const balanceAfter = updated?.balance ?? w.balance + payout;
         p.status = "WIN"; p.finalPayout = payout; p.settledAt = m.resolutionStage2At!;
-        positions.set(p.id, p);
+        await positionStore.set(p);
         await db.txn.create({
           id: `txn_${randomId(12)}`,
           walletId: w.id, userId: p.userId,
@@ -744,7 +734,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
         notifyWin(p.userId, payout, m.titleEn, "/positions");
       } else {
         p.status = "LOSS"; p.finalPayout = 0; p.settledAt = m.resolutionStage2At!;
-        positions.set(p.id, p);
+        await positionStore.set(p);
         // Loss receipt — kit copy reframes loss as "pool grew".
         notifyLoss(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id });
       }
@@ -792,13 +782,14 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
  *  Demo · minute-scale markets are refreshed *separately* so the
  *  bet → settle → celebrate loop always has a fresh-soon market to
  *  drill into, regardless of total LIVE count. */
-export function seedDemoMarkets() {
+export async function seedDemoMarkets() {
   // Migrate older snapshots: purge any market with category "politics"
   // (pre-Sprint 37 the seed included an LGA-turnout market; the Tanzania
   // Gaming Board licence excludes political-event markets entirely).
-  for (const [id, m] of markets.entries()) {
+  const allMarkets = await marketStore.values();
+  for (const m of allMarkets) {
     if ((m as { category: string }).category === "politics") {
-      markets.delete(id);
+      await marketStore.delete(m.id);
     }
   }
 
@@ -823,7 +814,7 @@ export function seedDemoMarkets() {
   // the store so the resolver can settle / void them and the audit
   // trail stays intact. We only ADD here.
   const now = Date.now();
-  const liveDemoMinuteScale = Array.from(markets.values())
+  const liveDemoMinuteScale = (await marketStore.values())
     .filter(m =>
       m.titleEn.startsWith("Demo · ") &&
       m.status === "LIVE" &&
@@ -840,7 +831,7 @@ export function seedDemoMarkets() {
     ];
     for (const s of refreshSeed) {
       try {
-        const m = createMarket(s);
+        const m = await createMarket(s);
         seedHistory(m.id, m.yesPool, m.noPool);
       } catch { /* ignore duplicates */ }
     }
@@ -849,7 +840,7 @@ export function seedDemoMarkets() {
   // Top-up gate: if we already have 25+ LIVE markets, leave them alone.
   // Otherwise we'll re-seed the canonical 40-market catalogue below to
   // bring the count back up. Resolved + voided markets stay in history.
-  const liveNow = Array.from(markets.values()).filter(m => m.status === "LIVE").length;
+  const liveNow = (await marketStore.values()).filter(m => m.status === "LIVE").length;
   if (liveNow >= 25) return;
   const day = 24 * 3600_000;
   const seed: CreateMarketInput[] = [
@@ -977,7 +968,7 @@ export function seedDemoMarkets() {
     // createMarket throws on duplicate id; since we're idempotent on
     // existing-market count, this loop only fires when the count is low.
     try {
-      const m = createMarket(s);
+      const m = await createMarket(s);
       // Seed a believable history walk so the PriceChart isn't empty on first paint.
       seedHistory(m.id, m.yesPool, m.noPool);
     } catch {

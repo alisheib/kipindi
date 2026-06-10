@@ -37,7 +37,7 @@ export async function GET() {
   // settled markets past the 50-row cutoff and players miss their
   // win-celebration popup — same root cause as the original
   // refresh-required bug, just from the other side of the window.
-  const resolved = listMarkets({ status: "RESOLVED" })
+  const resolved = (await listMarkets({ status: "RESOLVED" }))
     .sort((a, b) => (b.resolutionStage2At ?? "").localeCompare(a.resolutionStage2At ?? ""))
     .slice(0, 50);
   return NextResponse.json({

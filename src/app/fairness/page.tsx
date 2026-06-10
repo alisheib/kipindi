@@ -14,9 +14,9 @@ export const dynamic = "force-dynamic";
 
 const fmtTime = (iso: string | null) => iso ? new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : "—";
 
-export default function FairnessPage() {
-  seedDemoMarkets();
-  const resolved = listMarkets({ status: "RESOLVED" }).slice(0, 30);
+export default async function FairnessPage() {
+  await seedDemoMarkets();
+  const resolved = (await listMarkets({ status: "RESOLVED" })).slice(0, 30);
 
   return (
     <div className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 lg:py-8 space-y-6">

@@ -18,9 +18,9 @@ import { CommentsThread } from "@/components/markets/comments-thread";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
-  seedDemoMarkets();
+  await seedDemoMarkets();
   const { id } = await params;
-  const m = getMarket(id);
+  const m = await getMarket(id);
   // Throwing notFound() here too — not just inside the page render —
   // because the `/markets` segment has a loading.tsx, which means the
   // page renders inside a Suspense boundary. When notFound() fires
@@ -68,16 +68,16 @@ export default async function MarketDetail({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ side?: "YES" | "NO" }>;
 }) {
-  seedDemoMarkets();
+  await seedDemoMarkets();
   const { id } = await params;
   const { side } = await searchParams;
-  const m = getMarket(id);
+  const m = await getMarket(id);
   if (!m) notFound();
 
   const yesPct = impliedYesPct(m);
   const session = await currentSession();
-  const myPositions = session ? listPositionsForUser(session.userId).filter((p) => p.marketId === m.id) : [];
-  const totalPredictorCount = listPositionsForMarket(m.id).length;
+  const myPositions = session ? (await listPositionsForUser(session.userId)).filter((p) => p.marketId === m.id) : [];
+  const totalPredictorCount = (await listPositionsForMarket(m.id)).length;
   const isResolved = m.status === "RESOLVED" || m.status === "VOIDED";
   // closed-by-time = the resolutionAt clock has elapsed but no resolver
   // has run yet. The dial cannot accept a bet here (server enforces),

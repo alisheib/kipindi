@@ -29,7 +29,7 @@ export default async function AdminMarketsPage({
 }: {
   searchParams: Promise<{ q?: string; status?: string; category?: string; page?: string }>;
 }) {
-  seedDemoMarkets();
+  await seedDemoMarkets();
   const sp = await searchParams;
   const query = (sp.q ?? "").trim().toLowerCase();
   // Validate against closed sets so a typo'd ?status=LIV doesn't silently
@@ -39,7 +39,7 @@ export default async function AdminMarketsPage({
     ? (sp.category as MarketCategory)
     : "";
 
-  const all = listMarkets();
+  const all = await listMarkets();
   const filtered = all.filter((m) => {
     if (statusFilter && m.status !== statusFilter) return false;
     if (categoryFilter && m.category !== categoryFilter) return false;

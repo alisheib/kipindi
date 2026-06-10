@@ -19,15 +19,22 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
   const sp = await searchParams;
   const activeTab: "open" | "settled" | "all" = (["open", "settled", "all"] as const).includes(sp.tab as "open" | "settled" | "all") ? (sp.tab as "open" | "settled" | "all") : "all";
 
-  const positions = listPositionsForUser(session.userId);
+  const positions = await listPositionsForUser(session.userId);
   const open = positions.filter((p) => p.status === "OPEN");
   const settled = positions.filter((p) => p.status !== "OPEN");
+
+  // Pre-fetch all referenced markets so we don't await inside JSX .map()
+  const marketIds = [...new Set(positions.map((p) => p.marketId))];
+  const marketMap = new Map<string, Awaited<ReturnType<typeof getMarket>>>();
+  for (const mid of marketIds) {
+    marketMap.set(mid, await getMarket(mid));
+  }
 
   // P&L summary — open at-risk + live cash-out value, settled net.
   const openStake = open.reduce((s, p) => s + p.stake, 0);
   let openLiveValue = 0;
   for (const p of open) {
-    const m = getMarket(p.marketId);
+    const m = marketMap.get(p.marketId);
     if (m && m.status === "LIVE") {
       openLiveValue += cashOutValue(
         { side: p.side, stake: p.stake },
@@ -133,7 +140,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {open.map((p) => {
-              const m = getMarket(p.marketId);
+              const m = marketMap.get(p.marketId);
               if (!m) return null;
               const liveValue = m.status === "LIVE"
                 ? cashOutValue({ side: p.side, stake: p.stake }, { id: m.id, yesPool: m.yesPool, noPool: m.noPool }).value
@@ -176,7 +183,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {settled.map((p) => {
-              const m = getMarket(p.marketId);
+              const m = marketMap.get(p.marketId);
               if (!m) return null;
               return (
                 <PositionCard

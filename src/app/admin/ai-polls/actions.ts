@@ -159,7 +159,7 @@ export async function editPollAction(formData: FormData) {
   const resolutionCriterion = formData.has("resolutionCriterion") ? String(formData.get("resolutionCriterion")) : undefined;
   const resolutionAt = formData.has("resolutionAt") ? String(formData.get("resolutionAt")) : undefined;
 
-  const poll = editAIPoll(id, {
+  const poll = await editAIPoll(id, {
     officerId,
     titleEn,
     titleSw,
@@ -225,7 +225,7 @@ export async function publishPollAction(formData: FormData) {
     : poll.category === "other" ? "other"
     : poll.category;
 
-  const market = createMarket({
+  const market = await createMarket({
     titleEn: poll.titleEn,
     titleSw: poll.titleSw || poll.titleEn,
     category: marketCategory as "sports" | "macro" | "weather" | "crypto" | "culture" | "tech" | "other",

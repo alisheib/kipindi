@@ -68,7 +68,7 @@ export async function publishCandidateAction(formData: FormData) {
     return { ok: false as const, error: `Source not approved · ${trust.reason}.` };
   }
 
-  const market = createMarket({
+  const market = await createMarket({
     titleEn: c.proposedTitleEn,
     titleSw: c.proposedTitleSw ?? c.proposedTitleEn,
     category: c.category === "infrastructure" ? "macro" : c.category,

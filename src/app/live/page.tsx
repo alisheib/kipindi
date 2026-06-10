@@ -32,10 +32,10 @@ function timeLeftStr(iso: string): string {
   return `${m}m`;
 }
 
-export default function LivePage() {
-  seedDemoMarkets();
-  const all = listMarkets({ status: "LIVE" });
-  const traderMap = traderSeedsByMarket();
+export default async function LivePage() {
+  await seedDemoMarkets();
+  const all = await listMarkets({ status: "LIVE" });
+  const traderMap = await traderSeedsByMarket();
   // Build a serialisable snapshot for the client component
   const markets = all.map((m) => {
     const cc = getCardChart(m.id);

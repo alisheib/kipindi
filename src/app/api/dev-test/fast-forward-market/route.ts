@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   if (!body?.marketId) {
     return NextResponse.json({ ok: false, error: "marketId required" }, { status: 400 });
   }
-  const m = getMarket(body.marketId);
+  const m = await getMarket(body.marketId);
   if (!m) return NextResponse.json({ ok: false, error: "market not found" }, { status: 404 });
   const offsetSec = typeof body.seconds === "number" && Number.isFinite(body.seconds) ? body.seconds : 3600;
   m.resolutionAt = new Date(Date.now() + offsetSec * 1000).toISOString();

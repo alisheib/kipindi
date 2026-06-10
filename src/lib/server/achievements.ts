@@ -17,7 +17,7 @@ export type ShelfItem = {
 };
 
 export async function computeAchievementShelf(userId: string) {
-  const positions = listPositionsForUser(userId, 500);
+  const positions = await listPositionsForUser(userId, 500);
   const settled = positions.filter((p) => p.status === "WIN" || p.status === "LOSS");
   const wins = positions.filter((p) => p.status === "WIN").length;
   const hasBet = positions.length > 0;

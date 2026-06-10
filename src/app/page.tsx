@@ -21,8 +21,8 @@ function timeLeftStr(iso: string): string {
 
 export default async function LandingPage() {
   seedDemoMarkets();
-  const live = listMarkets({ status: "LIVE" }).slice(0, 6);
-  const traderMap = traderSeedsByMarket();
+  const live = (await listMarkets({ status: "LIVE" })).slice(0, 6);
+  const traderMap = await traderSeedsByMarket();
   const session = await getSession();
   const isAuthed = !!session;
 

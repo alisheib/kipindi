@@ -248,7 +248,7 @@ export async function approveAndList(proposalId: string, officerId: string):
 
   // Create the real market through the existing pipeline.
   const { createMarket } = await import("./market-service");
-  const market = createMarket({
+  const market = await createMarket({
     titleEn: p.titleEn,
     titleSw: p.titleSw ?? p.titleEn,
     category: toMarketCategory(p.category),

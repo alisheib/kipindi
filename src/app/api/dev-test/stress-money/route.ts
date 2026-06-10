@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   const START = 1_000_000;
 
   // 1. A live market to cash out of.
-  const m = createMarket({
+  const m = await createMarket({
     titleEn: "Stress money market", titleSw: null as unknown as string, category: "macro",
     sourceUrl: "https://bot.go.tz", resolutionCriterion: "Resolves at the date from the official source.",
     resolutionAt: new Date(Date.now() + 7 * 864e5).toISOString(), proposedBy: "stress",
@@ -80,7 +80,7 @@ export async function POST(req: Request) {
     sumBalances += w.balance + w.hold;
     if (w.balance < 0 || w.hold < 0) negatives++;
   }
-  const mkt = getMarket(m.id)!;
+  const mkt = (await getMarket(m.id))!;
   const pools = mkt.yesPool + mkt.noPool;
   const finalSystem = sumBalances + pools;
   const expected = initialFunded + depOk * DEP;

@@ -13,10 +13,15 @@ import {
 export const metadata = { title: "Admin · Market config" };
 export const dynamic = "force-dynamic";
 
-export default function AdminConfigPage() {
-  seedDemoMarkets();
+export default async function AdminConfigPage() {
+  await seedDemoMarkets();
   const config = getGlobalConfig();
   const overrides = listMarketOverrides();
+  const overrideMarketNames = new Map<string, string>();
+  for (const { marketId } of overrides) {
+    const m = await getMarket(marketId);
+    if (m) overrideMarketNames.set(marketId, m.titleEn);
+  }
   const recent = getAuditPage({ category: "ADMIN", limit: 50 }).filter(
     (e) => e.action.startsWith("config."),
   ).slice(0, 12);
@@ -120,7 +125,6 @@ export default function AdminConfigPage() {
                   </thead>
                   <tbody className="text-text-muted">
                     {overrides.map(({ marketId, over }) => {
-                      const m = getMarket(marketId);
                       return (
                         <tr key={marketId} className="border-b border-border/50 last:border-b-0 align-top">
                           <td className="p-3">
@@ -128,7 +132,7 @@ export default function AdminConfigPage() {
                               href={`/markets/${marketId}`}
                               className="font-display font-semibold text-text hover:text-yes-300 line-clamp-2 max-w-[420px]"
                             >
-                              {m?.titleEn ?? marketId}
+                              {overrideMarketNames.get(marketId) ?? marketId}
                             </a>
                             <p className="mt-0.5 font-mono text-[10px] text-text-subtle">{marketId}</p>
                           </td>

@@ -105,7 +105,7 @@ export async function POST(req: Request) {
   const stake = Math.max(100, Math.min(1_000_000, numOrDefault(body?.stake, 1_000)));
   const prefix = typeof body?.userPrefix === "string" ? body.userPrefix.slice(0, 4) : "s1";
 
-  const m0 = getMarket(marketId);
+  const m0 = await getMarket(marketId);
   if (!m0) return NextResponse.json({ ok: false, error: "marketId not found" }, { status: 400 });
 
   const yesPoolBefore = m0.yesPool;
@@ -156,7 +156,7 @@ export async function POST(req: Request) {
     }
   });
 
-  const m1 = getMarket(marketId)!;
+  const m1 = (await getMarket(marketId))!;
   const expectedYesPool = yesPoolBefore + expectedYesAccepted * stake;
   const expectedNoPool = noPoolBefore + expectedNoAccepted * stake;
   const yesDelta = m1.yesPool - expectedYesPool;

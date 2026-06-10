@@ -62,7 +62,7 @@ export async function cashOutPositionAction(formData: FormData) {
 export async function resolveMarketAction(formData: FormData) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
-  requireAdminOrThrow(session.userId, "resolveMarketAction");
+  await requireAdminOrThrow(session.userId, "resolveMarketAction");
   const marketId = String(formData.get("marketId") ?? "");
   const outcome = String(formData.get("outcome") ?? "") as Side | "VOID";
   // Validate at runtime — the `as` cast is erased, so an invalid string would
@@ -84,7 +84,7 @@ export async function resolveMarketAction(formData: FormData) {
 export async function createMarketAction(formData: FormData) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
-  requireAdminOrThrow(session.userId, "createMarketAction");
+  await requireAdminOrThrow(session.userId, "createMarketAction");
   const input: CreateMarketInput = {
     titleEn: String(formData.get("titleEn") ?? ""),
     titleSw: String(formData.get("titleSw") ?? ""),
@@ -103,7 +103,7 @@ export async function createMarketAction(formData: FormData) {
   if (!trust.ok) {
     return { ok: false as const, error: `Source not approved · ${trust.reason}. Add or enable it at /admin/sources.` };
   }
-  const m = createMarket(input);
+  const m = await createMarket(input);
   revalidatePath("/admin/markets");
   revalidatePath("/markets");
   return { ok: true as const, market: m };
@@ -119,7 +119,7 @@ export async function postCommentAction(formData: FormData) {
   const marketId = String(formData.get("marketId") ?? "");
   const body = String(formData.get("body") ?? "");
   // Surface which side they hold as a small trust badge on the comment.
-  const open = listPositionsForUser(session.userId).filter((p) => p.marketId === marketId && p.status === "OPEN");
+  const open = (await listPositionsForUser(session.userId)).filter((p) => p.marketId === marketId && p.status === "OPEN");
   const side: CommentSide = open.length ? (open[open.length - 1].side as "YES" | "NO") : null;
   const r = addComment(session.userId, marketId, body, side);
   if (r.ok) revalidatePath(`/markets/${marketId}`);

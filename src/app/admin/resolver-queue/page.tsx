@@ -37,7 +37,7 @@ export default async function ResolverQueuePage({
 }: {
   searchParams: Promise<{ window?: string; category?: string; q?: string; page?: string }>;
 }) {
-  seedDemoMarkets();
+  await seedDemoMarkets();
   const sp = await searchParams;
   const windowFilter = (WINDOW_OPTIONS as readonly { value: string }[]).some((o) => o.value === sp.window) ? sp.window! : "24h";
   const categoryFilter = (CATEGORY_OPTIONS as readonly string[]).includes(sp.category ?? "") ? sp.category as MarketCategory : "";
@@ -49,7 +49,7 @@ export default async function ResolverQueuePage({
     : windowFilter === "all" ? Infinity
     : 24 * 3600_000;
 
-  const pending = listMarkets().filter((m) => {
+  const pending = (await listMarkets()).filter((m) => {
     const due = Date.parse(m.resolutionAt);
     if (m.status === "CLOSED") return true;
     if (m.status === "LIVE") return windowMs === Infinity || due - now < windowMs;

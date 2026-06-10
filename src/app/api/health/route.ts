@@ -20,8 +20,8 @@ export async function GET() {
   const userCount = (await db.user.list()).length;
   const auditCount = auditRingSize();
   const smsHealth = smsHealthSnapshot();
-  const liveMarkets = listMarkets({ status: "LIVE" }).length;
-  const resolvedMarkets = listMarkets({ status: "RESOLVED" }).length;
+  const liveMarkets = (await listMarkets({ status: "LIVE" })).length;
+  const resolvedMarkets = (await listMarkets({ status: "RESOLVED" })).length;
 
   return NextResponse.json(
     {
