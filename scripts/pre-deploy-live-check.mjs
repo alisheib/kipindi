@@ -209,6 +209,23 @@ if (LOCAL) {
     await page.goto(BASE + href, { waitUntil: "domcontentloaded" }); await page.waitForTimeout(500);
     const detail = await page.locator("body").innerText();
     ok(`market detail renders bet UI`, /YES|NO/.test(detail) && !(await hasErrorOverlay(page)), href);
+
+    // Dial side-locking: ?side=YES locks the YES half (NO greyed); the knob
+    // can't cross centre; the toggle switches sides.
+    await page.goto(BASE + href + "?side=YES", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(500);
+    const yesT = page.getByRole("button", { name: /(Backing|Switch to) YES/ });
+    const noT = page.getByRole("button", { name: /(Backing|Switch to) NO/ });
+    ok(`?side=YES -> YES backed`, (await yesT.getAttribute("aria-pressed")) === "true");
+    ok(`?side=YES -> NO not backed`, (await noT.getAttribute("aria-pressed")) === "false");
+    ok(`?side=YES -> Place YES button`, (await page.getByRole("button", { name: /Place YES/ }).count()) > 0);
+    const slider = page.getByRole("slider"); await slider.focus();
+    for (let i = 0; i < 12; i++) await page.keyboard.press("ArrowRight");
+    await page.waitForTimeout(150);
+    ok(`YES locked: knob can't cross centre`, Number(await slider.getAttribute("aria-valuenow")) <= 50);
+    await noT.click(); await page.waitForTimeout(250);
+    ok(`toggle switches to NO`, (await page.getByRole("button", { name: /Place NO/ }).count()) > 0);
+    await page.goto(BASE + href + "?side=NO", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(500);
+    ok(`?side=NO -> NO backed`, (await page.getByRole("button", { name: /(Backing|Switch to) NO/ }).getAttribute("aria-pressed")) === "true");
   } else {
     ok(`at least one bettable market exists`, false, "no /markets/mkt_ link found");
   }

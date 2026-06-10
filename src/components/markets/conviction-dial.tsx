@@ -17,6 +17,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { InfoHint } from "@/components/ui/info-hint";
+import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { buyPositionAction } from "@/app/markets/actions";
 import { HouseLeanWarning } from "./house-lean-warning";
@@ -96,9 +97,24 @@ type Props = {
   /** Player's current spendable balance — used to show an inline
    *  "insufficient balance" warning BEFORE they tap Place, not after. */
   balance?: number;
+  /** When set (from the market card's YES/NO tap), the dial LOCKS to this
+   *  side: the knob is confined to that half of the track, the opposite half
+   *  is greyed + lock-marked, and a YES/NO segmented toggle lets the player
+   *  switch sides deliberately. Undefined → classic bidirectional dial. */
+  lockedSide?: "YES" | "NO";
 };
 
-export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, initial = 0.5, marketTitle, resolutionAt, balance }: Props) {
+export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, initial = 0.5, marketTitle, resolutionAt, balance, lockedSide }: Props) {
+  // The side the dial is locked to (null = free bidirectional). Initialised
+  // from the prop (card tap); the in-dial toggle can switch it.
+  const [lock, setLock] = useState<"YES" | "NO" | null>(lockedSide ?? null);
+  // YES lives on the LEFT half [0,0.5], NO on the RIGHT half [0.5,1]. Confine
+  // the knob to the locked side's half so it can never cross into the other.
+  const clampToLock = useCallback((p: number) => {
+    if (lock === "YES") return Math.min(p, 0.5);
+    if (lock === "NO") return Math.max(p, 0.5);
+    return p;
+  }, [lock]);
   const [pos, setPos] = useState(initial);
   const [dragging, setDragging] = useState(false);
   const [hover, setHover] = useState(false);
@@ -137,7 +153,10 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
   // slide LEFT → YES, slide RIGHT → NO. Inverted from the original
   // kit prototype because licensed Tanzania conventions place the
   // affirmative ("ndio") on the left.
-  const side: Side = isNeutral ? "NEUTRAL" : pos < 0.5 ? "YES" : "NO";
+  // When locked, the side is fixed regardless of the (clamped) knob position —
+  // even at the dead-centre base-stake spot it reads as the locked side, never
+  // NEUTRAL, so the Place button stays live.
+  const side: Side = lock ?? (isNeutral ? "NEUTRAL" : pos < 0.5 ? "YES" : "NO");
   // Snap on TARGET, not on tweened value — otherwise `stake`
   // momentarily disagrees with itself across two consecutive DOM
   // reads (input.value vs. Place-button text) during the 150 ms
@@ -174,6 +193,20 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
   const clearBothLocks = useCallback(() => {
     setExactStakeState(null);
     setExactMultiplierState(null);
+  }, []);
+
+  // Switch the locked side (via the YES/NO toggle or by tapping the greyed-out
+  // half). Resets the knob to the base-stake centre of the new side and clears
+  // any typed stake/multiplier so the player starts the new side cleanly.
+  const switchSide = useCallback((next: "YES" | "NO") => {
+    setLock(next);
+    setPos(0.5);
+    setExactStakeState(null);
+    setExactMultiplierState(null);
+    setStakeText("");
+    setMultText("");
+    setEditingStake(false);
+    setEditingMult(false);
   }, []);
 
   // When the user has typed an exact value, honour their side intent
@@ -242,14 +275,15 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
     // in-flight edit can't accidentally cross the centre. Otherwise
     // preserve the current pos's side; default to YES if neutral.
     const fallback = pos === 0.5 ? "right" : pos > 0.5 ? "right" : "left";
-    const chosen = editingSideRef.current ?? fallback;
+    // A locked side wins over everything — a typed stake stays on the locked half.
+    const chosen = lock ? (lock === "NO" ? "right" : "left") : (editingSideRef.current ?? fallback);
     const goingRight = chosen === "right";
     // If we have a committed side, ensure the resulting pos sits
     // outside NEUTRAL_BAND so the dial preserves it.
     const minDist = NEUTRAL_BAND + 0.005;
     const effDist = chosen ? Math.max(dist, minDist) : dist;
-    return Math.max(0, Math.min(1, 0.5 + (goingRight ? effDist : -effDist) / 2));
-  }, [baseStake, pos]);
+    return clampToLock(Math.max(0, Math.min(1, 0.5 + (goingRight ? effDist : -effDist) / 2)));
+  }, [baseStake, pos, lock, clampToLock]);
 
   // Dial's typeable range. Anything outside this can't be represented
   // on the slider; we still let the user type freely (so they see
@@ -415,9 +449,9 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
       if (cx === null || !trackRef.current) return;
       const r = trackRef.current.getBoundingClientRect();
       const next = Math.max(0, Math.min(1, (cx - r.left) / r.width));
-      setPos(next);
+      setPos(clampToLock(next));
     });
-  }, []);
+  }, [clampToLock]);
 
   // Tap-vs-drag discrimination. A pure click on the track (no
   // movement) MUST NOT overwrite a typed exact value with the
@@ -475,6 +509,15 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
     // scroll, pull-to-refresh, or long-press menus that compete with
     // the drag gesture. Must fire before any state updates.
     e.preventDefault();
+    // If locked and the player presses on the GREYED-OUT half, treat it as
+    // "switch to that side" rather than a (clamped) drag — the most intuitive
+    // way to change your mind. The active half behaves as a normal drag.
+    if (lock && trackRef.current) {
+      const r = trackRef.current.getBoundingClientRect();
+      const frac = (e.clientX - r.left) / r.width;
+      const onLockedOutHalf = lock === "YES" ? frac > 0.5 : frac < 0.5;
+      if (onLockedOutHalf) { switchSide(lock === "YES" ? "NO" : "YES"); return; }
+    }
     setDragging(true);
     // Always exit any in-flight input edit — clicking the dial is
     // unambiguously a "done with both inputs" intent.
@@ -506,7 +549,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
     // Any slider-driven movement clears BOTH typed-exact locks —
     // the player has shifted back to "slide to a vibe" mode, and
     // the snap-to-100 should re-apply.
-    const move = (next: number) => { clearBothLocks(); setPos(next); };
+    const move = (next: number) => { clearBothLocks(); setPos(clampToLock(next)); };
     if (e.key === "ArrowLeft")  { e.preventDefault(); move(Math.max(0, pos - step)); }
     if (e.key === "ArrowRight") { e.preventDefault(); move(Math.min(1, pos + step)); }
     if (e.key === "Home")       { e.preventDefault(); move(0); }
@@ -684,28 +727,60 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
 
   return (
     <div className="rounded-xl border border-border bg-bg-elevated p-5 lg:p-6 select-none">
-      {/* Header — the kit's "YES · slide to commit · NO" guidance */}
-      <div className="flex items-baseline justify-between mb-3.5 font-mono text-[10px] tracking-[0.16em] uppercase">
-        <span
-          className="transition-colors duration-200"
-          style={{
-            color: effectiveSide === "YES" ? "oklch(75% 0.13 152)" : "var(--text-subtle)",
-            fontWeight: effectiveSide === "YES" ? 700 : 400,
-          }}
-        >
-          YES
-        </span>
-        <span style={{ color: "var(--text-subtle)", letterSpacing: "0.18em" }}>· slide to commit ·</span>
-        <span
-          className="transition-colors duration-200"
-          style={{
-            color: effectiveSide === "NO" ? "oklch(75% 0.16 22)" : "var(--text-subtle)",
-            fontWeight: effectiveSide === "NO" ? 700 : 400,
-          }}
-        >
-          NO
-        </span>
-      </div>
+      {lock ? (
+        /* Locked mode — a kit-grade YES/NO segmented selector. The backed
+           side glows in its colour; the other sits greyed with a lock glyph.
+           Tapping the greyed one switches sides (so the player is informed and
+           never trapped), and the dial below is confined to the backed half. */
+        <div className="mb-4 grid grid-cols-2 gap-2" role="group" aria-label="Choose your side">
+          {(["YES", "NO"] as const).map((s) => {
+            const active = lock === s;
+            const hue = s === "YES" ? "152" : "22";
+            return (
+              <button
+                key={s}
+                type="button"
+                aria-pressed={active}
+                aria-label={active ? `Backing ${s}` : `Switch to ${s}`}
+                onClick={() => { if (!active) switchSide(s); }}
+                className="relative inline-flex h-11 items-center justify-center gap-1.5 rounded-lg border font-display text-[15px] font-bold tracking-[0.02em] transition-all duration-200"
+                style={active ? {
+                  color: `oklch(84% 0.13 ${hue})`,
+                  borderColor: `oklch(58% 0.16 ${hue})`,
+                  background: `oklch(58% 0.16 ${hue} / 0.16)`,
+                  boxShadow: `0 0 0 1px oklch(58% 0.16 ${hue} / 0.45), 0 0 18px oklch(58% 0.16 ${hue} / 0.28)`,
+                } : {
+                  color: "var(--text-subtle)",
+                  borderColor: "var(--border)",
+                  background: "var(--bg-inset)",
+                  opacity: 0.6,
+                }}
+              >
+                {!active && <span aria-hidden style={{ opacity: 0.8 }}><I.lock s={12} /></span>}
+                {s}
+                <span className="font-mono text-[10px] font-normal opacity-70">{s === "YES" ? "ndio" : "hapana"}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        /* Free mode — the kit's "YES · slide to commit · NO" guidance. */
+        <div className="flex items-baseline justify-between mb-3.5 font-mono text-[10px] tracking-[0.16em] uppercase">
+          <span
+            className="transition-colors duration-200"
+            style={{ color: effectiveSide === "YES" ? "oklch(75% 0.13 152)" : "var(--text-subtle)", fontWeight: effectiveSide === "YES" ? 700 : 400 }}
+          >
+            YES
+          </span>
+          <span style={{ color: "var(--text-subtle)", letterSpacing: "0.18em" }}>· slide to commit ·</span>
+          <span
+            className="transition-colors duration-200"
+            style={{ color: effectiveSide === "NO" ? "oklch(75% 0.16 22)" : "var(--text-subtle)", fontWeight: effectiveSide === "NO" ? 700 : 400 }}
+          >
+            NO
+          </span>
+        </div>
+      )}
 
       <div
         ref={trackRef}
@@ -758,11 +833,35 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
           <rect x="0" y={trackY} width={width} height={trackH} rx={trackH / 2}
                 fill="var(--bar-track)" stroke="var(--bar-track-border)" strokeWidth="1" />
 
-          {/* Inactive-side hint tint */}
-          <rect x="0" y={trackY} width={width / 2} height={trackH} rx={trackH / 2}
-                fill="oklch(58% 0.16 152)" opacity="0.10" />
-          <rect x={width / 2} y={trackY} width={width / 2} height={trackH} rx={trackH / 2}
-                fill="oklch(60% 0.18 22)" opacity="0.10" />
+          {/* Side hint tint. When a side is LOCKED, the backed half keeps its
+              colour tint while the locked-out half is dimmed to grey and
+              carries a small padlock so it reads as "not available — tap to
+              switch". */}
+          {lock !== "NO" && (
+            <rect x="0" y={trackY} width={width / 2} height={trackH} rx={trackH / 2}
+                  fill="oklch(58% 0.16 152)" opacity={lock === "YES" ? 0.16 : 0.10} />
+          )}
+          {lock !== "YES" && (
+            <rect x={width / 2} y={trackY} width={width / 2} height={trackH} rx={trackH / 2}
+                  fill="oklch(60% 0.18 22)" opacity={lock === "NO" ? 0.16 : 0.10} />
+          )}
+          {lock && (() => {
+            const lx = lock === "YES" ? width / 2 : 0; // the locked-out half
+            const cx = lx + width / 4;
+            return (
+              <g aria-hidden>
+                {/* dim the locked-out half */}
+                <rect x={lx} y={trackY - 7} width={width / 2} height={trackH + 14} rx={9}
+                      fill="oklch(20% 0.006 240)" opacity="0.62" />
+                {/* padlock centred on the locked-out half, above the track */}
+                <g transform={`translate(${cx - 6}, ${trackY - 22})`} fill="none"
+                   stroke="var(--text-subtle)" strokeWidth="1.4" opacity="0.65">
+                  <rect x="0.5" y="5.5" width="11" height="8" rx="1.6" fill="var(--text-subtle)" fillOpacity="0.18" />
+                  <path d="M3 5.5 V4 a3 3 0 0 1 6 0 V5.5" />
+                </g>
+              </g>
+            );
+          })()}
 
           {/* Midpoint marker */}
           <line x1={width / 2} x2={width / 2}

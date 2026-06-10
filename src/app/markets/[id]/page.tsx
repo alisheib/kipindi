@@ -208,7 +208,7 @@ export default async function MarketDetail({
           {!isResolved && m.status === "LIVE" && !closedByTime ? (
             session ? (
               <>
-                <ConvictionDial marketId={m.id} yesPool={m.yesPool} noPool={m.noPool} marketTitle={m.titleEn} resolutionAt={m.resolutionAt} balance={(await db.wallet.findByUserId(session.userId))?.balance ?? 0} />
+                <ConvictionDial marketId={m.id} yesPool={m.yesPool} noPool={m.noPool} marketTitle={m.titleEn} resolutionAt={m.resolutionAt} balance={(await db.wallet.findByUserId(session.userId))?.balance ?? 0} lockedSide={side === "YES" || side === "NO" ? side : undefined} />
                 <NotifyPrompt marketId={m.id} marketTitle={m.titleEn} />
               </>
             ) : (
