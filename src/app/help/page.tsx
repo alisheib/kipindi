@@ -1,5 +1,6 @@
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
+import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/support-config";
 
 export const metadata = { title: "Help · Msaada" };
 
@@ -22,7 +23,7 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "I think I have a problem with gambling. What can I do? · Nina shida ya kucheza kupita kiasi.",
-    a: "Open Profile → Responsible gambling. You can set deposit and time limits, take a break, or self-exclude. If you need to talk to someone, call the Tanzania Helpline +255 22 211 5811 (free).",
+    a: `Open Profile → Responsible gambling. You can set deposit and time limits, take a break, or self-exclude. If you need to talk to someone, call the Tanzania Helpline ${SUPPORT_PHONE()} (free).`,
   },
   {
     q: "Can I cash out before resolution? · Nitatoa dau mapema?",
@@ -71,20 +72,20 @@ export default function HelpPage() {
           tone="yes"
           title="Call us"
           titleSw="Tupigie"
-          value="+255 22 211 5811"
+          value={SUPPORT_PHONE()}
           sub="Free helpline · 24/7"
           subSw="Mstari wa msaada bure · 24/7"
-          href="tel:+255222115811"
+          href={`tel:${SUPPORT_PHONE_TEL()}`}
         />
         <ContactCard
           icon={<I.mail s={15} />}
           tone="info"
           title="Email"
           titleSw="Barua pepe"
-          value="support@50pick.com"
+          value={SUPPORT_EMAIL()}
           sub="Reply within 4h on business days"
           subSw="Tunajibu ndani ya saa 4 siku za kazi"
-          href="mailto:support@50pick.com"
+          href={`mailto:${SUPPORT_EMAIL()}`}
         />
         <ContactCard
           icon={<I.comment s={15} />}

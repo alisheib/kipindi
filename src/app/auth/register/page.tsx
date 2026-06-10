@@ -10,6 +10,7 @@ import { DateSelect } from "@/components/ui/date-select";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { resolveReferralPreview } from "@/lib/server/affiliate-service";
 import { startRegisterAction } from "./actions";
+import { HELPLINE } from "@/lib/support-config";
 
 export const metadata = { title: "Create account · Fungua akaunti" };
 
@@ -226,7 +227,7 @@ export default async function RegisterPage({
         </section>
 
         <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-text-subtle">
-          18+ · Licensed by GBT · Helpline 0800 11 0011
+          18+ · Licensed by GBT · Helpline {HELPLINE()}
         </p>
       </div>
     </main>

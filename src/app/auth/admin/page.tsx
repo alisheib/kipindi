@@ -8,6 +8,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { hasTotp } from "@/lib/server/totp";
 import { startLoginAction } from "@/app/auth/login/actions";
+import { SUPPORT_EMAIL } from "@/lib/support-config";
 
 export const metadata = { title: "Admin sign in · Kuingia" };
 export const dynamic = "force-dynamic";
@@ -113,7 +114,7 @@ export default async function AdminLoginPage() {
         </Link>
 
         <p className="text-center font-mono text-[11px] text-text-subtle">
-          Lost device or codes? Contact <span className="text-text-muted">support@50pick.com</span> with your AML lead in copy.
+          Lost device or codes? Contact <span className="text-text-muted">{SUPPORT_EMAIL()}</span> with your AML lead in copy.
         </p>
       </div>
     </main>

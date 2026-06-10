@@ -8,6 +8,7 @@
  */
 import Link from "next/link";
 import { FiftyMark } from "@/components/brand";
+import { HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
 
 export function PublicFooter() {
   const license = process.env.NEXT_PUBLIC_LICENSE_REF ?? "TZ-GBT-2026-XXXX (pending)";
@@ -43,8 +44,8 @@ export function PublicFooter() {
           <FooterLink href="/profile/responsible-gambling">Set limits</FooterLink>
           <FooterLink href="/legal/responsible-gambling">Take a break / Self-exclude</FooterLink>
           <li>
-            <a href="tel:0800110011" className="text-text-muted hover:text-text transition-colors">
-              Helpline · 0800 11 0011
+            <a href={`tel:${HELPLINE_TEL()}`} className="text-text-muted hover:text-text transition-colors">
+              Helpline · {HELPLINE()}
             </a>
           </li>
           <li className="italic text-text-subtle text-[11.5px]">

@@ -6,6 +6,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { getKycStatus, startKyc } from "@/lib/server/kyc-service";
 import { DateSelect } from "@/components/ui/date-select";
 import { submitNidaAction, attachDocumentAction, submitKycForReviewAction } from "./actions";
+import { SUPPORT_EMAIL } from "@/lib/support-config";
 
 export const metadata = { title: "Verify identity · Thibitisha" };
 
@@ -116,7 +117,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                 {kyc?.rejectReason ? <>Reason: <span className="font-semibold text-text">{String(kyc.rejectReason).replace(/_/g, " ").toLowerCase()}</span>. </> : null}
                 {kyc?.rejectNote ? `${kyc.rejectNote} ` : ""}
                 Please re-enter your details below and resubmit, or email{" "}
-                <a href="mailto:support@50pick.com?subject=KYC%20review" className="text-accent-400 underline-offset-2 hover:underline">support@50pick.com</a>.
+                <a href={`mailto:${SUPPORT_EMAIL()}?subject=KYC%20review`} className="text-accent-400 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a>.
                 <span className="block italic text-text-subtle text-[11.5px] mt-0.5">Tafadhali jaribu tena au wasiliana na msaada.</span>
               </p>
             </div>

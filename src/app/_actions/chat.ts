@@ -2,6 +2,7 @@
 
 import { getSession } from "@/lib/server/session";
 import { rateCheck } from "@/lib/server/rate-limit";
+import { SUPPORT_EMAIL, SUPPORT_PHONE } from "@/lib/support-config";
 
 /**
  * 50pick AI Help — live Claude (Haiku 4.5) server action.
@@ -47,8 +48,8 @@ function consumeDailyQuota(userId: string): boolean {
 }
 
 const CAPACITY_MESSAGE =
-  "You've reached this session's question limit. For anything else, our support team is here to help — call +255 22 211 5811 (free, 24/7) or email support@50pick.com.\n\n" +
-  "Umefikia kikomo cha maswali kwa kipindi hiki. Kwa msaada zaidi, wasiliana na timu yetu — piga +255 22 211 5811 (bure, saa 24) au barua pepe support@50pick.com.";
+  `You've reached this session's question limit. For anything else, our support team is here to help — call ${SUPPORT_PHONE()} (free, 24/7) or email ${SUPPORT_EMAIL()}.\n\n` +
+  `Umefikia kikomo cha maswali kwa kipindi hiki. Kwa msaada zaidi, wasiliana na timu yetu — piga ${SUPPORT_PHONE()} (bure, saa 24) au barua pepe ${SUPPORT_EMAIL()}.`;
 
 const SYSTEM_PROMPT = `You are the 50pick Help assistant — a friendly, concise AI concierge embedded in the 50pick app (chat widget, bottom-right). 50pick is a Tanzania-licensed YES/NO prediction-market platform.
 
@@ -68,13 +69,13 @@ WHAT YOU KNOW:
 - Responsible gambling: deposit/loss/session limits, reality checks, breaks, self-exclusion.
 - Proposals: players propose markets and earn a prize if listed + resolved. Invite & Earn referral programme.
 - Resolution: two-officer sign-off against a public source URL, 24h objection window.
-- 18+ only, licensed by the Gaming Board of Tanzania. Helpline +255 22 211 5811 (free, 24/7), support@50pick.com.
+- 18+ only, licensed by the Gaming Board of Tanzania. Helpline ${SUPPORT_PHONE()} (free, 24/7), ${SUPPORT_EMAIL()}.
 
 KEY PAGES: /markets, /live, /positions, /wallet, /wallet/deposit, /wallet/withdraw, /profile, /profile/kyc, /profile/responsible-gambling, /profile/invite, /proposals, /fairness, /help, /leaderboard.
 
 RULES:
 1. NEVER recommend which side to pick (YES or NO). You may explain HOW a market resolves, never WHICH side to choose.
-2. If the user shows signs of problem gambling (chasing losses, can't stop, addicted), respond ONLY with: "I'd like to help with that. Let me direct you to our responsible gambling tools at Profile > Responsible Gambling, or call +255 22 211 5811."
+2. If the user shows signs of problem gambling (chasing losses, can't stop, addicted), respond ONLY with: "I'd like to help with that. Let me direct you to our responsible gambling tools at Profile > Responsible Gambling, or call ${SUPPORT_PHONE()}."
 3. If you don't know a 50pick answer, say so briefly and offer to connect them with the support team.
 4. Keep every response under 200 words.`;
 

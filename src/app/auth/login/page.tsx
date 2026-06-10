@@ -9,6 +9,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { CountdownPill } from "@/components/ui/countdown-pill";
 import { startLoginAction } from "./actions";
+import { SUPPORT_EMAIL, HELPLINE } from "@/lib/support-config";
 
 export const metadata = { title: "Sign in · Ingia" };
 
@@ -71,7 +72,7 @@ export default async function LoginPage({
         return {
           tone: "danger" as const,
           title: "Account unavailable · Akaunti haipatikani",
-          body: "Contact support@50pick.com if you believe this is in error.",
+          body: `Contact ${SUPPORT_EMAIL()} if you believe this is in error.`,
           cta: null,
         };
       default:
@@ -179,7 +180,7 @@ export default async function LoginPage({
         </section>
 
         <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-text-subtle">
-          18+ · Licensed by GBT · Helpline 0800 11 0011
+          18+ · Licensed by GBT · Helpline {HELPLINE()}
         </p>
       </div>
     </main>

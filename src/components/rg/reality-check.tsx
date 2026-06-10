@@ -17,6 +17,7 @@ import * as React from "react";
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { useModalLock } from "@/lib/use-modal-lock";
+import { SUPPORT_PHONE } from "@/lib/support-config";
 
 const SESSION_START_KEY  = "kp_session_started_at";
 const LAST_PROMPT_KEY    = "kp_reality_check_last";
@@ -168,7 +169,7 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL }: { 
         </div>
 
         <p className="text-center font-mono pt-1" style={{ fontSize: "var(--type-micro)", color: "var(--text-subtle)" }}>
-          Tanzania Helpline · <span style={{ color: "var(--text-muted)" }}>+255 22 211 5811</span>
+          Tanzania Helpline · <span style={{ color: "var(--text-muted)" }}>{SUPPORT_PHONE()}</span>
         </p>
       </div>
     </div>

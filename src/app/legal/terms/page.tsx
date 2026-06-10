@@ -1,4 +1,5 @@
 import { LegalHeader, LegalSection } from "../_components";
+import { SUPPORT_EMAIL } from "@/lib/support-config";
 
 export const metadata = { title: "Terms of Service" };
 
@@ -64,7 +65,7 @@ export default function TermsPage() {
         <p>
           Bets may be voided where the underlying event is abandoned, the wrong outcome is initially settled,
           or the result is corrected by the source authority within 24 hours of resolution. Disputes must be
-          raised in writing to <span className="font-mono text-text-muted">support@50pick.com</span> within
+          raised in writing to <span className="font-mono text-text-muted">{SUPPORT_EMAIL()}</span> within
           30 days of placement.
         </p>
       </LegalSection>

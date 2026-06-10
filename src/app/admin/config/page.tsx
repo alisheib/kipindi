@@ -8,7 +8,9 @@ import {
   GlobalConfigForm,
   MarketOverrideForm,
   ClearOverrideButton,
+  SupportConfigForm,
 } from "./config-form";
+import { getSupportConfig } from "@/lib/support-config";
 
 export const metadata = { title: "Admin · Market config" };
 export const dynamic = "force-dynamic";
@@ -27,6 +29,7 @@ export default async function AdminConfigPage() {
   ).slice(0, 12);
 
   const totalFee = config.taxRate + config.commissionRate + config.reserveRate + config.aggregatorRate;
+  const supportCfg = getSupportConfig();
 
   return (
     <>
@@ -213,6 +216,18 @@ export default async function AdminConfigPage() {
               </p>
             </div>
           </div>
+        </AdminCard>
+
+        {/* Support contact info */}
+        <AdminCard
+          title="Support contacts"
+          sw="Mawasiliano ya msaada"
+          action={<span className="font-mono text-[10px] text-text-subtle">{supportCfg.email}</span>}
+        >
+          <p className="text-[12px] text-text-subtle mb-3">
+            These values appear on every page that shows support info: help, chatbot, login, register, legal, KYC, account, forgot-password, reality-check.
+          </p>
+          <SupportConfigForm config={supportCfg} />
         </AdminCard>
       </div>
     </>

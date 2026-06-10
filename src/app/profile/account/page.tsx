@@ -7,6 +7,7 @@ import { db } from "@/lib/server/store";
 import { getOwnActivity } from "@/lib/server/user-service";
 import { CloseAccountForm } from "./close-account-form";
 import { ExportDataButton } from "./export-data-button";
+import { SUPPORT_EMAIL, SUPPORT_PHONE } from "@/lib/support-config";
 
 export const metadata = { title: "My account · Akaunti yangu" };
 export const dynamic = "force-dynamic";
@@ -200,8 +201,8 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
         </p>
         <CloseAccountForm />
         <p className="font-mono text-[11px] text-text-subtle">
-          Need help instead? Email <span className="text-text-muted">support@50pick.com</span> or
-          call <span className="text-text-muted">+255 22 211 5811</span>.
+          Need help instead? Email <span className="text-text-muted">{SUPPORT_EMAIL()}</span> or
+          call <span className="text-text-muted">{SUPPORT_PHONE()}</span>.
         </p>
       </section>
     </main>

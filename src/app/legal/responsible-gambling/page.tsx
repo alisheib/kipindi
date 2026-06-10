@@ -1,4 +1,5 @@
 import { LegalHeader, LegalSection } from "../_components";
+import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/support-config";
 
 export const metadata = { title: "Responsible Gambling Policy" };
 
@@ -55,9 +56,9 @@ export default function ResponsibleGamblingPolicyPage() {
 
       <LegalSection n="5" title="Get help">
         <ul className="list-disc pl-5 space-y-1">
-          <li><strong className="text-text">Tanzania</strong>: National Helpline <a href="tel:+255222115811" className="font-mono text-accent-400 underline-offset-2 hover:underline">+255 22 211 5811</a> (free)</li>
+          <li><strong className="text-text">Tanzania</strong>: National Helpline <a href={`tel:${SUPPORT_PHONE_TEL()}`} className="font-mono text-accent-400 underline-offset-2 hover:underline">{SUPPORT_PHONE()}</a> (free)</li>
           <li><strong className="text-text">International</strong>: <a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="font-mono text-accent-400 underline-offset-2 hover:underline">begambleaware.org</a>, <a href="https://www.gamcare.org.uk" target="_blank" rel="noopener noreferrer" className="font-mono text-accent-400 underline-offset-2 hover:underline">gamcare.org.uk</a></li>
-          <li><strong className="text-text">Email us</strong>: <a href="mailto:support@50pick.com" className="font-mono text-accent-400 underline-offset-2 hover:underline">support@50pick.com</a></li>
+          <li><strong className="text-text">Email us</strong>: <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-accent-400 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a></li>
         </ul>
       </LegalSection>
     </>

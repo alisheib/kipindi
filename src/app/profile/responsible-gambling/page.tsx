@@ -6,6 +6,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { getRgSettings } from "@/lib/server/responsible-gambling";
 import { setLimitsAction, selfExcludeAction, coolOffAction } from "./actions";
 import { SelfExcludeConfirm } from "@/components/rg/self-exclude-confirm";
+import { SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/support-config";
 import { Select } from "@/components/ui/select";
 import { FeedbackSettings } from "@/components/settings/feedback-settings";
 import { formatTzs } from "@/lib/utils";
@@ -189,7 +190,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           <SelfExcludeConfirm />
         </form>
         <p className="font-mono text-[11px] text-text-subtle pt-1">
-          Need help now? Tanzania Helpline · <a href="tel:+255222115811" className="text-accent-400 underline-offset-2 hover:underline">+255 22 211 5811</a>.
+          Need help now? Tanzania Helpline · <a href={`tel:${SUPPORT_PHONE_TEL()}`} className="text-accent-400 underline-offset-2 hover:underline">{SUPPORT_PHONE()}</a>.
           International support at <a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="text-accent-400 underline-offset-2 hover:underline">begambleaware.org</a>.
         </p>
       </section>

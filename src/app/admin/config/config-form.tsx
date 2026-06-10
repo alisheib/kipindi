@@ -9,8 +9,10 @@ import {
   updateGlobalConfigAction,
   setMarketOverrideAction,
   clearMarketOverrideAction,
+  updateSupportConfigAction,
 } from "./actions";
 import type { RateConfig } from "@/lib/server/market-config";
+import type { SupportConfig } from "@/lib/support-config";
 
 export function GlobalConfigForm({ config }: { config: RateConfig }) {
   const [pending, start] = useTransition();
@@ -165,5 +167,44 @@ export function ClearOverrideButton({ marketId }: { marketId: string }) {
     <Button type="button" size="sm" variant="ghost" onClick={onClick} loading={pending}>
       Clear
     </Button>
+  );
+}
+
+export function SupportConfigForm({ config }: { config: SupportConfig }) {
+  const [pending, start] = useTransition();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    start(async () => {
+      const r = await updateSupportConfigAction(fd);
+      if (!r.ok) {
+        toast({ title: "Couldn't update", description: r.error, variant: "danger" });
+      } else {
+        toast({ title: "Support info updated", variant: "success" });
+        router.refresh();
+      }
+    });
+  };
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-3">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <Field label="Support email" hint="Shown on help, login, legal, KYC pages">
+          <Input name="email" defaultValue={config.email} required />
+        </Field>
+        <Field label="Support phone" hint="E.g. +255 22 211 5811">
+          <Input name="phone" defaultValue={config.phone} />
+        </Field>
+        <Field label="Helpline number" hint="Shown in every page footer">
+          <Input name="helpline" defaultValue={config.helpline} />
+        </Field>
+      </div>
+      <Button type="submit" variant="yes" loading={pending}>
+        Save · Hifadhi
+      </Button>
+    </form>
   );
 }

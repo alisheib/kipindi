@@ -2,6 +2,7 @@ import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { FiftyLockup } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
+import { SUPPORT_EMAIL, HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
 
 export const metadata = { title: "Forgot password · Umesahau nenosiri?" };
 
@@ -59,14 +60,14 @@ export default function ForgotPasswordPage() {
 
           <div className="space-y-3">
             <a
-              href="tel:0800110011"
+              href={`tel:${HELPLINE_TEL()}`}
               className="flex items-start gap-3 rounded-xl border border-border bg-bg-overlay p-4 hover:border-gold-700 transition-colors"
             >
               <span className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-gold-500/10 text-gold-300 shrink-0">
                 <I.phone s={18} />
               </span>
               <div className="min-w-0">
-                <p className="font-display font-semibold text-text">Helpline · 0800 11 0011</p>
+                <p className="font-display font-semibold text-text">Helpline · {HELPLINE()}</p>
                 <p className="mt-0.5 text-[12.5px] text-text-muted">
                   Free in Tanzania, 7 days a week, 8 am – 8 pm.
                 </p>
@@ -74,14 +75,14 @@ export default function ForgotPasswordPage() {
             </a>
 
             <a
-              href="mailto:support@50pick.com?subject=Password%20reset%20request"
+              href={`mailto:${SUPPORT_EMAIL()}?subject=Password%20reset%20request`}
               className="flex items-start gap-3 rounded-xl border border-border bg-bg-overlay p-4 hover:border-gold-700 transition-colors"
             >
               <span className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-gold-500/10 text-gold-300 shrink-0">
                 <I.mail s={18} />
               </span>
               <div className="min-w-0">
-                <p className="font-display font-semibold text-text">support@50pick.com</p>
+                <p className="font-display font-semibold text-text">{SUPPORT_EMAIL()}</p>
                 <p className="mt-0.5 text-[12.5px] text-text-muted">
                   Reply within 1 business day. Include your registered phone number.
                 </p>
@@ -101,7 +102,7 @@ export default function ForgotPasswordPage() {
         </section>
 
         <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-text-subtle">
-          18+ · Licensed by GBT · Helpline 0800 11 0011
+          18+ · Licensed by GBT · Helpline {HELPLINE()}
         </p>
       </div>
     </main>
