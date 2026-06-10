@@ -61,7 +61,7 @@ function fundedPlayer(name: string, balance: number): string {
 function hash(s: string): number { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) | 0; return h; }
 
 async function publishPoll(poll: StoredAIPoll, officerId: string): Promise<string> {
-  const candidate = ingestCandidate({
+  const candidate = await ingestCandidate({
     category: (poll.category === "tech" || poll.category === "other" ? "macro" : poll.category) as
       "sports" | "macro" | "weather" | "crypto" | "culture" | "infrastructure",
     proposedTitleEn: poll.titleEn, proposedTitleSw: poll.titleSw || undefined,
@@ -69,19 +69,19 @@ async function publishPoll(poll: StoredAIPoll, officerId: string): Promise<strin
     sources: poll.sources.map((s) => ({ url: s.url, publisher: s.publisher, retrievedAt: now() })),
     tokensSpent: poll.tokensUsed, costUsd: poll.costUsd, actorId: officerId,
   });
-  filterCandidate(candidate.id, { passes: true });
-  attachVerification(candidate.id, { confirmingSources: [], tokensSpent: 0, costUsd: 0 });
-  scoreCandidate(candidate.id, { confidence: poll.confidence, tokensSpent: 0, costUsd: 0, rubric: { aiPollQuality: poll.overallQuality } });
-  approveCandidate(candidate.id, { officerId, note: `From AI poll ${poll.id}` });
+  await filterCandidate(candidate.id, { passes: true });
+  await attachVerification(candidate.id, { confirmingSources: [], tokensSpent: 0, costUsd: 0 });
+  await scoreCandidate(candidate.id, { confidence: poll.confidence, tokensSpent: 0, costUsd: 0, rubric: { aiPollQuality: poll.overallQuality } });
+  await approveCandidate(candidate.id, { officerId, note: `From AI poll ${poll.id}` });
   const marketCategory = poll.category === "infrastructure" ? "macro"
     : poll.category === "tech" ? "tech" : poll.category === "other" ? "other" : poll.category;
-  const market = createMarket({
+  const market = await createMarket({
     titleEn: poll.titleEn, titleSw: poll.titleSw || poll.titleEn,
     category: marketCategory as "sports" | "macro" | "weather" | "crypto" | "culture" | "tech" | "other",
     sourceUrl: poll.sources[0]?.url ?? "", resolutionCriterion: poll.resolutionCriterion,
     resolutionAt: poll.resolutionAt, proposedBy: officerId,
   });
-  markPublished(candidate.id, market.id, officerId);
+  await markPublished(candidate.id, market.id, officerId);
   await markAIPollPublished(poll.id, { candidateId: candidate.id, marketId: market.id, officerId });
   return market.id;
 }
@@ -133,12 +133,12 @@ check("rejections recorded", c.REJECTED >= 1, `rejected=${c.REJECTED}`);
 
 // 3 · PUBLISH approved → live markets
 console.log("\n--- 3 · PUBLISH (approved → live markets) ---");
-const before = listMarkets().length;
+const before = (await listMarkets()).length;
 const marketIds: string[] = [];
 for (const p of approved) { marketIds.push(await publishPoll(p, OFFICER)); }
-const liveMarkets = listMarkets({ status: "LIVE" }).filter((m) => marketIds.includes(m.id));
+const liveMarkets = (await listMarkets({ status: "LIVE" })).filter((m) => marketIds.includes(m.id));
 check("a live market was created per approved poll", liveMarkets.length === approved.length, `${liveMarkets.length}/${approved.length}`);
-check("market count grew by the number published", listMarkets().length === before + approved.length);
+check("market count grew by the number published", (await listMarkets()).length === before + approved.length);
 liveMarkets.forEach((m) => console.log(`  LIVE  ${m.id}  ${m.titleEn.slice(0, 60)}`));
 
 if (marketIds.length === 0) {
@@ -156,7 +156,7 @@ const m2 = marketIds[1] ?? marketIds[0];
 
 // Snapshot pool figures as PRIMITIVES — getMarket returns the live object that
 // buyPosition mutates in place, so we must copy the numbers, not the reference.
-const b = getMarket(m1)!;
+const b = (await getMarket(m1))!;
 const beforeYes = b.yesPool, beforeNo = b.noPool, beforeCount = b.predictorCount;
 const yesBet = await buyPosition(alice, { marketId: m1, side: "YES", stake: 5000 });
 const noBet = await buyPosition(brian, { marketId: m1, side: "NO", stake: 8000 });
@@ -166,7 +166,7 @@ check("Asha's YES bet on M1 succeeded", yesBet.ok === true, yesBet.ok ? `payoutI
 check("Baraka's NO bet on M1 succeeded", noBet.ok === true, noBet.ok ? `payoutIfWin=${noBet.data.payoutIfWin}` : noBet.error);
 check("Asha's second bet (M2) succeeded", yesBet2.ok === true, yesBet2.ok ? "" : yesBet2.error);
 
-const afterM1 = getMarket(m1)!;
+const afterM1 = (await getMarket(m1))!;
 check("M1 YES pool grew by 5,000", afterM1.yesPool === beforeYes + 5000, `yes ${beforeYes}→${afterM1.yesPool}`);
 check("M1 NO pool grew by 8,000", afterM1.noPool === beforeNo + 8000, `no ${beforeNo}→${afterM1.noPool}`);
 check("M1 predictor count rose by 2", afterM1.predictorCount === beforeCount + 2, `${beforeCount}→${afterM1.predictorCount}`);

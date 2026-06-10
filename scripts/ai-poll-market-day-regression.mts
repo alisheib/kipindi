@@ -61,7 +61,7 @@ const ok = (gen: AIPollGeneration): AIProviderResponse =>
 /** Replicates publishPollAction's service chain (auth wrapper aside) so we
  *  test the real candidate→market path, not a stand-in. */
 async function publishPoll(poll: StoredAIPoll, officerId: string): Promise<{ marketId: string; candidateId: string }> {
-  const candidate = ingestCandidate({
+  const candidate = await ingestCandidate({
     category: (poll.category === "tech" || poll.category === "other" ? "macro" : poll.category) as
       "sports" | "macro" | "weather" | "crypto" | "culture" | "infrastructure",
     proposedTitleEn: poll.titleEn,
@@ -71,19 +71,19 @@ async function publishPoll(poll: StoredAIPoll, officerId: string): Promise<{ mar
     sources: poll.sources.map((s) => ({ url: s.url, publisher: s.publisher, retrievedAt: new Date().toISOString() })),
     tokensSpent: poll.tokensUsed, costUsd: poll.costUsd, actorId: officerId,
   });
-  filterCandidate(candidate.id, { passes: true });
-  attachVerification(candidate.id, { confirmingSources: [], tokensSpent: 0, costUsd: 0 });
-  scoreCandidate(candidate.id, { confidence: poll.confidence, tokensSpent: 0, costUsd: 0, rubric: { aiPollQuality: poll.overallQuality } });
-  approveCandidate(candidate.id, { officerId, note: `Auto-approved from AI poll ${poll.id}` });
+  await filterCandidate(candidate.id, { passes: true });
+  await attachVerification(candidate.id, { confirmingSources: [], tokensSpent: 0, costUsd: 0 });
+  await scoreCandidate(candidate.id, { confidence: poll.confidence, tokensSpent: 0, costUsd: 0, rubric: { aiPollQuality: poll.overallQuality } });
+  await approveCandidate(candidate.id, { officerId, note: `Auto-approved from AI poll ${poll.id}` });
   const marketCategory = poll.category === "infrastructure" ? "macro"
     : poll.category === "tech" ? "tech" : poll.category === "other" ? "other" : poll.category;
-  const market = createMarket({
+  const market = await createMarket({
     titleEn: poll.titleEn, titleSw: poll.titleSw || poll.titleEn,
     category: marketCategory as "sports" | "macro" | "weather" | "crypto" | "culture" | "tech" | "other",
     sourceUrl: poll.sources[0]?.url ?? "", resolutionCriterion: poll.resolutionCriterion,
     resolutionAt: poll.resolutionAt, proposedBy: officerId,
   });
-  markPublished(candidate.id, market.id, officerId);
+  await markPublished(candidate.id, market.id, officerId);
   await markAIPollPublished(poll.id, { candidateId: candidate.id, marketId: market.id, officerId });
   return { marketId: market.id, candidateId: candidate.id };
 }
@@ -151,10 +151,10 @@ check("state tally: FILTERED=4", counts.FILTERED === 4, String(counts.FILTERED))
 
 // ── PUBLISH: approved polls become live markets ──
 console.log("\n--- PUBLISH · approved polls → live markets ---");
-const marketsBefore = listMarkets().length;
+const marketsBefore = (await listMarkets()).length;
 const pub1 = await publishPoll((await listAIPolls({ state: "APPROVED" }))[0], OFFICER);
 const pub2 = await publishPoll((await listAIPolls({ state: "APPROVED" }))[0], OFFICER); // next remaining approved
-const marketsAfter = listMarkets();
+const marketsAfter = await listMarkets();
 check("two new markets created", marketsAfter.length === marketsBefore + 2, `+${marketsAfter.length - marketsBefore}`);
 check("published market #1 is LIVE", marketsAfter.some((m) => m.id === pub1.marketId && m.status === "LIVE"));
 check("published market #2 is LIVE", marketsAfter.some((m) => m.id === pub2.marketId && m.status === "LIVE"));
