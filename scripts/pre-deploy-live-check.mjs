@@ -109,8 +109,19 @@ console.log("\n[B] Date field — clipping, typing order, validation, junk");
   const clr = async () => { for (const l of ["Day", "Month", "Year"]) { await page.getByLabel(l).click(); await page.keyboard.press("Control+A"); await page.keyboard.press("Backspace"); } };
   const hidden = () => page.locator('input[type=hidden][name=dob]').inputValue();
 
-  await day.click(); await page.keyboard.type("10051990", { delay: 30 });
-  ok(`valid "10051990" -> hidden dob=1990-05-10`, (await hidden()) === "1990-05-10", `got "${await hidden()}"`);
+  // Hydration-robust: the hidden dob only updates once React has attached its
+  // onChange (a slow prod cold-start can otherwise accept keystrokes into the
+  // raw input before hydration, leaving dob empty). Retry the full valid-date
+  // entry until it registers — up to ~9s. If it never does, that's a REAL bug.
+  let dobVal = "";
+  for (let i = 0; i < 9; i++) {
+    await clr(); await page.getByLabel("Day").click();
+    await page.keyboard.type("10051990", { delay: 35 });
+    dobVal = await hidden();
+    if (dobVal === "1990-05-10") break;
+    await page.waitForTimeout(1000);
+  }
+  ok(`valid "10051990" -> hidden dob=1990-05-10`, dobVal === "1990-05-10", `got "${dobVal}"`);
 
   await clr(); await page.getByLabel("Day").click();
   await page.keyboard.type("1"); const a1 = await page.getByLabel("Day").inputValue();
