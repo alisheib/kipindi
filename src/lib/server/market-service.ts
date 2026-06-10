@@ -104,8 +104,18 @@ export async function projectedPayout(
   return r.payout;
 }
 
+/** A "Demo · " market is a synthetic training fixture. Per tester feedback
+ *  these are hidden from every player-facing listing. They are NOT deleted
+ *  (that would orphan real positions placed on them) — existing demo bets
+ *  still settle via autoResolveExpiredDemoMarkets and remain reachable by id
+ *  on /positions. New demo markets are no longer seeded. */
+export function isDemoMarket(m: Pick<StoredMarket, "titleEn">): boolean {
+  return m.titleEn.startsWith("Demo · ");
+}
+
 export async function listMarkets(filter?: { status?: MarketStatus; category?: MarketCategory }) {
   return (await marketStore.values())
+    .filter((m) => !isDemoMarket(m))
     .filter((m) => !filter?.status   || m.status === filter.status)
     .filter((m) => !filter?.category || m.category === filter.category)
     .sort((a, b) => a.resolutionAt.localeCompare(b.resolutionAt));
@@ -826,39 +836,10 @@ export async function seedDemoMarkets() {
   autoResolveExpiredDemoMarkets().catch(() => {});
   repairOrphanedPositions().catch(() => {});
 
-  // Demo refresher — always ensure fresh minute-scale markets exist,
-  // even on a fully-stocked production instance.
-  //
-  // CRITICAL: never DELETE an existing market here, even if it's a
-  // demo that ran past its resolutionAt. Players land on /markets/<id>
-  // by URL and Server Components call getMarket(id) — deleting a
-  // market mid-flight produces a 404 the player can't recover from,
-  // and (worse) wipes their open positions. Expired markets stay in
-  // the store so the resolver can settle / void them and the audit
-  // trail stays intact. We only ADD here.
-  const now = Date.now();
-  const liveDemoMinuteScale = (await marketStore.values())
-    .filter(m =>
-      m.titleEn.startsWith("Demo · ") &&
-      m.status === "LIVE" &&
-      Date.parse(m.resolutionAt) > now &&  // not yet expired
-      (Date.parse(m.resolutionAt) - now) < 60 * 60_000  // within an hour
-    )
-    .length;
-  if (liveDemoMinuteScale < 2) {
-    // We're below the demo-friendly threshold — top up with two fresh
-    // minute-scale markets so the operator always finds a "soon" one.
-    const refreshSeed: CreateMarketInput[] = [
-      { titleEn: "Demo · 5-minute coin flip — will the next 5 minutes resolve YES?", titleSw: "Demo · sarafu ya dakika 5 — je, dakika 5 zijazo zitafungwa na YES?", category: "culture", sourceUrl: "https://www.itv.co.tz", resolutionCriterion: "Demo market — resolves at the discretion of the demo operator. For training and walk-throughs only.", resolutionAt: new Date(now + 5 * 60_000).toISOString(), proposedBy: "system" },
-      { titleEn: "Demo · 15-minute hot market — will the demo close YES in 15 min?", titleSw: "Demo · soko la moto la dakika 15 — je, demo itafungwa na YES baada ya dakika 15?", category: "sports", sourceUrl: "https://nbc.co.tz/premier-league", resolutionCriterion: "Demo market — operator-resolved for live walk-throughs.", resolutionAt: new Date(now + 15 * 60_000).toISOString(), proposedBy: "system" },
-    ];
-    for (const s of refreshSeed) {
-      try {
-        const m = await createMarket(s);
-        await seedHistory(m.id, m.yesPool, m.noPool);
-      } catch { /* ignore duplicates */ }
-    }
-  }
+  // NOTE: demo "Demo · " markets are no longer seeded (tester feedback) and
+  // are hidden from every player listing by isDemoMarket(). Any that already
+  // exist stay in the store so their open positions settle and resolve
+  // cleanly — we only ever ADD real markets below, never DELETE.
 
   // Top-up gate: if we already have 25+ LIVE markets, leave them alone.
   // Otherwise we'll re-seed the canonical 40-market catalogue below to
@@ -972,20 +953,7 @@ export async function seedDemoMarkets() {
     { titleEn: "Will Brent crude close above $80/bbl next Monday?", titleSw: "Je, Brent itafungwa juu ya $80/bbl Jumatatu ijayo?", category: "macro", sourceUrl: "https://www.eia.gov/dnav/pet/pet_pri_spt_s1_d.htm", resolutionCriterion: "Resolves YES if EIA Brent spot price on the named Monday closes ≥ 80.00 USD/bbl. Source: EIA.", resolutionAt: new Date(Date.now() + 4 * day).toISOString(), proposedBy: "system" },
     // ── Weather — long-range hurricane / drought ──────────────────────────
     { titleEn: "Will the next Indian Ocean tropical cyclone reach Category 3+?", titleSw: "Je, kimbunga kijacho cha Bahari ya Hindi kitafikia daraja la 3 au juu?", category: "weather", sourceUrl: "https://www.meteo.go.tz", resolutionCriterion: "Resolves YES if any tropical cyclone in the SW Indian Ocean basin during the named period reaches Category 3 (≥ 178 km/h sustained) per RSMC La Réunion. Source: RSMC La Réunion bulletin.", resolutionAt: new Date(Date.now() + 45 * day).toISOString(), proposedBy: "system" },
-
-    // ────────────────────────────────────────────────────────────────────
-    // DEMO — minute-scale + hour-scale markets so the operator can place
-    // a bet, watch it land in the resolver queue, and run it through
-    // two-officer settlement *during* a single demo session. Without
-    // these, every market is days out and the celebration loop never
-    // closes inside the meeting.
-    // ────────────────────────────────────────────────────────────────────
-    { titleEn: "Demo · 5-minute coin flip — will the next 5 minutes resolve YES?", titleSw: "Demo · sarafu ya dakika 5 — je, dakika 5 zijazo zitafungwa na YES?", category: "culture", sourceUrl: "https://www.itv.co.tz", resolutionCriterion: "Demo market — resolves at the discretion of the demo operator. For training and walk-throughs only.", resolutionAt: new Date(Date.now() + 5 * 60_000).toISOString(), proposedBy: "system" },
-    { titleEn: "Demo · 15-minute hot market — will the demo close YES in 15 min?", titleSw: "Demo · soko la moto la dakika 15 — je, demo itafungwa na YES baada ya dakika 15?", category: "sports", sourceUrl: "https://nbc.co.tz/premier-league", resolutionCriterion: "Demo market — operator-resolved for live walk-throughs.", resolutionAt: new Date(Date.now() + 15 * 60_000).toISOString(), proposedBy: "system" },
-    { titleEn: "Demo · 30-minute warm-up — outcome at 30-min mark?", titleSw: "Demo · soko la dakika 30 — matokeo baada ya dakika 30?", category: "macro", sourceUrl: "https://www.bot.go.tz", resolutionCriterion: "Demo market — operator-resolved for live walk-throughs.", resolutionAt: new Date(Date.now() + 30 * 60_000).toISOString(), proposedBy: "system" },
-    { titleEn: "Demo · 1-hour TZS spot — TZS-USD higher in 1 hour?", titleSw: "Demo · TZS dhidi ya USD ndani ya saa 1?", category: "macro", sourceUrl: "https://www.bot.go.tz", resolutionCriterion: "Demo market — operator-resolved for live walk-throughs.", resolutionAt: new Date(Date.now() + 60 * 60_000).toISOString(), proposedBy: "system" },
-    { titleEn: "Demo · 2-hour BTC drift — Bitcoin higher in 2 hours?", titleSw: "Demo · Bitcoin baada ya saa 2 — itakuwa juu zaidi?", category: "crypto", sourceUrl: "https://www.coingecko.com/en/coins/bitcoin", resolutionCriterion: "Demo market — operator-resolved for live walk-throughs.", resolutionAt: new Date(Date.now() + 2 * 3600_000).toISOString(), proposedBy: "system" },
-    { titleEn: "Demo · 6-hour weather check — Dar rainfall in 6 hours?", titleSw: "Demo · mvua Dar baada ya saa 6?", category: "weather", sourceUrl: "https://www.meteo.go.tz", resolutionCriterion: "Demo market — operator-resolved for live walk-throughs.", resolutionAt: new Date(Date.now() + 6 * 3600_000).toISOString(), proposedBy: "system" },
+    // Demo markets removed per tester feedback — real markets only.
   ];
   for (const s of seed) {
     // createMarket throws on duplicate id; since we're idempotent on

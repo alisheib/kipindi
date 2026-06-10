@@ -16,7 +16,7 @@ export type SupportConfig = {
 };
 
 const DEFAULTS: SupportConfig = {
-  email: "support@50pick.com",
+  email: "msaada@50pick.co.tz",
   phone: "+255 22 211 5811",
   phoneTel: "+255222115811",
   helpline: "0800 11 0011",

@@ -27,7 +27,7 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
   const pathname = usePathname();
   const { t, locale } = useT();
 
-  const POSITIONS = locale === "sw" ? "Madau" : locale === "fr" ? "Paris" : "Positions";
+  const POSITIONS = locale === "sw" ? "Historia" : locale === "fr" ? "Historique" : "History";
   const NAV_ITEMS = user.isAuthed
     ? ([
         { href: "/markets",     label: locale === "sw" ? "Soko" : locale === "fr" ? "Marchés" : "Markets" },

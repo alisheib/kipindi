@@ -11,7 +11,7 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
   const L = {
     markets: locale === "sw" ? "Soko" : locale === "fr" ? "Marchés" : "Markets",
     live: t.nav.live,
-    positions: locale === "sw" ? "Madau" : locale === "fr" ? "Paris" : "Positions",
+    positions: locale === "sw" ? "Historia" : locale === "fr" ? "Historique" : "History",
     leaderboard: t.nav.leaderboard,
     profile: locale === "sw" ? "Wasifu" : locale === "fr" ? "Profil" : "Profile",
     signIn: t.common.signIn,

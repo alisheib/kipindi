@@ -22,8 +22,9 @@ const CATEGORIES: Array<{ id: "all" | MarketCategory; label: string }> = [
 // category tabs. Lets the operator drop the manager straight onto
 // minute-scale demo markets so the bet → resolve → celebrate loop
 // closes inside a single demo session.
-type WhenFilter = "soon" | "today" | "week" | "all";
+type WhenFilter = "new" | "soon" | "today" | "week" | "all";
 const WHEN_OPTIONS: Array<{ id: WhenFilter; label: string; sw: string; cutoffMs: number | null }> = [
+  { id: "new",   label: "New",          sw: "Mpya",            cutoffMs: null },               // newest-listed first
   { id: "soon",  label: "Ending soon",  sw: "Karibu kuisha",   cutoffMs: 60 * 60_000 },        // ≤ 1h
   { id: "today", label: "Today",        sw: "Leo",             cutoffMs: 24 * 3600_000 },      // ≤ 24h
   { id: "week",  label: "This week",    sw: "Wiki hii",        cutoffMs: 7 * 24 * 3600_000 },  // ≤ 7d
@@ -163,18 +164,26 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
   // Sort by closest-to-resolution first so the demo-friendly minute-scale
   // markets float to the top. Past-resolution markets sink (they're in the
   // resolver queue, not the live grid).
-  const liveAll = (await listMarkets({ status: "LIVE", category: cat }))
+  const bettable = (await listMarkets({ status: "LIVE", category: cat }))
     // Filter out markets whose clock has already passed but the
     // resolver hasn't yet acted — they're closed-by-time, not bettable,
     // and showing them in the LIVE grid produces a confused UX where
     // you can click a card whose dial then refuses to fire.
-    .filter(m => !isClosedByTime(m))
-    .map(m => ({ m, ms: Math.max(0, Date.parse(m.resolutionAt) - now) }))
-    .sort((a, b) => a.ms - b.ms);
-  const live = (whenCfg.cutoffMs === null
-    ? liveAll
-    : liveAll.filter(x => x.ms <= whenCfg.cutoffMs!)
-  ).map(x => x.m);
+    .filter(m => !isClosedByTime(m));
+  let live;
+  if (whenId === "new") {
+    // "New" — newly-listed polls first, so freshly-generated markets are
+    // easy to find regardless of when they close.
+    live = [...bettable].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  } else {
+    const liveAll = bettable
+      .map(m => ({ m, ms: Math.max(0, Date.parse(m.resolutionAt) - now) }))
+      .sort((a, b) => a.ms - b.ms);
+    live = (whenCfg.cutoffMs === null
+      ? liveAll
+      : liveAll.filter(x => x.ms <= whenCfg.cutoffMs!)
+    ).map(x => x.m);
+  }
   const resolved = (await listMarkets({ status: "RESOLVED" })).slice(0, 6);
   const traderMap = await traderSeedsByMarket();
   const allForCharts = [...live, ...resolved];

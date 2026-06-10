@@ -7,7 +7,7 @@ import { listPositionsForUser, getMarket, seedDemoMarkets, cashOutValue } from "
 import { currentSession } from "@/lib/server/auth-service";
 import { EmptyState } from "@/components/ui/empty-state";
 
-export const metadata = { title: "My positions · Madau yangu" };
+export const metadata = { title: "History · Historia" };
 export const dynamic = "force-dynamic";
 
 const fmtTzs = (n: number) => `TZS ${Math.round(n).toLocaleString("en-US")}`;
@@ -67,9 +67,9 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
       <header>
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">Positions · Madau</p>
-        <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">Your predictions</h1>
-        <p className="text-[15px] italic text-text-subtle">Utabiri wako</p>
+        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">History · Historia</p>
+        <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">Polls you&rsquo;ve played</h1>
+        <p className="text-[15px] italic text-text-subtle">Kura ulizocheza</p>
       </header>
 
       {/* Tab filter — All / Open / Settled (matches markets page filter pattern) */}

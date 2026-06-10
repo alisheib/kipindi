@@ -58,16 +58,17 @@ export type AffiliateConfig = {
 };
 
 /**
- * Defaults match the Claude Design spec (Active, all three modes on):
- * commission 50% for 24 months capped at TZS 250,000/recruit; bonus TZS 2,000
- * to both on first deposit; prize TZS 5,000 on a recruit's first bet, max 20.
- * The operator can pause or retune any of this at /admin/affiliate.
+ * Per tester feedback the program runs ONE simple reward: TZS 10,000 to the
+ * referrer when a friend places their first bet. The commission (revenue-share)
+ * and deposit-bonus modes ship disabled — the operator can re-enable and retune
+ * any of them at /admin/affiliate. Keeping a single, clear earning line ("Get
+ * 10,000 TZS when a friend places their bet") reads cleanly for players.
  */
 export const DEFAULT_AFFILIATE_CONFIG: AffiliateConfig = {
   enabled: true,
-  commission: { enabled: true, rate: 0.5, windowMonths: 24, capPerRecruitTzs: 250_000 },
-  bonus: { enabled: true, recipient: "BOTH", newAmountTzs: 2_000, referrerAmountTzs: 2_000, trigger: "FIRST_DEPOSIT" },
-  prize: { enabled: true, milestone: "FIRST_BET", depositThresholdTzs: 10_000, amountTzs: 5_000, capPerReferrer: 20 },
+  commission: { enabled: false, rate: 0.5, windowMonths: 24, capPerRecruitTzs: 250_000 },
+  bonus: { enabled: false, recipient: "BOTH", newAmountTzs: 2_000, referrerAmountTzs: 2_000, trigger: "FIRST_DEPOSIT" },
+  prize: { enabled: true, milestone: "FIRST_BET", depositThresholdTzs: 10_000, amountTzs: 10_000, capPerReferrer: 20 },
 };
 
 declare global {

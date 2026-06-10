@@ -8,7 +8,7 @@
  */
 import Link from "next/link";
 import { FiftyMark } from "@/components/brand";
-import { HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
+import { HELPLINE, HELPLINE_TEL, SUPPORT_EMAIL } from "@/lib/support-config";
 
 export function PublicFooter() {
   const license = process.env.NEXT_PUBLIC_LICENSE_REF ?? "TZ-GBT-2026-XXXX (pending)";
@@ -46,6 +46,11 @@ export function PublicFooter() {
           <li>
             <a href={`tel:${HELPLINE_TEL()}`} className="text-text-muted hover:text-text transition-colors">
               Helpline · {HELPLINE()}
+            </a>
+          </li>
+          <li>
+            <a href={`mailto:${SUPPORT_EMAIL()}`} className="text-text-muted hover:text-text transition-colors">
+              Email · {SUPPORT_EMAIL()}
             </a>
           </li>
           <li className="italic text-text-subtle text-[11.5px]">
