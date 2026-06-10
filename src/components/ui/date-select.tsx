@@ -1,15 +1,17 @@
 "use client";
 
 /**
- * DateSelect — segmented date input + calendar popup.
+ * DateSelect — a single masked date field + calendar popup.
  *
- * Looks exactly like the kit Input atom (full-width, h-12, bg-inset,
- * border-border, brand-500 focus ring). Three editable segments
- * [DD] / [MM] / [YYYY] inside the input, calendar icon on the right
- * (same position as the password-toggle eye icon).
+ * Looks like the kit Input atom (full-width, h-12, bg-inset, border-border,
+ * brand-500 focus ring). You type digits left-to-right and the separators
+ * appear automatically: "DD / MM / YYYY". The calendar icon on the right
+ * (same spot as the password-toggle eye) opens a day-grid + year picker.
  *
- * Click the calendar icon → popup with day grid + year picker.
- * Type directly into segments → auto-advance on fill.
+ * Why one input and not three segments: separate per-segment inputs that
+ * select-all on focus and auto-advance fight the cursor — digits could land
+ * out of order (typing "10" showing "01"). A single field has one cursor and
+ * one value, so typed digits always accumulate in the order they're pressed.
  */
 
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
@@ -62,79 +64,19 @@ function isInRange(p: Parsed, minP: Parsed | null, maxP: Parsed | null): boolean
   return true;
 }
 
-// ── Segment sub-input ────────────────────────────────────────────────
-
-function Seg({ value, onChange, onNext, onPrev, maxLen, placeholder, width, ariaLabel, autoAdvanceOn }: {
-  value: string;
-  onChange: (v: string) => void;
-  onNext: () => void;
-  onPrev: () => void;
-  maxLen: number;
-  placeholder: string;
-  width: string;
-  ariaLabel: string;
-  // When a single typed digit can only mean a complete 2-digit value
-  // (e.g. day "4" → "04", month "5" → "05"), pad it and jump to the next
-  // segment. Returns true for digits that are unambiguous on their own.
-  autoAdvanceOn?: (digit: string) => boolean;
-}) {
-  const ref = useRef<HTMLInputElement>(null);
-  return (
-    <input
-      ref={ref}
-      type="text"
-      inputMode="numeric"
-      autoComplete="off"
-      data-1p-ignore
-      data-lpignore="true"
-      value={value}
-      placeholder={placeholder}
-      aria-label={ariaLabel}
-      className="bg-transparent text-center font-mono text-[16px] tabular-nums text-text outline-none placeholder:text-text-subtle/40 selection:bg-brand-500/30"
-      style={{ width }}
-      maxLength={maxLen}
-      onChange={(e) => {
-        const digits = e.target.value.replace(/\D/g, "").slice(0, maxLen);
-        if (digits.length === maxLen) {
-          onChange(digits);
-          onNext();
-        } else if (digits.length === 1 && autoAdvanceOn?.(digits)) {
-          // Unambiguous single digit → pad to "0X" and advance.
-          onChange(digits.padStart(2, "0"));
-          onNext();
-        } else {
-          onChange(digits);
-        }
-      }}
-      onKeyDown={(e) => {
-        if ((e.key === "ArrowRight" || (e.key === "Tab" && !e.shiftKey)) && ref.current?.selectionStart === value.length) {
-          e.preventDefault(); onNext();
-        }
-        if ((e.key === "ArrowLeft" || (e.key === "Tab" && e.shiftKey)) && ref.current?.selectionStart === 0) {
-          e.preventDefault(); onPrev();
-        }
-        if (e.key === "Backspace" && value === "") { e.preventDefault(); onPrev(); }
-        if (e.key === "/") { e.preventDefault(); onNext(); }
-      }}
-      onFocus={(e) => {
-        const el = e.target;
-        requestAnimationFrame(() => el.select());
-      }}
-      onClick={(e) => (e.target as HTMLInputElement).select()}
-      onBlur={() => {
-        // Pad incomplete segments on blur: "5" → "05", "3" → "03"
-        if (value && value.length < maxLen) {
-          if (maxLen === 2) {
-            onChange(value.padStart(2, "0"));
-          }
-          // Year with < 4 digits: clear it (e.g. "12" is not a valid year)
-          if (maxLen === 4) {
-            onChange("");
-          }
-        }
-      }}
-    />
-  );
+/** Digit buffer "DDMMYYYY" (≤ 8 chars) from a parsed date. */
+function rawFromParsed(p: Parsed): string {
+  return `${String(p.d).padStart(2, "0")}${String(p.m).padStart(2, "0")}${String(p.y).padStart(4, "0")}`;
+}
+/** Format the digit buffer for display, inserting " / " separators as it fills. */
+function maskDisplay(d: string): string {
+  const dd = d.slice(0, 2);
+  const mm = d.slice(2, 4);
+  const yy = d.slice(4, 8);
+  let out = dd;
+  if (d.length > 2) out += " / " + mm;
+  if (d.length > 4) out += " / " + yy;
+  return out;
 }
 
 // ── Main component ───────────────────────────────────────────────────
@@ -145,52 +87,25 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
   const isoValue = controlled ? (value ?? "") : internal;
   const parsed = isoValue ? parseIso(isoValue) : null;
 
-  const [dd, setDd] = useState(parsed ? String(parsed.d).padStart(2, "0") : "");
-  const [mm, setMm] = useState(parsed ? String(parsed.m).padStart(2, "0") : "");
-  const [yyyy, setYyyy] = useState(parsed ? String(parsed.y) : "");
+  // Single source of truth for what's typed — a digit-only buffer "DDMMYYYY".
+  const [raw, setRaw] = useState(parsed ? rawFromParsed(parsed) : "");
   const [invalid, setInvalid] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // The last ISO value this component itself produced. We compare against it so
-  // the sync effect below can tell an *external* value change (parent set/reset)
-  // apart from our own echo, and never re-runs for our own emits.
-  const lastEmit = useRef<string>(isoValue);
-
-  // Sync the three segments FROM an external value only (controlled mode).
-  // The segments are the single source of truth while the user is typing —
-  // re-deriving them from a transient/empty ISO mid-keystroke is what dropped
-  // and re-ordered digits before (typing "10" could land as "01"). So we run
-  // strictly on a genuine external change, and only depend on the `value`
-  // STRING (never on the `parsed` object, which is a fresh identity each
-  // render and would otherwise re-run the effect on every render).
-  useEffect(() => {
-    if (!controlled) return;
-    if (value === lastEmit.current) return; // our own echo — ignore
-    const p = value ? parseIso(value) : null;
-    if (p) {
-      setDd(String(p.d).padStart(2, "0"));
-      setMm(String(p.m).padStart(2, "0"));
-      setYyyy(String(p.y));
-    } else {
-      setDd(""); setMm(""); setYyyy("");
-    }
-    setInvalid(false);
-    lastEmit.current = value ?? "";
-  }, [controlled, value]);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const minParsed = min ? parseIso(min) : null;
   const maxParsed = max ? parseIso(max) : null;
   const minYear = minParsed?.y ?? 1900;
   const maxYear = maxParsed?.y ?? new Date().getFullYear();
 
-  const focusSeg = (idx: number) => {
-    const el = containerRef.current?.querySelectorAll<HTMLInputElement>("input[type='text']")[idx];
-    el?.focus();
-  };
+  // The last ISO this component itself produced — lets the external-sync effect
+  // tell a genuine parent change apart from our own echo (controlled mode).
+  const lastEmit = useRef<string>(isoValue);
 
-  const tryCommit = useCallback((d: string, m: string, y: string) => {
-    if (d.length === 2 && m.length === 2 && y.length === 4) {
-      const p = { d: Number(d), m: Number(m), y: Number(y) };
+  // Commit the buffer: emit an ISO once 8 valid digits are present, clear it
+  // (and flag invalid) otherwise. Never mutates `raw` — typing owns that.
+  const commit = useCallback((d: string) => {
+    if (d.length === 8) {
+      const p = { d: Number(d.slice(0, 2)), m: Number(d.slice(2, 4)), y: Number(d.slice(4, 8)) };
       if (p.m >= 1 && p.m <= 12 && p.d >= 1 && p.d <= daysInMonth(p.y, p.m) && isInRange(p, minParsed, maxParsed)) {
         const iso = toIso(p);
         lastEmit.current = iso;
@@ -211,9 +126,29 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
     }
   }, [controlled, onChange, minParsed, maxParsed]);
 
-  const onDd = (v: string) => { setDd(v); tryCommit(v, mm, yyyy); };
-  const onMm = (v: string) => { setMm(v); tryCommit(dd, v, yyyy); };
-  const onYy = (v: string) => { setYyyy(v); tryCommit(dd, mm, v); };
+  // Sync the buffer FROM an external value only (controlled parent set/reset).
+  // Depends on the `value` STRING, never the `parsed` object (fresh identity
+  // every render), so it can't stomp the buffer while the user types.
+  useEffect(() => {
+    if (!controlled) return;
+    if (value === lastEmit.current) return; // our own echo — ignore
+    const p = value ? parseIso(value) : null;
+    setRaw(p ? rawFromParsed(p) : "");
+    setInvalid(false);
+    lastEmit.current = value ?? "";
+  }, [controlled, value]);
+
+  const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const prevLen = maskDisplay(raw).length;
+    let next = e.target.value.replace(/\D/g, "").slice(0, 8);
+    // Backspace landed on a " / " separator: digits didn't change but the
+    // string got shorter — drop the last digit so delete always removes one.
+    if (next === raw && e.target.value.length < prevLen) {
+      next = raw.slice(0, -1);
+    }
+    setRaw(next);
+    commit(next);
+  };
 
   // ── Calendar popup ─────────────────────────────────────────────────
 
@@ -247,9 +182,7 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
   };
 
   const pickDay = (y: number, m: number, d: number) => {
-    setDd(String(d).padStart(2, "0"));
-    setMm(String(m).padStart(2, "0"));
-    setYyyy(String(y));
+    setRaw(rawFromParsed({ y, m, d }));
     const iso = toIso({ y, m, d });
     lastEmit.current = iso;
     if (!controlled) setInternal(iso);
@@ -287,7 +220,6 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
     <>
       {/* Full-width input container — matches the kit Input atom exactly */}
       <div
-        ref={containerRef}
         className={cn(
           "flex items-stretch w-full h-12 rounded-lg border overflow-hidden transition-colors",
           "focus-within:border-[var(--brand-500)] focus-within:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)]",
@@ -295,14 +227,20 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
         )}
         style={{ background: invalid ? "oklch(58% 0.2 25 / 0.08)" : "var(--bg-inset)" }}
       >
-        {/* Segments row */}
-        <div className="flex-1 flex items-center px-3.5 gap-0">
-          <Seg value={dd} onChange={onDd} onNext={() => focusSeg(1)} onPrev={() => {}} maxLen={2} placeholder="DD" width="28px" ariaLabel="Day" autoAdvanceOn={(d) => Number(d) > 3} />
-          <span className="text-text-subtle/40 font-mono text-[16px] mx-0.5 select-none">/</span>
-          <Seg value={mm} onChange={onMm} onNext={() => focusSeg(2)} onPrev={() => focusSeg(0)} maxLen={2} placeholder="MM" width="28px" ariaLabel="Month" autoAdvanceOn={(d) => Number(d) > 1} />
-          <span className="text-text-subtle/40 font-mono text-[16px] mx-0.5 select-none">/</span>
-          <Seg value={yyyy} onChange={onYy} onNext={() => {}} onPrev={() => focusSeg(1)} maxLen={4} placeholder="YYYY" width="48px" ariaLabel="Year" />
-        </div>
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          data-1p-ignore
+          data-lpignore="true"
+          value={maskDisplay(raw)}
+          onChange={handleInput}
+          placeholder="DD / MM / YYYY"
+          aria-label="Date — type day, month, year"
+          required={required}
+          className="flex-1 min-w-0 bg-transparent px-3.5 font-mono text-[16px] tabular-nums text-text outline-none placeholder:text-text-subtle/40 selection:bg-brand-500/30"
+        />
 
         {/* Calendar toggle — same position as password eye icon */}
         <button
