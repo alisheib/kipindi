@@ -1,8 +1,12 @@
 /**
- * In-memory data store — dev-only.
- * INTERFACE matches the Prisma schema exactly so swapping to PrismaClient
- * is a one-line change per service.
+ * In-memory data store + Prisma DAL switch.
+ *
+ * When USE_PRISMA_DAL=true and DATABASE_URL is set, `db` routes to the
+ * Prisma-backed DAL (prisma-dal.ts). Otherwise it uses the in-memory Maps.
+ * All call sites must have `await` (Phase 3) before flipping the flag.
  */
+import { prismaDb } from "./prisma-dal";
+import { hasDatabase } from "./prisma";
 
 export type StoredUser = {
   id: string;
@@ -336,7 +340,7 @@ if (typeof window === "undefined" && !globalThis.__50PICK_BACKUP_RESTORED) {
   import("./backup").then((m) => m.restoreLatestAsync()).catch(() => {});
 }
 
-export const db = {
+const memoryDb = {
   // USER
   user: {
     findById: (id: string): StoredUser | null => store.users.get(id) ?? null,
@@ -566,3 +570,10 @@ export const db = {
       (Array.from(store.proposalVotes.values()) as StoredProposalVote[]).filter((v) => v.proposalId === proposalId),
   },
 };
+
+// Phase 2: Prisma DAL switch.
+// Set USE_PRISMA_DAL=true on Railway AFTER Phase 3 (await) + Phase 6 (data migration).
+const usePrisma = process.env.USE_PRISMA_DAL === "true" && hasDatabase();
+export const db: typeof memoryDb = usePrisma
+  ? (prismaDb as unknown as typeof memoryDb)
+  : memoryDb;
