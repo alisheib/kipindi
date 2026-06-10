@@ -148,9 +148,13 @@ export function MarketCard({
   const live = status === "LIVE";
   const isResolved = status === "RESOLVED";
   const CatIco = I[categoryGlyph(category)];
-  const go = (side: "YES" | "NO") => (e: React.MouseEvent) => { e.preventDefault(); window.location.href = `/markets/${id}?side=${side}`; };
-  return (
-    <Link href={`/markets/${id}` as never} className={cn("mcardp group", className)}>
+  // Only YES / NO enter the betting flow — each carries ?side, which opens the
+  // LOCKED dial. The body of a LIVE card is intentionally NOT a navigation
+  // target: opening the market without a side would land on the unlocked
+  // both-ways dial, which must never happen. Non-live cards stay viewable.
+  const go = (side: "YES" | "NO") => (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); window.location.href = `/markets/${id}?side=${side}`; };
+  const body = (
+    <>
       {/* Kit signature — large faint category glyph watermark (brightens on hover). */}
       <span className="mcardp-watermark" aria-hidden><CatIco /></span>
 
@@ -196,10 +200,10 @@ export function MarketCard({
       {live ? (
         <div className="mcardp-actions">
           <button type="button" aria-label={`Back YES at ${yesPct}%`} onClick={go("YES")} className="btn btn-yes btn-md">
-            YES <span className="font-mono" style={{ opacity: 0.92, fontSize: 14 }}>{yesPct}</span>
+            YES <span className="font-mono" style={{ opacity: 0.85, fontSize: 11.5 }}>{yesPct}%</span>
           </button>
           <button type="button" aria-label={`Back NO at ${100 - yesPct}%`} onClick={go("NO")} className="btn btn-no btn-md">
-            NO <span className="font-mono" style={{ opacity: 0.92, fontSize: 14 }}>{100 - yesPct}</span>
+            NO <span className="font-mono" style={{ opacity: 0.85, fontSize: 11.5 }}>{100 - yesPct}%</span>
           </button>
         </div>
       ) : (
@@ -217,6 +221,18 @@ export function MarketCard({
           {live && <HowItWorks />}
         </span>
       </div>
+    </>
+  );
+
+  // LIVE: body is not clickable — only the YES/NO buttons navigate (locked dial).
+  // Non-live: keep the whole card a link so results/history stay viewable.
+  return live ? (
+    <article className={cn("mcardp group", className)} style={{ cursor: "default" }} aria-label={titleEn}>
+      {body}
+    </article>
+  ) : (
+    <Link href={`/markets/${id}` as never} className={cn("mcardp group", className)}>
+      {body}
     </Link>
   );
 }

@@ -1790,8 +1790,8 @@ html.kp-reduce-motion *::after {
 .av-stack > *:first-child { margin-left: 0; }
 .mcardp-traders .t-txt { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
 .mcardp-traders .t-txt b { color: var(--text); font-weight:600; }
-.mcardp-actions { display:grid; grid-template-columns:1fr 1fr; gap: 8px; margin: 15px 0 13px; }
-.mcardp-actions .btn { height: 44px; font-size: 15px; min-width: 0; padding: 0 12px; letter-spacing: 0.06em; }
+.mcardp-actions { display:grid; grid-template-columns:1fr 1fr; gap: 8px; margin: 13px 0 11px; }
+.mcardp-actions .btn { height: 36px; font-size: 13px; font-weight: 600; min-width: 0; padding: 0 10px; letter-spacing: 0.04em; border-radius: 10px; }
 .mcardp-meta { display:flex; align-items:center; flex-wrap: nowrap; gap: 7px; font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); white-space: nowrap; overflow: hidden; }
 .mcardp-meta .dot { width:3px;height:3px;border-radius:50%;background:var(--border-strong); }
 .mcardp-meta .live { color: var(--yes-300); display:inline-flex; align-items:center; gap:5px; }

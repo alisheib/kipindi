@@ -213,33 +213,39 @@ if (LOCAL) {
   ok(`invite has NO deposit-bonus line`, !/bonus on each/i.test(inv));
   ok(`invite no error overlay`, !(await hasErrorOverlay(page)));
 
-  // Bet page renders for the first live market
+  // Card-body must NOT be clickable for live markets — only YES/NO enter.
   await page.goto(BASE + "/markets", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(500);
-  const firstCard = page.locator('a[href^="/markets/mkt_"]').first();
-  if (await firstCard.count() > 0) {
-    const href = await firstCard.getAttribute("href");
-    await page.goto(BASE + href, { waitUntil: "domcontentloaded" }); await page.waitForTimeout(500);
-    const detail = await page.locator("body").innerText();
-    ok(`market detail renders bet UI`, /YES|NO/.test(detail) && !(await hasErrorOverlay(page)), href);
+  const liveCard = page.locator(".mcardp:has(.mcardp-actions)").first();
+  if (await liveCard.count() > 0) {
+    await liveCard.locator(".mcardp-q").click(); await page.waitForTimeout(400);
+    ok(`live card body is not clickable (stays on /markets)`, !/\/markets\/mkt_/.test(page.url()), page.url());
 
-    // Dial side-locking: ?side=YES locks the YES half (NO greyed); the knob
-    // can't cross centre; the toggle switches sides.
-    await page.goto(BASE + href + "?side=YES", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(500);
-    const yesT = page.getByRole("button", { name: /(Backing|Switch to) YES/ });
-    const noT = page.getByRole("button", { name: /(Backing|Switch to) NO/ });
-    ok(`?side=YES -> YES backed`, (await yesT.getAttribute("aria-pressed")) === "true");
-    ok(`?side=YES -> NO not backed`, (await noT.getAttribute("aria-pressed")) === "false");
-    ok(`?side=YES -> Place YES button`, (await page.getByRole("button", { name: /Place YES/ }).count()) > 0);
+    // Click the real YES button → locked dial.
+    const yesBtn = page.getByRole("button", { name: /Back YES/ }).first();
+    await yesBtn.click();
+    await page.waitForURL(/\/markets\/mkt_[^?]+\?side=YES/, { timeout: 12000 }).catch(() => {});
+    const id = (page.url().match(/\/markets\/(mkt_[A-Za-z0-9]+)/) || [])[1];
+    ok(`YES button opens locked dial (?side=YES)`, /\?side=YES/.test(page.url()), page.url());
+    await page.waitForTimeout(400);
+    ok(`?side=YES -> Place YES`, (await page.getByRole("button", { name: /Place YES/ }).count()) > 0);
+    ok(`?side=YES -> cannot place NO (locked)`, (await page.getByRole("button", { name: /Place NO/ }).count()) === 0);
+    ok(`"Your pick" indicator shown`, (await page.locator("body").innerText()).toLowerCase().includes("your pick"));
+    ok(`no in-dial switch control (display-only)`, (await page.getByRole("button", { name: /Switch to (YES|NO)|Backing/ }).count()) === 0);
     const slider = page.getByRole("slider"); await slider.focus();
     for (let i = 0; i < 12; i++) await page.keyboard.press("ArrowRight");
     await page.waitForTimeout(150);
     ok(`YES locked: knob can't cross centre`, Number(await slider.getAttribute("aria-valuenow")) <= 50);
-    await noT.click(); await page.waitForTimeout(250);
-    ok(`toggle switches to NO`, (await page.getByRole("button", { name: /Place NO/ }).count()) > 0);
-    await page.goto(BASE + href + "?side=NO", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(500);
-    ok(`?side=NO -> NO backed`, (await page.getByRole("button", { name: /(Backing|Switch to) NO/ }).getAttribute("aria-pressed")) === "true");
+    if (id) {
+      await page.goto(BASE + `/markets/${id}?side=NO`, { waitUntil: "domcontentloaded" }); await page.waitForTimeout(500);
+      ok(`?side=NO -> Place NO`, (await page.getByRole("button", { name: /Place NO/ }).count()) > 0);
+      ok(`?side=NO -> cannot place YES (locked)`, (await page.getByRole("button", { name: /Place YES/ }).count()) === 0);
+      // Direct nav without a side must NOT show the unlocked dial.
+      await page.goto(BASE + `/markets/${id}`, { waitUntil: "domcontentloaded" }); await page.waitForTimeout(500);
+      const noSide = await page.locator("body").innerText();
+      ok(`no-side detail shows pick-side gate, not a dial`, /Pick your side/i.test(noSide) && (await page.getByRole("slider").count()) === 0);
+    }
   } else {
-    ok(`at least one bettable market exists`, false, "no /markets/mkt_ link found");
+    ok(`at least one bettable market exists`, false, "no live card found");
   }
   ok(`authed flow no console errors`, errs.length === 0, errs.slice(0, 3).join(" | "));
   await ctx.close();

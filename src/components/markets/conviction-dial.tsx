@@ -105,9 +105,11 @@ type Props = {
 };
 
 export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, initial = 0.5, marketTitle, resolutionAt, balance, lockedSide }: Props) {
-  // The side the dial is locked to (null = free bidirectional). Initialised
-  // from the prop (card tap); the in-dial toggle can switch it.
-  const [lock, setLock] = useState<"YES" | "NO" | null>(lockedSide ?? null);
+  // The side the dial is locked to (null = free bidirectional). The choice is
+  // made on the market card (outside) and is FINAL here — the in-dial YES/NO
+  // pills are display-only indicators, NOT switchable. To change sides the
+  // player goes back and taps the other colour on the card.
+  const lock = lockedSide ?? null;
   // YES lives on the LEFT half [0,0.5], NO on the RIGHT half [0.5,1]. Confine
   // the knob to the locked side's half so it can never cross into the other.
   const clampToLock = useCallback((p: number) => {
@@ -193,20 +195,6 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
   const clearBothLocks = useCallback(() => {
     setExactStakeState(null);
     setExactMultiplierState(null);
-  }, []);
-
-  // Switch the locked side (via the YES/NO toggle or by tapping the greyed-out
-  // half). Resets the knob to the base-stake centre of the new side and clears
-  // any typed stake/multiplier so the player starts the new side cleanly.
-  const switchSide = useCallback((next: "YES" | "NO") => {
-    setLock(next);
-    setPos(0.5);
-    setExactStakeState(null);
-    setExactMultiplierState(null);
-    setStakeText("");
-    setMultText("");
-    setEditingStake(false);
-    setEditingMult(false);
   }, []);
 
   // When the user has typed an exact value, honour their side intent
@@ -509,15 +497,6 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
     // scroll, pull-to-refresh, or long-press menus that compete with
     // the drag gesture. Must fire before any state updates.
     e.preventDefault();
-    // If locked and the player presses on the GREYED-OUT half, treat it as
-    // "switch to that side" rather than a (clamped) drag — the most intuitive
-    // way to change your mind. The active half behaves as a normal drag.
-    if (lock && trackRef.current) {
-      const r = trackRef.current.getBoundingClientRect();
-      const frac = (e.clientX - r.left) / r.width;
-      const onLockedOutHalf = lock === "YES" ? frac > 0.5 : frac < 0.5;
-      if (onLockedOutHalf) { switchSide(lock === "YES" ? "NO" : "YES"); return; }
-    }
     setDragging(true);
     // Always exit any in-flight input edit — clicking the dial is
     // unambiguously a "done with both inputs" intent.
@@ -728,40 +707,42 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
   return (
     <div className="rounded-xl border border-border bg-bg-elevated p-5 lg:p-6 select-none">
       {lock ? (
-        /* Locked mode — a kit-grade YES/NO segmented selector. The backed
-           side glows in its colour; the other sits greyed with a lock glyph.
-           Tapping the greyed one switches sides (so the player is informed and
-           never trapped), and the dial below is confined to the backed half. */
-        <div className="mb-4 grid grid-cols-2 gap-2" role="group" aria-label="Choose your side">
-          {(["YES", "NO"] as const).map((s) => {
-            const active = lock === s;
-            const hue = s === "YES" ? "152" : "22";
-            return (
-              <button
-                key={s}
-                type="button"
-                aria-pressed={active}
-                aria-label={active ? `Backing ${s}` : `Switch to ${s}`}
-                onClick={() => { if (!active) switchSide(s); }}
-                className="relative inline-flex h-11 items-center justify-center gap-1.5 rounded-lg border font-display text-[15px] font-bold tracking-[0.02em] transition-all duration-200"
-                style={active ? {
-                  color: `oklch(84% 0.13 ${hue})`,
-                  borderColor: `oklch(58% 0.16 ${hue})`,
-                  background: `oklch(58% 0.16 ${hue} / 0.16)`,
-                  boxShadow: `0 0 0 1px oklch(58% 0.16 ${hue} / 0.45), 0 0 18px oklch(58% 0.16 ${hue} / 0.28)`,
-                } : {
-                  color: "var(--text-subtle)",
-                  borderColor: "var(--border)",
-                  background: "var(--bg-inset)",
-                  opacity: 0.6,
-                }}
-              >
-                {!active && <span aria-hidden style={{ opacity: 0.8 }}><I.lock s={12} /></span>}
-                {s}
-                <span className="font-mono text-[10px] font-normal opacity-70">{s === "YES" ? "ndio" : "hapana"}</span>
-              </button>
-            );
-          })}
+        /* Locked mode — DISPLAY-ONLY side indicators (not clickable). The side
+           was chosen on the market card and is final here: the backed side
+           glows in its colour, the other sits greyed with a padlock so the
+           player can see exactly which way they're committed. */
+        <div className="mb-4">
+          <p className="mb-2 text-center font-mono text-[9px] uppercase tracking-[0.16em] font-bold text-text-subtle">
+            Your pick · Uamuzi wako
+          </p>
+          <div className="grid grid-cols-2 gap-2" role="img" aria-label={`You are backing ${lock} — locked`}>
+            {(["YES", "NO"] as const).map((s) => {
+              const active = lock === s;
+              const hue = s === "YES" ? "152" : "22";
+              return (
+                <div
+                  key={s}
+                  aria-hidden
+                  className="relative inline-flex h-11 select-none items-center justify-center gap-1.5 rounded-lg border font-display text-[15px] font-bold tracking-[0.02em]"
+                  style={active ? {
+                    color: `oklch(84% 0.13 ${hue})`,
+                    borderColor: `oklch(58% 0.16 ${hue})`,
+                    background: `oklch(58% 0.16 ${hue} / 0.16)`,
+                    boxShadow: `0 0 0 1px oklch(58% 0.16 ${hue} / 0.45), 0 0 18px oklch(58% 0.16 ${hue} / 0.28)`,
+                  } : {
+                    color: "var(--text-subtle)",
+                    borderColor: "var(--border)",
+                    background: "var(--bg-inset)",
+                    opacity: 0.5,
+                  }}
+                >
+                  {!active && <span aria-hidden style={{ opacity: 0.75 }}><I.lock s={12} /></span>}
+                  {s}
+                  <span className="font-mono text-[10px] font-normal opacity-70">{s === "YES" ? "ndio" : "hapana"}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       ) : (
         /* Free mode — the kit's "YES · slide to commit · NO" guidance. */
