@@ -110,11 +110,24 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
 
   const onSegBlur = (idx: number) => {
     const seg = SEGMENTS[idx];
-    const padded = padOnBlur(seg.key, get(seg.key), seg.max);
-    if (padded !== get(seg.key)) {
+    // Read the LIVE DOM value, not React state: blur fires synchronously from
+    // focusSeg() during auto-advance, when the closure still holds the pre-
+    // keystroke value. Padding that stale value ("1") would clobber the value
+    // the user just completed ("10" → wrongly "01"). The ref always reflects
+    // exactly what's in the box right now.
+    const live = refs[idx].current?.value ?? get(seg.key);
+    const padded = padOnBlur(seg.key, live, seg.max);
+    if (padded !== live) {
       setSeg(seg.key, padded);
-      const vals = { dd, mm, yyyy, [seg.key]: padded };
-      emit(vals.dd, vals.mm, vals.yyyy);
+      // Build from the live DOM of every segment so emit never uses a stale
+      // closure value either.
+      const cur = {
+        dd: refs[0].current?.value ?? dd,
+        mm: refs[1].current?.value ?? mm,
+        yyyy: refs[2].current?.value ?? yyyy,
+      };
+      cur[seg.key] = padded;
+      emit(cur.dd, cur.mm, cur.yyyy);
     }
   };
 
