@@ -20,7 +20,7 @@ const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
 async function requireAdmin(action: string): Promise<string> {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
-  const u = db.user.findById(session.userId);
+  const u = await db.user.findById(session.userId);
   if (!u || !ADMIN_ROLES.has(u.role)) {
     audit({
       category: "SECURITY", action: "privilege_escalation_blocked",

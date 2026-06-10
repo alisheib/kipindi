@@ -21,7 +21,7 @@ export async function voteAction(proposalId: string, dir: "up" | "down" | null) 
 export async function createProposalAction(input: CreateProposalInput) {
   const s = await currentSession();
   if (!s) redirect("/auth/login?next=/proposals/new");
-  const r = createProposal(s.userId, input);
+  const r = await createProposal(s.userId, input);
   if (r.ok) {
     revalidatePath("/proposals");
     return { ok: true as const, proposalId: r.proposal.id };

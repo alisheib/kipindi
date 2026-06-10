@@ -28,7 +28,7 @@ const BANDS = [
 export default async function SourceOfFundsPage({ searchParams }: { searchParams?: Promise<{ error?: string; saved?: string }> }) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
-  const existing = db.sourceOfFunds.get(session.userId);
+  const existing = await db.sourceOfFunds.get(session.userId);
   const sp = (await searchParams) ?? {};
   const statusTone =
     existing?.reviewStatus === "ACCEPTED" ? "yes"

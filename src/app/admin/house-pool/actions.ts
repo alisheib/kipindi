@@ -18,7 +18,7 @@ async function ensureAdmin() {
   if (!s) redirect("/auth/admin");
   // Defence-in-depth: Server Actions can be invoked directly (bypassing the
   // admin layout), so the ROLE must be checked here, not just session presence.
-  const u = db.user.findById(s.userId);
+  const u = await db.user.findById(s.userId);
   if (!u || !ADMIN_ROLES.has(u.role)) redirect("/auth/admin");
   return s;
 }

@@ -10,9 +10,9 @@ export const dynamic = "force-dynamic";
  * already gates the route (ADMIN / COMPLIANCE / MODERATOR + TOTP); the save
  * action re-checks the role for defence-in-depth.
  */
-export default function AdminAffiliatePage() {
+export default async function AdminAffiliatePage() {
   const config = getAffiliateConfig();
-  const stats = getAdminAffiliateStats();
+  const stats = await getAdminAffiliateStats();
   return (
     <div className="px-4 lg:px-6 py-6">
       <AffiliateAdminClient config={config} stats={stats} />

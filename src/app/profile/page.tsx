@@ -30,12 +30,12 @@ export default async function ProfilePage() {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
 
-  const user = db.user.findById(session.userId);
+  const user = await db.user.findById(session.userId);
   if (!user) redirect("/auth/login");
 
-  const wallet = db.wallet.findByUserId(user.id);
-  const kyc = db.kyc.findByUserId(user.id);
-  const positions = db.bet.findByUser(user.id, 500) as StoredBet[];
+  const wallet = await db.wallet.findByUserId(user.id);
+  const kyc = await db.kyc.findByUserId(user.id);
+  const positions = (await db.bet.findByUser(user.id, 500)) as StoredBet[];
   const initials = displayInitials(user);
   const displayName = user.displayName ?? "Set your name";
 
@@ -184,7 +184,7 @@ export default async function ProfilePage() {
           Achievements · Beji
         </h2>
         <div className="rounded-xl glass-panel p-5">
-          <BadgeShelf items={computeAchievementShelf(user.id)} />
+          <BadgeShelf items={await computeAchievementShelf(user.id)} />
           <p className="mt-4 text-center text-[11px] text-text-subtle">
             More badges unlock as you predict, win, propose and invite. · Beji zaidi zinafunguliwa unapocheza.
           </p>

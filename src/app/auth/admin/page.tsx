@@ -17,7 +17,7 @@ const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
 export default async function AdminLoginPage() {
   const session = await currentSession();
   if (session) {
-    const u = db.user.findById(session.userId);
+    const u = await db.user.findById(session.userId);
     const isAdmin = u && ADMIN_ROLES.has(u.role);
     if (isAdmin) {
       if (hasTotp(session.userId)) {

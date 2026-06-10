@@ -18,7 +18,7 @@ async function ensureAdmin() {
   const session = await currentSession();
   if (!session) redirect("/auth/admin");
   // Role check here too — Server Actions bypass the admin layout's gate.
-  const u = db.user.findById(session.userId);
+  const u = await db.user.findById(session.userId);
   if (!u || !ADMIN_ROLES.has(u.role)) redirect("/auth/admin");
   return session;
 }

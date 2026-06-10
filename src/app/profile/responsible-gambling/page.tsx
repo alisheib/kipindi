@@ -30,7 +30,7 @@ const COOLING_OFF_OPTIONS = [
 export default async function ResponsibleGamblingPage({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string }> }) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
-  const rg = getRgSettings(session.userId);
+  const rg = await getRgSettings(session.userId);
   const hasPendingIncrease = rg.pendingIncreaseTo !== null && rg.pendingIncreaseEffectiveAt !== null;
   const sp = await searchParams;
 
@@ -105,7 +105,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
             <I.warning s={14} />
             <div>
               <p className="font-display font-semibold text-text">
-                Pending increase to {formatTzs(rg.pendingIncreaseTo!)}
+                Pending increase to {await formatTzs(rg.pendingIncreaseTo!)}
               </p>
               <p className="text-text-muted">
                 Effective {new Date(rg.pendingIncreaseEffectiveAt!).toLocaleString("en-GB")} (24h cooling period).

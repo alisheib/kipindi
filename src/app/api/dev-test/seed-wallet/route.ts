@@ -38,12 +38,12 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  const user = db.user.findByPhone(body.phone);
+  const user = await db.user.findByPhone(body.phone);
   if (!user) return NextResponse.json({ ok: false, error: "user not found" }, { status: 404 });
-  const w = db.wallet.findByUserId(user.id);
+  const w = await db.wallet.findByUserId(user.id);
   if (!w) return NextResponse.json({ ok: false, error: "wallet not found" }, { status: 404 });
   const newBal = w.balance + Math.floor(body.amount);
-  db.wallet.update(w.id, { balance: newBal });
+  await db.wallet.update(w.id, { balance: newBal });
   audit({
     category: "SECURITY",
     action: "dev_test.wallet_seeded",

@@ -19,11 +19,11 @@ export async function POST(req: Request) {
   if (!body?.phone) {
     return NextResponse.json({ ok: false, error: "phone required" }, { status: 400 });
   }
-  const user = db.user.findByPhone(body.phone);
+  const user = await db.user.findByPhone(body.phone);
   if (!user) {
     return NextResponse.json({ ok: false, error: "user not found" }, { status: 404 });
   }
-  db.user.update(user.id, { role: "ADMIN", status: "ACTIVE" });
+  await db.user.update(user.id, { role: "ADMIN", status: "ACTIVE" });
   audit({
     category: "SECURITY",
     action: "dev_test.admin_promotion",

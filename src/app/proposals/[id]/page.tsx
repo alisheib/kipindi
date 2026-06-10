@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 export default async function ProposalDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await currentSession();
-  const p = getProposalDetail(id, session?.userId ?? null);
+  const p = await getProposalDetail(id, session?.userId ?? null);
   if (!p) notFound();
 
   const cfg = getProposalsConfig();

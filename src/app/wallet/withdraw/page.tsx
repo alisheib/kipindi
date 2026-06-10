@@ -24,8 +24,8 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
   const sp = await searchParams;
   const errorMsg = sp.error ? decodeURIComponent(sp.error) : null;
 
-  const wallet = db.wallet.findByUserId(session.userId);
-  const kyc = db.kyc.findByUserId(session.userId);
+  const wallet = await db.wallet.findByUserId(session.userId);
+  const kyc = await db.kyc.findByUserId(session.userId);
   const kycApproved = kyc?.status === "APPROVED";
 
   return (

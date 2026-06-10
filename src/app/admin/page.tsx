@@ -20,16 +20,16 @@ const CATEGORY_VARIANT: Record<AuditCategory, "gold" | "royal" | "danger" | "suc
   SYSTEM:     "neutral",
 };
 
-export default function AdminOverviewPage() {
-  const active24h = activePlayers("today");
-  const ggr = grossGamingRevenue("today");
-  const ngr = netGamingRevenue("today");
-  const amlPending = db.txn.listByStatus("AML_REVIEW").length;
-  const kyc = kycFunnel();
-  const provs = providerSummary("28d").slice(0, 5);
-  const rg = rgRosterCounts();
+export default async function AdminOverviewPage() {
+  const active24h = await activePlayers("today");
+  const ggr = await grossGamingRevenue("today");
+  const ngr = await netGamingRevenue("today");
+  const amlPending = (await db.txn.listByStatus("AML_REVIEW")).length;
+  const kyc = await kycFunnel();
+  const provs = (await providerSummary("28d")).slice(0, 5);
+  const rg = await rgRosterCounts();
   const recent = getAuditPage({ limit: 12 });
-  const flow = moneyFlowSeries("today", 24);
+  const flow = await moneyFlowSeries("today", 24);
 
   // Provider mix flex shares — total deposits across the top 5 providers
   const provTotal = provs.reduce((s, p) => s + p.deposits, 0) || 1;

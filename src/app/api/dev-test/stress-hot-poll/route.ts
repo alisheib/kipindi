@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     await Promise.all(Array.from({ length: N }, (_, i) => castVote(`v${i}`, pid, "up")));
     const elapsedMs = Date.now() - t0;
 
-    const finalUp = db.proposal.findById(pid)?.up ?? -1;
+    const finalUp = (await db.proposal.findById(pid))?.up ?? -1;
     const opsPerSec = Math.round((N / elapsedMs) * 1000);
     return NextResponse.json({
       ok: finalUp === N,

@@ -28,18 +28,18 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
   // The PeriodPicker round-trips via ?range= — honour it (default 7d).
   const period: Period = VALID_PERIODS.includes(sp.range as Period) ? (sp.range as Period) : "7d";
 
-  const dep = depositsTotal(period);
-  const wd  = withdrawalsTotal(period);
-  const ggr = grossGamingRevenue(period);
-  const ngr = netGamingRevenue(period);
-  const margin = operatorMarginPct(period);
-  const liability = walletLiabilityTotal();
-  const provs = providerSummary(period);
-  const top = topNgrContributors(10);
-  const flow = moneyFlowSeries(period, 28);
-  const margins = marginSeries(period, 28);
-  const provBars = providerStackedSeries(period, 14);
-  const providers = listProvidersInPeriod(period);
+  const dep = await depositsTotal(period);
+  const wd  = await withdrawalsTotal(period);
+  const ggr = await grossGamingRevenue(period);
+  const ngr = await netGamingRevenue(period);
+  const margin = await operatorMarginPct(period);
+  const liability = await walletLiabilityTotal();
+  const provs = await providerSummary(period);
+  const top = await topNgrContributors(10);
+  const flow = await moneyFlowSeries(period, 28);
+  const margins = await marginSeries(period, 28);
+  const provBars = await providerStackedSeries(period, 14);
+  const providers = await listProvidersInPeriod(period);
 
   // Tax accrued — placeholder formula (5% of GGR for the QTD example), real
   // calculation will come from TRA filing module.

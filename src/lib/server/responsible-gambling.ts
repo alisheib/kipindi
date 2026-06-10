@@ -43,9 +43,9 @@ const DEFAULT_REALITY_CHECK_MIN = 30;
 /**
  * Read the player's responsible-gambling settings, lazily creating defaults if absent.
  */
-export function getRgSettings(userId: string): StoredResponsibleGambling {
-  const existing = db.responsible.get(userId);
-  if (existing) return effectivize(existing);
+export async function getRgSettings(userId: string) {
+  const existing = await db.responsible.get(userId);
+  if (existing) return await effectivize(existing);
   const fresh: StoredResponsibleGambling = {
     userId,
     dailyDepositLimit: null,
@@ -59,7 +59,7 @@ export function getRgSettings(userId: string): StoredResponsibleGambling {
     pendingIncreaseTo: null,
     pendingIncreaseEffectiveAt: null,
   };
-  db.responsible.upsert(fresh);
+  await db.responsible.upsert(fresh);
   return fresh;
 }
 
@@ -67,7 +67,7 @@ export function getRgSettings(userId: string): StoredResponsibleGambling {
  * Apply pending-increase if its effective time has passed.
  * Mutates the stored record in-place.
  */
-function effectivize(r: StoredResponsibleGambling): StoredResponsibleGambling {
+async function effectivize(r: StoredResponsibleGambling) {
   if (r.pendingIncreaseTo !== null && r.pendingIncreaseEffectiveAt) {
     if (Date.now() >= new Date(r.pendingIncreaseEffectiveAt).getTime()) {
       const updated = {
@@ -76,7 +76,7 @@ function effectivize(r: StoredResponsibleGambling): StoredResponsibleGambling {
         pendingIncreaseTo: null,
         pendingIncreaseEffectiveAt: null,
       };
-      db.responsible.upsert(updated);
+      await db.responsible.upsert(updated);
       return updated;
     }
   }
@@ -96,8 +96,8 @@ export type SetLimitInput = {
  * Apply a limit change. Decreases take effect immediately; increases for the daily
  * deposit limit are deferred 24 hours per LCCP SR Code 3.4.3.
  */
-export function setLimits(userId: string, input: SetLimitInput): ServiceResult<StoredResponsibleGambling> {
-  const cur = getRgSettings(userId);
+export async function setLimits(userId: string, input: SetLimitInput) {
+  const cur = await getRgSettings(userId);
 
   // Validate non-negative integers (or null = remove)
   for (const [k, v] of Object.entries(input)) {
@@ -133,7 +133,7 @@ export function setLimits(userId: string, input: SetLimitInput): ServiceResult<S
     next.realityCheckIntervalMin = Math.max(5, Math.min(120, input.realityCheckIntervalMin));
   }
 
-  db.responsible.upsert(next);
+  await db.responsible.upsert(next);
   audit({
     category: "COMPLIANCE",
     action: deferredIncrease ? "rg.limit.increase.deferred" : "rg.limit.changed",
@@ -149,14 +149,14 @@ export function setLimits(userId: string, input: SetLimitInput): ServiceResult<S
  * Self-exclude. One-way: the player cannot reverse this themselves. Wallet is
  * frozen; session cookie is invalidated by the route handler that calls this.
  */
-export function selfExclude(userId: string, period: keyof typeof SELF_EXCLUSION_PERIODS_SEC): ServiceResult<{ until: string }> {
-  const cur = getRgSettings(userId);
+export async function selfExclude(userId: string, period: keyof typeof SELF_EXCLUSION_PERIODS_SEC) {
+  const cur = await getRgSettings(userId);
   const until = new Date(Date.now() + SELF_EXCLUSION_PERIODS_SEC[period] * 1000).toISOString();
-  db.responsible.upsert({ ...cur, selfExclusionUntil: until });
+  await db.responsible.upsert({ ...cur, selfExclusionUntil: until });
   // Freeze user + wallet
-  db.user.update(userId, { status: "SELF_EXCLUDED" });
-  const wallet = db.wallet.findByUserId(userId);
-  if (wallet) db.wallet.update(wallet.id, { status: "FROZEN" });
+  await db.user.update(userId, { status: "SELF_EXCLUDED" });
+  const wallet = await db.wallet.findByUserId(userId);
+  if (wallet) await db.wallet.update(wallet.id, { status: "FROZEN" });
   audit({
     category: "COMPLIANCE",
     action: "rg.self_exclusion.activated",
@@ -171,11 +171,11 @@ export function selfExclude(userId: string, period: keyof typeof SELF_EXCLUSION_
 /**
  * Cooling-off — shorter, also one-way until expiry. User cannot bet/deposit during.
  */
-export function coolOff(userId: string, period: keyof typeof COOLING_OFF_PERIODS_SEC): ServiceResult<{ until: string }> {
-  const cur = getRgSettings(userId);
+export async function coolOff(userId: string, period: keyof typeof COOLING_OFF_PERIODS_SEC) {
+  const cur = await getRgSettings(userId);
   const until = new Date(Date.now() + COOLING_OFF_PERIODS_SEC[period] * 1000).toISOString();
-  db.responsible.upsert({ ...cur, coolingOffUntil: until });
-  db.user.update(userId, { status: "COOLED_OFF" });
+  await db.responsible.upsert({ ...cur, coolingOffUntil: until });
+  await db.user.update(userId, { status: "COOLED_OFF" });
   audit({
     category: "COMPLIANCE",
     action: "rg.cooling_off.activated",
@@ -190,8 +190,8 @@ export function coolOff(userId: string, period: keyof typeof COOLING_OFF_PERIODS
 /**
  * True if the user is currently self-excluded or in a cooling-off period.
  */
-export function isLockedOut(userId: string): { locked: boolean; until: string | null; reason: "self_exclusion" | "cooling_off" | null } {
-  const r = getRgSettings(userId);
+export async function isLockedOut(userId: string) {
+  const r = await getRgSettings(userId);
   const now = Date.now();
   if (r.selfExclusionUntil && new Date(r.selfExclusionUntil).getTime() > now) {
     return { locked: true, until: r.selfExclusionUntil, reason: "self_exclusion" };
@@ -211,8 +211,8 @@ export function isLockedOut(userId: string): { locked: boolean; until: string | 
  * daily / weekly / monthly sums together. The 30-day window dominates,
  * so anything that doesn't fall inside it short-circuits early.
  */
-export function checkDepositLimit(userId: string, amount: number): { allowed: boolean; reason?: string } {
-  const r = getRgSettings(userId);
+export async function checkDepositLimit(userId: string, amount: number) {
+  const r = await getRgSettings(userId);
   const now = Date.now();
   const cutoffMonth = now - 30 * 86_400 * 1000;
   const cutoffWeek = now - 7 * 86_400 * 1000;
@@ -222,7 +222,7 @@ export function checkDepositLimit(userId: string, amount: number): { allowed: bo
   // Explicit type annotation on the local — db.txn.findByUser returns
   // `unknown` in the current type chain (a pre-existing store-shape
   // issue) so we narrow once here for the loop.
-  const allTxns: StoredTxn[] = db.txn.findByUser(userId, 500) as StoredTxn[];
+  const allTxns: StoredTxn[] = await db.txn.findByUser(userId, 500) as StoredTxn[];
   for (const t of allTxns) {
     if (t.type !== "DEPOSIT" || t.status !== "CONFIRMED") continue;
     const at = new Date(t.createdAt).getTime();
@@ -291,7 +291,7 @@ type DetectorContext = {
 /** A Detector is a pure function from context to an optional flag.
  *  Adding a new harm-marker is now one entry in the DETECTORS array
  *  below — no need to graft new logic into a 100-line function. */
-type Detector = (ctx: DetectorContext) => HarmFlag | null;
+type Detector = (ctx: DetectorContext) => HarmFlag | null | Promise<HarmFlag | null>;
 
 const flag = (
   ctx: DetectorContext,
@@ -381,11 +381,11 @@ const DETECTORS: Detector[] = [
   //    return a flag, no surrounding plumbing changes).
 
   // 5. Session overrun — current session exceeds reality-check × 4
-  (ctx) => {
+  async (ctx) => {
     if (!ctx.opts.sessionStartedAt) return null;
     const startedAt = new Date(ctx.opts.sessionStartedAt).getTime();
     const minutes = (ctx.now - startedAt) / 60_000;
-    const r = getRgSettings(ctx.userId);
+    const r = await getRgSettings(ctx.userId);
     const limitMin = r.realityCheckIntervalMin || DEFAULT_REALITY_CHECK_MIN;
     if (minutes > limitMin * 4) {
       return flag(
@@ -402,12 +402,12 @@ const DETECTORS: Detector[] = [
 /** Detect harm markers for a single user. Walks the DETECTORS list
  *  and collects flags — adding a new marker is one entry in the
  *  array above. */
-export function detectHarmMarkers(
+export async function detectHarmMarkers(
   userId: string,
   opts: { sessionStartedAt?: string } = {},
-): HarmFlag[] {
+) {
   const now = Date.now();
-  const txns = db.txn.findByUser(userId, 1_000) as StoredTxn[];
+  const txns = await db.txn.findByUser(userId, 1_000) as StoredTxn[];
   const ctx: DetectorContext = {
     userId,
     now,
@@ -417,7 +417,7 @@ export function detectHarmMarkers(
   };
   const flags: HarmFlag[] = [];
   for (const det of DETECTORS) {
-    const f = det(ctx);
+    const f = await det(ctx);
     if (f) flags.push(f);
   }
   return flags;
@@ -426,10 +426,10 @@ export function detectHarmMarkers(
 /**
  * Detect markers across ALL users — feeds /admin/compliance Player Safety panel.
  */
-export function detectHarmMarkersForAllUsers(): HarmFlag[] {
+export async function detectHarmMarkersForAllUsers() {
   const out: HarmFlag[] = [];
-  for (const u of db.user.list()) {
-    out.push(...detectHarmMarkers(u.id));
+  for (const u of await db.user.list()) {
+    out.push(...await detectHarmMarkers(u.id));
   }
   return out;
 }

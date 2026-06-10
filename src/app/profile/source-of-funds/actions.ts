@@ -40,7 +40,7 @@ export async function submitSourceOfFundsAction(formData: FormData) {
     reviewedAt: null,
     submittedAt: new Date().toISOString(),
   };
-  db.sourceOfFunds.upsert(record);
+  await db.sourceOfFunds.upsert(record);
 
   audit({
     category: "COMPLIANCE",

@@ -7,9 +7,9 @@ import { getAuditPage } from "@/lib/server/audit";
 export const metadata = { title: "Admin · Two-person approvals" };
 export const dynamic = "force-dynamic";
 
-export default function AdminApprovalsPage() {
-  const aml = db.txn.listByStatus("AML_REVIEW") as StoredTxn[];
-  const sof = db.sourceOfFunds.listPending() as StoredSourceOfFunds[];
+export default async function AdminApprovalsPage() {
+  const aml = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[];
+  const sof = (await db.sourceOfFunds.listPending()) as StoredSourceOfFunds[];
   const recent = getAuditPage({ category: "ADMIN", limit: 60 });
 
   return (

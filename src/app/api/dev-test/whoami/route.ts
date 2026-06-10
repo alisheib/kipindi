@@ -31,7 +31,7 @@ export async function GET() {
     });
   }
 
-  const user = db.user.findById(session.userId);
+  const user = await db.user.findById(session.userId);
   const phone = session.phoneE164;
   const isInBootstrapList = bootstrapList.includes(phone);
 

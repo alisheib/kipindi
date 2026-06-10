@@ -22,18 +22,18 @@ function periodToMs(p: Period): number {
   }
 }
 
-function txnsInPeriod(period: Period): StoredTxn[] {
+async function txnsInPeriod(period: Period) {
   const cutoff = Date.now() - periodToMs(period);
   // Single-pass over all transactions — O(T) instead of O(U × T/U).
-  return db.txn.listAll().filter((t) => new Date(t.createdAt).getTime() >= cutoff);
+  return (await db.txn.listAll()).filter((t) => new Date(t.createdAt).getTime() >= cutoff);
 }
 
 /**
  * GGR = sum of stakes placed (BET_PLACED). Excludes payouts. Standard regulator
  * definition: gross gaming revenue is everything wagered, before any winnings.
  */
-export function grossGamingRevenue(period: Period = "today"): number {
-  return txnsInPeriod(period)
+export async function grossGamingRevenue(period: Period = "today") {
+  return (await txnsInPeriod(period))
     .filter((t) => t.type === "BET_PLACED" && t.status === "CONFIRMED")
     .reduce((s, t) => s + Math.abs(t.amount), 0);
 }
@@ -41,33 +41,26 @@ export function grossGamingRevenue(period: Period = "today"): number {
 /**
  * NGR = GGR − payouts − cash-outs. The bottom-line operator income before tax + opex.
  */
-export function netGamingRevenue(period: Period = "today"): number {
-  const ts = txnsInPeriod(period);
+export async function netGamingRevenue(period: Period = "today") {
+  const ts = await txnsInPeriod(period);
   const stakes = ts.filter((t) => t.type === "BET_PLACED" && t.status === "CONFIRMED").reduce((s, t) => s + Math.abs(t.amount), 0);
   const payouts = ts.filter((t) => (t.type === "BET_PAYOUT" || t.type === "CASHOUT") && t.status === "CONFIRMED").reduce((s, t) => s + Math.abs(t.amount), 0);
   return stakes - payouts;
 }
 
-export function depositsTotal(period: Period = "today"): { amount: number; count: number } {
-  const ts = txnsInPeriod(period).filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED");
+export async function depositsTotal(period: Period = "today") {
+  const ts = (await txnsInPeriod(period)).filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED");
   return { amount: ts.reduce((s, t) => s + t.amount, 0), count: ts.length };
 }
 
-export function withdrawalsTotal(period: Period = "today"): { amount: number; count: number } {
-  const ts = txnsInPeriod(period).filter((t) => t.type === "WITHDRAWAL" && t.status === "CONFIRMED");
+export async function withdrawalsTotal(period: Period = "today") {
+  const ts = (await txnsInPeriod(period)).filter((t) => t.type === "WITHDRAWAL" && t.status === "CONFIRMED");
   return { amount: ts.reduce((s, t) => s + Math.abs(t.amount), 0), count: ts.length };
 }
 
 /** Per-provider deposit/withdrawal totals with fees + net. */
-export function providerSummary(period: Period = "today"): Array<{
-  provider: string;
-  deposits: number;
-  depositCount: number;
-  withdrawals: number;
-  withdrawalCount: number;
-  net: number;
-}> {
-  const ts = txnsInPeriod(period);
+export async function providerSummary(period: Period = "today") {
+  const ts = await txnsInPeriod(period);
   const map: Record<string, { deposits: number; depositCount: number; withdrawals: number; withdrawalCount: number }> = {};
   for (const t of ts) {
     const key = t.provider ?? "OTHER";
@@ -94,15 +87,15 @@ export function providerSummary(period: Period = "today"): Array<{
 }
 
 /** Active players in the period — anyone with at least one bet or deposit. */
-export function activePlayers(period: Period = "today"): number {
-  const ts = txnsInPeriod(period);
+export async function activePlayers(period: Period = "today") {
+  const ts = await txnsInPeriod(period);
   return new Set(ts.map((t) => t.userId)).size;
 }
 
 /** Sum of all wallet balances across all users. Single-pass over wallets. */
-export function walletLiabilityTotal(): number {
+export async function walletLiabilityTotal() {
   let total = 0;
-  for (const w of db.wallet.listAll()) {
+  for (const w of await db.wallet.listAll()) {
     if (w.status === "ACTIVE") total += w.balance;
   }
   return total;
@@ -112,19 +105,14 @@ export function walletLiabilityTotal(): number {
  * KYC funnel — count of users at each step.
  * registered → started → pending → approved.
  */
-export function kycFunnel(): {
-  registered: number;
-  started: number;
-  pending: number;
-  approved: number;
-} {
-  const users = db.user.list();
+export async function kycFunnel() {
+  const users = await db.user.list();
   const registered = users.length;
   let started = 0;
   let pending = 0;
   let approved = 0;
   for (const u of users) {
-    const k = db.kyc.findByUserId(u.id);
+    const k = await db.kyc.findByUserId(u.id);
     if (!k || k.status === "NOT_STARTED") continue;
     started++;
     if (k.status === "PENDING_REVIEW") pending++;
@@ -134,20 +122,15 @@ export function kycFunnel(): {
 }
 
 /** Self-exclusion + cooling-off counts (currently active). */
-export function rgRosterCounts(): {
-  selfExcluded: number;
-  cooledOff: number;
-  expiringThisWeek: number;
-  pendingLimitIncrease: number;
-} {
+export async function rgRosterCounts() {
   const now = Date.now();
   const oneWeek = now + 7 * 24 * 3600_000;
   let selfExcluded = 0;
   let cooledOff = 0;
   let expiringThisWeek = 0;
   let pendingLimitIncrease = 0;
-  for (const u of db.user.list()) {
-    const r = db.responsible.get(u.id);
+  for (const u of await db.user.list()) {
+    const r = await db.responsible.get(u.id);
     if (!r) continue;
     const sxAt = r.selfExclusionUntil ? new Date(r.selfExclusionUntil).getTime() : 0;
     const coAt = r.coolingOffUntil ? new Date(r.coolingOffUntil).getTime() : 0;
@@ -162,13 +145,8 @@ export function rgRosterCounts(): {
 }
 
 /** AML queue stats for the period. */
-export function amlStats(period: Period = "7d"): {
-  pending: number;
-  approved: number;
-  rejected: number;
-  avgTimeToDecisionMin: number;
-} {
-  const pending = db.txn.listByStatus("AML_REVIEW").length;
+export async function amlStats(period: Period = "7d") {
+  const pending = (await db.txn.listByStatus("AML_REVIEW")).length;
   // Approved = transactions that were AML_REVIEW then flipped to CONFIRMED via the
   // approve action. We don't track that directly in the txn record, so we count
   // ADMIN audit entries with action=aml.approved/rejected as a proxy.
@@ -183,8 +161,8 @@ export function amlStats(period: Period = "7d"): {
 }
 
 /** Active player counts grouped by wallet status — used by /admin/players summary chips. */
-export function userStatusCounts(): Record<StoredUser["status"], number> {
-  const all = db.user.list();
+export async function userStatusCounts() {
+  const all = await db.user.list();
   return all.reduce(
     (acc, u) => {
       acc[u.status] = (acc[u.status] ?? 0) + 1;
@@ -196,9 +174,9 @@ export function userStatusCounts(): Record<StoredUser["status"], number> {
 
 /** Top-N players by lifetime NGR contribution (anonymised id).
  *  Single-pass over all transactions, grouped by userId. */
-export function topNgrContributors(n = 10): Array<{ userId: string; lifetimeStakes: number; lifetimePayouts: number; ngr: number }> {
+export async function topNgrContributors(n = 10) {
   const map = new Map<string, { stakes: number; payouts: number }>();
-  for (const t of db.txn.listAll()) {
+  for (const t of await db.txn.listAll()) {
     if (t.status !== "CONFIRMED") continue;
     const isStake = t.type === "BET_PLACED";
     const isPayout = t.type === "BET_PAYOUT" || t.type === "CASHOUT";
@@ -216,8 +194,8 @@ export function topNgrContributors(n = 10): Array<{ userId: string; lifetimeStak
 }
 
 /** Sum of operator margin = NGR / (NGR + payouts). */
-export function operatorMarginPct(period: Period = "28d"): number {
-  const ts = txnsInPeriod(period);
+export async function operatorMarginPct(period: Period = "28d") {
+  const ts = await txnsInPeriod(period);
   const stakes = ts.filter((t) => t.type === "BET_PLACED" && t.status === "CONFIRMED").reduce((s, t) => s + Math.abs(t.amount), 0);
   const payouts = ts.filter((t) => (t.type === "BET_PAYOUT" || t.type === "CASHOUT") && t.status === "CONFIRMED").reduce((s, t) => s + Math.abs(t.amount), 0);
   if (stakes === 0) return 0;
@@ -225,8 +203,8 @@ export function operatorMarginPct(period: Period = "28d"): number {
 }
 
 /** Withdrawals over the AML threshold (1M TZS) — count + total. */
-export function amlThresholdBreaches(period: Period = "7d"): { count: number; total: number } {
-  const ts = txnsInPeriod(period).filter((t) => t.type === "WITHDRAWAL" && Math.abs(t.amount) >= 1_000_000);
+export async function amlThresholdBreaches(period: Period = "7d") {
+  const ts = (await txnsInPeriod(period)).filter((t) => t.type === "WITHDRAWAL" && Math.abs(t.amount) >= 1_000_000);
   return { count: ts.length, total: ts.reduce((s, t) => s + Math.abs(t.amount), 0) };
 }
 
@@ -235,11 +213,11 @@ export function amlThresholdBreaches(period: Period = "7d"): { count: number; to
  * the period. Each bucket has the net flow (deposits + bets stake) − (payouts +
  * cashouts + withdrawals). Useful for the money-flow area chart.
  */
-export function moneyFlowSeries(period: Period = "today", buckets = 24): Array<{ x: number; y: number; label: string }> {
+export async function moneyFlowSeries(period: Period = "today", buckets = 24) {
   const totalMs = periodToMs(period);
   const now = Date.now();
   const bucketMs = totalMs / buckets;
-  const ts = txnsInPeriod(period);
+  const ts = await txnsInPeriod(period);
   const out: Array<{ x: number; y: number; label: string }> = [];
   for (let i = 0; i < buckets; i++) {
     const bucketStart = now - totalMs + i * bucketMs;
@@ -268,11 +246,11 @@ export function moneyFlowSeries(period: Period = "today", buckets = 24): Array<{
 /**
  * Operator margin over time (per bucket). Margin = stakes / (stakes + payouts) × 100.
  */
-export function marginSeries(period: Period = "28d", buckets = 28): Array<{ x: number; y: number; label: string }> {
+export async function marginSeries(period: Period = "28d", buckets = 28) {
   const totalMs = periodToMs(period);
   const now = Date.now();
   const bucketMs = totalMs / buckets;
-  const ts = txnsInPeriod(period);
+  const ts = await txnsInPeriod(period);
   const out: Array<{ x: number; y: number; label: string }> = [];
   for (let i = 0; i < buckets; i++) {
     const bucketStart = now - totalMs + i * bucketMs;
@@ -294,11 +272,11 @@ export function marginSeries(period: Period = "28d", buckets = 28): Array<{ x: n
 }
 
 /** Per-day provider deposit volume — for the stacked-bar provider chart. */
-export function providerStackedSeries(period: Period = "28d", buckets = 14): Array<{ label: string; segments: number[] }> {
+export async function providerStackedSeries(period: Period = "28d", buckets = 14) {
   const totalMs = periodToMs(period);
   const now = Date.now();
   const bucketMs = totalMs / buckets;
-  const ts = txnsInPeriod(period).filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED");
+  const ts = (await txnsInPeriod(period)).filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED");
   // Discover provider order
   const providers = Array.from(new Set(ts.map((t) => t.provider ?? "OTHER"))).slice(0, 5);
   const out: Array<{ label: string; segments: number[] }> = [];
@@ -318,8 +296,8 @@ export function providerStackedSeries(period: Period = "28d", buckets = 14): Arr
   return out;
 }
 
-export function listProvidersInPeriod(period: Period = "28d"): string[] {
-  return Array.from(new Set(txnsInPeriod(period).map((t) => t.provider ?? "OTHER").filter((p) => p !== "INTERNAL"))).slice(0, 5);
+export async function listProvidersInPeriod(period: Period = "28d") {
+  return Array.from(new Set((await txnsInPeriod(period)).map((t) => t.provider ?? "OTHER").filter((p) => p !== "INTERNAL"))).slice(0, 5);
 }
 
 /**
@@ -347,7 +325,7 @@ export type SuspiciousFlag = {
 };
 
 /** Single-pass suspicious-bet detection — groups by userId first, then analyses. */
-export function detectSuspiciousBets(opts: { multiple?: number; velocityThreshold?: number } = {}): SuspiciousFlag[] {
+export async function detectSuspiciousBets(opts: { multiple?: number; velocityThreshold?: number } = {}) {
   const multiple = opts.multiple ?? 10;
   const velocityThreshold = opts.velocityThreshold ?? 100;
   const now = Date.now();
@@ -356,7 +334,7 @@ export function detectSuspiciousBets(opts: { multiple?: number; velocityThreshol
 
   // Single-pass: group confirmed BET_PLACED txns by userId.
   const byUser = new Map<string, StoredTxn[]>();
-  for (const t of db.txn.listAll()) {
+  for (const t of await db.txn.listAll()) {
     if (t.type !== "BET_PLACED" || t.status !== "CONFIRMED") continue;
     const arr = byUser.get(t.userId) ?? [];
     arr.push(t);

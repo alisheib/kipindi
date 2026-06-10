@@ -187,14 +187,14 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
   const rl = rateCheck(userId, "bet.place");
   if (!rl.allowed) return { ok: false, error: "Slow down.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
 
-  const lockout = isLockedOut(userId);
+  const lockout = await isLockedOut(userId);
   if (lockout.locked) return { ok: false, error: `Locked until ${new Date(lockout.until!).toLocaleString("en-GB")}.`, code: "SUSPENDED" };
 
   // Account-level status check — a suspended or closed user must not
   // be able to place bets even if their wallet is still nominally
   // ACTIVE. This is the "ban hammer" path the admin operator uses
   // when a player is under investigation or has been removed.
-  const u = db.user.findById(userId);
+  const u = await db.user.findById(userId);
   if (!u) return { ok: false, error: "Account not found.", code: "NOT_FOUND" };
   if (u.status === "SUSPENDED" || u.status === "CLOSED") {
     audit({
@@ -221,12 +221,12 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
   if (Date.parse(market.resolutionAt) <= Date.now()) return { ok: false, error: "Market has closed.", code: "INVALID" };
 
   return withLock(`wallet:${userId}`, async () => {
-    const wallet = db.wallet.findByUserId(userId);
+    const wallet = await db.wallet.findByUserId(userId);
     if (!wallet || wallet.status !== "ACTIVE") return { ok: false as const, error: "Wallet unavailable.", code: "NOT_FOUND" as const };
     if (wallet.balance < opts.stake) return { ok: false as const, error: "Not enough balance.", code: "INVALID" as const };
 
     const newBalance = wallet.balance - opts.stake;
-    db.wallet.update(wallet.id, { balance: newBalance });
+    await db.wallet.update(wallet.id, { balance: newBalance });
 
     const payoutIfWin = projectedPayout(market, opts.side, opts.stake);
     const positionId = `pos_${randomId(10)}`;
@@ -255,7 +255,7 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
     // Snapshot the new pool for the per-market history chart.
     recordSnapshot(market.id, market.yesPool, market.noPool);
 
-    db.txn.create({
+    await db.txn.create({
       id: `txn_${randomId(12)}`,
       walletId: wallet.id, userId,
       type: "BET_PLACED", status: "CONFIRMED",
@@ -290,7 +290,7 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
     // basis is the operator's commission on the stake; the referral cut is a
     // configured share of that. Best-effort; never blocks the bet.
     try {
-      onRecruitBet(userId, { stake: opts.stake, operatorCommissionRate: stakeCfg.commissionRate });
+      await onRecruitBet(userId, { stake: opts.stake, operatorCommissionRate: stakeCfg.commissionRate });
     } catch (err) {
       audit({ category: "SYSTEM", action: "affiliate.accrual_error", actorId: userId, targetType: "Position", targetId: positionId, payload: { error: String(err) } });
     }
@@ -385,7 +385,7 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
     const winningPool = outcome === "YES" ? m.yesPool : m.noPool;
     const myPositions = listPositionsForMarket(m.id);
     for (const p of myPositions) {
-      const w = db.wallet.findByUserId(p.userId);
+      const w = await db.wallet.findByUserId(p.userId);
       if (!w) continue;
       if (p.side === outcome) {
         const payout = settledPayoutWhole(
@@ -393,10 +393,10 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
           settleCfg,
         );
         const newBal = w.balance + payout;
-        db.wallet.update(w.id, { balance: newBal });
+        await db.wallet.update(w.id, { balance: newBal });
         p.status = "WIN"; p.finalPayout = payout; p.settledAt = m.resolutionStage2At!;
         positions.set(p.id, p);
-        db.txn.create({
+        await db.txn.create({
           id: `txn_${randomId(12)}`,
           walletId: w.id, userId: p.userId,
           type: "BET_PAYOUT", status: "CONFIRMED",
@@ -459,15 +459,15 @@ export async function repairOrphanedPositions(): Promise<{ repaired: number; ref
     if (p.status !== "OPEN") continue;
     if (markets.has(p.marketId)) continue; // market still exists → nothing to repair
     // Orphaned — refund the stake to the wallet, mark VOID, audit.
-    const w = db.wallet.findByUserId(p.userId);
+    const w = await db.wallet.findByUserId(p.userId);
     if (!w) continue;
     const newBal = w.balance + p.stake;
-    db.wallet.update(w.id, { balance: newBal });
+    await db.wallet.update(w.id, { balance: newBal });
     p.status = "VOID";
     p.finalPayout = p.stake;
     p.settledAt = new Date().toISOString();
     positions.set(p.id, p);
-    db.txn.create({
+    await db.txn.create({
       id: `txn_${randomId(12)}`,
       walletId: w.id, userId: p.userId,
       type: "BET_REFUND", status: "CONFIRMED",
@@ -549,7 +549,7 @@ export async function cashOutPosition(
     if (!m) return { ok: false as const, error: "Market not found.", code: "NOT_FOUND" as const };
     if (m.status !== "LIVE") return { ok: false as const, error: "Cash-out only available while the market is LIVE.", code: "INVALID" as const };
 
-    const wallet = db.wallet.findByUserId(userId);
+    const wallet = await db.wallet.findByUserId(userId);
     if (!wallet) return { ok: false as const, error: "Wallet not found.", code: "NOT_FOUND" as const };
 
     const { value, gross } = cashOutValue(p, m);
@@ -593,8 +593,8 @@ export async function cashOutPosition(
 
     // Credit wallet + record the txn.
     const newBalance = wallet.balance + value;
-    db.wallet.update(wallet.id, { balance: newBalance });
-    db.txn.create({
+    await db.wallet.update(wallet.id, { balance: newBalance });
+    await db.txn.create({
       id: `txn_${randomId(12)}`,
       walletId: wallet.id, userId,
       type: "CASHOUT",
@@ -689,15 +689,15 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   if (opts.outcome === "VOID") {
     // Refund everyone
     for (const p of myPositions) {
-      const w = db.wallet.findByUserId(p.userId);
+      const w = await db.wallet.findByUserId(p.userId);
       if (!w) continue;
-      const updated = db.wallet.update(w.id, { balance: w.balance + p.stake });
+      const updated = await db.wallet.update(w.id, { balance: w.balance + p.stake });
       const balanceAfter = updated?.balance ?? w.balance + p.stake;
       p.status = "VOID";
       p.finalPayout = p.stake;
       p.settledAt = m.resolutionStage2At!;
       positions.set(p.id, p);
-      db.txn.create({
+      await db.txn.create({
         id: `txn_${randomId(12)}`,
         walletId: w.id, userId: p.userId,
         type: "BET_REFUND", status: "CONFIRMED",
@@ -716,18 +716,18 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
     //   netPool = grossPool × (1 - totalFee)
     //   payout  = (stake / winningSidePool) × netPool
     for (const p of myPositions) {
-      const w = db.wallet.findByUserId(p.userId);
+      const w = await db.wallet.findByUserId(p.userId);
       if (!w) continue;
       if (p.side === opts.outcome) {
         const payout = settledPayoutWhole(
           { yesPool: m.yesPool, noPool: m.noPool, side: p.side, stake: p.stake },
           settleCfg,
         );
-        const updated = db.wallet.update(w.id, { balance: w.balance + payout });
+        const updated = await db.wallet.update(w.id, { balance: w.balance + payout });
         const balanceAfter = updated?.balance ?? w.balance + payout;
         p.status = "WIN"; p.finalPayout = payout; p.settledAt = m.resolutionStage2At!;
         positions.set(p.id, p);
-        db.txn.create({
+        await db.txn.create({
           id: `txn_${randomId(12)}`,
           walletId: w.id, userId: p.userId,
           type: "BET_PAYOUT", status: "CONFIRMED",

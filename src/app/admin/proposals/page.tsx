@@ -10,10 +10,10 @@ export const dynamic = "force-dynamic";
  * the route (ADMIN / COMPLIANCE / MODERATOR + TOTP); each action re-checks
  * the role server-side. Votes only rank the queue — the officer decides.
  */
-export default function AdminProposalsPage() {
+export default async function AdminProposalsPage() {
   const config = getProposalsConfig();
-  const stats = getAdminProposalStats();
-  const queue = getAdminQueue("all");
+  const stats = await getAdminProposalStats();
+  const queue = await getAdminQueue("all");
   return (
     <div className="px-4 lg:px-6 py-6">
       <AdminProposalsClient config={config} stats={stats} queue={queue} />

@@ -22,10 +22,10 @@ import { ensureAffiliateAccount, bindRecruit, onRecruitBet, onRecruitDeposit } f
 const OFFICER = "system_stress";
 const COMMISSION_CAP = 5_000;
 
-function mkUser(balance = 0): StoredUser {
+async function mkUser(balance = 0) {
   const id = `usr_${randomId(12)}`;
   const now = new Date().toISOString();
-  const u = db.user.create({
+  const u = await db.user.create({
     id, phoneE164: `+25572${Math.floor(Math.random() * 9_000_000 + 1_000_000)}`,
     passwordHash: "x", passwordSalt: "x", failedLoginCount: 0, lockedUntil: null,
     role: "PLAYER", status: "ACTIVE", locale: "SW", displayName: null, dob: "1995-01-01",
@@ -33,7 +33,7 @@ function mkUser(balance = 0): StoredUser {
     twoFactorEnabled: false, avatarDataUrl: null, createdAt: now, updatedAt: now,
     lastLoginAt: now, closedAt: null, recruitedBy: null,
   });
-  db.wallet.create({ id: `wlt_${randomId(12)}`, userId: id, balance, pending: 0, hold: 0, currency: "TZS", status: "ACTIVE", createdAt: now, updatedAt: now });
+  await db.wallet.create({ id: `wlt_${randomId(12)}`, userId: id, balance, pending: 0, hold: 0, currency: "TZS", status: "ACTIVE", createdAt: now, updatedAt: now });
   return u;
 }
 
@@ -71,14 +71,14 @@ export async function POST(req: NextRequest) {
     // Build the graph: R referrers, each with N recruits.
     const binds: number[] = [];
     for (let r = 0; r < R; r++) {
-      const ref = mkUser();
+      const ref = await mkUser();
       referrerIds.push(ref.id);
-      const acct = ensureAffiliateAccount(ref.id);
+      const acct = await ensureAffiliateAccount(ref.id);
       let bound = 0;
       for (let n = 0; n < N; n++) {
-        const rec = mkUser();
+        const rec = await mkUser();
         recruitIds.push(rec.id);
-        const res = bindRecruit({ recruitUserId: rec.id, code: acct.code });
+        const res = await bindRecruit({ recruitUserId: rec.id, code: acct.code });
         if (res.bound) bound++;
         // A single recruit's deposits + bets — in production these are
         // serialized by the recruit's wallet lock (withLock in buyPosition),
@@ -86,8 +86,8 @@ export async function POST(req: NextRequest) {
         // ledger. We model that here (sequential per recruit) and stress
         // CROSS-recruit concurrency separately below.
         for (let e = 0; e < E; e++) {
-          onRecruitDeposit(rec.id, { cumulativeDepositsTzs: 10_000 * (e + 1) });
-          onRecruitBet(rec.id, { stake: 50_000, operatorCommissionRate: 0.03 });
+          await onRecruitDeposit(rec.id, { cumulativeDepositsTzs: 10_000 * (e + 1) });
+          await onRecruitBet(rec.id, { stake: 50_000, operatorCommissionRate: 0.03 });
           eventCount += 2;
         }
       }
@@ -102,12 +102,12 @@ export async function POST(req: NextRequest) {
     let walletDeltaTotal = 0;
     let anyNaN = false, anyNegative = false;
     for (const uid of userSet) {
-      const bal = db.wallet.findByUserId(uid)?.balance ?? 0;
+      const bal = (await db.wallet.findByUserId(uid))?.balance ?? 0;
       if (Number.isNaN(bal)) anyNaN = true;
       if (bal < 0) anyNegative = true;
       walletDeltaTotal += bal; // all started at 0
     }
-    const runRewards = db.referralReward.list(1_000_000).filter((r) => userSet.has(r.recipientUserId) && r.status === "PAID");
+    const runRewards = (await db.referralReward.list(1_000_000)).filter((r) => userSet.has(r.recipientUserId) && r.status === "PAID");
     const paidTotal = runRewards.reduce((s, r) => s + r.amountTzs, 0);
     ok("money conservation: Σ wallet deltas == Σ PAID rewards", walletDeltaTotal === paidTotal, `wallets=${walletDeltaTotal} rewards=${paidTotal}`);
     ok("no NaN balances", !anyNaN);
@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
     // ── Invariant 2: commission cap per recruit ──────────────────────
     let capBreaches = 0, maxCommissionPerRecruit = 0;
     for (const rec of recruitIds) {
-      const comm = db.referralReward.listByRecruit(rec).filter((r) => r.type === "COMMISSION").reduce((s, r) => s + r.amountTzs, 0);
+      const comm = (await db.referralReward.listByRecruit(rec)).filter((r) => r.type === "COMMISSION").reduce((s, r) => s + r.amountTzs, 0);
       maxCommissionPerRecruit = Math.max(maxCommissionPerRecruit, comm);
       if (comm > COMMISSION_CAP) capBreaches++;
     }
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
     // ── Invariant 3 + 4: bonus/prize idempotency under burst ─────────
     let bonusOver = 0, prizeOver = 0;
     for (const rec of recruitIds) {
-      const rewards = db.referralReward.listByRecruit(rec);
+      const rewards = await db.referralReward.listByRecruit(rec);
       const bonusRows = rewards.filter((r) => r.type === "BONUS").length;       // BOTH → up to 2 (new + referrer)
       const prizeRows = rewards.filter((r) => r.type === "PRIZE").length;       // up to 1
       if (bonusRows > 2) bonusOver++;
@@ -137,8 +137,8 @@ export async function POST(req: NextRequest) {
     // ── Invariant 5: recruitCount denormaliser ───────────────────────
     let countMismatch = 0;
     for (let i = 0; i < referrerIds.length; i++) {
-      const acct = db.affiliate.findByUserId(referrerIds[i]);
-      const actual = db.user.list().filter((u) => u.recruitedBy === referrerIds[i]).length;
+      const acct = await db.affiliate.findByUserId(referrerIds[i]);
+      const actual = (await db.user.list()).filter((u) => u.recruitedBy === referrerIds[i]).length;
       if (!acct || acct.recruitCount !== actual || actual !== binds[i]) countMismatch++;
     }
     ok("recruitCount matches actual binds for every referrer", countMismatch === 0, `mismatches=${countMismatch}`);
@@ -146,8 +146,8 @@ export async function POST(req: NextRequest) {
     // ── Invariant 6: totalEarned denormaliser == ledger ──────────────
     let earnedMismatch = 0;
     for (const ref of referrerIds) {
-      const acct = db.affiliate.findByUserId(ref);
-      const ledger = db.referralReward.listByReferrer(ref).filter((r) => r.recipientUserId === ref && r.status === "PAID").reduce((s, r) => s + r.amountTzs, 0);
+      const acct = await db.affiliate.findByUserId(ref);
+      const ledger = (await db.referralReward.listByReferrer(ref)).filter((r) => r.recipientUserId === ref && r.status === "PAID").reduce((s, r) => s + r.amountTzs, 0);
       if (!acct || acct.totalEarnedTzs !== ledger) earnedMismatch++;
     }
     ok("totalEarned denormaliser matches ledger for every referrer", earnedMismatch === 0, `mismatches=${earnedMismatch}`);
@@ -156,20 +156,20 @@ export async function POST(req: NextRequest) {
     //    once (interleaved microtasks). Tests the referrer wallet +
     //    totalEarned read-modify-write for lost updates. ───────────────
     {
-      const cref = mkUser();
-      const cacct = ensureAffiliateAccount(cref.id);
+      const cref = await mkUser();
+      const cacct = await ensureAffiliateAccount(cref.id);
       const crecs: string[] = [];
       for (let i = 0; i < 150; i++) {
-        const r = mkUser();
+        const r = await mkUser();
         crecs.push(r.id);
-        bindRecruit({ recruitUserId: r.id, code: cacct.code });
+        await bindRecruit({ recruitUserId: r.id, code: cacct.code });
       }
-      const before = db.wallet.findByUserId(cref.id)?.balance ?? 0;
-      const earnedBefore = db.affiliate.findByUserId(cref.id)?.totalEarnedTzs ?? 0;
+      const before = (await db.wallet.findByUserId(cref.id))?.balance ?? 0;
+      const earnedBefore = (await db.affiliate.findByUserId(cref.id))?.totalEarnedTzs ?? 0;
       // Each recruit's FIRST bet → commission 750 + first-bet prize 5000 = 5750.
       await Promise.all(crecs.map((rid) => Promise.resolve().then(() => onRecruitBet(rid, { stake: 50_000, operatorCommissionRate: 0.03 }))));
-      const after = db.wallet.findByUserId(cref.id)?.balance ?? 0;
-      const earnedAfter = db.affiliate.findByUserId(cref.id)?.totalEarnedTzs ?? 0;
+      const after = (await db.wallet.findByUserId(cref.id))?.balance ?? 0;
+      const earnedAfter = (await db.affiliate.findByUserId(cref.id))?.totalEarnedTzs ?? 0;
       const expected = crecs.length * (750 + 5_000);
       ok("concurrent credits to one referrer: no lost wallet updates", after - before === expected, `Δwallet=${after - before} expected=${expected}`);
       ok("concurrent credits to one referrer: totalEarned consistent", earnedAfter - earnedBefore === expected, `Δearned=${earnedAfter - earnedBefore} expected=${expected}`);

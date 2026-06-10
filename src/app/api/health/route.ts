@@ -17,7 +17,7 @@ const BOOT_AT = Date.now();
 
 export async function GET() {
   const uptimeSec = Math.floor((Date.now() - BOOT_AT) / 1000);
-  const userCount = db.user.list().length;
+  const userCount = (await db.user.list()).length;
   const auditCount = auditRingSize();
   const smsHealth = smsHealthSnapshot();
   const liveMarkets = listMarkets({ status: "LIVE" }).length;

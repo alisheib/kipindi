@@ -34,7 +34,7 @@ export async function updateProfileBasicsAction(formData: FormData): Promise<{ o
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
-  const next = db.user.update(session.userId, {
+  const next = await db.user.update(session.userId, {
     displayName: parsed.data.displayName,
     ...(parsed.data.locale ? { locale: parsed.data.locale } : {}),
   });
@@ -61,7 +61,7 @@ export async function updateAvatarAction(formData: FormData): Promise<{ ok: true
 
   // Empty string → clear avatar.
   if (raw === "") {
-    db.user.update(session.userId, { avatarDataUrl: null });
+    await db.user.update(session.userId, { avatarDataUrl: null });
     audit({
       category: "COMPLIANCE",
       action: "user.avatar.cleared",
@@ -82,7 +82,7 @@ export async function updateAvatarAction(formData: FormData): Promise<{ ok: true
     return { ok: false, error: "Image is too large after compression. Try a smaller picture." };
   }
 
-  db.user.update(session.userId, { avatarDataUrl: raw });
+  await db.user.update(session.userId, { avatarDataUrl: raw });
   audit({
     category: "COMPLIANCE",
     action: "user.avatar.updated",

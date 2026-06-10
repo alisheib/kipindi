@@ -22,11 +22,11 @@ type MatchStub = {
 export const metadata = { title: "Admin · Live ops" };
 export const dynamic = "force-dynamic";
 
-export default function AdminLivePage() {
+export default async function AdminLivePage() {
   const liveMatches = (matches as MatchStub[]).filter((m) => m.status === "live");
-  const ggr = grossGamingRevenue("today");
-  const active = activePlayers("today");
-  const flow = moneyFlowSeries("today", 24);
+  const ggr = await grossGamingRevenue("today");
+  const active = await activePlayers("today");
+  const flow = await moneyFlowSeries("today", 24);
 
   // Recent BET events
   const betEvents = getAuditPage({ category: "BET", limit: 30 });

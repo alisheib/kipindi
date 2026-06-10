@@ -57,9 +57,8 @@ export type CreateProposalInput = {
   resolutionDate: string; // YYYY-MM-DD
 };
 
-export function createProposal(userId: string, input: CreateProposalInput):
-  | { ok: true; proposal: StoredProposal }
-  | { ok: false; error: string; code: "PAUSED" | "RATE_LIMITED" | "INVALID" } {
+export async function createProposal(userId: string, input: CreateProposalInput):
+  Promise<{ ok: true; proposal: StoredProposal } | { ok: false; error: string; code: "PAUSED" | "RATE_LIMITED" | "INVALID" }> {
   const cfg = getProposalsConfig();
   if (!cfg.enabled) return { ok: false, error: "Proposals are paused right now.", code: "PAUSED" };
 
@@ -75,13 +74,13 @@ export function createProposal(userId: string, input: CreateProposalInput):
   if (!PROPOSAL_CATEGORIES.includes(input.category)) return { ok: false, error: "Pick a valid category.", code: "INVALID" };
 
   // Rate limit — max simultaneously-open proposals per player.
-  const open = db.proposal.listByProposer(userId).filter((p) => OPEN_STATES.includes(p.status)).length;
+  const open = (await db.proposal.listByProposer(userId)).filter((p) => OPEN_STATES.includes(p.status)).length;
   if (open >= cfg.rateLimit) {
     return { ok: false, error: `You can have at most ${cfg.rateLimit} open proposals at a time.`, code: "RATE_LIMITED" };
   }
 
   const now = new Date().toISOString();
-  const proposal = db.proposal.create({
+  const proposal = await db.proposal.create({
     id: `prp_${randomId(12)}`,
     proposerId: userId,
     titleEn,
@@ -119,7 +118,7 @@ export async function castVote(userId: string, proposalId: string, dir: "up" | "
   // Serialize per-proposal so concurrent voters can't interleave the
   // record-then-recount and lose a tally.
   return withLock(`proposal:${proposalId}`, async () => {
-    const p = db.proposal.findById(proposalId);
+    const p = await db.proposal.findById(proposalId);
     if (!p) return { ok: false as const, error: "Proposal not found." };
     if (!OPEN_STATES.includes(p.status)) return { ok: false as const, error: "Voting has closed for this proposal." };
 
@@ -128,7 +127,7 @@ export async function castVote(userId: string, proposalId: string, dir: "up" | "
     // serialises every read-modify-write, so counts can't drift or race. (The
     // old "recompute from a full scan" approach was O(votes) per vote → O(N²)
     // on a hot poll; this keeps a 100k-click poll O(N) total.)
-    const existing = db.proposalVote.get(proposalId, userId); // O(1) keyed lookup
+    const existing = await db.proposalVote.get(proposalId, userId); // O(1) keyed lookup
     let up = p.up;
     let down = p.down;
     if (existing?.dir === "up") up--;
@@ -139,7 +138,7 @@ export async function castVote(userId: string, proposalId: string, dir: "up" | "
     down = Math.max(0, down);
 
     if (dir === null) {
-      db.proposalVote.delete(proposalId, userId);
+      await db.proposalVote.delete(proposalId, userId);
     } else {
       const v: StoredProposalVote = {
         id: `${proposalId}:${userId}`,
@@ -148,10 +147,10 @@ export async function castVote(userId: string, proposalId: string, dir: "up" | "
         dir,
         createdAt: new Date().toISOString(),
       };
-      db.proposalVote.set(v);
+      await db.proposalVote.set(v);
     }
 
-    db.proposal.update(proposalId, { up, down });
+    await db.proposal.update(proposalId, { up, down });
     return { ok: true as const, up, down, myVote: dir };
   });
 }
@@ -182,10 +181,10 @@ export type ProposalView = {
   createdAt: string;
 };
 
-function toView(p: StoredProposal, viewerId: string | null): ProposalView {
+async function toView(p: StoredProposal, viewerId: string | null) {
   const cfg = getProposalsConfig();
   const score = p.up - p.down;
-  const proposer = db.user.findById(p.proposerId);
+  const proposer = await db.user.findById(p.proposerId);
   return {
     id: p.id,
     titleEn: p.titleEn,
@@ -201,7 +200,7 @@ function toView(p: StoredProposal, viewerId: string | null): ProposalView {
     score,
     proposerMasked: viewerId && p.proposerId === viewerId ? "You · Wewe" : maskName(proposer?.displayName ?? null, proposer?.phoneE164 ?? ""),
     isMine: !!viewerId && p.proposerId === viewerId,
-    myVote: viewerId ? (db.proposalVote.get(p.id, viewerId)?.dir ?? null) : null,
+    myVote: viewerId ? ((await db.proposalVote.get(p.id, viewerId))?.dir ?? null) : null,
     publishedMarketId: p.publishedMarketId,
     prizePaidTzs: p.prizePaidTzs,
     declineReason: p.declineReason,
@@ -215,11 +214,11 @@ function toView(p: StoredProposal, viewerId: string | null): ProposalView {
  *  archive. Totals (for the stats strip) still reflect every proposal. */
 const BOARD_PAGE_SIZE = 60;
 
-export function listBoard(viewerId: string | null, filter: BoardFilter = "hot"): { proposals: ProposalView[]; totalProposals: number; totalVotes: number; enabled: boolean } {
+export async function listBoard(viewerId: string | null, filter: BoardFilter = "hot") {
   const cfg = getProposalsConfig();
-  const all = db.proposal.list(5000);
+  const all = await db.proposal.list(5000);
   const totalVotes = all.reduce((s, p) => s + p.up + p.down, 0);
-  let views = all.map((p) => toView(p, viewerId));
+  let views = await Promise.all(all.map((p) => toView(p, viewerId)));
   if (filter === "hot") views = views.filter((v) => v.isHot).sort((a, b) => b.score - a.score);
   else if (filter === "listed") views = views.filter((v) => v.status === "LISTED" || v.status === "RESOLVED");
   else if (filter === "mine") views = views.filter((v) => v.isMine);
@@ -227,8 +226,8 @@ export function listBoard(viewerId: string | null, filter: BoardFilter = "hot"):
   return { proposals: views.slice(0, BOARD_PAGE_SIZE), totalProposals: all.length, totalVotes, enabled: cfg.enabled };
 }
 
-export function getProposalDetail(id: string, viewerId: string | null): ProposalView | null {
-  const p = db.proposal.findById(id);
+export async function getProposalDetail(id: string, viewerId: string | null) {
+  const p = await db.proposal.findById(id);
   return p ? toView(p, viewerId) : null;
 }
 
@@ -242,7 +241,7 @@ export function timelineStep(v: ProposalView): number {
 // ── Officer actions ─────────────────────────────────────────────────────
 export async function approveAndList(proposalId: string, officerId: string):
   | Promise<{ ok: true; marketId: string } | { ok: false; error: string }> {
-  const p = db.proposal.findById(proposalId);
+  const p = await db.proposal.findById(proposalId);
   if (!p) return { ok: false, error: "Proposal not found." };
   if (p.status === "LISTED" || p.status === "RESOLVED") return { ok: false, error: "Already listed." };
   if (p.status === "DECLINED") return { ok: false, error: "Proposal was declined." };
@@ -258,28 +257,28 @@ export async function approveAndList(proposalId: string, officerId: string):
     resolutionAt: new Date(`${p.resolutionDate}T23:59:59.000Z`).toISOString(),
     proposedBy: p.proposerId,
   });
-  db.proposal.update(proposalId, { status: "LISTED", publishedMarketId: market.id, reviewedBy: officerId, reviewedAt: new Date().toISOString() });
+  await db.proposal.update(proposalId, { status: "LISTED", publishedMarketId: market.id, reviewedBy: officerId, reviewedAt: new Date().toISOString() });
   audit({ category: "ADMIN", action: "proposal.approved_listed", actorId: officerId, targetType: "Proposal", targetId: proposalId, payload: { marketId: market.id } });
   notifyProposalListed(p.proposerId, { titleEn: p.titleEn, marketId: market.id });
   return { ok: true, marketId: market.id };
 }
 
-export function requestChanges(proposalId: string, officerId: string, note: string): { ok: true } | { ok: false; error: string } {
-  const p = db.proposal.findById(proposalId);
+export async function requestChanges(proposalId: string, officerId: string, note: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const p = await db.proposal.findById(proposalId);
   if (!p) return { ok: false, error: "Proposal not found." };
   if (!OPEN_STATES.includes(p.status)) return { ok: false, error: "Only open proposals can be sent back." };
-  db.proposal.update(proposalId, { status: "CHANGES_REQUESTED", changeNote: note?.trim() || null, reviewedBy: officerId, reviewedAt: new Date().toISOString() });
+  await db.proposal.update(proposalId, { status: "CHANGES_REQUESTED", changeNote: note?.trim() || null, reviewedBy: officerId, reviewedAt: new Date().toISOString() });
   audit({ category: "ADMIN", action: "proposal.changes_requested", actorId: officerId, targetType: "Proposal", targetId: proposalId, payload: { note } });
   notifyProposalChanges(p.proposerId, { titleEn: p.titleEn, note: note?.trim() || null });
   return { ok: true };
 }
 
-export function declineProposal(proposalId: string, officerId: string, reason: DeclineReason, note?: string): { ok: true } | { ok: false; error: string } {
-  const p = db.proposal.findById(proposalId);
+export async function declineProposal(proposalId: string, officerId: string, reason: DeclineReason, note?: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const p = await db.proposal.findById(proposalId);
   if (!p) return { ok: false, error: "Proposal not found." };
   if (p.status === "LISTED" || p.status === "RESOLVED") return { ok: false, error: "Listed proposals can't be declined." };
   if (!DECLINE_REASONS.includes(reason)) return { ok: false, error: "Pick a valid decline reason." };
-  db.proposal.update(proposalId, { status: "DECLINED", declineReason: reason, declineNote: note?.trim() || null, reviewedBy: officerId, reviewedAt: new Date().toISOString() });
+  await db.proposal.update(proposalId, { status: "DECLINED", declineReason: reason, declineNote: note?.trim() || null, reviewedBy: officerId, reviewedAt: new Date().toISOString() });
   audit({ category: "ADMIN", action: "proposal.declined", actorId: officerId, targetType: "Proposal", targetId: proposalId, payload: { reason, note } });
   notifyProposalDeclined(p.proposerId, { titleEn: p.titleEn, reason });
   return { ok: true };
@@ -291,14 +290,14 @@ export function declineProposal(proposalId: string, officerId: string, reason: D
  * Idempotent; skips VOID outcomes and zero-prize config.
  */
 export async function onMarketResolved(marketId: string, opts: { voided: boolean }): Promise<void> {
-  const p = db.proposal.findByMarketId(marketId);
+  const p = await db.proposal.findByMarketId(marketId);
   if (!p) return;
   if (p.status === "RESOLVED" || p.prizePaidTzs > 0) return; // already settled
   if (p.status !== "LISTED") return;
   // Mark resolved regardless; pay only on a real outcome with a positive prize.
   const cfg = getProposalsConfig();
   if (opts.voided) {
-    db.proposal.update(p.id, { status: "RESOLVED" });
+    await db.proposal.update(p.id, { status: "RESOLVED" });
     return;
   }
   const prize = cfg.prizeTzs;
@@ -308,15 +307,15 @@ export async function onMarketResolved(marketId: string, opts: { voided: boolean
     // officer can settle manually — never claim a payout that didn't move.
     const credited = (await creditInternal(p.proposerId, prize, { description: `Proposal prize · "${p.titleEn.slice(0, 50)}"` })) !== null;
     if (credited) {
-      db.proposal.update(p.id, { status: "RESOLVED", prizePaidTzs: prize });
+      await db.proposal.update(p.id, { status: "RESOLVED", prizePaidTzs: prize });
       audit({ category: "WALLET", action: "proposal.prize_paid", actorId: null, targetType: "Proposal", targetId: p.id, payload: { proposerId: p.proposerId, prize, marketId } });
       notifyProposalResolvedPaid(p.proposerId, { titleEn: p.titleEn, amountTzs: prize });
     } else {
-      db.proposal.update(p.id, { status: "RESOLVED" });
+      await db.proposal.update(p.id, { status: "RESOLVED" });
       audit({ category: "WALLET", action: "proposal.prize_failed", actorId: null, targetType: "Proposal", targetId: p.id, payload: { proposerId: p.proposerId, prize, marketId, reason: "wallet credit failed" } });
     }
   } else {
-    db.proposal.update(p.id, { status: "RESOLVED" });
+    await db.proposal.update(p.id, { status: "RESOLVED" });
   }
 }
 
@@ -328,15 +327,15 @@ export type AdminProposalStats = {
   topProposer: { handle: string; listed: number } | null;
 };
 
-function handleFor(userId: string): string {
-  const u = db.user.findById(userId);
+async function handleFor(userId: string) {
+  const u = await db.user.findById(userId);
   if (!u) return "@unknown";
   if (u.displayName) return "@" + u.displayName.trim().toLowerCase().replace(/\s+/g, "_").slice(0, 18);
   return "@" + u.phoneE164.replace(/\D/g, "").slice(-6);
 }
 
-export function getAdminProposalStats(): AdminProposalStats {
-  const all = db.proposal.list(5000);
+export async function getAdminProposalStats() {
+  const all = await db.proposal.list(5000);
   const pending = all.filter((p) => OPEN_STATES.includes(p.status)).length;
   const listed = all.filter((p) => p.status === "LISTED" || p.status === "RESOLVED");
   const prizesPaidTzs = all.reduce((s, p) => s + p.prizePaidTzs, 0);
@@ -344,7 +343,7 @@ export function getAdminProposalStats(): AdminProposalStats {
   for (const p of listed) byProposer.set(p.proposerId, (byProposer.get(p.proposerId) ?? 0) + 1);
   let top: { handle: string; listed: number } | null = null;
   for (const [uid, n] of byProposer) {
-    if (!top || n > top.listed) top = { handle: handleFor(uid), listed: n };
+    if (!top || n > top.listed) top = { handle: await handleFor(uid), listed: n };
   }
   return { pending, listedFromProposals: listed.length, prizesPaidTzs, topProposer: top };
 }
@@ -356,16 +355,16 @@ export type AdminQueueRow = {
   ageIso: string; status: ProposalStatus;
 };
 
-export function getAdminQueue(filter: "all" | "review" | "flagged" = "all"): AdminQueueRow[] {
-  let rows: AdminQueueRow[] = db.proposal.list(2000).map((p) => {
-    const proposer = db.user.findById(p.proposerId);
+export async function getAdminQueue(filter: "all" | "review" | "flagged" = "all") {
+  let rows: AdminQueueRow[] = await Promise.all((await db.proposal.list(2000)).map(async (p) => {
+    const proposer = await db.user.findById(p.proposerId);
     return {
       id: p.id, title: p.titleEn, titleSw: p.titleSw, description: p.description,
       resolutionCriterion: p.resolutionCriterion, resolutionDate: p.resolutionDate, category: p.category,
       proposerMasked: maskName(proposer?.displayName ?? null, proposer?.phoneE164 ?? ""),
       up: p.up, down: p.down, score: p.up - p.down, ageIso: p.createdAt, status: p.status,
     };
-  });
+  }));
   if (filter === "review") rows = rows.filter((r) => r.status === "REVIEW" || r.status === "CHANGES_REQUESTED");
   else if (filter === "flagged") rows = rows.filter((r) => r.score < 0 || (r.down > 0 && r.down >= r.up));
   // sort by net votes desc (ranking only), cap the rendered queue

@@ -32,14 +32,14 @@ export async function POST(req: Request) {
   const users: string[] = [];
   for (let i = 0; i < N; i++) {
     const id = `usr_sm_${randomId(8)}`;
-    db.user.create({
+    await db.user.create({
       id, phoneE164: `+25599${String(i).padStart(7, "0").slice(-7)}`, passwordHash: null, passwordSalt: null,
       failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "ACTIVE", locale: "EN",
       displayName: null, dob: null, region: null, acceptedTermsVersion: null, acceptedTermsAt: null,
       marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null,
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), lastLoginAt: null, closedAt: null,
     });
-    const w = db.wallet.create({
+    const w = await db.wallet.create({
       id: `wal_${randomId(8)}`, userId: id, balance: START, pending: 0, hold: 0,
       currency: "TZS", status: "ACTIVE", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     } as StoredWallet);
@@ -75,7 +75,7 @@ export async function POST(req: Request) {
 
   let sumBalances = 0, negatives = 0;
   for (const uid of users) {
-    const w = db.wallet.findByUserId(uid);
+    const w = await db.wallet.findByUserId(uid);
     if (!w) continue;
     sumBalances += w.balance + w.hold;
     if (w.balance < 0 || w.hold < 0) negatives++;

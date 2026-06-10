@@ -24,8 +24,8 @@ function shortSessionLabel(s: AdminSession): string {
   return s.userId.slice(-4).toUpperCase();
 }
 
-export function ConfidentialBand({ session }: { session: AdminSession }) {
-  const officer = db.user.findById(session.userId);
+export async function ConfidentialBand({ session }: { session: AdminSession }) {
+  const officer = await db.user.findById(session.userId);
   const email = officer?.displayName ?? session.phoneE164;
   return (
     <div className="bg-bg-sunken text-onBrand border-b border-gold flex items-center justify-between px-4 lg:px-6 h-7 text-micro font-mono uppercase tracking-[0.18em]">
@@ -44,9 +44,9 @@ export function ConfidentialBand({ session }: { session: AdminSession }) {
  * Counts of pending items across the system — drives sidebar badges so an
  * operator can see at a glance "3 in AML, 7 compliance items, 2 approvals."
  */
-export function getSidebarBadges(): Record<string, string | undefined> {
-  const aml = db.txn.listByStatus("AML_REVIEW").length;
-  const sof = db.sourceOfFunds.listPending().length;
+export async function getSidebarBadges() {
+  const aml = (await db.txn.listByStatus("AML_REVIEW")).length;
+  const sof = (await db.sourceOfFunds.listPending()).length;
   return {
     aml: aml > 0 ? String(aml) : undefined,
     compliance: aml + sof > 0 ? String(aml + sof) : undefined,
@@ -54,8 +54,8 @@ export function getSidebarBadges(): Record<string, string | undefined> {
   };
 }
 
-export function AdminSidebar({ activeKey }: { activeKey: string }) {
-  const badges = getSidebarBadges();
+export async function AdminSidebar({ activeKey }: { activeKey: string }) {
+  const badges = await getSidebarBadges();
   return (
     <aside className="hidden lg:flex shrink-0 border-r border-border flex-col gap-1 sticky top-0 self-start max-h-screen overflow-y-auto"
       style={{ width: 216, padding: "18px 14px", background: "var(--panel)" }}>
@@ -72,8 +72,8 @@ export function AdminSidebar({ activeKey }: { activeKey: string }) {
   );
 }
 
-export function AdminTopBar({ crumbs, session, activeKey }: { crumbs: string[]; session: AdminSession; activeKey: string }) {
-  const badges = getSidebarBadges();
+export async function AdminTopBar({ crumbs, session, activeKey }: { crumbs: string[]; session: AdminSession; activeKey: string }) {
+  const badges = await getSidebarBadges();
   return (
     <div className="flex items-center justify-between px-4 lg:px-6 border-b border-border gap-3"
       style={{
@@ -111,7 +111,7 @@ export function AdminTopBar({ crumbs, session, activeKey }: { crumbs: string[]; 
         </span>
         <span className="font-mono text-micro tracking-[0.14em] px-2.5 h-7 inline-flex items-center rounded-md border border-border bg-bg-elevated text-text gap-1.5">
           <span className="h-1.5 w-1.5 rounded-pill bg-gold" />
-          <span className="hidden sm:inline">{(db.user.findById(session.userId)?.displayName ?? "Officer").split(" ")[0]}</span>
+          <span className="hidden sm:inline">{((await db.user.findById(session.userId))?.displayName ?? "Officer").split(" ")[0]}</span>
         </span>
       </div>
     </div>

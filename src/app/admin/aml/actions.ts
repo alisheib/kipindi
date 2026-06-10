@@ -14,7 +14,7 @@ const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
 async function requireAdmin() {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
-  const u = db.user.findById(session.userId);
+  const u = await db.user.findById(session.userId);
   if (!(u && ADMIN_ROLES.has(u.role))) redirect("/auth/login");
   return { session, role: u?.role ?? "ADMIN" };
 }
@@ -50,7 +50,7 @@ export async function approveAmlAction(formData: FormData) {
   // approve simultaneously could both read AML_REVIEW status and both
   // flip to CONFIRMED, bypassing the two-person rule.
   return withLock(`aml-txn:${txnId}`, async () => {
-    const all = db.txn.listByStatus("AML_REVIEW") as StoredTxn[];
+    const all = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[];
     const txn = all.find((t) => t.id === txnId);
     if (!txn) return { ok: false as const, error: "Transaction not in AML_REVIEW." };
 
@@ -72,7 +72,7 @@ export async function approveAmlAction(formData: FormData) {
       if (first.actorId === session.userId) {
         return { ok: false as const, error: "Second-officer approval must come from a different reviewer." };
       }
-      db.txn.update(txnId, {
+      await db.txn.update(txnId, {
         status: "CONFIRMED",
         completedAt: new Date().toISOString(),
         amlReason: reason || txn.amlReason,
@@ -97,7 +97,7 @@ export async function approveAmlAction(formData: FormData) {
     }
 
     // Below threshold — single-officer approval.
-    db.txn.update(txnId, {
+    await db.txn.update(txnId, {
       status: "CONFIRMED",
       completedAt: new Date().toISOString(),
       amlReason: reason || txn.amlReason,
@@ -122,7 +122,7 @@ export async function rejectAmlAction(formData: FormData) {
   if (!txnId) return { ok: false as const, error: "Missing transaction id." };
   if (reason.length < 5) return { ok: false as const, error: "Reason is required (≥ 5 chars)." };
 
-  const all = db.txn.listByStatus("AML_REVIEW") as StoredTxn[];
+  const all = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[];
   const txn = all.find((t) => t.id === txnId);
   if (!txn) return { ok: false as const, error: "Transaction not in AML_REVIEW." };
 
@@ -132,13 +132,13 @@ export async function rejectAmlAction(formData: FormData) {
   // same stale balance and clobber the refund.
   if (txn.type === "WITHDRAWAL") {
     await withLock(`wallet:${txn.userId}`, async () => {
-      const wallet = db.wallet.findByUserId(txn.userId);
+      const wallet = await db.wallet.findByUserId(txn.userId);
       if (wallet) {
-        db.wallet.update(wallet.id, { balance: wallet.balance + Math.abs(txn.amount) });
+        await db.wallet.update(wallet.id, { balance: wallet.balance + Math.abs(txn.amount) });
       }
     });
   }
-  db.txn.update(txnId, {
+  await db.txn.update(txnId, {
     status: "FAILED",
     completedAt: new Date().toISOString(),
     amlReason: reason,

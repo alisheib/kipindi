@@ -32,12 +32,12 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
   if (!session) redirect("/auth/login");
 
   const sp = await searchParams;
-  const w = db.wallet.findByUserId(session.userId);
+  const w = await db.wallet.findByUserId(session.userId);
   const balance = w?.balance ?? 0;
   const pending = w?.pending ?? 0;
   const hold = w?.hold ?? 0;
   const currency = w?.currency ?? "TZS";
-  const txns: Transaction[] = (db.txn.findByUser(session.userId, 50) as StoredTxn[]).map(adaptTxn);
+  const txns: Transaction[] = ((await db.txn.findByUser(session.userId, 50)) as StoredTxn[]).map(adaptTxn);
 
   return (
     <>

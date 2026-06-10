@@ -11,7 +11,7 @@ const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
 async function ensureAdmin() {
   const s = await currentSession();
   if (!s) redirect("/auth/admin");
-  const u = db.user.findById(s.userId);
+  const u = await db.user.findById(s.userId);
   if (!u || !ADMIN_ROLES.has(u.role)) redirect("/auth/admin");
   return s;
 }

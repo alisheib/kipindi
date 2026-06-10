@@ -16,7 +16,7 @@ export type NotifyInput = Omit<StoredNotification, "id" | "userId" | "readAt" | 
   userId: string;
 };
 
-export function notify(input: NotifyInput): StoredNotification {
+export async function notify(input: NotifyInput) {
   const n: StoredNotification = {
     id: `ntf_${randomId(10)}`,
     userId: input.userId,
@@ -30,7 +30,7 @@ export function notify(input: NotifyInput): StoredNotification {
     dismissedAt: null,
     createdAt: new Date().toISOString(),
   };
-  db.notification.create(n);
+  await db.notification.create(n);
   audit({
     category: "SYSTEM",
     action: "notification.delivered",
@@ -42,24 +42,24 @@ export function notify(input: NotifyInput): StoredNotification {
   return n;
 }
 
-export function listForUser(userId: string, limit = 30) {
-  return db.notification.findByUser(userId, limit);
+export async function listForUser(userId: string, limit = 30) {
+  return await db.notification.findByUser(userId, limit);
 }
 
-export function unreadCount(userId: string) {
-  return db.notification.countUnread(userId);
+export async function unreadCount(userId: string) {
+  return await db.notification.countUnread(userId);
 }
 
-export function markRead(id: string) {
-  return db.notification.markRead(id);
+export async function markRead(id: string) {
+  return await db.notification.markRead(id);
 }
 
-export function markAllRead(userId: string) {
-  return db.notification.markAllRead(userId);
+export async function markAllRead(userId: string) {
+  return await db.notification.markAllRead(userId);
 }
 
-export function dismiss(id: string) {
-  return db.notification.dismiss(id);
+export async function dismiss(id: string) {
+  return await db.notification.dismiss(id);
 }
 
 /* ---- Convenience emitters used by other services ---- */

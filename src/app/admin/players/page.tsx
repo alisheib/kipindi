@@ -27,7 +27,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
   const sortField = (["joined", "login", "balance"] as const).includes(sp.sort as never) ? sp.sort! : "joined";
   const sortDir = sp.dir === "asc" ? "asc" : "desc";
 
-  const all = db.user.list();
+  const all = await db.user.list();
   const filtered = all.filter((u) => {
     if (statusFilter && u.status !== statusFilter) return false;
     if (!query) return true;
@@ -42,19 +42,24 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
   });
 
   // Sort
-  filtered.sort((a, b) => {
-    let cmp = 0;
-    if (sortField === "balance") {
-      const wa = db.wallet.findByUserId(a.id);
-      const wb = db.wallet.findByUserId(b.id);
-      cmp = (wa?.balance ?? 0) - (wb?.balance ?? 0);
-    } else if (sortField === "login") {
-      cmp = (a.lastLoginAt ?? "").localeCompare(b.lastLoginAt ?? "");
-    } else {
-      cmp = a.createdAt.localeCompare(b.createdAt);
+  if (sortField === "balance") {
+    const balanceMap = new Map<string, number>();
+    for (const u of filtered) {
+      const w = await db.wallet.findByUserId(u.id);
+      balanceMap.set(u.id, w?.balance ?? 0);
     }
-    return sortDir === "asc" ? cmp : -cmp;
-  });
+    filtered.sort((a, b) => {
+      const cmp = (balanceMap.get(a.id) ?? 0) - (balanceMap.get(b.id) ?? 0);
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  } else {
+    filtered.sort((a, b) => {
+      const cmp = sortField === "login"
+        ? (a.lastLoginAt ?? "").localeCompare(b.lastLoginAt ?? "")
+        : a.createdAt.localeCompare(b.createdAt);
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }
 
   // Paginate
   const page = parsePage(sp.page, filtered.length);
@@ -145,8 +150,8 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                 </tr>
               </thead>
               <tbody className="text-text-secondary">
-                {paged.map((u) => {
-                  const wallet = db.wallet.findByUserId(u.id);
+                {await Promise.all(paged.map(async (u) => {
+                  const wallet = await db.wallet.findByUserId(u.id);
                   const label = displayLabel(u);
                   const initials = displayInitials(u);
                   // Subtle visual cue for "auto-handle vs real name" — if the
@@ -175,7 +180,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                       </td>
                     </tr>
                   );
-                })}
+                }))}
                 {filtered.length === 0 && (
                   <tr><td colSpan={7} className="p-6 text-center text-text-tertiary">No players match the current filter.</td></tr>
                 )}

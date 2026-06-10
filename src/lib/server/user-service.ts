@@ -27,15 +27,15 @@ export type UserDataExport = {
 };
 
 /** GDPR Art 15 — return a structured snapshot of all data we hold on this user. */
-export function exportUserData(userId: string): UserDataExport {
+export async function exportUserData(userId: string) {
   return {
     generatedAt: new Date().toISOString(),
-    user: db.user.findById(userId),
-    kyc: db.kyc.findByUserId(userId),
-    wallet: db.wallet.findByUserId(userId),
-    responsibleGambling: db.responsible.get(userId),
-    bets: db.bet.findByUser(userId, 1000),
-    transactions: db.txn.findByUser(userId, 1000),
+    user: await db.user.findById(userId),
+    kyc: await db.kyc.findByUserId(userId),
+    wallet: await db.wallet.findByUserId(userId),
+    responsibleGambling: await db.responsible.get(userId),
+    bets: await db.bet.findByUser(userId, 1000),
+    transactions: await db.txn.findByUser(userId, 1000),
     auditEntries: getAuditForActor(userId, 1000),
   };
 }
@@ -54,19 +54,19 @@ export function exportUserData(userId: string): UserDataExport {
  * for AML/audit traceability for 7 years.
  */
 export async function closeAccount(userId: string, reason?: string): Promise<ServiceResult<{ closedAt: string }>> {
-  const user = db.user.findById(userId);
+  const user = await db.user.findById(userId);
   if (!user) return { ok: false, error: "User not found.", code: "NOT_FOUND" };
   if (user.status === "CLOSED") return { ok: true, data: { closedAt: user.closedAt ?? user.updatedAt } };
 
   const closedAt = new Date().toISOString();
-  db.user.update(userId, {
+  await db.user.update(userId, {
     status: "CLOSED",
     closedAt,
     marketingOptIn: false,
   });
-  const wallet = db.wallet.findByUserId(userId);
+  const wallet = await db.wallet.findByUserId(userId);
   if (wallet && wallet.status !== "CLOSED") {
-    db.wallet.update(wallet.id, { status: "CLOSED" });
+    await db.wallet.update(wallet.id, { status: "CLOSED" });
   }
   await destroySession();
 

@@ -31,7 +31,7 @@ export async function GET(
   if (!session) {
     return NextResponse.json({ ok: false, error: "Unauthorised" }, { status: 401 });
   }
-  const u = db.user.findById(session.userId);
+  const u = await db.user.findById(session.userId);
   if (!u || !ADMIN_ROLES.has(u.role)) {
     return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
   }
@@ -52,7 +52,7 @@ export async function GET(
   // canonical display helper so a regulator opening the file sees
   // "Player #A3F2K8" or the real name (when set), never a raw user id.
   const generatorLabel = displayLabel(u);
-  const report = entry.build(generatorLabel);
+  const report = await entry.build(generatorLabel);
 
   let body: Buffer;
   let mime: string;

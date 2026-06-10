@@ -14,7 +14,7 @@ const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
 export default async function AdminTotpVerifyPage() {
   const session = await currentSession();
   if (!session) redirect("/auth/admin");
-  const u = db.user.findById(session.userId);
+  const u = await db.user.findById(session.userId);
   const isAdmin = u && ADMIN_ROLES.has(u.role);
   if (!isAdmin) redirect("/");
 

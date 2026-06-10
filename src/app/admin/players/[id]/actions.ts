@@ -27,7 +27,7 @@ const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
 async function requireAdmin(action: string): Promise<string> {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
-  const me = db.user.findById(session.userId);
+  const me = await db.user.findById(session.userId);
   if (!me || !ADMIN_ROLES.has(me.role)) {
     audit({
       category: "SECURITY",
@@ -75,13 +75,13 @@ export async function suspendPlayerAction(formData: FormData) {
   if (!userId) return { ok: false as const, error: "Missing user id." };
   if (reason.length < 5) return { ok: false as const, error: "Reason is required (≥ 5 chars)." };
 
-  const target = db.user.findById(userId);
+  const target = await db.user.findById(userId);
   if (!target) return { ok: false as const, error: "Player not found." };
   if (target.status === "SUSPENDED") return { ok: false as const, error: "Player is already suspended." };
   if (target.status === "CLOSED") return { ok: false as const, error: "Player account is closed." };
 
   const prevStatus = target.status;
-  db.user.update(userId, { status: "SUSPENDED" });
+  await db.user.update(userId, { status: "SUSPENDED" });
   audit({
     category: "ADMIN",
     action: "player.suspended",
@@ -102,13 +102,13 @@ export async function restorePlayerAction(formData: FormData) {
   if (!userId) return { ok: false as const, error: "Missing user id." };
   if (reason.length < 5) return { ok: false as const, error: "Reason is required (≥ 5 chars)." };
 
-  const target = db.user.findById(userId);
+  const target = await db.user.findById(userId);
   if (!target) return { ok: false as const, error: "Player not found." };
   if (target.status !== "SUSPENDED") {
     return { ok: false as const, error: `Cannot restore — current status is ${target.status}.` };
   }
 
-  db.user.update(userId, { status: "ACTIVE" });
+  await db.user.update(userId, { status: "ACTIVE" });
   audit({
     category: "ADMIN",
     action: "player.restored",

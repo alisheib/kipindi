@@ -21,7 +21,7 @@ export default async function AdminSystemPage() {
   const chain = verifyChain();
   const auditCount = getAuditPage({ limit: 100_000 }).length;
   const smsHealth = smsHealthSnapshot();
-  const totalUsers = db.user.list().length;
+  const totalUsers = (await db.user.list()).length;
   const buckets = rateLimitSnapshot();
   const liveMarkets = listMarkets({ status: "LIVE" }).length;
   const resolvedMarkets = listMarkets({ status: "RESOLVED" }).length;

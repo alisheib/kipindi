@@ -38,7 +38,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
   if (filter === "mine" && !session) redirect("/auth/login?next=/proposals");
 
   const cfg = getProposalsConfig();
-  const { proposals, totalProposals, totalVotes, enabled } = listBoard(session?.userId ?? null, filter);
+  const { proposals, totalProposals, totalVotes, enabled } = await listBoard(session?.userId ?? null, filter);
 
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-3.5">

@@ -15,8 +15,8 @@ import { audit } from "@/lib/server/audit";
  *  Server-Action ID would otherwise let a regular player resolve a
  *  market. Regulator: GBT / LCCP "least-privilege" + ISO 27001 A.9. */
 const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
-function requireAdminOrThrow(userId: string, action: string): void {
-  const user = db.user.findById(userId);
+async function requireAdminOrThrow(userId: string, action: string) {
+  const user = await db.user.findById(userId);
   if (!user || !ADMIN_ROLES.has(user.role)) {
     audit({
       category: "SECURITY",

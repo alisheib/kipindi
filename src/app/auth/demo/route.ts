@@ -22,8 +22,8 @@ const DEMO_PHONE = "+255700000000";
 const DEMO_DISPLAY = "Demo Player";
 const DEMO_STARTING_BALANCE = 100_000;
 
-function ensureDemoUser(): { userId: string; phoneE164: string } {
-  let user = db.user.findByPhone(DEMO_PHONE);
+async function ensureDemoUser() {
+  let user = await db.user.findByPhone(DEMO_PHONE);
   if (!user) {
     const now = new Date().toISOString();
     const u: StoredUser = {
@@ -49,7 +49,7 @@ function ensureDemoUser(): { userId: string; phoneE164: string } {
       lastLoginAt: now,
       closedAt: null,
     };
-    db.user.create(u);
+    await db.user.create(u);
     const w: StoredWallet = {
       id: `wal_${randomId(12)}`,
       userId: u.id,
@@ -61,15 +61,15 @@ function ensureDemoUser(): { userId: string; phoneE164: string } {
       createdAt: now,
       updatedAt: now,
     };
-    db.wallet.create(w);
+    await db.wallet.create(w);
     user = u;
   } else {
     // Reset the wallet to the canonical starting balance on each visit
     // so test runs are deterministic. Real player flows never hit this
     // route — it's 404 in production.
-    const w = db.wallet.findByUserId(user.id);
+    const w = await db.wallet.findByUserId(user.id);
     if (w && w.balance !== DEMO_STARTING_BALANCE) {
-      db.wallet.update(w.id, { balance: DEMO_STARTING_BALANCE });
+      await db.wallet.update(w.id, { balance: DEMO_STARTING_BALANCE });
     }
   }
   return { userId: user.id, phoneE164: user.phoneE164 };
@@ -79,7 +79,7 @@ async function bootstrapDemo(req: NextRequest) {
   if (process.env.NODE_ENV === "production") {
     return NextResponse.json({ ok: false, error: "Not available" }, { status: 404 });
   }
-  const { userId, phoneE164 } = ensureDemoUser();
+  const { userId, phoneE164 } = await ensureDemoUser();
   await createSession({
     userId,
     phoneE164,

@@ -72,7 +72,7 @@ export async function requestLoginOtp(input: z.input<typeof LoginRequestSchema>)
     return { ok: false, error: "Too many attempts. Please wait · Subiri kidogo.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
   }
 
-  const user = db.user.findByPhone(phone);
+  const user = await db.user.findByPhone(phone);
   if (!user) {
     // Surface the missing-account state so the login page can offer a
     // direct "Create account" path. Anti-enumeration is not load-bearing
@@ -103,7 +103,7 @@ export async function requestRegisterOtp(input: z.input<typeof RegisterSchema>):
   const rl = rateCheck(phone, "auth.register");
   if (!rl.allowed) return { ok: false, error: "Too many attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
 
-  const existing = db.user.findByPhone(phone);
+  const existing = await db.user.findByPhone(phone);
   if (existing) {
     audit({ category: "AUTH", action: "register.duplicate_phone", actorId: null, targetType: "Phone", targetId: phone, ip: meta.ip });
     return { ok: false, error: "An account with that phone already exists.", code: "ALREADY_EXISTS" };
@@ -129,7 +129,7 @@ const pendingRegistration: Map<string, { dob: string; marketingOptIn: boolean }>
 async function issueOtp(phone: string, purpose: "login" | "register" | "withdraw" | "reauth" | "self_exclusion", meta: { ip: string | null; ua: string | null }): Promise<ServiceResult<{ otpId: string }>> {
   const code = generateOtp();
   const salt = randomId(8);
-  const otp = db.otp.create({
+  const otp = await db.otp.create({
     id: `otp_${randomId(12)}`,
     phoneE164: phone,
     hashedCode: await hashOtp(code, salt),
@@ -165,7 +165,7 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
   // SMS delivery is unreliable — the user might receive OTP #1 after OTP #2
   // arrives. Checking only the newest OTP rejects the older (but valid) code,
   // causing "wrong code" errors that users report as "sign-in doesn't work."
-  const allActive = db.otp.findAllActive(phone, purpose);
+  const allActive = await db.otp.findAllActive(phone, purpose);
   if (allActive.length === 0) {
     audit({ category: "SECURITY", action: "otp.verify.no_active", actorId: null, targetType: "Phone", targetId: phone, ip: meta.ip });
     return { ok: false, error: "Code expired or not found.", code: "EXPIRED" };
@@ -186,15 +186,15 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
   }
   if (!matched) {
     // Increment attempts on the most recent OTP only
-    db.otp.incrementAttempts(freshOtps[0].id);
+    await db.otp.incrementAttempts(freshOtps[0].id);
     audit({ category: "SECURITY", action: "otp.verify.wrong_code", actorId: null, targetType: "Otp", targetId: freshOtps[0].id, ip: meta.ip });
     return { ok: false, error: "Wrong code.", code: "INVALID" };
   }
   // Consume the matched OTP (and all others for this phone+purpose to prevent reuse)
-  for (const o of allActive) db.otp.consume(o.id);
+  for (const o of allActive) await db.otp.consume(o.id);
 
   // Find or create user
-  let user = db.user.findByPhone(phone);
+  let user = await db.user.findByPhone(phone);
   let isNew = false;
   if (!user) {
     if (purpose !== "register") {
@@ -204,7 +204,7 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
     if (!reg) return { ok: false, error: "Registration session expired.", code: "EXPIRED" };
     pendingRegistration.delete(phone);
 
-    user = db.user.create({
+    user = await db.user.create({
       id: `usr_${randomId(12)}`,
       phoneE164: phone,
       passwordHash: null,
@@ -254,7 +254,7 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
     audit({ category: "AUTH", action: "user.registered", actorId: user.id, targetType: "User", targetId: user.id, payload: { phone } });
     isNew = true;
   } else {
-    db.user.update(user.id, { lastLoginAt: new Date().toISOString() });
+    await db.user.update(user.id, { lastLoginAt: new Date().toISOString() });
     audit({ category: "AUTH", action: "user.login", actorId: user.id, targetType: "User", targetId: user.id, ip: meta.ip, userAgent: meta.ua });
   }
 
@@ -262,7 +262,7 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
     userId: user.id,
     phoneE164: user.phoneE164,
     role: user.role,
-    kycStatus: db.kyc.findByUserId(user.id)?.status ?? "NOT_STARTED",
+    kycStatus: (await db.kyc.findByUserId(user.id))?.status ?? "NOT_STARTED",
   });
 
   return { ok: true, data: { userId: user.id, isNew } };
@@ -340,7 +340,7 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
   // registrations both pass findByPhone before either writes the user.
   return withLock(`register:${phone}`, async () => {
 
-  if (db.user.findByPhone(phone)) {
+  if (await db.user.findByPhone(phone)) {
     audit({ category: "AUTH", action: "register.duplicate_phone", actorId: null, targetType: "Phone", targetId: phone, ip: meta.ip });
     return { ok: false, error: "An account with that phone already exists.", code: "ALREADY_EXISTS" };
   }
@@ -353,7 +353,7 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
   const bootstrapAdmins = adminBootstrapPhones();
   const isBootstrapAdmin = bootstrapAdmins.has(phone);
 
-  const user = db.user.create({
+  const user = await db.user.create({
     id: `usr_${randomId(12)}`,
     phoneE164: phone,
     passwordHash: hash,
@@ -384,7 +384,7 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
   );
   const { getEffectiveConfig } = await import("./market-config");
   const starterBalance = testerPhones.has(phone) ? 100_000 : (getEffectiveConfig().starterBalanceTzs ?? 0);
-  db.wallet.create({
+  await db.wallet.create({
     id: `wlt_${randomId(12)}`,
     userId: user.id,
     balance: starterBalance, pending: 0, hold: 0,
@@ -447,7 +447,7 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
     }
   }
 
-  const user = db.user.findByPhone(phone);
+  const user = await db.user.findByPhone(phone);
   if (!user) {
     audit({ category: "SECURITY", action: "auth.login.unknown_phone", actorId: null, targetType: "Phone", targetId: phone, ip: meta.ip });
     return { ok: false, error: "No account with that phone. Create one to get started.", code: "NOT_FOUND" };
@@ -476,7 +476,7 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
       };
     }
     // Lock expired — clear it so a successful login resets cleanly.
-    db.user.update(user.id, { lockedUntil: null, failedLoginCount: 0 });
+    await db.user.update(user.id, { lockedUntil: null, failedLoginCount: 0 });
   }
   if (!user.passwordHash || !user.passwordSalt) {
     return { ok: false, error: "This account has no password yet. Use the OTP flow or contact support.", code: "INVALID" };
@@ -487,7 +487,7 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
   // requests both read failedLoginCount=3, both write 4 → should be 5).
   return withLock(`login:${user.id}`, async () => {
   // Re-read user inside the lock for fresh failedLoginCount
-  const freshUser = db.user.findById(user.id) ?? user;
+  const freshUser = await db.user.findById(user.id) ?? user;
 
   if (!(await verifyPassword(input.password, user.passwordSalt!, user.passwordHash!))) {
     const nextCount = (freshUser.failedLoginCount ?? 0) + 1;
@@ -496,7 +496,7 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
       failedLoginCount: shouldLock ? 0 : nextCount,
       lockedUntil: shouldLock ? new Date(Date.now() + LOCKOUT_DURATION_MS).toISOString() : freshUser.lockedUntil ?? null,
     };
-    db.user.update(user.id, patch);
+    await db.user.update(user.id, patch);
     audit({
       category: "SECURITY",
       action: shouldLock ? "auth.login.locked_after_failures" : "auth.login.bad_password",
@@ -515,7 +515,7 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
   }
 
   // Successful login — clear the brute-force counter + lockout.
-  db.user.update(user.id, {
+  await db.user.update(user.id, {
     lastLoginAt: new Date().toISOString(),
     failedLoginCount: 0,
     lockedUntil: null,
@@ -530,7 +530,7 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
   // demotes; ignored when the phone has been removed from the env.
   let effectiveRole = user.role;
   if (effectiveRole !== "ADMIN" && adminBootstrapPhones().has(user.phoneE164)) {
-    db.user.update(user.id, { role: "ADMIN", status: "ACTIVE" });
+    await db.user.update(user.id, { role: "ADMIN", status: "ACTIVE" });
     effectiveRole = "ADMIN";
     audit({
       category: "SECURITY",
@@ -546,7 +546,7 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
     userId: user.id,
     phoneE164: user.phoneE164,
     role: effectiveRole,
-    kycStatus: db.kyc.findByUserId(user.id)?.status ?? "NOT_STARTED",
+    kycStatus: (await db.kyc.findByUserId(user.id))?.status ?? "NOT_STARTED",
   });
 
   return { ok: true, data: { userId: user.id, role: effectiveRole } };

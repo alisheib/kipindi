@@ -52,9 +52,9 @@ const SOURCES: Record<(typeof CATS)[number], string> = {
   culture: "https://itv.co.tz/entertainment",
 };
 
-function provisionAdmin(): string {
+async function provisionAdmin() {
   const phone = `+255900000000`;
-  let u = db.user.findByPhone(phone);
+  let u = await db.user.findByPhone(phone);
   if (!u) {
     const now = new Date().toISOString();
     u = {
@@ -80,19 +80,19 @@ function provisionAdmin(): string {
       lastLoginAt: null,
       closedAt: null,
     };
-    db.user.create(u);
+    await db.user.create(u);
   }
   // Promote in case the user was created with a different role earlier.
-  db.user.update(u.id, { role: "ADMIN" });
+  await db.user.update(u.id, { role: "ADMIN" });
   return u.id;
 }
 
-function provisionUsers(prefix: string, count: number, fundEach: number): string[] {
+async function provisionUsers(prefix: string, count: number, fundEach: number) {
   const userIds: string[] = [];
   const safe = prefix.replace(/[^a-z0-9]/gi, "").slice(0, 4) || "rg";
   for (let i = 0; i < count; i++) {
     const phone = `+25591${safe.padEnd(2, "0").slice(0, 2)}${String(i).padStart(5, "0").slice(-5)}`;
-    let user = db.user.findByPhone(phone);
+    let user = await db.user.findByPhone(phone);
     if (!user) {
       const now = new Date().toISOString();
       const u: StoredUser = {
@@ -118,7 +118,7 @@ function provisionUsers(prefix: string, count: number, fundEach: number): string
         lastLoginAt: null,
         closedAt: null,
       };
-      db.user.create(u);
+      await db.user.create(u);
       const w: StoredWallet = {
         id: `wal_${randomId(12)}`,
         userId: u.id,
@@ -130,25 +130,25 @@ function provisionUsers(prefix: string, count: number, fundEach: number): string
         createdAt: now,
         updatedAt: now,
       };
-      db.wallet.create(w);
+      await db.wallet.create(w);
       user = u;
     } else {
-      const w = db.wallet.findByUserId(user.id);
-      if (w) db.wallet.update(w.id, { balance: w.balance + fundEach });
+      const w = await db.wallet.findByUserId(user.id);
+      if (w) await db.wallet.update(w.id, { balance: w.balance + fundEach });
     }
     userIds.push(user.id);
   }
   return userIds;
 }
 
-function provisionMarkets(adminId: string, count: number, prefix: string): string[] {
+async function provisionMarkets(adminId: string, count: number, prefix: string) {
   seedDefaultSources();
   const ids: string[] = [];
   const nowMs = Date.now();
   for (let i = 0; i < count; i++) {
     const cat = CATS[i % CATS.length];
     const resolutionAt = new Date(nowMs + (1 + (i % 30)) * 24 * 3600_000).toISOString();
-    const m = createMarket({
+    const m = await createMarket({
       titleEn: `Stress · ${prefix} · market #${i + 1} · ${cat}`,
       titleSw: `Stress · ${prefix} · soko #${i + 1} · ${cat}`,
       category: cat,
@@ -188,7 +188,7 @@ export async function POST(req: Request) {
 
   const body = (await req.json().catch(() => null)) as Body | null;
   // Explicit finiteness — Math.max/min silently propagates NaN.
-  const numOrDefault = (v: unknown, dflt: number): number =>
+  const numOrDefault = (v: unknown, dflt: number) =>
     typeof v === "number" && Number.isFinite(v) ? v : dflt;
   const n = Math.max(1, Math.min(2000, numOrDefault(body?.n, 1000)));
   const u = Math.max(1, Math.min(500, numOrDefault(body?.u, 200)));
@@ -211,9 +211,9 @@ export async function POST(req: Request) {
 
   // ── PHASE 1 · Provision admin + users + markets ─────────────────
   let t = Date.now();
-  const adminId = provisionAdmin();
-  const userIds = provisionUsers(prefix, u, fundPerUser);
-  const marketIds = provisionMarkets(adminId, n, prefix);
+  const adminId = await provisionAdmin();
+  const userIds = await provisionUsers(prefix, u, fundPerUser);
+  const marketIds = await provisionMarkets(adminId, n, prefix);
   totals.phases["1-provision"] = {
     ms: Date.now() - t,
     ok: userIds.length === u && marketIds.length === n,
@@ -223,10 +223,10 @@ export async function POST(req: Request) {
   // Initial wallet sum (the bank) — we expect this to stay constant
   // across the entire stress: bets debit it into pools, settlement
   // either pays it back to winners or moves it into operator margin.
-  const initialWalletSum = userIds.reduce(
-    (s, uid) => s + (db.wallet.findByUserId(uid)?.balance ?? 0),
-    0,
-  );
+  let initialWalletSum = 0;
+  for (const uid of userIds) {
+    initialWalletSum += (await db.wallet.findByUserId(uid))?.balance ?? 0;
+  }
 
   // ── PHASE 2 · Fire B bets distributed across all markets/users ───
   t = Date.now();
@@ -274,10 +274,10 @@ export async function POST(req: Request) {
       : `FAIL (Δ ${totalPoolAfterBets - expectedTotalPool})`;
 
   // Wallet sum after bets: initialSum - totalPool = expected.
-  const walletSumAfterBets = userIds.reduce(
-    (s, uid) => s + (db.wallet.findByUserId(uid)?.balance ?? 0),
-    0,
-  );
+  let walletSumAfterBets = 0;
+  for (const uid of userIds) {
+    walletSumAfterBets += (await db.wallet.findByUserId(uid))?.balance ?? 0;
+  }
   const walletPostBet =
     walletSumAfterBets + totalPoolAfterBets === initialWalletSum
       ? "PASS"
@@ -291,7 +291,7 @@ export async function POST(req: Request) {
   // two-officer rule. Provision a second admin and rotate.
   const adminA = adminId;
   const phoneB = `+255900000001`;
-  let userB = db.user.findByPhone(phoneB);
+  let userB = await db.user.findByPhone(phoneB);
   if (!userB) {
     const now = new Date().toISOString();
     userB = {
@@ -302,9 +302,9 @@ export async function POST(req: Request) {
       twoFactorEnabled: false, avatarDataUrl: null, createdAt: now, updatedAt: now,
       lastLoginAt: null, closedAt: null,
     };
-    db.user.create(userB);
+    await db.user.create(userB);
   }
-  db.user.update(userB.id, { role: "ADMIN" });
+  await db.user.update(userB.id, { role: "ADMIN" });
   const adminB = userB.id;
   for (let i = 0; i < r; i++) {
     const mid = marketIds[i];
@@ -334,10 +334,10 @@ export async function POST(req: Request) {
   const livePool = Array.from(marketsAfterResolve.values())
     .filter((m) => marketIds.includes(m.id) && m.status === "LIVE")
     .reduce((s, m) => s + m.yesPool + m.noPool, 0);
-  const walletSumFinal = userIds.reduce(
-    (s, uid) => s + (db.wallet.findByUserId(uid)?.balance ?? 0),
-    0,
-  );
+  let walletSumFinal = 0;
+  for (const uid of userIds) {
+    walletSumFinal += (await db.wallet.findByUserId(uid))?.balance ?? 0;
+  }
 
   // Settled pool = total pool that was on resolved markets
   const settledPool = Array.from(marketsAfterResolve.values())

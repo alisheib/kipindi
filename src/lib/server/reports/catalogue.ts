@@ -23,8 +23,8 @@ import type { Report, SignatureRow } from "./types";
  *  the operator countersigns the printed copy (or e-signs the PDF) and
  *  the signedAt date locks in the final attestation. Kept here so every
  *  regulator report renders the same three columns in the same order. */
-function regulatorSignatures(generatorId: string): SignatureRow[] {
-  const u = db.user.findById(generatorId);
+async function regulatorSignatures(generatorId: string) {
+  const u = await db.user.findById(generatorId);
   const generator = u?.displayName?.trim() || `Generator · ${generatorId}`;
   return [
     { role: "Prepared by",   name: generator,                       id: generatorId },
@@ -48,15 +48,15 @@ function makeReference(acronym: string, generatorId: string): string {
 // 1 · GBT MONTHLY SUMMARY
 // ─────────────────────────────────────────────────────────────────────
 
-export function buildGbtMonthly(generatorId: string): Report {
+export async function buildGbtMonthly(generatorId: string): Promise<Report> {
   const periodLabel = "Last 28 days";
-  const dep = depositsTotal("28d");
-  const wd = withdrawalsTotal("28d");
-  const ggr = grossGamingRevenue("28d");
-  const ngr = netGamingRevenue("28d");
-  const kyc = kycFunnel();
-  const rg = rgRosterCounts();
-  const provs = providerSummary("28d");
+  const dep = await depositsTotal("28d");
+  const wd = await withdrawalsTotal("28d");
+  const ggr = await grossGamingRevenue("28d");
+  const ngr = await netGamingRevenue("28d");
+  const kyc = await kycFunnel();
+  const rg = await rgRosterCounts();
+  const provs = await providerSummary("28d");
 
   const periodEnd = new Date();
   const periodStart = new Date(Date.now() - 28 * 24 * 3600_000);
@@ -158,7 +158,7 @@ export function buildGbtMonthly(generatorId: string): Report {
       "All amounts in Tanzanian Shillings (TZS). Rounded to the nearest shilling.",
       "Generated from the live append-only audit log; row counts match the audit chain.",
     ],
-    signatures: regulatorSignatures(generatorId),
+    signatures: await regulatorSignatures(generatorId),
   };
 }
 
@@ -166,14 +166,14 @@ export function buildGbtMonthly(generatorId: string): Report {
 // 2 · TRA WITHHOLDING TAX REMITTANCE
 // ─────────────────────────────────────────────────────────────────────
 
-export function buildTraTax(generatorId: string): Report {
+export async function buildTraTax(generatorId: string): Promise<Report> {
   type Row = {
     playerId: string; phone: string; nida: string;
     grossWinnings: number; taxWithheld: number; netPaid: number; withdrawalCount: number;
   };
   // Single-pass: aggregate txn data by userId from the full txn list.
   const agg = new Map<string, { gross: number; tax: number; wdCount: number }>();
-  for (const t of db.txn.listAll()) {
+  for (const t of await db.txn.listAll()) {
     if (t.status !== "CONFIRMED") continue;
     const e = agg.get(t.userId) ?? { gross: 0, tax: 0, wdCount: 0 };
     if (t.type === "BET_PAYOUT" || t.type === "CASHOUT") e.gross += Math.abs(t.amount);
@@ -185,9 +185,9 @@ export function buildTraTax(generatorId: string): Report {
   let totalGross = 0, totalTax = 0, totalNet = 0;
   for (const [userId, { gross, tax, wdCount }] of agg) {
     if (gross === 0) continue;
-    const u = db.user.findById(userId);
+    const u = await db.user.findById(userId);
     if (!u) continue;
-    const kyc = db.kyc.findByUserId(userId);
+    const kyc = await db.kyc.findByUserId(userId);
     const nida = kyc?.nidaNumber ? `${kyc.nidaNumber.slice(0, 4)}…${kyc.nidaNumber.slice(-4)}` : "—";
     const net = gross - tax;
     rows.push({
@@ -247,7 +247,7 @@ export function buildTraTax(generatorId: string): Report {
       "Reconcile this total against the TRA online portal remittance figure before submission.",
       "Phone and NIDA masking is applied per the Tanzania Personal Data Protection Act (PDPA, 2022).",
     ],
-    signatures: regulatorSignatures(generatorId),
+    signatures: await regulatorSignatures(generatorId),
   };
 }
 
@@ -255,7 +255,7 @@ export function buildTraTax(generatorId: string): Report {
 // 3 · FIU SUSPICIOUS-ACTIVITY REPORT
 // ─────────────────────────────────────────────────────────────────────
 
-export function buildFiuSar(generatorId: string): Report {
+export async function buildFiuSar(generatorId: string): Promise<Report> {
   const cutoff = 1_000_000;
   type Row = {
     playerId: string; phone: string; triggerKind: string; amount: number;
@@ -265,10 +265,10 @@ export function buildFiuSar(generatorId: string): Report {
   const rows: Row[] = [];
   // Cache user lookups to avoid repeated findById for the same user.
   const userCache = new Map<string, { phone: string } | null>();
-  for (const t of db.txn.listAll()) {
+  for (const t of await db.txn.listAll()) {
     if (Math.abs(t.amount) < cutoff && t.status !== "AML_REVIEW") continue;
     if (!userCache.has(t.userId)) {
-      const u = db.user.findById(t.userId);
+      const u = await db.user.findById(t.userId);
       userCache.set(t.userId, u ? { phone: `${u.phoneE164.slice(0, 4)}*****${u.phoneE164.slice(-2)}` } : null);
     }
     const cached = userCache.get(t.userId);
@@ -319,7 +319,7 @@ export function buildFiuSar(generatorId: string): Report {
       "Each row is hash-chained to an audit entry — verify in /admin/audit before remittance.",
       "Confidential: do not share outside compliance + Financial Intelligence Unit.",
     ],
-    signatures: regulatorSignatures(generatorId),
+    signatures: await regulatorSignatures(generatorId),
   };
 }
 
@@ -327,7 +327,7 @@ export function buildFiuSar(generatorId: string): Report {
 // 4 · SELF-EXCLUSION REGISTER (CROSS-OPERATOR)
 // ─────────────────────────────────────────────────────────────────────
 
-export function buildSxRegister(generatorId: string): Report {
+export async function buildSxRegister(generatorId: string): Promise<Report> {
   const now = Date.now();
   type Row = {
     rowNo: number;
@@ -337,13 +337,13 @@ export function buildSxRegister(generatorId: string): Report {
     daysRemaining: number; operator: string;
   };
   const rows: Row[] = [];
-  for (const u of db.user.list()) {
-    const r = db.responsible.get(u.id);
+  for (const u of await db.user.list()) {
+    const r = await db.responsible.get(u.id);
     if (!r) continue;
     const sxAt = r.selfExclusionUntil ? new Date(r.selfExclusionUntil).getTime() : 0;
     const coAt = r.coolingOffUntil ? new Date(r.coolingOffUntil).getTime() : 0;
     if (sxAt < now && coAt < now) continue;
-    const kyc = db.kyc.findByUserId(u.id);
+    const kyc = await db.kyc.findByUserId(u.id);
     const nidaHash = kyc?.nidaNumber ? hashNida(kyc.nidaNumber) : "";
     const phoneHash = createHash("sha256").update(`${SX_NIDA_SALT}:${u.phoneE164}`, "utf8").digest("hex");
     if (sxAt > now) {
@@ -408,7 +408,7 @@ export function buildSxRegister(generatorId: string): Report {
       "Plain NIDA and phone numbers are NEVER written into this file by design (PDPA + LCCP).",
       "Schema GBT-v1 — increment if column shape changes.",
     ],
-    signatures: regulatorSignatures(generatorId),
+    signatures: await regulatorSignatures(generatorId),
   };
 }
 
@@ -416,7 +416,7 @@ export function buildSxRegister(generatorId: string): Report {
 // 5 · ISO 27001 FULL AUDIT LOG
 // ─────────────────────────────────────────────────────────────────────
 
-export function buildIsoAudit(generatorId: string): Report {
+export async function buildIsoAudit(generatorId: string): Promise<Report> {
   const entries = getAuditPage({ limit: 100_000 });
   return {
     title: "ISO 27001 · Append-only Audit Log",
@@ -463,7 +463,7 @@ export function buildIsoAudit(generatorId: string): Report {
       "If a single field is modified, the chain breaks at the next verify. Cf. ISO/IEC 27001:2022 A.8.15.",
       "Full payloads are available on /admin/audit; this report is the index for a regulator first-pass.",
     ],
-    signatures: regulatorSignatures(generatorId),
+    signatures: await regulatorSignatures(generatorId),
   };
 }
 

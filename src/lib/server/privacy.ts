@@ -96,15 +96,15 @@ export function listDsarRequests(filter?: { status?: DsarStatus }): DsarRequest[
  * Excludes: secrets (server seeds we own, OTP hashes — not the user's data,
  * those are crypto material), other users' data, internal hash chain links.
  */
-export function buildDsarBundle(userId: string): Record<string, unknown> | null {
-  const user = db.user.findById(userId);
+export async function buildDsarBundle(userId: string) {
+  const user = await db.user.findById(userId);
   if (!user) return null;
-  const wallet = db.wallet.findByUserId(userId);
-  const txns = db.txn.findByUser(userId, 10_000);
-  const bets = db.bet.findByUser(userId, 10_000);
-  const kyc = db.kyc.findByUserId(userId);
-  const responsible = db.responsible.get(userId);
-  const notifications = db.notification.findByUser(userId, 1000);
+  const wallet = await db.wallet.findByUserId(userId);
+  const txns = await db.txn.findByUser(userId, 10_000);
+  const bets = await db.bet.findByUser(userId, 10_000);
+  const kyc = await db.kyc.findByUserId(userId);
+  const responsible = await db.responsible.get(userId);
+  const notifications = await db.notification.findByUser(userId, 1000);
 
   return {
     generatedAt: new Date().toISOString(),

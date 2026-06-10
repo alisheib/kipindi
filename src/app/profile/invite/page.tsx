@@ -91,7 +91,7 @@ export default async function InvitePage() {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
 
-  const s = getPlayerReferralSummary(session.userId);
+  const s = await getPlayerReferralSummary(session.userId);
   const ringValue = s.recruitCount === 0 ? 0 : Math.min(100, 30 + s.recruitCount * 12);
   const ringLabel = s.earnedTzs > 0 ? compact(s.earnedTzs) : "0";
   const shareText = "Join me on 50pick — predict and win. Use my link:";

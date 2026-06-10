@@ -6,8 +6,8 @@ import { Chip } from "@/components/ui/chip";
 export const metadata = { title: "Admin · Player cohorts" };
 export const dynamic = "force-dynamic";
 
-function bucketByMonth(): Array<{ month: string; count: number }> {
-  const all = db.user.list();
+async function bucketByMonth() {
+  const all = await db.user.list();
   const map = new Map<string, number>();
   for (const u of all) {
     const m = u.createdAt.slice(0, 7); // YYYY-MM
@@ -18,8 +18,8 @@ function bucketByMonth(): Array<{ month: string; count: number }> {
     .map(([month, count]) => ({ month, count }));
 }
 
-function bucketByRegion(): Array<{ region: string; count: number }> {
-  const all = db.user.list();
+async function bucketByRegion() {
+  const all = await db.user.list();
   const map = new Map<string, number>();
   for (const u of all) {
     const r = u.region ?? "Unknown";
@@ -28,9 +28,9 @@ function bucketByRegion(): Array<{ region: string; count: number }> {
   return Array.from(map.entries()).sort((a, b) => b[1] - a[1]).map(([region, count]) => ({ region, count }));
 }
 
-function bucketByAge(): Array<{ band: string; count: number }> {
+async function bucketByAge() {
   const now = new Date();
-  const all = db.user.list();
+  const all = await db.user.list();
   const buckets: Record<string, number> = { "18-24": 0, "25-34": 0, "35-44": 0, "45+": 0, unknown: 0 };
   for (const u of all) {
     if (!u.dob) { buckets.unknown++; continue; }
@@ -43,13 +43,13 @@ function bucketByAge(): Array<{ band: string; count: number }> {
   return Object.entries(buckets).map(([band, count]) => ({ band, count }));
 }
 
-export default function AdminCohortsPage() {
-  const months = bucketByMonth();
-  const regions = bucketByRegion();
-  const ageBuckets = bucketByAge();
-  const status = userStatusCounts();
+export default async function AdminCohortsPage() {
+  const months = await bucketByMonth();
+  const regions = await bucketByRegion();
+  const ageBuckets = await bucketByAge();
+  const status = await userStatusCounts();
   const total = Object.values(status).reduce((s, c) => s + c, 0);
-  const kyc = kycFunnel();
+  const kyc = await kycFunnel();
 
   return (
     <>

@@ -20,11 +20,11 @@ const REPORTS: ReadonlyArray<{ id: string; title: string; sub: string; tone: "go
   { id: "sx-register",    title: "Self-exclusion register", sub: "Cross-operator format · monthly",      tone: "neutral" },
 ];
 
-export default function AdminCompliancePage() {
+export default async function AdminCompliancePage() {
   const chain = verifyChain();
-  const kyc = kycFunnel();
-  const rg = rgRosterCounts();
-  const aml = db.txn.listByStatus("AML_REVIEW") as StoredTxn[];
+  const kyc = await kycFunnel();
+  const rg = await rgRosterCounts();
+  const aml = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[];
   const recentAml = aml.slice(0, 5);
   const recentApprovals = getAuditPage({ category: "ADMIN", limit: 50 }).filter((e) => e.action.startsWith("aml.")).slice(0, 8);
   const integrityAlerts = getAuditPage({ category: "BET", limit: 50 }).filter((e) => e.action.startsWith("integrity.alert.")).slice(0, 3);
@@ -253,8 +253,8 @@ export default function AdminCompliancePage() {
   );
 }
 
-function PlayerSafetyPanel() {
-  const flags = detectHarmMarkersForAllUsers();
+async function PlayerSafetyPanel() {
+  const flags = await detectHarmMarkersForAllUsers();
   const byMarker: Record<string, number> = {};
   for (const f of flags) byMarker[f.marker] = (byMarker[f.marker] ?? 0) + 1;
   return (

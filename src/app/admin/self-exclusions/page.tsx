@@ -17,11 +17,11 @@ type RosterRow = {
   daysLeft: number;
 };
 
-function buildRoster(): RosterRow[] {
+async function buildRoster() {
   const now = Date.now();
   const out: RosterRow[] = [];
-  for (const u of db.user.list()) {
-    const r = db.responsible.get(u.id);
+  for (const u of await db.user.list()) {
+    const r = await db.responsible.get(u.id);
     if (!r) continue;
     const sxAt = r.selfExclusionUntil ? new Date(r.selfExclusionUntil).getTime() : 0;
     const coAt = r.coolingOffUntil    ? new Date(r.coolingOffUntil).getTime() : 0;
@@ -54,10 +54,10 @@ export default async function AdminSelfExclusionsPage({
   searchParams: Promise<{ page?: string }>;
 }) {
   const sp = await searchParams;
-  const roster = buildRoster();
+  const roster = await buildRoster();
   const page = parsePage(sp.page, roster.length);
   const paged = roster.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-  const counts = rgRosterCounts();
+  const counts = await rgRosterCounts();
 
   return (
     <>

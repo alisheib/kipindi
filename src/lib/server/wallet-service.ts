@@ -31,7 +31,7 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
   // referrals and proposals. Withdrawals are unaffected (still fully gated).
   // Disable later by setting ADMIN_TEST_DEPOSITS=false (or remove this block).
   const ADMIN_TEST_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
-  const depositor = db.user.findById(userId);
+  const depositor = await db.user.findById(userId);
   const adminTestEnv = process.env.ADMIN_TEST_DEPOSITS;
   const adminTestAllowed = adminTestEnv === "true" || (adminTestEnv === undefined && process.env.NODE_ENV !== "production");
   const adminTest = !!depositor && ADMIN_TEST_ROLES.has(depositor.role) && adminTestAllowed;
@@ -39,24 +39,24 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
   const parse = (adminTest ? AdminDepositSchema : DepositSchema).safeParse(input);
   if (!parse.success) return { ok: false, error: parse.error.errors[0]?.message ?? "Invalid input", code: "INVALID" };
 
-  const wallet = db.wallet.findByUserId(userId);
+  const wallet = await db.wallet.findByUserId(userId);
   if (!wallet) return { ok: false, error: "Wallet not found.", code: "NOT_FOUND" };
   if (wallet.status !== "ACTIVE") return { ok: false, error: "Wallet frozen.", code: "SUSPENDED" };
 
   // Self-exclusion / cooling-off lockout — enforced even for admin test-funding
   // so a self-excluded player cannot receive deposits regardless of role.
-  const lockout = isLockedOut(userId);
+  const lockout = await isLockedOut(userId);
   if (lockout.locked) {
-    audit({ category: "COMPLIANCE", action: "deposit.lockout_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { reason: lockout.reason, until: lockout.until } });
+    await audit({ category: "COMPLIANCE", action: "deposit.lockout_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { reason: lockout.reason, until: lockout.until } });
     return { ok: false, error: `You are in a ${lockout.reason === "self_exclusion" ? "self-exclusion" : "cooling-off"} period until ${new Date(lockout.until!).toLocaleString("en-GB")}.`, code: "SUSPENDED" };
   }
 
   // Responsible-gambling deposit-limit check (daily / weekly / monthly).
   // Skipped for admin test-funding (see bypass note above).
   if (!adminTest) {
-    const limitCheck = checkDepositLimit(userId, parse.data.amount);
+    const limitCheck = await checkDepositLimit(userId, parse.data.amount);
     if (!limitCheck.allowed) {
-      audit({ category: "COMPLIANCE", action: "deposit.limit_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { reason: limitCheck.reason } });
+      await audit({ category: "COMPLIANCE", action: "deposit.limit_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { reason: limitCheck.reason } });
       return { ok: false, error: limitCheck.reason ?? "Deposit limit reached.", code: "INVALID" };
     }
   }
@@ -72,15 +72,15 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
   const SOF_SINGLE_TXN_TZS = 1_000_000;
   const SOF_ROLLING_30D_TZS = 5_000_000;
   const thirtyDaysAgo = Date.now() - 30 * 24 * 3600_000;
-  const recentDeposits = db.txn
-    .findByUser(userId, 500)
+  const recentDeposits = (await db.txn
+    .findByUser(userId, 500))
     .filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED" && Date.parse(t.createdAt) >= thirtyDaysAgo)
     .reduce((s, t) => s + t.amount, 0);
   const cumulativeAfter = recentDeposits + parse.data.amount;
   const triggersSof =
     !adminTest && (parse.data.amount >= SOF_SINGLE_TXN_TZS || cumulativeAfter >= SOF_ROLLING_30D_TZS);
   if (triggersSof) {
-    const sof = db.sourceOfFunds.get(userId);
+    const sof = await db.sourceOfFunds.get(userId);
     if (!sof || sof.reviewStatus !== "ACCEPTED") {
       audit({
         category: "COMPLIANCE",
@@ -111,7 +111,7 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
 
   // Open the transaction in PENDING
   const txnId = `txn_${randomId(12)}`;
-  const txn = db.txn.create({
+  const txn = await db.txn.create({
     id: txnId,
     walletId: wallet.id,
     userId,
@@ -136,7 +136,7 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
   // Dispatch to provider
   const result = await dispatchDeposit({ provider: parse.data.provider, amount: parse.data.amount, msisdn: parse.data.msisdn, userId });
   if (!result.ok) {
-    db.txn.update(txnId, { status: "FAILED", description: `${friendlyProvider(parse.data.provider)} deposit failed: ${result.reason}` });
+    await db.txn.update(txnId, { status: "FAILED", description: `${friendlyProvider(parse.data.provider)} deposit failed: ${result.reason}` });
     audit({ category: "WALLET", action: "deposit.failed", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { reason: result.reason, correlationId: result.correlationId } });
     return { ok: false, error: friendlyDepositReason(result.reason), code: "INVALID" };
   }
@@ -147,13 +147,13 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
   // the meantime. Applying the +amount delta to the live balance (not the stale
   // snapshot) prevents the deposit from clobbering those concurrent changes.
   const newBalance = await withLock(`wallet:${userId}`, async () => {
-    const fresh = db.wallet.findByUserId(userId);
+    const fresh = await db.wallet.findByUserId(userId);
     const base = fresh ? fresh.balance : wallet.balance;
     const next = base + parse.data.amount;
-    if (fresh) db.wallet.update(fresh.id, { balance: next });
+    if (fresh) await db.wallet.update(fresh.id, { balance: next });
     return next;
   });
-  db.txn.update(txnId, { status: "CONFIRMED", providerRef: result.providerRef, balanceAfter: newBalance, completedAt: new Date().toISOString() });
+  await db.txn.update(txnId, { status: "CONFIRMED", providerRef: result.providerRef, balanceAfter: newBalance, completedAt: new Date().toISOString() });
   audit({ category: "WALLET", action: "deposit.confirmed", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: result.providerRef, balanceAfter: newBalance } });
   notifyDeposit(userId, parse.data.amount, friendlyProvider(parse.data.provider));
 
@@ -162,11 +162,11 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
   // deposit. Cumulative includes this just-confirmed deposit.
   try {
     const { onRecruitDeposit } = await import("./affiliate-service");
-    const cumulativeDepositsTzs = db.txn
-      .findByUser(userId, 1000)
+    const cumulativeDepositsTzs = (await db.txn
+      .findByUser(userId, 1000))
       .filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED")
       .reduce((sum, t) => sum + t.amount, 0);
-    onRecruitDeposit(userId, { cumulativeDepositsTzs });
+    await onRecruitDeposit(userId, { cumulativeDepositsTzs });
   } catch { /* affiliate accrual must never break a deposit */ }
 
   return { ok: true, data: { txnId, status: "CONFIRMED", balance: newBalance } };
@@ -180,10 +180,10 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
   const parse = WithdrawSchema.safeParse(input);
   if (!parse.success) return { ok: false, error: parse.error.errors[0]?.message ?? "Invalid input", code: "INVALID" };
 
-  const user = db.user.findById(userId);
+  const user = await db.user.findById(userId);
   if (!user) return { ok: false, error: "User not found.", code: "NOT_FOUND" };
 
-  const kyc = db.kyc.findByUserId(userId);
+  const kyc = await db.kyc.findByUserId(userId);
   if (kyc?.status !== "APPROVED") {
     audit({ category: "COMPLIANCE", action: "withdraw.kyc_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { kycStatus: kyc?.status ?? "NOT_STARTED" } });
     return { ok: false, error: "Verify your identity to withdraw.", code: "INVALID" };
@@ -200,15 +200,15 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
   // Re-read inside the lock so the balance check and the debit can't be split
   // by a concurrent withdrawal/bet/payout on the same wallet (double-spend).
   const hold = await withLock(`wallet:${userId}`, async () => {
-    const w = db.wallet.findByUserId(userId);
+    const w = await db.wallet.findByUserId(userId);
     if (!w) return { ok: false as const, error: "Wallet not found.", code: "NOT_FOUND" as const };
     if (w.status !== "ACTIVE") return { ok: false as const, error: "Wallet frozen.", code: "SUSPENDED" as const };
     if (w.balance < amount) return { ok: false as const, error: "Insufficient balance.", code: "INVALID" as const };
 
     // Move funds from spendable balance into `hold` while in flight.
-    const updated = db.wallet.update(w.id, { balance: w.balance - amount, hold: w.hold + amount });
+    const updated = await db.wallet.update(w.id, { balance: w.balance - amount, hold: w.hold + amount });
     const balanceAfter = updated?.balance ?? w.balance - amount;
-    db.txn.create({
+    await db.txn.create({
       id: txnId,
       walletId: w.id,
       userId,
@@ -243,10 +243,10 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
   // *this* withdrawal's hold delta is the only safe mutation.
   if (!result.ok) {
     await withLock(`wallet:${userId}`, async () => {
-      const w = db.wallet.findByUserId(userId);
-      if (w) db.wallet.update(w.id, { balance: w.balance + amount, hold: Math.max(0, w.hold - amount) });
+      const w = await db.wallet.findByUserId(userId);
+      if (w) await db.wallet.update(w.id, { balance: w.balance + amount, hold: Math.max(0, w.hold - amount) });
     });
-    db.txn.update(txnId, { status: "FAILED", description: `Withdrawal failed: ${result.reason}` });
+    await db.txn.update(txnId, { status: "FAILED", description: `Withdrawal failed: ${result.reason}` });
     audit({ category: "WALLET", action: "withdraw.failed", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { reason: result.reason } });
     notifyWithdraw(userId, { status: "FAILED", amount, provider: providerLabel, reason: result.reason });
     return { ok: false, error: "Withdrawal failed. Funds returned to your balance.", code: "INVALID" };
@@ -254,7 +254,7 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
 
   if (result.status === "AML_REVIEW") {
     // Funds stay in `hold` pending manual review — no settle delta yet.
-    db.txn.update(txnId, { status: "AML_REVIEW", providerRef: result.providerRef, amlReason: "Threshold ≥ TZS 1,000,000" });
+    await db.txn.update(txnId, { status: "AML_REVIEW", providerRef: result.providerRef, amlReason: "Threshold ≥ TZS 1,000,000" });
     audit({ category: "COMPLIANCE", action: "withdraw.aml_held", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { amount } });
     notifyWithdraw(userId, { status: "AML_REVIEW", amount, net, provider: providerLabel });
     return { ok: true, data: { txnId, status: "AML_REVIEW", tax, net } };
@@ -262,18 +262,18 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
 
   // Success — the held funds have left the building; clear this withdrawal's hold.
   await withLock(`wallet:${userId}`, async () => {
-    const w = db.wallet.findByUserId(userId);
-    if (w) db.wallet.update(w.id, { hold: Math.max(0, w.hold - amount) });
+    const w = await db.wallet.findByUserId(userId);
+    if (w) await db.wallet.update(w.id, { hold: Math.max(0, w.hold - amount) });
   });
-  db.txn.update(txnId, { status: "CONFIRMED", providerRef: result.providerRef, completedAt: new Date().toISOString() });
+  await db.txn.update(txnId, { status: "CONFIRMED", providerRef: result.providerRef, completedAt: new Date().toISOString() });
   audit({ category: "WALLET", action: "withdraw.confirmed", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: result.providerRef, net } });
   notifyWithdraw(userId, { status: "CONFIRMED", amount, net, provider: providerLabel });
 
   return { ok: true, data: { txnId, status: "CONFIRMED", tax, net } };
 }
 
-export function listTransactions(userId: string, limit = 50) {
-  return db.txn.findByUser(userId, limit);
+export async function listTransactions(userId: string, limit = 50) {
+  return await db.txn.findByUser(userId, limit);
 }
 
 /**
@@ -294,12 +294,12 @@ export async function creditInternal(
 ): Promise<number | null> {
   if (!Number.isFinite(amount) || amount <= 0) return null;
   return withLock(`wallet:${userId}`, async () => {
-    const wallet = db.wallet.findByUserId(userId);
+    const wallet = await db.wallet.findByUserId(userId);
     if (!wallet || wallet.status !== "ACTIVE") return null;
     const newBalance = wallet.balance + amount;
-    db.wallet.update(wallet.id, { balance: newBalance });
+    await db.wallet.update(wallet.id, { balance: newBalance });
     const now = new Date().toISOString();
-    db.txn.create({
+    await db.txn.create({
       id: `txn_${randomId(12)}`,
       walletId: wallet.id,
       userId,

@@ -15,7 +15,7 @@ const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
 async function requireOfficer(): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
   const session = await getSession();
   if (!session) return { ok: false, error: "Sign in." };
-  const u = db.user.findById(session.userId);
+  const u = await db.user.findById(session.userId);
   if (!u || !ADMIN_ROLES.has(u.role)) return { ok: false, error: "Not authorised." };
   return { ok: true, userId: session.userId };
 }

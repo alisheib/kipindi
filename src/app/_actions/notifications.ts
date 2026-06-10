@@ -8,28 +8,28 @@ export async function fetchMyNotifications(): Promise<{ items: StoredNotificatio
   const session = await currentSession();
   if (!session) return { items: [], unread: 0 };
   return {
-    items: listForUser(session.userId, 30) as StoredNotification[],
-    unread: unreadCount(session.userId),
+    items: await listForUser(session.userId, 30) as StoredNotification[],
+    unread: await unreadCount(session.userId),
   };
 }
 
 export async function markNotifReadAction(id: string) {
   const session = await currentSession();
   if (!session) return { ok: false as const };
-  markRead(id);
+  await markRead(id);
   return { ok: true as const };
 }
 
 export async function markAllReadAction() {
   const session = await currentSession();
   if (!session) return { ok: false as const, count: 0 };
-  const count = markAllRead(session.userId);
+  const count = await markAllRead(session.userId);
   return { ok: true as const, count };
 }
 
 export async function dismissNotifAction(id: string) {
   const session = await currentSession();
   if (!session) return { ok: false as const };
-  dismiss(id);
+  await dismiss(id);
   return { ok: true as const };
 }

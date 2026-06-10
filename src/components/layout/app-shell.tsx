@@ -28,7 +28,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   } = { initials: guestUser.initials, name: guestUser.name, phone: guestUser.phone, isAuthed: false, balance: null };
   let realityCheckMin = 30;
   if (session) {
-    const u = db.user.findById(session.userId);
+    const u = await db.user.findById(session.userId);
     // Canonical display: real displayName if set, otherwise the
     // auto-generated "Player #ABCDEF" anonymous handle. Never the old
     // "Demo Manager" placeholder — that read as a bug to operators.
@@ -38,7 +38,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     const masked = session.phoneE164.length > 6
       ? `${session.phoneE164.slice(0, 4)}*****${session.phoneE164.slice(-2)}`
       : session.phoneE164;
-    const wallet = db.wallet.findByUserId(session.userId);
+    const wallet = await db.wallet.findByUserId(session.userId);
     topUser = {
       initials,
       name: display,
@@ -48,7 +48,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       seed: session.userId,
       balance: wallet?.balance ?? null,
     };
-    const rg = getRgSettings(session.userId);
+    const rg = await getRgSettings(session.userId);
     realityCheckMin = rg.realityCheckIntervalMin || 30;
   }
   return (

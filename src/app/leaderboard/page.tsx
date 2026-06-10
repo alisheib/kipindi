@@ -54,9 +54,9 @@ function seededWalk(seed: string, length: number, max = 100_000): number[] {
   return out;
 }
 
-function buildLeaderboard(): Row[] {
+async function buildLeaderboard() {
   const out: Row[] = [];
-  for (const u of db.user.list()) {
+  for (const u of await db.user.list()) {
     const positions = listPositionsForUser(u.id, 5_000).filter((p) => p.status !== "OPEN");
     if (positions.length === 0) continue;
     const staked = positions.reduce((s, p) => s + p.stake, 0);
@@ -128,9 +128,9 @@ function buildConsensusSeries(): { t: string; yes: number }[] {
   return points;
 }
 
-export default function LeaderboardPage() {
+export default async function LeaderboardPage() {
   seedDemoMarkets();
-  const real = buildLeaderboard();
+  const real = await buildLeaderboard();
   const isSynthetic = real.length < 6;
   const rows = isSynthetic ? syntheticLeaderboard() : real;
   const consensus = buildConsensusSeries();

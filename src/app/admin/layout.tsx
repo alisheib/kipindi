@@ -60,7 +60,7 @@ function crumbsFromPath(path: string): string[] {
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await currentSession();
   if (!session) redirect("/auth/admin");
-  const u = db.user.findById(session.userId);
+  const u = await db.user.findById(session.userId);
   const allowed = u && ADMIN_ROLES.has(u.role);
   if (!allowed) redirect("/auth/admin");
 

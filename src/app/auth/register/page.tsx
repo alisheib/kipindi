@@ -24,7 +24,7 @@ export default async function RegisterPage({
   const sp = await searchParams;
   const phoneDefault = (sp.phone ?? "").replace(/^\+255/, "").replace(/\D+/g, "").slice(0, 9);
   const refCode = (sp.ref ?? "").trim().slice(0, 16);
-  const referral = refCode ? resolveReferralPreview(refCode) : null;
+  const referral = refCode ? await resolveReferralPreview(refCode) : null;
 
   const errorPanel = (() => {
     if (!sp.error) return null;

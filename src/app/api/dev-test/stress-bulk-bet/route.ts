@@ -32,12 +32,12 @@ type Body = {
   userPrefix?: string;
 };
 
-function ensureStressUsers(prefix: string, count: number, fundEach: number): string[] {
+async function ensureStressUsers(prefix: string, count: number, fundEach: number) {
   const userIds: string[] = [];
   const safePrefix = prefix.replace(/[^a-z0-9]/gi, "").slice(0, 4) || "s1";
   for (let i = 0; i < count; i++) {
     const phone = `+25590${safePrefix.padEnd(2, "0").slice(0, 2)}${String(i).padStart(5, "0").slice(-5)}`;
-    let user = db.user.findByPhone(phone);
+    let user = await db.user.findByPhone(phone);
     if (!user) {
       const now = new Date().toISOString();
       const u: StoredUser = {
@@ -63,7 +63,7 @@ function ensureStressUsers(prefix: string, count: number, fundEach: number): str
         lastLoginAt: null,
         closedAt: null,
       };
-      db.user.create(u);
+      await db.user.create(u);
       const w: StoredWallet = {
         id: `wal_${randomId(12)}`,
         userId: u.id,
@@ -75,11 +75,11 @@ function ensureStressUsers(prefix: string, count: number, fundEach: number): str
         createdAt: now,
         updatedAt: now,
       };
-      db.wallet.create(w);
+      await db.wallet.create(w);
       user = u;
     } else {
-      const w = db.wallet.findByUserId(user.id);
-      if (w) db.wallet.update(w.id, { balance: w.balance + fundEach });
+      const w = await db.wallet.findByUserId(user.id);
+      if (w) await db.wallet.update(w.id, { balance: w.balance + fundEach });
     }
     userIds.push(user.id);
   }
@@ -113,7 +113,7 @@ export async function POST(req: Request) {
 
   const userCount = Math.min(n, 200);
   const fundPerUser = stake * Math.ceil(n / userCount) + stake * 4;
-  const userIds = ensureStressUsers(prefix, userCount, fundPerUser);
+  const userIds = await ensureStressUsers(prefix, userCount, fundPerUser);
   if (userIds.length === 0) {
     return NextResponse.json({ ok: false, error: "could not provision synthetic users" }, { status: 500 });
   }
@@ -169,8 +169,8 @@ export async function POST(req: Request) {
   const positionsStore = (globalThis as unknown as {
     __50PICK_POSITIONS?: Map<string, { userId: string; marketId: string; stake: number; status: string }>;
   }).__50PICK_POSITIONS;
-  const walletChecks = sample.map((uid) => {
-    const w = db.wallet.findByUserId(uid);
+  const walletChecks = await Promise.all(sample.map(async (uid) => {
+    const w = await db.wallet.findByUserId(uid);
     const pos = Array.from(positionsStore?.values() ?? []).filter(
       (p) => p.userId === uid && p.marketId === marketId && p.status === "OPEN",
     );
@@ -181,7 +181,7 @@ export async function POST(req: Request) {
       positionsOnMarket: pos.length,
       debitedToThisMarket: debited,
     };
-  });
+  }));
 
   return NextResponse.json({
     ok: true,

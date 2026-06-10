@@ -11,9 +11,9 @@ import { getAuditPage } from "@/lib/server/audit";
 export const metadata = { title: "Admin · AML queue" };
 export const dynamic = "force-dynamic";
 
-export default function AdminAmlPage() {
-  const inReview = db.txn.listByStatus("AML_REVIEW") as StoredTxn[];
-  const flags = detectSuspiciousBets();
+export default async function AdminAmlPage() {
+  const inReview = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[];
+  const flags = await detectSuspiciousBets();
   // Track which txns already have a stage-1 signature (waiting on second officer)
   const stage1 = new Map<string, { actorId: string | null; at: string }>();
   for (const e of getAuditPage({ category: "ADMIN", limit: 200 })) {

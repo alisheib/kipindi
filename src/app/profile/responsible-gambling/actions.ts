@@ -17,7 +17,7 @@ function n(s: FormDataEntryValue | null): number | null {
 export async function setLimitsAction(formData: FormData) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
-  const result = setLimits(session.userId, {
+  const result = await setLimits(session.userId, {
     dailyDepositLimit:   n(formData.get("dailyDepositLimit")),
     weeklyDepositLimit:  n(formData.get("weeklyDepositLimit")),
     monthlyDepositLimit: n(formData.get("monthlyDepositLimit")),
@@ -27,7 +27,7 @@ export async function setLimitsAction(formData: FormData) {
   });
   revalidatePath("/profile/responsible-gambling");
   if (!result.ok) {
-    redirect(`/profile/responsible-gambling?error=${encodeURIComponent(result.error)}`);
+    redirect(`/profile/responsible-gambling?error=${encodeURIComponent(result.error ?? "Unknown error")}`);
   }
   redirect("/profile/responsible-gambling?saved=1");
 }
@@ -39,7 +39,7 @@ export async function selfExcludeAction(formData: FormData) {
   if (!(period in SELF_EXCLUSION_PERIODS_SEC)) {
     redirect(`/profile/responsible-gambling?error=${encodeURIComponent("Pick a valid self-exclusion period.")}`);
   }
-  selfExclude(session.userId, period as keyof typeof SELF_EXCLUSION_PERIODS_SEC);
+  await selfExclude(session.userId, period as keyof typeof SELF_EXCLUSION_PERIODS_SEC);
   await destroySession();
   redirect("/auth/login?excluded=1");
 }
@@ -51,7 +51,7 @@ export async function coolOffAction(formData: FormData) {
   if (!(period in COOLING_OFF_PERIODS_SEC)) {
     redirect(`/profile/responsible-gambling?error=${encodeURIComponent("Pick a valid cooling-off period.")}`);
   }
-  coolOff(session.userId, period as keyof typeof COOLING_OFF_PERIODS_SEC);
+  await coolOff(session.userId, period as keyof typeof COOLING_OFF_PERIODS_SEC);
   await destroySession();
   redirect("/auth/login?cooled=1");
 }

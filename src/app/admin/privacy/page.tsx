@@ -13,11 +13,11 @@ import { I } from "@/components/ui/glyphs";
 export const metadata = { title: "Admin · Privacy / DSAR" };
 export const dynamic = "force-dynamic";
 
-export default function AdminPrivacyPage() {
+export default async function AdminPrivacyPage() {
   const requests = listDsarRequests();
   const pending = requests.filter((r) => r.status === "PENDING");
   const fulfilled = requests.filter((r) => r.status === "FULFILLED");
-  const recentUsers = db.user.list().slice(0, 8);
+  const recentUsers = (await db.user.list()).slice(0, 8);
 
   return (
     <>

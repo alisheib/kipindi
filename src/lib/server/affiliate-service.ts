@@ -54,21 +54,21 @@ function genCode(displayName: string | null): string {
 }
 
 /** Mint (or fetch) the affiliate account for a user. Idempotent. */
-export function ensureAffiliateAccount(userId: string): StoredAffiliateAccount {
-  const existing = db.affiliate.findByUserId(userId);
+export async function ensureAffiliateAccount(userId: string) {
+  const existing = await db.affiliate.findByUserId(userId);
   if (existing) return existing;
-  const user = db.user.findById(userId);
+  const user = await db.user.findById(userId);
   let code = genCode(user?.displayName ?? null);
   // Collision-avoidance — vanishingly rare. Try friendly regenerations first…
   let guard = 0;
-  while (db.affiliate.findByCode(code) && guard < 12) {
+  while (await db.affiliate.findByCode(code) && guard < 12) {
     code = genCode(user?.displayName ?? null);
     guard++;
   }
   // …then, if we somehow still collide, widen the code with extra entropy until
   // it is provably unique. Never fall through and mint a duplicate code — two
   // referrers sharing a code would misattribute every recruit and reward.
-  while (db.affiliate.findByCode(code)) {
+  while (await db.affiliate.findByCode(code)) {
     const hex = randomId(8);
     let extra = "";
     for (let i = 0; i + 1 < hex.length && extra.length < 4; i += 2) {
@@ -77,7 +77,7 @@ export function ensureAffiliateAccount(userId: string): StoredAffiliateAccount {
     code = (code.slice(0, 5) + extra).slice(0, 12);
   }
   const now = new Date().toISOString();
-  const account = db.affiliate.create({
+  const account = await db.affiliate.create({
     userId,
     code,
     recruitCount: 0,
@@ -112,10 +112,10 @@ export function maskName(displayName: string | null, phoneE164: string): string 
  * a sign-up bonus is on offer. Returns null when the code is unknown so the
  * ribbon degrades gracefully (no ribbon shown).
  */
-export function resolveReferralPreview(code: string): { referrerName: string; newPlayerBonusTzs: number; bonusTrigger: "SIGNUP" | "FIRST_DEPOSIT" } | null {
-  const affiliate = db.affiliate.findByCode((code ?? "").trim());
+export async function resolveReferralPreview(code: string) {
+  const affiliate = await db.affiliate.findByCode((code ?? "").trim());
   if (!affiliate) return null;
-  const referrer = db.user.findById(affiliate.userId);
+  const referrer = await db.user.findById(affiliate.userId);
   if (!referrer) return null;
   const cfg = getAffiliateConfig();
   // New-player bonus is only advertised when the program + bonus mode are on
@@ -137,7 +137,7 @@ async function creditWallet(userId: string, amount: number, description: string)
   return (await creditInternal(userId, amount, { description })) !== null;
 }
 
-function recordReward(input: {
+async function recordReward(input: {
   referrerUserId: string;
   recruitUserId: string;
   recipientUserId: string;
@@ -146,8 +146,8 @@ function recordReward(input: {
   amountTzs: number;
   status: StoredReferralReward["status"];
   note?: string | null;
-}): StoredReferralReward {
-  const reward = db.referralReward.create({
+}) {
+  const reward = await db.referralReward.create({
     id: `ref_${randomId(12)}`,
     referrerUserId: input.referrerUserId,
     recruitUserId: input.recruitUserId,
@@ -162,8 +162,8 @@ function recordReward(input: {
   // Keep the affiliate account's denormalised earnings in sync (only count
   // money that actually reached the referrer, and only PAID rewards).
   if (input.status === "PAID" && input.recipientUserId === input.referrerUserId) {
-    const acct = ensureAffiliateAccount(input.referrerUserId);
-    db.affiliate.update(input.referrerUserId, { totalEarnedTzs: acct.totalEarnedTzs + input.amountTzs });
+    const acct = await ensureAffiliateAccount(input.referrerUserId);
+    await db.affiliate.update(input.referrerUserId, { totalEarnedTzs: acct.totalEarnedTzs + input.amountTzs });
   }
   audit({
     category: "WALLET",
@@ -182,17 +182,16 @@ function recordReward(input: {
  * Returns the referrer's userId on success, or a reason it was skipped.
  * Always safe to call — invalid / missing codes are a no-op.
  */
-export function bindRecruit(opts: { recruitUserId: string; code: string; ip?: string | null }):
-  | { bound: true; referrerUserId: string }
-  | { bound: false; reason: string } {
+export async function bindRecruit(opts: { recruitUserId: string; code: string; ip?: string | null }):
+  Promise<{ bound: true; referrerUserId: string } | { bound: false; reason: string }> {
   const code = (opts.code ?? "").trim();
   if (!code) return { bound: false, reason: "no_code" };
 
-  const recruit = db.user.findById(opts.recruitUserId);
+  const recruit = await db.user.findById(opts.recruitUserId);
   if (!recruit) return { bound: false, reason: "recruit_not_found" };
   if (recruit.recruitedBy) return { bound: false, reason: "already_bound" };
 
-  const affiliate = db.affiliate.findByCode(code);
+  const affiliate = await db.affiliate.findByCode(code);
   if (!affiliate) return { bound: false, reason: "invalid_code" };
   const referrerUserId = affiliate.userId;
 
@@ -208,10 +207,10 @@ export function bindRecruit(opts: { recruitUserId: string; code: string; ip?: st
   // sharing exists), but we mark it so rewards land HELD for review.
   const suspectIpOverlap = !!opts.ip && referrerSharesIp(referrerUserId, opts.ip);
 
-  db.user.update(opts.recruitUserId, { recruitedBy: referrerUserId });
-  const acct = ensureAffiliateAccount(referrerUserId);
-  db.affiliate.update(referrerUserId, { recruitCount: acct.recruitCount + 1 });
-  ensureAffiliateAccount(opts.recruitUserId); // recruit gets their own link too
+  await db.user.update(opts.recruitUserId, { recruitedBy: referrerUserId });
+  const acct = await ensureAffiliateAccount(referrerUserId);
+  await db.affiliate.update(referrerUserId, { recruitCount: acct.recruitCount + 1 });
+  await ensureAffiliateAccount(opts.recruitUserId); // recruit gets their own link too
 
   audit({
     category: "ADMIN",
@@ -228,7 +227,7 @@ export function bindRecruit(opts: { recruitUserId: string; code: string; ip?: st
   // Sign-up-triggered bonus (if configured).
   const cfg = getAffiliateConfig();
   if (cfg.enabled && cfg.bonus.enabled && cfg.bonus.trigger === "SIGNUP") {
-    payBonus({ referrerUserId, recruitUserId: opts.recruitUserId, held: suspectIpOverlap });
+    await payBonus({ referrerUserId, recruitUserId: opts.recruitUserId, held: suspectIpOverlap });
   }
 
   return { bound: true, referrerUserId };
@@ -255,7 +254,7 @@ async function payBonus(opts: { referrerUserId: string; recruitUserId: string; h
   const cfg = getAffiliateConfig();
   if (!cfg.enabled || !cfg.bonus.enabled) return;
   // Idempotency — only one bonus per recruit, ever.
-  const priorBonus = db.referralReward.listByRecruit(opts.recruitUserId).some((r) => r.type === "BONUS");
+  const priorBonus = (await db.referralReward.listByRecruit(opts.recruitUserId)).some((r) => r.type === "BONUS");
   if (priorBonus) return;
 
   const status: StoredReferralReward["status"] = opts.held ? "HELD" : "PAID";
@@ -268,7 +267,7 @@ async function payBonus(opts: { referrerUserId: string; recruitUserId: string; h
     // never moved, and the held queue lets an officer retry it.
     const credited = status === "PAID" ? await creditWallet(userId, amount, `Referral bonus · ${triggerLabel}`) : false;
     const finalStatus: StoredReferralReward["status"] = status === "PAID" && !credited ? "HELD" : status;
-    recordReward({
+    await recordReward({
       referrerUserId: opts.referrerUserId,
       recruitUserId: opts.recruitUserId,
       recipientUserId: userId,
@@ -290,15 +289,15 @@ async function payPrize(opts: { referrerUserId: string; recruitUserId: string; m
   const cfg = getAffiliateConfig();
   if (!cfg.enabled || !cfg.prize.enabled || cfg.prize.amountTzs <= 0) return;
   // One prize per recruit.
-  const priorPrize = db.referralReward.listByRecruit(opts.recruitUserId).some((r) => r.type === "PRIZE");
+  const priorPrize = (await db.referralReward.listByRecruit(opts.recruitUserId)).some((r) => r.type === "PRIZE");
   if (priorPrize) return;
   // Per-referrer cap on number of prizes.
   if (cfg.prize.capPerReferrer > 0) {
-    const prizeCount = db.referralReward.listByReferrer(opts.referrerUserId).filter((r) => r.type === "PRIZE").length;
+    const prizeCount = (await db.referralReward.listByReferrer(opts.referrerUserId)).filter((r) => r.type === "PRIZE").length;
     if (prizeCount >= cfg.prize.capPerReferrer) return;
   }
   const credited = await creditWallet(opts.referrerUserId, cfg.prize.amountTzs, `Referral prize · ${opts.milestoneLabel}`);
-  recordReward({
+  await recordReward({
     referrerUserId: opts.referrerUserId,
     recruitUserId: opts.recruitUserId,
     recipientUserId: opts.referrerUserId,
@@ -318,7 +317,7 @@ async function payPrize(opts: { referrerUserId: string; recruitUserId: string; m
  * `operatorCommissionRate` is the effective per-market commission fraction.
  */
 export async function onRecruitBet(recruitUserId: string, opts: { stake: number; operatorCommissionRate: number }): Promise<void> {
-  const recruit = db.user.findById(recruitUserId);
+  const recruit = await db.user.findById(recruitUserId);
   const referrerUserId = recruit?.recruitedBy;
   if (!referrerUserId) return;
   const cfg = getAffiliateConfig();
@@ -332,7 +331,7 @@ export async function onRecruitBet(recruitUserId: string, opts: { stake: number;
   // Commission accrual.
   if (cfg.commission.enabled && cfg.commission.rate > 0) {
     // Window check — commission only accrues for windowMonths after join.
-    const acct = db.affiliate.findByUserId(referrerUserId);
+    const acct = await db.affiliate.findByUserId(referrerUserId);
     // Real calendar-month window (not a flat 30-day approximation, which would
     // drift ~5 days/year and shortchange the referrer on long windows).
     const windowEnd = new Date(recruit!.createdAt);
@@ -345,8 +344,8 @@ export async function onRecruitBet(recruitUserId: string, opts: { stake: number;
 
     // Per-recruit cap.
     if (cfg.commission.capPerRecruitTzs > 0) {
-      const already = db.referralReward
-        .listByReferrer(referrerUserId)
+      const already = (await db.referralReward
+        .listByReferrer(referrerUserId))
         .filter((r) => r.recruitUserId === recruitUserId && r.type === "COMMISSION")
         .reduce((s, r) => s + r.amountTzs, 0);
       const remaining = cfg.commission.capPerRecruitTzs - already;
@@ -356,7 +355,7 @@ export async function onRecruitBet(recruitUserId: string, opts: { stake: number;
     if (cut <= 0) return;
 
     const credited = await creditWallet(referrerUserId, cut, "Referral commission");
-    recordReward({
+    await recordReward({
       referrerUserId,
       recruitUserId,
       recipientUserId: referrerUserId,
@@ -376,7 +375,7 @@ export async function onRecruitBet(recruitUserId: string, opts: { stake: number;
  * `cumulativeDepositsTzs` includes this deposit.
  */
 export async function onRecruitDeposit(recruitUserId: string, opts: { cumulativeDepositsTzs: number }): Promise<void> {
-  const recruit = db.user.findById(recruitUserId);
+  const recruit = await db.user.findById(recruitUserId);
   const referrerUserId = recruit?.recruitedBy;
   if (!referrerUserId) return;
   const cfg = getAffiliateConfig();
@@ -410,21 +409,20 @@ export type PlayerReferralSummary = {
   promises: Array<{ icon: "percent" | "ticket" | "gift"; en: string; sw: string }>;
 };
 
-export function getPlayerReferralSummary(userId: string): PlayerReferralSummary {
-  const acct = ensureAffiliateAccount(userId);
+export async function getPlayerReferralSummary(userId: string) {
+  const acct = await ensureAffiliateAccount(userId);
   const cfg = getAffiliateConfig();
 
-  const recruits: RecruitRow[] = db.user
-    .list()
+  const allUsers = await db.user.list();
+  const referrerRewards = await db.referralReward.listByReferrer(userId);
+  const recruits: RecruitRow[] = allUsers
     .filter((u) => u.recruitedBy === userId)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .map((u) => {
-      const earned = db.referralReward
-        .listByReferrer(userId)
+      const earned = referrerRewards
         .filter((r) => r.recruitUserId === u.id && r.recipientUserId === userId && r.status === "PAID")
         .reduce((s, r) => s + r.amountTzs, 0);
-      const hasCommission = db.referralReward
-        .listByReferrer(userId)
+      const hasCommission = referrerRewards
         .some((r) => r.recruitUserId === u.id && r.type === "COMMISSION");
       const status: RecruitRow["status"] = hasCommission ? "Earning" : earned > 0 ? "First bet" : "Signed up";
       return { maskedName: maskName(u.displayName, u.phoneE164), joinedAt: u.createdAt, status, earnedTzs: earned };
@@ -486,41 +484,42 @@ export type AdminAffiliateStats = {
   ledger: AdminLedgerRow[];
 };
 
-function handleFor(userId: string): string {
-  const u = db.user.findById(userId);
+async function handleFor(userId: string) {
+  const u = await db.user.findById(userId);
   if (!u) return "@unknown";
   if (u.displayName) return "@" + u.displayName.trim().toLowerCase().replace(/\s+/g, "_").slice(0, 18);
   return "@" + u.phoneE164.replace(/\D/g, "").slice(-6);
 }
 
-export function getAdminAffiliateStats(): AdminAffiliateStats {
-  const accounts = db.affiliate.list();
-  const rewards = db.referralReward.list(1000);
+export async function getAdminAffiliateStats() {
+  const accounts = await db.affiliate.list();
+  const rewards = await db.referralReward.list(1000);
 
-  const totalReferrals = db.user.list().filter((u) => !!u.recruitedBy).length;
+  const totalReferrals = (await db.user.list()).filter((u) => !!u.recruitedBy).length;
   const earnerIds = new Set(rewards.filter((r) => r.status === "PAID").map((r) => r.referrerUserId));
   const activeAffiliates = earnerIds.size;
   const commissionPaidTzs = rewards.filter((r) => r.type === "COMMISSION" && r.status === "PAID").reduce((s, r) => s + r.amountTzs, 0);
   const totalPaidTzs = rewards.filter((r) => r.status === "PAID").reduce((s, r) => s + r.amountTzs, 0);
 
-  const leaderboard: AdminLeaderboardRow[] = accounts
-    .map((a) => ({ handle: handleFor(a.userId), userId: a.userId, recruits: a.recruitCount, earnedTzs: a.totalEarnedTzs }))
+  const leaderboard: AdminLeaderboardRow[] = await Promise.all(accounts
+    .map(async (a) => ({ handle: await handleFor(a.userId), userId: a.userId, recruits: a.recruitCount, earnedTzs: a.totalEarnedTzs }))
+  ).then((rows) => rows
     .filter((r) => r.recruits > 0 || r.earnedTzs > 0)
     .sort((a, b) => b.earnedTzs - a.earnedTzs || b.recruits - a.recruits)
-    .slice(0, 10);
+    .slice(0, 10));
 
-  const ledger: AdminLedgerRow[] = rewards.slice(0, 100).map((r) => {
-    const recruit = db.user.findById(r.recruitUserId);
+  const ledger: AdminLedgerRow[] = await Promise.all(rewards.slice(0, 100).map(async (r) => {
+    const recruit = await db.user.findById(r.recruitUserId);
     return {
       id: r.id,
-      referrerHandle: handleFor(r.referrerUserId),
+      referrerHandle: await handleFor(r.referrerUserId),
       recruitMasked: recruit ? maskName(recruit.displayName, recruit.phoneE164) : "—",
       type: r.label,
       amountTzs: r.amountTzs,
       date: r.createdAt,
       status: r.status,
     };
-  });
+  }));
 
   const top = leaderboard[0];
   return {

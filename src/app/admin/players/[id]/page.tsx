@@ -41,12 +41,12 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   const sp = await searchParams;
   const tab = sp.tab ?? "activity";
 
-  const user = db.user.findById(id);
+  const user = await db.user.findById(id);
   if (!user) notFound();
-  const wallet = db.wallet.findByUserId(id);
-  const kyc = db.kyc.findByUserId(id);
-  const rg = db.responsible.get(id);
-  const data = exportUserData(id);
+  const wallet = await db.wallet.findByUserId(id);
+  const kyc = await db.kyc.findByUserId(id);
+  const rg = await db.responsible.get(id);
+  const data = await exportUserData(id);
   const txns = data.transactions as StoredTxn[];
   const bets = data.bets as StoredBet[];
   const audit = getAuditForActor(id, 200);

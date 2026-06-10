@@ -60,12 +60,12 @@ export async function GET() {
     }, { status: 401 });
   }
 
-  const user = db.user.findById(session.userId);
+  const user = await db.user.findById(session.userId);
   const bootstrap = bootstrapPhones();
   const isInBootstrapList = !!user && bootstrap.includes(user.phoneE164);
   const chain = verifyChain();
 
-  const userCount = db.user.list().length;
+  const userCount = (await db.user.list()).length;
   // Active DB ping — proves reachability + table existence WITHOUT
   // having to perform a mutation. Cheap (5–50ms on a healthy link).
   const ping = await pingDatabase();
