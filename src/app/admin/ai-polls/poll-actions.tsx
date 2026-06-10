@@ -46,6 +46,7 @@ export function GenerateForm() {
       fd.set("prompt", prompt);
       const r = await generatePollAction(fd);
       setGenerating(false);
+      router.refresh();
       if (r.ok) {
         const state = r.poll.state;
         if (state === "PENDING_REVIEW") {
@@ -56,7 +57,6 @@ export function GenerateForm() {
           toast({ title: "Generation failed", description: r.poll.filterReasons.join(", "), variant: "danger" });
         }
       }
-      router.refresh();
     });
   };
 
@@ -125,6 +125,7 @@ export function BatchGenerateForm({ maxBatch, remaining }: { maxBatch: number; r
       fd.set("count", count);
       fd.set("prompt", prompt);
       const r = await generatePollBatchAction(fd);
+      router.refresh();
       if (r.ok) {
         toast({
           title: `Batch complete — ${r.total} generated`,
@@ -132,7 +133,6 @@ export function BatchGenerateForm({ maxBatch, remaining }: { maxBatch: number; r
           variant: "success",
         });
       }
-      router.refresh();
     });
   };
 
@@ -238,7 +238,7 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
           role="switch"
           aria-label="Toggle live web search grounding"
           aria-checked={webSearch ? "true" : "false"}
-          className={`relative shrink-0 ml-3 h-6 w-11 rounded-full transition-colors ${webSearch ? "bg-[var(--brand-500)]" : "bg-bg-inset border border-border"}`}
+          className={`relative shrink-0 ml-3 h-6 w-11 rounded-full transition-colors ${webSearch ? "bg-yes-500" : "bg-bg-overlay border border-border"}`}
         >
           <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${webSearch ? "translate-x-[22px]" : "translate-x-0.5"}`} />
         </button>

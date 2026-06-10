@@ -122,7 +122,7 @@ export function AddSourceForm() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex h-9 items-center gap-1.5 rounded-md bg-teal-500 px-3.5 font-display font-semibold text-white text-[13px] hover:bg-teal-400 transition-colors"
+        className="inline-flex h-9 items-center gap-1.5 rounded-md bg-yes-500 px-3.5 font-display font-semibold text-yes-950 text-[13px] hover:bg-yes-400 transition-colors"
       >
         + Add source
       </button>

@@ -15,7 +15,6 @@
 
 import { randomId } from "./crypto";
 import { audit } from "./audit";
-import { scheduleBackup } from "./backup";
 import { prisma, hasDatabase } from "./prisma";
 
 export type CandidateState =
@@ -327,7 +326,7 @@ export async function ingestCandidate(input: {
     updatedAt: now,
   };
   await candidateStore.set(c);
-  scheduleBackup();
+
   audit({
     category: "ADMIN", action: "candidate.extracted",
     actorId: input.actorId ?? "system_ai",
@@ -353,7 +352,7 @@ export async function filterCandidate(id: string, opts: { passes: boolean; reaso
   }
   c.updatedAt = now;
   await candidateStore.set(c);
-  scheduleBackup();
+
   audit({
     category: "ADMIN",
     action: opts.passes ? "candidate.filter_pass" : "candidate.filter_reject",
@@ -375,7 +374,7 @@ export async function attachVerification(id: string, opts: { confirmingSources: 
   c.trace.push({ layer: 3, outcome: `verified:${opts.confirmingSources.length}`, at: now });
   c.updatedAt = now;
   await candidateStore.set(c);
-  scheduleBackup();
+
   return c;
 }
 
@@ -398,7 +397,7 @@ export async function scoreCandidate(id: string, opts: { confidence: number; tok
     c.trace.push({ layer: 4, outcome: `scored:${c.confidence}:${JSON.stringify(opts.rubric)}`, at: now });
   }
   await candidateStore.set(c);
-  scheduleBackup();
+
   return c;
 }
 
@@ -414,7 +413,7 @@ export async function approveCandidate(id: string, opts: { officerId: string; no
   c.reviewNote = opts.note;
   c.updatedAt = now;
   await candidateStore.set(c);
-  scheduleBackup();
+
   audit({
     category: "ADMIN", action: "candidate.approved",
     actorId: opts.officerId, targetType: "Candidate", targetId: c.id,
@@ -437,7 +436,7 @@ export async function rejectCandidate(id: string, opts: { officerId: string; rea
   c.rejectNote = opts.note;
   c.updatedAt = now;
   await candidateStore.set(c);
-  scheduleBackup();
+
   audit({
     category: "ADMIN", action: "candidate.rejected",
     actorId: opts.officerId, targetType: "Candidate", targetId: c.id,
@@ -455,7 +454,7 @@ export async function markPublished(id: string, marketId: string, officerId: str
   c.publishedMarketId = marketId;
   c.updatedAt = now;
   await candidateStore.set(c);
-  scheduleBackup();
+
   audit({
     category: "ADMIN", action: "candidate.published",
     actorId: officerId, targetType: "Candidate", targetId: c.id,

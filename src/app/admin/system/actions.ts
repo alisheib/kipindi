@@ -1,10 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
-import { backupNow } from "@/lib/server/backup";
 import { verifyChain } from "@/lib/server/audit";
 import { audit } from "@/lib/server/audit";
 
@@ -16,16 +14,6 @@ async function requireAdmin() {
   const u = await db.user.findById(session.userId);
   if (!(u && ADMIN_ROLES.has(u.role))) redirect("/auth/login");
   return session;
-}
-
-export async function backupNowAction() {
-  const session = await requireAdmin();
-  const result = backupNow();
-  if (result.ok) {
-    audit({ category: "ADMIN", action: "backup.manual", actorId: session.userId, targetType: null, targetId: null, payload: { ts: result.ts } });
-  }
-  revalidatePath("/admin/system");
-  return result;
 }
 
 export async function verifyChainAction() {

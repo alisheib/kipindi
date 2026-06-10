@@ -7,7 +7,6 @@ import { smsHealthSnapshot, sms as smsClient } from "@/lib/server/sms";
 import { rateLimitSnapshot } from "@/lib/server/rate-limit";
 import { listMarkets } from "@/lib/server/market-service";
 import { hasDatabase, pingDatabase } from "@/lib/server/prisma";
-import { dbHealth } from "@/lib/server/backup";
 
 export const metadata = { title: "Admin · System" };
 export const dynamic = "force-dynamic";
@@ -26,7 +25,7 @@ export default async function AdminSystemPage() {
   const liveMarkets = (await listMarkets({ status: "LIVE" })).length;
   const resolvedMarkets = (await listMarkets({ status: "RESOLVED" })).length;
   const dbBackend: "postgres" | "disk-only" = hasDatabase() ? "postgres" : "disk-only";
-  const health = dbHealth();
+  const health = { lastOk: null as string | null, lastFail: null as string | null, lastError: null as string | null, consecutiveFails: 0 };
   // Active reachability ping — runs SELECT 1 + a StoreSnapshot probe
   // on every render of this page so the operator gets a NOW answer,
   // not a "we last saw it 12 hours ago when something wrote" answer.
@@ -49,17 +48,6 @@ export default async function AdminSystemPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <AdminCard title="Backup" sw="Nakala">
-            <div className="flex items-start gap-2 mb-3">
-              <I.database size={16} className="text-royal mt-0.5 shrink-0" />
-              <p className="text-caption text-text-secondary">
-                The in-memory store auto-snapshots to disk on every mutation (debounced 1.5s, last 12 snapshots kept).
-                Click below to force an immediate snapshot — useful before a planned restart.
-              </p>
-            </div>
-            <SystemActions kind="backup" />
-          </AdminCard>
-
           <AdminCard title="Audit chain integrity" sw="Mlolongo · uadilifu">
             <div className="flex items-start gap-2 mb-3">
               <I.shieldcheck s={16} />

@@ -4,45 +4,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
-import { backupNowAction, verifyChainAction } from "./actions";
+import { verifyChainAction } from "./actions";
 
-export function SystemActions({ kind }: { kind: "backup" | "verify-chain" }) {
+export function SystemActions({ kind }: { kind: "verify-chain" }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const { toast } = useToast();
-
-  if (kind === "backup") {
-    const click = async () => {
-      setLoading(true);
-      try {
-        const r = await backupNowAction();
-        if (r.ok) {
-          setResult(`Snapshot written ${new Date(r.ts).toLocaleString("en-GB")}`);
-          toast({ title: "Backup written", description: r.ts, variant: "success" });
-        } else {
-          setResult(`FAILED: ${r.error}`);
-          toast({ title: "Backup failed", description: r.error, variant: "danger" });
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-    return (
-      <div className="space-y-2">
-        <Button variant="primary" size="lg" leading={<I.database size={14} />} onClick={click} loading={loading}>
-          Backup now
-        </Button>
-        {result && (
-          <p className="text-caption flex items-center gap-1.5 text-text-secondary">
-            <I.checkCircle size={12} className="text-success" />
-            {result}
-          </p>
-        )}
-      </div>
-    );
-  }
-
-  // verify-chain
   const click = async () => {
     setLoading(true);
     try {

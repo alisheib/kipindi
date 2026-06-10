@@ -316,30 +316,6 @@ if (!store.referralRewards) store.referralRewards = new Map();
 if (!store.proposals)       store.proposals = new Map();
 if (!store.proposalVotes)   store.proposalVotes = new Map();
 
-// Lazy import of the backup module — keeps store.ts clean of file-system imports
-// for clients that bundle this file (none currently, but future-proof).
-function tap() {
-  // Called after every mutation. Schedules a debounced disk snapshot.
-  // Errors are swallowed so a failed backup never breaks a request.
-  import("./backup").then((m) => m.scheduleBackup()).catch(() => {});
-}
-
-/** Immediate flush — for money-handling mutations (wallet, transaction).
- *  Bypasses debounce so the Postgres snapshot reflects the new balance
- *  within milliseconds. If this process crashes right after a wallet
- *  debit, the snapshot in Postgres already includes it — worst-case
- *  data loss drops from 500ms to near-zero for financial operations. */
-function tapCritical() {
-  import("./backup").then((m) => m.flushNow()).catch(() => {});
-}
-
-// On first import in this process, restore from the latest snapshot.
-// Source order: Postgres (if DATABASE_URL set) → on-disk file → fresh.
-// Idempotent — restoreLatestAsync self-guards via __50PICK_BACKUP_RESTORED.
-if (typeof window === "undefined" && !globalThis.__50PICK_BACKUP_RESTORED) {
-  import("./backup").then((m) => m.restoreLatestAsync()).catch(() => {});
-}
-
 const memoryDb = {
   // USER
   user: {
@@ -348,13 +324,12 @@ const memoryDb = {
       const id = store.usersByPhone.get(phone);
       return id ? store.users.get(id) ?? null : null;
     },
-    create: (u: StoredUser) => { store.users.set(u.id, u); store.usersByPhone.set(u.phoneE164, u.id); tap(); return u; },
+    create: (u: StoredUser) => { store.users.set(u.id, u); store.usersByPhone.set(u.phoneE164, u.id); return u; },
     update: (id: string, patch: Partial<StoredUser>) => {
       const u = store.users.get(id);
       if (!u) return null;
       const next = { ...u, ...patch, updatedAt: new Date().toISOString() };
       store.users.set(id, next);
-      tap();
       return next;
     },
     list: (): StoredUser[] => Array.from(store.users.values()),
@@ -364,11 +339,11 @@ const memoryDb = {
       for (const k of store.kyc.values()) if (k.userId === userId) return k;
       return null;
     },
-    upsert: (k: StoredKyc) => { store.kyc.set(k.id, k); tap(); return k; },
+    upsert: (k: StoredKyc) => { store.kyc.set(k.id, k); return k; },
     list: () => Array.from(store.kyc.values()),
   },
   otp: {
-    create: (o: StoredOtp) => { store.otps.set(o.id, o); tap(); return o; },
+    create: (o: StoredOtp) => { store.otps.set(o.id, o); return o; },
     findActive: (phone: string, purpose: string) => {
       const now = Date.now();
       for (const o of Array.from(store.otps.values()).reverse()) {
@@ -392,7 +367,6 @@ const memoryDb = {
       if (!o) return null;
       o.consumedAt = new Date().toISOString();
       store.otps.set(id, o);
-      tap();
       return o;
     },
     incrementAttempts: (id: string) => {
@@ -400,7 +374,6 @@ const memoryDb = {
       if (!o) return null;
       o.attempts += 1;
       store.otps.set(id, o);
-      tap();
       return o;
     },
   },
@@ -411,25 +384,23 @@ const memoryDb = {
     },
     /** All wallets — analytics only (wallet liability total). */
     listAll: (): StoredWallet[] => Array.from(store.wallets.values()),
-    create: (w: StoredWallet) => { store.wallets.set(w.id, w); store.walletsByUser.set(w.userId, w.id); tapCritical(); return w; },
+    create: (w: StoredWallet) => { store.wallets.set(w.id, w); store.walletsByUser.set(w.userId, w.id); return w; },
     update: (id: string, patch: Partial<StoredWallet>) => {
       const w = store.wallets.get(id);
       if (!w) return null;
       const next = { ...w, ...patch, updatedAt: new Date().toISOString() };
       store.wallets.set(id, next);
-      tapCritical();
       return next;
     },
   },
   txn: {
-    create: (t: StoredTxn) => { store.txns.set(t.id, t); tapCritical(); return t; },
+    create: (t: StoredTxn) => { store.txns.set(t.id, t); return t; },
     findByUser: (userId: string, limit = 50) => Array.from(store.txns.values()).filter((t) => t.userId === userId).slice(-limit).reverse(),
     update: (id: string, patch: Partial<StoredTxn>) => {
       const t = store.txns.get(id);
       if (!t) return null;
       const next = { ...t, ...patch, updatedAt: new Date().toISOString() };
       store.txns.set(id, next);
-      tapCritical();
       return next;
     },
     listByStatus: (status: StoredTxn["status"]) => Array.from(store.txns.values()).filter((t) => t.status === status),
@@ -438,10 +409,10 @@ const memoryDb = {
   },
   responsible: {
     get: (userId: string) => store.responsible.get(userId) ?? null,
-    upsert: (r: StoredResponsibleGambling) => { store.responsible.set(r.userId, r); tap(); return r; },
+    upsert: (r: StoredResponsibleGambling) => { store.responsible.set(r.userId, r); return r; },
   },
   bet: {
-    create: (b: StoredBet) => { store.bets.set(b.id, b); tap(); return b; },
+    create: (b: StoredBet) => { store.bets.set(b.id, b); return b; },
     findById: (id: string) => store.bets.get(id) ?? null,
     findByUser: (userId: string, limit = 100) => Array.from(store.bets.values()).filter((b) => b.userId === userId).sort((a, b) => b.placedAt.localeCompare(a.placedAt)).slice(0, limit),
     findByMatchAndWindow: (matchId: string, windowKind: StoredBet["windowKind"]) =>
@@ -451,12 +422,11 @@ const memoryDb = {
       if (!b) return null;
       const next = { ...b, ...patch };
       store.bets.set(id, next);
-      tap();
       return next;
     },
   },
   notification: {
-    create: (n: StoredNotification) => { store.notifications.set(n.id, n); tap(); return n; },
+    create: (n: StoredNotification) => { store.notifications.set(n.id, n); return n; },
     findByUser: (userId: string, limit = 50) =>
       Array.from(store.notifications.values())
         .filter((n) => n.userId === userId && !n.dismissedAt)
@@ -469,7 +439,6 @@ const memoryDb = {
       if (!n) return null;
       const next = { ...n, readAt: n.readAt ?? new Date().toISOString() };
       store.notifications.set(id, next);
-      tap();
       return next;
     },
     markAllRead: (userId: string) => {
@@ -481,7 +450,6 @@ const memoryDb = {
           count++;
         }
       }
-      if (count > 0) tap();
       return count;
     },
     dismiss: (id: string) => {
@@ -489,13 +457,12 @@ const memoryDb = {
       if (!n) return null;
       const next = { ...n, dismissedAt: new Date().toISOString() };
       store.notifications.set(id, next);
-      tap();
       return next;
     },
   },
   sourceOfFunds: {
     get: (userId: string) => store.sourceOfFunds.get(userId) ?? null,
-    upsert: (s: StoredSourceOfFunds) => { store.sourceOfFunds.set(s.userId, s); tap(); return s; },
+    upsert: (s: StoredSourceOfFunds) => { store.sourceOfFunds.set(s.userId, s); return s; },
     listPending: () => Array.from(store.sourceOfFunds.values()).filter((s) => s.reviewStatus === "PENDING"),
   },
   affiliate: {
@@ -505,25 +472,23 @@ const memoryDb = {
       for (const a of store.affiliates.values()) if (a.code === norm) return a;
       return null;
     },
-    create: (a: StoredAffiliateAccount): StoredAffiliateAccount => { store.affiliates.set(a.userId, a); tap(); return a; },
+    create: (a: StoredAffiliateAccount): StoredAffiliateAccount => { store.affiliates.set(a.userId, a); return a; },
     update: (userId: string, patch: Partial<StoredAffiliateAccount>): StoredAffiliateAccount | null => {
       const a = store.affiliates.get(userId);
       if (!a) return null;
       const next: StoredAffiliateAccount = { ...a, ...patch, updatedAt: new Date().toISOString() };
       store.affiliates.set(userId, next);
-      tap();
       return next;
     },
     list: (): StoredAffiliateAccount[] => Array.from(store.affiliates.values()),
   },
   referralReward: {
-    create: (r: StoredReferralReward): StoredReferralReward => { store.referralRewards.set(r.id, r); tap(); return r; },
+    create: (r: StoredReferralReward): StoredReferralReward => { store.referralRewards.set(r.id, r); return r; },
     update: (id: string, patch: Partial<StoredReferralReward>): StoredReferralReward | null => {
       const r = store.referralRewards.get(id);
       if (!r) return null;
       const next: StoredReferralReward = { ...r, ...patch };
       store.referralRewards.set(id, next);
-      tap();
       return next;
     },
     list: (limit = 500): StoredReferralReward[] =>
@@ -538,7 +503,7 @@ const memoryDb = {
       Array.from(store.referralRewards.values()).filter((r) => r.recruitUserId === recruitUserId),
   },
   proposal: {
-    create: (p: StoredProposal): StoredProposal => { store.proposals.set(p.id, p); tap(); return p; },
+    create: (p: StoredProposal): StoredProposal => { store.proposals.set(p.id, p); return p; },
     findById: (id: string): StoredProposal | null => store.proposals.get(id) ?? null,
     findByMarketId: (marketId: string): StoredProposal | null => {
       for (const p of store.proposals.values() as Iterable<StoredProposal>) if (p.publishedMarketId === marketId) return p;
@@ -549,7 +514,6 @@ const memoryDb = {
       if (!p) return null;
       const next: StoredProposal = { ...p, ...patch, updatedAt: new Date().toISOString() };
       store.proposals.set(id, next);
-      tap();
       return next;
     },
     list: (limit = 1000): StoredProposal[] =>
@@ -564,8 +528,8 @@ const memoryDb = {
   proposalVote: {
     get: (proposalId: string, userId: string): StoredProposalVote | null =>
       store.proposalVotes.get(`${proposalId}:${userId}`) ?? null,
-    set: (v: StoredProposalVote): StoredProposalVote => { store.proposalVotes.set(v.id, v); tap(); return v; },
-    delete: (proposalId: string, userId: string): void => { store.proposalVotes.delete(`${proposalId}:${userId}`); tap(); },
+    set: (v: StoredProposalVote): StoredProposalVote => { store.proposalVotes.set(v.id, v); return v; },
+    delete: (proposalId: string, userId: string): void => { store.proposalVotes.delete(`${proposalId}:${userId}`); },
     listByProposal: (proposalId: string): StoredProposalVote[] =>
       (Array.from(store.proposalVotes.values()) as StoredProposalVote[]).filter((v) => v.proposalId === proposalId),
   },

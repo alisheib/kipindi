@@ -20,7 +20,6 @@
 
 import { randomId } from "./crypto";
 import { audit } from "./audit";
-import { scheduleBackup } from "./backup";
 import { getAIProvider, type AIPollGeneration, type AIProviderResponse } from "./ai-provider";
 import { getAIPollConfig } from "./ai-poll-config";
 import { listMarkets } from "./market-service";
@@ -669,7 +668,7 @@ export async function generateAIPoll(opts: {
     updatedAt: now,
   };
   await store.set(poll);
-  scheduleBackup();
+
 
   audit({
     category: "ADMIN",
@@ -691,7 +690,7 @@ export async function generateAIPoll(opts: {
     poll.rawResponse = String(err);
     poll.updatedAt = new Date().toISOString();
     await store.set(poll);
-  scheduleBackup();
+
 
     audit({
       category: "ADMIN",
@@ -715,7 +714,7 @@ export async function generateAIPoll(opts: {
     poll.rawResponse = response.error ?? response.rawResponse ?? "Unknown provider error";
     poll.updatedAt = new Date().toISOString();
     await store.set(poll);
-  scheduleBackup();
+
 
     audit({
       category: "ADMIN",
@@ -743,7 +742,7 @@ export async function generateAIPoll(opts: {
     poll.rawResponse = `Validation error: ${String(err)}`;
     poll.updatedAt = new Date().toISOString();
     await store.set(poll);
-  scheduleBackup();
+
     audit({
       category: "ADMIN",
       action: "aipoll.generation_failed",
@@ -766,7 +765,7 @@ export async function generateAIPoll(opts: {
     }
     poll.updatedAt = new Date().toISOString();
     await store.set(poll);
-  scheduleBackup();
+
 
     audit({
       category: "ADMIN",
@@ -784,7 +783,7 @@ export async function generateAIPoll(opts: {
   copyGenerationToPoll(poll, validation.sanitised);
   poll.updatedAt = new Date().toISOString();
   await store.set(poll);
-  scheduleBackup();
+
 
   audit({
     category: "ADMIN",
@@ -892,7 +891,7 @@ export async function approveAIPoll(id: string, opts: { officerId: string; note?
   poll.reviewNote = opts.note ?? null;
   poll.updatedAt = new Date().toISOString();
   await store.set(poll);
-  scheduleBackup();
+
 
   audit({
     category: "ADMIN",
@@ -917,7 +916,7 @@ export async function rejectAIPoll(id: string, opts: { officerId: string; reason
   poll.rejectReasons = opts.reasons;
   poll.updatedAt = new Date().toISOString();
   await store.set(poll);
-  scheduleBackup();
+
 
   audit({
     category: "ADMIN",
@@ -975,7 +974,7 @@ export async function editAIPoll(id: string, opts: {
   poll.state = "PENDING_REVIEW";
   poll.updatedAt = new Date().toISOString();
   await store.set(poll);
-  scheduleBackup();
+
 
   audit({
     category: "ADMIN",
@@ -998,7 +997,7 @@ export async function markAIPollPublished(id: string, opts: { candidateId: strin
   poll.publishedMarketId = opts.marketId;
   poll.updatedAt = new Date().toISOString();
   await store.set(poll);
-  scheduleBackup();
+
 
   audit({
     category: "ADMIN",
@@ -1018,7 +1017,7 @@ export async function deleteAIPoll(id: string, officerId: string): Promise<boole
   if (!["FILTERED", "VALIDATION_FAILED", "REJECTED"].includes(poll.state)) return false;
 
   await store.delete(id);
-  scheduleBackup();
+
   audit({
     category: "ADMIN",
     action: "aipoll.deleted",
@@ -1182,7 +1181,7 @@ export async function seedAIPollFixtures(): Promise<StoredAIPoll[]> {
       updatedAt: now,
     };
     await store.set(poll);
-  scheduleBackup();
+
     seeded.push(poll);
   }
   return seeded;

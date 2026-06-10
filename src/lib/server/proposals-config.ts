@@ -70,7 +70,5 @@ export function setProposalsConfig(updates: Partial<ProposalsConfig>, officerId:
     targetId: "global",
     payload: { before, after: merged, changes: updates },
   });
-  // Persist across restart (captured in the backup envelope). Fire-and-forget.
-  import("./backup").then((m) => m.scheduleBackup()).catch(() => {});
   return { ok: true, config: { ...merged } };
 }

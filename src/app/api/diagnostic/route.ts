@@ -24,7 +24,6 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { hasDatabase, pingDatabase } from "@/lib/server/prisma";
 import { verifyChain } from "@/lib/server/audit";
-import { dbHealth } from "@/lib/server/backup";
 
 function maskPhone(p: string): string {
   if (p.length <= 6) return p;
@@ -105,9 +104,7 @@ export async function GET() {
         host: ping.hostHint,
         error: ping.error,
       },
-      // Last-write-attempt health (updates on each mutation; null
-      // means nothing's tried to write since boot).
-      health: dbHealth(),
+      health: "prisma",
     },
     build: {
       nodeEnv: process.env.NODE_ENV ?? "(unset)",
