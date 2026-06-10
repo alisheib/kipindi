@@ -13,6 +13,7 @@
  */
 
 import { audit } from "./audit";
+import { scheduleBackup } from "./backup";
 
 export type AIPollConfig = {
   /** Ground every generation in live web search (real events + real source
@@ -101,6 +102,7 @@ export function updateAIPollConfig(
     targetId: "singleton",
     payload: { ...cur },
   });
+  scheduleBackup();
   return { ...cur };
 }
 

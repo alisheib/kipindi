@@ -15,6 +15,7 @@
 
 import { randomId } from "./crypto";
 import { audit } from "./audit";
+import { scheduleBackup } from "./backup";
 
 export type CandidateState =
   | "EXTRACTED"      // Layer 1 done — title, outcome, dates parsed
@@ -167,6 +168,7 @@ export function ingestCandidate(input: {
     updatedAt: now,
   };
   candidates.set(c.id, c);
+  scheduleBackup();
   audit({
     category: "ADMIN", action: "candidate.extracted",
     actorId: input.actorId ?? "system_ai",
@@ -192,6 +194,7 @@ export function filterCandidate(id: string, opts: { passes: boolean; reason?: Re
   }
   c.updatedAt = now;
   candidates.set(c.id, c);
+  scheduleBackup();
   audit({
     category: "ADMIN",
     action: opts.passes ? "candidate.filter_pass" : "candidate.filter_reject",
@@ -213,6 +216,7 @@ export function attachVerification(id: string, opts: { confirmingSources: Source
   c.trace.push({ layer: 3, outcome: `verified:${opts.confirmingSources.length}`, at: now });
   c.updatedAt = now;
   candidates.set(c.id, c);
+  scheduleBackup();
   return c;
 }
 
@@ -235,6 +239,7 @@ export function scoreCandidate(id: string, opts: { confidence: number; tokensSpe
     c.trace.push({ layer: 4, outcome: `scored:${c.confidence}:${JSON.stringify(opts.rubric)}`, at: now });
   }
   candidates.set(c.id, c);
+  scheduleBackup();
   return c;
 }
 
@@ -250,6 +255,7 @@ export function approveCandidate(id: string, opts: { officerId: string; note?: s
   c.reviewNote = opts.note;
   c.updatedAt = now;
   candidates.set(c.id, c);
+  scheduleBackup();
   audit({
     category: "ADMIN", action: "candidate.approved",
     actorId: opts.officerId, targetType: "Candidate", targetId: c.id,
@@ -272,6 +278,7 @@ export function rejectCandidate(id: string, opts: { officerId: string; reason: R
   c.rejectNote = opts.note;
   c.updatedAt = now;
   candidates.set(c.id, c);
+  scheduleBackup();
   audit({
     category: "ADMIN", action: "candidate.rejected",
     actorId: opts.officerId, targetType: "Candidate", targetId: c.id,
@@ -289,6 +296,7 @@ export function markPublished(id: string, marketId: string, officerId: string): 
   c.publishedMarketId = marketId;
   c.updatedAt = now;
   candidates.set(c.id, c);
+  scheduleBackup();
   audit({
     category: "ADMIN", action: "candidate.published",
     actorId: officerId, targetType: "Candidate", targetId: c.id,

@@ -20,6 +20,7 @@
 
 import { randomId } from "./crypto";
 import { audit } from "./audit";
+import { scheduleBackup } from "./backup";
 import { getAIProvider, type AIPollGeneration, type AIProviderResponse } from "./ai-provider";
 import { getAIPollConfig } from "./ai-poll-config";
 import { listMarkets } from "./market-service";
@@ -529,6 +530,7 @@ export async function generateAIPoll(opts: {
     updatedAt: now,
   };
   polls.set(poll.id, poll);
+  scheduleBackup();
 
   audit({
     category: "ADMIN",
@@ -550,6 +552,7 @@ export async function generateAIPoll(opts: {
     poll.rawResponse = String(err);
     poll.updatedAt = new Date().toISOString();
     polls.set(poll.id, poll);
+  scheduleBackup();
 
     audit({
       category: "ADMIN",
@@ -573,6 +576,7 @@ export async function generateAIPoll(opts: {
     poll.rawResponse = response.error ?? response.rawResponse ?? "Unknown provider error";
     poll.updatedAt = new Date().toISOString();
     polls.set(poll.id, poll);
+  scheduleBackup();
 
     audit({
       category: "ADMIN",
@@ -600,6 +604,7 @@ export async function generateAIPoll(opts: {
     poll.rawResponse = `Validation error: ${String(err)}`;
     poll.updatedAt = new Date().toISOString();
     polls.set(poll.id, poll);
+  scheduleBackup();
     audit({
       category: "ADMIN",
       action: "aipoll.generation_failed",
@@ -622,6 +627,7 @@ export async function generateAIPoll(opts: {
     }
     poll.updatedAt = new Date().toISOString();
     polls.set(poll.id, poll);
+  scheduleBackup();
 
     audit({
       category: "ADMIN",
@@ -639,6 +645,7 @@ export async function generateAIPoll(opts: {
   copyGenerationToPoll(poll, validation.sanitised);
   poll.updatedAt = new Date().toISOString();
   polls.set(poll.id, poll);
+  scheduleBackup();
 
   audit({
     category: "ADMIN",
@@ -745,6 +752,7 @@ export function approveAIPoll(id: string, opts: { officerId: string; note?: stri
   poll.reviewNote = opts.note ?? null;
   poll.updatedAt = new Date().toISOString();
   polls.set(poll.id, poll);
+  scheduleBackup();
 
   audit({
     category: "ADMIN",
@@ -769,6 +777,7 @@ export function rejectAIPoll(id: string, opts: { officerId: string; reasons: Fil
   poll.rejectReasons = opts.reasons;
   poll.updatedAt = new Date().toISOString();
   polls.set(poll.id, poll);
+  scheduleBackup();
 
   audit({
     category: "ADMIN",
@@ -826,6 +835,7 @@ export function editAIPoll(id: string, opts: {
   poll.state = "PENDING_REVIEW";
   poll.updatedAt = new Date().toISOString();
   polls.set(poll.id, poll);
+  scheduleBackup();
 
   audit({
     category: "ADMIN",
@@ -848,6 +858,7 @@ export function markAIPollPublished(id: string, opts: { candidateId: string; mar
   poll.publishedMarketId = opts.marketId;
   poll.updatedAt = new Date().toISOString();
   polls.set(poll.id, poll);
+  scheduleBackup();
 
   audit({
     category: "ADMIN",
@@ -867,6 +878,7 @@ export function deleteAIPoll(id: string, officerId: string): boolean {
   if (!["FILTERED", "VALIDATION_FAILED", "REJECTED"].includes(poll.state)) return false;
 
   polls.delete(id);
+  scheduleBackup();
   audit({
     category: "ADMIN",
     action: "aipoll.deleted",
@@ -1029,6 +1041,7 @@ export function seedAIPollFixtures(): StoredAIPoll[] {
       updatedAt: now,
     };
     polls.set(poll.id, poll);
+  scheduleBackup();
     seeded.push(poll);
   }
   return seeded;

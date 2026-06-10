@@ -93,6 +93,18 @@ function serializeStore(store: Record<string, unknown>): string {
   // on every restart, silently undoing an operator's saved settings.
   out.__affiliateConfig = (globalThis as { __50PICK_AFFILIATE_CONFIG?: unknown }).__50PICK_AFFILIATE_CONFIG;
   out.__proposalsConfig = (globalThis as { __50PICK_PROPOSALS_CONFIG?: unknown }).__50PICK_PROPOSALS_CONFIG;
+  // Snapshot AI poll pipeline state — polls + candidates live in their own
+  // globals outside __50PICK_STORE, so without this they're wiped on redeploy.
+  const g2 = globalThis as { __50PICK_AI_POLLS?: Map<string, unknown>; __50PICK_CANDIDATES?: Map<string, unknown>; __50PICK_AIPOLL_CONFIG?: unknown };
+  if (g2.__50PICK_AI_POLLS?.size) {
+    out.__aiPolls = { __map: true, entries: Array.from(g2.__50PICK_AI_POLLS.entries()) };
+  }
+  if (g2.__50PICK_CANDIDATES?.size) {
+    out.__candidates = { __map: true, entries: Array.from(g2.__50PICK_CANDIDATES.entries()) };
+  }
+  if (g2.__50PICK_AIPOLL_CONFIG) {
+    out.__aiPollConfig = g2.__50PICK_AIPOLL_CONFIG;
+  }
   return JSON.stringify(out);
 }
 
@@ -114,6 +126,20 @@ function deserializeStore(payload: string): Record<string, Map<unknown, unknown>
     g.__50PICK_PROPOSALS_CONFIG = parsed.__proposalsConfig;
   }
   delete parsed.__proposalsConfig;
+  // Restore AI poll pipeline state
+  const g2 = globalThis as { __50PICK_AI_POLLS?: Map<string, unknown>; __50PICK_CANDIDATES?: Map<string, unknown>; __50PICK_AIPOLL_CONFIG?: unknown };
+  if (parsed.__aiPolls && typeof parsed.__aiPolls === "object" && parsed.__aiPolls.__map && Array.isArray(parsed.__aiPolls.entries)) {
+    g2.__50PICK_AI_POLLS = new Map(parsed.__aiPolls.entries);
+  }
+  delete parsed.__aiPolls;
+  if (parsed.__candidates && typeof parsed.__candidates === "object" && parsed.__candidates.__map && Array.isArray(parsed.__candidates.entries)) {
+    g2.__50PICK_CANDIDATES = new Map(parsed.__candidates.entries);
+  }
+  delete parsed.__candidates;
+  if (parsed.__aiPollConfig && typeof parsed.__aiPollConfig === "object") {
+    g2.__50PICK_AIPOLL_CONFIG = parsed.__aiPollConfig;
+  }
+  delete parsed.__aiPollConfig;
   const restored: Record<string, Map<unknown, unknown>> = {};
   for (const [k, v] of Object.entries(parsed) as [string, unknown][]) {
     const rec = v as Record<string, unknown> | null;
