@@ -22,10 +22,9 @@ EN + SW (FR also wired), regulator-ready.
 - Next.js 16 App Router · React 19 · TypeScript · Turbopack
 - Tailwind CSS 3, design tokens in `src/app/globals.css` + `tailwind.config.ts`
 - next-themes for light/dark
-- Prisma 6.5 (downgraded from 7 — Prisma 7 broke `url = env("DATABASE_URL")` inline)
-  with managed Postgres on Railway. Single source of truth: when `DATABASE_URL`
-  is set we read/write a single `StoreSnapshot` row in Postgres; otherwise we
-  fall back to disk snapshots in `STORE_BACKUP_DIR` (see "Persistence" below).
+- Prisma 6.5 with managed Postgres on Railway. All entities have dedicated
+  Prisma tables (`USE_PRISMA_DAL=true`). See `docs/DATA-LAYER.md` for the
+  full architecture guide.
 - Playwright for E2E (driven directly via the SDK, not @playwright/test)
 
 ## Source of truth
@@ -107,20 +106,14 @@ password right now.
 
 ## Persistence
 
-In-memory `Map`s in `store.ts`, snapshot to Postgres every 500 ms
-(`src/lib/server/backup.ts`). **Wallet and transaction mutations use
-`tapCritical()` for immediate flush** — near-zero data loss window for
-financial operations. Non-financial mutations use debounced `tap()`.
+All entities are stored in PostgreSQL via Prisma (`USE_PRISMA_DAL=true`).
+Each entity has a dedicated table — no more JSON blob snapshots.
+See `docs/DATA-LAYER.md` for the full architecture and how to add entities.
 
 All wallet mutations are protected by `withLock("wallet:{userId}")` —
 `deposit`, `withdraw`, `creditInternal`, `buyPosition`, `cashOut`,
 `resolveMarket`, and AML reject refund. Zero unprotected balance
 read-modify-write sequences remain.
-
-Full Prisma entity migration (converting 358 `db.*` calls across 73
-files to async per-row Prisma queries) is the next architectural step.
-The current snapshot approach is production-safe for a single Railway
-instance but needs advisory locks for multi-instance scaling.
 
 ## Deploy workflow
 
@@ -136,10 +129,11 @@ Required Railway env vars (set in service → Variables):
 
 | Var | Purpose |
 |---|---|
-| `SESSION_SECRET` | ≥ 32 chars; HMAC for session cookies + snapshot signature |
+| `DATABASE_URL` | Railway Postgres connection string |
+| `USE_PRISMA_DAL` | `true` for production |
+| `SESSION_SECRET` | ≥ 32 chars; HMAC for session cookies |
 | `OTP_PEPPER` | ≥ 16 chars; global pepper for OTP hashing |
 | `ADMIN_BOOTSTRAP_PHONES` | comma-separated E.164 list — auto-promote on first register |
-| `STORE_BACKUP_DIR` | path on a Railway volume so snapshots survive redeploys (recommended) |
 | `SMS_PROVIDER` | `console` (current) / `selcom` / `beem` / `africas-talking` |
 | `SMS_SENDER_ID` | TCRA-licensed sender ID once SMS goes live |
 | `NODE_ENV` | `production` on Railway |
@@ -268,9 +262,9 @@ Already shipped (was on this list before):
   for the landing page. Component built at `src/components/landing/hero-slideshow.tsx`,
   20 WebP images in `public/hero/slides/`. Waiting for professional album before
   activating.
-- **Full Prisma entity migration** — converting in-memory `db.*` calls to async
-  Prisma per-row queries. Schema ready, snapshot durability already hardened.
-  Multi-session project (358 calls across 73 files).
+- **Full Prisma entity migration** — COMPLETE. All entities migrated to
+  per-row Prisma tables. `USE_PRISMA_DAL=true` on production. See
+  `docs/DATA-LAYER.md`.
 
 ## UX commitments (kit-faithful)
 

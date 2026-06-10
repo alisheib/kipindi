@@ -45,7 +45,7 @@ All surfaces below are E2E-tested. Total: **9 suites · 246 tests passing**.
 
 **Mocked / stubbed for dev** (interface stable, swap is one line per service):
 
-- DB persistence — in-memory `Map` with a debounced JSON snapshot (production swaps to Prisma + Postgres; Prisma schema is fully defined)
+- DB persistence — PostgreSQL via Prisma ORM (all entities in dedicated tables)
 - SMS dispatch — console provider (production swaps to Twilio / Africa's Talking)
 - NIDA verify — deterministic mock (production swaps to real mTLS endpoint)
 - Document upload — storage-key stub (production swaps to S3-compatible bucket)

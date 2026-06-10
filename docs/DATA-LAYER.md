@@ -197,9 +197,8 @@ When writing the Prisma implementation, handle these conversions:
 | `src/lib/server/prisma-dal.ts` | Prisma implementation of `db.*` interface |
 | `src/lib/server/prisma.ts` | PrismaClient singleton |
 | `src/lib/server/market-dal.ts` | Market + Position DAL |
-| `src/lib/server/backup.ts` | Legacy snapshot persistence (kept as safety net) |
 | `prisma/schema.prisma` | Database schema |
-| `scripts/migrate-snapshot-to-tables.ts` | One-time migration: snapshot blob -> Prisma tables |
+| `scripts/migrate-snapshot-to-tables.ts` | One-time migration script (already run) |
 
 ## Testing
 
