@@ -81,10 +81,34 @@ const candidates: Map<string, Candidate> =
 
 const CONFIDENCE_PUBLISH_THRESHOLD = 75;
 
-export function listCandidates(filter?: { state?: CandidateState }): Candidate[] {
+export type CandidateFilter = {
+  state?: CandidateState;
+  category?: string;
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
+};
+
+export function listCandidates(filter?: CandidateFilter): Candidate[] {
+  const q = filter?.search?.trim().toLowerCase();
   return Array.from(candidates.values())
-    .filter((c) => !filter?.state || c.state === filter.state)
+    .filter((c) => {
+      if (filter?.state && c.state !== filter.state) return false;
+      if (filter?.category && c.category !== filter.category) return false;
+      if (filter?.dateFrom && c.createdAt < filter.dateFrom) return false;
+      if (filter?.dateTo && c.createdAt > filter.dateTo) return false;
+      if (q) {
+        const hay = [c.proposedTitleEn, c.proposedTitleSw, c.category, c.id, c.resolutionCriterion]
+          .filter(Boolean).join(" ").toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    })
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export function countCandidatesTotal(): number {
+  return candidates.size;
 }
 
 export function getCandidate(id: string): Candidate | null {

@@ -1,9 +1,12 @@
+import Link from "next/link";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
+import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import {
   listAIPolls,
   countAIPollsByState,
+  countAIPollsTotal,
   aiPollSpend,
   aiPollDailyProgress,
   type StoredAIPoll,
@@ -22,8 +25,9 @@ import {
   DeleteAction,
   SeedFixturesButton,
 } from "./poll-actions";
+import { PollFilterToolbar, datePresetToRange } from "./poll-filters";
 
-export const metadata = { title: "Admin · AI poll generation" };
+export const metadata = { title: "Admin \u00b7 AI poll generation" };
 export const dynamic = "force-dynamic";
 
 const STATE_VARIANT: Record<AIPollState, "success" | "warning" | "danger" | "neutral" | "info"> = {
@@ -39,25 +43,61 @@ const STATE_VARIANT: Record<AIPollState, "success" | "warning" | "danger" | "neu
 
 function fmtUsd(n: number) { return `$${n.toFixed(2)}`; }
 function fmtDate(iso: string) {
-  if (!iso) return "—";
+  if (!iso) return "\u2014";
   try { return new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }); }
-  catch { return "—"; }
+  catch { return "\u2014"; }
 }
 
-export default function AdminAIPollsPage() {
+export default async function AdminAIPollsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    q?: string;
+    state?: string;
+    category?: string;
+    date?: string;
+    page?: string;
+  }>;
+}) {
+  const sp = await searchParams;
   const counts = countAIPollsByState();
   const spend = aiPollSpend();
   const progress = aiPollDailyProgress();
   const config = getAIPollConfig();
+  const totalAll = countAIPollsTotal();
+
   const pending = listAIPolls({ state: "PENDING_REVIEW" });
   const approved = listAIPolls({ state: "APPROVED" });
-  const recent = listAIPolls().slice(0, 40);
+
+  // Build filter for the "all activity" table
+  const dateRange = datePresetToRange(sp.date ?? "");
+  const filtered = listAIPolls({
+    state: (sp.state as AIPollState) || undefined,
+    category: sp.category || undefined,
+    search: sp.q || undefined,
+    dateFrom: dateRange.from,
+    dateTo: dateRange.to,
+  });
+
+  const hasFilters = sp.q || sp.state || sp.category || sp.date;
+
+  // Paginate
+  const page = parsePage(sp.page, filtered.length);
+  const start = (page - 1) * PER_PAGE;
+  const pageItems = filtered.slice(start, start + PER_PAGE);
+
+  const baseHref = buildBaseHref("/admin/ai-polls", {
+    q: sp.q,
+    state: sp.state,
+    category: sp.category,
+    date: sp.date,
+  });
 
   return (
     <>
       <AdminPageHead
         title="AI poll generation"
-        sw="Uzalishaji wa kura · Claude AI"
+        sw="Uzalishaji wa kura \u00b7 Claude AI"
         period={false}
       />
       <div className="px-4 lg:px-6 py-5 space-y-4">
@@ -87,7 +127,7 @@ export default function AdminAIPollsPage() {
             label="Total spend"
             sw="Gharama jumla"
             value={fmtUsd(spend.totalUsd)}
-            delta={`${spend.totalGenerations} generations · ${(spend.totalTokens / 1000).toFixed(1)}k tokens`}
+            delta={`${spend.totalGenerations} generations \u00b7 ${(spend.totalTokens / 1000).toFixed(1)}k tokens`}
           />
         </div>
 
@@ -114,7 +154,7 @@ export default function AdminAIPollsPage() {
           <BatchGenerateForm maxBatch={config.maxBatchPerRun} remaining={progress.remaining} />
         </AdminCard>
 
-        {/* Controls — operator-tunable generation settings */}
+        {/* Controls */}
         <AdminCard>
           <div className="flex items-center gap-2 mb-3">
             <I.bot size={16} className="text-royal shrink-0" />
@@ -148,15 +188,15 @@ export default function AdminAIPollsPage() {
           </AdminCard>
         )}
 
-        {/* Approved — ready to publish */}
+        {/* Approved */}
         {approved.length > 0 && (
           <AdminCard padding="p-0">
             <div className="flex items-center justify-between px-4 lg:px-5 pt-4">
               <div>
                 <p className="font-display font-semibold text-body-sm text-text">
-                  Approved · ready to publish
+                  Approved \u00b7 ready to publish
                 </p>
-                <p className="text-caption italic text-text-tertiary">Yaliyoidhinishwa · tayari kuchapishwa</p>
+                <p className="text-caption italic text-text-tertiary">Yaliyoidhinishwa \u00b7 tayari kuchapishwa</p>
               </div>
               <Chip size="sm" variant="success">{approved.length} approved</Chip>
             </div>
@@ -168,76 +208,102 @@ export default function AdminAIPollsPage() {
           </AdminCard>
         )}
 
-        {/* Recent activity */}
+        {/* All activity — filterable + paginated */}
         <AdminCard padding="p-0">
-          <div className="flex items-center justify-between px-4 lg:px-5 pt-4 pb-2">
-            <div>
-              <p className="font-display font-semibold text-body-sm text-text">
-                Recent activity
-              </p>
-              <p className="text-caption italic text-text-tertiary">
-                Last 40 generations across every state. Use this to audit AI behaviour and quality patterns.
-              </p>
+          <div className="px-4 lg:px-5 pt-4 pb-2 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-display font-semibold text-body-sm text-text">
+                  All generations
+                </p>
+                <p className="text-caption italic text-text-tertiary">
+                  Search, filter by state, category, or date. Click any row to view full details.
+                </p>
+              </div>
+              <SeedFixturesButton />
             </div>
-            <SeedFixturesButton />
+            <PollFilterToolbar totalFiltered={filtered.length} totalAll={totalAll} />
           </div>
-          {recent.length === 0 ? (
+
+          {pageItems.length === 0 ? (
             <div className="px-4 lg:px-5 py-10 text-center text-caption text-text-tertiary">
-              No polls generated yet. Use the form above or seed fixtures.
+              {hasFilters
+                ? "No polls match your filters. Try adjusting your search or clearing filters."
+                : "No polls generated yet. Use the form above or seed fixtures."}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-[12px]">
-                <thead className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle bg-bg-overlay border-b border-border">
-                  <tr>
-                    <th className="text-left p-3">State</th>
-                    <th className="text-left p-3">Category</th>
-                    <th className="text-left p-3">Title</th>
-                    <th className="text-right p-3">Quality</th>
-                    <th className="text-right p-3">Confidence</th>
-                    <th className="text-right p-3">Sources</th>
-                    <th className="text-left p-3">Created</th>
-                    <th className="text-right p-3">Cost</th>
-                    <th className="text-right p-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="text-text-muted">
-                  {recent.map((p) => (
-                    <tr key={p.id} className="border-b border-border/60 last:border-b-0 hover:bg-bg-overlay/50">
-                      <td className="p-3"><Chip size="sm" variant={STATE_VARIANT[p.state]}>{p.state}</Chip></td>
-                      <td className="p-3 font-mono uppercase tracking-[0.12em] text-[10px]">{p.category || "—"}</td>
-                      <td className="p-3 text-text max-w-[360px] truncate">{p.titleEn || <span className="italic text-text-subtle">empty</span>}</td>
-                      <td className="p-3 font-mono tabular-nums text-right">
-                        <span style={{
-                          color: p.overallQuality >= 80 ? "var(--yes-300)"
-                            : p.overallQuality >= 50 ? "oklch(82% 0.16 80)"
-                            : "var(--text-tertiary)",
-                        }}>
-                          {p.overallQuality}%
-                        </span>
-                      </td>
-                      <td className="p-3 font-mono tabular-nums text-right">
-                        <span style={{
-                          color: p.confidence >= 85 ? "var(--yes-300)"
-                            : p.confidence >= 50 ? "oklch(82% 0.16 80)"
-                            : "var(--text-tertiary)",
-                        }}>
-                          {p.confidence}
-                        </span>
-                      </td>
-                      <td className="p-3 font-mono tabular-nums text-right">{p.sources.length}</td>
-                      <td className="p-3 font-mono text-[11px]">{fmtDate(p.createdAt)}</td>
-                      <td className="p-3 font-mono tabular-nums text-right">{fmtUsd(p.costUsd)}</td>
-                      <td className="p-3 text-right">
-                        {(p.state === "FILTERED" || p.state === "VALIDATION_FAILED" || p.state === "REJECTED") && (
-                          <DeleteAction pollId={p.id} />
-                        )}
-                      </td>
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[12px]">
+                  <thead className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle bg-bg-overlay border-b border-border">
+                    <tr>
+                      <th className="text-left p-3">State</th>
+                      <th className="text-left p-3">Category</th>
+                      <th className="text-left p-3">Title</th>
+                      <th className="text-right p-3">Quality</th>
+                      <th className="text-right p-3">Confidence</th>
+                      <th className="text-right p-3">Sources</th>
+                      <th className="text-left p-3">Created</th>
+                      <th className="text-right p-3">Cost</th>
+                      <th className="text-right p-3">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="text-text-muted">
+                    {pageItems.map((p) => (
+                      <tr key={p.id} className="border-b border-border/60 last:border-b-0 hover:bg-bg-overlay/50 group">
+                        <td className="p-3"><Chip size="sm" variant={STATE_VARIANT[p.state]}>{p.state}</Chip></td>
+                        <td className="p-3 font-mono uppercase tracking-[0.12em] text-[10px]">{p.category || "\u2014"}</td>
+                        <td className="p-3 text-text max-w-[360px]">
+                          <Link
+                            href={`/admin/ai-polls/${p.id}` as "/admin/ai-polls"}
+                            className="hover:text-brand-300 hover:underline underline-offset-2 transition-colors block truncate"
+                          >
+                            {p.titleEn || <span className="italic text-text-subtle">empty</span>}
+                          </Link>
+                        </td>
+                        <td className="p-3 font-mono tabular-nums text-right">
+                          <span style={{
+                            color: p.overallQuality >= 80 ? "var(--yes-300)"
+                              : p.overallQuality >= 50 ? "oklch(82% 0.16 80)"
+                              : "var(--text-tertiary)",
+                          }}>
+                            {p.overallQuality}%
+                          </span>
+                        </td>
+                        <td className="p-3 font-mono tabular-nums text-right">
+                          <span style={{
+                            color: p.confidence >= 85 ? "var(--yes-300)"
+                              : p.confidence >= 50 ? "oklch(82% 0.16 80)"
+                              : "var(--text-tertiary)",
+                          }}>
+                            {p.confidence}
+                          </span>
+                        </td>
+                        <td className="p-3 font-mono tabular-nums text-right">{p.sources.length}</td>
+                        <td className="p-3 font-mono text-[11px]">{fmtDate(p.createdAt)}</td>
+                        <td className="p-3 font-mono tabular-nums text-right">{fmtUsd(p.costUsd)}</td>
+                        <td className="p-3 text-right flex items-center justify-end gap-2">
+                          <Link
+                            href={`/admin/ai-polls/${p.id}` as "/admin/ai-polls"}
+                            className="btn btn-ghost btn-sm rounded-pill text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            View
+                          </Link>
+                          {(p.state === "FILTERED" || p.state === "VALIDATION_FAILED" || p.state === "REJECTED") && (
+                            <DeleteAction pollId={p.id} />
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <AdminPagination
+                total={filtered.length}
+                page={page}
+                baseHref={baseHref}
+              />
+            </>
           )}
         </AdminCard>
       </div>
@@ -281,10 +347,12 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
           )}
         </div>
 
-        {/* Title */}
-        <p className="font-display text-[14px] font-semibold text-text leading-tight">
-          {poll.titleEn || <span className="italic text-text-subtle">No title generated</span>}
-        </p>
+        {/* Title — clickable to detail */}
+        <Link href={`/admin/ai-polls/${poll.id}` as "/admin/ai-polls"} className="block hover:text-brand-300 transition-colors">
+          <p className="font-display text-[14px] font-semibold text-text leading-tight hover:underline underline-offset-2">
+            {poll.titleEn || <span className="italic text-text-subtle">No title generated</span>}
+          </p>
+        </Link>
         {poll.titleSw && (
           <p className="text-[12px] italic text-text-tertiary leading-tight">{poll.titleSw}</p>
         )}
@@ -300,7 +368,7 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
             {poll.options.map((o, i) => (
               <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-pill text-[10px] font-mono border border-border bg-bg-overlay">
                 {o.label}
-                {o.descriptionEn && <span className="ml-1 text-text-subtle">· {o.descriptionEn}</span>}
+                {o.descriptionEn && <span className="ml-1 text-text-subtle">{"\u00b7"} {o.descriptionEn}</span>}
               </span>
             ))}
           </div>
@@ -308,7 +376,7 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
 
         {/* Meta line */}
         <p className="mt-1 font-mono text-[10.5px] text-text-subtle">
-          {poll.resolutionAt ? `Resolves ${fmtDate(poll.resolutionAt)}` : "No resolution date"} ·{" "}
+          {poll.resolutionAt ? `Resolves ${fmtDate(poll.resolutionAt)}` : "No resolution date"} {"\u00b7"}{" "}
           {poll.sources.slice(0, 2).map((s, i) => (
             <span key={i}>{s.publisher}{i < Math.min(poll.sources.length, 2) - 1 ? " + " : ""}</span>
           ))}
@@ -322,7 +390,7 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
           </div>
         )}
 
-        {/* Filter reasons (if any) */}
+        {/* Filter reasons */}
         {poll.filterReasons.length > 0 && (
           <div className="mt-2 flex items-start gap-1.5">
             <I.warning s={12} />
@@ -342,7 +410,7 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
           </details>
         )}
 
-        {/* Raw response (for debugging) */}
+        {/* Raw response */}
         {poll.rawResponse && (poll.state === "VALIDATION_FAILED" || poll.state === "FILTERED") && (
           <details className="mt-2 text-[11px]">
             <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle hover:text-text-muted">
@@ -350,7 +418,7 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
             </summary>
             <pre className="mt-1 text-text-muted leading-relaxed pl-2 border-l-2 border-border text-[10px] font-mono overflow-x-auto max-w-full whitespace-pre-wrap break-all">
               {poll.rawResponse.slice(0, 1000)}
-              {poll.rawResponse.length > 1000 && "…"}
+              {poll.rawResponse.length > 1000 && "\u2026"}
             </pre>
           </details>
         )}
@@ -359,7 +427,7 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
         {poll.reviewedBy && (
           <p className="mt-2 font-mono text-[10px] text-text-subtle">
             Reviewed by {poll.reviewedBy.slice(-6)} at {fmtDate(poll.reviewedAt ?? "")}
-            {poll.reviewNote && ` · "${poll.reviewNote}"`}
+            {poll.reviewNote && ` {"\u00b7"} "${poll.reviewNote}"`}
           </p>
         )}
       </div>
