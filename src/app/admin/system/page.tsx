@@ -1,6 +1,7 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { I } from "@/components/ui/glyphs";
-import { SystemActions } from "./system-client";
+import { SystemActions, SupportConfigForm } from "./system-client";
+import { getSupportConfig } from "@/lib/support-config";
 import { db } from "@/lib/server/store";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
 import { smsHealthSnapshot, sms as smsClient } from "@/lib/server/sms";
@@ -200,6 +201,17 @@ export default async function AdminSystemPage() {
               </table>
             </div>
           )}
+        </AdminCard>
+
+        <AdminCard
+          title="Support contacts"
+          sw="Mawasiliano ya msaada"
+          action={<span className="font-mono text-[10px] text-text-subtle">{getSupportConfig().email}</span>}
+        >
+          <p className="text-[12px] text-text-subtle mb-3">
+            Changes here propagate to every page that shows support info: help, chatbot, login, register, legal, KYC, account, forgot-password, footer, reality-check.
+          </p>
+          <SupportConfigForm config={getSupportConfig()} />
         </AdminCard>
 
         <AdminCard className="border-info-border bg-info-bg/15">

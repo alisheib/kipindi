@@ -10,7 +10,6 @@ import {
   clearMarketOverride,
   type RateConfig,
 } from "@/lib/server/market-config";
-import { setSupportConfig } from "@/lib/support-config";
 
 const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
 
@@ -96,15 +95,3 @@ export async function clearMarketOverrideAction(formData: FormData) {
   return { ok: true as const };
 }
 
-export async function updateSupportConfigAction(formData: FormData) {
-  await ensureAdmin();
-  const email = String(formData.get("email") ?? "").trim();
-  const phone = String(formData.get("phone") ?? "").trim();
-  const helpline = String(formData.get("helpline") ?? "").trim();
-  if (!email) return { ok: false as const, error: "Email is required." };
-  const phoneTel = phone.replace(/[\s\-()]/g, "");
-  const helplineTel = helpline.replace(/[\s\-()]/g, "");
-  setSupportConfig({ email, phone, phoneTel, helpline, helplineTel });
-  revalidatePath("/admin/config");
-  return { ok: true as const };
-}
