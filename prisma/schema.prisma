@@ -214,7 +214,7 @@ enum AuditCategory {
 // This row buys us correctness today without that risk.
 model StoreSnapshot {
   id        Int      @id @default(1)
-  envelope  String   @db.Text   // HMAC-signed JSON envelope; same shape as the disk file
+  envelope  String   @db.Text // HMAC-signed JSON envelope; same shape as the disk file
   updatedAt DateTime @updatedAt
 }
 
@@ -223,94 +223,106 @@ model StoreSnapshot {
 // ============================================================================
 
 model User {
-  id            String      @id @default(cuid())
-  phoneE164     String      @unique
-  email         String?     @unique
-  passwordHash  String?
-  role          UserRole    @default(PLAYER)
-  status        UserStatus  @default(PENDING_KYC)
-  locale        Locale      @default(SW)
-  displayName   String?
-  dob           DateTime?
-  region        String?
+  id                   String     @id @default(cuid())
+  phoneE164            String     @unique
+  email                String?    @unique
+  passwordHash         String?
+  passwordSalt         String?
+  failedLoginCount     Int        @default(0)
+  lockedUntil          DateTime?
+  role                 UserRole   @default(PLAYER)
+  status               UserStatus @default(PENDING_KYC)
+  locale               Locale     @default(SW)
+  displayName          String?
+  dob                  DateTime?
+  region               String?
   acceptedTermsVersion String?
   acceptedTermsAt      DateTime?
-  marketingOptIn Boolean    @default(false)
-  twoFactorEnabled Boolean  @default(false)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  lastLoginAt   DateTime?
-  closedAt      DateTime?
+  marketingOptIn       Boolean    @default(false)
+  twoFactorEnabled     Boolean    @default(false)
+  avatarDataUrl        String?    @db.Text
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+  lastLoginAt          DateTime?
+  closedAt             DateTime?
 
-  wallet        Wallet?
-  kycSubmissions KycSubmission[]
-  bets          Bet[]
-  transactions  Transaction[]
-  sessions      Session[]
-  otps          Otp[]
-  devices       Device[]
-  flags         AntiFraudFlag[] @relation("FlaggedUser")
-  reviewedFlags AntiFraudFlag[] @relation("FlagReviewer")
-  responsibleGambling ResponsibleGambling?
-  notifications Notification[]
-  auditEntries  AuditLog[]      @relation("AuditActor")
-  affiliateAgent AffiliateAgent?
-  recruitedBy   String?
-  recruitedById AffiliateAgent? @relation("AgentRecruits", fields: [recruitedBy], references: [userId])
+  wallet                  Wallet?
+  kycSubmissions          KycSubmission[]
+  bets                    Bet[]
+  transactions            Transaction[]
+  sessions                Session[]
+  otps                    Otp[]
+  devices                 Device[]
+  flags                   AntiFraudFlag[]      @relation("FlaggedUser")
+  reviewedFlags           AntiFraudFlag[]      @relation("FlagReviewer")
+  responsibleGambling     ResponsibleGambling?
+  notifications           Notification[]
+  auditEntries            AuditLog[]           @relation("AuditActor")
+  affiliateAgent          AffiliateAgent?
+  recruitedBy             String?
+  recruitedById           AffiliateAgent?      @relation("AgentRecruits", fields: [recruitedBy], references: [userId])
+  sourceOfFunds           SourceOfFunds?
+  referralRewardsGiven    ReferralReward[]     @relation("ReferralRewardsGiven")
+  referralRewardsReceived ReferralReward[]     @relation("ReferralRewardsReceived")
+  proposals               Proposal[]
+  proposalVotes           ProposalVote[]
+  positions               Position[]
+  marketComments          Comment[]
+  totpSecret              TotpSecret?
 
   @@index([role, status])
   @@index([createdAt])
 }
 
 model Session {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash    String   @unique
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash    String    @unique
   ip           String?
   userAgent    String?
   deviceId     String?
-  device       Device?  @relation(fields: [deviceId], references: [id])
-  createdAt    DateTime @default(now())
+  device       Device?   @relation(fields: [deviceId], references: [id])
+  createdAt    DateTime  @default(now())
   expiresAt    DateTime
   revokedAt    DateTime?
-  lastActiveAt DateTime @default(now())
+  lastActiveAt DateTime  @default(now())
 
   @@index([userId, revokedAt])
 }
 
 model Otp {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   userId     String?
-  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   phoneE164  String
   codeHash   String
-  purpose    String   // login, register, withdraw, reauth, password_reset
-  attempts   Int      @default(0)
+  purpose    String // login, register, withdraw, reauth, password_reset
+  attempts   Int       @default(0)
   consumedAt DateTime?
   expiresAt  DateTime
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
 
   @@index([phoneE164, purpose])
   @@index([expiresAt])
 }
 
 model Device {
-  id            String   @id @default(cuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fingerprint   String
-  platform      String?  // ios, android, web
-  model         String?
-  osVersion     String?
-  appVersion    String?
-  pushToken     String?
-  firstSeenAt   DateTime @default(now())
-  lastSeenAt    DateTime @default(now())
-  trustedAt     DateTime?
-  blockedAt     DateTime?
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fingerprint String
+  platform    String? // ios, android, web
+  model       String?
+  osVersion   String?
+  appVersion  String?
+  pushToken   String?
+  firstSeenAt DateTime  @default(now())
+  lastSeenAt  DateTime  @default(now())
+  trustedAt   DateTime?
+  blockedAt   DateTime?
 
-  sessions      Session[]
+  sessions Session[]
 
   @@unique([userId, fingerprint])
   @@index([fingerprint])
@@ -321,42 +333,42 @@ model Device {
 // ============================================================================
 
 model KycSubmission {
-  id              String      @id @default(cuid())
-  userId          String
-  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status          KycStatus   @default(IN_PROGRESS)
-  rejectReason    KycRejectReason?
-  rejectNote      String?
-  nidaNumber      String?
-  nidaVerifiedAt  DateTime?
-  fullName        String?
-  dob             DateTime?
-  gender          String?
-  reviewerId      String?
-  reviewedAt      DateTime?
-  submittedAt     DateTime?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id             String           @id @default(cuid())
+  userId         String
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status         KycStatus        @default(IN_PROGRESS)
+  rejectReason   KycRejectReason?
+  rejectNote     String?
+  nidaNumber     String?
+  nidaVerifiedAt DateTime?
+  fullName       String?
+  dob            DateTime?
+  gender         String?
+  reviewerId     String?
+  reviewedAt     DateTime?
+  submittedAt    DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 
-  documents       KycDocument[]
+  documents KycDocument[]
 
   @@index([userId, status])
   @@index([status, submittedAt])
 }
 
 model KycDocument {
-  id              String        @id @default(cuid())
-  submissionId    String
-  submission      KycSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
-  docType         DocType
-  storageKey      String        // object storage key — never store binaries in DB
-  mimeType        String
-  sizeBytes       Int
-  uploadedAt      DateTime      @default(now())
-  blurScore       Float?
-  ocrText         String?
-  rejected        Boolean       @default(false)
-  rejectReason    String?
+  id           String        @id @default(cuid())
+  submissionId String
+  submission   KycSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  docType      DocType
+  storageKey   String // object storage key — never store binaries in DB
+  mimeType     String
+  sizeBytes    Int
+  uploadedAt   DateTime      @default(now())
+  blurScore    Float?
+  ocrText      String?
+  rejected     Boolean       @default(false)
+  rejectReason String?
 }
 
 // ============================================================================
@@ -367,57 +379,57 @@ model KycDocument {
 //   ALTER TABLE "Wallet" ADD CONSTRAINT "wallet_balance_non_negative" CHECK (balance >= 0);
 //   ALTER TABLE "Wallet" ADD CONSTRAINT "wallet_hold_non_negative" CHECK (hold >= 0);
 model Wallet {
-  id            String       @id @default(cuid())
-  userId        String       @unique
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status        WalletStatus @default(ACTIVE)
-  balance       Decimal      @default(0) @db.Decimal(18, 2)
-  pending       Decimal      @default(0) @db.Decimal(18, 2)
-  hold          Decimal      @default(0) @db.Decimal(18, 2)
-  currency      String       @default("TZS")
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id        String       @id @default(cuid())
+  userId    String       @unique
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    WalletStatus @default(ACTIVE)
+  balance   Decimal      @default(0) @db.Decimal(18, 2)
+  pending   Decimal      @default(0) @db.Decimal(18, 2)
+  hold      Decimal      @default(0) @db.Decimal(18, 2)
+  currency  String       @default("TZS")
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
-  transactions  Transaction[]
+  transactions Transaction[]
 
   @@index([status])
 }
 
 model Transaction {
-  id              String          @id @default(cuid())
+  id              String           @id @default(cuid())
   walletId        String
-  wallet          Wallet          @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  wallet          Wallet           @relation(fields: [walletId], references: [id], onDelete: Cascade)
   userId          String
-  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   type            TxnType
-  status          TxnStatus       @default(PENDING)
-  amount          Decimal         @db.Decimal(18, 2)
-  fee             Decimal         @default(0) @db.Decimal(18, 2)
-  taxWithheld     Decimal         @default(0) @db.Decimal(18, 2)
-  balanceAfter    Decimal?        @db.Decimal(18, 2)
-  currency        String          @default("TZS")
+  status          TxnStatus        @default(PENDING)
+  amount          Decimal          @db.Decimal(18, 2)
+  fee             Decimal          @default(0) @db.Decimal(18, 2)
+  taxWithheld     Decimal          @default(0) @db.Decimal(18, 2)
+  balanceAfter    Decimal?         @db.Decimal(18, 2)
+  currency        String           @default("TZS")
   provider        PaymentProvider?
   providerRef     String?
   providerStatus  String?
-  msisdn          String?         // recipient/sender phone for mobile money
+  msisdn          String? // recipient/sender phone for mobile money
   description     String?
   betId           String?
-  bet             Bet?            @relation(fields: [betId], references: [id])
+  bet             Bet?             @relation(fields: [betId], references: [id])
   amlReviewedById String?
   amlReviewedAt   DateTime?
   amlReason       String?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   completedAt     DateTime?
 
-  @@index([userId, createdAt])
-  @@index([walletId, createdAt])
-  @@index([type, status])
-  @@index([providerRef])
   // Prevent duplicate deposits/withdrawals from the same payment provider
   // transaction. A retried webhook with the same providerRef must not
   // create a second ledger entry. Nulls are excluded (internal txns).
   @@unique([provider, providerRef])
+  @@index([userId, createdAt])
+  @@index([walletId, createdAt])
+  @@index([type, status])
+  @@index([providerRef])
 }
 
 // ============================================================================
@@ -425,61 +437,61 @@ model Transaction {
 // ============================================================================
 
 model Sport {
-  id          String  @id @default(cuid())
-  slug        String  @unique
-  nameEn      String
-  nameSw      String
-  active      Boolean @default(true)
-  leagues     League[]
+  id      String   @id @default(cuid())
+  slug    String   @unique
+  nameEn  String
+  nameSw  String
+  active  Boolean  @default(true)
+  leagues League[]
 }
 
 model League {
-  id          String  @id @default(cuid())
-  sportId     String
-  sport       Sport   @relation(fields: [sportId], references: [id])
-  externalId  String?
-  slug        String  @unique
-  nameEn      String
-  nameSw      String
-  country     String?
-  active      Boolean @default(true)
-  matches     Match[]
+  id         String  @id @default(cuid())
+  sportId    String
+  sport      Sport   @relation(fields: [sportId], references: [id])
+  externalId String?
+  slug       String  @unique
+  nameEn     String
+  nameSw     String
+  country    String?
+  active     Boolean @default(true)
+  matches    Match[]
 }
 
 model Team {
-  id          String  @id @default(cuid())
-  externalId  String? @unique
-  slug        String  @unique
-  nameEn      String
-  nameSw      String?
-  shortName   String?
-  badgeUrl    String?
-  country     String?
+  id         String  @id @default(cuid())
+  externalId String? @unique
+  slug       String  @unique
+  nameEn     String
+  nameSw     String?
+  shortName  String?
+  badgeUrl   String?
+  country    String?
 
   homeMatches Match[] @relation("HomeTeam")
   awayMatches Match[] @relation("AwayTeam")
 }
 
 model Match {
-  id          String      @id @default(cuid())
-  leagueId    String
-  league      League      @relation(fields: [leagueId], references: [id])
-  externalId  String?     @unique
-  homeTeamId  String
-  homeTeam    Team        @relation("HomeTeam", fields: [homeTeamId], references: [id])
-  awayTeamId  String
-  awayTeam    Team        @relation("AwayTeam", fields: [awayTeamId], references: [id])
-  kickoffAt   DateTime
-  status      MatchStatus @default(SCHEDULED)
-  homeScore   Int         @default(0)
-  awayScore   Int         @default(0)
-  minute      Int?
-  venue       String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id         String      @id @default(cuid())
+  leagueId   String
+  league     League      @relation(fields: [leagueId], references: [id])
+  externalId String?     @unique
+  homeTeamId String
+  homeTeam   Team        @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeamId String
+  awayTeam   Team        @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  kickoffAt  DateTime
+  status     MatchStatus @default(SCHEDULED)
+  homeScore  Int         @default(0)
+  awayScore  Int         @default(0)
+  minute     Int?
+  venue      String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
 
-  windows     Window[]
-  events      MatchEvent[]
+  windows Window[]
+  events  MatchEvent[]
 
   @@index([status, kickoffAt])
   @@index([leagueId, kickoffAt])
@@ -490,8 +502,8 @@ model MatchEvent {
   matchId   String
   match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
   minute    Int
-  type      String   // GOAL, YELLOW, RED, SUB, CORNER, etc.
-  team      String?  // home / away
+  type      String // GOAL, YELLOW, RED, SUB, CORNER, etc.
+  team      String? // home / away
   player    String?
   meta      Json?
   createdAt DateTime @default(now())
@@ -500,24 +512,24 @@ model MatchEvent {
 }
 
 model Window {
-  id            String        @id @default(cuid())
-  matchId       String
-  match         Match         @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  kind          WindowKind
-  status        WindowStatus  @default(OPEN)
-  closesAt      DateTime
-  settledAt     DateTime?
-  homeScoreStart Int?
-  awayScoreStart Int?
-  homeScoreEnd   Int?
-  awayScoreEnd   Int?
+  id              String       @id @default(cuid())
+  matchId         String
+  match           Match        @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  kind            WindowKind
+  status          WindowStatus @default(OPEN)
+  closesAt        DateTime
+  settledAt       DateTime?
+  homeScoreStart  Int?
+  awayScoreStart  Int?
+  homeScoreEnd    Int?
+  awayScoreEnd    Int?
   resolvedOutcome BetOutcome?
-  voidReason     String?
-  minStake      Decimal       @default(100)   @db.Decimal(18, 2)
-  maxStake      Decimal       @default(500000) @db.Decimal(18, 2)
+  voidReason      String?
+  minStake        Decimal      @default(100) @db.Decimal(18, 2)
+  maxStake        Decimal      @default(500000) @db.Decimal(18, 2)
 
-  pool          Pool?
-  bets          Bet[]
+  pool Pool?
+  bets Bet[]
 
   @@unique([matchId, kind])
   @@index([status, closesAt])
@@ -531,10 +543,10 @@ model Pool {
   homeStake       Decimal  @default(0) @db.Decimal(18, 2)
   awayStake       Decimal  @default(0) @db.Decimal(18, 2)
   drawStake       Decimal  @default(0) @db.Decimal(18, 2)
-  housePct        Decimal  @default(15.00) @db.Decimal(5, 2)  // configurable; spec proposes 15-20%
+  housePct        Decimal  @default(15.00) @db.Decimal(5, 2) // configurable; spec proposes 15-20%
   payoutPct       Decimal  @default(85.00) @db.Decimal(5, 2)
   betCount        Int      @default(0)
-  seededAmount    Decimal  @default(0) @db.Decimal(18, 2)     // house liquidity seed
+  seededAmount    Decimal  @default(0) @db.Decimal(18, 2) // house liquidity seed
   finalHouseTake  Decimal? @db.Decimal(18, 2)
   finalPayoutPool Decimal? @db.Decimal(18, 2)
   updatedAt       DateTime @updatedAt
@@ -542,41 +554,41 @@ model Pool {
 }
 
 model BetBundle {
-  id            String     @id @default(cuid())
-  userId        String
-  totalStake    Decimal    @db.Decimal(18, 2)
-  potentialReturn Decimal? @db.Decimal(18, 2)
-  bonusMultiplier Decimal  @default(1.00) @db.Decimal(6, 3)
-  status        BetStatus  @default(PENDING_CONFIRMATION)
-  legs          Bet[]
-  placedAt      DateTime   @default(now())
-  settledAt     DateTime?
+  id              String    @id @default(cuid())
+  userId          String
+  totalStake      Decimal   @db.Decimal(18, 2)
+  potentialReturn Decimal?  @db.Decimal(18, 2)
+  bonusMultiplier Decimal   @default(1.00) @db.Decimal(6, 3)
+  status          BetStatus @default(PENDING_CONFIRMATION)
+  legs            Bet[]
+  placedAt        DateTime  @default(now())
+  settledAt       DateTime?
 
   @@index([userId, placedAt])
 }
 
 model Bet {
-  id              String     @id @default(cuid())
-  userId          String
-  user            User       @relation(fields: [userId], references: [id])
-  windowId        String
-  window          Window     @relation(fields: [windowId], references: [id])
-  bundleId        String?
-  bundle          BetBundle? @relation(fields: [bundleId], references: [id])
-  outcome         BetOutcome
-  stake           Decimal    @db.Decimal(18, 2)
-  potentialReturn Decimal?   @db.Decimal(18, 2)
-  poolShareAtPlacement Decimal? @db.Decimal(8, 5)
-  status          BetStatus  @default(PENDING_CONFIRMATION)
-  returnAmount    Decimal?   @db.Decimal(18, 2)
-  cashedOutAt     DateTime?
-  cashedOutValue  Decimal?   @db.Decimal(18, 2)
-  placedAt        DateTime   @default(now())
-  settledAt       DateTime?
-  voidedAt        DateTime?
-  voidReason      String?
+  id                   String     @id @default(cuid())
+  userId               String
+  user                 User       @relation(fields: [userId], references: [id])
+  windowId             String
+  window               Window     @relation(fields: [windowId], references: [id])
+  bundleId             String?
+  bundle               BetBundle? @relation(fields: [bundleId], references: [id])
+  outcome              BetOutcome
+  stake                Decimal    @db.Decimal(18, 2)
+  potentialReturn      Decimal?   @db.Decimal(18, 2)
+  poolShareAtPlacement Decimal?   @db.Decimal(8, 5)
+  status               BetStatus  @default(PENDING_CONFIRMATION)
+  returnAmount         Decimal?   @db.Decimal(18, 2)
+  cashedOutAt          DateTime?
+  cashedOutValue       Decimal?   @db.Decimal(18, 2)
+  placedAt             DateTime   @default(now())
+  settledAt            DateTime?
+  voidedAt             DateTime?
+  voidReason           String?
 
-  transactions    Transaction[]
+  transactions Transaction[]
 
   @@index([userId, placedAt])
   @@index([windowId, status])
@@ -588,40 +600,40 @@ model Bet {
 // ============================================================================
 
 model AntiFraudFlag {
-  id           String       @id @default(cuid())
-  userId       String
-  user         User         @relation("FlaggedUser", fields: [userId], references: [id])
-  type         FlagType
-  severity     FlagSeverity
-  status       FlagStatus   @default(OPEN)
-  riskScore    Float?
-  description  String
-  evidence     Json?
-  matchId      String?
-  windowId     String?
-  reviewerId   String?
-  reviewer     User?        @relation("FlagReviewer", fields: [reviewerId], references: [id])
-  reviewedAt   DateTime?
-  resolution   String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id          String       @id @default(cuid())
+  userId      String
+  user        User         @relation("FlaggedUser", fields: [userId], references: [id])
+  type        FlagType
+  severity    FlagSeverity
+  status      FlagStatus   @default(OPEN)
+  riskScore   Float?
+  description String
+  evidence    Json?
+  matchId     String?
+  windowId    String?
+  reviewerId  String?
+  reviewer    User?        @relation("FlagReviewer", fields: [reviewerId], references: [id])
+  reviewedAt  DateTime?
+  resolution  String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   @@index([userId, status])
   @@index([type, severity, status])
 }
 
 model MatchIntegrityCheck {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   matchId      String
   windowId     String?
   anomalyType  String
   anomalyScore Float
   evidence     Json
-  reviewed     Boolean  @default(false)
+  reviewed     Boolean   @default(false)
   reviewerId   String?
   reviewedAt   DateTime?
   notes        String?
-  createdAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
 
   @@index([matchId, createdAt])
 }
@@ -631,22 +643,22 @@ model MatchIntegrityCheck {
 // ============================================================================
 
 model ResponsibleGambling {
-  id                   String    @id @default(cuid())
-  userId               String    @unique
-  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  dailyDepositLimit    Decimal?  @db.Decimal(18, 2)
-  weeklyDepositLimit   Decimal?  @db.Decimal(18, 2)
-  monthlyDepositLimit  Decimal?  @db.Decimal(18, 2)
-  dailyLossLimit       Decimal?  @db.Decimal(18, 2)
-  weeklyLossLimit      Decimal?  @db.Decimal(18, 2)
-  sessionTimeLimitMin  Int?
-  realityCheckIntervalMin Int    @default(30)
-  selfExclusionUntil   DateTime?
-  coolingOffUntil      DateTime?
-  pendingIncreaseTo    Decimal?  @db.Decimal(18, 2)
+  id                         String    @id @default(cuid())
+  userId                     String    @unique
+  user                       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dailyDepositLimit          Decimal?  @db.Decimal(18, 2)
+  weeklyDepositLimit         Decimal?  @db.Decimal(18, 2)
+  monthlyDepositLimit        Decimal?  @db.Decimal(18, 2)
+  dailyLossLimit             Decimal?  @db.Decimal(18, 2)
+  weeklyLossLimit            Decimal?  @db.Decimal(18, 2)
+  sessionTimeLimitMin        Int?
+  realityCheckIntervalMin    Int       @default(30)
+  selfExclusionUntil         DateTime?
+  coolingOffUntil            DateTime?
+  pendingIncreaseTo          Decimal?  @db.Decimal(18, 2)
   pendingIncreaseEffectiveAt DateTime?
-  updatedAt            DateTime  @updatedAt
-  createdAt            DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
+  createdAt                  DateTime  @default(now())
 }
 
 // ============================================================================
@@ -654,22 +666,25 @@ model ResponsibleGambling {
 // ============================================================================
 
 model Notification {
-  id          String                @id @default(cuid())
-  userId      String
-  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  channel     NotificationChannel
-  priority    NotificationPriority  @default(NORMAL)
-  event       String                // e.g. "bet.won", "kyc.approved"
-  titleEn     String?
-  titleSw     String?
-  bodyEn      String
-  bodySw      String
-  payload     Json?
-  sentAt      DateTime?
-  readAt      DateTime?
-  failedAt    DateTime?
+  id            String               @id @default(cuid())
+  userId        String
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel       NotificationChannel
+  priority      NotificationPriority @default(NORMAL)
+  event         String // e.g. "bet.won", "kyc.approved"
+  kind          String? // WIN, LOSS, BET_PLACED, ROUND_RESULT, etc.
+  href          String?
+  titleEn       String?
+  titleSw       String?
+  bodyEn        String
+  bodySw        String
+  payload       Json?
+  sentAt        DateTime?
+  readAt        DateTime?
+  dismissedAt   DateTime?
+  failedAt      DateTime?
   failureReason String?
-  createdAt   DateTime              @default(now())
+  createdAt     DateTime             @default(now())
 
   @@index([userId, readAt])
   @@index([channel, sentAt])
@@ -680,17 +695,17 @@ model Notification {
 // ============================================================================
 
 model AuditLog {
-  id           String        @id @default(cuid())
-  category     AuditCategory
-  action       String        // verb-noun: "user.login", "bet.placed", "kyc.approved"
-  actorId      String?
-  actor        User?         @relation("AuditActor", fields: [actorId], references: [id])
-  targetType   String?
-  targetId     String?
-  payload      Json?
-  ip           String?
-  userAgent    String?
-  createdAt    DateTime      @default(now())
+  id         String        @id @default(cuid())
+  category   AuditCategory
+  action     String // verb-noun: "user.login", "bet.placed", "kyc.approved"
+  actorId    String?
+  actor      User?         @relation("AuditActor", fields: [actorId], references: [id])
+  targetType String?
+  targetId   String?
+  payload    Json?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime      @default(now())
 
   @@index([category, createdAt])
   @@index([actorId, createdAt])
@@ -713,7 +728,7 @@ model AffiliateAgent {
   active          Boolean  @default(true)
   createdAt       DateTime @default(now())
 
-  recruits        User[]   @relation("AgentRecruits")
+  recruits User[] @relation("AgentRecruits")
 }
 
 // ============================================================================
@@ -721,14 +736,368 @@ model AffiliateAgent {
 // ============================================================================
 
 model ProviderHealth {
-  id          String          @id @default(cuid())
-  provider    PaymentProvider
-  bucketStart DateTime
-  successCount Int            @default(0)
-  failureCount Int            @default(0)
+  id           String          @id @default(cuid())
+  provider     PaymentProvider
+  bucketStart  DateTime
+  successCount Int             @default(0)
+  failureCount Int             @default(0)
   p50LatencyMs Int?
   p95LatencyMs Int?
 
   @@unique([provider, bucketStart])
   @@index([provider, bucketStart])
+}
+
+// ============================================================================
+// ENUMS — Prediction Markets, Proposals, AI Pipeline, House Pool
+// ============================================================================
+
+enum PredictionMarketStatus {
+  DRAFT
+  LIVE
+  CLOSED
+  RESOLVED
+  VOIDED
+}
+
+enum MarketSide {
+  YES
+  NO
+}
+
+enum PositionStatus {
+  OPEN
+  WIN
+  LOSS
+  VOID
+  CASHED_OUT
+}
+
+enum ProposalStatus {
+  REVIEW
+  CHANGES_REQUESTED
+  LISTED
+  RESOLVED
+  DECLINED
+}
+
+enum VoteDirection {
+  UP
+  DOWN
+}
+
+enum AIPollState {
+  GENERATING
+  VALIDATION_FAILED
+  FILTERED
+  PENDING_REVIEW
+  EDITING
+  APPROVED
+  REJECTED
+  PUBLISHED
+}
+
+enum CandidateState {
+  EXTRACTED
+  FILTERED_OUT
+  VERIFYING
+  SCORED
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  PUBLISHED
+}
+
+enum HousePoolEntryType {
+  TOP_UP
+  SEED_OUT
+  SETTLE_RETURN
+  RESERVE_FEE
+  WITHDRAW
+  LOSS_ABSORBED
+}
+
+enum ReferralRewardType {
+  COMMISSION
+  BONUS
+  PRIZE
+}
+
+enum ReferralRewardStatus {
+  PAID
+  PENDING
+  HELD
+}
+
+enum SourceOfFundsReviewStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+// ============================================================================
+// SOURCE OF FUNDS — AML declaration (1:1 with User)
+// ============================================================================
+
+model SourceOfFunds {
+  userId                   String                    @id
+  user                     User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  declaredSource           String // salary, business, savings, investments, inheritance, other
+  declaredOccupation       String
+  declaredEmployer         String?
+  declaredAnnualIncomeBand String // under-12m, 12m-50m, 50m-200m, over-200m
+  declaredOther            String?
+  reviewStatus             SourceOfFundsReviewStatus @default(PENDING)
+  reviewerId               String?
+  reviewedAt               DateTime?
+  submittedAt              DateTime                  @default(now())
+}
+
+// ============================================================================
+// REFERRAL REWARDS — affiliate payout ledger
+// ============================================================================
+
+model ReferralReward {
+  id              String               @id @default(cuid())
+  referrerUserId  String
+  referrerUser    User                 @relation("ReferralRewardsGiven", fields: [referrerUserId], references: [id])
+  recruitUserId   String
+  recruitUser     User                 @relation("ReferralRewardsReceived", fields: [recruitUserId], references: [id])
+  type            ReferralRewardType
+  label           String
+  amountTzs       Decimal              @db.Decimal(18, 2)
+  status          ReferralRewardStatus @default(PENDING)
+  recipientUserId String // denormalised — always referrer or recruit
+  note            String?
+  createdAt       DateTime             @default(now())
+
+  @@index([referrerUserId, createdAt])
+  @@index([recruitUserId])
+}
+
+// ============================================================================
+// PROPOSALS — player-submitted market proposals + voting
+// ============================================================================
+
+model Proposal {
+  id                  String         @id @default(cuid())
+  proposerId          String
+  proposer            User           @relation(fields: [proposerId], references: [id])
+  titleEn             String
+  titleSw             String?
+  description         String?
+  resolutionCriterion String
+  category            String // sports, macro, weather, crypto, culture, infrastructure
+  resolutionDate      String // ISO date YYYY-MM-DD
+  status              ProposalStatus @default(REVIEW)
+  up                  Int            @default(0)
+  down                Int            @default(0)
+  publishedMarketId   String?
+  prizePaidTzs        Decimal        @default(0) @db.Decimal(18, 2)
+  declineReason       String?
+  declineNote         String?
+  changeNote          String?
+  reviewedBy          String?
+  reviewedAt          DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  votes ProposalVote[]
+
+  @@index([proposerId])
+  @@index([status])
+}
+
+model ProposalVote {
+  id         String        @id @default(cuid())
+  proposalId String
+  proposal   Proposal      @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User          @relation(fields: [userId], references: [id])
+  dir        VoteDirection
+  createdAt  DateTime      @default(now())
+
+  @@unique([proposalId, userId])
+}
+
+// ============================================================================
+// PREDICTION MARKETS — binary YES/NO pari-mutuel markets
+// ============================================================================
+
+model PredictionMarket {
+  id                  String                 @id @default(cuid())
+  titleEn             String
+  titleSw             String
+  category            String // sports, macro, weather, crypto, culture, tech, other
+  sourceUrl           String
+  resolutionCriterion String
+  resolutionAt        DateTime
+  status              PredictionMarketStatus @default(DRAFT)
+  yesPool             Decimal                @default(0) @db.Decimal(18, 2)
+  noPool              Decimal                @default(0) @db.Decimal(18, 2)
+  predictorCount      Int                    @default(0)
+  resolvedOutcome     String? // YES, NO, VOID
+  resolutionStage1By  String?
+  resolutionStage1At  DateTime?
+  resolutionStage2By  String?
+  resolutionStage2At  DateTime?
+  objectionsClosedAt  DateTime?
+  proposedBy          String
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+
+  positions Position[]
+  comments  Comment[]
+
+  @@index([status])
+  @@index([resolutionAt])
+}
+
+model Position {
+  id              String           @id @default(cuid())
+  userId          String
+  user            User             @relation(fields: [userId], references: [id])
+  marketId        String
+  market          PredictionMarket @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  side            MarketSide
+  stake           Decimal          @db.Decimal(18, 2)
+  potentialPayout Decimal          @db.Decimal(18, 2)
+  status          PositionStatus   @default(OPEN)
+  finalPayout     Decimal?         @db.Decimal(18, 2)
+  placedAt        DateTime         @default(now())
+  settledAt       DateTime?
+
+  @@index([userId, marketId])
+  @@index([marketId, status])
+}
+
+// ============================================================================
+// AI PIPELINE — candidates + polls
+// ============================================================================
+
+model MarketCandidate {
+  id                  String         @id @default(cuid())
+  state               CandidateState @default(EXTRACTED)
+  category            String
+  proposedTitleEn     String
+  proposedTitleSw     String?
+  resolutionCriterion String
+  resolutionAt        DateTime
+  sources             Json // Array<{ url, publisher, publishedAt?, retrievedAt }>
+  confidence          Int            @default(0)
+  rejectReason        String?
+  rejectNote          String?
+  trace               Json // Array<{ layer, outcome, at }>
+  reviewedBy          String?
+  reviewedAt          DateTime?
+  reviewNote          String?
+  publishedMarketId   String?
+  tokensSpent         Int            @default(0)
+  costUsd             Decimal        @default(0) @db.Decimal(10, 6)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  @@index([state])
+}
+
+model AIPoll {
+  id                   String      @id @default(cuid())
+  state                AIPollState @default(GENERATING)
+  requestCategory      String
+  requestPrompt        String      @db.Text
+  generation           Json? // AIPollGeneration object
+  rawResponse          String?     @db.Text
+  filterReasons        Json        @default("[]")
+  qualityIndicators    Json        @default("[]")
+  overallQuality       Int         @default(0)
+  titleEn              String
+  titleSw              String
+  category             String
+  resolutionCriterion  String
+  resolutionAt         DateTime
+  options              Json        @default("[]")
+  sources              Json        @default("[]")
+  confidence           Int         @default(0)
+  reasoning            String      @db.Text
+  reviewedBy           String?
+  reviewedAt           DateTime?
+  reviewNote           String?
+  rejectReasons        Json        @default("[]")
+  publishedMarketId    String?
+  publishedCandidateId String?
+  tokensUsed           Int         @default(0)
+  costUsd              Decimal     @default(0) @db.Decimal(10, 6)
+  latencyMs            Int         @default(0)
+  regenerationOf       String?
+  regenerationCount    Int         @default(0)
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+
+  @@index([state])
+}
+
+// ============================================================================
+// MARKET COMMENTS — discussion threads on prediction markets
+// ============================================================================
+
+model Comment {
+  id         String           @id @default(cuid())
+  marketId   String
+  market     PredictionMarket @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User             @relation(fields: [userId], references: [id])
+  authorName String
+  body       String
+  side       String? // YES, NO, or null
+  reports    Json             @default("[]") // userId[] who reported
+  hidden     Boolean          @default(false)
+  deleted    Boolean          @default(false)
+  createdAt  DateTime         @default(now())
+
+  @@index([marketId, createdAt])
+}
+
+// ============================================================================
+// HOUSE LIQUIDITY POOL — ledger entries
+// ============================================================================
+
+model HousePoolLedger {
+  id           String             @id @default(cuid())
+  type         HousePoolEntryType
+  amount       Decimal            @db.Decimal(18, 2)
+  balanceAfter Decimal            @db.Decimal(18, 2)
+  marketId     String?
+  note         String
+  actorId      String
+  createdAt    DateTime           @default(now())
+
+  @@index([createdAt])
+}
+
+// ============================================================================
+// TRUSTED SOURCES — AI pipeline source registry
+// ============================================================================
+
+model TrustedSource {
+  id        String   @id @default(cuid())
+  domain    String
+  label     String
+  category  String // MarketCategory value
+  rationale String
+  enabled   Boolean  @default(true)
+  addedBy   String
+  addedAt   DateTime @default(now())
+
+  @@index([domain])
+}
+
+// ============================================================================
+// TOTP — admin 2FA secrets (1:1 with User)
+// ============================================================================
+
+model TotpSecret {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  secret    String
+  createdAt DateTime @default(now())
 }
