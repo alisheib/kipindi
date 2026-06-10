@@ -19,7 +19,7 @@ export default function PollNotFound() {
           </Link>
         }
       />
-      <div className="px-4 lg:px-6 py-5 max-w-[960px]">
+      <div className="px-4 lg:px-6 py-5">
         <AdminCard>
           <div className="flex flex-col items-center gap-4 py-8 text-center">
             <div className="h-12 w-12 rounded-pill bg-bg-overlay flex items-center justify-center">

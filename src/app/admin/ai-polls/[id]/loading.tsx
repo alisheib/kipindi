@@ -4,7 +4,7 @@ export default function Loading() {
   return (
     <>
       <AdminPageHead title="Poll detail" sw="Maelezo ya kura" period={false} />
-      <div className="px-4 lg:px-6 py-5 space-y-4 max-w-[960px] animate-pulse">
+      <div className="px-4 lg:px-6 py-5 space-y-4 animate-pulse">
         {/* Header card skeleton */}
         <AdminCard>
           <div className="flex items-start justify-between gap-4">

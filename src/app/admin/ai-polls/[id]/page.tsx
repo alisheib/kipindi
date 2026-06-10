@@ -66,7 +66,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
           </Link>
         }
       />
-      <div className="px-4 lg:px-6 py-5 space-y-4 max-w-[960px]">
+      <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* Header card */}
         <AdminCard>
           <div className="flex items-start justify-between gap-4">
