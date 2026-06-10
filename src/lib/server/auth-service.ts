@@ -232,7 +232,10 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
     const { db: dbRef } = await import("./store");
     const { getEffectiveConfig } = await import("./market-config");
     const starterBalance = (await getEffectiveConfig()).starterBalanceTzs ?? 0;
-    dbRef.wallet.create({
+    // MUST await: under the Prisma DAL this is a real INSERT. Un-awaited, the
+    // wallet row races the redirect — a brand-new user could land on /wallet or
+    // place a first bet before the row exists and hit "Wallet not found".
+    await dbRef.wallet.create({
       id: `wlt_${randomId(12)}`,
       userId: user.id,
       balance: starterBalance, pending: 0, hold: 0,

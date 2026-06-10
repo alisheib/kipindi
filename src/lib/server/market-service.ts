@@ -238,15 +238,25 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
     };
     await positionStore.set(position);
 
-    // Pool mutation inside the wallet lock — safe for single-instance.
-    // Production must use a market-level lock or DB row lock for multi-instance.
-    if (opts.side === "YES") market.yesPool += opts.stake;
-    else                     market.noPool  += opts.stake;
-    market.predictorCount += 1;
-    market.updatedAt = placedAt;
-    await marketStore.set(market);
-    // Snapshot the new pool for the per-market history chart.
-    recordSnapshot(market.id, market.yesPool, market.noPool);
+    // Pool mutation must be serialized PER-MARKET, not per-wallet: two
+    // different users betting the same market hold different `wallet:` locks,
+    // so without this they read-modify-write the same pool concurrently and
+    // one stake gets dropped from the pool (breaks payout conservation —
+    // winners would later share a pool that's missing money). Re-read inside
+    // the market lock so the += applies to the freshest pool values. Lock
+    // order is always wallet→market (here and in cashOut), never the reverse,
+    // so this nesting cannot deadlock.
+    await withLock(`market:${opts.marketId}`, async () => {
+      const fresh = await marketStore.get(opts.marketId);
+      if (!fresh) return;
+      if (opts.side === "YES") fresh.yesPool += opts.stake;
+      else                     fresh.noPool  += opts.stake;
+      fresh.predictorCount += 1;
+      fresh.updatedAt = placedAt;
+      await marketStore.set(fresh);
+      // Snapshot the new pool for the per-market history chart.
+      recordSnapshot(fresh.id, fresh.yesPool, fresh.noPool);
+    });
 
     await db.txn.create({
       id: `txn_${randomId(12)}`,
@@ -341,88 +351,101 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
     if (m.status !== "LIVE") continue;
     if (Date.parse(m.resolutionAt) > now) continue;
 
-    // Outcome weighted by pool lean — if the crowd believed YES at 70%,
-    // YES wins ~70% of the time. Falls back to a fair 50/50 when pools
-    // are empty (no bets placed yet → market just resolves YES half the
-    // time).
-    const total = m.yesPool + m.noPool;
-    const yesProb = total > 0 ? m.yesPool / total : 0.5;
-    const outcome: Side = Math.random() < yesProb ? "YES" : "NO";
+    // Re-validate and settle under a per-market lock for IDEMPOTENCY. This
+    // runs fire-and-forget on every /markets hit, so two concurrent requests
+    // can both pass the cheap LIVE/expired pre-checks above and, without a
+    // lock, both settle the same market → winners paid twice. Take the same
+    // `market:` lock the human resolver uses, then re-read and re-check inside
+    // it: the first run flips status to RESOLVED, every later run no-ops.
+    const didResolve = await withLock(`market:${m.id}`, async () => {
+      const cur = await marketStore.get(m.id);
+      if (!cur || cur.status !== "LIVE") return false;
+      if (Date.parse(cur.resolutionAt) > now) return false;
 
-    // Run the exact settlement codepath used by the resolver-queue's
-    // stage-2 confirm — same pay-winners / forfeit-losers / notify /
-    // audit shape, just bypassing the two-officer staging dance which
-    // makes no sense for a synthetic demo market.
-    m.resolutionStage1By = "system_demo_auto";
-    m.resolutionStage1At = new Date(now).toISOString();
-    m.resolutionStage2By = "system_demo_auto";
-    m.resolutionStage2At = new Date(now).toISOString();
-    m.objectionsClosedAt = new Date(now + 24 * 3600_000).toISOString();
-    m.resolvedOutcome = outcome;
-    m.status = "RESOLVED";
-    m.updatedAt = m.resolutionStage2At;
-    await marketStore.set(m);
-    recordSnapshot(m.id, m.yesPool, m.noPool);
+      // Outcome weighted by pool lean — if the crowd believed YES at 70%,
+      // YES wins ~70% of the time. Falls back to a fair 50/50 when pools
+      // are empty (no bets placed yet → market just resolves YES half the
+      // time).
+      const total = cur.yesPool + cur.noPool;
+      const yesProb = total > 0 ? cur.yesPool / total : 0.5;
+      const outcome: Side = Math.random() < yesProb ? "YES" : "NO";
 
-    let winnersPaid = 0;
-    const settleCfg = await getEffectiveConfig(m.id);
+      // Run the exact settlement codepath used by the resolver-queue's
+      // stage-2 confirm — same pay-winners / forfeit-losers / notify /
+      // audit shape, just bypassing the two-officer staging dance which
+      // makes no sense for a synthetic demo market.
+      cur.resolutionStage1By = "system_demo_auto";
+      cur.resolutionStage1At = new Date(now).toISOString();
+      cur.resolutionStage2By = "system_demo_auto";
+      cur.resolutionStage2At = new Date(now).toISOString();
+      cur.objectionsClosedAt = new Date(now + 24 * 3600_000).toISOString();
+      cur.resolvedOutcome = outcome;
+      cur.status = "RESOLVED";
+      cur.updatedAt = cur.resolutionStage2At;
+      await marketStore.set(cur);
+      recordSnapshot(cur.id, cur.yesPool, cur.noPool);
 
-    // Settle house virtual position for this demo market
-    const demoHouseSettle = await settleHousePosition(
-      m.id, outcome, m.yesPool + m.noPool, settleCfg.reserveRate,
-    );
+      let winnersPaid = 0;
+      const settleCfg = await getEffectiveConfig(cur.id);
 
-    const winningPool = outcome === "YES" ? m.yesPool : m.noPool;
-    const myPositions = await listPositionsForMarket(m.id);
-    for (const p of myPositions) {
-      const w = await db.wallet.findByUserId(p.userId);
-      if (!w) continue;
-      if (p.side === outcome) {
-        const payout = settledPayoutWhole(
-          { yesPool: m.yesPool, noPool: m.noPool, side: p.side, stake: p.stake },
-          settleCfg,
-        );
-        const newBal = w.balance + payout;
-        await db.wallet.update(w.id, { balance: newBal });
-        p.status = "WIN"; p.finalPayout = payout; p.settledAt = m.resolutionStage2At!;
-        await positionStore.set(p);
-        await db.txn.create({
-          id: `txn_${randomId(12)}`,
-          walletId: w.id, userId: p.userId,
-          type: "BET_PAYOUT", status: "CONFIRMED",
-          amount: payout, fee: 0, taxWithheld: 0,
-          balanceAfter: newBal, currency: "TZS",
-          provider: "INTERNAL", providerRef: null, msisdn: null,
-          description: `${outcome} won · "${m.titleEn.slice(0, 60)}" (auto)`,
-          betId: p.id,
-          amlReason: null,
-          createdAt: m.resolutionStage2At!, updatedAt: m.resolutionStage2At!, completedAt: m.resolutionStage2At!,
-        });
-        winnersPaid += payout;
-        notifyWin(p.userId, payout, m.titleEn, "/positions");
-      } else {
-        p.status = "LOSS"; p.finalPayout = 0; p.settledAt = m.resolutionStage2At!;
-        await positionStore.set(p);
-        notifyLoss(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id });
+      // Settle house virtual position for this demo market
+      const demoHouseSettle = await settleHousePosition(
+        cur.id, outcome, cur.yesPool + cur.noPool, settleCfg.reserveRate,
+      );
+
+      const winningPool = outcome === "YES" ? cur.yesPool : cur.noPool;
+      const myPositions = (await listPositionsForMarket(cur.id)).filter((p) => p.status === "OPEN");
+      for (const p of myPositions) {
+        const w = await db.wallet.findByUserId(p.userId);
+        if (!w) continue;
+        if (p.side === outcome) {
+          const payout = settledPayoutWhole(
+            { yesPool: cur.yesPool, noPool: cur.noPool, side: p.side, stake: p.stake },
+            settleCfg,
+          );
+          const newBal = w.balance + payout;
+          await db.wallet.update(w.id, { balance: newBal });
+          p.status = "WIN"; p.finalPayout = payout; p.settledAt = cur.resolutionStage2At!;
+          await positionStore.set(p);
+          await db.txn.create({
+            id: `txn_${randomId(12)}`,
+            walletId: w.id, userId: p.userId,
+            type: "BET_PAYOUT", status: "CONFIRMED",
+            amount: payout, fee: 0, taxWithheld: 0,
+            balanceAfter: newBal, currency: "TZS",
+            provider: "INTERNAL", providerRef: null, msisdn: null,
+            description: `${outcome} won · "${cur.titleEn.slice(0, 60)}" (auto)`,
+            betId: p.id,
+            amlReason: null,
+            createdAt: cur.resolutionStage2At!, updatedAt: cur.resolutionStage2At!, completedAt: cur.resolutionStage2At!,
+          });
+          winnersPaid += payout;
+          notifyWin(p.userId, payout, cur.titleEn, "/positions");
+        } else {
+          p.status = "LOSS"; p.finalPayout = 0; p.settledAt = cur.resolutionStage2At!;
+          await positionStore.set(p);
+          notifyLoss(p.userId, { stake: p.stake, marketTitle: cur.titleEn, marketId: cur.id });
+        }
       }
-    }
-    audit({
-      category: "ADMIN",
-      action: "market.resolved.demo_auto",
-      actorId: "system_demo_auto",
-      targetType: "Market",
-      targetId: m.id,
-      payload: {
-        outcome,
-        yesPool: m.yesPool, noPool: m.noPool,
-        payoutModel: "whole-pool",
-        winningPool,
-        winnersPaid,
-        housePool: { returnedToReserve: demoHouseSettle.returnedToReserve, reserveFee: demoHouseSettle.reserveFee, lossAbsorbed: demoHouseSettle.lossAbsorbed },
-        reason: "Demo market countdown elapsed; no human officer required for synthetic markets",
-      },
+      audit({
+        category: "ADMIN",
+        action: "market.resolved.demo_auto",
+        actorId: "system_demo_auto",
+        targetType: "Market",
+        targetId: cur.id,
+        payload: {
+          outcome,
+          yesPool: cur.yesPool, noPool: cur.noPool,
+          payoutModel: "whole-pool",
+          winningPool,
+          winnersPaid,
+          housePool: { returnedToReserve: demoHouseSettle.returnedToReserve, reserveFee: demoHouseSettle.reserveFee, lossAbsorbed: demoHouseSettle.lossAbsorbed },
+          reason: "Demo market countdown elapsed; no human officer required for synthetic markets",
+        },
+      });
+      return true;
     });
-    resolved++;
+    if (didResolve) resolved++;
   }
   return { resolved };
 }
