@@ -43,6 +43,18 @@ async function hasErrorOverlay(page) {
   });
 }
 
+// ── Warmup ──────────────────────────────────────────────────────────
+// A freshly-restarted server cold-starts routes on first hit; running the
+// strict checks against a cold instance produces false failures (typing races
+// hydration, requests time out). Poll health + prime the heaviest routes first
+// so every assertion below runs against a warm server — strict, not flaky.
+{
+  const warm = await fetch(BASE + "/api/health").then((r) => r.ok).catch(() => false);
+  for (let i = 0; i < 20 && !warm; i++) { await new Promise((r) => setTimeout(r, 1500)); if (await fetch(BASE + "/api/health").then((r) => r.ok).catch(() => false)) break; }
+  for (const r of ["/", "/markets", "/auth/register", "/proposals", "/wallet"]) await fetch(BASE + r).catch(() => {});
+  await new Promise((r) => setTimeout(r, 800));
+}
+
 const browser = await chromium.launch();
 
 // ── A. Public route health ──────────────────────────────────────────
