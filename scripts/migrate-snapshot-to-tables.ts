@@ -40,6 +40,14 @@ function dtRequired(iso: string): Date {
   return new Date(iso);
 }
 
+/** Parse a date-only string like "1999-02-10" into a Date, or full ISO. */
+function dtDate(s: string | null | undefined): Date | null {
+  if (!s) return null;
+  // If it's just YYYY-MM-DD, append T00:00:00Z so Prisma accepts it
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return new Date(s + "T00:00:00.000Z");
+  return new Date(s);
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyMap = Map<string, any>;
 
@@ -104,7 +112,7 @@ async function migrateUsers(users: AnyMap) {
           status: u.status,
           locale: u.locale,
           displayName: u.displayName ?? null,
-          dob: u.dob ?? null,
+          dob: dtDate(u.dob),
           region: u.region ?? null,
           acceptedTermsVersion: u.acceptedTermsVersion ?? null,
           acceptedTermsAt: dt(u.acceptedTermsAt),
@@ -127,7 +135,7 @@ async function migrateUsers(users: AnyMap) {
           status: u.status,
           locale: u.locale,
           displayName: u.displayName ?? null,
-          dob: u.dob ?? null,
+          dob: dtDate(u.dob),
           region: u.region ?? null,
           acceptedTermsVersion: u.acceptedTermsVersion ?? null,
           acceptedTermsAt: dt(u.acceptedTermsAt),
@@ -242,7 +250,7 @@ async function migrateTransactions(txns: AnyMap) {
           providerRef: t.providerRef ?? null,
           msisdn: t.msisdn ?? null,
           description: t.description ?? "",
-          betId: t.betId ?? null,
+          betId: null, // betId references positions (pos_*) that aren't in the Bet table — skip FK
           amlReason: t.amlReason ?? null,
           createdAt: dtRequired(t.createdAt),
           updatedAt: dtRequired(t.updatedAt),
