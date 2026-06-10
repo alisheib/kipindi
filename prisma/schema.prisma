@@ -413,8 +413,13 @@ model Transaction {
   providerStatus  String?
   msisdn          String? // recipient/sender phone for mobile money
   description     String?
+  // Soft reference to the wager this ledger entry belongs to. Holds EITHER a
+  // legacy sports `Bet.id` OR a prediction-market `Position.id` — the platform
+  // has two wager types and a single column FK to only one of them is wrong.
+  // A hard FK here rejected every prediction-market bet/settlement txn (the
+  // Position id has no matching Bet row), crashing bet placement after the
+  // position was already written. Kept as a plain string; no DB-level FK.
   betId           String?
-  bet             Bet?             @relation(fields: [betId], references: [id])
   amlReviewedById String?
   amlReviewedAt   DateTime?
   amlReason       String?
@@ -588,7 +593,8 @@ model Bet {
   voidedAt             DateTime?
   voidReason           String?
 
-  transactions Transaction[]
+  // NOTE: Transaction.betId is a soft reference (no FK) — see Transaction.betId.
+  // No back-relation: the column may point at a Position id instead of a Bet id.
 
   @@index([userId, placedAt])
   @@index([windowId, status])

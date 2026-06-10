@@ -64,7 +64,7 @@ function isInRange(p: Parsed, minP: Parsed | null, maxP: Parsed | null): boolean
 
 // ── Segment sub-input ────────────────────────────────────────────────
 
-function Seg({ value, onChange, onNext, onPrev, maxLen, placeholder, width, ariaLabel }: {
+function Seg({ value, onChange, onNext, onPrev, maxLen, placeholder, width, ariaLabel, autoAdvanceOn }: {
   value: string;
   onChange: (v: string) => void;
   onNext: () => void;
@@ -73,6 +73,10 @@ function Seg({ value, onChange, onNext, onPrev, maxLen, placeholder, width, aria
   placeholder: string;
   width: string;
   ariaLabel: string;
+  // When a single typed digit can only mean a complete 2-digit value
+  // (e.g. day "4" → "04", month "5" → "05"), pad it and jump to the next
+  // segment. Returns true for digits that are unambiguous on their own.
+  autoAdvanceOn?: (digit: string) => boolean;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   return (
@@ -91,8 +95,16 @@ function Seg({ value, onChange, onNext, onPrev, maxLen, placeholder, width, aria
       maxLength={maxLen}
       onChange={(e) => {
         const digits = e.target.value.replace(/\D/g, "").slice(0, maxLen);
-        onChange(digits);
-        if (digits.length === maxLen) onNext();
+        if (digits.length === maxLen) {
+          onChange(digits);
+          onNext();
+        } else if (digits.length === 1 && autoAdvanceOn?.(digits)) {
+          // Unambiguous single digit → pad to "0X" and advance.
+          onChange(digits.padStart(2, "0"));
+          onNext();
+        } else {
+          onChange(digits);
+        }
       }}
       onKeyDown={(e) => {
         if ((e.key === "ArrowRight" || (e.key === "Tab" && !e.shiftKey)) && ref.current?.selectionStart === value.length) {
@@ -139,17 +151,32 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
   const [invalid, setInvalid] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // The last ISO value this component itself produced. We compare against it so
+  // the sync effect below can tell an *external* value change (parent set/reset)
+  // apart from our own echo, and never re-runs for our own emits.
+  const lastEmit = useRef<string>(isoValue);
+
+  // Sync the three segments FROM an external value only (controlled mode).
+  // The segments are the single source of truth while the user is typing —
+  // re-deriving them from a transient/empty ISO mid-keystroke is what dropped
+  // and re-ordered digits before (typing "10" could land as "01"). So we run
+  // strictly on a genuine external change, and only depend on the `value`
+  // STRING (never on the `parsed` object, which is a fresh identity each
+  // render and would otherwise re-run the effect on every render).
   useEffect(() => {
-    if (parsed) {
-      setDd(String(parsed.d).padStart(2, "0"));
-      setMm(String(parsed.m).padStart(2, "0"));
-      setYyyy(String(parsed.y));
-      setInvalid(false);
-    } else if (!isoValue) {
+    if (!controlled) return;
+    if (value === lastEmit.current) return; // our own echo — ignore
+    const p = value ? parseIso(value) : null;
+    if (p) {
+      setDd(String(p.d).padStart(2, "0"));
+      setMm(String(p.m).padStart(2, "0"));
+      setYyyy(String(p.y));
+    } else {
       setDd(""); setMm(""); setYyyy("");
-      setInvalid(false);
     }
-  }, [isoValue, parsed]);
+    setInvalid(false);
+    lastEmit.current = value ?? "";
+  }, [controlled, value]);
 
   const minParsed = min ? parseIso(min) : null;
   const maxParsed = max ? parseIso(max) : null;
@@ -166,16 +193,19 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
       const p = { d: Number(d), m: Number(m), y: Number(y) };
       if (p.m >= 1 && p.m <= 12 && p.d >= 1 && p.d <= daysInMonth(p.y, p.m) && isInRange(p, minParsed, maxParsed)) {
         const iso = toIso(p);
+        lastEmit.current = iso;
         if (!controlled) setInternal(iso);
         onChange?.(iso);
         setInvalid(false);
         return;
       }
       setInvalid(true);
+      lastEmit.current = "";
       if (!controlled) setInternal("");
       onChange?.("");
     } else {
       setInvalid(false);
+      lastEmit.current = "";
       if (!controlled) setInternal("");
       onChange?.("");
     }
@@ -221,6 +251,7 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
     setMm(String(m).padStart(2, "0"));
     setYyyy(String(y));
     const iso = toIso({ y, m, d });
+    lastEmit.current = iso;
     if (!controlled) setInternal(iso);
     onChange?.(iso);
     setInvalid(false);
@@ -266,9 +297,9 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
       >
         {/* Segments row */}
         <div className="flex-1 flex items-center px-3.5 gap-0">
-          <Seg value={dd} onChange={onDd} onNext={() => focusSeg(1)} onPrev={() => {}} maxLen={2} placeholder="DD" width="28px" ariaLabel="Day" />
+          <Seg value={dd} onChange={onDd} onNext={() => focusSeg(1)} onPrev={() => {}} maxLen={2} placeholder="DD" width="28px" ariaLabel="Day" autoAdvanceOn={(d) => Number(d) > 3} />
           <span className="text-text-subtle/40 font-mono text-[16px] mx-0.5 select-none">/</span>
-          <Seg value={mm} onChange={onMm} onNext={() => focusSeg(2)} onPrev={() => focusSeg(0)} maxLen={2} placeholder="MM" width="28px" ariaLabel="Month" />
+          <Seg value={mm} onChange={onMm} onNext={() => focusSeg(2)} onPrev={() => focusSeg(0)} maxLen={2} placeholder="MM" width="28px" ariaLabel="Month" autoAdvanceOn={(d) => Number(d) > 1} />
           <span className="text-text-subtle/40 font-mono text-[16px] mx-0.5 select-none">/</span>
           <Seg value={yyyy} onChange={onYy} onNext={() => {}} onPrev={() => focusSeg(1)} maxLen={4} placeholder="YYYY" width="48px" ariaLabel="Year" />
         </div>
