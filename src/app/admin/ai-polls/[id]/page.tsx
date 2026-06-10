@@ -142,12 +142,26 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
         </div>
 
         {/* Quality */}
-        {poll.qualityIndicators.length > 0 && (
-          <AdminCard>
-            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-2">Quality assessment</p>
+        <AdminCard>
+          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-2">Quality assessment</p>
+          {poll.qualityIndicators.length > 0 ? (
             <QualityBadges indicators={poll.qualityIndicators} overall={poll.overallQuality} />
-          </AdminCard>
-        )}
+          ) : (
+            <div className="flex items-center gap-2 py-3">
+              <div className="h-8 w-8 rounded-pill bg-bg-overlay flex items-center justify-center">
+                <I.shieldAlert size={14} className="text-text-subtle" />
+              </div>
+              <div>
+                <p className="text-[12px] text-text-muted">No quality data</p>
+                <p className="text-[11px] text-text-subtle">
+                  {poll.state === "VALIDATION_FAILED" || poll.state === "FILTERED"
+                    ? "This poll failed validation before quality scoring."
+                    : "Quality indicators have not been computed."}
+                </p>
+              </div>
+            </div>
+          )}
+        </AdminCard>
 
         {/* Filter reasons */}
         {poll.filterReasons.length > 0 && (
@@ -161,9 +175,9 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
         )}
 
         {/* Sources */}
-        {poll.sources.length > 0 && (
-          <AdminCard>
-            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-2">Sources</p>
+        <AdminCard>
+          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-2">Sources</p>
+          {poll.sources.length > 0 ? (
             <div className="space-y-1.5">
               {poll.sources.map((s, i) => (
                 <div key={i} className="flex items-center gap-2 text-[12px]">
@@ -172,18 +186,31 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
                 </div>
               ))}
             </div>
-          </AdminCard>
-        )}
+          ) : (
+            <div className="flex items-center gap-2 py-3">
+              <div className="h-8 w-8 rounded-pill bg-bg-overlay flex items-center justify-center">
+                <I.fileCheck size={14} className="text-text-subtle" />
+              </div>
+              <p className="text-[12px] text-text-muted">
+                {poll.state === "VALIDATION_FAILED" || poll.state === "FILTERED"
+                  ? "No sources were returned by the AI provider."
+                  : "No sources attached to this poll."}
+              </p>
+            </div>
+          )}
+        </AdminCard>
 
         {/* AI reasoning */}
-        {poll.reasoning && (
-          <AdminCard>
-            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-2">AI reasoning</p>
+        <AdminCard>
+          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-2">AI reasoning</p>
+          {poll.reasoning ? (
             <p className="text-[12px] text-text-muted leading-relaxed pl-3 border-l-2 border-border">
               {poll.reasoning}
             </p>
-          </AdminCard>
-        )}
+          ) : (
+            <p className="text-[12px] italic text-text-subtle py-2">No reasoning provided by the AI.</p>
+          )}
+        </AdminCard>
 
         {/* Raw response (for failed/filtered) */}
         {poll.rawResponse && (poll.state === "VALIDATION_FAILED" || poll.state === "FILTERED") && (

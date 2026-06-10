@@ -48,3 +48,4 @@ F1 Tetsing image/
 # Translation docs + temp files (local working copies)
 *.doc
 tmp_*
+scripts/screenshots/

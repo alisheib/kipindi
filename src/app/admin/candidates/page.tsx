@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { Chip } from "@/components/ui/chip";
@@ -176,13 +177,27 @@ export default async function AdminCandidatesPage({
                 Search, filter by state, category, or date. Use this to audit AI behaviour and reject patterns.
               </p>
             </div>
-            <CandidateFilterToolbar totalFiltered={filtered.length} totalAll={totalAll} />
+            <Suspense fallback={<FilterToolbarSkeleton />}>
+              <CandidateFilterToolbar totalFiltered={filtered.length} totalAll={totalAll} />
+            </Suspense>
           </div>
           {pageItems.length === 0 ? (
-            <div className="px-4 lg:px-5 py-10 text-center text-caption text-text-tertiary">
-              {hasFilters
-                ? "No candidates match your filters. Try adjusting your search or clearing filters."
-                : "No candidates ingested yet. Run the AI pipeline or load a fixture."}
+            <div className="px-4 lg:px-5 py-12 flex flex-col items-center gap-3 text-center">
+              <div className="h-10 w-10 rounded-pill bg-bg-overlay flex items-center justify-center">
+                {hasFilters
+                  ? <I.search size={18} className="text-text-subtle" />
+                  : <I.brain size={18} className="text-text-subtle" />}
+              </div>
+              <div>
+                <p className="font-display text-[13px] font-semibold text-text-muted">
+                  {hasFilters ? "No candidates match your filters" : "No candidates ingested yet"}
+                </p>
+                <p className="text-caption text-text-tertiary mt-1">
+                  {hasFilters
+                    ? "Try adjusting your search, changing the date range, or clearing filters."
+                    : "Run the AI pipeline to generate candidates, or seed fixtures for testing."}
+                </p>
+              </div>
             </div>
           ) : (
             <>
@@ -234,6 +249,33 @@ export default async function AdminCandidatesPage({
         </AdminCard>
       </div>
     </>
+  );
+}
+
+/* ─── Filter toolbar skeleton (Suspense fallback) ─── */
+
+function FilterToolbarSkeleton() {
+  return (
+    <div className="space-y-3 animate-pulse">
+      <div className="flex items-center gap-3">
+        <div className="h-9 flex-1 max-w-[420px] rounded-md bg-bg-overlay" />
+        <div className="h-9 w-[80px] rounded-pill bg-bg-overlay" />
+      </div>
+      <div className="flex items-center gap-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="h-6 w-16 rounded-pill bg-bg-overlay" />
+        ))}
+        <div className="w-px h-5 bg-border/60" />
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-6 w-16 rounded-pill bg-bg-overlay" />
+        ))}
+      </div>
+      <div className="flex items-center gap-1">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-6 w-20 rounded-pill bg-bg-overlay" />
+        ))}
+      </div>
+    </div>
   );
 }
 
