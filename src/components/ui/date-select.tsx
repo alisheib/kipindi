@@ -41,7 +41,10 @@ type Props = {
   onChange?: (iso: string) => void;
 };
 
-const SEG_WIDTH: Record<SegKey, string> = { dd: "1.7ch", mm: "1.7ch", yyyy: "3.2ch" };
+// Widths must comfortably fit the digits in the mono font or the centered text
+// gets clipped on both edges (e.g. "1999" rendering as ".999"). 1ch ≈ one
+// digit; add headroom for letter-spacing/sub-pixel so nothing is ever cut.
+const SEG_WIDTH: Record<SegKey, string> = { dd: "2.6ch", mm: "2.6ch", yyyy: "4.8ch" };
 
 export function DateSelect({ name, id, required, min, max, defaultValue, value, onChange }: Props) {
   const controlled = value !== undefined;
