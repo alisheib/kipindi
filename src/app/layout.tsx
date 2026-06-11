@@ -45,6 +45,14 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "50pick",
   },
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "32x32" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: { url: "/icons/apple-touch-180.png", sizes: "180x180" },
+  },
   robots: { index: true, follow: true },
   other: { "mobile-web-app-capable": "yes" },
   openGraph: {
@@ -53,11 +61,13 @@ export const metadata: Metadata = {
     title: "50pick — Predict events. Not chance.",
     description: APP_DESC,
     locale: "en_US",
+    images: [{ url: "/og/og-1200x630.png", width: 1200, height: 630 }],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "50pick — Predict events. Not chance.",
     description: APP_DESC,
+    images: ["/og/twitter-1200x600.png"],
   },
 };
 
@@ -70,7 +80,7 @@ export const viewport: Viewport = {
   // the bottom-nav / sheets / menus that pad with safe-area-inset-bottom collapse
   // to 0 and sit flush against the home indicator on notched iPhones.
   viewportFit: "cover",
-  themeColor: "#050817",
+  themeColor: "#0a0e33",
 };
 
 import { cookies } from "next/headers";

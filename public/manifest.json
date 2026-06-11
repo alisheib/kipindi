@@ -4,16 +4,32 @@
   "description": "Tanzania-licensed prediction markets. Pick YES or NO, winners share the losing pool.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#050817",
-  "theme_color": "#050817",
+  "background_color": "#0a0e33",
+  "theme_color": "#0a0e33",
   "orientation": "portrait-primary",
   "categories": ["entertainment", "finance"],
   "lang": "en",
   "icons": [
     {
-      "src": "/icon.svg",
+      "src": "/favicon.svg",
       "type": "image/svg+xml",
       "sizes": "any"
+    },
+    {
+      "src": "/icons/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icons/mark-color-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    },
+    {
+      "src": "/icons/maskable-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
   ]
 }

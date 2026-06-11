@@ -7,7 +7,7 @@ import type { Report, Section, Column, SummaryItem, SignatureRow } from "./types
 
 const LOGO_PNG = (() => {
   try {
-    return readFileSync(join(process.cwd(), "public/brand/fiftymark-color.png"));
+    return readFileSync(join(process.cwd(), "public/icons/mark-color-512.png"));
   } catch {
     return null;
   }

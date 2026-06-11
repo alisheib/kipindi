@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { BRAND, COMPANY, fmtDate, fmtDateTime } from "./brand";
 import type { Report, Section, Column, Row, SignatureRow } from "./types";
 
-const LOGO_PNG_PATH = join(process.cwd(), "public/brand/fiftymark-color.png");
+const LOGO_PNG_PATH = join(process.cwd(), "public/icons/mark-color-512.png");
 const LOGO_PNG_BUF = (() => {
   try { return readFileSync(LOGO_PNG_PATH); } catch { return null; }
 })();

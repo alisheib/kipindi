@@ -1,104 +1,110 @@
 /**
- * 50pick brand primitives — exact ports of `brand.jsx` + `brand-specimens.jsx`
- * from the polymarket-wf design kit.
+ * 50pick brand primitives — FINAL (logo round 2, Direction B "Needle").
  *
- * The mark is a tilted circle: YES (emerald) wedge upper-left, NO (rose) wedge
- * lower-right, divider tilted -14° with the "50" sitting on it.
+ * The mark: YES emerald LEFT · NO rose RIGHT · royal ring · the gilt
+ * NEEDLE crossing the rim (same object as TippingBar needle + conviction
+ * dial) with a gilt counterweight hub on the lower arm · "50" JetBrains
+ * Mono 700. Tilt −14°.
+ *
+ * Variants:
+ *   variant="color"  — full color (default; dark canvas)
+ *   variant="white"  — single-ink white (dark canvas, photos via plate)
+ *   variant="dark"   — single-ink royal (light backgrounds, print)
+ *   simplified       — no numerals/hub, heavier strokes; REQUIRED ≤ 20px
+ *
+ * Reproduction rules:
+ *   min full mark 24px · min simplified 14px · clear space 0.25 × diameter
  */
 "use client";
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
+const TILT_RAD = (-14 * Math.PI) / 180;
+const SIN = Math.sin(TILT_RAD);
+const COS = Math.cos(TILT_RAD);
+const FIELD_R = 44.6;
+const NEEDLE_REACH = 51.5;
+
+const PAL = {
+  yes: "oklch(58% 0.16 152)",
+  no: "oklch(60% 0.18 22)",
+  ring: "oklch(48% 0.20 268)",
+  gilt: "oklch(78% 0.13 86)",
+  hub: "oklch(85% 0.13 86)",
+  ink: "oklch(98% 0.012 268)",
+  whiteInk: "oklch(99% 0.006 268)",
+  darkInk: "oklch(30% 0.12 268)",
+};
+
+export type FiftyMarkVariant = "color" | "white" | "dark";
+
 /* ── FiftyMark ──────────────────────────────────────────────────────────── */
 
 export function FiftyMark({
   size = 64,
-  mono = false,
-  inverted = false,
+  variant = "color",
+  simplified,
   className,
 }: {
   size?: number;
-  mono?: boolean;
-  inverted?: boolean;
+  variant?: FiftyMarkVariant;
+  /** Drops numerals + hub, thickens strokes. Use at or below 20px. */
+  simplified?: boolean;
   className?: string;
 }) {
-  const tilt = -14;
-  const r = 50;
-  const cx = 50, cy = 50;
-  const rad = (tilt * Math.PI) / 180;
-  const dx = Math.sin(rad) * 80;
-  const dy = Math.cos(rad) * 80;
-  const top = { x: cx + dx, y: cy - dy };
-  const bot = { x: cx - dx, y: cy + dy };
-
-  // Kit-faithful palette:
-  //   yes wedge  = emerald 152
-  //   no wedge   = rose 22
-  //   outer ring = royal 258 (NOT black)
-  //   divider    = gilt 86 stroke
-  //   gilt pip   = signature mark on the divider midpoint
-  //   gilt outer hairline at r-2.4 — the "golden line" the kit specifies
-  const yesColor    = mono ? (inverted ? "oklch(99% 0.006 268)" : "oklch(48% 0.20 268)") : "oklch(58% 0.16 152)";
-  const noColor     = mono ? (inverted ? "oklch(72% 0.020 268)" : "oklch(78% 0.045 268)") : "oklch(60% 0.18 22)";
-  const ringColor   = mono ? (inverted ? "oklch(99% 0.006 268)" : "oklch(48% 0.20 268)") : "oklch(48% 0.20 268)";
-  const numberColor = mono ? (inverted ? "oklch(44% 0.20 268)" : "oklch(99% 0.006 268)") : "oklch(99% 0.006 268)";
-  const giltStroke  = "oklch(78% 0.13 86)";  // champagne divider
-  const giltPip     = "oklch(85% 0.13 86)";  // brighter pip on the divider midpoint
-
+  const simple = simplified ?? size <= 20;
+  const mono = variant !== "color";
+  const ink = variant === "white" ? PAL.whiteInk : PAL.darkInk;
+  const yes = mono ? `${ink.slice(0, -1)} / ${variant === "white" ? "0.30" : "0.26"})` : PAL.yes;
+  const no = mono ? `${ink.slice(0, -1)} / ${variant === "white" ? "0.12" : "0.10"})` : PAL.no;
+  const ring = mono ? ink : PAL.ring;
+  const needle = mono ? ink : PAL.gilt;
   const id = React.useId().replace(/:/g, "");
-
+  const top = { x: 50 + SIN * 80, y: 50 - COS * 80 };
+  const bot = { x: 50 - SIN * 80, y: 50 + COS * 80 };
+  const n1 = { x: 50 + SIN * NEEDLE_REACH, y: 50 - COS * NEEDLE_REACH };
+  const n2 = { x: 50 - SIN * NEEDLE_REACH, y: 50 + COS * NEEDLE_REACH };
+  const hub = { x: 50 - SIN * 26, y: 50 + COS * 26 };
   return (
-    <svg viewBox="0 0 100 100" width={size} height={size} className={className} style={{ display: "block" }} aria-label="50pick">
+    <svg viewBox="-3 -3 106 106" width={size} height={size} className={className} style={{ display: "block" }} aria-label="50pick">
       <defs>
-        <clipPath id={`fc-${id}`}>
-          <circle cx={cx} cy={cy} r={r - 1} />
-        </clipPath>
+        <clipPath id={`fm-${id}`}><circle cx="50" cy="50" r={FIELD_R} /></clipPath>
       </defs>
-      <g clipPath={`url(#fc-${id})`}>
-        {/* YES wedge */}
-        <path d={`M ${top.x} ${top.y} A ${r} ${r} 0 0 0 ${bot.x} ${bot.y} L ${top.x} ${top.y} Z`} fill={yesColor} />
-        {/* NO wedge */}
-        <path d={`M ${top.x} ${top.y} A ${r} ${r} 0 0 1 ${bot.x} ${bot.y} L ${top.x} ${top.y} Z`} fill={noColor} />
-        {/* Divider — gilt when in chord, royal when mono */}
-        <line
-          x1={top.x} y1={top.y} x2={bot.x} y2={bot.y}
-          stroke={mono ? ringColor : giltStroke}
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-        {/* The 50 sitting on the divider */}
-        <text
-          x={cx}
-          y={cy + 2}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fontFamily="'JetBrains Mono', ui-monospace, monospace"
-          fontWeight={700}
-          fontSize="30"
-          fill={numberColor}
-          style={{ letterSpacing: "-0.04em" }}
-        >
-          50
-        </text>
-        {/* Gold pip on the divider midpoint — signature mark */}
-        {!mono && <circle cx={cx} cy={cy} r={1.6} fill={giltPip} />}
+      <g clipPath={`url(#fm-${id})`}>
+        <path d={`M ${top.x} ${top.y} A 80 80 0 0 0 ${bot.x} ${bot.y} L ${top.x} ${top.y} Z`} fill={yes} />
+        <path d={`M ${top.x} ${top.y} A 80 80 0 0 1 ${bot.x} ${bot.y} L ${top.x} ${top.y} Z`} fill={no} />
       </g>
-      {/* Outer royal ring */}
-      <circle cx={cx} cy={cy} r={r - 1} fill="none" stroke={ringColor} strokeWidth="2" />
-      {/* Gilt outer hairline — the "golden line" — only in chord, not mono */}
-      {!mono && (
-        <circle
-          cx={cx}
-          cy={cy}
-          r={r - 2.4}
-          fill="none"
-          stroke={giltStroke}
-          strokeWidth="0.5"
-          opacity="0.55"
-        />
+      <circle cx="50" cy="50" r={FIELD_R} fill="none" stroke={ring} strokeWidth={simple ? 4 : 2.8} />
+      <line x1={n1.x} y1={n1.y} x2={n2.x} y2={n2.y} stroke={needle} strokeWidth={simple ? 5 : 3} strokeLinecap="round" />
+      {!simple && (
+        <>
+          <circle cx={hub.x} cy={hub.y} r="2.5" fill={mono ? ink : PAL.hub} />
+          <text
+            x="50" y="51" textAnchor="middle" dominantBaseline="central"
+            fontFamily="'JetBrains Mono', ui-monospace, monospace" fontWeight={700}
+            fontSize="29" fill={mono ? ink : PAL.ink} style={{ letterSpacing: "-0.04em" }}
+          >
+            50
+          </text>
+        </>
       )}
     </svg>
+  );
+}
+
+/** Rounded-square royal tile — app-store art, on-photo plate, avatars. */
+export function FiftyTile({ size = 64, radius, className }: { size?: number; radius?: number; className?: string }) {
+  return (
+    <div
+      className={className}
+      style={{
+        width: size, height: size, borderRadius: radius ?? size * 0.225,
+        background: "oklch(19% 0.14 268)", display: "grid", placeItems: "center",
+      }}
+    >
+      <FiftyMark size={size * 0.72} />
+    </div>
   );
 }
 
@@ -107,47 +113,30 @@ export function FiftyMark({
 export function FiftyWordmark({
   size = 32,
   color = "currentColor",
-  gilt = true,
+  tz = true,
   className,
 }: {
   size?: number;
   color?: string;
-  /** Gilt rule beneath the wordmark — the kit's signature touch. */
-  gilt?: boolean;
+  /** ".tz" suffix — on for product chrome, off for pure brand moments. */
+  tz?: boolean;
   className?: string;
 }) {
-  // Kit values: rule height 4.5% of size, padding-bottom 10% of size.
-  const ruleH = Math.max(1, Math.round(size * 0.045));
-  const rulePad = Math.max(3, Math.round(size * 0.10));
   return (
     <span
       className={className}
       style={{
-        display: "inline-flex",
-        alignItems: "baseline",
-        fontFamily: "Sora, ui-sans-serif, system-ui",
-        fontWeight: 700,
-        fontSize: size,
-        letterSpacing: "-0.025em",
-        color,
-        lineHeight: 1,
-        borderBottom: gilt ? `${ruleH}px solid oklch(78% 0.13 86)` : "none",
-        paddingBottom: gilt ? rulePad : 0,
+        display: "inline-flex", alignItems: "baseline",
+        fontFamily: "Sora, ui-sans-serif, system-ui", fontWeight: 700,
+        fontSize: size, letterSpacing: "-0.025em", color, lineHeight: 1,
       }}
     >
       <span>50pick</span>
-      <span
-        style={{
-          fontFamily: "JetBrains Mono, ui-monospace, monospace",
-          fontWeight: 500,
-          fontSize: size * 0.52,
-          marginLeft: size * 0.08,
-          opacity: 0.62,
-          letterSpacing: 0,
-        }}
-      >
-        .tz
-      </span>
+      {tz && (
+        <span style={{ fontFamily: "JetBrains Mono, ui-monospace, monospace", fontWeight: 500, fontSize: size * 0.52, marginLeft: size * 0.08, opacity: 0.62, letterSpacing: 0 }}>
+          .tz
+        </span>
+      )}
     </span>
   );
 }
@@ -157,30 +146,38 @@ export function FiftyWordmark({
 export function FiftyLockup({
   size = 36,
   color = "currentColor",
-  mono = false,
-  inverted = false,
-  gilt = true,
+  variant = "color",
+  tz = true,
+  layout = "horizontal",
   className,
 }: {
   size?: number;
   color?: string;
-  mono?: boolean;
-  inverted?: boolean;
-  /** Gilt rule under the wordmark. */
-  gilt?: boolean;
+  variant?: FiftyMarkVariant;
+  tz?: boolean;
+  layout?: "horizontal" | "stacked";
   className?: string;
 }) {
-  // Kit ratios: gap = size × 0.42, mark = size × 1.22.
+  if (layout === "stacked") {
+    return (
+      <div className={cn("inline-flex flex-col items-center", className)} style={{ gap: size * 0.5 }}>
+        <FiftyMark size={size * 2.1} variant={variant} />
+        <FiftyWordmark size={size} color={color} tz={tz} />
+      </div>
+    );
+  }
   return (
-    <div className={cn("inline-flex items-center", className)} style={{ gap: size * 0.42 }}>
-      <FiftyMark size={size * 1.22} mono={mono} inverted={inverted} />
-      <FiftyWordmark size={size} color={color} gilt={gilt} />
+    <div className={cn("inline-flex items-center", className)} style={{ gap: size * 0.38 }}>
+      <FiftyMark size={size * 1.22} variant={variant} />
+      <FiftyWordmark size={size} color={color} tz={tz} />
     </div>
   );
 }
 
 /* ── FiftyFavicon (kit alias) ───────────────────────────────────────────── */
-export const FiftyFavicon = ({ size = 32 }: { size?: number }) => <FiftyMark size={size} />;
+export const FiftyFavicon = ({ size = 32 }: { size?: number }) => (
+  <FiftyMark size={size} simplified={size <= 20} />
+);
 
 /* ── GiltCorner — the kit's heraldic L-bracket ──────────────────────────── */
 /* Decorative gilt corner used to frame Banner heroes / regulator letters /
