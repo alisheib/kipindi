@@ -53,7 +53,7 @@ export function FiftyMark({
   simplified?: boolean;
   className?: string;
 }) {
-  const simple = simplified ?? size <= 20;
+  const simple = simplified ?? size < 24;
   const mono = variant !== "color";
   const ink = variant === "white" ? PAL.whiteInk : PAL.darkInk;
   const yes = mono ? `${ink.slice(0, -1)} / ${variant === "white" ? "0.30" : "0.26"})` : PAL.yes;
@@ -176,7 +176,7 @@ export function FiftyLockup({
 
 /* ── FiftyFavicon (kit alias) ───────────────────────────────────────────── */
 export const FiftyFavicon = ({ size = 32 }: { size?: number }) => (
-  <FiftyMark size={size} simplified={size <= 20} />
+  <FiftyMark size={size} simplified={size < 24} />
 );
 
 /* ── GiltCorner — the kit's heraldic L-bracket ──────────────────────────── */
