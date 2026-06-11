@@ -22,28 +22,31 @@ const CONTENT_BOTTOM_INSET = FOOTER_H + 16;
 const PAD = 40; // page horizontal padding
 
 const F = {
+  // ── Dark-bg readability: all sizes bumped vs light-mode PDF ──
+  // Light text on dark loses ~1pt of perceived weight, so the minimum
+  // legible size on a dark canvas is ~7.5pt (vs 6.5pt on white).
   band:       { name: "Helvetica-Bold",    size: 13 },
   bandTag:    { name: "Helvetica",         size: 9 },
   bandRight:  { name: "Helvetica-Bold",    size: 10 },
   title:      { name: "Helvetica-Bold",    size: 24 },
   subtitle:   { name: "Helvetica",         size: 10.5 },
-  meta:       { name: "Helvetica",         size: 7.5 },
-  metaLabel:  { name: "Helvetica-Bold",    size: 7 },
-  kpiLabel:   { name: "Helvetica-Bold",    size: 7 },
-  kpiValue:   { name: "Helvetica-Bold",    size: 16 },
-  kpiDelta:   { name: "Helvetica",         size: 7 },
-  sectionTitle:{ name: "Helvetica-Bold",   size: 12 },
+  meta:       { name: "Helvetica",         size: 8 },
+  metaLabel:  { name: "Helvetica-Bold",    size: 7.5 },
+  kpiLabel:   { name: "Helvetica-Bold",    size: 8 },
+  kpiValue:   { name: "Helvetica-Bold",    size: 17 },
+  kpiDelta:   { name: "Helvetica",         size: 7.5 },
+  sectionTitle:{ name: "Helvetica-Bold",   size: 12.5 },
   sectionDesc:{ name: "Helvetica",         size: 8.5 },
   th:         { name: "Helvetica-Bold",    size: 8.5 },
-  thSub:      { name: "Helvetica",         size: 6.5 },
-  td:         { name: "Helvetica",         size: 8.5 },
-  tdNum:      { name: "Helvetica",         size: 8.5 },
-  total:      { name: "Helvetica-Bold",    size: 9 },
-  totalNum:   { name: "Helvetica-Bold",    size: 9 },
-  empty:      { name: "Helvetica-Oblique", size: 8.5 },
-  notes:      { name: "Helvetica",         size: 7.5 },
-  notesTitle: { name: "Helvetica-Bold",    size: 9.5 },
-  footer:     { name: "Helvetica",         size: 7 },
+  thSub:      { name: "Helvetica",         size: 7.5 },
+  td:         { name: "Helvetica",         size: 9 },
+  tdNum:      { name: "Courier",           size: 9 },   // monospace for tabular alignment
+  total:      { name: "Helvetica-Bold",    size: 9.5 },
+  totalNum:   { name: "Courier-Bold",      size: 9.5 }, // monospace totals
+  empty:      { name: "Helvetica-Oblique", size: 9 },
+  notes:      { name: "Helvetica",         size: 8 },
+  notesTitle: { name: "Helvetica-Bold",    size: 10 },
+  footer:     { name: "Helvetica",         size: 7.5 },
 };
 
 type DocCtx = {
@@ -165,7 +168,7 @@ function drawSummary(ctx: DocCtx, summary: SummaryItem[], startY: number): numbe
   const cols = Math.min(4, summary.length);
   const gap = 6;
   const cardW = (contentW - (cols - 1) * gap) / cols;
-  const cardH = 52;
+  const cardH = 56;
   const rows = Math.ceil(summary.length / cols);
   let y = ensureRoom(ctx, rows * (cardH + gap) + 12, startY);
   const blockTop = y;
@@ -187,15 +190,15 @@ function drawSummary(ctx: DocCtx, summary: SummaryItem[], startY: number): numbe
     doc.restore();
 
     doc.fillColor(BRAND.textSubtle).font(F.kpiLabel.name).fontSize(F.kpiLabel.size)
-       .text(toAnsiSafe(k.label.toUpperCase()), x + 12, yy + 8, { width: cardW - 20, lineBreak: false });
+       .text(toAnsiSafe(k.label.toUpperCase()), x + 12, yy + 9, { width: cardW - 20, lineBreak: false });
 
     const tone = k.tone === "good" ? BRAND.yes : k.tone === "bad" ? BRAND.no : BRAND.gilt;
     doc.fillColor(tone).font(F.kpiValue.name).fontSize(F.kpiValue.size)
-       .text(toAnsiSafe(k.value), x + 12, yy + 20, { width: cardW - 20, lineBreak: false });
+       .text(toAnsiSafe(k.value), x + 12, yy + 22, { width: cardW - 20, lineBreak: false });
 
     if (k.delta) {
       doc.fillColor(BRAND.textFaint).font(F.kpiDelta.name).fontSize(F.kpiDelta.size)
-         .text(toAnsiSafe(k.delta), x + 12, yy + 39, { width: cardW - 20, lineBreak: false });
+         .text(toAnsiSafe(k.delta), x + 12, yy + 42, { width: cardW - 20, lineBreak: false });
     }
   }
   return blockTop + rows * (cardH + gap) + 10;
@@ -283,7 +286,7 @@ function drawSection(ctx: DocCtx, sec: Section, startY: number): number {
   y = ensureRoom(ctx, headerH + 30, y);
   y = drawTableHeader(ctx, sec, colW, y);
 
-  const rowH = 22;
+  const rowH = 24;
 
   if (sec.rows.length === 0) {
     y = ensureRoom(ctx, rowH + 4, y);
@@ -320,7 +323,7 @@ function drawSection(ctx: DocCtx, sec: Section, startY: number): number {
         const text = renderCellText(r[c.key], c.format);
         const isNum = c.format === "tzs" || c.format === "integer" || c.format === "percent";
         doc.fillColor(BRAND.pearl).font(isNum ? F.tdNum.name : F.td.name).fontSize(F.td.size)
-           .text(text, xc + 8, y + 6, { width: colW[i] - 16, align: c.align ?? (isNum ? "right" : "left"), lineBreak: false, ellipsis: true });
+           .text(text, xc + 8, y + 7, { width: colW[i] - 16, align: c.align ?? (isNum ? "right" : "left"), lineBreak: false, ellipsis: true });
         xc += colW[i];
       }
       y += rowH;
@@ -344,7 +347,7 @@ function drawSection(ctx: DocCtx, sec: Section, startY: number): number {
       else if (i === 0) text = "Total";
       const isNum = c.format === "tzs" || c.format === "integer" || c.format === "percent";
       doc.fillColor(BRAND.giltBright).font(isNum ? F.totalNum.name : F.total.name).fontSize(F.total.size)
-         .text(text, xc + 8, y + 6, { width: colW[i] - 16, align: c.align ?? (isNum ? "right" : "left"), lineBreak: false, ellipsis: true });
+         .text(text, xc + 8, y + 7, { width: colW[i] - 16, align: c.align ?? (isNum ? "right" : "left"), lineBreak: false, ellipsis: true });
       xc += colW[i];
     }
     y += rowH + 4;
