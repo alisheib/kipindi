@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import { Select } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import {
   generatePollAction,
   generatePollBatchAction,
@@ -17,6 +18,8 @@ import {
 } from "./actions";
 import type { StoredAIPoll, QualityIndicator, FilterReason } from "@/lib/server/ai-poll-generation";
 import type { AIPollConfig } from "@/lib/server/ai-poll-config";
+
+const adminTextarea = "w-full rounded-lg border border-border bg-[var(--bg-inset)] px-3 py-2.5 text-[13px] text-text placeholder:text-text-subtle outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors resize-none";
 
 /* ─── Generate form ─── */
 
@@ -86,7 +89,7 @@ export function GenerateForm() {
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
         placeholder="Optional: guide the AI with specific instructions (e.g. 'Focus on Premier League football this weekend')"
-        className="w-full rounded-md border border-border bg-bg-overlay px-3 py-2 text-[13px] text-text placeholder:text-text-subtle outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
+        className={adminTextarea}
         rows={2}
       />
       <div className="flex items-center gap-3">
@@ -148,22 +151,25 @@ export function BatchGenerateForm({ maxBatch, remaining }: { maxBatch: number; r
         <span className="text-[10px] text-text-subtle block mb-1 font-mono uppercase tracking-[0.12em]">
           Batch count (max {maxBatch})
         </span>
-        <input
+        <Input
           type="number"
           min={1}
           max={maxBatch}
           value={count}
           onChange={(e) => setCount(e.target.value)}
-          className="w-24 rounded-md border border-border bg-bg-overlay px-2 py-1.5 text-[13px] text-text outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
+          mono
+          size="sm"
+          containerClassName="w-24"
         />
       </label>
-      <input
-        type="text"
-        value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
-        placeholder="Optional guidance applied to every poll in the batch"
-        className="flex-1 min-w-[220px] rounded-md border border-border bg-bg-overlay px-3 py-2 text-[13px] text-text placeholder:text-text-subtle outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
-      />
+      <div className="flex-1 min-w-[220px]">
+        <Input
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="Optional guidance applied to every poll in the batch"
+          size="sm"
+        />
+      </div>
       <button
         type="button"
         onClick={run}
@@ -217,12 +223,7 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
   const numField = (label: string, hint: string, value: string, set: (v: string) => void) => (
     <label className="block">
       <span className="text-[10px] text-text-subtle block mb-1 font-mono uppercase tracking-[0.12em]">{label}</span>
-      <input
-        type="number"
-        value={value}
-        onChange={(e) => set(e.target.value)}
-        className="w-full rounded-md border border-border bg-bg-overlay px-2 py-1.5 text-[13px] text-text outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
-      />
+      <Input type="number" value={value} onChange={(e) => set(e.target.value)} mono size="sm" />
       <span className="text-[10px] text-text-subtle">{hint}</span>
     </label>
   );
@@ -532,7 +533,7 @@ function RejectForm({ pollId, onClose }: { pollId: string; onClose: () => void }
         value={note}
         onChange={(e) => setNote(e.target.value)}
         placeholder="Optional note for the audit log…"
-        className="w-full rounded-md border border-border bg-bg-overlay px-2 py-1.5 text-[12px] text-text mb-2 outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
+        className={adminTextarea + " mb-2"}
         rows={2}
       />
       <div className="flex flex-col gap-2">
@@ -576,8 +577,6 @@ function EditForm({ poll, onClose }: { poll: StoredAIPoll; onClose: () => void }
     });
   };
 
-  const inputCls = "w-full rounded-md border border-border bg-bg-overlay px-2 py-1.5 text-[12.5px] text-text outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors";
-
   return (
     <div className="mt-2 z-10 rounded-md border border-border bg-bg-elevated p-3 shadow-lg w-[360px] space-y-2">
       <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle">
@@ -585,11 +584,11 @@ function EditForm({ poll, onClose }: { poll: StoredAIPoll; onClose: () => void }
       </p>
       <label className="block">
         <span className="text-[10px] text-text-subtle">Title (EN)</span>
-        <input type="text" value={titleEn} onChange={(e) => setTitleEn(e.target.value)} className={inputCls} />
+        <Input value={titleEn} onChange={(e) => setTitleEn(e.target.value)} size="sm" />
       </label>
       <label className="block">
         <span className="text-[10px] text-text-subtle">Title (SW)</span>
-        <input type="text" value={titleSw} onChange={(e) => setTitleSw(e.target.value)} className={inputCls} />
+        <Input value={titleSw} onChange={(e) => setTitleSw(e.target.value)} size="sm" />
       </label>
       <div>
         <span className="text-[10px] text-text-subtle block mb-1">Category</span>
@@ -598,11 +597,11 @@ function EditForm({ poll, onClose }: { poll: StoredAIPoll; onClose: () => void }
       </div>
       <label className="block">
         <span className="text-[10px] text-text-subtle">Resolution criterion</span>
-        <textarea value={criterion} onChange={(e) => setCriterion(e.target.value)} className={inputCls} rows={2} />
+        <textarea value={criterion} onChange={(e) => setCriterion(e.target.value)} className={adminTextarea} rows={2} />
       </label>
       <label className="block">
         <span className="text-[10px] text-text-subtle">Resolves at</span>
-        <input type="datetime-local" value={resAt} onChange={(e) => setResAt(e.target.value)} className={inputCls} />
+        <Input type="datetime-local" value={resAt} onChange={(e) => setResAt(e.target.value)} mono size="sm" />
       </label>
       <div className="flex flex-col gap-2 pt-1">
         <button type="button" onClick={submit} disabled={pending} className="btn btn-gold btn-md w-full">

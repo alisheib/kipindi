@@ -152,10 +152,10 @@ export function useToast(): ToastContextValue {
 
 const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; surface: string; rail: string }> = {
   default: {
-    bar: "bg-aqua-300",
-    icon: <span className="text-aqua-300"><I.checkCircle s={18} /></span>,
-    surface: "bg-bg-elevated border-aqua-edge",
-    rail: "bg-aqua-300",
+    bar: "bg-brand-300",
+    icon: <span className="text-brand-300"><I.checkCircle s={18} /></span>,
+    surface: "bg-bg-elevated border-brand-500/40",
+    rail: "bg-brand-300",
   },
   success: {
     bar: "bg-yes-500",

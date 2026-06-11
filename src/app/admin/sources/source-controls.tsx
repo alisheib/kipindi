@@ -3,6 +3,7 @@
 import { useTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { addSourceAction, removeSourceAction, toggleSourceAction, toggleCategoryAction } from "./actions";
@@ -137,20 +138,17 @@ export function AddSourceForm() {
     );
   }
 
-  const inputCls =
-    "w-full h-10 px-3 rounded-md border border-border bg-bg-overlay font-sans text-text outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors";
-
   return (
     <form onSubmit={onSubmit} className="rounded-lg border border-border bg-bg-elevated p-4 space-y-3">
       <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">Add trusted source</p>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <label className="block">
           <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-1">Domain</span>
-          <input name="domain" required placeholder="bot.go.tz" className={inputCls} />
+          <Input name="domain" required placeholder="bot.go.tz" size="sm" />
         </label>
         <label className="block">
           <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-1">Label</span>
-          <input name="label" required placeholder="Bank of Tanzania" className={inputCls} />
+          <Input name="label" required placeholder="Bank of Tanzania" size="sm" />
         </label>
         <div>
           <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-1">Category</span>
@@ -159,7 +157,7 @@ export function AddSourceForm() {
         </div>
         <label className="block md:col-span-2">
           <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-1">Rationale (≥ 1 line)</span>
-          <textarea name="rationale" required rows={2} placeholder="Why this source is authoritative for this category." className={`${inputCls} h-auto py-2 resize-none`} />
+          <textarea name="rationale" required rows={2} placeholder="Why this source is authoritative for this category." className="w-full rounded-lg border border-border bg-[var(--bg-inset)] px-3 py-2.5 text-[13px] text-text placeholder:text-text-subtle outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors resize-none" />
         </label>
       </div>
       <div className="flex gap-2">

@@ -88,7 +88,7 @@ export function SidePicker({
           aria-label={`Back YES at ${yesPct}%`}
           style={{ borderRadius: "var(--r-pill)" }}
         >
-          YES <span className="font-mono" style={{ opacity: 0.85, fontSize: 12.5 }}>{yesPct}%</span>
+          YES <span className="font-mono text-[12.5px] opacity-85">{yesPct}%</span>
         </button>
         <button
           type="button"
@@ -97,7 +97,7 @@ export function SidePicker({
           aria-label={`Back NO at ${100 - yesPct}%`}
           style={{ borderRadius: "var(--r-pill)" }}
         >
-          NO <span className="font-mono" style={{ opacity: 0.85, fontSize: 12.5 }}>{100 - yesPct}%</span>
+          NO <span className="font-mono text-[12.5px] opacity-85">{100 - yesPct}%</span>
         </button>
       </div>
       <p className="mt-3 text-center text-[11px] text-text-subtle leading-snug">

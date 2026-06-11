@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { SteppedProgress } from "@/components/markets/stepped-progress";
 import { useToast } from "@/components/ui/toast";
@@ -58,10 +59,10 @@ export function NewMarketWizard() {
       {step === 0 && (
         <Section title="Question" sw="Swali">
           <Field label="Title (EN)" hint="≥10 chars. Phrase it so YES/NO answers are unambiguous.">
-            <input value={titleEn} onChange={(e) => setTitleEn(e.target.value)} disabled={pending} className={inputCls} placeholder="Will the TZS strengthen against the USD by month-end?" />
+            <Input value={titleEn} onChange={(e) => setTitleEn(e.target.value)} disabled={pending} placeholder="Will the TZS strengthen against the USD by month-end?" />
           </Field>
           <Field label="Title (SW)" hint="Optional Swahili translation.">
-            <input value={titleSw} onChange={(e) => setTitleSw(e.target.value)} disabled={pending} className={inputCls} placeholder="Je, TZS itaimarika dhidi ya USD?" />
+            <Input value={titleSw} onChange={(e) => setTitleSw(e.target.value)} disabled={pending} placeholder="Je, TZS itaimarika dhidi ya USD?" />
           </Field>
           <Field label="Category">
             <Select value={category} onChange={(v) => setCategory(v as typeof CATEGORIES[number])}
@@ -73,10 +74,10 @@ export function NewMarketWizard() {
       {step === 1 && (
         <Section title="Resolution source" sw="Chanzo cha utatuzi">
           <Field label="Public source URL" hint="Officers + players resolve against this URL. Must be reachable and authoritative.">
-            <input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} disabled={pending} className={inputCls} placeholder="https://www.bot.go.tz/exchangerates" />
+            <Input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} disabled={pending} placeholder="https://www.bot.go.tz/exchangerates" />
           </Field>
           <Field label="Resolution timestamp" hint="When stage-1 officer can begin reviewing.">
-            <input type="datetime-local" value={resolutionAt} onChange={(e) => setResolutionAt(e.target.value)} disabled={pending} className={inputCls} />
+            <Input type="datetime-local" value={resolutionAt} onChange={(e) => setResolutionAt(e.target.value)} disabled={pending} mono />
           </Field>
         </Section>
       )}
@@ -84,7 +85,7 @@ export function NewMarketWizard() {
       {step === 2 && (
         <Section title="Resolution criterion" sw="Kigezo cha utatuzi">
           <Field label="Written criterion" hint="≥30 chars. Be precise — this is the legal text resolvers and players will rely on.">
-            <textarea value={criterion} onChange={(e) => setCriterion(e.target.value)} disabled={pending} rows={6} className={`${inputCls} resize-none`} placeholder="Resolves YES if the BoT mid-rate on the last business day…" />
+            <textarea value={criterion} onChange={(e) => setCriterion(e.target.value)} disabled={pending} rows={6} className="w-full rounded-lg border border-border bg-[var(--bg-inset)] px-3 py-2.5 text-[14px] text-text placeholder:text-text-subtle outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors resize-none disabled:opacity-50 disabled:cursor-not-allowed" placeholder="Resolves YES if the BoT mid-rate on the last business day…" />
           </Field>
         </Section>
       )}
@@ -135,8 +136,6 @@ export function NewMarketWizard() {
     </div>
   );
 }
-
-const inputCls = "w-full h-11 px-3 rounded-md border border-border bg-bg-overlay font-sans text-text outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
 
 function Section({ title, sw, children }: { title: string; sw: string; children: React.ReactNode }) {
   return (

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { Input } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
@@ -118,21 +119,17 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
           >
             Source phone · Simu (optional)
           </label>
-          <div className="flex">
-            <span className="inline-flex items-center px-3 h-11 rounded-l-md border border-r-0 border-border bg-bg-overlay font-mono text-[13px] text-text-subtle">
-              +255
-            </span>
-            <input
-              id="msisdn"
-              name="msisdn"
-              type="tel"
-              inputMode="numeric"
-              pattern="\d{9}"
-              maxLength={9}
-              placeholder="712 345 678"
-              className="flex-1 h-11 px-3 rounded-r-md border border-border bg-bg-overlay font-mono text-[13px] tabular-nums text-text focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
-            />
-          </div>
+          <Input
+            id="msisdn"
+            name="msisdn"
+            type="tel"
+            inputMode="numeric"
+            pattern="\d{9}"
+            maxLength={9}
+            placeholder="712 345 678"
+            prefix="+255"
+            mono
+          />
           <p className="mt-2 text-[11px] text-text-subtle">Leave blank to use your account number on file.</p>
         </div>
 

@@ -135,12 +135,14 @@ export default async function RegisterPage({
             {referral && <input type="hidden" name="ref" value={refCode} />}
             {referral && (
               <Field label="Referral code · auto-filled">
-                <div className="input-group">
-                  <span className="prefix" style={{ color: "var(--gold-400)" }}>
-                    <I.check s={14} />
-                  </span>
-                  <input className="input input-mono" readOnly value={refCode.toUpperCase()} style={{ color: "var(--gold-300)", fontWeight: 600 }} aria-label="Referral code" />
-                </div>
+                <Input
+                  readOnly
+                  value={refCode.toUpperCase()}
+                  prefix="REF"
+                  mono
+                  aria-label="Referral code"
+                  className="text-gold-300 font-semibold"
+                />
               </Field>
             )}
             <Field label="Phone · Simu" hint="9 digits after +255 (e.g. 712 345 678).">
