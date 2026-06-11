@@ -402,6 +402,42 @@ The conviction dial must never be enterable in the unlocked both-ways state:
 - Logged-in user on the detail page **without** a side → show the "Pick your
   side" gate, never the bidirectional dial.
 
+## Brand Kit v2 "Needle" (June 2026)
+
+Logo redesigned by Claude Design. The gilt NEEDLE crossing the rim is now the
+signature element — same object as the TippingBar needle + conviction dial.
+
+- `FiftyMark` accepts `variant="color|white|dark"`, auto-simplifies at < 24px
+- `FiftyTile` — rounded-square royal tile for app icons / on-photo plates
+- `FiftyWordmark` — gilt underline retired; `.tz` suffix via `tz` prop
+- `FiftyLockup` — `layout="horizontal|stacked"`, variant pass-through
+- Full favicon set: `/favicon.svg`, `/favicon.ico`, `/icons/` (16/32/180/192/512/maskable)
+- OG images: `/og/og-1200x630.png`, `/og/twitter-1200x600.png`
+- Master SVGs: `/brand/mark-{color,white,dark,simplified}.svg`
+- Hard rules: full mark ≥ 24px, simplified < 24px, never mirror/re-tint/stretch
+
+## Tax model — TRA/GBT on operator commission (June 2026)
+
+Taxes come OUT of the operator's 9% commission, NOT from the player pool:
+- `traTaxOnCommissionRate` (default 10%) — 10% of commission → TRA
+- `gbtLevyOnCommissionRate` (default 5%) — 5% of commission → GBT
+- Both are admin-editable at `/admin/config` — no redeploy needed
+- Daily operations report (`daily-ops`) in `/admin/reports` uses these rates
+
+Example: TZS 100,000 pool → 9% commission = TZS 9,000 → TRA 900 + GBT 450 →
+operator keeps TZS 7,650. Player payout unchanged.
+
+## Gold budget (June 2026 design authority)
+
+Gold is reserved for **earned money moments only** (kit invariant #2):
+- Place CTA → side-coloured (`btn-yes`/`btn-no`), not gold
+- Confirm CTA → `btn-gold` (the actual money commit)
+- OperationResultModal strip + button → `stripTone` prop:
+  `"gold"` = sell/settlement, `"yes"|"no"` = bet placed, `"brand"` = admin (default)
+- BetConfirmModal quote-hold strip → brand-blue, not gold
+- Hot chip → `chip-hot-rose` (rose/flame), not `chip-objection` (gold)
+- Lean warning → qualitative text, no payout figure (D3 compliance)
+
 ## Git workflow — ALWAYS commit AND push
 
 ```
