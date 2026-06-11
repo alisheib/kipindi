@@ -8,11 +8,12 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { listMarkets, seedDemoMarkets } from "@/lib/server/market-service";
+import { formatDateTimeSafe } from "@/lib/utils";
 
 export const metadata = { title: "Resolution attestation · Uthibitisho" };
 export const dynamic = "force-dynamic";
 
-const fmtTime = (iso: string | null) => iso ? new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : "—";
+const fmtTime = (iso: string | null) => formatDateTimeSafe(iso);
 
 export default async function FairnessPage() {
   await seedDemoMarkets();

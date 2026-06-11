@@ -160,7 +160,7 @@ export default function AdminReportsPage() {
         </div>
 
         {/* Generation log */}
-        <AdminCard title="Generation log" sw="Kumbukumbu ya kuzalisha">
+        <AdminCard title="Generation log" sw="Kumbukumbu ya kuzalisha" padding={generated.length > 0 ? "p-0" : "p-4"}>
           {generated.length === 0 ? (
             <div className="flex items-center gap-3 py-4">
               <I.shieldcheck s={18} />
@@ -171,15 +171,24 @@ export default function AdminReportsPage() {
             </div>
           ) : (
             <div className="max-h-[300px] overflow-y-auto">
-              {generated.map((e) => (
-                <FeedRow
-                  key={e.id}
-                  ts={e.createdAt.replace("T", " ").slice(0, 19)}
-                  category="ADMIN"
-                  variant="warning"
-                  body={`${e.action} · ${e.actorId ?? ""}`}
-                />
-              ))}
+              <table className="admin-tbl">
+                <thead>
+                  <tr>
+                    <th className="text-left">Timestamp</th>
+                    <th className="text-left">Report</th>
+                    <th className="text-left">Reviewer</th>
+                  </tr>
+                </thead>
+                <tbody className="text-text-muted">
+                  {generated.map((e) => (
+                    <tr key={e.id}>
+                      <td className="font-mono whitespace-nowrap text-text-subtle">{e.createdAt.replace("T", " ").slice(0, 19)}</td>
+                      <td className="font-medium text-text">{e.action}</td>
+                      <td className="font-mono">{e.actorId ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </AdminCard>

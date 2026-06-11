@@ -31,16 +31,16 @@ export default async function AdminAmlPage() {
       <div className="px-4 lg:px-6 py-5 space-y-4">
         <AdminCard padding="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-caption">
-              <thead className="text-text-tertiary uppercase tracking-wide bg-bg-sunken/50">
+            <table className="admin-tbl">
+              <thead>
                 <tr>
-                  <th className="text-left p-3">Time</th>
-                  <th className="text-left p-3">Type</th>
-                  <th className="text-left p-3">User</th>
-                  <th className="text-right p-3">Amount</th>
-                  <th className="text-left p-3">Provider</th>
-                  <th className="text-left p-3">Reason</th>
-                  <th className="text-left p-3">Action</th>
+                  <th className="text-left">Time</th>
+                  <th className="text-left">Type</th>
+                  <th className="text-left">User</th>
+                  <th className="text-right">Amount</th>
+                  <th className="text-left">Provider</th>
+                  <th className="text-left">Reason</th>
+                  <th className="text-left">Action</th>
                 </tr>
               </thead>
               <tbody className="text-text-secondary">
@@ -48,15 +48,15 @@ export default async function AdminAmlPage() {
                   const requiresTwo = Math.abs(t.amount) >= TWO_PERSON_THRESHOLD_TZS;
                   const sig = stage1.get(t.id);
                   return (
-                    <tr key={t.id} className="border-t border-border-subtle/50">
-                      <td className="p-3 font-mono whitespace-nowrap">{t.createdAt.replace("T", " ").slice(0, 19)}</td>
-                      <td className="p-3 font-medium text-text">{t.type}</td>
-                      <td className="p-3 font-mono">
+                    <tr key={t.id}>
+                      <td className="font-mono whitespace-nowrap">{t.createdAt.replace("T", " ").slice(0, 19)}</td>
+                      <td className="font-medium text-text">{t.type}</td>
+                      <td className="font-mono">
                         <a href={`/admin/players?q=${encodeURIComponent(t.userId)}`} className="hover:text-royal hover:underline">
                           {t.userId.slice(0, 16)}
                         </a>
                       </td>
-                      <td className="p-3 font-mono tabular text-right">
+                      <td className="font-mono tabular text-right">
                         {formatTzs(Math.abs(t.amount))}
                         {requiresTwo && (
                           <Chip size="sm" variant="warning" className="ml-2">
@@ -69,16 +69,16 @@ export default async function AdminAmlPage() {
                           </span>
                         )}
                       </td>
-                      <td className="p-3">{t.provider ?? "—"}</td>
-                      <td className="p-3">{t.amlReason ?? "—"}</td>
-                      <td className="p-3">
+                      <td>{t.provider ?? "—"}</td>
+                      <td>{t.amlReason ?? "—"}</td>
+                      <td>
                         <AmlActionRow txnId={t.id} amount={Math.abs(t.amount)} />
                       </td>
                     </tr>
                   );
                 })}
                 {inReview.length === 0 && (
-                  <tr><td colSpan={7} className="p-6 text-center text-text-tertiary">No transactions awaiting review.</td></tr>
+                  <tr><td colSpan={7} className="!py-6 text-center text-text-tertiary">No transactions awaiting review.</td></tr>
                 )}
               </tbody>
             </table>
@@ -105,38 +105,38 @@ export default async function AdminAmlPage() {
             <Chip size="md" variant={flags.length > 0 ? "warning" : "neutral"}>{flags.length} flags</Chip>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-caption">
-              <thead className="text-text-tertiary uppercase tracking-wide bg-bg-sunken/50">
+            <table className="admin-tbl">
+              <thead>
                 <tr>
-                  <th className="text-left p-3">User</th>
-                  <th className="text-left p-3">Type</th>
-                  <th className="text-right p-3">Stake</th>
-                  <th className="text-right p-3">Median</th>
-                  <th className="text-right p-3">×</th>
-                  <th className="text-left p-3">Detail</th>
+                  <th className="text-left">User</th>
+                  <th className="text-left">Type</th>
+                  <th className="text-right">Stake</th>
+                  <th className="text-right">Median</th>
+                  <th className="text-right">×</th>
+                  <th className="text-left">Detail</th>
                 </tr>
               </thead>
               <tbody className="text-text-secondary">
                 {flags.map((f) => (
-                  <tr key={`${f.userId}-${f.txnId}-${f.type}`} className="border-t border-border-subtle/50">
-                    <td className="p-3 font-mono">
+                  <tr key={`${f.userId}-${f.txnId}-${f.type}`}>
+                    <td className="font-mono">
                       <a href={`/admin/players?q=${encodeURIComponent(f.userId)}`} className="hover:text-royal hover:underline">
                         {f.userId.slice(0, 16)}
                       </a>
                     </td>
-                    <td className="p-3">
+                    <td>
                       <Chip size="sm" variant={f.type === "STAKE_SPIKE" ? "warning" : "danger"}>
                         {f.type}
                       </Chip>
                     </td>
-                    <td className="p-3 font-mono tabular text-right">{formatTzs(f.stake)}</td>
-                    <td className="p-3 font-mono tabular text-right text-text-tertiary">{formatTzs(f.median)}</td>
-                    <td className="p-3 font-mono tabular text-right text-warning">{f.multiple.toFixed(1)}×</td>
-                    <td className="p-3 text-text-tertiary">{f.detail}</td>
+                    <td className="font-mono tabular text-right">{formatTzs(f.stake)}</td>
+                    <td className="font-mono tabular text-right text-text-tertiary">{formatTzs(f.median)}</td>
+                    <td className="font-mono tabular text-right text-warning">{f.multiple.toFixed(1)}×</td>
+                    <td className="text-text-tertiary">{f.detail}</td>
                   </tr>
                 ))}
                 {flags.length === 0 && (
-                  <tr><td colSpan={6} className="p-6 text-center text-text-tertiary">No suspicious patterns detected.</td></tr>
+                  <tr><td colSpan={6} className="!py-6 text-center text-text-tertiary">No suspicious patterns detected.</td></tr>
                 )}
               </tbody>
             </table>

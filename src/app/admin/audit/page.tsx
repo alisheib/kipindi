@@ -95,39 +95,39 @@ export default async function AdminAuditPage({
 
         <AdminCard padding="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-[12px]">
-              <thead className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle bg-bg-overlay border-b border-border">
+            <table className="admin-tbl">
+              <thead>
                 <tr>
-                  <th className="text-left p-3">Time</th>
-                  <th className="text-left p-3">Cat.</th>
-                  <th className="text-left p-3">Action</th>
-                  <th className="text-left p-3">Actor</th>
-                  <th className="text-left p-3">Target</th>
-                  <th className="text-left p-3">Payload</th>
+                  <th className="text-left">Time</th>
+                  <th className="text-left">Cat.</th>
+                  <th className="text-left">Action</th>
+                  <th className="text-left">Actor</th>
+                  <th className="text-left">Target</th>
+                  <th className="text-left">Payload</th>
                 </tr>
               </thead>
               <tbody className="text-text-muted">
                 {entries.map((e) => (
-                  <tr key={e.id} className="border-b border-border/60 last:border-b-0 hover:bg-bg-overlay/50 transition-colors">
-                    <td className="p-3 font-mono whitespace-nowrap text-text-subtle">{e.createdAt.replace("T", " ").slice(0, 19)}</td>
-                    <td className="p-3">
+                  <tr key={e.id}>
+                    <td className="font-mono whitespace-nowrap text-text-subtle">{e.createdAt.replace("T", " ").slice(0, 19)}</td>
+                    <td>
                       <Chip size="sm" variant={CAT_VARIANT[e.category]}>{e.category}</Chip>
                     </td>
-                    <td className="p-3 font-medium text-text">{e.action}</td>
-                    <td className="p-3 font-mono">
+                    <td className="font-medium text-text">{e.action}</td>
+                    <td className="font-mono">
                       {e.actorId ? (
                         <a href={`/admin/audit?actorId=${e.actorId}`} className="hover:text-yes-300 hover:underline">
                           {e.actorId.slice(0, 16)}
                         </a>
                       ) : "—"}
                     </td>
-                    <td className="p-3 font-mono">{e.targetType ? `${e.targetType}#${e.targetId?.slice(0, 12)}` : "—"}</td>
-                    <td className="p-3 font-mono text-text-subtle max-w-[360px] truncate">{e.payload ? JSON.stringify(e.payload) : "—"}</td>
+                    <td className="font-mono">{e.targetType ? `${e.targetType}#${e.targetId?.slice(0, 12)}` : "—"}</td>
+                    <td className="font-mono text-text-subtle max-w-[360px] truncate">{e.payload ? JSON.stringify(e.payload) : "—"}</td>
                   </tr>
                 ))}
                 {entries.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="p-0">
+                    <td colSpan={6} className="!p-0">
                       <EmptyState
                         kind="audit"
                         title="No audit entries match this filter"

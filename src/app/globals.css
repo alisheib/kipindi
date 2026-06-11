@@ -1794,7 +1794,7 @@ html.kp-reduce-motion *::after {
 .mcardp-traders .t-txt b { color: var(--text); font-weight:600; }
 .mcardp-actions { display:grid; grid-template-columns:1fr 1fr; gap: 8px; margin: 13px 0 11px; }
 .mcardp-actions .btn { height: 36px; font-size: 13px; font-weight: 600; min-width: 0; padding: 0 10px; letter-spacing: 0.04em; border-radius: 10px; }
-.mcardp-meta { display:flex; align-items:center; flex-wrap: nowrap; gap: 7px; font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); white-space: nowrap; overflow: hidden; }
+.mcardp-meta { display:flex; align-items:center; flex-wrap: wrap; gap: 5px 7px; font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); }
 .mcardp-meta .dot { width:3px;height:3px;border-radius:50%;background:var(--border-strong); }
 .mcardp-meta .live { color: var(--yes-300); display:inline-flex; align-items:center; gap:5px; }
 
@@ -1899,3 +1899,17 @@ html.kp-reduce-motion *::after {
 .trust-item { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text-muted); }
 .trust-item svg { width: 16px; height: 16px; color: var(--gilt); flex-shrink: 0; }
 .trust-sep { width: 1px; height: 16px; background: var(--border); }
+
+/* ── Admin tables ─────────────────────────────────────────────────── */
+/* Consistent padding, breathing room, and border treatment for every
+   admin data table. Apply `.admin-tbl` on the <table> element inside
+   a `padding="p-0"` AdminCard. */
+.admin-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.admin-tbl thead { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-subtle); background: var(--bg-overlay); border-bottom: 1px solid var(--border); }
+.admin-tbl th { padding: 10px 16px; font-weight: 500; white-space: nowrap; }
+.admin-tbl td { padding: 12px 16px; vertical-align: middle; }
+.admin-tbl tbody tr { border-bottom: 1px solid color-mix(in oklab, var(--border) 50%, transparent); transition: background 120ms; }
+.admin-tbl tbody tr:last-child { border-bottom: none; }
+.admin-tbl tbody tr:hover { background: color-mix(in oklab, var(--bg-overlay) 50%, transparent); }
+.admin-tbl th:first-child, .admin-tbl td:first-child { padding-left: 20px; }
+.admin-tbl th:last-child,  .admin-tbl td:last-child  { padding-right: 20px; }

@@ -7,11 +7,12 @@ import { listMarkets, seedDemoMarkets, impliedYesPct, type MarketCategory } from
 import { ProbabilityBar } from "@/components/markets/probability-bar";
 import { CircularProgress } from "@/components/markets/circular-progress";
 import { ResolveControls } from "./resolve-controls";
+import { formatDateTime } from "@/lib/utils";
 
 export const metadata = { title: "Admin · Resolver queue" };
 export const dynamic = "force-dynamic";
 
-const fmtTime = (iso: string) => new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
+const fmtTime = formatDateTime;
 
 const WINDOW_OPTIONS = [
   { value: "24h", label: "Next 24 hours" },

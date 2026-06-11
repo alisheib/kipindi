@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { getSession } from "@/lib/server/session";
+import { formatDateTime } from "@/lib/utils";
 
 export const metadata = { title: "Active sessions · Vifaa" };
 export const dynamic = "force-dynamic";
@@ -15,8 +16,8 @@ export default async function SessionsPage() {
   const h = await headers();
   const userAgent = h.get("user-agent") ?? "";
   const ip = h.get("x-forwarded-for")?.split(",")[0].trim() ?? h.get("x-real-ip") ?? "unknown";
-  const issued = new Date(session.iat).toLocaleString("en-GB");
-  const expires = new Date(session.exp).toLocaleString("en-GB");
+  const issued = formatDateTime(new Date(session.iat).toISOString());
+  const expires = formatDateTime(new Date(session.exp).toISOString());
 
   const ua = userAgent.toLowerCase();
   const device = /iphone|android|ipad|mobile/.test(ua) ? "Mobile" : "Desktop / Laptop";

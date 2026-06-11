@@ -14,6 +14,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { listComments } from "@/lib/server/comments-store";
 import { CommentsThread } from "@/components/markets/comments-thread";
+import { formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +50,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 }
 
 const fmtTzs = (n: number) => `TZS ${n.toLocaleString("en-US")}`;
-const fmtTime = (iso: string) => new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
+const fmtTime = formatDateTime;
 function timeLeftStr(iso: string): string {
   const ms = Date.parse(iso) - Date.now();
   if (ms <= 0) return "closed";

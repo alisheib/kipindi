@@ -4,6 +4,7 @@ import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { db } from "@/lib/server/store";
 import { rgRosterCounts } from "@/lib/server/analytics";
+import { formatDateTime } from "@/lib/utils";
 
 export const metadata = { title: "Admin · Self-exclusions" };
 export const dynamic = "force-dynamic";
@@ -87,42 +88,42 @@ export default async function AdminSelfExclusionsPage({
           sw="Orodha"
           action={<span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">{roster.length} active</span>}
         >
-          <div className="overflow-x-auto -mx-4 px-4">
-            <table className="w-full text-caption min-w-[640px]">
-              <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
+          <div className="overflow-x-auto">
+            <table className="admin-tbl min-w-[640px]">
+              <thead>
                 <tr>
-                  <th className="text-left py-2 pr-3">Player</th>
-                  <th className="text-left py-2 pr-3">Phone</th>
-                  <th className="text-left py-2 pr-3">Status</th>
-                  <th className="text-left py-2 pr-3">Until</th>
-                  <th className="text-right py-2 pr-3">Days left</th>
-                  <th className="text-left py-2 pl-3">Profile</th>
+                  <th className="text-left">Player</th>
+                  <th className="text-left">Phone</th>
+                  <th className="text-left">Status</th>
+                  <th className="text-left">Until</th>
+                  <th className="text-right">Days left</th>
+                  <th className="text-left">Profile</th>
                 </tr>
               </thead>
               <tbody>
                 {paged.map((r) => (
-                  <tr key={r.userId} className="border-b border-border-subtle/40 last:border-b-0">
-                    <td className="py-2 pr-3">
+                  <tr key={r.userId}>
+                    <td>
                       <a href={`/admin/players/${r.userId}`} className="font-medium text-text hover:text-royal hover:underline">{r.displayName ?? "—"}</a>
                       <span className="block font-mono text-micro text-text-tertiary">{r.userId.slice(0, 14)}…</span>
                     </td>
-                    <td className="py-2 pr-3 font-mono whitespace-nowrap">{r.phoneE164}</td>
-                    <td className="py-2 pr-3">
+                    <td className="font-mono whitespace-nowrap">{r.phoneE164}</td>
+                    <td>
                       {r.status === "self_exclusion" ? (
                         <Chip size="sm" variant="danger"><I.lock s={10} /> excluded</Chip>
                       ) : (
                         <Chip size="sm" variant="warning"><I.pause s={10} /> cooling-off</Chip>
                       )}
                     </td>
-                    <td className="py-2 pr-3 font-mono whitespace-nowrap">{new Date(r.until).toLocaleString("en-GB")}</td>
-                    <td className="py-2 pr-3 font-mono tabular text-right">{r.daysLeft}</td>
-                    <td className="py-2 pl-3">
+                    <td className="font-mono whitespace-nowrap">{formatDateTime(r.until)}</td>
+                    <td className="font-mono tabular text-right">{r.daysLeft}</td>
+                    <td>
                       <a href={`/admin/players/${r.userId}`} className="font-mono text-micro tracking-[0.10em] uppercase text-royal hover:underline">profile →</a>
                     </td>
                   </tr>
                 ))}
                 {roster.length === 0 && (
-                  <tr><td colSpan={6} className="py-6 text-center text-text-tertiary">No players currently in self-exclusion or cooling-off.</td></tr>
+                  <tr><td colSpan={6} className="!py-6 text-center text-text-tertiary">No players currently in self-exclusion or cooling-off.</td></tr>
                 )}
               </tbody>
             </table>

@@ -3,6 +3,7 @@ import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-she
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
+import { formatDateTimeSafe } from "@/lib/utils";
 import {
   listCandidates,
   countByState,
@@ -31,9 +32,7 @@ const STATE_VARIANT: Record<Candidate["state"], "success" | "warning" | "danger"
 
 function fmtUsd(n: number) { return `$${n.toFixed(2)}`; }
 function fmtDate(iso: string) {
-  if (!iso) return "\u2014";
-  try { return new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }); }
-  catch { return "\u2014"; }
+  return formatDateTimeSafe(iso);
 }
 
 export default async function AdminCandidatesPage({

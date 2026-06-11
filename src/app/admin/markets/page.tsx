@@ -5,12 +5,13 @@ import { Select } from "@/components/ui/select";
 import Link from "next/link";
 import { listMarkets, impliedYesPct, seedDemoMarkets, type MarketCategory } from "@/lib/server/market-service";
 import { ProbabilityBar } from "@/components/markets/probability-bar";
+import { formatDateTime } from "@/lib/utils";
 
 export const metadata = { title: "Admin · Markets curation" };
 export const dynamic = "force-dynamic";
 
 const fmtTzs = (n: number) => `TZS ${n.toLocaleString("en-US")}`;
-const fmtTime = (iso: string) => new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
+const fmtTime = (iso: string) => formatDateTime(iso);
 
 const STATUS_OPTIONS = ["LIVE", "CLOSED", "RESOLVED", "VOIDED"] as const;
 const CATEGORY_OPTIONS: readonly MarketCategory[] = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"];
@@ -122,37 +123,37 @@ export default async function AdminMarketsPage({
 
         <AdminCard title="All markets" sw="Soko zote" padding="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-[13px]">
-              <thead className="border-b border-border bg-bg-overlay">
-                <tr className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
-                  <th className="text-left p-3">Market</th>
-                  <th className="text-left p-3">Cat.</th>
-                  <th className="text-left p-3 min-w-[140px]">Probability</th>
-                  <th className="text-right p-3">Volume</th>
-                  <th className="text-left p-3">Closes</th>
-                  <th className="text-left p-3">Status</th>
-                  <th className="text-left p-3">Source</th>
+            <table className="admin-tbl">
+              <thead>
+                <tr>
+                  <th className="text-left">Market</th>
+                  <th className="text-left">Cat.</th>
+                  <th className="text-left min-w-[140px]">Probability</th>
+                  <th className="text-right">Volume</th>
+                  <th className="text-left">Closes</th>
+                  <th className="text-left">Status</th>
+                  <th className="text-left">Source</th>
                 </tr>
               </thead>
               <tbody>
                 {paged.map((m) => {
                   const yes = impliedYesPct(m);
                   return (
-                    <tr key={m.id} className="border-b border-border last:border-b-0 align-top">
-                      <td className="p-3 max-w-[360px]">
+                    <tr key={m.id} className="align-top">
+                      <td className="max-w-[360px]">
                         <Link href={`/markets/${m.id}` as never} className="font-display font-semibold text-text hover:text-teal-300 line-clamp-2">{m.titleEn}</Link>
                         {m.titleSw && <p className="mt-0.5 text-[12px] italic text-text-subtle line-clamp-1">{m.titleSw}</p>}
                       </td>
-                      <td className="p-3 font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">{m.category}</td>
-                      <td className="p-3">
+                      <td className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">{m.category}</td>
+                      <td>
                         <ProbabilityBar yesPct={yes} size="micro" resolved={m.status === "RESOLVED"} />
                         <p className="mt-1 font-mono text-[10px] text-text-subtle">{yes}% YES</p>
                       </td>
-                      <td className="p-3 text-right font-mono tabular-nums text-text">{fmtTzs(m.yesPool + m.noPool)}</td>
-                      <td className="p-3 font-mono text-[11px] text-text-muted whitespace-nowrap">
+                      <td className="text-right font-mono tabular-nums text-text">{fmtTzs(m.yesPool + m.noPool)}</td>
+                      <td className="font-mono text-[11px] text-text-muted whitespace-nowrap">
                         {m.status === "LIVE" ? `${timeLeftStr(m.resolutionAt)}` : fmtTime(m.resolutionAt)}
                       </td>
-                      <td className="p-3">
+                      <td>
                         <span className={`inline-flex items-center rounded-pill border px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap ${
                           m.status === "LIVE" ? "border-yes-700 bg-yes-500/15 text-yes-300"
                           : m.status === "RESOLVED" ? "border-gold-subtleHover bg-gold-subtle text-gold-300"
@@ -160,7 +161,7 @@ export default async function AdminMarketsPage({
                           : "border-border bg-bg-overlay text-text-muted"
                         }`}>{m.status}</span>
                       </td>
-                      <td className="p-3">
+                      <td>
                         <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-teal-300 hover:text-teal-200">
                           <I.ext size={11} />
                         </a>
@@ -170,7 +171,7 @@ export default async function AdminMarketsPage({
                 })}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="p-6 text-center text-text-tertiary">No markets match the current filter.</td>
+                    <td colSpan={7} className="!py-6 text-center text-text-tertiary">No markets match the current filter.</td>
                   </tr>
                 )}
               </tbody>

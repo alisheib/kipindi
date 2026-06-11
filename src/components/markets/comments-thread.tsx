@@ -12,6 +12,7 @@ import { haptics } from "@/lib/haptics";
 import { Avatar } from "@/components/ui/avatar";
 import { postCommentAction, reportCommentAction, deleteCommentAction } from "@/app/markets/actions";
 import type { CommentView } from "@/lib/server/comments-store";
+import { formatDateShort } from "@/lib/utils";
 
 // Mirror of the server cap (comments-store.COMMENT_MAX_LEN). Inlined so this
 // client component doesn't pull the server store chain into the browser bundle.
@@ -27,7 +28,7 @@ function relTime(iso: string): string {
   if (h < 24) return `${h}h`;
   const d = Math.floor(h / 24);
   if (d < 7) return `${d}d`;
-  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  return formatDateShort(iso);
 }
 
 export function CommentsThread({

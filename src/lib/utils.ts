@@ -25,6 +25,41 @@ export function formatNumber(value: number): string {
   return TZ_NUMBER.format(value);
 }
 
+/* ── Date formatting ─────────────────────────────────────────────── */
+
+/** "11 Jun 2026" */
+export function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+/** "11 Jun" */
+export function formatDateShort(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+}
+
+/** "11 Jun 2026, 14:30" */
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+/** "14:30:05" — time-only for feeds / audit */
+export function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+/** "2026-06-11" — sortable date string */
+export function formatDateISO(iso: string): string {
+  return new Date(iso).toISOString().slice(0, 10);
+}
+
+/** "11 Jun 2026, 14:30" — safe version that returns "—" for null/undefined/invalid */
+export function formatDateTimeSafe(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  return formatDateTime(iso);
+}
+
 export function hexToRgba(hex: string, alpha = 1): string {
   const h = hex.replace("#", "");
   const n = parseInt(

@@ -10,6 +10,7 @@ import { AdminMobileNavTrigger } from "./admin-mobile-nav";
 import { AdminSidebarNav } from "./admin-sidebar-nav";
 import { NAV_GROUPS } from "./admin-nav-groups";
 import { PeriodPicker } from "./period-picker";
+import { formatDateISO } from "@/lib/utils";
 
 export type AdminSession = {
   userId: string;
@@ -65,7 +66,7 @@ export async function AdminSidebar({ activeKey }: { activeKey: string }) {
       </Link>
       <AdminSidebarNav badges={badges} fallbackKey={activeKey} />
       <div className="mt-auto pt-3 border-t border-dashed border-border-subtle text-caption text-text-tertiary px-2">
-        <div>v2.4 · deployed {new Date().toISOString().slice(0, 10)}</div>
+        <div>v2.4 · deployed {formatDateISO(new Date().toISOString())}</div>
         <div className="mt-1">EN · SW · FR</div>
       </div>
     </aside>

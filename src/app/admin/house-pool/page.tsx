@@ -4,6 +4,7 @@ import { getGlobalConfig } from "@/lib/server/market-config";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
 import { HousePoolForms } from "./house-pool-forms";
+import { formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "House Pool · Admin" };
@@ -84,21 +85,21 @@ export default async function HousePoolPage() {
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-caption min-w-[640px]">
-                <thead className="border-b border-border bg-bg-overlay">
-                  <tr className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">
-                    <th className="text-left p-3">Type</th>
-                    <th className="text-right p-3">Amount</th>
-                    <th className="text-right p-3">Balance</th>
-                    <th className="text-left p-3">Market</th>
-                    <th className="text-left p-3">Note</th>
-                    <th className="text-left p-3">Time</th>
+              <table className="admin-tbl min-w-[640px]">
+                <thead>
+                  <tr>
+                    <th className="text-left">Type</th>
+                    <th className="text-right">Amount</th>
+                    <th className="text-right">Balance</th>
+                    <th className="text-left">Market</th>
+                    <th className="text-left">Note</th>
+                    <th className="text-left">Time</th>
                   </tr>
                 </thead>
                 <tbody className="text-text-muted">
                   {ledger.map((e) => (
-                    <tr key={e.id} className="border-b border-border/60 last:border-b-0 hover:bg-bg-overlay/50">
-                      <td className="p-3">
+                    <tr key={e.id}>
+                      <td>
                         <Chip size="sm" variant={
                           e.type === "TOP_UP" ? "yes"
                           : e.type === "RESERVE_FEE" ? "resolved"
@@ -110,18 +111,18 @@ export default async function HousePoolPage() {
                           {e.type.replace(/_/g, " ")}
                         </Chip>
                       </td>
-                      <td className={`p-3 text-right font-mono tabular-nums ${e.amount >= 0 ? "text-yes-300" : "text-no-300"}`}>
+                      <td className={`text-right font-mono tabular-nums ${e.amount >= 0 ? "text-yes-300" : "text-no-300"}`}>
                         {e.amount >= 0 ? "+" : ""}{e.amount.toLocaleString("en-US")}
                       </td>
-                      <td className="p-3 text-right font-mono tabular-nums text-text-muted">
+                      <td className="text-right font-mono tabular-nums text-text-muted">
                         {e.balanceAfter.toLocaleString("en-US")}
                       </td>
-                      <td className="p-3 font-mono text-micro text-text-subtle truncate max-w-[120px]">
+                      <td className="font-mono text-micro text-text-subtle truncate max-w-[120px]">
                         {e.marketId ?? "\u2014"}
                       </td>
-                      <td className="p-3 text-text-muted truncate max-w-[200px]">{e.note}</td>
-                      <td className="p-3 font-mono text-micro text-text-subtle whitespace-nowrap">
-                        {new Date(e.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      <td className="text-text-muted truncate max-w-[200px]">{e.note}</td>
+                      <td className="font-mono text-micro text-text-subtle whitespace-nowrap">
+                        {formatDateTime(e.createdAt)}
                       </td>
                     </tr>
                   ))}

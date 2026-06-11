@@ -6,6 +6,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { getOwnActivity } from "@/lib/server/user-service";
 import { CloseAccountForm } from "./close-account-form";
+import { formatDateTimeSafe } from "@/lib/utils";
 import { ExportDataButton } from "./export-data-button";
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from "@/lib/support-config";
 
@@ -92,11 +93,11 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
           />
           <Item
             label="Account opened"
-            value={user?.createdAt ? new Date(user.createdAt).toLocaleDateString("en-GB") : "—"}
+            value={formatDateTimeSafe(user?.createdAt)}
           />
           <Item
             label="Last login"
-            value={user?.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString("en-GB") : "—"}
+            value={formatDateTimeSafe(user?.lastLoginAt)}
           />
         </div>
       </section>

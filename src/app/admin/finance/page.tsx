@@ -116,32 +116,32 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
           action={<span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">view as chart →</span>}
         >
           <div className="overflow-x-auto -mx-4 px-4">
-            <table className="w-full text-caption min-w-[640px]">
-              <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
+            <table className="admin-tbl min-w-[640px]">
+              <thead>
                 <tr>
-                  <th className="text-left py-2 pr-3 font-medium">Provider</th>
-                  <th className="text-right py-2 pr-3 font-medium">Deposits</th>
-                  <th className="text-right py-2 pr-3 font-medium">Dep #</th>
-                  <th className="text-right py-2 pr-3 font-medium">Withdrawals</th>
-                  <th className="text-right py-2 pr-3 font-medium">WD #</th>
-                  <th className="text-right py-2 pl-3 font-medium">Net</th>
+                  <th className="text-left">Provider</th>
+                  <th className="text-right">Deposits</th>
+                  <th className="text-right">Dep #</th>
+                  <th className="text-right">Withdrawals</th>
+                  <th className="text-right">WD #</th>
+                  <th className="text-right">Net</th>
                 </tr>
               </thead>
               <tbody>
                 {provs.map((p) => (
-                  <tr key={p.provider} className="border-b border-border-subtle/50 last:border-b-0">
-                    <td className="py-2 pr-3 font-medium text-text whitespace-nowrap">{p.provider}</td>
-                    <td className="py-2 pr-3 font-mono tabular text-right">{formatTzs(p.deposits)}</td>
-                    <td className="py-2 pr-3 font-mono tabular text-right text-text-secondary">{p.depositCount.toLocaleString()}</td>
-                    <td className="py-2 pr-3 font-mono tabular text-right">{formatTzs(p.withdrawals)}</td>
-                    <td className="py-2 pr-3 font-mono tabular text-right text-text-secondary">{p.withdrawalCount.toLocaleString()}</td>
-                    <td className={["py-2 pl-3 font-mono tabular text-right font-semibold", p.net >= 0 ? "text-gold" : "text-text-tertiary"].join(" ")}>
+                  <tr key={p.provider}>
+                    <td className="font-medium text-text whitespace-nowrap">{p.provider}</td>
+                    <td className="font-mono tabular text-right">{formatTzs(p.deposits)}</td>
+                    <td className="font-mono tabular text-right text-text-secondary">{p.depositCount.toLocaleString()}</td>
+                    <td className="font-mono tabular text-right">{formatTzs(p.withdrawals)}</td>
+                    <td className="font-mono tabular text-right text-text-secondary">{p.withdrawalCount.toLocaleString()}</td>
+                    <td className={["font-mono tabular text-right font-semibold", p.net >= 0 ? "text-gold" : "text-text-tertiary"].join(" ")}>
                       {p.net >= 0 ? "+" : ""}{formatTzsCompact(p.net)}
                     </td>
                   </tr>
                 ))}
                 {provs.length === 0 && (
-                  <tr><td colSpan={6} className="py-6 text-center text-text-tertiary">No provider activity in this window.</td></tr>
+                  <tr><td colSpan={6} className="!py-6 text-center text-text-tertiary">No provider activity in this window.</td></tr>
                 )}
               </tbody>
             </table>

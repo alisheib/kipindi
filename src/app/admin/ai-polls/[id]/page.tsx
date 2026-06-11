@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
+import { formatDateTimeSafe } from "@/lib/utils";
 import {
   getAIPoll,
   type AIPollState,
@@ -36,9 +37,7 @@ const STATE_VARIANT: Record<AIPollState, "success" | "warning" | "danger" | "neu
 
 function fmtUsd(n: number) { return `$${n.toFixed(2)}`; }
 function fmtDate(iso: string) {
-  if (!iso) return "\u2014";
-  try { return new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }); }
-  catch { return "\u2014"; }
+  return formatDateTimeSafe(iso);
 }
 
 export default async function PollDetailPage({ params }: { params: Promise<{ id: string }> }) {

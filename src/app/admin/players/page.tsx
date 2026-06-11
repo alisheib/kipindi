@@ -137,16 +137,16 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
 
         <AdminCard padding="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-caption">
-              <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary bg-bg-sunken/50 border-b border-border-subtle">
+            <table className="admin-tbl">
+              <thead>
                 <tr>
-                  <th className="text-left p-3">Player</th>
-                  <th className="text-left p-3">Phone</th>
-                  <th className="text-left p-3">Status</th>
+                  <th className="text-left">Player</th>
+                  <th className="text-left">Phone</th>
+                  <th className="text-left">Status</th>
                   <SortTh field="balance" label="Wallet" current={sortField} dir={sortDir} align="right" sp={sp} />
                   <SortTh field="joined" label="Joined" current={sortField} dir={sortDir} sp={sp} />
                   <SortTh field="login" label="Last login" current={sortField} dir={sortDir} sp={sp} />
-                  <th className="text-left p-3">Drill-down</th>
+                  <th className="text-left">Drill-down</th>
                 </tr>
               </thead>
               <tbody className="text-text-secondary">
@@ -154,15 +154,11 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                   const wallet = await db.wallet.findByUserId(u.id);
                   const label = displayLabel(u);
                   const initials = displayInitials(u);
-                  // Subtle visual cue for "auto-handle vs real name" — if the
-                  // user hasn't set a displayName, the auto-handle is shown
-                  // in the kit's mono face so the operator can tell at a
-                  // glance which records are still anonymous.
                   const isAutoHandle = !((u.displayName ?? "").trim().length > 0);
                   return (
-                    <tr key={u.id} className="border-b border-border-subtle/40 last:border-b-0 hover:bg-surface-hover">
-                      <td className="p-3">
-                        <a href={`/admin/players/${u.id}`} className="flex items-center gap-2 min-w-0 hover:text-royal">
+                    <tr key={u.id}>
+                      <td>
+                        <a href={`/admin/players/${u.id}`} className="flex items-center gap-2.5 min-w-0 hover:text-royal">
                           <Avatar initials={initials} size="sm" seed={u.id} />
                           <div className="min-w-0">
                             <p className={`text-body-sm font-medium text-text truncate ${isAutoHandle ? "font-mono" : ""}`}>{label}</p>
@@ -170,19 +166,19 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                           </div>
                         </a>
                       </td>
-                      <td className="p-3 font-mono whitespace-nowrap">{u.phoneE164}</td>
-                      <td className="p-3"><Chip size="sm" variant={STATUS_VARIANT[u.status] ?? "neutral"}>{u.status}</Chip></td>
-                      <td className="p-3 font-mono tabular text-right whitespace-nowrap">{wallet ? formatTzs(wallet.balance) : "—"}</td>
-                      <td className="p-3 font-mono whitespace-nowrap">{u.createdAt.split("T")[0]}</td>
-                      <td className="p-3 font-mono whitespace-nowrap">{u.lastLoginAt ? u.lastLoginAt.split("T")[0] : "—"}</td>
-                      <td className="p-3">
+                      <td className="font-mono whitespace-nowrap">{u.phoneE164}</td>
+                      <td><Chip size="sm" variant={STATUS_VARIANT[u.status] ?? "neutral"}>{u.status}</Chip></td>
+                      <td className="font-mono tabular text-right whitespace-nowrap">{wallet ? formatTzs(wallet.balance) : "—"}</td>
+                      <td className="font-mono whitespace-nowrap">{u.createdAt.split("T")[0]}</td>
+                      <td className="font-mono whitespace-nowrap">{u.lastLoginAt ? u.lastLoginAt.split("T")[0] : "—"}</td>
+                      <td>
                         <a href={`/admin/players/${u.id}`} className="text-royal hover:underline font-medium font-mono text-micro tracking-[0.10em] uppercase">profile →</a>
                       </td>
                     </tr>
                   );
                 }))}
                 {filtered.length === 0 && (
-                  <tr><td colSpan={7} className="p-6 text-center text-text-tertiary">No players match the current filter.</td></tr>
+                  <tr><td colSpan={7} className="!py-6 text-center text-text-tertiary">No players match the current filter.</td></tr>
                 )}
               </tbody>
             </table>
@@ -210,7 +206,7 @@ function SortTh({ field, label, current, dir, align, sp }: { field: string; labe
   params.set("sort", field);
   params.set("dir", nextDir);
   return (
-    <th className={`${align === "right" ? "text-right" : "text-left"} p-3`}>
+    <th className={align === "right" ? "text-right" : "text-left"}>
       <a href={`/admin/players?${params.toString()}`} className={`inline-flex items-center gap-1 hover:text-text ${isActive ? "text-text" : ""}`}>
         {label}
         {isActive && <span className="text-brand-300">{dir === "asc" ? "↑" : "↓"}</span>}
