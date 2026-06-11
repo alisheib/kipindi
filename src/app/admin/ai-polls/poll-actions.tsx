@@ -131,11 +131,13 @@ export function BatchGenerateForm({ maxBatch, remaining }: { maxBatch: number; r
       const r = await generatePollBatchAction(fd);
       router.refresh();
       if (r.ok) {
-        toast({
-          title: `Batch complete — ${r.total} generated`,
-          description: `${r.summary.PENDING_REVIEW} to review · ${r.summary.FILTERED + r.summary.VALIDATION_FAILED} filtered`,
-          variant: "success",
-        });
+        setTimeout(() => {
+          toast({
+            title: `Batch complete — ${r.total} generated`,
+            description: `${r.summary.PENDING_REVIEW} to review · ${r.summary.FILTERED + r.summary.VALIDATION_FAILED} filtered`,
+            variant: "success",
+          });
+        }, 400);
       }
     });
   };
@@ -207,8 +209,8 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
       fd.set("minConfidence", minConf);
       fd.set("maxBatchPerRun", maxBatch);
       const r = await updatePollConfigAction(fd);
-      if (r.ok) toast({ title: "Settings saved", variant: "success" });
       router.refresh();
+      if (r.ok) setTimeout(() => toast({ title: "Settings saved", variant: "success" }), 400);
     });
   };
 

@@ -45,16 +45,16 @@ export function SuspendControls({
         toast({ title: `Could not ${mode}`, description: r.error, variant: "danger" });
         return;
       }
-      toast({
+      setMode(null);
+      setReason("");
+      router.refresh();
+      setTimeout(() => toast({
         title: mode === "suspend" ? "Player suspended" : "Player restored",
         description: mode === "suspend"
           ? "Account is locked — login + bet placement now blocked."
           : "Account active again — login + bet placement re-enabled.",
         variant: mode === "suspend" ? "warning" : "success",
-      });
-      setMode(null);
-      setReason("");
-      router.refresh();
+      }), 400);
     });
   };
 

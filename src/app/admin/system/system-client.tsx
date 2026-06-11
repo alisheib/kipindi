@@ -56,8 +56,8 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
       if (!r.ok) {
         toast({ title: "Couldn't update", description: r.error, variant: "danger" });
       } else {
-        toast({ title: "Support info updated", variant: "success" });
         router.refresh();
+        setTimeout(() => toast({ title: "Support info updated", variant: "success" }), 400);
       }
     });
   };

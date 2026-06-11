@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { buildDsarBundleAction, fulfillDsarAction } from "./actions";
@@ -41,6 +42,7 @@ export function ExportDsarBundleButton({ userId }: { userId: string }) {
 
 export function FulfillDsarButton({ id }: { id: string }) {
   const [busy, setBusy] = useState(false);
+  const router = useRouter();
   const { toast } = useToast();
   const onClick = async () => {
     setBusy(true);
@@ -51,7 +53,8 @@ export function FulfillDsarButton({ id }: { id: string }) {
       if (!r.ok) {
         toast({ title: "Could not fulfill", description: r.error, variant: "danger" });
       } else {
-        toast({ title: "Marked fulfilled", variant: "success" });
+        router.refresh();
+        setTimeout(() => toast({ title: "Marked fulfilled", variant: "success" }), 400);
       }
     } finally {
       setBusy(false);

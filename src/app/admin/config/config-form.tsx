@@ -25,8 +25,8 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
       if (!r.ok) {
         toast({ title: "Couldn't update", description: r.error, variant: "danger" });
       } else {
-        toast({ title: "Global config updated", variant: "success" });
         router.refresh();
+        setTimeout(() => toast({ title: "Global config updated", variant: "success" }), 400);
       }
     });
   };
@@ -129,9 +129,9 @@ export function MarketOverrideForm({ globalConfig }: { globalConfig: RateConfig 
       if (!r.ok) {
         toast({ title: "Couldn't save override", description: r.error, variant: "danger" });
       } else {
-        toast({ title: "Override saved", variant: "success" });
         (e.target as HTMLFormElement).reset();
         router.refresh();
+        setTimeout(() => toast({ title: "Override saved", variant: "success" }), 400);
       }
     });
   };
@@ -171,8 +171,8 @@ export function ClearOverrideButton({ marketId }: { marketId: string }) {
       const fd = new FormData();
       fd.set("marketId", marketId);
       await clearMarketOverrideAction(fd);
-      toast({ title: "Override cleared", variant: "warning" });
       router.refresh();
+      setTimeout(() => toast({ title: "Override cleared", variant: "warning" }), 400);
     });
   };
   return (

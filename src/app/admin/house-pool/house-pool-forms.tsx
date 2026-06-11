@@ -45,9 +45,9 @@ function TopUpForm() {
       if (!r.ok) {
         toast({ title: "Top-up failed", description: r.error, variant: "danger" });
       } else {
-        toast({ title: `Topped up · TZS ${r.balance.toLocaleString()}`, variant: "success" });
         (e.target as HTMLFormElement).reset();
         router.refresh();
+        setTimeout(() => toast({ title: `Topped up · TZS ${r.balance.toLocaleString()}`, variant: "success" }), 400);
       }
     });
   };
@@ -83,9 +83,9 @@ function WithdrawForm() {
       if (!r.ok) {
         toast({ title: "Withdrawal failed", description: r.error, variant: "danger" });
       } else {
-        toast({ title: `Withdrawn · TZS ${r.balance.toLocaleString()} remaining`, variant: "warning" });
         (e.target as HTMLFormElement).reset();
         router.refresh();
+        setTimeout(() => toast({ title: `Withdrawn · TZS ${r.balance.toLocaleString()} remaining`, variant: "warning" }), 400);
       }
     });
   };
@@ -121,8 +121,8 @@ function PoolConfigForm({ config }: { config: HousePoolConfig }) {
       if (!r.ok) {
         toast({ title: "Config update failed", description: r.error, variant: "danger" });
       } else {
-        toast({ title: "Pool config saved", variant: "success" });
         router.refresh();
+        setTimeout(() => toast({ title: "Pool config saved", variant: "success" }), 400);
       }
     });
   };

@@ -139,8 +139,8 @@ export function AffiliateAdminClient({ config, stats }: { config: AffiliateConfi
     start(async () => {
       const r = await saveAffiliateConfigAction(c);
       if (r.ok) {
-        toast({ title: "Affiliate config saved · Imehifadhiwa", variant: "success" });
         router.refresh();
+        setTimeout(() => toast({ title: "Affiliate config saved · Imehifadhiwa", variant: "success" }), 400);
       } else {
         toast({ title: "Couldn't save", description: r.error, variant: "danger" });
       }

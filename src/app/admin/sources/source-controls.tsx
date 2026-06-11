@@ -4,6 +4,7 @@ import { useTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import { Select } from "@/components/ui/select";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { addSourceAction, removeSourceAction, toggleSourceAction, toggleCategoryAction } from "./actions";
 
 const CATEGORIES = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"] as const;
@@ -44,25 +45,32 @@ export function RemoveSource({ id, label }: { id: string; label: string }) {
   const [pending, start] = useTransition();
   const router = useRouter();
   const { toast } = useToast();
-  const onClick = () => {
-    if (!confirm(`Remove "${label}"? Markets already published with this source stay resolved by it.`)) return;
+  const doRemove = () => {
     start(async () => {
       const fd = new FormData();
       fd.set("id", id);
       await removeSourceAction(fd);
-      toast({ title: "Source removed", description: label, variant: "warning" });
       router.refresh();
+      setTimeout(() => toast({ title: "Source removed", description: label, variant: "warning" }), 400);
     });
   };
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={pending}
-      className="text-[11px] font-mono uppercase tracking-[0.12em] text-text-subtle hover:text-no-300 transition-colors"
-    >
-      Remove
-    </button>
+    <ConfirmDialog
+      trigger={
+        <button
+          type="button"
+          disabled={pending}
+          className="text-[11px] font-mono uppercase tracking-[0.12em] text-text-subtle hover:text-no-300 transition-colors"
+        >
+          Remove
+        </button>
+      }
+      title={`Remove "${label}"?`}
+      body="Markets already published with this source stay resolved by it. This cannot be undone."
+      confirmLabel="Remove source"
+      tone="claret"
+      onConfirm={doRemove}
+    />
   );
 }
 
@@ -109,10 +117,10 @@ export function AddSourceForm() {
       if (!r.ok) {
         toast({ title: "Could not add source", description: r.error, variant: "danger" });
       } else {
-        toast({ title: "Source added", variant: "success" });
         (e.target as HTMLFormElement).reset();
         setOpen(false);
         router.refresh();
+        setTimeout(() => toast({ title: "Source added", variant: "success" }), 400);
       }
     });
   };
@@ -122,7 +130,7 @@ export function AddSourceForm() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex h-9 items-center gap-1.5 rounded-md bg-yes-500 px-3.5 font-display font-semibold text-yes-950 text-[13px] hover:bg-yes-400 transition-colors"
+        className="btn btn-gold btn-sm"
       >
         + Add source
       </button>
@@ -155,10 +163,10 @@ export function AddSourceForm() {
         </label>
       </div>
       <div className="flex gap-2">
-        <button type="submit" disabled={pending} className="h-10 px-5 rounded-md bg-yes-500 font-display font-bold text-yes-950 hover:bg-yes-400 disabled:opacity-50 transition-colors">
+        <button type="submit" disabled={pending} className="btn btn-gold btn-md">
           {pending ? "Adding…" : "Add source"}
         </button>
-        <button type="button" onClick={() => setOpen(false)} className="h-10 px-4 rounded-md border border-border bg-bg-elevated font-display font-semibold text-text-muted hover:border-border-strong transition-colors">
+        <button type="button" onClick={() => setOpen(false)} className="btn btn-ghost btn-md">
           Cancel
         </button>
       </div>
