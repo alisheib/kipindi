@@ -370,6 +370,38 @@ Modernization is complete — all tokens, components, and focus rings updated.
 - PWA manifest (`public/manifest.json`) + apple-web-app metadata
 - OG + Twitter card metadata on all pages via root layout
 
+## QA — pre-deploy live checks (run before pushing UI changes)
+
+A strict Playwright gauntlet guards releases: `scripts/pre-deploy-live-check.mjs`.
+
+- `npm run qa:live` — runs against a LOCAL in-memory dev server (default
+  `http://localhost:3009`). Boot it first (in-memory, zero prod risk):
+  `SESSION_SECRET=<32+ chars> OTP_PEPPER=<16+ chars> npx next dev -p 3009`
+  (no `DATABASE_URL` → memory store). `/auth/demo` mints a 100k authed session
+  locally (404 in prod) so the authed section can drive History/wallet/invite
+  and the **locked betting dial**.
+- `BASE=https://kipindi-production.up.railway.app npm run qa:live` — read-only
+  subset against prod (auto-skips the local-only authed section). Run on a WARM
+  server — the gauntlet warms up, but a just-restarted instance can still race.
+- `npm run predeploy` — typecheck + `test:date` + build + `qa:live`.
+- `npm run test:date` — pure keystroke unit tests for the segmented date field
+  (`scripts/date-mask.test.mts`; logic lives in `src/components/ui/date-mask.ts`).
+
+Fails on ANY: console/page/5xx error, real Next error overlay, broken internal
+link, mobile horizontal overflow, clipped date segment, or mis-handled date.
+
+## Betting flow invariant — the dial is ALWAYS side-locked
+
+The conviction dial must never be enterable in the unlocked both-ways state:
+
+- Market cards: **LIVE cards are not clickable**; only the YES/NO buttons enter,
+  each navigating to `/markets/<id>?side=YES|NO`. (Non-live cards stay viewable.)
+- The detail page passes `?side` → `ConvictionDial lockedSide=...`. The in-dial
+  YES/NO pills are **display-only** ("Your pick") — no switching inside; the
+  choice is final from the card. The knob is confined to the backed half.
+- Logged-in user on the detail page **without** a side → show the "Pick your
+  side" gate, never the bidirectional dial.
+
 ## Git workflow — ALWAYS commit AND push
 
 ```
