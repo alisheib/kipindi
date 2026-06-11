@@ -134,7 +134,14 @@ export async function rejectAmlAction(formData: FormData) {
     await withLock(`wallet:${txn.userId}`, async () => {
       const wallet = await db.wallet.findByUserId(txn.userId);
       if (wallet) {
-        await db.wallet.update(wallet.id, { balance: wallet.balance + Math.abs(txn.amount) });
+        const amt = Math.abs(txn.amount);
+        // withdraw() moved the funds balance -> hold. Reversing on reject must
+        // BOTH credit balance AND release the hold, or `hold` leaks upward
+        // forever (corrupting the balance+hold ledger invariant + AML totals).
+        await db.wallet.update(wallet.id, {
+          balance: wallet.balance + amt,
+          hold: Math.max(0, wallet.hold - amt),
+        });
       }
     });
   }

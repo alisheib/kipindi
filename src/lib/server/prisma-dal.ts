@@ -750,13 +750,17 @@ export const prismaDb = {
         where: { userId, readAt: null, dismissedAt: null },
       });
     },
-    markRead: async (id: string): Promise<StoredNotification | null> => {
+    markRead: async (id: string, userId: string): Promise<StoredNotification | null> => {
       try {
-        const row = await pc().notification.update({
-          where: { id },
+        // Scope to the owner — updateMany on {id, userId} no-ops if the row
+        // isn't theirs (an `update` on id alone would mutate any user's row).
+        const res = await pc().notification.updateMany({
+          where: { id, userId },
           data: { readAt: new Date() },
         });
-        return toStoredNotification(row);
+        if (res.count === 0) return null;
+        const row = await pc().notification.findUnique({ where: { id } });
+        return row ? toStoredNotification(row) : null;
       } catch {
         return null;
       }
@@ -768,13 +772,16 @@ export const prismaDb = {
       });
       return result.count;
     },
-    dismiss: async (id: string): Promise<StoredNotification | null> => {
+    dismiss: async (id: string, userId: string): Promise<StoredNotification | null> => {
       try {
-        const row = await pc().notification.update({
-          where: { id },
+        // Scope to the owner (see markRead).
+        const res = await pc().notification.updateMany({
+          where: { id, userId },
           data: { dismissedAt: new Date() },
         });
-        return toStoredNotification(row);
+        if (res.count === 0) return null;
+        const row = await pc().notification.findUnique({ where: { id } });
+        return row ? toStoredNotification(row) : null;
       } catch {
         return null;
       }

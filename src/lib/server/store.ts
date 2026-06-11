@@ -434,9 +434,9 @@ const memoryDb = {
         .slice(0, limit),
     countUnread: (userId: string) =>
       Array.from(store.notifications.values()).filter((n) => n.userId === userId && !n.readAt && !n.dismissedAt).length,
-    markRead: (id: string) => {
+    markRead: (id: string, userId: string) => {
       const n = store.notifications.get(id);
-      if (!n) return null;
+      if (!n || n.userId !== userId) return null; // owner-scoped
       const next = { ...n, readAt: n.readAt ?? new Date().toISOString() };
       store.notifications.set(id, next);
       return next;
@@ -452,9 +452,9 @@ const memoryDb = {
       }
       return count;
     },
-    dismiss: (id: string) => {
+    dismiss: (id: string, userId: string) => {
       const n = store.notifications.get(id);
-      if (!n) return null;
+      if (!n || n.userId !== userId) return null; // owner-scoped
       const next = { ...n, dismissedAt: new Date().toISOString() };
       store.notifications.set(id, next);
       return next;

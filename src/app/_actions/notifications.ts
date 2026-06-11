@@ -16,7 +16,7 @@ export async function fetchMyNotifications(): Promise<{ items: StoredNotificatio
 export async function markNotifReadAction(id: string) {
   const session = await currentSession();
   if (!session) return { ok: false as const };
-  await markRead(id);
+  await markRead(id, session.userId);
   return { ok: true as const };
 }
 
@@ -30,6 +30,6 @@ export async function markAllReadAction() {
 export async function dismissNotifAction(id: string) {
   const session = await currentSession();
   if (!session) return { ok: false as const };
-  await dismiss(id);
+  await dismiss(id, session.userId);
   return { ok: true as const };
 }

@@ -50,16 +50,19 @@ export async function unreadCount(userId: string) {
   return await db.notification.countUnread(userId);
 }
 
-export async function markRead(id: string) {
-  return await db.notification.markRead(id);
+// markRead / dismiss are scoped to the OWNER: a notification id alone is not
+// proof of ownership, so the userId is passed through and the mutation only
+// touches a row that belongs to the caller (prevents cross-user inbox tampering).
+export async function markRead(id: string, userId: string) {
+  return await db.notification.markRead(id, userId);
 }
 
 export async function markAllRead(userId: string) {
   return await db.notification.markAllRead(userId);
 }
 
-export async function dismiss(id: string) {
-  return await db.notification.dismiss(id);
+export async function dismiss(id: string, userId: string) {
+  return await db.notification.dismiss(id, userId);
 }
 
 /* ---- Convenience emitters used by other services ---- */

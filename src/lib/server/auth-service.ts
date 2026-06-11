@@ -185,8 +185,11 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
     }
   }
   if (!matched) {
-    // Increment attempts on the most recent OTP only
-    await db.otp.incrementAttempts(freshOtps[0].id);
+    // Burn an attempt on EVERY active OTP, not just the newest. Otherwise an
+    // attacker requests several codes (all valid at once) and gets 5 guesses
+    // PER code — multiplying the brute-force budget against a 6-digit space.
+    // Charging all of them makes the 5-attempt cap a real per-phone ceiling.
+    for (const o of freshOtps) await db.otp.incrementAttempts(o.id);
     audit({ category: "SECURITY", action: "otp.verify.wrong_code", actorId: null, targetType: "Otp", targetId: freshOtps[0].id, ip: meta.ip });
     return { ok: false, error: "Wrong code.", code: "INVALID" };
   }
@@ -405,7 +408,10 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
   if (input.referralCode) {
     try {
       const { bindRecruit } = await import("./affiliate-service");
-      bindRecruit({ recruitUserId: user.id, code: input.referralCode, ip: meta.ip });
+      // MUST await: bindRecruit performs DB writes (bind + reward accrual). Un-
+      // awaited it races the post-registration redirect and its errors escape
+      // the try/catch as an unhandled rejection.
+      await bindRecruit({ recruitUserId: user.id, code: input.referralCode, ip: meta.ip });
     } catch (e) {
       audit({ category: "SYSTEM", action: "affiliate.bind.failed", actorId: user.id, targetType: "User", targetId: user.id, payload: { error: String((e as Error)?.message ?? e) } });
     }
