@@ -335,7 +335,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
     const oneDot = firstDot === -1
       ? stripped
       : stripped.slice(0, firstDot + 1) + stripped.slice(firstDot + 1).replace(/\./g, "");
-    const cleaned = oneDot.slice(0, 4);
+    const cleaned = oneDot.slice(0, 6);
     setMultText(cleaned);
     const parsed = parseFloat(cleaned);
     if (!Number.isFinite(parsed) || parsed <= 0) {
@@ -409,16 +409,16 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
     ? rawStrength
     : 0.7 - (rawStrength - 0.7) * 0.5;
   const strength = Math.max(0, (distFromCenter - NEUTRAL_BAND) / (1 - NEUTRAL_BAND));
-  const sideHue = effectiveSide === "YES" ? 152 : effectiveSide === "NO" ? 22 : 240;
+  const sideHue = effectiveSide === "YES" ? 152 : effectiveSide === "NO" ? 22 : 268;
   const sideChroma = effectiveSide === "NEUTRAL" ? 0 : effectiveSide === "YES" ? 0.16 : 0.18;
 
   const knobBg    = `oklch(${22 + 4 * strength}% ${0.012 + sideChroma * 0.4 * strength} ${sideHue})`;
   const knobBgTop = `oklch(${32 + 6 * strength}% ${0.012 + sideChroma * 0.5 * strength} ${sideHue})`;
   const ringColor = effectiveSide === "NEUTRAL"
-    ? "oklch(45% 0.013 240)"
+    ? "var(--dial-neutral)"
     : effectiveSide === "YES" ? "oklch(58% 0.16 152)" : "oklch(60% 0.18 22)";
   const sideAccent = ringColor;
-  const sideText = effectiveSide === "YES" ? "oklch(80% 0.13 152)" : effectiveSide === "NO" ? "oklch(80% 0.14 22)" : "oklch(75% 0.012 240)";
+  const sideText = effectiveSide === "YES" ? "var(--yes-300)" : effectiveSide === "NO" ? "var(--no-300)" : "var(--text-subtle)";
 
   // RAF-throttled pos update — pointermove can fire > 60 fps on
   // high-rate trackpads, and each setState cascades through the
@@ -834,7 +834,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
               <g aria-hidden>
                 {/* dim the locked-out half */}
                 <rect x={lx} y={trackY - 7} width={width / 2} height={trackH + 14} rx={9}
-                      fill="oklch(20% 0.006 240)" opacity="0.62" />
+                      fill="oklch(20% 0.006 268)" opacity="0.62" />
                 {/* padlock centred on the locked-out half, ON the track (not above) */}
                 <g transform={`translate(${cx}, ${lockCy})`} fill="none"
                    stroke="var(--text-subtle)" strokeWidth="1.2" opacity="0.55">
@@ -922,11 +922,11 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
                   stroke={ringColor}
                   strokeWidth={1.5 + 1.2 * strength} />
             <path d={squirclePath(knobR - 5)}
-                  fill="none" stroke="oklch(96% 0.005 240)" strokeWidth="0.5" opacity="0.12" />
+                  fill="none" stroke="oklch(96% 0.005 268)" strokeWidth="0.5" opacity="0.12" />
             <g transform={`rotate(${-tilt})`}>
               <text x="0" y="-2" textAnchor="middle"
                     fontFamily="JetBrains Mono, monospace" fontWeight="700"
-                    fontSize="15" fill="oklch(96% 0.005 240)" letterSpacing="-0.02em">
+                    fontSize="15" fill="oklch(96% 0.005 268)" letterSpacing="-0.02em">
                 {/* During an active drag the knob text snaps to the
                     target directly — no tween lag behind the cursor.
                     When the player releases, the gentle critically-
@@ -1050,7 +1050,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
           Multiplier · Mara
           <InfoHint
             size={10}
-            label="How strong your conviction is — 1× is a base bet (TZS 500), drag further for up to TZS 100,000. Higher conviction means higher stake AND higher payout share if you're right. · Imani ya juu, dau kubwa."
+            label={`How strong your conviction is — 1× is a base bet (TZS ${fmt(baseStake)}), drag further for up to TZS ${fmt(maxDial)}. Higher conviction means higher stake AND higher payout share if you're right. · Imani ya juu, dau kubwa.`}
           />
         </p>
         <div className="text-right min-w-0">
@@ -1113,6 +1113,12 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
         </div>
       )}
 
+      {/* D3: Qualitative lean warning — no payout figure, just a heads-up
+          that the pool is lopsided. Shown when ratio < thinProfitRatio. */}
+      {effectiveSide !== "NEUTRAL" && lean !== "fair" && (
+        <HouseLeanWarning level={lean} />
+      )}
+
       {/* Inline balance warning — shown BEFORE the player taps Place so
           they know immediately rather than seeing an error after the click. */}
       {effectiveSide !== "NEUTRAL" && balance !== undefined && stake > balance && (
@@ -1147,10 +1153,10 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
             : effectiveSide === "NEUTRAL" ? "Drag the dial to commit"
             : `Place ${effectiveSide} for TZS ${fmt(stake)}`
           }
-          className={`${closedNow ? "btn btn-ghost btn-md" : (effectiveSide === "NEUTRAL" ? "btn btn-ghost btn-md" : "btn btn-gold btn-md")} whitespace-normal`}
+          className={`${closedNow ? "btn btn-ghost btn-md" : (effectiveSide === "NEUTRAL" ? "btn btn-ghost btn-md" : effectiveSide === "YES" ? "btn btn-yes btn-md" : "btn btn-no btn-md")} whitespace-normal`}
           // 44 px min-height meets WCAG 2.5.5 tap-target on mobile;
-          // btn-md alone caps at 38 px.
-          style={{ borderRadius: 999, minWidth: 140, minHeight: 44, fontVariantNumeric: "tabular-nums" }}
+          // btn-md alone caps at 38 px. T3: drop pill radius — buttons use kit r-sm (8px).
+          style={{ minWidth: 140, minHeight: 44, fontVariantNumeric: "tabular-nums" }}
         >
           {closedNow
             ? "Closed · awaiting settle"

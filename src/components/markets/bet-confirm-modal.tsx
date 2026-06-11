@@ -21,7 +21,7 @@ import { I } from "@/components/ui/glyphs";
 import { haptics } from "@/lib/haptics";
 import { useModalLock } from "@/lib/use-modal-lock";
 import { HouseLeanWarning } from "./house-lean-warning";
-import type { LeanLevel } from "@/lib/server/market-config";
+import type { LeanLevel } from "@/lib/payout";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 const QUOTE_HOLD_MS = 10_000;
@@ -176,7 +176,7 @@ export function BetConfirmModal({
             style={{
               width: "100%",
               transform: "scaleX(1)",
-              background: "linear-gradient(90deg, var(--gold-500), var(--gold-300))",
+              background: "linear-gradient(90deg, var(--brand-600), var(--brand-400))",
               willChange: "transform",
             }}
           />
@@ -236,11 +236,14 @@ export function BetConfirmModal({
             </p>
           </div>
 
+          {/* D3: Lean warning (qualitative, no payout figure) */}
+          {lean !== "fair" && <HouseLeanWarning level={lean} />}
+
           {/* Quote-hold caption */}
           <div className="mt-4 flex items-center gap-2 text-[12px] text-text-subtle">
             <I.shieldcheck s={14} />
             <span>
-              Price locked for <strong className="font-mono text-gold-300">{seconds}s</strong> · then re-aim on the dial.
+              Quote held for <strong className="font-mono text-brand-300">{seconds}s</strong> · then re-aim on the dial.
             </span>
           </div>
 

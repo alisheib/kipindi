@@ -1,81 +1,47 @@
 /**
- * HouseLeanWarning — subtle inline disclosure inside the ConvictionDial
+ * HouseLeanWarning — qualitative inline disclosure inside the ConvictionDial
  * when the projected payout/stake ratio is concerning.
  *
- * Three states (categorised by `houseLean()` in market-config.ts):
- *   fair      — payout ≥ thinProfitRatio × stake (default 1.05). Hidden.
- *   thin      — 1.0 ≤ payout/stake < threshold. Amber tint, "thin profit"
- *               copy. Inform but don't block.
- *   negative  — payout < stake (winner takes a loss after fees). Rose
- *               tint, "net loss" copy + the actual delta.
+ * D3 decision: NO payout figure disclosed (payout is hidden until resolution
+ * per license review 2026-05). Text-only warning so the player knows the pool
+ * is lopsided without seeing a number that contradicts the "payout at
+ * resolution" rule.
  *
- * The kit voice forbids hyperbole — this is a calm, factual disclosure.
+ * Two visible states:
+ *   thin      — warning tone. "This side is crowded."
+ *   negative  — rose tone. "Heavy lean — winning share may be below your stake."
+ *   fair      — hidden.
  */
 import { I } from "@/components/ui/glyphs";
-import type { LeanLevel } from "@/lib/server/market-config";
+import type { LeanLevel } from "@/lib/payout";
 
-export function HouseLeanWarning({
-  level,
-  payout,
-  stake,
-}: {
-  level: LeanLevel;
-  payout: number;
-  stake: number;
-}) {
+export function HouseLeanWarning({ level }: { level: LeanLevel }) {
   if (level === "fair") return null;
-  const delta = payout - stake;
-  const sign = delta >= 0 ? "+" : "−";
-  const fmt = Math.abs(delta).toLocaleString("en-US");
-  const ratio = stake > 0 ? Math.round((payout / stake) * 100) : 0;
 
-  if (level === "thin") {
-    return (
-      <div
-        role="status"
-        className="mt-3 flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg/30 px-3 py-2.5 text-[12px] leading-snug"
-      >
-        <I.warning s={14} />
-        <div className="min-w-0">
-          <p className="font-display font-semibold text-text">
-            Heavy lean — thin profit
-            <span className="ml-1.5 font-mono text-[11px] text-warning-fg">{ratio}% of stake</span>
-          </p>
-          <p className="mt-0.5 text-text-muted">
-            Most predictors are on this side. Even if you&apos;re right, your share of the net pool is small.
-            <span className="block italic text-text-subtle text-[11px]">
-              Wengi wameunga upande huu — faida yako ikishinda ni ndogo.
-            </span>
-          </p>
-          <p className="mt-1 font-mono text-[11px] text-text-muted">
-            Net if right · {sign}TZS {fmt}
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const neg = level === "negative";
 
-  // negative
   return (
     <div
-      role="alert"
-      className="mt-3 flex items-start gap-2.5 rounded-md border border-no-700 bg-no-500/[0.10] px-3 py-2.5 text-[12px] leading-snug"
+      role={neg ? "alert" : "status"}
+      className={`mt-3 flex items-start gap-2.5 rounded-xl border px-3 py-2.5 text-[12px] leading-snug ${
+        neg
+          ? "border-no-700/55 bg-no-500/[0.10]"
+          : "border-warning-border bg-warning-bg/30"
+      }`}
     >
-      <I.alertCircle s={14} />
+      <span className={`shrink-0 mt-0.5 ${neg ? "text-no-300" : "text-warning-fg"}`}>
+        <I.warning s={15} />
+      </span>
       <div className="min-w-0">
-        <p className="font-display font-semibold text-text">
-          Heavy lean — net loss after fees
-          <span className="ml-1.5 font-mono text-[11px] text-no-300">{ratio}% of stake</span>
+        <p className={`font-semibold ${neg ? "text-no-300" : "text-warning-fg"}`} style={{ fontSize: 12 }}>
+          {neg
+            ? "Heavy lean on this side — a winning share may be below your stake."
+            : "This side is crowded — a winning share may be small."}
         </p>
-        <p className="mt-0.5 text-text-muted">
-          The winning pool is so dominant that tax + commission outweigh your share. You&apos;d <strong>still
-          lose money</strong> on this side at the current pool — even if YES wins.
-          <span className="block italic text-text-subtle text-[11px]">
-            Bwawa lina mwelekeo mkubwa upande huu, bado utapoteza baada ya kodi.
-          </span>
-        </p>
-        <p className="mt-1 font-mono text-[11px] text-text-muted">
-          Net if right · {sign}TZS {fmt}
+        <p className="mt-1 text-[11px] text-text-subtle italic">
+          {neg
+            ? "Upande huu umejaa — mshindi anaweza kupata chini ya dau lake."
+            : "Upande huu una watu wengi — gawio linaweza kuwa dogo."}
         </p>
       </div>
     </div>

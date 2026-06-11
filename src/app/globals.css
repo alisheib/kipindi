@@ -204,6 +204,7 @@
   --text-muted:    oklch(86% 0.040 268);
   --text-subtle:   oklch(70% 0.080 268);
   --text-faint:    oklch(60% 0.090 268);
+  --dial-neutral:  oklch(56% 0.030 268);
   --live-400:      oklch(64% 0.20 25);
   --gilt:          oklch(86% 0.13 82);
 
@@ -564,6 +565,7 @@ body {
 .chip-objection{ height: 23px; padding: 0 9px; font-size: 11px; background: oklch(72% 0.13 80 / 0.22); color: var(--gold-300); border-color: oklch(80% 0.13 80 / 0.5); }
 .chip-politics { background: var(--claret-soft); color: var(--claret-200); border-color: var(--claret-edge); }
 .chip-signal   { background: oklch(74% 0.11 195 / 0.20); color: var(--aqua-300); border-color: oklch(78% 0.10 195 / 0.5); }
+.chip-hot-rose { height: 23px; padding: 0 9px; font-size: 11px; background: oklch(50% 0.19 25 / 0.22); color: var(--no-300); border-color: oklch(58% 0.2 25 / 0.5); }
 
 /* ---------- LiveDot + animations ---------- */
 /* Bright red-orange pulsing dot. Uses opacity animation so it works

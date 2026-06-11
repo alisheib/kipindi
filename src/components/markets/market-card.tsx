@@ -174,7 +174,7 @@ export function MarketCard({
         {signal && (
           <span
             aria-label={signal.label}
-            className={cn("chip", signal.kind === "hot" && "chip-objection", signal.kind === "soon" && "chip-pending", signal.kind === "tipping" && "chip-signal")}
+            className={cn("chip", signal.kind === "hot" && "chip-hot-rose", signal.kind === "soon" && "chip-pending", signal.kind === "tipping" && "chip-signal")}
             style={{ fontWeight: 700 }}
           >
             {signal.label}
@@ -220,6 +220,17 @@ export function MarketCard({
           {timeLeft}
           {live && <HowItWorks />}
         </span>
+        {live && (
+          <a
+            href={`/markets/${id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1 font-semibold text-[11.5px] hover:underline"
+            style={{ marginLeft: "auto", color: "var(--accent-400)", textDecoration: "none" }}
+          >
+            Details · Soma zaidi
+            <I.chevronRight s={11} />
+          </a>
+        )}
       </div>
     </>
   );
