@@ -17,6 +17,10 @@ export async function startRegisterAction(formData: FormData) {
   const acceptAge = formData.get("acceptAge") === "on" || formData.get("acceptAge") === "true";
   const marketingOptIn = formData.get("marketingOptIn") === "on";
   const referralCode = String(formData.get("ref") ?? "").trim().slice(0, 16) || undefined;
+  // Safe post-auth destination (the market the player tapped, etc.). Validated
+  // same-origin relative, never an /auth/* loop.
+  const nextRaw = String(formData.get("next") ?? "").trim();
+  const safeNext = nextRaw.startsWith("/") && !nextRaw.startsWith("//") && !nextRaw.startsWith("/auth/") ? nextRaw : "";
 
   const result = await registerWithPassword({
     phone, password, passwordConfirm, dob,
@@ -30,6 +34,7 @@ export async function startRegisterAction(formData: FormData) {
         : result.code === "RATE_LIMITED" ? "rate_limited"
         : "invalid",
     });
+    if (safeNext) params.set("next", safeNext); // don't lose intent on a retry
     redirect(`/auth/register?${params.toString()}`);
   }
 
@@ -38,7 +43,10 @@ export async function startRegisterAction(formData: FormData) {
   if (result.data?.role && result.data.role !== "PLAYER" && result.data.role !== "AGENT") {
     redirect("/admin");
   }
-  redirect("/profile/kyc?welcome=new");
+  // Honor the player's intent: a new player is PENDING_KYC but can already bet
+  // with the starter balance (KYC only gates withdrawal), so send them back to
+  // the market they wanted. No intent → the KYC welcome nudge.
+  redirect((safeNext || "/profile/kyc?welcome=new") as never);
 }
 
 /** Legacy OTP-driven registration — re-enable once SMS provider goes live. */

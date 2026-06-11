@@ -17,7 +17,7 @@ export const metadata = { title: "Create account · Fungua akaunti" };
 export default async function RegisterPage({
   searchParams,
 }: {
-  searchParams: Promise<{ phone?: string; error?: string; ref?: string }>;
+  searchParams: Promise<{ phone?: string; error?: string; ref?: string; next?: string }>;
 }) {
   // Bounce-authed-users guard lives in src/app/auth/layout.tsx so the
   // redirect happens before any page hooks run (avoids a Next.js 16
@@ -25,6 +25,11 @@ export default async function RegisterPage({
   const sp = await searchParams;
   const phoneDefault = (sp.phone ?? "").replace(/^\+255/, "").replace(/\D+/g, "").slice(0, 9);
   const refCode = (sp.ref ?? "").trim().slice(0, 16);
+  // Carry the post-auth destination (e.g. the market the player tapped YES on)
+  // through registration so they land back on it — new players are PENDING_KYC
+  // but can still bet with the starter balance, so we honor their intent.
+  const nextRaw = (sp.next ?? "").trim();
+  const nextOk = nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : "";
   const referral = refCode ? await resolveReferralPreview(refCode) : null;
 
   const errorPanel = (() => {
@@ -133,6 +138,7 @@ export default async function RegisterPage({
 
           <form action={startRegisterAction} className="space-y-4">
             {referral && <input type="hidden" name="ref" value={refCode} />}
+            {nextOk && <input type="hidden" name="next" value={nextOk} />}
             {referral && (
               <Field label="Referral code · auto-filled">
                 <Input

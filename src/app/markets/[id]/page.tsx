@@ -207,6 +207,34 @@ export default async function MarketDetail({
         <aside className="space-y-3">
           {!isResolved && m.status === "LIVE" && !closedByTime ? (
             session ? (
+              <>
+              {/* If the player already holds a position here, say so — and if
+                  they're about to back the OPPOSITE side, warn that hedging
+                  costs the 9% margin on both sides (it's allowed, just never
+                  profitable). Prevents the "I bet YES then NO and lost both"
+                  confusion at scale. */}
+              {(() => {
+                const open = myPositions.filter((p) => p.status === "OPEN");
+                if (open.length === 0) return null;
+                const sides = new Set(open.map((p) => p.side));
+                const both = sides.has("YES") && sides.has("NO");
+                const opposite = (side === "YES" && sides.has("NO")) || (side === "NO" && sides.has("YES"));
+                const held = [...sides].join(" + ");
+                return (
+                  <div className="rounded-lg border border-warning-border bg-warning-bg/30 px-3.5 py-2.5">
+                    <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-warning-fg">
+                      You already hold {held} here
+                    </p>
+                    <p className="mt-1 text-[12px] leading-snug text-text-muted">
+                      {both
+                        ? "You're backing both sides — the 9% margin applies to each, so hedging here locks in a loss."
+                        : opposite
+                          ? `Backing the other side now hedges against your ${held} — you'd pay the 9% margin on both and only one can win.`
+                          : `Placing again adds to your ${held} stake on this market.`}
+                    </p>
+                  </div>
+                );
+              })()}
               <SidePicker
                 marketId={m.id}
                 marketTitle={m.titleEn}
@@ -217,6 +245,7 @@ export default async function MarketDetail({
                 balance={(await db.wallet.findByUserId(session.userId))?.balance ?? 0}
                 initialSide={side === "YES" || side === "NO" ? side : undefined}
               />
+              </>
             ) : (
               <div
                 className="rounded-xl border border-border bg-bg-elevated p-6 text-center"
@@ -238,22 +267,23 @@ export default async function MarketDetail({
                     Andika namba ya simu ili kuweka dau.
                   </span>
                 </p>
-                <div className="mt-4 grid grid-cols-1 xs:grid-cols-2 gap-2">
-                  <a
-                    href={`/auth/register?next=${encodeURIComponent("/markets/" + m.id)}`}
-                    className="btn btn-gold btn-md"
-                    style={{ borderRadius: "var(--r-pill)" }}
-                  >
-                    Sign up
-                  </a>
-                  <a
-                    href={`/auth/login?next=${encodeURIComponent("/markets/" + m.id)}`}
-                    className="btn btn-ghost btn-md"
-                    style={{ borderRadius: "var(--r-pill)" }}
-                  >
-                    Sign in
-                  </a>
-                </div>
+                {/* Preserve the tapped side through auth so the player lands
+                    back on this market with their YES/NO intent intact, not a
+                    blank "pick a side" screen. */}
+                {(() => {
+                  const betNext = "/markets/" + m.id + (side === "YES" || side === "NO" ? `?side=${side}` : "");
+                  const q = `?next=${encodeURIComponent(betNext)}`;
+                  return (
+                    <div className="mt-4 grid grid-cols-1 xs:grid-cols-2 gap-2">
+                      <a href={`/auth/register${q}`} className="btn btn-gold btn-md" style={{ borderRadius: "var(--r-pill)" }}>
+                        Sign up
+                      </a>
+                      <a href={`/auth/login${q}`} className="btn btn-ghost btn-md" style={{ borderRadius: "var(--r-pill)" }}>
+                        Sign in
+                      </a>
+                    </div>
+                  );
+                })()}
               </div>
             )
           ) : closedByTime ? (

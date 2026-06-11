@@ -97,6 +97,10 @@ export async function verifyLoginOtpAction(formData: FormData) {
   }
   // Success — fire a "welcome" flash on the destination so the user
   // gets clear confirmation that the auth completed.
-  if (result.data?.isNew) redirect("/profile/kyc?welcome=new");
-  redirect("/?welcome=back");
+  // Honor a safe ?next= (same rules as the password path) so a gated OTP login
+  // lands back where the player intended, not always home.
+  const nextRaw = String(formData.get("next") ?? "").trim();
+  const safeNext = nextRaw.startsWith("/") && !nextRaw.startsWith("//") && !nextRaw.startsWith("/auth/") ? nextRaw : "";
+  if (result.data?.isNew) redirect(`/profile/kyc?welcome=new${safeNext ? `&next=${encodeURIComponent(safeNext)}` : ""}`);
+  redirect((safeNext || "/?welcome=back") as never);
 }

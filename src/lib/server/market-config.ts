@@ -58,7 +58,11 @@ export const DEFAULT_GLOBAL_CONFIG: RateConfig = {
   reserveRate: 0.02,
   aggregatorRate: 0.00, // 0% until aggregator contract is signed
   minStake: 100,
-  maxStake: 1_000_000,
+  // Must equal the dial's reachable cap (baseStake 500 × maxMultiplier 200 =
+  // 100,000) so the server enforces exactly what the UI shows — otherwise a
+  // crafted POST could stake far above the displayed limit. Admin can raise it
+  // at /admin/config (raise the dial's maxMultiplier to match if you do).
+  maxStake: 100_000,
   thinProfitRatio: 1.05,
   // Sign-up gift — TZS 100,000 lands in every new wallet so first-time
   // users (and the manager doing demo runs) can place dozens of stakes

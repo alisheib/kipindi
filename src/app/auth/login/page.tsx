@@ -49,8 +49,8 @@ export default async function LoginPage({
         return {
           tone: "warning" as const,
           title: "No account yet · Bado huna akaunti",
-          body: "We couldn't find an account for that phone. Create one in 30 seconds — TZS 10,000 lands in your wallet on sign-up.",
-          cta: { href: "/auth/register", label: "Create account · Fungua akaunti" },
+          body: "We couldn't find an account for that phone. Create one in 30 seconds.",
+          cta: { href: `/auth/register${nextSafe ? `?next=${encodeURIComponent(nextSafe)}` : ""}`, label: "Create account · Fungua akaunti" },
         };
       case "wrong_credentials":
         return {
@@ -171,7 +171,7 @@ export default async function LoginPage({
           <p className="border-t border-border pt-3 text-center text-[13px] text-text-muted">
             No account?{" "}
             <Link
-              href={"/auth/register" as never}
+              href={`/auth/register${nextSafe ? `?next=${encodeURIComponent(nextSafe)}` : ""}` as never}
               className="font-semibold text-accent-400 hover:text-accent-300 underline-offset-2 hover:underline"
             >
               Create one · Fungua akaunti
