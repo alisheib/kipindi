@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { TippingBar } from "@/components/brand";
-import { ConvictionDial } from "@/components/markets/conviction-dial";
 import { Countdown } from "@/components/markets/countdown";
 import { ShareButton } from "@/components/markets/share-button";
-import { NotifyPrompt } from "@/components/markets/notify-prompt";
+import { SidePicker } from "@/components/markets/side-picker";
 import { ProbabilityChart } from "@/components/markets/probability-chart";
 import { SellButton } from "@/components/markets/sell-button";
 import { cashOutValue, getMarket, impliedYesPct, isClosedByTime, listPositionsForMarket, listPositionsForUser, seedDemoMarkets } from "@/lib/server/market-service";
@@ -208,34 +207,17 @@ export default async function MarketDetail({
         <aside className="space-y-3">
           {!isResolved && m.status === "LIVE" && !closedByTime ? (
             session ? (
-              side === "YES" || side === "NO" ? (
-                <>
-                  <ConvictionDial marketId={m.id} yesPool={m.yesPool} noPool={m.noPool} marketTitle={m.titleEn} resolutionAt={m.resolutionAt} balance={(await db.wallet.findByUserId(session.userId))?.balance ?? 0} lockedSide={side} />
-                  <NotifyPrompt marketId={m.id} marketTitle={m.titleEn} />
-                </>
-              ) : (
-                // No side chosen yet (e.g. direct link / refresh without ?side).
-                // We NEVER show the unlocked both-ways dial — the player must
-                // pick a side first, which opens the dial locked to that side.
-                <div className="rounded-xl border border-border bg-bg-elevated p-5 lg:p-6">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle text-center">Pick your side · Chagua upande</p>
-                  <h3 className="mt-1.5 mb-4 font-display text-[17px] font-bold text-text leading-tight text-center">Which way will it resolve?</h3>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <a href={`/markets/${m.id}?side=YES`} className="btn btn-yes btn-lg" aria-label={`Back YES at ${impliedYesPct(m)}%`} style={{ borderRadius: "var(--r-pill)" }}>
-                      YES <span className="font-mono" style={{ opacity: 0.85, fontSize: 12.5 }}>{impliedYesPct(m)}%</span>
-                    </a>
-                    <a href={`/markets/${m.id}?side=NO`} className="btn btn-no btn-lg" aria-label={`Back NO at ${100 - impliedYesPct(m)}%`} style={{ borderRadius: "var(--r-pill)" }}>
-                      NO <span className="font-mono" style={{ opacity: 0.85, fontSize: 12.5 }}>{100 - impliedYesPct(m)}%</span>
-                    </a>
-                  </div>
-                  <p className="mt-3 text-center text-[11px] text-text-subtle leading-snug">Choose a side to set your conviction. You can switch sides on the next screen.</p>
-                </div>
-              )
+              <SidePicker
+                marketId={m.id}
+                marketTitle={m.titleEn}
+                yesPool={m.yesPool}
+                noPool={m.noPool}
+                yesPct={yesPct}
+                resolutionAt={m.resolutionAt}
+                balance={(await db.wallet.findByUserId(session.userId))?.balance ?? 0}
+                initialSide={side === "YES" || side === "NO" ? side : undefined}
+              />
             ) : (
-              // Public visitors see the market read-only — pool, history,
-              // resolution criterion are all visible above. The conviction
-              // dial is gated behind a clear "sign in to bet" CTA so the
-              // mutation surface only opens for an authenticated session.
               <div
                 className="rounded-xl border border-border bg-bg-elevated p-6 text-center"
                 style={{
@@ -275,11 +257,6 @@ export default async function MarketDetail({
               </div>
             )
           ) : closedByTime ? (
-            // Countdown elapsed but the resolver hasn't recorded an
-            // outcome yet. For Demo · markets this state is brief —
-            // the next /markets hit auto-resolves on the server. For
-            // production markets it lasts until the human resolver
-            // queue confirms. Either way, no more bets accepted.
             <div className="rounded-xl border border-warning-border bg-warning-bg/30 p-6 text-center">
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-warning-fg">
                 Closed · Awaiting settlement

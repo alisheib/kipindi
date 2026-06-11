@@ -15,9 +15,9 @@ const LOGO_PNG = (() => {
 
 const M = { top: 0, bottom: 0, left: 32, right: 32 };
 const BAND_H = 46;
-const FOOTER_H = 22;
+const FOOTER_H = 26;
 const CONTENT_TOP = BAND_H + 22;
-const CONTENT_BOTTOM_INSET = FOOTER_H + 12;
+const CONTENT_BOTTOM_INSET = FOOTER_H + 14;
 const F = {
   band:       { name: "Helvetica-Bold",  size: 12 },
   bandTag:    { name: "Helvetica",       size: 9.5 },
@@ -100,9 +100,9 @@ function drawFooter(ctx: DocCtx, pageNum: number, pageCount: number) {
   doc.lineWidth(0.4).strokeColor(BRAND.rule)
      .moveTo(24, y).lineTo(pageW - 24, y).stroke();
   doc.fillColor(BRAND.inkSubtle).font(F.footer.name).fontSize(F.footer.size);
-  doc.text(toAnsiSafe(`${reference}  ·  ${classification}`), 24, y + 6, { lineBreak: false });
-  doc.text(`Page ${pageNum} of ${pageCount}`, pageW / 2 - 60, y + 6, { width: 120, align: "center", lineBreak: false });
-  doc.text(fmtDateTime(generatedAt), pageW - 24 - 160, y + 6, { width: 160, align: "right", lineBreak: false });
+  doc.text(toAnsiSafe(`${reference}  ·  ${classification}`), 24, y + 8, { lineBreak: false });
+  doc.text(`Page ${pageNum} of ${pageCount}`, pageW / 2 - 60, y + 8, { width: 120, align: "center", lineBreak: false });
+  doc.text(fmtDateTime(generatedAt), pageW - 24 - 180, y + 8, { width: 180, align: "right", lineBreak: false });
   doc.restore();
 }
 
@@ -195,7 +195,7 @@ function renderCellText(raw: string | number | null | undefined, format?: Column
 function drawTableHeader(ctx: DocCtx, sec: Section, colW: number[], y: number, continuation = false): number {
   const { doc, contentX, contentW } = ctx;
   const hasSub = sec.columns.some((c) => c.sub);
-  const headerH = hasSub ? 24 : 18;
+  const headerH = hasSub ? 28 : 22;
   doc.save();
   doc.rect(contentX, y, contentW, headerH).fill(BRAND.royal);
   doc.rect(contentX, y + headerH - 1.2, contentW, 1.2).fill(BRAND.gilt);
@@ -203,12 +203,12 @@ function drawTableHeader(ctx: DocCtx, sec: Section, colW: number[], y: number, c
   let xC = contentX;
   for (let i = 0; i < sec.columns.length; i++) {
     const c = sec.columns[i];
-    const headerY = hasSub ? y + 4 : y + 5;
+    const headerY = hasSub ? y + 5 : y + 6;
     doc.fillColor(BRAND.white).font(F.th.name).fontSize(F.th.size)
-       .text(toAnsiSafe(c.header), xC + 5, headerY, { width: colW[i] - 10, align: c.align ?? "left", lineBreak: false, ellipsis: true });
+       .text(toAnsiSafe(c.header), xC + 8, headerY, { width: colW[i] - 16, align: c.align ?? "left", lineBreak: false, ellipsis: true });
     if (c.sub) {
       doc.fillColor(BRAND.giltSoft).font(F.thSub.name).fontSize(F.thSub.size)
-         .text(toAnsiSafe(c.sub), xC + 5, y + 14, { width: colW[i] - 10, align: c.align ?? "left", lineBreak: false, ellipsis: true });
+         .text(toAnsiSafe(c.sub), xC + 8, y + 16, { width: colW[i] - 16, align: c.align ?? "left", lineBreak: false, ellipsis: true });
     }
     xC += colW[i];
   }
@@ -241,21 +241,20 @@ function drawSection(ctx: DocCtx, sec: Section, startY: number): number {
 
   const colW = computeColWidths(sec.columns, contentW);
   const hasSub = sec.columns.some((c) => c.sub);
-  const headerH = hasSub ? 24 : 18;
+  const headerH = hasSub ? 28 : 22;
   y = ensureRoom(ctx, headerH + 30, y);
   y = drawTableHeader(ctx, sec, colW, y);
 
-  const rowH = 16;
+  const rowH = 22;
 
   if (sec.rows.length === 0) {
     y = ensureRoom(ctx, rowH + 4, y);
     doc.save();
     doc.rect(contentX, y, contentW, rowH).fill(BRAND.royalSoft);
     doc.restore();
-    // Bilingual empty-state — kit pairs every English label with Swahili
     doc.fillColor(BRAND.inkSubtle).font(F.empty.name).fontSize(F.empty.size)
        .text("No data in this period  ·  Hakuna data katika kipindi hiki",
-             contentX, y + 4, { width: contentW, align: "center", lineBreak: false });
+             contentX, y + 6, { width: contentW, align: "center", lineBreak: false });
     y += rowH;
   } else {
     for (let ri = 0; ri < sec.rows.length; ri++) {
@@ -283,7 +282,7 @@ function drawSection(ctx: DocCtx, sec: Section, startY: number): number {
         const text = renderCellText(r[c.key], c.format);
         const isNum = c.format === "tzs" || c.format === "integer" || c.format === "percent";
         doc.fillColor(BRAND.ink).font(isNum ? F.tdNum.name : F.td.name).fontSize(F.td.size)
-           .text(text, xc + 5, y + 4, { width: colW[i] - 10, align: c.align ?? (isNum ? "right" : "left"), lineBreak: false, ellipsis: true });
+           .text(text, xc + 8, y + 6, { width: colW[i] - 16, align: c.align ?? (isNum ? "right" : "left"), lineBreak: false, ellipsis: true });
         xc += colW[i];
       }
       y += rowH;
@@ -306,7 +305,7 @@ function drawSection(ctx: DocCtx, sec: Section, startY: number): number {
       else if (i === 0) text = "Total";
       const isNum = c.format === "tzs" || c.format === "integer" || c.format === "percent";
       doc.fillColor(BRAND.giltFg).font(isNum ? F.totalNum.name : F.total.name).fontSize(F.total.size)
-         .text(text, xc + 5, y + 5, { width: colW[i] - 10, align: c.align ?? (isNum ? "right" : "left"), lineBreak: false, ellipsis: true });
+         .text(text, xc + 8, y + 6, { width: colW[i] - 16, align: c.align ?? (isNum ? "right" : "left"), lineBreak: false, ellipsis: true });
       xc += colW[i];
     }
     y += rowH + 4;

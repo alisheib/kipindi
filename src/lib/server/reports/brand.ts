@@ -162,7 +162,13 @@ export function fmtDateTime(iso: string | Date | null | undefined): string {
   if (!iso) return "";
   const d = typeof iso === "string" ? new Date(iso) : iso;
   if (isNaN(d.getTime())) return "";
-  return d.toISOString().replace("T", " ").slice(0, 19) + "Z";
+  // Human-readable: "11 Jun 2026, 12:25 UTC"
+  const day = d.getUTCDate();
+  const mon = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getUTCMonth()];
+  const yr = d.getUTCFullYear();
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${day} ${mon} ${yr}, ${hh}:${mm} UTC`;
 }
 
 /** Build a professional filename — slug-friendly, dated, format-suffixed.
