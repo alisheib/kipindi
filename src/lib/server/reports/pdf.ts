@@ -13,33 +13,37 @@ const LOGO_PNG = (() => {
   }
 })();
 
-const M = { top: 0, bottom: 0, left: 32, right: 32 };
-const BAND_H = 46;
-const FOOTER_H = 26;
-const CONTENT_TOP = BAND_H + 22;
-const CONTENT_BOTTOM_INSET = FOOTER_H + 14;
+/* ── Layout constants ────────────────────────────────────────────── */
+const M = { top: 0, bottom: 0, left: 0, right: 0 };
+const BAND_H = 52;
+const FOOTER_H = 30;
+const CONTENT_TOP = BAND_H + 24;
+const CONTENT_BOTTOM_INSET = FOOTER_H + 16;
+const PAD = 40; // page horizontal padding
+
 const F = {
-  band:       { name: "Helvetica-Bold",  size: 12 },
-  bandTag:    { name: "Helvetica",       size: 9.5 },
-  bandRight:  { name: "Helvetica",       size: 9 },
-  title:      { name: "Helvetica-Bold",  size: 22 },
-  subtitle:   { name: "Helvetica-Oblique", size: 10 },
-  meta:       { name: "Helvetica",       size: 8 },
-  kpiLabel:   { name: "Helvetica-Bold",  size: 7.5 },
-  kpiValue:   { name: "Helvetica-Bold",  size: 14 },
-  kpiDelta:   { name: "Helvetica",       size: 7.5 },
-  sectionTitle:{ name: "Helvetica-Bold", size: 11.5 },
-  sectionDesc:{ name: "Helvetica",       size: 8.5 },
-  th:         { name: "Helvetica-Bold",  size: 9 },
-  thSub:      { name: "Helvetica",       size: 7 },
-  td:         { name: "Helvetica",       size: 9 },
-  tdNum:      { name: "Helvetica",       size: 9 },
-  total:      { name: "Helvetica-Bold",  size: 9.5 },
-  totalNum:   { name: "Helvetica-Bold",  size: 9.5 },
-  empty:      { name: "Helvetica-Oblique", size: 9 },
-  notes:      { name: "Helvetica-Oblique", size: 8 },
-  notesTitle: { name: "Helvetica-Bold",  size: 9.5 },
-  footer:     { name: "Helvetica",       size: 7.5 },
+  band:       { name: "Helvetica-Bold",    size: 13 },
+  bandTag:    { name: "Helvetica",         size: 9 },
+  bandRight:  { name: "Helvetica-Bold",    size: 10 },
+  title:      { name: "Helvetica-Bold",    size: 24 },
+  subtitle:   { name: "Helvetica",         size: 10.5 },
+  meta:       { name: "Helvetica",         size: 7.5 },
+  metaLabel:  { name: "Helvetica-Bold",    size: 7 },
+  kpiLabel:   { name: "Helvetica-Bold",    size: 7 },
+  kpiValue:   { name: "Helvetica-Bold",    size: 16 },
+  kpiDelta:   { name: "Helvetica",         size: 7 },
+  sectionTitle:{ name: "Helvetica-Bold",   size: 12 },
+  sectionDesc:{ name: "Helvetica",         size: 8.5 },
+  th:         { name: "Helvetica-Bold",    size: 8.5 },
+  thSub:      { name: "Helvetica",         size: 6.5 },
+  td:         { name: "Helvetica",         size: 8.5 },
+  tdNum:      { name: "Helvetica",         size: 8.5 },
+  total:      { name: "Helvetica-Bold",    size: 9 },
+  totalNum:   { name: "Helvetica-Bold",    size: 9 },
+  empty:      { name: "Helvetica-Oblique", size: 8.5 },
+  notes:      { name: "Helvetica",         size: 7.5 },
+  notesTitle: { name: "Helvetica-Bold",    size: 9.5 },
+  footer:     { name: "Helvetica",         size: 7 },
 };
 
 type DocCtx = {
@@ -54,121 +58,147 @@ type DocCtx = {
   generatedAt: string;
 };
 
+/* ── Page background — dark canvas on every page ─────────────────── */
+function drawPageBg(ctx: DocCtx) {
+  ctx.doc.save();
+  ctx.doc.rect(0, 0, ctx.pageW, ctx.pageH).fill(BRAND.canvas);
+  ctx.doc.restore();
+}
+
+/* ── Top band — royal gradient + gilt rule ────────────────────────── */
 function drawBand(ctx: DocCtx) {
   const { doc, pageW } = ctx;
   doc.save();
-  // Deep royal field with a subtle lighter overlay at the top to
-  // give the band depth — the kit uses a radial gradient on screen;
-  // pdfkit's fill doesn't support gradients, so we approximate with
-  // two stacked rectangles.
   doc.rect(0, 0, pageW, BAND_H).fill(BRAND.royalDeep);
-  doc.rect(0, 0, pageW, BAND_H * 0.55).fill(BRAND.royal);
+  doc.rect(0, 0, pageW, BAND_H * 0.5).fill(BRAND.royal);
   // Gilt accent rule
-  doc.rect(0, BAND_H, pageW, 2).fill(BRAND.gilt);
-  doc.rect(0, BAND_H + 2, pageW, 0.8).fill(BRAND.royal);
+  doc.rect(0, BAND_H - 2, pageW, 2).fill(BRAND.gilt);
 
-  let textX = 30;
+  let textX = PAD;
   if (LOGO_PNG) {
-    const logoSize = BAND_H - 14;
-    // White rounded disc behind the colour logo so the green / red
-    // wedges and gilt divider read crisp against the royal band.
-    const cx = 30 + logoSize / 2, cy = BAND_H / 2;
+    const logoSize = BAND_H - 16;
+    const cx = PAD + logoSize / 2, cy = BAND_H / 2;
     doc.circle(cx, cy, logoSize / 2 + 2).fill(BRAND.white);
-    doc.image(LOGO_PNG, 30, (BAND_H - logoSize) / 2, { width: logoSize, height: logoSize });
-    textX = 30 + logoSize + 14;
+    doc.image(LOGO_PNG, PAD, (BAND_H - logoSize) / 2, { width: logoSize, height: logoSize });
+    textX = PAD + logoSize + 14;
   }
 
-  const nameY = BAND_H / 2 - 11;
-  const tagY  = BAND_H / 2 + 3;
-  doc.fillColor(BRAND.white).font(F.band.name).fontSize(F.band.size + 2)
+  const nameY = BAND_H / 2 - 12;
+  const tagY  = BAND_H / 2 + 4;
+  doc.fillColor(BRAND.white).font(F.band.name).fontSize(F.band.size)
      .text(COMPANY.name, textX, nameY, { lineBreak: false });
-  doc.fillColor(BRAND.giltSoft).font(F.bandTag.name).fontSize(F.bandTag.size)
+  doc.fillColor(BRAND.giltBright).font(F.bandTag.name).fontSize(F.bandTag.size)
      .text(toAnsiSafe(COMPANY.tagline), textX, tagY, { lineBreak: false });
 
-  // Right side: TLD + jurisdiction stamp
-  doc.fillColor(BRAND.white).font(F.bandRight.name).fontSize(F.bandRight.size + 1)
-     .text(COMPANY.tld, pageW - 30 - 130, nameY, { width: 130, align: "right", lineBreak: false });
-  doc.fillColor(BRAND.giltSoft).font("Helvetica").fontSize(7)
-     .text("Tanzania", pageW - 30 - 130, tagY + 1, { width: 130, align: "right", lineBreak: false });
+  doc.fillColor(BRAND.white).font(F.bandRight.name).fontSize(F.bandRight.size)
+     .text(COMPANY.tld, pageW - PAD - 130, nameY + 1, { width: 130, align: "right", lineBreak: false });
+  doc.fillColor(BRAND.giltBright).font("Helvetica").fontSize(7.5)
+     .text("Tanzania", pageW - PAD - 130, tagY + 1, { width: 130, align: "right", lineBreak: false });
   doc.restore();
 }
 
+/* ── Footer — dark band with reference + page + timestamp ─────────── */
 function drawFooter(ctx: DocCtx, pageNum: number, pageCount: number) {
   const { doc, pageW, pageH, reference, classification, generatedAt } = ctx;
   const y = pageH - FOOTER_H;
   doc.save();
-  doc.lineWidth(0.4).strokeColor(BRAND.rule)
-     .moveTo(24, y).lineTo(pageW - 24, y).stroke();
-  doc.fillColor(BRAND.inkSubtle).font(F.footer.name).fontSize(F.footer.size);
-  doc.text(toAnsiSafe(`${reference}  ·  ${classification}`), 24, y + 8, { lineBreak: false });
-  doc.text(`Page ${pageNum} of ${pageCount}`, pageW / 2 - 60, y + 8, { width: 120, align: "center", lineBreak: false });
-  doc.text(fmtDateTime(generatedAt), pageW - 24 - 180, y + 8, { width: 180, align: "right", lineBreak: false });
+  // Subtle dark band
+  doc.rect(0, y, pageW, FOOTER_H).fill(BRAND.panel);
+  doc.rect(0, y, pageW, 0.5).fill(BRAND.border);
+  doc.fillColor(BRAND.textSubtle).font(F.footer.name).fontSize(F.footer.size);
+  doc.text(toAnsiSafe(`${reference}  ·  ${classification}`), PAD, y + 10, { lineBreak: false });
+  doc.text(`Page ${pageNum} of ${pageCount}`, pageW / 2 - 60, y + 10, { width: 120, align: "center", lineBreak: false });
+  doc.text(fmtDateTime(generatedAt), pageW - PAD - 180, y + 10, { width: 180, align: "right", lineBreak: false });
   doc.restore();
 }
 
 function addContentPage(ctx: DocCtx): number {
   ctx.doc.addPage();
+  drawPageBg(ctx);
   ctx.doc.y = CONTENT_TOP;
-  ctx.doc.x = 32;
+  ctx.doc.x = PAD;
   return CONTENT_TOP;
 }
 
+/* ── Report header — title, subtitle, metadata badges ─────────────── */
 function drawHeader(ctx: DocCtx, report: Report): number {
   const { doc, contentX, contentW } = ctx;
   let y = CONTENT_TOP;
-  doc.fillColor(BRAND.royalDeep).font(F.title.name).fontSize(F.title.size)
+
+  doc.fillColor(BRAND.pearl).font(F.title.name).fontSize(F.title.size)
      .text(toAnsiSafe(report.title), contentX, y, { width: contentW, lineBreak: true });
-  y = doc.y + 4;
-  doc.fillColor(BRAND.inkMuted).font(F.subtitle.name).fontSize(F.subtitle.size)
+  y = doc.y + 2;
+
+  doc.fillColor(BRAND.textMuted).font(F.subtitle.name).fontSize(F.subtitle.size)
      .text(toAnsiSafe(report.subtitle), contentX, y, { width: contentW, lineBreak: false });
-  y = doc.y + 10;
+  y = doc.y + 12;
+
+  // Metadata row — structured labels
   const cls = report.meta.classification ?? "Internal";
-  doc.fillColor(BRAND.inkSubtle).font(F.meta.name).fontSize(F.meta.size);
-  const metaText = toAnsiSafe(
-    `Generated  ${fmtDateTime(report.meta.generatedAt)}      ` +
-    `By  ${report.meta.generatedBy}      ` +
-    `Reference  ${report.reference}      ` +
-    `Classification  ${cls}`
-  );
-  doc.text(metaText, contentX, y, { width: contentW, lineBreak: false });
-  y = doc.y + 8;
+  const metaPairs = [
+    ["Generated", fmtDateTime(report.meta.generatedAt)],
+    ["By", report.meta.generatedBy],
+    ["Reference", report.reference],
+    ["Classification", cls],
+  ];
+  let mx = contentX;
+  for (const [label, value] of metaPairs) {
+    doc.fillColor(BRAND.textSubtle).font(F.metaLabel.name).fontSize(F.metaLabel.size)
+       .text(toAnsiSafe(label), mx, y, { lineBreak: false, continued: false });
+    const lw = doc.widthOfString(toAnsiSafe(label), { font: F.metaLabel.name, fontSize: F.metaLabel.size });
+    doc.fillColor(BRAND.textMuted).font(F.meta.name).fontSize(F.meta.size)
+       .text(toAnsiSafe("  " + value), mx + lw, y, { lineBreak: false });
+    mx += lw + doc.widthOfString(toAnsiSafe("  " + value), { font: F.meta.name, fontSize: F.meta.size }) + 20;
+  }
+  y = doc.y + 10;
+
+  // Gilt divider
   doc.save();
-  doc.rect(contentX, y, contentW, 1.2).fill(BRAND.gilt);
+  doc.rect(contentX, y, contentW, 1.5).fill(BRAND.gilt);
   doc.restore();
-  return y + 14;
+  return y + 16;
 }
 
+/* ── KPI summary cards — dark glass panels ────────────────────────── */
 function drawSummary(ctx: DocCtx, summary: SummaryItem[], startY: number): number {
   const { doc, contentX, contentW } = ctx;
   const cols = Math.min(4, summary.length);
-  const cardW = contentW / cols;
-  const cardH = 46;
+  const gap = 6;
+  const cardW = (contentW - (cols - 1) * gap) / cols;
+  const cardH = 52;
   const rows = Math.ceil(summary.length / cols);
-  let y = ensureRoom(ctx, rows * (cardH + 4) + 12, startY);
-  // After ensureRoom we may be on a new page; align the summary block
-  // to that new top instead of startY.
+  let y = ensureRoom(ctx, rows * (cardH + gap) + 12, startY);
   const blockTop = y;
+
   for (let i = 0; i < summary.length; i++) {
     const k = summary[i];
     const cIdx = i % cols;
     const rIdx = Math.floor(i / cols);
-    const x = contentX + cIdx * cardW;
-    const yy = blockTop + rIdx * (cardH + 4);
+    const x = contentX + cIdx * (cardW + gap);
+    const yy = blockTop + rIdx * (cardH + gap);
+
     doc.save();
-    doc.rect(x + 2, yy, cardW - 4, cardH).fill(BRAND.royalSoft);
-    doc.rect(x + 2, yy, 2.5, cardH).fill(BRAND.gilt);
+    // Glass panel card
+    doc.rect(x, yy, cardW, cardH).fill(BRAND.panel);
+    // Gilt left accent
+    doc.rect(x, yy, 3, cardH).fill(BRAND.gilt);
+    // Subtle top highlight
+    doc.rect(x + 3, yy, cardW - 3, 0.5).fill(BRAND.surface);
     doc.restore();
-    doc.fillColor(BRAND.inkMuted).font(F.kpiLabel.name).fontSize(F.kpiLabel.size)
-       .text(toAnsiSafe(k.label.toUpperCase()), x + 10, yy + 6, { width: cardW - 14, lineBreak: false });
-    const tone = k.tone === "good" ? BRAND.yes : k.tone === "bad" ? BRAND.no : BRAND.royalDeep;
+
+    doc.fillColor(BRAND.textSubtle).font(F.kpiLabel.name).fontSize(F.kpiLabel.size)
+       .text(toAnsiSafe(k.label.toUpperCase()), x + 12, yy + 8, { width: cardW - 20, lineBreak: false });
+
+    const tone = k.tone === "good" ? BRAND.yes : k.tone === "bad" ? BRAND.no : BRAND.gilt;
     doc.fillColor(tone).font(F.kpiValue.name).fontSize(F.kpiValue.size)
-       .text(toAnsiSafe(k.value), x + 10, yy + 18, { width: cardW - 14, lineBreak: false });
+       .text(toAnsiSafe(k.value), x + 12, yy + 20, { width: cardW - 20, lineBreak: false });
+
     if (k.delta) {
-      doc.fillColor(BRAND.inkSubtle).font(F.kpiDelta.name).fontSize(F.kpiDelta.size)
-         .text(toAnsiSafe(k.delta), x + 10, yy + 34, { width: cardW - 14, lineBreak: false });
+      doc.fillColor(BRAND.textFaint).font(F.kpiDelta.name).fontSize(F.kpiDelta.size)
+         .text(toAnsiSafe(k.delta), x + 12, yy + 39, { width: cardW - 20, lineBreak: false });
     }
   }
-  return blockTop + rows * (cardH + 4) + 8;
+  return blockTop + rows * (cardH + gap) + 10;
 }
 
 function ensureRoom(ctx: DocCtx, needed: number, y: number): number {
@@ -192,14 +222,17 @@ function renderCellText(raw: string | number | null | undefined, format?: Column
   return toAnsiSafe(String(raw));
 }
 
+/* ── Table header — deep royal bar with gilt underline ────────────── */
 function drawTableHeader(ctx: DocCtx, sec: Section, colW: number[], y: number, continuation = false): number {
   const { doc, contentX, contentW } = ctx;
   const hasSub = sec.columns.some((c) => c.sub);
   const headerH = hasSub ? 28 : 22;
+
   doc.save();
   doc.rect(contentX, y, contentW, headerH).fill(BRAND.royal);
-  doc.rect(contentX, y + headerH - 1.2, contentW, 1.2).fill(BRAND.gilt);
+  doc.rect(contentX, y + headerH - 1.5, contentW, 1.5).fill(BRAND.gilt);
   doc.restore();
+
   let xC = contentX;
   for (let i = 0; i < sec.columns.length; i++) {
     const c = sec.columns[i];
@@ -207,36 +240,41 @@ function drawTableHeader(ctx: DocCtx, sec: Section, colW: number[], y: number, c
     doc.fillColor(BRAND.white).font(F.th.name).fontSize(F.th.size)
        .text(toAnsiSafe(c.header), xC + 8, headerY, { width: colW[i] - 16, align: c.align ?? "left", lineBreak: false, ellipsis: true });
     if (c.sub) {
-      doc.fillColor(BRAND.giltSoft).font(F.thSub.name).fontSize(F.thSub.size)
-         .text(toAnsiSafe(c.sub), xC + 8, y + 16, { width: colW[i] - 16, align: c.align ?? "left", lineBreak: false, ellipsis: true });
+      doc.fillColor(BRAND.giltBright).font(F.thSub.name).fontSize(F.thSub.size)
+         .text(toAnsiSafe(c.sub), xC + 8, y + 17, { width: colW[i] - 16, align: c.align ?? "left", lineBreak: false, ellipsis: true });
     }
     xC += colW[i];
   }
-  // "continued" marker on re-drawn headers so the auditor can see the
-  // row count didn't reset between pages.
+
   if (continuation) {
-    doc.fillColor(BRAND.giltSoft).font(F.thSub.name).fontSize(F.thSub.size - 0.5)
+    doc.fillColor(BRAND.giltBright).font(F.thSub.name).fontSize(F.thSub.size)
        .text("· continued", contentX + contentW - 60, y + headerH + 2, { width: 60, align: "right", lineBreak: false });
   }
   return y + headerH;
 }
 
+/* ── Table section — full dark glass treatment ────────────────────── */
 function drawSection(ctx: DocCtx, sec: Section, startY: number): number {
   const { doc, contentX, contentW } = ctx;
   let y = ensureRoom(ctx, 80, startY);
 
-  doc.fillColor(BRAND.royalDeep).font(F.sectionTitle.name).fontSize(F.sectionTitle.size)
-     .text(toAnsiSafe(sec.title), contentX, y, { width: contentW, lineBreak: false });
-  y += 15;
+  // Section title with gilt accent
+  doc.save();
+  doc.rect(contentX, y + 1, 3, 13).fill(BRAND.gilt);
+  doc.restore();
+  doc.fillColor(BRAND.pearl).font(F.sectionTitle.name).fontSize(F.sectionTitle.size)
+     .text(toAnsiSafe(sec.title), contentX + 10, y, { width: contentW - 10, lineBreak: false });
+  y += 16;
+
   if (sec.titleSw) {
-    doc.fillColor(BRAND.inkSubtle).font(F.subtitle.name).fontSize(F.sectionDesc.size + 0.5)
-       .text(toAnsiSafe(sec.titleSw), contentX, y, { width: contentW, lineBreak: false });
+    doc.fillColor(BRAND.textSubtle).font(F.sectionDesc.name).fontSize(F.sectionDesc.size)
+       .text(toAnsiSafe(sec.titleSw), contentX + 10, y, { width: contentW - 10, lineBreak: false });
     y += 12;
   }
   if (sec.description) {
-    doc.fillColor(BRAND.inkSubtle).font(F.sectionDesc.name).fontSize(F.sectionDesc.size)
+    doc.fillColor(BRAND.textMuted).font(F.sectionDesc.name).fontSize(F.sectionDesc.size)
        .text(toAnsiSafe(sec.description), contentX, y, { width: contentW });
-    y = doc.y + 5;
+    y = doc.y + 6;
   }
 
   const colW = computeColWidths(sec.columns, contentW);
@@ -250,38 +288,38 @@ function drawSection(ctx: DocCtx, sec: Section, startY: number): number {
   if (sec.rows.length === 0) {
     y = ensureRoom(ctx, rowH + 4, y);
     doc.save();
-    doc.rect(contentX, y, contentW, rowH).fill(BRAND.royalSoft);
+    doc.rect(contentX, y, contentW, rowH).fill(BRAND.panel);
     doc.restore();
-    doc.fillColor(BRAND.inkSubtle).font(F.empty.name).fontSize(F.empty.size)
+    doc.fillColor(BRAND.textSubtle).font(F.empty.name).fontSize(F.empty.size)
        .text("No data in this period  ·  Hakuna data katika kipindi hiki",
              contentX, y + 6, { width: contentW, align: "center", lineBreak: false });
     y += rowH;
   } else {
     for (let ri = 0; ri < sec.rows.length; ri++) {
-      // If this row would overflow the page, start a new page AND re-draw
-      // the table header on the new page so the auditor can still read
-      // column labels. Without this the continuation page lists naked
-      // rows with no context.
       if (y + rowH + 4 > ctx.contentBottomY) {
         y = addContentPage(ctx);
         y = drawTableHeader(ctx, sec, colW, y, true);
       }
-      if (ri % 2 === 1) {
-        doc.save();
-        doc.rect(contentX, y, contentW, rowH).fill(BRAND.royalSoft);
-        doc.restore();
-      }
+
+      // Alternating dark rows
       doc.save();
-      doc.lineWidth(0.3).strokeColor(BRAND.ruleSubtle)
+      if (ri % 2 === 0) {
+        doc.rect(contentX, y, contentW, rowH).fill(BRAND.panel);
+      } else {
+        doc.rect(contentX, y, contentW, rowH).fill(BRAND.panelAlt);
+      }
+      // Subtle bottom border
+      doc.lineWidth(0.3).strokeColor(BRAND.border)
          .moveTo(contentX, y + rowH).lineTo(contentX + contentW, y + rowH).stroke();
       doc.restore();
+
       const r = sec.rows[ri];
       let xc = contentX;
       for (let i = 0; i < sec.columns.length; i++) {
         const c = sec.columns[i];
         const text = renderCellText(r[c.key], c.format);
         const isNum = c.format === "tzs" || c.format === "integer" || c.format === "percent";
-        doc.fillColor(BRAND.ink).font(isNum ? F.tdNum.name : F.td.name).fontSize(F.td.size)
+        doc.fillColor(BRAND.pearl).font(isNum ? F.tdNum.name : F.td.name).fontSize(F.td.size)
            .text(text, xc + 8, y + 6, { width: colW[i] - 16, align: c.align ?? (isNum ? "right" : "left"), lineBreak: false, ellipsis: true });
         xc += colW[i];
       }
@@ -289,12 +327,13 @@ function drawSection(ctx: DocCtx, sec: Section, startY: number): number {
     }
   }
 
+  // Totals row — gilt-accented
   if (sec.totals) {
     y = ensureRoom(ctx, rowH + 8, y);
     doc.save();
-    doc.rect(contentX, y, contentW, rowH + 2).fill(BRAND.giltSoft);
-    doc.rect(contentX, y, contentW, 1).fill(BRAND.gilt);
-    doc.rect(contentX, y + rowH + 1, contentW, 1).fill(BRAND.gilt);
+    doc.rect(contentX, y, contentW, rowH + 2).fill(BRAND.giltDark);
+    doc.rect(contentX, y, contentW, 1.5).fill(BRAND.gilt);
+    doc.rect(contentX, y + rowH + 0.5, contentW, 1.5).fill(BRAND.gilt);
     doc.restore();
     let xc = contentX;
     for (let i = 0; i < sec.columns.length; i++) {
@@ -304,80 +343,89 @@ function drawSection(ctx: DocCtx, sec: Section, startY: number): number {
       if (v !== undefined && v !== null) text = renderCellText(v, c.format);
       else if (i === 0) text = "Total";
       const isNum = c.format === "tzs" || c.format === "integer" || c.format === "percent";
-      doc.fillColor(BRAND.giltFg).font(isNum ? F.totalNum.name : F.total.name).fontSize(F.total.size)
+      doc.fillColor(BRAND.giltBright).font(isNum ? F.totalNum.name : F.total.name).fontSize(F.total.size)
          .text(text, xc + 8, y + 6, { width: colW[i] - 16, align: c.align ?? (isNum ? "right" : "left"), lineBreak: false, ellipsis: true });
       xc += colW[i];
     }
     y += rowH + 4;
   }
 
-  return y + 10;
+  return y + 12;
 }
 
+/* ── Notes block ──────────────────────────────────────────────────── */
 function drawNotes(ctx: DocCtx, notes: string[], startY: number): number {
   const { doc, contentX, contentW } = ctx;
   let y = ensureRoom(ctx, 30 + notes.length * 12, startY);
-  doc.fillColor(BRAND.royalDeep).font(F.notesTitle.name).fontSize(F.notesTitle.size)
-     .text("Notes & methodology", contentX, y, { lineBreak: false });
-  doc.fillColor(BRAND.inkSubtle).font(F.subtitle.name).fontSize(F.notes.size + 0.5)
-     .text(toAnsiSafe("  ·  Maelezo na mbinu"), contentX + 130, y + 2, { lineBreak: false });
-  y += 14;
+
+  doc.save();
+  doc.rect(contentX, y + 1, 3, 12).fill(BRAND.gilt);
+  doc.restore();
+  doc.fillColor(BRAND.pearl).font(F.notesTitle.name).fontSize(F.notesTitle.size)
+     .text("Notes & methodology", contentX + 10, y, { lineBreak: false });
+  doc.fillColor(BRAND.textSubtle).font(F.sectionDesc.name).fontSize(F.notes.size)
+     .text(toAnsiSafe("  ·  Maelezo na mbinu"), contentX + 10 + 130, y + 2, { lineBreak: false });
+  y += 16;
+
   for (const n of notes) {
     y = ensureRoom(ctx, 14, y);
-    doc.fillColor(BRAND.inkSubtle).font(F.notes.name).fontSize(F.notes.size)
+    doc.fillColor(BRAND.textMuted).font(F.notes.name).fontSize(F.notes.size)
        .text(toAnsiSafe("·  " + n), contentX, y, { width: contentW });
-    y = doc.y + 2;
+    y = doc.y + 3;
   }
   return y;
 }
 
-/** Signature block — renders at the end of regulator hand-off reports.
- *  Each row gets a role label, a name, and an explicit signature/date
- *  line so the auditor has a clean attestation panel to stamp. */
+/* ── Signature / attestation block ────────────────────────────────── */
 function drawSignatures(ctx: DocCtx, sigs: SignatureRow[], startY: number): number {
   const { doc, contentX, contentW } = ctx;
-  const blockH = 56;
-  // Reserve room for the panel + title; if we can't fit it, push to a
-  // fresh page so the attestations aren't visually severed from their
-  // labels at the top of one page and the line on the next.
+  const blockH = 60;
   let y = ensureRoom(ctx, blockH + 30, startY + 8);
-  doc.fillColor(BRAND.royalDeep).font(F.notesTitle.name).fontSize(F.notesTitle.size)
-     .text("Attestation", contentX, y, { lineBreak: false });
-  doc.fillColor(BRAND.inkSubtle).font(F.subtitle.name).fontSize(F.notes.size + 0.5)
-     .text(toAnsiSafe("  ·  Uthibitisho"), contentX + 75, y + 2, { lineBreak: false });
-  y += 16;
 
+  doc.save();
+  doc.rect(contentX, y + 1, 3, 12).fill(BRAND.gilt);
+  doc.restore();
+  doc.fillColor(BRAND.pearl).font(F.notesTitle.name).fontSize(F.notesTitle.size)
+     .text("Attestation", contentX + 10, y, { lineBreak: false });
+  doc.fillColor(BRAND.textSubtle).font(F.sectionDesc.name).fontSize(F.notes.size)
+     .text(toAnsiSafe("  ·  Uthibitisho"), contentX + 10 + 75, y + 2, { lineBreak: false });
+  y += 18;
+
+  const gap = 6;
   const cols = sigs.length;
-  const cellW = contentW / cols;
+  const cellW = (contentW - (cols - 1) * gap) / cols;
+
   for (let i = 0; i < sigs.length; i++) {
     const s = sigs[i];
-    const x = contentX + i * cellW;
-    // Light card background — same royalSoft used by alternating rows.
+    const x = contentX + i * (cellW + gap);
+
     doc.save();
-    doc.rect(x + 2, y, cellW - 4, blockH).fill(BRAND.royalSoft);
-    doc.rect(x + 2, y, 2.5, blockH).fill(BRAND.gilt);
+    doc.rect(x, y, cellW, blockH).fill(BRAND.panel);
+    doc.rect(x, y, 3, blockH).fill(BRAND.gilt);
     doc.restore();
-    doc.fillColor(BRAND.inkMuted).font(F.kpiLabel.name).fontSize(F.kpiLabel.size)
-       .text(toAnsiSafe(s.role.toUpperCase()), x + 10, y + 6, { width: cellW - 14, lineBreak: false });
-    doc.fillColor(BRAND.royalDeep).font(F.sectionTitle.name).fontSize(F.sectionTitle.size - 1)
-       .text(toAnsiSafe(s.name), x + 10, y + 18, { width: cellW - 14, lineBreak: false, ellipsis: true });
+
+    doc.fillColor(BRAND.textSubtle).font(F.kpiLabel.name).fontSize(F.kpiLabel.size)
+       .text(toAnsiSafe(s.role.toUpperCase()), x + 12, y + 8, { width: cellW - 20, lineBreak: false });
+    doc.fillColor(BRAND.pearl).font(F.sectionTitle.name).fontSize(F.sectionTitle.size - 2)
+       .text(toAnsiSafe(s.name), x + 12, y + 20, { width: cellW - 20, lineBreak: false, ellipsis: true });
     if (s.id) {
-      doc.fillColor(BRAND.inkSubtle).font(F.meta.name).fontSize(F.meta.size)
-         .text(toAnsiSafe(s.id), x + 10, y + 32, { width: cellW - 14, lineBreak: false, ellipsis: true });
+      doc.fillColor(BRAND.textFaint).font(F.meta.name).fontSize(F.meta.size)
+         .text(toAnsiSafe(s.id), x + 12, y + 34, { width: cellW - 20, lineBreak: false, ellipsis: true });
     }
-    // Signature line — a thin gilt rule + "Signature" / "Date" labels
+
     const lineY = y + blockH - 14;
     doc.save();
     doc.lineWidth(0.4).strokeColor(BRAND.gilt)
-       .moveTo(x + 10, lineY).lineTo(x + cellW - 12, lineY).stroke();
+       .moveTo(x + 12, lineY).lineTo(x + cellW - 12, lineY).stroke();
     doc.restore();
-    doc.fillColor(BRAND.inkSubtle).font(F.footer.name).fontSize(F.footer.size)
+    doc.fillColor(BRAND.textSubtle).font(F.footer.name).fontSize(F.footer.size)
        .text(toAnsiSafe(s.signedAt ? `Signed ${fmtDate(s.signedAt)}` : "Signature & date"),
-             x + 10, lineY + 2, { width: cellW - 22, lineBreak: false });
+             x + 12, lineY + 3, { width: cellW - 24, lineBreak: false });
   }
-  return y + blockH + 8;
+  return y + blockH + 10;
 }
 
+/* ── Main render entry point ──────────────────────────────────────── */
 export async function renderPdf(report: Report): Promise<Buffer> {
   return new Promise<Buffer>((resolve, reject) => {
     try {
@@ -402,16 +450,18 @@ export async function renderPdf(report: Report): Promise<Buffer> {
       const pageH = doc.page.height;
       const ctx: DocCtx = {
         doc, pageW, pageH,
-        contentX: 32,
-        contentW: pageW - 64,
+        contentX: PAD,
+        contentW: pageW - PAD * 2,
         contentBottomY: pageH - CONTENT_BOTTOM_INSET - FOOTER_H,
         reference: report.reference,
         classification: report.meta.classification ?? "Internal",
         generatedAt: report.meta.generatedAt,
       };
 
+      // First page — dark background
+      drawPageBg(ctx);
       doc.y = CONTENT_TOP;
-      doc.x = 32;
+      doc.x = PAD;
 
       let y = drawHeader(ctx, report);
       if (report.summary && report.summary.length > 0) {
@@ -427,6 +477,7 @@ export async function renderPdf(report: Report): Promise<Buffer> {
         y = drawSignatures(ctx, report.signatures, y + 4);
       }
 
+      // Draw band + footer on every page
       const range = doc.bufferedPageRange();
       const totalPages = range.count;
       for (let i = 0; i < totalPages; i++) {

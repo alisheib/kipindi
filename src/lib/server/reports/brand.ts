@@ -2,81 +2,78 @@
  * Reporting brand foundations — shared between XLSX and PDF renderers
  * so every report file leaving the platform reads as one product.
  *
- * Pulled straight from the kit:
- *   · Royal indigo (hue 268) — header bands, branded crests
- *   · Gilt (hue 86)          — accent rules, primary highlights
- *   · Claret (hue 22)        — warnings, danger highlights
- *   · YES green / NO red     — outcome-coded values
+ * Dark Glass Kit (June 2026): the PDF now mirrors the on-screen dark
+ * glass aesthetic — deep royal canvas, pearl text, gilt accents, glass
+ * panel cards. The regulator sees the same brand whether they open the
+ * file or the website.
  *
  * OKLCH is the source of truth in the product CSS; here we ship hex
  * equivalents because Excel + pdfkit don't speak OKLCH. The values
- * below were sampled from the live design tokens and are within
- * ΔE < 2 of the on-screen kit — close enough that a regulator
- * sees the same brand whether they open the file or the website.
+ * below were sampled from the live design tokens.
  */
 
 export const BRAND = {
-  // Hex sampled from --royal-* / --gilt-* / --claret-* / --yes-* / --no-*
-  royal: "#1F2A6E",          // header band fill
-  royalDeep: "#0F1648",      // cover band fill
-  royalSoft: "#E7E9F4",      // alt-row tint
-  pearl: "#FAFBFD",          // background
-  ink: "#101831",            // body text
-  inkMuted: "#4A5374",       // table secondary text
-  inkSubtle: "#7D86A3",      // metadata text
-  rule: "#D6DAEB",           // table borders
-  ruleSubtle: "#EBEEF7",     // alt-row borders
-  gilt: "#C39A2A",           // accent rule + heading underline
-  giltSoft: "#F4E5B4",       // pill backgrounds
-  giltFg: "#3D2E0A",         // text-on-gilt
-  claret: "#A02437",         // danger badges
+  // ── Dark Glass Canvas ──
+  canvas:     "#0D1035",      // page background — deep midnight indigo
+  panel:      "#161A48",      // card / KPI background — elevated surface
+  panelAlt:   "#1C2158",      // alternating table row
+  surface:    "#222868",      // hover / focus surface
+
+  // ── Royal ramp ──
+  royal:      "#1F2A6E",      // header band fill
+  royalDeep:  "#0F1648",      // cover band fill / section titles
+  royalSoft:  "#E7E9F4",      // light-mode fallback (XLSX only)
+
+  // ── Text on dark ──
+  pearl:      "#F0F1F8",      // primary text (bright pearl)
+  textMuted:  "#A8ADCC",      // secondary text
+  textSubtle: "#6B72A0",      // metadata / tertiary
+  textFaint:  "#4A5080",      // very subtle labels
+
+  // ── Ink (light-mode only, kept for XLSX) ──
+  ink:        "#101831",
+  inkMuted:   "#4A5374",
+  inkSubtle:  "#7D86A3",
+
+  // ── Borders & rules ──
+  border:     "#2A3070",      // table borders on dark
+  borderSubtle: "#1E2455",    // subtle dividers
+  rule:       "#D6DAEB",      // light-mode rule (XLSX)
+  ruleSubtle: "#EBEEF7",
+
+  // ── Gilt accent ──
+  gilt:       "#C39A2A",      // accent rule + heading underline
+  giltSoft:   "#F4E5B4",      // gilt tint on light bg (XLSX totals row)
+  giltDark:   "#3D350E",      // gilt tint on dark bg (PDF totals row)
+  giltBright: "#F4E5B4",      // gilt text on dark
+  giltFg:     "#3D2E0A",      // text-on-gilt (light-mode XLSX)
+
+  // ── Semantic ──
+  claret:     "#A02437",
   claretSoft: "#F7E4E8",
-  yes: "#2C8C5E",            // YES-coded values
-  yesSoft: "#E0F0E7",
-  no: "#B33845",             // NO-coded values
-  noSoft: "#F8E1E4",
-  white: "#FFFFFF",
-  black: "#000000",
+  yes:        "#2C8C5E",
+  yesSoft:    "#E0F0E7",
+  no:         "#B33845",
+  noSoft:     "#F8E1E4",
+
+  white:      "#FFFFFF",
+  black:      "#000000",
 } as const;
 
 export const FONTS = {
-  // PDFKit ships Helvetica by default; we lean into it for portability.
-  // The kit uses Sora / Inter / JetBrains Mono on screen — those don't
-  // render reliably across every regulator's PDF reader, so Helvetica
-  // gives a clean enterprise look that still pairs with the brand.
   display: "Helvetica-Bold",
   body: "Helvetica",
   mono: "Courier",
 } as const;
 
-/** Company-wide identity strings — single source of truth for both
- *  formats and every report. Don't hardcode these elsewhere. */
 export const COMPANY = {
   name: "50pick Africa",
   tagline: "Predict events. Not chance.",
   tld: "50pick.tz",
   jurisdiction: "Tanzania · Licensed by the Gaming Board of Tanzania (Pending)",
   email: "compliance@50pick.tz",
-  // Centred svg-text fallback that PDFKit can render as a path — used
-  // when no PNG logo is available. The product also has a real
-  // FiftyMark SVG; reports use the simpler crest below for fidelity
-  // at small print sizes.
 } as const;
 
-/**
- * Mini brand crest, drawn directly into PDFs via pdfkit primitives.
- * The full FiftyMark SVG uses oklch fills that pdfkit can't parse —
- * this is the simplified two-colour mark (green left half, claret
- * right half, gilt diagonal, royal ring) that renders crisp at any
- * size in any reader. Drawn at the supplied (x, y) with the supplied
- * radius.
- *
- *   import PDFDocument from "pdfkit";
- *   const doc = new PDFDocument();
- *   drawCrest(doc, 40, 40, 14);
- *
- * Keeps every report visually identical to the on-screen branding.
- */
 type AnyDoc = {
   save(): AnyDoc;
   restore(): AnyDoc;
@@ -92,31 +89,17 @@ type AnyDoc = {
   clip(): AnyDoc;
 };
 
-/**
- * Kit-faithful 50pick crest, drawn with pdfkit clipping primitives.
- * Visual: a clean half-and-half disc (emerald left, claret right) with
- * a gilt diagonal stroke and a thin royal ring. The first version of
- * this used a thick royal stroke as a "ring eraser" — that produced
- * a giant blue donut hiding the crest. The clip-path approach is the
- * correct way to render a half-and-half circle in pdfkit.
- */
 export function drawCrest(doc: AnyDoc, x: number, y: number, r: number): void {
-  // Clip subsequent rectangles to a circle. Anything drawn inside
-  // this save/restore block is masked to the disc.
   doc.save();
   doc.circle(x, y, r).clip();
-  // Left half — emerald
   doc.fillColor(BRAND.yes).rect(x - r, y - r, r, 2 * r).fill();
-  // Right half — claret
   doc.fillColor("#B7263A").rect(x, y - r, r, 2 * r).fill();
   doc.restore();
-  // Gilt diagonal across the full diameter
   doc.save();
   doc.lineWidth(Math.max(0.5, r * 0.10));
   doc.strokeColor(BRAND.gilt);
   doc.moveTo(x - r * 0.94, y - r * 0.34).lineTo(x + r * 0.94, y + r * 0.34).stroke();
   doc.restore();
-  // Thin royal outline for crispness
   doc.save();
   doc.lineWidth(Math.max(0.5, r * 0.10));
   doc.strokeColor(BRAND.royalDeep);
@@ -124,13 +107,6 @@ export function drawCrest(doc: AnyDoc, x: number, y: number, r: number): void {
   doc.restore();
 }
 
-/**
- * pdfkit's built-in fonts use WinAnsi encoding, which doesn't include
- * the Unicode arrow (→), em-dash (—), or en-dash (–). Those render as
- * stray glyphs like `!'` or `"`. This helper substitutes ASCII /
- * WinAnsi-safe equivalents before text() is called. Used by every
- * pdf.ts text() that takes string content from the catalogue.
- */
 export function toAnsiSafe(s: string): string {
   return s
     .replace(/→/g, "->")
@@ -138,15 +114,13 @@ export function toAnsiSafe(s: string): string {
     .replace(/—/g, " - ")
     .replace(/–/g, "-")
     .replace(/−/g, "-")
-    .replace(/’/g, "'")
-    .replace(/‘/g, "'")
-    .replace(/“/g, '"')
-    .replace(/”/g, '"')
+    .replace(/'/g, "'")
+    .replace(/'/g, "'")
+    .replace(/"/g, '"')
+    .replace(/"/g, '"')
     .replace(/…/g, "...");
 }
 
-/** TZS formatter — locale-aware, tabular numerals, no symbol (we add
- *  "TZS" as a header label instead, the standard regulator format). */
 export function fmtTzs(n: number): string {
   return Math.round(n).toLocaleString("en-US");
 }
@@ -155,14 +129,16 @@ export function fmtDate(iso: string | Date | null | undefined): string {
   if (!iso) return "";
   const d = typeof iso === "string" ? new Date(iso) : iso;
   if (isNaN(d.getTime())) return "";
-  return d.toISOString().slice(0, 10);
+  const day = d.getUTCDate();
+  const mon = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getUTCMonth()];
+  const yr = d.getUTCFullYear();
+  return `${day} ${mon} ${yr}`;
 }
 
 export function fmtDateTime(iso: string | Date | null | undefined): string {
   if (!iso) return "";
   const d = typeof iso === "string" ? new Date(iso) : iso;
   if (isNaN(d.getTime())) return "";
-  // Human-readable: "11 Jun 2026, 12:25 UTC"
   const day = d.getUTCDate();
   const mon = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getUTCMonth()];
   const yr = d.getUTCFullYear();
@@ -171,16 +147,13 @@ export function fmtDateTime(iso: string | Date | null | undefined): string {
   return `${day} ${mon} ${yr}, ${hh}:${mm} UTC`;
 }
 
-/** Build a professional filename — slug-friendly, dated, format-suffixed.
- *
- *   reportFilename("Daily Finance Reconciliation", "xlsx")
- *     → "50pick-daily-finance-reconciliation-2026-05-11.xlsx"
- */
 export function reportFilename(title: string, ext: "xlsx" | "pdf"): string {
   const slug = title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 80);
-  return `50pick-${slug}-${fmtDate(new Date())}.${ext}`;
+  const d = new Date();
+  const ds = d.toISOString().slice(0, 10);
+  return `50pick-${slug}-${ds}.${ext}`;
 }
