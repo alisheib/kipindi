@@ -9,6 +9,16 @@ export const dynamic = "force-dynamic";
 
 const TEMPLATES = [
   {
+    id: "daily-ops",
+    title: "Daily operations report",
+    sw: "Ripoti ya kila siku",
+    body: "Total sales (stakes), number of tickets, GGR, TRA 10% withholding tax, GBT 5% levy, operator margin, hourly breakdown, deposits/withdrawals. One-page operational snapshot.",
+    formats: ["Excel", "PDF"],
+    cadence: "Daily",
+    severity: "medium",
+    target: "Internal · ops",
+  },
+  {
     id: "gbt-monthly",
     title: "Monthly report",
     sw: "Ripoti ya kila mwezi",

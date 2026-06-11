@@ -42,6 +42,14 @@ export type RateConfig = {
    *  by an admin) before they can place a stake. Setting this to a
    *  positive number turns 50pick into a free-trial sandbox. */
   starterBalanceTzs: number;
+  /** TRA withholding tax as a fraction of the operator's total commission.
+   *  E.g. 0.10 = 10% of the 9% commission goes to TRA.
+   *  This does NOT affect player payouts — it's deducted from the operator's take. */
+  traTaxOnCommissionRate: number;
+  /** GBT levy as a fraction of the operator's total commission.
+   *  E.g. 0.05 = 5% of the 9% commission goes to GBT.
+   *  This does NOT affect player payouts — it's deducted from the operator's take. */
+  gbtLevyOnCommissionRate: number;
 };
 
 export const DEFAULT_GLOBAL_CONFIG: RateConfig = {
@@ -57,6 +65,11 @@ export const DEFAULT_GLOBAL_CONFIG: RateConfig = {
   // without an upfront deposit. Admin can change this any time at
   // /admin/config — the production launch will lower this to 0.
   starterBalanceTzs: 100_000,
+  // Taxes on the operator's commission (total pool fee = tax + commission
+  // + reserve + aggregator = 9%). These come OUT of the operator's take,
+  // not from the player's payout.
+  traTaxOnCommissionRate: 0.10,   // 10% of commission → TRA
+  gbtLevyOnCommissionRate: 0.05,  // 5% of commission → GBT
 };
 
 declare global {
@@ -139,6 +152,16 @@ function validate(updates: Partial<RateConfig>): { ok: true } | { ok: false; rea
   if (updates.starterBalanceTzs !== undefined) {
     if (!Number.isFinite(updates.starterBalanceTzs) || updates.starterBalanceTzs < 0 || updates.starterBalanceTzs > 5_000_000) {
       return { ok: false, reason: "Starter balance must be 0-5,000,000 TZS." };
+    }
+  }
+  if (updates.traTaxOnCommissionRate !== undefined) {
+    if (Number.isNaN(updates.traTaxOnCommissionRate) || updates.traTaxOnCommissionRate < 0 || updates.traTaxOnCommissionRate > 0.50) {
+      return { ok: false, reason: "TRA tax on commission must be 0-50%." };
+    }
+  }
+  if (updates.gbtLevyOnCommissionRate !== undefined) {
+    if (Number.isNaN(updates.gbtLevyOnCommissionRate) || updates.gbtLevyOnCommissionRate < 0 || updates.gbtLevyOnCommissionRate > 0.50) {
+      return { ok: false, reason: "GBT levy on commission must be 0-50%." };
     }
   }
   return { ok: true };

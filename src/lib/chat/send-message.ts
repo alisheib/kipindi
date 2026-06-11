@@ -158,7 +158,7 @@ function stubReply(userText: string, lang: Lang): Reply {
       kind: "text_with_citations",
       lang,
       paragraphs: [
-        "Winnings settle after the market resolves and the {24-hour} public objection window closes. Once settled, winners share the losing pool minus a {9%} operator margin[1].",
+        "Winnings settle after the market resolves and the {24-hour} public objection window closes. Once settled, winners receive their money directly in their wallet[1].",
         "Withdrawals go to the M-Pesa number on your account and typically arrive within {60 seconds}. Daily cap is TZS {500,000} unless you've raised it in Profile → Account[2].",
       ],
       citations: [

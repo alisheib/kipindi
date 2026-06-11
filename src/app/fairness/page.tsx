@@ -56,7 +56,7 @@ export default async function FairnessPage() {
             second signature. The 24-hour objection window opens.
           </li>
           <li>
-            <strong className="text-text">Settlement</strong> — Winners share the losing pool minus the 9% operator margin.
+            <strong className="text-text">Settlement</strong> — Winners receive their money directly in their wallet.
             Payouts hit wallets the moment the second signature lands.
           </li>
         </ol>

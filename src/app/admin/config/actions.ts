@@ -52,6 +52,8 @@ export async function updateGlobalConfigAction(formData: FormData) {
   const max = parseInteger(String(formData.get("maxStake") ?? ""));
   const thin = parseRatio(String(formData.get("thinProfitRatio") ?? ""));
   const starter = parseInteger(String(formData.get("starterBalanceTzs") ?? ""));
+  const tra = parseRate(String(formData.get("traTaxOnCommissionRate") ?? ""));
+  const gbt = parseRate(String(formData.get("gbtLevyOnCommissionRate") ?? ""));
   if (t !== undefined) updates.taxRate = t;
   if (c !== undefined) updates.commissionRate = c;
   if (rv !== undefined) updates.reserveRate = rv;
@@ -60,6 +62,8 @@ export async function updateGlobalConfigAction(formData: FormData) {
   if (max !== undefined) updates.maxStake = max;
   if (thin !== undefined) updates.thinProfitRatio = thin;
   if (starter !== undefined) updates.starterBalanceTzs = starter;
+  if (tra !== undefined) updates.traTaxOnCommissionRate = tra;
+  if (gbt !== undefined) updates.gbtLevyOnCommissionRate = gbt;
   const r = await setGlobalConfig(updates, s.userId);
   revalidatePath("/admin/config");
   return r;

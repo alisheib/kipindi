@@ -7,7 +7,7 @@ export const metadata = { title: "Help · Msaada" };
 const FAQS: { q: string; a: string }[] = [
   {
     q: "How do price-competition markets work? · Soko la ushindani wa bei linafanyaje?",
-    a: "Stakes from every player on the same market join one pool — YES + NO together. After applying tax + commission (currently 9% combined), the net pool is paid out only to whichever side is correct, pro-rata to each correct stake's share of the winning side. The dial probability is implied by the current pool composition and updates with every new bet.",
+    a: "Stakes from every player on the same market join one pool — YES + NO together. After applying a small operator fee, the net pool is paid out only to whichever side is correct, pro-rata to each correct stake's share of the winning side. The dial probability is implied by the current pool composition and updates with every new bet.",
   },
   {
     q: "Will my odds change after I place? · Bei zinabadilika baada ya kuweka dau?",

@@ -16,6 +16,7 @@ import {
   providerSummary, depositsTotal, withdrawalsTotal,
   grossGamingRevenue, netGamingRevenue, kycFunnel, rgRosterCounts,
 } from "../analytics";
+import { getGlobalConfig } from "../market-config";
 import type { Report, SignatureRow } from "./types";
 
 /** Standard regulator attestation block — three roles applied at the foot
@@ -468,10 +469,165 @@ export async function buildIsoAudit(generatorId: string): Promise<Report> {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// 6 · DAILY OPERATIONS REPORT
+// ─────────────────────────────────────────────────────────────────────
+
+export async function buildDailyOps(generatorId: string): Promise<Report> {
+  const now = new Date();
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const dayEnd = dayStart + 24 * 3600_000;
+  const dateLabel = now.toISOString().slice(0, 10);
+
+  // All confirmed transactions today
+  const allTxns = await db.txn.listAll();
+  const todayTxns = allTxns.filter((t) => {
+    const at = new Date(t.createdAt).getTime();
+    return at >= dayStart && at < dayEnd && t.status === "CONFIRMED";
+  });
+
+  // --- Core metrics ---
+  const bets = todayTxns.filter((t) => t.type === "BET_PLACED");
+  const payouts = todayTxns.filter((t) => t.type === "BET_PAYOUT" || t.type === "CASHOUT");
+  const deposits = todayTxns.filter((t) => t.type === "DEPOSIT");
+  const withdrawals = todayTxns.filter((t) => t.type === "WITHDRAWAL");
+
+  const totalSales = bets.reduce((s, t) => s + Math.abs(t.amount), 0);
+  const ticketCount = bets.length;
+  const totalPayouts = payouts.reduce((s, t) => s + Math.abs(t.amount), 0);
+  const totalDeposits = deposits.reduce((s, t) => s + t.amount, 0);
+  const totalWithdrawals = withdrawals.reduce((s, t) => s + Math.abs(t.amount), 0);
+
+  // GGR = stakes - payouts (this is the operator's total commission from the pool)
+  const ggr = totalSales - totalPayouts;
+
+  // Tax computations — taxes come OUT of the operator's commission (GGR),
+  // not from the player pool. Rates are admin-editable in /admin/config.
+  const cfg = await getGlobalConfig();
+  const TRA_RATE = cfg.traTaxOnCommissionRate;   // default 10% of commission
+  const GBT_RATE = cfg.gbtLevyOnCommissionRate;  // default 5% of commission
+  const traTax = Math.max(0, ggr) * TRA_RATE;
+  const gbtLevy = Math.max(0, ggr) * GBT_RATE;
+  const marginPct = totalSales > 0 ? ((ggr / totalSales) * 100) : 0;
+
+  // Net after taxes = what the operator actually keeps
+  const netAfterTax = ggr - traTax - gbtLevy;
+
+  // --- Hourly breakdown ---
+  type HourRow = {
+    hour: string; sales: number; tickets: number; payouts: number;
+    deposits: number; withdrawals: number; ggr: number;
+  };
+  const hourlyRows: HourRow[] = [];
+  for (let h = 0; h < 24; h++) {
+    const hStart = dayStart + h * 3600_000;
+    const hEnd = hStart + 3600_000;
+    const hTxns = todayTxns.filter((t) => {
+      const at = new Date(t.createdAt).getTime();
+      return at >= hStart && at < hEnd;
+    });
+    const hBets = hTxns.filter((t) => t.type === "BET_PLACED");
+    const hPayouts = hTxns.filter((t) => t.type === "BET_PAYOUT" || t.type === "CASHOUT");
+    const hDep = hTxns.filter((t) => t.type === "DEPOSIT");
+    const hWd = hTxns.filter((t) => t.type === "WITHDRAWAL");
+    const hSales = hBets.reduce((s, t) => s + Math.abs(t.amount), 0);
+    const hPay = hPayouts.reduce((s, t) => s + Math.abs(t.amount), 0);
+    hourlyRows.push({
+      hour: `${String(h).padStart(2, "0")}:00`,
+      sales: hSales,
+      tickets: hBets.length,
+      payouts: hPay,
+      deposits: hDep.reduce((s, t) => s + t.amount, 0),
+      withdrawals: hWd.reduce((s, t) => s + Math.abs(t.amount), 0),
+      ggr: hSales - hPay,
+    });
+  }
+
+  // Unique players today
+  const uniquePlayers = new Set(bets.map((t) => t.userId)).size;
+
+  return {
+    title: "Daily Operations Report",
+    subtitle: dateLabel,
+    reference: makeReference("DAILY", generatorId),
+    meta: {
+      generatedAt: now.toISOString(),
+      generatedBy: generatorId,
+      period: dateLabel,
+      classification: "Internal",
+    },
+    summary: [
+      { label: "Total sales (TZS)", value: totalSales.toLocaleString("en-US"), tone: "good", delta: `${ticketCount} tickets` },
+      { label: "GGR (TZS)", value: ggr.toLocaleString("en-US"), tone: ggr >= 0 ? "good" : "bad" },
+      { label: "Margin", value: `${marginPct.toFixed(1)}%`, tone: marginPct >= 5 ? "good" : "bad" },
+      { label: `TRA ${(TRA_RATE * 100).toFixed(0)}% on commission`, value: Math.round(traTax).toLocaleString("en-US"), tone: "neutral" },
+      { label: `GBT ${(GBT_RATE * 100).toFixed(0)}% on commission`, value: Math.round(gbtLevy).toLocaleString("en-US"), tone: "neutral" },
+      { label: "Net after tax (TZS)", value: Math.round(netAfterTax).toLocaleString("en-US"), tone: netAfterTax >= 0 ? "good" : "bad" },
+    ],
+    sections: [
+      {
+        title: "Daily summary",
+        description: `Operations for ${dateLabel}. All amounts in TZS.`,
+        columns: [
+          { header: "Metric", key: "metric", width: 40 },
+          { header: "Value", sub: "TZS", key: "value", format: "tzs", align: "right", width: 25 },
+          { header: "Count", key: "count", format: "integer", align: "right", width: 15 },
+          { header: "Note", key: "note", width: 20 },
+        ],
+        rows: [
+          { metric: "Total sales (stakes placed)", value: totalSales, count: ticketCount, note: "Tickets" },
+          { metric: "Total payouts", value: totalPayouts, count: payouts.length, note: "" },
+          { metric: "Gross gaming revenue (GGR)", value: ggr, count: null, note: "Sales - Payouts" },
+          { metric: "Operator margin", value: null, count: null, note: `${marginPct.toFixed(1)}%` },
+          { metric: `TRA tax (${(TRA_RATE * 100).toFixed(0)}% of commission)`, value: Math.round(traTax), count: null, note: "On operator commission" },
+          { metric: `GBT levy (${(GBT_RATE * 100).toFixed(0)}% of commission)`, value: Math.round(gbtLevy), count: null, note: "On operator commission" },
+          { metric: "Net after tax", value: Math.round(netAfterTax), count: null, note: "GGR - TRA - GBT" },
+          { metric: "Deposits", value: totalDeposits, count: deposits.length, note: "" },
+          { metric: "Withdrawals", value: totalWithdrawals, count: withdrawals.length, note: "" },
+          { metric: "Unique players", value: null, count: uniquePlayers, note: "Placed at least 1 bet" },
+        ],
+      },
+      {
+        title: "Hourly breakdown",
+        titleSw: "Kwa saa",
+        description: "Sales, tickets, payouts, and GGR by hour of day.",
+        columns: [
+          { header: "Hour", key: "hour", width: 10 },
+          { header: "Sales", sub: "TZS", key: "sales", format: "tzs", align: "right", width: 15 },
+          { header: "Tickets", key: "tickets", format: "integer", align: "right", width: 10 },
+          { header: "Payouts", sub: "TZS", key: "payouts", format: "tzs", align: "right", width: 15 },
+          { header: "Deposits", sub: "TZS", key: "deposits", format: "tzs", align: "right", width: 15 },
+          { header: "Withdrawals", sub: "TZS", key: "withdrawals", format: "tzs", align: "right", width: 15 },
+          { header: "GGR", sub: "TZS", key: "ggr", format: "tzs", align: "right", width: 15 },
+        ],
+        rows: hourlyRows,
+        totals: {
+          hour: "Total",
+          sales: totalSales,
+          tickets: ticketCount,
+          payouts: totalPayouts,
+          deposits: totalDeposits,
+          withdrawals: totalWithdrawals,
+          ggr,
+        },
+      },
+    ],
+    notes: [
+      "GGR = total stakes placed − total payouts. This is the operator's commission from the pool.",
+      `TRA tax = ${(TRA_RATE * 100).toFixed(0)}% of operator commission (Income Tax Act, Cap 332).`,
+      `GBT levy = ${(GBT_RATE * 100).toFixed(0)}% of operator commission (Gaming Board of Tanzania licensing terms).`,
+      "Total tax = TRA + GBT, deducted from the operator's commission — does NOT affect player payouts.",
+      "Margin = GGR / total sales × 100.",
+      "All amounts in Tanzanian Shillings (TZS).",
+    ],
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // CATALOGUE (id → builder)
 // ─────────────────────────────────────────────────────────────────────
 
 export const REPORT_CATALOGUE = {
+  "daily-ops":   { name: "Daily Operations Report", build: buildDailyOps },
   "gbt-monthly": { name: "Monthly report", build: buildGbtMonthly },
   "tra-tax":     { name: "TRA Withholding Tax", build: buildTraTax },
   "fiu-sar":     { name: "FIU SAR",             build: buildFiuSar },

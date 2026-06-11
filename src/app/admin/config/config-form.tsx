@@ -35,6 +35,8 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
   const commPct = (config.commissionRate * 100).toFixed(1);
   const resPct = (config.reserveRate * 100).toFixed(1);
   const aggPct = (config.aggregatorRate * 100).toFixed(1);
+  const traPct = (config.traTaxOnCommissionRate * 100).toFixed(1);
+  const gbtPct = (config.gbtLevyOnCommissionRate * 100).toFixed(1);
 
   return (
     <form onSubmit={onSubmit} className="space-y-3">
@@ -88,6 +90,18 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
             defaultValue={config.starterBalanceTzs ?? 0}
             mono
           />
+        </Field>
+        <Field
+          label="TRA tax on commission (%)"
+          hint={`Current ${traPct}%. Percentage of the total commission paid to TRA. Does NOT affect player payouts.`}
+        >
+          <Input name="traTaxOnCommissionRate" type="number" step="0.1" min="0" max="50" defaultValue={traPct} mono />
+        </Field>
+        <Field
+          label="GBT levy on commission (%)"
+          hint={`Current ${gbtPct}%. Percentage of the total commission paid to GBT. Does NOT affect player payouts.`}
+        >
+          <Input name="gbtLevyOnCommissionRate" type="number" step="0.1" min="0" max="50" defaultValue={gbtPct} mono />
         </Field>
       </div>
       <div className="flex items-center gap-2 pt-1">

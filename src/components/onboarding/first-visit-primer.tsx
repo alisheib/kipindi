@@ -134,7 +134,7 @@ function VisualPools() {
         </div>
       </div>
       <p className="text-center font-mono text-[8px] uppercase tracking-[0.14em] text-text-subtle">
-        losers fund winners &middot; 9% operator margin
+        losers fund winners &middot; small operator margin
       </p>
     </div>
   );
@@ -172,7 +172,7 @@ const CARDS: Card[] = [
       sw: "Washindi wanagawana bwawa la wapotezao.",
     },
     body: {
-      en: "No fixed odds. The losing side's pool (minus 9% margin) is split among winners by the size of their stake. When one side grows, the other's potential payout grows too.",
+      en: "No fixed odds. The losing side's pool (minus a small margin) is split among winners by the size of their stake. When one side grows, the other's potential payout grows too.",
       sw: "Hakuna odds. Bwawa la upande uliopoteza linagawanywa kati ya washindi kulingana na dau. Upande mmoja ukikua, malipo ya upande mwingine yanaongezeka.",
     },
     visual: <VisualPools />,

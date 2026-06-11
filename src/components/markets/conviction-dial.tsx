@@ -829,16 +829,17 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
           {lock && (() => {
             const lx = lock === "YES" ? width / 2 : 0; // the locked-out half
             const cx = lx + width / 4;
+            const lockCy = trackY + trackH / 2; // vertically centred on track
             return (
               <g aria-hidden>
                 {/* dim the locked-out half */}
                 <rect x={lx} y={trackY - 7} width={width / 2} height={trackH + 14} rx={9}
                       fill="oklch(20% 0.006 240)" opacity="0.62" />
-                {/* padlock centred on the locked-out half, above the track */}
-                <g transform={`translate(${cx - 6}, ${trackY - 22})`} fill="none"
-                   stroke="var(--text-subtle)" strokeWidth="1.4" opacity="0.65">
-                  <rect x="0.5" y="5.5" width="11" height="8" rx="1.6" fill="var(--text-subtle)" fillOpacity="0.18" />
-                  <path d="M3 5.5 V4 a3 3 0 0 1 6 0 V5.5" />
+                {/* padlock centred on the locked-out half, ON the track (not above) */}
+                <g transform={`translate(${cx}, ${lockCy})`} fill="none"
+                   stroke="var(--text-subtle)" strokeWidth="1.2" opacity="0.55">
+                  <rect x="-4.5" y="-2.5" width="9" height="6.5" rx="1.4" fill="var(--text-subtle)" fillOpacity="0.18" />
+                  <path d="M-2.5 -2.5 V-4 a2.5 2.5 0 0 1 5 0 V-2.5" />
                 </g>
               </g>
             );

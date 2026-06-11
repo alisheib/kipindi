@@ -42,11 +42,13 @@ export default async function AdminConfigPage() {
       />
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* Snapshot KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
           <AdminKpi label="Tax rate"        sw="Kodi"        value={`${(config.taxRate * 100).toFixed(1)}%`} delta="TRA · Cap 332" />
           <AdminKpi label="Commission"      sw="Faida"       value={`${(config.commissionRate * 100).toFixed(1)}%`} delta="50pick" gold />
           <AdminKpi label="Reserve"         sw="Akiba"       value={`${(config.reserveRate * 100).toFixed(1)}%`} delta="house pool" gold />
-          <AdminKpi label="Total fee"       sw="Jumla"       value={`${(totalFee * 100).toFixed(1)}%`} delta="≤ 30% ceiling" />
+          <AdminKpi label="Total pool fee"  sw="Jumla"       value={`${(totalFee * 100).toFixed(1)}%`} delta="≤ 30% ceiling" />
+          <AdminKpi label="TRA on commission" sw="TRA"       value={`${(config.traTaxOnCommissionRate * 100).toFixed(0)}%`} delta="of operator take" />
+          <AdminKpi label="GBT on commission" sw="GBT"       value={`${(config.gbtLevyOnCommissionRate * 100).toFixed(0)}%`} delta="of operator take" />
         </div>
 
         {/* Pari-mutuel formula */}

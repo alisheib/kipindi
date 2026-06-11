@@ -101,7 +101,7 @@ export default async function LivePage() {
                 Every bar above is the live pool of stakes. Each new prediction <em>tips the bar</em> —
                 the needle leans toward the leading side and shimmers gold the moment a market resolves.
                 When you stake, you join a pool; if you&apos;re right, you share the losing pool minus a
-                9% operator margin. The math is in the open. <span className="italic text-text-subtle">Hesabu wazi kabisa.</span>
+                a small operator margin. The math is in the open. <span className="italic text-text-subtle">Hesabu wazi kabisa.</span>
               </p>
             </section>
 

@@ -242,9 +242,9 @@ export default async function LandingPage() {
           <TrustItem
             icon={<I.phone s={20} />}
             n="03"
-            en="Get paid via M-Pesa"
-            sw="Pata malipo kwa M-Pesa"
-            body="Winners share the losers&apos; pool minus a 9% margin. Withdrawals in seconds."
+            en="Get paid by simu"
+            sw="Pata malipo kwa simu"
+            body="Winners receive their money directly in their wallet. Withdrawals in seconds."
             tone="gold"
           />
         </div>
