@@ -173,6 +173,7 @@ export function SellButton({
           ] : undefined}
           primaryLabel={resultData.variant === "success" ? "Done · Sawa" : "Close"}
           onClose={() => setResultOpen(false)}
+          stripTone="gold"
         />
       )}
     </>

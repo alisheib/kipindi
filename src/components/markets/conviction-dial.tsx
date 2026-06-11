@@ -1212,6 +1212,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
           // time to read the payout block AND notice the bell
           // notification, so the two signals never feel out of sync.
           autoCloseMs={resultData.variant === "success" ? 10_000 : undefined}
+          stripTone={resultData.variant === "success" ? (resultData.side === "YES" ? "yes" : "no") : undefined}
         />
       )}
 

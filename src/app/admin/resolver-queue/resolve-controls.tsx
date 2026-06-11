@@ -129,6 +129,7 @@ export function ResolveControls({ marketId, stage }: { marketId: string; stage: 
           details={resultData.detail ? [{ label: "Detail", value: resultData.detail }] : undefined}
           primaryLabel="Done · Sawa"
           onClose={() => setResultOpen(false)}
+          stripTone="gold"
         />
       )}
     </>

@@ -64,6 +64,13 @@ type Props = {
    * exact same frame. No drift between visual countdown and timer.
    */
   autoCloseMs?: number;
+  /** Controls the auto-close progress strip gradient on success variants.
+   *  - "gold"  — earned money moments (payout, win, position sold)
+   *  - "brand" — administrative success (deposit, KYC, password, etc.)
+   *  - "yes"   — YES-side bet placed
+   *  - "no"    — NO-side bet placed
+   *  Defaults to "brand". Ignored for non-success variants. */
+  stripTone?: "gold" | "brand" | "yes" | "no";
 };
 
 const TONE: Record<OperationVariant, { fg: string; bg: string; brd: string; shadow: string; primaryBtn: string }> = {
@@ -89,10 +96,10 @@ const TONE: Record<OperationVariant, { fg: string; bg: string; brd: string; shad
     primaryBtn: "btn-gold",
   },
   info: {
-    fg: "oklch(78% 0.10 240)",
-    bg: "oklch(40% 0.10 240 / 0.18)",
-    brd: "oklch(48% 0.10 240)",
-    shadow: "0 0 0 6px oklch(48% 0.10 240 / 0.18)",
+    fg: "oklch(78% 0.10 268)",
+    bg: "oklch(40% 0.10 268 / 0.18)",
+    brd: "oklch(48% 0.10 268)",
+    shadow: "0 0 0 6px oklch(48% 0.10 268 / 0.18)",
     primaryBtn: "btn-primary",
   },
 };
@@ -105,10 +112,17 @@ function CrestIcon({ variant, color }: { variant: OperationVariant; color: strin
   return <span style={{ color }}>{glyph({ s: 36 })}</span>;
 }
 
+const STRIP_GRADIENTS: Record<string, string> = {
+  gold:  "linear-gradient(90deg, var(--gold-500), var(--gold-300))",
+  brand: "linear-gradient(90deg, var(--brand-600), var(--brand-400))",
+  yes:   "linear-gradient(90deg, var(--yes-700), var(--yes-400))",
+  no:    "linear-gradient(90deg, var(--no-700), var(--no-400))",
+};
+
 export function OperationResultModal({
   open, variant, eyebrow, title, subtitle, details, footnote,
   primaryLabel, secondaryLabel, onPrimary, onSecondary, onClose,
-  autoCloseMs,
+  autoCloseMs, stripTone = "brand",
 }: Props) {
   useModalLock(open);
   const [mounted, setMounted] = useState(false);
@@ -202,6 +216,13 @@ export function OperationResultModal({
   if (!mounted || !open) return null;
 
   const tone = TONE[variant];
+  // For success, override the primary button and crest tones based on stripTone.
+  // Gold = earned money (btn-gold), side = bet placed (btn-yes/btn-no),
+  // brand = administrative (btn-primary). Non-success variants keep their
+  // semantic defaults.
+  const effectiveBtn = variant === "success"
+    ? (stripTone === "gold" ? "btn-gold" : stripTone === "yes" ? "btn-yes" : stripTone === "no" ? "btn-no" : "btn-primary")
+    : tone.primaryBtn;
 
   return createPortal(
     <div
@@ -240,7 +261,7 @@ export function OperationResultModal({
               ref={stripRef}
               className="h-full w-full origin-left"
               style={{
-                background: "linear-gradient(90deg, var(--gold-500), var(--gold-300))",
+                background: STRIP_GRADIENTS[stripTone] ?? STRIP_GRADIENTS.brand,
                 transform: "scaleX(1)",
                 willChange: "transform",
               }}
@@ -323,7 +344,7 @@ export function OperationResultModal({
             <button
               type="button"
               onClick={() => { onPrimary?.(); onClose(); }}
-              className={`btn ${tone.primaryBtn} btn-lg w-full`}
+              className={`btn ${effectiveBtn} btn-lg w-full`}
               autoFocus
             >
               {primaryLabel ?? "Done · Sawa"}
