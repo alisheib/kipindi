@@ -7,7 +7,6 @@ import { TippingBar } from "@/components/brand";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { cn } from "@/lib/utils";
-import { QuickBetModal } from "./quick-bet-modal";
 
 type Props = {
   id: string;
@@ -149,8 +148,7 @@ export function MarketCard({
   const live = status === "LIVE";
   const isResolved = status === "RESOLVED";
   const CatIco = I[categoryGlyph(category)];
-  const [betSide, setBetSide] = useState<"YES" | "NO" | null>(null);
-  const go = (side: "YES" | "NO") => (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); setBetSide(side); };
+  const go = (side: "YES" | "NO") => (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); window.location.href = `/markets/${id}?side=${side}`; };
   const body = (
     <>
       {/* Kit signature — large faint category glyph watermark (brightens on hover). */}
@@ -238,19 +236,6 @@ export function MarketCard({
   return live ? (
     <article className={cn("mcardp group", className)} style={{ cursor: "default" }} aria-label={titleEn}>
       {body}
-      {betSide && (
-        <QuickBetModal
-          open
-          marketId={id}
-          marketTitle={titleEn}
-          side={betSide}
-          yesPct={yesPct}
-          volume={volume}
-          predictors={predictors}
-          timeLeft={timeLeft}
-          onClose={() => setBetSide(null)}
-        />
-      )}
     </article>
   ) : (
     <Link href={`/markets/${id}` as never} className={cn("mcardp group", className)}>
