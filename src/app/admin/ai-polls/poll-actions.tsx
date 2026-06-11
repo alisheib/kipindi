@@ -49,13 +49,17 @@ export function GenerateForm() {
       router.refresh();
       if (r.ok) {
         const state = r.poll.state;
-        if (state === "PENDING_REVIEW") {
-          toast({ title: "Poll generated", description: "Ready for review.", variant: "success" });
-        } else if (state === "FILTERED") {
-          toast({ title: "Poll filtered", description: `Quality too low: ${r.poll.filterReasons.join(", ")}`, variant: "warning" });
-        } else if (state === "VALIDATION_FAILED") {
-          toast({ title: "Generation failed", description: r.poll.filterReasons.join(", "), variant: "danger" });
-        }
+        // Defer toast until after the refresh lands so the poll is visible
+        // in the list before the toast announces it.
+        setTimeout(() => {
+          if (state === "PENDING_REVIEW") {
+            toast({ title: "Poll generated", description: "Ready for review.", variant: "success" });
+          } else if (state === "FILTERED") {
+            toast({ title: "Poll filtered", description: `Quality too low: ${r.poll.filterReasons.join(", ")}`, variant: "warning" });
+          } else if (state === "VALIDATION_FAILED") {
+            toast({ title: "Generation failed", description: r.poll.filterReasons.join(", "), variant: "danger" });
+          }
+        }, 400);
       }
     });
   };
@@ -363,9 +367,11 @@ export function ReviewActions({ poll }: { poll: StoredAIPoll }) {
       const fd = new FormData();
       fd.set("id", poll.id);
       const r = await approvePollAction(fd);
-      if (!r.ok) toast({ title: "Could not approve", description: r.error, variant: "danger" });
-      else toast({ title: "Approved", description: "Poll ready to publish.", variant: "success" });
       router.refresh();
+      setTimeout(() => {
+        if (!r.ok) toast({ title: "Could not approve", description: r.error, variant: "danger" });
+        else toast({ title: "Approved", description: "Poll ready to publish.", variant: "success" });
+      }, 400);
     });
   };
 
@@ -376,8 +382,8 @@ export function ReviewActions({ poll }: { poll: StoredAIPoll }) {
       fd.set("prompt", poll.requestPrompt);
       fd.set("regenerationOf", poll.id);
       const r = await generatePollAction(fd);
-      if (r.ok) toast({ title: "Regenerated", description: `New poll: ${r.poll.state}`, variant: "success" });
       router.refresh();
+      if (r.ok) setTimeout(() => toast({ title: "Regenerated", description: `New poll: ${r.poll.state}`, variant: "success" }), 400);
     });
   };
 
@@ -414,9 +420,11 @@ export function PublishActions({ poll }: { poll: StoredAIPoll }) {
       const fd = new FormData();
       fd.set("id", poll.id);
       const r = await publishPollAction(fd);
-      if (!r.ok) toast({ title: "Publish failed", description: r.error, variant: "danger" });
-      else toast({ title: "Published", description: `Market ${r.marketId} created.`, variant: "success" });
       router.refresh();
+      setTimeout(() => {
+        if (!r.ok) toast({ title: "Publish failed", description: r.error, variant: "danger" });
+        else toast({ title: "Published", description: `Market ${r.marketId} created.`, variant: "success" });
+      }, 400);
     });
   };
 
@@ -439,9 +447,11 @@ export function DeleteAction({ pollId }: { pollId: string }) {
       const fd = new FormData();
       fd.set("id", pollId);
       const r = await deletePollAction(fd);
-      if (!r.ok) toast({ title: "Delete failed", description: r.error, variant: "danger" });
-      else toast({ title: "Deleted", variant: "default" });
       router.refresh();
+      setTimeout(() => {
+        if (!r.ok) toast({ title: "Delete failed", description: r.error, variant: "danger" });
+        else toast({ title: "Deleted", variant: "default" });
+      }, 400);
     });
   };
 
@@ -462,8 +472,8 @@ export function SeedFixturesButton() {
   const seed = () => {
     start(async () => {
       const r = await seedFixturesAction();
-      if (r.ok) toast({ title: "Fixtures seeded", description: `${r.count} polls created.`, variant: "success" });
       router.refresh();
+      if (r.ok) setTimeout(() => toast({ title: "Fixtures seeded", description: `${r.count} polls created.`, variant: "success" }), 400);
     });
   };
 
@@ -498,10 +508,12 @@ function RejectForm({ pollId, onClose }: { pollId: string; onClose: () => void }
       fd.set("reasons", reason);
       fd.set("note", note);
       const r = await rejectPollAction(fd);
-      if (!r.ok) toast({ title: "Reject failed", description: r.error, variant: "danger" });
-      else toast({ title: "Rejected", variant: "default" });
       onClose();
       router.refresh();
+      setTimeout(() => {
+        if (!r.ok) toast({ title: "Reject failed", description: r.error, variant: "danger" });
+        else toast({ title: "Rejected", variant: "default" });
+      }, 400);
     });
   };
 
@@ -553,10 +565,12 @@ function EditForm({ poll, onClose }: { poll: StoredAIPoll; onClose: () => void }
       fd.set("resolutionCriterion", criterion);
       fd.set("resolutionAt", new Date(resAt).toISOString());
       const r = await editPollAction(fd);
-      if (!r.ok) toast({ title: "Edit failed", description: r.error, variant: "danger" });
-      else toast({ title: "Updated", description: "Poll re-validated.", variant: "success" });
       onClose();
       router.refresh();
+      setTimeout(() => {
+        if (!r.ok) toast({ title: "Edit failed", description: r.error, variant: "danger" });
+        else toast({ title: "Updated", description: "Poll re-validated.", variant: "success" });
+      }, 400);
     });
   };
 

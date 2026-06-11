@@ -27,9 +27,11 @@ export function CandidateActions({ id, mode }: { id: string; mode: "review" | "p
       const fd = new FormData();
       fd.set("id", id);
       const r = await approveCandidateAction(fd);
-      if (!r.ok) toast({ title: "Could not approve", description: r.error, variant: "danger" });
-      else toast({ title: "Approved", description: "Ready to publish.", variant: "success" });
       router.refresh();
+      setTimeout(() => {
+        if (!r.ok) toast({ title: "Could not approve", description: r.error, variant: "danger" });
+        else toast({ title: "Approved", description: "Ready to publish.", variant: "success" });
+      }, 400);
     });
   };
 
@@ -40,10 +42,12 @@ export function CandidateActions({ id, mode }: { id: string; mode: "review" | "p
       fd.set("reason", reason);
       fd.set("note", note);
       const r = await rejectCandidateAction(fd);
-      if (!r.ok) toast({ title: "Could not reject", description: r.error, variant: "danger" });
-      else toast({ title: "Rejected", description: "Candidate moved to history.", variant: "default" });
       setOpenReject(false);
       router.refresh();
+      setTimeout(() => {
+        if (!r.ok) toast({ title: "Could not reject", description: r.error, variant: "danger" });
+        else toast({ title: "Rejected", description: "Candidate moved to history.", variant: "default" });
+      }, 400);
     });
   };
 
@@ -52,9 +56,11 @@ export function CandidateActions({ id, mode }: { id: string; mode: "review" | "p
       const fd = new FormData();
       fd.set("id", id);
       const r = await publishCandidateAction(fd);
-      if (!r.ok) toast({ title: "Publish failed", description: r.error, variant: "danger" });
-      else toast({ title: "Published", description: `Market ${r.marketId} created.`, variant: "success" });
       router.refresh();
+      setTimeout(() => {
+        if (!r.ok) toast({ title: "Publish failed", description: r.error, variant: "danger" });
+        else toast({ title: "Published", description: `Market ${r.marketId} created.`, variant: "success" });
+      }, 400);
     });
   };
 

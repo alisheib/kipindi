@@ -128,29 +128,29 @@ export default function AdminReportsPage() {
                 >
                   ↓
                 </span>
-                <div className="flex-1 min-w-0 space-y-1.5">
-                  <div className="flex items-start justify-between gap-2 flex-wrap">
-                    <p className="font-display font-bold text-body-sm text-text">{t.title}</p>
+                <div className="flex-1 min-w-0 space-y-2">
+                  <div>
+                    <p className="font-display font-bold text-[14px] text-text leading-snug">{t.title}</p>
+                    <p className="text-[11px] text-text-tertiary italic mt-0.5">{t.sw}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
                     <Chip
                       size="sm"
                       variant={t.severity === "critical" ? "danger" : t.severity === "high" ? "gold" : "neutral"}
                     >
                       {t.target}
                     </Chip>
+                    <span className="font-mono text-[10px] tracking-wider text-text-tertiary self-center">{t.cadence}</span>
                   </div>
-                  <p className="text-caption text-text-tertiary italic">{t.sw}</p>
-                  <p className="text-caption text-text-secondary leading-relaxed">{t.body}</p>
-                  <div className="flex items-center justify-between gap-2 pt-2 mt-2 border-t border-border-subtle">
+                  <p className="text-[12px] text-text-secondary leading-relaxed">{t.body}</p>
+                  <div className="flex items-center justify-between gap-2 pt-2 mt-1 border-t border-border-subtle">
                     <div className="flex flex-wrap gap-1">
                       {t.formats.map((f) => (
-                        <span key={f} className="font-mono text-micro tracking-wider px-1.5 py-0.5 rounded-sm bg-bg-sunken text-text-tertiary">
+                        <span key={f} className="font-mono text-[10px] tracking-wider px-1.5 py-0.5 rounded-sm bg-bg-sunken text-text-tertiary whitespace-nowrap">
                           {f}
                         </span>
                       ))}
                     </div>
-                    <span className="font-mono text-micro tracking-wider text-text-tertiary">{t.cadence}</span>
-                  </div>
-                  <div className="flex justify-end gap-1.5 pt-2">
                     <GenerateButton id={t.id} />
                   </div>
                 </div>
