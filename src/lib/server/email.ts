@@ -90,8 +90,8 @@ const TEXT_SUBTLE = "#5a607e";
 const YES_COLOR = "#199a5b";
 const NO_COLOR = "#d9404a";
 
-// Inline SVG mark from the brand kit — crisp at any zoom, no hosted image needed
-const MARK_SVG = `<svg width="48" height="48" viewBox="-3 -3 106 106" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="m"><circle cx="50" cy="50" r="44.6"/></clipPath></defs><g clip-path="url(#m)"><path d="M 30.65 -27.62 A 80 80 0 0 0 69.35 127.62 L 30.65 -27.62 Z" fill="${YES_COLOR}"/><path d="M 30.65 -27.62 A 80 80 0 0 1 69.35 127.62 L 30.65 -27.62 Z" fill="${NO_COLOR}"/></g><circle cx="50" cy="50" r="44.6" fill="none" stroke="${BRAND_LINK}" stroke-width="2.8"/><line x1="37.54" y1="0.03" x2="62.46" y2="99.97" stroke="${GILT}" stroke-width="3" stroke-linecap="round"/><circle cx="56.29" cy="75.23" r="2.5" fill="#f0c84e"/><text x="50" y="51" text-anchor="middle" dominant-baseline="central" font-family="'JetBrains Mono',monospace" font-weight="700" font-size="29" letter-spacing="-0.04em" fill="#f8f8fd">50</text></svg>`;
+// Brand mark — hosted PNG from the real logo kit (never recreated)
+const MARK_IMG = `<img src="https://kipindi-production.up.railway.app/icons/mark-color-512.png" width="56" height="56" alt="50pick" style="display:block;margin:0 auto;border:0">`;
 
 // Gilt needle-rule separator (from the signature)
 const GILT_RULE = `<table cellpadding="0" cellspacing="0" width="100%"><tr><td style="padding:16px 0"><div style="width:42px;height:2px;background:${GILT};border-radius:2px"></div></td></tr></table>`;
@@ -108,7 +108,7 @@ function wrap(body: string): string {
   <!-- Header: mark + wordmark -->
   <tr><td align="center" style="padding:0 0 24px">
     <a href="https://50pick.tz" style="text-decoration:none">
-      ${MARK_SVG}
+      ${MARK_IMG}
     </a>
     <div style="margin-top:10px;font-family:'Sora','Segoe UI',Helvetica,Arial,sans-serif;font-size:20px;font-weight:800;letter-spacing:-0.015em">
       <a href="https://50pick.tz" style="color:${BRAND_NAVY};text-decoration:none">
