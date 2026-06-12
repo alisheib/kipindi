@@ -151,6 +151,22 @@ function stripHtml(html: string): string {
 
 const fmtTzs = (n: number) => `TZS ${Math.round(n).toLocaleString("en-US")}`;
 
+// ─── User email lookup helper ───────────────────────────────────────────
+
+/** Look up a user's email and send. Silently skips if no email on file. */
+export async function sendEmailToUser(
+  userId: string,
+  build: (email: string) => SendInput,
+): Promise<void> {
+  // Dynamic import to avoid circular dependency with store.ts
+  const { db } = await import("./store");
+  const user = await db.user.findById(userId);
+  const email = user?.email;
+  if (!email) return; // phone-only user — skip silently
+  const input = build(email);
+  await sendEmail(input);
+}
+
 // ─── Email templates ────────────────────────────────────────────────────
 
 export function welcomeHtml({ name }: { name: string }): string {

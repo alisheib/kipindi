@@ -11,6 +11,7 @@ import { hasDatabase } from "./prisma";
 export type StoredUser = {
   id: string;
   phoneE164: string;
+  email?: string | null;
   /** scrypt(password, passwordSalt) hex. Optional only because legacy
    *  rows created during the OTP-only era have neither — those accounts
    *  must set a password on next login. */

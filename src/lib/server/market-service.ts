@@ -23,6 +23,7 @@ import { rateCheck } from "./rate-limit";
 import { getEffectiveConfig, payoutForWhole, settledPayoutWhole } from "./market-config";
 import { recordSnapshot, seedHistory } from "./market-history";
 import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout } from "./notification-service";
+import { sendEmailToUser, betPlacedHtml, winNotificationHtml, lossNotificationHtml, cashOutReceiptHtml } from "./email";
 import { onRecruitBet } from "./affiliate-service";
 import { seedMarket, settleHousePosition, canSeedNewMarket, getHousePoolSeedForMarket } from "./house-pool";
 import type { ServiceResult } from "./auth-service";
@@ -297,6 +298,12 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
       marketTitle: market.titleEn,
       marketId: market.id,
     });
+    sendEmailToUser(userId, (email) => ({
+      to: email,
+      subject: `Bet placed · ${opts.side} on "${market.titleEn.slice(0, 40)}"`,
+      html: betPlacedHtml({ side: opts.side, stake: opts.stake, marketTitle: market.titleEn, resolutionDate: market.resolutionAt.slice(0, 10) }),
+      tag: "bet-placed",
+    })).catch(() => {});
 
     // Affiliate program — if this player was referred, accrue the referrer's
     // commission on this stake and fire the first-bet milestone prize. The
@@ -431,10 +438,22 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
           });
           winnersPaid += payout;
           notifyWin(p.userId, payout, cur.titleEn, "/positions");
+          sendEmailToUser(p.userId, (email) => ({
+            to: email,
+            subject: `You won · TZS ${Math.round(payout).toLocaleString("en-US")}`,
+            html: winNotificationHtml({ payout, stake: p.stake, marketTitle: cur.titleEn }),
+            tag: "win",
+          })).catch(() => {});
         } else {
           p.status = "LOSS"; p.finalPayout = 0; p.settledAt = cur.resolutionStage2At!;
           await positionStore.set(p);
           notifyLoss(p.userId, { stake: p.stake, marketTitle: cur.titleEn, marketId: cur.id });
+          sendEmailToUser(p.userId, (email) => ({
+            to: email,
+            subject: `Bet lost · TZS ${Math.round(p.stake).toLocaleString("en-US")}`,
+            html: lossNotificationHtml({ stake: p.stake, marketTitle: cur.titleEn }),
+            tag: "loss",
+          })).catch(() => {});
         }
       }
       audit({
@@ -632,6 +651,12 @@ export async function cashOutPosition(
     });
 
     notifyCashout(userId, { amount: value, marketTitle: m.titleEn, marketId: m.id });
+    sendEmailToUser(userId, (email) => ({
+      to: email,
+      subject: `Position sold · TZS ${Math.round(value).toLocaleString("en-US")}`,
+      html: cashOutReceiptHtml({ value, stake: p.stake, marketTitle: m.titleEn }),
+      tag: "cashout",
+    })).catch(() => {});
 
     audit({
       category: "BET",
@@ -765,11 +790,23 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
         winnersPaid += payout;
         // Win receipt — opens the position so they can see the payout.
         notifyWin(p.userId, payout, m.titleEn, "/positions");
+        sendEmailToUser(p.userId, (email) => ({
+          to: email,
+          subject: `You won · TZS ${Math.round(payout).toLocaleString("en-US")}`,
+          html: winNotificationHtml({ payout, stake: p.stake, marketTitle: m.titleEn }),
+          tag: "win",
+        })).catch(() => {});
       } else {
         p.status = "LOSS"; p.finalPayout = 0; p.settledAt = m.resolutionStage2At!;
         await positionStore.set(p);
         // Loss receipt — kit copy reframes loss as "pool grew".
         notifyLoss(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id });
+        sendEmailToUser(p.userId, (email) => ({
+          to: email,
+          subject: `Bet lost · TZS ${Math.round(p.stake).toLocaleString("en-US")}`,
+          html: lossNotificationHtml({ stake: p.stake, marketTitle: m.titleEn }),
+          tag: "loss",
+        })).catch(() => {});
       }
     }
   }

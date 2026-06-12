@@ -17,6 +17,7 @@ import { LoginRequestSchema, OtpVerifySchema, RegisterSchema } from "./validator
 import type { z } from "zod";
 import { createSession, destroySession, getSession, type SessionData } from "./session";
 import { withLock } from "./locks";
+import { sendEmail, welcomeHtml } from "./email";
 
 /** Phone numbers Ali wants auto-promoted to ADMIN on first registration.
  *  Set ADMIN_BOOTSTRAP_PHONES=+255712345678,+255700000000 in env. */
@@ -210,6 +211,7 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
     user = await db.user.create({
       id: `usr_${randomId(12)}`,
       phoneE164: phone,
+      email: null,
       passwordHash: null,
       passwordSalt: null,
       failedLoginCount: 0,
@@ -362,6 +364,7 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
   const user = await db.user.create({
     id: `usr_${randomId(12)}`,
     phoneE164: phone,
+    email: null,
     passwordHash: hash,
     passwordSalt: salt,
     failedLoginCount: 0,
@@ -423,6 +426,17 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
     actorId: user.id, targetType: "User", targetId: user.id,
     payload: { phone, role: user.role },
   });
+
+  // Welcome email — best-effort, never blocks registration
+  if (user.email) {
+    const { displayLabel } = await import("../display-label");
+    sendEmail({
+      to: user.email,
+      subject: "Welcome to 50pick · Karibu",
+      html: welcomeHtml({ name: displayLabel(user) }),
+      tag: "welcome",
+    }).catch(() => {});
+  }
 
   await createSession({
     userId: user.id,

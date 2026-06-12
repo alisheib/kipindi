@@ -8,6 +8,7 @@
  *  - Tax line shown to user but actual deduction at confirmation
  */
 import { audit } from "./audit";
+import { sendEmailToUser, depositConfirmedHtml, withdrawalSentHtml, withdrawalUnderReviewHtml } from "./email";
 import { db, type StoredTxn } from "./store";
 import { randomId } from "./crypto";
 import { dispatchDeposit, dispatchWithdrawal, computeWithdrawalTax } from "./payments";
@@ -157,6 +158,14 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
   audit({ category: "WALLET", action: "deposit.confirmed", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: result.providerRef, balanceAfter: newBalance } });
   notifyDeposit(userId, parse.data.amount, friendlyProvider(parse.data.provider));
 
+  // Email receipt — best-effort, never blocks deposit
+  sendEmailToUser(userId, (email) => ({
+    to: email,
+    subject: `Deposit confirmed · TZS ${Math.round(parse.data.amount).toLocaleString("en-US")}`,
+    html: depositConfirmedHtml({ amount: parse.data.amount, method: friendlyProvider(parse.data.provider), reference: txnId, balance: newBalance }),
+    tag: "deposit",
+  })).catch(() => {});
+
   // Affiliate program — fire the first-deposit bonus and/or deposit-threshold
   // prize for whoever referred this player. Best-effort; never blocks the
   // deposit. Cumulative includes this just-confirmed deposit.
@@ -257,6 +266,12 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
     await db.txn.update(txnId, { status: "AML_REVIEW", providerRef: result.providerRef, amlReason: "Threshold ≥ TZS 1,000,000" });
     audit({ category: "COMPLIANCE", action: "withdraw.aml_held", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { amount } });
     notifyWithdraw(userId, { status: "AML_REVIEW", amount, net, provider: providerLabel });
+    sendEmailToUser(userId, (email) => ({
+      to: email,
+      subject: `Withdrawal under review · TZS ${Math.round(amount).toLocaleString("en-US")}`,
+      html: withdrawalUnderReviewHtml({ amount, reference: txnId }),
+      tag: "withdrawal-review",
+    })).catch(() => {});
     return { ok: true, data: { txnId, status: "AML_REVIEW", tax, net } };
   }
 
@@ -268,6 +283,12 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
   await db.txn.update(txnId, { status: "CONFIRMED", providerRef: result.providerRef, completedAt: new Date().toISOString() });
   audit({ category: "WALLET", action: "withdraw.confirmed", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: result.providerRef, net } });
   notifyWithdraw(userId, { status: "CONFIRMED", amount, net, provider: providerLabel });
+  sendEmailToUser(userId, (email) => ({
+    to: email,
+    subject: `Withdrawal sent · TZS ${Math.round(net).toLocaleString("en-US")}`,
+    html: withdrawalSentHtml({ amount: net, destination: providerLabel, reference: txnId }),
+    tag: "withdrawal",
+  })).catch(() => {});
 
   return { ok: true, data: { txnId, status: "CONFIRMED", tax, net } };
 }
