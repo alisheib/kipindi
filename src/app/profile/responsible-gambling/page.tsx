@@ -8,6 +8,7 @@ import { setLimitsAction, selfExcludeAction, coolOffAction } from "./actions";
 import { SelfExcludeConfirm } from "@/components/rg/self-exclude-confirm";
 import { SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/support-config";
 import { Select } from "@/components/ui/select";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { FeedbackSettings } from "@/components/settings/feedback-settings";
 import { formatTzs } from "@/lib/utils";
 
@@ -122,9 +123,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           <Field name="sessionTimeLimitMin"      label="Session time (minutes)"   defaultValue={rg.sessionTimeLimitMin}      placeholder="e.g. 60" />
           <Field name="realityCheckIntervalMin"  label="Reality check (min 5, max 120)"  defaultValue={rg.realityCheckIntervalMin}  placeholder="30" min={5} max={120} step={5} />
           <div className="sm:col-span-2 pt-2">
-            <button type="submit" className="btn btn-gold btn-md" style={{ borderRadius: "var(--r-pill)" }}>
-              Save limits · Hifadhi
-            </button>
+            <SubmitButton label="Save limits · Hifadhi" pendingLabel="Saving…" size="md" />
           </div>
         </form>
       </section>
@@ -149,13 +148,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
               options={COOLING_OFF_OPTIONS.map((o) => ({ value: o.id, label: `${o.label} · ${o.sw}` }))}
             />
           </div>
-          <button
-            type="submit"
-            className="inline-flex h-10 items-center gap-1.5 px-4 rounded-pill border border-border bg-bg-elevated font-display font-semibold text-[12.5px] text-text hover:bg-bg-overlay transition-colors"
-          >
-            <I.pause s={13} />
-            Start break
-          </button>
+          <SubmitButton label="Start break" pendingLabel="Starting…" variant="ghost" size="md" />
         </form>
       </section>
 

@@ -5,6 +5,7 @@ import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
 import { getKycStatus, startKyc } from "@/lib/server/kyc-service";
 import { DateSelect } from "@/components/ui/date-select";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { submitNidaAction, attachDocumentAction, submitKycForReviewAction } from "./actions";
 import { SUPPORT_EMAIL } from "@/lib/support-config";
 
@@ -171,9 +172,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               />
               <p className="mt-1.5 text-[11px] text-text-subtle">Must match NIDA exactly. 18+ required.</p>
             </div>
-            <button type="submit" className="btn btn-gold btn-lg w-full" style={{ borderRadius: "var(--r-pill)" }}>
-              Verify NIDA · Thibitisha
-            </button>
+            <SubmitButton label="Verify NIDA · Thibitisha" pendingLabel="Verifying…" />
           </form>
           <details className="border-t border-border pt-3 text-[12.5px] text-text-muted">
             <summary className="font-display font-semibold text-text cursor-pointer">

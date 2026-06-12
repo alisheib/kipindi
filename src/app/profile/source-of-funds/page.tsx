@@ -4,6 +4,7 @@ import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { submitSourceOfFundsAction } from "./actions";
 
 export const metadata = { title: "Source of funds · Asili ya pesa" };
@@ -210,10 +211,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
             </p>
           </div>
 
-          <button type="submit" className="btn btn-gold btn-lg w-full" style={{ borderRadius: "var(--r-pill)" }}>
-            <I.fileSignature s={16} />
-            Submit declaration · Wasilisha
-          </button>
+          <SubmitButton label="Submit declaration · Wasilisha" pendingLabel="Submitting…" />
         </form>
       </section>
     </main>

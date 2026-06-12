@@ -7,6 +7,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { hasTotp } from "@/lib/server/totp";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { startLoginAction } from "@/app/auth/login/actions";
 import { SUPPORT_EMAIL } from "@/lib/support-config";
 
@@ -90,10 +91,7 @@ export default async function AdminLoginPage() {
                 size="lg"
               />
             </div>
-            <button type="submit" className="btn btn-gold btn-xl w-full rounded-full">
-              <I.lock s={15} />
-              Sign in · Ingia
-            </button>
+            <SubmitButton label="Sign in · Ingia" pendingLabel="Signing in…" size="xl" />
           </form>
 
           <div className="relative flex items-center gap-2 pt-3 border-t border-border font-mono text-[11px] text-text-subtle">
