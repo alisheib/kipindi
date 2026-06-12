@@ -150,7 +150,11 @@ export function MarketCard({
   const live = status === "LIVE";
   const isResolved = status === "RESOLVED";
   const CatIco = I[categoryGlyph(category)];
-  const go = (side: "YES" | "NO") => (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); router.push(`/markets/${id}?side=${side}`); };
+  const go = (side: "YES" | "NO") => (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    try { window.dispatchEvent(new Event("50pick:navigating")); } catch {}
+    router.push(`/markets/${id}?side=${side}`);
+  };
   const body = (
     <>
       {/* Kit signature — large faint category glyph watermark (brightens on hover). */}
