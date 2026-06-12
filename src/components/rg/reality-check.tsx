@@ -88,47 +88,36 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL }: { 
       role="dialog"
       aria-modal="true"
       aria-labelledby="reality-check-title"
-      style={{ animation: "win-burst 200ms ease-out both" }}
     >
-      <div
-        className="absolute inset-0"
-        style={{ background: "oklch(11% 0.06 268 / 0.68)", backdropFilter: "blur(12px)" }}
+      <button
+        type="button"
+        aria-label="Dismiss"
         onClick={dismiss}
-        aria-hidden
+        className="absolute inset-0 bg-black/60 backdrop-blur-md"
+        style={{ animation: "rc-fade 160ms ease-out" }}
       />
       <div
-        className="relative w-full max-w-md max-h-[calc(100dvh-env(safe-area-inset-bottom)-24px)] overflow-y-auto overscroll-contain rounded-xl bg-bg-elevated p-5 sm:p-6 space-y-4"
-        style={{
-          border: "1px solid var(--gilt)",
-          boxShadow: "var(--shadow-royal), 0 0 0 1px color-mix(in oklab, var(--gilt) 30%, transparent) inset",
-          animation: "win-burst 320ms cubic-bezier(.2,.8,.2,1) both",
-        }}
+        className="relative w-full max-w-md max-h-[calc(100dvh-env(safe-area-inset-bottom)-24px)] overflow-y-auto overscroll-contain rounded-xl border border-border-strong bg-bg-elevated shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65),inset_0_1px_0_rgba(255,255,255,0.06)] p-5 sm:p-6 space-y-4 overflow-hidden"
+        style={{ animation: "rc-rise 240ms var(--ease-arrive)" }}
       >
-        {/* Kit WarnModal: 2px colored rail at top */}
-        <div aria-hidden style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "var(--gold-300)", opacity: 0.7, borderRadius: "var(--r-lg) var(--r-lg) 0 0" }} />
+        {/* Gold rail at top */}
+        <div aria-hidden className="absolute inset-x-0 top-0 h-[2px]" style={{ background: "linear-gradient(90deg, var(--gold-500), var(--gold-300), var(--gold-500))" }} />
 
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <span
-              style={{
-                width: 32, height: 32, borderRadius: "var(--r-sm)",
-                background: "var(--bg-inset)", border: "1px solid var(--border)",
-                display: "grid", placeItems: "center", color: "var(--gold-300)", flexShrink: 0,
-              }}
-            >
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-bg-inset border border-border text-gold-300">
               <I.clock s={18} />
             </span>
             <div>
               <h2
                 id="reality-check-title"
-                className="font-display font-bold leading-tight text-text"
-                style={{ fontSize: 15.5 }}
+                className="font-display text-[15.5px] font-bold leading-tight text-text"
               >
                 You&apos;ve been playing for{" "}
-                <span className="font-mono" style={{ color: "var(--gold-300)" }}>{elapsedMin}</span>{" "}
+                <span className="font-mono text-gold-300">{elapsedMin}</span>{" "}
                 {elapsedMin === 1 ? "minute" : "minutes"}
               </h2>
-              <p style={{ fontSize: 11.5, fontStyle: "italic", color: "var(--text-subtle)" }}>
+              <p className="text-[11.5px] italic text-text-subtle">
                 Umekuwa ukicheza kwa dakika {elapsedMin}
               </p>
             </div>
@@ -143,9 +132,9 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL }: { 
           </button>
         </div>
 
-        <p style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.55 }}>
+        <p className="text-[12.5px] text-text-muted leading-snug">
           Most people play for fun. If it stops feeling fun, take a break.
-          <span className="block italic text-text-subtle" style={{ marginTop: 2 }}>Kama haifurahishi tena, pumzika.</span>
+          <span className="block italic text-text-subtle mt-0.5">Kama haifurahishi tena, pumzika.</span>
         </p>
 
         <div className="grid grid-cols-1 gap-2 pt-1">
@@ -168,10 +157,15 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL }: { 
           </div>
         </div>
 
-        <p className="text-center font-mono pt-1" style={{ fontSize: "var(--type-micro)", color: "var(--text-subtle)" }}>
-          Tanzania Helpline · <span style={{ color: "var(--text-muted)" }}>{SUPPORT_PHONE()}</span>
+        <p className="text-center font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle pt-1">
+          Tanzania Helpline · <span className="text-text-muted">{SUPPORT_PHONE()}</span>
         </p>
       </div>
+
+      <style>{`
+        @keyframes rc-fade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes rc-rise { from { transform: translateY(8px) scale(.96); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+      `}</style>
     </div>
   );
 }
