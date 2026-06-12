@@ -74,71 +74,112 @@ export async function sendEmail({ to, subject, html, tag }: SendInput): Promise<
   }
 }
 
-// ─── Shared HTML helpers ────────────────────────────────────────────────
+// ─── Brand Kit v2 "Needle" — email design tokens ────────────────────────
+// Matched to the email signature (50pick/Email Signatures/signature.html)
 
+const BRAND_NAVY = "#232a6b";
 const BRAND_BG = "#0d0f2e";
 const BRAND_CARD = "#141640";
 const BRAND_BORDER = "#2a2d5e";
-const GOLD = "#d4a843";
+const BRAND_LINK = "#3346c8";
+const GILT = "#d9b23f";
+const GILT_DARK = "#b8902a";
 const TEXT = "#f0eff4";
-const TEXT_MUTED = "#9b99ad";
-const TEXT_SUBTLE = "#6e6c80";
-const YES_COLOR = "#4ade80";
-const NO_COLOR = "#f87171";
+const TEXT_MUTED = "#8a90ad";
+const TEXT_SUBTLE = "#5a607e";
+const YES_COLOR = "#199a5b";
+const NO_COLOR = "#d9404a";
+
+// Inline SVG mark from the brand kit — crisp at any zoom, no hosted image needed
+const MARK_SVG = `<svg width="48" height="48" viewBox="-3 -3 106 106" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="m"><circle cx="50" cy="50" r="44.6"/></clipPath></defs><g clip-path="url(#m)"><path d="M 30.65 -27.62 A 80 80 0 0 0 69.35 127.62 L 30.65 -27.62 Z" fill="${YES_COLOR}"/><path d="M 30.65 -27.62 A 80 80 0 0 1 69.35 127.62 L 30.65 -27.62 Z" fill="${NO_COLOR}"/></g><circle cx="50" cy="50" r="44.6" fill="none" stroke="${BRAND_LINK}" stroke-width="2.8"/><line x1="37.54" y1="0.03" x2="62.46" y2="99.97" stroke="${GILT}" stroke-width="3" stroke-linecap="round"/><circle cx="56.29" cy="75.23" r="2.5" fill="#f0c84e"/><text x="50" y="51" text-anchor="middle" dominant-baseline="central" font-family="'JetBrains Mono',monospace" font-weight="700" font-size="29" letter-spacing="-0.04em" fill="#f8f8fd">50</text></svg>`;
+
+// Gilt needle-rule separator (from the signature)
+const GILT_RULE = `<table cellpadding="0" cellspacing="0" width="100%"><tr><td style="padding:16px 0"><div style="width:42px;height:2px;background:${GILT};border-radius:2px"></div></td></tr></table>`;
 
 function wrap(body: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<style>
-  body { margin: 0; padding: 0; background: ${BRAND_BG}; color: ${TEXT}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-  .outer { max-width: 580px; margin: 0 auto; padding: 24px 16px; }
-  .header { text-align: center; padding: 20px 0 16px; border-bottom: 1px solid ${BRAND_BORDER}; margin-bottom: 24px; }
-  .logo { font-size: 22px; font-weight: 800; color: ${GOLD}; letter-spacing: -0.02em; text-decoration: none; }
-  .logo span { color: ${TEXT_MUTED}; font-weight: 500; font-size: 14px; margin-left: 2px; }
-  .card { background: ${BRAND_CARD}; border: 1px solid ${BRAND_BORDER}; border-radius: 12px; padding: 28px 24px; }
-  .eyebrow { font-size: 10px; text-transform: uppercase; letter-spacing: 0.16em; font-weight: 700; color: ${GOLD}; margin: 0 0 6px; font-family: 'JetBrains Mono', ui-monospace, monospace; }
-  h1 { font-size: 22px; font-weight: 700; color: ${TEXT}; margin: 0 0 8px; line-height: 1.2; }
-  .subtitle { font-size: 13px; color: ${TEXT_MUTED}; margin: 0 0 20px; line-height: 1.5; }
-  .detail-grid { border-top: 1px solid ${BRAND_BORDER}; margin-top: 16px; padding-top: 16px; }
-  .detail-row { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0; border-bottom: 1px solid ${BRAND_BORDER}; }
-  .detail-row:last-child { border-bottom: none; }
-  .detail-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em; color: ${TEXT_SUBTLE}; font-family: 'JetBrains Mono', ui-monospace, monospace; }
-  .detail-value { font-size: 14px; font-weight: 700; color: ${TEXT}; font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
-  .detail-value.good { color: ${YES_COLOR}; }
-  .detail-value.bad { color: ${NO_COLOR}; }
-  .cta { display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #c49a2e, #d4a843); color: #1a1a2e; font-size: 14px; font-weight: 700; border-radius: 999px; text-decoration: none; text-align: center; margin-top: 20px; }
-  .footer { text-align: center; padding: 24px 0 8px; font-size: 11px; color: ${TEXT_SUBTLE}; line-height: 1.6; }
-  .footer a { color: ${TEXT_MUTED}; text-decoration: underline; }
-</style>
-</head>
-<body>
-<div class="outer">
-  <div class="header">
-    <a href="https://50pick.tz" class="logo">50pick<span>.tz</span></a>
-  </div>
-  ${body}
-  <div class="footer">
-    <p>18+ · Licensed by Gaming Board of Tanzania<br>
-    Helpline ${HELPLINE} · <a href="mailto:${REPLY_TO}">${REPLY_TO}</a></p>
-    <p style="margin-top:12px;font-size:10px;color:${TEXT_SUBTLE}">
-      You're receiving this because you have a 50pick account.<br>
-      <a href="https://50pick.tz/profile/account">Manage email preferences</a>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:${BRAND_BG};color:${TEXT};font-family:'Sora','Segoe UI',Helvetica,Arial,sans-serif;">
+<table cellpadding="0" cellspacing="0" width="100%" style="background:${BRAND_BG}">
+<tr><td align="center" style="padding:32px 16px">
+<table cellpadding="0" cellspacing="0" width="100%" style="max-width:560px">
+
+  <!-- Header: mark + wordmark -->
+  <tr><td align="center" style="padding:0 0 24px">
+    <a href="https://50pick.tz" style="text-decoration:none">
+      ${MARK_SVG}
+    </a>
+    <div style="margin-top:10px;font-family:'Sora','Segoe UI',Helvetica,Arial,sans-serif;font-size:20px;font-weight:800;letter-spacing:-0.015em">
+      <a href="https://50pick.tz" style="color:${BRAND_NAVY};text-decoration:none">
+        <span style="color:${TEXT}">50pick</span><span style="color:${TEXT_MUTED};font-weight:500;font-size:14px;margin-left:2px">.tz</span>
+      </a>
+    </div>
+  </td></tr>
+
+  <!-- Gold top bar -->
+  <tr><td><div style="height:3px;background:linear-gradient(90deg,${GILT},${GILT_DARK},${GILT});border-radius:3px 3px 0 0"></div></td></tr>
+
+  <!-- Card body -->
+  <tr><td style="background:${BRAND_CARD};border:1px solid ${BRAND_BORDER};border-top:none;border-radius:0 0 12px 12px;padding:28px 28px 24px">
+    ${body}
+  </td></tr>
+
+  <!-- Footer -->
+  <tr><td style="padding:28px 0 0;text-align:center">
+    <!-- Gilt rule -->
+    <div style="width:42px;height:2px;background:${GILT};border-radius:2px;margin:0 auto 16px"></div>
+    <p style="margin:0;font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:${GILT_DARK}">
+      50pick.tz <span style="color:${NO_COLOR}">·</span> <span style="color:${TEXT_MUTED}">Soko la Utabiri</span>
     </p>
-  </div>
-</div>
+    <p style="margin:10px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE};line-height:1.7">
+      18+ · Licensed by Gaming Board of Tanzania<br>
+      Helpline ${HELPLINE} · <a href="mailto:${REPLY_TO}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO}</a>
+    </p>
+    <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:10px;color:${TEXT_SUBTLE}">
+      You're receiving this because you have a 50pick account.<br>
+      <a href="https://50pick.tz/profile/account" style="color:${TEXT_MUTED};text-decoration:underline">Manage preferences</a>
+    </p>
+  </td></tr>
+
+</table>
+</td></tr>
+</table>
 </body>
 </html>`;
 }
 
+function eyebrow(en: string, sw?: string): string {
+  let html = `<p style="margin:0 0 6px;font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.16em;font-weight:700;color:${GILT_DARK}">${en}</p>`;
+  if (sw) html += `<p style="margin:0 0 2px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;font-style:italic;color:${TEXT_SUBTLE}">${sw}</p>`;
+  return html;
+}
+
+function heading(text: string, color?: string): string {
+  return `<h1 style="margin:0 0 10px;font-family:'Sora','Segoe UI',Helvetica,Arial,sans-serif;font-size:22px;font-weight:700;color:${color ?? TEXT};line-height:1.2">${text}</h1>`;
+}
+
+function subtitle(text: string): string {
+  return `<p style="margin:0 0 16px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;color:${TEXT_MUTED};line-height:1.55">${text}</p>`;
+}
+
+function subtitleSw(text: string): string {
+  return `<p style="margin:-10px 0 16px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;font-style:italic;color:${TEXT_SUBTLE};line-height:1.5">${text}</p>`;
+}
+
 function detailRows(rows: { label: string; value: string; tone?: "good" | "bad" }[]): string {
-  return `<div class="detail-grid">${rows.map(
-    (r) => `<div class="detail-row"><span class="detail-label">${r.label}</span><span class="detail-value${r.tone ? ` ${r.tone}` : ""}">${r.value}</span></div>`,
-  ).join("")}</div>`;
+  return `<table cellpadding="0" cellspacing="0" width="100%" style="border-top:1px solid ${BRAND_BORDER};margin-top:16px">${rows.map(
+    (r) => {
+      const valColor = r.tone === "good" ? YES_COLOR : r.tone === "bad" ? NO_COLOR : TEXT;
+      return `<tr><td style="padding:10px 0;border-bottom:1px solid ${BRAND_BORDER};font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.14em;color:${TEXT_SUBTLE}">${r.label}</td><td style="padding:10px 0;border-bottom:1px solid ${BRAND_BORDER};text-align:right;font-family:'JetBrains Mono','Courier New',monospace;font-size:14px;font-weight:700;color:${valColor}">${r.value}</td></tr>`;
+    },
+  ).join("")}</table>`;
 }
 
 function ctaButton(href: string, label: string): string {
-  return `<div style="text-align:center"><a href="${href}" class="cta">${label}</a></div>`;
+  return `<table cellpadding="0" cellspacing="0" width="100%" style="margin-top:24px"><tr><td align="center">
+    <a href="${href}" style="display:inline-block;padding:14px 36px;background:linear-gradient(135deg,#c49a2e,${GILT});color:${BRAND_NAVY};font-family:'Sora','Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;border-radius:999px;text-decoration:none;letter-spacing:-0.01em">${label}</a>
+  </td></tr></table>`;
 }
 
 function stripHtml(html: string): string {
@@ -169,22 +210,22 @@ export async function sendEmailToUser(
 // ─── Email templates ────────────────────────────────────────────────────
 
 export function welcomeHtml({ name }: { name: string }): string {
-  return wrap(`<div class="card">
-    <p class="eyebrow">Welcome · Karibu</p>
-    <h1>Welcome to 50pick, ${name}</h1>
-    <p class="subtitle">Your account is ready. Browse markets, place your first prediction, and join the community.</p>
-    <p class="subtitle" style="font-style:italic;color:${TEXT_SUBTLE}">Akaunti yako iko tayari. Tazama masoko na uweke utabiri wako wa kwanza.</p>
+  return wrap(`
+    ${eyebrow("Welcome · Karibu")}
+    ${heading(`Welcome to 50pick, ${name}`)}
+    ${subtitle("Your account is ready. Browse markets, place your first prediction, and join the community.")}
+    ${subtitleSw("Akaunti yako iko tayari. Tazama masoko na uweke utabiri wako wa kwanza.")}
     ${ctaButton("https://50pick.tz/markets", "Browse markets · Tazama masoko")}
-  </div>`);
+  `);
 }
 
 export function depositConfirmedHtml({ amount, method, reference, balance }: {
   amount: number; method: string; reference: string; balance: number;
 }): string {
-  return wrap(`<div class="card">
-    <p class="eyebrow">Deposit confirmed · Amana imethibitishwa</p>
-    <h1>Funds added</h1>
-    <p class="subtitle">Your wallet has been topped up. You can start predicting.</p>
+  return wrap(`
+    ${eyebrow("Deposit confirmed", "Amana imethibitishwa")}
+    ${heading("Funds added")}
+    ${subtitle("Your wallet has been topped up. You can start predicting.")}
     ${detailRows([
       { label: "Amount", value: fmtTzs(amount), tone: "good" },
       { label: "Method", value: method },
@@ -192,89 +233,89 @@ export function depositConfirmedHtml({ amount, method, reference, balance }: {
       { label: "New balance", value: fmtTzs(balance) },
     ])}
     ${ctaButton("https://50pick.tz/wallet", "View wallet · Tazama pochi")}
-  </div>`);
+  `);
 }
 
 export function withdrawalSentHtml({ amount, destination, reference }: {
   amount: number; destination: string; reference: string;
 }): string {
-  return wrap(`<div class="card">
-    <p class="eyebrow">Withdrawal sent · Pesa imetumwa</p>
-    <h1>Withdrawal on its way</h1>
-    <p class="subtitle">Your provider should pay out within moments.</p>
+  return wrap(`
+    ${eyebrow("Withdrawal sent", "Pesa imetumwa")}
+    ${heading("Withdrawal on its way")}
+    ${subtitle("Your provider should pay out within moments.")}
     ${detailRows([
       { label: "Amount", value: fmtTzs(amount) },
       { label: "Destination", value: destination },
       { label: "Reference", value: reference },
     ])}
-  </div>`);
+  `);
 }
 
 export function withdrawalUnderReviewHtml({ amount, reference }: {
   amount: number; reference: string;
 }): string {
-  return wrap(`<div class="card">
-    <p class="eyebrow">Under review · Inakaguliwa</p>
-    <h1>Withdrawal under review</h1>
-    <p class="subtitle">Amounts over TZS 1,000,000 are reviewed by our compliance team. This usually takes under 2 hours.</p>
-    <p class="subtitle" style="font-style:italic;color:${TEXT_SUBTLE}">Kiasi kikubwa kinakaguliwa na timu yetu ya ufuatiliaji. Kawaida huchukua chini ya masaa 2.</p>
+  return wrap(`
+    ${eyebrow("Under review", "Inakaguliwa")}
+    ${heading("Withdrawal under review")}
+    ${subtitle("Amounts over TZS 1,000,000 are reviewed by our compliance team. This usually takes under 2 hours.")}
+    ${subtitleSw("Kiasi kikubwa kinakaguliwa na timu yetu ya ufuatiliaji. Kawaida huchukua chini ya masaa 2.")}
     ${detailRows([
       { label: "Amount", value: fmtTzs(amount) },
       { label: "Reference", value: reference },
       { label: "Status", value: "AML review" },
     ])}
-  </div>`);
+  `);
 }
 
 export function betPlacedHtml({ side, stake, marketTitle, resolutionDate }: {
   side: "YES" | "NO"; stake: number; marketTitle: string; resolutionDate: string;
 }): string {
   const sideColor = side === "YES" ? YES_COLOR : NO_COLOR;
-  return wrap(`<div class="card">
-    <p class="eyebrow">Bet placed · Dau limewekwa</p>
-    <h1>Position open</h1>
-    <p class="subtitle">${marketTitle}</p>
+  return wrap(`
+    ${eyebrow("Bet placed", "Dau limewekwa")}
+    ${heading("Position open")}
+    ${subtitle(marketTitle)}
     ${detailRows([
       { label: "Your pick", value: side },
       { label: "Stake", value: fmtTzs(stake) },
       { label: "Resolves", value: resolutionDate },
     ]).replace(`>${side}<`, ` style="color:${sideColor}">${side}<`)}
-    <p class="subtitle" style="margin-top:16px">Payout is calculated at resolution from the final pool share. Outcome may differ from current odds.</p>
+    ${subtitle("Payout is calculated at resolution from the final pool share.")}
     ${ctaButton("https://50pick.tz/positions", "View positions · Tazama madau")}
-  </div>`);
+  `);
 }
 
 export function winNotificationHtml({ payout, stake, marketTitle }: {
   payout: number; stake: number; marketTitle: string;
 }): string {
   const net = payout - stake;
-  return wrap(`<div class="card">
-    <p class="eyebrow">Position won · Umeshinda</p>
-    <h1 style="color:${GOLD}">You won ${fmtTzs(payout)}</h1>
-    <p class="subtitle">${marketTitle}</p>
+  return wrap(`
+    ${eyebrow("Position won", "Umeshinda")}
+    ${heading(`You won ${fmtTzs(payout)}`, GILT)}
+    ${subtitle(marketTitle)}
     ${detailRows([
       { label: "Payout", value: fmtTzs(payout), tone: "good" },
       { label: "Net profit", value: `+${fmtTzs(net)}`, tone: "good" },
       { label: "Stake", value: fmtTzs(stake) },
     ])}
     ${ctaButton("https://50pick.tz/markets", "Browse markets · Tazama masoko")}
-  </div>`);
+  `);
 }
 
 export function lossNotificationHtml({ stake, marketTitle }: {
   stake: number; marketTitle: string;
 }): string {
-  return wrap(`<div class="card">
-    <p class="eyebrow">Bet lost · Dau limepotea</p>
-    <h1>Bet lost · ${fmtTzs(stake)}</h1>
-    <p class="subtitle">${marketTitle}</p>
+  return wrap(`
+    ${eyebrow("Bet lost", "Dau limepotea")}
+    ${heading(`Bet lost · ${fmtTzs(stake)}`)}
+    ${subtitle(marketTitle)}
     ${detailRows([
       { label: "Stake lost", value: fmtTzs(stake), tone: "bad" },
     ])}
-    <p class="subtitle" style="margin-top:16px">Most people play for fun. If it stops feeling fun, take a break.</p>
-    <p class="subtitle" style="font-style:italic;color:${TEXT_SUBTLE}">Kama haifurahishi tena, pumzika.</p>
+    ${subtitle("Most people play for fun. If it stops feeling fun, take a break.")}
+    ${subtitleSw("Kama haifurahishi tena, pumzika.")}
     ${ctaButton("https://50pick.tz/profile/responsible-gambling", "Set limits · Weka mipaka")}
-  </div>`);
+  `);
 }
 
 export function cashOutReceiptHtml({ value, stake, marketTitle }: {
@@ -282,124 +323,124 @@ export function cashOutReceiptHtml({ value, stake, marketTitle }: {
 }): string {
   const net = value - stake;
   const profit = net >= 0;
-  return wrap(`<div class="card">
-    <p class="eyebrow">Position sold · Imeuzwa</p>
-    <h1>Cashed out · ${fmtTzs(value)}</h1>
-    <p class="subtitle">${marketTitle}</p>
+  return wrap(`
+    ${eyebrow("Position sold", "Imeuzwa")}
+    ${heading(`Cashed out · ${fmtTzs(value)}`)}
+    ${subtitle(marketTitle)}
     ${detailRows([
       { label: "Sellback", value: fmtTzs(value) },
       { label: "Net", value: `${profit ? "+" : "\u2212"}${fmtTzs(Math.abs(net))}`, tone: profit ? "good" : "bad" },
       { label: "Stake", value: fmtTzs(stake) },
     ])}
-  </div>`);
+  `);
 }
 
 export function passwordResetHtml({ resetLink }: { resetLink: string }): string {
-  return wrap(`<div class="card">
-    <p class="eyebrow">Password reset · Badilisha nenosiri</p>
-    <h1>Reset your password</h1>
-    <p class="subtitle">Click the button below to set a new password. This link expires in 1 hour.</p>
-    <p class="subtitle" style="font-style:italic;color:${TEXT_SUBTLE}">Bonyeza kitufe hapa chini kuweka nenosiri jipya. Kiungo hiki kinaisha baada ya saa 1.</p>
+  return wrap(`
+    ${eyebrow("Password reset", "Badilisha nenosiri")}
+    ${heading("Reset your password")}
+    ${subtitle("Click the button below to set a new password. This link expires in 1 hour.")}
+    ${subtitleSw("Bonyeza kitufe hapa chini kuweka nenosiri jipya. Kiungo hiki kinaisha baada ya saa 1.")}
     ${ctaButton(resetLink, "Reset password · Badilisha")}
-    <p class="subtitle" style="margin-top:16px;font-size:11px">If you didn't request this, ignore this email. Your password won't change.</p>
-  </div>`);
+    <p style="margin:16px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">If you didn't request this, ignore this email. Your password won't change.</p>
+  `);
 }
 
 export function kycApprovedHtml({ name }: { name: string }): string {
-  return wrap(`<div class="card">
-    <p class="eyebrow">Identity verified · Utambulisho umethibitishwa</p>
-    <h1>You're fully verified, ${name}</h1>
-    <p class="subtitle">Your identity has been confirmed. All platform features are now unlocked.</p>
+  return wrap(`
+    ${eyebrow("Identity verified", "Utambulisho umethibitishwa")}
+    ${heading(`You're fully verified, ${name}`)}
+    ${subtitle("Your identity has been confirmed. All platform features are now unlocked.")}
     ${ctaButton("https://50pick.tz/markets", "Browse markets · Tazama masoko")}
-  </div>`);
+  `);
 }
 
 export function kycRejectedHtml({ reason }: { reason: string }): string {
-  return wrap(`<div class="card">
-    <p class="eyebrow">Identity check · Ukaguzi wa utambulisho</p>
-    <h1>Identity check needs attention</h1>
-    <p class="subtitle">${reason}</p>
-    <p class="subtitle" style="font-style:italic;color:${TEXT_SUBTLE}">Tafadhali angalia tena nyaraka zako na uwasilishe upya.</p>
+  return wrap(`
+    ${eyebrow("Identity check", "Ukaguzi wa utambulisho")}
+    ${heading("Identity check needs attention")}
+    ${subtitle(reason)}
+    ${subtitleSw("Tafadhali angalia tena nyaraka zako na uwasilishe upya.")}
     ${ctaButton("https://50pick.tz/profile/kyc", "Resubmit · Wasilisha tena")}
-  </div>`);
+  `);
 }
 
 export function selfExclusionHtml({ period, endDate }: { period: string; endDate: string }): string {
-  return wrap(`<div class="card">
-    <p class="eyebrow">Self-exclusion active · Jizuie</p>
-    <h1>Self-exclusion confirmed</h1>
-    <p class="subtitle">You've locked your account for <strong>${period}</strong>. Betting, deposits, and login are disabled until <strong>${endDate}</strong>. This cannot be reversed.</p>
-    <p class="subtitle" style="font-style:italic;color:${TEXT_SUBTLE}">Akaunti yako imefungwa hadi ${endDate}. Hii haiwezi kubatilishwa.</p>
+  return wrap(`
+    ${eyebrow("Self-exclusion active", "Jizuie")}
+    ${heading("Self-exclusion confirmed")}
+    ${subtitle(`You've locked your account for <strong>${period}</strong>. Betting, deposits, and login are disabled until <strong>${endDate}</strong>. This cannot be reversed.`)}
+    ${subtitleSw(`Akaunti yako imefungwa hadi ${endDate}. Hii haiwezi kubatilishwa.`)}
     ${detailRows([
       { label: "Period", value: period },
       { label: "Unlocks", value: endDate },
     ])}
-    <p class="subtitle" style="margin-top:16px">Need help? Contact the Tanzania Gambling Helpline: ${HELPLINE}</p>
-  </div>`);
+    ${subtitle(`Need help? Contact the Tanzania Gambling Helpline: ${HELPLINE}`)}
+  `);
 }
 
 export function coolOffHtml({ duration, endDate }: { duration: string; endDate: string }): string {
-  return wrap(`<div class="card">
-    <p class="eyebrow">Break active · Pumzika</p>
-    <h1>Break confirmed</h1>
-    <p class="subtitle">Login and betting are paused for <strong>${duration}</strong>. You'll be able to sign in again after <strong>${endDate}</strong>.</p>
+  return wrap(`
+    ${eyebrow("Break active", "Pumzika")}
+    ${heading("Break confirmed")}
+    ${subtitle(`Login and betting are paused for <strong>${duration}</strong>. You'll be able to sign in again after <strong>${endDate}</strong>.`)}
     ${detailRows([
       { label: "Duration", value: duration },
       { label: "Resumes", value: endDate },
     ])}
-  </div>`);
+  `);
 }
 
 export function amlRejectRefundHtml({ amount, reason }: { amount: number; reason: string }): string {
-  return wrap(`<div class="card">
-    <p class="eyebrow">Withdrawal returned · Pesa imerudishwa</p>
-    <h1>Withdrawal returned to wallet</h1>
-    <p class="subtitle">Your withdrawal has been returned to your wallet balance.</p>
+  return wrap(`
+    ${eyebrow("Withdrawal returned", "Pesa imerudishwa")}
+    ${heading("Withdrawal returned to wallet")}
+    ${subtitle("Your withdrawal has been returned to your wallet balance.")}
     ${detailRows([
       { label: "Amount refunded", value: fmtTzs(amount) },
       { label: "Reason", value: reason },
     ])}
-    <p class="subtitle" style="margin-top:16px">If you have questions, contact <a href="mailto:${REPLY_TO}" style="color:${GOLD}">${REPLY_TO}</a></p>
-  </div>`);
+    ${subtitle(`If you have questions, contact <a href="mailto:${REPLY_TO}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO}</a>`)}
+  `);
 }
 
 export function referralRewardHtml({ amount, referredName, totalEarned }: {
   amount: number; referredName: string; totalEarned: number;
 }): string {
-  return wrap(`<div class="card">
-    <p class="eyebrow">Referral reward · Umepata tuzo</p>
-    <h1>You earned ${fmtTzs(amount)}</h1>
-    <p class="subtitle">${referredName} joined through your referral link.</p>
+  return wrap(`
+    ${eyebrow("Referral reward", "Umepata tuzo")}
+    ${heading(`You earned ${fmtTzs(amount)}`)}
+    ${subtitle(`${referredName} joined through your referral link.`)}
     ${detailRows([
       { label: "Reward", value: fmtTzs(amount), tone: "good" },
       { label: "Total earned", value: fmtTzs(totalEarned) },
     ])}
     ${ctaButton("https://50pick.tz/profile/invite", "Invite more · Alika zaidi")}
-  </div>`);
+  `);
 }
 
 export function loginNotificationHtml({ name, time, ip }: { name: string; time: string; ip: string }): string {
-  return wrap(`<div class="card">
-    <p class="eyebrow">Sign-in · Umeingia</p>
-    <h1>Welcome back, ${name}</h1>
-    <p class="subtitle">You just signed in to your 50pick account.</p>
-    <p class="subtitle" style="font-style:italic;color:${TEXT_SUBTLE}">Umeingia kwenye akaunti yako ya 50pick.</p>
+  return wrap(`
+    ${eyebrow("Sign-in", "Umeingia")}
+    ${heading(`Welcome back, ${name}`)}
+    ${subtitle("You just signed in to your 50pick account.")}
+    ${subtitleSw("Umeingia kwenye akaunti yako ya 50pick.")}
     ${detailRows([
       { label: "Time", value: time },
       { label: "IP address", value: ip },
     ])}
     ${ctaButton("https://50pick.tz/markets", "Browse markets · Tazama masoko")}
-    <p class="subtitle" style="margin-top:16px;font-size:11px">If this wasn't you, change your password immediately and contact support.</p>
-  </div>`);
+    <p style="margin:16px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">If this wasn't you, change your password immediately and contact support.</p>
+  `);
 }
 
 export function sessionRevokedHtml(): string {
-  return wrap(`<div class="card">
-    <p class="eyebrow">Security · Usalama</p>
-    <h1>Signed out on another device</h1>
-    <p class="subtitle">Your account was signed in on another device. For security, your previous session was ended.</p>
-    <p class="subtitle" style="font-style:italic;color:${TEXT_SUBTLE}">Akaunti yako imeingia kwenye kifaa kingine. Kikao chako kilichopita kimesitishwa.</p>
+  return wrap(`
+    ${eyebrow("Security", "Usalama")}
+    ${heading("Signed out on another device")}
+    ${subtitle("Your account was signed in on another device. For security, your previous session was ended.")}
+    ${subtitleSw("Akaunti yako imeingia kwenye kifaa kingine. Kikao chako kilichopita kimesitishwa.")}
     ${ctaButton("https://50pick.tz/auth/login", "Sign in again · Ingia tena")}
-    <p class="subtitle" style="margin-top:16px;font-size:11px">If this wasn't you, change your password immediately.</p>
-  </div>`);
+    <p style="margin:16px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">If this wasn't you, change your password immediately.</p>
+  `);
 }
