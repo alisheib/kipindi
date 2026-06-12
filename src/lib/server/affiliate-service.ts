@@ -22,6 +22,7 @@ import { audit } from "./audit";
 import { randomId } from "./crypto";
 import { notifyReferralJoined, notifyReferralReward } from "./notification-service";
 import { creditInternal } from "./wallet-service";
+import { sendEmailToUser, referralRewardHtml } from "./email";
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I ambiguity
 
@@ -306,7 +307,22 @@ async function payPrize(opts: { referrerUserId: string; recruitUserId: string; m
     amountTzs: cfg.prize.amountTzs,
     status: credited ? "PAID" : "HELD",
   });
-  if (credited) notifyReferralReward(opts.referrerUserId, { type: "PRIZE", amountTzs: cfg.prize.amountTzs });
+  if (credited) {
+    notifyReferralReward(opts.referrerUserId, { type: "PRIZE", amountTzs: cfg.prize.amountTzs });
+    // Email the referrer their reward (best-effort, fire-and-forget).
+    const recruit = await db.user.findById(opts.recruitUserId);
+    const acct = await db.affiliate.findByUserId(opts.referrerUserId);
+    sendEmailToUser(opts.referrerUserId, (email) => ({
+      to: email,
+      subject: `Referral reward · TZS ${cfg.prize.amountTzs.toLocaleString()}`,
+      html: referralRewardHtml({
+        amount: cfg.prize.amountTzs,
+        referredName: maskName(recruit?.displayName ?? null, recruit?.phoneE164 ?? ""),
+        totalEarned: acct?.totalEarnedTzs ?? cfg.prize.amountTzs,
+      }),
+      tag: "referral-reward",
+    }));
+  }
 }
 
 // ── Activity hooks (called from the betting + wallet flows) ──────────────

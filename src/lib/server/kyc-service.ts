@@ -20,6 +20,8 @@ import { rateCheck } from "./rate-limit";
 import { KycNidaSchema } from "./validators";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
+import { notifyKyc } from "./notification-service";
+import { sendEmailToUser, kycRejectedHtml } from "./email";
 
 export async function startKyc(userId: string): Promise<ServiceResult<{ kycId: string }>> {
   const existing = await db.kyc.findByUserId(userId);
@@ -64,6 +66,14 @@ export async function submitNidaStep(userId: string, input: z.input<typeof KycNi
   if (result.verified === false) {
     await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: result.reason, updatedAt: new Date().toISOString() });
     audit({ category: "KYC", action: "kyc.nida.rejected", actorId: userId, targetType: "Kyc", targetId: k.id, payload: { reason: result.reason } });
+    // In-app + email notice (best-effort).
+    notifyKyc(userId, "REJECTED");
+    sendEmailToUser(userId, (email) => ({
+      to: email,
+      subject: "Identity check needs attention",
+      html: kycRejectedHtml({ reason: result.reason ?? "We couldn't verify your details. Please re-check and resubmit." }),
+      tag: "kyc-rejected",
+    }));
     return { ok: true, data: { verified: false, reason: result.reason } };
   }
 
@@ -96,6 +106,7 @@ export async function submitForReview(userId: string): Promise<ServiceResult> {
 
   await db.kyc.upsert({ ...k, status: "PENDING_REVIEW", submittedAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
   audit({ category: "KYC", action: "kyc.submitted", actorId: userId, targetType: "Kyc", targetId: k.id });
+  notifyKyc(userId, "PENDING_REVIEW"); // in-app "submitted, under review" notice
   return { ok: true };
 }
 

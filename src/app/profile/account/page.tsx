@@ -6,6 +6,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { getOwnActivity } from "@/lib/server/user-service";
 import { CloseAccountForm } from "./close-account-form";
+import { EmailEditor } from "@/components/profile/email-editor";
 import { formatDateTimeSafe } from "@/lib/utils";
 import { ExportDataButton } from "./export-data-button";
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from "@/lib/support-config";
@@ -100,6 +101,8 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
             value={formatDateTimeSafe(user?.lastLoginAt)}
           />
         </div>
+        {/* Contact email — opt-in; once set, transactional receipts are emailed. */}
+        <EmailEditor currentEmail={user?.email ?? null} currentName={user?.displayName ?? ""} />
       </section>
 
       {/* OWN ACTIVITY FEED */}

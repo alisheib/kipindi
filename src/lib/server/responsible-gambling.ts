@@ -21,6 +21,15 @@ import { audit } from "./audit";
 import { db } from "./store";
 import type { StoredResponsibleGambling, StoredTxn } from "./store";
 import type { ServiceResult } from "./auth-service";
+import { sendEmailToUser, selfExclusionHtml, coolOffHtml } from "./email";
+
+/** Human-readable period labels for RG confirmation emails. */
+const PERIOD_LABEL: Record<string, string> = {
+  "1h": "1 hour", "24h": "24 hours", "1w": "1 week",
+  "1m": "1 month", "6m": "6 months", "perm": "permanent",
+};
+const fmtDate = (iso: string) =>
+  new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
 export const SELF_EXCLUSION_PERIODS_SEC = {
   "24h":   24 * 60 * 60,
@@ -165,6 +174,13 @@ export async function selfExclude(userId: string, period: keyof typeof SELF_EXCL
     targetId: userId,
     payload: { period, until },
   });
+  // Confirmation email (best-effort, never blocks the freeze).
+  sendEmailToUser(userId, (email) => ({
+    to: email,
+    subject: `Self-exclusion confirmed · ${PERIOD_LABEL[period] ?? period}`,
+    html: selfExclusionHtml({ period: PERIOD_LABEL[period] ?? period, endDate: fmtDate(until) }),
+    tag: "self-exclusion",
+  }));
   return { ok: true, data: { until } };
 }
 
@@ -184,6 +200,12 @@ export async function coolOff(userId: string, period: keyof typeof COOLING_OFF_P
     targetId: userId,
     payload: { period, until },
   });
+  sendEmailToUser(userId, (email) => ({
+    to: email,
+    subject: `Break confirmed · ${PERIOD_LABEL[period] ?? period}`,
+    html: coolOffHtml({ duration: PERIOD_LABEL[period] ?? period, endDate: fmtDate(until) }),
+    tag: "cool-off",
+  }));
   return { ok: true, data: { until } };
 }
 

@@ -21,15 +21,21 @@ const MAX_AVATAR_BYTES = 96 * 1024; // 96 KB after client-side resize
 const BasicsSchema = z.object({
   displayName: z.string().trim().min(1).max(40),
   locale: z.enum(["EN", "SW"]).optional(),
+  // Optional contact email — once on file, the player receives transactional
+  // receipts (deposit/withdraw/win/KYC/etc.). Empty string clears it. Validated
+  // and normalized (trim + lowercase) so what we email is always well-formed.
+  email: z.string().trim().toLowerCase().email("Enter a valid email.").max(254).or(z.literal("")).optional(),
 });
 
 export async function updateProfileBasicsAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string }> {
   const session = await currentSession();
   if (!session) return { ok: false, error: "Sign in required." };
 
+  const rawEmail = formData.get("email");
   const parsed = BasicsSchema.safeParse({
     displayName: formData.get("displayName"),
     locale: formData.get("locale") || undefined,
+    email: rawEmail === null ? undefined : rawEmail,
   });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -37,6 +43,8 @@ export async function updateProfileBasicsAction(formData: FormData): Promise<{ o
   const next = await db.user.update(session.userId, {
     displayName: parsed.data.displayName,
     ...(parsed.data.locale ? { locale: parsed.data.locale } : {}),
+    // Only touch email when the field was submitted; "" clears it, a value sets it.
+    ...(parsed.data.email !== undefined ? { email: parsed.data.email === "" ? null : parsed.data.email } : {}),
   });
   if (!next) return { ok: false, error: "User not found." };
 
@@ -46,7 +54,7 @@ export async function updateProfileBasicsAction(formData: FormData): Promise<{ o
     actorId: session.userId,
     targetType: "User",
     targetId: session.userId,
-    payload: { displayName: parsed.data.displayName, locale: parsed.data.locale ?? null },
+    payload: { displayName: parsed.data.displayName, locale: parsed.data.locale ?? null, emailSet: parsed.data.email ? true : parsed.data.email === "" ? false : undefined },
   });
   revalidatePath("/profile");
   return { ok: true };

@@ -100,7 +100,19 @@ const MARK_IMG = `<img src="${BASE_URL}/icons/mark-color-512.png" width="56" hei
 function wrap(body: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="supported-color-schemes" content="dark">
+<!-- Brand fonts. Clients that honor web fonts (Apple Mail, iOS Mail, some
+     others) render Sora / JetBrains Mono / Inter; Gmail/Outlook ignore the
+     link and fall back to the system stacks declared inline on every element,
+     so text stays on-brand where possible and always legible elsewhere. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;700;800&family=JetBrains+Mono:wght@500;700&family=Inter:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+</head>
 <body style="margin:0;padding:0;background:${BRAND_BG};color:${TEXT};font-family:'Sora','Segoe UI',Helvetica,Arial,sans-serif;">
 <table cellpadding="0" cellspacing="0" width="100%" style="background:${BRAND_BG}">
 <tr><td align="center" style="padding:32px 16px">
@@ -177,7 +189,14 @@ function detailRows(rows: { label: string; value: string; tone?: "good" | "bad" 
   ).join("")}</table>`;
 }
 
-function ctaButton(href: string, label: string): string {
+/** Resolve a path to an absolute URL. Email links MUST be absolute — a bare
+ *  "/markets" is dead in an inbox. Pass a full http(s) URL through unchanged. */
+function link(pathOrUrl: string): string {
+  return /^https?:\/\//.test(pathOrUrl) ? pathOrUrl : `${BASE_URL}${pathOrUrl.startsWith("/") ? "" : "/"}${pathOrUrl}`;
+}
+
+function ctaButton(hrefOrPath: string, label: string): string {
+  const href = link(hrefOrPath);
   return `<table cellpadding="0" cellspacing="0" width="100%" style="margin-top:24px"><tr><td align="center">
     <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${href}" style="height:48px;v-text-anchor:middle;width:280px" arcsize="50%" fillcolor="${GILT}"><w:anchorlock/><center style="color:${BRAND_BG};font-family:Segoe UI,sans-serif;font-size:14px;font-weight:700">${label}</center></v:roundrect><![endif]-->
     <!--[if !mso]><!-->
@@ -198,17 +217,23 @@ const fmtTzs = (n: number) => `TZS ${Math.round(n).toLocaleString("en-US")}`;
 
 // ─── User email lookup helper ───────────────────────────────────────────
 
-/** Look up a user's email and send. Silently skips if no email on file. */
+/** Look up a user's email and send. Silently skips if no email on file.
+ *  Fully best-effort: NEVER throws and NEVER blocks the caller's flow — a
+ *  failed lookup or send must not break a bet, deposit, or KYC decision. Call
+ *  sites fire-and-forget (no await), so any rejection is swallowed here. */
 export async function sendEmailToUser(
   userId: string,
   build: (email: string) => SendInput,
 ): Promise<void> {
-  const { db } = await import("./store");
-  const user = await db.user.findById(userId);
-  const email = user?.email;
-  if (!email) return;
-  const input = build(email);
-  await sendEmail(input);
+  try {
+    const { db } = await import("./store");
+    const user = await db.user.findById(userId);
+    const email = user?.email;
+    if (!email) return;
+    await sendEmail(build(email));
+  } catch (err) {
+    console.error("[email] sendEmailToUser failed:", (err as Error)?.message);
+  }
 }
 
 // ─── Email templates ────────────────────────────────────────────────────
@@ -219,7 +244,7 @@ export function welcomeHtml({ name }: { name: string }): string {
     ${heading(`Welcome to 50pick, ${name}`)}
     ${subtitle("Your account is ready. Browse markets, place your first prediction, and join the community.")}
     ${subtitleSw("Akaunti yako iko tayari. Tazama masoko na uweke utabiri wako wa kwanza.")}
-    ${ctaButton("${BASE_URL}/markets", "Browse markets · Tazama masoko")}
+    ${ctaButton("/markets", "Browse markets · Tazama masoko")}
   `);
 }
 
@@ -236,7 +261,7 @@ export function depositConfirmedHtml({ amount, method, reference, balance }: {
       { label: "Reference", value: reference },
       { label: "New balance", value: fmtTzs(balance) },
     ])}
-    ${ctaButton("${BASE_URL}/wallet", "View wallet · Tazama pochi")}
+    ${ctaButton("/wallet", "View wallet · Tazama pochi")}
   `);
 }
 
@@ -285,7 +310,7 @@ export function betPlacedHtml({ side, stake, marketTitle, resolutionDate }: {
       { label: "Resolves", value: resolutionDate },
     ]).replace(`>${side}<`, ` style="color:${sideColor}">${side}<`)}
     ${subtitle("Payout is calculated at resolution from the final pool share.")}
-    ${ctaButton("${BASE_URL}/positions", "View positions · Tazama madau")}
+    ${ctaButton("/positions", "View positions · Tazama madau")}
   `);
 }
 
@@ -302,7 +327,7 @@ export function winNotificationHtml({ payout, stake, marketTitle }: {
       { label: "Net profit", value: `+${fmtTzs(net)}`, tone: "good" },
       { label: "Stake", value: fmtTzs(stake) },
     ])}
-    ${ctaButton("${BASE_URL}/markets", "Browse markets · Tazama masoko")}
+    ${ctaButton("/markets", "Browse markets · Tazama masoko")}
   `);
 }
 
@@ -318,7 +343,7 @@ export function lossNotificationHtml({ stake, marketTitle }: {
     ])}
     ${subtitle("Most people play for fun. If it stops feeling fun, take a break.")}
     ${subtitleSw("Kama haifurahishi tena, pumzika.")}
-    ${ctaButton("${BASE_URL}/profile/responsible-gambling", "Set limits · Weka mipaka")}
+    ${ctaButton("/profile/responsible-gambling", "Set limits · Weka mipaka")}
   `);
 }
 
@@ -355,7 +380,7 @@ export function kycApprovedHtml({ name }: { name: string }): string {
     ${eyebrow("Identity verified", "Utambulisho umethibitishwa")}
     ${heading(`You're fully verified, ${name}`)}
     ${subtitle("Your identity has been confirmed. All platform features are now unlocked.")}
-    ${ctaButton("${BASE_URL}/markets", "Browse markets · Tazama masoko")}
+    ${ctaButton("/markets", "Browse markets · Tazama masoko")}
   `);
 }
 
@@ -365,7 +390,7 @@ export function kycRejectedHtml({ reason }: { reason: string }): string {
     ${heading("Identity check needs attention")}
     ${subtitle(reason)}
     ${subtitleSw("Tafadhali angalia tena nyaraka zako na uwasilishe upya.")}
-    ${ctaButton("${BASE_URL}/profile/kyc", "Resubmit · Wasilisha tena")}
+    ${ctaButton("/profile/kyc", "Resubmit · Wasilisha tena")}
   `);
 }
 
@@ -419,7 +444,7 @@ export function referralRewardHtml({ amount, referredName, totalEarned }: {
       { label: "Reward", value: fmtTzs(amount), tone: "good" },
       { label: "Total earned", value: fmtTzs(totalEarned) },
     ])}
-    ${ctaButton("${BASE_URL}/profile/invite", "Invite more · Alika zaidi")}
+    ${ctaButton("/profile/invite", "Invite more · Alika zaidi")}
   `);
 }
 
@@ -433,7 +458,7 @@ export function loginNotificationHtml({ name, time, ip }: { name: string; time: 
       { label: "Time", value: time },
       { label: "IP address", value: ip },
     ])}
-    ${ctaButton("${BASE_URL}/markets", "Browse markets · Tazama masoko")}
+    ${ctaButton("/markets", "Browse markets · Tazama masoko")}
     <p style="margin:16px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">If this wasn't you, change your password immediately and contact support.</p>
   `);
 }
@@ -444,7 +469,7 @@ export function sessionRevokedHtml(): string {
     ${heading("Signed out on another device")}
     ${subtitle("Your account was signed in on another device. For security, your previous session was ended.")}
     ${subtitleSw("Akaunti yako imeingia kwenye kifaa kingine. Kikao chako kilichopita kimesitishwa.")}
-    ${ctaButton("${BASE_URL}/auth/login", "Sign in again · Ingia tena")}
+    ${ctaButton("/auth/login", "Sign in again · Ingia tena")}
     <p style="margin:16px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">If this wasn't you, change your password immediately.</p>
   `);
 }

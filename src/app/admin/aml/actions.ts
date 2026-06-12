@@ -160,6 +160,17 @@ export async function rejectAmlAction(formData: FormData) {
     payload: { amount: txn.amount, reason },
   });
 
+  // Tell the player their withdrawal was returned (best-effort).
+  if (txn.type === "WITHDRAWAL") {
+    const { sendEmailToUser, amlRejectRefundHtml } = await import("@/lib/server/email");
+    sendEmailToUser(txn.userId, (email) => ({
+      to: email,
+      subject: `Withdrawal returned · TZS ${Math.abs(txn.amount).toLocaleString()}`,
+      html: amlRejectRefundHtml({ amount: Math.abs(txn.amount), reason }),
+      tag: "aml-refund",
+    }));
+  }
+
   revalidatePath("/admin/aml");
   return { ok: true as const };
 }
