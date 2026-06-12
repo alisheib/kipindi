@@ -82,7 +82,7 @@ export function PhoneInput({ defaultValue, value, onChange, name, ...rest }: Pro
         onChange={handle}
         onPaste={handlePaste}
       />
-      {name && <input type="hidden" name={name} value={v} />}
+      {name && <input type="hidden" name={name} value={v} required pattern="[67]\d{8}" title="9-digit Tanzania mobile number starting with 6 or 7" />}
     </>
   );
 }

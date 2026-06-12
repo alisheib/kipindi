@@ -64,11 +64,10 @@ export const DEFAULT_GLOBAL_CONFIG: RateConfig = {
   // at /admin/config (raise the dial's maxMultiplier to match if you do).
   maxStake: 100_000,
   thinProfitRatio: 1.05,
-  // Sign-up gift — TZS 100,000 lands in every new wallet so first-time
-  // users (and the manager doing demo runs) can place dozens of stakes
-  // without an upfront deposit. Admin can change this any time at
-  // /admin/config — the production launch will lower this to 0.
-  starterBalanceTzs: 100_000,
+  // Starter balance for new wallets. 0 in production — only tester phones
+  // (TESTER_BOOTSTRAP_PHONES env) get 100K for QA. Admin can raise this
+  // temporarily at /admin/config for promotional campaigns.
+  starterBalanceTzs: 0,
   // Taxes on the operator's commission (total pool fee = tax + commission
   // + reserve + aggregator = 9%). These come OUT of the operator's take,
   // not from the player's payout.

@@ -146,6 +146,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               type="text"
               required
               pattern="\d{20}"
+              title="NIDA number must be exactly 20 digits (numbers only)"
               maxLength={20}
               inputMode="numeric"
               placeholder="00000000000000000000"
@@ -310,11 +311,12 @@ function UploadSlot({ label, docType, done }: { label: string; docType: "NIDA_FR
 
 function Field({
   id, label, hint, type, pattern, inputMode, placeholder,
-  required: req = true, minLength, maxLength, min, max,
+  required: req = true, minLength, maxLength, min, max, title,
 }: {
   id: string; label: string; hint?: string; type: string;
   pattern?: string; inputMode?: "numeric" | "text"; placeholder?: string;
   required?: boolean; minLength?: number; maxLength?: number; min?: string; max?: string;
+  title?: string;
 }) {
   return (
     <div>
@@ -336,7 +338,8 @@ function Field({
         maxLength={maxLength}
         min={min}
         max={max}
-        className="w-full h-11 px-3.5 rounded-md border border-border font-mono text-[13px] tabular-nums text-text focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
+        title={title}
+        className="w-full h-11 px-3.5 rounded-md border border-border font-mono text-[13px] tabular-nums text-text focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors invalid:border-no-500"
         style={{ background: "var(--bg-inset)" }}
       />
       {hint && <p className="mt-1.5 text-[11px] text-text-subtle">{hint}</p>}
