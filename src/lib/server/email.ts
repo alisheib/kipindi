@@ -55,6 +55,7 @@ export async function sendEmail({ to, subject, html, tag }: SendInput): Promise<
   }
 
   try {
+    console.log(`[email] Sending to=${to} subject="${subject}" from=${FROM}`);
     const res = await pm.sendEmail({
       From: FROM,
       To: to,
@@ -67,9 +68,10 @@ export async function sendEmail({ to, subject, html, tag }: SendInput): Promise<
       TrackLinks: LinkTrackingOptions.HtmlOnly,
       MessageStream: "outbound",
     });
+    console.log(`[email] Sent OK messageId=${res.MessageID}`);
     return { ok: true, messageId: res.MessageID };
   } catch (err) {
-    console.error("[email] Send failed:", (err as Error).message);
+    console.error("[email] Send failed:", (err as Error).message, JSON.stringify((err as Record<string, unknown>).body ?? (err as Record<string, unknown>).statusCode ?? ""));
     return { ok: false };
   }
 }
@@ -158,11 +160,13 @@ export async function sendEmailToUser(
   userId: string,
   build: (email: string) => SendInput,
 ): Promise<void> {
-  // Dynamic import to avoid circular dependency with store.ts
   const { db } = await import("./store");
   const user = await db.user.findById(userId);
   const email = user?.email;
-  if (!email) return; // phone-only user — skip silently
+  if (!email) {
+    console.log(`[email] Skipped for user=${userId} — no email on record`);
+    return;
+  }
   const input = build(email);
   await sendEmail(input);
 }
