@@ -34,6 +34,9 @@ export async function startRegisterAction(formData: FormData) {
         : result.code === "RATE_LIMITED" ? "rate_limited"
         : "invalid",
     });
+    if (result.error && result.code !== "ALREADY_EXISTS" && result.code !== "RATE_LIMITED") {
+      params.set("message", result.error);
+    }
     if (safeNext) params.set("next", safeNext); // don't lose intent on a retry
     redirect(`/auth/register?${params.toString()}`);
   }
