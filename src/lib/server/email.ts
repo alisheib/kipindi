@@ -115,7 +115,7 @@ function wrap(body: string): string {
       ${MARK_IMG}
     </a>
     <div style="margin-top:10px;font-family:'Sora','Segoe UI',Helvetica,Arial,sans-serif;font-size:20px;font-weight:800;letter-spacing:-0.015em">
-      <a href="https://50pick.tz" style="color:${BRAND_NAVY};text-decoration:none">
+      <a href="https://50pick.tz" style="color:${BRAND_BG};text-decoration:none">
         <span style="color:${TEXT}">50pick</span><span style="color:${TEXT_MUTED};font-weight:500;font-size:14px;margin-left:2px">.tz</span>
       </a>
     </div>
@@ -182,7 +182,7 @@ function detailRows(rows: { label: string; value: string; tone?: "good" | "bad" 
 
 function ctaButton(href: string, label: string): string {
   return `<table cellpadding="0" cellspacing="0" width="100%" style="margin-top:24px"><tr><td align="center">
-    <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${href}" style="height:48px;v-text-anchor:middle;width:280px" arcsize="50%" fillcolor="${GILT}"><w:anchorlock/><center style="color:${BRAND_NAVY};font-family:Segoe UI,sans-serif;font-size:14px;font-weight:700">${label}</center></v:roundrect><![endif]-->
+    <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${href}" style="height:48px;v-text-anchor:middle;width:280px" arcsize="50%" fillcolor="${GILT}"><w:anchorlock/><center style="color:${BRAND_BG};font-family:Segoe UI,sans-serif;font-size:14px;font-weight:700">${label}</center></v:roundrect><![endif]-->
     <!--[if !mso]><!-->
     <a href="${href}" style="display:inline-block;padding:15px 40px;background:${GILT_MID};color:#0c0e28;font-family:'Sora','Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;border-radius:999px;text-decoration:none;letter-spacing:-0.01em;border-top:1px solid ${GILT};border-bottom:2px solid ${GILT_DARK}">${label}</a>
     <!--<![endif]-->
