@@ -1,0 +1,111 @@
+"use client";
+
+/**
+ * NavProgress — a thin gold progress bar at the top of the viewport that
+ * appears during client-side route transitions. Gives instant feedback that
+ * the app registered the tap/click, even before the server responds.
+ *
+ * How it works:
+ *   1. Intercepts every <Link> and router.push navigation via Next.js's
+ *      `usePathname` + `useSearchParams` — when they change, the bar hides.
+ *   2. Listens for click events on <a> elements that point to internal routes
+ *      and starts the bar immediately on mousedown/touchstart.
+ *   3. The bar animates from 0% → ~85% with an ease-out curve (fast start,
+ *      slow crawl), then snaps to 100% + fades when the route lands.
+ *
+ * Kit-faithful: uses --gold-300 gradient, 3px height, z-[2000] (above
+ * everything except the toast layer at 1800). No layout impact.
+ */
+
+import { useEffect, useRef, useState, useCallback } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+
+export function NavProgress() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [active, setActive] = useState(false);
+  const [completing, setCompleting] = useState(false);
+  const barRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
+  const startRef = useRef<number>(0);
+  const routeRef = useRef(pathname + "?" + searchParams?.toString());
+
+  // When pathname or search params change, the route has landed — complete the bar.
+  useEffect(() => {
+    const next = pathname + "?" + searchParams?.toString();
+    if (next !== routeRef.current) {
+      routeRef.current = next;
+      if (active) {
+        // Snap to 100%, then fade out
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+        if (barRef.current) barRef.current.style.transform = "scaleX(1)";
+        setCompleting(true);
+        setTimeout(() => { setActive(false); setCompleting(false); }, 300);
+      }
+    }
+  }, [pathname, searchParams, active]);
+
+  // Animate the bar from 0 → ~85% with diminishing speed
+  const startBar = useCallback(() => {
+    if (active) return;
+    setActive(true);
+    setCompleting(false);
+    startRef.current = performance.now();
+    if (barRef.current) barRef.current.style.transform = "scaleX(0)";
+    const tick = () => {
+      const elapsed = performance.now() - startRef.current;
+      // Fast start, slow crawl — never reaches 100% (waits for route to land)
+      const pct = Math.min(0.85, 1 - Math.exp(-elapsed / 3000));
+      if (barRef.current) barRef.current.style.transform = `scaleX(${pct})`;
+      if (pct < 0.85) rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+  }, [active]);
+
+  // Listen for clicks on internal links
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      const anchor = (e.target as HTMLElement).closest("a[href]");
+      if (!anchor) return;
+      const href = anchor.getAttribute("href");
+      if (!href || href.startsWith("http") || href.startsWith("//") || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:") || href.startsWith("sms:")) return;
+      // Internal navigation — start the bar
+      startBar();
+    };
+    document.addEventListener("click", onClick, { capture: true });
+    return () => document.removeEventListener("click", onClick, { capture: true });
+  }, [startBar]);
+
+  // Also intercept programmatic navigation via a custom event
+  useEffect(() => {
+    const onNav = () => startBar();
+    window.addEventListener("50pick:navigating", onNav);
+    return () => window.removeEventListener("50pick:navigating", onNav);
+  }, [startBar]);
+
+  // Cleanup RAF on unmount
+  useEffect(() => () => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+  }, []);
+
+  if (!active) return null;
+
+  return (
+    <div
+      className="fixed inset-x-0 top-0 z-[2000] h-[3px] pointer-events-none"
+      style={{ opacity: completing ? 0 : 1, transition: completing ? "opacity 300ms ease-out" : "none" }}
+    >
+      <div
+        ref={barRef}
+        className="h-full origin-left"
+        style={{
+          background: "linear-gradient(90deg, var(--gold-500), var(--gold-300))",
+          boxShadow: "0 0 8px oklch(72% 0.14 78 / 0.5)",
+          transform: "scaleX(0)",
+          willChange: "transform",
+        }}
+      />
+    </div>
+  );
+}

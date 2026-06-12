@@ -6,6 +6,7 @@ import { PublicFooter } from "./public-footer";
 import { AuthFlash } from "./auth-flash";
 import { NotifyPoller } from "@/components/markets/notify-poller";
 import { WinCelebrationHost } from "@/components/markets/win-celebration";
+import { NavProgress } from "@/components/ui/nav-progress";
 import { RouteTransition } from "@/components/ui/route-transition";
 import { getSession } from "@/lib/server/session";
 import { db } from "@/lib/server/store";
@@ -62,6 +63,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       >
         Skip to content
       </a>
+      <Suspense fallback={null}><NavProgress /></Suspense>
       <TopAppBar user={topUser} />
       <LiveTicker events={getTickerFeed()} />
       <main id="main-content" className="pb-[calc(64px+env(safe-area-inset-bottom))] xl:pb-0">

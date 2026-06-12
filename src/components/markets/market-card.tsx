@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { TippingBar } from "@/components/brand";
@@ -144,11 +145,12 @@ function HowItWorks() {
 export function MarketCard({
   id, titleEn, titleSw, category, yesPct, volume, predictors, timeLeft, status, move24h, traders, className,
 }: Props) {
+  const router = useRouter();
   const signal = getSignalBadge(status, yesPct, volume, predictors, timeLeft);
   const live = status === "LIVE";
   const isResolved = status === "RESOLVED";
   const CatIco = I[categoryGlyph(category)];
-  const go = (side: "YES" | "NO") => (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); window.location.href = `/markets/${id}?side=${side}`; };
+  const go = (side: "YES" | "NO") => (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); router.push(`/markets/${id}?side=${side}`); };
   const body = (
     <>
       {/* Kit signature — large faint category glyph watermark (brightens on hover). */}
