@@ -150,6 +150,47 @@ export function useToast(): ToastContextValue {
   return ctx;
 }
 
+/**
+ * Deferred toast — fires AFTER a `useTransition` settles, not on an arbitrary
+ * delay. Pass the `pending` boolean from `useTransition`; call `deferToast()`
+ * inside the transition callback. The toast fires the frame after `pending`
+ * flips false → the refresh is committed and the new data is visible.
+ *
+ * Error toasts should still use `toast()` directly — the user needs to see
+ * failures immediately regardless of transition state.
+ *
+ * ```tsx
+ * const [pending, start] = useTransition();
+ * const { deferToast, toast } = useDeferredToast(pending);
+ *
+ * start(async () => {
+ *   const r = await action(fd);
+ *   if (r.ok) { router.refresh(); deferToast({ title: "Saved" }); }
+ *   else toast({ title: "Failed", variant: "danger" });
+ * });
+ * ```
+ */
+export function useDeferredToast(pending: boolean) {
+  const { toast, dismiss } = useToast();
+  const queueRef = React.useRef<ToastInput[]>([]);
+  const wasPendingRef = React.useRef(false);
+
+  React.useEffect(() => {
+    // Falling edge: pending was true, now false → transition settled, data visible.
+    if (wasPendingRef.current && !pending && queueRef.current.length > 0) {
+      for (const t of queueRef.current) toast(t);
+      queueRef.current = [];
+    }
+    wasPendingRef.current = pending;
+  }, [pending, toast]);
+
+  const deferToast = React.useCallback((input: ToastInput) => {
+    queueRef.current.push(input);
+  }, []);
+
+  return { deferToast, toast, dismiss };
+}
+
 const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; surface: string; rail: string }> = {
   default: {
     bar: "bg-brand-300",

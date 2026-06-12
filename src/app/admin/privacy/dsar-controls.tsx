@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/toast";
+import { useToast, useDeferredToast } from "@/components/ui/toast";
 import { buildDsarBundleAction, fulfillDsarAction } from "./actions";
 
 export function ExportDsarBundleButton({ userId }: { userId: string }) {
@@ -41,12 +41,11 @@ export function ExportDsarBundleButton({ userId }: { userId: string }) {
 }
 
 export function FulfillDsarButton({ id }: { id: string }) {
-  const [busy, setBusy] = useState(false);
+  const [pending, startTransition] = useTransition();
   const router = useRouter();
-  const { toast } = useToast();
-  const onClick = async () => {
-    setBusy(true);
-    try {
+  const { deferToast, toast } = useDeferredToast(pending);
+  const onClick = () => {
+    startTransition(async () => {
       const fd = new FormData();
       fd.set("id", id);
       const r = await fulfillDsarAction(fd);
@@ -54,14 +53,12 @@ export function FulfillDsarButton({ id }: { id: string }) {
         toast({ title: "Could not fulfill", description: r.error, variant: "danger" });
       } else {
         router.refresh();
-        setTimeout(() => toast({ title: "Marked fulfilled", variant: "success" }), 400);
+        deferToast({ title: "Marked fulfilled", variant: "success" });
       }
-    } finally {
-      setBusy(false);
-    }
+    });
   };
   return (
-    <Button type="button" size="sm" variant="primary" onClick={onClick} loading={busy}>
+    <Button type="button" size="sm" variant="primary" onClick={onClick} loading={pending}>
       Mark fulfilled
     </Button>
   );

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { useToast } from "@/components/ui/toast";
+import { useDeferredToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
 import { suspendPlayerAction, restorePlayerAction } from "./actions";
 
@@ -24,8 +24,8 @@ export function SuspendControls({
   currentStatus: string;
 }) {
   const router = useRouter();
-  const { toast } = useToast();
   const [pending, start] = useTransition();
+  const { deferToast, toast } = useDeferredToast(pending);
   const [mode, setMode] = useState<"suspend" | "restore" | null>(null);
   const [reason, setReason] = useState("");
 
@@ -48,13 +48,13 @@ export function SuspendControls({
       setMode(null);
       setReason("");
       router.refresh();
-      setTimeout(() => toast({
+      deferToast({
         title: mode === "suspend" ? "Player suspended" : "Player restored",
         description: mode === "suspend"
           ? "Account is locked — login + bet placement now blocked."
           : "Account active again — login + bet placement re-enabled.",
         variant: mode === "suspend" ? "warning" : "success",
-      }), 400);
+      });
     });
   };
 

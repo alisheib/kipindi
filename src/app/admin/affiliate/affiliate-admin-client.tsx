@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { Toggle } from "@/components/ui/toggle";
 import { Avatar } from "@/components/ui/avatar";
-import { useToast } from "@/components/ui/toast";
+import { useDeferredToast } from "@/components/ui/toast";
 import type { AffiliateConfig, BonusRecipient, BonusTrigger, PrizeMilestone } from "@/lib/server/affiliate-config";
 import type { AdminAffiliateStats } from "@/lib/server/affiliate-service";
 import { saveAffiliateConfigAction } from "./actions";
@@ -125,8 +125,8 @@ const LEDGER_CHIP: Record<string, "resolved" | "pending" | "objection"> = { PAID
 
 export function AffiliateAdminClient({ config, stats }: { config: AffiliateConfig; stats: AdminAffiliateStats }) {
   const router = useRouter();
-  const { toast } = useToast();
   const [pending, start] = useTransition();
+  const { deferToast, toast } = useDeferredToast(pending);
   const [c, setC] = useState<AffiliateConfig>(config);
 
   const on = c.enabled;
@@ -140,7 +140,7 @@ export function AffiliateAdminClient({ config, stats }: { config: AffiliateConfi
       const r = await saveAffiliateConfigAction(c);
       if (r.ok) {
         router.refresh();
-        setTimeout(() => toast({ title: "Affiliate config saved · Imehifadhiwa", variant: "success" }), 400);
+        deferToast({ title: "Affiliate config saved · Imehifadhiwa", variant: "success" });
       } else {
         toast({ title: "Couldn't save", description: r.error, variant: "danger" });
       }

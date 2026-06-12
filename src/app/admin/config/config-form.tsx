@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { useToast } from "@/components/ui/toast";
+import { useDeferredToast } from "@/components/ui/toast";
 import { Input, Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,7 +15,7 @@ import type { RateConfig } from "@/lib/server/market-config";
 export function GlobalConfigForm({ config }: { config: RateConfig }) {
   const [pending, start] = useTransition();
   const router = useRouter();
-  const { toast } = useToast();
+  const { deferToast, toast } = useDeferredToast(pending);
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -26,7 +26,7 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
         toast({ title: "Couldn't update", description: r.error, variant: "danger" });
       } else {
         router.refresh();
-        setTimeout(() => toast({ title: "Global config updated", variant: "success" }), 400);
+        deferToast({ title: "Global config updated", variant: "success" });
       }
     });
   };
@@ -119,7 +119,7 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
 export function MarketOverrideForm({ globalConfig }: { globalConfig: RateConfig }) {
   const [pending, start] = useTransition();
   const router = useRouter();
-  const { toast } = useToast();
+  const { deferToast, toast } = useDeferredToast(pending);
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -131,7 +131,7 @@ export function MarketOverrideForm({ globalConfig }: { globalConfig: RateConfig 
       } else {
         (e.target as HTMLFormElement).reset();
         router.refresh();
-        setTimeout(() => toast({ title: "Override saved", variant: "success" }), 400);
+        deferToast({ title: "Override saved", variant: "success" });
       }
     });
   };
@@ -165,14 +165,14 @@ export function MarketOverrideForm({ globalConfig }: { globalConfig: RateConfig 
 export function ClearOverrideButton({ marketId }: { marketId: string }) {
   const [pending, start] = useTransition();
   const router = useRouter();
-  const { toast } = useToast();
+  const { deferToast, toast } = useDeferredToast(pending);
   const onClick = () => {
     start(async () => {
       const fd = new FormData();
       fd.set("marketId", marketId);
       await clearMarketOverrideAction(fd);
       router.refresh();
-      setTimeout(() => toast({ title: "Override cleared", variant: "warning" }), 400);
+      deferToast({ title: "Override cleared", variant: "warning" });
     });
   };
   return (

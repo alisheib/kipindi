@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { useToast } from "@/components/ui/toast";
+import { useDeferredToast } from "@/components/ui/toast";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import {
@@ -39,7 +39,7 @@ export function GenerateForm() {
   const [prompt, setPrompt] = useState("");
   const [generating, setGenerating] = useState(false);
   const router = useRouter();
-  const { toast } = useToast();
+  const { deferToast } = useDeferredToast(pending);
 
   const generate = () => {
     setGenerating(true);
@@ -52,17 +52,13 @@ export function GenerateForm() {
       router.refresh();
       if (r.ok) {
         const state = r.poll.state;
-        // Defer toast until after the refresh lands so the poll is visible
-        // in the list before the toast announces it.
-        setTimeout(() => {
-          if (state === "PENDING_REVIEW") {
-            toast({ title: "Poll generated", description: "Ready for review.", variant: "success" });
-          } else if (state === "FILTERED") {
-            toast({ title: "Poll filtered", description: `Quality too low: ${r.poll.filterReasons.join(", ")}`, variant: "warning" });
-          } else if (state === "VALIDATION_FAILED") {
-            toast({ title: "Generation failed", description: r.poll.filterReasons.join(", "), variant: "danger" });
-          }
-        }, 400);
+        if (state === "PENDING_REVIEW") {
+          deferToast({ title: "Poll generated", description: "Ready for review.", variant: "success" });
+        } else if (state === "FILTERED") {
+          deferToast({ title: "Poll filtered", description: `Quality too low: ${r.poll.filterReasons.join(", ")}`, variant: "warning" });
+        } else if (state === "VALIDATION_FAILED") {
+          deferToast({ title: "Generation failed", description: r.poll.filterReasons.join(", "), variant: "danger" });
+        }
       }
     });
   };
@@ -124,7 +120,7 @@ export function BatchGenerateForm({ maxBatch, remaining }: { maxBatch: number; r
   const [count, setCount] = useState(String(suggested));
   const [prompt, setPrompt] = useState("");
   const router = useRouter();
-  const { toast } = useToast();
+  const { deferToast } = useDeferredToast(pending);
 
   const run = () => {
     start(async () => {
@@ -134,13 +130,11 @@ export function BatchGenerateForm({ maxBatch, remaining }: { maxBatch: number; r
       const r = await generatePollBatchAction(fd);
       router.refresh();
       if (r.ok) {
-        setTimeout(() => {
-          toast({
-            title: `Batch complete — ${r.total} generated`,
-            description: `${r.summary.PENDING_REVIEW} to review · ${r.summary.FILTERED + r.summary.VALIDATION_FAILED} filtered`,
-            variant: "success",
-          });
-        }, 400);
+        deferToast({
+          title: `Batch complete — ${r.total} generated`,
+          description: `${r.summary.PENDING_REVIEW} to review · ${r.summary.FILTERED + r.summary.VALIDATION_FAILED} filtered`,
+          variant: "success",
+        });
       }
     });
   };
@@ -203,7 +197,7 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
   const [minConf, setMinConf] = useState(String(config.minConfidence));
   const [maxBatch, setMaxBatch] = useState(String(config.maxBatchPerRun));
   const router = useRouter();
-  const { toast } = useToast();
+  const { deferToast } = useDeferredToast(pending);
 
   const save = (override?: Partial<{ webSearchEnabled: boolean }>) => {
     start(async () => {
@@ -216,7 +210,7 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
       fd.set("maxBatchPerRun", maxBatch);
       const r = await updatePollConfigAction(fd);
       router.refresh();
-      if (r.ok) setTimeout(() => toast({ title: "Settings saved", variant: "success" }), 400);
+      if (r.ok) deferToast({ title: "Settings saved", variant: "success" });
     });
   };
 
@@ -363,7 +357,7 @@ export function ReviewActions({ poll }: { poll: StoredAIPoll }) {
   const [showReject, setShowReject] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const router = useRouter();
-  const { toast } = useToast();
+  const { deferToast, toast } = useDeferredToast(pending);
 
   const approve = () => {
     start(async () => {
@@ -371,10 +365,8 @@ export function ReviewActions({ poll }: { poll: StoredAIPoll }) {
       fd.set("id", poll.id);
       const r = await approvePollAction(fd);
       router.refresh();
-      setTimeout(() => {
-        if (!r.ok) toast({ title: "Could not approve", description: r.error, variant: "danger" });
-        else toast({ title: "Approved", description: "Poll ready to publish.", variant: "success" });
-      }, 400);
+      if (!r.ok) toast({ title: "Could not approve", description: r.error, variant: "danger" });
+      else deferToast({ title: "Approved", description: "Poll ready to publish.", variant: "success" });
     });
   };
 
@@ -386,7 +378,7 @@ export function ReviewActions({ poll }: { poll: StoredAIPoll }) {
       fd.set("regenerationOf", poll.id);
       const r = await generatePollAction(fd);
       router.refresh();
-      if (r.ok) setTimeout(() => toast({ title: "Regenerated", description: `New poll: ${r.poll.state}`, variant: "success" }), 400);
+      if (r.ok) deferToast({ title: "Regenerated", description: `New poll: ${r.poll.state}`, variant: "success" });
     });
   };
 
@@ -416,7 +408,7 @@ export function ReviewActions({ poll }: { poll: StoredAIPoll }) {
 export function PublishActions({ poll }: { poll: StoredAIPoll }) {
   const [pending, start] = useTransition();
   const router = useRouter();
-  const { toast } = useToast();
+  const { deferToast, toast } = useDeferredToast(pending);
 
   const publish = () => {
     start(async () => {
@@ -424,10 +416,8 @@ export function PublishActions({ poll }: { poll: StoredAIPoll }) {
       fd.set("id", poll.id);
       const r = await publishPollAction(fd);
       router.refresh();
-      setTimeout(() => {
-        if (!r.ok) toast({ title: "Publish failed", description: r.error, variant: "danger" });
-        else toast({ title: "Published", description: `Market ${r.marketId} created.`, variant: "success" });
-      }, 400);
+      if (!r.ok) toast({ title: "Publish failed", description: r.error, variant: "danger" });
+      else deferToast({ title: "Published", description: `Market ${r.marketId} created.`, variant: "success" });
     });
   };
 
@@ -443,7 +433,7 @@ export function PublishActions({ poll }: { poll: StoredAIPoll }) {
 export function DeleteAction({ pollId }: { pollId: string }) {
   const [pending, start] = useTransition();
   const router = useRouter();
-  const { toast } = useToast();
+  const { deferToast, toast } = useDeferredToast(pending);
 
   const del = () => {
     start(async () => {
@@ -451,10 +441,8 @@ export function DeleteAction({ pollId }: { pollId: string }) {
       fd.set("id", pollId);
       const r = await deletePollAction(fd);
       router.refresh();
-      setTimeout(() => {
-        if (!r.ok) toast({ title: "Delete failed", description: r.error, variant: "danger" });
-        else toast({ title: "Deleted", variant: "default" });
-      }, 400);
+      if (!r.ok) toast({ title: "Delete failed", description: r.error, variant: "danger" });
+      else deferToast({ title: "Deleted", variant: "default" });
     });
   };
 
@@ -470,13 +458,13 @@ export function DeleteAction({ pollId }: { pollId: string }) {
 export function SeedFixturesButton() {
   const [pending, start] = useTransition();
   const router = useRouter();
-  const { toast } = useToast();
+  const { deferToast, toast } = useDeferredToast(pending);
 
   const seed = () => {
     start(async () => {
       const r = await seedFixturesAction();
       router.refresh();
-      if (r.ok) setTimeout(() => toast({ title: "Fixtures seeded", description: `${r.count} polls created.`, variant: "success" }), 400);
+      if (r.ok) deferToast({ title: "Fixtures seeded", description: `${r.count} polls created.`, variant: "success" });
     });
   };
 
@@ -502,7 +490,7 @@ function RejectForm({ pollId, onClose }: { pollId: string; onClose: () => void }
   const [reason, setReason] = useState<string>("low_confidence");
   const [note, setNote] = useState("");
   const router = useRouter();
-  const { toast } = useToast();
+  const { deferToast, toast } = useDeferredToast(pending);
 
   const submit = () => {
     start(async () => {
@@ -513,10 +501,8 @@ function RejectForm({ pollId, onClose }: { pollId: string; onClose: () => void }
       const r = await rejectPollAction(fd);
       onClose();
       router.refresh();
-      setTimeout(() => {
-        if (!r.ok) toast({ title: "Reject failed", description: r.error, variant: "danger" });
-        else toast({ title: "Rejected", variant: "default" });
-      }, 400);
+      if (!r.ok) toast({ title: "Reject failed", description: r.error, variant: "danger" });
+      else deferToast({ title: "Rejected", variant: "default" });
     });
   };
 
@@ -556,7 +542,7 @@ function EditForm({ poll, onClose }: { poll: StoredAIPoll; onClose: () => void }
   const [criterion, setCriterion] = useState(poll.resolutionCriterion);
   const [resAt, setResAt] = useState(poll.resolutionAt ? new Date(poll.resolutionAt).toISOString().slice(0, 16) : "");
   const router = useRouter();
-  const { toast } = useToast();
+  const { deferToast, toast } = useDeferredToast(pending);
 
   const submit = () => {
     start(async () => {
@@ -570,10 +556,8 @@ function EditForm({ poll, onClose }: { poll: StoredAIPoll; onClose: () => void }
       const r = await editPollAction(fd);
       onClose();
       router.refresh();
-      setTimeout(() => {
-        if (!r.ok) toast({ title: "Edit failed", description: r.error, variant: "danger" });
-        else toast({ title: "Updated", description: "Poll re-validated.", variant: "success" });
-      }, 400);
+      if (!r.ok) toast({ title: "Edit failed", description: r.error, variant: "danger" });
+      else deferToast({ title: "Updated", description: "Poll re-validated.", variant: "success" });
     });
   };
 

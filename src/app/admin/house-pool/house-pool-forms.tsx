@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { Input, Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/toast";
+import { useDeferredToast } from "@/components/ui/toast";
 import { topUpAction, withdrawAction, updateHousePoolConfigAction } from "./actions";
 import type { HousePoolConfig } from "@/lib/server/house-pool";
 
@@ -35,7 +35,7 @@ export function HousePoolForms({ config }: { config: HousePoolConfig }) {
 function TopUpForm() {
   const [pending, start] = useTransition();
   const router = useRouter();
-  const { toast } = useToast();
+  const { deferToast, toast } = useDeferredToast(pending);
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -47,7 +47,7 @@ function TopUpForm() {
       } else {
         (e.target as HTMLFormElement).reset();
         router.refresh();
-        setTimeout(() => toast({ title: `Topped up · TZS ${r.balance.toLocaleString()}`, variant: "success" }), 400);
+        deferToast({ title: `Topped up · TZS ${r.balance.toLocaleString()}`, variant: "success" });
       }
     });
   };
@@ -73,7 +73,7 @@ function TopUpForm() {
 function WithdrawForm() {
   const [pending, start] = useTransition();
   const router = useRouter();
-  const { toast } = useToast();
+  const { deferToast, toast } = useDeferredToast(pending);
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -85,7 +85,7 @@ function WithdrawForm() {
       } else {
         (e.target as HTMLFormElement).reset();
         router.refresh();
-        setTimeout(() => toast({ title: `Withdrawn · TZS ${r.balance.toLocaleString()} remaining`, variant: "warning" }), 400);
+        deferToast({ title: `Withdrawn · TZS ${r.balance.toLocaleString()} remaining`, variant: "warning" });
       }
     });
   };
@@ -111,7 +111,7 @@ function WithdrawForm() {
 function PoolConfigForm({ config }: { config: HousePoolConfig }) {
   const [pending, start] = useTransition();
   const router = useRouter();
-  const { toast } = useToast();
+  const { deferToast, toast } = useDeferredToast(pending);
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -122,7 +122,7 @@ function PoolConfigForm({ config }: { config: HousePoolConfig }) {
         toast({ title: "Config update failed", description: r.error, variant: "danger" });
       } else {
         router.refresh();
-        setTimeout(() => toast({ title: "Pool config saved", variant: "success" }), 400);
+        deferToast({ title: "Pool config saved", variant: "success" });
       }
     });
   };

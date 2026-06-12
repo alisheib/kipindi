@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/toast";
+import { useDeferredToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
 import { approveAmlAction, rejectAmlAction } from "./actions";
 import { useRouter } from "next/navigation";
@@ -12,36 +12,39 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
   const [busy, setBusy] = useState<"approve" | "reject" | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [reason, setReason] = useState("");
-  const { toast } = useToast();
+  const [pending, startTransition] = useTransition();
+  const { deferToast, toast } = useDeferredToast(pending);
   const router = useRouter();
 
-  const submit = async (kind: "approve" | "reject") => {
+  const submit = (kind: "approve" | "reject") => {
     if (kind === "reject" && reason.trim().length < 5) {
       toast({ title: "Reason required", description: "Reject needs a reason of at least 5 characters.", variant: "warning" });
       return;
     }
     setBusy(kind);
-    const fd = new FormData();
-    fd.set("txnId", txnId);
-    fd.set("reason", reason);
-    const fn = kind === "approve" ? approveAmlAction : rejectAmlAction;
-    const result = await fn(fd);
-    if (result?.ok) {
-      const stage = (result as { stage?: "stage1" | "complete" }).stage;
-      const message = (result as { message?: string }).message;
-      router.refresh();
-      const variant = stage === "stage1" ? "warning" : kind === "approve" ? "success" : "warning";
-      const title = stage === "stage1" ? "Stage 1 recorded" : kind === "approve" ? `Approved · ${formatTzs(amount)}` : "Rejected";
-      const description = stage === "stage1"
-        ? (message ?? "Second officer required before funds release.")
-        : kind === "approve" ? "Transaction confirmed." : "Funds returned to wallet.";
-      setTimeout(() => toast({ title, description, variant: variant as "warning" | "success" }), 400);
-    } else {
-      toast({ title: "Failed", description: result?.error ?? "Try again.", variant: "danger" });
-    }
-    setBusy(null);
-    setExpanded(false);
-    setReason("");
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("txnId", txnId);
+      fd.set("reason", reason);
+      const fn = kind === "approve" ? approveAmlAction : rejectAmlAction;
+      const result = await fn(fd);
+      if (result?.ok) {
+        const stage = (result as { stage?: "stage1" | "complete" }).stage;
+        const message = (result as { message?: string }).message;
+        router.refresh();
+        const variant = stage === "stage1" ? "warning" : kind === "approve" ? "success" : "warning";
+        const title = stage === "stage1" ? "Stage 1 recorded" : kind === "approve" ? `Approved · ${formatTzs(amount)}` : "Rejected";
+        const description = stage === "stage1"
+          ? (message ?? "Second officer required before funds release.")
+          : kind === "approve" ? "Transaction confirmed." : "Funds returned to wallet.";
+        deferToast({ title, description, variant: variant as "warning" | "success" });
+      } else {
+        toast({ title: "Failed", description: result?.error ?? "Try again.", variant: "danger" });
+      }
+      setBusy(null);
+      setExpanded(false);
+      setReason("");
+    });
   };
 
   return (

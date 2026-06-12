@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { useToast } from "@/components/ui/toast";
+import { useDeferredToast } from "@/components/ui/toast";
 import { Select } from "@/components/ui/select";
 import { approveCandidateAction, rejectCandidateAction, publishCandidateAction } from "./actions";
 
@@ -20,7 +20,7 @@ export function CandidateActions({ id, mode }: { id: string; mode: "review" | "p
   const [pending, start] = useTransition();
   const [openReject, setOpenReject] = useState(false);
   const router = useRouter();
-  const { toast } = useToast();
+  const { deferToast, toast } = useDeferredToast(pending);
 
   const approve = () => {
     start(async () => {
@@ -28,10 +28,8 @@ export function CandidateActions({ id, mode }: { id: string; mode: "review" | "p
       fd.set("id", id);
       const r = await approveCandidateAction(fd);
       router.refresh();
-      setTimeout(() => {
-        if (!r.ok) toast({ title: "Could not approve", description: r.error, variant: "danger" });
-        else toast({ title: "Approved", description: "Ready to publish.", variant: "success" });
-      }, 400);
+      if (!r.ok) toast({ title: "Could not approve", description: r.error, variant: "danger" });
+      else deferToast({ title: "Approved", description: "Ready to publish.", variant: "success" });
     });
   };
 
@@ -44,10 +42,8 @@ export function CandidateActions({ id, mode }: { id: string; mode: "review" | "p
       const r = await rejectCandidateAction(fd);
       setOpenReject(false);
       router.refresh();
-      setTimeout(() => {
-        if (!r.ok) toast({ title: "Could not reject", description: r.error, variant: "danger" });
-        else toast({ title: "Rejected", description: "Candidate moved to history.", variant: "default" });
-      }, 400);
+      if (!r.ok) toast({ title: "Could not reject", description: r.error, variant: "danger" });
+      else deferToast({ title: "Rejected", description: "Candidate moved to history.", variant: "default" });
     });
   };
 
@@ -57,10 +53,8 @@ export function CandidateActions({ id, mode }: { id: string; mode: "review" | "p
       fd.set("id", id);
       const r = await publishCandidateAction(fd);
       router.refresh();
-      setTimeout(() => {
-        if (!r.ok) toast({ title: "Publish failed", description: r.error, variant: "danger" });
-        else toast({ title: "Published", description: `Market ${r.marketId} created.`, variant: "success" });
-      }, 400);
+      if (!r.ok) toast({ title: "Publish failed", description: r.error, variant: "danger" });
+      else deferToast({ title: "Published", description: `Market ${r.marketId} created.`, variant: "success" });
     });
   };
 

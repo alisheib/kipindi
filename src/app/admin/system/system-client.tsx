@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/toast";
+import { useDeferredToast, useToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
 import { Input, Field } from "@/components/ui/input";
 import { verifyChainAction, updateSupportConfigAction } from "./actions";
@@ -46,7 +46,7 @@ export function SystemActions({ kind }: { kind: "verify-chain" }) {
 export function SupportConfigForm({ config }: { config: SupportConfig }) {
   const [pending, start] = useTransition();
   const router = useRouter();
-  const { toast } = useToast();
+  const { deferToast, toast } = useDeferredToast(pending);
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -57,7 +57,7 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
         toast({ title: "Couldn't update", description: r.error, variant: "danger" });
       } else {
         router.refresh();
-        setTimeout(() => toast({ title: "Support info updated", variant: "success" }), 400);
+        deferToast({ title: "Support info updated", variant: "success" });
       }
     });
   };

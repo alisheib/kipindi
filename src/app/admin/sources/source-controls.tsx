@@ -2,7 +2,7 @@
 
 import { useTransition, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useToast } from "@/components/ui/toast";
+import { useDeferredToast } from "@/components/ui/toast";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -45,14 +45,14 @@ export function ToggleSource({ id, enabled }: { id: string; enabled: boolean }) 
 export function RemoveSource({ id, label }: { id: string; label: string }) {
   const [pending, start] = useTransition();
   const router = useRouter();
-  const { toast } = useToast();
+  const { deferToast } = useDeferredToast(pending);
   const doRemove = () => {
     start(async () => {
       const fd = new FormData();
       fd.set("id", id);
       await removeSourceAction(fd);
       router.refresh();
-      setTimeout(() => toast({ title: "Source removed", description: label, variant: "warning" }), 400);
+      deferToast({ title: "Source removed", description: label, variant: "warning" });
     });
   };
   return (
@@ -107,7 +107,7 @@ export function ToggleCategory({ category, enabled }: { category: string; enable
 export function AddSourceForm() {
   const [pending, start] = useTransition();
   const router = useRouter();
-  const { toast } = useToast();
+  const { deferToast, toast } = useDeferredToast(pending);
   const [open, setOpen] = useState(false);
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -121,7 +121,7 @@ export function AddSourceForm() {
         (e.target as HTMLFormElement).reset();
         setOpen(false);
         router.refresh();
-        setTimeout(() => toast({ title: "Source added", variant: "success" }), 400);
+        deferToast({ title: "Source added", variant: "success" });
       }
     });
   };
