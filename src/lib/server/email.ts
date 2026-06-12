@@ -78,18 +78,21 @@ export async function sendEmail({ to, subject, html, tag }: SendInput): Promise<
 // ─── Brand Kit v2 "Needle" — email design tokens ────────────────────────
 // Matched to the email signature (50pick/Email Signatures/signature.html)
 
-const BRAND_NAVY = "#232a6b";
-const BRAND_BG = "#0d0f2e";
-const BRAND_CARD = "#141640";
-const BRAND_BORDER = "#2a2d5e";
-const BRAND_LINK = "#3346c8";
-const GILT = "#d9b23f";
-const GILT_DARK = "#b8902a";
-const TEXT = "#f0eff4";
-const TEXT_MUTED = "#8a90ad";
-const TEXT_SUBTLE = "#5a607e";
-const YES_COLOR = "#199a5b";
-const NO_COLOR = "#d9404a";
+// Exact hex conversions of the OKLCH tokens in globals.css
+const BRAND_BG = "#0c0e28";        // --bg-base
+const BRAND_CARD = "#161845";       // --bg-elevated
+const BRAND_BORDER = "#2b2e63";     // --border
+const BORDER_STRONG = "#3d4189";    // --border-strong
+const BRAND_LINK = "#7060d0";       // --brand-500
+const GILT = "#e8c05a";             // --gold-300
+const GILT_MID = "#c49a2e";         // --gold-500
+const GILT_DARK = "#8a6c1a";        // --gold-700
+const TEXT = "#f0eff4";             // --text
+const TEXT_MUTED = "#c8c6d8";       // --text-muted
+const TEXT_SUBTLE = "#8b89a8";      // --text-subtle
+const TEXT_FAINT = "#5c5a78";       // --text-faint
+const YES_COLOR = "#2db872";        // --yes-500
+const NO_COLOR = "#c04848";         // --no-500
 
 // Brand mark — hosted PNG from the real logo kit (never recreated)
 const MARK_IMG = `<img src="${BASE_URL}/icons/mark-color-512.png" width="56" height="56" alt="50pick" style="display:block;margin:0 auto;border:0">`;
@@ -119,10 +122,10 @@ function wrap(body: string): string {
   </td></tr>
 
   <!-- Gold top bar -->
-  <tr><td><div style="height:3px;background:linear-gradient(90deg,${GILT},${GILT_DARK},${GILT});border-radius:3px 3px 0 0"></div></td></tr>
+  <tr><td><div style="height:3px;background:linear-gradient(90deg,${GILT_MID},${GILT},${GILT_MID});border-radius:3px 3px 0 0"></div></td></tr>
 
   <!-- Card body -->
-  <tr><td style="background:${BRAND_CARD};border:1px solid ${BRAND_BORDER};border-top:none;border-radius:0 0 12px 12px;padding:28px 28px 24px">
+  <tr><td style="background:${BRAND_CARD};border:1px solid ${BRAND_BORDER};border-top:none;border-radius:0 0 12px 12px;padding:32px 28px 28px">
     ${body}
   </td></tr>
 
@@ -130,16 +133,16 @@ function wrap(body: string): string {
   <tr><td style="padding:28px 0 0;text-align:center">
     <!-- Gilt rule -->
     <div style="width:42px;height:2px;background:${GILT};border-radius:2px;margin:0 auto 16px"></div>
-    <p style="margin:0;font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:${GILT_DARK}">
-      50pick.tz <span style="color:${NO_COLOR}">·</span> <span style="color:${TEXT_MUTED}">Soko la Utabiri</span>
+    <p style="margin:0;font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:${GILT_MID}">
+      50pick.tz <span style="color:${NO_COLOR}">·</span> <span style="color:${TEXT_SUBTLE}">Soko la Utabiri</span>
     </p>
-    <p style="margin:10px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE};line-height:1.7">
+    <p style="margin:12px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_FAINT};line-height:1.7">
       18+ · Licensed by Gaming Board of Tanzania<br>
-      Helpline ${HELPLINE} · <a href="mailto:${REPLY_TO}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO}</a>
+      Helpline ${HELPLINE} · <a href="mailto:${REPLY_TO}" style="color:${TEXT_SUBTLE};text-decoration:none">${REPLY_TO}</a>
     </p>
-    <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:10px;color:${TEXT_SUBTLE}">
+    <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:10px;color:${TEXT_FAINT}">
       You're receiving this because you have a 50pick account.<br>
-      <a href="${BASE_URL}/profile/account" style="color:${TEXT_MUTED};text-decoration:underline">Manage preferences</a>
+      <a href="${BASE_URL}/profile/account" style="color:${TEXT_SUBTLE};text-decoration:underline">Manage preferences</a>
     </p>
   </td></tr>
 
@@ -157,7 +160,7 @@ function eyebrow(en: string, sw?: string): string {
 }
 
 function heading(text: string, color?: string): string {
-  return `<h1 style="margin:0 0 10px;font-family:'Sora','Segoe UI',Helvetica,Arial,sans-serif;font-size:22px;font-weight:700;color:${color ?? TEXT};line-height:1.2">${text}</h1>`;
+  return `<h1 style="margin:0 0 12px;font-family:'Sora','Segoe UI',Helvetica,Arial,sans-serif;font-size:24px;font-weight:700;color:${color ?? TEXT};line-height:1.15;letter-spacing:-0.02em">${text}</h1>`;
 }
 
 function subtitle(text: string): string {
@@ -169,17 +172,20 @@ function subtitleSw(text: string): string {
 }
 
 function detailRows(rows: { label: string; value: string; tone?: "good" | "bad" }[]): string {
-  return `<table cellpadding="0" cellspacing="0" width="100%" style="border-top:1px solid ${BRAND_BORDER};margin-top:16px">${rows.map(
+  return `<table cellpadding="0" cellspacing="0" width="100%" style="border-top:1px solid ${BRAND_BORDER};margin-top:20px">${rows.map(
     (r) => {
       const valColor = r.tone === "good" ? YES_COLOR : r.tone === "bad" ? NO_COLOR : TEXT;
-      return `<tr><td style="padding:10px 0;border-bottom:1px solid ${BRAND_BORDER};font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.14em;color:${TEXT_SUBTLE}">${r.label}</td><td style="padding:10px 0;border-bottom:1px solid ${BRAND_BORDER};text-align:right;font-family:'JetBrains Mono','Courier New',monospace;font-size:14px;font-weight:700;color:${valColor}">${r.value}</td></tr>`;
+      return `<tr><td style="padding:11px 0;border-bottom:1px solid ${BRAND_BORDER};font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.14em;color:${TEXT_FAINT}">${r.label}</td><td style="padding:11px 0;border-bottom:1px solid ${BRAND_BORDER};text-align:right;font-family:'JetBrains Mono','Courier New',monospace;font-size:14px;font-weight:700;color:${valColor}">${r.value}</td></tr>`;
     },
   ).join("")}</table>`;
 }
 
 function ctaButton(href: string, label: string): string {
   return `<table cellpadding="0" cellspacing="0" width="100%" style="margin-top:24px"><tr><td align="center">
-    <a href="${href}" style="display:inline-block;padding:14px 36px;background:linear-gradient(135deg,#c49a2e,${GILT});color:${BRAND_NAVY};font-family:'Sora','Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;border-radius:999px;text-decoration:none;letter-spacing:-0.01em">${label}</a>
+    <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${href}" style="height:48px;v-text-anchor:middle;width:280px" arcsize="50%" fillcolor="${GILT}"><w:anchorlock/><center style="color:${BRAND_NAVY};font-family:Segoe UI,sans-serif;font-size:14px;font-weight:700">${label}</center></v:roundrect><![endif]-->
+    <!--[if !mso]><!-->
+    <a href="${href}" style="display:inline-block;padding:15px 40px;background:${GILT_MID};color:#0c0e28;font-family:'Sora','Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;border-radius:999px;text-decoration:none;letter-spacing:-0.01em;border-top:1px solid ${GILT};border-bottom:2px solid ${GILT_DARK}">${label}</a>
+    <!--<![endif]-->
   </td></tr></table>`;
 }
 
