@@ -379,6 +379,21 @@ export function referralRewardHtml({ amount, referredName, totalEarned }: {
   </div>`);
 }
 
+export function loginNotificationHtml({ name, time, ip }: { name: string; time: string; ip: string }): string {
+  return wrap(`<div class="card">
+    <p class="eyebrow">Sign-in · Umeingia</p>
+    <h1>Welcome back, ${name}</h1>
+    <p class="subtitle">You just signed in to your 50pick account.</p>
+    <p class="subtitle" style="font-style:italic;color:${TEXT_SUBTLE}">Umeingia kwenye akaunti yako ya 50pick.</p>
+    ${detailRows([
+      { label: "Time", value: time },
+      { label: "IP address", value: ip },
+    ])}
+    ${ctaButton("https://50pick.tz/markets", "Browse markets · Tazama masoko")}
+    <p class="subtitle" style="margin-top:16px;font-size:11px">If this wasn't you, change your password immediately and contact support.</p>
+  </div>`);
+}
+
 export function sessionRevokedHtml(): string {
   return wrap(`<div class="card">
     <p class="eyebrow">Security · Usalama</p>

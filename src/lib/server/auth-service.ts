@@ -17,7 +17,17 @@ import { LoginRequestSchema, OtpVerifySchema, RegisterSchema } from "./validator
 import type { z } from "zod";
 import { createSession, destroySession, getSession, type SessionData } from "./session";
 import { withLock } from "./locks";
-import { sendEmail, welcomeHtml } from "./email";
+import { sendEmail, welcomeHtml, loginNotificationHtml } from "./email";
+
+/** Test-phase phone → email mapping. Moves to KYC-collected email at launch. */
+function resolveTestEmail(phone: string): string | null {
+  const map: Record<string, string> = {
+    "+255777777777": "alisheib07@gmail.com",
+    "+255777777775": "kaba@arrowconsulting.co.tz",
+    "+255777777772": "jay@arrowconsulting.co.tz",
+  };
+  return map[phone] ?? null;
+}
 
 /** Phone numbers Ali wants auto-promoted to ADMIN on first registration.
  *  Set ADMIN_BOOTSTRAP_PHONES=+255712345678,+255700000000 in env. */
@@ -364,7 +374,7 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
   const user = await db.user.create({
     id: `usr_${randomId(12)}`,
     phoneE164: phone,
-    email: null,
+    email: resolveTestEmail(phone),
     passwordHash: hash,
     passwordSalt: salt,
     failedLoginCount: 0,
@@ -564,6 +574,25 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
   }
 
   audit({ category: "AUTH", action: "user.login.password", actorId: user.id, targetType: "User", targetId: user.id, ip: meta.ip, userAgent: meta.ua });
+
+  // Bind test-phase email mapping (phone → email). Later this moves to KYC.
+  const emailForPhone = resolveTestEmail(user.phoneE164);
+  if (emailForPhone && user.email !== emailForPhone) {
+    await db.user.update(user.id, { email: emailForPhone });
+  }
+
+  // Login notification email — best-effort
+  const userEmail = emailForPhone ?? user.email;
+  if (userEmail) {
+    const { displayLabel } = await import("../display-label");
+    const userRef = { id: user.id, displayName: user.displayName };
+    sendEmail({
+      to: userEmail,
+      subject: "Signed in · Umeingia 50pick",
+      html: loginNotificationHtml({ name: displayLabel(userRef), time: new Date().toLocaleString("en-GB", { timeZone: "Africa/Dar_es_Salaam" }), ip: meta.ip ?? "unknown" }),
+      tag: "login",
+    }).catch(() => {});
+  }
 
   await createSession({
     userId: user.id,
