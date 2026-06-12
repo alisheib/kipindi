@@ -97,9 +97,6 @@ const NO_COLOR = "#c04848";         // --no-500
 // Brand mark — hosted PNG from the real logo kit (never recreated)
 const MARK_IMG = `<img src="${BASE_URL}/icons/mark-color-512.png" width="56" height="56" alt="50pick" style="display:block;margin:0 auto;border:0">`;
 
-// Gilt needle-rule separator (from the signature)
-const GILT_RULE = `<table cellpadding="0" cellspacing="0" width="100%"><tr><td style="padding:16px 0"><div style="width:42px;height:2px;background:${GILT};border-radius:2px"></div></td></tr></table>`;
-
 function wrap(body: string): string {
   return `<!DOCTYPE html>
 <html lang="en">

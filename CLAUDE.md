@@ -329,6 +329,17 @@ Already shipped (was on this list before):
 - **Account activity** — category filter chips (dynamic from actual data).
 - **Bottom nav** — `aria-label` on every link.
 - **Bet confirm modal** — `safe-area-inset-bottom` padding for notched phones.
+- **NavProgress** — gold 3px progress bar at top of viewport during route
+  transitions. Fires on every `<Link>` click + `50pick:navigating` custom
+  event for programmatic `router.push`. z-[2000], pointer-events-none.
+- **`useDeferredToast(pending)`** — toasts fire on the falling edge of
+  `useTransition` pending (when `router.refresh()` commits), not on
+  arbitrary setTimeout. Error toasts use `toast()` (immediate). Success
+  toasts use `deferToast()` (after transition settles). Zero setTimeout
+  in the codebase.
+- **Loading states** — 50 loading.tsx files cover every async route. All
+  forms use `SubmitButton` (spinner + pending label via `useFormStatus`).
+  All admin action buttons wire `loading={pending}` from `useTransition`.
 
 ## Dark Glass Kit Rebuild (Phase 3 + 3b) — June 2026
 
