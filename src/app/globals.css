@@ -905,33 +905,8 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   transition-delay: 400ms, 400ms, 400ms;
 }
 
-/* ===========================================================================
-   Win celebration animations
-   =========================================================================== */
-@keyframes win-burst {
-  0%   { transform: scale(0.6); opacity: 0; }
-  60%  { transform: scale(1.05); opacity: 1; }
-  100% { transform: scale(1.0); opacity: 1; }
-}
-/* Trophy pulse — subtle heartbeat behind the win-card crest. */
-@keyframes wc-trophy-pulse {
-  0%, 100% { box-shadow: 0 0 0 6px color-mix(in oklab, var(--gold-300) 18%, transparent); }
-  50%      { box-shadow: 0 0 0 9px color-mix(in oklab, var(--gold-300) 12%, transparent); }
-}
-/* Gilt rays — slow continuous rotation behind the trophy. */
-@keyframes wc-ray-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-/* Reduced motion — collapse the confetti firehose to a single gentle
-   fade. The win moment still lands, just calmly. */
-@media (prefers-reduced-motion: reduce) {
-  @keyframes win-burst {
-    from { opacity: 0; }
-    to   { opacity: 1; transform: none; }
-  }
-  .wc-rays { animation: none !important; opacity: 0.5; }
-}
+/* Win celebration animations are co-located in the component's inline
+   <style> tag (same pattern as OperationResultModal / BetConfirmModal). */
 
 /* Brand focus ring opt-in for inputs / ghost buttons that aren't using the
    `.input` class directly. */

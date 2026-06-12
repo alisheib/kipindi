@@ -10,10 +10,8 @@
  * popup auto-dismisses after 4.5s; manual close + click-anywhere-outside
  * also work.
  *
- * Kit-faithful (DEVELOPER_REFERENCE invariant #7 + WinCelebration spec):
- * the celebration is ONE gilt ray + a rolling counter on the payout — calm,
- * never a casino. **No confetti / chips / dice / slot reels.** (v2 removed the
- * old 60-piece confetti burst to comply with the kit.)
+ * Kit-faithful: the celebration is a still radial glow + a rolling counter
+ * on the payout — calm, never a casino. No confetti / chips / dice / reels.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -43,9 +41,7 @@ export function dispatchWinCelebration(p: WinCelebrationPayload) {
 const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 
 /** Rolling counter for the payout headline — counts up 0 → value on mount
- *  (~900ms, ease-out-quart). Snaps instantly under prefers-reduced-motion.
- *  Mirrors the WalletBalancePill tween so the "money landed" beat is
- *  consistent across the app. Mounts fresh each time the popup opens. */
+ *  (~900ms, ease-out-quart). Snaps instantly under prefers-reduced-motion. */
 function RollingAmount({ value }: { value: number }) {
   const [n, setN] = useState(0);
   useEffect(() => {
@@ -79,7 +75,7 @@ export function WinCelebrationHost() {
       if (!detail) return;
       setPayload(detail);
       setOpen(true);
-      haptics.celebrate(); // the peak — fires with the gilt ray + counter roll
+      haptics.celebrate();
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => setOpen(false), 4_500);
     };
@@ -117,58 +113,69 @@ export function WinCelebrationHost() {
         aria-label="Dismiss"
         onClick={() => setOpen(false)}
         className="absolute inset-0 bg-black/60 backdrop-blur-md"
-        style={{ animation: "win-burst 200ms ease-out both" }}
+        style={{ animation: "wc-fade 160ms ease-out" }}
       />
 
-      {/* Card — calm gilt celebration (no confetti, per kit invariant #7) */}
+      {/* Card — matches OperationResultModal's glass surface */}
       <div
-        className="relative z-10 w-full max-w-[380px] overflow-hidden rounded-xl border border-gold-700 bg-bg-elevated shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65)]"
-        style={{ animation: "win-burst 320ms cubic-bezier(.2,.8,.2,1) both" }}
+        className="relative z-10 w-full max-w-[380px] overflow-hidden rounded-xl border border-border-strong bg-bg-elevated shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65),inset_0_1px_0_rgba(255,255,255,0.06)]"
+        style={{ animation: "wc-rise 240ms var(--ease-arrive)" }}
       >
+        {/* Gold top strip */}
         <div
           aria-hidden
           className="absolute inset-x-0 top-0 h-1"
-          style={{
-            background: "linear-gradient(90deg, var(--gold-500), var(--gold-300), var(--gold-500))",
-          }}
+          style={{ background: "linear-gradient(90deg, var(--gold-500), var(--gold-300), var(--gold-500))" }}
         />
-        <div className="p-6 text-center relative">
-          {/* Gilt spotlight rays behind the trophy — slow rotation,
-              respects reduced-motion. Adds the "earned" prestige read
-              without going over the top. */}
-          <div
-            aria-hidden
-            className="absolute left-1/2 -translate-x-1/2 wc-rays"
-            style={{
-              top: 18,
-              width: 140,
-              height: 140,
-              background:
-                "conic-gradient(from 0deg, transparent 0deg, color-mix(in oklab, var(--gold-300) 22%, transparent) 8deg, transparent 16deg, transparent 90deg, color-mix(in oklab, var(--gold-300) 18%, transparent) 98deg, transparent 106deg, transparent 180deg, color-mix(in oklab, var(--gold-300) 22%, transparent) 188deg, transparent 196deg, transparent 270deg, color-mix(in oklab, var(--gold-300) 18%, transparent) 278deg, transparent 286deg, transparent 360deg)",
-              borderRadius: "50%",
-              filter: "blur(2px)",
-              opacity: 0.7,
-              animation: "wc-ray-spin 14s linear infinite",
-            }}
-          />
-          <div
-            className="relative inline-flex items-center justify-center h-14 w-14 rounded-pill border border-gold-700 bg-gold-500/15 text-gold-300 mb-3"
-            style={{
-              boxShadow: "0 0 0 6px color-mix(in oklab, var(--gold-300) 18%, transparent)",
-              animation: "wc-trophy-pulse 2.4s ease-in-out infinite",
-            }}
-          >
-            <I.trophy s={26} />
+
+        {/* Close button */}
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          aria-label="Close"
+          className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
+        >
+          <I.x s={16} />
+        </button>
+
+        <div className="p-6 lg:p-7 text-center">
+          {/* Trophy crest — radial glow BEHIND, centered via grid */}
+          <div className="relative mx-auto mb-4" style={{ width: 72, height: 72 }}>
+            {/* Static radial glow — calm, no spinning */}
+            <div
+              aria-hidden
+              className="absolute inset-[-16px] rounded-full"
+              style={{
+                background: "radial-gradient(circle, oklch(72% 0.14 78 / 0.25) 0%, oklch(72% 0.14 78 / 0.08) 50%, transparent 70%)",
+                animation: "wc-glow 2s ease-out",
+              }}
+            />
+            <div
+              className="relative inline-flex items-center justify-center w-full h-full rounded-full"
+              style={{
+                background: "oklch(40% 0.10 78 / 0.20)",
+                border: "2px solid oklch(58% 0.12 78)",
+                boxShadow: "0 0 0 6px oklch(58% 0.12 78 / 0.18)",
+                animation: "wc-pop 360ms cubic-bezier(.2,1.4,.4,1)",
+              }}
+            >
+              <span className="text-gold-300"><I.trophy s={30} /></span>
+            </div>
           </div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] font-bold text-gold-300">
+
+          {/* Eyebrow */}
+          <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
             {payload.kind === "WIN" ? "Position won · Madau yamefanikiwa" : "Cashed out · Umetoa kabla"}
           </p>
-          <h2 className="mt-1 font-display text-[23px] font-bold text-text leading-none tracking-[-0.02em]">
-            {heading} <span className="text-text-subtle italic font-normal text-[18px]">· {sub}</span>
+
+          {/* Headline */}
+          <h2 className="mt-1 font-display text-[22px] font-bold text-text leading-tight tracking-[-0.018em]">
+            {heading} <span className="text-text-subtle italic font-normal text-[17px]">· {sub}</span>
           </h2>
-          <div aria-hidden className="claret-rule" />
+
+          {/* Amount — the star of the show */}
           <p
-            className="font-mono font-bold text-[36px] tabular-nums leading-none"
+            className="mt-4 font-mono font-bold text-[34px] tabular-nums leading-none"
             style={{
               background: "linear-gradient(180deg, var(--gold-300), var(--gold-500))",
               WebkitBackgroundClip: "text",
@@ -179,33 +186,33 @@ export function WinCelebrationHost() {
           >
             <RollingAmount value={payload.amount} />
           </p>
+
           {typeof payload.net === "number" && (
             <p className="mt-1.5 font-mono text-[13px] tabular-nums text-gold-300">
-              {payload.net >= 0 ? "+" : "−"}TZS {fmt(Math.abs(payload.net))} <span className="text-text-subtle">net</span>
+              {payload.net >= 0 ? "+" : "\u2212"}TZS {fmt(Math.abs(payload.net))} <span className="text-text-subtle">net</span>
             </p>
           )}
+
           {payload.label && (
             <p className="mt-2 text-[12.5px] italic text-text-subtle line-clamp-2">{payload.label}</p>
           )}
+
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="btn btn-gold btn-md mt-5"
-            style={{ borderRadius: "var(--r-pill)" }}
+            className="btn btn-gold btn-md w-full mt-5"
           >
             Continue · Endelea
           </button>
         </div>
-
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          aria-label="Close"
-          className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
-        >
-          <I.x s={14} />
-        </button>
       </div>
+
+      <style>{`
+        @keyframes wc-fade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes wc-rise { from { transform: translateY(8px) scale(.96); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+        @keyframes wc-pop  { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.06); opacity: 1; } 100% { transform: scale(1); } }
+        @keyframes wc-glow { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
+      `}</style>
     </div>,
     document.body,
   );
