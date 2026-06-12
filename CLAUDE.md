@@ -141,6 +141,42 @@ Required Railway env vars (set in service → Variables):
 | `TESTER_BOOTSTRAP_PHONES` | comma-separated E.164 list — auto-fund 100K TZS on register |
 | `ADMIN_TEST_DEPOSITS` | `true` to enable uncapped admin deposits; unset = enabled in dev only |
 | `ANTHROPIC_API_KEY` | Anthropic API key — powers chatbot + poll generation. Omit = stub mode |
+| `POSTMARK_API_KEY` | Postmark Server API Token — transactional email. Omit = console stub |
+| `PHONE_EMAIL_MAP` | Pre-KYC phone→email mapping: `+255NNN:a@b.com,+255MMM:c@d.com` |
+
+## Email — Postmark transactional (June 2026)
+
+`src/lib/server/email.ts` — Postmark-backed email service with console
+fallback when `POSTMARK_API_KEY` is unset (same pattern as SMS).
+
+- **Domain**: `50pick.tz` — DKIM + Return-Path verified on Postmark
+- **From**: `noreply@50pick.tz` — all automated emails
+- **Reply-To**: `support@50pick.tz` (falls through to `ali@50pick.tz`)
+- **Sender Signatures**: `noreply@`, `support@`, `compliance@` — all `@50pick.tz`
+
+### Emails sent automatically
+
+| Email | Trigger | Tag |
+|---|---|---|
+| Welcome | Registration | `welcome` |
+| Login notification | Password login | `login` |
+| Deposit confirmed | Deposit succeeds | `deposit` |
+| Withdrawal sent | Withdrawal completes | `withdrawal` |
+| Withdrawal under review | AML hold | `withdrawal-review` |
+| Bet placed | Position opened | `bet-placed` |
+| Win notification | Market resolves in favour | `win` |
+| Loss notification | Market resolves against | `loss` |
+| Cash-out receipt | Position sold | `cashout` |
+
+Additional templates (password reset, KYC, self-exclusion, cool-off,
+AML reject, referral reward, session revoked) are built but wired on
+demand as those features go live.
+
+### Pre-KYC email binding
+
+`PHONE_EMAIL_MAP` maps test phones to emails until KYC collects email
+directly. Format: `+255777777777:ali@example.com,+255777777775:bob@example.com`.
+The mapping runs at both registration and login, writing to `user.email`.
 
 ## Activating Claude AI features (chatbot + poll generation)
 

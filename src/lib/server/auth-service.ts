@@ -582,7 +582,6 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
 
   // Bind env-mapped email (phone → email). Later this moves to KYC.
   const emailForPhone = resolvePhoneEmail(user.phoneE164);
-  console.log(`[login-email] phone=${user.phoneE164} resolved=${emailForPhone} existing=${user.email}`);
   if (emailForPhone && user.email !== emailForPhone) {
     await db.user.update(user.id, { email: emailForPhone });
   }

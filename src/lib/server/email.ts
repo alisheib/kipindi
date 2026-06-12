@@ -55,7 +55,6 @@ export async function sendEmail({ to, subject, html, tag }: SendInput): Promise<
   }
 
   try {
-    console.log(`[email] Sending to=${to} subject="${subject}" from=${FROM}`);
     const res = await pm.sendEmail({
       From: FROM,
       To: to,
@@ -68,10 +67,9 @@ export async function sendEmail({ to, subject, html, tag }: SendInput): Promise<
       TrackLinks: LinkTrackingOptions.HtmlOnly,
       MessageStream: "outbound",
     });
-    console.log(`[email] Sent OK messageId=${res.MessageID}`);
     return { ok: true, messageId: res.MessageID };
   } catch (err) {
-    console.error("[email] Send failed:", (err as Error).message, JSON.stringify((err as Record<string, unknown>).body ?? (err as Record<string, unknown>).statusCode ?? ""));
+    console.error("[email] Send failed:", (err as Error).message);
     return { ok: false };
   }
 }
@@ -163,10 +161,7 @@ export async function sendEmailToUser(
   const { db } = await import("./store");
   const user = await db.user.findById(userId);
   const email = user?.email;
-  if (!email) {
-    console.log(`[email] Skipped for user=${userId} — no email on record`);
-    return;
-  }
+  if (!email) return;
   const input = build(email);
   await sendEmail(input);
 }
