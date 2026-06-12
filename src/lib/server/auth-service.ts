@@ -19,14 +19,19 @@ import { createSession, destroySession, getSession, type SessionData } from "./s
 import { withLock } from "./locks";
 import { sendEmail, welcomeHtml, loginNotificationHtml } from "./email";
 
-/** Test-phase phone → email mapping. Moves to KYC-collected email at launch. */
-function resolveTestEmail(phone: string): string | null {
-  const map: Record<string, string> = {
-    "+255777777777": "alisheib07@gmail.com",
-    "+255777777775": "kaba@arrowconsulting.co.tz",
-    "+255777777772": "jay@arrowconsulting.co.tz",
-  };
-  return map[phone] ?? null;
+/**
+ * Pre-KYC phone → email mapping from env.
+ * Set PHONE_EMAIL_MAP=+255777777777:ali@example.com,+255777777775:bob@example.com
+ * on Railway. Once KYC collects email directly, this becomes a no-op.
+ */
+function resolvePhoneEmail(phone: string): string | null {
+  const raw = process.env.PHONE_EMAIL_MAP ?? "";
+  if (!raw) return null;
+  for (const pair of raw.split(",")) {
+    const [p, e] = pair.split(":").map((s) => s.trim());
+    if (p === phone && e) return e;
+  }
+  return null;
 }
 
 /** Phone numbers Ali wants auto-promoted to ADMIN on first registration.
@@ -374,7 +379,7 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
   const user = await db.user.create({
     id: `usr_${randomId(12)}`,
     phoneE164: phone,
-    email: resolveTestEmail(phone),
+    email: resolvePhoneEmail(phone),
     passwordHash: hash,
     passwordSalt: salt,
     failedLoginCount: 0,
@@ -576,7 +581,7 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
   audit({ category: "AUTH", action: "user.login.password", actorId: user.id, targetType: "User", targetId: user.id, ip: meta.ip, userAgent: meta.ua });
 
   // Bind test-phase email mapping (phone → email). Later this moves to KYC.
-  const emailForPhone = resolveTestEmail(user.phoneE164);
+  const emailForPhone = resolvePhoneEmail(user.phoneE164);
   if (emailForPhone && user.email !== emailForPhone) {
     await db.user.update(user.id, { email: emailForPhone });
   }
