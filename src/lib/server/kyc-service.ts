@@ -21,7 +21,9 @@ import { KycNidaSchema } from "./validators";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
 import { notifyKyc } from "./notification-service";
-import { sendEmailToUser, kycRejectedHtml } from "./email";
+import { sendEmailToUser, kycRejectedHtml, kycApprovedHtml } from "./email";
+import { withLock } from "./locks";
+import { displayLabel } from "@/lib/display-label";
 
 export async function startKyc(userId: string): Promise<ServiceResult<{ kycId: string }>> {
   const existing = await db.kyc.findByUserId(userId);
@@ -112,4 +114,86 @@ export async function submitForReview(userId: string): Promise<ServiceResult> {
 
 export async function getKycStatus(userId: string) {
   return await db.kyc.findByUserId(userId);
+}
+
+/** All KYC submissions awaiting an officer decision (for the review queue). */
+export async function listPendingKyc() {
+  return (await db.kyc.list())
+    .filter((k) => k.status === "PENDING_REVIEW" || k.status === "ADDITIONAL_INFO_REQUIRED")
+    .sort((a, b) => (a.submittedAt ?? "").localeCompare(b.submittedAt ?? "")); // oldest first (FIFO)
+}
+
+/**
+ * Officer decision on a pending KYC submission.
+ *
+ * Hardened for the scenarios a compliance officer hits in practice:
+ *  - Self-review blocked (an officer can't verify their own identity).
+ *  - REJECT requires a written reason (≥ 5 chars) — that text is what the
+ *    player sees in-app and by email.
+ *  - Idempotent + race-safe: serialized per-user under a lock, and only a
+ *    PENDING_REVIEW / ADDITIONAL_INFO submission can be decided, so a
+ *    double-click or two officers can't double-approve or double-email.
+ *  - APPROVE unlocks the account ONLY when it's gated purely by KYC
+ *    (PENDING_KYC / IN_PROGRESS). It never overrides a SUSPENDED / CLOSED /
+ *    SELF_EXCLUDED / COOLED_OFF status — those outrank a KYC pass.
+ *  - REJECT leaves the user able to resubmit; it does not change account status.
+ *  - Player is always notified (in-app + best-effort email). Both clicks audited.
+ */
+export async function reviewKyc(opts: {
+  officerId: string;
+  userId: string;
+  decision: "APPROVE" | "REJECT";
+  reason?: string;
+  note?: string;
+}): Promise<ServiceResult> {
+  const { officerId, userId, decision } = opts;
+  if (!userId) return { ok: false, error: "Missing user.", code: "INVALID" };
+  if (officerId === userId) {
+    audit({ category: "SECURITY", action: "kyc.review.self_blocked", actorId: officerId, targetType: "User", targetId: userId });
+    return { ok: false, error: "You cannot review your own identity verification.", code: "INVALID" };
+  }
+  const reason = (opts.reason ?? "").trim();
+  if (decision === "REJECT" && reason.length < 5) {
+    return { ok: false, error: "A rejection reason (at least 5 characters) is required.", code: "INVALID" };
+  }
+
+  return withLock(`kyc:${userId}`, async () => {
+    const k = await db.kyc.findByUserId(userId);
+    if (!k) return { ok: false as const, error: "No KYC submission for this user.", code: "NOT_FOUND" as const };
+    if (k.status !== "PENDING_REVIEW" && k.status !== "ADDITIONAL_INFO_REQUIRED") {
+      return { ok: false as const, error: `KYC is ${k.status} — only a submission awaiting review can be decided.`, code: "INVALID" as const };
+    }
+    const now = new Date().toISOString();
+
+    if (decision === "APPROVE") {
+      await db.kyc.upsert({ ...k, status: "APPROVED", reviewerId: officerId, reviewedAt: now, rejectReason: null, rejectNote: null, updatedAt: now });
+      // Unlock the account only if it's gated purely by KYC.
+      const u = await db.user.findById(userId);
+      if (u && u.status === "PENDING_KYC") {
+        await db.user.update(userId, { status: "ACTIVE" });
+      }
+      audit({ category: "KYC", action: "kyc.approved", actorId: officerId, targetType: "User", targetId: userId, payload: { kycId: k.id, priorStatus: u?.status ?? null } });
+      notifyKyc(userId, "APPROVED");
+      const firstName = (k.fullName?.trim().split(/\s+/)[0]) || displayLabel(u ?? { id: userId, displayName: null });
+      sendEmailToUser(userId, (email) => ({
+        to: email,
+        subject: "Identity verified · You're fully verified",
+        html: kycApprovedHtml({ name: firstName }),
+        tag: "kyc-approved",
+      }));
+      return { ok: true as const };
+    }
+
+    // REJECT
+    await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: reason, rejectNote: opts.note?.trim() || null, reviewerId: officerId, reviewedAt: now, updatedAt: now });
+    audit({ category: "KYC", action: "kyc.rejected", actorId: officerId, targetType: "User", targetId: userId, payload: { kycId: k.id, reason } });
+    notifyKyc(userId, "REJECTED");
+    sendEmailToUser(userId, (email) => ({
+      to: email,
+      subject: "Identity check needs attention",
+      html: kycRejectedHtml({ reason }),
+      tag: "kyc-rejected",
+    }));
+    return { ok: true as const };
+  });
 }

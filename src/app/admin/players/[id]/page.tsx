@@ -8,6 +8,7 @@ import { exportUserData } from "@/lib/server/user-service";
 import { I } from "@/components/ui/glyphs";
 import { formatTzs, formatTzsCompact } from "@/lib/utils";
 import { displayLabel, displayInitials } from "@/lib/display-label";
+import { KycReviewControls } from "@/components/admin/kyc-review-controls";
 import { SuspendControls } from "./suspend-controls";
 import { ExportPlayerButton } from "./export-player-button";
 
@@ -298,15 +299,26 @@ function ActionBtn({ label, tone }: { label: string; tone?: "danger" | "gold" })
 
 function KycTab({ kyc }: { kyc: ReturnType<typeof db.kyc.findByUserId> }) {
   if (!kyc) return <p className="text-caption text-text-tertiary py-4 text-center">No KYC record yet.</p>;
+  const decided = kyc.status === "APPROVED" || kyc.status === "REJECTED";
   return (
-    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-caption">
-      <Item label="Status" value={<Chip size="sm" variant={kyc.status === "APPROVED" ? "success" : "warning"}>{kyc.status}</Chip>} />
-      <Item label="NIDA number" value={<span className="font-mono">{kyc.nidaNumber ? `${kyc.nidaNumber.slice(0, 4)}…${kyc.nidaNumber.slice(-4)}` : "—"}</span>} />
-      <Item label="Full name" value={kyc.fullName ?? "—"} />
-      <Item label="DOB" value={kyc.dob ?? "—"} />
-      <Item label="Verified at" value={kyc.nidaVerifiedAt ? new Date(kyc.nidaVerifiedAt).toLocaleString("en-GB") : "—"} />
-      <Item label="Documents" value={`${kyc.documents.length} on file`} />
-    </dl>
+    <div className="space-y-4">
+      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-caption">
+        <Item label="Status" value={<Chip size="sm" variant={kyc.status === "APPROVED" ? "success" : kyc.status === "REJECTED" ? "danger" : "warning"}>{kyc.status}</Chip>} />
+        <Item label="NIDA number" value={<span className="font-mono">{kyc.nidaNumber ? `${kyc.nidaNumber.slice(0, 4)}…${kyc.nidaNumber.slice(-4)}` : "—"}</span>} />
+        <Item label="Full name" value={kyc.fullName ?? "—"} />
+        <Item label="DOB" value={kyc.dob ?? "—"} />
+        <Item label="NIDA verified at" value={kyc.nidaVerifiedAt ? new Date(kyc.nidaVerifiedAt).toLocaleString("en-GB") : "—"} />
+        <Item label="Documents" value={kyc.documents.length > 0 ? kyc.documents.map((d: { docType: string }) => d.docType).join(", ") : "none"} />
+        <Item label="Submitted" value={kyc.submittedAt ? new Date(kyc.submittedAt).toLocaleString("en-GB") : "—"} />
+        {decided && <Item label="Reviewed by" value={<span className="font-mono">{kyc.reviewerId ? `${kyc.reviewerId.slice(0, 14)}…` : "—"}{kyc.reviewedAt ? ` · ${new Date(kyc.reviewedAt).toLocaleString("en-GB")}` : ""}</span>} />}
+        {kyc.status === "REJECTED" && kyc.rejectReason && <Item label="Reject reason" value={<span className="text-no-300">{kyc.rejectReason}</span>} />}
+      </dl>
+
+      <div className="rounded-lg border border-border-subtle bg-bg-inset/30 p-3.5">
+        <p className="font-mono text-micro tracking-[0.12em] uppercase text-text-tertiary mb-2.5">Officer decision</p>
+        <KycReviewControls userId={kyc.userId} status={kyc.status} />
+      </div>
+    </div>
   );
 }
 

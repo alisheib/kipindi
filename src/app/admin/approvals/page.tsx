@@ -3,6 +3,7 @@ import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { db, type StoredTxn, type StoredSourceOfFunds } from "@/lib/server/store";
 import { getAuditPage } from "@/lib/server/audit";
+import { listPendingKyc } from "@/lib/server/kyc-service";
 
 export const metadata = { title: "Admin · Two-person approvals" };
 export const dynamic = "force-dynamic";
@@ -10,6 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminApprovalsPage() {
   const aml = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[];
   const sof = (await db.sourceOfFunds.listPending()) as StoredSourceOfFunds[];
+  const kycPending = await listPendingKyc();
   const recent = getAuditPage({ category: "ADMIN", limit: 60 });
 
   return (
@@ -26,11 +28,49 @@ export default async function AdminApprovalsPage() {
 
       <div className="px-4 lg:px-6 py-5 space-y-4">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <AdminKpi label="KYC pending" sw="Vitambulisho" value={kycPending.length} pulse={kycPending.length > 0} />
           <AdminKpi label="AML pending" sw="Inasubiri ukaguzi" value={aml.length} pulse={aml.length > 0} />
           <AdminKpi label="SOF declarations" sw="Asili ya pesa" value={sof.length} pulse={sof.length > 0} />
-          <AdminKpi label="Player overrides" sw="Mabadiliko"  value="0" delta="freeze · refund · close" />
           <AdminKpi label="Avg cosign time" sw="Wastani"      value="—"  delta="last 7d" />
         </div>
+
+        {/* KYC review queue */}
+        <AdminCard
+          title="KYC · awaiting verification"
+          sw="Vitambulisho vinasubiri"
+        >
+          {kycPending.length === 0 ? (
+            <div className="flex items-center gap-3 py-4">
+              <I.shieldcheck s={18} />
+              <p className="text-caption text-text-secondary">No identity submissions pending. New submissions appear here the moment a player submits for review.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto -mx-4 px-4">
+              <table className="w-full text-caption min-w-[600px]">
+                <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
+                  <tr>
+                    <th className="text-left py-2 pr-3">Submitted</th>
+                    <th className="text-left py-2 pr-3">User</th>
+                    <th className="text-left py-2 pr-3">Name (NIDA)</th>
+                    <th className="text-left py-2 pr-3">Docs</th>
+                    <th className="text-right py-2 pl-3">Review</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {kycPending.map((k) => (
+                    <tr key={k.id} className="border-b border-border-subtle/50 last:border-b-0">
+                      <td className="py-2 pr-3 font-mono whitespace-nowrap">{(k.submittedAt ?? k.updatedAt).replace("T", " ").slice(0, 16)}</td>
+                      <td className="py-2 pr-3"><a href={`/admin/players/${k.userId}?tab=kyc`} className="font-mono text-royal hover:underline">{k.userId.slice(0, 14)}…</a></td>
+                      <td className="py-2 pr-3 font-medium text-text">{k.fullName ?? "—"}</td>
+                      <td className="py-2 pr-3 font-mono tabular">{k.documents.length}/3</td>
+                      <td className="py-2 pl-3 text-right"><a href={`/admin/players/${k.userId}?tab=kyc`} className="font-mono text-micro tracking-[0.10em] uppercase text-gold hover:underline">review →</a></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </AdminCard>
 
         {/* AML queue */}
         <AdminCard

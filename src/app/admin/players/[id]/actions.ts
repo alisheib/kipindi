@@ -121,3 +121,30 @@ export async function restorePlayerAction(formData: FormData) {
   revalidatePath("/admin/players");
   return { ok: true as const };
 }
+
+// ─── KYC review (officer decision on a pending submission) ──────────────────
+
+export async function approveKycAction(formData: FormData) {
+  const officerId = await requireAdmin("approveKycAction");
+  const userId = String(formData.get("userId") ?? "");
+  const { reviewKyc } = await import("@/lib/server/kyc-service");
+  const r = await reviewKyc({ officerId, userId, decision: "APPROVE" });
+  if (r.ok) {
+    revalidatePath(`/admin/players/${userId}`);
+    revalidatePath("/admin/approvals");
+  }
+  return r.ok ? { ok: true as const } : { ok: false as const, error: r.error };
+}
+
+export async function rejectKycAction(formData: FormData) {
+  const officerId = await requireAdmin("rejectKycAction");
+  const userId = String(formData.get("userId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim().slice(0, 500);
+  const { reviewKyc } = await import("@/lib/server/kyc-service");
+  const r = await reviewKyc({ officerId, userId, decision: "REJECT", reason });
+  if (r.ok) {
+    revalidatePath(`/admin/players/${userId}`);
+    revalidatePath("/admin/approvals");
+  }
+  return r.ok ? { ok: true as const } : { ok: false as const, error: r.error };
+}
