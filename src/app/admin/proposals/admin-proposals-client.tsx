@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { Toggle } from "@/components/ui/toggle";
@@ -32,11 +33,15 @@ function CField({ label, hint, prefix, suffix, value, onChange, width }: { label
   return (
     <div style={{ width: width ?? "100%" }}>
       <div className="mb-1.5 text-[12px] font-semibold text-text">{label}</div>
-      <span className="input-group" style={{ height: 38 }}>
-        {prefix && <span className="prefix">{prefix}</span>}
-        <input className="input input-mono" style={{ fontSize: 13 }} inputMode="numeric" value={value} onChange={(e) => { const n = Number(e.target.value.replace(/[^\d]/g, "")); onChange(Number.isFinite(n) ? n : 0); }} />
-        {suffix && <span className="pr-3 font-mono text-[11px] text-text-subtle">{suffix}</span>}
-      </span>
+      <Input
+        prefix={prefix || undefined}
+        trailing={suffix ? <span className="text-[11px]">{suffix}</span> : undefined}
+        mono
+        size="sm"
+        inputMode="numeric"
+        value={value}
+        onChange={(e) => { const n = Number(e.target.value.replace(/[^\d]/g, "")); onChange(Number.isFinite(n) ? n : 0); }}
+      />
       {hint && <div className="mt-1.5 text-[10.5px] text-text-subtle">{hint}</div>}
     </div>
   );

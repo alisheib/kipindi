@@ -123,16 +123,14 @@ export default async function LandingPage() {
                 <>
                   <Link
                     href={"/markets" as never}
-                    className="btn btn-gold inline-flex items-center gap-2"
-                    style={{ height: 48, padding: "0 26px", fontSize: 15, borderRadius: 999 }}
+                    className="btn btn-gold btn-xl inline-flex items-center gap-2 rounded-pill"
                   >
                     Browse markets
                     <I.arrowRight s={16} />
                   </Link>
                   <Link
                     href={"/positions" as never}
-                    className="btn btn-ghost inline-flex items-center"
-                    style={{ height: 48, padding: "0 22px", fontSize: 14, borderRadius: 999, borderColor: "oklch(80% 0.06 268 / 0.4)", color: "oklch(94% 0.03 268)" }}
+                    className="btn btn-ghost btn-xl inline-flex items-center rounded-pill"
                   >
                     My positions
                   </Link>
@@ -141,16 +139,14 @@ export default async function LandingPage() {
                 <>
                   <Link
                     href={"/auth/register" as never}
-                    className="btn btn-gold inline-flex items-center gap-2"
-                    style={{ height: 48, padding: "0 26px", fontSize: 15, borderRadius: 999 }}
+                    className="btn btn-gold btn-xl inline-flex items-center gap-2 rounded-pill"
                   >
                     Create account
                     <I.arrowRight s={16} />
                   </Link>
                   <Link
                     href={"/auth/login" as never}
-                    className="btn btn-ghost inline-flex items-center"
-                    style={{ height: 48, padding: "0 22px", fontSize: 14, borderRadius: 999, borderColor: "oklch(80% 0.06 268 / 0.4)", color: "oklch(94% 0.03 268)" }}
+                    className="btn btn-ghost btn-xl inline-flex items-center rounded-pill"
                   >
                     Sign in
                   </Link>

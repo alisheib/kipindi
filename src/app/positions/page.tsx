@@ -230,7 +230,7 @@ function SummaryCell({
     <div className="rounded-xl border border-border bg-bg-elevated px-4 py-3.5">
       <div className="flex items-center gap-1.5">
         {icon && <span className="text-text-subtle">{icon}</span>}
-        <p className="font-mono uppercase text-text-subtle" style={{ fontSize: 9.5, letterSpacing: "0.08em", fontWeight: 600 }}>{label}</p>
+        <p className="font-mono text-[9.5px] uppercase tracking-[0.08em] font-semibold text-text-subtle">{label}</p>
       </div>
       <p className={`mt-1.5 font-mono text-[18px] font-bold tabular-nums leading-tight ${valueClass}`}>{value}</p>
       <p className="text-[11px] italic text-text-subtle">{sw}</p>

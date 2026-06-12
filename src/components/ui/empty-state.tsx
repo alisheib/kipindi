@@ -39,8 +39,7 @@ export function EmptyState({
         className,
       )}
     >
-      <div className="mx-auto mb-4 grid place-items-center rounded-full border border-border" aria-hidden
-        style={{ width: 46, height: 46, background: "var(--bg-inset)", color: "var(--text-faint)" }}>
+      <div className="mx-auto mb-4 inline-flex h-[46px] w-[46px] items-center justify-center rounded-full border border-border bg-bg-inset text-text-faint" aria-hidden>
         {illustration ?? <DefaultIllustration kind={kind} />}
       </div>
       <p className="font-display text-[15.5px] font-semibold text-text">{title}</p>

@@ -30,13 +30,13 @@ function Items({ events, prefix }: { events: TickerEvent[]; prefix: string }) {
         const amt = ev.amount && ev.amount > 0 ? `TZS ${fmtAmt(ev.amount)} ` : "";
         const verb = ev.kind === "bet" ? "predicted" : ev.kind === "win" ? "won on" : ev.kind === "resolve" ? "settled" : "";
         return (
-          <span key={`${prefix}-${ev.id}`} className="inline-flex items-center gap-1.5 shrink-0 font-mono" style={{ paddingRight: 32, fontSize: 12, whiteSpace: "nowrap" }}>
-            <span style={{ color: "var(--text-muted)" }}>{amt}{verb} </span>
+          <span key={`${prefix}-${ev.id}`} className="inline-flex items-center gap-1.5 shrink-0 font-mono text-[12px] pr-8 whitespace-nowrap">
+            <span className="text-text-muted">{amt}{verb} </span>
             {ev.side && (
-              <span style={{ fontWeight: 700, color: ev.side === "YES" ? "var(--yes-400)" : "var(--no-400)" }}>{ev.side}</span>
+              <span className={`font-bold ${ev.side === "YES" ? "text-yes-400" : "text-no-400"}`}>{ev.side}</span>
             )}
-            <span style={{ color: "var(--text-muted)" }}> on {ev.marketTitle}</span>
-            <span style={{ width: 2.5, height: 2.5, borderRadius: "50%", background: "var(--gilt)", opacity: 0.35, flexShrink: 0, marginLeft: 8 }} />
+            <span className="text-text-muted"> on {ev.marketTitle}</span>
+            <span className="inline-block w-[2.5px] h-[2.5px] rounded-full bg-gold-300 opacity-35 shrink-0 ml-2" />
           </span>
         );
       })}
@@ -70,7 +70,7 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
       }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <span className="live-dot" style={{ width: 6, height: 6 }} />
-          <span className="font-mono" style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--live-400)" }}>
+          <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[var(--live-400)]">
             LIVE
           </span>
         </span>

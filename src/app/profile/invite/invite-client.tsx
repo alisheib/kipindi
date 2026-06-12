@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { I } from "@/components/ui/glyphs";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 
@@ -45,16 +46,14 @@ export function ReferralShare({ link, shareText }: { link: string; shareText: st
       <p className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.1em] font-bold text-text-subtle">
         Your referral link · Kiungo chako
       </p>
-      <div className="input-group mb-2.5">
-        <span className="prefix" style={{ color: "var(--gold-400)" }}>
-          <I.link s={14} />
-        </span>
-        <input className="input input-mono" readOnly value={link} style={{ fontWeight: 500 }} aria-label="Referral link" />
+      <div className="flex items-center gap-2 mb-2.5">
+        <div className="flex-1 min-w-0">
+          <Input readOnly value={link} mono className="font-medium" aria-label="Referral link" />
+        </div>
         <button
           type="button"
           onClick={copy}
-          className="m-[5px] flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-bg-overlay px-3 text-[12.5px] font-semibold text-text transition-colors hover:bg-bg-elevated"
-          style={{ height: 38 }}
+          className="btn btn-ghost btn-md shrink-0 inline-flex items-center gap-1.5"
         >
           {copied ? <I.check s={14} /> : <I.copy s={14} />}
           {copied ? "Copied" : "Copy"}

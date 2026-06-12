@@ -73,7 +73,7 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
             }}
           >
             <Ico s={21} />
-            <span style={{ fontSize: 10, fontWeight: on ? 600 : 500 }}>{it.label}</span>
+            <span className={`text-[10px] ${on ? "font-semibold" : "font-medium"}`}>{it.label}</span>
           </Link>
         );
       })}

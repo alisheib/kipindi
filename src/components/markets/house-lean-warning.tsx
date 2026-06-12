@@ -33,7 +33,7 @@ export function HouseLeanWarning({ level }: { level: LeanLevel }) {
         <I.warning s={15} />
       </span>
       <div className="min-w-0">
-        <p className={`font-semibold ${neg ? "text-no-300" : "text-warning-fg"}`} style={{ fontSize: 12 }}>
+        <p className={`text-[12px] font-semibold ${neg ? "text-no-300" : "text-warning-fg"}`}>
           {neg
             ? "Heavy lean on this side — a winning share may be below your stake."
             : "This side is crowded — a winning share may be small."}
