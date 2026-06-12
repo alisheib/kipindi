@@ -17,23 +17,23 @@ const cta=(href,label)=>`<table cellpadding="0" cellspacing="0" width="100%" sty
 const emails = [
   {
     subject: "1/5 Welcome to 50pick \u00b7 Karibu",
-    html: wrap(ey("Welcome","Karibu")+h1("Welcome to 50pick, Ali")+sub("Your account is ready. Browse markets, place your first prediction, and join the community.")+subSw("Akaunti yako iko tayari. Tazama masoko na uweke utabiri wako wa kwanza.")+cta("https://50pick.tz/markets","Browse markets \u00b7 Tazama masoko")),
+    html: wrap(ey("Welcome","Karibu")+h1("Welcome to 50pick, Ali")+sub("Your account is ready. Browse markets, place your first prediction, and join the community.")+subSw("Akaunti yako iko tayari. Tazama masoko na uweke utabiri wako wa kwanza.")+cta("https://kipindi-production.up.railway.app/markets","Browse markets \u00b7 Tazama masoko")),
   },
   {
     subject: "2/5 Deposit confirmed \u00b7 TZS 25,000",
-    html: wrap(ey("Deposit confirmed","Amana imethibitishwa")+h1("Funds added")+sub("Your wallet has been topped up.")+rows([{l:"Amount",v:"TZS 25,000",t:"good"},{l:"Method",v:"M-Pesa"},{l:"Reference",v:"txn_abc123xyz"},{l:"New balance",v:"TZS 125,000"}])+cta("https://50pick.tz/wallet","View wallet \u00b7 Tazama pochi")),
+    html: wrap(ey("Deposit confirmed","Amana imethibitishwa")+h1("Funds added")+sub("Your wallet has been topped up.")+rows([{l:"Amount",v:"TZS 25,000",t:"good"},{l:"Method",v:"M-Pesa"},{l:"Reference",v:"txn_abc123xyz"},{l:"New balance",v:"TZS 125,000"}])+cta("https://kipindi-production.up.railway.app/wallet","View wallet \u00b7 Tazama pochi")),
   },
   {
     subject: '3/5 Bet placed \u00b7 YES on "Will TZS strengthen?"',
-    html: wrap(ey("Bet placed","Dau limewekwa")+h1("Position open")+sub("Will the TZS strengthen against the USD by month-end?")+rows([{l:"Your pick",v:`<span style="color:${Y}">YES</span>`},{l:"Stake",v:"TZS 5,000"},{l:"Resolves",v:"2026-06-30"}])+sub("Payout is calculated at resolution from the final pool share.")+cta("https://50pick.tz/positions","View positions \u00b7 Tazama madau")),
+    html: wrap(ey("Bet placed","Dau limewekwa")+h1("Position open")+sub("Will the TZS strengthen against the USD by month-end?")+rows([{l:"Your pick",v:`<span style="color:${Y}">YES</span>`},{l:"Stake",v:"TZS 5,000"},{l:"Resolves",v:"2026-06-30"}])+sub("Payout is calculated at resolution from the final pool share.")+cta("https://kipindi-production.up.railway.app/positions","View positions \u00b7 Tazama madau")),
   },
   {
     subject: "4/5 You won \u00b7 TZS 12,350",
-    html: wrap(ey("Position won","Umeshinda")+h1("You won TZS 12,350",G)+sub("Will the TZS strengthen against the USD by month-end?")+rows([{l:"Payout",v:"TZS 12,350",t:"good"},{l:"Net profit",v:"+TZS 7,350",t:"good"},{l:"Stake",v:"TZS 5,000"}])+cta("https://50pick.tz/markets","Browse markets \u00b7 Tazama masoko")),
+    html: wrap(ey("Position won","Umeshinda")+h1("You won TZS 12,350",G)+sub("Will the TZS strengthen against the USD by month-end?")+rows([{l:"Payout",v:"TZS 12,350",t:"good"},{l:"Net profit",v:"+TZS 7,350",t:"good"},{l:"Stake",v:"TZS 5,000"}])+cta("https://kipindi-production.up.railway.app/markets","Browse markets \u00b7 Tazama masoko")),
   },
   {
     subject: "5/5 Signed in \u00b7 Umeingia 50pick",
-    html: wrap(ey("Sign-in","Umeingia")+h1("Welcome back, Ali")+sub("You just signed in to your 50pick account.")+subSw("Umeingia kwenye akaunti yako ya 50pick.")+rows([{l:"Time",v:"12 Jun 2026, 5:30 PM EAT"},{l:"IP address",v:"41.59.xxx.xxx"}])+cta("https://50pick.tz/markets","Browse markets \u00b7 Tazama masoko")+`<p style="margin:16px 0 0;font-size:11px;color:${TS}">If this wasn't you, change your password immediately.</p>`),
+    html: wrap(ey("Sign-in","Umeingia")+h1("Welcome back, Ali")+sub("You just signed in to your 50pick account.")+subSw("Umeingia kwenye akaunti yako ya 50pick.")+rows([{l:"Time",v:"12 Jun 2026, 5:30 PM EAT"},{l:"IP address",v:"41.59.xxx.xxx"}])+cta("https://kipindi-production.up.railway.app/markets","Browse markets \u00b7 Tazama masoko")+`<p style="margin:16px 0 0;font-size:11px;color:${TS}">If this wasn't you, change your password immediately.</p>`),
   },
 ];
 

@@ -24,6 +24,7 @@ const FROM = "noreply@50pick.tz";
 const REPLY_TO = "support@50pick.tz";
 const COMPANY = "50pick";
 const HELPLINE = "+255 22 211 5811";
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://kipindi-production.up.railway.app";
 
 let _client: ServerClient | null = null;
 function client(): ServerClient | null {
@@ -91,7 +92,7 @@ const YES_COLOR = "#199a5b";
 const NO_COLOR = "#d9404a";
 
 // Brand mark — hosted PNG from the real logo kit (never recreated)
-const MARK_IMG = `<img src="https://kipindi-production.up.railway.app/icons/mark-color-512.png" width="56" height="56" alt="50pick" style="display:block;margin:0 auto;border:0">`;
+const MARK_IMG = `<img src="${BASE_URL}/icons/mark-color-512.png" width="56" height="56" alt="50pick" style="display:block;margin:0 auto;border:0">`;
 
 // Gilt needle-rule separator (from the signature)
 const GILT_RULE = `<table cellpadding="0" cellspacing="0" width="100%"><tr><td style="padding:16px 0"><div style="width:42px;height:2px;background:${GILT};border-radius:2px"></div></td></tr></table>`;
@@ -138,7 +139,7 @@ function wrap(body: string): string {
     </p>
     <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:10px;color:${TEXT_SUBTLE}">
       You're receiving this because you have a 50pick account.<br>
-      <a href="https://50pick.tz/profile/account" style="color:${TEXT_MUTED};text-decoration:underline">Manage preferences</a>
+      <a href="${BASE_URL}/profile/account" style="color:${TEXT_MUTED};text-decoration:underline">Manage preferences</a>
     </p>
   </td></tr>
 
@@ -215,7 +216,7 @@ export function welcomeHtml({ name }: { name: string }): string {
     ${heading(`Welcome to 50pick, ${name}`)}
     ${subtitle("Your account is ready. Browse markets, place your first prediction, and join the community.")}
     ${subtitleSw("Akaunti yako iko tayari. Tazama masoko na uweke utabiri wako wa kwanza.")}
-    ${ctaButton("https://50pick.tz/markets", "Browse markets · Tazama masoko")}
+    ${ctaButton("${BASE_URL}/markets", "Browse markets · Tazama masoko")}
   `);
 }
 
@@ -232,7 +233,7 @@ export function depositConfirmedHtml({ amount, method, reference, balance }: {
       { label: "Reference", value: reference },
       { label: "New balance", value: fmtTzs(balance) },
     ])}
-    ${ctaButton("https://50pick.tz/wallet", "View wallet · Tazama pochi")}
+    ${ctaButton("${BASE_URL}/wallet", "View wallet · Tazama pochi")}
   `);
 }
 
@@ -281,7 +282,7 @@ export function betPlacedHtml({ side, stake, marketTitle, resolutionDate }: {
       { label: "Resolves", value: resolutionDate },
     ]).replace(`>${side}<`, ` style="color:${sideColor}">${side}<`)}
     ${subtitle("Payout is calculated at resolution from the final pool share.")}
-    ${ctaButton("https://50pick.tz/positions", "View positions · Tazama madau")}
+    ${ctaButton("${BASE_URL}/positions", "View positions · Tazama madau")}
   `);
 }
 
@@ -298,7 +299,7 @@ export function winNotificationHtml({ payout, stake, marketTitle }: {
       { label: "Net profit", value: `+${fmtTzs(net)}`, tone: "good" },
       { label: "Stake", value: fmtTzs(stake) },
     ])}
-    ${ctaButton("https://50pick.tz/markets", "Browse markets · Tazama masoko")}
+    ${ctaButton("${BASE_URL}/markets", "Browse markets · Tazama masoko")}
   `);
 }
 
@@ -314,7 +315,7 @@ export function lossNotificationHtml({ stake, marketTitle }: {
     ])}
     ${subtitle("Most people play for fun. If it stops feeling fun, take a break.")}
     ${subtitleSw("Kama haifurahishi tena, pumzika.")}
-    ${ctaButton("https://50pick.tz/profile/responsible-gambling", "Set limits · Weka mipaka")}
+    ${ctaButton("${BASE_URL}/profile/responsible-gambling", "Set limits · Weka mipaka")}
   `);
 }
 
@@ -351,7 +352,7 @@ export function kycApprovedHtml({ name }: { name: string }): string {
     ${eyebrow("Identity verified", "Utambulisho umethibitishwa")}
     ${heading(`You're fully verified, ${name}`)}
     ${subtitle("Your identity has been confirmed. All platform features are now unlocked.")}
-    ${ctaButton("https://50pick.tz/markets", "Browse markets · Tazama masoko")}
+    ${ctaButton("${BASE_URL}/markets", "Browse markets · Tazama masoko")}
   `);
 }
 
@@ -361,7 +362,7 @@ export function kycRejectedHtml({ reason }: { reason: string }): string {
     ${heading("Identity check needs attention")}
     ${subtitle(reason)}
     ${subtitleSw("Tafadhali angalia tena nyaraka zako na uwasilishe upya.")}
-    ${ctaButton("https://50pick.tz/profile/kyc", "Resubmit · Wasilisha tena")}
+    ${ctaButton("${BASE_URL}/profile/kyc", "Resubmit · Wasilisha tena")}
   `);
 }
 
@@ -415,7 +416,7 @@ export function referralRewardHtml({ amount, referredName, totalEarned }: {
       { label: "Reward", value: fmtTzs(amount), tone: "good" },
       { label: "Total earned", value: fmtTzs(totalEarned) },
     ])}
-    ${ctaButton("https://50pick.tz/profile/invite", "Invite more · Alika zaidi")}
+    ${ctaButton("${BASE_URL}/profile/invite", "Invite more · Alika zaidi")}
   `);
 }
 
@@ -429,7 +430,7 @@ export function loginNotificationHtml({ name, time, ip }: { name: string; time: 
       { label: "Time", value: time },
       { label: "IP address", value: ip },
     ])}
-    ${ctaButton("https://50pick.tz/markets", "Browse markets · Tazama masoko")}
+    ${ctaButton("${BASE_URL}/markets", "Browse markets · Tazama masoko")}
     <p style="margin:16px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">If this wasn't you, change your password immediately and contact support.</p>
   `);
 }
@@ -440,7 +441,7 @@ export function sessionRevokedHtml(): string {
     ${heading("Signed out on another device")}
     ${subtitle("Your account was signed in on another device. For security, your previous session was ended.")}
     ${subtitleSw("Akaunti yako imeingia kwenye kifaa kingine. Kikao chako kilichopita kimesitishwa.")}
-    ${ctaButton("https://50pick.tz/auth/login", "Sign in again · Ingia tena")}
+    ${ctaButton("${BASE_URL}/auth/login", "Sign in again · Ingia tena")}
     <p style="margin:16px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">If this wasn't you, change your password immediately.</p>
   `);
 }
