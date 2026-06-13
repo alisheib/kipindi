@@ -482,6 +482,24 @@ export function kycSubmittedHtml({ name, reference, submittedAt, docTypes, viewU
 }
 
 /**
+ * Sent to the player when an officer needs more / clearer documents or extra
+ * information before they can decide (status → ADDITIONAL_INFO_REQUIRED). The
+ * `reason` is the officer's free-text note. Their documents are unlocked so
+ * they can update and resubmit.
+ */
+export function kycMoreInfoHtml({ reason, reference }: { reason: string; reference?: string }): string {
+  return wrap(`
+    ${eyebrow("More information needed", "Tunahitaji maelezo zaidi")}
+    ${heading("We need a little more to verify you")}
+    ${subtitle(reason)}
+    ${subtitleSw("Tafadhali rekebisha au ongeza nyaraka zilizoombwa, kisha uwasilishe tena. Hii si kukataliwa — tunahitaji tu kitu kimoja zaidi.")}
+    ${reference ? detailRows([{ label: "Reference", value: reference }, { label: "Status", value: "Awaiting your update" }]) : ""}
+    <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE};line-height:1.55">Your documents are unlocked — open the link below, replace or add what's asked, and submit again. Nothing else changes on your account.</p>
+    ${ctaButton("/profile/kyc", "Update & resubmit · Sasisha")}
+  `);
+}
+
+/**
  * Sent to compliance / ops when a new submission needs review. Deliberately
  * carries NO images, NO full NIDA, NO DOB — the reviewer opens the secured
  * admin drill-in to see the evidence. NIDA is masked to the last 4 digits.

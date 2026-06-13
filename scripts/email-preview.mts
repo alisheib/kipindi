@@ -2,7 +2,7 @@ import { chromium } from "playwright";
 import {
   welcomeHtml, depositConfirmedHtml, betPlacedHtml, winNotificationHtml,
   lossNotificationHtml, cashOutReceiptHtml, withdrawalSentHtml, kycApprovedHtml,
-  kycRejectedHtml, kycSubmittedHtml, kycSubmittedAdminHtml, emailVerifyHtml,
+  kycRejectedHtml, kycSubmittedHtml, kycSubmittedAdminHtml, emailVerifyHtml, kycMoreInfoHtml,
 } from "../src/lib/server/email.ts";
 
 const PLACED = "2026-06-14T11:32:00.000Z";
@@ -20,6 +20,7 @@ const samples: Record<string, string> = {
   kycSubmitted: kycSubmittedHtml({ name: "Asha", reference: "kyc_9f3k2qm1a8", submittedAt: PLACED, docTypes: ["NIDA_FRONT", "NIDA_BACK", "SELFIE"], viewUrl: "/profile/kyc" }),
   kycAdmin: kycSubmittedAdminHtml({ reference: "kyc_9f3k2qm1a8", name: "Asha Mwamba", phoneMasked: "+25570*****19", nidaMasked: "•••• 4821", submittedAt: PLACED, reviewUrl: "https://50pick.tz/admin/players/usr_9f3k2qm1a8?tab=kyc" }),
   emailVerify: emailVerifyHtml({ name: "Asha", verifyUrl: "https://50pick.tz/auth/verify-email?token=eyJ...sig" }),
+  kycMoreInfo: kycMoreInfoHtml({ reason: "The back of your ID card is blurry — please re-upload a clearer photo with all four corners visible.", reference: "kyc_9f3k2qm1a8" }),
 };
 
 const b = await chromium.launch();

@@ -26,6 +26,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
   const hasDoc = (t: string) => (kyc?.documents ?? []).some((d: { docType: string }) => d.docType === t);
   const submitted = kyc?.status === "PENDING_REVIEW" || kyc?.status === "APPROVED";
   const rejected = kyc?.status === "REJECTED";
+  const needsInfo = kyc?.status === "ADDITIONAL_INFO_REQUIRED";
 
   return (
     <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
@@ -122,6 +123,22 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                 Please re-enter your details below and resubmit, or email{" "}
                 <a href={`mailto:${SUPPORT_EMAIL()}?subject=KYC%20review`} className="text-accent-400 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a>.
                 <span className="block italic text-text-subtle text-[11.5px] mt-0.5">Tafadhali jaribu tena au wasiliana na msaada.</span>
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {needsInfo && (
+        <section role="status" className="rounded-xl border border-gold-700 bg-gold-500/[0.08] p-4 lg:p-5">
+          <div className="flex items-start gap-2.5">
+            <I.alertCircle s={18} />
+            <div className="min-w-0">
+              <p className="font-display text-[14px] font-bold text-gold-300">More information needed · Tunahitaji maelezo zaidi</p>
+              <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
+                {kyc?.rejectNote ? <span className="font-semibold text-text">{kyc.rejectNote}</span> : "Our team needs a clearer or additional document."}
+                {" "}Update the document(s) below and submit again — this isn&rsquo;t a rejection.
+                <span className="block italic text-text-subtle text-[11.5px] mt-0.5">Rekebisha nyaraka hapa chini kisha uwasilishe tena.</span>
               </p>
             </div>
           </div>

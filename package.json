@@ -11,7 +11,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test:date": "tsx scripts/date-mask.test.mts",
-    "test:kyc": "tsx scripts/kyc-review.test.mts && tsx scripts/kyc-submit-notify.test.mts",
+    "test:kyc": "tsx scripts/kyc-review.test.mts && tsx scripts/kyc-submit-notify.test.mts && tsx scripts/kyc-flow-stress.test.mts",
     "qa:live": "node scripts/pre-deploy-live-check.mjs",
     "predeploy": "npm run typecheck && npm run test:date && npm run test:kyc && npm run build && npm run qa:live",
     "db:generate": "prisma generate",

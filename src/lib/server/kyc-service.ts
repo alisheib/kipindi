@@ -22,7 +22,7 @@ import { KycNidaSchema } from "./validators";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
 import { notifyKyc } from "./notification-service";
-import { sendEmail, sendEmailToUser, kycRejectedHtml, kycApprovedHtml, kycSubmittedHtml, kycSubmittedAdminHtml } from "./email";
+import { sendEmail, sendEmailToUser, kycRejectedHtml, kycApprovedHtml, kycSubmittedHtml, kycSubmittedAdminHtml, kycMoreInfoHtml } from "./email";
 import { resolvePhoneEmail } from "./email-map";
 import { setUserEmail } from "./email-verification";
 import { withLock } from "./locks";
@@ -266,7 +266,7 @@ export async function listPendingKyc() {
 export async function reviewKyc(opts: {
   officerId: string;
   userId: string;
-  decision: "APPROVE" | "REJECT";
+  decision: "APPROVE" | "REJECT" | "REQUEST_INFO";
   reason?: string;
   note?: string;
 }): Promise<ServiceResult> {
@@ -277,8 +277,12 @@ export async function reviewKyc(opts: {
     return { ok: false, error: "You cannot review your own identity verification.", code: "INVALID" };
   }
   const reason = (opts.reason ?? "").trim();
+  // Both REJECT and REQUEST_INFO put text in front of the player — require it.
   if (decision === "REJECT" && reason.length < 5) {
     return { ok: false, error: "A rejection reason (at least 5 characters) is required.", code: "INVALID" };
+  }
+  if (decision === "REQUEST_INFO" && reason.length < 5) {
+    return { ok: false, error: "Tell the player what's needed (at least 5 characters).", code: "INVALID" };
   }
 
   return withLock(`kyc:${userId}`, async () => {
@@ -310,6 +314,24 @@ export async function reviewKyc(opts: {
         subject: "Identity verified · You're fully verified",
         html: kycApprovedHtml({ name: greetName, reference: k.id }),
         tag: "kyc-approved",
+      }));
+      return { ok: true as const };
+    }
+
+    if (decision === "REQUEST_INFO") {
+      // Officer needs more / clearer docs or extra info before deciding. The
+      // submission stays open: status → ADDITIONAL_INFO_REQUIRED unlocks
+      // re-upload (attachDocument allows it in this state) and the player can
+      // resubmit, which transitions back to PENDING_REVIEW. The note is the
+      // player-facing ask, surfaced both in-app and on /profile/kyc.
+      await db.kyc.upsert({ ...k, status: "ADDITIONAL_INFO_REQUIRED", rejectReason: null, rejectNote: reason, reviewerId: officerId, reviewedAt: now, updatedAt: now });
+      audit({ category: "KYC", action: "kyc.more_info_requested", actorId: officerId, targetType: "User", targetId: userId, payload: { kycId: k.id, note: reason } });
+      notifyKyc(userId, "ADDITIONAL_INFO");
+      sendEmailToUser(userId, (email) => ({
+        to: email,
+        subject: "More information needed · 50pick verification",
+        html: kycMoreInfoHtml({ reason, reference: k.id }),
+        tag: "kyc-more-info",
       }));
       return { ok: true as const };
     }

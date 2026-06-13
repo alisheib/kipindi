@@ -306,7 +306,18 @@ export function notifyCashout(userId: string, opts: { amount: number; marketTitl
   });
 }
 
-export function notifyKyc(userId: string, status: "APPROVED" | "REJECTED" | "PENDING_REVIEW") {
+export function notifyKyc(userId: string, status: "APPROVED" | "REJECTED" | "PENDING_REVIEW" | "ADDITIONAL_INFO") {
+  if (status === "ADDITIONAL_INFO") {
+    return notify({
+      userId,
+      kind: "KYC",
+      titleEn: "More information needed",
+      titleSw: "Tunahitaji maelezo zaidi",
+      bodyEn: "Open verification to update your documents and resubmit.",
+      bodySw: "Fungua uthibitishaji urekebishe nyaraka zako.",
+      href: "/profile/kyc",
+    });
+  }
   if (status === "APPROVED") {
     return notify({
       userId,

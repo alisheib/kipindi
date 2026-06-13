@@ -148,3 +148,18 @@ export async function rejectKycAction(formData: FormData) {
   }
   return r.ok ? { ok: true as const } : { ok: false as const, error: r.error };
 }
+
+/** Ask the player for more / clearer documents or extra info. Keeps the
+ *  submission open (ADDITIONAL_INFO_REQUIRED) so they can update + resubmit. */
+export async function requestKycInfoAction(formData: FormData) {
+  const officerId = await requireAdmin("requestKycInfoAction");
+  const userId = String(formData.get("userId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim().slice(0, 500);
+  const { reviewKyc } = await import("@/lib/server/kyc-service");
+  const r = await reviewKyc({ officerId, userId, decision: "REQUEST_INFO", reason });
+  if (r.ok) {
+    revalidatePath(`/admin/players/${userId}`);
+    revalidatePath("/admin/approvals");
+  }
+  return r.ok ? { ok: true as const } : { ok: false as const, error: r.error };
+}
