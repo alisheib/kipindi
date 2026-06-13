@@ -95,7 +95,7 @@ const YES_COLOR = "#2db872";        // --yes-500
 const NO_COLOR = "#c04848";         // --no-500
 
 // Brand mark — hosted PNG from the real logo kit (never recreated)
-const MARK_IMG = `<img src="${BASE_URL}/icons/mark-color-512.png" width="56" height="56" alt="50pick" style="display:block;margin:0 auto;border:0">`;
+const MARK_IMG = `<img src="${BASE_URL}/icons/mark-color-512.png" width="56" height="56" alt="50pick" class="sp-mark" style="display:block;margin:0 auto;border:0;max-width:56px;height:auto">`;
 
 function wrap(body: string): string {
   return `<!DOCTYPE html>
@@ -112,11 +112,29 @@ function wrap(body: string): string {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;700;800&family=JetBrains+Mono:wght@500;700&family=Inter:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  /* Mobile refinements. Modern clients (Apple Mail, iOS Mail, Gmail app, etc.)
+     honour these; clients that ignore <style> keep the inline desktop styles,
+     which already degrade cleanly. This is what stops the layout jamming on a
+     phone: the CTA goes full-width instead of overflowing, and the two-column
+     detail rows stack into label-over-value. */
+  @media only screen and (max-width:600px) {
+    .sp-wrap   { padding: 20px 10px !important; }
+    .sp-card   { padding: 22px 18px 20px !important; }
+    .sp-h1     { font-size: 21px !important; line-height: 1.18 !important; }
+    .sp-cta    { display: block !important; width: auto !important; padding: 16px 14px !important; }
+    .sp-mark   { width: 52px !important; height: 52px !important; }
+    .sp-row-label { display: block !important; width: 100% !important; box-sizing: border-box !important;
+                    text-align: left !important; padding: 12px 0 1px !important; border-bottom: 0 !important; }
+    .sp-row-val   { display: block !important; width: 100% !important; box-sizing: border-box !important;
+                    text-align: left !important; padding: 0 0 12px !important; }
+  }
+</style>
 </head>
-<body style="margin:0;padding:0;background:${BRAND_BG};color:${TEXT};font-family:'Sora','Segoe UI',Helvetica,Arial,sans-serif;">
-<table cellpadding="0" cellspacing="0" width="100%" style="background:${BRAND_BG}">
-<tr><td align="center" style="padding:32px 16px">
-<table cellpadding="0" cellspacing="0" width="100%" style="max-width:560px">
+<body style="margin:0;padding:0;background:${BRAND_BG};color:${TEXT};font-family:'Sora','Segoe UI',Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:${BRAND_BG}">
+<tr><td align="center" class="sp-wrap" style="padding:32px 16px">
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;width:100%">
 
   <!-- Header: mark + wordmark -->
   <tr><td align="center" style="padding:0 0 24px">
@@ -124,7 +142,7 @@ function wrap(body: string): string {
       ${MARK_IMG}
     </a>
     <div style="margin-top:10px;font-family:'Sora','Segoe UI',Helvetica,Arial,sans-serif;font-size:20px;font-weight:800;letter-spacing:-0.015em">
-      <a href="https://50pick.tz" style="color:${BRAND_BG};text-decoration:none">
+      <a href="https://50pick.tz" style="color:${TEXT};text-decoration:none">
         <span style="color:${TEXT}">50pick</span><span style="color:${TEXT_MUTED};font-weight:500;font-size:14px;margin-left:2px">.tz</span>
       </a>
     </div>
@@ -134,7 +152,7 @@ function wrap(body: string): string {
   <tr><td><div style="height:3px;background:linear-gradient(90deg,${GILT_MID},${GILT},${GILT_MID});border-radius:3px 3px 0 0"></div></td></tr>
 
   <!-- Card body -->
-  <tr><td style="background:${BRAND_CARD};border:1px solid ${BRAND_BORDER};border-top:none;border-radius:0 0 12px 12px;padding:32px 28px 28px">
+  <tr><td class="sp-card" style="background:${BRAND_CARD};border:1px solid ${BRAND_BORDER};border-top:none;border-radius:0 0 12px 12px;padding:32px 28px 28px">
     ${body}
   </td></tr>
 
@@ -181,10 +199,13 @@ function subtitleSw(text: string): string {
 }
 
 function detailRows(rows: { label: string; value: string; tone?: "good" | "bad" }[]): string {
-  return `<table cellpadding="0" cellspacing="0" width="100%" style="border-top:1px solid ${BRAND_BORDER};margin-top:20px">${rows.map(
+  // Two columns (label left, value right) on desktop; the sp-row-* classes stack
+  // them label-over-value on phones so long values (amounts, references) never
+  // collide with the label. word-break keeps a long reference from overflowing.
+  return `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-top:1px solid ${BRAND_BORDER};margin-top:20px">${rows.map(
     (r) => {
       const valColor = r.tone === "good" ? YES_COLOR : r.tone === "bad" ? NO_COLOR : TEXT;
-      return `<tr><td style="padding:11px 0;border-bottom:1px solid ${BRAND_BORDER};font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.14em;color:${TEXT_FAINT}">${r.label}</td><td style="padding:11px 0;border-bottom:1px solid ${BRAND_BORDER};text-align:right;font-family:'JetBrains Mono','Courier New',monospace;font-size:14px;font-weight:700;color:${valColor}">${r.value}</td></tr>`;
+      return `<tr><td class="sp-row-label" style="padding:11px 0;border-bottom:1px solid ${BRAND_BORDER};font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.14em;color:${TEXT_FAINT};vertical-align:top">${r.label}</td><td class="sp-row-val" style="padding:11px 0;border-bottom:1px solid ${BRAND_BORDER};text-align:right;font-family:'JetBrains Mono','Courier New',monospace;font-size:14px;font-weight:700;color:${valColor};word-break:break-word">${r.value}</td></tr>`;
     },
   ).join("")}</table>`;
 }
@@ -197,10 +218,12 @@ function link(pathOrUrl: string): string {
 
 function ctaButton(hrefOrPath: string, label: string): string {
   const href = link(hrefOrPath);
-  return `<table cellpadding="0" cellspacing="0" width="100%" style="margin-top:24px"><tr><td align="center">
-    <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${href}" style="height:48px;v-text-anchor:middle;width:280px" arcsize="50%" fillcolor="${GILT}"><w:anchorlock/><center style="color:${BRAND_BG};font-family:Segoe UI,sans-serif;font-size:14px;font-weight:700">${label}</center></v:roundrect><![endif]-->
+  // Desktop: centered inline pill. Mobile (.sp-cta): full-width block so a long
+  // bilingual label can never overflow the card. mso block keeps Outlook happy.
+  return `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:24px"><tr><td align="center">
+    <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${href}" style="height:48px;v-text-anchor:middle;width:300px" arcsize="50%" fillcolor="${GILT_MID}"><w:anchorlock/><center style="color:#0c0e28;font-family:Segoe UI,sans-serif;font-size:14px;font-weight:700">${label}</center></v:roundrect><![endif]-->
     <!--[if !mso]><!-->
-    <a href="${href}" style="display:inline-block;padding:15px 40px;background:${GILT_MID};color:#0c0e28;font-family:'Sora','Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;border-radius:999px;text-decoration:none;letter-spacing:-0.01em;border-top:1px solid ${GILT};border-bottom:2px solid ${GILT_DARK}">${label}</a>
+    <a href="${href}" class="sp-cta" style="display:inline-block;padding:15px 36px;background:${GILT_MID};color:#0c0e28;font-family:'Sora','Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;border-radius:999px;text-decoration:none;letter-spacing:-0.01em;border-top:1px solid ${GILT};border-bottom:2px solid ${GILT_DARK};text-align:center">${label}</a>
     <!--<![endif]-->
   </td></tr></table>`;
 }
@@ -299,16 +322,15 @@ export function withdrawalUnderReviewHtml({ amount, reference }: {
 export function betPlacedHtml({ side, stake, marketTitle, resolutionDate }: {
   side: "YES" | "NO"; stake: number; marketTitle: string; resolutionDate: string;
 }): string {
-  const sideColor = side === "YES" ? YES_COLOR : NO_COLOR;
   return wrap(`
     ${eyebrow("Bet placed", "Dau limewekwa")}
     ${heading("Position open")}
     ${subtitle(marketTitle)}
     ${detailRows([
-      { label: "Your pick", value: side },
+      { label: "Your pick", value: side, tone: side === "YES" ? "good" : "bad" },
       { label: "Stake", value: fmtTzs(stake) },
       { label: "Resolves", value: resolutionDate },
-    ]).replace(`>${side}<`, ` style="color:${sideColor}">${side}<`)}
+    ])}
     ${subtitle("Payout is calculated at resolution from the final pool share.")}
     ${ctaButton("/positions", "View positions · Tazama madau")}
   `);
