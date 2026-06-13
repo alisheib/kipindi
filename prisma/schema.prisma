@@ -60,6 +60,8 @@ enum KycRejectReason {
 
 enum DocType {
   NIDA
+  NIDA_FRONT
+  NIDA_BACK
   PASSPORT
   DRIVER_LICENSE
   VOTER_CARD

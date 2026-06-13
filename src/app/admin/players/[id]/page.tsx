@@ -314,6 +314,43 @@ function KycTab({ kyc }: { kyc: ReturnType<typeof db.kyc.findByUserId> }) {
         {kyc.status === "REJECTED" && kyc.rejectReason && <Item label="Reject reason" value={<span className="text-no-300">{kyc.rejectReason}</span>} />}
       </dl>
 
+      {/* Document previews — fetched per-image through the admin-gated route
+          (never inlined here). Click to open the full-size photo. */}
+      {(() => {
+        const SLOTS = [
+          { type: "NIDA_FRONT", label: "ID front" },
+          { type: "NIDA_BACK", label: "ID back" },
+          { type: "SELFIE", label: "Selfie" },
+        ] as const;
+        const present = new Set(kyc.documents.map((d: { docType: string }) => d.docType));
+        return (
+          <div>
+            <p className="font-mono text-micro tracking-[0.12em] uppercase text-text-tertiary mb-2.5">Documents</p>
+            <div className="grid grid-cols-3 gap-2.5">
+              {SLOTS.map((s) => {
+                const has = present.has(s.type);
+                const src = `/api/admin/kyc-doc?user=${encodeURIComponent(kyc.userId)}&type=${s.type}`;
+                return (
+                  <div key={s.type} className="space-y-1">
+                    {has ? (
+                      <a href={src} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-md border border-border bg-bg-inset hover:border-gold-500 transition-colors" title={`Open ${s.label} full size`}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={src} alt={s.label} loading="lazy" className="h-28 w-full object-cover" />
+                      </a>
+                    ) : (
+                      <div className="flex h-28 w-full items-center justify-center rounded-md border border-dashed border-border bg-bg-inset/40 text-text-tertiary">
+                        <I.x s={16} />
+                      </div>
+                    )}
+                    <p className={`text-center font-mono text-micro ${has ? "text-text-secondary" : "text-text-tertiary"}`}>{s.label}{has ? "" : " · missing"}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="rounded-lg border border-border-subtle bg-bg-inset/30 p-3.5">
         <p className="font-mono text-micro tracking-[0.12em] uppercase text-text-tertiary mb-2.5">Officer decision</p>
         <KycReviewControls userId={kyc.userId} status={kyc.status} />

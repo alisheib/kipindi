@@ -6,7 +6,8 @@ import { currentSession } from "@/lib/server/auth-service";
 import { getKycStatus, startKyc } from "@/lib/server/kyc-service";
 import { DateSelect } from "@/components/ui/date-select";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { submitNidaAction, attachDocumentAction, submitKycForReviewAction } from "./actions";
+import { submitNidaAction, submitKycForReviewAction } from "./actions";
+import { KycDocUploader } from "@/components/profile/kyc-doc-uploader";
 import { SUPPORT_EMAIL } from "@/lib/support-config";
 
 export const metadata = { title: "Verify identity · Thibitisha" };
@@ -22,6 +23,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
   const isWelcome = sp.welcome === "new";
   const nidaDone = !!kyc?.nidaVerifiedAt;
   const docsCount = kyc?.documents.length ?? 0;
+  const hasDoc = (t: string) => (kyc?.documents ?? []).some((d: { docType: string }) => d.docType === t);
   const submitted = kyc?.status === "PENDING_REVIEW" || kyc?.status === "APPROVED";
   const rejected = kyc?.status === "REJECTED";
 
@@ -203,9 +205,9 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             and a <span className="font-bold text-text">selfie</span> holding the card.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <UploadSlot label="ID front · Mbele"    docType="NIDA_FRONT" done={docsCount >= 1} />
-            <UploadSlot label="ID back · Nyuma"     docType="NIDA_BACK"  done={docsCount >= 2} />
-            <UploadSlot label="Selfie · Picha yako" docType="SELFIE"     done={docsCount >= 3} />
+            <KycDocUploader label="ID front · Mbele"    docType="NIDA_FRONT" attached={hasDoc("NIDA_FRONT")} />
+            <KycDocUploader label="ID back · Nyuma"     docType="NIDA_BACK"  attached={hasDoc("NIDA_BACK")} />
+            <KycDocUploader label="Selfie · Picha yako" docType="SELFIE"     attached={hasDoc("SELFIE")} />
           </div>
           <p className="text-[10.5px] italic text-text-subtle">
             Tap each card to attach a photo, then submit for compliance review.
@@ -281,31 +283,6 @@ function Step({ n, title, detail, done, active }: { n: number; title: string; de
       </div>
       <p className="mt-1 text-[11px] text-text-muted">{detail}</p>
     </div>
-  );
-}
-
-function UploadSlot({ label, docType, done }: { label: string; docType: "NIDA_FRONT" | "NIDA_BACK" | "SELFIE"; done: boolean }) {
-  return (
-    <form action={attachDocumentAction as unknown as (formData: FormData) => void}>
-      <input type="hidden" name="docType" value={docType} />
-      <button
-        type="submit"
-        disabled={done}
-        className={`w-full rounded-md border-2 border-dashed p-3.5 text-center transition-colors ${
-          done ? "border-yes-700 bg-yes-500/[0.07] cursor-default" : "border-border bg-bg-overlay/40 hover:border-gold-700 hover:bg-gold-500/[0.06] cursor-pointer"
-        }`}
-      >
-        <span
-          className={`mx-auto mb-1.5 h-6 w-6 inline-flex items-center justify-center rounded-pill ${
-            done ? "bg-yes-500 text-yes-950" : "bg-bg-overlay text-text-subtle border border-border"
-          }`}
-        >
-          {done ? <I.check s={11} /> : "+"}
-        </span>
-        <span className="block font-display text-[12px] font-semibold text-text">{label}</span>
-        <span className="mt-0.5 block font-mono text-[10.5px] text-text-subtle">{done ? "Attached" : "Tap to attach"}</span>
-      </button>
-    </form>
   );
 }
 

@@ -19,15 +19,17 @@ export async function submitNidaAction(formData: FormData) {
   redirect("/profile/kyc?nida=verified");
 }
 
-export async function attachDocumentAction(formData: FormData) {
+export async function attachDocumentAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string }> {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) return { ok: false, error: "Sign in required." };
   const docType = String(formData.get("docType") ?? "") as "NIDA_FRONT" | "NIDA_BACK" | "SELFIE";
-  // In dev, use a mock storage key; real implementation would multipart-upload to S3-compatible store.
-  const storageKey = `dev/${session.userId}/${docType}/${Date.now()}.jpg`;
-  const result = await attachDocument(session.userId, docType, storageKey);
+  if (!["NIDA_FRONT", "NIDA_BACK", "SELFIE"].includes(docType)) return { ok: false, error: "Invalid document type." };
+  // The client resizes the photo and posts it as a base64 image data URL; the
+  // service validates the format + size and stores it on the submission.
+  const image = String(formData.get("image") ?? "");
+  const result = await attachDocument(session.userId, docType, image);
   revalidatePath("/profile/kyc");
-  return result;
+  return result.ok ? { ok: true } : { ok: false, error: result.error };
 }
 
 export async function submitKycForReviewAction() {

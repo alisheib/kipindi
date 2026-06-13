@@ -91,12 +91,33 @@ export async function submitNidaStep(userId: string, input: z.input<typeof KycNi
   return { ok: true, data: { verified: true } };
 }
 
+/** Max decoded size of a document image, and the accepted data-URL shape. */
+export const MAX_DOC_BYTES = 3 * 1024 * 1024; // 3 MB decoded — legible ID photos, bounded
+const DOC_DATAURL_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
+/** Validate an uploaded document image data URL. Returns decoded byte size. */
+export function validateDocImage(s: string): { ok: true; bytes: number } | { ok: false; error: string } {
+  if (!s || !DOC_DATAURL_RE.test(s)) return { ok: false, error: "Document must be a JPG, PNG, or WebP image." };
+  const b64 = s.slice(s.indexOf(",") + 1);
+  const bytes = Math.floor((b64.length * 3) / 4) - (b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0);
+  if (bytes <= 0) return { ok: false, error: "Empty image." };
+  if (bytes > MAX_DOC_BYTES) return { ok: false, error: "Image too large. Use a photo under 3 MB." };
+  return { ok: true, bytes };
+}
+
 export async function attachDocument(userId: string, docType: "NIDA_FRONT" | "NIDA_BACK" | "SELFIE", storageKey: string): Promise<ServiceResult> {
+  const valid = validateDocImage(storageKey);
+  if (!valid.ok) return { ok: false, error: valid.error, code: "INVALID" };
   const k = await db.kyc.findByUserId(userId);
   if (!k) return { ok: false, error: "Start KYC first.", code: "NOT_FOUND" };
+  // Re-uploading a document while it's already under review or approved would
+  // change the evidence behind an officer's pending/made decision — block it.
+  if (k.status === "PENDING_REVIEW" || k.status === "APPROVED") {
+    return { ok: false, error: "Documents are locked while your submission is under review.", code: "INVALID" };
+  }
   const docs = [...k.documents.filter((d: { docType: string }) => d.docType !== docType), { docType, storageKey, uploadedAt: new Date().toISOString() }];
   await db.kyc.upsert({ ...k, documents: docs, updatedAt: new Date().toISOString() });
-  audit({ category: "KYC", action: "kyc.document.uploaded", actorId: userId, targetType: "Kyc", targetId: k.id, payload: { docType, storageKey } });
+  // Note: never log the image bytes themselves in the audit payload.
+  audit({ category: "KYC", action: "kyc.document.uploaded", actorId: userId, targetType: "Kyc", targetId: k.id, payload: { docType, bytes: valid.bytes } });
   return { ok: true };
 }
 
