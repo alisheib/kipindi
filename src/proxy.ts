@@ -180,6 +180,9 @@ export async function proxy(req: NextRequest) {
 
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set("x-pathname", pathname);
+  // Full path + query so server components can round-trip the exact destination
+  // (e.g. the admin TOTP gate preserving ?tab=kyc on a deep link from an email).
+  requestHeaders.set("x-href", pathname + search);
   return withSecurityHeaders(
     NextResponse.next({ request: { headers: requestHeaders } }),
   );

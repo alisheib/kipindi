@@ -65,5 +65,9 @@ export async function verifyAdminTotpAction(formData: FormData) {
     targetType: "User",
     targetId: session.userId,
   });
-  redirect("/admin");
+  // Return the officer to their original destination (e.g. a deep link from an
+  // email), validated to an in-app /admin path to prevent open redirects.
+  const nextRaw = String(formData.get("next") ?? "");
+  const dest = nextRaw.startsWith("/admin") && !nextRaw.startsWith("//") && !nextRaw.startsWith("/admin/totp-verify") ? nextRaw : "/admin";
+  redirect(dest as never);
 }

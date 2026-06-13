@@ -73,6 +73,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // Read the request path from headers (set by middleware trace)
   const h = await headers();
   const path = h.get("x-pathname") ?? h.get("x-invoke-path") ?? h.get("x-url") ?? "/admin";
+  // Full destination incl. query (e.g. ?tab=kyc) so the TOTP gate can return the
+  // officer to the exact page after verifying — e.g. a deep link from an email.
+  const href = h.get("x-href") ?? path;
   const activeKey = activeKeyFromPath(path);
   const crumbs = crumbsFromPath(path);
 
@@ -95,7 +98,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     ) {
       // Clear stale/invalid cookie so the verify page starts clean.
       try { jar.delete(TOTP_COOKIE_NAME); } catch {}
-      redirect("/admin/totp-verify");
+      // Preserve the deep-link destination through the TOTP gate.
+      const dest = href.startsWith("/admin") && !href.startsWith("/admin/totp-verify") ? href : "";
+      redirect(dest ? `/admin/totp-verify?next=${encodeURIComponent(dest)}` : "/admin/totp-verify");
     }
     // Sliding refresh: re-issue the TOTP cookie on activity so an actively
     // working admin isn't kicked back to the TOTP gate at the hard 8h mark

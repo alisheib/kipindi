@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
 
-export default async function AdminTotpVerifyPage() {
+export default async function AdminTotpVerifyPage({ searchParams }: { searchParams?: Promise<{ next?: string }> }) {
   const session = await currentSession();
   if (!session) redirect("/auth/admin");
   const u = await db.user.findById(session.userId);
@@ -21,6 +21,10 @@ export default async function AdminTotpVerifyPage() {
   if (!(await hasTotp(session.userId))) {
     redirect("/admin/2fa/setup");
   }
+
+  const nextRaw = (await searchParams)?.next ?? "";
+  // Open-redirect safety: only an in-app /admin path may be carried through.
+  const next = nextRaw.startsWith("/admin") && !nextRaw.startsWith("//") && !nextRaw.startsWith("/admin/totp-verify") ? nextRaw : "";
 
   return (
     <main className="mx-auto grid min-h-[calc(100vh-44px)] place-items-center px-3 py-6">
@@ -53,7 +57,7 @@ export default async function AdminTotpVerifyPage() {
             </div>
           </div>
           <div className="relative">
-            <TotpVerifyForm />
+            <TotpVerifyForm next={next} />
           </div>
         </section>
 

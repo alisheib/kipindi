@@ -6,7 +6,7 @@ import { useToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
 import { verifyAdminTotpAction } from "./actions";
 
-export function TotpVerifyForm() {
+export function TotpVerifyForm({ next }: { next?: string }) {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const { toast } = useToast();
@@ -19,6 +19,7 @@ export function TotpVerifyForm() {
     setBusy(true);
     const fd = new FormData();
     fd.set("code", code);
+    if (next) fd.set("next", next);
     const r = await verifyAdminTotpAction(fd);
     if (r && !r.ok) {
       toast({ title: "Invalid code", description: r.error, variant: "danger" });

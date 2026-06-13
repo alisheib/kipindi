@@ -115,7 +115,7 @@ export async function AdminTopBar({ crumbs, session, activeKey }: { crumbs: stri
         >
           {badges.approvals ? <I.bellRing s={16} /> : <I.bell s={16} />}
           {badges.approvals && (
-            <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 inline-flex items-center justify-center rounded-pill bg-no-500 text-white font-mono text-[9px] font-bold leading-none">
+            <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 inline-flex items-center justify-center rounded-pill bg-no-500 text-text font-mono text-[9px] font-bold leading-none">
               {badges.approvals}
             </span>
           )}
