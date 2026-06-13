@@ -175,6 +175,16 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               />
               <p className="mt-1.5 text-[11px] text-text-subtle">Must match NIDA exactly. 18+ required.</p>
             </div>
+            <Field
+              id="email"
+              label="Email · Barua pepe"
+              hint="We'll send a link to confirm it. Used for receipts & verification updates."
+              type="email"
+              required={false}
+              maxLength={254}
+              inputMode="text"
+              placeholder="you@example.com"
+            />
             <SubmitButton label="Verify NIDA · Thibitisha" pendingLabel="Verifying…" />
           </form>
           <details className="border-t border-border pt-3 text-[12.5px] text-text-muted">
@@ -213,16 +223,20 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             Tap each card to attach a photo, then submit for compliance review.
           </p>
           <form action={submitKycForReviewAction}>
-            <button
-              type="submit"
-              disabled={docsCount < 3}
-              className={docsCount >= 3 ? "btn btn-gold btn-lg w-full" : "btn btn-ghost btn-lg w-full"}
-              style={{ borderRadius: "var(--r-pill)" }}
-            >
-              Submit for review · Wasilisha
-            </button>
-            {docsCount < 3 && (
-              <p className="mt-2 text-[11px] text-text-subtle text-center">Attach all three documents to submit.</p>
+            {docsCount >= 3 ? (
+              <SubmitButton label="Submit for review · Wasilisha" pendingLabel="Submitting…" />
+            ) : (
+              <>
+                <button
+                  type="submit"
+                  disabled
+                  className="btn btn-ghost btn-lg w-full"
+                  style={{ borderRadius: "var(--r-pill)" }}
+                >
+                  Submit for review · Wasilisha
+                </button>
+                <p className="mt-2 text-[11px] text-text-subtle text-center">Attach all three documents to submit.</p>
+              </>
             )}
           </form>
         </section>

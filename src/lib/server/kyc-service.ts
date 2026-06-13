@@ -14,6 +14,7 @@
  */
 import { audit } from "./audit";
 import { db } from "./store";
+import type { StoredUser } from "./store";
 import { randomId } from "./crypto";
 import { verifyNida } from "./nida";
 import { rateCheck } from "./rate-limit";
@@ -21,9 +22,53 @@ import { KycNidaSchema } from "./validators";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
 import { notifyKyc } from "./notification-service";
-import { sendEmailToUser, kycRejectedHtml, kycApprovedHtml } from "./email";
+import { sendEmail, sendEmailToUser, kycRejectedHtml, kycApprovedHtml, kycSubmittedHtml, kycSubmittedAdminHtml } from "./email";
+import { resolvePhoneEmail } from "./email-map";
+import { setUserEmail } from "./email-verification";
 import { withLock } from "./locks";
 import { displayLabel } from "@/lib/display-label";
+
+const BASE_URL = () => process.env.NEXT_PUBLIC_APP_URL || "https://kipindi-production.up.railway.app";
+
+/** First word of a full name, used as a friendly greeting in emails. */
+function firstName(full?: string | null): string | undefined {
+  return full?.trim().split(/\s+/)[0] || undefined;
+}
+
+/** Mask a phone for an email body: keep country code + last 2 (e.g. "+25570*****19"). */
+function maskPhone(phone?: string | null): string {
+  const p = (phone ?? "").trim();
+  return p.length > 6 ? `${p.slice(0, 6)}*****${p.slice(-2)}` : "****";
+}
+
+/**
+ * Recipients for the "new KYC to verify" admin email (Decision 2026-06-14:
+ * ALL admin-role users with a resolvable email). `KYC_NOTIFY_EMAILS` (comma-
+ * separated) is the later "only some accounts" override. Best-effort: returns
+ * a deduped, lowercased list; `[]` simply means the admin email is skipped.
+ */
+export async function kycNotifyEmails(): Promise<string[]> {
+  const override = (process.env.KYC_NOTIFY_EMAILS ?? "").trim();
+  let raw: string[];
+  if (override) {
+    raw = override.split(",");
+  } else {
+    const users = await db.user.list();
+    raw = users
+      .filter((u) => ["ADMIN", "COMPLIANCE", "MODERATOR"].includes(u.role))
+      .map((u) => u.email || resolvePhoneEmail(u.phoneE164) || "");
+  }
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const e of raw) {
+    const norm = e.trim().toLowerCase();
+    if (norm && !norm.endsWith("@stub") && !norm.endsWith("@none") && !seen.has(norm)) {
+      seen.add(norm);
+      out.push(norm);
+    }
+  }
+  return out;
+}
 
 export async function startKyc(userId: string): Promise<ServiceResult<{ kycId: string }>> {
   const existing = await db.kyc.findByUserId(userId);
@@ -60,6 +105,13 @@ export async function submitNidaStep(userId: string, input: z.input<typeof KycNi
 
   const k = await db.kyc.findByUserId(userId);
   if (!k) return { ok: false, error: "Start KYC first.", code: "NOT_FOUND" };
+
+  // Collect the contact email at the identity step (canonical collection point).
+  // Routed through the single setUserEmail() writer so a new address resets
+  // verification and fires a confirmation link. Best-effort: never block KYC.
+  if (parse.data.email !== undefined && parse.data.email !== "") {
+    await setUserEmail(userId, parse.data.email).catch(() => {});
+  }
 
   const result = await verifyNida({ nida: parse.data.nida, fullName: parse.data.fullName, dob: parse.data.dob, userId });
   if (!result.ok) {
@@ -127,9 +179,60 @@ export async function submitForReview(userId: string): Promise<ServiceResult> {
   if (!k.nidaVerifiedAt) return { ok: false, error: "NIDA not yet verified.", code: "INVALID" };
   if (k.documents.length < 3) return { ok: false, error: "All three documents required.", code: "INVALID" };
 
-  await db.kyc.upsert({ ...k, status: "PENDING_REVIEW", submittedAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+  // Idempotency guard: only fire on the transition INTO PENDING_REVIEW. A
+  // double-submit / retry when already pending returns ok WITHOUT re-emailing
+  // the player or the admins. (APPROVED is likewise already past this gate.)
+  if (k.status === "PENDING_REVIEW" || k.status === "APPROVED") {
+    return { ok: true };
+  }
+
+  const now = new Date().toISOString();
+  await db.kyc.upsert({ ...k, status: "PENDING_REVIEW", submittedAt: now, updatedAt: now });
   audit({ category: "KYC", action: "kyc.submitted", actorId: userId, targetType: "Kyc", targetId: k.id });
   notifyKyc(userId, "PENDING_REVIEW"); // in-app "submitted, under review" notice
+
+  // ── Notifications (all best-effort; a failed send must never break submit) ──
+  const u = await db.user.findById(userId);
+  const docTypes = k.documents.map((d: { docType: string }) => d.docType);
+
+  // Player: "documents received, pending verification".
+  sendEmailToUser(userId, (email) => ({
+    to: email,
+    subject: "Documents received · verification pending",
+    tag: "kyc-submitted",
+    html: kycSubmittedHtml({
+      name: firstName(k.fullName ?? u?.displayName),
+      reference: k.id,
+      submittedAt: now,
+      docTypes,
+      viewUrl: "/profile/kyc",
+    }),
+  }));
+
+  // Compliance/ops: one best-effort send per recipient. No PII (masked NIDA,
+  // masked phone, no images, no DOB) — the reviewer opens the secured drill-in.
+  const reviewUrl = `${BASE_URL()}/admin/players/${userId}?tab=kyc`;
+  const nidaMasked = "•••• " + (k.nidaNumber?.slice(-4) ?? "");
+  const adminHtml = kycSubmittedAdminHtml({
+    reference: k.id,
+    name: displayLabel({ id: userId, displayName: k.fullName ?? u?.displayName ?? null }),
+    phoneMasked: maskPhone(u?.phoneE164),
+    nidaMasked,
+    submittedAt: now,
+    reviewUrl,
+  });
+  kycNotifyEmails()
+    .then((recipients) => {
+      if (recipients.length === 0) {
+        console.log("[kyc] no admin notify recipients resolved — admin email skipped");
+        return;
+      }
+      for (const to of recipients) {
+        sendEmail({ to, subject: "New KYC to verify · " + k.id, tag: "kyc-admin", html: adminHtml }).catch(() => {});
+      }
+    })
+    .catch(() => {});
+
   return { ok: true };
 }
 
@@ -188,18 +291,24 @@ export async function reviewKyc(opts: {
 
     if (decision === "APPROVE") {
       await db.kyc.upsert({ ...k, status: "APPROVED", reviewerId: officerId, reviewedAt: now, rejectReason: null, rejectNote: null, updatedAt: now });
-      // Unlock the account only if it's gated purely by KYC.
       const u = await db.user.findById(userId);
-      if (u && u.status === "PENDING_KYC") {
-        await db.user.update(userId, { status: "ACTIVE" });
-      }
-      audit({ category: "KYC", action: "kyc.approved", actorId: officerId, targetType: "User", targetId: userId, payload: { kycId: k.id, priorStatus: u?.status ?? null } });
+      // Build a single user patch: unlock the account if it's gated purely by
+      // KYC, and surface the NIDA-verified legal name as the display name.
+      const patch: Partial<StoredUser> = {};
+      if (u && u.status === "PENDING_KYC") patch.status = "ACTIVE";
+      // Decision (Ali, 2026-06-14): ALWAYS set displayName from the verified
+      // legal name on approve, even over a chosen handle. Public surfaces stay
+      // safe automatically — leaderboard shows first word only, comments mask +
+      // freeze the name at write time — so the full surname never leaks.
+      if (k.fullName?.trim()) patch.displayName = k.fullName.trim();
+      if (Object.keys(patch).length) await db.user.update(userId, patch);
+      audit({ category: "KYC", action: "kyc.approved", actorId: officerId, targetType: "User", targetId: userId, payload: { kycId: k.id, priorStatus: u?.status ?? null, nameBackfilled: !!k.fullName?.trim() } });
       notifyKyc(userId, "APPROVED");
-      const firstName = (k.fullName?.trim().split(/\s+/)[0]) || displayLabel(u ?? { id: userId, displayName: null });
+      const greetName = firstName(k.fullName) ?? displayLabel(u ?? { id: userId, displayName: null });
       sendEmailToUser(userId, (email) => ({
         to: email,
         subject: "Identity verified · You're fully verified",
-        html: kycApprovedHtml({ name: firstName }),
+        html: kycApprovedHtml({ name: greetName, reference: k.id }),
         tag: "kyc-approved",
       }));
       return { ok: true as const };
@@ -212,7 +321,7 @@ export async function reviewKyc(opts: {
     sendEmailToUser(userId, (email) => ({
       to: email,
       subject: "Identity check needs attention",
-      html: kycRejectedHtml({ reason }),
+      html: kycRejectedHtml({ reason, reference: k.id }),
       tag: "kyc-rejected",
     }));
     return { ok: true as const };

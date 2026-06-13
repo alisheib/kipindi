@@ -9,10 +9,14 @@ export async function submitNidaAction(formData: FormData) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
 
+  const rawEmail = formData.get("email");
   const result = await submitNidaStep(session.userId, {
     nida: String(formData.get("nida") ?? ""),
     fullName: String(formData.get("fullName") ?? ""),
     dob: String(formData.get("dob") ?? ""),
+    // Optional — collected here as the canonical email source. Omit when blank
+    // so we don't try to validate an empty string as an email.
+    ...(rawEmail && String(rawEmail).trim() ? { email: String(rawEmail) } : {}),
   });
   revalidatePath("/profile/kyc");
   if (!result.ok) redirect(`/profile/kyc?error=${encodeURIComponent(result.error)}`);

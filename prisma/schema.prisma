@@ -228,6 +228,7 @@ model User {
   id                   String     @id @default(cuid())
   phoneE164            String     @unique
   email                String?    @unique
+  emailVerifiedAt      DateTime?
   passwordHash         String?
   passwordSalt         String?
   failedLoginCount     Int        @default(0)

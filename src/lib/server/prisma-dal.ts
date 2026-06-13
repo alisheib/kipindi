@@ -77,6 +77,7 @@ function toStoredUser(u: any): StoredUser {
     role: u.role,
     status: u.status,
     email: u.email ?? null,
+    emailVerifiedAt: iso(u.emailVerifiedAt),
     locale: u.locale,
     displayName: u.displayName,
     dob: iso(u.dob),
@@ -346,6 +347,7 @@ export const prismaDb = {
           role: u.role,
           status: u.status,
           email: u.email ?? null,
+          emailVerifiedAt: u.emailVerifiedAt ? new Date(u.emailVerifiedAt) : null,
           locale: u.locale,
           displayName: u.displayName,
           dob: u.dob ? new Date(u.dob) : null,
@@ -369,7 +371,7 @@ export const prismaDb = {
       // Convert date strings to Date objects for Prisma
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data: Record<string, any> = {};
-      const dateFields = ["lockedUntil", "dob", "acceptedTermsAt", "lastLoginAt", "closedAt"] as const;
+      const dateFields = ["lockedUntil", "dob", "acceptedTermsAt", "lastLoginAt", "closedAt", "emailVerifiedAt"] as const;
       for (const [k, v] of Object.entries(patch)) {
         if (k === "updatedAt") continue; // Prisma handles @updatedAt
         if (dateFields.includes(k as (typeof dateFields)[number])) {

@@ -2,6 +2,7 @@ import { chromium } from "playwright";
 import {
   welcomeHtml, depositConfirmedHtml, betPlacedHtml, winNotificationHtml,
   lossNotificationHtml, cashOutReceiptHtml, withdrawalSentHtml, kycApprovedHtml,
+  kycRejectedHtml, kycSubmittedHtml, kycSubmittedAdminHtml, emailVerifyHtml,
 } from "../src/lib/server/email.ts";
 
 const PLACED = "2026-06-14T11:32:00.000Z";
@@ -14,7 +15,11 @@ const samples: Record<string, string> = {
   loss: lossNotificationHtml({ reference: "pos_7b22aa90fe", stake: 30000, marketTitle: "Will it rain in Dodoma before Friday?", settledAt: SETTLED }),
   cashout: cashOutReceiptHtml({ reference: "pos_9f3k2qm1a8", value: 38200, stake: 25000, marketTitle: "Will Simba SC win the Mainland derby?", soldAt: PLACED }),
   withdrawal: withdrawalSentHtml({ amount: 1000000, destination: "M-Pesa · 0744 *** 219", reference: "WD-2026-0613-0098" }),
-  kyc: kycApprovedHtml({ name: "Asha" }),
+  kyc: kycApprovedHtml({ name: "Asha", reference: "kyc_9f3k2qm1a8" }),
+  kycRejected: kycRejectedHtml({ reason: "The name on your NIDA card didn't match the details entered. Please re-check and resubmit.", reference: "kyc_9f3k2qm1a8" }),
+  kycSubmitted: kycSubmittedHtml({ name: "Asha", reference: "kyc_9f3k2qm1a8", submittedAt: PLACED, docTypes: ["NIDA_FRONT", "NIDA_BACK", "SELFIE"], viewUrl: "/profile/kyc" }),
+  kycAdmin: kycSubmittedAdminHtml({ reference: "kyc_9f3k2qm1a8", name: "Asha Mwamba", phoneMasked: "+25570*****19", nidaMasked: "•••• 4821", submittedAt: PLACED, reviewUrl: "https://50pick.tz/admin/players/usr_9f3k2qm1a8?tab=kyc" }),
+  emailVerify: emailVerifyHtml({ name: "Asha", verifyUrl: "https://50pick.tz/auth/verify-email?token=eyJ...sig" }),
 };
 
 const b = await chromium.launch();

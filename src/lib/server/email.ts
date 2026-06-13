@@ -431,22 +431,91 @@ export function passwordResetHtml({ resetLink }: { resetLink: string }): string 
   `);
 }
 
-export function kycApprovedHtml({ name }: { name: string }): string {
+export function kycApprovedHtml({ name, reference }: { name: string; reference?: string }): string {
   return wrap(`
     ${eyebrow("Identity verified", "Utambulisho umethibitishwa")}
     ${heading(`You're fully verified, ${name}`)}
-    ${subtitle("Your identity has been confirmed. All platform features are now unlocked.")}
+    ${subtitle("Your identity is confirmed — you can now deposit, place bets, and withdraw.")}
+    ${subtitleSw("Utambulisho wako umethibitishwa — sasa unaweza kuweka pesa, kuweka dau, na kutoa pesa.")}
+    ${reference ? detailRows([{ label: "Reference", value: reference }]) : ""}
     ${ctaButton("/markets", "Browse markets · Tazama masoko")}
   `);
 }
 
-export function kycRejectedHtml({ reason }: { reason: string }): string {
+export function kycRejectedHtml({ reason, reference }: { reason: string; reference?: string }): string {
   return wrap(`
     ${eyebrow("Identity check", "Ukaguzi wa utambulisho")}
     ${heading("Identity check needs attention")}
     ${subtitle(reason)}
     ${subtitleSw("Tafadhali angalia tena nyaraka zako na uwasilishe upya.")}
+    ${reference ? detailRows([{ label: "Reference", value: reference }]) : ""}
     ${ctaButton("/profile/kyc", "Resubmit · Wasilisha tena")}
+  `);
+}
+
+/**
+ * Sent to the player the moment their KYC enters PENDING_REVIEW. Confirms the
+ * documents landed, carries the reference, and sets expectations on timing.
+ * Honest about the locked-during-review behaviour (Decision #1: reply-to-reopen).
+ */
+export function kycSubmittedHtml({ name, reference, submittedAt, docTypes, viewUrl }: {
+  name?: string; reference: string; submittedAt: string; docTypes: string[]; viewUrl?: string;
+}): string {
+  // Map raw docType codes to a friendly, bilingual-safe label list.
+  const friendly: Record<string, string> = { NIDA_FRONT: "ID front", NIDA_BACK: "ID back", SELFIE: "selfie" };
+  const docList = docTypes.map((d) => friendly[d] ?? d.replace(/_/g, " ").toLowerCase()).join(", ") || "—";
+  return wrap(`
+    ${eyebrow("Documents received · Nyaraka zimepokelewa")}
+    ${heading("We're reviewing your documents")}
+    ${subtitle(`Thanks${name ? `, ${name}` : ""}. Your ID documents are in and our team is verifying them. You'll get an email the moment it's decided — usually within a few hours during business hours.`)}
+    ${subtitleSw("Asante. Nyaraka zako zimepokelewa na timu yetu inazithibitisha. Utapata barua pepe mara tu uamuzi utakapotolewa.")}
+    ${detailRows([
+      { label: "Reference", value: reference },
+      { label: "Submitted", value: fmtDateTime(submittedAt) },
+      { label: "Documents", value: docList },
+      { label: "Status", value: "Pending verification" },
+    ])}
+    <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE};line-height:1.55">Need to change a document? Reply to this email and we'll reopen your submission. Your documents are locked while under review.<br><span style="font-style:italic;color:${TEXT_FAINT}">Unahitaji kubadilisha nyaraka? Jibu barua pepe hii.</span></p>
+    ${refNote()}
+    ${ctaButton(viewUrl ?? "/profile/kyc", "View your submission · Tazama")}
+  `);
+}
+
+/**
+ * Sent to compliance / ops when a new submission needs review. Deliberately
+ * carries NO images, NO full NIDA, NO DOB — the reviewer opens the secured
+ * admin drill-in to see the evidence. NIDA is masked to the last 4 digits.
+ */
+export function kycSubmittedAdminHtml({ reference, phoneMasked, name, nidaMasked, submittedAt, reviewUrl }: {
+  reference: string; phoneMasked: string; name: string; nidaMasked: string; submittedAt: string; reviewUrl: string;
+}): string {
+  return wrap(`
+    ${eyebrow("KYC · awaiting review")}
+    ${heading("New identity submission to verify")}
+    ${subtitle("A player has submitted their identity documents and is waiting on a compliance decision.")}
+    ${detailRows([
+      { label: "Reference", value: reference },
+      { label: "Player", value: `${name} · ${phoneMasked}` },
+      { label: "NIDA", value: nidaMasked },
+      { label: "Submitted", value: fmtDateTime(submittedAt) },
+    ])}
+    ${ctaButton(reviewUrl, "Review now")}
+  `);
+}
+
+/**
+ * Email-address confirmation. Sent when a player sets or changes their email
+ * (profile or KYC step). The link carries a stateless HMAC-signed token that
+ * embeds the address, so changing the email invalidates older links.
+ */
+export function emailVerifyHtml({ name, verifyUrl }: { name?: string; verifyUrl: string }): string {
+  return wrap(`
+    ${eyebrow("Confirm your email · Thibitisha barua pepe")}
+    ${heading("Confirm your email address")}
+    ${subtitle(`${name ? `${name}, please` : "Please"} confirm this is your email so we can send you account, deposit, withdrawal, and verification notices. This link expires in 24 hours.`)}
+    ${subtitleSw("Tafadhali thibitisha barua pepe yako ili tuweze kukutumia taarifa za akaunti. Kiungo hiki kinaisha baada ya saa 24.")}
+    ${ctaButton(verifyUrl, "Confirm email · Thibitisha")}
+    <p style="margin:16px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">If you didn't add this email to a 50pick account, ignore this message — nothing will change.</p>
   `);
 }
 

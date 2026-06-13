@@ -12,9 +12,9 @@ import { useRouter } from "next/navigation";
 import { Spinner } from "@/components/ui/spinner";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
-import { updateProfileBasicsAction } from "@/app/profile/actions";
+import { updateProfileBasicsAction, resendEmailVerificationAction } from "@/app/profile/actions";
 
-export function EmailEditor({ currentEmail, currentName }: { currentEmail: string | null; currentName: string }) {
+export function EmailEditor({ currentEmail, currentName, verified }: { currentEmail: string | null; currentName: string; verified?: boolean }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(currentEmail ?? "");
   const [pending, start] = useTransition();
@@ -30,8 +30,22 @@ export function EmailEditor({ currentEmail, currentName }: { currentEmail: strin
       fd.set("email", v); // "" clears it
       const r = await updateProfileBasicsAction(fd);
       if (!r.ok) { toast({ title: "Couldn't save email", description: r.error, variant: "danger" }); return; }
-      toast({ title: v ? "Email saved" : "Email removed", description: v ? "Receipts will be sent here." : undefined, variant: "success" });
+      toast({
+        title: v ? "Email saved" : "Email removed",
+        description: v ? (r.emailVerificationSent ? "Check your inbox — we sent a link to confirm it." : "Receipts will be sent here.") : undefined,
+        variant: "success",
+      });
       setEditing(false);
+      router.refresh();
+    });
+  };
+
+  const resend = () => {
+    if (!currentEmail) return;
+    start(async () => {
+      const r = await resendEmailVerificationAction();
+      if (!r.ok) { toast({ title: "Couldn't resend", description: r.error, variant: "danger" }); return; }
+      toast({ title: "Confirmation sent", description: "Check your inbox for the confirmation link.", variant: "success" });
       router.refresh();
     });
   };
@@ -57,12 +71,30 @@ export function EmailEditor({ currentEmail, currentName }: { currentEmail: strin
           </button>
         </div>
       ) : (
-        <button type="button" onClick={() => { setValue(currentEmail ?? ""); setEditing(true); }} className="mt-1 inline-flex items-center gap-2 text-left group" aria-label="Edit contact email">
-          <span className={`text-[14px] ${currentEmail ? "text-text" : "text-text-subtle italic"}`}>
-            {currentEmail || "Add your email for receipts"}
-          </span>
-          <I.edit s={12} />
-        </button>
+        <div className="mt-1 space-y-1.5">
+          <button type="button" onClick={() => { setValue(currentEmail ?? ""); setEditing(true); }} className="inline-flex items-center gap-2 text-left group" aria-label="Edit contact email">
+            <span className={`text-[14px] ${currentEmail ? "text-text" : "text-text-subtle italic"}`}>
+              {currentEmail || "Add your email for receipts"}
+            </span>
+            <I.edit s={12} />
+          </button>
+          {currentEmail && (
+            verified ? (
+              <span className="inline-flex items-center gap-1 rounded-pill border border-yes-700 bg-yes-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-yes-300">
+                <I.check s={10} /> Confirmed
+              </span>
+            ) : (
+              <span className="inline-flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded-pill border border-gold-700 bg-gold-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-gold-300">
+                  Unconfirmed
+                </span>
+                <button type="button" onClick={resend} disabled={pending} className="font-mono text-[11px] text-accent-400 hover:text-accent-300 underline-offset-2 hover:underline disabled:opacity-60">
+                  {pending ? "Sending…" : "Resend link"}
+                </button>
+              </span>
+            )
+          )}
+        </div>
       )}
     </div>
   );

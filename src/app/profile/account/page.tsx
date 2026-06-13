@@ -102,7 +102,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
           />
         </div>
         {/* Contact email — opt-in; once set, transactional receipts are emailed. */}
-        <EmailEditor currentEmail={user?.email ?? null} currentName={user?.displayName ?? ""} />
+        <EmailEditor currentEmail={user?.email ?? null} currentName={user?.displayName ?? ""} verified={!!user?.emailVerifiedAt} />
       </section>
 
       {/* OWN ACTIVITY FEED */}

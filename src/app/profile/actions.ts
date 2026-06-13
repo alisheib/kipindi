@@ -15,6 +15,7 @@ import { z } from "zod";
 import { db } from "@/lib/server/store";
 import { currentSession } from "@/lib/server/auth-service";
 import { audit } from "@/lib/server/audit";
+import { setUserEmail, sendEmailVerification } from "@/lib/server/email-verification";
 
 const MAX_AVATAR_BYTES = 96 * 1024; // 96 KB after client-side resize
 
@@ -27,7 +28,7 @@ const BasicsSchema = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email.").max(254).or(z.literal("")).optional(),
 });
 
-export async function updateProfileBasicsAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function updateProfileBasicsAction(formData: FormData): Promise<{ ok: true; emailVerificationSent?: boolean } | { ok: false; error: string }> {
   const session = await currentSession();
   if (!session) return { ok: false, error: "Sign in required." };
 
@@ -43,10 +44,18 @@ export async function updateProfileBasicsAction(formData: FormData): Promise<{ o
   const next = await db.user.update(session.userId, {
     displayName: parsed.data.displayName,
     ...(parsed.data.locale ? { locale: parsed.data.locale } : {}),
-    // Only touch email when the field was submitted; "" clears it, a value sets it.
-    ...(parsed.data.email !== undefined ? { email: parsed.data.email === "" ? null : parsed.data.email } : {}),
   });
   if (!next) return { ok: false, error: "User not found." };
+
+  // Email goes through the single setUserEmail() writer so a new/changed
+  // address resets verification and triggers a confirmation link — the same
+  // path the KYC step uses. Only touch it when the field was actually submitted.
+  let emailVerificationSent = false;
+  if (parsed.data.email !== undefined) {
+    const r = await setUserEmail(session.userId, parsed.data.email);
+    if (!r.ok) return { ok: false, error: r.error };
+    emailVerificationSent = r.verificationSent;
+  }
 
   audit({
     category: "COMPLIANCE",
@@ -57,7 +66,22 @@ export async function updateProfileBasicsAction(formData: FormData): Promise<{ o
     payload: { displayName: parsed.data.displayName, locale: parsed.data.locale ?? null, emailSet: parsed.data.email ? true : parsed.data.email === "" ? false : undefined },
   });
   revalidatePath("/profile");
-  return { ok: true };
+  return { ok: true, emailVerificationSent };
+}
+
+/** Re-send the email confirmation link for the player's current address.
+ *  No-op (still ok) if there's no email or it's already confirmed. */
+export async function resendEmailVerificationAction(): Promise<{ ok: true; sent: boolean } | { ok: false; error: string }> {
+  const session = await currentSession();
+  if (!session) return { ok: false, error: "Sign in required." };
+  const user = await db.user.findById(session.userId);
+  if (!user) return { ok: false, error: "User not found." };
+  if (!user.email) return { ok: false, error: "Add an email first." };
+  if (user.emailVerifiedAt) return { ok: true, sent: false }; // already confirmed
+  const name = user.displayName?.trim().split(/\s+/)[0] || undefined;
+  await sendEmailVerification(session.userId, user.email, name);
+  audit({ category: "COMPLIANCE", action: "user.email.verification_resent", actorId: session.userId, targetType: "User", targetId: session.userId });
+  return { ok: true, sent: true };
 }
 
 export async function updateAvatarAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string }> {

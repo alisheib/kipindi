@@ -52,25 +52,34 @@ export function KycDocUploader({
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [done, setDone] = useState(attached);
+  // `busy` covers the client-side resize (fileToDataUrl) BEFORE the transition
+  // starts — on a big phone photo that's a 1–2s dead zone the old code showed
+  // no spinner. `pending` then covers the server action. The slot shows a
+  // spinner + label for the whole pick → resize → upload → done span.
+  const [busy, setBusy] = useState(false);
   const [pending, start] = useTransition();
   const router = useRouter();
   const { toast } = useToast();
 
+  const working = busy || pending;
+
   const onFile = async (f: File | null) => {
     if (!f) return;
     if (!f.type.startsWith("image/")) { toast({ title: "Not an image", description: "Pick a JPG, PNG, or WebP photo.", variant: "danger" }); return; }
+    setBusy(true); // spinner on from the instant a file is picked
     let dataUrl: string;
     try { dataUrl = await fileToDataUrl(f); }
-    catch (err) { toast({ title: "Couldn't read image", description: (err as Error).message, variant: "danger" }); return; }
-    if (dataUrl.length * 0.75 > MAX_BYTES) { toast({ title: "Image too large", description: "Try a smaller photo.", variant: "danger" }); return; }
+    catch (err) { setBusy(false); toast({ title: "Couldn't read image", description: (err as Error).message, variant: "danger" }); return; }
+    if (dataUrl.length * 0.75 > MAX_BYTES) { setBusy(false); toast({ title: "Image too large", description: "Try a smaller photo.", variant: "danger" }); return; }
     setPreview(dataUrl);
     start(async () => {
       const fd = new FormData();
       fd.set("docType", docType);
       fd.set("image", dataUrl);
       const r = await attachDocumentAction(fd);
-      if (!r.ok) { setPreview(null); toast({ title: "Upload failed", description: r.error, variant: "danger" }); return; }
+      if (!r.ok) { setPreview(null); setBusy(false); toast({ title: "Upload failed", description: r.error, variant: "danger" }); return; }
       setDone(true);
+      setBusy(false);
       toast({ title: `${label.split(" ·")[0]} attached`, variant: "success" });
       router.refresh();
     });
@@ -92,11 +101,13 @@ export function KycDocUploader({
       />
       <button
         type="button"
-        onClick={() => !locked && inputRef.current?.click()}
-        disabled={pending || locked}
+        onClick={() => !locked && !working && inputRef.current?.click()}
+        disabled={working || locked}
+        aria-busy={working ? "true" : "false"}
         aria-label={done ? `${label} attached — tap to replace` : `Attach ${label}`}
         className={`w-full overflow-hidden rounded-md border-2 border-dashed p-3.5 text-center transition-colors ${
           locked ? "border-border bg-bg-overlay/30 cursor-not-allowed opacity-70"
+          : working ? "border-gold-700 bg-gold-500/[0.06] cursor-wait"
           : done ? "border-yes-700 bg-yes-500/[0.07] cursor-pointer hover:border-yes-500"
           : "border-border bg-bg-overlay/40 hover:border-gold-700 hover:bg-gold-500/[0.06] cursor-pointer"
         }`}
@@ -107,12 +118,12 @@ export function KycDocUploader({
           <span className={`mx-auto mb-1.5 h-6 w-6 inline-flex items-center justify-center rounded-pill ${
             done ? "bg-yes-500 text-yes-950" : "bg-bg-overlay text-text-subtle border border-border"
           }`}>
-            {pending ? <Spinner size={12} /> : done ? <I.check s={11} /> : "+"}
+            {working ? <Spinner size={12} /> : done ? <I.check s={11} /> : "+"}
           </span>
         )}
         <span className="block font-display text-[12px] font-semibold text-text">{label}</span>
         <span className="mt-0.5 block font-mono text-[10.5px] text-text-subtle">
-          {locked ? "Locked" : pending ? "Uploading…" : done ? "Attached · tap to replace" : "Tap to attach"}
+          {locked ? "Locked" : pending ? "Uploading…" : busy ? "Preparing…" : done ? "Attached · tap to replace" : "Tap to attach"}
         </span>
       </button>
     </div>

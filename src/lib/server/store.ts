@@ -12,6 +12,10 @@ export type StoredUser = {
   id: string;
   phoneE164: string;
   email?: string | null;
+  /** ISO-8601 timestamp the user confirmed ownership of `email` via a signed
+   *  verification link. Null = email present but unconfirmed (or no email).
+   *  Cleared whenever the address changes so a new address must be re-confirmed. */
+  emailVerifiedAt?: string | null;
   /** scrypt(password, passwordSalt) hex. Optional only because legacy
    *  rows created during the OTP-only era have neither — those accounts
    *  must set a password on next login. */
