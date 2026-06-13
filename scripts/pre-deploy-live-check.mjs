@@ -224,14 +224,17 @@ if (LOCAL) {
   ok(`invite has NO deposit-bonus line`, !/bonus on each/i.test(inv));
   ok(`invite no error overlay`, !(await hasErrorOverlay(page)));
 
-  // Card-body must NOT be clickable for live markets — only YES/NO enter.
+  // Card-body click opens the market detail WITH NO side preselected (like the
+  // Details link); the YES/NO buttons enter with that side locked.
   await page.goto(BASE + "/markets", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(500);
   const liveCard = page.locator(".mcardp:has(.mcardp-actions)").first();
   if (await liveCard.count() > 0) {
-    await liveCard.locator(".mcardp-q").click(); await page.waitForTimeout(400);
-    ok(`live card body is not clickable (stays on /markets)`, !/\/markets\/mkt_/.test(page.url()), page.url());
+    await liveCard.locator(".mcardp-q").click();
+    await page.waitForURL(/\/markets\/mkt_[^?]+$/, { timeout: 8000 }).catch(() => {});
+    ok(`live card body click -> details, NO side`, /\/markets\/mkt_/.test(page.url()) && !/\?side=/.test(page.url()), page.url());
 
-    // Click the real YES button → locked dial.
+    // Back to the board, then click the real YES button → locked dial.
+    await page.goto(BASE + "/markets", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(500);
     const yesBtn = page.getByRole("button", { name: /Back YES/ }).first();
     await yesBtn.click();
     await page.waitForURL(/\/markets\/mkt_[^?]+\?side=YES/, { timeout: 12000 }).catch(() => {});

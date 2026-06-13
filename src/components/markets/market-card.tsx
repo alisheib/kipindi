@@ -155,6 +155,14 @@ export function MarketCard({
     try { window.dispatchEvent(new Event("50pick:navigating")); } catch {}
     router.push(`/markets/${id}?side=${side}`);
   };
+  // Clicking the card body anywhere (not the YES/NO buttons, the info popover,
+  // or the Details link — all of which stopPropagation) opens the market WITHOUT
+  // a side preselected, exactly like the "Details" link. The detail page then
+  // shows the pick-a-side gate. YES/NO still enter with that side locked.
+  const goDetails = () => {
+    try { window.dispatchEvent(new Event("50pick:navigating")); } catch {}
+    router.push(`/markets/${id}`);
+  };
   const body = (
     <>
       {/* Kit signature — large faint category glyph watermark (brightens on hover). */}
@@ -237,10 +245,25 @@ export function MarketCard({
     </>
   );
 
-  // LIVE: body is not clickable — only the YES/NO buttons navigate (locked dial).
+  // LIVE: the whole card opens the market detail (no side preselected); the
+  // YES/NO buttons enter with that side locked. Inner controls stopPropagation
+  // so they never trigger the card's own navigation.
   // Non-live: keep the whole card a link so results/history stay viewable.
   return live ? (
-    <article className={cn("mcardp group", className)} style={{ cursor: "default" }} aria-label={titleEn}>
+    <article
+      className={cn("mcardp group", className)}
+      style={{ cursor: "pointer" }}
+      aria-label={titleEn}
+      role="link"
+      tabIndex={0}
+      onClick={goDetails}
+      onKeyDown={(e) => {
+        if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) {
+          e.preventDefault();
+          goDetails();
+        }
+      }}
+    >
       {body}
     </article>
   ) : (
