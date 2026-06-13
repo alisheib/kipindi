@@ -171,6 +171,7 @@ export default async function AdminAIPollsPage({
 
         {/* Pending review queue */}
         {pending.length > 0 && (
+          <div id="ai-polls-pending" className="scroll-mt-24">
           <AdminCard padding="p-0">
             <div className="flex items-center justify-between px-4 lg:px-5 pt-4">
               <div>
@@ -187,6 +188,7 @@ export default async function AdminAIPollsPage({
               ))}
             </div>
           </AdminCard>
+          </div>
         )}
 
         {/* Approved */}
@@ -265,7 +267,7 @@ export default async function AdminAIPollsPage({
                   </thead>
                   <tbody className="text-text-muted">
                     {pageItems.map((p) => (
-                      <tr key={p.id} className="border-b border-border/60 last:border-b-0 hover:bg-bg-overlay/50 group">
+                      <tr key={p.id} id={`poll-tr-${p.id}`} className="border-b border-border/60 last:border-b-0 hover:bg-bg-overlay/50 group scroll-mt-24">
                         <td className="p-3"><Chip size="sm" variant={STATE_VARIANT[p.state]}>{p.state}</Chip></td>
                         <td className="p-3 font-mono uppercase tracking-[0.12em] text-[10px]">{p.category || "\u2014"}</td>
                         <td className="p-3 text-text max-w-[360px]">
@@ -357,7 +359,7 @@ function FilterToolbarSkeleton() {
 
 function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish" }) {
   return (
-    <div className="px-4 lg:px-5 py-4 flex items-start gap-4">
+    <div id={`poll-${poll.id}`} className="px-4 lg:px-5 py-4 flex items-start gap-4 scroll-mt-24">
       <div className="flex-1 min-w-0">
         {/* Header badges */}
         <div className="flex items-center gap-2 mb-1 flex-wrap">

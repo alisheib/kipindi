@@ -21,6 +21,30 @@ import type { AIPollConfig } from "@/lib/server/ai-poll-config";
 
 const adminTextarea = "w-full rounded-lg border border-border bg-[var(--bg-inset)] px-3 py-2.5 text-[13px] text-text placeholder:text-text-subtle outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors resize-none";
 
+/**
+ * After a generate/regenerate/batch action + router.refresh(), the new poll
+ * lands somewhere down the list while the page is still scrolled at the form —
+ * so the operator can't see what was produced. This scrolls the target element
+ * into view and flashes it. The list re-renders asynchronously after refresh(),
+ * so we poll briefly for the element (up to ~3s) and no-op if it never appears
+ * (e.g. a filtered poll on a later page).
+ */
+function revealElement(elementId: string) {
+  if (typeof document === "undefined") return;
+  let tries = 0;
+  const tick = () => {
+    const el = document.getElementById(elementId);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("poll-flash");
+      window.setTimeout(() => el.classList.remove("poll-flash"), 2000);
+      return;
+    }
+    if (tries++ < 40) window.setTimeout(tick, 80);
+  };
+  window.setTimeout(tick, 80);
+}
+
 /* ─── Generate form ─── */
 
 const CATEGORIES = [
@@ -54,6 +78,7 @@ export function GenerateForm() {
         const state = r.poll.state;
         if (state === "PENDING_REVIEW") {
           deferToast({ title: "Poll generated", description: "Ready for review.", variant: "success" });
+          revealElement(`poll-${r.poll.id}`);
         } else if (state === "FILTERED") {
           deferToast({ title: "Poll filtered", description: `Quality too low: ${r.poll.filterReasons.join(", ")}`, variant: "warning" });
         } else if (state === "VALIDATION_FAILED") {
@@ -135,6 +160,8 @@ export function BatchGenerateForm({ maxBatch, remaining }: { maxBatch: number; r
           description: `${r.summary.PENDING_REVIEW} to review · ${r.summary.FILTERED + r.summary.VALIDATION_FAILED} filtered`,
           variant: "success",
         });
+        // Multiple new polls — scroll to the review section so they're in view.
+        if (r.summary.PENDING_REVIEW > 0) revealElement("ai-polls-pending");
       }
     });
   };
@@ -378,7 +405,10 @@ export function ReviewActions({ poll }: { poll: StoredAIPoll }) {
       fd.set("regenerationOf", poll.id);
       const r = await generatePollAction(fd);
       router.refresh();
-      if (r.ok) deferToast({ title: "Regenerated", description: `New poll: ${r.poll.state}`, variant: "success" });
+      if (r.ok) {
+        deferToast({ title: "Regenerated", description: `New poll: ${r.poll.state}`, variant: "success" });
+        if (r.poll.state === "PENDING_REVIEW") revealElement(`poll-${r.poll.id}`);
+      }
     });
   };
 
