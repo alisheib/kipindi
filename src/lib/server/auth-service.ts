@@ -18,21 +18,7 @@ import type { z } from "zod";
 import { createSession, destroySession, getSession, type SessionData } from "./session";
 import { withLock } from "./locks";
 import { sendEmail, welcomeHtml, loginNotificationHtml } from "./email";
-
-/**
- * Pre-KYC phone → email mapping from env.
- * Set PHONE_EMAIL_MAP=+255777777777:ali@example.com,+255777777775:bob@example.com
- * on Railway. Once KYC collects email directly, this becomes a no-op.
- */
-function resolvePhoneEmail(phone: string): string | null {
-  const raw = process.env.PHONE_EMAIL_MAP ?? "";
-  if (!raw) return null;
-  for (const pair of raw.split(",")) {
-    const [p, e] = pair.split(":").map((s) => s.trim());
-    if (p === phone && e) return e;
-  }
-  return null;
-}
+import { resolvePhoneEmail } from "./email-map";
 
 /** Phone numbers Ali wants auto-promoted to ADMIN on first registration.
  *  Set ADMIN_BOOTSTRAP_PHONES=+255712345678,+255700000000 in env. */

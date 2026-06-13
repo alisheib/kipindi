@@ -19,6 +19,7 @@
 
 import { ServerClient } from "postmark";
 import { LinkTrackingOptions } from "postmark/dist/client/models/message/SupportingTypes";
+import { resolvePhoneEmail } from "./email-map";
 
 const FROM = "noreply@50pick.tz";
 const REPLY_TO = "support@50pick.tz";
@@ -267,7 +268,10 @@ export async function sendEmailToUser(
   try {
     const { db } = await import("./store");
     const user = await db.user.findById(userId);
-    const email = user?.email;
+    // Prefer the stored email; fall back to the live phone→email map so receipts
+    // reach mapped accounts even if user.email was never persisted (matches how
+    // login/welcome emails resolve the address).
+    const email = user?.email || resolvePhoneEmail(user?.phoneE164 ?? "");
     if (!email) return;
     await sendEmail(build(email));
   } catch (err) {
