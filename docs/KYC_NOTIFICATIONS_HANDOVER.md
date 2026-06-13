@@ -71,10 +71,19 @@ context. Build it cleanly, test, commit, push (push policy: push always).
 
 (Optional) add Reference row to `kycRejectedHtml` for symmetry.
 
-### B. Recipient config (`src/lib/server/email-map.ts` or a new tiny helper)
-Add `kycNotifyEmails(): string[]` reading env **`KYC_NOTIFY_EMAILS`**
-(comma-separated compliance inboxes), trimmed/deduped/validated. Empty → `[]`
-(skip admin email, log once). Document this env in the handover summary below.
+### B. Recipient resolution — ALL admins for now (Ali's decision 2026-06-14)
+Notify **every admin-role user** that has a resolvable email. Later we'll narrow
+to a curated subset.
+
+`async function kycNotifyEmails(): Promise<string[]>`:
+- If env **`KYC_NOTIFY_EMAILS`** is set (comma-separated) → use that (the future
+  "only some accounts" path). Otherwise:
+- `const users = await db.user.list();` filter to
+  `["ADMIN","COMPLIANCE","MODERATOR"].includes(u.role)`, map each to
+  `u.email || resolvePhoneEmail(u.phoneE164)`, drop falsy, **dedupe + lowercase**.
+- Returns `[]` if none → admin email simply skipped (log once). Best-effort.
+- Send one email per recipient (or a single send with multiple `To`); never
+  throws. (10 admins = 10 sends, fine. If this list ever grows large, batch.)
 
 ### C. Wire into `submitForReview` (`src/lib/server/kyc-service.ts`)
 After the `db.kyc.upsert({... status: "PENDING_REVIEW", submittedAt ...})`:
@@ -198,8 +207,9 @@ verified name where private and first-name/masked where public.
    only to admins (`/api/admin/kyc-doc`). Letting the player re-view their
    images needs a user-self route. Default = `/profile/kyc` shows which doc
    types are on file (no image re-view). Confirm if Ali wants full self-view.
-3. **`KYC_NOTIFY_EMAILS` recipients:** which inboxes get the "new submission"
-   admin email? (e.g. `compliance@50pick.tz`, Ali's inbox.)
+3. **Admin recipients: DECIDED (2026-06-14) → ALL admin-role users with an
+   email, for now** (see section B). `KYC_NOTIFY_EMAILS` env is the later
+   "only some accounts" override. No action needed unless Ali changes his mind.
 4. (Optional) Admin in-app bell vs relying on the existing `/admin/approvals`
    queue. Default = queue is enough.
 5. **Name backfill (section E):** on approve, set `displayName` from `fullName`
