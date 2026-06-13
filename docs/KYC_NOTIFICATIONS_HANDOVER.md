@@ -98,6 +98,58 @@ After the `db.kyc.upsert({... status: "PENDING_REVIEW", submittedAt ...})`:
 ### D. Approved email reference (`reviewKyc`)
 Pass `reference: k.id` into `kycApprovedHtml` (and `kycRejectedHtml` if you add it).
 
+### E. Identity propagation after KYC (name + email) — "every change reflects"
+**Problem:** after approval, the verified legal name sits in `k.fullName` but
+`user.displayName` is never updated, so greetings/profile/welcome+login emails
+(all resolve via `displayLabel(user)`) still show the old/empty handle. Email is
+collected via profile / `PHONE_EMAIL_MAP`, not KYC.
+
+**Name — do this in `reviewKyc` on APPROVE (and only then):**
+- If `user.displayName` is empty/null (user never set a handle), set
+  `user.displayName = k.fullName` via `db.user.update`. If they DID set a handle,
+  **leave it** (don't override a chosen nickname).
+- Result: greetings, profile, admin, and emails now show the verified name
+  everywhere via `displayLabel`. Public surfaces stay safe automatically:
+  leaderboard already uses `displayName.split(" ")[0]` (first name only,
+  `src/app/leaderboard/page.tsx`), comments use `maskName(...)` frozen at write
+  (`src/lib/server/comments-store.ts`). **Do NOT** render full legal surname on
+  any public surface — verify no new surface does.
+- Confirm `displayLabel` (resolver used by emails) returns the real name once
+  displayName is set; if it falls back to phone/"Player", that's now fixed.
+
+**Email — make KYC the canonical collection point:**
+- Add an **email field to the KYC NIDA step** (or onboarding): validate (zod
+  `.email()`, lowercase/trim — mirror `src/app/profile/actions.ts`), store on
+  `user.email` via `db.user.update`. The DAL now persists/reads `user.email`
+  (fixed this session) so it round-trips on Postgres.
+- Once set, all transactional mail routes to it automatically (the
+  `sendEmailToUser` → `user.email || resolvePhoneEmail` fix). `PHONE_EMAIL_MAP`
+  becomes a fallback for legacy/test accounts only.
+- The KYC "submitted" email (section A) should send to that just-collected email.
+
+**Trace to re-verify after the change (grep + eyeball):** `displayName` reads in
+`app-shell` greeting, `/profile`, `/admin/players`, `/leaderboard`, comments;
+`displayLabel(` call sites; every `*Html({ name })` email. Ensure each shows the
+verified name where private and first-name/masked where public.
+
+### F. Upload UX / loaders — "users never get lost mid-upload"
+- **`src/components/profile/kyc-doc-uploader.tsx`:** `fileToDataUrl()` (canvas
+  resize) runs BEFORE the `useTransition` `start()`, so `pending` (the spinner +
+  "Uploading…") doesn't show during resize — on a big phone photo that's a 1–2s
+  dead zone. **Fix:** introduce a `busy` state set the moment a file is picked,
+  covering resize → action → done; show spinner + "Preparing…/Uploading…" the
+  whole time; disable the slot; clear on success/error. Keep the existing toast +
+  "Attached" done state.
+- **`src/app/profile/kyc/page.tsx` (line ~215):** the "Submit for review" button
+  is a plain `<button>` in `<form action={submitKycForReviewAction}>` with no
+  pending feedback. **Fix:** use `SubmitButton` (already imported, as the NIDA
+  step does) with `pendingLabel="Submitting…"` so the user sees progress while
+  the submission + emails fire.
+- General: keep the file input disabled while busy; success must be visually
+  unmistakable (checkmark + "Attached"); on failure show the toast AND restore
+  the slot so they can retry. Verify on a throttled connection + a large (~8MP)
+  photo that the loader is visible end-to-end.
+
 ---
 
 ## Edge cases / "0 flaws" checklist
@@ -150,6 +202,22 @@ Pass `reference: k.id` into `kycApprovedHtml` (and `kycRejectedHtml` if you add 
    admin email? (e.g. `compliance@50pick.tz`, Ali's inbox.)
 4. (Optional) Admin in-app bell vs relying on the existing `/admin/approvals`
    queue. Default = queue is enough.
+5. **Name backfill (section E):** on approve, set `displayName` from `fullName`
+   only when displayName is empty (recommended), vs always, vs never. Confirm we
+   never show full legal surname publicly. **Recommend: backfill-if-empty.**
+6. **Email collection point (section E):** add an email field to the KYC NIDA
+   step (recommended — canonical, tied to identity) vs keep relying on the
+   profile form + `PHONE_EMAIL_MAP`. Confirm with Ali.
+
+## Test additions for sections E & F
+- After `reviewKyc` APPROVE: assert `user.displayName` is backfilled from
+  `fullName` when it was empty, and **untouched** when a handle pre-existed.
+- Assert leaderboard/comments still show first-name/masked (no full surname).
+- If email collected in KYC: assert it lands on `user.email` and the next
+  transactional email resolves to it (not the map fallback).
+- Uploader: on a large photo + throttled network, the loader is visible from
+  file-pick through "Attached"; submit button shows "Submitting…"; failure
+  restores the slot for retry.
 
 ---
 
