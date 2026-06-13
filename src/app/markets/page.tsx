@@ -5,6 +5,7 @@ import { listMarkets, impliedYesPct, isClosedByTime, seedDemoMarkets, traderSeed
 import { getCardChart } from "@/lib/server/market-history";
 import { getProposalsConfig } from "@/lib/server/proposals-config";
 import { EmptyState } from "@/components/ui/empty-state";
+import { MarketSearch } from "./market-search";
 
 export const metadata = { title: "Markets · Soko" };
 export const dynamic = "force-dynamic";
@@ -42,7 +43,7 @@ function timeLeftStr(iso: string): string {
   return `${m}m left`;
 }
 
-export default async function MarketsPage({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string }> }) {
+export default async function MarketsPage({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string; q?: string }> }) {
   await seedDemoMarkets();
   const allLive = (await listMarkets({ status: "LIVE" })).filter((m) => !isClosedByTime(m));
   const totalVolume = allLive.reduce((s, m) => s + m.yesPool + m.noPool, 0);
@@ -57,6 +58,11 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
       </div>
 
       <ProposalEntryCard />
+
+      {/* Search — primary "find a market by name" affordance, above the board. */}
+      <div className="mt-4">
+        <MarketSearch />
+      </div>
 
       {/* Filters as a left column on desktop, stacked above the grid on mobile. */}
       <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:gap-6">
@@ -93,16 +99,18 @@ function ProposalEntryCard() {
   );
 }
 
-async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string }> }) {
+async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string; q?: string }> }) {
   const sp = await searchParams;
   const activeWhen = (sp.when as WhenFilter | undefined) ?? "today";
   const activeCat = sp.cat ?? "all";
+  const activeQ = (sp.q ?? "").trim();
   const buildHref = (next: { when?: WhenFilter; cat?: string }) => {
     const params = new URLSearchParams();
     const w = next.when ?? activeWhen;
     const c = next.cat  ?? activeCat;
     if (w !== "today") params.set("when", w);
     if (c !== "all")   params.set("cat", c);
+    if (activeQ)       params.set("q", activeQ); // keep the search when switching filters
     const qs = params.toString();
     return qs ? `/markets?${qs}` : "/markets";
   };
@@ -155,23 +163,45 @@ async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: strin
   );
 }
 
-async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string }> }) {
+async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string; q?: string }> }) {
   const sp = await searchParams;
   const cat = (sp.cat as MarketCategory | undefined) ?? undefined;
   const whenId = (sp.when as WhenFilter | undefined) ?? "today";
   const whenCfg = WHEN_OPTIONS.find(o => o.id === whenId) ?? WHEN_OPTIONS[1];
+  // Cap the query length (defensive — keeps the URL + match work bounded).
+  const qRaw = (sp.q ?? "").trim().slice(0, 100);
+  const searching = qRaw.length > 0;
+  // Token-based AND match: every whitespace-separated word must appear somewhere
+  // in the market's searchable text (EN title, SW title, category, resolution
+  // criterion), in any order. So "simba win" matches "Will Simba SC win…", and
+  // "rains april" matches "…long rains begin… before April 15". Substring, not
+  // regex — no injection, and partial words ("crypt") still hit.
+  const tokens = qRaw.toLowerCase().split(/\s+/).filter(Boolean);
+  const matches = (m: { titleEn: string; titleSw: string; category: string; resolutionCriterion?: string }) => {
+    if (!searching) return true;
+    const hay = `${m.titleEn} ${m.titleSw} ${m.category} ${m.resolutionCriterion ?? ""}`.toLowerCase();
+    return tokens.every((t) => hay.includes(t));
+  };
   const now = Date.now();
+  // A name search is global: ignore the category filter so a remembered market
+  // surfaces no matter which topic chip happens to be active.
+  const effectiveCat = searching ? undefined : cat;
   // Sort by closest-to-resolution first so the demo-friendly minute-scale
   // markets float to the top. Past-resolution markets sink (they're in the
   // resolver queue, not the live grid).
-  const bettable = (await listMarkets({ status: "LIVE", category: cat }))
+  const bettable = (await listMarkets({ status: "LIVE", category: effectiveCat }))
     // Filter out markets whose clock has already passed but the
     // resolver hasn't yet acted — they're closed-by-time, not bettable,
     // and showing them in the LIVE grid produces a confused UX where
     // you can click a card whose dial then refuses to fire.
     .filter(m => !isClosedByTime(m));
   let live;
-  if (whenId === "new") {
+  if (searching) {
+    // While searching, ignore the time-window entirely — a market the player
+    // remembers must surface regardless of when it closes — and sort soonest first.
+    live = bettable.filter(matches)
+      .sort((a, b) => Date.parse(a.resolutionAt) - Date.parse(b.resolutionAt));
+  } else if (whenId === "new") {
     // "New" — newly-listed polls first, so freshly-generated markets are
     // easy to find regardless of when they close.
     live = [...bettable].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -184,13 +214,25 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
       : liveAll.filter(x => x.ms <= whenCfg.cutoffMs!)
     ).map(x => x.m);
   }
-  const resolved = (await listMarkets({ status: "RESOLVED" })).slice(0, 6);
+  // Resolved markets are searchable too (players look up something that already
+  // settled); otherwise keep the short "recently resolved" strip.
+  const resolved = searching
+    ? (await listMarkets({ status: "RESOLVED" })).filter(matches).slice(0, 12)
+    : (await listMarkets({ status: "RESOLVED" })).slice(0, 6);
   const traderMap = await traderSeedsByMarket();
   const allForCharts = [...live, ...resolved];
   const cardCharts = new Map(await Promise.all(allForCharts.map(async (m) => [m.id, await getCardChart(m.id)] as const)));
 
+  const resultCount = live.length + resolved.length;
   return (
     <>
+      {searching && (
+        <p aria-live="polite" className="mb-3 font-mono text-[11px] text-text-subtle tabular-nums">
+          {resultCount === 0
+            ? `No markets match “${qRaw}”`
+            : `${resultCount} ${resultCount === 1 ? "market" : "markets"} match “${qRaw}”`}
+        </p>
+      )}
       <section className="market-grid">
         {live.map((m) => {
           const cc = cardCharts.get(m.id) ?? { spark: [] };
@@ -217,16 +259,18 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
           <div className="col-span-full">
             <EmptyState
               kind="markets"
-              title="No markets in this category yet"
-              titleSw="Hakuna soko bado kwenye aina hii"
-              body="Try a different category, or check back soon — operators publish new markets daily."
-              bodySw="Jaribu aina nyingine au rudi baadaye."
+              title={searching ? `No live markets match “${qRaw}”` : "No markets in this category yet"}
+              titleSw={searching ? "Hakuna soko hai linalolingana" : "Hakuna soko bado kwenye aina hii"}
+              body={searching
+                ? "Check the spelling, try fewer words, or clear the search to see everything. Resolved markets that match appear below."
+                : "Try a different category, or check back soon — operators publish new markets daily."}
+              bodySw={searching ? "Angalia tahajia au futa utafutaji." : "Jaribu aina nyingine au rudi baadaye."}
               action={
                 <Link
                   href="/markets"
                   className="inline-flex h-9 items-center px-4 rounded-pill border border-border-strong bg-bg-elevated font-semibold text-text hover:bg-bg-overlay text-[13px] transition-colors"
                 >
-                  See all categories
+                  {searching ? "Clear search · Futa" : "See all categories"}
                 </Link>
               }
             />
@@ -236,7 +280,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
 
       {resolved.length > 0 && (
         <section className="mt-10">
-          <h2 className="mb-3 font-display text-[20px] font-semibold text-text">Recently resolved</h2>
+          <h2 className="mb-3 font-display text-[20px] font-semibold text-text">{searching ? "Matching resolved markets" : "Recently resolved"}</h2>
           <div className="market-grid">
             {resolved.map((m) => (
               <MarketCard
