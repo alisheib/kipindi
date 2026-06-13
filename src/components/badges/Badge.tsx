@@ -40,7 +40,7 @@ export function Badge({
       title={title}
     >
       {state === "progress" && (
-        <svg className="badge-progress-ring" viewBox="0 0 64 64"
+        <svg className="badge-ring" viewBox="0 0 64 64"
              style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} aria-hidden>
           <circle className="badge-ring-track" cx="32" cy="32" r={R} strokeWidth="2.5" />
           <circle className="badge-ring-arc" cx="32" cy="32" r={R} strokeWidth="2.5"
