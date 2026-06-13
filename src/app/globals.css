@@ -735,6 +735,19 @@ body {
 }
 .input-group .input:focus { box-shadow: none; }
 
+/* Markets board search — an .input-group capped to a tasteful width on desktop
+   (full-width on mobile, since the cap exceeds a phone's content width). */
+.market-search { max-width: 460px; }
+.market-search .prefix { display: inline-flex; align-items: center; }
+.market-search .input { flex: 1; min-width: 0; font-size: 13px; }
+.market-search .clear-btn {
+  display: grid; place-items: center; flex-shrink: 0;
+  width: 38px; height: 38px; margin-right: 3px;
+  background: transparent; border: none; cursor: pointer;
+  color: var(--text-subtle); transition: color var(--ease-micro);
+}
+.market-search .clear-btn:hover { color: var(--text); }
+
 /* ---------- Form refinements — native input polish ---------- */
 
 /* iOS Safari auto-zoom prevention — Safari zooms the viewport when an

@@ -59,14 +59,19 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
 
       <ProposalEntryCard />
 
-      {/* Search — primary "find a market by name" affordance, above the board. */}
-      <div className="mt-4">
+      {/* Search — the primary "find a market by name" affordance. Sticks just
+          under the 56px app bar so it stays reachable while scrolling a long
+          board; the board background sits behind it so cards scroll cleanly
+          under. The sidebar's sticky offset below is set to clear this bar. */}
+      <div className="sticky top-[56px] z-20 mt-4 bg-bg-base py-2.5">
         <MarketSearch />
       </div>
 
-      {/* Filters as a left column on desktop, stacked above the grid on mobile. */}
-      <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:gap-6">
-        <aside className="lg:w-[208px] lg:shrink-0 lg:sticky lg:top-[72px] lg:self-start lg:max-h-[calc(100dvh-84px)] lg:overflow-y-auto lg:overflow-x-hidden kp-thin-scroll lg:pb-3">
+      {/* Filters as a left column on desktop, stacked above the grid on mobile.
+          Sticky offset = 56 (app bar) + ~66 (sticky search zone) so the rail
+          parks just below the search instead of colliding with it. */}
+      <div className="mt-1 flex flex-col gap-5 lg:flex-row lg:gap-6">
+        <aside className="lg:w-[208px] lg:shrink-0 lg:sticky lg:top-[122px] lg:self-start lg:max-h-[calc(100dvh-134px)] lg:overflow-y-auto lg:overflow-x-hidden kp-thin-scroll lg:pb-3">
           <FilterBar searchParams={searchParams} />
         </aside>
         <div className="min-w-0 flex-1">
