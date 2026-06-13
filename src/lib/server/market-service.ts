@@ -301,7 +301,7 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
     sendEmailToUser(userId, (email) => ({
       to: email,
       subject: `Bet placed · ${opts.side} on "${market.titleEn.slice(0, 40)}"`,
-      html: betPlacedHtml({ side: opts.side, stake: opts.stake, marketTitle: market.titleEn, resolutionDate: market.resolutionAt.slice(0, 10) }),
+      html: betPlacedHtml({ reference: positionId, side: opts.side, stake: opts.stake, payoutIfWin, marketTitle: market.titleEn, placedAt, resolutionDate: market.resolutionAt.slice(0, 10) }),
       tag: "bet-placed",
     })).catch(() => {});
 
@@ -441,7 +441,7 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
           sendEmailToUser(p.userId, (email) => ({
             to: email,
             subject: `You won · TZS ${Math.round(payout).toLocaleString("en-US")}`,
-            html: winNotificationHtml({ payout, stake: p.stake, marketTitle: cur.titleEn }),
+            html: winNotificationHtml({ reference: p.id, payout, stake: p.stake, marketTitle: cur.titleEn, settledAt: cur.resolutionStage2At ?? undefined }),
             tag: "win",
           })).catch(() => {});
         } else {
@@ -451,7 +451,7 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
           sendEmailToUser(p.userId, (email) => ({
             to: email,
             subject: `Bet lost · TZS ${Math.round(p.stake).toLocaleString("en-US")}`,
-            html: lossNotificationHtml({ stake: p.stake, marketTitle: cur.titleEn }),
+            html: lossNotificationHtml({ reference: p.id, stake: p.stake, marketTitle: cur.titleEn, settledAt: cur.resolutionStage2At ?? undefined }),
             tag: "loss",
           })).catch(() => {});
         }
@@ -654,7 +654,7 @@ export async function cashOutPosition(
     sendEmailToUser(userId, (email) => ({
       to: email,
       subject: `Position sold · TZS ${Math.round(value).toLocaleString("en-US")}`,
-      html: cashOutReceiptHtml({ value, stake: p.stake, marketTitle: m.titleEn }),
+      html: cashOutReceiptHtml({ reference: p.id, value, stake: p.stake, marketTitle: m.titleEn, soldAt: now }),
       tag: "cashout",
     })).catch(() => {});
 
@@ -793,7 +793,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
         sendEmailToUser(p.userId, (email) => ({
           to: email,
           subject: `You won · TZS ${Math.round(payout).toLocaleString("en-US")}`,
-          html: winNotificationHtml({ payout, stake: p.stake, marketTitle: m.titleEn }),
+          html: winNotificationHtml({ reference: p.id, payout, stake: p.stake, marketTitle: m.titleEn, settledAt: m.resolutionStage2At ?? undefined }),
           tag: "win",
         })).catch(() => {});
       } else {
@@ -804,7 +804,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
         sendEmailToUser(p.userId, (email) => ({
           to: email,
           subject: `Bet lost · TZS ${Math.round(p.stake).toLocaleString("en-US")}`,
-          html: lossNotificationHtml({ stake: p.stake, marketTitle: m.titleEn }),
+          html: lossNotificationHtml({ reference: p.id, stake: p.stake, marketTitle: m.titleEn, settledAt: m.resolutionStage2At ?? undefined }),
           tag: "loss",
         })).catch(() => {});
       }

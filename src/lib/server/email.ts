@@ -238,6 +238,22 @@ function stripHtml(html: string): string {
 
 const fmtTzs = (n: number) => `TZS ${Math.round(n).toLocaleString("en-US")}`;
 
+/** Format an ISO timestamp in East Africa Time, e.g. "13 Jun 2026, 14:32 EAT". */
+const fmtDateTime = (iso?: string): string => {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleString("en-GB", {
+      timeZone: "Africa/Dar_es_Salaam",
+      day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+    }) + " EAT";
+  } catch { return iso; }
+};
+
+/** Standard footer line on money/bet receipts: keep the reference for support. */
+function refNote(): string {
+  return `<p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE};line-height:1.55">Keep this reference. If anything looks wrong, reply here or email <a href="mailto:${REPLY_TO}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO}</a> and quote it — every action on your account is logged and traceable.<br><span style="font-style:italic;color:${TEXT_FAINT}">Hifadhi kumbukumbu hii kwa ajili ya msaada.</span></p>`;
+}
+
 // ─── User email lookup helper ───────────────────────────────────────────
 
 /** Look up a user's email and send. Silently skips if no email on file.
@@ -319,25 +335,29 @@ export function withdrawalUnderReviewHtml({ amount, reference }: {
   `);
 }
 
-export function betPlacedHtml({ side, stake, marketTitle, resolutionDate }: {
-  side: "YES" | "NO"; stake: number; marketTitle: string; resolutionDate: string;
+export function betPlacedHtml({ reference, side, stake, payoutIfWin, marketTitle, placedAt, resolutionDate }: {
+  reference: string; side: "YES" | "NO"; stake: number; payoutIfWin?: number; marketTitle: string; placedAt?: string; resolutionDate: string;
 }): string {
   return wrap(`
     ${eyebrow("Bet placed", "Dau limewekwa")}
     ${heading("Position open")}
     ${subtitle(marketTitle)}
     ${detailRows([
+      { label: "Reference", value: reference },
       { label: "Your pick", value: side, tone: side === "YES" ? "good" : "bad" },
       { label: "Stake", value: fmtTzs(stake) },
+      ...(payoutIfWin ? [{ label: "Potential return", value: fmtTzs(payoutIfWin), tone: "good" as const }] : []),
+      ...(placedAt ? [{ label: "Placed", value: fmtDateTime(placedAt) }] : []),
       { label: "Resolves", value: resolutionDate },
     ])}
     ${subtitle("Payout is calculated at resolution from the final pool share.")}
+    ${refNote()}
     ${ctaButton("/positions", "View positions · Tazama madau")}
   `);
 }
 
-export function winNotificationHtml({ payout, stake, marketTitle }: {
-  payout: number; stake: number; marketTitle: string;
+export function winNotificationHtml({ reference, payout, stake, marketTitle, settledAt }: {
+  reference: string; payout: number; stake: number; marketTitle: string; settledAt?: string;
 }): string {
   const net = payout - stake;
   return wrap(`
@@ -345,32 +365,38 @@ export function winNotificationHtml({ payout, stake, marketTitle }: {
     ${heading(`You won ${fmtTzs(payout)}`, GILT)}
     ${subtitle(marketTitle)}
     ${detailRows([
+      { label: "Reference", value: reference },
       { label: "Payout", value: fmtTzs(payout), tone: "good" },
       { label: "Net profit", value: `+${fmtTzs(net)}`, tone: "good" },
       { label: "Stake", value: fmtTzs(stake) },
+      ...(settledAt ? [{ label: "Settled", value: fmtDateTime(settledAt) }] : []),
     ])}
-    ${ctaButton("/markets", "Browse markets · Tazama masoko")}
+    ${refNote()}
+    ${ctaButton("/positions", "View positions · Tazama madau")}
   `);
 }
 
-export function lossNotificationHtml({ stake, marketTitle }: {
-  stake: number; marketTitle: string;
+export function lossNotificationHtml({ reference, stake, marketTitle, settledAt }: {
+  reference: string; stake: number; marketTitle: string; settledAt?: string;
 }): string {
   return wrap(`
     ${eyebrow("Bet lost", "Dau limepotea")}
     ${heading(`Bet lost · ${fmtTzs(stake)}`)}
     ${subtitle(marketTitle)}
     ${detailRows([
+      { label: "Reference", value: reference },
       { label: "Stake lost", value: fmtTzs(stake), tone: "bad" },
+      ...(settledAt ? [{ label: "Settled", value: fmtDateTime(settledAt) }] : []),
     ])}
     ${subtitle("Most people play for fun. If it stops feeling fun, take a break.")}
     ${subtitleSw("Kama haifurahishi tena, pumzika.")}
+    ${refNote()}
     ${ctaButton("/profile/responsible-gambling", "Set limits · Weka mipaka")}
   `);
 }
 
-export function cashOutReceiptHtml({ value, stake, marketTitle }: {
-  value: number; stake: number; marketTitle: string;
+export function cashOutReceiptHtml({ reference, value, stake, marketTitle, soldAt }: {
+  reference: string; value: number; stake: number; marketTitle: string; soldAt?: string;
 }): string {
   const net = value - stake;
   const profit = net >= 0;
@@ -379,10 +405,14 @@ export function cashOutReceiptHtml({ value, stake, marketTitle }: {
     ${heading(`Cashed out · ${fmtTzs(value)}`)}
     ${subtitle(marketTitle)}
     ${detailRows([
+      { label: "Reference", value: reference },
       { label: "Sellback", value: fmtTzs(value) },
       { label: "Net", value: `${profit ? "+" : "\u2212"}${fmtTzs(Math.abs(net))}`, tone: profit ? "good" : "bad" },
       { label: "Stake", value: fmtTzs(stake) },
+      ...(soldAt ? [{ label: "Sold", value: fmtDateTime(soldAt) }] : []),
     ])}
+    ${refNote()}
+    ${ctaButton("/positions", "View positions \u00b7 Tazama madau")}
   `);
 }
 
