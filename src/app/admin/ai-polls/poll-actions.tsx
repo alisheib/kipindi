@@ -29,20 +29,34 @@ const adminTextarea = "w-full rounded-lg border border-border bg-[var(--bg-inset
  * so we poll briefly for the element (up to ~3s) and no-op if it never appears
  * (e.g. a filtered poll on a later page).
  */
+let _revealTimer: ReturnType<typeof setTimeout> | null = null;
+let _revealFlashEl: HTMLElement | null = null;
 function revealElement(elementId: string) {
   if (typeof document === "undefined") return;
+  // Latest-wins: cancel any in-flight reveal so rapid successive generations
+  // don't spawn competing loops that fight over the scroll position.
+  if (_revealTimer) { clearTimeout(_revealTimer); _revealTimer = null; }
+  if (_revealFlashEl) { _revealFlashEl.classList.remove("poll-flash"); _revealFlashEl = null; }
   let tries = 0;
   const tick = () => {
     const el = document.getElementById(elementId);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Restart the flash even if it's the same element (reflow re-triggers it).
+      el.classList.remove("poll-flash");
+      void el.offsetWidth;
       el.classList.add("poll-flash");
-      window.setTimeout(() => el.classList.remove("poll-flash"), 2000);
+      _revealFlashEl = el;
+      _revealTimer = setTimeout(() => {
+        el.classList.remove("poll-flash");
+        if (_revealFlashEl === el) _revealFlashEl = null;
+        _revealTimer = null;
+      }, 2000);
       return;
     }
-    if (tries++ < 40) window.setTimeout(tick, 80);
+    _revealTimer = tries++ < 40 ? setTimeout(tick, 80) : null;
   };
-  window.setTimeout(tick, 80);
+  _revealTimer = setTimeout(tick, 80);
 }
 
 /* ─── Generate form ─── */
