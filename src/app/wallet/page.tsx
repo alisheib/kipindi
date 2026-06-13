@@ -3,7 +3,7 @@ import { WalletPageClient } from "./wallet-client";
 import { WalletResultModal } from "./wallet-result-modal";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
-import type { Transaction } from "@/lib/mock-data";
+import type { Transaction } from "@/lib/ui-stubs";
 import type { StoredTxn } from "@/lib/server/store";
 
 export const metadata = { title: "Wallet · Pochi" };

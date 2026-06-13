@@ -5,7 +5,7 @@ import { useState } from "react";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { EmptyState } from "@/components/ui/empty-state";
-import type { Transaction } from "@/lib/mock-data";
+import type { Transaction } from "@/lib/ui-stubs";
 import { Cash } from "@/components/ui/cash";
 
 const fmt = (n: number, currency = "TZS") => `${currency} ${n.toLocaleString("en-US")}`;

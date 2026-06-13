@@ -10,7 +10,7 @@ import { NavProgress } from "@/components/ui/nav-progress";
 import { RouteTransition } from "@/components/ui/route-transition";
 import { getSession } from "@/lib/server/session";
 import { db } from "@/lib/server/store";
-import { user as guestUser } from "@/lib/mock-data";
+import { guestUser } from "@/lib/ui-stubs";
 import { getTickerFeed } from "@/lib/server/ticker-feed";
 import { RealityCheckHost } from "@/components/rg/reality-check";
 import { getRgSettings } from "@/lib/server/responsible-gambling";

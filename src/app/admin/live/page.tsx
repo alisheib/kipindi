@@ -3,7 +3,7 @@ import { AdminAreaChart } from "@/components/admin/admin-charts";
 import { Chip } from "@/components/ui/chip";
 import { db } from "@/lib/server/store";
 import { getAuditPage } from "@/lib/server/audit";
-import { matches } from "@/lib/mock-data";
+import { matches } from "@/lib/ui-stubs";
 import { activePlayers, moneyFlowSeries, grossGamingRevenue } from "@/lib/server/analytics";
 import { formatTzs, formatTzsCompact } from "@/lib/utils";
 
