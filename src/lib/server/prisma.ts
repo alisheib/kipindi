@@ -24,7 +24,14 @@ export function prisma(): PrismaClient | null {
   const client = new PrismaClient({
     log: process.env.NODE_ENV === "production" ? ["error"] : ["error", "warn"],
   });
-  if (process.env.NODE_ENV !== "production") globalThis.__50PICK_PRISMA = client;
+  // Cache the singleton in EVERY environment. The previous code only cached
+  // in dev (to survive HMR) — in production it returned a brand-new client on
+  // every call, and each client opens its OWN connection pool. Under load that
+  // exhausts Postgres: "FATAL: sorry, too many clients already", which surfaces
+  // to users as the "page hit a snag" error boundary (intermittently, since a
+  // refresh sometimes lands when a connection has freed up). One shared client
+  // = one bounded pool for the life of the container.
+  globalThis.__50PICK_PRISMA = client;
   return client;
 }
 
