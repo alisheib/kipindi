@@ -52,6 +52,8 @@ export type StoredUser = {
   recruitedBy?: string | null;
 };
 
+export type KycExtraRequest = { id: string; description: string; requestedAt: string; storageKey: string | null; uploadedAt: string | null };
+
 export type StoredKyc = {
   id: string;
   userId: string;
@@ -63,6 +65,11 @@ export type StoredKyc = {
   fullName: string | null;
   dob: string | null;
   documents: { docType: string; storageKey: string; uploadedAt: string }[];
+  /** Extra documents an officer asked for during review (each with a written
+   *  description the player and reviewer both see). Empty in the normal case;
+   *  populated by a REQUEST_INFO decision. `storageKey` is null until the
+   *  player uploads the requested file. */
+  extraRequests?: KycExtraRequest[];
   reviewerId: string | null;
   reviewedAt: string | null;
   submittedAt: string | null;
@@ -330,6 +337,13 @@ const memoryDb = {
       return id ? store.users.get(id) ?? null : null;
     },
     create: (u: StoredUser) => { store.users.set(u.id, u); store.usersByPhone.set(u.phoneE164, u.id); return u; },
+    /** Find a user by email (case-insensitive). Used to enforce one-email-per-account. */
+    findByEmail: (email: string): StoredUser | null => {
+      const norm = email.trim().toLowerCase();
+      if (!norm) return null;
+      for (const u of store.users.values()) if ((u.email ?? "").trim().toLowerCase() === norm) return u;
+      return null;
+    },
     update: (id: string, patch: Partial<StoredUser>) => {
       const u = store.users.get(id);
       if (!u) return null;
@@ -345,6 +359,14 @@ const memoryDb = {
       return null;
     },
     upsert: (k: StoredKyc) => { store.kyc.set(k.id, k); return k; },
+    /** Find any KYC submission carrying this NIDA number. Used to enforce
+     *  one-NIDA-per-account (multi-accounting / identity-reuse defence). */
+    findByNida: (nidaNumber: string): StoredKyc | null => {
+      const norm = nidaNumber.trim();
+      if (!norm) return null;
+      for (const k of store.kyc.values()) if ((k.nidaNumber ?? "").trim() === norm) return k;
+      return null;
+    },
     list: () => Array.from(store.kyc.values()),
   },
   otp: {

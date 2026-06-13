@@ -350,6 +350,9 @@ model KycSubmission {
   reviewerId     String?
   reviewedAt     DateTime?
   submittedAt    DateTime?
+  /** Officer-requested extra documents (each with a description). JSON array of
+   *  { id, description, requestedAt, storageKey, uploadedAt }. Empty normally. */
+  extraRequests  Json?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 
@@ -357,6 +360,7 @@ model KycSubmission {
 
   @@index([userId, status])
   @@index([status, submittedAt])
+  @@index([nidaNumber])
 }
 
 model KycDocument {

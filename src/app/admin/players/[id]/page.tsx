@@ -351,6 +351,39 @@ function KycTab({ kyc }: { kyc: ReturnType<typeof db.kyc.findByUserId> }) {
         );
       })()}
 
+      {/* Officer-requested extra documents — description + uploaded content (or
+          "awaiting"). Empty in the normal case; only shown when docs were asked. */}
+      {(kyc.extraRequests ?? []).length > 0 && (
+        <div>
+          <p className="font-mono text-micro tracking-[0.12em] uppercase text-text-tertiary mb-2.5">Requested documents</p>
+          <div className="space-y-2.5">
+            {(kyc.extraRequests ?? []).map((rq: { id: string; description: string; storageKey: string | null; uploadedAt: string | null }) => {
+              const src = `/api/admin/kyc-doc?user=${encodeURIComponent(kyc.userId)}&req=${encodeURIComponent(rq.id)}`;
+              return (
+                <div key={rq.id} className="flex items-start gap-3 rounded-md border border-border bg-bg-inset/40 p-2.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-caption text-text leading-snug">{rq.description}</p>
+                    <p className="mt-0.5 font-mono text-micro text-text-tertiary">
+                      {rq.uploadedAt ? `Uploaded · ${new Date(rq.uploadedAt).toLocaleString("en-GB")}` : "Awaiting upload"}
+                    </p>
+                  </div>
+                  {rq.storageKey ? (
+                    <a href={src} target="_blank" rel="noopener noreferrer" className="block shrink-0 overflow-hidden rounded-md border border-border hover:border-gold-500 transition-colors" title="Open full size">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={src} alt="requested document" loading="lazy" className="h-16 w-16 object-cover" />
+                    </a>
+                  ) : (
+                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-bg-inset/40 text-text-tertiary">
+                      <I.x s={16} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="rounded-lg border border-border-subtle bg-bg-inset/30 p-3.5">
         <p className="font-mono text-micro tracking-[0.12em] uppercase text-text-tertiary mb-2.5">Officer decision</p>
         <KycReviewControls userId={kyc.userId} status={kyc.status} />

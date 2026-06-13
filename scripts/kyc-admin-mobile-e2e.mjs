@@ -45,13 +45,34 @@ try {
   const box = await approveBtn.boundingBox();
   ok("Approve button ≥44px tall", !!box && box.height >= 44, box ? `(${Math.round(box.height)}px)` : "(no box)");
 
-  // 4. Open "Request info…" → reason panel renders, no overflow, send button shown.
+  // 4. Review bell in the admin top bar (the "new player to review" signal).
+  const bell = page.locator('a[href="/admin/approvals"]').first();
+  ok("admin top-bar bell present", await bell.count() > 0);
+
+  // 5. Open "Request info…" → reason panel renders, no overflow, send button shown.
   await page.getByRole("button", { name: /Request info/ }).first().click();
   await page.waitForTimeout(150);
   ok("request-info: textarea visible", await page.locator("textarea").first().isVisible());
   ok("request-info: 'Send request' shown", /Send request/.test(await page.locator("body").innerText()));
   await noOverflow("request-info panel");
   await page.screenshot({ path: "/tmp/kyc_admin_mobile.png", fullPage: true });
+
+  // 6. Add an extra-document request with a description, fill the note, and send.
+  await page.locator("textarea").first().fill("Your ID back is blurry — please re-upload and add proof of address.");
+  await page.getByRole("button", { name: /Add a document request/ }).click();
+  await page.waitForTimeout(100);
+  const docInput = page.locator('input[type="text"]').last();
+  ok("extra-doc description input appears", await docInput.isVisible());
+  await docInput.fill("Proof of address (utility bill, < 3 months)");
+  await noOverflow("request-info panel with extra-doc row");
+  await page.getByRole("button", { name: /Send request/ }).click();
+  await page.waitForTimeout(800);
+  // After sending, the page refreshes; the player's KYC is now ADDITIONAL_INFO
+  // and the tab shows the requested document we just created.
+  await page.goto(`${BASE}/admin/players/${seed.userId}?tab=kyc`, { waitUntil: "networkidle" });
+  const after = await page.locator("body").innerText();
+  ok("requested document shows on admin tab", /Proof of address/.test(after), after.slice(0, 0));
+  ok("status now ADDITIONAL_INFO_REQUIRED", /ADDITIONAL_INFO_REQUIRED/.test(after));
 
   ok("no console / page errors", errs.length === 0, errs.slice(0, 3).join(" | "));
 } catch (e) {

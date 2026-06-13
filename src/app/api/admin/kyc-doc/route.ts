@@ -33,15 +33,19 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const userId = (url.searchParams.get("user") ?? "").trim();
   const docType = (url.searchParams.get("type") ?? "").trim();
-  if (!userId || !DOC_TYPES.has(docType)) {
+  const reqId = (url.searchParams.get("req") ?? "").trim();
+  // Either a fixed doc slot (?type=) or an officer-requested extra doc (?req=).
+  if (!userId || (!reqId && !DOC_TYPES.has(docType))) {
     return NextResponse.json({ ok: false, error: "Bad request" }, { status: 400 });
   }
 
   const kyc = await db.kyc.findByUserId(userId);
-  const doc = kyc?.documents.find((d: { docType: string }) => d.docType === docType);
-  if (!doc) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+  const storageKey = reqId
+    ? (kyc?.extraRequests ?? []).find((r: { id: string; storageKey: string | null }) => r.id === reqId)?.storageKey ?? null
+    : kyc?.documents.find((d: { docType: string }) => d.docType === docType)?.storageKey ?? null;
+  if (!storageKey) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
 
-  const m = DATAURL_RE.exec(doc.storageKey ?? "");
+  const m = DATAURL_RE.exec(storageKey);
   if (!m) {
     // Legacy placeholder key (pre-image-upload) or external store reference.
     return NextResponse.json({ ok: false, error: "No image on file" }, { status: 404 });
@@ -50,7 +54,7 @@ export async function GET(req: Request) {
   let bytes: Buffer;
   try { bytes = Buffer.from(m[2], "base64"); } catch { return NextResponse.json({ ok: false, error: "Corrupt image" }, { status: 422 }); }
 
-  audit({ category: "KYC", action: "kyc_doc.viewed", actorId: session.userId, targetType: "User", targetId: userId, payload: { docType } });
+  audit({ category: "KYC", action: "kyc_doc.viewed", actorId: session.userId, targetType: "User", targetId: userId, payload: reqId ? { req: reqId } : { docType } });
 
   return new NextResponse(new Uint8Array(bytes), {
     status: 200,
@@ -59,7 +63,7 @@ export async function GET(req: Request) {
       "Content-Length": String(bytes.length),
       "Cache-Control": "private, no-store, max-age=0",
       "X-Content-Type-Options": "nosniff",
-      "Content-Disposition": `inline; filename="kyc-${docType.toLowerCase()}"`,
+      "Content-Disposition": `inline; filename="kyc-${reqId ? "extra" : docType.toLowerCase()}"`,
     },
   });
 }

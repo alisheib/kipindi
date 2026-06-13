@@ -12,34 +12,8 @@ import { useRouter } from "next/navigation";
 import { Spinner } from "@/components/ui/spinner";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
-import { attachDocumentAction } from "@/app/profile/kyc/actions";
-
-const MAX_DIM = 1400;
-const MAX_BYTES = 3 * 1024 * 1024;
-
-async function fileToDataUrl(file: File): Promise<string> {
-  const img = await new Promise<HTMLImageElement>((res, rej) => {
-    const i = new Image();
-    i.onload = () => res(i);
-    i.onerror = () => rej(new Error("Could not read image."));
-    i.src = URL.createObjectURL(file);
-  });
-  const scale = Math.min(1, MAX_DIM / Math.max(img.naturalWidth, img.naturalHeight));
-  const w = Math.max(1, Math.round(img.naturalWidth * scale));
-  const h = Math.max(1, Math.round(img.naturalHeight * scale));
-  const c = document.createElement("canvas");
-  c.width = w; c.height = h;
-  const ctx = c.getContext("2d");
-  if (!ctx) throw new Error("Canvas unavailable.");
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(img, 0, 0, w, h);
-  URL.revokeObjectURL(img.src);
-  let q = 0.82;
-  let url = c.toDataURL("image/jpeg", q);
-  // Step quality down if the encoded image is over the cap.
-  while (url.length * 0.75 > MAX_BYTES && q > 0.4) { q -= 0.12; url = c.toDataURL("image/jpeg", q); }
-  return url;
-}
+import { attachDocumentAction, attachExtraDocumentAction } from "@/app/profile/kyc/actions";
+import { fileToDataUrl, MAX_DOC_BYTES as MAX_BYTES } from "@/lib/client/kyc-image";
 
 export function KycDocUploader({
   docType, label, attached, locked,
@@ -126,6 +100,89 @@ export function KycDocUploader({
           {locked ? "Locked" : pending ? "Uploading…" : busy ? "Preparing…" : done ? "Attached · tap to replace" : "Tap to attach"}
         </span>
       </button>
+    </div>
+  );
+}
+
+/**
+ * Uploader for an officer-requested extra document. Same pick → resize →
+ * upload → done UX as KycDocUploader, but keyed by request id and labelled
+ * with the officer's written description so the player knows exactly what to
+ * provide. Renders the description as a full-width row (it can be long).
+ */
+export function KycExtraDocUploader({
+  requestId, description, attached,
+}: {
+  requestId: string;
+  description: string;
+  attached: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [done, setDone] = useState(attached);
+  const [busy, setBusy] = useState(false);
+  const [pending, start] = useTransition();
+  const router = useRouter();
+  const { toast } = useToast();
+  const working = busy || pending;
+
+  const onFile = async (f: File | null) => {
+    if (!f) return;
+    if (!f.type.startsWith("image/")) { toast({ title: "Not an image", description: "Pick a JPG, PNG, or WebP photo.", variant: "danger" }); return; }
+    setBusy(true);
+    let dataUrl: string;
+    try { dataUrl = await fileToDataUrl(f); }
+    catch (err) { setBusy(false); toast({ title: "Couldn't read image", description: (err as Error).message, variant: "danger" }); return; }
+    if (dataUrl.length * 0.75 > MAX_BYTES) { setBusy(false); toast({ title: "Image too large", description: "Try a smaller photo.", variant: "danger" }); return; }
+    setPreview(dataUrl);
+    start(async () => {
+      const fd = new FormData();
+      fd.set("requestId", requestId);
+      fd.set("image", dataUrl);
+      const r = await attachExtraDocumentAction(fd);
+      if (!r.ok) { setPreview(null); setBusy(false); toast({ title: "Upload failed", description: r.error, variant: "danger" }); return; }
+      setDone(true);
+      setBusy(false);
+      toast({ title: "Document attached", variant: "success" });
+      router.refresh();
+    });
+  };
+
+  return (
+    <div className="rounded-md border border-gold-700/40 bg-gold-500/[0.04] p-3">
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        aria-label={description}
+        title={description}
+        onChange={(e) => { onFile(e.target.files?.[0] ?? null); e.target.value = ""; }}
+      />
+      <div className="flex items-center gap-3">
+        <span className={`shrink-0 h-9 w-9 inline-flex items-center justify-center rounded-pill ${
+          done ? "bg-yes-500 text-yes-950" : "bg-bg-overlay text-text-subtle border border-border"
+        }`}>
+          {working ? <Spinner size={14} /> : done ? <I.check s={14} /> : <I.plus s={14} />}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[12.5px] text-text leading-snug">{description}</p>
+          <p className="mt-0.5 font-mono text-[10.5px] text-text-subtle">
+            {pending ? "Uploading…" : busy ? "Preparing…" : done ? "Attached · tap to replace" : "Tap to attach a photo"}
+          </p>
+        </div>
+        {preview && <img src={preview} alt="" className="h-12 w-12 shrink-0 rounded object-cover border border-border" />}
+        <button
+          type="button"
+          onClick={() => !working && inputRef.current?.click()}
+          disabled={working}
+          aria-busy={working ? "true" : "false"}
+          className={`btn btn-sm shrink-0 ${done ? "btn-ghost" : "btn-gold"}`}
+          style={{ borderRadius: 999, minHeight: 40 }}
+        >
+          {done ? "Replace" : "Upload"}
+        </button>
+      </div>
     </div>
   );
 }

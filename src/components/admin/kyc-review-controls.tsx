@@ -26,6 +26,8 @@ export function KycReviewControls({ userId, status }: { userId: string; status: 
   const reviewable = status === "PENDING_REVIEW" || status === "ADDITIONAL_INFO_REQUIRED";
   const [mode, setMode] = useState<Mode>("idle");
   const [reason, setReason] = useState("");
+  // REQUEST_INFO only: specific extra documents to ask for, each a description.
+  const [docReqs, setDocReqs] = useState<string[]>([]);
   const [pending, start] = useTransition();
   const router = useRouter();
   const { toast } = useToast();
@@ -57,18 +59,27 @@ export function KycReviewControls({ userId, status }: { userId: string; status: 
       toast({ title: "A note is required", description: "Give the player at least 5 characters.", variant: "danger" });
       return;
     }
+    const cleanDocs = docReqs.map((d) => d.trim()).filter((d) => d.length > 0);
+    // Every added extra-doc row must carry a description — empty asks help nobody.
+    if (kind === "requesting" && docReqs.length > 0 && cleanDocs.length !== docReqs.length) {
+      toast({ title: "Describe each document", description: "Every requested document needs a short description.", variant: "danger" });
+      return;
+    }
     start(async () => {
       const fd = new FormData();
       fd.set("userId", userId);
       fd.set("reason", v);
+      if (kind === "requesting") fd.set("requestedDocs", JSON.stringify(cleanDocs));
       const r = kind === "rejecting" ? await rejectKycAction(fd) : await requestKycInfoAction(fd);
       if (!r.ok) { toast({ title: "Couldn't submit", description: r.error, variant: "danger" }); return; }
       toast({
         title: kind === "rejecting" ? "KYC rejected" : "Info requested",
-        description: kind === "rejecting" ? "Player notified with your reason." : "Player asked to update & resubmit.",
+        description: kind === "rejecting" ? "Player notified with your reason."
+          : cleanDocs.length > 0 ? `Player asked for ${cleanDocs.length} document${cleanDocs.length > 1 ? "s" : ""} + your note.`
+          : "Player asked to update & resubmit.",
         variant: "success",
       });
-      setMode("idle"); setReason("");
+      setMode("idle"); setReason(""); setDocReqs([]);
       router.refresh();
     });
   };
@@ -95,6 +106,36 @@ export function KycReviewControls({ userId, status }: { userId: string; status: 
             : "e.g. The back of your ID is blurry — please re-upload a clearer photo with all corners visible."}
           className="w-full rounded-md border border-border bg-bg-inset px-3 py-2 text-[16px] sm:text-[13px] text-text outline-none focus:border-brand-500"
         />
+
+        {/* Request-info only: specific extra documents to ask for. Each row is a
+            description the player sees above its upload slot. Empty in the
+            normal case — the officer adds rows only when extra docs are needed. */}
+        {!rejecting && (
+          <div className="space-y-2 rounded-md border border-border-subtle bg-bg-inset/40 p-2.5">
+            <p className="font-mono text-micro tracking-[0.12em] uppercase text-text-tertiary">Extra documents to request (optional)</p>
+            {docReqs.map((d, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={d}
+                  onChange={(e) => setDocReqs((prev) => prev.map((v, j) => (j === i ? e.target.value : v)))}
+                  maxLength={300}
+                  placeholder="e.g. Proof of address (utility bill, < 3 months)"
+                  className="flex-1 min-w-0 rounded-md border border-border bg-bg-inset px-2.5 py-2 text-[16px] sm:text-[13px] text-text outline-none focus:border-gold-500"
+                />
+                <button type="button" aria-label="Remove document request" onClick={() => setDocReqs((prev) => prev.filter((_, j) => j !== i))}
+                  className="shrink-0 inline-flex items-center justify-center rounded-md border border-border text-text-tertiary hover:text-no-300 hover:border-no-700" style={{ width: 40, height: 40 }}>
+                  <I.x s={15} />
+                </button>
+              </div>
+            ))}
+            <button type="button" onClick={() => setDocReqs((prev) => [...prev, ""])}
+              className="inline-flex items-center gap-1.5 font-mono text-micro tracking-[0.08em] uppercase text-gold-300 hover:text-gold-200">
+              <I.plus s={14} /> Add a document request
+            </button>
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <button
             type="button"
@@ -108,7 +149,7 @@ export function KycReviewControls({ userId, status }: { userId: string; status: 
           </button>
           <button
             type="button"
-            onClick={() => { setMode("idle"); setReason(""); }}
+            onClick={() => { setMode("idle"); setReason(""); setDocReqs([]); }}
             disabled={pending}
             className="btn btn-ghost btn-md w-full sm:w-auto"
             style={{ borderRadius: 999, minHeight: 44 }}

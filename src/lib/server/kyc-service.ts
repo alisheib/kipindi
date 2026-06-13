@@ -14,7 +14,7 @@
  */
 import { audit } from "./audit";
 import { db } from "./store";
-import type { StoredUser } from "./store";
+import type { StoredUser, KycExtraRequest } from "./store";
 import { randomId } from "./crypto";
 import { verifyNida } from "./nida";
 import { rateCheck } from "./rate-limit";
@@ -106,6 +106,15 @@ export async function submitNidaStep(userId: string, input: z.input<typeof KycNi
   const k = await db.kyc.findByUserId(userId);
   if (!k) return { ok: false, error: "Start KYC first.", code: "NOT_FOUND" };
 
+  // Uniqueness: one NIDA = one account. Block if this national ID is already on
+  // ANOTHER user's submission that isn't rejected (a rejected one frees it).
+  // Multi-accounting / identity-reuse is a P0 AML control for a licensed book.
+  const nidaHolder = await db.kyc.findByNida(parse.data.nida);
+  if (nidaHolder && nidaHolder.userId !== userId && nidaHolder.status !== "REJECTED") {
+    audit({ category: "SECURITY", action: "kyc.nida.duplicate_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { conflictUserId: nidaHolder.userId, conflictStatus: nidaHolder.status } });
+    return { ok: false, error: "This National ID is already linked to another account. If this is a mistake, contact support.", code: "INVALID" };
+  }
+
   // Collect the contact email at the identity step (canonical collection point).
   // Routed through the single setUserEmail() writer so a new address resets
   // verification and fires a confirmation link. Best-effort: never block KYC.
@@ -173,11 +182,40 @@ export async function attachDocument(userId: string, docType: "NIDA_FRONT" | "NI
   return { ok: true };
 }
 
+/**
+ * Player fulfils an officer-requested extra document. Allowed only while the
+ * submission is in ADDITIONAL_INFO_REQUIRED (i.e. an officer actually asked).
+ * Validates the image and attaches it to the matching request slot.
+ */
+export async function attachExtraDocument(userId: string, requestId: string, storageKey: string): Promise<ServiceResult> {
+  const valid = validateDocImage(storageKey);
+  if (!valid.ok) return { ok: false, error: valid.error, code: "INVALID" };
+  const k = await db.kyc.findByUserId(userId);
+  if (!k) return { ok: false, error: "Start KYC first.", code: "NOT_FOUND" };
+  if (k.status !== "ADDITIONAL_INFO_REQUIRED") {
+    return { ok: false, error: "No extra documents are being requested right now.", code: "INVALID" };
+  }
+  const requests: KycExtraRequest[] = k.extraRequests ?? [];
+  const target = requests.find((r: KycExtraRequest) => r.id === requestId);
+  if (!target) return { ok: false, error: "Unknown document request.", code: "NOT_FOUND" };
+  const now = new Date().toISOString();
+  const next = requests.map((r: KycExtraRequest) => (r.id === requestId ? { ...r, storageKey, uploadedAt: now } : r));
+  await db.kyc.upsert({ ...k, extraRequests: next, updatedAt: now });
+  audit({ category: "KYC", action: "kyc.extra_document.uploaded", actorId: userId, targetType: "Kyc", targetId: k.id, payload: { requestId, bytes: valid.bytes } });
+  return { ok: true };
+}
+
 export async function submitForReview(userId: string): Promise<ServiceResult> {
   const k = await db.kyc.findByUserId(userId);
   if (!k) return { ok: false, error: "Start KYC first.", code: "NOT_FOUND" };
   if (!k.nidaVerifiedAt) return { ok: false, error: "NIDA not yet verified.", code: "INVALID" };
   if (k.documents.length < 3) return { ok: false, error: "All three documents required.", code: "INVALID" };
+  // If an officer requested extra documents, every slot must be filled before
+  // the player can resubmit — otherwise it'd bounce straight back.
+  const unfulfilled = (k.extraRequests ?? []).filter((r: KycExtraRequest) => !r.storageKey);
+  if (unfulfilled.length > 0) {
+    return { ok: false, error: `Please upload the ${unfulfilled.length} requested document${unfulfilled.length > 1 ? "s" : ""} before submitting.`, code: "INVALID" };
+  }
 
   // Idempotency guard: only fire on the transition INTO PENDING_REVIEW. A
   // double-submit / retry when already pending returns ok WITHOUT re-emailing
@@ -269,6 +307,11 @@ export async function reviewKyc(opts: {
   decision: "APPROVE" | "REJECT" | "REQUEST_INFO";
   reason?: string;
   note?: string;
+  /** REQUEST_INFO only: specific extra documents to request, each a non-empty
+   *  description (e.g. "Clearer photo of ID back", "Proof of address"). The
+   *  player gets an upload slot per item; the officer sees each with its
+   *  description + the uploaded content. */
+  requestedDocs?: string[];
 }): Promise<ServiceResult> {
   const { officerId, userId, decision } = opts;
   if (!userId) return { ok: false, error: "Missing user.", code: "INVALID" };
@@ -324,8 +367,18 @@ export async function reviewKyc(opts: {
       // re-upload (attachDocument allows it in this state) and the player can
       // resubmit, which transitions back to PENDING_REVIEW. The note is the
       // player-facing ask, surfaced both in-app and on /profile/kyc.
-      await db.kyc.upsert({ ...k, status: "ADDITIONAL_INFO_REQUIRED", rejectReason: null, rejectNote: reason, reviewerId: officerId, reviewedAt: now, updatedAt: now });
-      audit({ category: "KYC", action: "kyc.more_info_requested", actorId: officerId, targetType: "User", targetId: userId, payload: { kycId: k.id, note: reason } });
+      // Build the extra-document request slots (each a non-empty description).
+      // A REQUEST_INFO sets the slots needed THIS round (replacing any prior set).
+      const descriptions = (opts.requestedDocs ?? []).map((d) => d.trim()).filter((d) => d.length > 0);
+      const extraRequests = descriptions.map((description) => ({
+        id: `req_${randomId(8)}`,
+        description: description.slice(0, 300),
+        requestedAt: now,
+        storageKey: null as string | null,
+        uploadedAt: null as string | null,
+      }));
+      await db.kyc.upsert({ ...k, status: "ADDITIONAL_INFO_REQUIRED", rejectReason: null, rejectNote: reason, extraRequests, reviewerId: officerId, reviewedAt: now, updatedAt: now });
+      audit({ category: "KYC", action: "kyc.more_info_requested", actorId: officerId, targetType: "User", targetId: userId, payload: { kycId: k.id, note: reason, extraDocs: descriptions.length } });
       notifyKyc(userId, "ADDITIONAL_INFO");
       sendEmailToUser(userId, (email) => ({
         to: email,

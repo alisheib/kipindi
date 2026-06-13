@@ -12,7 +12,7 @@ process.env.OTP_PEPPER ??= "test-only-pepper";
 process.env.KYC_NOTIFY_EMAILS = "compliance@50pick.tz,ops@50pick.tz";
 
 import {
-  startKyc, submitNidaStep, attachDocument, submitForReview, reviewKyc, validateDocImage, getKycStatus,
+  startKyc, submitNidaStep, attachDocument, attachExtraDocument, submitForReview, reviewKyc, validateDocImage, getKycStatus,
 } from "../src/lib/server/kyc-service.ts";
 import { db } from "../src/lib/server/store.ts";
 import { listForUser } from "../src/lib/server/notification-service.ts";
@@ -50,9 +50,13 @@ await db.user.create({
 });
 
 const GOOD_NIDA = "19900101456712345678"; // 20 digits, not ...0000/...9999
+// Each player needs a UNIQUE NIDA now that one-NIDA-per-account is enforced.
+let nidaSeq = 0;
 async function getToVerified(uid: string) {
   await startKyc(uid);
-  const r = await submitNidaStep(uid, { nida: GOOD_NIDA, fullName: "Asha Mwamba Juma", dob: "1990-01-01" });
+  nidaSeq++;
+  const nida = "1990010100000000" + String(nidaSeq).padStart(4, "0"); // 20 digits, unique, not ...0000/...9999
+  const r = await submitNidaStep(uid, { nida, fullName: "Asha Mwamba Juma", dob: "1990-01-01" });
   return r;
 }
 async function attach3(uid: string) {
@@ -178,7 +182,49 @@ ok("decide-after-approve blocked", !r.ok && r.code === "INVALID");
 r = await attachDocument("usr_loop01", "SELFIE", VALID_IMG);
 ok("attach blocked when APPROVED", !r.ok && r.code === "INVALID");
 
-// ─── 6. Self-review still blocked across the new decision too ───
+// ─── 7. EXTRA DOCUMENTS: officer requests specific docs with descriptions ───
+await mkPlayer("usr_extra01", "extra@example.com");
+await getToVerified("usr_extra01"); await attach3("usr_extra01"); await submitForReview("usr_extra01");
+r = await reviewKyc({ officerId: OFFICER, userId: "usr_extra01", decision: "REQUEST_INFO",
+  reason: "Need two more documents to verify.", requestedDocs: ["Clearer photo of ID back", "Proof of address (utility bill)", "  "] });
+ok("request-info with docs ok", r.ok);
+let ek = await getKycStatus("usr_extra01");
+ok("extraRequests created (blank filtered out)", (ek?.extraRequests?.length ?? 0) === 2, JSON.stringify(ek?.extraRequests?.map((x) => x.description)));
+ok("each extra request has a description", (ek?.extraRequests ?? []).every((x) => x.description.length > 0));
+ok("each extra request starts unfulfilled", (ek?.extraRequests ?? []).every((x) => x.storageKey === null));
+
+// Can't resubmit while requested docs are missing.
+r = await submitForReview("usr_extra01");
+ok("submit blocked while extra docs missing", !r.ok && r.code === "INVALID" && /requested document/.test(r.error));
+
+// Upload the requested docs.
+const reqIds = (ek?.extraRequests ?? []).map((x) => x.id);
+r = await attachExtraDocument("usr_extra01", reqIds[0], VALID_IMG);
+ok("attach extra doc #1 ok", r.ok);
+r = await attachExtraDocument("usr_extra01", "req_nonexistent", VALID_IMG);
+ok("unknown request id -> NOT_FOUND", !r.ok && r.code === "NOT_FOUND");
+r = await attachExtraDocument("usr_extra01", reqIds[1], "not-an-image");
+ok("invalid extra image -> INVALID", !r.ok && r.code === "INVALID");
+r = await attachExtraDocument("usr_extra01", reqIds[1], VALID_IMG);
+ok("attach extra doc #2 ok", r.ok);
+ek = await getKycStatus("usr_extra01");
+ok("both extra docs now fulfilled", (ek?.extraRequests ?? []).every((x) => !!x.storageKey));
+
+// Now resubmit works → PENDING_REVIEW, content preserved for the officer.
+r = await submitForReview("usr_extra01");
+ok("resubmit ok once extra docs uploaded", r.ok && (await getKycStatus("usr_extra01"))?.status === "PENDING_REVIEW");
+ok("uploaded extra-doc content preserved for officer", (await getKycStatus("usr_extra01"))?.extraRequests?.every((x) => !!x.storageKey));
+
+// Extra-doc upload is blocked when not in ADDITIONAL_INFO_REQUIRED.
+r = await attachExtraDocument("usr_extra01", reqIds[0], VALID_IMG);
+ok("extra upload blocked outside ADDITIONAL_INFO state", !r.ok && r.code === "INVALID");
+
+// A note-only request (no docs) still works and clears prior slots.
+r = await reviewKyc({ officerId: OFFICER, userId: "usr_extra01", decision: "REQUEST_INFO", reason: "Actually, just re-take the selfie." });
+ok("note-only request-info ok", r.ok);
+ok("note-only clears extra-doc slots", ((await getKycStatus("usr_extra01"))?.extraRequests?.length ?? 0) === 0);
+
+// ─── 8. Self-review still blocked across the new decision too ───
 await mkPlayer("usr_self_si");
 await getToVerified("usr_self_si"); await attach3("usr_self_si"); await submitForReview("usr_self_si");
 r = await reviewKyc({ officerId: "usr_self_si", userId: "usr_self_si", decision: "REQUEST_INFO", reason: "trying to self-review" });

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
-import { submitNidaStep, attachDocument, submitForReview } from "@/lib/server/kyc-service";
+import { submitNidaStep, attachDocument, attachExtraDocument, submitForReview } from "@/lib/server/kyc-service";
 
 export async function submitNidaAction(formData: FormData) {
   const session = await currentSession();
@@ -32,6 +32,17 @@ export async function attachDocumentAction(formData: FormData): Promise<{ ok: tr
   // service validates the format + size and stores it on the submission.
   const image = String(formData.get("image") ?? "");
   const result = await attachDocument(session.userId, docType, image);
+  revalidatePath("/profile/kyc");
+  return result.ok ? { ok: true } : { ok: false, error: result.error };
+}
+
+export async function attachExtraDocumentAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await currentSession();
+  if (!session) return { ok: false, error: "Sign in required." };
+  const requestId = String(formData.get("requestId") ?? "");
+  if (!requestId) return { ok: false, error: "Missing request." };
+  const image = String(formData.get("image") ?? "");
+  const result = await attachExtraDocument(session.userId, requestId, image);
   revalidatePath("/profile/kyc");
   return result.ok ? { ok: true } : { ok: false, error: result.error };
 }

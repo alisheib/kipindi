@@ -115,6 +115,7 @@ function toStoredKyc(row: any): StoredKyc {
     reviewerId: row.reviewerId,
     reviewedAt: iso(row.reviewedAt),
     submittedAt: iso(row.submittedAt),
+    extraRequests: Array.isArray(row.extraRequests) ? row.extraRequests : [],
     createdAt: iso(row.createdAt)!,
     updatedAt: iso(row.updatedAt)!,
   };
@@ -335,6 +336,13 @@ export const prismaDb = {
       const u = await pc().user.findUnique({ where: { phoneE164: phone } });
       return u ? toStoredUser(u) : null;
     },
+    findByEmail: async (email: string): Promise<StoredUser | null> => {
+      const norm = email.trim().toLowerCase();
+      if (!norm) return null;
+      // email is stored normalized (lowercased) by setUserEmail; @unique in the schema.
+      const u = await pc().user.findUnique({ where: { email: norm } });
+      return u ? toStoredUser(u) : null;
+    },
     create: async (u: StoredUser): Promise<StoredUser> => {
       const row = await pc().user.create({
         data: {
@@ -412,6 +420,8 @@ export const prismaDb = {
         reviewerId: k.reviewerId,
         reviewedAt: k.reviewedAt ? new Date(k.reviewedAt) : null,
         submittedAt: k.submittedAt ? new Date(k.submittedAt) : null,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        extraRequests: (k.extraRequests ?? []) as any,
       };
       const row = await pc().kycSubmission.upsert({
         where: { id: k.id },
@@ -445,6 +455,16 @@ export const prismaDb = {
         include: { documents: true },
       });
       return toStoredKyc(full ?? row);
+    },
+    findByNida: async (nidaNumber: string): Promise<StoredKyc | null> => {
+      const norm = nidaNumber.trim();
+      if (!norm) return null;
+      const row = await pc().kycSubmission.findFirst({
+        where: { nidaNumber: norm },
+        include: { documents: true },
+        orderBy: { createdAt: "desc" },
+      });
+      return row ? toStoredKyc(row) : null;
     },
     list: async (): Promise<StoredKyc[]> => {
       const rows = await pc().kycSubmission.findMany({ include: { documents: true } });

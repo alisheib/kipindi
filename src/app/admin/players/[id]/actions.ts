@@ -155,8 +155,14 @@ export async function requestKycInfoAction(formData: FormData) {
   const officerId = await requireAdmin("requestKycInfoAction");
   const userId = String(formData.get("userId") ?? "");
   const reason = String(formData.get("reason") ?? "").trim().slice(0, 500);
+  // Optional extra-document requests: a JSON array of non-empty descriptions.
+  let requestedDocs: string[] = [];
+  try {
+    const raw = JSON.parse(String(formData.get("requestedDocs") ?? "[]"));
+    if (Array.isArray(raw)) requestedDocs = raw.map((d) => String(d).trim()).filter((d) => d.length > 0).slice(0, 10);
+  } catch { /* ignore malformed — treated as none */ }
   const { reviewKyc } = await import("@/lib/server/kyc-service");
-  const r = await reviewKyc({ officerId, userId, decision: "REQUEST_INFO", reason });
+  const r = await reviewKyc({ officerId, userId, decision: "REQUEST_INFO", reason, requestedDocs });
   if (r.ok) {
     revalidatePath(`/admin/players/${userId}`);
     revalidatePath("/admin/approvals");

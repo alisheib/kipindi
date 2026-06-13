@@ -7,7 +7,7 @@ import { getKycStatus, startKyc } from "@/lib/server/kyc-service";
 import { DateSelect } from "@/components/ui/date-select";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { submitNidaAction, submitKycForReviewAction } from "./actions";
-import { KycDocUploader } from "@/components/profile/kyc-doc-uploader";
+import { KycDocUploader, KycExtraDocUploader } from "@/components/profile/kyc-doc-uploader";
 import { SUPPORT_EMAIL } from "@/lib/support-config";
 
 export const metadata = { title: "Verify identity · Thibitisha" };
@@ -27,6 +27,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
   const submitted = kyc?.status === "PENDING_REVIEW" || kyc?.status === "APPROVED";
   const rejected = kyc?.status === "REJECTED";
   const needsInfo = kyc?.status === "ADDITIONAL_INFO_REQUIRED";
+  const extraRequests = kyc?.extraRequests ?? [];
 
   return (
     <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
@@ -141,6 +142,23 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                 <span className="block italic text-text-subtle text-[11.5px] mt-0.5">Rekebisha nyaraka hapa chini kisha uwasilishe tena.</span>
               </p>
             </div>
+          </div>
+        </section>
+      )}
+
+      {needsInfo && extraRequests.length > 0 && (
+        <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-3">
+          <div className="flex items-center gap-2">
+            <I.shieldcheck s={18} />
+            <h2 className="font-display text-[15px] font-semibold text-text">Requested documents · Nyaraka zilizoombwa</h2>
+          </div>
+          <p className="text-[12.5px] text-text-muted leading-snug">
+            Our team asked for the following. Attach each, then submit again below.
+          </p>
+          <div className="space-y-2">
+            {extraRequests.map((rq: { id: string; description: string; storageKey: string | null }) => (
+              <KycExtraDocUploader key={rq.id} requestId={rq.id} description={rq.description} attached={!!rq.storageKey} />
+            ))}
           </div>
         </section>
       )}
