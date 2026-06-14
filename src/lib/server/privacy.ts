@@ -14,6 +14,9 @@
  */
 import { audit } from "./audit";
 import { db } from "./store";
+import { loadConfig, saveConfig } from "./config-store";
+
+const DSAR_QUEUE_KEY = "privacy.dsar_queue";
 
 export type DsarType = "ACCESS" | "ERASURE" | "CORRECTION" | "PORTABILITY";
 export type DsarStatus = "PENDING" | "FULFILLED" | "REJECTED";
@@ -37,6 +40,18 @@ declare global {
 }
 const queue: DsarRequest[] = globalThis.__50PICK_DSAR_QUEUE ?? (globalThis.__50PICK_DSAR_QUEUE = []);
 
+// DSAR requests carry a 30-day statutory SLA (PDPA/GDPR), so the pending-request
+// queue must survive deploys — losing it would drop tracked legal obligations.
+// Persist write-through to SystemConfig (low volume); hydrate eagerly on boot.
+// (The audit log already records each filing durably; this keeps the operator's
+//  actionable work-queue intact too.)
+void loadConfig<DsarRequest[]>(DSAR_QUEUE_KEY)
+  .then((stored) => { if (stored && queue.length === 0) queue.push(...stored); })
+  .catch(() => {});
+function persistQueue(): void {
+  void saveConfig(DSAR_QUEUE_KEY, queue);
+}
+
 /** Player-initiated request (called from /profile/account export/close flow). */
 export function fileDsarRequest(opts: { userId: string; type: DsarType; reason?: string }): DsarRequest {
   const r: DsarRequest = {
@@ -51,6 +66,7 @@ export function fileDsarRequest(opts: { userId: string; type: DsarType; reason?:
     exportRef: null,
   };
   queue.push(r);
+  persistQueue();
   audit({
     category: "ADMIN",
     action: "privacy.dsar.filed",
@@ -70,6 +86,7 @@ export function fulfillDsarRequest(opts: { id: string; officerId: string; export
   r.fulfilledAt = new Date().toISOString();
   r.fulfilledBy = opts.officerId;
   r.exportRef = opts.exportRef ?? null;
+  persistQueue();
   audit({
     category: "ADMIN",
     action: "privacy.dsar.fulfilled",
