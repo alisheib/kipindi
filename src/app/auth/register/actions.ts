@@ -20,7 +20,7 @@ export async function startRegisterAction(formData: FormData) {
   // Safe post-auth destination (the market the player tapped, etc.). Validated
   // same-origin relative, never an /auth/* loop.
   const nextRaw = String(formData.get("next") ?? "").trim();
-  const safeNext = nextRaw.startsWith("/") && !nextRaw.startsWith("//") && !nextRaw.startsWith("/auth/") ? nextRaw : "";
+  const safeNext = /^\/(?![/\\])/.test(nextRaw) && !nextRaw.startsWith("/auth/") ? nextRaw : "";
 
   const result = await registerWithPassword({
     phone, password, passwordConfirm, dob,

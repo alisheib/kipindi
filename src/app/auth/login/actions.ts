@@ -16,7 +16,7 @@ export async function startLoginAction(formData: FormData) {
   // protocol-relative ("//evil.com"), absolute URL, or empty value.
   // Also keep the user on the auth surface forwarded by the proxy
   // ONLY when it points at an in-app destination.
-  const next = nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : "";
+  const next = /^\/(?![/\\])/.test(nextRaw) ? nextRaw : "";
   // And never let `next` send the user back to the auth pages themselves.
   const safeNext = next && !next.startsWith("/auth/") ? next : "";
 
@@ -100,7 +100,7 @@ export async function verifyLoginOtpAction(formData: FormData) {
   // Honor a safe ?next= (same rules as the password path) so a gated OTP login
   // lands back where the player intended, not always home.
   const nextRaw = String(formData.get("next") ?? "").trim();
-  const safeNext = nextRaw.startsWith("/") && !nextRaw.startsWith("//") && !nextRaw.startsWith("/auth/") ? nextRaw : "";
+  const safeNext = /^\/(?![/\\])/.test(nextRaw) && !nextRaw.startsWith("/auth/") ? nextRaw : "";
   if (result.data?.isNew) redirect(`/profile/kyc?welcome=new${safeNext ? `&next=${encodeURIComponent(safeNext)}` : ""}`);
   redirect((safeNext || "/?welcome=back") as never);
 }

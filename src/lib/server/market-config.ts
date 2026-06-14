@@ -147,6 +147,13 @@ function validate(updates: Partial<RateConfig>): { ok: true } | { ok: false; rea
       return { ok: false, reason: "Max stake must be >= TZS 1,000." };
     }
   }
+  // Cross-check: max must not fall below min, or every stake is rejected and
+  // betting is silently bricked (buyPosition bounds-checks stake against both).
+  {
+    const min = updates.minStake ?? store.global.minStake;
+    const max = updates.maxStake ?? store.global.maxStake;
+    if (max < min) return { ok: false, reason: "Max stake must be greater than or equal to min stake." };
+  }
   if (updates.thinProfitRatio !== undefined) {
     if (updates.thinProfitRatio < 1.0 || updates.thinProfitRatio > 2.0) {
       return { ok: false, reason: "Thin-profit threshold must be 1.0-2.0." };

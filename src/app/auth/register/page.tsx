@@ -29,7 +29,7 @@ export default async function RegisterPage({
   // through registration so they land back on it — new players are PENDING_KYC
   // but can still bet with the starter balance, so we honor their intent.
   const nextRaw = (sp.next ?? "").trim();
-  const nextOk = nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : "";
+  const nextOk = /^\/(?![/\\])/.test(nextRaw) ? nextRaw : "";
   const referral = refCode ? await resolveReferralPreview(refCode) : null;
 
   const errorPanel = (() => {

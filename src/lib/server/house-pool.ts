@@ -327,8 +327,11 @@ export async function settleHousePosition(
 ): Promise<{ returnedToReserve: number; reserveFee: number; lossAbsorbed: number }> {
   const perSide = pool.seeds.get(marketId) ?? 0;
 
-  // 1. Reserve fee from the gross pool (configurable %)
-  const reserveFee = Math.round(grossPool * Math.max(0, Math.min(0.10, reserveRate)));
+  // 1. Reserve fee from the gross pool (configurable %).
+  // VOID refunds 100% of every stake AND both house seeds, so there is no
+  // retained pool to take a fee from — charging one would credit the reserve
+  // out of nothing (ledger inflation). No fee on VOID.
+  const reserveFee = outcome === "VOID" ? 0 : Math.round(grossPool * Math.max(0, Math.min(0.10, reserveRate)));
 
   // Apply each balance movement just before its ledger entry so every
   // `balanceAfter` is the true running reserve balance at that step (auditors

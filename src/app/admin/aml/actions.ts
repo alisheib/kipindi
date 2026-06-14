@@ -54,6 +54,20 @@ export async function approveAmlAction(formData: FormData) {
     const txn = all.find((t) => t.id === txnId);
     if (!txn) return { ok: false as const, error: "Transaction not in AML_REVIEW." };
 
+    // Releasing an AML-approved withdrawal must clear this txn's `hold` exactly
+    // like withdraw()'s success path. withdraw() moved balance→hold; on approve
+    // the money leaves the platform, so the hold is dropped (NOT returned to
+    // balance — that would re-credit the player). Without this, `hold` leaks
+    // upward forever on every approved withdrawal (≥ TZS 1M), corrupting the
+    // balance+hold ledger invariant and liability accounting.
+    const releaseWithdrawalHold = async () => {
+      if (txn.type !== "WITHDRAWAL") return;
+      await withLock(`wallet:${txn.userId}`, async () => {
+        const w = await db.wallet.findByUserId(txn.userId);
+        if (w) await db.wallet.update(w.id, { hold: Math.max(0, w.hold - Math.abs(txn.amount)) });
+      });
+    };
+
     const requiresTwo = Math.abs(txn.amount) >= TWO_PERSON_THRESHOLD_TZS;
     if (requiresTwo) {
       const first = findFirstSignature(txnId);
@@ -72,6 +86,7 @@ export async function approveAmlAction(formData: FormData) {
       if (first.actorId === session.userId) {
         return { ok: false as const, error: "Second-officer approval must come from a different reviewer." };
       }
+      await releaseWithdrawalHold();
       await db.txn.update(txnId, {
         status: "CONFIRMED",
         completedAt: new Date().toISOString(),
@@ -97,6 +112,7 @@ export async function approveAmlAction(formData: FormData) {
     }
 
     // Below threshold — single-officer approval.
+    await releaseWithdrawalHold();
     await db.txn.update(txnId, {
       status: "CONFIRMED",
       completedAt: new Date().toISOString(),

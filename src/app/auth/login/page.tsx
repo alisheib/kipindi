@@ -35,7 +35,7 @@ export default async function LoginPage({
   // Open-redirect safety: the action validates this is a same-origin,
   // path-only string before redirecting.
   const nextRaw = (sp.next ?? "").trim();
-  const nextSafe = nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : "";
+  const nextSafe = /^\/(?![/\\])/.test(nextRaw) ? nextRaw : "";
 
   const errorPanel = (() => {
     if (wasRevoked) return {

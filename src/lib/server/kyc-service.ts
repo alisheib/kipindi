@@ -132,14 +132,21 @@ export async function submitNidaStep(userId: string, input: z.input<typeof KycNi
     return { ok: false, error: result.error };
   }
   if (result.verified === false) {
-    await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: result.reason, updatedAt: new Date().toISOString() });
+    // The DB `rejectReason` column is the KycRejectReason enum — writing the raw
+    // NIDA code (e.g. "MISMATCH"/"NOT_FOUND") throws in Postgres (it only passed
+    // in the in-memory dev store). Map to a valid enum member and keep a
+    // player-readable detail in rejectNote.
+    const NIDA_ENUM = { MISMATCH: "DETAILS_MISMATCH", EXPIRED: "EXPIRED_ID", NOT_FOUND: "OTHER", UNDERAGE: "UNDERAGE", SANCTIONED: "SANCTIONED" } as const;
+    const NIDA_TEXT = { MISMATCH: "Your details didn't match the National ID record.", EXPIRED: "The National ID on file has expired.", NOT_FOUND: "We couldn't find this National ID.", UNDERAGE: "You must be 18 or older to use 50pick.", SANCTIONED: "We're unable to verify this identity." } as const;
+    const rejectNote = NIDA_TEXT[result.reason];
+    await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: NIDA_ENUM[result.reason], rejectNote, updatedAt: new Date().toISOString() });
     audit({ category: "KYC", action: "kyc.nida.rejected", actorId: userId, targetType: "Kyc", targetId: k.id, payload: { reason: result.reason } });
     // In-app + email notice (best-effort).
     notifyKyc(userId, "REJECTED");
     sendEmailToUser(userId, (email) => ({
       to: email,
       subject: "Identity check needs attention",
-      html: kycRejectedHtml({ reason: result.reason ?? "We couldn't verify your details. Please re-check and resubmit." }),
+      html: kycRejectedHtml({ reason: rejectNote }),
       tag: "kyc-rejected",
     }));
     return { ok: true, data: { verified: false, reason: result.reason } };
@@ -404,8 +411,11 @@ export async function reviewKyc(opts: {
       return { ok: true as const };
     }
 
-    // REJECT
-    await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: reason, rejectNote: opts.note?.trim() || null, reviewerId: officerId, reviewedAt: now, updatedAt: now });
+    // REJECT — `reason` is the officer's free-text, player-facing message. It
+    // belongs in rejectNote (free text); rejectReason is the KycRejectReason
+    // enum, so a manual rejection is categorised as OTHER. (Writing free text
+    // into the enum column threw in Postgres and lost the decision in prod.)
+    await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: "OTHER", rejectNote: opts.note?.trim() || reason, reviewerId: officerId, reviewedAt: now, updatedAt: now });
     audit({ category: "KYC", action: "kyc.rejected", actorId: officerId, targetType: "User", targetId: userId, payload: { kycId: k.id, reason } });
     notifyKyc(userId, "REJECTED");
     sendEmailToUser(userId, (email) => ({
