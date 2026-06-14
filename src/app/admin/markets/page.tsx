@@ -70,10 +70,7 @@ export default async function AdminMarketsPage({
         sw="Soko · foleni ya uongozaji"
         period={false}
         actions={
-          <Link
-            href="/admin/markets/new"
-            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-teal-500 px-3 font-semibold text-white text-[12px] hover:bg-teal-400 transition-colors"
-          >
+          <Link href="/admin/markets/new" className="btn btn-primary btn-sm inline-flex items-center gap-1.5">
             <I.plus s={14} />
             New market
           </Link>

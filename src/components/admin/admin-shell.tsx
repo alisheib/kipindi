@@ -112,7 +112,7 @@ export async function AdminTopBar({ crumbs, session, activeKey }: { crumbs: stri
             name="q"
             aria-label="Search players by phone, name, or ID"
             placeholder="Search players · phone · usr_…"
-            className="w-[260px] h-8 px-3 rounded-md bg-bg-sunken border border-border text-text font-mono text-caption focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
+            className="w-[260px] h-9 px-3 rounded-md bg-bg-sunken border border-border text-text font-mono text-body-sm focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
           />
         </form>
         <span className="font-mono text-micro tracking-[0.14em] uppercase px-2.5 h-7 inline-flex items-center rounded-md border border-border bg-surface text-text-secondary">

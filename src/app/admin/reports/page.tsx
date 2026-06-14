@@ -67,6 +67,7 @@ const TEMPLATES = [
     cadence: "Weekly",
     severity: "medium",
     target: "Internal · customer comms",
+    available: false,
   },
   {
     id: "sx-register",
@@ -87,6 +88,7 @@ const TEMPLATES = [
     cadence: "Monthly",
     severity: "medium",
     target: "Internal · RG audit",
+    available: false,
   },
   {
     id: "match-integrity",
@@ -97,6 +99,7 @@ const TEMPLATES = [
     cadence: "Quarterly",
     severity: "high",
     target: "Sportradar + GBT integrity unit",
+    available: false,
   },
 ];
 
@@ -151,7 +154,7 @@ export default function AdminReportsPage() {
                         </span>
                       ))}
                     </div>
-                    <GenerateButton id={t.id} />
+                    <GenerateButton id={t.id} available={t.available !== false} />
                   </div>
                 </div>
               </div>

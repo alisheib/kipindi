@@ -7,7 +7,8 @@
  * - Variants: default | success | warning | danger | gold (gold for win events)
  * - Auto-dismiss with progress bar; the countdown PAUSES on hover/focus/touch
  *   (bar pauses in sync) and resumes from the banked remaining time
- * - Dismiss by: close button, or swipe the toast horizontally past a threshold
+ * - Dismiss by: close button, or swipe the toast UP (iPhone-style, since the
+ *   stack sits at the top) or horizontally past a threshold
  * - Stack of up to 4 visible at once (oldest dropped on overflow, timer cleared)
  */
 import * as React from "react";
@@ -245,15 +246,17 @@ function ToastViewport({ toasts, exiting, onDismiss, onPause, onResume }: { toas
   );
 }
 
-// Past this many px of horizontal drag, releasing flings the toast away.
-const SWIPE_DISMISS_PX = 72;
+// Release past these thresholds flings the toast away. Up-swipe is the primary
+// gesture (banners live at the top, iPhone-style); horizontal also works.
+const SWIPE_DISMISS_PX = 72; // horizontal
+const SWIPE_UP_PX = 44;      // upward
 
 function ToastItem({ toast, exiting, onDismiss, onPause, onResume }: { toast: Toast; exiting: boolean; onDismiss: () => void; onPause: () => void; onResume: () => void }) {
   const v = variantStyles[toast.variant ?? "default"];
   const [enter, setEnter] = React.useState(false);
   const [paused, setPaused] = React.useState(false);
-  const [dragX, setDragX] = React.useState(0);
-  const dragStart = React.useRef<number | null>(null);
+  const [drag, setDrag] = React.useState({ x: 0, y: 0 });
+  const dragStart = React.useRef<{ x: number; y: number } | null>(null);
   React.useEffect(() => {
     const id = requestAnimationFrame(() => setEnter(true));
     return () => cancelAnimationFrame(id);
@@ -262,13 +265,15 @@ function ToastItem({ toast, exiting, onDismiss, onPause, onResume }: { toast: To
   // it back out (slide up + fade + scale) before the parent unmounts it.
   const visible = enter && !exiting;
   const dragging = dragStart.current !== null;
+  const dragged = drag.x !== 0 || drag.y !== 0;
 
   // One source of truth for transform/opacity: drag offset takes over while the
-  // pointer is down, otherwise the enter/exit state drives it.
-  const transform = dragX !== 0
-    ? `translateX(${dragX}px)`
+  // pointer is down (follow the finger; only allow UP on the Y axis), otherwise
+  // the enter/exit state drives it.
+  const transform = dragged
+    ? `translate(${drag.x}px, ${drag.y}px)`
     : visible ? "translateY(0) scale(1)" : "translateY(-8px) scale(0.95)";
-  const opacity = dragX !== 0 ? Math.max(0, 1 - Math.abs(dragX) / 180) : visible ? 1 : 0;
+  const opacity = dragged ? Math.max(0, 1 - Math.max(Math.abs(drag.x), Math.abs(drag.y)) / 160) : visible ? 1 : 0;
 
   const onPointerEnter = () => { setPaused(true); onPause(); };
   const onPointerLeave = () => {
@@ -278,21 +283,23 @@ function ToastItem({ toast, exiting, onDismiss, onPause, onResume }: { toast: To
     setPaused(false); onResume();
   };
   const onPointerDown = (e: React.PointerEvent) => {
-    dragStart.current = e.clientX;
+    dragStart.current = { x: e.clientX, y: e.clientY };
     // Capture so move/up keep targeting this toast even if the finger leaves it.
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
     setPaused(true); onPause();
   };
   const onPointerMove = (e: React.PointerEvent) => {
-    if (dragStart.current === null) return;
-    setDragX(e.clientX - dragStart.current);
+    const s = dragStart.current;
+    if (!s) return;
+    // Allow upward movement only on Y (a top banner doesn't pull down to dismiss).
+    setDrag({ x: e.clientX - s.x, y: Math.min(0, e.clientY - s.y) });
   };
   const endDrag = () => {
     if (dragStart.current === null) return;
-    const dx = dragX;
+    const { x, y } = drag;
     dragStart.current = null;
-    if (Math.abs(dx) > SWIPE_DISMISS_PX) { onDismiss(); return; }
-    setDragX(0);            // snap back
+    if (Math.abs(x) > SWIPE_DISMISS_PX || -y > SWIPE_UP_PX) { onDismiss(); return; }
+    setDrag({ x: 0, y: 0 });   // snap back
     setPaused(false); onResume();
   };
 
@@ -318,7 +325,9 @@ function ToastItem({ toast, exiting, onDismiss, onPause, onResume }: { toast: To
         opacity,
         // No transition mid-drag (follow the finger 1:1); ease on enter/exit/snap.
         transition: dragging ? "none" : "transform 200ms var(--ease-arrive, ease-out), opacity 200ms",
-        touchAction: "pan-y",
+        // `none` so the toast itself owns the swipe (up/sideways) instead of the
+        // browser scrolling the page behind it.
+        touchAction: "none",
         cursor: dragging ? "grabbing" : undefined,
       }}
     >

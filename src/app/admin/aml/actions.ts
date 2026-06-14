@@ -122,55 +122,59 @@ export async function rejectAmlAction(formData: FormData) {
   if (!txnId) return { ok: false as const, error: "Missing transaction id." };
   if (reason.length < 5) return { ok: false as const, error: "Reason is required (≥ 5 chars)." };
 
-  const all = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[];
-  const txn = all.find((t) => t.id === txnId);
-  if (!txn) return { ok: false as const, error: "Transaction not in AML_REVIEW." };
+  // Lock the whole reject on the transaction (like approveAmlAction) so two
+  // officers / a double-click can't both pass the AML_REVIEW check and refund
+  // twice — crediting the player's balance for the same withdrawal more than once.
+  return withLock(`aml-txn:${txnId}`, async () => {
+    const all = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[];
+    const txn = all.find((t) => t.id === txnId);
+    if (!txn) return { ok: false as const, error: "Transaction not in AML_REVIEW." };
 
-  // Reverse the held funds back to wallet (if it's a withdrawal that placed a hold)
-  // and mark FAILED with the reason. Wrapped in withLock to prevent TOCTOU — a
-  // concurrent bet/deposit/withdrawal on the same wallet could otherwise read the
-  // same stale balance and clobber the refund.
-  if (txn.type === "WITHDRAWAL") {
-    await withLock(`wallet:${txn.userId}`, async () => {
-      const wallet = await db.wallet.findByUserId(txn.userId);
-      if (wallet) {
-        const amt = Math.abs(txn.amount);
-        // withdraw() moved the funds balance -> hold. Reversing on reject must
-        // BOTH credit balance AND release the hold, or `hold` leaks upward
-        // forever (corrupting the balance+hold ledger invariant + AML totals).
-        await db.wallet.update(wallet.id, {
-          balance: wallet.balance + amt,
-          hold: Math.max(0, wallet.hold - amt),
-        });
-      }
+    // Reverse the held funds back to wallet (if it's a withdrawal that placed a
+    // hold) and mark FAILED. The inner wallet lock also guards against a
+    // concurrent bet/deposit/withdrawal reading a stale balance.
+    if (txn.type === "WITHDRAWAL") {
+      await withLock(`wallet:${txn.userId}`, async () => {
+        const wallet = await db.wallet.findByUserId(txn.userId);
+        if (wallet) {
+          const amt = Math.abs(txn.amount);
+          // withdraw() moved the funds balance -> hold. Reversing on reject must
+          // BOTH credit balance AND release the hold, or `hold` leaks upward
+          // forever (corrupting the balance+hold ledger invariant + AML totals).
+          await db.wallet.update(wallet.id, {
+            balance: wallet.balance + amt,
+            hold: Math.max(0, wallet.hold - amt),
+          });
+        }
+      });
+    }
+    await db.txn.update(txnId, {
+      status: "FAILED",
+      completedAt: new Date().toISOString(),
+      amlReason: reason,
     });
-  }
-  await db.txn.update(txnId, {
-    status: "FAILED",
-    completedAt: new Date().toISOString(),
-    amlReason: reason,
+
+    audit({
+      category: "ADMIN",
+      action: "aml.rejected",
+      actorId: session.userId,
+      targetType: "Transaction",
+      targetId: txnId,
+      payload: { amount: txn.amount, reason },
+    });
+
+    // Tell the player their withdrawal was returned (best-effort).
+    if (txn.type === "WITHDRAWAL") {
+      const { sendEmailToUser, amlRejectRefundHtml } = await import("@/lib/server/email");
+      sendEmailToUser(txn.userId, (email) => ({
+        to: email,
+        subject: `Withdrawal returned · TZS ${Math.abs(txn.amount).toLocaleString()}`,
+        html: amlRejectRefundHtml({ amount: Math.abs(txn.amount), reason }),
+        tag: "aml-refund",
+      }));
+    }
+
+    revalidatePath("/admin/aml");
+    return { ok: true as const };
   });
-
-  audit({
-    category: "ADMIN",
-    action: "aml.rejected",
-    actorId: session.userId,
-    targetType: "Transaction",
-    targetId: txnId,
-    payload: { amount: txn.amount, reason },
-  });
-
-  // Tell the player their withdrawal was returned (best-effort).
-  if (txn.type === "WITHDRAWAL") {
-    const { sendEmailToUser, amlRejectRefundHtml } = await import("@/lib/server/email");
-    sendEmailToUser(txn.userId, (email) => ({
-      to: email,
-      subject: `Withdrawal returned · TZS ${Math.abs(txn.amount).toLocaleString()}`,
-      html: amlRejectRefundHtml({ amount: Math.abs(txn.amount), reason }),
-      tag: "aml-refund",
-    }));
-  }
-
-  revalidatePath("/admin/aml");
-  return { ok: true as const };
 }

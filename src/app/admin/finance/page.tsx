@@ -86,7 +86,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <AdminCard title="Provider mix over time" sw="Mchanganyiko wa watoa huduma · 14-day daily">
-            <AdminStackedBars bars={provBars} legend={providers} height={200} />
+            <AdminStackedBars bars={provBars} legend={providers} height={240} />
           </AdminCard>
           <AdminCard title="Top-10 player concentration" sw="Wachezaji 10 wakubwa">
             <div className="space-y-1.5">

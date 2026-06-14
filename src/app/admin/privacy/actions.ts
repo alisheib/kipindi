@@ -49,7 +49,7 @@ export async function buildDsarBundleAction(formData: FormData) {
   const auth = await requireOfficer();
   if (!auth.ok) return { ok: false as const, error: auth.error };
   const userId = String(formData.get("userId") || "").trim();
-  const bundle = buildDsarBundle(userId);
+  const bundle = await buildDsarBundle(userId);
   if (!bundle) return { ok: false as const, error: "User not found" };
   return { ok: true as const, bundle };
 }

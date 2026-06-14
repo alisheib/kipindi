@@ -51,7 +51,7 @@ export async function exportPlayerDataAction(userId: string): Promise<
 > {
   const officerId = await requireAdmin("exportPlayerDataAction");
   if (!userId) return { ok: false, error: "Missing user id." };
-  const bundle = buildDsarBundle(userId);
+  const bundle = await buildDsarBundle(userId);
   if (!bundle) return { ok: false, error: "Player not found." };
   audit({
     category: "COMPLIANCE",
