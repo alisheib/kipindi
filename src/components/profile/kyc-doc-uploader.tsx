@@ -87,7 +87,9 @@ export function KycDocUploader({
         }`}
       >
         {showThumb ? (
-          <img src={showThumb} alt="" className="mx-auto mb-1.5 h-16 w-auto rounded object-contain" />
+          // Dim the preview while the resize/upload is in flight so the spinner
+          // below reads as "working on this photo", not "done".
+          <img src={showThumb} alt="" className={`mx-auto mb-1.5 h-16 w-auto rounded object-contain transition-opacity ${working ? "opacity-40" : ""}`} />
         ) : (
           <span className={`mx-auto mb-1.5 h-6 w-6 inline-flex items-center justify-center rounded-pill ${
             done ? "bg-yes-500 text-yes-950" : "bg-bg-overlay text-text-subtle border border-border"
@@ -96,8 +98,11 @@ export function KycDocUploader({
           </span>
         )}
         <span className="block font-display text-[12px] font-semibold text-text">{label}</span>
-        <span className="mt-0.5 block font-mono text-[10.5px] text-text-subtle">
-          {locked ? "Locked" : pending ? "Uploading…" : busy ? "Preparing…" : done ? "Attached · tap to replace" : "Tap to attach"}
+        {/* Spinner sits NEXT TO the status text so a slow resize/upload always
+            shows live motion — the static "Uploading…" alone felt stuck. */}
+        <span className="mt-0.5 flex items-center justify-center gap-1.5 font-mono text-[10.5px] text-text-subtle">
+          {working && <Spinner size={11} />}
+          <span>{locked ? "Locked" : pending ? "Uploading…" : busy ? "Preparing…" : done ? "Attached · tap to replace" : "Tap to attach"}</span>
         </span>
       </button>
     </div>
