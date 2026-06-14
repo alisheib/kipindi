@@ -11,23 +11,13 @@ import { useToast } from "@/components/ui/toast";
 import { StatusBadge } from "@/components/proposals/status-badge";
 import { CategoryIcon, CATEGORY_LABEL } from "@/components/proposals/category-icon";
 import type { ProposalsConfig } from "@/lib/server/proposals-config";
-import type { AdminQueueRow, AdminProposalStats, DeclineReason } from "@/lib/server/proposals-service";
+import type { AdminQueueRow, DeclineReason } from "@/lib/server/proposals-service";
 import { saveProposalsConfigAction, approveProposalAction, declineProposalAction, requestChangesAction } from "./actions";
 
 const DECLINE_REASONS: DeclineReason[] = ["Politics", "Ambiguous outcome", "No official source", "Duplicate", "Past resolution", "Outside jurisdiction", "Officer decision"];
-const fmt = (n: number) => n.toLocaleString("en-US");
 
 function Cap({ children }: { children: React.ReactNode }) {
   return <span className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-subtle">{children}</span>;
-}
-function Kpi({ label, value, sub, gold }: { label: string; value: string; sub: string; gold?: boolean }) {
-  return (
-    <div className="rounded-xl border border-border bg-bg-elevated p-4">
-      <div className="mb-2 flex items-center justify-between"><Cap>{label}</Cap><span className="text-text-subtle">{gold ? <I.coins s={14} /> : <I.fileText size={14} />}</span></div>
-      <div className={`font-mono text-[24px] font-bold leading-none tracking-[-0.02em] ${gold ? "text-gold-300" : "text-text"}`}>{value}</div>
-      <div className="mt-1.5 font-mono text-[10.5px] text-text-subtle">{sub}</div>
-    </div>
-  );
 }
 function CField({ label, hint, prefix, suffix, value, onChange, width }: { label: string; hint?: string; prefix?: string; suffix?: string; value: number; onChange: (n: number) => void; width?: number }) {
   return (
@@ -49,7 +39,7 @@ function CField({ label, hint, prefix, suffix, value, onChange, width }: { label
 
 type QFilter = "all" | "review" | "flagged";
 
-export function AdminProposalsClient({ config, stats, queue }: { config: ProposalsConfig; stats: AdminProposalStats; queue: AdminQueueRow[] }) {
+export function AdminProposalsClient({ config, queue }: { config: ProposalsConfig; queue: AdminQueueRow[] }) {
   const router = useRouter();
   const { toast } = useToast();
   const [pending, start] = useTransition();
@@ -94,30 +84,10 @@ export function AdminProposalsClient({ config, stats, queue }: { config: Proposa
   const open = sel && (sel.status === "REVIEW" || sel.status === "CHANGES_REQUESTED");
 
   return (
-    <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-4">
-      {/* Head */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="font-display text-[24px] font-bold">Market Proposals</div>
-            <Chip variant={on ? "active" : "paused"}>{on ? "Active" : "Paused"}</Chip>
-          </div>
-          <div className="mt-1 text-[12.5px] text-text-muted">Review queue · <span className="italic">Foleni ya ukaguzi</span> · /admin/proposals</div>
-        </div>
-        <Button variant="gold" size="md" leading={<I.check s={15} />} loading={pending} onClick={saveConfig}>Save · Hifadhi</Button>
-      </div>
-
-      {/* KPIs */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi label="Proposals pending" value={fmt(stats.pending)} sub="awaiting review" />
-        <Kpi label="Listed from proposals" value={fmt(stats.listedFromProposals)} sub="all-time" />
-        <Kpi label="Prizes paid" value={fmt(stats.prizesPaidTzs)} sub="TZS · all-time" gold />
-        <Kpi label="Top proposer" value={stats.topProposer?.handle ?? "—"} sub={stats.topProposer ? `${stats.topProposer.listed} listed` : "none yet"} gold />
-      </div>
-
+    <div className="space-y-4">
       {/* Queue + review */}
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1.3fr_1fr]">
-        <div className="overflow-hidden rounded-xl border border-border bg-bg-elevated">
+        <div className="overflow-hidden rounded-lg glass-panel">
           <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
             <div className="text-[14px] font-bold">Queue · sorted by votes</div>
             <div className="flex gap-1.5">
@@ -150,7 +120,7 @@ export function AdminProposalsClient({ config, stats, queue }: { config: Proposa
 
         {/* Review panel */}
         {sel ? (
-          <div className="flex flex-col gap-3.5 rounded-xl border border-border bg-bg-elevated p-4">
+          <div className="flex flex-col gap-3.5 rounded-lg glass-panel p-4">
             <div>
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <StatusBadge status={sel.status} />
@@ -214,7 +184,7 @@ export function AdminProposalsClient({ config, stats, queue }: { config: Proposa
       </div>
 
       {/* Config */}
-      <div className="overflow-hidden rounded-xl border border-border bg-bg-elevated">
+      <div className="overflow-hidden rounded-lg glass-panel">
         <div className="flex items-center gap-3.5 border-b border-border px-4 py-3.5" style={{ background: on ? "transparent" : "color-mix(in oklab, var(--warning-500) 8%, transparent)" }}>
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px]" style={{ background: on ? "color-mix(in oklab, var(--gold-500) 16%, transparent)" : "color-mix(in oklab, var(--warning-500) 20%, transparent)", color: on ? "var(--gold-300)" : "oklch(84% 0.15 80)" }}>
             {on ? <I.trophy s={21} /> : <I.pause s={21} />}
@@ -225,6 +195,7 @@ export function AdminProposalsClient({ config, stats, queue }: { config: Proposa
           </div>
           <span className="font-mono text-[11px] tracking-[0.1em]" style={{ color: on ? "var(--gold-300)" : "oklch(84% 0.15 80)" }}>{on ? "ON" : "PAUSED"}</span>
           <Toggle on={on} gold onClick={() => setC((p) => ({ ...p, enabled: !p.enabled }))} aria-label="Proposals master switch" />
+          <Button variant="gold" size="sm" leading={<I.check s={14} />} loading={pending} onClick={saveConfig}>Save</Button>
         </div>
         <div className="flex flex-wrap gap-5 p-4">
           <CField label="Listing + resolution prize" hint="Paid when listed AND resolved" prefix="TZS" width={200} value={c.prizeTzs} onChange={(n) => setC((p) => ({ ...p, prizeTzs: n }))} />

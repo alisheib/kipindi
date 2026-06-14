@@ -1,3 +1,5 @@
+import { AdminPageHead, AdminKpi } from "@/components/admin/admin-shell";
+import { Chip } from "@/components/ui/chip";
 import { getProposalsConfig } from "@/lib/server/proposals-config";
 import { getAdminProposalStats, getAdminQueue } from "@/lib/server/proposals-service";
 import { AdminProposalsClient } from "./admin-proposals-client";
@@ -5,18 +7,39 @@ import { AdminProposalsClient } from "./admin-proposals-client";
 export const metadata = { title: "Proposals · Admin" };
 export const dynamic = "force-dynamic";
 
+const fmt = (n: number) => n.toLocaleString("en-US");
+
 /**
- * /admin/proposals — player-proposal review console. The admin layout gates
- * the route (ADMIN / COMPLIANCE / MODERATOR + TOTP); each action re-checks
+ * /admin/proposals — player-proposal review console, on the shared admin shell.
+ * The route is gated by the admin layout (role + TOTP); each action re-checks
  * the role server-side. Votes only rank the queue — the officer decides.
  */
 export default async function AdminProposalsPage() {
   const config = getProposalsConfig();
   const stats = await getAdminProposalStats();
   const queue = await getAdminQueue("all");
+
   return (
-    <div className="px-4 lg:px-6 py-6">
-      <AdminProposalsClient config={config} stats={stats} queue={queue} />
-    </div>
+    <>
+      <AdminPageHead
+        title="Market proposals"
+        sw="Mapendekezo ya masoko"
+        period={false}
+        actions={<Chip size="sm" variant={config.enabled ? "active" : "paused"}>{config.enabled ? "Active" : "Paused"}</Chip>}
+      />
+
+      <div className="px-4 lg:px-6 py-5 space-y-4">
+        {/* KPIs */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <AdminKpi label="Proposals pending"      sw="Yanasubiri"   value={fmt(stats.pending)} delta="awaiting review" deltaDir="flat" />
+          <AdminKpi label="Listed from proposals"  sw="Yaliyoorodheshwa" value={fmt(stats.listedFromProposals)} delta="all-time" deltaDir="flat" />
+          <AdminKpi label="Prizes paid"            sw="Tuzo zilizolipwa" value={`TZS ${fmt(stats.prizesPaidTzs)}`} gold delta="all-time" />
+          <AdminKpi label="Top proposer"           sw="Bingwa"       value={stats.topProposer?.handle ?? "—"} gold delta={stats.topProposer ? `${stats.topProposer.listed} listed` : "none yet"} deltaDir="flat" />
+        </div>
+
+        {/* Interactive queue + review + config editor */}
+        <AdminProposalsClient config={config} queue={queue} />
+      </div>
+    </>
   );
 }
