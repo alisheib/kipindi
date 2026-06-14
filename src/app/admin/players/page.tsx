@@ -92,8 +92,8 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
       />
 
       <div className="px-4 lg:px-6 py-5 space-y-4">
-        <AdminCard>
-          <form className="flex flex-wrap gap-2">
+        <AdminCard padding="p-3">
+          <form className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-0 sm:min-w-[260px]">
               <I.search size={14} aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
               <input
@@ -101,14 +101,14 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                 defaultValue={query}
                 placeholder="Phone (+255…), display name, or usr_…"
                 aria-label="Search players"
-                className="w-full h-10 pl-9 pr-3 rounded-md bg-surface border border-border text-text font-mono text-body-sm focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
+                className="w-full h-9 pl-9 pr-3 rounded-md bg-surface border border-border text-text font-mono text-body-sm focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
               />
             </div>
-            <div className="w-[180px]">
+            <div className="w-full sm:w-[180px]">
               <Select
                 name="status"
                 defaultValue={statusFilter}
-                size="sm"
+                size="xs"
                 placeholder="All statuses"
                 options={[
                   { value: "", label: "All statuses" },
@@ -121,11 +121,11 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                 ]}
               />
             </div>
-            <button type="submit" className="btn btn-primary btn-md">
+            <button type="submit" className="btn btn-primary btn-sm" style={{ height: 36 }}>
               Search
             </button>
             {(query || statusFilter) && (
-              <a href="/admin/players" className="btn btn-ghost btn-md">
+              <a href="/admin/players" className="btn btn-ghost btn-sm" style={{ height: 36 }}>
                 Clear
               </a>
             )}

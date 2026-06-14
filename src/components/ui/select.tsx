@@ -23,8 +23,9 @@ type Props = {
   placeholder?: string;
   required?: boolean;
   className?: string;
-  /** Compact size for admin filter bars */
-  size?: "md" | "sm";
+  /** Compact size for admin filter bars. `xs` (h-9) matches the kit's compact
+   *  search inputs + btn-sm height so filter rows align flush. */
+  size?: "md" | "sm" | "xs";
 };
 
 export function Select({
@@ -113,7 +114,7 @@ export function Select({
     return () => window.removeEventListener("mousedown", onClick);
   }, [open]);
 
-  const h = size === "sm" ? "h-10" : "h-11";
+  const h = size === "xs" ? "h-9" : size === "sm" ? "h-10" : "h-11";
 
   return (
     <>
