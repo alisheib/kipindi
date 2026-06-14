@@ -149,7 +149,7 @@ const prismaLedger: HousePoolLedgerStore = {
 
 // --- Feature-flag switch ---
 
-const usePrisma = process.env.USE_PRISMA_DAL === "true" && hasDatabase();
+const usePrisma = hasDatabase() && process.env.USE_PRISMA_DAL !== "false"; // Prisma whenever a DB exists (matches store.ts; no flag footgun)
 const ledgerStore: HousePoolLedgerStore = usePrisma ? prismaLedger : memoryLedger;
 
 // ---------------------------------------------------------------------------

@@ -213,9 +213,9 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             <Field
               id="email"
               label="Email · Barua pepe"
-              hint="We'll send a link to confirm it. Used for receipts & verification updates."
+              hint="Required — we email you the verification result (approved / more info needed) and receipts here."
               type="email"
-              required={false}
+              required
               maxLength={254}
               inputMode="text"
               placeholder="you@example.com"

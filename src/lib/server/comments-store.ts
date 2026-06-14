@@ -127,7 +127,7 @@ const prismaStore: CommentStore = {
   },
 };
 
-const usePrisma = process.env.USE_PRISMA_DAL === "true" && hasDatabase();
+const usePrisma = hasDatabase() && process.env.USE_PRISMA_DAL !== "false"; // Prisma whenever a DB exists (matches store.ts; no flag footgun)
 const store: CommentStore = usePrisma ? prismaStore : memoryStore;
 
 // ---------------------------------------------------------------------------

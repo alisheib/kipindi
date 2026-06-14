@@ -228,7 +228,7 @@ const prismaCandidates: CandidateStore = {
 // Feature-flagged switch
 // ---------------------------------------------------------------------------
 
-const usePrisma = process.env.USE_PRISMA_DAL === "true" && hasDatabase();
+const usePrisma = hasDatabase() && process.env.USE_PRISMA_DAL !== "false"; // Prisma whenever a DB exists (matches store.ts; no flag footgun)
 export const candidateStore: CandidateStore = usePrisma ? prismaCandidates : memoryCandidates;
 
 // ---------------------------------------------------------------------------
