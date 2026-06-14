@@ -71,7 +71,11 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
     tick();
     const id = window.setInterval(tick, 30_000);
     return () => window.clearInterval(id);
-  }, [enabled, intervalMin]);
+    // `userId` MUST be a dependency: AppShell is preserved across login/logout
+    // soft-navigation, so this host re-renders with a new userId WITHOUT
+    // remounting. Without userId here the effect keeps the previous account's
+    // storage keys (the exact cross-account leak this is meant to prevent).
+  }, [enabled, intervalMin, userId]);
 
   const dismiss = React.useCallback(() => {
     setOpen(false);
