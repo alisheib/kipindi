@@ -562,9 +562,14 @@ const memoryDb = {
   },
 };
 
-// Phase 2: Prisma DAL switch.
-// Set USE_PRISMA_DAL=true on Railway AFTER Phase 3 (await) + Phase 6 (data migration).
-const usePrisma = process.env.USE_PRISMA_DAL === "true" && hasDatabase();
+// Source of truth: Postgres (Prisma DAL) whenever a DATABASE_URL is configured —
+// which is always the case in production. The in-memory Maps above are ONLY a
+// fallback for local dev / tests that run without a database; they never hold
+// real data in production. Making `hasDatabase()` the gate (instead of requiring
+// an explicit USE_PRISMA_DAL=true) removes the footgun where forgetting the flag
+// would silently revert prod to the in-memory store and lose data. An explicit
+// USE_PRISMA_DAL=false is still honoured as a deliberate escape hatch.
+const usePrisma = hasDatabase() && process.env.USE_PRISMA_DAL !== "false";
 export const db: typeof memoryDb = usePrisma
   ? (prismaDb as unknown as typeof memoryDb)
   : memoryDb;
