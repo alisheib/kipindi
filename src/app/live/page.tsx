@@ -11,7 +11,7 @@
  * this page.
  */
 import Link from "next/link";
-import { listMarkets, impliedYesPct, seedDemoMarkets, traderSeedsByMarket } from "@/lib/server/market-service";
+import { listMarkets, impliedYesPct, isClosedByTime, seedDemoMarkets, traderSeedsByMarket } from "@/lib/server/market-service";
 import { getCardChart } from "@/lib/server/market-history";
 import { TippingBar, PulseRing } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
@@ -34,7 +34,9 @@ function timeLeftStr(iso: string): string {
 
 export default async function LivePage() {
   await seedDemoMarkets();
-  const all = await listMarkets({ status: "LIVE" });
+  // Exclude markets whose resolution time has passed — they're closed/awaiting
+  // settlement, not live, and must not show a LIVE badge on the board.
+  const all = (await listMarkets({ status: "LIVE" })).filter((m) => !isClosedByTime(m));
   const traderMap = await traderSeedsByMarket();
   // Build a serialisable snapshot for the client component
   const markets = await Promise.all(all.map(async (m) => {

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
 import { FiftyLockup } from "@/components/brand";
-import { listMarkets, impliedYesPct, seedDemoMarkets, traderSeedsByMarket } from "@/lib/server/market-service";
+import { listMarkets, impliedYesPct, isClosedByTime, seedDemoMarkets, traderSeedsByMarket } from "@/lib/server/market-service";
 import { getCardChart } from "@/lib/server/market-history";
 import { getSession } from "@/lib/server/session";
 
@@ -21,7 +21,7 @@ function timeLeftStr(iso: string): string {
 
 export default async function LandingPage() {
   seedDemoMarkets();
-  const live = (await listMarkets({ status: "LIVE" })).slice(0, 6);
+  const live = (await listMarkets({ status: "LIVE" })).filter((m) => !isClosedByTime(m)).slice(0, 6);
   const traderMap = await traderSeedsByMarket();
   const cardCharts = new Map(await Promise.all(live.map(async (m) => [m.id, await getCardChart(m.id)] as const)));
   const session = await getSession();
