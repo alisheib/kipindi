@@ -42,9 +42,13 @@ type SendInput = {
   html: string;
   /** Optional tag for Postmark analytics (e.g. "welcome", "deposit"). */
   tag?: string;
+  /** Set false for critical action links (e.g. the KYC "Review now" deep link)
+   *  so Postmark does NOT rewrite them through its click-tracking redirect — a
+   *  mis-set tracking domain would otherwise send the click "nowhere". */
+  trackLinks?: boolean;
 };
 
-export async function sendEmail({ to, subject, html, tag }: SendInput): Promise<{ ok: boolean; messageId?: string }> {
+export async function sendEmail({ to, subject, html, tag, trackLinks = true }: SendInput): Promise<{ ok: boolean; messageId?: string }> {
   // Skip stub addresses (phone-only users without email)
   if (!to || to.endsWith("@stub") || to.endsWith("@none")) {
     return { ok: true };
@@ -66,7 +70,7 @@ export async function sendEmail({ to, subject, html, tag }: SendInput): Promise<
       TextBody: stripHtml(html),
       Tag: tag,
       TrackOpens: true,
-      TrackLinks: LinkTrackingOptions.HtmlOnly,
+      TrackLinks: trackLinks ? LinkTrackingOptions.HtmlOnly : LinkTrackingOptions.None,
       MessageStream: "outbound",
     });
     return { ok: true, messageId: res.MessageID };

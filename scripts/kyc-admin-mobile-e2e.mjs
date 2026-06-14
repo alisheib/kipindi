@@ -45,9 +45,6 @@ try {
   const box = await approveBtn.boundingBox();
   ok("Approve button ≥44px tall", !!box && box.height >= 44, box ? `(${Math.round(box.height)}px)` : "(no box)");
 
-  // 4. Review bell in the admin top bar (the "new player to review" signal).
-  const bell = page.locator('a[href="/admin/approvals"]').first();
-  ok("admin top-bar bell present", await bell.count() > 0);
 
   // 5. Open "Request info…" → reason panel renders, no overflow, send button shown.
   await page.getByRole("button", { name: /Request info/ }).first().click();

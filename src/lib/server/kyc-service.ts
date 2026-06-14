@@ -21,7 +21,7 @@ import { rateCheck } from "./rate-limit";
 import { KycNidaSchema } from "./validators";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
-import { notifyKyc } from "./notification-service";
+import { notifyKyc, notifyAdminKycReview } from "./notification-service";
 import { sendEmail, sendEmailToUser, kycRejectedHtml, kycApprovedHtml, kycSubmittedHtml, kycSubmittedAdminHtml, kycMoreInfoHtml } from "./email";
 import { resolvePhoneEmail } from "./email-map";
 import { setUserEmail } from "./email-verification";
@@ -251,9 +251,19 @@ export async function submitForReview(userId: string): Promise<ServiceResult> {
   // masked phone, no images, no DOB) — the reviewer opens the secured drill-in.
   const reviewUrl = `${BASE_URL()}/admin/players/${userId}?tab=kyc`;
   const nidaMasked = "•••• " + (k.nidaNumber?.slice(-4) ?? "");
+  const playerLabel = displayLabel({ id: userId, displayName: k.fullName ?? u?.displayName ?? null });
+
+  // In-app alert in every admin's MAIN notification bell (deep-links to the
+  // KYC tab). This is the reliable in-platform signal; email is the extra nudge.
+  for (const a of await db.user.list()) {
+    if (["ADMIN", "COMPLIANCE", "MODERATOR"].includes(a.role)) {
+      notifyAdminKycReview(a.id, { playerLabel, userId }).catch(() => {});
+    }
+  }
+
   const adminHtml = kycSubmittedAdminHtml({
     reference: k.id,
-    name: displayLabel({ id: userId, displayName: k.fullName ?? u?.displayName ?? null }),
+    name: playerLabel,
     phoneMasked: maskPhone(u?.phoneE164),
     nidaMasked,
     submittedAt: now,
@@ -266,7 +276,7 @@ export async function submitForReview(userId: string): Promise<ServiceResult> {
         return;
       }
       for (const to of recipients) {
-        sendEmail({ to, subject: "New KYC to verify · " + k.id, tag: "kyc-admin", html: adminHtml }).catch(() => {});
+        sendEmail({ to, subject: "New KYC to verify · " + k.id, tag: "kyc-admin", html: adminHtml, trackLinks: false }).catch(() => {});
       }
     })
     .catch(() => {});

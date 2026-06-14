@@ -5,7 +5,6 @@
  * gold-positive / royal-active / muted-loss colour discipline.
  */
 import Link from "next/link";
-import { I } from "@/components/ui/glyphs";
 import { db } from "@/lib/server/store";
 import { AdminMobileNavTrigger } from "./admin-mobile-nav";
 import { AdminSidebarNav } from "./admin-sidebar-nav";
@@ -104,22 +103,9 @@ export async function AdminTopBar({ crumbs, session, activeKey }: { crumbs: stri
       </nav>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        {/* Review bell — links to the approvals queue and shows the count of
-            items waiting on an officer (pending KYC + AML + source-of-funds).
-            Rings when there's work. This is the admin's "new player" signal. */}
-        <Link
-          href="/admin/approvals"
-          aria-label={badges.approvals ? `${badges.approvals} items awaiting review` : "Approvals queue"}
-          title={badges.approvals ? `${badges.approvals} awaiting review` : "Nothing awaiting review"}
-          className="relative inline-flex items-center justify-center h-8 w-8 rounded-md border border-border bg-surface text-text-secondary hover:text-text hover:border-gold-700 transition-colors"
-        >
-          {badges.approvals ? <I.bellRing s={16} /> : <I.bell s={16} />}
-          {badges.approvals && (
-            <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 inline-flex items-center justify-center rounded-pill bg-no-500 text-text font-mono text-[9px] font-bold leading-none">
-              {badges.approvals}
-            </span>
-          )}
-        </Link>
+        {/* No notification bell here — the platform's main bell (in AppShell's
+            top bar) is the single notification surface for everyone, admins
+            included. New-KYC alerts arrive there as in-app notifications. */}
         <form action="/admin/players" method="get" className="hidden md:block">
           <input
             type="search"

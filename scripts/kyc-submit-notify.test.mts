@@ -9,6 +9,7 @@ process.env.KYC_NOTIFY_EMAILS = "Compliance@50pick.tz, ops@50pick.tz , complianc
 
 import { submitForReview, reviewKyc, kycNotifyEmails } from "../src/lib/server/kyc-service.ts";
 import { setUserEmail, verifyEmailToken, buildEmailVerifyUrl } from "../src/lib/server/email-verification.ts";
+import { listForUser } from "../src/lib/server/notification-service.ts";
 import { db } from "../src/lib/server/store.ts";
 
 let pass = 0, fail = 0;
@@ -73,6 +74,14 @@ const adminStubs = logs.filter((l) => l.includes("[email-stub]") && l.includes("
 const toCompliance = adminStubs.some((l) => l.includes("compliance@50pick.tz"));
 const toOps = adminStubs.some((l) => l.includes("ops@50pick.tz"));
 ok("one admin email per recipient", adminStubs.length === 2 && toCompliance && toOps, JSON.stringify(adminStubs));
+// In-app: every admin gets a "New KYC to review" alert in their MAIN bell,
+// deep-linking to the player's KYC tab (admins removed the separate admin bell).
+const adminNote = (await listForUser("usr_admin01", 20)).find((n) => n.kind === "KYC" && n.titleEn === "New KYC to review");
+ok("admin gets in-app 'New KYC to review' (main bell)", !!adminNote);
+ok("admin notification deep-links to the KYC tab", adminNote?.href === "/admin/players/usr_p0001?tab=kyc", adminNote?.href ?? "");
+ok("officer + moderator also notified in-app",
+  !!(await listForUser(OFFICER, 20)).find((n) => n.titleEn === "New KYC to review") &&
+  !!(await listForUser("usr_mod01", 20)).find((n) => n.titleEn === "New KYC to review"));
 
 // ── 4. Idempotency: re-submitting does NOT resend ──
 clearLogs();

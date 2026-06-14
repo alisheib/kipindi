@@ -306,6 +306,23 @@ export function notifyCashout(userId: string, opts: { amount: number; marketTitl
   });
 }
 
+/**
+ * In-app alert to an officer that a player's KYC is waiting for review. Lands
+ * in the platform's main notification bell (admins use the same bell as players)
+ * and deep-links straight to the player's KYC review tab.
+ */
+export function notifyAdminKycReview(adminUserId: string, opts: { playerLabel: string; userId: string }) {
+  return notify({
+    userId: adminUserId,
+    kind: "KYC",
+    titleEn: "New KYC to review",
+    titleSw: "KYC mpya ya kukagua",
+    bodyEn: `${opts.playerLabel} submitted identity documents — tap to review.`,
+    bodySw: `${opts.playerLabel} amewasilisha nyaraka — bonyeza kukagua.`,
+    href: `/admin/players/${opts.userId}?tab=kyc`,
+  });
+}
+
 export function notifyKyc(userId: string, status: "APPROVED" | "REJECTED" | "PENDING_REVIEW" | "ADDITIONAL_INFO") {
   if (status === "ADDITIONAL_INFO") {
     return notify({
