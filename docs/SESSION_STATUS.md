@@ -113,3 +113,62 @@ need a dev server on :3009 (`npx next dev -p 3009`) then `BASE=http://localhost:
 
 **User plan:** the DB will be **formatted and re-run from scratch before going live** — current
 prod rows are test data; pollution from testing is expected/fine.
+
+---
+
+## 🐛 Bug-hunt backlog (2026-06-14) — VERIFIED in source, NOT yet fixed
+
+A 5-subsystem audit (wallet/payments, betting/markets, KYC/AML, auth/security, data-layer)
+ran this session. **6 fixed + pushed** (2 CRITICAL: AML-approve hold leak, KYC reject enum;
+1 HIGH: VOID reserve-fee mint; 2 MEDIUM: open-redirect backslash, maxStake<minStake; see
+git log). The following are **confirmed real** but left for a decision / larger work:
+
+**Blocker (feature gap)**
+- **Source-of-Funds has no approve/reject path.** SOF is created `PENDING`; the deposit gate
+  requires `ACCEPTED` (wallet-service.ts:85); nothing anywhere sets ACCEPTED/REJECTED — the
+  approvals page only displays. Any depositor who trips the SOF threshold (≥1M single / ≥5M
+  30-day) is **permanently blocked** with no operator remedy. Needs an officer review action + UI.
+
+**Payments (latent behind the mock provider, real before live money)**
+- Deposit credits the wallet on provider `status:"PENDING"` (wallet-service.ts ~139) — only the
+  mock's always-CONFIRMED hides it. A real async-collection provider → phantom credit.
+- Webhook (`api/webhooks/payments/route.ts`) verifies the signature but does **no settlement and
+  has no idempotency key** → async confirms never reconcile; add `providerRef` dedup before going live.
+
+**Concurrency / integrity**
+- `locks.ts withLock` is an **in-process Map mutex** — a no-op across >1 instance; wallet/pool
+  writes are absolute (`balance: newBalance`), not atomic `{ increment }`. Safe only if prod is
+  provably single-instance. Recommend Prisma atomic increments + a Postgres advisory lock.
+- **NIDA uniqueness** has no DB backstop (only an unlocked `kyc.list().find`) → TOCTOU multi-account
+  on one national ID. Add a partial `@unique` (non-rejected) and/or `withLock(nida:…)`.
+- **Two-person AML** reads the stage-1 signature from the in-memory ring (`getAuditPage` last 200
+  ADMIN) → a stale sig past the window can't complete the release. Now that audit persists to
+  Postgres, query `AuditLog` by `targetId`+`action` instead (or a dedicated cosignature table).
+
+**Security / compliance**
+- **Admin TOTP is a page-render gate only** — admin server actions and `/api/admin/*` check role
+  but not the `kp_admin_totp` cookie, so 2FA doesn't protect privileged mutations (RBAC still does).
+  Add a shared `requireAdminWithTotp()` and call it from mutating admin actions/routes.
+- **Email-uniqueness disabled** + Postgres `email @unique` still live → duplicate-email write throws
+  P2002 as an **unhandled 500** in `updateProfileBasicsAction` (silently swallowed in `submitNidaStep`).
+  Resolve together with priority #3 (re-enable uniqueness) — decide: catch P2002 + friendly error, or
+  drop the constraint while testing.
+- Weekly/monthly deposit-limit **increases take effect immediately** — only the daily limit has the
+  24h deferral (responsible-gambling.ts). RG/LCCP gap.
+- Doc upload validates **declared MIME only, no magic-byte check** (impact limited by `nosniff`).
+  Overlaps the real-money P0 list.
+
+**Correctness / data**
+- Deposit-limit & SOF 30-day aggregation is capped at the **last 500 txns** (`findByUser(...,500)`)
+  → a high-frequency user can push qualifying deposits past the cutoff and undercount the rolling
+  sum, slipping under the gate. Use a time-bounded `SUM` query.
+- `kyc.upsert` **drops documents when the patch carries an empty `documents` array**, and resolves a
+  user's submission by most-recent while upserting by id — fragile if a user ever has >1 submission.
+- Bet read-mapper **fabricates labels** in prod (`matchLabel:"Match a1b2c3"`, blank league) for legacy
+  sports bets (prisma-dal.ts ~201); memory store keeps the real snapshots. Display-only, legacy path.
+- **Side-lock/single-side invariant is client-only** (dial); server `buyPosition` accepts the opposite
+  side, and the market page docs *say hedging is allowed* — spec contradiction, needs a product call.
+
+**Low**
+- TOTP setup-verify has no rate limit (login TOTP does); TOTP codes are replayable within their
+  window (documented accepted tradeoff).
