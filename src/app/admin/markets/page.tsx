@@ -87,8 +87,8 @@ export default async function AdminMarketsPage({
           <AdminKpi label="Total volume" sw="Jumla ya ujazo" value={fmtTzs(totalVolume)} />
         </div>
 
-        <AdminCard>
-          <form className="flex flex-wrap gap-2">
+        <AdminCard padding="p-3">
+          <form className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-0 sm:min-w-[260px]">
               <I.search size={14} aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
               <input
@@ -96,22 +96,22 @@ export default async function AdminMarketsPage({
                 defaultValue={query}
                 placeholder="Search title (EN / SW) or mkt_… id"
                 aria-label="Search markets"
-                className="w-full h-10 pl-9 pr-3 rounded-md bg-surface border border-border text-text font-mono text-body-sm focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
+                className="w-full h-9 pl-9 pr-3 rounded-md bg-surface border border-border text-text font-mono text-body-sm focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
               />
             </div>
-            <div className="w-[160px]">
-              <Select name="status" defaultValue={statusFilter} size="sm" placeholder="All statuses"
+            <div className="w-full sm:w-[160px]">
+              <Select name="status" defaultValue={statusFilter} size="xs" placeholder="All statuses"
                 options={[{ value: "", label: "All statuses" }, ...STATUS_OPTIONS.map((s) => ({ value: s, label: s }))]} />
             </div>
-            <div className="w-[160px]">
-              <Select name="category" defaultValue={categoryFilter} size="sm" placeholder="All categories"
+            <div className="w-full sm:w-[160px]">
+              <Select name="category" defaultValue={categoryFilter} size="xs" placeholder="All categories"
                 options={[{ value: "", label: "All categories" }, ...CATEGORY_OPTIONS.map((c) => ({ value: c, label: c }))]} />
             </div>
-            <button type="submit" className="h-10 px-4 rounded-md bg-royal text-onBrand font-semibold text-body-sm hover:bg-royal-hover transition-colors">
+            <button type="submit" className="btn btn-primary btn-sm" style={{ height: 36 }}>
               Search
             </button>
             {hasFilter && (
-              <a href="/admin/markets" className="h-10 px-4 inline-flex items-center rounded-md border border-border text-text-secondary text-body-sm hover:bg-surface-hover">
+              <a href="/admin/markets" className="btn btn-ghost btn-sm" style={{ height: 36 }}>
                 Clear
               </a>
             )}
