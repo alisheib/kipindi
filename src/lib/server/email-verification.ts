@@ -92,14 +92,14 @@ export async function setUserEmail(
   // Unchanged — leave verified state alone, don't re-send.
   if (next === current) return { ok: true, changed: false, verificationSent: false };
 
-  // Uniqueness: one email = one account. Block if ANOTHER user already holds
-  // this address (case-insensitive). Mirrors the Postgres @unique constraint so
-  // the in-memory store behaves identically.
-  const holder = await db.user.findByEmail(next);
-  if (holder && holder.id !== userId) {
-    audit({ category: "SECURITY", action: "user.email.duplicate_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { conflictUserId: holder.id } });
-    return { ok: false, error: "That email is already linked to another account." };
-  }
+  // Email uniqueness TEMPORARILY DISABLED (Ali, 2026-06-14) so testers can sign
+  // up multiple accounts with the same email. RE-ENABLE before real-money launch
+  // by uncommenting the block below (and keep the Postgres email @unique).
+  // const holder = await db.user.findByEmail(next);
+  // if (holder && holder.id !== userId) {
+  //   audit({ category: "SECURITY", action: "user.email.duplicate_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { conflictUserId: holder.id } });
+  //   return { ok: false, error: "That email is already linked to another account." };
+  // }
 
   // New / changed address: store it, reset verification, send a fresh link.
   await db.user.update(userId, { email: next, emailVerifiedAt: null });

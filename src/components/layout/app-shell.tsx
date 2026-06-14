@@ -71,7 +71,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       </main>
       <PublicFooter />
       <BottomNav isAuthed={!!session} />
-      <RealityCheckHost enabled={!!session} intervalMin={realityCheckMin} />
+      <RealityCheckHost enabled={!!session} intervalMin={realityCheckMin} userId={session?.userId ?? null} />
       <NotifyPoller />
       <WinCelebrationHost />
       <Suspense fallback={null}>

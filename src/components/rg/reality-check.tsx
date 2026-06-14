@@ -7,8 +7,9 @@
  * platform this session and one-click links to: continue, set limits, take a
  * break, or self-exclude. After dismissal, the timer restarts.
  *
- * Session start is tracked in sessionStorage (per browser tab); the modal
- * does not fire for unauthed visitors. Respects prefers-reduced-motion.
+ * Session start is tracked in sessionStorage (per browser tab), KEYED BY USER
+ * so two accounts on the same device/tab never share an elapsed timer; the
+ * modal does not fire for unauthed visitors. Respects prefers-reduced-motion.
  *
  * Direct port of the kit's player-protection prompt — gilt eyebrow, royal
  * card, kit btn-primary / btn-ghost / btn-claret.
@@ -19,11 +20,9 @@ import { I } from "@/components/ui/glyphs";
 import { useModalLock } from "@/lib/use-modal-lock";
 import { SUPPORT_PHONE } from "@/lib/support-config";
 
-const SESSION_START_KEY  = "kp_session_started_at";
-const LAST_PROMPT_KEY    = "kp_reality_check_last";
 const DEFAULT_INTERVAL   = 30; // minutes
 
-export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL }: { enabled: boolean; intervalMin?: number }) {
+export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, userId }: { enabled: boolean; intervalMin?: number; userId?: string | null }) {
   const [open, setOpen] = React.useState(false);
   useModalLock(open);
   const [elapsedMin, setElapsedMin] = React.useState(0);
@@ -31,6 +30,14 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL }: { 
   React.useEffect(() => {
     if (!enabled) return;
     if (typeof window === "undefined") return;
+
+    // Scope the session timer to THIS user. Without this, logging out of one
+    // account and into another in the same tab inherited the first account's
+    // session-start time, so the new user saw "you've been playing for N min"
+    // for time they never spent. Per-user keys give each account its own clock.
+    const who = userId || "anon";
+    const SESSION_START_KEY = `kp_session_started_at:${who}`;
+    const LAST_PROMPT_KEY = `kp_reality_check_last:${who}`;
 
     let startedAt = Number(sessionStorage.getItem(SESSION_START_KEY) ?? 0);
     if (!startedAt || Number.isNaN(startedAt)) {
@@ -69,9 +76,9 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL }: { 
   const dismiss = React.useCallback(() => {
     setOpen(false);
     if (typeof window !== "undefined") {
-      sessionStorage.setItem(LAST_PROMPT_KEY, String(Date.now()));
+      sessionStorage.setItem(`kp_reality_check_last:${userId || "anon"}`, String(Date.now()));
     }
-  }, []);
+  }, [userId]);
 
   React.useEffect(() => {
     if (!open) return;

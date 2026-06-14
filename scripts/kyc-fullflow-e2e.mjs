@@ -39,14 +39,29 @@ try {
   const playerCtx = await browser.newContext({ ...devices["Pixel 7"] });
   await primerOff(playerCtx);
   const pErr = []; const pp = await playerCtx.newPage(); attachErrs(pp, pErr);
-  const fresh = await (await pp.request.post(`${BASE}/api/dev-test/fresh-kyc-player`, { data: { state: "nida_verified" } })).json();
+  // Brand-new user with NO KYC record — must complete the NIDA identity step.
+  const fresh = await (await pp.request.post(`${BASE}/api/dev-test/fresh-kyc-player`, { data: { state: "none" } })).json();
   ok("fresh player + session created", !!fresh.userId, JSON.stringify(fresh));
   const userId = fresh.userId;
+  // Unique 20-digit NIDA per run (one-NIDA-per-account is enforced), never ...0000/9999.
+  const NIDA = "19900101" + String(Date.now()).slice(-11) + "7";
 
   await pp.goto(`${BASE}/profile/kyc`, { waitUntil: "networkidle" });
   await dismissPrimer(pp);
-  ok("player sees upload step", /Upload documents/.test(await pp.locator("body").innerText()));
+  ok("new user lands on NIDA step", /Verify your NIDA|NIDA verification/i.test(await pp.locator("body").innerText()));
   ok("player kyc page: no overflow (mobile)", (await overflow(pp)) <= 1);
+
+  // THE STEP THAT HIT A SNAG: fill the identity form (NIDA + name + DOB + email) and verify.
+  await pp.fill("#nida", NIDA);
+  await pp.fill("#fullName", "Asha Mwamba Juma");
+  await pp.getByLabel("Day").fill("01");
+  await pp.getByLabel("Month").fill("01");
+  await pp.getByLabel("Year").fill("1990");
+  await pp.fill("#email", `newuser${String(Date.now()).slice(-6)}@example.com`);
+  await pp.getByRole("button", { name: /Verify NIDA/ }).click();
+  await pp.waitForFunction(() => /Upload documents|NIDA verified/i.test(document.body.innerText), null, { timeout: 12000 }).catch(() => {});
+  const afterNida = await pp.locator("body").innerText();
+  ok("NIDA verified — NO snag, reached upload step", /Upload documents|NIDA verified/i.test(afterNida) && !/hit a snag/i.test(afterNida), afterNida.slice(0, 120).replace(/\n+/g, " "));
 
   // Upload the three documents through the real uploader (resize + action).
   for (const label of ["ID front · Mbele", "ID back · Nyuma", "Selfie · Picha yako"]) {

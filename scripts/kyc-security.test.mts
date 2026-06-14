@@ -26,18 +26,18 @@ async function mkUser(id: string, phone: string) {
   });
 }
 
-// ─── 1. EMAIL uniqueness ───
+// ─── 1. EMAIL uniqueness — TEMPORARILY DISABLED (Ali, 2026-06-14) for testing.
+// Duplicates are currently ALLOWED so testers can reuse an email across accounts.
+// When the block is re-enabled in setUserEmail, flip these back to "blocked".
 await mkUser("usr_e_a", "+255710000201");
 await mkUser("usr_e_b", "+255710000202");
 let r = await setUserEmail("usr_e_a", "Shared.Email@Example.com");
 ok("email A set ok", r.ok && (r as { changed: boolean }).changed);
 r = await setUserEmail("usr_e_b", "shared.email@example.com"); // same, different case
-ok("duplicate email (case-insensitive) blocked", !r.ok && /already linked/.test((r as { error: string }).error));
-ok("user B email NOT set", !(await db.user.findById("usr_e_b"))?.email);
+ok("duplicate email ALLOWED (uniqueness temporarily off)", r.ok && (r as { changed: boolean }).changed);
+ok("user B email IS set (normalized)", (await db.user.findById("usr_e_b"))?.email === "shared.email@example.com");
 r = await setUserEmail("usr_e_a", "shared.email@example.com"); // same owner, unchanged
-ok("same owner re-set is a no-op (not blocked)", r.ok);
-r = await setUserEmail("usr_e_b", "unique.b@example.com");
-ok("different email for B ok", r.ok);
+ok("same owner re-set is a no-op", r.ok && !(r as { changed: boolean }).changed);
 
 // ─── 2. NIDA uniqueness ───
 const NIDA = "19900101456712345671";

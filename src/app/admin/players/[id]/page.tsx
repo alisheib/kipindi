@@ -271,55 +271,18 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
           </div>
         </AdminCard>
 
-        {/* §D — Privileged actions + 2-person approval */}
-        <AdminCard
-          title="Privileged actions · two-person approval required"
-          sw="Vitendo vya udhibiti · idhini ya watu wawili"
-        >
-          <div className="rounded-md border border-gold bg-gold/5 p-3 flex items-center gap-3 mb-3">
-            <span className="h-7 w-7 rounded-pill bg-gold text-gold-fg font-mono font-bold text-caption inline-flex items-center justify-center shrink-0">2P</span>
-            <p className="text-caption text-text-secondary flex-1">
-              Two-person approval queue · all wallet / KYC overrides require a second compliance officer
-              countersign within 30 minutes. Pending requests appear here and in the Compliance officer&apos;s queue.
+        {/* §D — Account actions (live + audited) */}
+        <AdminCard title="Account actions" sw="Vitendo vya akaunti">
+          <div className="flex items-center gap-3 flex-wrap">
+            <SuspendControls userId={data.user!.id} currentStatus={data.user!.status} />
+            <p className="text-caption text-text-tertiary flex items-center gap-1.5 ml-auto">
+              <I.shieldcheck s={12} />
+              Every action is audited · reason required
             </p>
-            <Chip size="sm" variant="gold">0 pending</Chip>
           </div>
-          <div className="bg-bg-sunken text-onBrand rounded-md p-3 flex items-center gap-3 flex-wrap">
-            <p className="font-mono text-micro tracking-[0.10em] uppercase text-white/60 flex-1">
-              Every action generates an audit entry · reason field required
-            </p>
-            <div className="flex items-center gap-1 flex-wrap">
-              {/* Live actions (wired this sprint) */}
-              <SuspendControls userId={data.user!.id} currentStatus={data.user!.status} />
-              {/* Stubbed actions — need the two-officer flow */}
-              <ActionBtn label="Freeze wallet" />
-              <ActionBtn label="Refund" />
-              <ActionBtn label="Manual self-exclude" />
-              <ActionBtn label="Force KYC re-verify" />
-              <ActionBtn label="Close account" tone="danger" />
-              <ActionBtn label="Request approval →" tone="gold" />
-            </div>
-          </div>
-          <p className="text-caption text-text-tertiary mt-3 flex items-center gap-1.5">
-            <I.shieldcheck s={12} />
-            Suspend / Restore are live + audited. The remaining actions need the two-officer queue (next iteration).
-          </p>
         </AdminCard>
       </div>
     </>
-  );
-}
-
-function ActionBtn({ label, tone }: { label: string; tone?: "danger" | "gold" }) {
-  const base = "font-mono text-micro tracking-[0.10em] uppercase px-2.5 py-1.5 rounded-sm border";
-  const cls =
-    tone === "danger" ? "border-danger text-onBrand bg-danger/40" :
-    tone === "gold"   ? "border-gold bg-gold text-gold-fg font-bold" :
-                        "border-white/25 text-onBrand";
-  return (
-    <button type="button" disabled className={[base, cls, "cursor-not-allowed opacity-90"].join(" ")}>
-      {label}
-    </button>
   );
 }
 
