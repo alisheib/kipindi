@@ -116,18 +116,24 @@ prod rows are test data; pollution from testing is expected/fine.
 
 ---
 
-## 🐛 Bug-hunt backlog (2026-06-14) — VERIFIED in source, NOT yet fixed
+## ✅ Follow-up fixes shipped (2026-06-15)
+- **Source-of-Funds approve/reject** — built (officer action + approvals-page controls + notify);
+  the permanent deposit-block is resolved.
+- **Atomic wallet balances** — `db.wallet.adjust()` (DB-atomic increment/decrement + overdraw
+  guard); every money mutation converted. Cross-instance-safe. `test:wallet` in predeploy.
+- **StatusPill 128px→48px** + AdminKpi off-scale fonts snapped to the type scale.
+- **admin-screenshots harness fixed** — it was capturing the public homepage (demo session is a
+  PLAYER, so /admin/* redirected); now promotes to ADMIN first. Real admin shots in docs/shots-admin/.
+- **Decisions (Ali, 2026-06-15):** 2FA stays optional/view-only for now (NOT enforced on actions);
+  balances hardened now; admin-table unification was visually reviewed and **declined** — the
+  hand-rolled tables live in composite cards, so unifying = per-page card restructuring with real
+  regression risk for negligible visual gain. Pages already look coherent. Leave as-is.
+
+## 🐛 Bug-hunt backlog (2026-06-14) — remaining, VERIFIED in source
 
 A 5-subsystem audit (wallet/payments, betting/markets, KYC/AML, auth/security, data-layer)
-ran this session. **6 fixed + pushed** (2 CRITICAL: AML-approve hold leak, KYC reject enum;
-1 HIGH: VOID reserve-fee mint; 2 MEDIUM: open-redirect backslash, maxStake<minStake; see
-git log). The following are **confirmed real** but left for a decision / larger work:
-
-**Blocker (feature gap)**
-- **Source-of-Funds has no approve/reject path.** SOF is created `PENDING`; the deposit gate
-  requires `ACCEPTED` (wallet-service.ts:85); nothing anywhere sets ACCEPTED/REJECTED — the
-  approvals page only displays. Any depositor who trips the SOF threshold (≥1M single / ≥5M
-  30-day) is **permanently blocked** with no operator remedy. Needs an officer review action + UI.
+ran 2026-06-14. The following are **confirmed real** but left for a decision / larger work
+(the CRITICAL/blocker items above are now DONE):
 
 **Payments (latent behind the mock provider, real before live money)**
 - Deposit credits the wallet on provider `status:"PENDING"` (wallet-service.ts ~139) — only the
@@ -136,9 +142,10 @@ git log). The following are **confirmed real** but left for a decision / larger 
   has no idempotency key** → async confirms never reconcile; add `providerRef` dedup before going live.
 
 **Concurrency / integrity**
-- `locks.ts withLock` is an **in-process Map mutex** — a no-op across >1 instance; wallet/pool
-  writes are absolute (`balance: newBalance`), not atomic `{ increment }`. Safe only if prod is
-  provably single-instance. Recommend Prisma atomic increments + a Postgres advisory lock.
+- ~~`withLock` non-atomic balance writes~~ — ✅ FIXED 2026-06-15 (db.wallet.adjust atomic deltas).
+  NOTE: house-pool seeds + market pools are still mutated via read-modify-write under withLock
+  (market-service `buyPosition`/`cashOut` set `m.yesPool = …`); same cross-instance caveat applies
+  to the POOLS (not wallets). Make pool writes atomic too if you ever run >1 instance.
 - **NIDA uniqueness** has no DB backstop (only an unlocked `kyc.list().find`) → TOCTOU multi-account
   on one national ID. Add a partial `@unique` (non-rejected) and/or `withLock(nida:…)`.
 - **Two-person AML** reads the stage-1 signature from the in-memory ring (`getAuditPage` last 200
