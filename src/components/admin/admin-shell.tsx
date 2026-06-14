@@ -182,7 +182,7 @@ export function AdminKpi({
   return (
     <div className="rounded-lg glass-panel p-4 flex flex-col gap-2 min-h-[120px]">
       <div className="flex items-center justify-between">
-        <span className="font-mono uppercase text-text-tertiary" style={{ fontSize: 9.5, letterSpacing: "0.08em" }}>{label}</span>
+        <span className="font-mono uppercase text-text-tertiary" style={{ fontSize: 10, letterSpacing: "0.08em" }}>{label}</span>
         {pulse && (
           <span className="inline-flex items-center gap-1 text-micro text-gold font-mono uppercase tracking-wider">
             <span className="h-1.5 w-1.5 rounded-pill bg-gold inline-block" />
@@ -195,7 +195,7 @@ export function AdminKpi({
           "font-mono font-bold tabular-nums leading-none",
           gold ? "text-gold" : "text-text",
         ].join(" ")}
-        style={{ fontSize: 21 }}
+        style={{ fontSize: 22 }}
       >
         {value}
       </div>
@@ -386,7 +386,7 @@ export function StatusPill({
   return (
     <span
       className={[
-        "h-12 w-12 rounded-pill inline-flex items-center justify-center font-mono font-bold text-body-sm shrink-0",
+        "h-8 w-8 rounded-pill inline-flex items-center justify-center font-mono font-bold text-body-sm shrink-0",
         cls,
       ].join(" ")}
     >
