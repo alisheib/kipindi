@@ -78,6 +78,13 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
     { id: "audit",        label: "Audit",            count: audit.length },
   ];
 
+  // KYC is the most critical tab — give it an at-a-glance status so an officer
+  // immediately sees whether it needs action. Gold = not approved (needs you),
+  // green = approved, red = rejected.
+  const kycTone: "gold" | "green" | "red" =
+    kyc?.status === "APPROVED" ? "green" : kyc?.status === "REJECTED" ? "red" : "gold";
+  const kycNeedsAction = kyc?.status === "PENDING_REVIEW" || kyc?.status === "ADDITIONAL_INFO_REQUIRED";
+
   return (
     <>
       <AdminPageHead
@@ -134,16 +141,35 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
           <nav aria-label="Player tabs" className="flex gap-4 px-4 border-b border-border-subtle overflow-x-auto">
             {TABS.map((t) => {
               const active = t.id === tab;
+              const isKyc = t.id === "kyc";
+              // The KYC tab stays visually loud when it's not approved, even
+              // when another tab is active, so the officer always notices it.
+              const kycHot = isKyc && kycTone !== "green";
+              const dotColor = kycTone === "green" ? "bg-yes-500" : kycTone === "red" ? "bg-no-500" : "bg-gold";
+              const cls = active
+                ? (kycHot ? "border-gold text-gold-300 font-bold" : "border-gold text-text font-semibold")
+                : kycHot
+                  ? (kycTone === "red" ? "border-no-700/60 text-no-300 font-semibold hover:text-no-200" : "border-gold-700/60 text-gold-300 font-semibold hover:text-gold-200")
+                  : isKyc
+                    ? "border-transparent text-yes-300 hover:text-yes-200" // approved → calm green
+                    : "border-transparent text-text-tertiary hover:text-text";
               return (
                 <a
                   key={t.id}
                   href={`/admin/players/${id}?tab=${t.id}`}
-                  className={[
-                    "py-3 text-body-sm whitespace-nowrap border-b-2 transition-colors",
-                    active ? "border-gold text-text font-semibold" : "border-transparent text-text-tertiary hover:text-text",
-                  ].join(" ")}
+                  className={["py-3 text-body-sm whitespace-nowrap border-b-2 transition-colors inline-flex items-center gap-1.5", cls].join(" ")}
                 >
+                  {isKyc && (
+                    <span
+                      aria-hidden
+                      className={`h-1.5 w-1.5 rounded-pill ${dotColor} ${kycNeedsAction ? "animate-pulse" : ""}`}
+                    />
+                  )}
                   {t.label}
+                  {isKyc && kycNeedsAction && (
+                    <span className="font-mono text-micro uppercase tracking-[0.1em] text-gold-300">· review</span>
+                  )}
+                  {isKyc && kyc?.status === "APPROVED" && <I.check s={12} className="text-yes-400" />}
                   {t.count !== undefined && <span className="ml-1.5 font-mono text-micro text-text-tertiary">· {t.count}</span>}
                 </a>
               );
