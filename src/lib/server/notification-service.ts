@@ -323,6 +323,23 @@ export function notifyAdminKycReview(adminUserId: string, opts: { playerLabel: s
   });
 }
 
+/**
+ * In-app alert to an officer that a market has closed and is waiting for the
+ * two-officer resolution. Lands in the main bell and deep-links to the resolver
+ * queue. Fired once per market by the resolution-due sweep.
+ */
+export function notifyAdminMarketResolution(adminUserId: string, opts: { title: string; marketId: string }) {
+  return notify({
+    userId: adminUserId,
+    kind: "PROPOSAL", // closest existing admin/ops kind; routed to the resolver queue
+    titleEn: "Market awaiting resolution",
+    titleSw: "Soko linasubiri uamuzi",
+    bodyEn: `"${opts.title.slice(0, 70)}" has closed — resolve the outcome.`,
+    bodySw: `"${opts.title.slice(0, 50)}" limefungwa — tatua matokeo.`,
+    href: "/admin/resolver-queue",
+  });
+}
+
 export function notifyKyc(userId: string, status: "APPROVED" | "REJECTED" | "PENDING_REVIEW" | "ADDITIONAL_INFO") {
   if (status === "ADDITIONAL_INFO") {
     return notify({

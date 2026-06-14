@@ -955,6 +955,9 @@ model PredictionMarket {
   resolutionStage2By  String?
   resolutionStage2At  DateTime?
   objectionsClosedAt  DateTime?
+  /** When officers were alerted this market is closed-by-time + awaiting their
+   *  resolution. Set once by the resolution-due sweep (one alert per market). */
+  resolutionNotifiedAt DateTime?
   proposedBy          String
   createdAt           DateTime               @default(now())
   updatedAt           DateTime               @updatedAt

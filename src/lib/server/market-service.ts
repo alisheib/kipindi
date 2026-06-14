@@ -22,7 +22,7 @@ import { isLockedOut } from "./responsible-gambling";
 import { rateCheck } from "./rate-limit";
 import { getEffectiveConfig, payoutForWhole, settledPayoutWhole } from "./market-config";
 import { recordSnapshot, seedHistory } from "./market-history";
-import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout } from "./notification-service";
+import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, notifyAdminMarketResolution } from "./notification-service";
 import { sendEmailToUser, betPlacedHtml, winNotificationHtml, lossNotificationHtml, cashOutReceiptHtml } from "./email";
 import { onRecruitBet } from "./affiliate-service";
 import { seedMarket, settleHousePosition, canSeedNewMarket, getHousePoolSeedForMarket } from "./house-pool";
@@ -60,6 +60,10 @@ export type StoredMarket = {
   resolutionStage2By: string | null;
   resolutionStage2At: string | null;
   objectionsClosedAt: string | null;
+  /** When admins were alerted that this market is closed-by-time and awaiting
+   *  their resolution. Set once by the resolution-due sweep so the alert fires
+   *  exactly once per market. Null = not yet alerted (or not yet due). */
+  resolutionNotifiedAt?: string | null;
   proposedBy: string;
   createdAt: string;
   updatedAt: string;
@@ -480,6 +484,43 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
 }
 
 /**
+ * Alert officers that REAL markets have closed and are awaiting their
+ * two-officer resolution. Real (non-Demo) markets never auto-resolve — they
+ * wait in the resolver queue for a human pair. This sweep finds markets that
+ * are LIVE + past resolutionAt + not yet alerted, and pushes a one-time in-app
+ * notification (the main bell, deep-linking to the resolver queue) to every
+ * admin/compliance/moderator, then stamps resolutionNotifiedAt so each market
+ * alerts exactly once. Runs fire-and-forget on /markets hits (self-healing, no
+ * cron); the per-market flag + a lock make it idempotent.
+ */
+export async function notifyDueMarketsForResolution(): Promise<{ notified: number }> {
+  const now = Date.now();
+  let notified = 0;
+  const due = (await marketStore.values()).filter(
+    (m) => m.status === "LIVE"
+      && !m.titleEn.startsWith("Demo · ")
+      && Date.parse(m.resolutionAt) <= now
+      && !m.resolutionNotifiedAt,
+  );
+  if (due.length === 0) return { notified: 0 };
+
+  const officers = (await db.user.list()).filter((u) => ["ADMIN", "COMPLIANCE", "MODERATOR"].includes(u.role));
+  for (const m of due) {
+    const stamped = await withLock(`market:${m.id}`, async () => {
+      const cur = await marketStore.get(m.id);
+      // Re-check inside the lock so two concurrent sweeps can't both alert.
+      if (!cur || cur.status !== "LIVE" || cur.resolutionNotifiedAt || Date.parse(cur.resolutionAt) > now) return false;
+      await marketStore.set({ ...cur, resolutionNotifiedAt: new Date().toISOString() });
+      return true;
+    });
+    if (!stamped) continue;
+    notified++;
+    for (const o of officers) notifyAdminMarketResolution(o.id, { title: m.titleEn, marketId: m.id }).catch(() => {});
+  }
+  return { notified };
+}
+
+/**
  * Repair orphaned positions — refund stakes for any open position whose
  * market record no longer exists. This is a defensive boot-time pass
  * that recovers from a Sprint 55 bug where seedDemoMarkets was deleting
@@ -871,6 +912,7 @@ export async function seedDemoMarkets() {
   // Both are idempotent; running them on every /markets page hit is
   // safe and keeps state self-healing without a cron.
   autoResolveExpiredDemoMarkets().catch(() => {});
+  notifyDueMarketsForResolution().catch(() => {});
   repairOrphanedPositions().catch(() => {});
 
   // NOTE: demo "Demo · " markets are no longer seeded (tester feedback) and

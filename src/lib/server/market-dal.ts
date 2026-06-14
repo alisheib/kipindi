@@ -54,6 +54,7 @@ function toStoredMarket(r: any): StoredMarket {
     resolutionStage2By: r.resolutionStage2By,
     resolutionStage2At: iso(r.resolutionStage2At),
     objectionsClosedAt: iso(r.objectionsClosedAt),
+    resolutionNotifiedAt: iso(r.resolutionNotifiedAt) ?? null,
     proposedBy: r.proposedBy,
     createdAt: iso(r.createdAt)!,
     updatedAt: iso(r.updatedAt)!,
@@ -155,6 +156,7 @@ const prismaMarkets: MarketStore = {
         resolutionStage2By: m.resolutionStage2By,
         resolutionStage2At: m.resolutionStage2At ? new Date(m.resolutionStage2At) : null,
         objectionsClosedAt: m.objectionsClosedAt ? new Date(m.objectionsClosedAt) : null,
+        resolutionNotifiedAt: m.resolutionNotifiedAt ? new Date(m.resolutionNotifiedAt) : null,
         proposedBy: m.proposedBy,
         createdAt: new Date(m.createdAt),
       },
@@ -171,6 +173,7 @@ const prismaMarkets: MarketStore = {
         resolutionStage2By: m.resolutionStage2By,
         resolutionStage2At: m.resolutionStage2At ? new Date(m.resolutionStage2At) : null,
         objectionsClosedAt: m.objectionsClosedAt ? new Date(m.objectionsClosedAt) : null,
+        resolutionNotifiedAt: m.resolutionNotifiedAt ? new Date(m.resolutionNotifiedAt) : null,
       },
     });
   },
@@ -230,7 +233,11 @@ const prismaPositions: PositionStore = {
 // Feature-flagged exports
 // ---------------------------------------------------------------------------
 
-const usePrisma = process.env.USE_PRISMA_DAL === "true" && hasDatabase();
+// Prisma whenever a DATABASE_URL is configured (always in prod) — matches
+// store.ts. No longer requires the USE_PRISMA_DAL flag, so forgetting it can't
+// silently revert markets to in-memory. (store.ts holds the prod hard-lock that
+// refuses to boot production without a database; this module loads alongside it.)
+const usePrisma = hasDatabase() && process.env.USE_PRISMA_DAL !== "false";
 
 export const marketStore: MarketStore = usePrisma ? prismaMarkets : memoryMarkets;
 export const positionStore: PositionStore = usePrisma ? prismaPositions : memoryPositions;
