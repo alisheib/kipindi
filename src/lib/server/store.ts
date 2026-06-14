@@ -562,14 +562,26 @@ const memoryDb = {
   },
 };
 
-// Source of truth: Postgres (Prisma DAL) whenever a DATABASE_URL is configured —
-// which is always the case in production. The in-memory Maps above are ONLY a
-// fallback for local dev / tests that run without a database; they never hold
-// real data in production. Making `hasDatabase()` the gate (instead of requiring
-// an explicit USE_PRISMA_DAL=true) removes the footgun where forgetting the flag
-// would silently revert prod to the in-memory store and lose data. An explicit
-// USE_PRISMA_DAL=false is still honoured as a deliberate escape hatch.
+// Postgres (Prisma) is the ONE production data path. It engages whenever a
+// DATABASE_URL is configured — always the case in prod.
 const usePrisma = hasDatabase() && process.env.USE_PRISMA_DAL !== "false";
+
+// Hard lock: if we're actually serving production traffic (NODE_ENV=production)
+// without a database, REFUSE TO START rather than silently fall back to the
+// in-memory store — which would lose data and diverge per instance. There is no
+// scenario where production runs on memory. (Skipped during `next build`, which
+// evaluates modules with NODE_ENV=production but no DB.)
+if (!usePrisma && process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build") {
+  throw new Error(
+    "FATAL: DATABASE_URL is required. The in-memory store is a test-only fallback " +
+    "and must never serve production traffic — set DATABASE_URL (and USE_PRISMA_DAL≠false).",
+  );
+}
+
+// The in-memory Maps above are retained STRICTLY as a fake for unit tests and
+// local dev that run WITHOUT a DATABASE_URL (the test suites create fixed-id
+// records and rely on a wipe-on-run store, so they can't share a persistent DB).
+// They never execute in production — the guard above guarantees it.
 export const db: typeof memoryDb = usePrisma
   ? (prismaDb as unknown as typeof memoryDb)
   : memoryDb;
