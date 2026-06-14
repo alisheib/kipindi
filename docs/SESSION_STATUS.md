@@ -23,11 +23,18 @@ In-memory **fake** retained ONLY for unit tests / local dev with no `DATABASE_UR
 suites use fixed-id records + a wipe-on-run store, so they can't share a persistent DB). It can
 never serve production traffic (guard above).
 
+### ✅ Audit → Postgres — DONE (this session)
+- `audit()` now persists every entry to the `AuditLog` table (async, fire-and-forget, one retry,
+  `entryHash @unique` for idempotency). The in-memory ring is a **write-through cache**; on boot it
+  rehydrates from `AuditLog` in chain order by walking the `prevHash` links → the HMAC chain
+  **continues across restarts/deploys** instead of being lost. Writes funnel through a serialized
+  queue so the chain head can't fork under concurrent callers. Added `prevHash`/`entryHash` columns
+  (migration `20260614190000_audit_chain_persist`) and **dropped the `actorId`→User FK** (an
+  append-only log must never fail to write or cascade-delete when the actor is missing/erased).
+  `verifyChain` now anchors to the window's first `prevHash` (fixes a latent false-BROKEN past 10k
+  entries). Reads stay synchronous over the ring. New `test:audit` (15 assertions) in `predeploy`.
+
 ### ⚠️ STILL in-memory (NOT yet on the DB) — next-session work
-- **Audit ring** (`audit.ts`): `audit()` only pushes to an in-memory ring (10k, on `globalThis`).
-  A Prisma `AuditLog` model EXISTS but is **not written**. → audit history is **lost on every
-  restart/deploy**. Compliance-critical; reports cite "audit-chain proof" which is currently
-  ephemeral. **Migrate `audit()` to also persist to `AuditLog` (async, fire-and-forget).**
 - **Configs** (`affiliate-config.ts`, `market-config.ts`, `ai-poll-config.ts`): held on
   `globalThis` → **admin-saved settings reset to defaults on every deploy.** Persist to DB.
 - **AI-poll generated content** (`ai-poll-generation.ts`): in-memory Map.
@@ -91,7 +98,9 @@ need a dev server on :3009 (`npx next dev -p 3009`) then `BASE=http://localhost:
 ---
 
 ## NEXT SESSION — prioritized
-1. **Audit → Prisma** (`AuditLog`) — stop losing audit history on restart. Compliance-critical.
+1. ~~**Audit → Prisma**~~ — ✅ DONE this session (see "Audit → Postgres" above). After the next
+   deploy, sanity-check `/admin/audit` shows entries surviving a redeploy and chain integrity reads
+   "Valid".
 2. **Config persistence** — affiliate/market/ai-poll configs survive deploys.
 3. **Email delivery** — verify Postmark sender/domain; do one real send to confirm KYC-approved mail
    actually arrives; then **re-enable email uniqueness**.
