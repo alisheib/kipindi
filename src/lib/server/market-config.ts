@@ -17,8 +17,7 @@
  * // TODO Phase 6: back with SystemConfig Prisma table
  */
 import { audit } from "./audit";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { prisma, hasDatabase } from "./prisma";
+import { loadConfig, saveConfig } from "./config-store";
 
 export type RateConfig = {
   /** Tax rate (e.g. 0.04 = 4%). Going to TRA per Income Tax Act $80. */
@@ -90,8 +89,38 @@ const store =
     perMarket: new Map<string, Partial<RateConfig>>(),
   });
 
+// ── Durable persistence (SystemConfig) ──────────────────────────────────────
+// The globalThis cache above is now a write-through cache over the SystemConfig
+// table, so admin retunes of fee/tax/stake config survive deploys instead of
+// silently reverting to DEFAULT_GLOBAL_CONFIG.
+const MARKET_CONFIG_KEY = "market.config";
+type PersistedMarketConfig = { global: RateConfig; perMarket: Array<[string, Partial<RateConfig>]> };
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __50PICK_MARKET_CONFIG_HYDRATED: boolean | undefined;
+}
+
+/** Load persisted config into the cache once per process (before first read). */
+async function ensureHydrated(): Promise<void> {
+  if (globalThis.__50PICK_MARKET_CONFIG_HYDRATED) return;
+  globalThis.__50PICK_MARKET_CONFIG_HYDRATED = true;
+  const stored = await loadConfig<PersistedMarketConfig>(MARKET_CONFIG_KEY);
+  if (stored) {
+    // Merge over defaults so a newly-added field gets its default, not undefined.
+    store.global = { ...DEFAULT_GLOBAL_CONFIG, ...stored.global };
+    store.perMarket = new Map(stored.perMarket ?? []);
+  }
+}
+
+/** Write the whole config through to the DB (fire-and-forget; never throws). */
+function persist(): void {
+  void saveConfig(MARKET_CONFIG_KEY, { global: store.global, perMarket: Array.from(store.perMarket.entries()) });
+}
+
 /** Read merged config — per-market overrides on top of global. */
 export async function getEffectiveConfig(marketId?: string): Promise<RateConfig> {
+  await ensureHydrated();
   if (marketId) {
     const over = store.perMarket.get(marketId);
     if (over) return { ...store.global, ...over };
@@ -100,10 +129,12 @@ export async function getEffectiveConfig(marketId?: string): Promise<RateConfig>
 }
 
 export async function getGlobalConfig(): Promise<RateConfig> {
+  await ensureHydrated();
   return { ...store.global };
 }
 
 export async function listMarketOverrides(): Promise<Array<{ marketId: string; over: Partial<RateConfig> }>> {
+  await ensureHydrated();
   return Array.from(store.perMarket.entries()).map(([marketId, over]) => ({ marketId, over }));
 }
 
@@ -179,10 +210,12 @@ function validate(updates: Partial<RateConfig>): { ok: true } | { ok: false; rea
 
 export async function setGlobalConfig(updates: Partial<RateConfig>, officerId: string):
   Promise<{ ok: true; config: RateConfig } | { ok: false; error: string }> {
+  await ensureHydrated();
   const v = validate(updates);
   if (!v.ok) return { ok: false, error: v.reason };
   const before = { ...store.global };
   store.global = { ...store.global, ...updates };
+  persist();
   audit({
     category: "ADMIN",
     action: "config.global.updated",
@@ -196,11 +229,13 @@ export async function setGlobalConfig(updates: Partial<RateConfig>, officerId: s
 
 export async function setMarketOverride(marketId: string, updates: Partial<RateConfig>, officerId: string):
   Promise<{ ok: true; config: RateConfig } | { ok: false; error: string }> {
+  await ensureHydrated();
   const v = validate(updates);
   if (!v.ok) return { ok: false, error: v.reason };
   const before = store.perMarket.get(marketId) ?? {};
   const merged = { ...before, ...updates };
   store.perMarket.set(marketId, merged);
+  persist();
   audit({
     category: "ADMIN",
     action: "config.market.override",
@@ -213,8 +248,10 @@ export async function setMarketOverride(marketId: string, updates: Partial<RateC
 }
 
 export async function clearMarketOverride(marketId: string, officerId: string): Promise<{ ok: true }> {
+  await ensureHydrated();
   const before = store.perMarket.get(marketId);
   store.perMarket.delete(marketId);
+  persist();
   audit({
     category: "ADMIN",
     action: "config.market.cleared",

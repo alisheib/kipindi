@@ -13,7 +13,10 @@
 import { audit } from "./audit";
 import { randomId } from "./crypto";
 import { prisma, hasDatabase } from "./prisma";
+import { loadConfig, saveConfig } from "./config-store";
 import type { MarketCategory } from "./market-service";
+
+const DISABLED_CATEGORIES_KEY = "sources.disabled_categories";
 
 export type TrustedSource = {
   id: string;
@@ -38,6 +41,20 @@ const sources: Map<string, TrustedSource> =
   globalThis.__50PICK_SOURCES ?? (globalThis.__50PICK_SOURCES = new Map());
 const disabledCategories: Set<MarketCategory> =
   globalThis.__50PICK_DISABLED_CATEGORIES ?? (globalThis.__50PICK_DISABLED_CATEGORIES = new Set());
+
+// Persist the disabled-category set so an operator-disabled category (a
+// compliance action) stays disabled across deploys instead of silently
+// re-enabling. Write-through on change; hydrate once before first read.
+declare global {
+  // eslint-disable-next-line no-var
+  var __50PICK_DISABLED_CATEGORIES_HYDRATED: boolean | undefined;
+}
+async function ensureCategoriesHydrated(): Promise<void> {
+  if (globalThis.__50PICK_DISABLED_CATEGORIES_HYDRATED) return;
+  globalThis.__50PICK_DISABLED_CATEGORIES_HYDRATED = true;
+  const stored = await loadConfig<MarketCategory[]>(DISABLED_CATEGORIES_KEY);
+  if (stored) { disabledCategories.clear(); for (const c of stored) disabledCategories.add(c); }
+}
 
 // ---------------------------------------------------------------------------
 // DAL interface + implementations
@@ -208,16 +225,20 @@ export async function removeSource(id: string, officerId: string) {
 }
 
 export async function isCategoryDisabled(c: MarketCategory): Promise<boolean> {
+  await ensureCategoriesHydrated();
   return disabledCategories.has(c);
 }
 
 export async function listDisabledCategories(): Promise<MarketCategory[]> {
+  await ensureCategoriesHydrated();
   return Array.from(disabledCategories.values());
 }
 
 export async function setCategoryEnabled(c: MarketCategory, enabled: boolean, officerId: string) {
+  await ensureCategoriesHydrated();
   if (enabled) disabledCategories.delete(c);
   else disabledCategories.add(c);
+  void saveConfig(DISABLED_CATEGORIES_KEY, Array.from(disabledCategories.values()));
   audit({
     category: "ADMIN",
     action: enabled ? "category.enabled" : "category.disabled",

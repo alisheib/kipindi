@@ -12,6 +12,9 @@
  * pause the whole feature from the admin page.
  */
 import { audit } from "./audit";
+import { loadConfig, saveConfig } from "./config-store";
+
+const PROPOSALS_CONFIG_KEY = "proposals.config";
 
 export type ProposalsConfig = {
   /** Master switch. When false: board is read-only — no new submissions, no
@@ -43,6 +46,12 @@ const stored =
   globalThis.__50PICK_PROPOSALS_CONFIG ??
   (globalThis.__50PICK_PROPOSALS_CONFIG = { ...DEFAULT_PROPOSALS_CONFIG });
 
+// Restore persisted config on boot (eager; sync getters keep zero ripple). Write
+// through on set so admin changes survive deploys. No-ops without a DB.
+void loadConfig<ProposalsConfig>(PROPOSALS_CONFIG_KEY)
+  .then((persisted) => { if (persisted) globalThis.__50PICK_PROPOSALS_CONFIG = { ...DEFAULT_PROPOSALS_CONFIG, ...persisted }; })
+  .catch(() => {});
+
 export function getProposalsConfig(): ProposalsConfig {
   return { ...(globalThis.__50PICK_PROPOSALS_CONFIG ?? stored) };
 }
@@ -62,6 +71,7 @@ export function setProposalsConfig(updates: Partial<ProposalsConfig>, officerId:
   const v = validate(merged);
   if (!v.ok) return { ok: false, error: v.reason };
   globalThis.__50PICK_PROPOSALS_CONFIG = merged;
+  void saveConfig(PROPOSALS_CONFIG_KEY, merged);
   audit({
     category: "ADMIN",
     action: "proposals.config.updated",

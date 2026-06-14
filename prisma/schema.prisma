@@ -1123,3 +1123,17 @@ model TotpSecret {
   secret    String
   createdAt DateTime @default(now())
 }
+
+// ============================================================================
+// SYSTEM CONFIG — durable key/value store for admin-tunable settings that were
+// previously globalThis-only (market fee/stake config, house-pool balance+seeds,
+// affiliate/proposals/ai-poll config, disabled market categories). Each module
+// owns one or more keys; the value is the module's config object as JSON. These
+// reset to code defaults on every deploy unless persisted here.
+// ============================================================================
+
+model SystemConfig {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}

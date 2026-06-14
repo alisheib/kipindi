@@ -13,6 +13,9 @@
  * the whole program dark, or enable only the modes they've cleared.
  */
 import { audit } from "./audit";
+import { loadConfig, saveConfig } from "./config-store";
+
+const AFFILIATE_CONFIG_KEY = "affiliate.config";
 
 export type BonusRecipient = "NEW" | "REFERRER" | "BOTH";
 export type BonusTrigger = "SIGNUP" | "FIRST_DEPOSIT";
@@ -89,6 +92,15 @@ const stored =
   globalThis.__50PICK_AFFILIATE_CONFIG ??
   (globalThis.__50PICK_AFFILIATE_CONFIG = deepClone(DEFAULT_AFFILIATE_CONFIG));
 
+// Restore the persisted config into the cache on boot. Getters are sync (58 call
+// sites), so rather than make them async we hydrate eagerly at module load and
+// write through on every set — admin retunes now survive deploys. The only race
+// is a read in the first moments after a cold boot, which harmlessly returns
+// defaults until this resolves. No-ops without a DB (dev/tests).
+void loadConfig<AffiliateConfig>(AFFILIATE_CONFIG_KEY)
+  .then((persisted) => { if (persisted) globalThis.__50PICK_AFFILIATE_CONFIG = mergeConfig(DEFAULT_AFFILIATE_CONFIG, persisted); })
+  .catch(() => {});
+
 export function getAffiliateConfig(): AffiliateConfig {
   return deepClone(globalThis.__50PICK_AFFILIATE_CONFIG ?? stored);
 }
@@ -127,6 +139,7 @@ export function setAffiliateConfig(updates: DeepPartial<AffiliateConfig>, office
   const v = validate(merged);
   if (!v.ok) return { ok: false, error: v.reason };
   globalThis.__50PICK_AFFILIATE_CONFIG = merged;
+  void saveConfig(AFFILIATE_CONFIG_KEY, merged);
   audit({
     category: "ADMIN",
     action: "affiliate.config.updated",

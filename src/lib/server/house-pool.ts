@@ -29,6 +29,7 @@
  */
 import { audit } from "./audit";
 import { prisma, hasDatabase } from "./prisma";
+import { loadConfig, saveConfig } from "./config-store";
 
 export type HousePoolConfig = {
   /** TZS injected per side (YES + NO) when a market opens. Total seed = 2x this. */
@@ -83,6 +84,35 @@ const pool: HousePoolStore =
   });
 
 let ledgerSeq = pool.ledger.length;
+
+// ── Durable persistence (SystemConfig) ──────────────────────────────────────
+// The ledger is already DB-backed; the running balance, per-market seeds, and
+// config were globalThis-only and reset to the hardcoded 1M default on every
+// deploy (desyncing from the ledger). Persist them write-through so the reserve
+// survives restarts.
+const HOUSE_POOL_KEY = "house.pool.state";
+type PersistedHousePool = { balance: number; config: HousePoolConfig; seeds: Array<[string, number]> };
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __50PICK_HOUSE_POOL_HYDRATED: boolean | undefined;
+}
+
+async function ensureHydrated(): Promise<void> {
+  if (globalThis.__50PICK_HOUSE_POOL_HYDRATED) return;
+  globalThis.__50PICK_HOUSE_POOL_HYDRATED = true;
+  const stored = await loadConfig<PersistedHousePool>(HOUSE_POOL_KEY);
+  if (stored) {
+    pool.balance = stored.balance;
+    pool.config = { ...DEFAULT_HOUSE_POOL_CONFIG, ...stored.config };
+    pool.seeds = new Map(stored.seeds ?? []);
+  }
+}
+
+/** Write balance + config + seeds through to the DB (fire-and-forget). */
+function persistState(): void {
+  void saveConfig(HOUSE_POOL_KEY, { balance: pool.balance, config: pool.config, seeds: Array.from(pool.seeds.entries()) });
+}
 
 // ---------------------------------------------------------------------------
 // Ledger DAL — feature-flagged between memory array and Prisma table
@@ -169,14 +199,17 @@ async function pushLedger(entry: Omit<HousePoolLedgerEntry, "id" | "createdAt">)
 // --- Read ----
 
 export async function getHousePoolBalance(): Promise<number> {
+  await ensureHydrated();
   return pool.balance;
 }
 
 export async function getHousePoolConfig(): Promise<HousePoolConfig> {
+  await ensureHydrated();
   return { ...pool.config };
 }
 
 export async function getHousePoolSeedForMarket(marketId: string): Promise<number> {
+  await ensureHydrated();
   return pool.seeds.get(marketId) ?? 0;
 }
 
@@ -191,6 +224,7 @@ export async function getHousePoolStats(): Promise<{
   totalSeeded: number;
   isLow: boolean;
 }> {
+  await ensureHydrated();
   let totalSeeded = 0;
   for (const v of pool.seeds.values()) totalSeeded += v * 2; // per-side x 2
   return {
@@ -206,7 +240,9 @@ export async function getHousePoolStats(): Promise<{
 
 export async function topUpHousePool(amount: number, officerId: string): Promise<{ ok: true; balance: number } | { ok: false; error: string }> {
   if (!Number.isFinite(amount) || amount <= 0) return { ok: false, error: "Amount must be positive." };
+  await ensureHydrated();
   pool.balance += amount;
+  persistState();
   await pushLedger({
     type: "TOP_UP",
     amount,
@@ -228,8 +264,10 @@ export async function topUpHousePool(amount: number, officerId: string): Promise
 
 export async function withdrawHousePool(amount: number, officerId: string): Promise<{ ok: true; balance: number } | { ok: false; error: string }> {
   if (!Number.isFinite(amount) || amount <= 0) return { ok: false, error: "Amount must be positive." };
+  await ensureHydrated();
   if (amount > pool.balance) return { ok: false, error: `Insufficient reserve. Balance: TZS ${pool.balance.toLocaleString()}.` };
   pool.balance -= amount;
+  persistState();
   await pushLedger({
     type: "WITHDRAW",
     amount: -amount,
@@ -261,8 +299,10 @@ export async function setHousePoolConfig(
     if (!Number.isFinite(updates.minReserve) || updates.minReserve < 0)
       return { ok: false, error: "Min reserve must be >= 0." };
   }
+  await ensureHydrated();
   const before = { ...pool.config };
   pool.config = { ...pool.config, ...updates };
+  persistState();
   audit({
     category: "ADMIN",
     action: "house_pool.config_updated",
@@ -285,6 +325,7 @@ export async function setHousePoolConfig(
  * If reserve is 0 or seedPerSide is 0, returns 0 (no seeding).
  */
 export async function seedMarket(marketId: string): Promise<number> {
+  await ensureHydrated();
   const cfg = pool.config;
   if (cfg.seedPerSide <= 0) return 0;
 
@@ -296,6 +337,7 @@ export async function seedMarket(marketId: string): Promise<number> {
 
   pool.balance -= perSide * 2;
   pool.seeds.set(marketId, perSide);
+  persistState();
 
   await pushLedger({
     type: "SEED_OUT",
@@ -325,6 +367,7 @@ export async function settleHousePosition(
   grossPool: number,
   reserveRate: number,
 ): Promise<{ returnedToReserve: number; reserveFee: number; lossAbsorbed: number }> {
+  await ensureHydrated();
   const perSide = pool.seeds.get(marketId) ?? 0;
 
   // 1. Reserve fee from the gross pool (configurable %).
@@ -349,6 +392,7 @@ export async function settleHousePosition(
       pool.balance += reserveFee;
       await pushLedger({ type: "RESERVE_FEE", amount: reserveFee, balanceAfter: pool.balance, marketId, note: `Reserve fee ${(reserveRate * 100).toFixed(1)}%`, actorId: "system" });
     }
+    persistState();
     return { returnedToReserve: returned, reserveFee, lossAbsorbed: 0 };
   }
 
@@ -373,6 +417,7 @@ export async function settleHousePosition(
     await pushLedger({ type: "RESERVE_FEE", amount: reserveFee, balanceAfter: pool.balance, marketId, note: `Reserve fee ${(reserveRate * 100).toFixed(1)}%`, actorId: "system" });
   }
 
+  persistState();
   return { returnedToReserve: returned, reserveFee, lossAbsorbed };
 }
 
