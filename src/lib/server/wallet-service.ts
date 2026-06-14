@@ -149,10 +149,10 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
   // snapshot) prevents the deposit from clobbering those concurrent changes.
   const newBalance = await withLock(`wallet:${userId}`, async () => {
     const fresh = await db.wallet.findByUserId(userId);
-    const base = fresh ? fresh.balance : wallet.balance;
-    const next = base + parse.data.amount;
-    if (fresh) await db.wallet.update(fresh.id, { balance: next });
-    return next;
+    if (!fresh) return wallet.balance + parse.data.amount;
+    // Atomic +delta on the live row — never writes back a stale absolute balance.
+    const updated = await db.wallet.adjust(fresh.id, { balance: parse.data.amount });
+    return updated?.balance ?? fresh.balance + parse.data.amount;
   });
   await db.txn.update(txnId, { status: "CONFIRMED", providerRef: result.providerRef, balanceAfter: newBalance, completedAt: new Date().toISOString() });
   audit({ category: "WALLET", action: "deposit.confirmed", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: result.providerRef, balanceAfter: newBalance } });
@@ -214,9 +214,12 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
     if (w.status !== "ACTIVE") return { ok: false as const, error: "Wallet frozen.", code: "SUSPENDED" as const };
     if (w.balance < amount) return { ok: false as const, error: "Insufficient balance.", code: "INVALID" as const };
 
-    // Move funds from spendable balance into `hold` while in flight.
-    const updated = await db.wallet.update(w.id, { balance: w.balance - amount, hold: w.hold + amount });
-    const balanceAfter = updated?.balance ?? w.balance - amount;
+    // Move funds from spendable balance into `hold` while in flight — atomic and
+    // overdraw-guarded (WHERE balance >= amount) so concurrent debits on the same
+    // wallet can't double-spend even across instances.
+    const updated = await db.wallet.adjust(w.id, { balance: -amount, hold: amount }, { requireBalanceGte: amount });
+    if (!updated) return { ok: false as const, error: "Insufficient balance.", code: "INVALID" as const };
+    const balanceAfter = updated.balance;
     await db.txn.create({
       id: txnId,
       walletId: w.id,
@@ -253,7 +256,8 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
   if (!result.ok) {
     await withLock(`wallet:${userId}`, async () => {
       const w = await db.wallet.findByUserId(userId);
-      if (w) await db.wallet.update(w.id, { balance: w.balance + amount, hold: Math.max(0, w.hold - amount) });
+      // Reverse exactly this withdrawal's delta: return funds, release the hold.
+      if (w) await db.wallet.adjust(w.id, { balance: amount, hold: -amount });
     });
     await db.txn.update(txnId, { status: "FAILED", description: `Withdrawal failed: ${result.reason}` });
     audit({ category: "WALLET", action: "withdraw.failed", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { reason: result.reason } });
@@ -278,7 +282,8 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
   // Success — the held funds have left the building; clear this withdrawal's hold.
   await withLock(`wallet:${userId}`, async () => {
     const w = await db.wallet.findByUserId(userId);
-    if (w) await db.wallet.update(w.id, { hold: Math.max(0, w.hold - amount) });
+    // Funds have left the platform — release this withdrawal's hold.
+    if (w) await db.wallet.adjust(w.id, { hold: -amount });
   });
   await db.txn.update(txnId, { status: "CONFIRMED", providerRef: result.providerRef, completedAt: new Date().toISOString() });
   audit({ category: "WALLET", action: "withdraw.confirmed", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: result.providerRef, net } });
@@ -317,8 +322,8 @@ export async function creditInternal(
   return withLock(`wallet:${userId}`, async () => {
     const wallet = await db.wallet.findByUserId(userId);
     if (!wallet || wallet.status !== "ACTIVE") return null;
-    const newBalance = wallet.balance + amount;
-    await db.wallet.update(wallet.id, { balance: newBalance });
+    const updated = await db.wallet.adjust(wallet.id, { balance: amount });
+    const newBalance = updated?.balance ?? wallet.balance + amount;
     const now = new Date().toISOString();
     await db.txn.create({
       id: `txn_${randomId(12)}`,

@@ -233,8 +233,11 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
     if (!wallet || wallet.status !== "ACTIVE") return { ok: false as const, error: "Wallet unavailable.", code: "NOT_FOUND" as const };
     if (wallet.balance < opts.stake) return { ok: false as const, error: "Not enough balance.", code: "INVALID" as const };
 
-    const newBalance = wallet.balance - opts.stake;
-    await db.wallet.update(wallet.id, { balance: newBalance });
+    // Atomic, overdraw-guarded debit (WHERE balance >= stake) so two concurrent
+    // bets on the same wallet can't both pass the check above and double-spend.
+    const debited = await db.wallet.adjust(wallet.id, { balance: -opts.stake }, { requireBalanceGte: opts.stake });
+    if (!debited) return { ok: false as const, error: "Not enough balance.", code: "INVALID" as const };
+    const newBalance = debited.balance;
 
     const payoutIfWin = await projectedPayout(market, opts.side, opts.stake);
     const positionId = `pos_${randomId(10)}`;
@@ -424,8 +427,8 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
             { yesPool: cur.yesPool, noPool: cur.noPool, side: p.side, stake: p.stake },
             settleCfg,
           );
-          const newBal = w.balance + payout;
-          await db.wallet.update(w.id, { balance: newBal });
+          const updated = await db.wallet.adjust(w.id, { balance: payout });
+          const newBal = updated?.balance ?? w.balance + payout;
           p.status = "WIN"; p.finalPayout = payout; p.settledAt = cur.resolutionStage2At!;
           await positionStore.set(p);
           await db.txn.create({
@@ -544,8 +547,8 @@ export async function repairOrphanedPositions(): Promise<{ repaired: number; ref
     // Orphaned — refund the stake to the wallet, mark VOID, audit.
     const w = await db.wallet.findByUserId(p.userId);
     if (!w) continue;
-    const newBal = w.balance + p.stake;
-    await db.wallet.update(w.id, { balance: newBal });
+    const updated = await db.wallet.adjust(w.id, { balance: p.stake });
+    const newBal = updated?.balance ?? w.balance + p.stake;
     p.status = "VOID";
     p.finalPayout = p.stake;
     p.settledAt = new Date().toISOString();
@@ -674,9 +677,9 @@ export async function cashOutPosition(
     p.settledAt = now;
     await positionStore.set(p);
 
-    // Credit wallet + record the txn.
-    const newBalance = wallet.balance + value;
-    await db.wallet.update(wallet.id, { balance: newBalance });
+    // Credit wallet + record the txn (atomic +delta on the live row).
+    const credited = await db.wallet.adjust(wallet.id, { balance: value });
+    const newBalance = credited?.balance ?? wallet.balance + value;
     await db.txn.create({
       id: `txn_${randomId(12)}`,
       walletId: wallet.id, userId,
@@ -780,7 +783,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
     for (const p of myPositions) {
       const w = await db.wallet.findByUserId(p.userId);
       if (!w) continue;
-      const updated = await db.wallet.update(w.id, { balance: w.balance + p.stake });
+      const updated = await db.wallet.adjust(w.id, { balance: p.stake });
       const balanceAfter = updated?.balance ?? w.balance + p.stake;
       p.status = "VOID";
       p.finalPayout = p.stake;
@@ -812,7 +815,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
           { yesPool: m.yesPool, noPool: m.noPool, side: p.side, stake: p.stake },
           settleCfg,
         );
-        const updated = await db.wallet.update(w.id, { balance: w.balance + payout });
+        const updated = await db.wallet.adjust(w.id, { balance: payout });
         const balanceAfter = updated?.balance ?? w.balance + payout;
         p.status = "WIN"; p.finalPayout = payout; p.settledAt = m.resolutionStage2At!;
         await positionStore.set(p);

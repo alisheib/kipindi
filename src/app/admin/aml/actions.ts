@@ -64,7 +64,7 @@ export async function approveAmlAction(formData: FormData) {
       if (txn.type !== "WITHDRAWAL") return;
       await withLock(`wallet:${txn.userId}`, async () => {
         const w = await db.wallet.findByUserId(txn.userId);
-        if (w) await db.wallet.update(w.id, { hold: Math.max(0, w.hold - Math.abs(txn.amount)) });
+        if (w) await db.wallet.adjust(w.id, { hold: -Math.abs(txn.amount) });
       });
     };
 
@@ -157,10 +157,7 @@ export async function rejectAmlAction(formData: FormData) {
           // withdraw() moved the funds balance -> hold. Reversing on reject must
           // BOTH credit balance AND release the hold, or `hold` leaks upward
           // forever (corrupting the balance+hold ledger invariant + AML totals).
-          await db.wallet.update(wallet.id, {
-            balance: wallet.balance + amt,
-            hold: Math.max(0, wallet.hold - amt),
-          });
+          await db.wallet.adjust(wallet.id, { balance: amt, hold: -amt });
         }
       });
     }

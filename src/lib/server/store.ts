@@ -419,6 +419,36 @@ const memoryDb = {
       store.wallets.set(id, next);
       return next;
     },
+    /**
+     * Atomically apply balance/hold/pending DELTAS, optionally guarded by a
+     * minimum (for overdraw-safe debits). Returns the updated wallet, or null
+     * if the wallet is missing OR a guard failed (e.g. insufficient balance).
+     *
+     * This is the money-safe mutation: the Prisma implementation maps to a
+     * single conditional `updateMany` (DB-atomic `increment`/`decrement` with a
+     * `WHERE balance >= n` guard), so concurrent debits/credits on the same
+     * wallet can never lose an update or overdraw — correct even across multiple
+     * server instances, where the in-process lock alone would not be.
+     */
+    adjust: (
+      id: string,
+      deltas: { balance?: number; hold?: number; pending?: number },
+      opts?: { requireBalanceGte?: number; requireHoldGte?: number },
+    ): StoredWallet | null => {
+      const w = store.wallets.get(id);
+      if (!w) return null;
+      if (opts?.requireBalanceGte !== undefined && w.balance < opts.requireBalanceGte) return null;
+      if (opts?.requireHoldGte !== undefined && w.hold < opts.requireHoldGte) return null;
+      const next: StoredWallet = {
+        ...w,
+        balance: w.balance + (deltas.balance ?? 0),
+        hold: w.hold + (deltas.hold ?? 0),
+        pending: w.pending + (deltas.pending ?? 0),
+        updatedAt: new Date().toISOString(),
+      };
+      store.wallets.set(id, next);
+      return next;
+    },
   },
   txn: {
     create: (t: StoredTxn) => { store.txns.set(t.id, t); return t; },

@@ -572,6 +572,34 @@ export const prismaDb = {
         return null;
       }
     },
+    // Atomic balance/hold/pending deltas with optional minimum guards. Maps to a
+    // single conditional updateMany so the DB applies increment/decrement
+    // atomically (no lost updates) and the WHERE guard makes debits overdraw-safe
+    // under concurrency — correct even across multiple instances. Returns the
+    // updated wallet, or null if missing or a guard failed (insufficient funds).
+    adjust: async (
+      id: string,
+      deltas: { balance?: number; hold?: number; pending?: number },
+      opts?: { requireBalanceGte?: number; requireHoldGte?: number },
+    ): Promise<StoredWallet | null> => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const where: any = { id };
+        if (opts?.requireBalanceGte !== undefined) where.balance = { gte: opts.requireBalanceGte };
+        if (opts?.requireHoldGte !== undefined) where.hold = { gte: opts.requireHoldGte };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const data: any = {};
+        if (deltas.balance !== undefined) data.balance = { increment: deltas.balance };
+        if (deltas.hold !== undefined) data.hold = { increment: deltas.hold };
+        if (deltas.pending !== undefined) data.pending = { increment: deltas.pending };
+        const res = await pc().wallet.updateMany({ where, data });
+        if (res.count === 0) return null;
+        const row = await pc().wallet.findUnique({ where: { id } });
+        return row ? toStoredWallet(row) : null;
+      } catch {
+        return null;
+      }
+    },
   },
 
   // ── TRANSACTION ───────────────────────────────────────────────────────────
