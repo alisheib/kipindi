@@ -35,11 +35,16 @@ never serve production traffic (guard above).
   entries). Reads stay synchronous over the ring. New `test:audit` (15 assertions) in `predeploy`.
 
 ### ⚠️ STILL in-memory (NOT yet on the DB) — next-session work
-- **Configs** (`affiliate-config.ts`, `market-config.ts`, `ai-poll-config.ts`): held on
-  `globalThis` → **admin-saved settings reset to defaults on every deploy.** Persist to DB.
-- **AI-poll generated content** (`ai-poll-generation.ts`): in-memory Map.
-- **house-pool balance / seeds** (the ledger IS on DB; the running balance + per-market seeds are
-  ephemeral state).
+- ~~Configs reset on deploy~~ — ✅ FIXED 2026-06-15. `SystemConfig` key/value table +
+  write-through cache (migration `20260615120000_system_config`). Persisted: market-config
+  (fees/stake/levies), house-pool balance+seeds+config, affiliate-config, proposals-config,
+  source-registry disabled-categories. `getEffectiveConfig`/house-pool await-hydrate; affiliate/
+  proposals eager-hydrate at module load (sync getters). See `config-store.ts`.
+- **AI-poll generated content** (`ai-poll-generation.ts`): in-memory Map — but the AI polls
+  themselves ARE DB-backed (`aIPoll` model); this Map is generation working-state.
+- **`ai-poll-config.ts`**: intentionally NOT persisted — env-var-backed operator prefs with safe
+  cold-start defaults (by design).
+- **`market-history.ts`** (price-chart points): in-memory only — cosmetic, rebuilds from trades.
 - `auth-service` `pendingRegistration` (transient OTP intent — fine to stay in-memory).
 
 ---
@@ -101,7 +106,7 @@ need a dev server on :3009 (`npx next dev -p 3009`) then `BASE=http://localhost:
 1. ~~**Audit → Prisma**~~ — ✅ DONE this session (see "Audit → Postgres" above). After the next
    deploy, sanity-check `/admin/audit` shows entries surviving a redeploy and chain integrity reads
    "Valid".
-2. **Config persistence** — affiliate/market/ai-poll configs survive deploys.
+2. ~~**Config persistence**~~ — ✅ DONE 2026-06-15 (SystemConfig table + write-through; see above).
 3. **Email delivery** — verify Postmark sender/domain; do one real send to confirm KYC-approved mail
    actually arrives; then **re-enable email uniqueness**.
 4. **CI** — wire `predeploy` (typecheck + tests + build + gauntlet) into GitHub Actions; add
