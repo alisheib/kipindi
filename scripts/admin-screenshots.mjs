@@ -56,8 +56,15 @@ for (const theme of ["dark", "light"]) {
     viewport: { width: 1440, height: 900 },
     colorScheme: theme,
   });
-  // Boot demo session
-  await (await ctx.newPage()).goto(`${BASE}/auth/demo`, { waitUntil: "networkidle" });
+  // Boot demo session AND promote it to ADMIN — without this the demo user is a
+  // PLAYER, so every /admin/* route silently redirects to the public site and we
+  // captured the homepage instead of the admin pages. The admin layout reads the
+  // role from the DB, so promoting via the dev endpoint (same context cookies)
+  // unlocks the admin surfaces. (Dev-only route; 404 in production.)
+  const boot = await ctx.newPage();
+  await boot.goto(`${BASE}/auth/demo`, { waitUntil: "networkidle" });
+  await boot.request.post(`${BASE}/api/dev-test/promote-admin`, { data: { phone: "+255700000000" } });
+  await boot.close();
 
   // Drill down — pick the demo user as the per-player target
   const probe = await ctx.newPage();
