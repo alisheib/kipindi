@@ -384,3 +384,28 @@ export function notifyKyc(userId: string, status: "APPROVED" | "REJECTED" | "PEN
     href: "/profile/kyc",
   });
 }
+
+/** Source-of-funds review outcome. ACCEPTED unblocks the deposit gate; REJECTED
+ *  asks the player to re-declare (deposits over the threshold stay blocked). */
+export function notifySof(userId: string, status: "ACCEPTED" | "REJECTED") {
+  if (status === "ACCEPTED") {
+    return notify({
+      userId,
+      kind: "KYC",
+      titleEn: "Source of funds approved",
+      titleSw: "Asili ya pesa imethibitishwa",
+      bodyEn: "Your declaration was accepted — you can deposit as normal.",
+      bodySw: "Tamko lako limekubaliwa — unaweza kuweka pesa kama kawaida.",
+      href: "/wallet",
+    });
+  }
+  return notify({
+    userId,
+    kind: "KYC",
+    titleEn: "Source of funds needs review",
+    titleSw: "Asili ya pesa inahitaji ukaguzi",
+    bodyEn: "Please update your source-of-funds declaration and resubmit.",
+    bodySw: "Tafadhali sasisha tamko la asili ya pesa na uwasilishe tena.",
+    href: "/profile/source-of-funds",
+  });
+}

@@ -4,6 +4,7 @@ import { I } from "@/components/ui/glyphs";
 import { db, type StoredTxn, type StoredSourceOfFunds } from "@/lib/server/store";
 import { getAuditPage } from "@/lib/server/audit";
 import { listPendingKyc } from "@/lib/server/kyc-service";
+import { SofReviewRow } from "./sof-review-client";
 
 export const metadata = { title: "Admin · Two-person approvals" };
 export const dynamic = "force-dynamic";
@@ -127,7 +128,8 @@ export default async function AdminApprovalsPage() {
                     <th className="text-left py-2 pr-3">User</th>
                     <th className="text-left py-2 pr-3">Source</th>
                     <th className="text-left py-2 pr-3">Income band</th>
-                    <th className="text-left py-2 pl-3">Status</th>
+                    <th className="text-left py-2 pr-3">Status</th>
+                    <th className="text-right py-2 pl-3">Review</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -137,7 +139,8 @@ export default async function AdminApprovalsPage() {
                       <td className="py-2 pr-3"><a href={`/admin/players/${s.userId}`} className="font-mono text-royal hover:underline">{s.userId.slice(0, 14)}…</a></td>
                       <td className="py-2 pr-3 font-medium text-text">{s.declaredSource}</td>
                       <td className="py-2 pr-3 font-mono">{s.declaredAnnualIncomeBand}</td>
-                      <td className="py-2 pl-3"><Chip size="sm" variant="warning">{s.reviewStatus}</Chip></td>
+                      <td className="py-2 pr-3"><Chip size="sm" variant="warning">{s.reviewStatus}</Chip></td>
+                      <td className="py-2 pl-3"><div className="flex justify-end"><SofReviewRow userId={s.userId} /></div></td>
                     </tr>
                   ))}
                 </tbody>
