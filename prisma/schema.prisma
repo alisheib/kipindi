@@ -260,7 +260,6 @@ model User {
   reviewedFlags           AntiFraudFlag[]      @relation("FlagReviewer")
   responsibleGambling     ResponsibleGambling?
   notifications           Notification[]
-  auditEntries            AuditLog[]           @relation("AuditActor")
   affiliateAgent          AffiliateAgent?
   recruitedBy             String?
   recruitedById           AffiliateAgent?      @relation("AgentRecruits", fields: [recruitedBy], references: [userId])
@@ -711,14 +710,21 @@ model AuditLog {
   id         String        @id @default(cuid())
   category   AuditCategory
   action     String // verb-noun: "user.login", "bet.placed", "kyc.approved"
+  // No FK to User on purpose: an append-only audit log must never fail to write
+  // (or be cascade-deleted) because the actor row is missing or was erased under
+  // a GDPR/DSAR request. actorId is a plain indexed string.
   actorId    String?
-  actor      User?         @relation("AuditActor", fields: [actorId], references: [id])
   targetType String?
   targetId   String?
   payload    Json?
   ip         String?
   userAgent  String?
   createdAt  DateTime      @default(now())
+  // HMAC chain: prevHash links to the previous entry's entryHash ("GENESIS" for
+  // the first); entryHash is the HMAC over the row. Together they make the table
+  // tamper-evident — any deletion or in-place edit breaks the chain on verify.
+  prevHash   String        @default("GENESIS")
+  entryHash  String        @unique
 
   @@index([category, createdAt])
   @@index([actorId, createdAt])
