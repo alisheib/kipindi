@@ -17,7 +17,7 @@ import {
   grossGamingRevenue, netGamingRevenue, kycFunnel, rgRosterCounts,
 } from "../analytics";
 import { getGlobalConfig } from "../market-config";
-import type { Report, SignatureRow } from "./types";
+import type { Report, Row, SignatureRow } from "./types";
 
 /** Standard regulator attestation block — three roles applied at the foot
  *  of every hand-off-grade report. Names are intentionally placeholders;
@@ -623,6 +623,234 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// 7 · KYC RE-VERIFICATION ROSTER  (internal · customer comms)
+// ─────────────────────────────────────────────────────────────────────
+
+const REVERIFY_MONTHS = 24;
+const maskUserId = (id: string) => `${id.replace(/^usr_/, "").slice(0, 4)}…${id.slice(-4)}`;
+const maskNidaTail = (n: string | null | undefined) => (n ? `•••• ${n.slice(-4)}` : "—");
+
+export async function buildKycReverify(generatorId: string): Promise<Report> {
+  const now = Date.now();
+  const dueWindowMs = REVERIFY_MONTHS * 30 * 24 * 3600_000; // ≈ 24 months
+  const approved = (await db.kyc.list()).filter((k) => k.status === "APPROVED");
+
+  let dueNow = 0, dueSoon = 0;
+  const rows: Row[] = approved.map((k) => {
+    const anchor = k.reviewedAt ?? k.nidaVerifiedAt ?? k.submittedAt ?? k.updatedAt;
+    const anchorMs = anchor ? new Date(anchor).getTime() : now;
+    const dueAt = anchorMs + dueWindowMs;
+    const daysToDue = Math.round((dueAt - now) / (24 * 3600_000));
+    const status = daysToDue <= 0 ? "DUE NOW" : daysToDue <= 90 ? "DUE ≤ 90d" : "OK";
+    if (status === "DUE NOW") dueNow++; else if (status === "DUE ≤ 90d") dueSoon++;
+    return {
+      player: maskUserId(k.userId),
+      nida: maskNidaTail(k.nidaNumber),
+      verifiedOn: anchor ? anchor.slice(0, 10) : "—",
+      dueOn: new Date(dueAt).toISOString().slice(0, 10),
+      daysToDue,
+      status,
+    };
+  }).sort((a, b) => (a.daysToDue as number) - (b.daysToDue as number));
+
+  return {
+    title: "KYC re-verification roster",
+    subtitle: `Re-verify every ${REVERIFY_MONTHS} months · ${approved.length} approved identities`,
+    reference: makeReference("KYCREV", generatorId),
+    meta: { generatedAt: new Date().toISOString(), generatedBy: generatorId, period: `As of ${new Date().toISOString().slice(0, 10)}`, classification: "Internal" },
+    summary: [
+      { label: "Approved identities", value: approved.length.toLocaleString("en-US") },
+      { label: "Due now", value: dueNow.toLocaleString("en-US"), tone: dueNow > 0 ? "bad" : "good" },
+      { label: "Due within 90 days", value: dueSoon.toLocaleString("en-US"), tone: dueSoon > 0 ? "neutral" : "good" },
+    ],
+    sections: [{
+      title: "Re-verification roster",
+      titleSw: "Orodha ya uthibitisho upya",
+      description: `Soonest-due first. Re-verification is triggered every ${REVERIFY_MONTHS} months from the last approval, or on a phone/region change.`,
+      columns: [
+        { header: "Player", key: "player", width: 18 },
+        { header: "NIDA", key: "nida", width: 14 },
+        { header: "Verified on", key: "verifiedOn", format: "date", width: 16 },
+        { header: "Re-verify by", key: "dueOn", format: "date", width: 16 },
+        { header: "Days to due", key: "daysToDue", format: "integer", align: "right", width: 12 },
+        { header: "Status", key: "status", width: 14 },
+      ],
+      rows,
+    }],
+    notes: [
+      `Re-verification interval: ${REVERIFY_MONTHS} months from last approval (or on phone/region change).`,
+      "NIDA shown masked (last 4) — the full number lives only in the verification record.",
+      "Drives the customer-comms outreach queue; not a regulator filing.",
+    ],
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// 8 · RESPONSIBLE-GAMBLING ENGAGEMENT  (internal · RG audit)
+// ─────────────────────────────────────────────────────────────────────
+
+export async function buildRgEngagement(generatorId: string): Promise<Report> {
+  const roster = await rgRosterCounts();
+  const now = Date.now();
+
+  const limitRows: Row[] = [];
+  let withAnyLimit = 0;
+  for (const u of await db.user.list()) {
+    const r = await db.responsible.get(u.id);
+    if (!r) continue;
+    const hasLimit = r.dailyDepositLimit !== null || r.weeklyDepositLimit !== null || r.monthlyDepositLimit !== null || r.dailyLossLimit !== null || r.sessionTimeLimitMin !== null;
+    const sx = r.selfExclusionUntil && new Date(r.selfExclusionUntil).getTime() > now;
+    const co = r.coolingOffUntil && new Date(r.coolingOffUntil).getTime() > now;
+    if (!hasLimit && !sx && !co && r.pendingIncreaseTo === null) continue;
+    if (hasLimit) withAnyLimit++;
+    limitRows.push({
+      player: maskUserId(u.id),
+      dailyDeposit: r.dailyDepositLimit,
+      weeklyDeposit: r.weeklyDepositLimit,
+      monthlyDeposit: r.monthlyDepositLimit,
+      dailyLoss: r.dailyLossLimit,
+      sessionMin: r.sessionTimeLimitMin,
+      realityCheckMin: r.realityCheckIntervalMin,
+      pendingIncrease: r.pendingIncreaseTo,
+      selfExcludedUntil: sx ? r.selfExclusionUntil!.slice(0, 10) : "—",
+      cooledOffUntil: co ? r.coolingOffUntil!.slice(0, 10) : "—",
+    });
+  }
+
+  // Self-exclusion / cool-off events from the COMPLIANCE audit ring (rg.* actions).
+  const events = getAuditPage({ category: "COMPLIANCE", limit: 500 })
+    .filter((e) => e.action.startsWith("rg."))
+    .slice(0, 200)
+    .map((e) => ({
+      at: e.createdAt.replace("T", " ").slice(0, 19),
+      event: e.action.replace("rg.", "").replace(/[._]/g, " "),
+      player: e.targetId ? maskUserId(e.targetId) : "—",
+    }));
+
+  return {
+    title: "Responsible-gambling engagement",
+    subtitle: "Player-protection controls, limits, and self-exclusion activity",
+    reference: makeReference("RGENG", generatorId),
+    meta: { generatedAt: new Date().toISOString(), generatedBy: generatorId, period: `As of ${new Date().toISOString().slice(0, 10)}`, classification: "Internal" },
+    summary: [
+      { label: "Players with active limits", value: withAnyLimit.toLocaleString("en-US") },
+      { label: "Self-excluded", value: roster.selfExcluded.toLocaleString("en-US"), tone: "neutral" },
+      { label: "Cooled-off", value: roster.cooledOff.toLocaleString("en-US"), tone: "neutral" },
+      { label: "Pending limit increases", value: roster.pendingLimitIncrease.toLocaleString("en-US"), tone: roster.pendingLimitIncrease > 0 ? "neutral" : "good" },
+    ],
+    sections: [
+      {
+        title: "Active player limits",
+        titleSw: "Vikomo vya wachezaji",
+        description: "Players who have set any deposit/loss/session limit, have a pending increase, or are self-excluded / cooled-off. All amounts in TZS.",
+        columns: [
+          { header: "Player", key: "player", width: 16 },
+          { header: "Daily dep.", key: "dailyDeposit", format: "tzs", align: "right", width: 14 },
+          { header: "Weekly dep.", key: "weeklyDeposit", format: "tzs", align: "right", width: 14 },
+          { header: "Monthly dep.", key: "monthlyDeposit", format: "tzs", align: "right", width: 14 },
+          { header: "Daily loss", key: "dailyLoss", format: "tzs", align: "right", width: 14 },
+          { header: "Session", sub: "min", key: "sessionMin", format: "integer", align: "right", width: 10 },
+          { header: "Reality chk", sub: "min", key: "realityCheckMin", format: "integer", align: "right", width: 12 },
+          { header: "Pending →", key: "pendingIncrease", format: "tzs", align: "right", width: 14 },
+          { header: "Self-excl until", key: "selfExcludedUntil", width: 16 },
+          { header: "Cool-off until", key: "cooledOffUntil", width: 16 },
+        ],
+        rows: limitRows,
+      },
+      {
+        title: "Self-exclusion & cool-off events",
+        titleSw: "Matukio ya kujizuia",
+        description: "Activations recorded in the compliance audit ring (most recent first).",
+        columns: [
+          { header: "When", key: "at", width: 22 },
+          { header: "Event", key: "event", width: 28 },
+          { header: "Player", key: "player", width: 18 },
+        ],
+        rows: events,
+      },
+    ],
+    notes: [
+      "Limit changes, self-exclusions, and cool-offs are written to the COMPLIANCE audit ring and shown above.",
+      "Reality-check prompts fire client-side every 30 min (LCCP SR 3.4.1); per-fire counts are not yet centrally persisted, so they are not tabulated here — wire a server beacon to add them.",
+      "Player identifiers are masked; the full record is available in the player drill-in.",
+    ],
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// 9 · MATCH-INTEGRITY QUARTERLY REVIEW  (Sportradar + GBT integrity unit)
+// ─────────────────────────────────────────────────────────────────────
+
+export async function buildMatchIntegrity(generatorId: string): Promise<Report> {
+  const { listMarkets } = await import("../market-service");
+  const voidedMarkets = await listMarkets({ status: "VOIDED" });
+  const refunds = (await db.txn.listAll()).filter((t) => t.type === "BET_REFUND");
+  const refundTotal = refunds.reduce((s, t) => s + Math.abs(t.amount), 0);
+
+  const marketRows: Row[] = voidedMarkets.map((m) => ({
+    market: m.titleEn,
+    category: m.category,
+    voidedOn: (m.resolutionStage2At ?? m.updatedAt ?? "").slice(0, 10) || "—",
+    pool: m.yesPool + m.noPool,
+    predictors: m.predictorCount,
+  }));
+
+  // Refunds grouped by market (a refund txn carries betId; group by description/betId tail).
+  const refundRows: Row[] = refunds.slice(0, 200).map((t) => ({
+    when: t.createdAt.slice(0, 10),
+    player: maskUserId(t.userId),
+    amount: Math.abs(t.amount),
+    ref: t.providerRef ?? t.betId ?? t.id,
+  }));
+
+  return {
+    title: "Match-integrity quarterly review",
+    subtitle: "Voided markets, refunded stakes, and integrity activity",
+    reference: makeReference("INTEG", generatorId),
+    meta: { generatedAt: new Date().toISOString(), generatedBy: generatorId, period: `As of ${new Date().toISOString().slice(0, 10)}`, classification: "Regulator hand-off" },
+    summary: [
+      { label: "Voided markets", value: voidedMarkets.length.toLocaleString("en-US"), tone: voidedMarkets.length > 0 ? "neutral" : "good" },
+      { label: "Refund transactions", value: refunds.length.toLocaleString("en-US"), tone: "neutral" },
+      { label: "Stakes refunded (TZS)", value: Math.round(refundTotal).toLocaleString("en-US"), tone: "neutral" },
+    ],
+    sections: [
+      {
+        title: "Voided markets",
+        titleSw: "Masoko yaliyobatilishwa",
+        description: "Markets resolved as VOID — stakes returned to players. Pool in TZS.",
+        columns: [
+          { header: "Market", key: "market", width: 46 },
+          { header: "Category", key: "category", width: 16 },
+          { header: "Voided on", key: "voidedOn", format: "date", width: 14 },
+          { header: "Pool", sub: "TZS", key: "pool", format: "tzs", align: "right", width: 16 },
+          { header: "Predictors", key: "predictors", format: "integer", align: "right", width: 12 },
+        ],
+        rows: marketRows,
+      },
+      {
+        title: "Stake refunds",
+        titleSw: "Marejesho ya dau",
+        description: "Individual stake refunds posted to player wallets (most recent 200).",
+        columns: [
+          { header: "Date", key: "when", format: "date", width: 14 },
+          { header: "Player", key: "player", width: 18 },
+          { header: "Amount", sub: "TZS", key: "amount", format: "tzs", align: "right", width: 16 },
+          { header: "Reference", key: "ref", width: 28 },
+        ],
+        rows: refundRows,
+        totals: { when: "Total", player: "", amount: refundTotal, ref: `${refunds.length} refunds` },
+      },
+    ],
+    notes: [
+      "This report aggregates platform-side integrity activity: markets voided by the two-officer resolution flow and the resulting stake refunds.",
+      "The Sportradar Integrity Services feed is a stub adapter — external alerts are not yet ingested. When live, per-alert case files will be appended here.",
+      "Player identifiers are masked; full case detail is in the market resolution audit trail.",
+    ],
+    signatures: await regulatorSignatures(generatorId),
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // CATALOGUE (id → builder)
 // ─────────────────────────────────────────────────────────────────────
 
@@ -633,6 +861,9 @@ export const REPORT_CATALOGUE = {
   "fiu-sar":     { name: "FIU SAR",             build: buildFiuSar },
   "sx-register": { name: "Self-exclusion Register", build: buildSxRegister },
   "iso-audit":   { name: "ISO 27001 Audit Log", build: buildIsoAudit },
+  "kyc-reverify":   { name: "KYC re-verification roster", build: buildKycReverify },
+  "rg-engagement":  { name: "Responsible-gambling engagement", build: buildRgEngagement },
+  "match-integrity":{ name: "Match-integrity quarterly review", build: buildMatchIntegrity },
 } as const;
 
 export type ReportId = keyof typeof REPORT_CATALOGUE;
