@@ -47,8 +47,10 @@ const config: Config = {
           DEFAULT: "var(--bg)",
           base: "var(--bg-base)",
           subtle: "var(--bg-subtle)",
+          inset: "var(--bg-inset)",
           sunken: "var(--bg-sunken)",
           elevated: "var(--bg-elevated)",
+          elevated2: "var(--bg-elevated2)",
           overlay: "var(--bg-overlay)",
         },
         surface: {

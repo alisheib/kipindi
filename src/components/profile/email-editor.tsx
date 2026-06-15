@@ -51,7 +51,7 @@ export function EmailEditor({ currentEmail, currentName, verified }: { currentEm
   };
 
   return (
-    <div className="rounded-lg border border-border bg-inset/40 px-3.5 py-2.5">
+    <div className="rounded-lg border border-border bg-bg-inset/40 px-3.5 py-2.5">
       <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle">Contact email · Barua pepe</p>
       {editing ? (
         <div className="mt-1.5 flex items-center gap-2">
