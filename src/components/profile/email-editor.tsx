@@ -66,7 +66,7 @@ export function EmailEditor({ currentEmail, currentName, verified }: { currentEm
             aria-label="Contact email"
             className="flex-1 min-w-0 bg-transparent border-b border-gold-500 focus:outline-none text-[14px] text-text px-0 py-0.5"
           />
-          <button type="button" onClick={save} disabled={pending} className="btn btn-gold btn-sm shrink-0" style={{ borderRadius: 999 }}>
+          <button type="button" onClick={save} disabled={pending} className="btn btn-gold shrink-0" style={{ borderRadius: 999, height: 30, padding: "0 14px", fontSize: 13 }}>
             {pending ? <Spinner size={14} /> : "Save"}
           </button>
         </div>

@@ -49,7 +49,7 @@ export function AdminPagination({
   const btnDisabled = "border border-border bg-bg-elevated text-text-subtle/40 pointer-events-none";
 
   return (
-    <div className="flex items-center justify-between gap-3 px-4 py-3">
+    <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-border">
       <p className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
         {((safePage - 1) * perPage + 1).toLocaleString()}–{Math.min(safePage * perPage, total).toLocaleString()} of {total.toLocaleString()}
       </p>

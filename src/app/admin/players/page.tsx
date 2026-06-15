@@ -136,9 +136,9 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
         </AdminCard>
 
         <AdminCard padding="p-0">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[calc(100vh-280px)] overflow-y-auto">
             <table className="admin-tbl">
-              <thead>
+              <thead className="sticky top-0 z-10">
                 <tr>
                   <th className="text-left">Player</th>
                   <th className="text-left">Phone</th>
