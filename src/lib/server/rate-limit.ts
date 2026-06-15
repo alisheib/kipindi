@@ -38,6 +38,7 @@ export const RATE_RULES: Record<string, RateRule> = {
   "otp.verify":    { capacity: 5,  refillPerMin: 1 },
   "auth.login":    { capacity: 8,  refillPerMin: 2 },
   "auth.register": { capacity: 3,  refillPerMin: 0.2 },   // 3 per hour per phone
+  "password_reset":{ capacity: 5,  refillPerMin: 0.2 },   // 5 reset-link requests per ~hour per phone
   // Per-IP buckets for credential stuffing / mass-registration abuse.
   // Capacities above are per-phone; these add a separate ceiling per IP.
   "auth.register.ip": { capacity: 10, refillPerMin: 0.5 }, // 10 fresh phones per IP per ~20 min

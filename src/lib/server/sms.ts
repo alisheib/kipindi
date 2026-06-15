@@ -38,7 +38,14 @@ export const consoleSms: SmsProvider = {
   name: "console",
   async send(to, body) {
     const id = `sms_${Date.now().toString(36)}`;
-    console.log(`\n[SMS → ${to}]\n  ${body}\n  (ref: ${id})\n`);
+    // NEVER print the message body (it contains the OTP) in production. If the
+    // console provider is somehow active in prod it's a misconfiguration — log a
+    // loud, code-free warning instead of leaking the code to the platform logs.
+    if (process.env.NODE_ENV === "production") {
+      console.error(`[SMS] console provider active in PRODUCTION — set SMS_PROVIDER=selcom. Message to ${to.slice(0, 4)}***${to.slice(-2)} NOT delivered (ref: ${id}).`);
+    } else {
+      console.log(`\n[SMS → ${to}]\n  ${body}\n  (ref: ${id})\n`);
+    }
     recordTestSms(to, body);
     return { id };
   },
