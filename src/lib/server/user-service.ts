@@ -13,6 +13,7 @@
 import { audit, getAuditForActor, type AuditEntry } from "./audit";
 import { db } from "./store";
 import { destroySession } from "./session";
+import { revokeUserSessions } from "./session-registry";
 import type { ServiceResult } from "./auth-service";
 
 export type UserDataExport = {
@@ -69,6 +70,7 @@ export async function closeAccount(userId: string, reason?: string): Promise<Ser
     await db.wallet.update(wallet.id, { status: "CLOSED" });
   }
   await destroySession();
+  await revokeUserSessions(userId); // kill any session on any device, not just this one
 
   audit({
     category: "COMPLIANCE",

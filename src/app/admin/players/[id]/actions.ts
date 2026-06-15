@@ -6,6 +6,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { buildDsarBundle } from "@/lib/server/privacy";
+import { revokeUserSessions } from "@/lib/server/session-registry";
 
 /**
  * Privileged player-management actions. Each one:
@@ -82,6 +83,7 @@ export async function suspendPlayerAction(formData: FormData) {
 
   const prevStatus = target.status;
   await db.user.update(userId, { status: "SUSPENDED" });
+  await revokeUserSessions(userId); // suspended players are signed out immediately
   audit({
     category: "ADMIN",
     action: "player.suspended",

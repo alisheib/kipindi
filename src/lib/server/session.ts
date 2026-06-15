@@ -9,6 +9,7 @@
 import { cookies } from "next/headers";
 import { signSession, verifySession, randomId } from "./crypto";
 import { audit } from "./audit";
+import { getActiveSessionId, setActiveSessionId, clearActiveSession } from "./session-registry";
 
 export type SessionData = {
   userId: string;
@@ -27,17 +28,12 @@ const IDLE_TIMEOUT_MS = 24 * 60 * 60 * 1000;               // 24 h since last ac
 const REFRESH_THROTTLE_MS = 5 * 60 * 1000;                 // resign cookie at most every 5 min
 
 // ── Server-side session registry ─────────────────────────────────────
-// Maps userId → activeSessionId. A new login for the same user replaces
-// the entry, which invalidates ALL prior sessions on any device. This
-// enforces single-active-session per account — critical for a gambling
-// platform where concurrent logins on the same account can lead to
-// balance confusion, shared betting, and regulatory non-compliance.
-declare global {
-  // eslint-disable-next-line no-var
-  var __50PICK_ACTIVE_SESSIONS: Map<string, string> | undefined;
-}
-const activeSessions: Map<string, string> =
-  globalThis.__50PICK_ACTIVE_SESSIONS ?? (globalThis.__50PICK_ACTIVE_SESSIONS = new Map());
+// One active sessionId per userId. A new login replaces it, invalidating ALL
+// prior sessions on any device — single-active-session per account, critical
+// for a gambling platform (concurrent logins → balance confusion, shared
+// betting, accountability gaps). Backed by the durable ActiveSession table
+// (see session-registry.ts) so the invariant survives deploys/restarts and
+// supports immediate server-side revocation.
 
 export async function createSession(data: Omit<SessionData, "iat" | "exp" | "sessionId" | "lastSeenAt">) {
   const now = Date.now();
@@ -60,8 +56,7 @@ export async function createSession(data: Omit<SessionData, "iat" | "exp" | "ses
   // Register as the ONLY active session for this user. Any previous
   // session (on another device) is now invalid — getSession() will
   // reject it on the next request.
-  const previousSessionId = activeSessions.get(data.userId);
-  activeSessions.set(data.userId, session.sessionId);
+  const previousSessionId = await setActiveSessionId(data.userId, session.sessionId);
   audit({
     category: "AUTH",
     action: "session.created",
@@ -80,21 +75,16 @@ export async function getSession(): Promise<SessionData | null> {
   if (!session) return null;
 
   const now = Date.now();
-  // Single-active-session check.
+  // Single-active-session check (DB-authoritative).
   //
-  // Three states:
   //   a) Registry has THIS sessionId → valid, proceed
-  //   b) Registry has a DIFFERENT sessionId → revoked by newer login
-  //   c) Registry has NO entry for this user → process restarted, registry
-  //      was lost. Self-heal: register this session as the active one.
-  //      The first device to make a request after restart "claims" the slot;
-  //      the second device finds a mismatch and gets revoked. Equivalent to
-  //      "the device the user is actually using survives."
-  const activeId = activeSessions.get(session.userId);
-  if (!activeId) {
-    // Self-heal after restart — claim the slot
-    activeSessions.set(session.userId, session.sessionId);
-  } else if (activeId !== session.sessionId) {
+  //   b) Registry has a DIFFERENT sessionId → revoked by a newer login
+  //   c) Registry has NO row → not an active session. Strict: sign out. This is
+  //      what makes server-side revocation (logout/suspend/self-exclude) real —
+  //      a deleted row means logged out, not "claim the slot". A cookie minted
+  //      before the durable registry existed lands here once and re-logs-in.
+  const activeId = await getActiveSessionId(session.userId);
+  if (!activeId || activeId !== session.sessionId) {
     try {
       jar.delete(COOKIE_NAME);
       // Short-lived flash cookie so the login page can explain WHY
@@ -109,7 +99,7 @@ export async function getSession(): Promise<SessionData | null> {
     } catch { /* read-only context */ }
     audit({
       category: "AUTH",
-      action: "session.revoked_by_newer_login",
+      action: activeId ? "session.revoked_by_newer_login" : "session.revoked_no_active_record",
       actorId: session.userId,
       targetType: "Session",
       targetId: session.sessionId,
@@ -178,9 +168,7 @@ export async function destroySession() {
   if (session) {
     // Only clear the registry if THIS session is still the active one.
     // If another device already replaced it, don't clear their session.
-    if (activeSessions.get(session.userId) === session.sessionId) {
-      activeSessions.delete(session.userId);
-    }
+    await clearActiveSession(session.userId, session.sessionId);
     audit({
       category: "AUTH",
       action: "session.destroyed",

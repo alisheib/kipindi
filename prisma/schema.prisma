@@ -1137,3 +1137,14 @@ model SystemConfig {
   value     Json
   updatedAt DateTime @updatedAt
 }
+
+// Single-active-session registry. One row per user = their ONE valid session.
+// A new login overwrites it (revoking prior devices); logout/suspend/self-
+// exclude delete it. Durable so the single-session invariant + server-side
+// revocation survive deploys (was globalThis-only → lost on every restart).
+// No FK to User on purpose: this must never fail to write or cascade-delete.
+model ActiveSession {
+  userId    String   @id
+  sessionId String
+  updatedAt DateTime @updatedAt
+}
