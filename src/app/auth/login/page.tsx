@@ -16,7 +16,7 @@ export const metadata = { title: "Sign in · Ingia" };
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ phone?: string; error?: string; retry?: string; next?: string; closed?: string; excluded?: string; cooled?: string }>;
+  searchParams: Promise<{ phone?: string; error?: string; retry?: string; next?: string; closed?: string; excluded?: string; cooled?: string; reset?: string }>;
 }) {
   // Note: the "bounce authed users away from this page" check lives in
   // src/app/auth/(public)/layout.tsx so the redirect happens before the
@@ -38,6 +38,12 @@ export default async function LoginPage({
   const nextSafe = /^\/(?![/\\])/.test(nextRaw) ? nextRaw : "";
 
   const errorPanel = (() => {
+    if (sp.reset === "1") return {
+      tone: "success" as const,
+      title: "Password reset · Nenosiri limebadilishwa",
+      body: "Your password has been updated. Sign in with your new password.",
+      cta: null,
+    };
     if (sp.closed === "1") return {
       tone: "warning" as const,
       title: "Account closed · Akaunti imefungwa",
@@ -127,12 +133,14 @@ export default async function LoginPage({
               role="alert"
               className={
                 "flex items-start gap-2.5 rounded-md border px-3.5 py-3 " +
-                (errorPanel.tone === "danger"
-                  ? "border-no-700/60 bg-no-500/[0.10]"
-                  : "border-warning-border bg-warning-bg/30")
+                (errorPanel.tone === "success"
+                  ? "border-yes-700/60 bg-yes-500/[0.10]"
+                  : errorPanel.tone === "danger"
+                    ? "border-no-700/60 bg-no-500/[0.10]"
+                    : "border-warning-border bg-warning-bg/30")
               }
             >
-              <span className={"mt-0.5 shrink-0 " + (errorPanel.tone === "danger" ? "text-no-300" : "text-gold-300")}>
+              <span className={"mt-0.5 shrink-0 " + (errorPanel.tone === "success" ? "text-yes-300" : errorPanel.tone === "danger" ? "text-no-300" : "text-gold-300")}>
                 <I.alertCircle s={16} />
               </span>
               <div className="text-[12.5px] leading-snug">

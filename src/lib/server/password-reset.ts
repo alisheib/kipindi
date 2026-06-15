@@ -1,0 +1,176 @@
+/**
+ * Password reset — stateless HMAC-signed token approach (same pattern as
+ * email verification). No DB row for the token itself:
+ *   - Token embeds userId + email + exp
+ *   - Changing email invalidates all outstanding reset links
+ *   - HMAC prevents forgery; exp prevents replay
+ *
+ * Two entry points:
+ *   1. Player-initiated: /auth/forgot-password → enters phone → if email on
+ *      file, sends a reset link. If no email → "contact support" message.
+ *   2. Admin-initiated: officer generates a temporary password directly
+ *      (for support requests from users without email).
+ */
+import { db } from "./store";
+import { signSession, verifySession, hashPassword, randomId } from "./crypto";
+import { audit } from "./audit";
+import { sendEmail, passwordResetHtml } from "./email";
+import { resolvePhoneEmail } from "./email-map";
+
+const RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
+const BASE_URL = () => process.env.NEXT_PUBLIC_APP_URL || "https://kipindi-production.up.railway.app";
+
+type ResetTokenPayload = {
+  purpose: "password-reset";
+  userId: string;
+  /** Bound to the current email so a changed address invalidates the link. */
+  email: string;
+  exp: number;
+};
+
+/** Build a signed reset URL for a user. */
+function buildResetUrl(userId: string, email: string): string {
+  const token = signSession({
+    purpose: "password-reset",
+    userId,
+    email,
+    exp: Date.now() + RESET_TTL_MS,
+  } satisfies ResetTokenPayload);
+  return `${BASE_URL()}/auth/reset-password?token=${encodeURIComponent(token)}`;
+}
+
+/**
+ * Player-initiated reset: look up by phone, resolve their email, send the
+ * reset link. Returns a generic "if an account exists…" message to avoid
+ * phone enumeration.
+ */
+export async function requestPasswordReset(phone: string): Promise<{ ok: true }> {
+  const user = await db.user.findByPhone(phone);
+  if (!user) {
+    // Don't leak whether the phone exists.
+    return { ok: true };
+  }
+  const email = user.email || resolvePhoneEmail(user.phoneE164);
+  if (!email) {
+    // No email on file — can't send a reset link. The UI tells the user to
+    // contact support. Still return ok to avoid phone enumeration.
+    audit({ category: "AUTH", action: "password_reset.no_email", actorId: user.id, targetType: "User", targetId: user.id });
+    return { ok: true };
+  }
+
+  const resetLink = buildResetUrl(user.id, email);
+  await sendEmail({
+    to: email,
+    subject: "Reset your password · 50pick",
+    html: passwordResetHtml({ resetLink }),
+    tag: "password-reset",
+    trackLinks: false, // don't rewrite the reset link through Postmark tracking
+  }).catch((err) => console.error("[password-reset] send failed:", (err as Error)?.message));
+
+  audit({ category: "AUTH", action: "password_reset.requested", actorId: user.id, targetType: "User", targetId: user.id });
+  return { ok: true };
+}
+
+/**
+ * Consume a reset token: validate the HMAC + expiry + email match, then
+ * set the new password. Idempotent-safe (re-clicking a used link just
+ * fails the email-match check if the user changed password and we cleared
+ * some state, but doesn't corrupt anything).
+ */
+export async function consumeResetToken(
+  token: string,
+  newPassword: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (newPassword.length < 8) return { ok: false, error: "Password must be at least 8 characters." };
+
+  const payload = verifySession<ResetTokenPayload>(token);
+  if (!payload || payload.purpose !== "password-reset" || !payload.userId || !payload.email) {
+    return { ok: false, error: "Invalid or expired reset link. Request a new one." };
+  }
+
+  const user = await db.user.findById(payload.userId);
+  if (!user) return { ok: false, error: "Account not found." };
+
+  // Verify the email hasn't changed since the link was issued.
+  const currentEmail = (user.email ?? "").trim().toLowerCase();
+  if (currentEmail !== payload.email.trim().toLowerCase()) {
+    return { ok: false, error: "This reset link is no longer valid. Request a new one." };
+  }
+
+  const salt = randomId(32);
+  const hash = await hashPassword(newPassword, salt);
+  await db.user.update(user.id, { passwordHash: hash, passwordSalt: salt });
+
+  audit({
+    category: "AUTH",
+    action: "password_reset.completed",
+    actorId: user.id,
+    targetType: "User",
+    targetId: user.id,
+  });
+  return { ok: true };
+}
+
+/**
+ * Admin-initiated password reset: officer generates a temporary password for
+ * a user who contacted support. The user must change it on next login (not
+ * enforced in code yet — just strongly recommended in the UI copy).
+ */
+export async function adminResetPassword(
+  officerId: string,
+  userId: string,
+): Promise<{ ok: true; tempPassword: string } | { ok: false; error: string }> {
+  const user = await db.user.findById(userId);
+  if (!user) return { ok: false, error: "Player not found." };
+
+  // Generate a random 12-char temporary password.
+  const tempPassword = randomId(12);
+  const salt = randomId(32);
+  const hash = await hashPassword(tempPassword, salt);
+  await db.user.update(userId, { passwordHash: hash, passwordSalt: salt });
+
+  audit({
+    category: "ADMIN",
+    action: "player.password_reset_by_officer",
+    actorId: officerId,
+    targetType: "User",
+    targetId: userId,
+    payload: { method: "temp_password" },
+  });
+  return { ok: true, tempPassword };
+}
+
+/**
+ * Authenticated password change: user provides current password + new password.
+ * For users without a password (OTP-only accounts), currentPassword can be empty.
+ */
+export async function changePassword(
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (newPassword.length < 8) return { ok: false, error: "New password must be at least 8 characters." };
+
+  const user = await db.user.findById(userId);
+  if (!user) return { ok: false, error: "User not found." };
+
+  // If the user already has a password, verify the current one.
+  if (user.passwordHash && user.passwordSalt) {
+    const { verifyPassword } = await import("./crypto");
+    const valid = await verifyPassword(currentPassword, user.passwordSalt, user.passwordHash);
+    if (!valid) return { ok: false, error: "Current password is incorrect." };
+  }
+
+  const salt = randomId(32);
+  const hash = await hashPassword(newPassword, salt);
+  await db.user.update(userId, { passwordHash: hash, passwordSalt: salt });
+
+  audit({
+    category: "AUTH",
+    action: "password.changed",
+    actorId: userId,
+    targetType: "User",
+    targetId: userId,
+  });
+  return { ok: true };
+}

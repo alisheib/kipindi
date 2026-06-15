@@ -7,6 +7,7 @@ import { db } from "@/lib/server/store";
 import { getOwnActivity } from "@/lib/server/user-service";
 import { CloseAccountForm } from "./close-account-form";
 import { EmailEditor } from "@/components/profile/email-editor";
+import { PasswordSection } from "@/components/profile/password-section";
 import { formatDateTimeSafe } from "@/lib/utils";
 import { ExportDataButton } from "./export-data-button";
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from "@/lib/support-config";
@@ -103,6 +104,9 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
         </div>
         {/* Contact email — opt-in; once set, transactional receipts are emailed. */}
         <EmailEditor currentEmail={user?.email ?? null} currentName={user?.displayName ?? ""} verified={!!user?.emailVerifiedAt} />
+        <div className="border-t border-border pt-3">
+          <PasswordSection hasPassword={!!(user?.passwordHash)} />
+        </div>
       </section>
 
       {/* OWN ACTIVITY FEED */}

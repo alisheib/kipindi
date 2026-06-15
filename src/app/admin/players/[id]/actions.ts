@@ -122,6 +122,16 @@ export async function restorePlayerAction(formData: FormData) {
   return { ok: true as const };
 }
 
+// ─── Player password reset (admin support) ───────────────────────────────────
+
+export async function adminResetPasswordAction(formData: FormData) {
+  const officerId = await requireAdmin("adminResetPasswordAction");
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId) return { ok: false as const, error: "Missing user id." };
+  const { adminResetPassword } = await import("@/lib/server/password-reset");
+  return adminResetPassword(officerId, userId);
+}
+
 // ─── Player email (admin override) ────────────────────────────────────────────
 
 export async function setPlayerEmailAction(formData: FormData) {

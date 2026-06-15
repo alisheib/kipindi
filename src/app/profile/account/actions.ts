@@ -23,6 +23,15 @@ export async function exportDataAction(): Promise<{ ok: true; payload: string; f
   };
 }
 
+export async function changePasswordAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await currentSession();
+  if (!session) redirect("/auth/login");
+  const current = String(formData.get("current") ?? "");
+  const next = String(formData.get("new") ?? "");
+  const { changePassword } = await import("@/lib/server/password-reset");
+  return changePassword(session.userId, current, next);
+}
+
 export async function closeAccountAction(formData: FormData) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
