@@ -75,7 +75,8 @@ export async function sendEmail({ to, subject, html, tag, trackLinks = true }: S
     });
     return { ok: true, messageId: res.MessageID };
   } catch (err) {
-    console.error("[email] Send failed:", (err as Error).message);
+    const e = err as Error & { statusCode?: number; errorCode?: number };
+    console.error(`[email] Send failed: ${e.message} (to=${to}, statusCode=${e.statusCode ?? "?"}, errorCode=${e.errorCode ?? "?"})`);
     return { ok: false };
   }
 }
@@ -276,8 +277,14 @@ export async function sendEmailToUser(
     // reach mapped accounts even if user.email was never persisted (matches how
     // login/welcome emails resolve the address).
     const email = user?.email || resolvePhoneEmail(user?.phoneE164 ?? "");
-    if (!email) return;
-    await sendEmail(build(email));
+    if (!email) {
+      console.warn(`[email] sendEmailToUser skipped — no email for user ${userId.slice(0, 14)}… (user.email=${user?.email ?? "null"}, phone=${user?.phoneE164?.slice(0, 6) ?? "?"}…)`);
+      return;
+    }
+    const input = build(email);
+    console.log(`[email] sending "${input.subject}" → ${email} (tag=${input.tag ?? "none"})`);
+    const result = await sendEmail(input);
+    if (!result.ok) console.warn(`[email] sendEmailToUser delivery failed for ${email} (subject="${input.subject}")`);
   } catch (err) {
     console.error("[email] sendEmailToUser failed:", (err as Error)?.message);
   }

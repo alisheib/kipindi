@@ -124,7 +124,14 @@ export async function submitNidaStep(userId: string, input: z.input<typeof KycNi
   // Routed through the single setUserEmail() writer so a new address resets
   // verification and fires a confirmation link. Best-effort: never block KYC.
   if (parse.data.email !== undefined && parse.data.email !== "") {
-    await setUserEmail(userId, parse.data.email).catch(() => {});
+    const emailResult = await setUserEmail(userId, parse.data.email).catch((err) => {
+      console.error("[kyc] setUserEmail failed:", (err as Error)?.message);
+      return null;
+    });
+    if (emailResult && !emailResult.ok) console.warn(`[kyc] setUserEmail rejected: ${emailResult.error}`);
+    else if (emailResult?.ok) console.log(`[kyc] email saved for ${userId.slice(0, 14)}… (changed=${emailResult.changed}, verificationSent=${emailResult.verificationSent})`);
+  } else {
+    console.warn(`[kyc] no email provided in NIDA step for ${userId.slice(0, 14)}…`);
   }
 
   const result = await verifyNida({ nida: parse.data.nida, fullName: parse.data.fullName, dob: parse.data.dob, userId });

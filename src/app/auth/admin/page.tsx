@@ -31,7 +31,10 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
       }
       redirect((next || "/admin") as never);
     }
-    redirect("/");
+    // Non-admin with a deep-link: show the form so they can sign in
+    // with admin credentials. Without a deep-link, just go home.
+    if (!next) redirect("/");
+    // Fall through to render the login form
   }
 
   return (
