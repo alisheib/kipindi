@@ -5,6 +5,57 @@ Latest commit on `main`: see `git log -1`. Live at https://kipindi-production.up
 
 ---
 
+## 🆕 Pre-launch QA hardening (2026-06-15, session 2)
+
+A strict 3-track audit (auth/tokens · KYC · architecture/payment) ran ahead of the
+real payment-gateway + SMS-OTP integration and going live. Verified locally
+(typecheck + all unit suites + 133-check gauntlet + `next build`) and on prod
+(114-check read-only gauntlet, webhook 401 on unsigned). Shipped:
+
+- **Quick-wins (commit fc5bdde):** KYC stopped re-asking date of birth (already
+  collected + 18+ gated at sign-up; now read-only confirmation + hidden field —
+  service/tests unchanged). One password policy (`password-policy.ts`: min-len +
+  no-edge-space + breach-list) enforced at register/reset/change (reset & change
+  previously only checked length). Reset links are **single-use** (token bound to
+  a fingerprint of the password hash; a completed reset invalidates the link).
+  OTP **resend cooldown** (~30s `otp.resend` bucket) + countdown on the OTP page.
+  Earlier (commit 7255be1): added the missing `password_reset` rate rule (the
+  endpoint was unthrottled) and stopped the console SMS provider printing OTPs in
+  prod.
+- **Durable sessions (commit fe3060c):** single-active-session moved off the
+  globalThis Map onto the `ActiveSession` Postgres table (migration
+  `20260615200000_active_session`). In-process Map is now a read-through cache; DB
+  is AUTHORITATIVE (no row ⇒ signed out — strict, so revocation is real; dropped
+  the "claim on restart" self-heal). `revokeUserSessions()` wired into
+  self-exclusion / admin-suspend / account-close → block is immediate on every
+  device. **One-time effect of this deploy: all existing sessions re-login.**
+  Rate limits deliberately left in-memory (Redis is the right tool at scale-out;
+  single instance is covered; OTP brute-force ceiling already has a DB backstop).
+- **Payments — webhook-authoritative settlement (commit 6fb4bef):** deposits no
+  longer credit on the initiate ack. A PENDING provider result leaves the txn
+  PROCESSING and the **verified webhook** credits it EXACTLY ONCE (status-gated
+  under the per-wallet lock → at-least-once retries are safe no-ops; verified no
+  double-credit / no 2nd email). Withdrawals: PENDING holds funds; payout webhook
+  releases (CONFIRMED) or reverses (FAILED). `reconcileStalePayments()` sweeps
+  stuck PROCESSING rows (run on a cron). Mock gains `PAYMENTS_DEMO_ASYNC=true` to
+  demo the async→webhook path; **default stays synchronous so prod behavior is
+  unchanged until a real gateway is wired.** New `txn.findById`/`findByProviderRef`
+  DAL + `test:payments` (25 assertions) in predeploy.
+
+### Still open from the audit (NOT done this session — decisions/owner needed)
+- **KYC honesty/completeness** (deferred by Ali): NIDA is still a MOCK while copy
+  says "checked against NIDA" (misleading until real integration); no residential
+  address / PEP screening collected; ID docs still base64-in-DB; typed name still
+  trusted as "NIDA-verified". These are the KYC-track findings.
+- **Withholding tax is still naïve** (taxes the full withdrawal as winnings) —
+  needs the bet ledger to compute taxable winnings.
+- **Admin TOTP not enforced on admin actions/APIs** — Ali's standing decision
+  (2026-06-15) is 2FA view-only for now; revisit before real money.
+- **Wire a cron** to call `reconcileStalePayments()` once real async payments are
+  live; wire withdrawal step-up SMS OTP when the SMS provider is signed.
+
+---
+
 ## ✅ Data layer — Postgres is the source of truth
 
 All **entity data** runs on Prisma/Postgres in production. Each DAL uses the hardened gate
