@@ -237,7 +237,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                   </div>
                   <p className="mt-1.5 text-[11px] text-text-subtle">
                     Taken from your account — no need to re-enter. Wrong?{" "}
-                    <Link href="/profile/account" className="text-accent-400 underline-offset-2 hover:underline hover:text-accent-300">Update it on your profile</Link>.
+                    <a href={`mailto:${SUPPORT_EMAIL}`} className="text-accent-400 underline-offset-2 hover:underline hover:text-accent-300">Contact support</a> before verifying.
                   </p>
                 </>
               ) : (

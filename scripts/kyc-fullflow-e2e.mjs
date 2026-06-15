@@ -51,12 +51,13 @@ try {
   ok("new user lands on NIDA step", /Verify your NIDA|NIDA verification/i.test(await pp.locator("body").innerText()));
   ok("player kyc page: no overflow (mobile)", (await overflow(pp)) <= 1);
 
-  // THE STEP THAT HIT A SNAG: fill the identity form (NIDA + name + DOB + email) and verify.
+  // Fill the identity form. Date of birth is NO LONGER asked here — it's collected
+  // (and 18+ gated) at sign-up and shown read-only on this step, submitted via a
+  // hidden field. So the form only needs NIDA + name + email. (Regression guard
+  // for commit fc5bdde — re-typing DOB was redundant friction.)
   await pp.fill("#nida", NIDA);
   await pp.fill("#fullName", "Asha Mwamba Juma");
-  await pp.getByLabel("Day").fill("01");
-  await pp.getByLabel("Month").fill("01");
-  await pp.getByLabel("Year").fill("1990");
+  ok("DOB pre-filled read-only from sign-up (not re-asked)", /From sign-up/i.test(await pp.locator("body").innerText()));
   await pp.fill("#email", `newuser${String(Date.now()).slice(-6)}@example.com`);
   await pp.getByRole("button", { name: /Verify NIDA/ }).click();
   await pp.waitForFunction(() => /Upload documents|NIDA verified/i.test(document.body.innerText), null, { timeout: 12000 }).catch(() => {});

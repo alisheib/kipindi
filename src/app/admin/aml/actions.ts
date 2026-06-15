@@ -6,6 +6,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db, type StoredTxn } from "@/lib/server/store";
 import { audit, getAuditPage } from "@/lib/server/audit";
 import { withLock } from "@/lib/server/locks";
+import { notifyWithdrawalSent } from "@/lib/server/wallet-service";
 
 import { TWO_PERSON_THRESHOLD_TZS } from "./constants";
 
@@ -107,6 +108,9 @@ export async function approveAmlAction(formData: FormData) {
           secondOfficer: session.userId,
         },
       });
+      // Tell the player their (now AML-cleared) withdrawal is on its way — same
+      // receipt as an ordinary withdrawal. Previously this path was silent.
+      if (txn.type === "WITHDRAWAL") notifyWithdrawalSent(txn);
       revalidatePath("/admin/aml");
       return { ok: true as const, stage: "complete" as const };
     }
@@ -126,6 +130,7 @@ export async function approveAmlAction(formData: FormData) {
       targetId: txnId,
       payload: { amount: txn.amount, reason: reason || null, twoPersonApproval: "below-threshold" },
     });
+    if (txn.type === "WITHDRAWAL") notifyWithdrawalSent(txn);
     revalidatePath("/admin/aml");
     return { ok: true as const, stage: "complete" as const };
   });

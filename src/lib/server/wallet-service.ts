@@ -243,15 +243,27 @@ async function settleWithdrawalConfirmed(txnId: string): Promise<boolean> {
   if (done) {
     const net = Math.abs(done.amount) - done.taxWithheld;
     audit({ category: "WALLET", action: "withdraw.confirmed", actorId: done.userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: done.providerRef, net } });
-    notifyWithdraw(done.userId, { status: "CONFIRMED", amount: Math.abs(done.amount), net, provider: friendlyProvider(done.provider) });
-    sendEmailToUser(done.userId, (email) => ({
-      to: email,
-      subject: `Withdrawal sent · TZS ${Math.round(net).toLocaleString("en-US")}`,
-      html: withdrawalSentHtml({ amount: net, destination: friendlyProvider(done.provider), reference: txnId }),
-      tag: "withdrawal",
-    })).catch(() => {});
+    notifyWithdrawalSent(done);
   }
   return !!done;
+}
+
+/**
+ * Player-facing "withdrawal sent" receipt (in-app + email). Shared by the normal
+ * settle path AND the AML-approval release path (admin/aml/actions.ts), so a
+ * large (≥ TZS 1M) two-officer-approved withdrawal gets the same confirmation as
+ * an ordinary one — previously the AML approve path released the funds silently.
+ */
+export function notifyWithdrawalSent(txn: { id: string; userId: string; amount: number; taxWithheld: number; provider: string | null }): void {
+  const gross = Math.abs(txn.amount);
+  const net = gross - txn.taxWithheld;
+  notifyWithdraw(txn.userId, { status: "CONFIRMED", amount: gross, net, provider: friendlyProvider(txn.provider) });
+  sendEmailToUser(txn.userId, (email) => ({
+    to: email,
+    subject: `Withdrawal sent · TZS ${Math.round(net).toLocaleString("en-US")}`,
+    html: withdrawalSentHtml({ amount: net, destination: friendlyProvider(txn.provider), reference: txn.id }),
+    tag: "withdrawal",
+  })).catch(() => {});
 }
 
 /** Reverse a held withdrawal whose payout failed: return the funds to spendable
