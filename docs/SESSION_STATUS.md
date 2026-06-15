@@ -42,7 +42,27 @@ real payment-gateway + SMS-OTP integration and going live. Verified locally
   unchanged until a real gateway is wired.** New `txn.findById`/`findByProviderRef`
   DAL + `test:payments` (25 assertions) in predeploy.
 
-### Still open from the audit (NOT done this session — decisions/owner needed)
+- **Regression review + notification hardening (commits 428e458, 4761e95):** a
+  post-change review confirmed NO product regressions (KYC full-flow e2e 22/22,
+  admin-smoke 54/54, gauntlet 133, prod 114). The only fallout was a stale KYC
+  e2e that typed into the now-read-only DOB field — fixed. Then closed real
+  notification gaps: AML-approved withdrawals now notify the player (were
+  silent); password changes send email + in-app SECURITY alert; withdrawals
+  hitting AML review alert all compliance officers (bell + email); self-exclusion
+  posts an in-app confirmation; and a new `/api/webhooks/postmark` route +
+  `email-suppression.ts` suppress hard-bounced/complaint addresses so sendEmail
+  skips them. Email collection stays at KYC by Ali's call — in-app companions are
+  the "nothing missed" guarantee for email-less users.
+
+### Still open from the audit (NOT done — decisions/owner needed)
+- **Login model:** password-first works, but SMS-OTP-primary is the TZ norm and
+  fixes account recovery for email-less users. Flip `/auth/login` + `/auth/register`
+  to the (already-built) OTP actions once the SMS contract is signed; keep
+  password as fallback; OTP step-up on withdrawals. Ali: keep as-is for now.
+- **Force admin TOTP enrollment:** a bootstrapped admin can use the console with
+  password only until they manually visit /admin/2fa/setup. Make it mandatory.
+- **POSTMARK_WEBHOOK_SECRET** must be set in Railway for the bounce webhook to
+  accept Postmark's calls (it rejects all calls in prod until set).
 - **KYC honesty/completeness** (deferred by Ali): NIDA is still a MOCK while copy
   says "checked against NIDA" (misleading until real integration); no residential
   address / PEP screening collected; ID docs still base64-in-DB; typed name still
