@@ -16,7 +16,7 @@ export const metadata = { title: "Sign in · Ingia" };
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ phone?: string; error?: string; retry?: string; next?: string }>;
+  searchParams: Promise<{ phone?: string; error?: string; retry?: string; next?: string; closed?: string; excluded?: string; cooled?: string }>;
 }) {
   // Note: the "bounce authed users away from this page" check lives in
   // src/app/auth/(public)/layout.tsx so the redirect happens before the
@@ -38,6 +38,24 @@ export default async function LoginPage({
   const nextSafe = /^\/(?![/\\])/.test(nextRaw) ? nextRaw : "";
 
   const errorPanel = (() => {
+    if (sp.closed === "1") return {
+      tone: "warning" as const,
+      title: "Account closed · Akaunti imefungwa",
+      body: "Your account has been closed. Contact support if you believe this is in error.",
+      cta: null,
+    };
+    if (sp.excluded === "1") return {
+      tone: "danger" as const,
+      title: "Self-exclusion active · Umejitenga",
+      body: "Your self-exclusion is now active. You will not be able to sign in until the period ends.",
+      cta: null,
+    };
+    if (sp.cooled === "1") return {
+      tone: "warning" as const,
+      title: "Cooling off · Pumzika kidogo",
+      body: "Your cooling-off period is now active. You will not be able to sign in until it ends.",
+      cta: null,
+    };
     if (wasRevoked) return {
       tone: "warning" as const,
       title: "Signed out · Umetolewa",

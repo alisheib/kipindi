@@ -47,15 +47,20 @@ export async function startLoginAction(formData: FormData) {
 /** Legacy OTP login — re-enable once SMS goes live. */
 export async function startLoginOtpAction(formData: FormData) {
   const phoneRaw = String(formData.get("phone") ?? "");
+  const nextRaw = String(formData.get("next") ?? "").trim();
+  const safeNext = /^\/(?![/\\])/.test(nextRaw) && !nextRaw.startsWith("/auth/") ? nextRaw : "";
   const result = await requestLoginOtp({ phone: phoneRaw });
   if (!result.ok) {
     const params = new URLSearchParams({
       phone: phoneRaw,
       error: result.code === "NOT_FOUND" ? "no_account" : result.code === "RATE_LIMITED" ? "rate_limited" : "blocked",
     });
+    if (safeNext) params.set("next", safeNext);
     redirect(`/auth/login?${params.toString()}`);
   }
-  redirect(`/auth/otp?purpose=login&phone=${encodeURIComponent(phoneRaw)}`);
+  const otpParams = new URLSearchParams({ purpose: "login", phone: phoneRaw });
+  if (safeNext) otpParams.set("next", safeNext);
+  redirect(`/auth/otp?${otpParams.toString()}`);
 }
 
 /**

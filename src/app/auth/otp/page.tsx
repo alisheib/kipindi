@@ -6,12 +6,14 @@ import { verifyLoginOtpAction, resendOtpAction } from "../login/actions";
 
 export const metadata = { title: "Enter code · Weka msimbo" };
 
-export default async function OtpPage({ searchParams }: { searchParams: Promise<{ purpose?: string; phone?: string; error?: string; sent?: string }> }) {
+export default async function OtpPage({ searchParams }: { searchParams: Promise<{ purpose?: string; phone?: string; error?: string; sent?: string; next?: string }> }) {
   const sp = await searchParams;
   const purpose = (sp.purpose ?? "login") as "login" | "register" | "withdraw" | "reauth" | "self_exclusion";
   const phone = sp.phone ?? "";
   const error = sp.error ?? "";
   const sent = sp.sent === "1";
+  const nextRaw = (sp.next ?? "").trim();
+  const nextSafe = /^\/(?![/\\])/.test(nextRaw) && !nextRaw.startsWith("/auth/") ? nextRaw : "";
   const masked = phone ? phone.slice(0, 4) + "*****" + phone.slice(-2) : "+255*****";
   const errorMsg: Record<string, string> = {
     wrong_code: "Wrong code — try again. · Msimbo si sahihi.",
@@ -59,6 +61,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
           <form action={verifyLoginOtpAction} className="space-y-3">
             <input type="hidden" name="phone" value={phone} />
             <input type="hidden" name="purpose" value={purpose} />
+            {nextSafe && <input type="hidden" name="next" value={nextSafe} />}
             <label className="block">
               <span className="block font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5">
                 Code · Msimbo
@@ -95,7 +98,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
 
           <div className="flex items-center justify-between border-t border-border pt-3">
             <Link
-              href={purpose === "register" ? "/auth/register" : "/auth/login"}
+              href={`${purpose === "register" ? "/auth/register" : "/auth/login"}${nextSafe ? `?next=${encodeURIComponent(nextSafe)}` : ""}` as never}
               className="font-mono text-[12px] uppercase tracking-[0.14em] text-text-subtle hover:text-text transition-colors"
             >
               ← Change number
@@ -104,7 +107,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
               // A register OTP can't be re-issued without the original sign-up
               // payload, so send the user back to start over (phone prefilled).
               <Link
-                href={`/auth/register${phone ? `?phone=${encodeURIComponent(phone)}` : ""}` as never}
+                href={`/auth/register?${new URLSearchParams({ ...(phone ? { phone } : {}), ...(nextSafe ? { next: nextSafe } : {}) }).toString()}` as never}
                 className="font-mono text-[12px] uppercase tracking-[0.14em] text-accent-400 hover:text-accent-300 transition-colors"
               >
                 Start over
