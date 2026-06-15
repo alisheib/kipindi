@@ -39,6 +39,14 @@ export async function dispatchDeposit(opts: { provider: PaymentProvider; amount:
     audit({ category: "WALLET", action: "deposit.declined", actorId: opts.userId, targetType: "User", targetId: opts.userId, payload: { correlationId } });
     return { ok: false, reason: "DECLINED", correlationId };
   }
+  // Real mobile-money/card collections are ASYNCHRONOUS: the initiate call only
+  // pushes a prompt to the customer's handset; the final result arrives later on
+  // the webhook. `PAYMENTS_DEMO_ASYNC=true` makes the mock behave that way (return
+  // PENDING, no auto-credit) so the webhook→settle path can be demoed end-to-end.
+  // Default (unset) stays synchronously CONFIRMED for local dev / the gauntlet.
+  if (isAsyncMode()) {
+    return { ok: true, providerRef: `${opts.provider}-${randomId(6).toUpperCase()}`, status: "PENDING", correlationId };
+  }
   return { ok: true, providerRef: `${opts.provider}-${randomId(6).toUpperCase()}`, status: "CONFIRMED", correlationId };
 }
 
@@ -58,7 +66,18 @@ export async function dispatchWithdrawal(opts: { provider: PaymentProvider; amou
     audit({ category: "COMPLIANCE", action: "withdraw.aml_review_triggered", actorId: opts.userId, targetType: "User", targetId: opts.userId, payload: { correlationId, amount: opts.amount, threshold: 1_000_000 } });
     return { ok: true, providerRef: `${opts.provider}-${randomId(6).toUpperCase()}`, status: "AML_REVIEW", correlationId };
   }
+  // Async payout simulation — see dispatchDeposit. The funds stay held until the
+  // provider's payout webhook confirms (or fails) the disbursement.
+  if (isAsyncMode()) {
+    return { ok: true, providerRef: `${opts.provider}-${randomId(6).toUpperCase()}`, status: "PENDING", correlationId };
+  }
   return { ok: true, providerRef: `${opts.provider}-${randomId(6).toUpperCase()}`, status: "CONFIRMED", correlationId };
+}
+
+/** When true, the mock provider behaves like a real async gateway (returns
+ *  PENDING; settlement arrives later on the webhook). Off by default. */
+function isAsyncMode(): boolean {
+  return process.env.PAYMENTS_DEMO_ASYNC === "true";
 }
 
 function mask(msisdn: string) {

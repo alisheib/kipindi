@@ -142,43 +142,180 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
     return { ok: false, error: friendlyDepositReason(result.reason), code: "INVALID" };
   }
 
-  // Credit wallet — under the per-wallet lock with a FRESH re-read, because the
-  // `wallet` captured above is stale after the awaited dispatch: a concurrent
-  // cash-out / payout / bet on the same wallet may have changed the balance in
-  // the meantime. Applying the +amount delta to the live balance (not the stale
-  // snapshot) prevents the deposit from clobbering those concurrent changes.
-  const newBalance = await withLock(`wallet:${userId}`, async () => {
-    const fresh = await db.wallet.findByUserId(userId);
-    if (!fresh) return wallet.balance + parse.data.amount;
+  // Record the provider reference NOW so an asynchronous confirmation webhook
+  // can correlate back to this transaction (and so reconciliation can find it).
+  await db.txn.update(txnId, { providerRef: result.providerRef });
+
+  if (result.status === "PENDING") {
+    // Real mobile-money / card collection is ASYNCHRONOUS: the initiate call only
+    // pushes a prompt to the customer's handset. Money has NOT moved yet, so we
+    // must NOT credit the wallet here. Leave the txn PROCESSING — the webhook is
+    // the SOLE authority that credits it, exactly once, on a confirmed callback.
+    audit({ category: "WALLET", action: "deposit.pending", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: result.providerRef } });
+    const cur = await db.wallet.findByUserId(userId);
+    return { ok: true, data: { txnId, status: "PROCESSING", balance: cur?.balance ?? 0 } };
+  }
+
+  // Synchronous provider (or the dev mock): the collection already settled, so
+  // credit immediately. settleDepositConfirmed is the SAME exactly-once path the
+  // webhook uses, so the two can never double-credit.
+  const settled = await settleDepositConfirmed(txnId, result.providerRef);
+  return { ok: true, data: { txnId, status: "CONFIRMED", balance: settled.balance } };
+}
+
+/**
+ * Credit a deposit and mark it CONFIRMED — EXACTLY ONCE. Called from the
+ * synchronous provider path AND the async webhook. Idempotent: a second call
+ * once the txn is no longer PROCESSING is a no-op (status-gated under the
+ * per-wallet lock, so concurrent webhook retries serialize and only one wins).
+ * The receipt / notification / affiliate side-effects fire only on the call
+ * that actually credits.
+ */
+async function settleDepositConfirmed(txnId: string, providerRef?: string): Promise<{ credited: boolean; balance: number }> {
+  const pre = await db.txn.findById(txnId);
+  if (!pre) return { credited: false, balance: 0 };
+
+  const outcome = await withLock(`wallet:${pre.userId}`, async (): Promise<{ credited: boolean; balance: number; txn?: StoredTxn }> => {
+    const t = await db.txn.findById(txnId);
+    if (!t) return { credited: false, balance: 0 };
+    if (t.status !== "PROCESSING") {
+      // Already settled — idempotent no-op. Return the live balance.
+      const w = await db.wallet.findByUserId(t.userId);
+      return { credited: false, balance: w?.balance ?? 0 };
+    }
+    const fresh = await db.wallet.findByUserId(t.userId);
+    if (!fresh) return { credited: false, balance: 0 };
     // Atomic +delta on the live row — never writes back a stale absolute balance.
-    const updated = await db.wallet.adjust(fresh.id, { balance: parse.data.amount });
-    return updated?.balance ?? fresh.balance + parse.data.amount;
+    const updated = await db.wallet.adjust(fresh.id, { balance: t.amount });
+    const newBalance = updated?.balance ?? fresh.balance + t.amount;
+    await db.txn.update(txnId, { status: "CONFIRMED", providerRef: providerRef ?? t.providerRef, balanceAfter: newBalance, completedAt: new Date().toISOString() });
+    return { credited: true, balance: newBalance, txn: t };
   });
-  await db.txn.update(txnId, { status: "CONFIRMED", providerRef: result.providerRef, balanceAfter: newBalance, completedAt: new Date().toISOString() });
-  audit({ category: "WALLET", action: "deposit.confirmed", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: result.providerRef, balanceAfter: newBalance } });
-  notifyDeposit(userId, parse.data.amount, friendlyProvider(parse.data.provider));
 
-  // Email receipt — best-effort, never blocks deposit
-  sendEmailToUser(userId, (email) => ({
-    to: email,
-    subject: `Deposit confirmed · TZS ${Math.round(parse.data.amount).toLocaleString("en-US")}`,
-    html: depositConfirmedHtml({ amount: parse.data.amount, method: friendlyProvider(parse.data.provider), reference: txnId, balance: newBalance }),
-    tag: "deposit",
-  })).catch(() => {});
+  if (outcome.credited && outcome.txn) {
+    const t = outcome.txn;
+    audit({ category: "WALLET", action: "deposit.confirmed", actorId: t.userId, targetType: "Transaction", targetId: t.id, payload: { providerRef: providerRef ?? t.providerRef, balanceAfter: outcome.balance } });
+    notifyDeposit(t.userId, t.amount, friendlyProvider(t.provider));
+    sendEmailToUser(t.userId, (email) => ({
+      to: email,
+      subject: `Deposit confirmed · TZS ${Math.round(t.amount).toLocaleString("en-US")}`,
+      html: depositConfirmedHtml({ amount: t.amount, method: friendlyProvider(t.provider), reference: t.id, balance: outcome.balance }),
+      tag: "deposit",
+    })).catch(() => {});
+    // Affiliate accrual (first-deposit bonus / threshold prize) — best-effort.
+    try {
+      const { onRecruitDeposit } = await import("./affiliate-service");
+      const cumulativeDepositsTzs = (await db.txn.findByUser(t.userId, 1000))
+        .filter((x) => x.type === "DEPOSIT" && x.status === "CONFIRMED")
+        .reduce((sum, x) => sum + x.amount, 0);
+      await onRecruitDeposit(t.userId, { cumulativeDepositsTzs });
+    } catch { /* affiliate accrual must never break a deposit */ }
+  }
+  return { credited: outcome.credited, balance: outcome.balance };
+}
 
-  // Affiliate program — fire the first-deposit bonus and/or deposit-threshold
-  // prize for whoever referred this player. Best-effort; never blocks the
-  // deposit. Cumulative includes this just-confirmed deposit.
-  try {
-    const { onRecruitDeposit } = await import("./affiliate-service");
-    const cumulativeDepositsTzs = (await db.txn
-      .findByUser(userId, 1000))
-      .filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED")
-      .reduce((sum, t) => sum + t.amount, 0);
-    await onRecruitDeposit(userId, { cumulativeDepositsTzs });
-  } catch { /* affiliate accrual must never break a deposit */ }
+/** Mark a still-pending deposit FAILED (webhook failure / reconciliation
+ *  timeout). No wallet movement — a PENDING deposit was never credited.
+ *  Idempotent: only acts while the txn is PROCESSING. */
+async function settleDepositFailed(txnId: string, reason: string): Promise<boolean> {
+  const t = await db.txn.findById(txnId);
+  if (!t || t.status !== "PROCESSING") return false;
+  await db.txn.update(txnId, { status: "FAILED", description: `${friendlyProvider(t.provider)} deposit failed: ${reason}` });
+  audit({ category: "WALLET", action: "deposit.failed", actorId: t.userId, targetType: "Transaction", targetId: txnId, payload: { reason } });
+  return true;
+}
 
-  return { ok: true, data: { txnId, status: "CONFIRMED", balance: newBalance } };
+/** Finalize a held withdrawal once the payout is confirmed: release the hold
+ *  (funds have left the platform) and mark CONFIRMED. Exactly-once / idempotent
+ *  under the per-wallet lock. */
+async function settleWithdrawalConfirmed(txnId: string): Promise<boolean> {
+  const pre = await db.txn.findById(txnId);
+  if (!pre) return false;
+  const done = await withLock(`wallet:${pre.userId}`, async (): Promise<StoredTxn | null> => {
+    const t = await db.txn.findById(txnId);
+    if (!t || t.status !== "PROCESSING") return null;
+    const amt = Math.abs(t.amount);
+    const w = await db.wallet.findByUserId(t.userId);
+    if (w) await db.wallet.adjust(w.id, { hold: -amt });
+    await db.txn.update(txnId, { status: "CONFIRMED", completedAt: new Date().toISOString() });
+    return t;
+  });
+  if (done) {
+    const net = Math.abs(done.amount) - done.taxWithheld;
+    audit({ category: "WALLET", action: "withdraw.confirmed", actorId: done.userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: done.providerRef, net } });
+    notifyWithdraw(done.userId, { status: "CONFIRMED", amount: Math.abs(done.amount), net, provider: friendlyProvider(done.provider) });
+    sendEmailToUser(done.userId, (email) => ({
+      to: email,
+      subject: `Withdrawal sent · TZS ${Math.round(net).toLocaleString("en-US")}`,
+      html: withdrawalSentHtml({ amount: net, destination: friendlyProvider(done.provider), reference: txnId }),
+      tag: "withdrawal",
+    })).catch(() => {});
+  }
+  return !!done;
+}
+
+/** Reverse a held withdrawal whose payout failed: return the funds to spendable
+ *  balance, release the hold, mark FAILED. Exactly-once under the wallet lock. */
+async function settleWithdrawalFailed(txnId: string, reason: string): Promise<boolean> {
+  const pre = await db.txn.findById(txnId);
+  if (!pre) return false;
+  const done = await withLock(`wallet:${pre.userId}`, async (): Promise<StoredTxn | null> => {
+    const t = await db.txn.findById(txnId);
+    if (!t || t.status !== "PROCESSING") return null;
+    const amt = Math.abs(t.amount);
+    const w = await db.wallet.findByUserId(t.userId);
+    if (w) await db.wallet.adjust(w.id, { balance: amt, hold: -amt });
+    await db.txn.update(txnId, { status: "FAILED", description: `Withdrawal failed: ${reason}` });
+    return t;
+  });
+  if (done) {
+    audit({ category: "WALLET", action: "withdraw.failed", actorId: done.userId, targetType: "Transaction", targetId: txnId, payload: { reason } });
+    notifyWithdraw(done.userId, { status: "FAILED", amount: Math.abs(done.amount), provider: friendlyProvider(done.provider), reason });
+  }
+  return !!done;
+}
+
+/**
+ * Settle a payment from a verified provider webhook. The single entry point the
+ * webhook route calls; routes by transaction type and confirmed/failed status.
+ * All underlying settle fns are idempotent, so a retried (at-least-once) webhook
+ * is safe. Returns a small verdict for the route to log.
+ */
+export async function settlePaymentWebhook(input: { providerRef: string; status: "CONFIRMED" | "FAILED" }): Promise<{ handled: boolean; reason: string }> {
+  const txn = await db.txn.findByProviderRef(input.providerRef);
+  if (!txn) return { handled: false, reason: "unknown-reference" };
+  if (txn.status !== "PROCESSING") return { handled: true, reason: `already-${txn.status.toLowerCase()}` };
+
+  if (txn.type === "DEPOSIT") {
+    if (input.status === "CONFIRMED") await settleDepositConfirmed(txn.id, txn.providerRef ?? input.providerRef);
+    else await settleDepositFailed(txn.id, "provider-reported-failure");
+    return { handled: true, reason: `deposit-${input.status.toLowerCase()}` };
+  }
+  if (txn.type === "WITHDRAWAL") {
+    if (input.status === "CONFIRMED") await settleWithdrawalConfirmed(txn.id);
+    else await settleWithdrawalFailed(txn.id, "provider-reported-failure");
+    return { handled: true, reason: `withdrawal-${input.status.toLowerCase()}` };
+  }
+  return { handled: false, reason: `untracked-type-${txn.type.toLowerCase()}` };
+}
+
+/**
+ * Sweep deposits/withdrawals stuck in PROCESSING past `olderThanMs` (no webhook
+ * ever arrived) into a terminal state — deposits FAIL (never credited),
+ * withdrawals reverse the hold. Intended to be run on a schedule (cron). Returns
+ * how many of each it swept.
+ */
+export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Promise<{ depositsFailed: number; withdrawalsReversed: number }> {
+  const cutoff = Date.now() - olderThanMs;
+  const stale = (await db.txn.listByStatus("PROCESSING")).filter((t) => Date.parse(t.createdAt) < cutoff);
+  let depositsFailed = 0;
+  let withdrawalsReversed = 0;
+  for (const t of stale) {
+    if (t.type === "DEPOSIT") { if (await settleDepositFailed(t.id, "reconcile-timeout")) depositsFailed++; }
+    else if (t.type === "WITHDRAWAL") { if (await settleWithdrawalFailed(t.id, "reconcile-timeout")) withdrawalsReversed++; }
+  }
+  if (stale.length) audit({ category: "WALLET", action: "payments.reconcile_sweep", actorId: null, targetType: null, targetId: null, payload: { olderThanMs, depositsFailed, withdrawalsReversed } });
+  return { depositsFailed, withdrawalsReversed };
 }
 
 /** Withdrawal — debits wallet immediately, dispatches to provider, settles. */
@@ -254,20 +391,17 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
   // above — concurrent deposits/credits would be silently clobbered. Reversing
   // *this* withdrawal's hold delta is the only safe mutation.
   if (!result.ok) {
-    await withLock(`wallet:${userId}`, async () => {
-      const w = await db.wallet.findByUserId(userId);
-      // Reverse exactly this withdrawal's delta: return funds, release the hold.
-      if (w) await db.wallet.adjust(w.id, { balance: amount, hold: -amount });
-    });
-    await db.txn.update(txnId, { status: "FAILED", description: `Withdrawal failed: ${result.reason}` });
-    audit({ category: "WALLET", action: "withdraw.failed", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { reason: result.reason } });
-    notifyWithdraw(userId, { status: "FAILED", amount, provider: providerLabel, reason: result.reason });
+    // Reverse the hold (return funds) + mark FAILED — shared, idempotent path.
+    await settleWithdrawalFailed(txnId, result.reason);
     return { ok: false, error: "Withdrawal failed. Funds returned to your balance.", code: "INVALID" };
   }
 
+  // Record the provider reference for webhook correlation / reconciliation.
+  await db.txn.update(txnId, { providerRef: result.providerRef });
+
   if (result.status === "AML_REVIEW") {
     // Funds stay in `hold` pending manual review — no settle delta yet.
-    await db.txn.update(txnId, { status: "AML_REVIEW", providerRef: result.providerRef, amlReason: "Threshold ≥ TZS 1,000,000" });
+    await db.txn.update(txnId, { status: "AML_REVIEW", amlReason: "Threshold ≥ TZS 1,000,000" });
     audit({ category: "COMPLIANCE", action: "withdraw.aml_held", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { amount } });
     notifyWithdraw(userId, { status: "AML_REVIEW", amount, net, provider: providerLabel });
     sendEmailToUser(userId, (email) => ({
@@ -279,22 +413,18 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
     return { ok: true, data: { txnId, status: "AML_REVIEW", tax, net } };
   }
 
-  // Success — the held funds have left the building; clear this withdrawal's hold.
-  await withLock(`wallet:${userId}`, async () => {
-    const w = await db.wallet.findByUserId(userId);
-    // Funds have left the platform — release this withdrawal's hold.
-    if (w) await db.wallet.adjust(w.id, { hold: -amount });
-  });
-  await db.txn.update(txnId, { status: "CONFIRMED", providerRef: result.providerRef, completedAt: new Date().toISOString() });
-  audit({ category: "WALLET", action: "withdraw.confirmed", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: result.providerRef, net } });
-  notifyWithdraw(userId, { status: "CONFIRMED", amount, net, provider: providerLabel });
-  sendEmailToUser(userId, (email) => ({
-    to: email,
-    subject: `Withdrawal sent · TZS ${Math.round(net).toLocaleString("en-US")}`,
-    html: withdrawalSentHtml({ amount: net, destination: providerLabel, reference: txnId }),
-    tag: "withdrawal",
-  })).catch(() => {});
+  if (result.status === "PENDING") {
+    // Async payout: funds stay in `hold` until the provider's payout webhook
+    // confirms (release hold) or fails (reverse) the disbursement. The webhook
+    // is the authority — we don't release the hold here.
+    audit({ category: "WALLET", action: "withdraw.pending", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: result.providerRef, net } });
+    notifyWithdraw(userId, { status: "INITIATED", amount, net, provider: providerLabel });
+    return { ok: true, data: { txnId, status: "PROCESSING", tax, net } };
+  }
 
+  // CONFIRMED (synchronous provider / mock): release the hold + finalize. Same
+  // exactly-once path the payout webhook uses — they can't double-settle.
+  await settleWithdrawalConfirmed(txnId);
   return { ok: true, data: { txnId, status: "CONFIRMED", tax, net } };
 }
 
@@ -350,7 +480,7 @@ export async function creditInternal(
   });
 }
 
-function friendlyProvider(p: string): string {
+function friendlyProvider(p: string | null | undefined): string {
   switch (p) {
     case "MPESA": return "M-Pesa";
     case "AIRTEL_MONEY": return "Airtel Money";
@@ -358,7 +488,7 @@ function friendlyProvider(p: string): string {
     case "MIXX": return "Mixx by Yas";
     case "CARD": return "Card";
     case "BANK_TRANSFER": return "Bank transfer";
-    default: return p;
+    default: return p ?? "Mobile money";
   }
 }
 

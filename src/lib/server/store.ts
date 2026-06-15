@@ -453,6 +453,8 @@ const memoryDb = {
   txn: {
     create: (t: StoredTxn) => { store.txns.set(t.id, t); return t; },
     findByUser: (userId: string, limit = 50) => Array.from(store.txns.values()).filter((t) => t.userId === userId).slice(-limit).reverse(),
+    findById: (id: string) => store.txns.get(id) ?? null,
+    findByProviderRef: (providerRef: string) => Array.from(store.txns.values()).find((t) => t.providerRef === providerRef) ?? null,
     update: (id: string, patch: Partial<StoredTxn>) => {
       const t = store.txns.get(id);
       if (!t) return null;

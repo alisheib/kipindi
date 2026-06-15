@@ -637,6 +637,14 @@ export const prismaDb = {
       });
       return rows.map(toStoredTxn);
     },
+    findById: async (id: string): Promise<StoredTxn | null> => {
+      const row = await pc().transaction.findUnique({ where: { id } });
+      return row ? toStoredTxn(row) : null;
+    },
+    findByProviderRef: async (providerRef: string): Promise<StoredTxn | null> => {
+      const row = await pc().transaction.findFirst({ where: { providerRef } });
+      return row ? toStoredTxn(row) : null;
+    },
     update: async (id: string, patch: Partial<StoredTxn>): Promise<StoredTxn | null> => {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

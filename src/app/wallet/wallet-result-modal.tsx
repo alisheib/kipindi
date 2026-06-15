@@ -29,20 +29,35 @@ export function WalletResultModal({
   const amt = amount ? `TZS ${Number(amount).toLocaleString("en-US")}` : undefined;
   const isWithdraw = !!withdrawal;
   const amlHeld = isWithdraw && status === "AML_REVIEW";
+  // Async collection/payout: money hasn't moved yet — it settles on the
+  // provider's webhook. Show a clear "awaiting confirmation" state, not success.
+  const pending = status === "PROCESSING";
 
   const close = () => { setOpen(false); router.replace("/wallet"); };
+
+  const eyebrow = isWithdraw
+    ? (amlHeld ? "Under review · Inakaguliwa" : pending ? "Payout started · Inatumwa" : "Withdrawal sent · Imetumwa")
+    : (pending ? "Deposit started · Inasubiri" : "Deposit confirmed · Imethibitishwa");
+  const title = isWithdraw
+    ? (amlHeld ? "Withdrawal under review" : pending ? "Payout in progress" : "Withdrawal on its way")
+    : (pending ? "Awaiting confirmation" : "Funds added");
+  const subtitle = isWithdraw
+    ? (amlHeld
+        ? "Amounts over TZS 1,000,000 are reviewed by compliance (usually within 2 hours)."
+        : pending
+          ? "Your provider is processing the payout. We'll confirm the moment it settles · Tutathibitisha mara itakapokamilika."
+          : "Your provider should pay out within moments.")
+    : (pending
+        ? "Approve the prompt on your phone. We'll add the funds the moment your provider confirms — your history updates automatically · Idhinisha kwenye simu yako."
+        : "Your balance has been topped up.");
 
   return (
     <OperationResultModal
       open={open}
-      variant={amlHeld ? "warning" : "success"}
-      eyebrow={isWithdraw ? (amlHeld ? "Under review · Inakaguliwa" : "Withdrawal sent · Imetumwa") : "Deposit confirmed · Imethibitishwa"}
-      title={isWithdraw ? (amlHeld ? "Withdrawal under review" : "Withdrawal on its way") : "Funds added"}
-      subtitle={
-        isWithdraw
-          ? (amlHeld ? "Amounts over TZS 1,000,000 are reviewed by compliance (usually within 2 hours)." : "Your provider should pay out within moments.")
-          : "Your balance has been topped up."
-      }
+      variant={amlHeld || pending ? "warning" : "success"}
+      eyebrow={eyebrow}
+      title={title}
+      subtitle={subtitle}
       details={[
         ...(amt ? [{ label: "Amount", sw: "Kiasi", value: amt }] : []),
         { label: "Reference", sw: "Kumbukumbu", value: txnId },

@@ -18,6 +18,16 @@
 import { NextResponse } from "next/server";
 import { verifyWebhookSignature } from "@/lib/server/crypto";
 import { audit } from "@/lib/server/audit";
+import { settlePaymentWebhook } from "@/lib/server/wallet-service";
+
+/** Map the many provider-specific status spellings to our two terminal states.
+ *  Anything not recognised is treated as a non-terminal update we simply ack. */
+function normalizeStatus(raw: unknown): "CONFIRMED" | "FAILED" | null {
+  const s = String(raw ?? "").toUpperCase();
+  if (["CONFIRMED", "SUCCESS", "SUCCESSFUL", "COMPLETED", "PAID", "SETTLED"].includes(s)) return "CONFIRMED";
+  if (["FAILED", "FAILURE", "DECLINED", "CANCELLED", "CANCELED", "REJECTED", "REVERSED"].includes(s)) return "FAILED";
+  return null;
+}
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -64,14 +74,38 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "bad-json" }, { status: 400 });
   }
 
+  // The provider echoes back the `reference` we sent at initiate time — we store
+  // it as Transaction.providerRef and use it to correlate the callback. `status`
+  // is the provider's final verdict for that collection/payout.
+  const ref = (parsed as { reference?: string; providerRef?: string })?.reference
+    ?? (parsed as { providerRef?: string })?.providerRef
+    ?? "";
+  const status = normalizeStatus((parsed as { status?: string })?.status);
+
   audit({
     category: "WALLET",
     action: "webhook.payment.received",
     actorId: null,
     targetType: "Webhook",
-    targetId: (parsed as { reference?: string })?.reference ?? null,
-    payload: { provider, body: parsed, signaturePrefix: signature.slice(0, 12) },
+    targetId: ref || null,
+    payload: { provider, reference: ref, status, signaturePrefix: signature.slice(0, 12) },
   });
 
-  return NextResponse.json({ ok: true });
+  // Settle the transaction. This is the SOLE authority that credits a pending
+  // deposit / releases a pending payout. settlePaymentWebhook is idempotent, so
+  // a provider's at-least-once retry is safe. Always 200 on a verified webhook
+  // so the provider stops retrying (the verdict is captured in the audit log).
+  if (!ref || !status) {
+    return NextResponse.json({ ok: true, ignored: true, reason: !ref ? "no-reference" : "non-terminal-status" });
+  }
+  const settled = await settlePaymentWebhook({ providerRef: ref, status });
+  audit({
+    category: "WALLET",
+    action: "webhook.payment.settled",
+    actorId: null,
+    targetType: "Webhook",
+    targetId: ref,
+    payload: { provider, ...settled },
+  });
+  return NextResponse.json({ ok: true, ...settled });
 }

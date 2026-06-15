@@ -22,5 +22,7 @@ export async function depositAction(formData: FormData) {
   revalidatePath("/wallet");
   // Surface failures instead of swallowing them — bounce back with the error.
   if (!result.ok) redirect(("/wallet/deposit?error=" + encodeURIComponent(result.error)) as never);
-  redirect(`/wallet?deposited=${result.data!.txnId}&amount=${amount}` as never);
+  // status is CONFIRMED for synchronous providers, PROCESSING when the provider
+  // collects asynchronously (we credit on the webhook). The modal reflects both.
+  redirect(`/wallet?deposited=${result.data!.txnId}&amount=${amount}&status=${result.data!.status}` as never);
 }
