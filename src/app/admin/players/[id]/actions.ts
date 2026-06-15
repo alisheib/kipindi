@@ -122,6 +122,32 @@ export async function restorePlayerAction(formData: FormData) {
   return { ok: true as const };
 }
 
+// ─── Player email (admin override) ────────────────────────────────────────────
+
+export async function setPlayerEmailAction(formData: FormData) {
+  const officerId = await requireAdmin("setPlayerEmailAction");
+  const userId = String(formData.get("userId") ?? "");
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!userId) return { ok: false as const, error: "Missing user id." };
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false as const, error: "Enter a valid email." };
+
+  const target = await db.user.findById(userId);
+  if (!target) return { ok: false as const, error: "Player not found." };
+  const prev = target.email ?? null;
+  await db.user.update(userId, { email, emailVerifiedAt: null });
+  audit({
+    category: "ADMIN",
+    action: "player.email.set_by_officer",
+    actorId: officerId,
+    targetType: "User",
+    targetId: userId,
+    payload: { prev, next: email },
+  });
+  console.log(`[admin] officer ${officerId.slice(0, 14)}… set email for ${userId.slice(0, 14)}…: ${prev ?? "null"} → ${email}`);
+  revalidatePath(`/admin/players/${userId}`);
+  return { ok: true as const };
+}
+
 // ─── KYC review (officer decision on a pending submission) ──────────────────
 
 export async function approveKycAction(formData: FormData) {

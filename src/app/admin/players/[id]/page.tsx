@@ -10,6 +10,7 @@ import { formatTzs, formatTzsCompact } from "@/lib/utils";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { KycReviewControls } from "@/components/admin/kyc-review-controls";
 import { SuspendControls } from "./suspend-controls";
+import { SetEmailForm } from "./set-email-form";
 import { ExportPlayerButton } from "./export-player-button";
 
 export const dynamic = "force-dynamic";
@@ -247,7 +248,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
               </div>
             )}
             {tab === "kyc" && (
-              <KycTab kyc={kyc} />
+              <KycTab kyc={kyc} userEmail={user.email} userId={id} />
             )}
             {tab === "limits" && (
               <LimitsTab rg={rg} />
@@ -286,11 +287,27 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   );
 }
 
-function KycTab({ kyc }: { kyc: ReturnType<typeof db.kyc.findByUserId> }) {
+function KycTab({ kyc, userEmail, userId }: { kyc: ReturnType<typeof db.kyc.findByUserId>; userEmail?: string | null; userId: string }) {
   if (!kyc) return <p className="text-caption text-text-tertiary py-4 text-center">No KYC record yet.</p>;
   const decided = kyc.status === "APPROVED" || kyc.status === "REJECTED";
   return (
     <div className="space-y-4">
+      {/* Email status — critical for KYC notifications. Warn if missing. */}
+      <div className={`rounded-md px-3 py-2.5 flex items-start gap-2.5 text-caption ${userEmail ? "border border-border bg-bg-inset/30" : "border-2 border-warning-border bg-warning-bg/20"}`}>
+        <I.mail s={14} className={userEmail ? "text-text-tertiary mt-0.5" : "text-gold-300 mt-0.5"} />
+        <div className="flex-1 min-w-0">
+          <p className="font-mono text-micro tracking-[0.12em] uppercase text-text-tertiary">Player email</p>
+          {userEmail ? (
+            <p className="text-body-sm font-medium text-text break-all">{userEmail}</p>
+          ) : (
+            <>
+              <p className="text-body-sm font-semibold text-gold-300">No email on file — KYC notifications will not reach this player</p>
+              <SetEmailForm userId={userId} />
+            </>
+          )}
+        </div>
+      </div>
+
       <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-caption">
         <Item label="Status" value={<Chip size="sm" variant={kyc.status === "APPROVED" ? "success" : kyc.status === "REJECTED" ? "danger" : "warning"}>{kyc.status}</Chip>} />
         <Item label="NIDA number" value={<span className="font-mono">{kyc.nidaNumber ? `${kyc.nidaNumber.slice(0, 4)}…${kyc.nidaNumber.slice(-4)}` : "—"}</span>} />
