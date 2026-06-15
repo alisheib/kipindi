@@ -43,6 +43,10 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
               Choose a strong password (8+ characters).{" "}
               <span className="italic text-text-subtle">Chagua nenosiri imara.</span>
             </p>
+            <p className="mt-1.5 flex items-center gap-1.5 text-[11.5px] text-gold-300">
+              <I.clock s={12} />
+              This link expires 1 hour after it was sent. · Kiungo hiki kinaisha baada ya saa 1.
+            </p>
           </div>
 
           {sp.error && (
@@ -68,6 +72,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
                 autoComplete="new-password"
                 placeholder="••••••••"
                 size="lg"
+                showStrength
               />
             </div>
             <div>
