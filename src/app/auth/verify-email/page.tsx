@@ -81,11 +81,11 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
             </Link>
             {!good && (
               <Link
-                href="/profile"
+                href="/profile/account"
                 className="btn btn-ghost btn-lg w-full"
                 style={{ borderRadius: "var(--r-pill)" }}
               >
-                Go to profile · Wasifu
+                Go to account · Resend link
               </Link>
             )}
           </div>

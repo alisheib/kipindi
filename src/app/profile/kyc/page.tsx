@@ -60,8 +60,14 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             <p className="font-display font-semibold text-gold-300">Confirm your email · Thibitisha barua pepe</p>
             <p className="mt-0.5">
               We sent a confirmation link to <span className="font-semibold text-text">{user?.email}</span>.
-              Check your inbox and click the link so we can send you verification results, receipts, and password resets.{" "}
-              <span className="italic text-text-subtle">Angalia barua pepe yako na ubonyeze kiungo.</span>
+              Check your inbox and click the link so we can send you verification results, receipts, and password resets.
+              The link expires in 24 hours.{" "}
+              <span className="italic text-text-subtle">Angalia barua pepe yako. Kiungo kinaisha baada ya saa 24.</span>
+            </p>
+            <p className="mt-1.5">
+              <Link href="/profile/account" className="font-mono text-[11px] text-accent-400 hover:text-accent-300 underline-offset-2 hover:underline">
+                Didn&rsquo;t get it? Resend from your account page →
+              </Link>
             </p>
           </div>
         </div>

@@ -81,12 +81,12 @@ export function EmailEditor({ currentEmail, currentName, verified }: { currentEm
           {currentEmail && (
             verified ? (
               <span className="inline-flex items-center gap-1 rounded-pill border border-yes-700 bg-yes-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-yes-300">
-                <I.check s={10} /> Confirmed
+                <I.check s={10} /> Confirmed · Imethibitishwa
               </span>
             ) : (
               <span className="inline-flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1 rounded-pill border border-gold-700 bg-gold-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-gold-300">
-                  Unconfirmed
+                  Unconfirmed · Haijathibitishwa
                 </span>
                 <button type="button" onClick={resend} disabled={pending} className="font-mono text-[11px] text-accent-400 hover:text-accent-300 underline-offset-2 hover:underline disabled:opacity-60">
                   {pending ? "Sending…" : "Resend link"}

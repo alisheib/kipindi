@@ -125,8 +125,8 @@ export default async function ProfilePage() {
               <Pill tone="neutral">{user.locale === "SW" ? "Kiswahili" : "English"}</Pill>
               {user.email && (
                 user.emailVerifiedAt
-                  ? <Pill tone="yes">Email confirmed</Pill>
-                  : <Pill tone="warning">Email unconfirmed</Pill>
+                  ? <Pill tone="yes">Email confirmed · Imethibitishwa</Pill>
+                  : <Link href="/profile/account" className="no-underline"><Pill tone="warning">Email unconfirmed · Bonyeza hapa</Pill></Link>
               )}
             </div>
           </div>
