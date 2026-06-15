@@ -24,6 +24,14 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
         </Link>
 
         <section className="rounded-xl glass-panel p-6 space-y-5">
+          <Link
+            href="/auth/login"
+            className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
+          >
+            <I.chevronLeft s={14} />
+            Back to sign in
+          </Link>
+
           <div>
             <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-gold-300">
               Reset password · Badilisha nenosiri

@@ -54,6 +54,11 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
             </div>
           )}
 
+          {sp.error === "phone_required" && (
+            <div role="alert" className="rounded-md border border-no-700 bg-no-500/10 px-3.5 py-3 text-[13px] text-no-300">
+              Enter your phone number. · Weka nambari ya simu yako.
+            </div>
+          )}
           {sp.error === "rate_limited" && (
             <div role="alert" className="rounded-md border border-warning-border bg-warning-bg/20 px-3.5 py-3 text-[13px] text-gold-300">
               Too many attempts. Wait a moment and try again. · Majaribio mengi sana.

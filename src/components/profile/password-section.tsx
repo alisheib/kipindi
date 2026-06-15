@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
+import { PasswordInput } from "@/components/ui/password-input";
 import { changePasswordAction } from "@/app/profile/account/actions";
 
 export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
@@ -36,8 +37,6 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
       }
     });
   };
-
-  const inputCls = "w-full h-10 px-3 rounded-md border border-border bg-inset text-text font-mono text-[13px] focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors";
 
   if (!open) {
     return (
@@ -72,45 +71,50 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
       </div>
       {hasPassword && (
         <div>
-          <label className="block font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-1.5">
-            Current password
+          <label
+            htmlFor="pw-current"
+            className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
+          >
+            Current password · Nenosiri la sasa
           </label>
-          <input
-            type="password"
+          <PasswordInput
+            id="pw-current"
             value={current}
             onChange={(e) => setCurrent(e.target.value)}
             autoComplete="current-password"
             placeholder="••••••••"
-            className={inputCls}
           />
         </div>
       )}
       <div>
-        <label className="block font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-1.5">
-          New password (8+ characters)
+        <label
+          htmlFor="pw-new"
+          className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
+        >
+          New password (8+) · Nenosiri jipya
         </label>
-        <input
-          type="password"
+        <PasswordInput
+          id="pw-new"
           value={next}
           onChange={(e) => setNext(e.target.value)}
           autoComplete="new-password"
-          minLength={8}
           placeholder="••••••••"
-          className={inputCls}
+          showStrength
         />
       </div>
       <div>
-        <label className="block font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-1.5">
-          Confirm new password
+        <label
+          htmlFor="pw-confirm"
+          className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
+        >
+          Confirm · Thibitisha
         </label>
-        <input
-          type="password"
+        <PasswordInput
+          id="pw-confirm"
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
           autoComplete="new-password"
-          minLength={8}
           placeholder="••••••••"
-          className={inputCls}
         />
       </div>
       <div className="flex items-center gap-2">
