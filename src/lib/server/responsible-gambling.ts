@@ -23,6 +23,7 @@ import type { StoredResponsibleGambling, StoredTxn } from "./store";
 import type { ServiceResult } from "./auth-service";
 import { sendEmailToUser, selfExclusionHtml, coolOffHtml } from "./email";
 import { revokeUserSessions } from "./session-registry";
+import { notifySelfExclusion } from "./notification-service";
 
 /** Human-readable period labels for RG confirmation emails. */
 const PERIOD_LABEL: Record<string, string> = {
@@ -170,6 +171,8 @@ export async function selfExclude(userId: string, period: keyof typeof SELF_EXCL
   // Kill the session server-side so the block is immediate on every device,
   // not just whenever the idle/absolute timeout eventually fires.
   await revokeUserSessions(userId);
+  // In-app confirmation (email is sent below; in-app guarantees email-less users see it).
+  notifySelfExclusion(userId, { until }).catch(() => {});
   audit({
     category: "COMPLIANCE",
     action: "rg.self_exclusion.activated",

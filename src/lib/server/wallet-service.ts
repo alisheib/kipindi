@@ -15,7 +15,7 @@ import { dispatchDeposit, dispatchWithdrawal, computeWithdrawalTax } from "./pay
 import { rateCheck } from "./rate-limit";
 import { DepositSchema, AdminDepositSchema, WithdrawSchema } from "./validators";
 import { checkDepositLimit, isLockedOut } from "./responsible-gambling";
-import { notifyDeposit, notifyWithdraw } from "./notification-service";
+import { notifyDeposit, notifyWithdraw, notifyAdminsAmlReview } from "./notification-service";
 import { withLock } from "./locks";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
@@ -416,6 +416,8 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
     await db.txn.update(txnId, { status: "AML_REVIEW", amlReason: "Threshold ≥ TZS 1,000,000" });
     audit({ category: "COMPLIANCE", action: "withdraw.aml_held", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { amount } });
     notifyWithdraw(userId, { status: "AML_REVIEW", amount, net, provider: providerLabel });
+    // Alert compliance officers (bell + email) so they act on the queue.
+    notifyAdminsAmlReview({ txnKind: "WITHDRAWAL", amountTzs: amount, reference: txnId }).catch(() => {});
     sendEmailToUser(userId, (email) => ({
       to: email,
       subject: `Withdrawal under review · TZS ${Math.round(amount).toLocaleString("en-US")}`,

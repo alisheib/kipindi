@@ -385,6 +385,75 @@ export function notifyKyc(userId: string, status: "APPROVED" | "REJECTED" | "PEN
   });
 }
 
+/** Security alert: the account password just changed. Pairs with the email
+ *  alert; the in-app copy guarantees email-less (pre-KYC) users still see it. */
+export function notifyPasswordChanged(userId: string) {
+  return notify({
+    userId,
+    kind: "SECURITY",
+    titleEn: "Your password was changed",
+    titleSw: "Nenosiri lako limebadilishwa",
+    bodyEn: "If this wasn't you, reset it now and contact support.",
+    bodySw: "Kama si wewe, libadilishe sasa na uwasiliane na msaada.",
+    href: "/profile/account",
+  });
+}
+
+/** Confirmation that self-exclusion is active. Email is the durable record; this
+ *  in-app copy ensures the player sees it even with no email on file. */
+export function notifySelfExclusion(userId: string, opts: { until: string }) {
+  return notify({
+    userId,
+    kind: "RG",
+    titleEn: "Self-exclusion active",
+    titleSw: "Kujizuia kumeanza",
+    bodyEn: `Your account is closed to betting and deposits until ${opts.until.slice(0, 10)}.`,
+    bodySw: `Akaunti yako imefungwa kuweka dau na amana hadi ${opts.until.slice(0, 10)}.`,
+    href: "/profile/responsible-gambling",
+  });
+}
+
+/**
+ * Alert every compliance/admin officer (in-app bell + email) that a transaction
+ * has hit AML review — so officers act on the queue instead of polling it.
+ * Best-effort throughout; never blocks the transaction.
+ */
+export async function notifyAdminsAmlReview(opts: { txnKind: "WITHDRAWAL" | "DEPOSIT"; amountTzs: number; reference: string }) {
+  const officers = (await db.user.list()).filter((u) => ["ADMIN", "COMPLIANCE"].includes(u.role));
+  const label = opts.txnKind === "WITHDRAWAL" ? "withdrawal" : "deposit";
+  for (const o of officers) {
+    await notify({
+      userId: o.id,
+      kind: "SECURITY",
+      titleEn: `AML review: ${label} TZS ${opts.amountTzs.toLocaleString()}`,
+      titleSw: `Ukaguzi wa AML · TZS ${opts.amountTzs.toLocaleString()}`,
+      bodyEn: `A ${label} of TZS ${opts.amountTzs.toLocaleString()} is awaiting AML clearance — open the queue.`,
+      bodySw: "Muamala unasubiri ukaguzi wa AML — fungua foleni.",
+      href: "/admin/aml",
+    }).catch(() => {});
+  }
+  // Email the same officers (lazy import keeps the static graph free of an
+  // email ↔ notification cycle).
+  try {
+    const { sendEmail, amlReviewAdminHtml } = await import("./email");
+    const { resolvePhoneEmail } = await import("./email-map");
+    const emails = [...new Set(
+      officers
+        .map((o) => (o.email || resolvePhoneEmail(o.phoneE164) || "").trim().toLowerCase())
+        .filter((e) => e && !e.endsWith("@stub") && !e.endsWith("@none")),
+    )];
+    for (const to of emails) {
+      sendEmail({
+        to,
+        subject: `AML review needed · TZS ${opts.amountTzs.toLocaleString()}`,
+        html: amlReviewAdminHtml({ amount: opts.amountTzs, kind: opts.txnKind, reference: opts.reference }),
+        tag: "aml-review-admin",
+        trackLinks: false,
+      }).catch(() => {});
+    }
+  } catch { /* officer email is best-effort */ }
+}
+
 /** Source-of-funds review outcome. ACCEPTED unblocks the deposit gate; REJECTED
  *  asks the player to re-declare (deposits over the threshold stay blocked). */
 export function notifySof(userId: string, status: "ACCEPTED" | "REJECTED") {

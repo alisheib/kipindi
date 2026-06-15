@@ -20,6 +20,7 @@
 import { ServerClient } from "postmark";
 import { LinkTrackingOptions } from "postmark/dist/client/models/message/SupportingTypes";
 import { resolvePhoneEmail } from "./email-map";
+import { isSuppressed } from "./email-suppression";
 
 const FROM = "noreply@50pick.tz";
 const REPLY_TO = "support@50pick.tz";
@@ -51,6 +52,12 @@ type SendInput = {
 export async function sendEmail({ to, subject, html, tag, trackLinks = true }: SendInput): Promise<{ ok: boolean; messageId?: string }> {
   // Skip stub addresses (phone-only users without email)
   if (!to || to.endsWith("@stub") || to.endsWith("@none")) {
+    return { ok: true };
+  }
+  // Skip addresses that hard-bounced or filed a spam complaint (Postmark webhook
+  // → suppression list). Protects sender reputation; never throws.
+  if (isSuppressed(to)) {
+    console.log(`[email] suppressed (bounced/complained): ${to} | ${subject}`);
     return { ok: true };
   }
 
@@ -625,5 +632,36 @@ export function sessionRevokedHtml(): string {
     ${subtitleSw("Akaunti yako imeingia kwenye kifaa kingine. Kikao chako kilichopita kimesitishwa.")}
     ${ctaButton("/auth/login", "Sign in again · Ingia tena")}
     <p style="margin:16px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">If this wasn't you, change your password immediately.</p>
+  `);
+}
+
+/** Security alert sent whenever the account password changes (self-service
+ *  change, reset-link completion, or officer-issued temporary password). */
+export function passwordChangedHtml({ time, method }: { time: string; method: string }): string {
+  return wrap(`
+    ${eyebrow("Security", "Usalama")}
+    ${heading("Your password was changed")}
+    ${subtitle("The password on your 50pick account was just changed.")}
+    ${subtitleSw("Nenosiri la akaunti yako ya 50pick limebadilishwa.")}
+    ${detailRows([
+      { label: "When", value: time },
+      { label: "How", value: method },
+    ])}
+    <p style="margin:16px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">If you did NOT do this, your account may be compromised — reset your password and contact <a href="mailto:${REPLY_TO}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO}</a> immediately.</p>
+  `);
+}
+
+/** Officer alert: a transaction is awaiting AML clearance in the review queue. */
+export function amlReviewAdminHtml({ amount, kind, reference }: { amount: number; kind: string; reference: string }): string {
+  return wrap(`
+    ${eyebrow("Compliance", "AML")}
+    ${heading("Transaction awaiting AML review")}
+    ${subtitle(`A ${kind.toLowerCase()} has crossed the AML threshold and needs officer clearance.`)}
+    ${detailRows([
+      { label: "Type", value: kind },
+      { label: "Amount", value: fmtTzs(amount) },
+      { label: "Reference", value: reference },
+    ])}
+    ${ctaButton("/admin/aml", "Open AML queue")}
   `);
 }

@@ -15,9 +15,22 @@ import { createHash } from "node:crypto";
 import { db } from "./store";
 import { signSession, verifySession, hashPassword, randomId } from "./crypto";
 import { audit } from "./audit";
-import { sendEmail, passwordResetHtml } from "./email";
+import { sendEmail, sendEmailToUser, passwordResetHtml, passwordChangedHtml } from "./email";
 import { resolvePhoneEmail } from "./email-map";
 import { validatePasswordStrength } from "./password-policy";
+import { notifyPasswordChanged } from "./notification-service";
+
+/** Security alert on any password change — in-app (always seen, even for
+ *  email-less users) + email (durable record). Best-effort; never blocks. */
+function alertPasswordChanged(userId: string, method: string): void {
+  notifyPasswordChanged(userId).catch(() => {});
+  sendEmailToUser(userId, (email) => ({
+    to: email,
+    subject: "Your 50pick password was changed",
+    html: passwordChangedHtml({ time: new Date().toUTCString(), method }),
+    tag: "password-changed",
+  })).catch(() => {});
+}
 
 const RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
 const BASE_URL = () => process.env.NEXT_PUBLIC_APP_URL || "https://kipindi-production.up.railway.app";
@@ -146,6 +159,7 @@ export async function consumeResetToken(
     targetType: "User",
     targetId: user.id,
   });
+  alertPasswordChanged(user.id, "password reset link");
   return { ok: true };
 }
 
@@ -175,6 +189,7 @@ export async function adminResetPassword(
     targetId: userId,
     payload: { method: "temp_password" },
   });
+  alertPasswordChanged(userId, "temporary password issued by support");
   return { ok: true, tempPassword };
 }
 
@@ -211,5 +226,6 @@ export async function changePassword(
     targetType: "User",
     targetId: userId,
   });
+  alertPasswordChanged(userId, "changed in account settings");
   return { ok: true };
 }
