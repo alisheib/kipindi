@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AccountPage({ searchParams }: { searchParams?: Promise<{ error?: string; act?: string }> }) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect("/auth/login?next=/profile/account");
 
   const user = await db.user.findById(session.userId);
   const allActivity = getOwnActivity(session.userId, 50);

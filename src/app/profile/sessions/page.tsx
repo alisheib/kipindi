@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function SessionsPage() {
   const session = await getSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect("/auth/login?next=/profile/sessions");
 
   const h = await headers();
   const userAgent = h.get("user-agent") ?? "";

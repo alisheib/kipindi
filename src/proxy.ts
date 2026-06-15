@@ -168,7 +168,8 @@ export async function proxy(req: NextRequest) {
     const ok = await isSessionCookieValid(cookie);
     if (!ok) {
       const url = req.nextUrl.clone();
-      url.pathname = "/auth/login";
+      // Admin routes → admin login; player routes → player login.
+      url.pathname = pathname.startsWith("/admin") ? "/auth/admin" : "/auth/login";
       url.search = `?next=${encodeURIComponent(pathname + search)}`;
       const res = NextResponse.redirect(url, 307);
       // Clear the bad cookie so the next request doesn't keep

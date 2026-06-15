@@ -15,7 +15,7 @@ const fmtTzs = (n: number) => `TZS ${Math.round(n).toLocaleString("en-US")}`;
 export default async function PositionsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   seedDemoMarkets();
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect("/auth/login?next=/positions");
   const sp = await searchParams;
   const activeTab: "open" | "settled" | "all" = (["open", "settled", "all"] as const).includes(sp.tab as "open" | "settled" | "all") ? (sp.tab as "open" | "settled" | "all") : "all";
 

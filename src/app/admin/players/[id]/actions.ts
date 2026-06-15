@@ -26,7 +26,7 @@ const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
 
 async function requireAdmin(action: string): Promise<string> {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect("/auth/admin");
   const me = await db.user.findById(session.userId);
   if (!me || !ADMIN_ROLES.has(me.role)) {
     audit({

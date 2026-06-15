@@ -28,10 +28,10 @@ function regionLabel(region: string | null) {
 
 export default async function ProfilePage() {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect("/auth/login?next=/profile");
 
   const user = await db.user.findById(session.userId);
-  if (!user) redirect("/auth/login");
+  if (!user) redirect("/auth/login?next=/profile");
 
   const wallet = await db.wallet.findByUserId(user.id);
   const kyc = await db.kyc.findByUserId(user.id);

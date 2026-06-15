@@ -19,7 +19,7 @@ const PROVIDERS = [
 
 export default async function WithdrawPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect("/auth/login?next=/wallet/withdraw");
 
   const sp = await searchParams;
   const errorMsg = sp.error ? decodeURIComponent(sp.error) : null;

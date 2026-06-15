@@ -29,7 +29,7 @@ function adaptTxn(t: StoredTxn): Transaction {
 
 export default async function WalletPage({ searchParams }: { searchParams: Promise<{ deposited?: string; withdrawal?: string; status?: string; amount?: string }> }) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect("/auth/login?next=/wallet");
 
   const sp = await searchParams;
   const w = await db.wallet.findByUserId(session.userId);

@@ -89,7 +89,7 @@ function fmtDate(iso: string): string {
 
 export default async function InvitePage() {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect("/auth/login?next=/profile/invite");
 
   const s = await getPlayerReferralSummary(session.userId);
   const ringValue = s.recruitCount === 0 ? 0 : Math.min(100, 30 + s.recruitCount * 12);

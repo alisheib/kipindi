@@ -14,7 +14,7 @@ export const metadata = { title: "Verify identity · Thibitisha" };
 
 export default async function KycPage({ searchParams }: { searchParams?: Promise<{ welcome?: string; error?: string; nida?: string; submitted?: string }> }) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect("/auth/login?next=/profile/kyc");
 
   await startKyc(session.userId);
   const kyc = await getKycStatus(session.userId);

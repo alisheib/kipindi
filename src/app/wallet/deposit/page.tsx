@@ -25,7 +25,7 @@ const QUICK_AMOUNTS = [1_000, 5_000, 10_000, 25_000, 50_000, 100_000];
 
 export default async function DepositPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect("/auth/login?next=/wallet/deposit");
 
   const sp = await searchParams;
   const errorMsg = sp.error ? decodeURIComponent(sp.error) : null;

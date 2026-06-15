@@ -31,7 +31,7 @@ const COOLING_OFF_OPTIONS = [
 
 export default async function ResponsibleGamblingPage({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string }> }) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect("/auth/login?next=/profile/responsible-gambling");
   const rg = await getRgSettings(session.userId);
   const hasPendingIncrease = rg.pendingIncreaseTo !== null && rg.pendingIncreaseEffectiveAt !== null;
   const sp = await searchParams;
