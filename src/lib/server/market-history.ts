@@ -103,7 +103,7 @@ const prismaStore: HistoryStore = {
 // Feature-flag switch
 // ---------------------------------------------------------------------------
 
-const USE_PRISMA = !!process.env.USE_PRISMA_DAL && hasDatabase();
+const USE_PRISMA = hasDatabase() && process.env.USE_PRISMA_DAL !== "false";
 const store: HistoryStore = USE_PRISMA ? prismaStore : memoryStore;
 
 // ---------------------------------------------------------------------------

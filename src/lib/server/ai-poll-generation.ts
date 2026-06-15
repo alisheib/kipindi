@@ -249,7 +249,7 @@ const prismaStore: AIPollStore = {
   },
 };
 
-const usePrisma = process.env.USE_PRISMA_DAL === "true" && hasDatabase();
+const usePrisma = hasDatabase() && process.env.USE_PRISMA_DAL !== "false";
 const store: AIPollStore = usePrisma ? prismaStore : memoryStore;
 
 /* ─── Constants ─── */

@@ -75,7 +75,7 @@ const prismaStore: TotpStore = {
   },
 };
 
-const usePrisma = process.env.USE_PRISMA_DAL === "true" && hasDatabase();
+const usePrisma = hasDatabase() && process.env.USE_PRISMA_DAL !== "false";
 const store: TotpStore = usePrisma ? prismaStore : memoryStore;
 
 /** RFC 4648 base32 encode (no padding chars stripped, since otpauth tolerates either). */

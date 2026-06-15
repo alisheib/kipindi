@@ -142,7 +142,7 @@ export async function submitNidaStep(userId: string, input: z.input<typeof KycNi
     await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: NIDA_ENUM[result.reason], rejectNote, updatedAt: new Date().toISOString() });
     audit({ category: "KYC", action: "kyc.nida.rejected", actorId: userId, targetType: "Kyc", targetId: k.id, payload: { reason: result.reason } });
     // In-app + email notice (best-effort).
-    notifyKyc(userId, "REJECTED");
+    notifyKyc(userId, "REJECTED").catch(() => {});
     sendEmailToUser(userId, (email) => ({
       to: email,
       subject: "Identity check needs attention",
@@ -239,7 +239,7 @@ export async function submitForReview(userId: string): Promise<ServiceResult> {
   const now = new Date().toISOString();
   await db.kyc.upsert({ ...k, status: "PENDING_REVIEW", submittedAt: now, updatedAt: now });
   audit({ category: "KYC", action: "kyc.submitted", actorId: userId, targetType: "Kyc", targetId: k.id });
-  notifyKyc(userId, "PENDING_REVIEW"); // in-app "submitted, under review" notice
+  notifyKyc(userId, "PENDING_REVIEW").catch(() => {}); // in-app "submitted, under review" notice
 
   // ── Notifications (all best-effort; a failed send must never break submit) ──
   const u = await db.user.findById(userId);
@@ -372,7 +372,7 @@ export async function reviewKyc(opts: {
       if (k.fullName?.trim()) patch.displayName = k.fullName.trim();
       if (Object.keys(patch).length) await db.user.update(userId, patch);
       audit({ category: "KYC", action: "kyc.approved", actorId: officerId, targetType: "User", targetId: userId, payload: { kycId: k.id, priorStatus: u?.status ?? null, nameBackfilled: !!k.fullName?.trim() } });
-      notifyKyc(userId, "APPROVED");
+      notifyKyc(userId, "APPROVED").catch(() => {});
       const greetName = firstName(k.fullName) ?? displayLabel(u ?? { id: userId, displayName: null });
       sendEmailToUser(userId, (email) => ({
         to: email,
@@ -401,7 +401,7 @@ export async function reviewKyc(opts: {
       }));
       await db.kyc.upsert({ ...k, status: "ADDITIONAL_INFO_REQUIRED", rejectReason: null, rejectNote: reason, extraRequests, reviewerId: officerId, reviewedAt: now, updatedAt: now });
       audit({ category: "KYC", action: "kyc.more_info_requested", actorId: officerId, targetType: "User", targetId: userId, payload: { kycId: k.id, note: reason, extraDocs: descriptions.length } });
-      notifyKyc(userId, "ADDITIONAL_INFO");
+      notifyKyc(userId, "ADDITIONAL_INFO").catch(() => {});
       sendEmailToUser(userId, (email) => ({
         to: email,
         subject: "More information needed · 50pick verification",
@@ -417,7 +417,7 @@ export async function reviewKyc(opts: {
     // into the enum column threw in Postgres and lost the decision in prod.)
     await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: "OTHER", rejectNote: opts.note?.trim() || reason, reviewerId: officerId, reviewedAt: now, updatedAt: now });
     audit({ category: "KYC", action: "kyc.rejected", actorId: officerId, targetType: "User", targetId: userId, payload: { kycId: k.id, reason } });
-    notifyKyc(userId, "REJECTED");
+    notifyKyc(userId, "REJECTED").catch(() => {});
     sendEmailToUser(userId, (email) => ({
       to: email,
       subject: "Identity check needs attention",
