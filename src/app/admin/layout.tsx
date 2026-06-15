@@ -61,7 +61,16 @@ function crumbsFromPath(path: string): string[] {
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await currentSession();
-  if (!session) redirect("/auth/admin");
+  if (!session) {
+    // Preserve the deep-link destination through the login gate so the
+    // officer lands back on the exact page after re-authenticating.
+    const h0 = await headers();
+    const dest = h0.get("x-href") ?? h0.get("x-pathname") ?? "";
+    const loginUrl = dest.startsWith("/admin") && !dest.startsWith("/auth")
+      ? `/auth/admin?next=${encodeURIComponent(dest)}`
+      : "/auth/admin";
+    redirect(loginUrl as never);
+  }
   const u = await db.user.findById(session.userId);
   const allowed = u && ADMIN_ROLES.has(u.role);
   if (!allowed) redirect("/auth/admin");

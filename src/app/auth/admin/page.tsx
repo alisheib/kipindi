@@ -16,16 +16,20 @@ export const dynamic = "force-dynamic";
 
 const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
 
-export default async function AdminLoginPage() {
+export default async function AdminLoginPage({ searchParams }: { searchParams?: Promise<{ next?: string }> }) {
+  const nextRaw = (await searchParams)?.next ?? "";
+  // Open-redirect safety: only /admin paths may round-trip.
+  const next = nextRaw.startsWith("/admin") && !nextRaw.startsWith("//") && !nextRaw.startsWith("/auth") ? nextRaw : "";
+
   const session = await currentSession();
   if (session) {
     const u = await db.user.findById(session.userId);
     const isAdmin = u && ADMIN_ROLES.has(u.role);
     if (isAdmin) {
       if (await hasTotp(session.userId)) {
-        redirect("/admin/totp-verify");
+        redirect(next ? `/admin/totp-verify?next=${encodeURIComponent(next)}` : "/admin/totp-verify");
       }
-      redirect("/admin");
+      redirect((next || "/admin") as never);
     }
     redirect("/");
   }
@@ -65,6 +69,7 @@ export default async function AdminLoginPage() {
           </div>
 
           <form action={startLoginAction} className="relative space-y-3">
+            {next && <input type="hidden" name="next" value={next} />}
             <div>
               <label
                 htmlFor="phone"
