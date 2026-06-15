@@ -50,7 +50,7 @@ export function ResetPasswordButton({ userId }: { userId: string }) {
       type="button"
       onClick={reset}
       disabled={pending}
-      className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-border bg-bg-elevated font-mono text-[11px] font-semibold text-text-muted hover:border-gold-700 hover:text-gold-300 disabled:opacity-40 transition-colors"
+      className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 py-1.5 rounded-sm border border-border bg-bg-elevated inline-flex items-center gap-1.5 text-text-muted hover:border-gold-700 hover:text-gold-300 disabled:opacity-40 transition-colors"
     >
       <I.keyRound s={13} />
       {pending ? "Resetting…" : "Reset password"}
