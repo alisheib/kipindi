@@ -123,6 +123,11 @@ export default async function ProfilePage() {
                 {kycPill.label}
               </Pill>
               <Pill tone="neutral">{user.locale === "SW" ? "Kiswahili" : "English"}</Pill>
+              {user.email && (
+                user.emailVerifiedAt
+                  ? <Pill tone="yes">Email confirmed</Pill>
+                  : <Pill tone="warning">Email unconfirmed</Pill>
+              )}
             </div>
           </div>
         </div>

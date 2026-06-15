@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
+import { db } from "@/lib/server/store";
 import { getKycStatus, startKyc } from "@/lib/server/kyc-service";
 import { DateSelect } from "@/components/ui/date-select";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -18,10 +19,13 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
 
   await startKyc(session.userId);
   const kyc = await getKycStatus(session.userId);
+  const user = await db.user.findById(session.userId);
 
   const sp = (await searchParams) ?? {};
   const isWelcome = sp.welcome === "new";
   const nidaDone = !!kyc?.nidaVerifiedAt;
+  const hasEmail = !!user?.email;
+  const emailVerified = !!user?.emailVerifiedAt;
   const docsCount = kyc?.documents.length ?? 0;
   const hasDoc = (t: string) => (kyc?.documents ?? []).some((d: { docType: string }) => d.docType === t);
   const submitted = kyc?.status === "PENDING_REVIEW" || kyc?.status === "APPROVED";
@@ -47,6 +51,19 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       {sp.nida === "verified" && !sp.error && (
         <div role="status" className="rounded-xl border border-yes-700 bg-yes-500/10 px-4 py-3 text-[13px] text-yes-300">
           NIDA verified. Now attach your documents below. · NIDA imethibitishwa.
+        </div>
+      )}
+      {hasEmail && !emailVerified && nidaDone && (
+        <div className="rounded-xl border border-gold-700 bg-gold-500/[0.06] px-4 py-3 flex items-start gap-2.5">
+          <I.mail s={16} className="text-gold-300 mt-0.5 shrink-0" />
+          <div className="text-[12.5px] text-text-muted leading-snug">
+            <p className="font-display font-semibold text-gold-300">Confirm your email · Thibitisha barua pepe</p>
+            <p className="mt-0.5">
+              We sent a confirmation link to <span className="font-semibold text-text">{user?.email}</span>.
+              Check your inbox and click the link so we can send you verification results, receipts, and password resets.{" "}
+              <span className="italic text-text-subtle">Angalia barua pepe yako na ubonyeze kiungo.</span>
+            </p>
+          </div>
         </div>
       )}
       {sp.submitted && !sp.error && (
