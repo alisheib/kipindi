@@ -8,6 +8,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { HELPLINE, SUPPORT_EMAIL } from "@/lib/support-config";
 import { verifySession } from "@/lib/server/crypto";
 import { db } from "@/lib/server/store";
+import { passwordFingerprint } from "@/lib/server/password-reset";
 import { resetPasswordAction } from "./actions";
 
 export const metadata = { title: "Reset password · Badilisha nenosiri" };
@@ -17,13 +18,16 @@ type TokenState = "valid" | "expired" | "invalid" | "email_changed";
 
 /** Pre-validate the token WITHOUT consuming it — just check HMAC, expiry, email match. */
 async function checkToken(token: string): Promise<TokenState> {
-  const payload = verifySession<{ purpose: string; userId: string; email: string; exp: number }>(token);
+  const payload = verifySession<{ purpose: string; userId: string; email: string; pwh?: string; exp: number }>(token);
   if (!payload) return "expired"; // HMAC fail or exp passed
   if (payload.purpose !== "password-reset" || !payload.userId || !payload.email) return "invalid";
   const user = await db.user.findById(payload.userId);
   if (!user) return "invalid";
   const currentEmail = (user.email ?? "").trim().toLowerCase();
   if (currentEmail !== payload.email.trim().toLowerCase()) return "email_changed";
+  // Single-use: a completed reset rotates the password hash, so an already-used
+  // link no longer matches the fingerprint baked into the token.
+  if (payload.pwh !== undefined && passwordFingerprint(user.passwordHash) !== payload.pwh) return "invalid";
   return "valid";
 }
 

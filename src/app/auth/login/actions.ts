@@ -75,6 +75,7 @@ export async function resendOtpAction(formData: FormData) {
   const params = new URLSearchParams({ purpose, phone });
   if (!result.ok) {
     params.set("error", result.code === "NOT_FOUND" ? "no_account" : result.code === "RATE_LIMITED" ? "rate_limited" : "failed");
+    if (result.code === "RATE_LIMITED" && result.retryAfterSec) params.set("retry", String(result.retryAfterSec));
   } else {
     params.set("sent", "1");
   }

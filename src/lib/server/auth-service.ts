@@ -19,6 +19,7 @@ import { createSession, destroySession, getSession, type SessionData } from "./s
 import { withLock } from "./locks";
 import { sendEmail, welcomeHtml, loginNotificationHtml } from "./email";
 import { resolvePhoneEmail } from "./email-map";
+import { validatePasswordStrength } from "./password-policy";
 
 /** Phone numbers Ali wants auto-promoted to ADMIN on first registration.
  *  Set ADMIN_BOOTSTRAP_PHONES=+255712345678,+255700000000 in env. */
@@ -27,23 +28,6 @@ function adminBootstrapPhones(): Set<string> {
     (process.env.ADMIN_BOOTSTRAP_PHONES ?? "")
       .split(",").map(s => s.trim()).filter(Boolean)
   );
-}
-
-/** Common-password blacklist. Tiny on purpose — this catches the worst
- *  offenders without UX-blocking legitimate weak choices that the strength
- *  meter already discourages. Source: SecLists top-1000 intersected with
- *  the OWASP "TOP 100 worst passwords" — only entries with length ≥ 8 (so
- *  we don't double-reject the min-length rule). */
-const COMMON_PASSWORDS = new Set([
-  "password", "12345678", "123456789", "1234567890", "qwerty12", "qwertyui",
-  "qwerty123", "iloveyou", "password1", "password!", "letmein1", "welcome1",
-  "admin123", "abc12345", "monkey12", "dragon12", "football", "baseball",
-  "basketball", "trustno1", "sunshine", "princess", "starwars", "shadow12",
-  "michael1", "jennifer", "daniel12", "computer", "internet", "welcome123",
-  "password123", "passw0rd", "p@ssword", "p@ssw0rd",
-]);
-function isCommonPassword(pw: string): boolean {
-  return COMMON_PASSWORDS.has(pw.toLowerCase());
 }
 
 const OTP_TTL_MS = 5 * 60 * 1000;
@@ -90,6 +74,14 @@ export async function requestLoginOtp(input: z.input<typeof LoginRequestSchema>)
   }
   if (user.status === "SUSPENDED" || user.status === "CLOSED") {
     return { ok: false, error: "Account unavailable. Contact support.", code: "SUSPENDED" };
+  }
+
+  // Hard ~30s spacing between sends, on top of the otp.send burst cap. Protects
+  // against SMS-pumping / toll fraud on a paid provider and drives the resend
+  // countdown shown to the user.
+  const cool = rateCheck(phone, "otp.resend");
+  if (!cool.allowed) {
+    return { ok: false, error: `Please wait ${cool.retryAfterSec}s before requesting another code.`, code: "RATE_LIMITED", retryAfterSec: cool.retryAfterSec };
   }
 
   return await issueOtp(phone, "login", meta);
@@ -291,8 +283,6 @@ export async function currentSession(): Promise<SessionData | null> {
 // pages to startLoginAction / startRegisterAction instead of these.
 // ─────────────────────────────────────────────────────────────────────
 
-const PASSWORD_MIN = 8;
-
 export type PasswordRegisterInput = {
   phone: string;            // E.164, e.g. +255712345678
   password: string;
@@ -316,17 +306,10 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
     marketingOptIn: input.marketingOptIn ?? false,
   });
   if (!baseParse.success) return { ok: false, error: baseParse.error.errors[0]?.message ?? "Invalid input", code: "INVALID" };
-  if (!input.password || input.password.length < PASSWORD_MIN) {
-    return { ok: false, error: `Password must be at least ${PASSWORD_MIN} characters.`, code: "INVALID" };
-  }
+  const pwError = validatePasswordStrength(input.password);
+  if (pwError) return { ok: false, error: pwError, code: "INVALID" };
   if (input.password !== input.passwordConfirm) {
     return { ok: false, error: "Passwords do not match.", code: "INVALID" };
-  }
-  if (/^\s|\s$/.test(input.password)) {
-    return { ok: false, error: "Password cannot start or end with a space.", code: "INVALID" };
-  }
-  if (isCommonPassword(input.password)) {
-    return { ok: false, error: "That password is in the public breach list. Pick something less common.", code: "INVALID" };
   }
 
   const phone = baseParse.data.phone;

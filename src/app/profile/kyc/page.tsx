@@ -224,14 +224,34 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               <label htmlFor="dob" className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
                 Date of birth · Tarehe ya kuzaliwa
               </label>
-              <DateSelect
-                name="dob"
-                id="dob"
-                required
-                min="1930-01-01"
-                max={new Date(new Date().getFullYear() - 18, new Date().getMonth(), new Date().getDate()).toISOString().slice(0, 10)}
-              />
-              <p className="mt-1.5 text-[11px] text-text-subtle">Must match NIDA exactly. 18+ required.</p>
+              {user?.dob ? (
+                // Already collected (and 18+ gated) at sign-up — don't make the
+                // user type it again. Show it read-only for confirmation and
+                // submit the stored value.
+                <>
+                  <input type="hidden" name="dob" value={user.dob} />
+                  <div className="flex items-center gap-2 rounded-xl border border-border bg-bg-elevated px-3.5 py-2.5">
+                    <I.check s={14} className="text-yes-300 shrink-0" />
+                    <span className="font-mono text-[13px] text-text">{user.dob}</span>
+                    <span className="ml-auto text-[10.5px] text-text-subtle">From sign-up</span>
+                  </div>
+                  <p className="mt-1.5 text-[11px] text-text-subtle">
+                    Taken from your account — no need to re-enter. Wrong?{" "}
+                    <Link href="/profile/account" className="text-accent-400 underline-offset-2 hover:underline hover:text-accent-300">Update it on your profile</Link>.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <DateSelect
+                    name="dob"
+                    id="dob"
+                    required
+                    min="1930-01-01"
+                    max={new Date(new Date().getFullYear() - 18, new Date().getMonth(), new Date().getDate()).toISOString().slice(0, 10)}
+                  />
+                  <p className="mt-1.5 text-[11px] text-text-subtle">Must match NIDA exactly. 18+ required.</p>
+                </>
+              )}
             </div>
             <Field
               id="email"

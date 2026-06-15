@@ -2,16 +2,18 @@ import Link from "next/link";
 import { FiftyLockup } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { CountdownPill } from "@/components/ui/countdown-pill";
 import { verifyLoginOtpAction, resendOtpAction } from "../login/actions";
 
 export const metadata = { title: "Enter code · Weka msimbo" };
 
-export default async function OtpPage({ searchParams }: { searchParams: Promise<{ purpose?: string; phone?: string; error?: string; sent?: string; next?: string }> }) {
+export default async function OtpPage({ searchParams }: { searchParams: Promise<{ purpose?: string; phone?: string; error?: string; sent?: string; next?: string; retry?: string }> }) {
   const sp = await searchParams;
   const purpose = (sp.purpose ?? "login") as "login" | "register" | "withdraw" | "reauth" | "self_exclusion";
   const phone = sp.phone ?? "";
   const error = sp.error ?? "";
   const sent = sp.sent === "1";
+  const retrySec = Math.min(300, Math.max(0, parseInt(sp.retry ?? "0", 10) || 0));
   const nextRaw = (sp.next ?? "").trim();
   const nextSafe = /^\/(?![/\\])/.test(nextRaw) && !nextRaw.startsWith("/auth/") ? nextRaw : "";
   const masked = phone ? phone.slice(0, 4) + "*****" + phone.slice(-2) : "+255*****";
@@ -49,6 +51,9 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
           {error && (
             <div role="alert" className="rounded-md border border-no-700 bg-no-500/10 px-3 py-2.5 text-[13px] text-no-300">
               {errorMsg[error] ?? error}
+              {error === "rate_limited" && retrySec > 0 && (
+                <> You can request a new code in <CountdownPill seconds={retrySec} suffix="· Subiri" />.</>
+              )}
             </div>
           )}
 

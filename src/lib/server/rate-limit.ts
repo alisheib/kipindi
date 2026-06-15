@@ -35,6 +35,7 @@ export type RateRule = { capacity: number; refillPerMin: number };
 
 export const RATE_RULES: Record<string, RateRule> = {
   "otp.send":      { capacity: 5,  refillPerMin: 0.5 },   // 5 per ~10 min, refills slow
+  "otp.resend":    { capacity: 1,  refillPerMin: 2 },     // ~30s hard spacing between sends (anti SMS-pumping)
   "otp.verify":    { capacity: 5,  refillPerMin: 1 },
   "auth.login":    { capacity: 8,  refillPerMin: 2 },
   "auth.register": { capacity: 3,  refillPerMin: 0.2 },   // 3 per hour per phone

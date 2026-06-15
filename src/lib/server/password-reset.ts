@@ -11,11 +11,13 @@
  *   2. Admin-initiated: officer generates a temporary password directly
  *      (for support requests from users without email).
  */
+import { createHash } from "node:crypto";
 import { db } from "./store";
 import { signSession, verifySession, hashPassword, randomId } from "./crypto";
 import { audit } from "./audit";
 import { sendEmail, passwordResetHtml } from "./email";
 import { resolvePhoneEmail } from "./email-map";
+import { validatePasswordStrength } from "./password-policy";
 
 const RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
 const BASE_URL = () => process.env.NEXT_PUBLIC_APP_URL || "https://kipindi-production.up.railway.app";
@@ -25,15 +27,27 @@ type ResetTokenPayload = {
   userId: string;
   /** Bound to the current email so a changed address invalidates the link. */
   email: string;
+  /** Fingerprint of the password hash *at issue time*. Because a successful
+   *  reset rotates the hash, this makes the link single-use: re-clicking it
+   *  (or using an intercepted copy after the password changed) fails the
+   *  fingerprint check even though the email still matches. */
+  pwh: string;
   exp: number;
 };
 
+/** Short, non-reversible fingerprint of the current password hash (or "" for
+ *  password-less / OTP-only accounts — any reset then sets one, changing it). */
+export function passwordFingerprint(passwordHash: string | null | undefined): string {
+  return createHash("sha256").update(passwordHash ?? "").digest("hex").slice(0, 16);
+}
+
 /** Build a signed reset URL for a user. */
-function buildResetUrl(userId: string, email: string): string {
+function buildResetUrl(userId: string, email: string, passwordHash: string | null | undefined): string {
   const token = signSession({
     purpose: "password-reset",
     userId,
     email,
+    pwh: passwordFingerprint(passwordHash),
     exp: Date.now() + RESET_TTL_MS,
   } satisfies ResetTokenPayload);
   return `${BASE_URL()}/auth/reset-password?token=${encodeURIComponent(token)}`;
@@ -58,7 +72,7 @@ export async function requestPasswordReset(phone: string): Promise<{ ok: true }>
     return { ok: true };
   }
 
-  const resetLink = buildResetUrl(user.id, email);
+  const resetLink = buildResetUrl(user.id, email, user.passwordHash);
   await sendEmail({
     to: email,
     subject: "Reset your password · 50pick",
@@ -71,18 +85,18 @@ export async function requestPasswordReset(phone: string): Promise<{ ok: true }>
   return { ok: true };
 }
 
-/**
- * Consume a reset token: validate the HMAC + expiry + email match, then
- * set the new password. Idempotent-safe (re-clicking a used link just
- * fails the email-match check if the user changed password and we cleared
- * some state, but doesn't corrupt anything).
- */
-export async function consumeResetToken(
-  token: string,
-  newPassword: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (newPassword.length < 8) return { ok: false, error: "Password must be at least 8 characters." };
+type ResolvedUser = NonNullable<Awaited<ReturnType<typeof db.user.findById>>>;
 
+/**
+ * Validate a reset token without consuming it: checks HMAC + expiry + that the
+ * email and password-hash fingerprint still match what the link was issued
+ * against. Used by the reset page (to decide whether to render the form) and by
+ * `consumeResetToken` (so the two can never disagree). Single-use is enforced by
+ * the `pwh` fingerprint: a completed reset rotates the hash, so the link fails.
+ */
+export async function validateResetToken(
+  token: string,
+): Promise<{ ok: true; user: ResolvedUser } | { ok: false; error: string }> {
   const payload = verifySession<ResetTokenPayload>(token);
   if (!payload || payload.purpose !== "password-reset" || !payload.userId || !payload.email) {
     return { ok: false, error: "Invalid or expired reset link. Request a new one." };
@@ -91,11 +105,35 @@ export async function consumeResetToken(
   const user = await db.user.findById(payload.userId);
   if (!user) return { ok: false, error: "Account not found." };
 
-  // Verify the email hasn't changed since the link was issued.
+  // Email must not have changed since the link was issued.
   const currentEmail = (user.email ?? "").trim().toLowerCase();
   if (currentEmail !== payload.email.trim().toLowerCase()) {
     return { ok: false, error: "This reset link is no longer valid. Request a new one." };
   }
+
+  // Single-use: the password must not have changed since the link was issued.
+  if (passwordFingerprint(user.passwordHash) !== payload.pwh) {
+    return { ok: false, error: "This reset link has already been used. Request a new one." };
+  }
+
+  return { ok: true, user };
+}
+
+/**
+ * Consume a reset token: validate it (HMAC + expiry + email + single-use), then
+ * set the new password. The reset rotates the password hash, which invalidates
+ * this token for any subsequent use.
+ */
+export async function consumeResetToken(
+  token: string,
+  newPassword: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const pwError = validatePasswordStrength(newPassword);
+  if (pwError) return { ok: false, error: pwError };
+
+  const check = await validateResetToken(token);
+  if (!check.ok) return check;
+  const user = check.user;
 
   const salt = randomId(32);
   const hash = await hashPassword(newPassword, salt);
@@ -149,7 +187,8 @@ export async function changePassword(
   currentPassword: string,
   newPassword: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (newPassword.length < 8) return { ok: false, error: "New password must be at least 8 characters." };
+  const pwError = validatePasswordStrength(newPassword);
+  if (pwError) return { ok: false, error: pwError };
 
   const user = await db.user.findById(userId);
   if (!user) return { ok: false, error: "User not found." };
