@@ -92,9 +92,9 @@ export async function setUserEmail(
   // Unchanged — leave verified state alone, don't re-send.
   if (next === current) return { ok: true, changed: false, verificationSent: false };
 
-  // Email uniqueness TEMPORARILY DISABLED (Ali, 2026-06-14) so testers can sign
-  // up multiple accounts with the same email. RE-ENABLE before real-money launch
-  // by uncommenting the block below (and keep the Postgres email @unique).
+  // Email uniqueness DISABLED for testing (Ali, 2026-06-14). Multiple testers
+  // share the same email. RE-ENABLE before real-money launch by uncommenting the
+  // block below AND restoring the @unique on User.email in schema.prisma.
   // const holder = await db.user.findByEmail(next);
   // if (holder && holder.id !== userId) {
   //   audit({ category: "SECURITY", action: "user.email.duplicate_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { conflictUserId: holder.id } });

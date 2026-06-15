@@ -227,7 +227,7 @@ model StoreSnapshot {
 model User {
   id                   String     @id @default(cuid())
   phoneE164            String     @unique
-  email                String?    @unique
+  email                String?
   emailVerifiedAt      DateTime?
   passwordHash         String?
   passwordSalt         String?

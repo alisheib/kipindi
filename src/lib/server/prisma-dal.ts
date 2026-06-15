@@ -339,8 +339,8 @@ export const prismaDb = {
     findByEmail: async (email: string): Promise<StoredUser | null> => {
       const norm = email.trim().toLowerCase();
       if (!norm) return null;
-      // email is stored normalized (lowercased) by setUserEmail; @unique in the schema.
-      const u = await pc().user.findUnique({ where: { email: norm } });
+      // email @unique removed for testing — use findFirst instead of findUnique.
+      const u = await pc().user.findFirst({ where: { email: norm } });
       return u ? toStoredUser(u) : null;
     },
     create: async (u: StoredUser): Promise<StoredUser> => {
