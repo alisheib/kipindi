@@ -175,9 +175,9 @@ export function AdminKpi({
   spark?: boolean;
 }) {
   return (
-    <div className="rounded-lg glass-panel p-4 flex flex-col gap-2 min-h-[120px]">
-      <div className="flex items-center justify-between">
-        <span className="font-mono uppercase text-text-tertiary" style={{ fontSize: 10, letterSpacing: "0.08em" }}>{label}</span>
+    <div className="rounded-lg glass-panel p-3.5 flex flex-col gap-1 min-h-[110px]">
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-mono uppercase text-text-tertiary truncate" style={{ fontSize: 9.5, letterSpacing: "0.08em", lineHeight: 1.3 }}>{label}</span>
         {pulse && (
           <span className="inline-flex items-center gap-1 text-micro text-gold font-mono uppercase tracking-wider">
             <span className="h-1.5 w-1.5 rounded-pill bg-gold inline-block" />
@@ -190,12 +190,12 @@ export function AdminKpi({
           "font-mono font-bold tabular-nums leading-none",
           gold ? "text-gold" : "text-text",
         ].join(" ")}
-        style={{ fontSize: 22 }}
+        style={{ fontSize: 20 }}
       >
         {value}
       </div>
       {sw && (
-        <div className="text-caption text-text-tertiary italic leading-tight">{sw}</div>
+        <div className="text-text-tertiary italic leading-tight" style={{ fontSize: 10.5 }}>{sw}</div>
       )}
       {(spark || delta) && (
         <div className="mt-auto flex items-center justify-end gap-2">
