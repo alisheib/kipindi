@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import { db, type StoredWallet } from "@/lib/server/store";
 import { createMarket, buyPosition, cashOutPosition, getMarket, type Side } from "@/lib/server/market-service";
 import { deposit } from "@/lib/server/wallet-service";
+import { getHousePoolBalance } from "@/lib/server/house-pool";
 import { randomId } from "@/lib/server/crypto";
 
 export async function POST(req: Request) {
@@ -20,6 +21,11 @@ export async function POST(req: Request) {
   const DEP = body.deposit ?? 5000;
   const DO_CASHOUT = body.cashout !== false;
   const START = 1_000_000;
+
+  // Snapshot the house reserve BEFORE seeding the market — early cash-out fees
+  // are booked to the reserve and market seeding moves reserve→pools, so true
+  // conservation spans wallets + pools + reserve (a 3-bucket invariant).
+  const houseBefore = await getHousePoolBalance();
 
   // 1. A live market to cash out of.
   const m = await createMarket({
@@ -82,8 +88,12 @@ export async function POST(req: Request) {
   }
   const mkt = (await getMarket(m.id))!;
   const pools = mkt.yesPool + mkt.noPool;
-  const finalSystem = sumBalances + pools;
-  const expected = initialFunded + depOk * DEP;
+  const houseAfter = await getHousePoolBalance();
+  // 3-bucket conservation: wallets + live pools + house reserve. The only NEW
+  // money entering the system is confirmed deposits; nothing else is minted or
+  // lost (cash-out fees just move pool→reserve, seeding moves reserve→pool).
+  const finalSystem = sumBalances + pools + houseAfter;
+  const expected = initialFunded + houseBefore + depOk * DEP;
   const conserved = finalSystem === expected;
 
   // every position that existed must now be cashed out exactly once
@@ -104,7 +114,7 @@ export async function POST(req: Request) {
     opsPerSec,
     deposits: { ok: depOk, total: deps.length },
     cashouts: { ok: cashOk, total: cashes.length, notCashed },
-    money: { initialFunded, depositedOk: depOk * DEP, finalSystem, expected, conserved, drift: finalSystem - expected },
+    money: { initialFunded, houseBefore, houseAfter, depositedOk: depOk * DEP, finalSystem, expected, conserved, drift: finalSystem - expected },
     negativeBalances: negatives,
     poolsNonNegative: pools >= 0,
   });
