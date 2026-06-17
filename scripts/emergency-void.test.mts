@@ -16,6 +16,8 @@
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { createMarket, buyPosition, cashOutPosition, emergencyVoidMarket, getMarket, listPositionsForUser } from "../src/lib/server/market-service.ts";
 import { getHousePoolBalance } from "../src/lib/server/house-pool.ts";
+import { listForUser } from "../src/lib/server/notification-service.ts";
+import { marketCancelledRefundHtml, marketCancelledAdminHtml } from "../src/lib/server/email.ts";
 
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
@@ -25,13 +27,13 @@ const now = () => new Date().toISOString();
 let seq = 0;
 const allUsers: string[] = [];
 
-async function fundedUser(id: string, balance = 1_000_000): Promise<void> {
+async function fundedUser(id: string, balance = 1_000_000, email: string | null = null): Promise<void> {
   allUsers.push(id);
   await db.user.create({
     id, phoneE164: `+25597${String(++seq).padStart(7, "0")}`, passwordHash: null, passwordSalt: null,
     failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "ACTIVE", locale: "EN",
     displayName: null, dob: null, region: null, acceptedTermsVersion: null, acceptedTermsAt: null,
-    marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null,
+    marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null, email,
     createdAt: now(), updatedAt: now(), lastLoginAt: null, closedAt: null,
   } as never);
   await db.wallet.create({
@@ -39,12 +41,27 @@ async function fundedUser(id: string, balance = 1_000_000): Promise<void> {
     currency: "TZS", status: "ACTIVE", createdAt: now(), updatedAt: now(),
   } as StoredWallet);
 }
+
+// An admin officer (with an email) who should receive the cancellation
+// confirmation. No wallet / not in `allUsers` so it doesn't affect conservation.
+async function mkAdmin(id: string, email: string): Promise<void> {
+  await db.user.create({
+    id, phoneE164: `+25596${String(++seq).padStart(7, "0")}`, passwordHash: null, passwordSalt: null,
+    failedLoginCount: 0, lockedUntil: null, role: "ADMIN", status: "ACTIVE", locale: "EN",
+    displayName: "Officer", dob: null, region: null, acceptedTermsVersion: null, acceptedTermsAt: null,
+    marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null, email,
+    createdAt: now(), updatedAt: now(), lastLoginAt: null, closedAt: null,
+  } as never);
+}
 const bal = async (uid: string) => (await db.wallet.findByUserId(uid))?.balance ?? -1;
 const sumWallets = async () => { let s = 0; for (const u of allUsers) s += await bal(u); return s; };
 async function posOf(uid: string) { return (await listPositionsForUser(uid))[0]; }
 
-// ── Setup: 5 bettors, snapshot total system money BEFORE any market exists ──
-for (const id of ["ev_a", "ev_b", "ev_c", "ev_d", "ev_e"]) await fundedUser(id);
+// ── Setup: 5 bettors (ev_b has an email) + an admin officer, snapshot total
+//    system money BEFORE any market exists. ──
+for (const id of ["ev_a", "ev_c", "ev_d", "ev_e"]) await fundedUser(id);
+await fundedUser("ev_b", 1_000_000, "evb@test.tz"); // player WITH email → must be mailed
+await mkAdmin("ev_admin", "void-admin@test.tz");     // officer → must get the confirmation
 const startSystem = (await sumWallets()) + (await getHousePoolBalance()); // pools = 0 (no market yet)
 
 const m = await createMarket({
@@ -78,8 +95,15 @@ const before: Record<string, number> = {};
 for (const u of ["ev_b", "ev_c", "ev_d", "ev_e"]) before[u] = await bal(u);
 const aBeforeVoid = await bal("ev_a"); // already cashed out — must NOT change
 
-// ── THE KILL SWITCH ────────────────────────────────────────────────────────
-const r = await emergencyVoidMarket({ marketId: m.id, officerId: "officer_gbt", reason: "Suspended by directive of the Gaming Board" });
+// ── THE KILL SWITCH (capture console to prove emails dispatch) ─────────────
+const REASON = "Suspended by directive of the Gaming Board";
+const logs: string[] = [];
+const realLog = console.log;
+console.log = (...a: unknown[]) => { logs.push(a.join(" ")); };
+const r = await emergencyVoidMarket({ marketId: m.id, officerId: "ev_admin", reason: REASON });
+await new Promise((res) => setTimeout(res, 250)); // let fire-and-forget emails flush
+console.log = realLog;
+const mailed = logs.filter((l) => l.includes("[email-stub]"));
 ok("emergency void on a LIVE market succeeds", r.ok);
 ok("refundedCount = 4 open positions (cashed-out one excluded)", r.ok && r.data!.refundedCount === 4, `count=${r.ok ? r.data!.refundedCount : "n/a"}`);
 ok("refundedTzs = sum of the 4 open stakes", r.ok && r.data!.refundedTzs === stakes.ev_b + stakes.ev_c + stakes.ev_d + stakes.ev_e, `tzs=${r.ok ? r.data!.refundedTzs : "n/a"}`);
@@ -102,6 +126,17 @@ ok("pools zeroed", mkt.yesPool === 0 && mkt.noPool === 0, `yes=${mkt.yesPool} no
 // Whole-system conservation: nothing minted or lost across wallets + pools + house.
 const endSystem = (await sumWallets()) + mkt.yesPool + mkt.noPool + (await getHousePoolBalance());
 ok("whole-system money conserved (wallets + pools + house)", endSystem === startSystem, `start=${startSystem} end=${endSystem} drift=${endSystem - startSystem}`);
+
+// ── Notifications + emails (with the admin's reason) ───────────────────────
+// Player WITH an email got a refund email; admin got a confirmation email.
+ok("refunded player was emailed the cancellation+refund", mailed.some((l) => l.includes("evb@test.tz") && l.includes("refunded")), `mailed=${JSON.stringify(mailed)}`);
+ok("admin was emailed the cancellation confirmation", mailed.some((l) => l.includes("void-admin@test.tz") && l.includes("Market cancelled")));
+// In-app: player sees the cancellation notice; admin sees the confirmation.
+ok("player in-app notice mentions the cancellation", !!(await listForUser("ev_b", 20)).find((n) => /Market cancelled/i.test(n.titleEn)));
+ok("admin in-app confirmation delivered", !!(await listForUser("ev_admin", 20)).find((n) => /Market cancelled/i.test(n.titleEn)));
+// The admin's REASON propagates into both emails (template-level proof).
+ok("player refund email includes the admin's reason", marketCancelledRefundHtml({ title: "x", reason: REASON, amount: 100, reference: "r" }).includes(REASON));
+ok("admin confirmation email includes the reason", marketCancelledAdminHtml({ title: "x", reason: REASON, refundedCount: 4, refundedTzs: 70_000 }).includes(REASON));
 
 // ── Idempotent: a second void is rejected (no double refund possible) ───────
 const balB2 = await bal("ev_b");

@@ -293,6 +293,33 @@ export function notifyRefund(userId: string, opts: { stake: number; marketTitle:
   });
 }
 
+/** Player notice: a market they had a stake in was cancelled (emergency void).
+ *  Carries the admin's reason and confirms the full refund. */
+export function notifyMarketCancelled(userId: string, opts: { stake: number; marketTitle: string; marketId: string; reason: string }) {
+  return notify({
+    userId,
+    kind: "DEPOSIT", // money returned to the wallet
+    titleEn: `Market cancelled · TZS ${opts.stake.toLocaleString()} refunded`,
+    titleSw: `Soko limefutwa · TZS ${opts.stake.toLocaleString()} imerejeshwa`,
+    bodyEn: `"${opts.marketTitle.slice(0, 60)}" was cancelled: ${opts.reason.slice(0, 120)}. Your full stake has been returned to your wallet.`,
+    bodySw: `Soko limefutwa. Dau lako lote limerejeshwa kwenye pochi yako.`,
+    href: "/wallet",
+  });
+}
+
+/** Officer confirmation that an emergency void completed — who/what/how-many. */
+export function notifyAdminMarketCancelled(adminUserId: string, opts: { title: string; reason: string; refundedCount: number; refundedTzs: number }) {
+  return notify({
+    userId: adminUserId,
+    kind: "SECURITY",
+    titleEn: `Market cancelled · ${opts.refundedCount} refunded`,
+    titleSw: `Soko limefutwa · ${opts.refundedCount} wamerejeshewa`,
+    bodyEn: `"${opts.title.slice(0, 60)}" was emergency-voided — TZS ${opts.refundedTzs.toLocaleString()} refunded to ${opts.refundedCount} ${opts.refundedCount === 1 ? "player" : "players"}. Reason: ${opts.reason.slice(0, 100)}`,
+    bodySw: `Soko limefutwa kwa dharura. TZS ${opts.refundedTzs.toLocaleString()} imerejeshwa.`,
+    href: "/admin/markets",
+  });
+}
+
 /** Cashout receipt — when a player sells a position early. */
 export function notifyCashout(userId: string, opts: { amount: number; marketTitle: string; marketId: string }) {
   return notify({

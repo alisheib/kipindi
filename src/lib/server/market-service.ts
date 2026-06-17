@@ -22,8 +22,8 @@ import { isLockedOut } from "./responsible-gambling";
 import { rateCheck } from "./rate-limit";
 import { getEffectiveConfig, payoutForWhole, settledPayoutWhole } from "./market-config";
 import { recordSnapshot, seedHistory } from "./market-history";
-import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, notifyAdminMarketResolution } from "./notification-service";
-import { sendEmailToUser, betPlacedHtml, winNotificationHtml, lossNotificationHtml, cashOutReceiptHtml } from "./email";
+import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, notifyAdminMarketResolution, notifyMarketCancelled, notifyAdminMarketCancelled } from "./notification-service";
+import { sendEmailToUser, betPlacedHtml, winNotificationHtml, lossNotificationHtml, cashOutReceiptHtml, marketResolutionAdminHtml, marketCancelledRefundHtml, marketCancelledAdminHtml } from "./email";
 import { onRecruitBet } from "./affiliate-service";
 import { seedMarket, settleHousePosition, canSeedNewMarket, getHousePoolSeedForMarket, creditCashOutFee } from "./house-pool";
 import type { ServiceResult } from "./auth-service";
@@ -518,7 +518,21 @@ export async function notifyDueMarketsForResolution(): Promise<{ notified: numbe
     });
     if (!stamped) continue;
     notified++;
-    for (const o of officers) notifyAdminMarketResolution(o.id, { title: m.titleEn, marketId: m.id }).catch(() => {});
+    // Every admin/officer gets BOTH the in-app bell AND an email with a button
+    // straight to the resolver queue — same dual-channel pattern as a new KYC
+    // submission. (For now: ALL admins. When live we'll narrow who receives the
+    // email by role/right.) sendEmailToUser resolves each officer's address and
+    // silently skips anyone without one; all best-effort, never blocks the sweep.
+    for (const o of officers) {
+      notifyAdminMarketResolution(o.id, { title: m.titleEn, marketId: m.id }).catch(() => {});
+      sendEmailToUser(o.id, (email) => ({
+        to: email,
+        subject: `Market awaiting resolution · ${m.titleEn.slice(0, 60)}`,
+        html: marketResolutionAdminHtml({ title: m.titleEn, closedAt: m.resolutionAt, reviewUrl: "/admin/resolver-queue" }),
+        tag: "market-resolve-admin",
+        trackLinks: false,
+      })).catch(() => {});
+    }
   }
   return { notified };
 }
@@ -963,12 +977,14 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
         amlReason: null,
         createdAt: now, updatedAt: now, completedAt: now,
       });
-      notifyRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id });
+      // Player notice — BOTH channels, and both carry the admin's reason so the
+      // player knows WHY their market was pulled and that they were made whole.
+      notifyMarketCancelled(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, reason });
       sendEmailToUser(p.userId, (email) => ({
         to: email,
         subject: `Market cancelled — TZS ${Math.round(p.stake).toLocaleString("en-US")} refunded`,
-        html: cashOutReceiptHtml({ reference: p.id, value: p.stake, stake: p.stake, marketTitle: m.titleEn, soldAt: now }),
-        tag: "emergency-refund",
+        html: marketCancelledRefundHtml({ title: m.titleEn, reason, amount: p.stake, reference: p.id }),
+        tag: "market-cancelled-refund",
       })).catch(() => {});
       refundedCount++;
       refundedTzs += p.stake;
@@ -996,6 +1012,21 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
       targetId: m.id,
       payload: { reason, refundedCount, refundedTzs, grossPoolBefore: grossPool, title: m.titleEn },
     });
+
+    // Confirm to EVERY admin/officer that the cancellation succeeded — in-app +
+    // email — so the whole team has an awareness/audit trail (and the acting
+    // officer gets a definitive "done" beyond the result modal). Best-effort.
+    const officers = (await db.user.list()).filter((u) => ["ADMIN", "COMPLIANCE", "MODERATOR"].includes(u.role));
+    for (const o of officers) {
+      notifyAdminMarketCancelled(o.id, { title: m.titleEn, reason, refundedCount, refundedTzs }).catch(() => {});
+      sendEmailToUser(o.id, (email) => ({
+        to: email,
+        subject: `Market cancelled · ${m.titleEn.slice(0, 50)}`,
+        html: marketCancelledAdminHtml({ title: m.titleEn, reason, refundedCount, refundedTzs }),
+        tag: "market-cancelled-admin",
+        trackLinks: false,
+      })).catch(() => {});
+    }
 
     return { ok: true as const, data: { refundedCount, refundedTzs } };
   });

@@ -540,6 +540,67 @@ export function kycSubmittedAdminHtml({ reference, phoneMasked, name, nidaMasked
 }
 
 /**
+ * Sent to every admin/officer when a REAL market's event time has passed and it
+ * is waiting for the two-officer resolution. Mirrors the KYC admin email: a
+ * clear nudge with a button straight to the resolver queue. Carries only the
+ * market title — the outcome decision happens in the secured admin surface.
+ */
+export function marketResolutionAdminHtml({ title, closedAt, reviewUrl }: {
+  title: string; closedAt: string; reviewUrl: string;
+}): string {
+  return wrap(`
+    ${eyebrow("Market · awaiting resolution")}
+    ${heading("A market has closed and needs resolving")}
+    ${subtitle("Its event time has passed. Two officers must confirm the outcome before winners are paid.")}
+    ${detailRows([
+      { label: "Market", value: title },
+      { label: "Closed", value: fmtDateTime(closedAt) },
+    ])}
+    ${ctaButton(reviewUrl, "Resolve now")}
+  `);
+}
+
+/**
+ * Player email when a market is cancelled (emergency void). States the admin's
+ * REASON and confirms the full stake was refunded to their wallet.
+ */
+export function marketCancelledRefundHtml({ title, reason, amount, reference }: {
+  title: string; reason: string; amount: number; reference: string;
+}): string {
+  return wrap(`
+    ${eyebrow("Market cancelled · Soko limefutwa")}
+    ${heading("Your stake has been refunded")}
+    ${subtitle(`We had to cancel a market you'd staked on. Your full stake has been returned to your 50pick wallet — you've lost nothing.`)}
+    ${subtitleSw("Tumelazimika kufuta soko ulilokuwa umeweka dau. Dau lako lote limerejeshwa kwenye pochi yako.")}
+    ${detailRows([
+      { label: "Market", value: title },
+      { label: "Reason", value: reason },
+      { label: "Refunded to wallet", value: fmtTzs(amount), tone: "good" },
+      { label: "Reference", value: reference },
+    ])}
+    ${ctaButton("/wallet", "View wallet · Pochi")}
+  `);
+}
+
+/** Officer email confirming an emergency void completed (with the reason). */
+export function marketCancelledAdminHtml({ title, reason, refundedCount, refundedTzs }: {
+  title: string; reason: string; refundedCount: number; refundedTzs: number;
+}): string {
+  return wrap(`
+    ${eyebrow("Market cancelled · confirmation")}
+    ${heading("Market voided & players refunded")}
+    ${subtitle("An emergency void completed successfully. Every open stake was refunded in full and the market is closed.")}
+    ${detailRows([
+      { label: "Market", value: title },
+      { label: "Reason", value: reason },
+      { label: "Players refunded", value: String(refundedCount) },
+      { label: "Total refunded", value: fmtTzs(refundedTzs) },
+    ])}
+    ${ctaButton("/admin/markets", "Open markets")}
+  `);
+}
+
+/**
  * Email-address confirmation. Sent when a player sets or changes their email
  * (profile or KYC step). The link carries a stateless HMAC-signed token that
  * embeds the address, so changing the email invalidates older links.
