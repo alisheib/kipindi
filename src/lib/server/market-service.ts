@@ -25,7 +25,7 @@ import { recordSnapshot, seedHistory } from "./market-history";
 import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, notifyAdminMarketResolution } from "./notification-service";
 import { sendEmailToUser, betPlacedHtml, winNotificationHtml, lossNotificationHtml, cashOutReceiptHtml } from "./email";
 import { onRecruitBet } from "./affiliate-service";
-import { seedMarket, settleHousePosition, canSeedNewMarket, getHousePoolSeedForMarket } from "./house-pool";
+import { seedMarket, settleHousePosition, canSeedNewMarket, getHousePoolSeedForMarket, creditCashOutFee } from "./house-pool";
 import type { ServiceResult } from "./auth-service";
 import { marketStore, positionStore } from "./market-dal";
 
@@ -581,35 +581,41 @@ export async function repairOrphanedPositions(): Promise<{ repaired: number; ref
 }
 
 /** Two-officer resolution. First call stages, second call (different officer) settles. */
-/** Slippage applied to a cash-out — a regulator-aligned 9% deduction so a
- *  cancellation never beats holding to settlement. Per management spec
- *  (license review · 2026-05): 9% of the projected cash-out is withheld. */
+/** Default early-cash-out commission, if no config value is present. The live
+ *  rate is `RateConfig.cashOutFeeRate` (admin-tunable at /admin/config) — this
+ *  constant is only the cold-start fallback. Per management spec (license
+ *  review · 2026-05): 9% of the projected cash-out is withheld to the house. */
 export const CASHOUT_SLIPPAGE = 0.09;
 
 /**
- * Compute the current cash-out value of an OPEN position assuming the market
- * resolved on the side the user is on RIGHT NOW. Applies slippage on top of
- * tax + commission so cashing out is always slightly worse than letting it
- * settle (otherwise cash-out becomes a free ratchet).
+ * Early cash-out value of an OPEN position.
  *
- * Caller passes the live market pools; we use the same whole-pool formula
- * that the resolver uses, then knock CASHOUT_SLIPPAGE off the gross.
+ * Management model (2026-06): closing a position before the market resolves
+ * simply RETURNS THE PLAYER'S OWN STAKE minus the admin-configured cash-out
+ * commission (`cashOutFeeRate`, default 9%). No winnings are paid on an early
+ * exit — that would let a player ratchet profit out of the pool without taking
+ * resolution risk. Profit is only possible by HOLDING to settlement (normal
+ * pari-mutuel rates apply there, untouched by this fee).
+ *
+ * Conservation: exactly the stake leaves the player's own pool side — `value`
+ * goes to the player, `fee` (stake − value) is booked to the house reserve.
+ * The `market` pools are not needed for the amount (kept in the signature so
+ * the call sites that pass them are unchanged).
+ *
+ * Returns: value (net to player), gross (= the stake removed from the pool),
+ * fee (the house commission), feeRate, ratio.
  */
 export async function cashOutValue(
   position: Pick<StoredPosition, "side" | "stake">,
   market: Pick<StoredMarket, "id" | "yesPool" | "noPool">,
-): Promise<{ value: number; ratio: number; gross: number }> {
+): Promise<{ value: number; ratio: number; gross: number; fee: number; feeRate: number }> {
   const cfg = await getEffectiveConfig(market.id);
-  const winningPool = position.side === "YES" ? market.yesPool : market.noPool;
-  if (winningPool <= 0) return { value: 0, ratio: 0, gross: 0 };
-  const grossPool = market.yesPool + market.noPool;
-  const fee = Math.min(0.99, Math.max(0, cfg.taxRate + cfg.commissionRate + cfg.reserveRate + cfg.aggregatorRate));
-  const netPool = grossPool * (1 - fee);
-  const wouldPay = (position.stake / winningPool) * netPool;
-  const gross = Math.round(wouldPay);
-  const value = Math.round(wouldPay * (1 - CASHOUT_SLIPPAGE));
-  const ratio = position.stake > 0 ? value / position.stake : 0;
-  return { value, ratio, gross };
+  const feeRate = Math.min(0.30, Math.max(0, cfg.cashOutFeeRate ?? CASHOUT_SLIPPAGE));
+  const gross = Math.max(0, Math.round(position.stake)); // the player's money in the pool
+  const value = Math.round(gross * (1 - feeRate));        // what they get back
+  const cashOutFee = Math.max(0, gross - value);          // our commission
+  const ratio = gross > 0 ? value / gross : 0;
+  return { value, ratio, gross, fee: cashOutFee, feeRate };
 }
 
 export async function cashOutPosition(
@@ -638,26 +644,25 @@ export async function cashOutPosition(
     const wallet = await db.wallet.findByUserId(userId);
     if (!wallet) return { ok: false as const, error: "Wallet not found.", code: "NOT_FOUND" as const };
 
-    const { value, gross } = await cashOutValue(p, m);
+    const { value, gross, fee: cashOutFee, feeRate } = await cashOutValue(p, m);
     if (value <= 0) {
       return { ok: false as const, error: "Current cash-out value is zero — your side has no live pool.", code: "INVALID" as const };
     }
 
     const now = new Date().toISOString();
 
-    // Conservation: the pools must drop by exactly `value` — the amount credited
-    // to the wallet — so cashing out can never MINT money. (The old code removed
-    // only `p.stake`, leaving the winnings-portion in the opposing pool to be
-    // paid out a second time → a money leak in the player's favour.)
-    // Economic split: the stake returns from the player's OWN pool; any winnings
-    // (value − stake) come from the OPPOSING pool — the losing side funds the
-    // winning side. Clamp so neither pool goes negative, then sweep any rounding
-    // residual from whichever pool still has room so the total removed === value.
-    // cashOutValue caps value ≤ grossPool, so the two pools can always cover it.
+    // Conservation: the pools drop by exactly the player's stake (`gross`) — of
+    // which the player gets `value` back and the house keeps `cashOutFee` as the
+    // early-cash-out commission (gross = value + cashOutFee, so nothing is minted
+    // and the fee is real operator revenue, booked to the reserve below). The
+    // stake is removed from the player's OWN pool side (their money lives there;
+    // the opposing side is untouched, so other players' standing is unaffected).
+    // The own/opp split below resolves to (stake from own, 0 from opposing) but
+    // is kept general + residual-swept so it can never drive a pool negative.
     const ownYes = p.side === "YES";
-    let ownDebit = Math.min(ownYes ? m.yesPool : m.noPool, Math.min(value, p.stake));
-    let oppDebit = Math.min(ownYes ? m.noPool : m.yesPool, Math.max(0, value - ownDebit));
-    let residual = value - ownDebit - oppDebit;
+    let ownDebit = Math.min(ownYes ? m.yesPool : m.noPool, Math.min(gross, p.stake));
+    let oppDebit = Math.min(ownYes ? m.noPool : m.yesPool, Math.max(0, gross - ownDebit));
+    let residual = gross - ownDebit - oppDebit;
     if (residual > 0) {
       const ownRoom = (ownYes ? m.yesPool : m.noPool) - ownDebit;
       const addOwn = Math.min(ownRoom, residual);
@@ -685,7 +690,7 @@ export async function cashOutPosition(
       walletId: wallet.id, userId,
       type: "CASHOUT",
       status: "CONFIRMED",
-      amount: value, fee: Math.max(0, gross - value), taxWithheld: 0,
+      amount: value, fee: cashOutFee, taxWithheld: 0,
       balanceAfter: newBalance, currency: "TZS",
       provider: "INTERNAL", providerRef: null, msisdn: null,
       description: `Cashed out · "${m.titleEn.slice(0, 60)}"`,
@@ -693,6 +698,11 @@ export async function cashOutPosition(
       amlReason: null,
       createdAt: now, updatedAt: now, completedAt: now,
     });
+
+    // Book the withheld commission to the house reserve (operator revenue). The
+    // pools were debited by `gross`, the player got `value`, so this `cashOutFee`
+    // is the remainder — moving it to the reserve keeps the system conserved.
+    if (cashOutFee > 0) await creditCashOutFee(m.id, cashOutFee);
 
     notifyCashout(userId, { amount: value, marketTitle: m.titleEn, marketId: m.id });
     sendEmailToUser(userId, (email) => ({
@@ -710,7 +720,7 @@ export async function cashOutPosition(
       targetId: p.id,
       payload: {
         marketId: m.id, side: p.side, stake: p.stake, value,
-        slippage: CASHOUT_SLIPPAGE,
+        gross, cashOutFee, feeRate,
         yesPoolAfter: m.yesPool, noPoolAfter: m.noPool,
       },
     });

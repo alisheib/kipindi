@@ -33,6 +33,7 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
 
   const taxPct = (config.taxRate * 100).toFixed(1);
   const commPct = (config.commissionRate * 100).toFixed(1);
+  const cashOutPct = ((config.cashOutFeeRate ?? 0.09) * 100).toFixed(1);
   const resPct = (config.reserveRate * 100).toFixed(1);
   const aggPct = (config.aggregatorRate * 100).toFixed(1);
   const traPct = (config.traTaxOnCommissionRate * 100).toFixed(1);
@@ -52,6 +53,12 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
           hint={`Current ${commPct}%. 50pick operator margin.`}
         >
           <Input name="commissionRate" type="number" step="0.1" min="0" max="20" defaultValue={commPct} mono />
+        </Field>
+        <Field
+          label="Cash-out fee (%)"
+          hint={`Current ${cashOutPct}%. Withheld from a player's EARLY cash-out (closing before the event resolves) and booked to the house. Holding to settlement is unaffected.`}
+        >
+          <Input name="cashOutFeeRate" type="number" step="0.1" min="0" max="30" defaultValue={cashOutPct} mono />
         </Field>
         <Field
           label="Reserve rate (%)"

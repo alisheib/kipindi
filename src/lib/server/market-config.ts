@@ -24,6 +24,12 @@ export type RateConfig = {
   taxRate: number;
   /** Operator commission (e.g. 0.05 = 5%). 50pick keeps this. */
   commissionRate: number;
+  /** Early cash-out commission (e.g. 0.09 = 9%). Withheld from a player's
+   *  cash-out proceeds when they CLOSE a position before the market resolves,
+   *  and booked to the house reserve as operator revenue. Holding to settlement
+   *  is unaffected (normal tax + commission apply at resolution). Admin-tunable;
+   *  separate from the settlement pool fees above. */
+  cashOutFeeRate: number;
   /** House liquidity reserve rate (e.g. 0.02 = 2%). Replenishes the
    *  house pool that seeds every market. Can be 0 to disable. */
   reserveRate: number;
@@ -54,6 +60,7 @@ export type RateConfig = {
 export const DEFAULT_GLOBAL_CONFIG: RateConfig = {
   taxRate: 0.04,
   commissionRate: 0.03,
+  cashOutFeeRate: 0.09,  // 9% early-cash-out commission (management spec, license review 2026-05)
   reserveRate: 0.02,
   aggregatorRate: 0.00, // 0% until aggregator contract is signed
   minStake: 100,
@@ -148,6 +155,11 @@ function validate(updates: Partial<RateConfig>): { ok: true } | { ok: false; rea
   if (updates.commissionRate !== undefined) {
     if (Number.isNaN(updates.commissionRate) || updates.commissionRate < 0 || updates.commissionRate > 0.20) {
       return { ok: false, reason: "Commission rate must be 0-20%." };
+    }
+  }
+  if (updates.cashOutFeeRate !== undefined) {
+    if (Number.isNaN(updates.cashOutFeeRate) || updates.cashOutFeeRate < 0 || updates.cashOutFeeRate > 0.30) {
+      return { ok: false, reason: "Cash-out fee must be 0-30%." };
     }
   }
   if (updates.reserveRate !== undefined) {

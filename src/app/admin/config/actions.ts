@@ -46,6 +46,7 @@ export async function updateGlobalConfigAction(formData: FormData) {
   const updates: Partial<RateConfig> = {};
   const t = parseRate(String(formData.get("taxRate") ?? ""));
   const c = parseRate(String(formData.get("commissionRate") ?? ""));
+  const co = parseRate(String(formData.get("cashOutFeeRate") ?? ""));
   const rv = parseRate(String(formData.get("reserveRate") ?? ""));
   const ag = parseRate(String(formData.get("aggregatorRate") ?? ""));
   const min = parseInteger(String(formData.get("minStake") ?? ""));
@@ -56,6 +57,7 @@ export async function updateGlobalConfigAction(formData: FormData) {
   const gbt = parseRate(String(formData.get("gbtLevyOnCommissionRate") ?? ""));
   if (t !== undefined) updates.taxRate = t;
   if (c !== undefined) updates.commissionRate = c;
+  if (co !== undefined) updates.cashOutFeeRate = co;
   if (rv !== undefined) updates.reserveRate = rv;
   if (ag !== undefined) updates.aggregatorRate = ag;
   if (min !== undefined) updates.minStake = min;

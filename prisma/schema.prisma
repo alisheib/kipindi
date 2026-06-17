@@ -834,6 +834,7 @@ enum HousePoolEntryType {
   RESERVE_FEE
   WITHDRAW
   LOSS_ABSORBED
+  CASHOUT_FEE
 }
 
 enum ReferralRewardType {

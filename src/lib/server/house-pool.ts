@@ -52,7 +52,7 @@ export const DEFAULT_HOUSE_POOL_CONFIG: HousePoolConfig = {
 
 export type HousePoolLedgerEntry = {
   id: string;
-  type: "TOP_UP" | "SEED_OUT" | "SETTLE_RETURN" | "RESERVE_FEE" | "WITHDRAW" | "LOSS_ABSORBED";
+  type: "TOP_UP" | "SEED_OUT" | "SETTLE_RETURN" | "RESERVE_FEE" | "WITHDRAW" | "LOSS_ABSORBED" | "CASHOUT_FEE";
   amount: number;           // positive = money in, negative = money out
   balanceAfter: number;
   marketId: string | null;  // null for top-ups / withdrawals
@@ -419,6 +419,31 @@ export async function settleHousePosition(
 
   persistState();
   return { returnedToReserve: returned, reserveFee, lossAbsorbed };
+}
+
+/**
+ * Book an early-cash-out commission to the house reserve. The fee was withheld
+ * from the player's cash-out proceeds (see cashOutPosition) and removed from the
+ * market pool, so crediting it here moves it into operator revenue — no minting.
+ * Best-effort accounting: never throws (a ledger hiccup must not fail a cash-out).
+ */
+export async function creditCashOutFee(marketId: string, amount: number): Promise<void> {
+  if (!Number.isFinite(amount) || amount <= 0) return;
+  try {
+    await ensureHydrated();
+    pool.balance += amount;
+    persistState();
+    await pushLedger({
+      type: "CASHOUT_FEE",
+      amount,
+      balanceAfter: pool.balance,
+      marketId,
+      note: `Early cash-out commission TZS ${Math.round(amount).toLocaleString()}`,
+      actorId: "system",
+    });
+  } catch (err) {
+    console.error("[house-pool] creditCashOutFee failed:", (err as Error)?.message ?? err);
+  }
 }
 
 /**
