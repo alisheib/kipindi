@@ -63,6 +63,9 @@ export default async function LivePage() {
       <BrandTopo opacity={0.04} />
 
       <div className="relative mx-auto max-w-[1280px] px-3 lg:px-6 py-6 space-y-5">
+        {/* Accessible page heading (WCAG 1.3.1 / 2.4.6). Visually hidden — the
+            design uses a slim live header, not a marketing H1. */}
+        <h1 className="sr-only">Live markets · Soko hai</h1>
         {/* Slim header — clicking Live lands straight on the questions, not a
             marketing hero (that lives on the homepage). */}
         <div className="flex items-center justify-between gap-3">

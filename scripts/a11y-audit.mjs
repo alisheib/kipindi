@@ -16,8 +16,8 @@ import { chromium } from "playwright";
 
 const BASE = process.env.BASE || "http://localhost:3000";
 
-const PAGES_PUBLIC = ["/", "/auth/login", "/auth/register", "/mapigo", "/live", "/legal/terms", "/legal/privacy", "/legal/responsible-gambling", "/legal/aml"];
-const PAGES_AUTHED = ["/wallet", "/wallet/deposit", "/wallet/withdraw", "/bets", "/match/m1", "/profile", "/profile/account", "/profile/source-of-funds", "/profile/responsible-gambling", "/profile/kyc", "/admin", "/admin/audit", "/admin/system"];
+const PAGES_PUBLIC = ["/", "/auth/login", "/auth/register", "/markets", "/live", "/legal/terms", "/legal/privacy", "/legal/responsible-gambling", "/legal/aml"];
+const PAGES_AUTHED = ["/wallet", "/wallet/deposit", "/wallet/withdraw", "/positions", "/profile", "/profile/account", "/profile/source-of-funds", "/profile/responsible-gambling", "/profile/kyc", "/admin", "/admin/audit", "/admin/system"];
 
 let total = 0, fail = 0;
 

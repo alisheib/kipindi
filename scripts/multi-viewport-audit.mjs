@@ -23,11 +23,11 @@ const VIEWPORTS = [
 ];
 
 const PAGES = {
-  public: ["/", "/auth/login", "/mapigo", "/live", "/leaderboard", "/games", "/legal/terms", "/legal/privacy", "/legal/responsible-gambling", "/legal/aml"],
+  public: ["/", "/auth/login", "/markets", "/live", "/leaderboard", "/help", "/legal/terms", "/legal/privacy", "/legal/responsible-gambling", "/legal/aml"],
   // Admin pages are desktop-first (1024+) per the design brief. We exclude them
   // from phone-sized viewports because operators sit at desks, not on phones.
-  authed: ["/", "/wallet", "/wallet/deposit", "/wallet/withdraw", "/bets", "/mapigo", "/match/m1", "/profile", "/profile/account", "/profile/kyc", "/profile/responsible-gambling"],
-  authedDesktopOnly: ["/admin", "/admin/audit", "/admin/aml", "/admin/system", "/admin/finance", "/admin/compliance", "/admin/players", "/admin/players/cohorts", "/admin/games/match", "/admin/games/window", "/admin/games/mapigo", "/admin/live", "/admin/reports", "/admin/approvals", "/admin/self-exclusions"],
+  authed: ["/", "/wallet", "/wallet/deposit", "/wallet/withdraw", "/positions", "/markets", "/profile", "/profile/account", "/profile/kyc", "/profile/responsible-gambling"],
+  authedDesktopOnly: ["/admin", "/admin/audit", "/admin/aml", "/admin/system", "/admin/finance", "/admin/compliance", "/admin/players", "/admin/players/cohorts", "/admin/markets", "/admin/config", "/admin/resolver-queue", "/admin/live", "/admin/reports", "/admin/approvals", "/admin/self-exclusions"],
 };
 
 let total = 0, fails = 0;

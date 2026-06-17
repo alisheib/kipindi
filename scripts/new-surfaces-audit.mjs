@@ -66,7 +66,8 @@ const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } })
 const page = await ctx.newPage();
 await page.goto(`${BASE}/auth/demo`, { waitUntil: "networkidle" });
 const who = await (await page.request.get(`${BASE}/api/dev-test/whoami`)).json().catch(() => ({}));
-await page.request.post(`${BASE}/api/dev-test/promote-admin`, { data: { phone: who.phoneE164 || who.phone } });
+const adminPhone = who?.session?.phoneE164 || who?.user?.phoneE164;
+await page.request.post(`${BASE}/api/dev-test/promote-admin`, { data: { phone: adminPhone } });
 const errs = watch(page);
 
 for (const [w, h] of [[768, 1024], [1024, 768], [1280, 900]]) {
@@ -81,10 +82,16 @@ for (const [w, h] of [[768, 1024], [1024, 768], [1280, 900]]) {
   ok(`/admin/config ${w}px — no app console/page/5xx errors`, errs.length === 0, errs.slice(0, 2).join(" | "));
 }
 
-// Element presence + a11y: assert against the SERVER render via the authed
-// request (deterministic — avoids client-hydration races that the dev-only
-// framework Router warning introduces). Interaction/logic is covered by the
-// emergency-void + cashout-fee unit suites.
+// Element presence: assert against the SERVER render via the authed request
+// (deterministic — avoids client-hydration races from the dev-only framework
+// Router warning). Re-establish a fresh active session right before fetching:
+// the long viewport loop + the durable single-session registry can leave the
+// earlier login stale. Interaction/logic is covered by the emergency-void +
+// cashout-fee unit suites.
+await page.goto(`${BASE}/auth/demo`, { waitUntil: "networkidle" });
+const who2 = await (await page.request.get(`${BASE}/api/dev-test/whoami`)).json().catch(() => ({}));
+await page.request.post(`${BASE}/api/dev-test/promote-admin`, { data: { phone: who2?.session?.phoneE164 || who2?.user?.phoneE164 } });
+await page.waitForTimeout(250);
 const mHtml = await page.request.get(`${BASE}/admin/markets`).then((r) => r.text()).catch(() => "");
 ok(`/admin/markets — kill-switch control rendered (server)`, /Cancel &amp;? refund/.test(mHtml));
 ok(`/admin/markets — Action column header rendered`, /<th[^>]*>Action<\/th>/.test(mHtml));

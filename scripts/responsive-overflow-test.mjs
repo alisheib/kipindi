@@ -97,29 +97,9 @@ try {
   }
 
   // ─────────────────────────────────────────────────────────
-  // 2 · HERO CONSTELLATION renders + dials present
+  // 2 · TOP APP BAR — logo, CTAs, nav, breakpoints
   // ─────────────────────────────────────────────────────────
-  console.log("\n=== 2 · HERO CONSTELLATION ===");
-  for (const vp of VIEWPORTS) {
-    const ctx = await browser.newContext({ viewport: { width: vp.w, height: vp.h } });
-    const p = await ctx.newPage();
-    await p.goto(`${BASE}/`, { waitUntil: "networkidle" });
-    await p.waitForTimeout(700);
-    // The constellation lives inside main; look for the cartouche
-    // "Plate I · MMXXVI" + the eyebrow "The Tipping Field" since those
-    // are the most identifying texts.
-    const body = (await p.locator("body").textContent()) ?? "";
-    log(`2.${vp.w}w · constellation Plate cartouche visible`, /Plate I/i.test(body));
-    log(`2.${vp.w}w · constellation eyebrow visible`,         /Tipping Field/i.test(body));
-    log(`2.${vp.w}w · headline "wisdom" visible`,             /wisdom/i.test(body));
-    await p.close();
-    await ctx.close();
-  }
-
-  // ─────────────────────────────────────────────────────────
-  // 3 · TOP APP BAR — logo, CTAs, nav, breakpoints
-  // ─────────────────────────────────────────────────────────
-  console.log("\n=== 3 · TOP APP BAR ===");
+  console.log("\n=== 2 · TOP APP BAR ===");
   for (const vp of VIEWPORTS) {
     const ctx = await browser.newContext({ viewport: { width: vp.w, height: vp.h } });
     const p = await ctx.newPage();

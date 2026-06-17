@@ -49,6 +49,9 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
   const totalVolume = allLive.reduce((s, m) => s + m.yesPool + m.noPool, 0);
   return (
     <main className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6">
+      {/* Accessible page heading (WCAG 1.3.1 / 2.4.6). Visually hidden — the
+          design uses a slim content-first header, not a marketing H1. */}
+      <h1 className="sr-only">Markets · Soko</h1>
       {/* Lean, content-first header — the marketing hero lives on the homepage. */}
       <div className="mb-4 flex items-center justify-between gap-3">
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">Markets · Soko</p>
