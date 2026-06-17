@@ -6,6 +6,7 @@ import Link from "next/link";
 import { listMarkets, impliedYesPct, seedDemoMarkets, type MarketCategory } from "@/lib/server/market-service";
 import { ProbabilityBar } from "@/components/markets/probability-bar";
 import { formatDateTime } from "@/lib/utils";
+import { EmergencyVoidControl } from "./emergency-void-control";
 
 export const metadata = { title: "Admin · Markets curation" };
 export const dynamic = "force-dynamic";
@@ -130,6 +131,7 @@ export default async function AdminMarketsPage({
                   <th className="text-left">Closes</th>
                   <th className="text-left">Status</th>
                   <th className="text-left">Source</th>
+                  <th className="text-left">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -163,12 +165,19 @@ export default async function AdminMarketsPage({
                           <I.ext size={11} />
                         </a>
                       </td>
+                      <td>
+                        {(m.status === "LIVE" || m.status === "CLOSED") ? (
+                          <EmergencyVoidControl marketId={m.id} title={m.titleEn} />
+                        ) : (
+                          <span className="font-mono text-[10.5px] text-text-tertiary">—</span>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="!py-6 text-center text-text-tertiary">No markets match the current filter.</td>
+                    <td colSpan={8} className="!py-6 text-center text-text-tertiary">No markets match the current filter.</td>
                   </tr>
                 )}
               </tbody>

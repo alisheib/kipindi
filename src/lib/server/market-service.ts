@@ -900,6 +900,107 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   }); // end withLock market
 }
 
+/**
+ * EMERGENCY VOID — single-action "kill switch" for a market that must be pulled
+ * immediately (e.g. a political/governmental directive, a bad source, a pricing
+ * error). Unlike resolveMarket("VOID") this is ONE atomic admin action (no
+ * two-officer dance) and works on a LIVE market mid-trading.
+ *
+ * What it does, all under the market lock so it's all-or-nothing:
+ *   - refunds EVERY open position its FULL stake (no fee — the player didn't
+ *     choose to exit; this is a cancellation, so they're made whole),
+ *   - returns both house seeds to the reserve (settleHousePosition VOID),
+ *   - zeroes the pools and marks the market VOIDED,
+ *   - audits the action (COMPLIANCE) with the mandatory reason + totals.
+ *
+ * Single-officer is acceptable because the operation can only RETURN players'
+ * own stakes — no winnings, no payout, no one profits — so it carries none of
+ * the collusion risk that makes resolution two-officer. Idempotent: a market
+ * already RESOLVED/VOIDED is rejected, so stakes can never be double-refunded.
+ * Already CASHED_OUT positions are skipped (their stake already left the pool).
+ */
+export async function emergencyVoidMarket(opts: { marketId: string; officerId: string; reason: string }): Promise<ServiceResult<{ refundedCount: number; refundedTzs: number }>> {
+  const reason = (opts.reason ?? "").trim();
+  if (reason.length < 5) return { ok: false, error: "A reason (≥ 5 characters) is required for an emergency void.", code: "INVALID" };
+
+  return withLock(`market:${opts.marketId}`, async () => {
+    const m = await marketStore.get(opts.marketId);
+    if (!m) return { ok: false as const, error: "Market not found.", code: "NOT_FOUND" as const };
+    if (m.status === "RESOLVED" || m.status === "VOIDED") {
+      return { ok: false as const, error: "Market is already settled — nothing to void.", code: "INVALID" as const };
+    }
+
+    const now = new Date().toISOString();
+    const grossPool = m.yesPool + m.noPool;
+    const cfg = await getEffectiveConfig(m.id);
+
+    // Return both house seeds to the reserve (VOID path → no reserve fee).
+    await settleHousePosition(m.id, "VOID", grossPool, cfg.reserveRate);
+
+    // Refund every OPEN position its full stake. db.wallet.adjust is atomic, so
+    // (like the resolveMarket VOID path) no nested wallet lock is needed.
+    const open = (await listPositionsForMarket(m.id)).filter((p) => p.status === "OPEN");
+    let refundedCount = 0;
+    let refundedTzs = 0;
+    for (const p of open) {
+      const w = await db.wallet.findByUserId(p.userId);
+      if (!w) continue;
+      const updated = await db.wallet.adjust(w.id, { balance: p.stake });
+      const balanceAfter = updated?.balance ?? w.balance + p.stake;
+      p.status = "VOID";
+      p.finalPayout = p.stake;
+      p.settledAt = now;
+      await positionStore.set(p);
+      await db.txn.create({
+        id: `txn_${randomId(12)}`,
+        walletId: w.id, userId: p.userId,
+        type: "BET_REFUND", status: "CONFIRMED",
+        amount: p.stake, fee: 0, taxWithheld: 0,
+        balanceAfter, currency: "TZS",
+        provider: "INTERNAL", providerRef: null, msisdn: null,
+        description: `Emergency refund · "${m.titleEn.slice(0, 60)}" cancelled`,
+        betId: p.id,
+        amlReason: null,
+        createdAt: now, updatedAt: now, completedAt: now,
+      });
+      notifyRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id });
+      sendEmailToUser(p.userId, (email) => ({
+        to: email,
+        subject: `Market cancelled — TZS ${Math.round(p.stake).toLocaleString("en-US")} refunded`,
+        html: cashOutReceiptHtml({ reference: p.id, value: p.stake, stake: p.stake, marketTitle: m.titleEn, soldAt: now }),
+        tag: "emergency-refund",
+      })).catch(() => {});
+      refundedCount++;
+      refundedTzs += p.stake;
+    }
+
+    // Pools are now empty (all stakes refunded, seeds returned). Mark VOIDED and
+    // stamp both resolution officers as this single emergency operator for the trail.
+    m.yesPool = 0;
+    m.noPool = 0;
+    m.status = "VOIDED";
+    m.resolvedOutcome = "VOID";
+    m.resolutionStage1By = opts.officerId;
+    m.resolutionStage1At = now;
+    m.resolutionStage2By = opts.officerId;
+    m.resolutionStage2At = now;
+    m.updatedAt = now;
+    await marketStore.set(m);
+    recordSnapshot(m.id, 0, 0);
+
+    audit({
+      category: "COMPLIANCE",
+      action: "market.emergency_void",
+      actorId: opts.officerId,
+      targetType: "Market",
+      targetId: m.id,
+      payload: { reason, refundedCount, refundedTzs, grossPoolBefore: grossPool, title: m.titleEn },
+    });
+
+    return { ok: true as const, data: { refundedCount, refundedTzs } };
+  });
+}
+
 /** Seed the demo with a deep, varied catalogue and top up automatically
  *  when fewer than 25 LIVE markets remain — the manager always has at
  *  least 40 markets to drill into without needing to /admin/markets.

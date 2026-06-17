@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
-import { buyPosition, cashOutPosition, resolveMarket, createMarket, listPositionsForUser, type CreateMarketInput, type Side } from "@/lib/server/market-service";
+import { buyPosition, cashOutPosition, resolveMarket, emergencyVoidMarket, createMarket, listPositionsForUser, type CreateMarketInput, type Side } from "@/lib/server/market-service";
 import { addComment, reportComment, deleteComment, restoreComment, type CommentSide } from "@/lib/server/comments-store";
 import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
 import { db } from "@/lib/server/store";
@@ -77,6 +77,40 @@ export async function resolveMarketAction(formData: FormData) {
     revalidatePath("/markets");
     revalidatePath(`/markets/${marketId}`);
     revalidatePath("/positions");
+  }
+  return r;
+}
+
+/**
+ * Emergency void / kill switch — pull a (possibly LIVE) market immediately and
+ * refund every open stake in full. Tighter gate than other admin actions: only
+ * ADMIN or COMPLIANCE (it moves money / closes a live pool — not a moderator job).
+ */
+export async function emergencyVoidMarketAction(formData: FormData) {
+  const session = await currentSession();
+  if (!session) redirect("/auth/login");
+  const user = await db.user.findById(session.userId);
+  if (!user || !["ADMIN", "COMPLIANCE"].includes(user.role)) {
+    audit({
+      category: "SECURITY",
+      action: "privilege_escalation_blocked",
+      actorId: session.userId,
+      targetType: "Action",
+      targetId: "emergencyVoidMarketAction",
+      payload: { role: user?.role ?? "unknown" },
+    });
+    return { ok: false as const, error: "Forbidden: ADMIN or COMPLIANCE role required.", code: "INVALID" as const };
+  }
+  const marketId = String(formData.get("marketId") ?? "");
+  const reason = String(formData.get("reason") ?? "");
+  const r = await emergencyVoidMarket({ marketId, officerId: session.userId, reason });
+  if (r.ok) {
+    revalidatePath("/admin/markets");
+    revalidatePath("/markets");
+    revalidatePath(`/markets/${marketId}`);
+    revalidatePath("/live");
+    revalidatePath("/positions");
+    revalidatePath("/wallet");
   }
   return r;
 }

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BrandSpinner } from "@/components/brand";
 import { MarketCard } from "@/components/markets/market-card";
+import { I } from "@/components/ui/glyphs";
 
 type Market = {
   id: string;
@@ -29,6 +30,21 @@ type Market = {
 const BATCH = 24;
 
 export function LivePulseGrid({ markets }: { markets: Market[] }) {
+  // Search-only (no filter tab): instant client-side filter of the already-loaded
+  // live wall by question text (EN/SW) or category. Same kit search primitives as
+  // the Markets board so height, sunken bg, focus ring, and iOS font polish match.
+  const [query, setQuery] = useState("");
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return markets;
+    return markets.filter(
+      (m) =>
+        m.titleEn.toLowerCase().includes(q) ||
+        (m.titleSw ?? "").toLowerCase().includes(q) ||
+        m.category.toLowerCase().includes(q),
+    );
+  }, [markets, query]);
+
   // Render in batches and append as the user scrolls — keeps the DOM light
   // (a live wall can be thousands of bars) and gives a real "loading more"
   // affordance instead of dumping everything at once.
@@ -36,7 +52,12 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
   const [appending, setAppending] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const busyRef = useRef(false);
-  const hasMore = count < markets.length;
+  const hasMore = count < filtered.length;
+
+  // Reset the visible batch whenever the filtered set changes (new query).
+  useEffect(() => {
+    setCount(Math.min(BATCH, filtered.length));
+  }, [filtered.length, query]);
 
   useEffect(() => {
     if (!hasMore) return;
@@ -49,7 +70,7 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
           setAppending(true);
           // a short, kit-consistent loader beat, then reveal the next batch
           window.setTimeout(() => {
-            setCount((c) => Math.min(c + BATCH, markets.length));
+            setCount((c) => Math.min(c + BATCH, filtered.length));
             setAppending(false);
             busyRef.current = false;
           }, 350);
@@ -59,15 +80,47 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, [hasMore, markets.length, count]); // re-arm after each append
+  }, [hasMore, filtered.length, count]); // re-arm after each append
 
   return (
     <>
-      <div className="market-grid">
-        {markets.slice(0, count).map((m, i) => (
-          <PulseCard key={m.id} market={m} index={i} />
-        ))}
+      <div className="input-group market-search max-w-[460px]">
+        <span className="prefix" aria-hidden>
+          <I.search s={16} />
+        </span>
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search live markets · Tafuta soko hai"
+          aria-label="Search live markets"
+          enterKeyHint="search"
+          autoComplete="off"
+          className="input input-mono"
+        />
+        {query && (
+          <button
+            type="button"
+            aria-label="Clear search"
+            className="clear-btn"
+            onClick={() => setQuery("")}
+          >
+            <I.x s={15} />
+          </button>
+        )}
       </div>
+
+      {filtered.length === 0 ? (
+        <p className="py-10 text-center font-mono text-[12px] uppercase tracking-[0.14em] text-text-subtle">
+          No live markets match “{query.trim()}” · Hakuna soko linalolingana
+        </p>
+      ) : (
+        <div className="market-grid">
+          {filtered.slice(0, count).map((m, i) => (
+            <PulseCard key={m.id} market={m} index={i} />
+          ))}
+        </div>
+      )}
 
       {hasMore && (
         <div
