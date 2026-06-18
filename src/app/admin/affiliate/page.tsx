@@ -1,4 +1,6 @@
 import { AdminPageHead, AdminKpi, AdminCard } from "@/components/admin/admin-shell";
+import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
+import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { Avatar } from "@/components/ui/avatar";
@@ -17,9 +19,26 @@ const LEDGER_CHIP: Record<string, "resolved" | "pending" | "objection"> = { PAID
  * The route is gated by the admin layout (role + TOTP); the save action
  * re-checks the role for defence-in-depth.
  */
-export default async function AdminAffiliatePage() {
+export default async function AdminAffiliatePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ lsort?: string; ldir?: string; lpage?: string }>;
+}) {
+  const sp = await searchParams;
   const config = getAffiliateConfig();
   const stats = await getAdminAffiliateStats();
+
+  // Payout ledger (prefix "l") — newest first by default; amount + referrer + status sortable.
+  const l = parseSort(sp, ["date", "amount", "referrer", "status"] as const, "date", "desc", "l");
+  const ledgerSorted = applySort(stats.ledger, l.sort, l.dir, {
+    date: (r) => r.date,
+    amount: (r) => r.amountTzs,
+    referrer: (r) => r.referrerHandle.toLowerCase(),
+    status: (r) => r.status,
+  });
+  const lPage = parsePage(sp.lpage, ledgerSorted.length);
+  const ledgerPage = ledgerSorted.slice((lPage - 1) * PER_PAGE, lPage * PER_PAGE);
+  const lBase = buildBaseHref("/admin/affiliate", sp, "lpage");
 
   return (
     <>
@@ -85,29 +104,39 @@ export default async function AdminAffiliatePage() {
         </AdminCard>
 
         {/* Payout ledger */}
-        <AdminCard title="Payout ledger" sw="Daftari la malipo" padding={stats.ledger.length > 0 ? "p-0" : "p-4"}>
-          {stats.ledger.length === 0 ? (
+        <AdminCard title="Payout ledger" sw="Daftari la malipo" padding={ledgerSorted.length > 0 ? "p-0" : "p-4"}>
+          {ledgerSorted.length === 0 ? (
             <p className="text-caption text-text-tertiary py-4 text-center">No payouts yet. Rewards appear here as friends sign up and play.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="admin-tbl min-w-[640px]">
-                <thead>
-                  <tr><th className="text-left">Referrer</th><th className="text-left">Recruit</th><th className="text-left">Type</th><th className="text-right">Amount</th><th className="text-left">Date</th><th className="text-left">Status</th></tr>
-                </thead>
-                <tbody>
-                  {stats.ledger.map((r) => (
-                    <tr key={r.id}>
-                      <td className="font-mono font-semibold">{r.referrerHandle}</td>
-                      <td className="font-mono text-text-muted">{r.recruitMasked}</td>
-                      <td className="text-text-muted">{r.type}</td>
-                      <td className="text-right font-mono font-semibold text-gold-300">{fmt(r.amountTzs)}</td>
-                      <td className="font-mono text-text-subtle whitespace-nowrap">{new Date(r.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</td>
-                      <td><Chip size="sm" variant={LEDGER_CHIP[r.status]}>{r.status.toLowerCase()}</Chip></td>
+            <>
+              <div className="overflow-x-auto">
+                <table className="admin-tbl min-w-[640px]">
+                  <thead>
+                    <tr>
+                      <SortTh field="referrer" label="Referrer" current={l.sort} dir={l.dir} sp={sp} baseHref="/admin/affiliate" prefix="l" />
+                      <th className="text-left">Recruit</th>
+                      <th className="text-left">Type</th>
+                      <SortTh field="amount" label="Amount" current={l.sort} dir={l.dir} sp={sp} baseHref="/admin/affiliate" prefix="l" align="right" />
+                      <SortTh field="date" label="Date" current={l.sort} dir={l.dir} sp={sp} baseHref="/admin/affiliate" prefix="l" />
+                      <SortTh field="status" label="Status" current={l.sort} dir={l.dir} sp={sp} baseHref="/admin/affiliate" prefix="l" />
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {ledgerPage.map((r) => (
+                      <tr key={r.id}>
+                        <td className="font-mono font-semibold">{r.referrerHandle}</td>
+                        <td className="font-mono text-text-muted">{r.recruitMasked}</td>
+                        <td className="text-text-muted">{r.type}</td>
+                        <td className="text-right font-mono font-semibold text-gold-300">{fmt(r.amountTzs)}</td>
+                        <td className="font-mono text-text-subtle whitespace-nowrap">{new Date(r.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</td>
+                        <td><Chip size="sm" variant={LEDGER_CHIP[r.status]}>{r.status.toLowerCase()}</Chip></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <AdminPagination total={ledgerSorted.length} page={lPage} baseHref={lBase} param="lpage" />
+            </>
           )}
         </AdminCard>
       </div>

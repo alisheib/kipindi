@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
+import { parseSort, applySort, type SortDir } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { formatDateTimeSafe } from "@/lib/utils";
@@ -58,6 +59,12 @@ export default async function AdminAIPollsPage({
     category?: string;
     date?: string;
     page?: string;
+    psort?: string;
+    pdir?: string;
+    ppage?: string;
+    asort?: string;
+    adir?: string;
+    apage?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -67,8 +74,30 @@ export default async function AdminAIPollsPage({
   const config = getAIPollConfig();
   const totalAll = await countAIPollsTotal();
 
-  const pending = await listAIPolls({ state: "PENDING_REVIEW" });
-  const approved = await listAIPolls({ state: "APPROVED" });
+  const pendingAll = await listAIPolls({ state: "PENDING_REVIEW" });
+  const approvedAll = await listAIPolls({ state: "APPROVED" });
+
+  // Pending review queue (prefix "p") — newest first by default; also title + quality.
+  const p = parseSort(sp, ["date", "title", "quality"] as const, "date", "desc", "p");
+  const pendingSorted = applySort(pendingAll, p.sort, p.dir, {
+    date: (poll) => poll.createdAt,
+    title: (poll) => poll.titleEn.toLowerCase(),
+    quality: (poll) => poll.overallQuality,
+  });
+  const pPage = parsePage(sp.ppage, pendingSorted.length);
+  const pending = pendingSorted.slice((pPage - 1) * PER_PAGE, pPage * PER_PAGE);
+  const pBase = buildBaseHref("/admin/ai-polls", sp, "ppage");
+
+  // Approved list (prefix "a") — newest first by default; also title + quality.
+  const a = parseSort(sp, ["date", "title", "quality"] as const, "date", "desc", "a");
+  const approvedSorted = applySort(approvedAll, a.sort, a.dir, {
+    date: (poll) => poll.createdAt,
+    title: (poll) => poll.titleEn.toLowerCase(),
+    quality: (poll) => poll.overallQuality,
+  });
+  const aPage = parsePage(sp.apage, approvedSorted.length);
+  const approved = approvedSorted.slice((aPage - 1) * PER_PAGE, aPage * PER_PAGE);
+  const aBase = buildBaseHref("/admin/ai-polls", sp, "apage");
 
   // Build filter for the "all activity" table
   const dateRange = datePresetToRange(sp.date ?? "");
@@ -170,7 +199,7 @@ export default async function AdminAIPollsPage({
         </AdminCard>
 
         {/* Pending review queue */}
-        {pending.length > 0 && (
+        {pendingSorted.length > 0 && (
           <div id="ai-polls-pending" className="scroll-mt-24">
           <AdminCard padding="p-0">
             <div className="flex items-center justify-between px-4 lg:px-5 pt-4">
@@ -180,19 +209,31 @@ export default async function AdminAIPollsPage({
                 </p>
                 <p className="text-caption italic text-text-tertiary">Inasubiri uamuzi wako</p>
               </div>
-              <Chip size="sm" variant="warning">{pending.length} pending</Chip>
+              <Chip size="sm" variant="warning">{pendingSorted.length} pending</Chip>
             </div>
+            <CardSortControl
+              prefix="p"
+              current={p.sort}
+              dir={p.dir}
+              sp={sp}
+              options={[
+                { field: "date", label: "Date" },
+                { field: "title", label: "Title" },
+                { field: "quality", label: "Quality" },
+              ]}
+            />
             <div className="divide-y divide-border/60 mt-3">
-              {pending.map((p) => (
-                <PollRow key={p.id} poll={p} mode="review" />
+              {pending.map((poll) => (
+                <PollRow key={poll.id} poll={poll} mode="review" />
               ))}
             </div>
+            <AdminPagination total={pendingSorted.length} page={pPage} baseHref={pBase} param="ppage" />
           </AdminCard>
           </div>
         )}
 
         {/* Approved */}
-        {approved.length > 0 && (
+        {approvedSorted.length > 0 && (
           <AdminCard padding="p-0">
             <div className="flex items-center justify-between px-4 lg:px-5 pt-4">
               <div>
@@ -201,13 +242,25 @@ export default async function AdminAIPollsPage({
                 </p>
                 <p className="text-caption italic text-text-tertiary">Yaliyoidhinishwa \u00b7 tayari kuchapishwa</p>
               </div>
-              <Chip size="sm" variant="success">{approved.length} approved</Chip>
+              <Chip size="sm" variant="success">{approvedSorted.length} approved</Chip>
             </div>
+            <CardSortControl
+              prefix="a"
+              current={a.sort}
+              dir={a.dir}
+              sp={sp}
+              options={[
+                { field: "date", label: "Date" },
+                { field: "title", label: "Title" },
+                { field: "quality", label: "Quality" },
+              ]}
+            />
             <div className="divide-y divide-border/60 mt-3">
-              {approved.map((p) => (
-                <PollRow key={p.id} poll={p} mode="publish" />
+              {approved.map((poll) => (
+                <PollRow key={poll.id} poll={poll} mode="publish" />
               ))}
             </div>
+            <AdminPagination total={approvedSorted.length} page={aPage} baseHref={aBase} param="apage" />
           </AdminCard>
         )}
 
@@ -325,6 +378,61 @@ export default async function AdminAIPollsPage({
         </AdminCard>
       </div>
     </>
+  );
+}
+
+/* ─── Card sort control — pill row above a card grid (mirrors SortTh, link-driven) ─── */
+
+function CardSortControl({
+  prefix,
+  current,
+  dir,
+  sp,
+  options,
+}: {
+  prefix: string;
+  current: string;
+  dir: SortDir;
+  sp: Record<string, string | undefined>;
+  options: { field: string; label: string }[];
+}) {
+  const sortKey = `${prefix}sort`;
+  const dirKey = `${prefix}dir`;
+  const pageKey = `${prefix}page`;
+  const buildHref = (field: string) => {
+    const isActive = current === field;
+    const nextDir: SortDir = isActive && dir === "desc" ? "asc" : "desc";
+    const params = new URLSearchParams();
+    for (const [k, v] of Object.entries(sp)) {
+      if (v && k !== sortKey && k !== dirKey && k !== pageKey) params.set(k, v);
+    }
+    params.set(sortKey, field);
+    params.set(dirKey, nextDir);
+    return `/admin/ai-polls?${params.toString()}`;
+  };
+  return (
+    <div className="flex items-center gap-1 flex-wrap px-4 lg:px-5 pt-3">
+      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mr-1">
+        Sort <span className="italic text-text-tertiary">· Panga</span>
+      </span>
+      {options.map((o) => {
+        const isActive = current === o.field;
+        return (
+          <a
+            key={o.field}
+            href={buildHref(o.field)}
+            className={`px-2.5 py-1 rounded-pill text-[10.5px] font-mono uppercase tracking-[0.08em] border transition-colors ${
+              isActive
+                ? "border-brand-500 bg-brand-500/10 text-brand-300 font-bold"
+                : "border-border bg-bg-overlay text-text-muted hover:border-text-subtle"
+            }`}
+          >
+            {o.label}
+            {isActive && <span className="ml-1 text-brand-300" aria-hidden>{dir === "asc" ? "↑" : "↓"}</span>}
+          </a>
+        );
+      })}
+    </div>
   );
 }
 

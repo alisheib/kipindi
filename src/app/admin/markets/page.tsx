@@ -1,5 +1,6 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
+import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { I } from "@/components/ui/glyphs";
 import { Select } from "@/components/ui/select";
 import Link from "next/link";
@@ -29,7 +30,7 @@ function timeLeftStr(iso: string): string {
 export default async function AdminMarketsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; category?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; category?: string; page?: string; sort?: string; dir?: string }>;
 }) {
   await seedDemoMarkets();
   const sp = await searchParams;
@@ -53,10 +54,18 @@ export default async function AdminMarketsPage({
     );
   });
 
-  // Paginate
-  const page = parsePage(sp.page, filtered.length);
-  const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-  const baseHref = buildBaseHref("/admin/markets", { q: sp.q, status: sp.status, category: sp.category });
+  // Sort (URL-driven), then paginate.
+  const { sort, dir } = parseSort(sp, ["volume", "closes", "status", "category", "market"] as const, "closes", "asc");
+  const sorted = applySort(filtered, sort, dir, {
+    volume: (m) => m.yesPool + m.noPool,
+    closes: (m) => m.resolutionAt,
+    status: (m) => m.status,
+    category: (m) => m.category,
+    market: (m) => m.titleEn.toLowerCase(),
+  });
+  const page = parsePage(sp.page, sorted.length);
+  const paged = sorted.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const baseHref = buildBaseHref("/admin/markets", { q: sp.q, status: sp.status, category: sp.category, sort: sp.sort, dir: sp.dir });
 
   const live = all.filter((m) => m.status === "LIVE");
   const closed = all.filter((m) => m.status === "CLOSED");
@@ -124,12 +133,12 @@ export default async function AdminMarketsPage({
             <table className="admin-tbl">
               <thead>
                 <tr>
-                  <th className="text-left">Market</th>
-                  <th className="text-left">Cat.</th>
+                  <SortTh field="market" label="Market" current={sort} dir={dir} sp={sp} baseHref="/admin/markets" />
+                  <SortTh field="category" label="Cat." current={sort} dir={dir} sp={sp} baseHref="/admin/markets" />
                   <th className="text-left min-w-[140px]">Probability</th>
-                  <th className="text-right">Volume</th>
-                  <th className="text-left">Closes</th>
-                  <th className="text-left">Status</th>
+                  <SortTh field="volume" label="Volume" current={sort} dir={dir} sp={sp} baseHref="/admin/markets" align="right" />
+                  <SortTh field="closes" label="Closes" current={sort} dir={dir} sp={sp} baseHref="/admin/markets" />
+                  <SortTh field="status" label="Status" current={sort} dir={dir} sp={sp} baseHref="/admin/markets" />
                   <th className="text-left">Source</th>
                   <th className="text-left">Action</th>
                 </tr>

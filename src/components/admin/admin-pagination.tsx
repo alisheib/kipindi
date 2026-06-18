@@ -11,12 +11,16 @@ export function AdminPagination({
   page,
   perPage = PER_PAGE,
   baseHref,
+  param = "page",
 }: {
   total: number;
   page: number;
   perPage?: number;
   /** Base URL including existing query params (e.g. "/admin/players?q=foo&status=ACTIVE"). Page param is appended. */
   baseHref: string;
+  /** Page query-param name. Override (e.g. "txpage") when one page hosts several
+   *  independently-paginated tables so each keeps its own page state. */
+  param?: string;
 }) {
   const totalPages = Math.max(1, Math.ceil(total / perPage));
   if (totalPages <= 1) return null;
@@ -25,10 +29,10 @@ export function AdminPagination({
   const hasPrev = safePage > 1;
   const hasNext = safePage < totalPages;
 
-  // Build page URL — append or replace &page=N
+  // Build page URL — append or replace &<param>=N
   const href = (p: number) => {
     const sep = baseHref.includes("?") ? "&" : "?";
-    return `${baseHref}${sep}page=${p}`;
+    return `${baseHref}${sep}${param}=${p}`;
   };
 
   // Show at most 7 page buttons around the current page
@@ -82,9 +86,17 @@ export function parsePage(raw: string | undefined, total: number, perPage = PER_
   return Math.min(n, max);
 }
 
-/** Helper: build baseHref from current searchParams, excluding 'page'. */
-export function buildBaseHref(path: string, params: Record<string, string | undefined>): string {
-  const entries = Object.entries(params).filter(([k, v]) => k !== "page" && v);
+/**
+ * Helper: build baseHref from current searchParams, excluding the page param.
+ * Pass `pageParam` (e.g. "txpage") on multi-table pages so the OTHER tables'
+ * page/sort/dir state is preserved while this table's page resets.
+ */
+export function buildBaseHref(
+  path: string,
+  params: Record<string, string | undefined>,
+  pageParam = "page",
+): string {
+  const entries = Object.entries(params).filter(([k, v]) => k !== pageParam && v);
   if (entries.length === 0) return path;
   return `${path}?${entries.map(([k, v]) => `${k}=${encodeURIComponent(v!)}`).join("&")}`;
 }

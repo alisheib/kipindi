@@ -1,5 +1,6 @@
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
+import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { GenerateButton } from "../reports/generate-button";
 import { getAuditPage, verifyChain, type AuditCategory } from "@/lib/server/audit";
 import { MarketStats, type Stat } from "@/components/markets/market-stats";
@@ -25,7 +26,7 @@ const CAT_VARIANT: Record<AuditCategory, "yes" | "no" | "live" | "resolved" | "p
 export default async function AdminAuditPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string; actorId?: string; page?: string }>;
+  searchParams: Promise<{ category?: string; actorId?: string; page?: string; sort?: string; dir?: string }>;
 }) {
   const sp = await searchParams;
   // Validate against the closed CATEGORIES set so a stray ?category=BOGUS
@@ -41,9 +42,16 @@ export default async function AdminAuditPage({
   const actorId = typeof sp.actorId === "string" && /^[a-zA-Z0-9_]{4,40}$/.test(sp.actorId) ? sp.actorId : undefined;
   const allFiltered = getAuditPage({ limit: 100_000, category, actorId });
   const allEntries = getAuditPage({ limit: 100_000 });
-  const page = parsePage(sp.page, allFiltered.length);
-  const entries = allFiltered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-  const baseHref = buildBaseHref("/admin/audit", { category: sp.category, actorId: sp.actorId });
+  const { sort, dir } = parseSort(sp, ["time", "category", "action", "actor"] as const, "time", "desc");
+  const sortedFiltered = applySort(allFiltered, sort, dir, {
+    time: (e) => e.createdAt,
+    category: (e) => e.category,
+    action: (e) => e.action,
+    actor: (e) => e.actorId ?? "",
+  });
+  const page = parsePage(sp.page, sortedFiltered.length);
+  const entries = sortedFiltered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const baseHref = buildBaseHref("/admin/audit", { category: sp.category, actorId: sp.actorId, sort: sp.sort, dir: sp.dir });
   const chain = verifyChain();
 
   // KPI stats — last 24h activity by category
@@ -98,10 +106,10 @@ export default async function AdminAuditPage({
             <table className="admin-tbl">
               <thead>
                 <tr>
-                  <th className="text-left">Time</th>
-                  <th className="text-left">Cat.</th>
-                  <th className="text-left">Action</th>
-                  <th className="text-left">Actor</th>
+                  <SortTh field="time" label="Time" current={sort} dir={dir} sp={sp} baseHref="/admin/audit" />
+                  <SortTh field="category" label="Cat." current={sort} dir={dir} sp={sp} baseHref="/admin/audit" />
+                  <SortTh field="action" label="Action" current={sort} dir={dir} sp={sp} baseHref="/admin/audit" />
+                  <SortTh field="actor" label="Actor" current={sort} dir={dir} sp={sp} baseHref="/admin/audit" />
                   <th className="text-left">Target</th>
                   <th className="text-left">Payload</th>
                 </tr>

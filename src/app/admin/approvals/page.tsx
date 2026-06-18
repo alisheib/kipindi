@@ -1,4 +1,6 @@
 import { AdminPageHead, AdminCard, AdminKpi, FeedRow } from "@/components/admin/admin-shell";
+import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
+import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { db, type StoredTxn, type StoredSourceOfFunds } from "@/lib/server/store";
@@ -9,11 +11,55 @@ import { SofReviewRow } from "./sof-review-client";
 export const metadata = { title: "Admin · Two-person approvals" };
 export const dynamic = "force-dynamic";
 
-export default async function AdminApprovalsPage() {
-  const aml = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[];
-  const sof = (await db.sourceOfFunds.listPending()) as StoredSourceOfFunds[];
-  const kycPending = await listPendingKyc();
+export default async function AdminApprovalsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    kycpage?: string; kycsort?: string; kycdir?: string;
+    amlpage?: string; amlsort?: string; amldir?: string;
+    sofpage?: string; sofsort?: string; sofdir?: string;
+  }>;
+}) {
+  const sp = await searchParams;
+  const amlAll = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[];
+  const sofAll = (await db.sourceOfFunds.listPending()) as StoredSourceOfFunds[];
+  const kycPendingAll = await listPendingKyc();
   const recent = getAuditPage({ category: "ADMIN", limit: 60 });
+
+  // KYC queue (prefix "kyc") — newest submission first by default.
+  const kyc = parseSort(sp, ["submitted", "user", "name", "docs"] as const, "submitted", "desc", "kyc");
+  const kycSorted = applySort(kycPendingAll, kyc.sort, kyc.dir, {
+    submitted: (k) => k.submittedAt ?? k.updatedAt,
+    user: (k) => k.userId,
+    name: (k) => k.fullName ?? "",
+    docs: (k) => k.documents.length,
+  });
+  const kycPage = parsePage(sp.kycpage, kycSorted.length);
+  const kycPending = kycSorted.slice((kycPage - 1) * PER_PAGE, kycPage * PER_PAGE);
+  const kycBase = buildBaseHref("/admin/approvals", sp, "kycpage");
+
+  // AML queue (prefix "aml") — newest first by default.
+  const amlS = parseSort(sp, ["time", "type", "amount"] as const, "time", "desc", "aml");
+  const amlSorted = applySort(amlAll, amlS.sort, amlS.dir, {
+    time: (t) => t.createdAt,
+    type: (t) => t.type,
+    amount: (t) => Math.abs(t.amount),
+  });
+  const amlPage = parsePage(sp.amlpage, amlSorted.length);
+  const aml = amlSorted.slice((amlPage - 1) * PER_PAGE, amlPage * PER_PAGE);
+  const amlBase = buildBaseHref("/admin/approvals", sp, "amlpage");
+
+  // SOF declarations (prefix "sof") — newest first by default.
+  const sofS = parseSort(sp, ["submitted", "user", "source", "income"] as const, "submitted", "desc", "sof");
+  const sofSorted = applySort(sofAll, sofS.sort, sofS.dir, {
+    submitted: (s) => s.submittedAt,
+    user: (s) => s.userId,
+    source: (s) => s.declaredSource,
+    income: (s) => s.declaredAnnualIncomeBand,
+  });
+  const sofPage = parsePage(sp.sofpage, sofSorted.length);
+  const sof = sofSorted.slice((sofPage - 1) * PER_PAGE, sofPage * PER_PAGE);
+  const sofBase = buildBaseHref("/admin/approvals", sp, "sofpage");
 
   return (
     <>
@@ -29,9 +75,9 @@ export default async function AdminApprovalsPage() {
 
       <div className="px-4 lg:px-6 py-5 space-y-4">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="KYC pending" sw="Vitambulisho" value={kycPending.length} pulse={kycPending.length > 0} />
-          <AdminKpi label="AML pending" sw="Inasubiri ukaguzi" value={aml.length} pulse={aml.length > 0} />
-          <AdminKpi label="SOF declarations" sw="Asili ya pesa" value={sof.length} pulse={sof.length > 0} />
+          <AdminKpi label="KYC pending" sw="Vitambulisho" value={kycPendingAll.length} pulse={kycPendingAll.length > 0} />
+          <AdminKpi label="AML pending" sw="Inasubiri ukaguzi" value={amlAll.length} pulse={amlAll.length > 0} />
+          <AdminKpi label="SOF declarations" sw="Asili ya pesa" value={sofAll.length} pulse={sofAll.length > 0} />
           <AdminKpi label="Avg cosign time" sw="Wastani"      value="—"  delta="last 7d" />
         </div>
 
@@ -40,20 +86,21 @@ export default async function AdminApprovalsPage() {
           title="KYC · awaiting verification"
           sw="Vitambulisho vinasubiri"
         >
-          {kycPending.length === 0 ? (
+          {kycPendingAll.length === 0 ? (
             <div className="flex items-center gap-3 py-4">
               <I.shieldcheck s={18} />
               <p className="text-caption text-text-secondary">No identity submissions pending. New submissions appear here the moment a player submits for review.</p>
             </div>
           ) : (
+            <>
             <div className="overflow-x-auto -mx-4 px-4">
               <table className="w-full text-caption min-w-[600px]">
                 <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
                   <tr>
-                    <th className="text-left py-2 pr-3">Submitted</th>
-                    <th className="text-left py-2 pr-3">User</th>
-                    <th className="text-left py-2 pr-3">Name (NIDA)</th>
-                    <th className="text-left py-2 pr-3">Docs</th>
+                    <SortTh field="submitted" label="Submitted" current={kyc.sort} dir={kyc.dir} sp={sp} baseHref="/admin/approvals" prefix="kyc" className="py-2 pr-3" />
+                    <SortTh field="user" label="User" current={kyc.sort} dir={kyc.dir} sp={sp} baseHref="/admin/approvals" prefix="kyc" className="py-2 pr-3" />
+                    <SortTh field="name" label="Name (NIDA)" current={kyc.sort} dir={kyc.dir} sp={sp} baseHref="/admin/approvals" prefix="kyc" className="py-2 pr-3" />
+                    <SortTh field="docs" label="Docs" current={kyc.sort} dir={kyc.dir} sp={sp} baseHref="/admin/approvals" prefix="kyc" className="py-2 pr-3" />
                     <th className="text-right py-2 pl-3">Review</th>
                   </tr>
                 </thead>
@@ -70,6 +117,8 @@ export default async function AdminApprovalsPage() {
                 </tbody>
               </table>
             </div>
+            <AdminPagination total={kycSorted.length} page={kycPage} baseHref={kycBase} param="kycpage" />
+            </>
           )}
         </AdminCard>
 
@@ -79,20 +128,21 @@ export default async function AdminApprovalsPage() {
           sw="Foleni ya AML"
           action={<a href="/admin/aml" className="font-mono text-micro tracking-[0.10em] uppercase text-royal">go to AML →</a>}
         >
-          {aml.length === 0 ? (
+          {amlAll.length === 0 ? (
             <div className="flex items-center gap-3 py-4">
               <I.shieldcheck s={18} />
               <p className="text-caption text-text-secondary">Queue empty. New AML triggers appear here for first review.</p>
             </div>
           ) : (
+            <>
             <div className="overflow-x-auto -mx-4 px-4">
               <table className="w-full text-caption min-w-[640px]">
                 <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
                   <tr>
-                    <th className="text-left py-2 pr-3">When</th>
+                    <SortTh field="time" label="When" current={amlS.sort} dir={amlS.dir} sp={sp} baseHref="/admin/approvals" prefix="aml" className="py-2 pr-3" />
                     <th className="text-left py-2 pr-3">User</th>
-                    <th className="text-left py-2 pr-3">Type</th>
-                    <th className="text-right py-2 pr-3">Amount</th>
+                    <SortTh field="type" label="Type" current={amlS.sort} dir={amlS.dir} sp={sp} baseHref="/admin/approvals" prefix="aml" className="py-2 pr-3" />
+                    <SortTh field="amount" label="Amount" current={amlS.sort} dir={amlS.dir} sp={sp} baseHref="/admin/approvals" prefix="aml" align="right" className="py-2 pr-3" />
                     <th className="text-left py-2 pl-3">Trigger</th>
                   </tr>
                 </thead>
@@ -109,25 +159,28 @@ export default async function AdminApprovalsPage() {
                 </tbody>
               </table>
             </div>
+            <AdminPagination total={amlSorted.length} page={amlPage} baseHref={amlBase} param="amlpage" />
+            </>
           )}
         </AdminCard>
 
         {/* SOF declarations */}
         <AdminCard title="Source-of-funds declarations · pending review" sw="Tamko za asili ya pesa">
-          {sof.length === 0 ? (
+          {sofAll.length === 0 ? (
             <div className="flex items-center gap-3 py-4">
               <I.shieldcheck s={18} />
               <p className="text-caption text-text-secondary">No SOF declarations pending. Players auto-trigger this when cumulative deposits exceed TZS 5M / 30 days.</p>
             </div>
           ) : (
+            <>
             <div className="overflow-x-auto -mx-4 px-4">
               <table className="w-full text-caption min-w-[600px]">
                 <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
                   <tr>
-                    <th className="text-left py-2 pr-3">Submitted</th>
-                    <th className="text-left py-2 pr-3">User</th>
-                    <th className="text-left py-2 pr-3">Source</th>
-                    <th className="text-left py-2 pr-3">Income band</th>
+                    <SortTh field="submitted" label="Submitted" current={sofS.sort} dir={sofS.dir} sp={sp} baseHref="/admin/approvals" prefix="sof" className="py-2 pr-3" />
+                    <SortTh field="user" label="User" current={sofS.sort} dir={sofS.dir} sp={sp} baseHref="/admin/approvals" prefix="sof" className="py-2 pr-3" />
+                    <SortTh field="source" label="Source" current={sofS.sort} dir={sofS.dir} sp={sp} baseHref="/admin/approvals" prefix="sof" className="py-2 pr-3" />
+                    <SortTh field="income" label="Income band" current={sofS.sort} dir={sofS.dir} sp={sp} baseHref="/admin/approvals" prefix="sof" className="py-2 pr-3" />
                     <th className="text-left py-2 pr-3">Status</th>
                     <th className="text-right py-2 pl-3">Review</th>
                   </tr>
@@ -146,6 +199,8 @@ export default async function AdminApprovalsPage() {
                 </tbody>
               </table>
             </div>
+            <AdminPagination total={sofSorted.length} page={sofPage} baseHref={sofBase} param="sofpage" />
+            </>
           )}
         </AdminCard>
 

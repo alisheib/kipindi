@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useMemo, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { Input } from "@/components/ui/input";
@@ -39,20 +39,121 @@ function CField({ label, hint, prefix, suffix, value, onChange, width }: { label
 
 type QFilter = "all" | "review" | "flagged";
 
+const PER_PAGE = 20;
+type QSort = "score" | "age" | "status" | "title";
+type SortDir = "asc" | "desc";
+
+/** Client-side pager — visually identical to <AdminPagination> (link-based) but
+ *  driven by local state since the queue list owns interactive filter/selection. */
+function ClientPager({ total, page, onPage, perPage = PER_PAGE }: { total: number; page: number; onPage: (p: number) => void; perPage?: number }) {
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
+  if (totalPages <= 1) return null;
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const hasPrev = safePage > 1;
+  const hasNext = safePage < totalPages;
+
+  const pages: (number | "...")[] = [];
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (safePage > 3) pages.push("...");
+    for (let i = Math.max(2, safePage - 1); i <= Math.min(totalPages - 1, safePage + 1); i++) pages.push(i);
+    if (safePage < totalPages - 2) pages.push("...");
+    pages.push(totalPages);
+  }
+
+  const btnBase = "inline-flex items-center justify-center h-8 min-w-[32px] px-2 rounded-md font-mono text-[11px] tracking-[0.10em] transition-colors";
+  const btnActive = "border border-brand-500 bg-brand-500/15 text-brand-300 font-bold";
+  const btnInactive = "border border-border bg-bg-elevated text-text-muted hover:border-border-strong hover:text-text";
+  const btnDisabled = "border border-border bg-bg-elevated text-text-subtle/40 pointer-events-none";
+
+  return (
+    <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-border">
+      <p className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
+        {((safePage - 1) * perPage + 1).toLocaleString()}–{Math.min(safePage * perPage, total).toLocaleString()} of {total.toLocaleString()}
+      </p>
+      <div className="flex items-center gap-1">
+        <button type="button" onClick={() => hasPrev && onPage(safePage - 1)} disabled={!hasPrev} className={`${btnBase} ${hasPrev ? btnInactive : btnDisabled}`} aria-label="Previous page">
+          <I.chevronLeft s={14} />
+        </button>
+        {pages.map((p, i) =>
+          p === "..." ? (
+            <span key={`dots-${i}`} className="px-1 text-text-subtle">…</span>
+          ) : (
+            <button type="button" key={p} onClick={() => onPage(p)} className={`${btnBase} ${p === safePage ? btnActive : btnInactive}`}>
+              {p}
+            </button>
+          ),
+        )}
+        <button type="button" onClick={() => hasNext && onPage(safePage + 1)} disabled={!hasNext} className={`${btnBase} ${hasNext ? btnInactive : btnDisabled}`} aria-label="Next page">
+          <I.chevronRight s={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Clickable sort control matching <SortTh>'s active/arrow affordance. */
+function SortBtn({ field, label, current, dir, onSort }: { field: QSort; label: string; current: QSort; dir: SortDir; onSort: (f: QSort) => void }) {
+  const isActive = current === field;
+  return (
+    <button type="button" onClick={() => onSort(field)} className={`inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.1em] hover:text-text transition-colors ${isActive ? "text-text" : "text-text-subtle"}`}>
+      {label}
+      <span className={`text-brand-300 ${isActive ? "" : "opacity-0"}`} aria-hidden>{dir === "asc" ? "↑" : "↓"}</span>
+    </button>
+  );
+}
+
 export function AdminProposalsClient({ config, queue }: { config: ProposalsConfig; queue: AdminQueueRow[] }) {
   const router = useRouter();
   const { toast } = useToast();
   const [pending, start] = useTransition();
   const [c, setC] = useState<ProposalsConfig>(config);
   const [qFilter, setQFilter] = useState<QFilter>("all");
+  const [sort, setSort] = useState<QSort>("score");
+  const [dir, setDir] = useState<SortDir>("desc");
+  const [page, setPage] = useState(1);
   const [selId, setSelId] = useState<string | null>(queue[0]?.id ?? null);
   const [declining, setDeclining] = useState(false);
   const [reason, setReason] = useState<DeclineReason | null>(null);
   const [note, setNote] = useState("");
 
   const on = c.enabled;
-  const shownQueue = queue.filter((q) => qFilter === "all" ? true : qFilter === "review" ? (q.status === "REVIEW" || q.status === "CHANGES_REQUESTED") : (q.score < 0 || (q.down > 0 && q.down >= q.up)));
+
+  // Filter → sort → only the current page is ever materialised in the DOM.
+  const filteredQueue = useMemo(
+    () => queue.filter((q) => qFilter === "all" ? true : qFilter === "review" ? (q.status === "REVIEW" || q.status === "CHANGES_REQUESTED") : (q.score < 0 || (q.down > 0 && q.down >= q.up))),
+    [queue, qFilter],
+  );
+  const sortedQueue = useMemo(() => {
+    const acc: Record<QSort, (q: AdminQueueRow) => string | number> = {
+      score: (q) => q.score,
+      age: (q) => q.ageIso,
+      status: (q) => q.status,
+      title: (q) => q.title.toLowerCase(),
+    };
+    const f = acc[sort];
+    const out = [...filteredQueue].sort((a, b) => {
+      const av = f(a), bv = f(b);
+      const cmp = typeof av === "number" && typeof bv === "number" ? av - bv : String(av).localeCompare(String(bv));
+      return dir === "asc" ? cmp : -cmp;
+    });
+    return out;
+  }, [filteredQueue, sort, dir]);
+  const totalQueue = sortedQueue.length;
+  const safePage = Math.min(Math.max(1, page), Math.max(1, Math.ceil(totalQueue / PER_PAGE)));
+  const shownQueue = useMemo(() => sortedQueue.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE), [sortedQueue, safePage]);
+
+  // Reset to page 1 whenever the filter or sort changes.
+  useEffect(() => { setPage(1); }, [qFilter, sort, dir]);
+
   const sel = queue.find((q) => q.id === selId) ?? shownQueue[0] ?? null;
+
+  const onSort = (f: QSort) => {
+    if (f === sort) setDir((d) => (d === "desc" ? "asc" : "desc"));
+    else { setSort(f); setDir("desc"); }
+  };
 
   const refresh = () => router.refresh();
   const resetReview = () => { setDeclining(false); setReason(null); setNote(""); };
@@ -97,7 +198,14 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
               ))}
             </div>
           </div>
-          {shownQueue.length === 0 ? (
+          <div className="flex items-center gap-4 border-b border-border px-4 py-2">
+            <Cap>Sort</Cap>
+            <SortBtn field="score" label="Votes" current={sort} dir={dir} onSort={onSort} />
+            <SortBtn field="age" label="Age" current={sort} dir={dir} onSort={onSort} />
+            <SortBtn field="status" label="Status" current={sort} dir={dir} onSort={onSort} />
+            <SortBtn field="title" label="Title" current={sort} dir={dir} onSort={onSort} />
+          </div>
+          {totalQueue === 0 ? (
             <div className="px-4 py-10 text-center text-[12.5px] text-text-subtle">No proposals in this view yet.</div>
           ) : shownQueue.map((q, i) => {
             const active = q.id === sel?.id;
@@ -116,6 +224,7 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
               </button>
             );
           })}
+          <ClientPager total={totalQueue} page={safePage} onPage={setPage} />
         </div>
 
         {/* Review panel */}

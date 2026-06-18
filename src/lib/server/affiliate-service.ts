@@ -524,7 +524,7 @@ export async function getAdminAffiliateStats() {
     .sort((a, b) => b.earnedTzs - a.earnedTzs || b.recruits - a.recruits)
     .slice(0, 10));
 
-  const ledger: AdminLedgerRow[] = await Promise.all(rewards.slice(0, 100).map(async (r) => {
+  const ledger: AdminLedgerRow[] = await Promise.all(rewards.map(async (r) => {
     const recruit = await db.user.findById(r.recruitUserId);
     return {
       id: r.id,

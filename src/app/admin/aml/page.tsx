@@ -1,4 +1,6 @@
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
+import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
+import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
 import { db, type StoredTxn } from "@/lib/server/store";
 import { formatTzs } from "@/lib/utils";
@@ -11,14 +13,43 @@ import { getAuditPage } from "@/lib/server/audit";
 export const metadata = { title: "Admin · AML queue" };
 export const dynamic = "force-dynamic";
 
-export default async function AdminAmlPage() {
-  const inReview = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[];
-  const flags = await detectSuspiciousBets();
+export default async function AdminAmlPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ rpage?: string; rsort?: string; rdir?: string; spage?: string; ssort?: string; sdir?: string }>;
+}) {
+  const sp = await searchParams;
+  const inReviewAll = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[];
+  const flagsAll = await detectSuspiciousBets();
   // Track which txns already have a stage-1 signature (waiting on second officer)
   const stage1 = new Map<string, { actorId: string | null; at: string }>();
   for (const e of getAuditPage({ category: "ADMIN", limit: 200 })) {
     if (e.action === "aml.approve.stage1" && e.targetId) stage1.set(e.targetId, { actorId: e.actorId, at: e.createdAt });
   }
+
+  // Review queue (prefix "r") — newest first by default.
+  const r = parseSort(sp, ["time", "type", "amount", "provider"] as const, "time", "desc", "r");
+  const inReviewSorted = applySort(inReviewAll, r.sort, r.dir, {
+    time: (t) => t.createdAt,
+    type: (t) => t.type,
+    amount: (t) => Math.abs(t.amount),
+    provider: (t) => t.provider ?? "",
+  });
+  const rPage = parsePage(sp.rpage, inReviewSorted.length);
+  const inReview = inReviewSorted.slice((rPage - 1) * PER_PAGE, rPage * PER_PAGE);
+  const rBaseHref = buildBaseHref("/admin/aml", sp, "rpage");
+
+  // Suspicious-bet flags (prefix "s") — most suspicious (highest multiple) first.
+  const s = parseSort(sp, ["multiple", "stake", "median", "type"] as const, "multiple", "desc", "s");
+  const flagsSorted = applySort(flagsAll, s.sort, s.dir, {
+    multiple: (f) => f.multiple,
+    stake: (f) => f.stake,
+    median: (f) => f.median,
+    type: (f) => f.type,
+  });
+  const sPage = parsePage(sp.spage, flagsSorted.length);
+  const flags = flagsSorted.slice((sPage - 1) * PER_PAGE, sPage * PER_PAGE);
+  const sBaseHref = buildBaseHref("/admin/aml", sp, "spage");
 
   return (
     <>
@@ -26,7 +57,7 @@ export default async function AdminAmlPage() {
         title="AML · EDD queue"
         sw="Foleni ya AML"
         period={false}
-        actions={<Chip size="md" variant={inReview.length > 0 ? "warning" : "neutral"}>{inReview.length} pending</Chip>}
+        actions={<Chip size="md" variant={inReviewAll.length > 0 ? "warning" : "neutral"}>{inReviewAll.length} pending</Chip>}
       />
       <div className="px-4 lg:px-6 py-5 space-y-4">
         <AdminCard padding="p-0">
@@ -34,11 +65,11 @@ export default async function AdminAmlPage() {
             <table className="admin-tbl">
               <thead>
                 <tr>
-                  <th className="text-left">Time</th>
-                  <th className="text-left">Type</th>
+                  <SortTh field="time" label="Time" current={r.sort} dir={r.dir} sp={sp} baseHref="/admin/aml" prefix="r" />
+                  <SortTh field="type" label="Type" current={r.sort} dir={r.dir} sp={sp} baseHref="/admin/aml" prefix="r" />
                   <th className="text-left">User</th>
-                  <th className="text-right">Amount</th>
-                  <th className="text-left">Provider</th>
+                  <SortTh field="amount" label="Amount" current={r.sort} dir={r.dir} sp={sp} baseHref="/admin/aml" prefix="r" align="right" />
+                  <SortTh field="provider" label="Provider" current={r.sort} dir={r.dir} sp={sp} baseHref="/admin/aml" prefix="r" />
                   <th className="text-left">Reason</th>
                   <th className="text-left">Action</th>
                 </tr>
@@ -77,12 +108,13 @@ export default async function AdminAmlPage() {
                     </tr>
                   );
                 })}
-                {inReview.length === 0 && (
+                {inReviewAll.length === 0 && (
                   <tr><td colSpan={7} className="!py-6 text-center text-text-tertiary">No transactions awaiting review.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
+          <AdminPagination total={inReviewSorted.length} page={rPage} baseHref={rBaseHref} param="rpage" />
         </AdminCard>
 
         <AdminCard className="border-warning-border bg-warning-bg/15">
@@ -102,17 +134,17 @@ export default async function AdminAmlPage() {
               <p className="font-bold text-text">Suspicious-bet detector · Tabia za shaka</p>
               <span className="text-caption text-text-tertiary">stake spike ≥ 10× user 30-day median; or velocity ≥ 100/24h</span>
             </div>
-            <Chip size="md" variant={flags.length > 0 ? "warning" : "neutral"}>{flags.length} flags</Chip>
+            <Chip size="md" variant={flagsAll.length > 0 ? "warning" : "neutral"}>{flagsAll.length} flags</Chip>
           </div>
           <div className="overflow-x-auto">
             <table className="admin-tbl">
               <thead>
                 <tr>
                   <th className="text-left">User</th>
-                  <th className="text-left">Type</th>
-                  <th className="text-right">Stake</th>
-                  <th className="text-right">Median</th>
-                  <th className="text-right">×</th>
+                  <SortTh field="type" label="Type" current={s.sort} dir={s.dir} sp={sp} baseHref="/admin/aml" prefix="s" />
+                  <SortTh field="stake" label="Stake" current={s.sort} dir={s.dir} sp={sp} baseHref="/admin/aml" prefix="s" align="right" />
+                  <SortTh field="median" label="Median" current={s.sort} dir={s.dir} sp={sp} baseHref="/admin/aml" prefix="s" align="right" />
+                  <SortTh field="multiple" label="×" current={s.sort} dir={s.dir} sp={sp} baseHref="/admin/aml" prefix="s" align="right" />
                   <th className="text-left">Detail</th>
                 </tr>
               </thead>
@@ -135,12 +167,13 @@ export default async function AdminAmlPage() {
                     <td className="text-text-tertiary">{f.detail}</td>
                   </tr>
                 ))}
-                {flags.length === 0 && (
+                {flagsAll.length === 0 && (
                   <tr><td colSpan={6} className="!py-6 text-center text-text-tertiary">No suspicious patterns detected.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
+          <AdminPagination total={flagsSorted.length} page={sPage} baseHref={sBaseHref} param="spage" />
         </AdminCard>
       </div>
     </>

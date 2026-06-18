@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import { AdminPageHead, AdminKpi, AdminCard, FeedRow } from "@/components/admin/admin-shell";
+import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
+import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Avatar } from "@/components/ui/avatar";
 import { Chip } from "@/components/ui/chip";
 import { db, type StoredTxn, type StoredBet } from "@/lib/server/store";
@@ -38,11 +40,16 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "danger" | "neutral
 
 export default async function AdminPlayerDetailPage({ params, searchParams }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{
+    tab?: string;
+    txpage?: string; txsort?: string; txdir?: string;
+    betpage?: string; betsort?: string; betdir?: string;
+  }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;
   const tab = sp.tab ?? "activity";
+  const playerHref = `/admin/players/${id}`;
 
   const user = await db.user.findById(id);
   if (!user) notFound();
@@ -61,6 +68,33 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   const ngr = lifetimeStakes - lifetimePayouts;
   const betsCount = bets.length;
   const lastBet = bets.sort((a, b) => b.placedAt.localeCompare(a.placedAt))[0]?.placedAt;
+
+  // Transactions table (prefix "tx") — newest first by default.
+  const tx = parseSort(sp, ["time", "type", "provider", "status", "amount"] as const, "time", "desc", "tx");
+  const txSorted = applySort(txns, tx.sort, tx.dir, {
+    time: (t) => t.createdAt,
+    type: (t) => t.type,
+    provider: (t) => t.provider ?? "",
+    status: (t) => t.status,
+    amount: (t) => t.amount,
+  });
+  const txPage = parsePage(sp.txpage, txSorted.length);
+  const txRows = txSorted.slice((txPage - 1) * PER_PAGE, txPage * PER_PAGE);
+  const txBase = buildBaseHref(playerHref, sp, "txpage");
+
+  // Bets table (prefix "bet") — newest first by default.
+  const bet = parseSort(sp, ["when", "match", "outcome", "stake", "status", "return"] as const, "when", "desc", "bet");
+  const betSorted = applySort(bets, bet.sort, bet.dir, {
+    when: (b) => b.placedAt,
+    match: (b) => b.matchLabel,
+    outcome: (b) => b.outcomeLabel,
+    stake: (b) => b.stake,
+    status: (b) => b.status,
+    return: (b) => b.returnAmount ?? 0,
+  });
+  const betPage = parsePage(sp.betpage, betSorted.length);
+  const betRows = betSorted.slice((betPage - 1) * PER_PAGE, betPage * PER_PAGE);
+  const betBase = buildBaseHref(playerHref, sp, "betpage");
 
   // Risk score — simple proxy: deposit cycling rate, AML hits, late-night sessions, declined cards
   const riskScore = computeRiskScore(txns.length, lifetimeWithdrawals, kyc?.status === "APPROVED");
@@ -193,20 +227,21 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
               </div>
             )}
             {tab === "bets" && (
+              <>
               <div className="overflow-x-auto">
                 <table className="w-full text-caption min-w-[600px]">
                   <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
                     <tr>
-                      <th className="text-left py-2 pr-3">When</th>
-                      <th className="text-left py-2 pr-3">Match · window</th>
-                      <th className="text-left py-2 pr-3">Outcome</th>
-                      <th className="text-right py-2 pr-3">Stake</th>
-                      <th className="text-right py-2 pr-3">Status</th>
-                      <th className="text-right py-2 pl-3">Return</th>
+                      <SortTh field="when" label="When" current={bet.sort} dir={bet.dir} sp={sp} baseHref={playerHref} prefix="bet" className="py-2 pr-3" />
+                      <SortTh field="match" label="Match · window" current={bet.sort} dir={bet.dir} sp={sp} baseHref={playerHref} prefix="bet" className="py-2 pr-3" />
+                      <SortTh field="outcome" label="Outcome" current={bet.sort} dir={bet.dir} sp={sp} baseHref={playerHref} prefix="bet" className="py-2 pr-3" />
+                      <SortTh field="stake" label="Stake" current={bet.sort} dir={bet.dir} sp={sp} baseHref={playerHref} prefix="bet" align="right" className="py-2 pr-3" />
+                      <SortTh field="status" label="Status" current={bet.sort} dir={bet.dir} sp={sp} baseHref={playerHref} prefix="bet" align="right" className="py-2 pr-3" />
+                      <SortTh field="return" label="Return" current={bet.sort} dir={bet.dir} sp={sp} baseHref={playerHref} prefix="bet" align="right" className="py-2 pl-3" />
                     </tr>
                   </thead>
                   <tbody>
-                    {bets.slice(0, 30).map((b) => (
+                    {betRows.map((b) => (
                       <tr key={b.id} className="border-b border-border-subtle/50 last:border-b-0">
                         <td className="py-2 pr-3 font-mono whitespace-nowrap">{b.placedAt.replace("T", " ").slice(0, 19)}</td>
                         <td className="py-2 pr-3">{b.matchLabel} <span className="text-text-tertiary">· {b.windowLabel}</span></td>
@@ -220,21 +255,24 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                   </tbody>
                 </table>
               </div>
+              <AdminPagination total={betSorted.length} page={betPage} baseHref={betBase} param="betpage" />
+              </>
             )}
             {tab === "transactions" && (
+              <>
               <div className="overflow-x-auto">
                 <table className="w-full text-caption min-w-[600px]">
                   <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
                     <tr>
-                      <th className="text-left py-2 pr-3">When</th>
-                      <th className="text-left py-2 pr-3">Type</th>
-                      <th className="text-left py-2 pr-3">Provider</th>
-                      <th className="text-left py-2 pr-3">Status</th>
-                      <th className="text-right py-2 pl-3">Amount</th>
+                      <SortTh field="time" label="When" current={tx.sort} dir={tx.dir} sp={sp} baseHref={playerHref} prefix="tx" className="py-2 pr-3" />
+                      <SortTh field="type" label="Type" current={tx.sort} dir={tx.dir} sp={sp} baseHref={playerHref} prefix="tx" className="py-2 pr-3" />
+                      <SortTh field="provider" label="Provider" current={tx.sort} dir={tx.dir} sp={sp} baseHref={playerHref} prefix="tx" className="py-2 pr-3" />
+                      <SortTh field="status" label="Status" current={tx.sort} dir={tx.dir} sp={sp} baseHref={playerHref} prefix="tx" className="py-2 pr-3" />
+                      <SortTh field="amount" label="Amount" current={tx.sort} dir={tx.dir} sp={sp} baseHref={playerHref} prefix="tx" align="right" className="py-2 pl-3" />
                     </tr>
                   </thead>
                   <tbody>
-                    {txns.slice(0, 30).map((t) => (
+                    {txRows.map((t) => (
                       <tr key={t.id} className="border-b border-border-subtle/50 last:border-b-0">
                         <td className="py-2 pr-3 font-mono whitespace-nowrap">{t.createdAt.replace("T", " ").slice(0, 19)}</td>
                         <td className="py-2 pr-3 font-medium text-text">{t.type}</td>
@@ -247,6 +285,8 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                   </tbody>
                 </table>
               </div>
+              <AdminPagination total={txSorted.length} page={txPage} baseHref={txBase} param="txpage" />
+              </>
             )}
             {tab === "kyc" && (
               <KycTab kyc={kyc} userEmail={user.email} userId={id} />

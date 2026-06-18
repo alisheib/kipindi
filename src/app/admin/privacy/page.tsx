@@ -4,6 +4,8 @@
  * - Per-user export bundle (machine-readable JSON)
  */
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
+import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
+import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
 import { db } from "@/lib/server/store";
 import { listDsarRequests } from "@/lib/server/privacy";
@@ -13,11 +15,28 @@ import { I } from "@/components/ui/glyphs";
 export const metadata = { title: "Admin · Privacy / DSAR" };
 export const dynamic = "force-dynamic";
 
-export default async function AdminPrivacyPage() {
+export default async function AdminPrivacyPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; sort?: string; dir?: string }>;
+}) {
+  const sp = await searchParams;
   const requests = listDsarRequests();
   const pending = requests.filter((r) => r.status === "PENDING");
   const fulfilled = requests.filter((r) => r.status === "FULFILLED");
   const recentUsers = (await db.user.list()).slice(0, 8);
+
+  // Sort (URL-driven), then paginate — newest request first by default.
+  const { sort, dir } = parseSort(sp, ["filed", "user", "type", "status"] as const, "filed", "desc");
+  const sorted = applySort(requests, sort, dir, {
+    filed: (r) => r.requestedAt,
+    user: (r) => r.userId,
+    type: (r) => r.type,
+    status: (r) => r.status,
+  });
+  const page = parsePage(sp.page, sorted.length);
+  const paged = sorted.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const baseHref = buildBaseHref("/admin/privacy", { sort: sp.sort, dir: sp.dir });
 
   return (
     <>
@@ -44,16 +63,16 @@ export default async function AdminPrivacyPage() {
             <table className="w-full text-caption">
               <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                 <tr>
-                  <th className="text-left p-3">Filed</th>
-                  <th className="text-left p-3">User</th>
-                  <th className="text-left p-3">Type</th>
+                  <SortTh field="filed" label="Filed" current={sort} dir={dir} sp={sp} baseHref="/admin/privacy" className="p-3" />
+                  <SortTh field="user" label="User" current={sort} dir={dir} sp={sp} baseHref="/admin/privacy" className="p-3" />
+                  <SortTh field="type" label="Type" current={sort} dir={dir} sp={sp} baseHref="/admin/privacy" className="p-3" />
                   <th className="text-left p-3">Reason</th>
-                  <th className="text-left p-3">Status</th>
+                  <SortTh field="status" label="Status" current={sort} dir={dir} sp={sp} baseHref="/admin/privacy" className="p-3" />
                   <th className="text-left p-3">Action</th>
                 </tr>
               </thead>
               <tbody className="text-text-secondary">
-                {requests.map((r) => (
+                {paged.map((r) => (
                   <tr key={r.id} className="border-t border-border-subtle/50 align-top">
                     <td className="p-3 font-mono whitespace-nowrap">{r.requestedAt.replace("T", " ").slice(0, 19)}</td>
                     <td className="p-3 font-mono">{r.userId.slice(0, 16)}…</td>
@@ -82,6 +101,7 @@ export default async function AdminPrivacyPage() {
               </tbody>
             </table>
           </div>
+          <AdminPagination total={sorted.length} page={page} baseHref={baseHref} />
         </AdminCard>
 
         <AdminCard

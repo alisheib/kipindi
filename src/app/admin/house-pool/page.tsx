@@ -2,6 +2,8 @@ import { I } from "@/components/ui/glyphs";
 import { getHousePoolStats, getHousePoolLedger } from "@/lib/server/house-pool";
 import { getGlobalConfig } from "@/lib/server/market-config";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
+import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
+import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
 import { HousePoolForms } from "./house-pool-forms";
 import { formatDateTime } from "@/lib/utils";
@@ -12,11 +14,29 @@ export const metadata = { title: "House Pool · Admin" };
 const fmtTzs = (n: number) => `TZS ${n.toLocaleString("en-US")}`;
 const fmtPct = (n: number) => `${(n * 100).toFixed(1)}%`;
 
-export default async function HousePoolPage() {
+export default async function HousePoolPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; sort?: string; dir?: string }>;
+}) {
+  const sp = await searchParams;
   const stats = await getHousePoolStats();
-  const ledger = await getHousePoolLedger(30);
+  // Pull the full ledger (was capped at 30) so pagination owns the slicing.
+  const ledger = await getHousePoolLedger(10000);
   const cfg = await getGlobalConfig();
   const totalFee = cfg.taxRate + cfg.commissionRate + cfg.reserveRate + cfg.aggregatorRate;
+
+  // Sort (URL-driven), then paginate — newest first by default.
+  const { sort, dir } = parseSort(sp, ["type", "amount", "balance", "time"] as const, "time", "desc");
+  const sorted = applySort(ledger, sort, dir, {
+    type: (e) => e.type,
+    amount: (e) => e.amount,
+    balance: (e) => e.balanceAfter,
+    time: (e) => e.createdAt,
+  });
+  const page = parsePage(sp.page, sorted.length);
+  const paged = sorted.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const baseHref = buildBaseHref("/admin/house-pool", { sort: sp.sort, dir: sp.dir });
 
   return (
     <>
@@ -88,16 +108,16 @@ export default async function HousePoolPage() {
               <table className="admin-tbl min-w-[640px]">
                 <thead>
                   <tr>
-                    <th className="text-left">Type</th>
-                    <th className="text-right">Amount</th>
-                    <th className="text-right">Balance</th>
+                    <SortTh field="type" label="Type" current={sort} dir={dir} sp={sp} baseHref="/admin/house-pool" />
+                    <SortTh field="amount" label="Amount" current={sort} dir={dir} sp={sp} baseHref="/admin/house-pool" align="right" />
+                    <SortTh field="balance" label="Balance" current={sort} dir={dir} sp={sp} baseHref="/admin/house-pool" align="right" />
                     <th className="text-left">Market</th>
                     <th className="text-left">Note</th>
-                    <th className="text-left">Time</th>
+                    <SortTh field="time" label="Time" current={sort} dir={dir} sp={sp} baseHref="/admin/house-pool" />
                   </tr>
                 </thead>
                 <tbody className="text-text-muted">
-                  {ledger.map((e) => (
+                  {paged.map((e) => (
                     <tr key={e.id}>
                       <td>
                         <Chip size="sm" variant={
@@ -130,6 +150,7 @@ export default async function HousePoolPage() {
               </table>
             </div>
           )}
+          <AdminPagination total={sorted.length} page={page} baseHref={baseHref} />
         </AdminCard>
       </div>
     </>

@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { AdminPageHead, AdminCard, AdminKpi, AdminStackedBar, StatusPill, FeedRow } from "@/components/admin/admin-shell";
+import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
+import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { AdminFunnelChart } from "@/components/admin/admin-charts";
 import { I } from "@/components/ui/glyphs";
 import { db, type StoredTxn } from "@/lib/server/store";
@@ -20,7 +22,12 @@ const REPORTS: ReadonlyArray<{ id: string; title: string; sub: string; tone: "go
   { id: "sx-register",    title: "Self-exclusion register", sub: "Cross-operator format · monthly",      tone: "neutral" },
 ];
 
-export default async function AdminCompliancePage() {
+export default async function AdminCompliancePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; sort?: string; dir?: string }>;
+}) {
+  const sp = await searchParams;
   const chain = verifyChain();
   const kyc = await kycFunnel();
   const rg = await rgRosterCounts();
@@ -243,7 +250,7 @@ export default async function AdminCompliancePage() {
           </div>
         </AdminCard>
 
-        <PlayerSafetyPanel />
+        <PlayerSafetyPanel sp={sp} />
 
         <p className="text-caption text-text-tertiary text-center pt-3 flex items-center justify-center gap-1.5">
           <I.lock s={11} /> Confidential · screen and contents are subject to operational access logging.
@@ -253,10 +260,22 @@ export default async function AdminCompliancePage() {
   );
 }
 
-async function PlayerSafetyPanel() {
+async function PlayerSafetyPanel({ sp }: { sp: { page?: string; sort?: string; dir?: string } }) {
   const flags = await detectHarmMarkersForAllUsers();
   const byMarker: Record<string, number> = {};
   for (const f of flags) byMarker[f.marker] = (byMarker[f.marker] ?? 0) + 1;
+
+  // Sort (URL-driven), then paginate — newest detected first by default.
+  const { sort, dir } = parseSort(sp, ["user", "marker", "severity", "detected"] as const, "detected", "desc");
+  const sorted = applySort(flags, sort, dir, {
+    user: (f) => f.userId,
+    marker: (f) => f.marker,
+    severity: (f) => f.severity,
+    detected: (f) => f.detectedAt,
+  });
+  const page = parsePage(sp.page, sorted.length);
+  const paged = sorted.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const baseHref = buildBaseHref("/admin/compliance", { sort: sp.sort, dir: sp.dir });
   return (
     <AdminCard
       title="Player safety · markers of harm"
@@ -290,15 +309,15 @@ async function PlayerSafetyPanel() {
         <table className="w-full text-caption">
           <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
             <tr>
-              <th className="text-left p-3">User</th>
-              <th className="text-left p-3">Marker</th>
-              <th className="text-left p-3">Severity</th>
+              <SortTh field="user" label="User" current={sort} dir={dir} sp={sp} baseHref="/admin/compliance" className="p-3" />
+              <SortTh field="marker" label="Marker" current={sort} dir={dir} sp={sp} baseHref="/admin/compliance" className="p-3" />
+              <SortTh field="severity" label="Severity" current={sort} dir={dir} sp={sp} baseHref="/admin/compliance" className="p-3" />
               <th className="text-left p-3">Detail</th>
-              <th className="text-left p-3">Detected</th>
+              <SortTh field="detected" label="Detected" current={sort} dir={dir} sp={sp} baseHref="/admin/compliance" className="p-3" />
             </tr>
           </thead>
           <tbody className="text-text-secondary">
-            {flags.slice(0, 20).map((f) => (
+            {paged.map((f) => (
               <tr key={`${f.userId}-${f.marker}`} className="border-t border-border-subtle/50">
                 <td className="p-3 font-mono">
                   <a href={`/admin/players/${f.userId}`} className="hover:text-royal hover:underline">
@@ -321,6 +340,7 @@ async function PlayerSafetyPanel() {
           </tbody>
         </table>
       </div>
+      <AdminPagination total={sorted.length} page={page} baseHref={baseHref} />
     </AdminCard>
   );
 }

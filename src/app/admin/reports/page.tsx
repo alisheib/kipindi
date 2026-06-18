@@ -1,4 +1,6 @@
 import { AdminPageHead, AdminCard, FeedRow } from "@/components/admin/admin-shell";
+import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
+import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { getAuditPage } from "@/lib/server/audit";
@@ -100,9 +102,26 @@ const TEMPLATES = [
   },
 ];
 
-export default function AdminReportsPage() {
+export default async function AdminReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; sort?: string; dir?: string }>;
+}) {
+  const sp = await searchParams;
   // Generation log = audit entries from ADMIN with action starting "report."
-  const generated = getAuditPage({ category: "ADMIN", limit: 30 }).filter((e) => e.action.startsWith("report."));
+  // Pull the whole in-memory window (was capped at 30) so pagination owns the slicing.
+  const generated = getAuditPage({ category: "ADMIN", limit: 10000 }).filter((e) => e.action.startsWith("report."));
+
+  // Sort (URL-driven), then paginate — newest first by default.
+  const { sort, dir } = parseSort(sp, ["time", "report", "reviewer"] as const, "time", "desc");
+  const sorted = applySort(generated, sort, dir, {
+    time: (e) => e.createdAt,
+    report: (e) => e.action,
+    reviewer: (e) => e.actorId ?? "",
+  });
+  const page = parsePage(sp.page, sorted.length);
+  const paged = sorted.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const baseHref = buildBaseHref("/admin/reports", { sort: sp.sort, dir: sp.dir });
 
   return (
     <>
@@ -170,17 +189,17 @@ export default function AdminReportsPage() {
               </p>
             </div>
           ) : (
-            <div className="max-h-[300px] overflow-y-auto">
+            <div className="overflow-x-auto">
               <table className="admin-tbl">
                 <thead>
                   <tr>
-                    <th className="text-left">Timestamp</th>
-                    <th className="text-left">Report</th>
-                    <th className="text-left">Reviewer</th>
+                    <SortTh field="time" label="Timestamp" current={sort} dir={dir} sp={sp} baseHref="/admin/reports" />
+                    <SortTh field="report" label="Report" current={sort} dir={dir} sp={sp} baseHref="/admin/reports" />
+                    <SortTh field="reviewer" label="Reviewer" current={sort} dir={dir} sp={sp} baseHref="/admin/reports" />
                   </tr>
                 </thead>
                 <tbody className="text-text-muted">
-                  {generated.map((e) => (
+                  {paged.map((e) => (
                     <tr key={e.id}>
                       <td className="font-mono whitespace-nowrap text-text-subtle">{e.createdAt.replace("T", " ").slice(0, 19)}</td>
                       <td className="font-medium text-text">{e.action}</td>
@@ -189,6 +208,7 @@ export default function AdminReportsPage() {
                   ))}
                 </tbody>
               </table>
+              <AdminPagination total={sorted.length} page={page} baseHref={baseHref} />
             </div>
           )}
         </AdminCard>
