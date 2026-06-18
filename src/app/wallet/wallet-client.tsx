@@ -7,6 +7,9 @@ import { FiftyMark } from "@/components/brand";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { Transaction } from "@/lib/ui-stubs";
 import { Cash } from "@/components/ui/cash";
+import { formatDateTimeSafe } from "@/lib/utils";
+
+const TXNS_PER_PAGE = 12;
 
 const fmt = (n: number, currency = "TZS") => `${currency} ${n.toLocaleString("en-US")}`;
 
@@ -74,7 +77,7 @@ function TxnRow({ tx }: { tx: Transaction }) {
           {tx.description ?? tx.type}
         </p>
         <p className="mt-0.5 font-mono text-[10.5px] text-text-subtle tabular-nums">
-          {tx.createdAt?.replace("T", " ").slice(0, 16)}
+          {formatDateTimeSafe(tx.createdAt)}
         </p>
       </div>
       <div className="text-right shrink-0">
@@ -86,6 +89,38 @@ function TxnRow({ tx }: { tx: Transaction }) {
         </p>
       </div>
     </div>
+  );
+}
+
+function TxnPager({
+  page, pageCount, total, onPrev, onNext,
+}: { page: number; pageCount: number; total: number; onPrev: () => void; onNext: () => void }) {
+  return (
+    <nav className="flex items-center justify-between gap-3" aria-label="Activity pages">
+      <p className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-text-subtle tabular-nums">
+        Page {page + 1} of {pageCount} · {total} total
+      </p>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onPrev}
+          disabled={page === 0}
+          aria-label="Previous page"
+          className="inline-flex h-8 items-center gap-1 rounded-md border border-border bg-bg-elevated px-3 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted hover:text-text hover:border-brand-400 disabled:opacity-40 disabled:hover:border-border disabled:hover:text-text-muted transition-colors"
+        >
+          <I.chevronLeft s={13} /> Prev
+        </button>
+        <button
+          type="button"
+          onClick={onNext}
+          disabled={page >= pageCount - 1}
+          aria-label="Next page"
+          className="inline-flex h-8 items-center gap-1 rounded-md border border-border bg-bg-elevated px-3 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted hover:text-text hover:border-brand-400 disabled:opacity-40 disabled:hover:border-border disabled:hover:text-text-muted transition-colors"
+        >
+          Next <I.chevronRight s={13} />
+        </button>
+      </div>
+    </nav>
   );
 }
 
@@ -121,6 +156,10 @@ export function WalletPageClient({
   isAuthed: boolean;
 }) {
   const [tab, setTab] = useState<typeof TABS[number]["v"]>("activity");
+  const [page, setPage] = useState(0);
+  const pageCount = Math.max(1, Math.ceil(transactions.length / TXNS_PER_PAGE));
+  const safePage = Math.min(page, pageCount - 1);
+  const pagedTxns = transactions.slice(safePage * TXNS_PER_PAGE, safePage * TXNS_PER_PAGE + TXNS_PER_PAGE);
 
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
@@ -173,8 +212,19 @@ export function WalletPageClient({
 
       {tab === "activity" && (
         transactions.length > 0 ? (
-          <section className="rounded-xl glass-panel overflow-hidden">
-            {transactions.map((t) => <TxnRow key={t.id} tx={t} />)}
+          <section className="space-y-3">
+            <div className="rounded-xl glass-panel overflow-hidden">
+              {pagedTxns.map((t) => <TxnRow key={t.id} tx={t} />)}
+            </div>
+            {pageCount > 1 && (
+              <TxnPager
+                page={safePage}
+                pageCount={pageCount}
+                total={transactions.length}
+                onPrev={() => setPage((p) => Math.max(0, p - 1))}
+                onNext={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+              />
+            )}
           </section>
         ) : (
           <EmptyState
