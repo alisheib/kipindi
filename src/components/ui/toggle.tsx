@@ -1,7 +1,9 @@
 /**
  * Toggle / Switch — kit-faithful (ds-forms.jsx Switch).
- * 44x26, accent-500 when on, bg-inset when off, white thumb.
+ * 44x26, brand-500 (royal) when on, bg-inset when off, white thumb.
  * `gold` variant available for master money-lever toggles.
+ * (ON is the canonical brand blue — NOT aqua/accent, which the kit reserves for
+ *  finishing touches only — so every toggle reads the same colour.)
  */
 "use client";
 
@@ -36,7 +38,7 @@ export function Toggle({
         background: on
           ? gold
             ? "linear-gradient(180deg, var(--gold-400), var(--gold-600))"
-            : "var(--accent-500)"
+            : "var(--brand-500)"
           : "var(--bg-inset)",
         transition: "background .18s cubic-bezier(0.2, 0.8, 0.2, 1)",
       }}

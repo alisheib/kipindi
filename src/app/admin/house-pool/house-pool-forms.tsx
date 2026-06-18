@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { Input, Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useDeferredToast } from "@/components/ui/toast";
 import { topUpAction, withdrawAction, updateHousePoolConfigAction } from "./actions";
 import type { HousePoolConfig } from "@/lib/server/house-pool";
@@ -140,15 +141,13 @@ function PoolConfigForm({ config }: { config: HousePoolConfig }) {
         <Field label="Min reserve (TZS)" hint={`Currently ${config.minReserve.toLocaleString()}`}>
           <Input name="minReserve" type="number" min={0} step={10000} defaultValue={config.minReserve} mono size="md" />
         </Field>
-        <label className="flex items-center gap-2 self-end h-11">
-          <input
+        <div className="flex items-center self-end h-11">
+          <Checkbox
             name="pauseMarketsOnLowReserve"
-            type="checkbox"
             defaultChecked={config.pauseMarketsOnLowReserve}
-            className="h-4 w-4 rounded border-border bg-bg-overlay accent-gold-500"
+            label={<span className="font-mono text-caption text-text-muted">Pause markets on low reserve</span>}
           />
-          <span className="font-mono text-caption text-text-muted">Pause markets on low reserve</span>
-        </label>
+        </div>
         <div className="sm:col-span-3 pt-1">
           <Button type="submit" variant="primary" size="md" loading={pending}>
             Save pool config

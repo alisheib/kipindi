@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Toggle } from "@/components/ui/toggle";
 import {
   generatePollAction,
   generatePollBatchAction,
@@ -273,17 +274,14 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
             Grounds every poll in real current events + real source URLs. Off = the model uses its training memory only.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => { const v = !webSearch; setWebSearch(v); save({ webSearchEnabled: v }); }}
-          disabled={pending}
-          role="switch"
-          aria-label="Toggle live web search grounding"
-          aria-checked={webSearch ? "true" : "false"}
-          className={`relative shrink-0 ml-3 h-6 w-11 rounded-full transition-colors ${webSearch ? "bg-yes-500" : "bg-bg-overlay border border-border"}`}
-        >
-          <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${webSearch ? "translate-x-[22px]" : "translate-x-0.5"}`} />
-        </button>
+        <div className="ml-3">
+          <Toggle
+            on={webSearch}
+            onClick={() => { const v = !webSearch; setWebSearch(v); save({ webSearchEnabled: v }); }}
+            disabled={pending}
+            aria-label="Toggle live web search grounding"
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">

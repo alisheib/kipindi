@@ -110,7 +110,7 @@ export function AdminAreaChart({
               x={PAD_X - 6}
               y={y + 3}
               textAnchor="end"
-              fontFamily="JetBrains Mono"
+              style={{ fontFamily: "var(--font-mono)" }}
               fontSize="11"
               fill="var(--text-tertiary)"
             >
@@ -136,7 +136,7 @@ export function AdminAreaChart({
       <circle cx={xs[xs.length - 1]} cy={ys[ys.length - 1]} r="3.5" fill={strokeVar} />
       {/* X-axis labels */}
       {xLabels && xLabels.length > 0 && (
-        <g fontFamily="JetBrains Mono" fontSize="11" fill="var(--text-tertiary)">
+        <g style={{ fontFamily: "var(--font-mono)" }} fontSize="11" fill="var(--text-tertiary)">
           {labelIndices.map((idx, i) => {
             const x = xs[idx] ?? PAD_X + (idx / Math.max(1, xLabels.length - 1)) * innerW;
             const anchor = i === 0 ? "start" : i === labelIndices.length - 1 ? "end" : "middle";
@@ -213,7 +213,7 @@ export function AdminStackedBars({
                 x={x + barW / 2}
                 y={height - 6}
                 textAnchor="middle"
-                fontFamily="JetBrains Mono"
+                style={{ fontFamily: "var(--font-mono)" }}
                 fontSize="10"
                 fill="var(--text-tertiary)"
               >
@@ -224,7 +224,7 @@ export function AdminStackedBars({
         );
       })}
       {legend && legend.length > 0 && (
-        <g fontFamily="JetBrains Mono" fontSize="10" fill="var(--text-secondary)">
+        <g style={{ fontFamily: "var(--font-mono)" }} fontSize="10" fill="var(--text-secondary)">
           {legend.map((l, i) => (
             <g key={i} transform={`translate(${padX + i * 140}, ${padTop - 14})`}>
               <rect width="10" height="10" fill={colors[i % colors.length]} />

@@ -2,7 +2,8 @@
 
 /**
  * Checkbox — kit-faithful (ds-forms.jsx Checkbox).
- * 19x19, accent-500 fill when checked, dark check icon inside.
+ * 19x19, brand-500 (royal) fill when checked, white check icon inside — matches
+ * the Toggle ON colour so all form controls read the same blue.
  * Works as both controlled and uncontrolled (form-native).
  */
 import * as React from "react";
@@ -68,8 +69,8 @@ export function Checkbox({
           width: 19,
           height: 19,
           borderRadius: 5,
-          border: `1px solid ${on ? "var(--accent-500)" : "var(--border-strong)"}`,
-          background: on ? "var(--accent-500)" : "transparent",
+          border: `1px solid ${on ? "var(--brand-500)" : "var(--border-strong)"}`,
+          background: on ? "var(--brand-500)" : "transparent",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -78,7 +79,7 @@ export function Checkbox({
           marginTop: 1,
         }}
       >
-        {on && <I.check s={13} style={{ color: "#06130d", strokeWidth: 3 }} />}
+        {on && <I.check s={13} style={{ color: "#fff", strokeWidth: 3 }} />}
       </span>
       {label && <span style={{ lineHeight: 1.4 }}>{label}</span>}
     </label>

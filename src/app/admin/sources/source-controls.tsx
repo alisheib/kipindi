@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Toggle } from "@/components/ui/toggle";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { addSourceAction, removeSourceAction, toggleSourceAction, toggleCategoryAction } from "./actions";
 
@@ -22,24 +23,7 @@ export function ToggleSource({ id, enabled }: { id: string; enabled: boolean }) 
       router.refresh();
     });
   };
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={pending}
-      role="switch"
-      aria-checked={enabled}
-      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-pill transition-colors ${
-        enabled ? "bg-yes-500" : "bg-bg-overlay border border-border"
-      } ${pending ? "opacity-60" : ""}`}
-    >
-      <span
-        className={`inline-block h-5 w-5 rounded-pill bg-white shadow-e2 transition-transform ${
-          enabled ? "translate-x-5" : "translate-x-0.5"
-        }`}
-      />
-    </button>
-  );
+  return <Toggle on={enabled} onClick={onClick} disabled={pending} aria-label="Toggle source enabled" />;
 }
 
 export function RemoveSource({ id, label }: { id: string; label: string }) {
