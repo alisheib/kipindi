@@ -227,12 +227,15 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               {user?.dob ? (
                 // Already collected (and 18+ gated) at sign-up — don't make the
                 // user type it again. Show it read-only for confirmation and
-                // submit the stored value.
+                // submit the stored value. NORMALISE to YYYY-MM-DD: prod stores
+                // dob as a Prisma DateTime, read back as a full ISO string
+                // ("1990-01-15T00:00:00.000Z"); the KYC validator only accepts
+                // YYYY-MM-DD, so the raw ISO was being rejected ("Use YYYY-MM-DD").
                 <>
-                  <input type="hidden" name="dob" value={user.dob} />
+                  <input type="hidden" name="dob" value={user.dob.slice(0, 10)} />
                   <div className="flex items-center gap-2 rounded-xl border border-border bg-bg-elevated px-3.5 py-2.5">
                     <I.check s={14} className="text-yes-300 shrink-0" />
-                    <span className="font-mono text-[13px] text-text">{user.dob}</span>
+                    <span className="font-mono text-[13px] text-text">{user.dob.slice(0, 10)}</span>
                     <span className="ml-auto text-[10.5px] text-text-subtle">From sign-up</span>
                   </div>
                   <p className="mt-1.5 text-[11px] text-text-subtle">
