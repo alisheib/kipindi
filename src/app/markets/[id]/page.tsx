@@ -186,7 +186,13 @@ export default async function MarketDetail({
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[12px]">
                       <span className={p.side === "YES" ? "text-yes-300 font-bold" : "text-no-300 font-bold"}>{p.side}</span>
                       <span className="text-text-muted">stake {fmtTzs(p.stake)}</span>
-                      <span className="text-gold-300">→ {fmtTzs(p.finalPayout ?? p.potentialPayout)}</span>
+                      {/* Potential payout is NOT shown for OPEN positions (license
+                          review · 2026-05) — only the actual settled result. For an
+                          open position the "Sell now" button below is the single,
+                          clearly-labelled "what you'd get now" figure. */}
+                      {p.status !== "OPEN" && (
+                        <span className="text-gold-300">paid {fmtTzs(p.finalPayout ?? 0)}</span>
+                      )}
                       <span className="text-text-subtle ml-auto">[{p.status === "CASHED_OUT" ? "CASHED" : p.status}]</span>
                     </div>
                     {liveValue !== null && (
