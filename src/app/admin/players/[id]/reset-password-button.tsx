@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { adminResetPasswordAction } from "./actions";
 
 export function ResetPasswordButton({ userId }: { userId: string }) {
@@ -12,7 +13,6 @@ export function ResetPasswordButton({ userId }: { userId: string }) {
 
   const reset = () => {
     if (pending) return;
-    if (!confirm("Generate a temporary password for this player? They'll need to change it after signing in.")) return;
     start(async () => {
       const fd = new FormData();
       fd.set("userId", userId);
@@ -46,14 +46,22 @@ export function ResetPasswordButton({ userId }: { userId: string }) {
   }
 
   return (
-    <button
-      type="button"
-      onClick={reset}
-      disabled={pending}
-      className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 py-1.5 rounded-sm border border-border bg-bg-elevated inline-flex items-center gap-1.5 text-text-muted hover:border-gold-700 hover:text-gold-300 disabled:opacity-40 transition-colors"
-    >
-      <I.keyRound s={13} />
-      {pending ? "Resetting…" : "Reset password"}
-    </button>
+    <ConfirmDialog
+      tone="gold"
+      title="Reset password · Weka upya nenosiri"
+      body="Generate a temporary password for this player? They'll need to change it after signing in."
+      confirmLabel="Generate temporary password"
+      onConfirm={reset}
+      trigger={
+        <button
+          type="button"
+          disabled={pending}
+          className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 py-1.5 rounded-sm border border-border bg-bg-elevated inline-flex items-center gap-1.5 text-text-muted hover:border-gold-700 hover:text-gold-300 disabled:opacity-40 transition-colors"
+        >
+          <I.keyRound s={13} />
+          {pending ? "Resetting…" : "Reset password"}
+        </button>
+      }
+    />
   );
 }

@@ -333,7 +333,7 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
   const pwError = validatePasswordStrength(input.password);
   if (pwError) return { ok: false, error: pwError, code: "INVALID" };
   if (input.password !== input.passwordConfirm) {
-    return { ok: false, error: "Passwords do not match.", code: "INVALID" };
+    return { ok: false, error: "Passwords do not match. · Nenosiri hazilingani.", code: "INVALID" };
   }
 
   const phone = baseParse.data.phone;

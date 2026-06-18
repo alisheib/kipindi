@@ -8,6 +8,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ReferralShare } from "./invite-client";
+import { formatDateShort as fmtDate } from "@/lib/utils";
 
 export const metadata = { title: "Invite & Earn · Alika upate" };
 export const dynamic = "force-dynamic";
@@ -81,10 +82,6 @@ function Kpi({ label, value, sub, gold }: { label: string; value: string; sub: s
       <div className="mt-1.5 font-mono text-[10.5px] text-text-subtle">{sub}</div>
     </div>
   );
-}
-
-function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
 }
 
 export default async function InvitePage() {

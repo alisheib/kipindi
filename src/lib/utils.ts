@@ -47,6 +47,11 @@ export function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
+/** "14:30" — short clock for compact feeds */
+export function formatClock(iso: string): string {
+  return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+
 /** "2026-06-11" — sortable date string */
 export function formatDateISO(iso: string): string {
   return new Date(iso).toISOString().slice(0, 10);

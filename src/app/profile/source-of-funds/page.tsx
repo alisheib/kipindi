@@ -6,6 +6,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { submitSourceOfFundsAction } from "./actions";
+import { formatDate } from "@/lib/utils";
 
 export const metadata = { title: "Source of funds · Asili ya pesa" };
 export const dynamic = "force-dynamic";
@@ -95,7 +96,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
           <div className="flex items-center gap-2">
             <Pill tone={statusTone as "yes" | "no" | "warning"}>{existing.reviewStatus}</Pill>
             <p className="font-mono text-[11px] text-text-subtle tabular-nums">
-              Submitted {new Date(existing.submittedAt).toLocaleDateString("en-GB")}
+              Submitted {formatDate(existing.submittedAt)}
             </p>
           </div>
           <p className="text-[12.5px] text-text-muted leading-snug">

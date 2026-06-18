@@ -9,6 +9,7 @@ import { verifyChain, getAuditPage } from "@/lib/server/audit";
 import { kycFunnel, rgRosterCounts } from "@/lib/server/analytics";
 import { detectHarmMarkersForAllUsers } from "@/lib/server/responsible-gambling";
 import { Chip } from "@/components/ui/chip";
+import { formatClock, formatDate } from "@/lib/utils";
 
 export const metadata = { title: "Admin · Compliance" };
 export const dynamic = "force-dynamic";
@@ -130,7 +131,7 @@ export default async function AdminCompliancePage({
               ) : recentAml.map((t) => (
                 <FeedRow
                   key={t.id}
-                  ts={t.createdAt.split("T")[1]?.slice(0, 5) ?? ""}
+                  ts={formatClock(t.createdAt)}
                   category="AML"
                   variant="danger"
                   body={
@@ -200,7 +201,7 @@ export default async function AdminCompliancePage({
                   <tbody>
                     {integrityAlerts.map((a) => (
                       <tr key={a.id} className="border-b border-border-subtle/50 last:border-b-0">
-                        <td className="py-2 pr-3 font-mono whitespace-nowrap">{a.createdAt.split("T")[0]}</td>
+                        <td className="py-2 pr-3 font-mono whitespace-nowrap">{formatDate(a.createdAt)}</td>
                         <td className="py-2 pr-3">{a.targetId ?? "—"}</td>
                         <td className="py-2 pr-3"><span className="font-mono text-micro tracking-wider uppercase">{a.action.replace("integrity.alert.", "")}</span></td>
                         <td className="py-2 pl-3 font-mono text-micro text-royal">open →</td>

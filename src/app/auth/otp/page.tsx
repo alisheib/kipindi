@@ -81,18 +81,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
                 maxLength={6}
                 autoComplete="one-time-code"
                 placeholder="• • • • • •"
-                className="w-full text-center font-mono font-semibold outline-none transition-colors"
-                style={{
-                  height: 52,
-                  fontSize: 20,
-                  letterSpacing: "0.3em",
-                  borderRadius: "var(--r-md)",
-                  background: "var(--bg-inset)",
-                  border: "1px solid var(--border)",
-                  color: "var(--text)",
-                }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = "var(--brand-500)"; e.currentTarget.style.boxShadow = "0 0 0 3px oklch(63% 0.18 262 / 0.25)"; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
+                className="w-full h-[52px] text-center font-mono font-semibold text-[20px] tracking-[0.3em] rounded-md bg-bg-inset border border-border text-text outline-none transition-colors focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)]"
               />
               <p className="mt-1.5 text-[11px] text-text-subtle">
                 Code valid for 5 minutes. <span className="italic">Msimbo ni kwa dakika 5.</span>

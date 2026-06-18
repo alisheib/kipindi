@@ -7,6 +7,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { getAffiliateConfig } from "@/lib/server/affiliate-config";
 import { getAdminAffiliateStats } from "@/lib/server/affiliate-service";
 import { AffiliateAdminClient } from "./affiliate-admin-client";
+import { formatDateShort } from "@/lib/utils";
 
 export const metadata = { title: "Affiliate · Admin" };
 export const dynamic = "force-dynamic";
@@ -128,7 +129,7 @@ export default async function AdminAffiliatePage({
                         <td className="font-mono text-text-muted">{r.recruitMasked}</td>
                         <td className="text-text-muted">{r.type}</td>
                         <td className="text-right font-mono font-semibold text-gold-300">{fmt(r.amountTzs)}</td>
-                        <td className="font-mono text-text-subtle whitespace-nowrap">{new Date(r.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</td>
+                        <td className="font-mono text-text-subtle whitespace-nowrap">{formatDateShort(r.date)}</td>
                         <td><Chip size="sm" variant={LEDGER_CHIP[r.status]}>{r.status.toLowerCase()}</Chip></td>
                       </tr>
                     ))}

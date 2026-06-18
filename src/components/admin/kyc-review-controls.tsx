@@ -17,6 +17,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Spinner } from "@/components/ui/spinner";
 import { I } from "@/components/ui/glyphs";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { approveKycAction, rejectKycAction, requestKycInfoAction } from "@/app/admin/players/[id]/actions";
 
@@ -41,7 +42,6 @@ export function KycReviewControls({ userId, status }: { userId: string; status: 
   }
 
   const approve = () => {
-    if (!confirm("Approve this identity verification? The player will be notified and (if gated by KYC) unlocked.")) return;
     start(async () => {
       const fd = new FormData();
       fd.set("userId", userId);
@@ -165,10 +165,19 @@ export function KycReviewControls({ userId, status }: { userId: string; status: 
   // ── Idle: the three outcome buttons (stack on phone, inline from sm) ──
   return (
     <div className="grid grid-cols-1 sm:flex sm:flex-wrap sm:items-center gap-2.5">
-      <button type="button" onClick={approve} disabled={pending}
-        className="btn btn-yes btn-md w-full sm:w-auto inline-flex items-center justify-center gap-1.5" style={{ borderRadius: 999, minHeight: 44 }}>
-        {pending ? <Spinner size={15} /> : <I.check s={15} />} Approve
-      </button>
+      <ConfirmDialog
+        tone="gold"
+        title="Approve verification · Idhinisha"
+        body="Approve this identity verification? The player will be notified and (if gated by KYC) unlocked."
+        confirmLabel="Yes, approve"
+        onConfirm={approve}
+        trigger={
+          <button type="button" disabled={pending}
+            className="btn btn-yes btn-md w-full sm:w-auto inline-flex items-center justify-center gap-1.5" style={{ borderRadius: 999, minHeight: 44 }}>
+            {pending ? <Spinner size={15} /> : <I.check s={15} />} Approve
+          </button>
+        }
+      />
       <button type="button" onClick={() => setMode("requesting")} disabled={pending}
         className="btn btn-gold btn-md w-full sm:w-auto inline-flex items-center justify-center gap-1.5" style={{ borderRadius: 999, minHeight: 44 }}>
         <I.alertCircle s={15} /> Request info…

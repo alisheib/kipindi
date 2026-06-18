@@ -10,7 +10,7 @@ export async function resetPasswordAction(formData: FormData) {
 
   if (!token) redirect("/auth/forgot-password");
   if (password !== confirm) {
-    redirect(`/auth/reset-password?token=${encodeURIComponent(token)}&error=${encodeURIComponent("Passwords don't match.")}` as never);
+    redirect(`/auth/reset-password?token=${encodeURIComponent(token)}&error=${encodeURIComponent("Passwords do not match. · Nenosiri hazilingani.")}` as never);
   }
 
   const result = await consumeResetToken(token, password);

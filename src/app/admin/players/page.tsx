@@ -4,7 +4,7 @@ import { Chip } from "@/components/ui/chip";
 import { Avatar } from "@/components/ui/avatar";
 import { Select } from "@/components/ui/select";
 import { db } from "@/lib/server/store";
-import { formatTzs } from "@/lib/utils";
+import { formatTzs, formatDate } from "@/lib/utils";
 import { I } from "@/components/ui/glyphs";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 
@@ -169,8 +169,8 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                       <td className="font-mono whitespace-nowrap">{u.phoneE164}</td>
                       <td><Chip size="sm" variant={STATUS_VARIANT[u.status] ?? "neutral"}>{u.status}</Chip></td>
                       <td className="font-mono tabular text-right whitespace-nowrap">{wallet ? formatTzs(wallet.balance) : "—"}</td>
-                      <td className="font-mono whitespace-nowrap">{u.createdAt.split("T")[0]}</td>
-                      <td className="font-mono whitespace-nowrap">{u.lastLoginAt ? u.lastLoginAt.split("T")[0] : "—"}</td>
+                      <td className="font-mono whitespace-nowrap">{formatDate(u.createdAt)}</td>
+                      <td className="font-mono whitespace-nowrap">{u.lastLoginAt ? formatDate(u.lastLoginAt) : "—"}</td>
                       <td>
                         <a href={`/admin/players/${u.id}`} className="text-royal hover:underline font-medium font-mono text-micro tracking-[0.10em] uppercase">profile →</a>
                       </td>

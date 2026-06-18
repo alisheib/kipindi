@@ -5,7 +5,7 @@ import { db } from "@/lib/server/store";
 import { getAuditPage } from "@/lib/server/audit";
 import { matches } from "@/lib/ui-stubs";
 import { activePlayers, moneyFlowSeries, grossGamingRevenue } from "@/lib/server/analytics";
-import { formatTzs, formatTzsCompact } from "@/lib/utils";
+import { formatTzs, formatTzsCompact, formatTime } from "@/lib/utils";
 
 type MatchStub = {
   id: string;
@@ -107,7 +107,7 @@ export default async function AdminLivePage() {
               ) : betEvents.slice(0, 10).map((e) => (
                 <FeedRow
                   key={e.id}
-                  ts={e.createdAt.split("T")[1]?.slice(0, 8) ?? ""}
+                  ts={formatTime(e.createdAt)}
                   category="BET"
                   variant="gold"
                   body={`${e.action} · ${e.targetType ?? ""} ${e.targetId?.slice(0, 12) ?? ""}`}
