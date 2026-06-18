@@ -145,6 +145,29 @@ async function issueOtp(phone: string, purpose: "login" | "register" | "withdraw
   return { ok: true, data: { otpId: otp.id } };
 }
 
+/**
+ * PRE-LAUNCH testing float. When TEST_FUNDING="true", top every ACTIVE wallet up
+ * to a TZS 1,000,000 floor on login/registration — so every testing account and
+ * admin account always has money to test with (incl. 0769434985 / +255769434985).
+ * Idempotent: only credits the shortfall, never reduces a balance, never touches
+ * a frozen/closed wallet. Best-effort — never blocks auth.
+ *
+ * MUST be turned OFF before real-money launch: unset TEST_FUNDING (or set it to
+ * "false"). The DB is formatted before go-live, so no test float carries over.
+ */
+const TEST_FLOAT_TZS = 1_000_000;
+async function applyTestFloat(userId: string): Promise<void> {
+  if (process.env.TEST_FUNDING !== "true") return;
+  try {
+    const w = await db.wallet.findByUserId(userId);
+    if (!w || w.status !== "ACTIVE" || w.balance >= TEST_FLOAT_TZS) return;
+    const updated = await db.wallet.adjust(w.id, { balance: TEST_FLOAT_TZS - w.balance });
+    audit({ category: "WALLET", action: "wallet.test_float_topup", actorId: userId, targetType: "Wallet", targetId: w.id, payload: { from: w.balance, to: updated?.balance ?? TEST_FLOAT_TZS } });
+  } catch (err) {
+    console.error("[test-float] top-up failed:", (err as Error)?.message ?? err);
+  }
+}
+
 /** Step 2: verify OTP, create or sign in user, set session cookie. */
 export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): Promise<ServiceResult<{ userId: string; isNew: boolean }>> {
   const parse = OtpVerifySchema.safeParse(input);
@@ -265,6 +288,7 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
     role: user.role,
     kycStatus: (await db.kyc.findByUserId(user.id))?.status ?? "NOT_STARTED",
   });
+  await applyTestFloat(user.id);
 
   return { ok: true, data: { userId: user.id, isNew } };
 }
@@ -428,6 +452,7 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
     role: user.role,
     kycStatus: "NOT_STARTED",
   });
+  await applyTestFloat(user.id);
 
   return { ok: true, data: { userId: user.id, role: user.role } };
   }); // end withLock register
@@ -574,6 +599,7 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
     role: effectiveRole,
     kycStatus: (await db.kyc.findByUserId(user.id))?.status ?? "NOT_STARTED",
   });
+  await applyTestFloat(user.id);
 
   return { ok: true, data: { userId: user.id, role: effectiveRole } };
   }); // end withLock login
