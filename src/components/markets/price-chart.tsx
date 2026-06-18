@@ -26,7 +26,9 @@ export function PriceChart({
   const h = height - padT - padB;
 
   const xs = data.map((_, i) => padL + (i / (data.length - 1)) * w);
-  const ys = data.map((d) => padT + (1 - d.yes) * h);
+  // Clamp probability to [0,1] so a stray out-of-range value can never push the
+  // path outside the viewBox.
+  const ys = data.map((d) => padT + (1 - Math.max(0, Math.min(1, d.yes))) * h);
 
   const linePath = xs.map((x, i) => `${i === 0 ? "M" : "L"} ${x} ${ys[i]}`).join(" ");
   const areaPath = `${linePath} L ${xs[xs.length - 1]} ${padT + h} L ${xs[0]} ${padT + h} Z`;
@@ -107,7 +109,10 @@ export function PriceChart({
 /** VolumeSparkline — kit ports for inline density bars. */
 export function VolumeSparkline({ data, width = 220, height = 38, className }: { data: number[]; width?: number; height?: number; className?: string }) {
   if (data.length === 0) return null;
-  const max = Math.max(...data);
+  // `, 1` floor keeps an all-zero series from dividing by zero (→ NaN heights /
+  // opacities → invisible/broken bars). With max=1 a flat-zero series renders as
+  // a clean empty baseline instead.
+  const max = Math.max(...data, 1);
   const barW = (width - data.length * 2) / data.length;
   return (
     <svg viewBox={`0 0 ${width} ${height}`} width={width} height={height} className={className} aria-label="Volume sparkline">

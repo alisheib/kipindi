@@ -9,6 +9,7 @@ import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { listMarkets, seedDemoMarkets } from "@/lib/server/market-service";
 import { formatDateTimeSafe } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const metadata = { title: "Resolution attestation · Uthibitisho" };
 export const dynamic = "force-dynamic";
@@ -67,10 +68,12 @@ export default async function FairnessPage() {
       <section>
         <h2 className="font-display text-[20px] font-semibold text-text mb-3">Recently resolved</h2>
         {resolved.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border bg-bg-elevated/40 p-10 text-center">
-            <p className="text-[14px] text-text-muted">No resolved markets yet — attestations publish here automatically.</p>
-            <p className="mt-1 text-[13px] italic text-text-subtle">Bado hakuna soko lililotatuliwa.</p>
-          </div>
+          <EmptyState
+            kind="audit"
+            title="No resolved markets yet"
+            titleSw="Bado hakuna soko lililotatuliwa"
+            body="Resolution attestations publish here automatically the moment a market settles."
+          />
         ) : (
           <div className="overflow-x-auto rounded-lg glass-panel">
             <table className="w-full text-[13px]">

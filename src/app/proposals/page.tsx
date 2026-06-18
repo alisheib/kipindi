@@ -129,9 +129,15 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
           ) : undefined}
         />
       ) : (
-        <p className="py-7 text-center text-[13px] text-text-subtle">
-          No proposals in <strong className="text-text-muted">{FILTERS.find((f) => f.id === filter)?.label}</strong> yet · Hakuna bado
-        </p>
+        <EmptyState
+          kind="markets"
+          title={`No proposals in ${FILTERS.find((f) => f.id === filter)?.label ?? "this filter"}`}
+          titleSw="Hakuna mapendekezo katika kichujio hiki"
+          body="Try another filter, or be the first to propose a market here."
+          action={enabled ? (
+            <Link href={"/proposals/new" as never}><Button variant="gold" size="sm" leading={<I.plus s={12} />}>Create · Pendekeza</Button></Link>
+          ) : undefined}
+        />
       )}
     </main>
   );
