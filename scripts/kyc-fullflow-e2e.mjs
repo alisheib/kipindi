@@ -78,7 +78,7 @@ try {
   // ───────────────── ADMIN (mobile) — via the deep link the email uses ─────────────────
   const adminCtx = await browser.newContext({ ...devices["Pixel 7"] });
   const aErr = []; const ap = await adminCtx.newPage(); attachErrs(ap, aErr);
-  ap.on("dialog", (d) => d.accept()); // approve uses confirm()
+  ap.on("dialog", (d) => d.accept()); // accept any stray native dialog (approve now uses an in-DOM ConfirmDialog)
   await ap.goto(`${BASE}/auth/demo`, { waitUntil: "networkidle" });
   await ap.request.post(`${BASE}/api/dev-test/promote-admin`, { data: { phone: "+255700000000" } });
 
@@ -116,6 +116,9 @@ try {
   ok("admin sees requested doc as uploaded", /Uploaded/.test(await ap.locator("body").innerText()));
   ok("admin sees the requested-doc image", await ap.locator('img[alt="requested document"]').count() >= 1);
   await ap.getByRole("button", { name: /^Approve/ }).click();
+  // Approve now opens a kit ConfirmDialog — confirm it to run the action.
+  await ap.waitForTimeout(150);
+  await ap.getByRole("button", { name: /Yes, approve/ }).click();
   await ap.waitForTimeout(900);
 
   // ───────────────── PLAYER — verified ─────────────────
