@@ -146,7 +146,11 @@ export async function setPlayerEmailAction(formData: FormData) {
   const target = await db.user.findById(userId);
   if (!target) return { ok: false as const, error: "Player not found." };
   const prev = target.email ?? null;
-  await db.user.update(userId, { email, emailVerifiedAt: null });
+  try {
+    await db.user.update(userId, { email, emailVerifiedAt: null });
+  } catch {
+    return { ok: false as const, error: "Couldn't save that email — it may already be in use." };
+  }
   audit({
     category: "ADMIN",
     action: "player.email.set_by_officer",

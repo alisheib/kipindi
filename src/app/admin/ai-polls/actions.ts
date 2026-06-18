@@ -72,7 +72,8 @@ export async function generatePollAction(formData: FormData) {
 
 export async function generatePollBatchAction(formData: FormData) {
   const officerId = await requireAdmin("generatePollBatchAction");
-  const count = Number(formData.get("count") ?? "3");
+  const countRaw = Number(formData.get("count") ?? "3");
+  const count = Number.isFinite(countRaw) ? Math.max(1, Math.min(200, Math.floor(countRaw))) : 3;
   const prompt = String(formData.get("prompt") ?? "");
   const catsRaw = String(formData.get("categories") ?? "");
   const categories = catsRaw ? catsRaw.split(",").map((c) => c.trim()).filter(Boolean) : undefined;

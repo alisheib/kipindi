@@ -184,12 +184,14 @@ export async function rejectAmlAction(formData: FormData) {
     // Tell the player their withdrawal was returned (best-effort).
     if (txn.type === "WITHDRAWAL") {
       const { sendEmailToUser, amlRejectRefundHtml } = await import("@/lib/server/email");
-      sendEmailToUser(txn.userId, (email) => ({
+      // Fire-and-forget, but swallow rejections — a bounced/failed email must
+      // never turn a completed AML rejection into a 500 for the officer.
+      void sendEmailToUser(txn.userId, (email) => ({
         to: email,
         subject: `Withdrawal returned · TZS ${Math.abs(txn.amount).toLocaleString()}`,
         html: amlRejectRefundHtml({ amount: Math.abs(txn.amount), reason }),
         tag: "aml-refund",
-      }));
+      })).catch(() => {});
     }
 
     revalidatePath("/admin/aml");

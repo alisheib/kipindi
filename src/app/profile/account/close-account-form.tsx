@@ -1,8 +1,27 @@
 "use client";
 
 import { useState } from "react";
+import { useFormStatus } from "react-dom";
 import { I } from "@/components/ui/glyphs";
+import { Spinner } from "@/components/ui/spinner";
 import { closeAccountAction } from "./actions";
+
+/** Pending-aware confirm button — disabled until the phrase matches AND while
+ *  the irreversible close action is in flight, so it can never fire twice. */
+function CloseButton({ canSubmit }: { canSubmit: boolean }) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={!canSubmit || pending}
+      aria-busy={pending}
+      className="btn btn-claret btn-md inline-flex items-center gap-1.5"
+    >
+      {pending ? <Spinner size={13} /> : <I.alertOctagon s={13} />}
+      {pending ? "Closing…" : "Permanently close my account"}
+    </button>
+  );
+}
 
 export function CloseAccountForm() {
   const [confirm, setConfirm] = useState("");
@@ -33,14 +52,7 @@ export function CloseAccountForm() {
           autoComplete="off"
         />
       </label>
-      <button
-        type="submit"
-        disabled={!canSubmit}
-        className="btn btn-claret btn-md inline-flex items-center gap-1.5"
-      >
-        <I.alertOctagon s={13} />
-        Permanently close my account
-      </button>
+      <CloseButton canSubmit={canSubmit} />
     </form>
   );
 }
