@@ -195,6 +195,10 @@ export default async function MarketDetail({
                       )}
                       <span className="text-text-subtle ml-auto">[{p.status === "CASHED_OUT" ? "CASHED" : p.status}]</span>
                     </div>
+                    <p className="flex items-center gap-1 font-mono text-[10px] tracking-[0.04em] text-text-faint tabular-nums">
+                      <I.clock s={10} className="opacity-70 shrink-0" />
+                      Opened {fmtTime(p.placedAt)}
+                    </p>
                     {liveValue !== null && (
                       <SellButton
                         positionId={p.id}

@@ -164,6 +164,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                     current={liveValue ?? p.potentialPayout}
                     payout={p.potentialPayout}
                     status="OPEN"
+                    placedAt={p.placedAt}
                   />
                   {liveValue !== null && (
                     <SellButton
@@ -204,6 +205,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                   current={p.finalPayout ?? 0}
                   payout={p.finalPayout ?? 0}
                   status={p.status as "WIN" | "LOSS" | "VOID" | "CASHED_OUT"}
+                  placedAt={p.placedAt}
                 />
               );
             })}

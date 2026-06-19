@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { cn } from "@/lib/utils";
+import { cn, formatDateTime } from "@/lib/utils";
 import { Cash } from "@/components/ui/cash";
+import { I } from "@/components/ui/glyphs";
 
 type Props = {
   marketId: string;
@@ -10,12 +11,14 @@ type Props = {
   current: number;          // current value if open, final if settled
   payout: number;           // potentialPayout if open, finalPayout if settled
   status: "OPEN" | "WIN" | "LOSS" | "VOID" | "CASHED_OUT";
+  /** ISO timestamp the bet was placed — shown as a small "Opened …" meta line. */
+  placedAt?: string;
   className?: string;
 };
 
 const fmt = (n: number) => n.toLocaleString("en-US");
 
-export function PositionCard({ marketId, marketTitle, side, stake, current, payout, status, className }: Props) {
+export function PositionCard({ marketId, marketTitle, side, stake, current, payout, status, placedAt, className }: Props) {
   const statusLabel = {
     OPEN: "Pending",
     WIN: "Resolved · Win",
@@ -52,9 +55,17 @@ export function PositionCard({ marketId, marketTitle, side, stake, current, payo
           {statusLabel}
         </span>
       </div>
-      <p className="font-display text-[15px] font-semibold leading-tight tracking-[-0.005em] text-text mb-3.5 line-clamp-2">
-        {marketTitle}
-      </p>
+      <div className="mb-3.5">
+        <p className="font-display text-[15px] font-semibold leading-tight tracking-[-0.005em] text-text line-clamp-2">
+          {marketTitle}
+        </p>
+        {placedAt && (
+          <p className="mt-1.5 flex items-center gap-1 font-mono text-[10px] tracking-[0.04em] text-text-faint tabular-nums">
+            <I.clock s={11} className="opacity-70 shrink-0" />
+            Opened {formatDateTime(placedAt)}
+          </p>
+        )}
+      </div>
       {/* Open positions: per management spec (license review · 2026-05)
           the potential payout is NOT shown until the event has resolved.
           Settled positions show the actual final payout. */}
