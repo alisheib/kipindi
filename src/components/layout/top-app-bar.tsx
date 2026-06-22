@@ -94,32 +94,37 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
           })}
         </nav>
 
-        {/* Spacer */}
+        {/* Spacer — shrinks when nav labels are long (e.g. SW locale),
+            never lets the right-side controls compress or wrap. */}
         <div className="flex-1" />
 
-        {/* Language toggle — kit: inline EN/SW/FR pills */}
-        <LanguageToggle />
+        {/* Right-side controls — shrink-0 prevents SW nav labels from
+            squeezing the wallet pill to 2 lines. */}
+        <div className="shrink-0 flex items-center gap-2">
+          {/* Language toggle — kit: inline EN/SW/FR pills */}
+          <LanguageToggle />
 
-        {/* Wallet balance pill — kit: bg-inset, gold-tinted border */}
-        {user.isAuthed && user.balance !== null && user.balance !== undefined && (
-          <>
-            <WalletBalancePill balance={user.balance} />
-            <CashEye bare size={14} className="inline-flex text-[var(--gold-300)]" />
-          </>
-        )}
+          {/* Wallet balance pill — kit: bg-inset, gold-tinted border */}
+          {user.isAuthed && user.balance !== null && user.balance !== undefined && (
+            <>
+              <WalletBalancePill balance={user.balance} />
+              <CashEye bare size={14} className="inline-flex text-[var(--gold-300)]" />
+            </>
+          )}
 
-        {/* Notifications bell */}
-        <NotificationsPanel />
+          {/* Notifications bell */}
+          <NotificationsPanel />
 
-        {/* Avatar menu */}
-        <AvatarMenu
-          initials={user.initials}
-          name={user.name}
-          phone={user.phone}
-          isAuthed={user.isAuthed}
-          avatarSrc={user.avatarSrc ?? null}
-          seed={user.seed}
-        />
+          {/* Avatar menu */}
+          <AvatarMenu
+            initials={user.initials}
+            name={user.name}
+            phone={user.phone}
+            isAuthed={user.isAuthed}
+            avatarSrc={user.avatarSrc ?? null}
+            seed={user.seed}
+          />
+        </div>
       </div>
     </header>
   );
