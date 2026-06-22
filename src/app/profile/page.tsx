@@ -143,13 +143,13 @@ export default async function ProfilePage() {
           <Stat
             label="Open"
             sw="Hai"
-            value={String(positions.filter((p) => p.status === "PENDING_CONFIRMATION" || p.status === "PLACED").length)}
+            value={String(positions.filter((p) => p.status === "OPEN").length)}
             icon={<I.sparkle s={14} className="text-yes-300" />}
           />
           <Stat
             label="Settled"
             sw="Imekamilika"
-            value={String(positions.filter((p) => p.status !== "PENDING_CONFIRMATION" && p.status !== "PLACED").length)}
+            value={String(positions.filter((p) => p.status !== "OPEN").length)}
             icon={<I.check s={14} />}
           />
         </div>
