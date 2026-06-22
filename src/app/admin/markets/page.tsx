@@ -139,6 +139,7 @@ export default async function AdminMarketsPage({
                   <SortTh field="closes" label="Closes" current={sort} dir={dir} sp={sp} baseHref="/admin/markets" />
                   <SortTh field="status" label="Status" current={sort} dir={dir} sp={sp} baseHref="/admin/markets" />
                   <th className="text-left">Source</th>
+                  <th className="text-left">Predictors</th>
                   <th className="text-left">Action</th>
                 </tr>
               </thead>
@@ -174,6 +175,15 @@ export default async function AdminMarketsPage({
                         </a>
                       </td>
                       <td>
+                        <Link
+                          href={`/admin/markets/${m.id}` as never}
+                          className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-royal hover:underline whitespace-nowrap"
+                        >
+                          <I.users size={11} />
+                          {m.predictorCount}
+                        </Link>
+                      </td>
+                      <td>
                         {(m.status === "LIVE" || m.status === "CLOSED") ? (
                           <EmergencyVoidControl marketId={m.id} title={m.titleEn} />
                         ) : (
@@ -185,7 +195,7 @@ export default async function AdminMarketsPage({
                 })}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="!py-6 text-center text-text-tertiary">No markets match the current filter.</td>
+                    <td colSpan={9} className="!py-6 text-center text-text-tertiary">No markets match the current filter.</td>
                   </tr>
                 )}
               </tbody>
