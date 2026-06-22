@@ -18,6 +18,13 @@ export default async function AdminTotpVerifyPage({ searchParams }: { searchPara
   const isAdmin = u && ADMIN_ROLES.has(u.role);
   if (!isAdmin) redirect("/");
 
+  // When TOTP is globally disabled via env var, skip straight to admin.
+  if (process.env.DISABLE_ADMIN_TOTP === "true") {
+    const nextRaw2 = (await searchParams)?.next ?? "";
+    const dest = nextRaw2.startsWith("/admin") && !nextRaw2.startsWith("//") ? nextRaw2 : "/admin";
+    redirect(dest as never);
+  }
+
   if (!(await hasTotp(session.userId))) {
     redirect("/admin/2fa/setup");
   }

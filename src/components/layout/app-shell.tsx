@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { headers } from "next/headers";
 import { TopAppBar } from "./top-app-bar";
 import { LiveTicker } from "./live-ticker";
 import { BottomNav } from "./bottom-nav";
@@ -17,6 +18,14 @@ import { getRgSettings } from "@/lib/server/responsible-gambling";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
+  // Admin routes render their own full-screen layout (sidebar, topbar, chrome).
+  // Skip the player shell entirely so admin pages don't get a double navbar.
+  const h = await headers();
+  const pathname = h.get("x-pathname") ?? "";
+  if (pathname.startsWith("/admin")) {
+    return <>{children}</>;
+  }
+
   const session = await getSession();
   let topUser: {
     initials: string;

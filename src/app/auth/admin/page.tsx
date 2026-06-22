@@ -26,7 +26,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
     const u = await db.user.findById(session.userId);
     const isAdmin = u && ADMIN_ROLES.has(u.role);
     if (isAdmin) {
-      if (await hasTotp(session.userId)) {
+      if (process.env.DISABLE_ADMIN_TOTP !== "true" && await hasTotp(session.userId)) {
         redirect(next ? `/admin/totp-verify?next=${encodeURIComponent(next)}` : "/admin/totp-verify");
       }
       redirect((next || "/admin") as never);
