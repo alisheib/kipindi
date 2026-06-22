@@ -27,6 +27,7 @@ import {
   PublishActions,
   DeleteAction,
   SeedFixturesButton,
+  DeleteAllButton,
 } from "./poll-actions";
 import { PollFilterToolbar } from "./poll-filters";
 import { datePresetToRange } from "./date-utils";
@@ -276,7 +277,10 @@ export default async function AdminAIPollsPage({
                   Search, filter by state, category, or date. Click any row to view full details.
                 </p>
               </div>
-              <SeedFixturesButton />
+              <div className="flex items-center gap-2">
+                <SeedFixturesButton />
+                <DeleteAllButton totalCount={totalAll} />
+              </div>
             </div>
             <Suspense fallback={<FilterToolbarSkeleton />}>
               <PollFilterToolbar totalFiltered={filtered.length} totalAll={totalAll} />

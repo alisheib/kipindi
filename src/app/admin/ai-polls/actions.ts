@@ -13,6 +13,7 @@ import {
   editAIPoll,
   markAIPollPublished,
   deleteAIPoll,
+  deleteAllAIPolls,
   seedAIPollFixtures,
   getAIPoll,
   type FilterReason,
@@ -276,6 +277,53 @@ export async function deletePollAction(formData: FormData) {
 
   revalidatePath("/admin/ai-polls");
   return { ok: true as const, refundedCount, refundedTzs };
+}
+
+/* ─── Delete all ─── */
+
+export async function deleteAllPollsAction(formData: FormData) {
+  const officerId = await requireAdmin("deleteAllPollsAction");
+  const rawReason = String(formData.get("reason") ?? "").trim();
+  const voidReason = rawReason.length >= 5 ? rawReason : "Regulatory/administrative decision — bulk market cancellation by administrator";
+
+  const { deleted, skipped, publishedPolls } = await deleteAllAIPolls(officerId);
+
+  let voidedCount = 0;
+  let totalRefundedCount = 0;
+  let totalRefundedTzs = 0;
+  const voidErrors: string[] = [];
+
+  // Void each live market and delete its poll
+  for (const { pollId, marketId } of publishedPolls) {
+    if (!marketId) {
+      // No market ID — delete poll directly
+      await deleteAIPoll(pollId, officerId);
+      voidedCount++;
+      continue;
+    }
+    const voidResult = await emergencyVoidMarket({ marketId, officerId, reason: voidReason });
+    if (!voidResult.ok) {
+      voidErrors.push(`Market ${marketId}: ${voidResult.error}`);
+      continue;
+    }
+    totalRefundedCount += voidResult.data?.refundedCount ?? 0;
+    totalRefundedTzs += voidResult.data?.refundedTzs ?? 0;
+    await deleteAIPoll(pollId, officerId);
+    voidedCount++;
+  }
+
+  revalidatePath("/admin/ai-polls");
+  revalidatePath("/admin/markets");
+
+  return {
+    ok: true as const,
+    deleted,
+    voided: voidedCount,
+    skipped,
+    refundedCount: totalRefundedCount,
+    refundedTzs: totalRefundedTzs,
+    voidErrors,
+  };
 }
 
 /* ─── Seed fixtures ─── */

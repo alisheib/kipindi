@@ -1029,6 +1029,52 @@ export async function deleteAIPoll(id: string, officerId: string): Promise<boole
   return true;
 }
 
+/**
+ * Bulk-delete all polls that are not currently in-flight (GENERATING).
+ *
+ * PUBLISHED polls are returned separately so the caller can void their live
+ * markets via emergencyVoidMarket before deleting them. All other deletable
+ * states are removed immediately.
+ *
+ * Returns:
+ *   deleted        — count of non-PUBLISHED polls deleted
+ *   skipped        — count of GENERATING polls left untouched
+ *   publishedPolls — list of PUBLISHED polls (marketId + pollId) the caller
+ *                    must handle with emergencyVoidMarket first
+ */
+export async function deleteAllAIPolls(officerId: string): Promise<{
+  deleted: number;
+  skipped: number;
+  publishedPolls: Array<{ pollId: string; marketId: string }>;
+}> {
+  const all = await store.values();
+  let deleted = 0;
+  let skipped = 0;
+  const publishedPolls: Array<{ pollId: string; marketId: string }> = [];
+
+  for (const poll of all) {
+    if (poll.state === "GENERATING") {
+      skipped++;
+      continue;
+    }
+    if (poll.state === "PUBLISHED") {
+      publishedPolls.push({ pollId: poll.id, marketId: poll.publishedMarketId ?? "" });
+      continue;
+    }
+    await store.delete(poll.id);
+    audit({
+      category: "ADMIN",
+      action: "aipoll.bulk_deleted",
+      actorId: officerId,
+      targetType: "AIPoll",
+      targetId: poll.id,
+      payload: { state: poll.state },
+    });
+    deleted++;
+  }
+  return { deleted, skipped, publishedPolls };
+}
+
 /** Seed fixture polls for testing — covers all states and edge cases. */
 export async function seedAIPollFixtures(): Promise<StoredAIPoll[]> {
   const now = new Date().toISOString();

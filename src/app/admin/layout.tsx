@@ -98,9 +98,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const activeKey = activeKeyFromPath(path);
   const crumbs = crumbsFromPath(path);
 
+  // Auth-only pages (TOTP verify + 2FA setup) render as standalone pages —
+  // no sidebar, no admin topbar. These are gate pages, not console pages.
+  if (TOTP_EXEMPT.has(path)) {
+    return <>{children}</>;
+  }
+
   // TOTP gate — non-demo admins with TOTP enabled must verify before browsing.
   // The cookie is HMAC-signed with userId + sessionId to prevent forgery.
-  if ((await hasTotp(session.userId)) && !TOTP_EXEMPT.has(path)) {
+  if (await hasTotp(session.userId)) {
     const jar = await cookies();
     const raw = jar.get(TOTP_COOKIE_NAME)?.value;
     const totpData = verifySession<{

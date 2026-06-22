@@ -16,6 +16,7 @@ import {
   editPollAction,
   publishPollAction,
   deletePollAction,
+  deleteAllPollsAction,
   seedFixturesAction,
 } from "./actions";
 import type { StoredAIPoll, QualityIndicator, FilterReason } from "@/lib/server/ai-poll-generation";
@@ -588,6 +589,72 @@ export function SeedFixturesButton() {
     <button onClick={seed} disabled={pending} className="btn btn-ghost btn-sm rounded-pill text-[12px]">
       {pending ? "Seeding…" : "Seed fixtures"}
     </button>
+  );
+}
+
+/* ─── Delete all button ─── */
+
+export function DeleteAllButton({ totalCount }: { totalCount: number }) {
+  const [pending, start] = useTransition();
+  const [reason, setReason] = useState("");
+  const router = useRouter();
+  const { toast } = useDeferredToast(pending);
+
+  const deleteAll = (voidReason?: string) => {
+    start(async () => {
+      const fd = new FormData();
+      if (voidReason) fd.set("reason", voidReason);
+      const r = await deleteAllPollsAction(fd);
+      if (!r.ok) {
+        toast({ title: "Delete failed", description: String((r as { error?: string }).error ?? "Unknown error"), variant: "danger" });
+        return;
+      }
+      const parts: string[] = [];
+      if (r.deleted > 0) parts.push(`${r.deleted} poll${r.deleted !== 1 ? "s" : ""} deleted`);
+      if (r.voided > 0) parts.push(`${r.voided} market${r.voided !== 1 ? "s" : ""} voided`);
+      if (r.skipped > 0) parts.push(`${r.skipped} in-flight skipped`);
+      if (r.refundedCount > 0) parts.push(`${r.refundedCount} player${r.refundedCount !== 1 ? "s" : ""} refunded · TZS ${Math.round(r.refundedTzs ?? 0).toLocaleString("en-US")}`);
+      if (r.voidErrors && r.voidErrors.length > 0) parts.push(`${r.voidErrors.length} void error${r.voidErrors.length !== 1 ? "s" : ""}`);
+      router.refresh();
+      toast({ title: "All polls cleared", description: parts.join(" · ") || "Nothing to delete.", variant: r.voidErrors && r.voidErrors.length > 0 ? "warning" : "success" });
+    });
+  };
+
+  if (totalCount === 0) return null;
+
+  return (
+    <ConfirmDialog
+      trigger={
+        <button disabled={pending} className="btn btn-ghost btn-sm rounded-pill text-[12px] text-text-subtle hover:text-[oklch(80%_0.18_25)]">
+          {pending ? "Clearing…" : "Delete all"}
+        </button>
+      }
+      title="Delete all AI polls?"
+      tone="claret"
+      confirmLabel="Yes — delete everything"
+      body={
+        <div className="space-y-2 text-[13px] text-text-muted leading-relaxed">
+          <p>This will permanently delete <strong className="text-text">{totalCount.toLocaleString()} AI poll{totalCount !== 1 ? "s" : ""}</strong>. Specifically:</p>
+          <ul className="mt-1 space-y-1 pl-4 list-disc">
+            <li>All <strong className="text-text">PENDING, FILTERED, APPROVED, REJECTED</strong> polls are deleted immediately</li>
+            <li>Any <strong className="text-text">PUBLISHED</strong> markets are voided and all players are refunded their full stake — no deductions</li>
+            <li><strong className="text-text">GENERATING</strong> polls (in-flight) are left untouched</li>
+          </ul>
+          <p className="text-[12px] text-text-subtle">This cannot be undone. The platform will be clean and ready for fresh generation.</p>
+          <div className="mt-3 pt-3 border-t border-border/60">
+            <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle mb-1.5">Reason (required for audit log)</p>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="e.g. Platform cleanup — starting fresh generation cycle…"
+              className={adminTextarea}
+              rows={2}
+            />
+          </div>
+        </div>
+      }
+      onConfirm={() => deleteAll(reason.trim() || "Platform cleanup — bulk AI poll deletion by administrator")}
+    />
   );
 }
 
