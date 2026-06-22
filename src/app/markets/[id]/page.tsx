@@ -5,7 +5,7 @@ import { TippingBar } from "@/components/brand";
 import { Countdown } from "@/components/markets/countdown";
 import { ShareButton } from "@/components/markets/share-button";
 import { SidePicker } from "@/components/markets/side-picker";
-import { ProbabilityChart } from "@/components/markets/probability-chart";
+import { ChartToggle } from "@/components/markets/chart-toggle";
 import { SellButton } from "@/components/markets/sell-button";
 import { cashOutValue, getMarket, impliedYesPct, isClosedByTime, listPositionsForMarket, listPositionsForUser } from "@/lib/server/market-service";
 import { getProbabilityChart, seedHistory } from "@/lib/server/market-history";
@@ -219,23 +219,15 @@ export default async function MarketDetail({
             </p>
           </section>
 
-          {/* 6. Probability chart — historical analysis, intentionally last
-              so it doesn't distract from the primary bet intent above */}
+          {/* 6. Probability chart — collapsible, collapsed by default so it
+              doesn't distract from the primary bet intent above */}
           {probChart.ranges.length > 0 && (
-            <section className="rounded-lg glass-panel p-4 lg:p-5">
-              <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-3 flex items-center gap-1.5">
-                <I.chart s={11} />
-                Probability over time
-              </p>
-              <div className="w-full overflow-hidden">
-                <ProbabilityChart
-                  series={probChart.series as Record<string, { t: string; p: number }[]>}
-                  ranges={probChart.ranges}
-                  defaultRange={probChart.ranges[probChart.ranges.length - 1]}
-                  height={240}
-                />
-              </div>
-            </section>
+            <ChartToggle
+              series={probChart.series as Record<string, { t: string; p: number }[]>}
+              ranges={probChart.ranges}
+              defaultRange={probChart.ranges[probChart.ranges.length - 1]}
+              height={240}
+            />
           )}
         </section>
 

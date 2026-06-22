@@ -69,7 +69,7 @@ export default async function AdminMarketsPage({
   const live = all.filter((m) => m.status === "LIVE");
   const closed = all.filter((m) => m.status === "CLOSED");
   const resolved = all.filter((m) => m.status === "RESOLVED");
-  const totalVolume = all.reduce((s, m) => s + m.yesPool + m.noPool, 0);
+  const totalPool = all.reduce((s, m) => s + m.yesPool + m.noPool, 0);
   const hasFilter = !!query || !!statusFilter || !!categoryFilter;
 
   return (
@@ -90,7 +90,7 @@ export default async function AdminMarketsPage({
           <AdminKpi label="Live"      sw="Hai"           value={String(live.length)} />
           <AdminKpi label="Awaiting resolution" sw="Inangoja" value={String(closed.length)} />
           <AdminKpi label="Resolved"  sw="Imetatuliwa"   value={String(resolved.length)} />
-          <AdminKpi label="Total volume" sw="Jumla ya ujazo" value={fmtTzs(totalVolume)} />
+          <AdminKpi label="Total pool" sw="Jumla ya dimbwi" value={fmtTzs(totalPool)} />
         </div>
 
         <AdminCard padding="p-3">
@@ -135,7 +135,7 @@ export default async function AdminMarketsPage({
                   <SortTh field="market" label="Market" current={sort} dir={dir} sp={sp} baseHref="/admin/markets" />
                   <SortTh field="category" label="Cat." current={sort} dir={dir} sp={sp} baseHref="/admin/markets" />
                   <th className="text-left min-w-[140px]">Probability</th>
-                  <SortTh field="volume" label="Volume" current={sort} dir={dir} sp={sp} baseHref="/admin/markets" align="right" />
+                  <SortTh field="volume" label="Pool" current={sort} dir={dir} sp={sp} baseHref="/admin/markets" align="right" />
                   <SortTh field="closes" label="Closes" current={sort} dir={dir} sp={sp} baseHref="/admin/markets" />
                   <SortTh field="status" label="Status" current={sort} dir={dir} sp={sp} baseHref="/admin/markets" />
                   <th className="text-left">Source</th>

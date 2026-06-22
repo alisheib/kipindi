@@ -9,6 +9,7 @@ import {
   walletLiabilityTotal,
   providerSummary,
   topNgrContributors,
+  activePlayers,
   moneyFlowSeries,
   marginSeries,
   providerStackedSeries,
@@ -36,6 +37,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
   const liability = await walletLiabilityTotal();
   const provs = await providerSummary(period);
   const top = await topNgrContributors(10);
+  const activePeriod = await activePlayers(period);
   const flow = await moneyFlowSeries(period, 28);
   const margins = await marginSeries(period, 28);
   const provBars = await providerStackedSeries(period, 14);
@@ -72,7 +74,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
           <AdminKpi label="Tax accrued (est.)" sw="Kodi · makisio" value={`TZS ${formatTzsCompact(taxAccrued).replace("TZS ", "")}`} delta="pending TRA module" deltaDir="flat" />
           <AdminKpi label="Operator margin"  sw="Faida"         value={`${margin.toFixed(1)}%`} gold delta="vs 7-10% band" deltaDir={margin > 7 ? "up" : "flat"} />
           <AdminKpi label="Wallet liability" sw="Madeni"        value={`TZS ${formatTzsCompact(liability).replace("TZS ", "")}`} delta="real-time" />
-          <AdminKpi label="Active players"   sw="Wachezaji"     value={top.length.toLocaleString()} delta={`${period}`} />
+          <AdminKpi label="Active players"   sw="Wachezaji"     value={activePeriod.toLocaleString()} delta={`${period}`} />
         </div>
 
         {/* Charts row */}
