@@ -360,8 +360,16 @@ export default async function AdminAIPollsPage({
                             View
                           </Link>
                           {(p.state === "FILTERED" || p.state === "VALIDATION_FAILED" || p.state === "REJECTED"
-                            || p.state === "PENDING_REVIEW" || p.state === "EDITING" || p.state === "APPROVED") && (
+                            || p.state === "PENDING_REVIEW" || p.state === "EDITING" || p.state === "APPROVED") ? (
                             <DeleteAction pollId={p.id} />
+                          ) : (
+                            <span
+                              className="inline-flex items-center gap-1 text-[10px] font-mono text-text-subtle"
+                              title={p.state === "PUBLISHED" ? "Live market — cannot delete" : "Generation in progress — cannot delete"}
+                            >
+                              <I.lock s={10} />
+                              {p.state === "PUBLISHED" ? "live" : "in-flight"}
+                            </span>
                           )}
                         </td>
                       </tr>
