@@ -139,7 +139,7 @@ export default async function AdminMarketsPage({
                   <SortTh field="closes" label="Closes" current={sort} dir={dir} sp={sp} baseHref="/admin/markets" />
                   <SortTh field="status" label="Status" current={sort} dir={dir} sp={sp} baseHref="/admin/markets" />
                   <th className="text-left">Source</th>
-                  <th className="text-left">Predictors</th>
+                  <th className="text-left">Predictors ↗</th>
                   <th className="text-left">Action</th>
                 </tr>
               </thead>
@@ -151,6 +151,9 @@ export default async function AdminMarketsPage({
                       <td className="max-w-[360px]">
                         <Link href={`/markets/${m.id}` as never} className="font-display font-semibold text-text hover:text-teal-300 line-clamp-2">{m.titleEn}</Link>
                         {m.titleSw && <p className="mt-0.5 text-[12px] italic text-text-subtle line-clamp-1">{m.titleSw}</p>}
+                        <Link href={`/admin/markets/${m.id}` as never} className="mt-1 inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.12em] text-brand-400 hover:text-brand-300 transition-colors">
+                          <I.users size={10} /> View predictors
+                        </Link>
                       </td>
                       <td className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">{m.category}</td>
                       <td>
@@ -177,10 +180,10 @@ export default async function AdminMarketsPage({
                       <td>
                         <Link
                           href={`/admin/markets/${m.id}` as never}
-                          className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-royal hover:underline whitespace-nowrap"
+                          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-bg-overlay px-2 py-1 font-mono text-[10.5px] font-semibold text-text-muted hover:border-brand-500 hover:text-text transition-colors whitespace-nowrap"
                         >
                           <I.users size={11} />
-                          {m.predictorCount}
+                          {m.predictorCount} {m.predictorCount === 1 ? "predictor" : "predictors"}
                         </Link>
                       </td>
                       <td>
