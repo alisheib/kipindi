@@ -26,7 +26,7 @@ import {
   approveCandidate,
   markPublished,
 } from "@/lib/server/market-candidate";
-import { createMarket } from "@/lib/server/market-service";
+import { createMarket, emergencyVoidMarket } from "@/lib/server/market-service";
 import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
 
 const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
@@ -254,12 +254,28 @@ export async function publishPollAction(formData: FormData) {
 export async function deletePollAction(formData: FormData) {
   const officerId = await requireAdmin("deletePollAction");
   const id = String(formData.get("id") ?? "");
+  const rawReason = String(formData.get("reason") ?? "").trim();
+  const voidReason = rawReason.length >= 5 ? rawReason : "Regulatory/administrative decision — market cancelled by administrator";
+
+  // For PUBLISHED polls, void the live market first (full refunds, no deductions).
+  const poll = await getAIPoll(id);
+  if (!poll) return { ok: false as const, error: "Poll not found." };
+
+  let refundedCount = 0;
+  let refundedTzs = 0;
+
+  if (poll.state === "PUBLISHED" && poll.publishedMarketId) {
+    const voidResult = await emergencyVoidMarket({ marketId: poll.publishedMarketId, officerId, reason: voidReason });
+    if (!voidResult.ok) return { ok: false as const, error: `Market void failed: ${voidResult.error}` };
+    refundedCount = voidResult.data?.refundedCount ?? 0;
+    refundedTzs = voidResult.data?.refundedTzs ?? 0;
+  }
 
   const ok = await deleteAIPoll(id, officerId);
   if (!ok) return { ok: false as const, error: "Poll not found or not in a deletable state." };
 
   revalidatePath("/admin/ai-polls");
-  return { ok: true as const };
+  return { ok: true as const, refundedCount, refundedTzs };
 }
 
 /* ─── Seed fixtures ─── */

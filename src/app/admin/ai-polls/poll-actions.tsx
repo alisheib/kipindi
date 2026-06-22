@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Toggle } from "@/components/ui/toggle";
@@ -470,26 +471,90 @@ export function PublishActions({ poll }: { poll: StoredAIPoll }) {
   );
 }
 
-/* ─── Delete actions (for filtered/failed/rejected) ─── */
+/* ─── Delete actions ─── */
 
-export function DeleteAction({ pollId }: { pollId: string }) {
+export function DeleteAction({ pollId, state }: { pollId: string; state: string }) {
   const [pending, start] = useTransition();
+  const [reason, setReason] = useState("");
   const router = useRouter();
   const { deferToast, toast } = useDeferredToast(pending);
 
-  const del = () => {
+  const del = (voidReason?: string) => {
     start(async () => {
       const fd = new FormData();
       fd.set("id", pollId);
+      if (voidReason) fd.set("reason", voidReason);
       const r = await deletePollAction(fd);
       router.refresh();
-      if (!r.ok) toast({ title: "Delete failed", description: r.error, variant: "danger" });
-      else deferToast({ title: "Deleted", variant: "default" });
+      if (!r.ok) {
+        toast({ title: "Delete failed", description: r.error, variant: "danger" });
+      } else if (r.refundedCount && r.refundedCount > 0) {
+        deferToast({
+          title: "Market voided — players refunded",
+          description: `${r.refundedCount} player${r.refundedCount !== 1 ? "s" : ""} refunded · TZS ${Math.round(r.refundedTzs ?? 0).toLocaleString("en-US")}`,
+          variant: "success",
+        });
+      } else {
+        deferToast({ title: "Deleted", variant: "default" });
+      }
     });
   };
 
+  const deleteBtn = (
+    <button
+      disabled={pending}
+      className="btn btn-ghost btn-sm rounded-pill text-text-subtle hover:text-[oklch(80%_0.18_25)]"
+    >
+      {pending ? "Deleting…" : "Delete"}
+    </button>
+  );
+
+  if (state === "PUBLISHED") {
+    return (
+      <ConfirmDialog
+        trigger={deleteBtn}
+        title="Cancel live market?"
+        tone="claret"
+        confirmLabel="Yes — void market & refund all"
+        body={
+          <div className="space-y-2 text-[13px] text-text-muted leading-relaxed">
+            <p>
+              This market is <strong className="text-text">live</strong> with real player positions open.
+              Confirming will:
+            </p>
+            <ul className="mt-1 space-y-1 pl-4 list-disc">
+              <li>Immediately cancel and void the market</li>
+              <li>Refund every player their <strong className="text-text">full stake — no deductions</strong></li>
+              <li>Send refund notifications to all affected players</li>
+            </ul>
+            <p className="text-[12px] text-text-subtle">
+              Only proceed under a regulatory or government directive. This is irreversible.
+            </p>
+            <div className="mt-3 pt-3 border-t border-border/60">
+              <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle mb-1.5">
+                Reason for cancellation (required for audit log)
+              </p>
+              <textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="e.g. Government directive, regulatory compliance…"
+                className={adminTextarea}
+                rows={2}
+              />
+            </div>
+          </div>
+        }
+        onConfirm={() => del(reason.trim() || "Regulatory/administrative decision — market cancelled by administrator")}
+      />
+    );
+  }
+
   return (
-    <button onClick={del} disabled={pending} className="btn btn-ghost btn-sm rounded-pill text-text-subtle hover:text-[oklch(80%_0.18_25)]">
+    <button
+      onClick={() => del()}
+      disabled={pending}
+      className="btn btn-ghost btn-sm rounded-pill text-text-subtle hover:text-[oklch(80%_0.18_25)]"
+    >
       {pending ? "Deleting…" : "Delete"}
     </button>
   );

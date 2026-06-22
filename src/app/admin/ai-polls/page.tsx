@@ -359,17 +359,16 @@ export default async function AdminAIPollsPage({
                           >
                             View
                           </Link>
-                          {(p.state === "FILTERED" || p.state === "VALIDATION_FAILED" || p.state === "REJECTED"
-                            || p.state === "PENDING_REVIEW" || p.state === "EDITING" || p.state === "APPROVED") ? (
-                            <DeleteAction pollId={p.id} />
-                          ) : (
+                          {p.state === "GENERATING" ? (
                             <span
                               className="inline-flex items-center gap-1 text-[10px] font-mono text-text-subtle"
-                              title={p.state === "PUBLISHED" ? "Live market — cannot delete" : "Generation in progress — cannot delete"}
+                              title="Generation in progress — cannot delete"
                             >
                               <I.lock s={10} />
-                              {p.state === "PUBLISHED" ? "live" : "in-flight"}
+                              in-flight
                             </span>
+                          ) : (
+                            <DeleteAction pollId={p.id} state={p.state} />
                           )}
                         </td>
                       </tr>
@@ -597,7 +596,7 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
       <div className="shrink-0 flex flex-col gap-2">
         {mode === "review" && <ReviewActions poll={poll} />}
         {mode === "publish" && <PublishActions poll={poll} />}
-        <DeleteAction pollId={poll.id} />
+        <DeleteAction pollId={poll.id} state={poll.state} />
       </div>
     </div>
   );

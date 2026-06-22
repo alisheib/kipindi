@@ -48,7 +48,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
   const canReview = poll.state === "PENDING_REVIEW";
   const canPublish = poll.state === "APPROVED";
   const canDelete = poll.state === "FILTERED" || poll.state === "VALIDATION_FAILED" || poll.state === "REJECTED"
-    || poll.state === "PENDING_REVIEW" || poll.state === "EDITING" || poll.state === "APPROVED";
+    || poll.state === "PENDING_REVIEW" || poll.state === "EDITING" || poll.state === "APPROVED" || poll.state === "PUBLISHED";
 
   return (
     <>
@@ -104,13 +104,11 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
             <div className="shrink-0 flex flex-col items-end gap-2">
               {canReview && <ReviewActions poll={poll} />}
               {canPublish && <PublishActions poll={poll} />}
-              {canDelete && <DeleteAction pollId={poll.id} />}
-              {!canDelete && (
+              {canDelete && <DeleteAction pollId={poll.id} state={poll.state} />}
+              {poll.state === "GENERATING" && (
                 <p className="flex items-center gap-1.5 text-[11px] text-text-subtle font-mono">
                   <I.lock s={10} />
-                  {poll.state === "PUBLISHED"
-                    ? "Live market — deletion disabled"
-                    : "In-flight — deletion disabled"}
+                  In-flight — deletion disabled
                 </p>
               )}
             </div>
