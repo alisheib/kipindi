@@ -32,8 +32,8 @@ const dict = {
   },
   sw: {
     common: {
-      home: "Mwanzo", live: "Moja kwa moja", myBets: "Madau yangu", wallet: "Pochi",
-      leaderboard: "Ubora", profile: "Wasifu",
+      home: "Mwanzo", live: "Mubashara", myBets: "Madau yangu", wallet: "Pochi",
+      leaderboard: "Jedwali la Washindi", profile: "Wasifu",
       settings: "Mipangilio", notifications: "Arifa",
       placeBet: "Weka dau", deposit: "Amana", withdraw: "Toa",
       stake: "Dau", pool: "Bwawa", win: "Shinda", lose: "Poteza", draw: "Sare",
@@ -50,8 +50,8 @@ const dict = {
       language: "Lugha",
     },
     nav: {
-      home: "Mwanzo", live: "Moja kwa moja", bets: "Madau",
-      wallet: "Pochi", leaderboard: "Ubora",
+      home: "Mwanzo", live: "Mubashara", bets: "Madau",
+      wallet: "Pochi", leaderboard: "Jedwali la Washindi",
     },
   },
   fr: {

@@ -9,9 +9,9 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
   const pathname = usePathname();
   const { t, locale } = useT();
   const L = {
-    markets: locale === "sw" ? "Soko" : locale === "fr" ? "Marchés" : "Markets",
+    markets: locale === "sw" ? "Masoko" : locale === "fr" ? "Marchés" : "Markets",
     live: t.nav.live,
-    positions: locale === "sw" ? "Historia" : locale === "fr" ? "Historique" : "History",
+    positions: locale === "sw" ? "Nafasi" : locale === "fr" ? "Historique" : "History",
     leaderboard: t.nav.leaderboard,
     profile: locale === "sw" ? "Wasifu" : locale === "fr" ? "Profil" : "Profile",
     signIn: t.common.signIn,

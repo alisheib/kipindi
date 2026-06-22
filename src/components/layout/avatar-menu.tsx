@@ -97,7 +97,7 @@ export function AvatarMenu({
     <div ref={ref} className="relative ml-1">
       <button
         type="button"
-        aria-label="Account menu"
+        aria-label={locale === "sw" ? "Menyu ya akaunti" : "Account menu"}
         aria-expanded={open ? "true" : "false"}
         onClick={() => setOpen((v) => !v)}
         className="rounded-pill focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
@@ -135,20 +135,20 @@ export function AvatarMenu({
             <ul className="py-1">
               <Item href="/profile"        icon={I.profile}      label="Profile"      sw="Wasifu" />
               <Item href="/wallet"         icon={I.wallet}       label="Wallet"       sw="Pochi" />
-              <Item href="/profile/invite" icon={I.gift}         label="Invite & Earn" sw="Alika upate" accent />
-              <Item href="/proposals"      icon={I.trophy}       label="Propose & earn" sw="Pendekeza" accent />
-              <Item href="/positions"      icon={I.receipt}      label="Positions"    sw="Madau" />
-              <Item href="/profile/kyc"    icon={I.shieldcheck}  label="Verify ID"    sw="Thibitisha" />
+              <Item href="/profile/invite" icon={I.gift}         label="Invite & Earn" sw="Alika na upate zawadi" accent />
+              <Item href="/proposals"      icon={I.trophy}       label="Propose & earn" sw="Pendekeza na upate zawadi" accent />
+              <Item href="/positions"      icon={I.receipt}      label="Positions"    sw="Nafasi" />
+              <Item href="/profile/kyc"    icon={I.shieldcheck}  label="Verify ID"    sw="Kuthibitisha kitambulisho" />
             </ul>
             <div className="border-t border-border">
               <ConfirmDialog
                 tone="claret"
-                title="Sign out · Toka"
+                title="Sign out · Kutoka kwenye akaunti"
                 body={
                   <>
                     <p>You will be signed out of this device.</p>
                     <p className="text-text-subtle italic text-[12.5px] mt-1">
-                      Utatoka kwenye akaunti yako kwenye kifaa hiki.
+                      Utatolewa kwenye akaunti yako kwenye kifaa hiki.
                     </p>
                   </>
                 }
@@ -168,7 +168,7 @@ export function AvatarMenu({
                     className="w-full flex items-center gap-2.5 px-3.5 py-2.5 font-display text-body-sm font-semibold text-no-300 hover:bg-no-500/10 transition-colors text-left"
                   >
                     <I.logOut s={15} aria-hidden />
-                    Sign out · Toka
+                    Sign out · Kutoka kwenye akaunti
                   </button>
                 }
               />

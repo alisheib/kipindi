@@ -116,6 +116,12 @@ export default async function LandingPage() {
             >
               Pesa kidogo, ukweli mkubwa. Trade questions about Tanzania&apos;s weather, markets, sport and culture — settled by official sources.
             </p>
+            <p
+              className="font-display text-[13px] md:text-[15px] leading-[1.55] max-w-[52ch] m-0 italic"
+              style={{ color: "oklch(78% 0.04 268)", textShadow: "0 1px 12px oklch(8% 0.10 268 / 0.6)" }}
+            >
+              Shiriki katika utabiri wa hali ya hewa, masoko, michezo na utamaduni wa Tanzania — kila tukio likithibitishwa kwa mujibu wa vyanzo rasmi.
+            </p>
 
             <div className="flex flex-wrap gap-3 items-center">
               {isAuthed ? (
@@ -221,7 +227,7 @@ export default async function LandingPage() {
             icon={<I.chart s={20} />}
             n="01"
             en="Pick a side, stake TZS"
-            sw="Chagua upande, weka dau"
+            sw="Chagua upande, weka dau kwa TZS"
             body="Price Competition pool. Min TZS 100. Drag the conviction needle on any market."
             tone="yes"
           />
@@ -229,7 +235,7 @@ export default async function LandingPage() {
             icon={<I.shieldcheck s={20} />}
             n="02"
             en="Two-officer resolution"
-            sw="Utatuzi wa maafisa wawili"
+            sw="Azimio lililoidhinishwa na maafisa wawili"
             body="Every market resolves against a public source URL with two officer signatures."
             tone="teal"
             href="/fairness"
@@ -237,8 +243,8 @@ export default async function LandingPage() {
           <TrustItem
             icon={<I.phone s={20} />}
             n="03"
-            en="Get paid by simu"
-            sw="Pata malipo kwa simu"
+            en="Get paid via M-Pesa"
+            sw="Lipwa kwa M-Pesa"
             body="Winners receive their money directly in their wallet. Withdrawals in seconds."
             tone="gold"
           />

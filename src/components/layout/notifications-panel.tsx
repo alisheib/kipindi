@@ -211,7 +211,7 @@ export function NotificationsPanel() {
           >
             <div className="flex h-11 items-center justify-between border-b border-border bg-transparent px-3 shrink-0">
               <p className="font-mono text-micro font-bold uppercase tracking-[0.18em] text-text">
-                Notifications · Arifa
+                Notifications · Taarifa
               </p>
               <div className="flex items-center gap-1">
                 <button
@@ -219,7 +219,7 @@ export function NotificationsPanel() {
                   onClick={handleMarkAll}
                   className="h-7 px-2 rounded-md font-mono text-micro font-bold uppercase tracking-[0.14em] text-text-subtle hover:text-text hover:bg-bg-overlay transition-colors"
                 >
-                  Mark all
+                  Mark all · Chagua zote
                 </button>
                 <button
                   type="button"
@@ -315,10 +315,13 @@ export function NotificationsPanel() {
                     No notifications yet
                   </p>
                   <p className="mt-0.5 text-caption italic text-text-subtle">
-                    Hakuna arifa bado
+                    Huna taarifa zozote kwa sasa
                   </p>
                   <p className="mt-2 text-label text-text-muted leading-relaxed">
                     We&apos;ll buzz here when a bet settles or a market resolves.
+                  </p>
+                  <p className="mt-0.5 text-label italic text-text-subtle leading-relaxed">
+                    Tutakujulisha hapa pale bet itakapomalizika au soko litakapofungwa.
                   </p>
                 </div>
               )}

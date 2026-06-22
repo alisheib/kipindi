@@ -27,19 +27,19 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
   const pathname = usePathname();
   const { t, locale } = useT();
 
-  const POSITIONS = locale === "sw" ? "Historia" : locale === "fr" ? "Historique" : "History";
+  const POSITIONS = locale === "sw" ? "Nafasi" : locale === "fr" ? "Historique" : "History";
   const NAV_ITEMS = user.isAuthed
     ? ([
-        { href: "/markets",     label: locale === "sw" ? "Soko" : locale === "fr" ? "Marchés" : "Markets" },
+        { href: "/markets",     label: locale === "sw" ? "Masoko" : locale === "fr" ? "Marchés" : "Markets" },
         { href: "/live",        label: t.nav.live },
         { href: "/positions",   label: POSITIONS },
         { href: "/wallet",      label: t.nav.wallet },
-        { href: "/proposals",   label: locale === "sw" ? "Pendekeza" : locale === "fr" ? "Proposer" : "Propose" },
+        { href: "/proposals",   label: locale === "sw" ? "Kupendekeza" : locale === "fr" ? "Proposer" : "Propose" },
         { href: "/profile/invite", label: locale === "sw" ? "Alika" : locale === "fr" ? "Inviter" : "Invite" },
         { href: "/leaderboard", label: t.nav.leaderboard },
       ] as const)
     : ([
-        { href: "/markets",     label: locale === "sw" ? "Soko" : locale === "fr" ? "Marchés" : "Markets" },
+        { href: "/markets",     label: locale === "sw" ? "Masoko" : locale === "fr" ? "Marchés" : "Markets" },
         { href: "/live",        label: t.nav.live },
         { href: "/leaderboard", label: t.nav.leaderboard },
       ] as const);
@@ -58,7 +58,7 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
     >
       <div className="mx-auto max-w-[1280px] flex items-center h-full gap-2 px-3 sm:gap-5 sm:px-5">
         {/* Brand lockup — kit: BrandLockup size={30} */}
-        <Link href="/" aria-label="50pick home" className="shrink-0 hover:opacity-90 transition-opacity">
+        <Link href="/" aria-label={locale === "sw" ? "ukurasa wa nyumbani wa 50pick" : "50pick home"} className="shrink-0 hover:opacity-90 transition-opacity">
           {/* Mark-only on phones to leave room for the wallet pill + eye + bell
               + avatar; full wordmark lockup from sm: up. */}
           <span className="inline-flex sm:hidden"><FiftyMark size={26} /></span>

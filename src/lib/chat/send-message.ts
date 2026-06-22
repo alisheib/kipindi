@@ -192,7 +192,7 @@ function stubReply(userText: string, lang: Lang): Reply {
       lang,
       paragraphs: [
         lang === "sw"
-          ? "Kila mchezaji ana kiungo cha kualika marafiki. Nenda {Wasifu → Alika upate} kupata kiungo chako na kukishiriki."
+          ? "Kila mchezaji ana kiungo cha kualika marafiki. Nenda {Wasifu → Alika na upate zawadi} kupata kiungo chako na kukishiriki."
           : "Every player gets a personal referral link. Open {Profile → Invite & Earn} to copy and share yours[1].",
         lang === "sw"
           ? "Rafiki anaposajili na kucheza, unaweza kupata tume, bonasi au tuzo — kulingana na mpango ulioko hai."

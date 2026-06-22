@@ -32,6 +32,9 @@ export function PublicFooter() {
           <p className="text-text-muted leading-relaxed text-[12px]">
             Licensed by the Gaming Board of Tanzania.
           </p>
+          <p className="text-text-subtle italic text-[11px] leading-relaxed">
+            Imepata leseni kutoka Bodi ya Michezo ya Kubahatisha ya Tanzania.
+          </p>
           <p className="font-mono text-[11px] text-text-subtle tabular-nums">
             License: {license}
           </p>
@@ -40,7 +43,7 @@ export function PublicFooter() {
           </p>
         </div>
 
-        <FooterCol heading="Play safe" sw="Cheza salama">
+        <FooterCol heading="Play safe" sw="Cheza kistaarabu">
           <FooterLink href="/profile/responsible-gambling">Set limits</FooterLink>
           <FooterLink href="/legal/responsible-gambling">Take a break / Self-exclude</FooterLink>
           <li>
@@ -55,6 +58,7 @@ export function PublicFooter() {
           </li>
           <li className="italic text-text-subtle text-[11.5px]">
             If gambling stops being fun, stop.
+            <span className="block text-[11px] mt-0.5">Kama kucheza kamari imekuwa sio burudani, acha.</span>
           </li>
         </FooterCol>
 

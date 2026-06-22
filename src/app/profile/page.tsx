@@ -203,10 +203,10 @@ export default async function ProfilePage() {
           Account · Akaunti
         </h2>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-          <SettingRow icon={I.gift}            title="Invite & Earn"       sw="Alika upate"     subtitle="Refer friends · earn rewards"         href="/profile/invite" accent badge="New" />
+          <SettingRow icon={I.gift}            title="Invite & Earn"       sw="Alika na upate zawadi"     subtitle="Refer friends · earn rewards"         href="/profile/invite" accent badge="New" />
           <SettingRow icon={I.user}            title="My account"          sw="Akaunti yangu"   subtitle="Activity · Export · Close"            href="/profile/account" />
           <SettingRow icon={I.settings}        title="Responsible gambling" sw="Vikomo"          subtitle="Limits · Self-exclusion"              href="/profile/responsible-gambling" />
-          <SettingRow icon={I.shieldcheck}     title="Verify ID"           sw="Thibitisha"      subtitle="NIDA · documents · review"            href="/profile/kyc" />
+          <SettingRow icon={I.shieldcheck}     title="Verify ID"           sw="Kuthibitisha kitambulisho"      subtitle="NIDA · documents · review"            href="/profile/kyc" />
           <SettingRow icon={I.fileSignature}   title="Source of funds"     sw="Asili ya fedha"  subtitle="AML declaration"                      href="/profile/source-of-funds" />
           <SettingRow icon={I.device}          title="Active sessions"     sw="Vifaa"           subtitle="Devices · Sign out everywhere"        href="/profile/sessions" />
           <SettingRow icon={I.heartPulse}      title="Help & support"      sw="Msaada"          subtitle="FAQ · Helpline · Email"               href="/help" />

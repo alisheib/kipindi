@@ -19,14 +19,14 @@ export function AuthFlash() {
     if (!welcome) return;
     if (welcome === "new") {
       toast({
-        title: "Welcome to 50pick · Karibu",
-        description: "TZS 10,000 starter credit is in your wallet. Verify ID to enable withdrawals.",
+        title: "Welcome to 50pick · Karibu kwenye 50pick",
+        description: "TZS 10,000 starter credit is in your wallet. Verify ID to enable withdrawals. · Kuna bonus ya kuanzia ya TZS 10,000 kwenye pochi yako.",
         variant: "success",
       });
     } else if (welcome === "back") {
       toast({
         title: "Welcome back · Karibu tena",
-        description: "You're signed in.",
+        description: "You're signed in. · Umeingia kwenye akaunti.",
         variant: "success",
       });
     }

@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ReferralShare } from "./invite-client";
 import { formatDateShort as fmtDate } from "@/lib/utils";
 
-export const metadata = { title: "Invite & Earn · Alika upate" };
+export const metadata = { title: "Invite & Earn · Alika na upate zawadi" };
 export const dynamic = "force-dynamic";
 
 /** Compact TZS for the ring center: 31000 → "31K", 1_284_000 → "1.3M". */
@@ -95,13 +95,13 @@ export default async function InvitePage() {
 
   return (
     <div className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-3">
-      <h1 className="sr-only">Invite &amp; Earn · Alika upate</h1>
+      <h1 className="sr-only">Invite &amp; Earn · Alika na upate zawadi</h1>
 
       {/* Title row */}
       <div className="flex items-center justify-between">
         <div>
           <p className="font-display text-[19px] font-bold leading-none">
-            Invite &amp; Earn <span className="font-normal italic text-text-subtle text-[14px]">· Alika upate</span>
+            Invite &amp; Earn <span className="font-normal italic text-text-subtle text-[14px]">· Alika na upate zawadi</span>
           </p>
         </div>
         <Chip variant={s.programEnabled ? "active" : "paused"}>{s.programEnabled ? "Active" : "Paused"}</Chip>
