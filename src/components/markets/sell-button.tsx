@@ -27,6 +27,7 @@ export function SellButton({
   value,
   placedAt,
   resolutionAt,
+  serverNow,
 }: {
   positionId: string;
   /** Stake at place-time. */
@@ -42,6 +43,11 @@ export function SellButton({
    *  to action sitting in front of a market the server has already
    *  shut for cash-outs. Mirrors the dial's closedNow pattern. */
   resolutionAt?: string;
+  /** Server's Date.now() at render time. Passed from the server component
+   *  so the client can calibrate its clock against the server — prevents
+   *  clock skew (e.g. server 1 min ahead of device) from showing 6 min
+   *  instead of 5 on the free-exit countdown. */
+  serverNow?: number;
 }) {
   const [pending, start] = useTransition();
   const [closedNow, setClosedNow] = useState(false);
@@ -51,11 +57,15 @@ export function SellButton({
     if (!placedAt) return;
     const placedTs = Date.parse(placedAt);
     if (!Number.isFinite(placedTs)) return;
-    const update = () => setGraceRemainMs(Math.max(0, placedTs + GRACE_MS - Date.now()));
+    // Compute clock offset once: server ahead → positive offset.
+    // Applying it keeps the countdown aligned to server time so a device
+    // clock that's 1 min behind doesn't show 6:00 instead of 5:00.
+    const clockOffset = serverNow != null ? serverNow - Date.now() : 0;
+    const update = () => setGraceRemainMs(Math.max(0, placedTs + GRACE_MS - (Date.now() + clockOffset)));
     update();
     const id = setInterval(update, 1000);
     return () => clearInterval(id);
-  }, [placedAt]);
+  }, [placedAt, serverNow]);
   // closedNow flips client-side the moment the wall clock crosses
   // resolutionAt. Tick once per second.
   useEffect(() => {

@@ -172,6 +172,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                       value={liveValue}
                       placedAt={p.placedAt}
                       resolutionAt={m.resolutionAt}
+                      serverNow={Date.now()}
                     />
                   )}
                 </div>
