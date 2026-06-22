@@ -373,6 +373,7 @@ export function betPlacedHtml({ reference, side, stake, payoutIfWin, marketTitle
       { label: "Resolves", value: resolutionDate },
     ])}
     ${subtitle("Payout is calculated at resolution from the final pool share.")}
+    ${subtitle("45-min free exit · You can sell this position within 45 minutes for a full refund at no cost. After that, a 9% fee applies on early exit.")}
     ${refNote()}
     ${ctaButton("/positions", "View positions · Tazama madau")}
   `);
@@ -417,8 +418,8 @@ export function lossNotificationHtml({ reference, stake, marketTitle, settledAt 
   `);
 }
 
-export function cashOutReceiptHtml({ reference, value, stake, marketTitle, soldAt }: {
-  reference: string; value: number; stake: number; marketTitle: string; soldAt?: string;
+export function cashOutReceiptHtml({ reference, value, stake, marketTitle, soldAt, gracePeriod }: {
+  reference: string; value: number; stake: number; marketTitle: string; soldAt?: string; gracePeriod?: boolean;
 }): string {
   const net = value - stake;
   const profit = net >= 0;
@@ -426,15 +427,35 @@ export function cashOutReceiptHtml({ reference, value, stake, marketTitle, soldA
     ${eyebrow("Position sold", "Imeuzwa")}
     ${heading(`Cashed out · ${fmtTzs(value)}`)}
     ${subtitle(marketTitle)}
+    ${gracePeriod ? `<p style="margin:12px 0;padding:10px 14px;background:oklch(40% 0.12 152 / 0.15);border-left:3px solid oklch(60% 0.14 152);border-radius:6px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:oklch(80% 0.10 152)">Grace period exit — full stake returned, no fee applied.</p>` : ""}
     ${detailRows([
       { label: "Reference", value: reference },
-      { label: "Sellback", value: fmtTzs(value) },
-      { label: "Net", value: `${profit ? "+" : "\u2212"}${fmtTzs(Math.abs(net))}`, tone: profit ? "good" : "bad" },
+      { label: "Sellback", value: fmtTzs(value), tone: gracePeriod ? "good" as const : undefined },
+      ...(gracePeriod ? [{ label: "Fee", value: "None (grace period)", tone: "good" as const }] : [{ label: "Net", value: `${profit ? "+" : "\u2212"}${fmtTzs(Math.abs(net))}`, tone: profit ? "good" as const : "bad" as const }]),
       { label: "Stake", value: fmtTzs(stake) },
       ...(soldAt ? [{ label: "Sold", value: fmtDateTime(soldAt) }] : []),
     ])}
     ${refNote()}
     ${ctaButton("/positions", "View positions \u00b7 Tazama madau")}
+  `);
+}
+
+export function oneSidedRefundHtml({ reference, stake, marketTitle, settledAt }: {
+  reference: string; stake: number; marketTitle: string; settledAt?: string;
+}): string {
+  return wrap(`
+    ${eyebrow("Full refund", "Pesa imerudishwa")}
+    ${heading(`Refunded · ${fmtTzs(stake)}`)}
+    ${subtitle(marketTitle)}
+    <p style="margin:12px 0;padding:10px 14px;background:oklch(40% 0.12 262 / 0.15);border-left:3px solid oklch(60% 0.14 262);border-radius:6px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:oklch(80% 0.10 262)">All bets were placed on the same side — no opposing pool existed to pay winnings from. Your full stake has been returned at no fee.</p>
+    ${detailRows([
+      { label: "Reference", value: reference },
+      { label: "Refunded", value: fmtTzs(stake), tone: "good" },
+      { label: "Fee", value: "None" },
+      ...(settledAt ? [{ label: "Settled", value: fmtDateTime(settledAt) }] : []),
+    ])}
+    ${refNote()}
+    ${ctaButton("/markets", "Browse markets \u00b7 Angalia masoko")}
   `);
 }
 

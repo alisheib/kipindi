@@ -81,8 +81,8 @@ export function notifyBetPlaced(userId: string, opts: {
     kind: "BET_PLACED",
     titleEn: `Bet placed · ${opts.side} TZS ${opts.stake.toLocaleString()}`,
     titleSw: `Dau limewekwa · ${opts.side} TZS ${opts.stake.toLocaleString()}`,
-    bodyEn: `${opts.marketTitle.slice(0, 70)} · payout calculated at resolution.`,
-    bodySw: `${opts.marketTitle.slice(0, 50)} · lipo itahesabiwa baada ya tukio.`,
+    bodyEn: `${opts.marketTitle.slice(0, 70)} · free exit within 45 min, then 9% fee applies.`,
+    bodySw: `${opts.marketTitle.slice(0, 50)} · toka bila gharama ndani ya dakika 45.`,
     href: `/markets/${opts.marketId}`,
   });
 }
@@ -321,14 +321,31 @@ export function notifyAdminMarketCancelled(adminUserId: string, opts: { title: s
 }
 
 /** Cashout receipt — when a player sells a position early. */
-export function notifyCashout(userId: string, opts: { amount: number; marketTitle: string; marketId: string }) {
+export function notifyCashout(userId: string, opts: { amount: number; marketTitle: string; marketId: string; inGracePeriod?: boolean }) {
   return notify({
     userId,
     kind: "WIN",
-    titleEn: `Cashed out · TZS ${opts.amount.toLocaleString()}`,
-    titleSw: `Umetoa · TZS ${opts.amount.toLocaleString()}`,
-    bodyEn: `Early exit from ${opts.marketTitle.slice(0, 60)}. Funds in wallet.`,
-    bodySw: `Umetoka mapema. Pesa imo kwenye pochi yako.`,
+    titleEn: `${opts.inGracePeriod ? "Free exit" : "Cashed out"} · TZS ${opts.amount.toLocaleString()}`,
+    titleSw: `${opts.inGracePeriod ? "Toka bila gharama" : "Umetoa"} · TZS ${opts.amount.toLocaleString()}`,
+    bodyEn: opts.inGracePeriod
+      ? `Full stake returned — sold within the 45-min grace window, no fee.`
+      : `Early exit from ${opts.marketTitle.slice(0, 60)}. Funds in wallet.`,
+    bodySw: opts.inGracePeriod
+      ? `Pesa yote imerudishwa — umetoka ndani ya dakika 45.`
+      : `Umetoka mapema. Pesa imo kwenye pochi yako.`,
+    href: `/markets/${opts.marketId}`,
+  });
+}
+
+/** One-sided refund — all bets were on the same side so everyone gets their stake back at 0% fee. */
+export function notifyOneSidedRefund(userId: string, opts: { stake: number; marketTitle: string; marketId: string }) {
+  return notify({
+    userId,
+    kind: "WIN",
+    titleEn: `Full refund · TZS ${opts.stake.toLocaleString()}`,
+    titleSw: `Pesa imerudishwa · TZS ${opts.stake.toLocaleString()}`,
+    bodyEn: `${opts.marketTitle.slice(0, 60)} — all bets were on one side. Full stake returned, no fee.`,
+    bodySw: `Dau lako lote limerudishwa bila gharama — wote walibetia upande mmoja.`,
     href: `/markets/${opts.marketId}`,
   });
 }

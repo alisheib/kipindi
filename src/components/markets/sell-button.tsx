@@ -19,11 +19,13 @@ import { SellConfirmModal } from "./sell-confirm-modal";
 import { OperationResultModal } from "./operation-result-modal";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
+const GRACE_MS = 45 * 60_000;
 
 export function SellButton({
   positionId,
   stake,
   value,
+  placedAt,
   resolutionAt,
 }: {
   positionId: string;
@@ -31,6 +33,9 @@ export function SellButton({
   stake: number;
   /** Current sellback value (post-slippage). */
   value: number;
+  /** ISO timestamp when the position was placed — used to determine
+   *  whether the 45-minute free-exit grace window is still open. */
+  placedAt?: string;
   /** ISO timestamp when the underlying market closes. If supplied, the
    *  button switches to a "Market closed" state the instant the wall
    *  clock crosses this — avoiding the stale "Sell now · TZS X" call
@@ -39,9 +44,20 @@ export function SellButton({
   resolutionAt?: string;
 }) {
   const [pending, start] = useTransition();
+  const [closedNow, setClosedNow] = useState(false);
+  // Grace period — ticks once per second to update the countdown label.
+  const [graceRemainMs, setGraceRemainMs] = useState<number>(0);
+  useEffect(() => {
+    if (!placedAt) return;
+    const placedTs = Date.parse(placedAt);
+    if (!Number.isFinite(placedTs)) return;
+    const update = () => setGraceRemainMs(Math.max(0, placedTs + GRACE_MS - Date.now()));
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [placedAt]);
   // closedNow flips client-side the moment the wall clock crosses
   // resolutionAt. Tick once per second.
-  const [closedNow, setClosedNow] = useState(false);
   useEffect(() => {
     if (!resolutionAt) return;
     const closeTs = Date.parse(resolutionAt);
@@ -57,12 +73,18 @@ export function SellButton({
   const router = useRouter();
   const { toast } = useToast();
 
+  const inGrace = graceRemainMs > 0;
   const ratio = stake > 0 ? value / stake : 0;
   const net = value - stake;
-  const tone =
+  const tone = inGrace ? "yes" :
     ratio >= 1.05 ? "yes" :
     ratio >= 1.00 ? "warning" :
     "no";
+
+  // Grace countdown label: "43:12" remaining
+  const graceMin = Math.floor(graceRemainMs / 60_000);
+  const graceSec = Math.floor((graceRemainMs % 60_000) / 1000);
+  const graceLabel = `${graceMin}:${String(graceSec).padStart(2, "0")}`;
 
   const openConfirm = () => {
     if (pending || closedNow) return;
@@ -111,6 +133,13 @@ export function SellButton({
 
   return (
     <>
+      {inGrace && !closedNow && (
+        <div className="mb-1.5 flex items-center gap-1.5 px-2 py-1 rounded-md bg-brand-500/[0.12] border border-brand-500/30">
+          <span className="font-mono text-[10px] font-bold text-brand-300 uppercase tracking-[0.12em]">Free exit</span>
+          <span className="font-mono text-[10px] text-brand-300 tabular-nums">{graceLabel}</span>
+          <span className="font-mono text-[10px] text-text-subtle">· no fee · bila gharama</span>
+        </div>
+      )}
       <button
         type="button"
         onClick={closedNow ? undefined : openConfirm}
@@ -118,6 +147,8 @@ export function SellButton({
         aria-label={
           closedNow
             ? "Market closed — awaiting settlement"
+            : inGrace
+            ? `Free exit — full refund TZS ${fmt(value)}`
             : `Cash out for TZS ${fmt(value)}`
         }
         className={`btn ${closedNow ? "btn-ghost" : btnVariant} btn-md w-full whitespace-normal h-auto`}
@@ -126,14 +157,16 @@ export function SellButton({
         <span>
           {closedNow ? "Market closed · Soko limefungwa"
             : pending ? "Selling…"
+            : inGrace ? "Free exit · Toka bila gharama"
             : "Sell now"}
         </span>
         {!closedNow && (
           <span className="font-mono tabular-nums">
             TZS {fmt(value)}
-            <span className="ml-1.5 opacity-80 text-[11px]">
-              {net >= 0 ? "+" : "−"}{fmt(Math.abs(net))}
-            </span>
+            {inGrace
+              ? <span className="ml-1.5 opacity-80 text-[11px]">full refund</span>
+              : <span className="ml-1.5 opacity-80 text-[11px]">{net >= 0 ? "+" : "−"}{fmt(Math.abs(net))}</span>
+            }
           </span>
         )}
       </button>

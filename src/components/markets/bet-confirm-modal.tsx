@@ -236,6 +236,18 @@ export function BetConfirmModal({
             </p>
           </div>
 
+          {/* Grace period disclosure */}
+          <div className="mt-2 rounded-lg border border-brand-500/30 bg-brand-500/[0.07] px-3 py-2.5 flex items-start gap-2">
+            <I.shieldcheck s={13} className="shrink-0 mt-0.5 text-brand-300" />
+            <p className="text-[11px] leading-relaxed text-text-muted">
+              <span className="font-semibold text-brand-300">45-min free exit · </span>
+              Sell this position within 45 minutes for a full refund — no fee.
+              After that, a 9% fee applies on early exit.
+              <br />
+              <span className="text-text-subtle">Toka bila gharama ndani ya dakika 45. Baadaye, ada ya 9% itatumika.</span>
+            </p>
+          </div>
+
           {/* D3: Lean warning (qualitative, no payout figure) */}
           {lean !== "fair" && <HouseLeanWarning level={lean} />}
 

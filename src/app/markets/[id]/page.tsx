@@ -76,6 +76,10 @@ export default async function MarketDetail({
   const session = await currentSession();
   const myPositions = session ? (await listPositionsForUser(session.userId)).filter((p) => p.marketId === m.id) : [];
   const isResolved = m.status === "RESOLVED" || m.status === "VOIDED";
+  // One-sided: all bets are on the same side — winners would win their own money.
+  // Platform rule: full refund at 0% fee at resolution. Surface a disclaimer so
+  // players know before they place or hold a bet.
+  const isOneSided = !isResolved && ((m.yesPool > 0 && m.noPool === 0) || (m.yesPool === 0 && m.noPool > 0));
   // closed-by-time = the resolutionAt clock has elapsed but no resolver
   // has run yet. The dial cannot accept a bet here (server enforces),
   // so the page swaps it out for an "awaiting settlement" card.
@@ -85,7 +89,7 @@ export default async function MarketDetail({
   const positionCashOutValues = new Map<string, number | null>();
   for (const p of myPositions) {
     if (!isResolved && m.status === "LIVE" && p.status === "OPEN") {
-      positionCashOutValues.set(p.id, (await cashOutValue({ side: p.side, stake: p.stake }, { id: m.id, yesPool: m.yesPool, noPool: m.noPool })).value);
+      positionCashOutValues.set(p.id, (await cashOutValue({ side: p.side, stake: p.stake, placedAt: p.placedAt }, { id: m.id, yesPool: m.yesPool, noPool: m.noPool })).value);
     } else {
       positionCashOutValues.set(p.id, null);
     }
@@ -164,7 +168,26 @@ export default async function MarketDetail({
             <KPI label="Resolves"   value={fmtTime(m.resolutionAt)} mono />
           </div>
 
-          {/* 3. Countdown — urgency signal (live only) */}
+          {/* 3a. One-sided disclaimer — shown when all bets are on one side */}
+          {isOneSided && (
+            <div className="rounded-lg border border-warning-border bg-warning-bg/30 px-4 py-3 flex items-start gap-2.5">
+              <I.warning s={15} className="shrink-0 mt-0.5 text-warning-fg" />
+              <div>
+                <p className="font-mono text-[10.5px] font-bold uppercase tracking-[0.14em] text-warning-fg mb-1">
+                  One-sided market · Soko la upande mmoja
+                </p>
+                <p className="text-[12px] leading-relaxed text-text-muted">
+                  All current bets are on the same side. If no opposing bets are placed before resolution,
+                  everyone receives a <strong>full refund at no fee</strong> — there is no opposing pool to pay winnings from.
+                </p>
+                <p className="mt-1 text-[11px] italic text-text-subtle">
+                  Dau zote ziko upande mmoja. Kama hakuna dau upande mwingine, kila mtu atapata pesa yake yote bila gharama.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* 3b. Countdown — urgency signal (live only) */}
           {!isResolved && (
             <div className="rounded-lg glass-panel p-4">
               <Countdown to={m.resolutionAt} label="Closes in · Inafungwa baada ya" />
@@ -199,6 +222,7 @@ export default async function MarketDetail({
                         positionId={p.id}
                         stake={p.stake}
                         value={liveValue}
+                        placedAt={p.placedAt}
                         resolutionAt={m.resolutionAt}
                       />
                     )}

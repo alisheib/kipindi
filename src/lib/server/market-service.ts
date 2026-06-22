@@ -22,10 +22,9 @@ import { isLockedOut } from "./responsible-gambling";
 import { rateCheck } from "./rate-limit";
 import { getEffectiveConfig, payoutForWhole, settledPayoutWhole } from "./market-config";
 import { recordSnapshot, seedHistory } from "./market-history";
-import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, notifyAdminMarketResolution, notifyMarketCancelled, notifyAdminMarketCancelled } from "./notification-service";
-import { sendEmailToUser, betPlacedHtml, winNotificationHtml, lossNotificationHtml, cashOutReceiptHtml, marketResolutionAdminHtml, marketCancelledRefundHtml, marketCancelledAdminHtml } from "./email";
+import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, notifyAdminMarketResolution, notifyMarketCancelled, notifyAdminMarketCancelled, notifyOneSidedRefund } from "./notification-service";
+import { sendEmailToUser, betPlacedHtml, winNotificationHtml, lossNotificationHtml, cashOutReceiptHtml, oneSidedRefundHtml, marketResolutionAdminHtml, marketCancelledRefundHtml, marketCancelledAdminHtml } from "./email";
 import { onRecruitBet } from "./affiliate-service";
-import { seedMarket, settleHousePosition, canSeedNewMarket, getHousePoolSeedForMarket, creditCashOutFee } from "./house-pool";
 import type { ServiceResult } from "./auth-service";
 import { marketStore, positionStore } from "./market-dal";
 
@@ -154,10 +153,6 @@ export async function createMarket(input: CreateMarketInput) {
   const now = new Date().toISOString();
   const id = `mkt_${randomId(10)}`;
 
-  // Seed house liquidity — equal on both sides. Returns 0 if reserve
-  // is empty or seeding is disabled (seedPerSide = 0).
-  const houseSeed = await seedMarket(id);
-
   const m: StoredMarket = {
     id,
     titleEn: input.titleEn,
@@ -167,8 +162,8 @@ export async function createMarket(input: CreateMarketInput) {
     resolutionCriterion: input.resolutionCriterion,
     resolutionAt: input.resolutionAt,
     status: "LIVE",
-    yesPool: houseSeed,
-    noPool: houseSeed,
+    yesPool: 0,
+    noPool: 0,
     predictorCount: 0,
     resolvedOutcome: null,
     resolutionStage1By: null, resolutionStage1At: null,
@@ -185,7 +180,7 @@ export async function createMarket(input: CreateMarketInput) {
     actorId: input.proposedBy,
     targetType: "Market",
     targetId: m.id,
-    payload: { titleEn: m.titleEn, category: m.category, sourceUrl: m.sourceUrl, resolutionAt: m.resolutionAt, houseSeedPerSide: houseSeed },
+    payload: { titleEn: m.titleEn, category: m.category, sourceUrl: m.sourceUrl, resolutionAt: m.resolutionAt },
   });
   return m;
 }
@@ -412,11 +407,6 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
       let winnersPaid = 0;
       const settleCfg = await getEffectiveConfig(cur.id);
 
-      // Settle house virtual position for this demo market
-      const demoHouseSettle = await settleHousePosition(
-        cur.id, outcome, cur.yesPool + cur.noPool, settleCfg.reserveRate,
-      );
-
       const winningPool = outcome === "YES" ? cur.yesPool : cur.noPool;
       const myPositions = (await listPositionsForMarket(cur.id)).filter((p) => p.status === "OPEN");
       for (const p of myPositions) {
@@ -475,7 +465,6 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
           payoutModel: "whole-pool",
           winningPool,
           winnersPaid,
-          housePool: { returnedToReserve: demoHouseSettle.returnedToReserve, reserveFee: demoHouseSettle.reserveFee, lossAbsorbed: demoHouseSettle.lossAbsorbed },
           reason: "Demo market countdown elapsed; no human officer required for synthetic markets",
         },
       });
@@ -619,17 +608,20 @@ export const CASHOUT_SLIPPAGE = 0.09;
  * Returns: value (net to player), gross (= the stake removed from the pool),
  * fee (the house commission), feeRate, ratio.
  */
+const GRACE_PERIOD_MS = 45 * 60_000; // 45 minutes
+
 export async function cashOutValue(
-  position: Pick<StoredPosition, "side" | "stake">,
+  position: Pick<StoredPosition, "side" | "stake" | "placedAt">,
   market: Pick<StoredMarket, "id" | "yesPool" | "noPool">,
-): Promise<{ value: number; ratio: number; gross: number; fee: number; feeRate: number }> {
+): Promise<{ value: number; ratio: number; gross: number; fee: number; feeRate: number; inGracePeriod: boolean }> {
   const cfg = await getEffectiveConfig(market.id);
-  const feeRate = Math.min(0.30, Math.max(0, cfg.cashOutFeeRate ?? CASHOUT_SLIPPAGE));
+  const inGracePeriod = Boolean(position.placedAt) && (Date.now() - Date.parse(position.placedAt) < GRACE_PERIOD_MS);
+  const feeRate = inGracePeriod ? 0 : Math.min(0.30, Math.max(0, cfg.cashOutFeeRate ?? CASHOUT_SLIPPAGE));
   const gross = Math.max(0, Math.round(position.stake)); // the player's money in the pool
-  const value = Math.round(gross * (1 - feeRate));        // what they get back
-  const cashOutFee = Math.max(0, gross - value);          // our commission
+  const value = inGracePeriod ? gross : Math.round(gross * (1 - feeRate)); // full refund in grace
+  const cashOutFee = Math.max(0, gross - value);          // our commission (0 in grace)
   const ratio = gross > 0 ? value / gross : 0;
-  return { value, ratio, gross, fee: cashOutFee, feeRate };
+  return { value, ratio, gross, fee: cashOutFee, feeRate, inGracePeriod };
 }
 
 export async function cashOutPosition(
@@ -658,7 +650,7 @@ export async function cashOutPosition(
     const wallet = await db.wallet.findByUserId(userId);
     if (!wallet) return { ok: false as const, error: "Wallet not found.", code: "NOT_FOUND" as const };
 
-    const { value, gross, fee: cashOutFee, feeRate } = await cashOutValue(p, m);
+    const { value, gross, fee: cashOutFee, feeRate, inGracePeriod } = await cashOutValue(p, m);
     if (value <= 0) {
       return { ok: false as const, error: "Current cash-out value is zero — your side has no live pool.", code: "INVALID" as const };
     }
@@ -713,16 +705,11 @@ export async function cashOutPosition(
       createdAt: now, updatedAt: now, completedAt: now,
     });
 
-    // Book the withheld commission to the house reserve (operator revenue). The
-    // pools were debited by `gross`, the player got `value`, so this `cashOutFee`
-    // is the remainder — moving it to the reserve keeps the system conserved.
-    if (cashOutFee > 0) await creditCashOutFee(m.id, cashOutFee);
-
-    notifyCashout(userId, { amount: value, marketTitle: m.titleEn, marketId: m.id });
+    notifyCashout(userId, { amount: value, marketTitle: m.titleEn, marketId: m.id, inGracePeriod });
     sendEmailToUser(userId, (email) => ({
       to: email,
       subject: `Position sold · TZS ${Math.round(value).toLocaleString("en-US")}`,
-      html: cashOutReceiptHtml({ reference: p.id, value, stake: p.stake, marketTitle: m.titleEn, soldAt: now }),
+      html: cashOutReceiptHtml({ reference: p.id, value, stake: p.stake, marketTitle: m.titleEn, soldAt: now, gracePeriod: inGracePeriod }),
       tag: "cashout",
     })).catch(() => {});
 
@@ -790,18 +777,67 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   const grossPool = m.yesPool + m.noPool;
   const winningPool = opts.outcome === "YES" ? m.yesPool : opts.outcome === "NO" ? m.noPool : 0;
 
-  // Settle the house's virtual position — runs for both VOID and real outcomes.
-  const houseSettle = await settleHousePosition(
-    m.id,
-    opts.outcome === "VOID" ? "VOID" : opts.outcome,
-    grossPool,
-    settleCfg.reserveRate,
-  );
-
   // Settle only OPEN positions. A CASHED_OUT (or otherwise already-settled)
   // position has already paid out and had its stake removed from the pool —
   // re-settling it here would double-credit the player.
   const myPositions = (await listPositionsForMarket(m.id)).filter((p) => p.status === "OPEN");
+
+  // One-sided market: all bets went to the same side, so there is no
+  // opposing pool to pay winnings from. Per the platform rules, all
+  // bettors receive a full stake refund at 0% fee.
+  const isOneSided = opts.outcome !== "VOID"
+    && ((m.yesPool > 0 && m.noPool === 0) || (m.yesPool === 0 && m.noPool > 0));
+
+  if (isOneSided) {
+    for (const p of myPositions) {
+      const w = await db.wallet.findByUserId(p.userId);
+      if (!w) continue;
+      const updated = await db.wallet.adjust(w.id, { balance: p.stake });
+      const balanceAfter = updated?.balance ?? w.balance + p.stake;
+      p.status = "VOID"; p.finalPayout = p.stake; p.settledAt = m.resolutionStage2At!;
+      await positionStore.set(p);
+      await db.txn.create({
+        id: `txn_${randomId(12)}`,
+        walletId: w.id, userId: p.userId,
+        type: "BET_REFUND", status: "CONFIRMED",
+        amount: p.stake, fee: 0, taxWithheld: 0,
+        balanceAfter, currency: "TZS",
+        provider: "INTERNAL", providerRef: null, msisdn: null,
+        description: `One-sided refund · "${m.titleEn.slice(0, 60)}"`,
+        betId: p.id,
+        amlReason: null,
+        createdAt: m.resolutionStage2At!, updatedAt: m.resolutionStage2At!, completedAt: m.resolutionStage2At!,
+      });
+      notifyOneSidedRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id });
+      sendEmailToUser(p.userId, (email) => ({
+        to: email,
+        subject: `Full refund · TZS ${Math.round(p.stake).toLocaleString("en-US")} returned`,
+        html: oneSidedRefundHtml({ reference: p.id, stake: p.stake, marketTitle: m.titleEn, settledAt: m.resolutionStage2At ?? undefined }),
+        tag: "one-sided-refund",
+      })).catch(() => {});
+    }
+    audit({
+      category: "ADMIN",
+      action: "market.resolved.one_sided_refund",
+      actorId: opts.officerId,
+      targetType: "Market",
+      targetId: m.id,
+      payload: {
+        outcome: opts.outcome,
+        yesPool: m.yesPool, noPool: m.noPool,
+        grossPool,
+        stage1By: m.resolutionStage1By, stage2By: m.resolutionStage2By,
+        sourceUrl: m.sourceUrl,
+        reason: "One-sided market — all bets on same side, full refund issued at 0% fee",
+      },
+    });
+    try {
+      const { onMarketResolved } = await import("./proposals-service");
+      await onMarketResolved(m.id, { voided: false });
+    } catch { /* proposal prize must never break settlement */ }
+    return { ok: true, data: { stage: "complete", winnersPaid: 0 } };
+  }
+
   if (opts.outcome === "VOID") {
     // Refund everyone
     for (const p of myPositions) {
@@ -896,7 +932,6 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
       netPool: Math.round((m.yesPool + m.noPool) * (1 - settleCfg.taxRate - settleCfg.commissionRate - settleCfg.reserveRate - settleCfg.aggregatorRate)),
       winningPool,
       winnersPaid,
-      housePool: { returnedToReserve: houseSettle.returnedToReserve, reserveFee: houseSettle.reserveFee, lossAbsorbed: houseSettle.lossAbsorbed },
       stage1By: m.resolutionStage1By, stage2By: m.resolutionStage2By,
       sourceUrl: m.sourceUrl,
     },
@@ -923,7 +958,6 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
  * What it does, all under the market lock so it's all-or-nothing:
  *   - refunds EVERY open position its FULL stake (no fee — the player didn't
  *     choose to exit; this is a cancellation, so they're made whole),
- *   - returns both house seeds to the reserve (settleHousePosition VOID),
  *   - zeroes the pools and marks the market VOIDED,
  *   - audits the action (COMPLIANCE) with the mandatory reason + totals.
  *
@@ -947,9 +981,6 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
     const now = new Date().toISOString();
     const grossPool = m.yesPool + m.noPool;
     const cfg = await getEffectiveConfig(m.id);
-
-    // Return both house seeds to the reserve (VOID path → no reserve fee).
-    await settleHousePosition(m.id, "VOID", grossPool, cfg.reserveRate);
 
     // Refund every OPEN position its full stake. db.wallet.adjust is atomic, so
     // (like the resolveMarket VOID path) no nested wallet lock is needed.
