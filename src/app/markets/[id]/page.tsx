@@ -98,11 +98,20 @@ export default async function MarketDetail({
   const probChart = await getProbabilityChart(m.id);
   const comments = await listComments(m.id, session?.userId ?? null);
 
+  // Pre-compute hedge-warning for the aside
+  const openPositions = myPositions.filter((p) => p.status === "OPEN");
+  const heldSides = new Set(openPositions.map((p) => p.side));
+  const hedgeBoth = heldSides.has("YES") && heldSides.has("NO");
+  const hedgeOpposite = (side === "YES" && heldSides.has("NO")) || (side === "NO" && heldSides.has("YES"));
+  const heldLabel = [...heldSides].join(" + ");
+
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6">
+      {/* ── Back link ── */}
       <a href="/markets" className="text-[12px] font-mono uppercase tracking-[0.16em] text-text-subtle hover:text-text">← Markets</a>
 
-      <header className="mt-3 mb-6">
+      {/* ── Page header — title, badges, share ── */}
+      <header className="mt-3 mb-5">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center rounded-pill border border-border bg-bg-elevated px-3 py-1 font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
             {m.category}
@@ -129,54 +138,44 @@ export default async function MarketDetail({
           </a>
           <ShareButton marketId={m.id} title={m.titleEn} />
         </div>
-        <h1 className="font-display text-[28px] md:text-[34px] font-bold leading-tight tracking-[-0.02em] text-text">{m.titleEn}</h1>
-        {m.titleSw && <p className="mt-2 text-[15px] italic text-text-subtle">{m.titleSw}</p>}
+        <h1 className="font-display text-[26px] md:text-[34px] font-bold leading-tight tracking-[-0.02em] text-text">{m.titleEn}</h1>
+        {m.titleSw && <p className="mt-1.5 text-[14px] italic text-text-subtle">{m.titleSw}</p>}
       </header>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
-        <section>
-          {/* TippingBar carries its own YES / TIPPING / NO labels — the
-              older page-level duplicate row was removed to avoid the
-              "YES 50%  YES 50%" double-line that appeared on market detail. */}
+      {/* ── Main two-column layout ──
+          On mobile (flex-col): aside renders first (order-1) so the
+          betting widget is above-the-fold, then content below (order-2).
+          On desktop (lg:grid): left=content, right=sticky aside. ── */}
+      <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[1fr_360px] lg:items-start lg:gap-6">
+
+        {/* ══ LEFT — market information & analysis ══
+            order-2 on mobile (below the bet widget), order-1 on desktop (left col) */}
+        <section className="order-2 lg:order-1 min-w-0 space-y-5">
+
+          {/* 1. Probability bar — current crowd signal */}
           <TippingBar yesPct={yesPct} height={28} showLabels resolved={isResolved} />
 
-          {!isResolved && (
-            <div className="mt-7 rounded-lg glass-panel p-5">
-              <Countdown to={m.resolutionAt} label="Closes in · Inafungwa baada ya" />
-            </div>
-          )}
-
-          <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3">
+          {/* 2. KPI strip — volume, participation, timing at a glance */}
+          <div className="grid grid-cols-3 gap-3">
             <KPI label="Volume"     value={fmtTzs(m.yesPool + m.noPool)} icon={<I.chart s={14} />} />
             <KPI label="Predictors" value={String(totalPredictorCount)}  icon={<I.users s={14} />} />
             <KPI label="Resolves"   value={fmtTime(m.resolutionAt)} mono />
           </div>
 
-          {/* Probability over time — the signature "tipping line" chart */}
-          {probChart.ranges.length > 0 && (
-            <section className="mt-8 rounded-lg glass-panel p-4 lg:p-5">
-              <div className="w-full overflow-hidden">
-                <ProbabilityChart
-                  series={probChart.series as Record<string, { t: string; p: number }[]>}
-                  ranges={probChart.ranges}
-                  defaultRange={probChart.ranges[probChart.ranges.length - 1]}
-                  height={260}
-                />
-              </div>
-            </section>
+          {/* 3. Countdown — urgency signal (live only) */}
+          {!isResolved && (
+            <div className="rounded-lg glass-panel p-4">
+              <Countdown to={m.resolutionAt} label="Closes in · Inafungwa baada ya" />
+            </div>
           )}
 
-          <section className="mt-8 rounded-lg glass-panel p-5">
-            <h2 className="font-display text-[17px] font-semibold text-text mb-2">Resolution criterion</h2>
-            <p className="text-[14px] leading-relaxed text-text-muted whitespace-pre-line">{m.resolutionCriterion}</p>
-            <p className="mt-3 font-mono text-[12px] text-text-subtle">
-              Source · <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-text underline break-all">{m.sourceUrl}</a>
-            </p>
-          </section>
-
+          {/* 4. Your open positions — relevant context before reading the criterion */}
           {myPositions.length > 0 && (
-            <section className="mt-6 rounded-xl border border-border bg-bg-elevated p-5 space-y-3">
-              <h2 className="font-display text-[15px] font-semibold text-text">Your positions</h2>
+            <section className="rounded-xl border border-border bg-bg-elevated p-5 space-y-3">
+              <h2 className="font-display text-[15px] font-semibold text-text flex items-center gap-2">
+                <I.portfolio s={15} />
+                Your positions
+              </h2>
               {myPositions.map((p) => {
                 const liveValue = positionCashOutValues.get(p.id) ?? null;
                 return (
@@ -184,10 +183,6 @@ export default async function MarketDetail({
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[12px]">
                       <span className={p.side === "YES" ? "text-yes-300 font-bold" : "text-no-300 font-bold"}>{p.side}</span>
                       <span className="text-text-muted">stake {fmtTzs(p.stake)}</span>
-                      {/* Potential payout is NOT shown for OPEN positions (license
-                          review · 2026-05) — only the actual settled result. For an
-                          open position the "Sell now" button below is the single,
-                          clearly-labelled "what you'd get now" figure. */}
                       {p.status !== "OPEN" && (
                         <span className="text-gold-300">paid {fmtTzs(p.finalPayout ?? 0)}</span>
                       )}
@@ -210,39 +205,62 @@ export default async function MarketDetail({
               })}
             </section>
           )}
+
+          {/* 5. Resolution criterion — the rules of the bet */}
+          <section className="rounded-lg glass-panel p-5">
+            <h2 className="font-display text-[16px] font-semibold text-text mb-2 flex items-center gap-2">
+              <I.fileCheck s={15} className="text-text-subtle" />
+              Resolution criterion
+            </h2>
+            <p className="text-[14px] leading-relaxed text-text-muted whitespace-pre-line">{m.resolutionCriterion}</p>
+            <p className="mt-3 pt-3 border-t border-border/50 font-mono text-[11px] text-text-subtle flex items-center gap-1.5">
+              <I.ext s={11} />
+              <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-text underline break-all">{m.sourceUrl}</a>
+            </p>
+          </section>
+
+          {/* 6. Probability chart — historical analysis, intentionally last
+              so it doesn't distract from the primary bet intent above */}
+          {probChart.ranges.length > 0 && (
+            <section className="rounded-lg glass-panel p-4 lg:p-5">
+              <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-3 flex items-center gap-1.5">
+                <I.chart s={11} />
+                Probability over time
+              </p>
+              <div className="w-full overflow-hidden">
+                <ProbabilityChart
+                  series={probChart.series as Record<string, { t: string; p: number }[]>}
+                  ranges={probChart.ranges}
+                  defaultRange={probChart.ranges[probChart.ranges.length - 1]}
+                  height={240}
+                />
+              </div>
+            </section>
+          )}
         </section>
 
-        <aside className="space-y-3">
+        {/* ══ RIGHT ASIDE — betting widget ══
+            order-1 on mobile (above-the-fold, first thing seen),
+            order-2 + sticky on desktop (stays in view while scrolling) */}
+        <aside className="order-1 lg:order-2 space-y-3 lg:sticky lg:top-6">
           {!isResolved && m.status === "LIVE" && !closedByTime ? (
             session ? (
               <>
-              {/* If the player already holds a position here, say so — and if
-                  they're about to back the OPPOSITE side, warn that hedging
-                  costs the 9% margin on both sides (it's allowed, just never
-                  profitable). Prevents the "I bet YES then NO and lost both"
-                  confusion at scale. */}
-              {(() => {
-                const open = myPositions.filter((p) => p.status === "OPEN");
-                if (open.length === 0) return null;
-                const sides = new Set(open.map((p) => p.side));
-                const both = sides.has("YES") && sides.has("NO");
-                const opposite = (side === "YES" && sides.has("NO")) || (side === "NO" && sides.has("YES"));
-                const held = [...sides].join(" + ");
-                return (
-                  <div className="rounded-lg border border-warning-border bg-warning-bg/30 px-3.5 py-2.5">
-                    <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-warning-fg">
-                      You already hold {held} here
-                    </p>
-                    <p className="mt-1 text-[12px] leading-snug text-text-muted">
-                      {both
-                        ? "You're backing both sides — the 9% margin applies to each, so hedging here locks in a loss."
-                        : opposite
-                          ? `Backing the other side now hedges against your ${held} — you'd pay the 9% margin on both and only one can win.`
-                          : `Placing again adds to your ${held} stake on this market.`}
-                    </p>
-                  </div>
-                );
-              })()}
+              {/* Hedge warning — shown when player already has a position */}
+              {openPositions.length > 0 && (
+                <div className="rounded-lg border border-warning-border bg-warning-bg/30 px-3.5 py-2.5">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-warning-fg">
+                    You already hold {heldLabel} here
+                  </p>
+                  <p className="mt-1 text-[12px] leading-snug text-text-muted">
+                    {hedgeBoth
+                      ? "You're backing both sides — the 9% margin applies to each, so hedging here locks in a loss."
+                      : hedgeOpposite
+                        ? `Backing the other side now hedges against your ${heldLabel} — you'd pay the 9% margin on both and only one can win.`
+                        : `Placing again adds to your ${heldLabel} stake on this market.`}
+                  </p>
+                </div>
+              )}
               <SidePicker
                 marketId={m.id}
                 marketTitle={m.titleEn}
@@ -255,6 +273,7 @@ export default async function MarketDetail({
               />
               </>
             ) : (
+              /* Sign-in CTA — styled to invite prediction */
               <div
                 className="rounded-xl border border-border bg-bg-elevated p-6 text-center"
                 style={{
@@ -275,9 +294,6 @@ export default async function MarketDetail({
                     Andika namba ya simu ili kuweka dau.
                   </span>
                 </p>
-                {/* Preserve the tapped side through auth so the player lands
-                    back on this market with their YES/NO intent intact, not a
-                    blank "pick a side" screen. */}
                 {(() => {
                   const betNext = "/markets/" + m.id + (side === "YES" || side === "NO" ? `?side=${side}` : "");
                   const q = `?next=${encodeURIComponent(betNext)}`;
@@ -302,7 +318,7 @@ export default async function MarketDetail({
               <h3 className="mt-1.5 font-display text-[16px] font-bold text-text">No more bets</h3>
               <p className="mt-1 text-[13px] italic text-text-subtle">Soko limefungwa · subiri matokeo.</p>
               <p className="mt-3 text-[12px] text-text-muted leading-snug">
-                The countdown ended. The market is closed for predictions while the outcome is recorded — refresh in a moment to see your win or loss.
+                The countdown ended. The market is closed for predictions while the outcome is being recorded — refresh in a moment to see your result.
               </p>
             </div>
           ) : (
@@ -314,6 +330,7 @@ export default async function MarketDetail({
         </aside>
       </div>
 
+      {/* ── Comments — full width, below both columns ── */}
       <CommentsThread
         marketId={m.id}
         initialComments={comments}
