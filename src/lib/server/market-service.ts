@@ -633,6 +633,9 @@ export async function cashOutPosition(
   userId: string,
   positionId: string,
 ): Promise<ServiceResult<{ value: number; balance: number }>> {
+  const rl = rateCheck(userId, "bet.cashout");
+  if (!rl.allowed) return { ok: false, error: "Slow down.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
+
   // Cheap pre-lock fast-fail (avoids taking the lock for obviously-bad calls).
   const pre = await positionStore.get(positionId);
   if (!pre) return { ok: false, error: "Position not found.", code: "NOT_FOUND" };
@@ -662,19 +665,21 @@ export async function cashOutPosition(
 
     const now = new Date().toISOString();
 
-    // Conservation: the pools drop by exactly the player's stake (`gross`) — of
-    // which the player gets `value` back and the house keeps `cashOutFee` as the
-    // early-cash-out commission (gross = value + cashOutFee, so nothing is minted
-    // and the fee is real operator revenue, booked to the reserve below). The
-    // stake is removed from the player's OWN pool side (their money lives there;
-    // the opposing side is untouched, so other players' standing is unaffected).
-    // The own/opp split below resolves to (stake from own, 0 from opposing) but
-    // is kept general + residual-swept so it can never drive a pool negative.
+    // Conservation: the pool drops by exactly `value` (what the player receives).
+    // The fee (`cashOutFee` = gross − value) is NOT removed from the pool — it
+    // stays distributed across remaining participants, giving them a marginally
+    // better payout at resolution. This keeps the system perfectly conserved:
+    // every TZS that ever entered the pool is either paid out at resolution,
+    // returned to a cashing-out player, or left in the pool for remaining bettors.
+    // (With no house reserve, the fee must stay in the pool; removing gross would
+    // destroy it — nothing outside the pool to absorb it.)
     const ownYes = p.side === "YES";
-    let ownDebit = Math.min(ownYes ? m.yesPool : m.noPool, Math.min(gross, p.stake));
-    let oppDebit = Math.min(ownYes ? m.noPool : m.yesPool, Math.max(0, gross - ownDebit));
-    let residual = gross - ownDebit - oppDebit;
+    let ownDebit = Math.min(ownYes ? m.yesPool : m.noPool, Math.min(value, p.stake));
+    let oppDebit = Math.min(ownYes ? m.noPool : m.yesPool, Math.max(0, value - ownDebit));
+    let residual = value - ownDebit - oppDebit;
     if (residual > 0) {
+      // Residual sweep: if `value` > own pool (edge case: concurrent cashouts
+      // drained the own side), pull remainder from opposite side.
       const ownRoom = (ownYes ? m.yesPool : m.noPool) - ownDebit;
       const addOwn = Math.min(ownRoom, residual);
       ownDebit += addOwn; residual -= addOwn;

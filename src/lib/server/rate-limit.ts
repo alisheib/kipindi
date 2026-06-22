@@ -50,6 +50,7 @@ export const RATE_RULES: Record<string, RateRule> = {
   "wallet.deposit":{ capacity: 20, refillPerMin: 4 },
   "wallet.withdraw":{ capacity: 6, refillPerMin: 0.5 },
   "bet.place":     { capacity: 30, refillPerMin: 10 },
+  "bet.cashout":   { capacity: 10, refillPerMin: 2 },   // 10 burst, ~30s between after burst
 };
 
 export type RateResult = { allowed: boolean; remaining: number; retryAfterSec: number };
