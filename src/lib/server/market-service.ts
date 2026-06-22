@@ -990,7 +990,6 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
 
     const now = new Date().toISOString();
     const grossPool = m.yesPool + m.noPool;
-    const cfg = await getEffectiveConfig(m.id);
 
     // Refund every OPEN position its full stake. db.wallet.adjust is atomic, so
     // (like the resolveMarket VOID path) no nested wallet lock is needed.

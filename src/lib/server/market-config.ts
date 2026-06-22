@@ -30,8 +30,8 @@ export type RateConfig = {
    *  is unaffected (normal tax + commission apply at resolution). Admin-tunable;
    *  separate from the settlement pool fees above. */
   cashOutFeeRate: number;
-  /** House liquidity reserve rate (e.g. 0.02 = 2%). Replenishes the
-   *  house pool that seeds every market. Can be 0 to disable. */
+  /** Operator reserve rate (e.g. 0.02 = 2%). Contributes to the pool
+   *  fee taken at resolution; kept as operator margin. Can be 0 to disable. */
   reserveRate: number;
   /** Payment aggregator rate (e.g. 0.01 = 1%). Covers Selcom/Pesapal/etc
    *  transaction fees. Can be 0 pre-launch. */
