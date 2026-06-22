@@ -608,14 +608,19 @@ export const CASHOUT_SLIPPAGE = 0.09;
  * Returns: value (net to player), gross (= the stake removed from the pool),
  * fee (the house commission), feeRate, ratio.
  */
-const GRACE_PERIOD_MS = 45 * 60_000; // 45 minutes
+const GRACE_PERIOD_MS = 5 * 60_000; // 5 minutes
 
 export async function cashOutValue(
   position: Pick<StoredPosition, "side" | "stake" | "placedAt">,
-  market: Pick<StoredMarket, "id" | "yesPool" | "noPool">,
+  market: Pick<StoredMarket, "id" | "yesPool" | "noPool" | "resolutionAt">,
 ): Promise<{ value: number; ratio: number; gross: number; fee: number; feeRate: number; inGracePeriod: boolean }> {
   const cfg = await getEffectiveConfig(market.id);
-  const inGracePeriod = Boolean(position.placedAt) && (Date.now() - Date.parse(position.placedAt) < GRACE_PERIOD_MS);
+  // Grace period only applies if: bet was placed < 5 min ago AND the market
+  // still has more than 5 min before it closes (prevents last-second abuse).
+  const marketClosesIn = Date.parse(market.resolutionAt) - Date.now();
+  const inGracePeriod = Boolean(position.placedAt)
+    && (Date.now() - Date.parse(position.placedAt) < GRACE_PERIOD_MS)
+    && (marketClosesIn > GRACE_PERIOD_MS);
   const feeRate = inGracePeriod ? 0 : Math.min(0.30, Math.max(0, cfg.cashOutFeeRate ?? CASHOUT_SLIPPAGE));
   const gross = Math.max(0, Math.round(position.stake)); // the player's money in the pool
   const value = inGracePeriod ? gross : Math.round(gross * (1 - feeRate)); // full refund in grace

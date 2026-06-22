@@ -19,7 +19,7 @@ import { SellConfirmModal } from "./sell-confirm-modal";
 import { OperationResultModal } from "./operation-result-modal";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
-const GRACE_MS = 45 * 60_000;
+const GRACE_MS = 5 * 60_000;
 
 export function SellButton({
   positionId,
@@ -73,7 +73,10 @@ export function SellButton({
   const router = useRouter();
   const { toast } = useToast();
 
-  const inGrace = graceRemainMs > 0;
+  // Free exit is only valid if: grace window hasn't expired AND the market
+  // closes in more than 5 min (prevents last-second exploitation).
+  const marketCloseMs = resolutionAt ? Date.parse(resolutionAt) - Date.now() : Infinity;
+  const inGrace = graceRemainMs > 0 && marketCloseMs > GRACE_MS;
   const ratio = stake > 0 ? value / stake : 0;
   const net = value - stake;
   const tone = inGrace ? "yes" :

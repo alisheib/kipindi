@@ -89,7 +89,7 @@ export default async function MarketDetail({
   const positionCashOutValues = new Map<string, number | null>();
   for (const p of myPositions) {
     if (!isResolved && m.status === "LIVE" && p.status === "OPEN") {
-      positionCashOutValues.set(p.id, (await cashOutValue({ side: p.side, stake: p.stake, placedAt: p.placedAt }, { id: m.id, yesPool: m.yesPool, noPool: m.noPool })).value);
+      positionCashOutValues.set(p.id, (await cashOutValue({ side: p.side, stake: p.stake, placedAt: p.placedAt }, { id: m.id, yesPool: m.yesPool, noPool: m.noPool, resolutionAt: m.resolutionAt })).value);
     } else {
       positionCashOutValues.set(p.id, null);
     }

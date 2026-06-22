@@ -373,7 +373,7 @@ export function betPlacedHtml({ reference, side, stake, payoutIfWin, marketTitle
       { label: "Resolves", value: resolutionDate },
     ])}
     ${subtitle("Payout is calculated at resolution from the final pool share.")}
-    ${subtitle("45-min free exit · You can sell this position within 45 minutes for a full refund at no cost. After that, a 9% fee applies on early exit.")}
+    ${subtitle("5-min free exit · You can sell this position within 5 minutes for a full refund at no cost. After that, a 9% fee applies on early exit.")}
     ${refNote()}
     ${ctaButton("/positions", "View positions · Tazama madau")}
   `);

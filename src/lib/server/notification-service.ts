@@ -81,8 +81,8 @@ export function notifyBetPlaced(userId: string, opts: {
     kind: "BET_PLACED",
     titleEn: `Bet placed · ${opts.side} TZS ${opts.stake.toLocaleString()}`,
     titleSw: `Dau limewekwa · ${opts.side} TZS ${opts.stake.toLocaleString()}`,
-    bodyEn: `${opts.marketTitle.slice(0, 70)} · free exit within 45 min, then 9% fee applies.`,
-    bodySw: `${opts.marketTitle.slice(0, 50)} · toka bila gharama ndani ya dakika 45.`,
+    bodyEn: `${opts.marketTitle.slice(0, 70)} · free exit within 5 min, then 9% fee applies.`,
+    bodySw: `${opts.marketTitle.slice(0, 50)} · toka bila gharama ndani ya dakika 5.`,
     href: `/markets/${opts.marketId}`,
   });
 }
