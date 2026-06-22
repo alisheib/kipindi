@@ -359,7 +359,8 @@ export default async function AdminAIPollsPage({
                           >
                             View
                           </Link>
-                          {(p.state === "FILTERED" || p.state === "VALIDATION_FAILED" || p.state === "REJECTED") && (
+                          {(p.state === "FILTERED" || p.state === "VALIDATION_FAILED" || p.state === "REJECTED"
+                            || p.state === "PENDING_REVIEW" || p.state === "EDITING" || p.state === "APPROVED") && (
                             <DeleteAction pollId={p.id} />
                           )}
                         </td>
@@ -585,9 +586,10 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
       </div>
 
       {/* Action buttons */}
-      <div className="shrink-0">
+      <div className="shrink-0 flex flex-col gap-2">
         {mode === "review" && <ReviewActions poll={poll} />}
         {mode === "publish" && <PublishActions poll={poll} />}
+        <DeleteAction pollId={poll.id} />
       </div>
     </div>
   );

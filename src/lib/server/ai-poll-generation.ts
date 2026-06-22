@@ -1014,7 +1014,7 @@ export async function markAIPollPublished(id: string, opts: { candidateId: strin
 export async function deleteAIPoll(id: string, officerId: string): Promise<boolean> {
   const poll = await store.get(id);
   if (!poll) return false;
-  if (!["FILTERED", "VALIDATION_FAILED", "REJECTED"].includes(poll.state)) return false;
+  if (!["FILTERED", "VALIDATION_FAILED", "REJECTED", "PENDING_REVIEW", "EDITING", "APPROVED"].includes(poll.state)) return false;
 
   await store.delete(id);
 

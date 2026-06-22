@@ -47,7 +47,8 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
 
   const canReview = poll.state === "PENDING_REVIEW";
   const canPublish = poll.state === "APPROVED";
-  const canDelete = poll.state === "FILTERED" || poll.state === "VALIDATION_FAILED" || poll.state === "REJECTED";
+  const canDelete = poll.state === "FILTERED" || poll.state === "VALIDATION_FAILED" || poll.state === "REJECTED"
+    || poll.state === "PENDING_REVIEW" || poll.state === "EDITING" || poll.state === "APPROVED";
 
   return (
     <>
@@ -244,14 +245,17 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
             </div>
           )}
           {poll.publishedMarketId && (
-            <div className="mt-3 pt-3 border-t border-border/60 flex items-center gap-2">
+            <div className="mt-3 pt-3 border-t border-border/60 flex items-center gap-3 flex-wrap">
               <Chip size="sm" variant="success">PUBLISHED</Chip>
               <Link
-                href={`/admin/markets`}
+                href={`/markets/${poll.publishedMarketId}` as never}
                 className="font-mono text-[11px] text-brand-300 hover:underline"
               >
-                Market {poll.publishedMarketId.slice(0, 8)}...
+                View public market →
               </Link>
+              <span className="font-mono text-[10px] text-text-subtle select-all break-all">
+                /markets/{poll.publishedMarketId}
+              </span>
             </div>
           )}
         </AdminCard>
