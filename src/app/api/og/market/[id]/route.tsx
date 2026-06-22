@@ -10,7 +10,7 @@
  *   - The "Share" button on each market detail page
  */
 import { ImageResponse } from "next/og";
-import { getMarket, impliedYesPct, seedDemoMarkets } from "@/lib/server/market-service";
+import { getMarket, impliedYesPct } from "@/lib/server/market-service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,7 +19,6 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  await seedDemoMarkets();
   const { id } = await params;
   const m = await getMarket(id);
   if (!m) return new Response("Not found", { status: 404 });

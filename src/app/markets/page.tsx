@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
-import { listMarkets, impliedYesPct, isClosedByTime, seedDemoMarkets, traderSeedsByMarket, type MarketCategory } from "@/lib/server/market-service";
+import { listMarkets, impliedYesPct, isClosedByTime, traderSeedsByMarket, type MarketCategory } from "@/lib/server/market-service";
 import { getCardChart } from "@/lib/server/market-history";
 import { getProposalsConfig } from "@/lib/server/proposals-config";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -44,7 +44,6 @@ function timeLeftStr(iso: string): string {
 }
 
 export default async function MarketsPage({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string; q?: string }> }) {
-  await seedDemoMarkets();
   const allLive = (await listMarkets({ status: "LIVE" })).filter((m) => !isClosedByTime(m));
   const totalVolume = allLive.reduce((s, m) => s + m.yesPool + m.noPool, 0);
   return (

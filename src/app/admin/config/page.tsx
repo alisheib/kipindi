@@ -1,7 +1,7 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { I } from "@/components/ui/glyphs";
 import { getGlobalConfig, listMarketOverrides } from "@/lib/server/market-config";
-import { getMarket, seedDemoMarkets } from "@/lib/server/market-service";
+import { getMarket } from "@/lib/server/market-service";
 import { getAuditPage } from "@/lib/server/audit";
 import { Chip } from "@/components/ui/chip";
 import {
@@ -14,7 +14,6 @@ export const metadata = { title: "Admin · Market config" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminConfigPage() {
-  await seedDemoMarkets();
   const config = await getGlobalConfig();
   const overrides = await listMarketOverrides();
   const overrideMarketNames = new Map<string, string>();

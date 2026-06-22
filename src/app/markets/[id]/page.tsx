@@ -7,7 +7,7 @@ import { ShareButton } from "@/components/markets/share-button";
 import { SidePicker } from "@/components/markets/side-picker";
 import { ProbabilityChart } from "@/components/markets/probability-chart";
 import { SellButton } from "@/components/markets/sell-button";
-import { cashOutValue, getMarket, impliedYesPct, isClosedByTime, listPositionsForMarket, listPositionsForUser, seedDemoMarkets } from "@/lib/server/market-service";
+import { cashOutValue, getMarket, impliedYesPct, isClosedByTime, listPositionsForMarket, listPositionsForUser } from "@/lib/server/market-service";
 import { getProbabilityChart, seedHistory } from "@/lib/server/market-history";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
@@ -18,7 +18,6 @@ import { formatDateTime } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
-  await seedDemoMarkets();
   const { id } = await params;
   const m = await getMarket(id);
   // Throwing notFound() here too — not just inside the page render —
@@ -68,7 +67,6 @@ export default async function MarketDetail({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ side?: "YES" | "NO" }>;
 }) {
-  await seedDemoMarkets();
   const { id } = await params;
   const { side } = await searchParams;
   const m = await getMarket(id);

@@ -8,7 +8,7 @@
  * never empty in demo mode.
  */
 import { db } from "@/lib/server/store";
-import { listPositionsForUser, listMarkets, seedDemoMarkets } from "@/lib/server/market-service";
+import { listPositionsForUser, listMarkets } from "@/lib/server/market-service";
 import { PriceChart, VolumeSparkline } from "@/components/markets/price-chart";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Avatar } from "@/components/ui/avatar";
@@ -129,7 +129,6 @@ async function buildConsensusSeries(): Promise<{ t: string; yes: number }[]> {
 }
 
 export default async function LeaderboardPage() {
-  await seedDemoMarkets();
   const real = await buildLeaderboard();
   const isSynthetic = real.length < 6;
   const rows = isSynthetic ? syntheticLeaderboard() : real;

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { PositionCard } from "@/components/markets/position-card";
 import { SellButton } from "@/components/markets/sell-button";
-import { listPositionsForUser, getMarket, seedDemoMarkets, cashOutValue } from "@/lib/server/market-service";
+import { listPositionsForUser, getMarket, cashOutValue } from "@/lib/server/market-service";
 import { currentSession } from "@/lib/server/auth-service";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -13,7 +13,6 @@ export const dynamic = "force-dynamic";
 const fmtTzs = (n: number) => `TZS ${Math.round(n).toLocaleString("en-US")}`;
 
 export default async function PositionsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
-  seedDemoMarkets();
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/positions");
   const sp = await searchParams;

@@ -3,7 +3,7 @@ import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/component
 import { EmptyState } from "@/components/ui/empty-state";
 import { I } from "@/components/ui/glyphs";
 import { Select } from "@/components/ui/select";
-import { listMarkets, seedDemoMarkets, impliedYesPct, type MarketCategory } from "@/lib/server/market-service";
+import { listMarkets, impliedYesPct, type MarketCategory } from "@/lib/server/market-service";
 import { ProbabilityBar } from "@/components/markets/probability-bar";
 import { CircularProgress } from "@/components/markets/circular-progress";
 import { ResolveControls } from "./resolve-controls";
@@ -38,7 +38,6 @@ export default async function ResolverQueuePage({
 }: {
   searchParams: Promise<{ window?: string; category?: string; q?: string; page?: string }>;
 }) {
-  await seedDemoMarkets();
   const sp = await searchParams;
   const windowFilter = (WINDOW_OPTIONS as readonly { value: string }[]).some((o) => o.value === sp.window) ? sp.window! : "24h";
   const categoryFilter = (CATEGORY_OPTIONS as readonly string[]).includes(sp.category ?? "") ? sp.category as MarketCategory : "";

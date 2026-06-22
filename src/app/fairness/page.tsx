@@ -7,7 +7,7 @@
  */
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
-import { listMarkets, seedDemoMarkets } from "@/lib/server/market-service";
+import { listMarkets } from "@/lib/server/market-service";
 import { formatDateTimeSafe } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -17,7 +17,6 @@ export const dynamic = "force-dynamic";
 const fmtTime = (iso: string | null) => formatDateTimeSafe(iso);
 
 export default async function FairnessPage() {
-  await seedDemoMarkets();
   const resolved = (await listMarkets({ status: "RESOLVED" })).slice(0, 30);
 
   return (

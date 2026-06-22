@@ -4,7 +4,7 @@ import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { I } from "@/components/ui/glyphs";
 import { Select } from "@/components/ui/select";
 import Link from "next/link";
-import { listMarkets, impliedYesPct, seedDemoMarkets, type MarketCategory } from "@/lib/server/market-service";
+import { listMarkets, impliedYesPct, type MarketCategory } from "@/lib/server/market-service";
 import { ProbabilityBar } from "@/components/markets/probability-bar";
 import { formatDateTime } from "@/lib/utils";
 import { EmergencyVoidControl } from "./emergency-void-control";
@@ -32,7 +32,6 @@ export default async function AdminMarketsPage({
 }: {
   searchParams: Promise<{ q?: string; status?: string; category?: string; page?: string; sort?: string; dir?: string }>;
 }) {
-  await seedDemoMarkets();
   const sp = await searchParams;
   const query = (sp.q ?? "").trim().toLowerCase();
   // Validate against closed sets so a typo'd ?status=LIV doesn't silently
