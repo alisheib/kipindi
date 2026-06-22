@@ -34,7 +34,7 @@ export function SellButton({
   /** Current sellback value (post-slippage). */
   value: number;
   /** ISO timestamp when the position was placed — used to determine
-   *  whether the 45-minute free-exit grace window is still open. */
+   *  whether the 5-minute free-exit grace window is still open. */
   placedAt?: string;
   /** ISO timestamp when the underlying market closes. If supplied, the
    *  button switches to a "Market closed" state the instant the wall

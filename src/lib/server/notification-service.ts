@@ -328,10 +328,10 @@ export function notifyCashout(userId: string, opts: { amount: number; marketTitl
     titleEn: `${opts.inGracePeriod ? "Free exit" : "Cashed out"} · TZS ${opts.amount.toLocaleString()}`,
     titleSw: `${opts.inGracePeriod ? "Toka bila gharama" : "Umetoa"} · TZS ${opts.amount.toLocaleString()}`,
     bodyEn: opts.inGracePeriod
-      ? `Full stake returned — sold within the 45-min grace window, no fee.`
+      ? `Full stake returned — sold within the 5-min grace window, no fee.`
       : `Early exit from ${opts.marketTitle.slice(0, 60)}. Funds in wallet.`,
     bodySw: opts.inGracePeriod
-      ? `Pesa yote imerudishwa — umetoka ndani ya dakika 45.`
+      ? `Pesa yote imerudishwa — umetoka ndani ya dakika 5.`
       : `Umetoka mapema. Pesa imo kwenye pochi yako.`,
     href: `/markets/${opts.marketId}`,
   });

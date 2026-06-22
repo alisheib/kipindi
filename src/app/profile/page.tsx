@@ -5,7 +5,8 @@ import { FiftyMark } from "@/components/brand";
 import { AvatarUploader } from "@/components/profile/avatar-uploader";
 import { ProfileNameEditor } from "@/components/profile/name-editor";
 import { currentSession } from "@/lib/server/auth-service";
-import { db, type StoredBet } from "@/lib/server/store";
+import { db } from "@/lib/server/store";
+import { listPositionsForUser } from "@/lib/server/market-service";
 import { displayInitials } from "@/lib/display-label";
 import { BadgeShelf } from "@/components/badges/Badge";
 import { computeAchievementShelf } from "@/lib/server/achievements";
@@ -35,7 +36,7 @@ export default async function ProfilePage() {
 
   const wallet = await db.wallet.findByUserId(user.id);
   const kyc = await db.kyc.findByUserId(user.id);
-  const positions = (await db.bet.findByUser(user.id, 500)) as StoredBet[];
+  const positions = await listPositionsForUser(user.id, 500);
   const initials = displayInitials(user);
   const displayName = user.displayName ?? "Set your name";
 
