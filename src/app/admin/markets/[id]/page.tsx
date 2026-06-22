@@ -116,6 +116,11 @@ export default async function MarketPredictorsPage({
   const yesStaked    = yesPositions.reduce((s, p) => s + p.stake, 0);
   const noStaked     = noPositions.reduce((s,  p) => s + p.stake, 0);
   const openCount    = allPositions.filter((p) => p.status === "OPEN").length;
+  // House pool injects seed liquidity into BOTH pools at market creation.
+  // houseSeed = total pool minus all player stakes — this is why the public
+  // "Volume" figure (yesPool+noPool) can differ from admin Σ(stakes).
+  const totalPool    = m.yesPool + m.noPool;
+  const houseSeed    = totalPool - yesStaked - noStaked;
 
   const STATUS_LABEL: Record<string, string> = {
     LIVE: "Live", CLOSED: "Closed", RESOLVED: "Resolved", VOIDED: "Voided", DRAFT: "Draft",
@@ -176,14 +181,35 @@ export default async function MarketPredictorsPage({
             <ProbabilityBar yesPct={yes} size="micro" resolved={m.status === "RESOLVED"} />
             <p className="mt-1 font-mono text-[10px] text-text-subtle">{yes}% YES · {100 - yes}% NO</p>
           </div>
+          {/* Pool breakdown — explains why public "Volume" ≠ Σ(player stakes).
+              House pool seeds both sides at creation; this row makes that visible. */}
+          <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-1 font-mono text-[10.5px]">
+            <div>
+              <span className="text-text-subtle uppercase tracking-[0.12em]">YES pool · </span>
+              <span className="text-yes-300 font-semibold">{formatTzs(m.yesPool)}</span>
+            </div>
+            <div>
+              <span className="text-text-subtle uppercase tracking-[0.12em]">NO pool · </span>
+              <span className="text-no-300 font-semibold">{formatTzs(m.noPool)}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-text-subtle uppercase tracking-[0.12em]">Total pool · </span>
+              <span className="text-text font-semibold">{formatTzs(totalPool)}</span>
+              {houseSeed > 0 && (
+                <span className="text-text-tertiary">
+                  (incl. <span className="text-gold-300">{formatTzs(houseSeed)}</span> house seed)
+                </span>
+              )}
+            </div>
+          </div>
         </AdminCard>
 
-        {/* KPIs */}
+        {/* KPIs — player stakes only; house seed shown separately above */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Predictors"    sw="Watabiri"         value={String(m.predictorCount)} />
-          <AdminKpi label="Open positions" sw="Wazi"            value={String(openCount)} />
-          <AdminKpi label="YES staked"    sw="Dau la NDIO"      value={formatTzs(yesStaked)} />
-          <AdminKpi label="NO staked"     sw="Dau la HAPANA"    value={formatTzs(noStaked)} gold />
+          <AdminKpi label="Predictors"       sw="Watabiri"         value={String(m.predictorCount)} />
+          <AdminKpi label="Open positions"   sw="Wazi"             value={String(openCount)} />
+          <AdminKpi label="YES staked (players)" sw="Dau la NDIO"  value={formatTzs(yesStaked)} />
+          <AdminKpi label="NO staked (players)"  sw="Dau la HAPANA" value={formatTzs(noStaked)} gold />
         </div>
 
         {/* Filters */}
