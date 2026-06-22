@@ -473,7 +473,7 @@ export function PublishActions({ poll }: { poll: StoredAIPoll }) {
 
 /* ─── Delete actions ─── */
 
-export function DeleteAction({ pollId, state }: { pollId: string; state: string }) {
+export function DeleteAction({ pollId, state, redirectTo }: { pollId: string; state: string; redirectTo?: string }) {
   const [pending, start] = useTransition();
   const [reason, setReason] = useState("");
   const router = useRouter();
@@ -485,17 +485,26 @@ export function DeleteAction({ pollId, state }: { pollId: string; state: string 
       fd.set("id", pollId);
       if (voidReason) fd.set("reason", voidReason);
       const r = await deletePollAction(fd);
-      router.refresh();
       if (!r.ok) {
         toast({ title: "Delete failed", description: r.error, variant: "danger" });
-      } else if (r.refundedCount && r.refundedCount > 0) {
-        deferToast({
-          title: "Market voided — players refunded",
-          description: `${r.refundedCount} player${r.refundedCount !== 1 ? "s" : ""} refunded · TZS ${Math.round(r.refundedTzs ?? 0).toLocaleString("en-US")}`,
-          variant: "success",
-        });
+        return;
+      }
+      // Build the success toast payload.
+      const successToast = r.refundedCount && r.refundedCount > 0
+        ? {
+            title: "Market voided — players refunded",
+            description: `${r.refundedCount} player${r.refundedCount !== 1 ? "s" : ""} refunded · TZS ${Math.round(r.refundedTzs ?? 0).toLocaleString("en-US")}`,
+            variant: "success" as const,
+          }
+        : { title: "Deleted", variant: "default" as const };
+      if (redirectTo) {
+        // Detail page: show toast immediately then navigate away (component will unmount).
+        toast(successToast);
+        router.push(redirectTo as never);
       } else {
-        deferToast({ title: "Deleted", variant: "default" });
+        // List page: stay on page, refresh in place, defer toast until list re-renders.
+        router.refresh();
+        deferToast(successToast);
       }
     });
   };

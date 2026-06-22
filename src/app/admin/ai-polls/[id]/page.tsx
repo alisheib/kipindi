@@ -104,7 +104,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
             <div className="shrink-0 flex flex-col items-end gap-2">
               {canReview && <ReviewActions poll={poll} />}
               {canPublish && <PublishActions poll={poll} />}
-              {canDelete && <DeleteAction pollId={poll.id} state={poll.state} />}
+              {canDelete && <DeleteAction pollId={poll.id} state={poll.state} redirectTo="/admin/ai-polls" />}
               {poll.state === "GENERATING" && (
                 <p className="flex items-center gap-1.5 text-[11px] text-text-subtle font-mono">
                   <I.lock s={10} />
