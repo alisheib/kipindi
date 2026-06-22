@@ -182,7 +182,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                 )}
               </div>
             </div>
-            <div className="text-right">
+            <div className="text-right ml-auto">
               <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-tertiary">Risk score</p>
               <p
                 className={[

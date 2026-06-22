@@ -13,7 +13,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { listComments } from "@/lib/server/comments-store";
 import { CommentsThread } from "@/components/markets/comments-thread";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, formatTzsCompact } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -107,7 +107,10 @@ export default async function MarketDetail({
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6">
       {/* ── Back link ── */}
-      <a href="/markets" className="text-[12px] font-mono uppercase tracking-[0.16em] text-text-subtle hover:text-text">← Markets</a>
+      <a href="/markets" className="inline-flex items-center gap-1 text-[12px] font-mono uppercase tracking-[0.16em] text-text-subtle hover:text-text transition-colors">
+        <I.chevronLeft s={11} />
+        Markets
+      </a>
 
       {/* ── Page header — title, badges, share ── */}
       <header className="mt-3 mb-5">
@@ -156,7 +159,7 @@ export default async function MarketDetail({
 
           {/* 2. KPI strip — volume, participation, timing at a glance */}
           <div className="grid grid-cols-3 gap-3">
-            <KPI label="Volume"     value={fmtTzs(m.yesPool + m.noPool)} icon={<I.chart s={14} />} />
+            <KPI label="Volume"     value={formatTzsCompact(m.yesPool + m.noPool)} icon={<I.chart s={14} />} />
             <KPI label="Predictors" value={String(m.predictorCount)}     icon={<I.users s={14} />} />
             <KPI label="Resolves"   value={fmtTime(m.resolutionAt)} mono />
           </div>
