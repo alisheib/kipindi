@@ -7,7 +7,7 @@ import { ShareButton } from "@/components/markets/share-button";
 import { SidePicker } from "@/components/markets/side-picker";
 import { ChartToggle } from "@/components/markets/chart-toggle";
 import { SellButton } from "@/components/markets/sell-button";
-import { cashOutValue, getMarket, impliedYesPct, isClosedByTime, listPositionsForMarket, listPositionsForUser } from "@/lib/server/market-service";
+import { cashOutValue, getMarket, impliedYesPct, isClosedByTime, listPositionsForUser } from "@/lib/server/market-service";
 import { getProbabilityChart, seedHistory } from "@/lib/server/market-history";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
@@ -75,7 +75,6 @@ export default async function MarketDetail({
   const yesPct = impliedYesPct(m);
   const session = await currentSession();
   const myPositions = session ? (await listPositionsForUser(session.userId)).filter((p) => p.marketId === m.id) : [];
-  const totalPredictorCount = (await listPositionsForMarket(m.id)).length;
   const isResolved = m.status === "RESOLVED" || m.status === "VOIDED";
   // closed-by-time = the resolutionAt clock has elapsed but no resolver
   // has run yet. The dial cannot accept a bet here (server enforces),
@@ -158,7 +157,7 @@ export default async function MarketDetail({
           {/* 2. KPI strip — volume, participation, timing at a glance */}
           <div className="grid grid-cols-3 gap-3">
             <KPI label="Volume"     value={fmtTzs(m.yesPool + m.noPool)} icon={<I.chart s={14} />} />
-            <KPI label="Predictors" value={String(totalPredictorCount)}  icon={<I.users s={14} />} />
+            <KPI label="Predictors" value={String(m.predictorCount)}     icon={<I.users s={14} />} />
             <KPI label="Resolves"   value={fmtTime(m.resolutionAt)} mono />
           </div>
 

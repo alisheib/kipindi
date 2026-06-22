@@ -6,6 +6,7 @@
  */
 import Link from "next/link";
 import { db } from "@/lib/server/store";
+import { FiftyMark } from "@/components/brand";
 import { AdminMobileNavTrigger } from "./admin-mobile-nav";
 import { AdminSidebarNav } from "./admin-sidebar-nav";
 import { NAV_GROUPS } from "./admin-nav-groups";
@@ -66,7 +67,7 @@ export async function AdminSidebar({ activeKey }: { activeKey: string }) {
     <aside className="hidden lg:flex shrink-0 border-r border-border flex-col gap-1 sticky top-0 self-start max-h-screen overflow-y-auto"
       style={{ width: 216, padding: "18px 14px", background: "var(--panel)" }}>
       <Link href="/admin" className="flex items-center gap-2 px-2 pb-3 mb-2 border-b border-dashed border-border-subtle">
-        <span aria-hidden className="h-3.5 w-3.5 rounded-pill border-[1.5px] border-gold" />
+        <FiftyMark size={18} simplified aria-hidden />
         <span className="font-display font-bold text-body-sm text-text">50pick · admin</span>
       </Link>
       <AdminSidebarNav badges={badges} fallbackKey={activeKey} />
