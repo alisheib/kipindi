@@ -105,6 +105,15 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
               {canReview && <ReviewActions poll={poll} />}
               {canPublish && <PublishActions poll={poll} />}
               {canDelete && <DeleteAction pollId={poll.id} state={poll.state} redirectTo="/admin/ai-polls" />}
+              {poll.publishedMarketId && (
+                <Link
+                  href={`/admin/markets/${poll.publishedMarketId}` as never}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-bg-overlay px-2.5 py-1.5 font-mono text-[10.5px] font-semibold text-text-muted hover:border-brand-500 hover:text-text transition-colors whitespace-nowrap"
+                >
+                  <I.users size={11} />
+                  View predictors
+                </Link>
+              )}
               {poll.state === "GENERATING" && (
                 <p className="flex items-center gap-1.5 text-[11px] text-text-subtle font-mono">
                   <I.lock s={10} />
@@ -258,6 +267,13 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
                 className="font-mono text-[11px] text-brand-300 hover:underline"
               >
                 View public market →
+              </Link>
+              <Link
+                href={`/admin/markets/${poll.publishedMarketId}` as never}
+                className="inline-flex items-center gap-1 rounded-md border border-border bg-bg-overlay px-2 py-1 font-mono text-[10.5px] font-semibold text-text-muted hover:border-brand-500 hover:text-text transition-colors"
+              >
+                <I.users size={11} />
+                View predictors
               </Link>
               <span className="font-mono text-[10px] text-text-subtle select-all break-all">
                 /markets/{poll.publishedMarketId}

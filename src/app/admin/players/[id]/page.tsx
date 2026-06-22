@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { AdminPageHead, AdminKpi, AdminCard, FeedRow } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
@@ -17,6 +18,13 @@ import { ResetPasswordButton } from "./reset-password-button";
 import { ExportPlayerButton } from "./export-player-button";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const user = await db.user.findById(id);
+  const label = user ? displayLabel(user) : id.slice(0, 8);
+  return { title: `Admin · Player — ${label}` };
+}
 
 const CATEGORY_VARIANT: Record<AuditCategory, "gold" | "royal" | "danger" | "success" | "warning" | "neutral"> = {
   AUTH:       "royal",
@@ -104,14 +112,14 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   const headerLabel = displayLabel(user);
   const isAutoHandle = !((user.displayName ?? "").trim().length > 0);
 
-  const TABS = [
-    { id: "activity",     label: "Activity",         count: audit.length },
-    { id: "bets",         label: "Bets",             count: betsCount },
-    { id: "transactions", label: "Transactions",     count: txns.length },
-    { id: "kyc",          label: "KYC",              count: undefined },
-    { id: "limits",       label: "Limits",           count: undefined },
-    { id: "exclusion",    label: "Self-exclusion",   count: undefined },
-    { id: "audit",        label: "Audit",            count: audit.length },
+  const TABS: { id: string; label: string; count?: number; icon: React.ReactNode }[] = [
+    { id: "activity",     label: "Activity",       count: audit.length, icon: <I.activity s={12} /> },
+    { id: "bets",         label: "Bets",           count: betsCount,    icon: <I.ticket s={12} /> },
+    { id: "transactions", label: "Transactions",   count: txns.length,  icon: <I.wallet s={12} /> },
+    { id: "kyc",          label: "KYC",            count: undefined,    icon: <I.shieldcheck s={12} /> },
+    { id: "limits",       label: "Limits",         count: undefined,    icon: <I.lock s={12} /> },
+    { id: "exclusion",    label: "Self-exclusion", count: undefined,    icon: <I.shieldOff s={12} /> },
+    { id: "audit",        label: "Audit",          count: audit.length, icon: <I.alertCircle s={12} /> },
   ];
 
   // KYC is the most critical tab — give it an at-a-glance status so an officer
@@ -127,7 +135,18 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
         title="Player profile"
         sw="Wasifu wa mchezaji"
         period={false}
-        actions={<ExportPlayerButton userId={id} />}
+        actions={
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link
+              href="/admin/players"
+              className="btn btn-ghost btn-sm inline-flex items-center gap-1.5"
+            >
+              <I.chevronLeft s={13} />
+              Players
+            </Link>
+            <ExportPlayerButton userId={id} />
+          </div>
+        }
       />
 
       <div className="px-4 lg:px-6 py-5 space-y-4">
@@ -140,10 +159,24 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
               <p className="font-mono text-caption text-text-tertiary mt-1">
                 {id.slice(0, 14)}… · {user.phoneE164.slice(0, 4)}*****{user.phoneE164.slice(-2)} · {user.region ?? "—"} · joined {user.createdAt.split("T")[0]}
               </p>
+              {user.email && (
+                <p className="font-mono text-caption text-text-tertiary mt-0.5 flex items-center gap-1">
+                  <I.mail s={10} />
+                  {user.email}
+                  {user.emailVerifiedAt && <I.check s={10} className="text-success" />}
+                </p>
+              )}
               <div className="flex items-center gap-1.5 flex-wrap mt-2">
                 <Chip size="sm" variant={STATUS_VARIANT[user.status] ?? "neutral"}>● {user.status}</Chip>
-                {kyc && <Chip size="sm" variant={kyc.status === "APPROVED" ? "success" : "warning"}>KYC · {kyc.status}</Chip>}
-                {kyc?.nidaVerifiedAt && <Chip size="sm" variant="neutral">NIDA verified</Chip>}
+                {kyc && (
+                  <a href={`/admin/players/${id}?tab=kyc`} className="inline-block hover:opacity-80 transition-opacity">
+                    <Chip size="sm" variant={kyc.status === "APPROVED" ? "success" : kyc.status === "REJECTED" ? "danger" : "warning"}>
+                      {kyc.status === "APPROVED" ? <I.shieldcheck s={10} className="inline -mt-0.5 mr-0.5" /> : <I.shieldAlert s={10} className="inline -mt-0.5 mr-0.5" />}
+                      KYC · {kyc.status}
+                    </Chip>
+                  </a>
+                )}
+                {kyc?.nidaVerifiedAt && <Chip size="sm" variant="neutral"><I.check s={10} className="inline -mt-0.5 mr-0.5" />NIDA verified</Chip>}
                 {rg?.dailyDepositLimit && (
                   <Chip size="sm" variant="warning">limit {formatTzsCompact(rg.dailyDepositLimit).replace("TZS ", "")}/day</Chip>
                 )}
@@ -195,11 +228,13 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                   href={`/admin/players/${id}?tab=${t.id}`}
                   className={["py-3 text-body-sm whitespace-nowrap border-b-2 transition-colors inline-flex items-center gap-1.5", cls].join(" ")}
                 >
-                  {isKyc && (
+                  {isKyc ? (
                     <span
                       aria-hidden
                       className={`h-1.5 w-1.5 rounded-pill ${dotColor} ${kycNeedsAction ? "animate-pulse" : ""}`}
                     />
+                  ) : (
+                    <span aria-hidden className="opacity-60">{t.icon}</span>
                   )}
                   {t.label}
                   {isKyc && kycNeedsAction && (
@@ -334,6 +369,40 @@ function KycTab({ kyc, userEmail, userId }: { kyc: ReturnType<typeof db.kyc.find
   const decided = kyc.status === "APPROVED" || kyc.status === "REJECTED";
   return (
     <div className="space-y-4">
+      {/* Status banner — most important signal, shown first so officers see it immediately */}
+      {kyc.status === "PENDING_REVIEW" && (
+        <div className="rounded-lg border-2 border-gold-700/70 bg-gold-500/[0.08] px-4 py-3 flex items-start gap-3">
+          <I.shieldAlert s={16} className="text-gold-300 shrink-0 mt-0.5 animate-pulse" />
+          <div>
+            <p className="font-display font-semibold text-gold-300 text-[13px]">Action required · Inahitaji ukaguzi</p>
+            <p className="mt-0.5 text-caption text-text-muted">This identity submission is awaiting officer review. Check the documents below and make a decision.</p>
+          </div>
+        </div>
+      )}
+      {kyc.status === "ADDITIONAL_INFO_REQUIRED" && (
+        <div className="rounded-lg border border-warning-border bg-warning-bg/20 px-4 py-3 flex items-start gap-3">
+          <I.alertCircle s={16} className="text-warning-fg shrink-0 mt-0.5" />
+          <div>
+            <p className="font-display font-semibold text-warning-fg text-[13px]">Awaiting player response</p>
+            <p className="mt-0.5 text-caption text-text-muted">Additional information was requested. Waiting for the player to upload the requested documents and resubmit.</p>
+          </div>
+        </div>
+      )}
+      {kyc.status === "REJECTED" && (
+        <div className="rounded-lg border border-no-700/60 bg-no-500/[0.08] px-4 py-3 flex items-start gap-3">
+          <I.xCircle s={16} className="text-no-300 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-display font-semibold text-no-300 text-[13px]">Verification rejected</p>
+            {kyc.rejectReason && <p className="mt-0.5 text-caption text-text-muted">&ldquo;{kyc.rejectReason}&rdquo;</p>}
+          </div>
+        </div>
+      )}
+      {kyc.status === "APPROVED" && (
+        <div className="rounded-lg border border-yes-700/60 bg-yes-500/[0.08] px-4 py-3 flex items-center gap-3">
+          <I.shieldcheck s={16} className="text-yes-400 shrink-0" />
+          <p className="font-display font-semibold text-yes-300 text-[13px]">Identity verified · Utambulisho umethibitishwa</p>
+        </div>
+      )}
       {/* Email status — critical for KYC notifications. Warn if missing. */}
       <div className={`rounded-md px-3 py-2.5 flex items-start gap-2.5 text-caption ${userEmail ? "border border-border bg-bg-inset/30" : "border-2 border-warning-border bg-warning-bg/20"}`}>
         <I.mail s={14} className={userEmail ? "text-text-tertiary mt-0.5" : "text-gold-300 mt-0.5"} />
