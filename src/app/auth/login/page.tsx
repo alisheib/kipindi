@@ -180,6 +180,12 @@ export default async function LoginPage({
                 size="lg"
                 placeholder="••••••••"
               />
+              {sp.error === "wrong_credentials" && (
+                <p className="mt-1.5 flex items-center gap-1.5 text-[12px] text-no-300 font-medium">
+                  <I.alertCircle s={13} />
+                  Wrong phone or password · Simu au nenosiri si sahihi
+                </p>
+              )}
             </Field>
 
             <div className="flex items-center justify-end -mt-2">
