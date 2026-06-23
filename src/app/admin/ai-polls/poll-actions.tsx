@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -24,6 +25,119 @@ import type { StoredAIPoll, QualityIndicator, FilterReason } from "@/lib/server/
 import type { AIPollConfig } from "@/lib/server/ai-poll-config";
 
 const adminTextarea = "w-full rounded-lg border border-border bg-[var(--bg-inset)] px-3 py-2.5 text-[13px] text-text placeholder:text-text-subtle outline-none admin-focus transition-colors resize-none";
+
+/* ─── ActionOverlay ─────────────────────────────────────────────────
+ * Reusable full-page blocking overlay for every async operation on
+ * this page. Prevents double-clicks, shows clear progress, and gives
+ * an unambiguous success/failure result — critical for non-technical
+ * operators who might otherwise click away mid-action.
+ *
+ * States: idle (hidden) → running (spinner) → success/error (result)
+ * Success auto-dismisses after 2s. Error stays until dismissed.
+ * Escape key dismisses when in success/error state.
+ * ────────────────────────────────────────────────────────────────── */
+
+type OverlayState =
+  | { phase: "idle" }
+  | { phase: "running"; label: string; sublabel?: string }
+  | { phase: "success"; title: string; subtitle?: string }
+  | { phase: "error"; title: string; message: string };
+
+function useActionOverlay() {
+  const [state, setState] = useState<OverlayState>({ phase: "idle" });
+  const dismiss = useCallback(() => setState({ phase: "idle" }), []);
+  const run = useCallback((label: string, sublabel?: string) =>
+    setState({ phase: "running", label, sublabel }), []);
+  const succeed = useCallback((title: string, subtitle?: string) =>
+    setState({ phase: "success", title, subtitle }), []);
+  const fail = useCallback((title: string, message: string) =>
+    setState({ phase: "error", title, message }), []);
+  return { state, dismiss, run, succeed, fail };
+}
+
+function ActionOverlay({ state, onDismiss }: { state: OverlayState; onDismiss: () => void }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  // Auto-dismiss success after 2s
+  useEffect(() => {
+    if (state.phase !== "success") return;
+    const t = setTimeout(onDismiss, 2000);
+    return () => clearTimeout(t);
+  }, [state.phase, onDismiss]);
+
+  // Escape dismisses success/error
+  useEffect(() => {
+    if (state.phase !== "success" && state.phase !== "error") return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onDismiss(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [state.phase, onDismiss]);
+
+  if (state.phase === "idle" || !mounted) return null;
+
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={state.phase === "running" ? state.label : state.phase === "success" ? state.title : "Error"}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div
+        className="w-[90vw] max-w-[380px] rounded-xl border border-border bg-bg-elevated p-5 shadow-e4"
+        style={{ animation: "np-rise 200ms cubic-bezier(.2,.8,.2,1)" }}
+      >
+        {state.phase === "running" && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <span className="inline-block h-5 w-5 rounded-full border-2 border-gold-300 border-t-transparent animate-spin shrink-0" />
+              <p className="font-display text-[15px] font-semibold text-text">{state.label}</p>
+            </div>
+            {state.sublabel && (
+              <p className="text-[11px] text-text-subtle leading-relaxed">{state.sublabel}</p>
+            )}
+          </div>
+        )}
+        {state.phase === "success" && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2.5">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-yes-500/15 text-yes-300 shrink-0">
+                <I.check s={18} />
+              </span>
+              <div>
+                <p className="font-display text-[15px] font-semibold text-text">{state.title}</p>
+                {state.subtitle && (
+                  <p className="font-mono text-[11px] text-yes-300">{state.subtitle}</p>
+                )}
+              </div>
+            </div>
+            <button type="button" onClick={onDismiss} className="btn btn-ghost btn-sm rounded-pill w-full">
+              Done · Sawa
+            </button>
+          </div>
+        )}
+        {state.phase === "error" && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2.5">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-no-500/15 text-no-300 shrink-0">
+                <I.x s={18} />
+              </span>
+              <div>
+                <p className="font-display text-[15px] font-semibold text-text">{state.title}</p>
+                <p className="text-[11px] text-no-300 leading-snug">{state.message}</p>
+              </div>
+            </div>
+            <button type="button" onClick={onDismiss} className="btn btn-ghost btn-sm rounded-pill w-full">
+              Dismiss · Funga
+            </button>
+          </div>
+        )}
+      </div>
+    </div>,
+    document.body,
+  );
+}
 
 /**
  * After a generate/regenerate/batch action + router.refresh(), the new poll
@@ -307,24 +421,33 @@ export function BatchGenerateForm({ maxBatch, remaining }: { maxBatch: number; r
   const suggested = Math.min(maxBatch, Math.max(1, remaining || 3));
   const [count, setCount] = useState(String(suggested));
   const [prompt, setPrompt] = useState("");
+  const overlay = useActionOverlay();
   const router = useRouter();
-  const { deferToast } = useDeferredToast(pending);
 
   const run = () => {
+    const n = parseInt(count, 10) || 1;
+    overlay.run(
+      `Generating ${n} poll${n !== 1 ? "s" : ""}…`,
+      "Each poll goes through the full 4-layer pipeline. This may take a moment.",
+    );
     start(async () => {
-      const fd = new FormData();
-      fd.set("count", count);
-      fd.set("prompt", prompt);
-      const r = await generatePollBatchAction(fd);
-      router.refresh();
-      if (r.ok) {
-        deferToast({
-          title: `Batch complete — ${r.total} generated`,
-          description: `${r.summary.PENDING_REVIEW} to review · ${r.summary.FILTERED + r.summary.VALIDATION_FAILED} filtered`,
-          variant: "success",
-        });
-        // Multiple new polls — scroll to the review section so they're in view.
-        if (r.summary.PENDING_REVIEW > 0) revealElement("ai-polls-pending");
+      try {
+        const fd = new FormData();
+        fd.set("count", count);
+        fd.set("prompt", prompt);
+        const r = await generatePollBatchAction(fd);
+        router.refresh();
+        if (r.ok) {
+          overlay.succeed(
+            `Batch complete — ${r.total} generated`,
+            `${r.summary.PENDING_REVIEW} ready for review · ${r.summary.FILTERED + r.summary.VALIDATION_FAILED} filtered`,
+          );
+          if (r.summary.PENDING_REVIEW > 0) revealElement("ai-polls-pending");
+        } else {
+          overlay.fail("Batch failed", "Server error — try again with fewer polls.");
+        }
+      } catch {
+        overlay.fail("Batch failed", "Server error — please try again.");
       }
     });
   };
@@ -372,6 +495,7 @@ export function BatchGenerateForm({ maxBatch, remaining }: { maxBatch: number; r
       <span className="text-[11px] text-text-subtle font-mono">
         Cycles across categories. Each poll runs the full 4-layer pipeline.
       </span>
+      <ActionOverlay state={overlay.state} onDismiss={overlay.dismiss} />
     </div>
   );
 }
@@ -543,31 +667,43 @@ export function ReviewActions({ poll }: { poll: StoredAIPoll }) {
   const [pending, start] = useTransition();
   const [showReject, setShowReject] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const overlay = useActionOverlay();
   const router = useRouter();
-  const { deferToast, toast } = useDeferredToast(pending);
 
   const approve = () => {
+    overlay.run("Approving poll…", "Inaendelea kuidhinisha kura. Subiri kidogo.");
     start(async () => {
-      const fd = new FormData();
-      fd.set("id", poll.id);
-      const r = await approvePollAction(fd);
-      router.refresh();
-      if (!r.ok) toast({ title: "Could not approve", description: r.error, variant: "danger" });
-      else deferToast({ title: "Approved", description: "Poll ready to publish.", variant: "success" });
+      try {
+        const fd = new FormData();
+        fd.set("id", poll.id);
+        const r = await approvePollAction(fd);
+        router.refresh();
+        if (!r.ok) overlay.fail("Could not approve", r.error);
+        else overlay.succeed("Poll approved", "Ready to publish as a live market.");
+      } catch {
+        overlay.fail("Could not approve", "Server error — please try again.");
+      }
     });
   };
 
   const regenerate = () => {
+    overlay.run("Regenerating poll…", "Creating a fresh version with the same settings.");
     start(async () => {
-      const fd = new FormData();
-      fd.set("category", poll.requestCategory);
-      fd.set("prompt", poll.requestPrompt);
-      fd.set("regenerationOf", poll.id);
-      const r = await generatePollAction(fd);
-      router.refresh();
-      if (r.ok) {
-        deferToast({ title: "Regenerated", description: `New poll: ${r.poll.state}`, variant: "success" });
-        if (r.poll.state === "PENDING_REVIEW") revealElement(`poll-${r.poll.id}`);
+      try {
+        const fd = new FormData();
+        fd.set("category", poll.requestCategory);
+        fd.set("prompt", poll.requestPrompt);
+        fd.set("regenerationOf", poll.id);
+        const r = await generatePollAction(fd);
+        router.refresh();
+        if (r.ok) {
+          overlay.succeed("New poll generated", `State: ${r.poll.state} · Quality: ${r.poll.overallQuality}%`);
+          if (r.poll.state === "PENDING_REVIEW") revealElement(`poll-${r.poll.id}`);
+        } else {
+          overlay.fail("Regeneration failed", "The AI could not produce a valid poll. Try again.");
+        }
+      } catch {
+        overlay.fail("Regeneration failed", "Server error — please try again.");
       }
     });
   };
@@ -587,8 +723,9 @@ export function ReviewActions({ poll }: { poll: StoredAIPoll }) {
         Reject…
       </button>
 
-      {showReject && <RejectForm pollId={poll.id} onClose={() => setShowReject(false)} />}
-      {showEdit && <EditForm poll={poll} onClose={() => setShowEdit(false)} />}
+      {showReject && <RejectForm pollId={poll.id} onClose={() => setShowReject(false)} overlay={overlay} />}
+      {showEdit && <EditForm poll={poll} onClose={() => setShowEdit(false)} overlay={overlay} />}
+      <ActionOverlay state={overlay.state} onDismiss={overlay.dismiss} />
     </div>
   );
 }
@@ -597,24 +734,32 @@ export function ReviewActions({ poll }: { poll: StoredAIPoll }) {
 
 export function PublishActions({ poll }: { poll: StoredAIPoll }) {
   const [pending, start] = useTransition();
+  const overlay = useActionOverlay();
   const router = useRouter();
-  const { deferToast, toast } = useDeferredToast(pending);
 
   const publish = () => {
+    overlay.run("Publishing market…", "Creating a live market from this poll. Players will be able to bet on it.");
     start(async () => {
-      const fd = new FormData();
-      fd.set("id", poll.id);
-      const r = await publishPollAction(fd);
-      router.refresh();
-      if (!r.ok) toast({ title: "Publish failed", description: r.error, variant: "danger" });
-      else deferToast({ title: "Published", description: `Market ${r.marketId} created.`, variant: "success" });
+      try {
+        const fd = new FormData();
+        fd.set("id", poll.id);
+        const r = await publishPollAction(fd);
+        router.refresh();
+        if (!r.ok) overlay.fail("Publish failed", r.error);
+        else overlay.succeed("Market is live", `Market ${r.marketId} — players can now place bets.`);
+      } catch {
+        overlay.fail("Publish failed", "Server error — please try again.");
+      }
     });
   };
 
   return (
-    <button onClick={publish} disabled={pending} className="btn btn-gold btn-sm rounded-pill min-w-[120px]">
-      {pending ? "Publishing…" : "Publish as market"}
-    </button>
+    <>
+      <button onClick={publish} disabled={pending} className="btn btn-gold btn-sm rounded-pill min-w-[120px]">
+        {pending ? "Publishing…" : "Publish as market"}
+      </button>
+      <ActionOverlay state={overlay.state} onDismiss={overlay.dismiss} />
+    </>
   );
 }
 
@@ -623,35 +768,39 @@ export function PublishActions({ poll }: { poll: StoredAIPoll }) {
 export function DeleteAction({ pollId, state, redirectTo }: { pollId: string; state: string; redirectTo?: string }) {
   const [pending, start] = useTransition();
   const [reason, setReason] = useState("");
+  const overlay = useActionOverlay();
   const router = useRouter();
-  const { deferToast, toast } = useDeferredToast(pending);
+  const { toast } = useDeferredToast(pending);
 
   const del = (voidReason?: string) => {
+    overlay.run("Deleting…", state === "PUBLISHED" ? "Voiding market and refunding players." : "Removing this poll permanently.");
     start(async () => {
-      const fd = new FormData();
-      fd.set("id", pollId);
-      if (voidReason) fd.set("reason", voidReason);
-      const r = await deletePollAction(fd);
-      if (!r.ok) {
-        toast({ title: "Delete failed", description: r.error, variant: "danger" });
-        return;
-      }
-      // Build the success toast payload.
-      const successToast = r.refundedCount && r.refundedCount > 0
-        ? {
-            title: "Market voided — players refunded",
-            description: `${r.refundedCount} player${r.refundedCount !== 1 ? "s" : ""} refunded · TZS ${Math.round(r.refundedTzs ?? 0).toLocaleString("en-US")}`,
-            variant: "success" as const,
+      try {
+        const fd = new FormData();
+        fd.set("id", pollId);
+        if (voidReason) fd.set("reason", voidReason);
+        const r = await deletePollAction(fd);
+        if (!r.ok) {
+          overlay.fail("Delete failed", r.error);
+          return;
+        }
+        if (redirectTo) {
+          overlay.dismiss();
+          toast(r.refundedCount && r.refundedCount > 0
+            ? { title: "Market voided — players refunded", description: `${r.refundedCount} player${r.refundedCount !== 1 ? "s" : ""} refunded`, variant: "success" }
+            : { title: "Deleted", variant: "default" },
+          );
+          router.push(redirectTo as never);
+        } else {
+          router.refresh();
+          if (r.refundedCount && r.refundedCount > 0) {
+            overlay.succeed("Market voided — players refunded", `${r.refundedCount} player${r.refundedCount !== 1 ? "s" : ""} refunded · TZS ${Math.round(r.refundedTzs ?? 0).toLocaleString("en-US")}`);
+          } else {
+            overlay.succeed("Poll deleted", "It has been permanently removed.");
           }
-        : { title: "Deleted", variant: "default" as const };
-      if (redirectTo) {
-        // Detail page: show toast immediately then navigate away (component will unmount).
-        toast(successToast);
-        router.push(redirectTo as never);
-      } else {
-        // List page: stay on page, refresh in place, defer toast until list re-renders.
-        router.refresh();
-        deferToast(successToast);
+        }
+      } catch {
+        overlay.fail("Delete failed", "Server error — please try again.");
       }
     });
   };
@@ -665,54 +814,56 @@ export function DeleteAction({ pollId, state, redirectTo }: { pollId: string; st
     </button>
   );
 
-  if (state === "PUBLISHED") {
-    return (
-      <ConfirmDialog
-        trigger={deleteBtn}
-        title="Cancel live market?"
-        tone="claret"
-        confirmLabel="Yes — void market & refund all"
-        body={
-          <div className="space-y-2 text-[13px] text-text-muted leading-relaxed">
-            <p>
-              This market is <strong className="text-text">live</strong> with real player positions open.
-              Confirming will:
-            </p>
-            <ul className="mt-1 space-y-1 pl-4 list-disc">
-              <li>Immediately cancel and void the market</li>
-              <li>Refund every player their <strong className="text-text">full stake — no deductions</strong></li>
-              <li>Send refund notifications to all affected players</li>
-            </ul>
-            <p className="text-[12px] text-text-subtle">
-              Only proceed under a regulatory or government directive. This is irreversible.
-            </p>
-            <div className="mt-3 pt-3 border-t border-border/60">
-              <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle mb-1.5">
-                Reason for cancellation (required for audit log)
-              </p>
-              <textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="e.g. Government directive, regulatory compliance…"
-                className={adminTextarea}
-                rows={2}
-              />
-            </div>
-          </div>
-        }
-        onConfirm={() => del(reason.trim() || "Regulatory/administrative decision — market cancelled by administrator")}
-      />
-    );
-  }
-
   return (
-    <button
-      onClick={() => del()}
-      disabled={pending}
-      className="btn btn-ghost btn-sm rounded-pill text-text-subtle hover:text-claret-300"
-    >
-      {pending ? "Deleting…" : "Delete"}
-    </button>
+    <>
+      {state === "PUBLISHED" ? (
+        <ConfirmDialog
+          trigger={deleteBtn}
+          title="Cancel live market?"
+          tone="claret"
+          confirmLabel="Yes — void market & refund all"
+          body={
+            <div className="space-y-2 text-[13px] text-text-muted leading-relaxed">
+              <p>
+                This market is <strong className="text-text">live</strong> with real player positions open.
+                Confirming will:
+              </p>
+              <ul className="mt-1 space-y-1 pl-4 list-disc">
+                <li>Immediately cancel and void the market</li>
+                <li>Refund every player their <strong className="text-text">full stake — no deductions</strong></li>
+                <li>Send refund notifications to all affected players</li>
+              </ul>
+              <p className="text-[12px] text-text-subtle">
+                Only proceed under a regulatory or government directive. This is irreversible.
+              </p>
+              <div className="mt-3 pt-3 border-t border-border/60">
+                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle mb-1.5">
+                  Reason for cancellation (required for audit log)
+                </p>
+                <textarea
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="e.g. Government directive, regulatory compliance…"
+                  className={adminTextarea}
+                  rows={2}
+                />
+              </div>
+            </div>
+          }
+          onConfirm={() => del(reason.trim() || "Regulatory/administrative decision — market cancelled by administrator")}
+        />
+      ) : (
+        <ConfirmDialog
+          trigger={deleteBtn}
+          title="Delete this poll?"
+          tone="warning"
+          confirmLabel="Yes, delete"
+          body="This poll will be permanently removed. This cannot be undone."
+          onConfirm={() => del()}
+        />
+      )}
+      <ActionOverlay state={overlay.state} onDismiss={overlay.dismiss} />
+    </>
   );
 }
 
@@ -720,21 +871,30 @@ export function DeleteAction({ pollId, state, redirectTo }: { pollId: string; st
 
 export function SeedFixturesButton() {
   const [pending, start] = useTransition();
+  const overlay = useActionOverlay();
   const router = useRouter();
-  const { deferToast, toast } = useDeferredToast(pending);
 
   const seed = () => {
+    overlay.run("Seeding fixtures…", "Creating test polls for development.");
     start(async () => {
-      const r = await seedFixturesAction();
-      router.refresh();
-      if (r.ok) deferToast({ title: "Fixtures seeded", description: `${r.count} polls created.`, variant: "success" });
+      try {
+        const r = await seedFixturesAction();
+        router.refresh();
+        if (r.ok) overlay.succeed("Fixtures seeded", `${r.count} test polls created.`);
+        else overlay.fail("Seed failed", "Could not create fixtures.");
+      } catch {
+        overlay.fail("Seed failed", "Server error — please try again.");
+      }
     });
   };
 
   return (
-    <button onClick={seed} disabled={pending} className="btn btn-ghost btn-sm rounded-pill text-[12px]">
-      {pending ? "Seeding…" : "Seed fixtures"}
-    </button>
+    <>
+      <button onClick={seed} disabled={pending} className="btn btn-ghost btn-sm rounded-pill text-[12px]">
+        {pending ? "Seeding…" : "Seed fixtures"}
+      </button>
+      <ActionOverlay state={overlay.state} onDismiss={overlay.dismiss} />
+    </>
   );
 }
 
@@ -743,32 +903,42 @@ export function SeedFixturesButton() {
 export function DeleteAllButton({ totalCount }: { totalCount: number }) {
   const [pending, start] = useTransition();
   const [reason, setReason] = useState("");
+  const overlay = useActionOverlay();
   const router = useRouter();
-  const { toast } = useDeferredToast(pending);
 
   const deleteAll = (voidReason?: string) => {
+    overlay.run("Deleting all polls…", "Voiding any published markets and refunding players. This may take a moment.");
     start(async () => {
-      const fd = new FormData();
-      if (voidReason) fd.set("reason", voidReason);
-      const r = await deleteAllPollsAction(fd);
-      if (!r.ok) {
-        toast({ title: "Delete failed", description: String((r as { error?: string }).error ?? "Unknown error"), variant: "danger" });
-        return;
+      try {
+        const fd = new FormData();
+        if (voidReason) fd.set("reason", voidReason);
+        const r = await deleteAllPollsAction(fd);
+        if (!r.ok) {
+          overlay.fail("Delete failed", String((r as { error?: string }).error ?? "Unknown error"));
+          return;
+        }
+        const parts: string[] = [];
+        if (r.deleted > 0) parts.push(`${r.deleted} poll${r.deleted !== 1 ? "s" : ""} deleted`);
+        if (r.voided > 0) parts.push(`${r.voided} market${r.voided !== 1 ? "s" : ""} voided`);
+        if (r.skipped > 0) parts.push(`${r.skipped} in-flight skipped`);
+        if (r.refundedCount > 0) parts.push(`${r.refundedCount} player${r.refundedCount !== 1 ? "s" : ""} refunded · TZS ${Math.round(r.refundedTzs ?? 0).toLocaleString("en-US")}`);
+        if (r.voidErrors && r.voidErrors.length > 0) parts.push(`${r.voidErrors.length} void error${r.voidErrors.length !== 1 ? "s" : ""}`);
+        router.refresh();
+        if (r.voidErrors && r.voidErrors.length > 0) {
+          overlay.fail("Completed with errors", parts.join(" · "));
+        } else {
+          overlay.succeed("All polls cleared", parts.join(" · ") || "Nothing to delete.");
+        }
+      } catch {
+        overlay.fail("Delete failed", "Server error — please try again.");
       }
-      const parts: string[] = [];
-      if (r.deleted > 0) parts.push(`${r.deleted} poll${r.deleted !== 1 ? "s" : ""} deleted`);
-      if (r.voided > 0) parts.push(`${r.voided} market${r.voided !== 1 ? "s" : ""} voided`);
-      if (r.skipped > 0) parts.push(`${r.skipped} in-flight skipped`);
-      if (r.refundedCount > 0) parts.push(`${r.refundedCount} player${r.refundedCount !== 1 ? "s" : ""} refunded · TZS ${Math.round(r.refundedTzs ?? 0).toLocaleString("en-US")}`);
-      if (r.voidErrors && r.voidErrors.length > 0) parts.push(`${r.voidErrors.length} void error${r.voidErrors.length !== 1 ? "s" : ""}`);
-      router.refresh();
-      toast({ title: "All polls cleared", description: parts.join(" · ") || "Nothing to delete.", variant: r.voidErrors && r.voidErrors.length > 0 ? "warning" : "success" });
     });
   };
 
   if (totalCount === 0) return null;
 
   return (
+    <>
     <ConfirmDialog
       trigger={
         <button disabled={pending} className="btn btn-ghost btn-sm rounded-pill text-[12px] text-text-subtle hover:text-claret-300">
@@ -801,6 +971,8 @@ export function DeleteAllButton({ totalCount }: { totalCount: number }) {
       }
       onConfirm={() => deleteAll(reason.trim() || "Platform cleanup — bulk AI poll deletion by administrator")}
     />
+    <ActionOverlay state={overlay.state} onDismiss={overlay.dismiss} />
+    </>
   );
 }
 
@@ -814,24 +986,28 @@ const REJECT_REASONS = [
   { id: "empty_title", label: "Missing content" },
 ] as const;
 
-function RejectForm({ pollId, onClose }: { pollId: string; onClose: () => void }) {
+function RejectForm({ pollId, onClose, overlay }: { pollId: string; onClose: () => void; overlay: ReturnType<typeof useActionOverlay> }) {
   const [pending, start] = useTransition();
   const [reason, setReason] = useState<string>("low_confidence");
   const [note, setNote] = useState("");
   const router = useRouter();
-  const { deferToast, toast } = useDeferredToast(pending);
 
   const submit = () => {
+    onClose();
+    overlay.run("Rejecting poll…", "Recording your decision in the audit log.");
     start(async () => {
-      const fd = new FormData();
-      fd.set("id", pollId);
-      fd.set("reasons", reason);
-      fd.set("note", note);
-      const r = await rejectPollAction(fd);
-      onClose();
-      router.refresh();
-      if (!r.ok) toast({ title: "Reject failed", description: r.error, variant: "danger" });
-      else deferToast({ title: "Rejected", variant: "default" });
+      try {
+        const fd = new FormData();
+        fd.set("id", pollId);
+        fd.set("reasons", reason);
+        fd.set("note", note);
+        const r = await rejectPollAction(fd);
+        router.refresh();
+        if (!r.ok) overlay.fail("Reject failed", r.error);
+        else overlay.succeed("Poll rejected", "It will not appear in the publish queue.");
+      } catch {
+        overlay.fail("Reject failed", "Server error — please try again.");
+      }
     });
   };
 
@@ -863,7 +1039,7 @@ function RejectForm({ pollId, onClose }: { pollId: string; onClose: () => void }
 
 /* ─── Edit sub-form ─── */
 
-function EditForm({ poll, onClose }: { poll: StoredAIPoll; onClose: () => void }) {
+function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () => void; overlay: ReturnType<typeof useActionOverlay> }) {
   const [pending, start] = useTransition();
   const [titleEn, setTitleEn] = useState(poll.titleEn);
   const [titleSw, setTitleSw] = useState(poll.titleSw);
@@ -871,22 +1047,26 @@ function EditForm({ poll, onClose }: { poll: StoredAIPoll; onClose: () => void }
   const [criterion, setCriterion] = useState(poll.resolutionCriterion);
   const [resAt, setResAt] = useState(poll.resolutionAt ? new Date(poll.resolutionAt).toISOString().slice(0, 16) : "");
   const router = useRouter();
-  const { deferToast, toast } = useDeferredToast(pending);
 
   const submit = () => {
+    onClose();
+    overlay.run("Saving changes…", "Re-validating poll through the quality pipeline.");
     start(async () => {
-      const fd = new FormData();
-      fd.set("id", poll.id);
-      fd.set("titleEn", titleEn);
-      fd.set("titleSw", titleSw);
-      fd.set("category", category);
-      fd.set("resolutionCriterion", criterion);
-      fd.set("resolutionAt", new Date(resAt).toISOString());
-      const r = await editPollAction(fd);
-      onClose();
-      router.refresh();
-      if (!r.ok) toast({ title: "Edit failed", description: r.error, variant: "danger" });
-      else deferToast({ title: "Updated", description: "Poll re-validated.", variant: "success" });
+      try {
+        const fd = new FormData();
+        fd.set("id", poll.id);
+        fd.set("titleEn", titleEn);
+        fd.set("titleSw", titleSw);
+        fd.set("category", category);
+        fd.set("resolutionCriterion", criterion);
+        fd.set("resolutionAt", new Date(resAt).toISOString());
+        const r = await editPollAction(fd);
+        router.refresh();
+        if (!r.ok) overlay.fail("Edit failed", r.error);
+        else overlay.succeed("Poll updated", "Changes saved and poll re-validated.");
+      } catch {
+        overlay.fail("Edit failed", "Server error — please try again.");
+      }
     });
   };
 
