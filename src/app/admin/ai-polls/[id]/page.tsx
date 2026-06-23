@@ -27,12 +27,23 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 const STATE_VARIANT: Record<AIPollState, "success" | "warning" | "danger" | "neutral" | "info"> = {
   GENERATING: "info",
   VALIDATION_FAILED: "danger",
-  FILTERED: "neutral",
+  FILTERED: "warning",
   PENDING_REVIEW: "warning",
   EDITING: "info",
   APPROVED: "success",
   REJECTED: "neutral",
   PUBLISHED: "success",
+};
+
+const STATE_LABEL: Record<AIPollState, string> = {
+  GENERATING: "Generating\u2026",
+  VALIDATION_FAILED: "Failed",
+  FILTERED: "Didn\u2019t pass checks",
+  PENDING_REVIEW: "Ready for review",
+  EDITING: "Editing",
+  APPROVED: "Approved",
+  REJECTED: "Rejected",
+  PUBLISHED: "Published",
 };
 
 function fmtUsd(n: number) { return `$${n.toFixed(2)}`; }
@@ -73,7 +84,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
             <div className="flex-1 min-w-0">
               {/* State + badges */}
               <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <Chip size="md" variant={STATE_VARIANT[poll.state]}>{poll.state}</Chip>
+                <Chip size="md" variant={STATE_VARIANT[poll.state]}>{STATE_LABEL[poll.state]}</Chip>
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{poll.category}</span>
                 <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
                   <I.shieldAlert size={10} className="inline -mt-0.5 mr-0.5" />

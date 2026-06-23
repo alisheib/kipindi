@@ -9,7 +9,7 @@ const ALL_STATES = [
   { id: "PENDING_REVIEW", label: "Pending" },
   { id: "APPROVED", label: "Approved" },
   { id: "PUBLISHED", label: "Published" },
-  { id: "FILTERED", label: "Filtered" },
+  { id: "FILTERED", label: "Didn't pass" },
   { id: "REJECTED", label: "Rejected" },
   { id: "VALIDATION_FAILED", label: "Failed" },
   { id: "GENERATING", label: "Generating" },
