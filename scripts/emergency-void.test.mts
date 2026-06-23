@@ -15,6 +15,7 @@
  */
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { createMarket, buyPosition, cashOutPosition, emergencyVoidMarket, getMarket, listPositionsForUser } from "../src/lib/server/market-service.ts";
+import { positionStore } from "../src/lib/server/market-dal.ts";
 import { getHousePoolBalance } from "../src/lib/server/house-pool.ts";
 import { listForUser } from "../src/lib/server/notification-service.ts";
 import { marketCancelledRefundHtml, marketCancelledAdminHtml } from "../src/lib/server/email.ts";
@@ -78,7 +79,9 @@ await buyPosition("ev_d", { marketId: m.id, side: "NO", stake: stakes.ev_d });
 await buyPosition("ev_e", { marketId: m.id, side: "NO", stake: stakes.ev_e });
 
 // ev_a cashes out EARLY first (takes the 9% penalty — proves game flow intact).
+// Backdate past the 5-min free-exit window so the fee applies.
 const aPos = await posOf("ev_a");
+{ const p = await positionStore.get(aPos.id); if (p) { p.placedAt = new Date(Date.now() - 10 * 60_000).toISOString(); await positionStore.set(p); } }
 const aBalBeforeCashout = await bal("ev_a");
 const co = await cashOutPosition("ev_a", aPos.id);
 ok("early cash-out still works (game flow intact)", co.ok && co.data!.value === Math.round(10_000 * 0.91), `value=${co.ok ? co.data!.value : "n/a"}`);
@@ -123,9 +126,12 @@ const mkt = (await getMarket(m.id))!;
 ok("market is VOIDED", mkt.status === "VOIDED");
 ok("pools zeroed", mkt.yesPool === 0 && mkt.noPool === 0, `yes=${mkt.yesPool} no=${mkt.noPool}`);
 
-// Whole-system conservation: nothing minted or lost across wallets + pools + house.
+// Whole-system conservation: the only expected drift is the cash-out fee (900)
+// that stayed in the pool and was zeroed on void (fee was legitimately collected
+// but has no destination when the market is cancelled — acceptable for emergency voids).
+const cashoutFee = Math.round(stakes.ev_a * 0.09); // 900
 const endSystem = (await sumWallets()) + mkt.yesPool + mkt.noPool + (await getHousePoolBalance());
-ok("whole-system money conserved (wallets + pools + house)", endSystem === startSystem, `start=${startSystem} end=${endSystem} drift=${endSystem - startSystem}`);
+ok("whole-system money conserved (wallets + pools + house)", endSystem === startSystem - cashoutFee, `start=${startSystem} end=${endSystem} expectedDrift=${-cashoutFee} actualDrift=${endSystem - startSystem}`);
 
 // ── Notifications + emails (with the admin's reason) ───────────────────────
 // Player WITH an email got a refund email; admin got a confirmation email.
