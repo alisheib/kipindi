@@ -59,7 +59,7 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
               good ? "bg-yes-500/12 text-yes-300" : "bg-no-500/12 text-no-300"
             }`}
           >
-            {good ? <I.check s={22} /> : <I.alertCircle s={22} />}
+            {good ? <I.mail s={22} /> : <I.alertCircle s={22} />}
           </span>
 
           <div>
