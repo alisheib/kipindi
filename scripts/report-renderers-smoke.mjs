@@ -16,7 +16,7 @@ const BASE = process.env.BASE || "http://localhost:3000";
 const OUT = resolve(process.cwd(), ".50pick-shots/reports-smoke");
 mkdirSync(OUT, { recursive: true });
 
-const REPORTS = ["gbt-monthly", "tra-tax", "fiu-sar", "sx-register", "iso-audit"];
+const REPORTS = ["daily-ops", "gbt-monthly", "tra-tax", "fiu-sar", "sx-register", "iso-audit", "kyc-reverify", "rg-engagement", "match-integrity"];
 
 let pass = 0, fail = 0;
 function log(label, ok, detail = "") {

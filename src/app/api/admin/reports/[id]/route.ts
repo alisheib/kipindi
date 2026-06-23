@@ -19,7 +19,6 @@ import { REPORT_CATALOGUE, type ReportId } from "@/lib/server/reports/catalogue"
 import { renderXlsx } from "@/lib/server/reports/xlsx";
 import { renderPdf } from "@/lib/server/reports/pdf";
 import { reportFilename } from "@/lib/server/reports/brand";
-import { displayLabel } from "@/lib/display-label";
 
 const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
 
@@ -48,11 +47,11 @@ export async function GET(
     return NextResponse.json({ ok: false, error: "Format must be xlsx or pdf" }, { status: 400 });
   }
 
-  // Build the report from the live store. Generator label uses the
-  // canonical display helper so a regulator opening the file sees
-  // "Player #A3F2K8" or the real name (when set), never a raw user id.
-  const generatorLabel = displayLabel(u);
-  const report = await entry.build(generatorLabel);
+  // Build the report from the live store. Pass the actual userId so
+  // the catalogue's regulatorSignatures() can look up the display name
+  // itself. Previously this passed displayLabel(u) which broke the
+  // db.user.findById() lookup inside every builder.
+  const report = await entry.build(session.userId);
 
   let body: Buffer;
   let mime: string;
