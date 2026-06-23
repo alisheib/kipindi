@@ -34,6 +34,8 @@ type Props = {
   payout: number;
   ratio: number;
   lean: LeanLevel;
+  /** When true, suppress the lean warning — settlement will refund at 0% fee. */
+  isOneSided?: boolean;
   pending: boolean;
   marketTitle?: string;
   onConfirm: () => void;
@@ -41,7 +43,7 @@ type Props = {
 };
 
 export function BetConfirmModal({
-  open, side, stake, multiplier, payout, ratio, lean, pending, marketTitle, onConfirm, onCancel,
+  open, side, stake, multiplier, payout, ratio, lean, isOneSided, pending, marketTitle, onConfirm, onCancel,
 }: Props) {
   useModalLock(open);
   const [mounted, setMounted] = useState(false);
@@ -248,8 +250,9 @@ export function BetConfirmModal({
             </p>
           </div>
 
-          {/* D3: Lean warning (qualitative, no payout figure) */}
-          {lean !== "fair" && <HouseLeanWarning level={lean} />}
+          {/* D3: Lean warning (qualitative, no payout figure).
+              Suppressed when one-sided — settlement issues a full refund. */}
+          {lean !== "fair" && !isOneSided && <HouseLeanWarning level={lean} />}
 
           {/* Quote-hold caption */}
           <div className="mt-4 flex items-center gap-2 text-[12px] text-text-subtle">

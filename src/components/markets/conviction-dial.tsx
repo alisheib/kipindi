@@ -1114,8 +1114,11 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
       )}
 
       {/* D3: Qualitative lean warning — no payout figure, just a heads-up
-          that the pool is lopsided. Shown when ratio < thinProfitRatio. */}
-      {effectiveSide !== "NEUTRAL" && lean !== "fair" && (
+          that the pool is lopsided. Suppressed when the market is fully
+          one-sided (opposite pool = 0) because the settlement engine
+          issues a full refund at 0% fee — no risk to disclose. */}
+      {effectiveSide !== "NEUTRAL" && lean !== "fair" &&
+        !((yesPool > 0 && noPool === 0) || (noPool > 0 && yesPool === 0)) && (
         <HouseLeanWarning level={lean} />
       )}
 
@@ -1182,6 +1185,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
         payout={proj.payout}
         ratio={proj.ratio}
         lean={lean}
+        isOneSided={(yesPool > 0 && noPool === 0) || (noPool > 0 && yesPool === 0)}
         pending={pending}
         marketTitle={marketTitle}
         onConfirm={submit}

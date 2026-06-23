@@ -38,12 +38,23 @@ export const dynamic = "force-dynamic";
 const STATE_VARIANT: Record<AIPollState, "success" | "warning" | "danger" | "neutral" | "info"> = {
   GENERATING: "info",
   VALIDATION_FAILED: "danger",
-  FILTERED: "neutral",
+  FILTERED: "warning",
   PENDING_REVIEW: "warning",
   EDITING: "info",
   APPROVED: "success",
   REJECTED: "neutral",
   PUBLISHED: "success",
+};
+
+const STATE_LABEL: Record<AIPollState, string> = {
+  GENERATING: "Generating…",
+  VALIDATION_FAILED: "Failed",
+  FILTERED: "Didn't pass checks",
+  PENDING_REVIEW: "Ready for review",
+  EDITING: "Editing",
+  APPROVED: "Approved",
+  REJECTED: "Rejected",
+  PUBLISHED: "Published",
 };
 
 function fmtUsd(n: number) { return `$${n.toFixed(2)}`; }
@@ -483,7 +494,7 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
       <div className="flex-1 min-w-0">
         {/* Header badges */}
         <div className="flex items-center gap-2 mb-1 flex-wrap">
-          <Chip size="sm" variant={STATE_VARIANT[poll.state]}>{poll.state}</Chip>
+          <Chip size="sm" variant={STATE_VARIANT[poll.state]}>{STATE_LABEL[poll.state]}</Chip>
           <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{poll.category}</span>
           <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
             <I.shieldAlert size={10} className="inline -mt-0.5 mr-0.5" />

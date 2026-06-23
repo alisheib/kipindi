@@ -197,16 +197,16 @@ const MOCK_POLLS: Record<string, AIPollGeneration[]> = {
 type MockScenario = "clean" | "incomplete" | "malformed" | "empty" | "duplicate_options" | "long_text" | "bad_chars" | "wrong_category" | "timeout" | "error";
 
 const SCENARIO_WEIGHTS: Array<[MockScenario, number]> = [
-  ["clean", 55],
-  ["incomplete", 10],
-  ["malformed", 5],
-  ["empty", 5],
-  ["duplicate_options", 5],
-  ["long_text", 5],
-  ["bad_chars", 5],
-  ["wrong_category", 3],
-  ["timeout", 4],
-  ["error", 3],
+  ["clean", 88],
+  ["incomplete", 2],
+  ["malformed", 1],
+  ["empty", 1],
+  ["duplicate_options", 2],
+  ["long_text", 1],
+  ["bad_chars", 1],
+  ["wrong_category", 1],
+  ["timeout", 1],
+  ["error", 2],
 ];
 
 function pickScenario(): MockScenario {

@@ -88,19 +88,24 @@ export function GenerateForm() {
       const fd = new FormData();
       fd.set("category", category);
       fd.set("prompt", prompt);
-      const r = await generatePollAction(fd);
-      setGenerating(false);
-      router.refresh();
-      if (r.ok) {
-        const state = r.poll.state;
-        if (state === "PENDING_REVIEW") {
-          deferToast({ title: "Poll generated", description: "Ready for review.", variant: "success" });
-          revealElement(`poll-${r.poll.id}`);
-        } else if (state === "FILTERED") {
-          deferToast({ title: "Poll filtered", description: `Quality too low: ${r.poll.filterReasons.join(", ")}`, variant: "warning" });
-        } else if (state === "VALIDATION_FAILED") {
-          deferToast({ title: "Generation failed", description: r.poll.filterReasons.join(", "), variant: "danger" });
+      try {
+        const r = await generatePollAction(fd);
+        setGenerating(false);
+        router.refresh();
+        if (r.ok) {
+          const state = r.poll.state;
+          if (state === "PENDING_REVIEW") {
+            deferToast({ title: "Poll generated — ready for review", description: `Quality: ${r.poll.overallQuality}%`, variant: "success" });
+            revealElement(`poll-${r.poll.id}`);
+          } else if (state === "FILTERED") {
+            deferToast({ title: "Poll filtered — didn't pass quality checks", description: r.poll.filterReasons.map(r => REASON_LABELS[r] ?? r).join(", "), variant: "warning" });
+          } else if (state === "VALIDATION_FAILED") {
+            deferToast({ title: "Generation failed", description: r.poll.filterReasons.map(r => REASON_LABELS[r] ?? r).join(", "), variant: "danger" });
+          }
         }
+      } catch {
+        setGenerating(false);
+        deferToast({ title: "Generation failed", description: "Server error — try again.", variant: "danger" });
       }
     });
   };
@@ -140,7 +145,7 @@ export function GenerateForm() {
           {generating ? (
             <span className="flex items-center gap-2">
               <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
-              Generating…
+              Generating — AI pipeline running…
             </span>
           ) : (
             "Generate poll"
