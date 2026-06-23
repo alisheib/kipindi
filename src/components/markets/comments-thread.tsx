@@ -119,7 +119,7 @@ export function CommentsThread({
             onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit(); }}
             rows={3}
             placeholder="Share your read on this market · Toa maoni yako"
-            className="w-full resize-y rounded-md border border-border bg-bg-overlay px-3 py-2.5 text-[14px] text-text placeholder:text-text-subtle outline-none transition-colors focus:border-border-royal"
+            className="w-full resize-y rounded-md border border-border bg-bg-overlay px-3 py-2.5 text-[14px] text-text placeholder:text-text-subtle outline-none transition-colors focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)]"
           />
           <div className="mt-2 flex items-center justify-between">
             <span className={`font-mono text-[10.5px] tabular-nums ${remaining < 40 ? "text-warning-fg" : "text-text-subtle"}`}>
@@ -138,7 +138,7 @@ export function CommentsThread({
       ) : (
         <a
           href={signInHref}
-          className="mb-5 block rounded-md border border-border bg-bg-overlay px-4 py-3 text-center text-[13px] text-text-muted hover:border-border-royal transition-colors"
+          className="mb-5 block rounded-md border border-border bg-bg-overlay px-4 py-3 text-center text-[13px] text-text-muted hover:border-[var(--brand-500)] transition-colors"
         >
           Sign in to join the discussion · <span className="italic text-text-subtle">Ingia ili kujadili</span>
         </a>

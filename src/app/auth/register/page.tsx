@@ -5,7 +5,7 @@ import { FiftyLockup, FiftyMark } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { Field, Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
-import { PasswordInput } from "@/components/ui/password-input";
+import { PasswordPair } from "@/components/auth/password-pair";
 import { DateSelect } from "@/components/ui/date-select";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { resolveReferralPreview } from "@/lib/server/affiliate-service";
@@ -179,30 +179,7 @@ export default async function RegisterPage({
               })()}
             </Field>
 
-            <Field label="Password · Nenosiri" hint="At least 8 characters.">
-              <PasswordInput
-                id="password"
-                name="password"
-                required
-                autoComplete="new-password"
-                minLength={8}
-                size="lg"
-                showStrength
-                placeholder="••••••••"
-              />
-            </Field>
-
-            <Field label="Confirm password · Thibitisha nenosiri">
-              <PasswordInput
-                id="passwordConfirm"
-                name="passwordConfirm"
-                required
-                autoComplete="new-password"
-                minLength={8}
-                size="lg"
-                placeholder="••••••••"
-              />
-            </Field>
+            <PasswordPair />
 
             <fieldset className="space-y-2.5 pt-1">
               <Checkbox

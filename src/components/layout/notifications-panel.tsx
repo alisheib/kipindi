@@ -170,7 +170,7 @@ export function NotificationsPanel() {
         aria-expanded={open ? "true" : "false"}
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "relative inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors",
+          "relative inline-flex h-10 w-10 items-center justify-center rounded-md transition-colors",
           open ? "bg-bg-overlay text-text" : "text-text-subtle hover:text-text hover:bg-bg-overlay",
         )}
       >
@@ -225,7 +225,7 @@ export function NotificationsPanel() {
                   type="button"
                   aria-label="Close"
                   onClick={() => setOpen(false)}
-                  className="h-7 w-7 inline-flex items-center justify-center rounded-md text-text-subtle hover:text-text hover:bg-bg-overlay transition-colors"
+                  className="h-8 w-8 inline-flex items-center justify-center rounded-md text-text-subtle hover:text-text hover:bg-bg-overlay transition-colors"
                 >
                   <I.x s={14} />
                 </button>

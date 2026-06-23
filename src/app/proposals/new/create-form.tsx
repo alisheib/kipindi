@@ -62,11 +62,11 @@ export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: 
       <Field label={<>Title (EN) · Kichwa <Req /></>} hint={
         <span className={titleEn.length > 120 ? "text-no-300" : undefined}>{titleEn.length}/120</span>
       }>
-        <Input placeholder="Will [event] happen by [date]?" value={titleEn} onChange={(e) => setTitleEn(e.target.value)} maxLength={140} />
+        <Input placeholder="Will [event] happen by [date]?" value={titleEn} onChange={(e) => setTitleEn(e.target.value)} maxLength={120} />
       </Field>
 
       <Field label="Title (SW, optional) · Kichwa kwa Kiswahili">
-        <Input placeholder="Je, [tukio] litatokea kabla ya [tarehe]?" value={titleSw} onChange={(e) => setTitleSw(e.target.value)} maxLength={140} />
+        <Input placeholder="Je, [tukio] litatokea kabla ya [tarehe]?" value={titleSw} onChange={(e) => setTitleSw(e.target.value)} maxLength={120} />
       </Field>
 
       <div>

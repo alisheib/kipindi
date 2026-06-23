@@ -102,8 +102,8 @@ export function AvatarMenu({
         onClick={() => setOpen((v) => !v)}
         className="rounded-pill focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
         style={{
-          width: 34,
-          height: 34,
+          width: 40,
+          height: 40,
           borderRadius: 999,
           border: "1.5px solid var(--brand-500)",
           padding: 0,

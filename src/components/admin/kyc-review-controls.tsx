@@ -104,7 +104,7 @@ export function KycReviewControls({ userId, status }: { userId: string; status: 
           placeholder={rejecting
             ? "e.g. The name on your NIDA doesn't match the name on file. Please re-check and resubmit."
             : "e.g. The back of your ID is blurry — please re-upload a clearer photo with all corners visible."}
-          className="w-full rounded-md border border-border bg-bg-inset px-3 py-2 text-[16px] sm:text-[13px] text-text outline-none focus:border-brand-500"
+          className="w-full rounded-md border border-border bg-bg-inset px-3 py-2 text-[16px] sm:text-[13px] text-text outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)]"
         />
 
         {/* Request-info only: specific extra documents to ask for. Each row is a
@@ -121,7 +121,7 @@ export function KycReviewControls({ userId, status }: { userId: string; status: 
                   onChange={(e) => setDocReqs((prev) => prev.map((v, j) => (j === i ? e.target.value : v)))}
                   maxLength={300}
                   placeholder="e.g. Proof of address (utility bill, < 3 months)"
-                  className="flex-1 min-w-0 rounded-md border border-border bg-bg-inset px-2.5 py-2 text-[16px] sm:text-[13px] text-text outline-none focus:border-gold-500"
+                  className="flex-1 min-w-0 rounded-md border border-border bg-bg-inset px-2.5 py-2 text-[16px] sm:text-[13px] text-text outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)]"
                 />
                 <button type="button" aria-label="Remove document request" onClick={() => setDocReqs((prev) => prev.filter((_, j) => j !== i))}
                   className="shrink-0 inline-flex items-center justify-center rounded-md border border-border text-text-tertiary hover:text-no-300 hover:border-no-700" style={{ width: 40, height: 40 }}>

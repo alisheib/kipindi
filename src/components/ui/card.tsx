@@ -1,7 +1,7 @@
 /**
  * Card — kit-faithful surface (--bg-elevated + --border, theme-adaptive).
  * elevation: flat (no shadow) · raised (default e2) · floating (e3)
- * interactive: adds hover lift + teal-500 border + cursor pointer
+ * interactive: adds hover lift + royal-indigo border + cursor pointer
  */
 import * as React from "react";
 import { cn } from "@/lib/utils";
