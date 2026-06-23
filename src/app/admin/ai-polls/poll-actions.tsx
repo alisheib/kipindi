@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Toggle } from "@/components/ui/toggle";
+import { I } from "@/components/ui/glyphs";
 import {
   generatePollAction,
   generatePollBatchAction,
@@ -74,87 +75,216 @@ const CATEGORIES = [
   { id: "tech", label: "Tech" },
 ] as const;
 
+type GenPhase = "idle" | "calling" | "validating" | "filtering" | "done";
+type GenResult = { state: string; title: string; quality: number; reasons: string[] } | null;
+
+const PHASE_LABELS: Record<GenPhase, string> = {
+  idle: "",
+  calling: "Calling AI model…",
+  validating: "Validating response…",
+  filtering: "Running quality checks…",
+  done: "",
+};
+
+const PHASE_PROGRESS: Record<GenPhase, number> = {
+  idle: 0,
+  calling: 25,
+  validating: 55,
+  filtering: 80,
+  done: 100,
+};
+
 export function GenerateForm() {
   const [pending, start] = useTransition();
   const [category, setCategory] = useState("sports");
   const [prompt, setPrompt] = useState("");
-  const [generating, setGenerating] = useState(false);
+  const [phase, setPhase] = useState<GenPhase>("idle");
+  const [result, setResult] = useState<GenResult>(null);
+  const phaseTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const router = useRouter();
   const { deferToast } = useDeferredToast(pending);
 
+  const clearTimers = () => {
+    phaseTimers.current.forEach(clearTimeout);
+    phaseTimers.current = [];
+  };
+
   const generate = () => {
-    setGenerating(true);
+    setPhase("calling");
+    setResult(null);
+    clearTimers();
+    // Simulate phases while the real call runs — gives visual progress
+    phaseTimers.current.push(setTimeout(() => setPhase("validating"), 800));
+    phaseTimers.current.push(setTimeout(() => setPhase("filtering"), 1600));
+
     start(async () => {
       const fd = new FormData();
       fd.set("category", category);
       fd.set("prompt", prompt);
       try {
         const r = await generatePollAction(fd);
-        setGenerating(false);
+        clearTimers();
+        const state = r.ok ? r.poll.state : "VALIDATION_FAILED";
+        setResult({
+          state,
+          title: r.ok ? r.poll.titleEn : "",
+          quality: r.ok ? r.poll.overallQuality : 0,
+          reasons: r.ok ? r.poll.filterReasons.map((r: string) => REASON_LABELS[r] ?? r) : ["Server error"],
+        });
+        setPhase("done");
         router.refresh();
-        if (r.ok) {
-          const state = r.poll.state;
-          if (state === "PENDING_REVIEW") {
-            deferToast({ title: "Poll generated — ready for review", description: `Quality: ${r.poll.overallQuality}%`, variant: "success" });
-            revealElement(`poll-${r.poll.id}`);
-          } else if (state === "FILTERED") {
-            deferToast({ title: "Poll filtered — didn't pass quality checks", description: r.poll.filterReasons.map(r => REASON_LABELS[r] ?? r).join(", "), variant: "warning" });
-          } else if (state === "VALIDATION_FAILED") {
-            deferToast({ title: "Generation failed", description: r.poll.filterReasons.map(r => REASON_LABELS[r] ?? r).join(", "), variant: "danger" });
-          }
+        if (r.ok && state === "PENDING_REVIEW") {
+          revealElement(`poll-${r.poll.id}`);
         }
       } catch {
-        setGenerating(false);
-        deferToast({ title: "Generation failed", description: "Server error — try again.", variant: "danger" });
+        clearTimers();
+        setResult({ state: "VALIDATION_FAILED", title: "", quality: 0, reasons: ["Server error — try again"] });
+        setPhase("done");
       }
     });
   };
 
+  const dismiss = () => {
+    setPhase("idle");
+    setResult(null);
+  };
+
+  const active = phase !== "idle";
+
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
-        {CATEGORIES.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            onClick={() => setCategory(c.id)}
-            className={`px-3 py-1.5 rounded-pill text-[12px] font-mono uppercase tracking-[0.1em] border transition-colors ${
-              category === c.id
-                ? "border-gold bg-gold/10 text-gold-300"
-                : "border-border bg-bg-overlay text-text-muted hover:border-text-subtle"
-            }`}
-          >
-            {c.label}
-          </button>
-        ))}
-      </div>
-      <textarea
-        value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
-        placeholder="Optional: guide the AI with specific instructions (e.g. 'Focus on Premier League football this weekend')"
-        className={adminTextarea}
-        rows={2}
-      />
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={generate}
-          disabled={pending || generating}
-          className="btn btn-gold btn-sm rounded-pill min-w-[160px]"
-        >
-          {generating ? (
-            <span className="flex items-center gap-2">
-              <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
-              Generating — AI pipeline running…
+    <div className="relative">
+      {/* Form — disabled during generation */}
+      <div className={active ? "pointer-events-none select-none opacity-30 blur-[1px] transition-all duration-200" : "transition-all duration-200"}>
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {CATEGORIES.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setCategory(c.id)}
+                className={`px-3 py-1.5 rounded-pill text-[12px] font-mono uppercase tracking-[0.1em] border transition-colors ${
+                  category === c.id
+                    ? "border-gold bg-gold/10 text-gold-300"
+                    : "border-border bg-bg-overlay text-text-muted hover:border-text-subtle"
+                }`}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Optional: guide the AI with specific instructions (e.g. 'Focus on Premier League football this weekend')"
+            className={adminTextarea}
+            rows={2}
+          />
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={generate}
+              disabled={pending || active}
+              className="btn btn-gold btn-sm rounded-pill min-w-[160px]"
+            >
+              Generate poll
+            </button>
+            <span className="text-[11px] text-text-subtle font-mono">
+              Category: {category}
             </span>
-          ) : (
-            "Generate poll"
-          )}
-        </button>
-        <span className="text-[11px] text-text-subtle font-mono">
-          Category: {category}
-        </span>
+          </div>
+        </div>
       </div>
+
+      {/* Generation overlay — covers the form while running */}
+      {active && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center">
+          <div className="w-full max-w-[400px] rounded-xl border border-border bg-bg-elevated p-5 shadow-e4" style={{ animation: "np-rise 200ms cubic-bezier(.2,.8,.2,1)" }}>
+            {phase !== "done" ? (
+              /* ── In-progress ── */
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <span className="inline-block h-5 w-5 rounded-full border-2 border-gold-300 border-t-transparent animate-spin shrink-0" />
+                  <p className="font-display text-[15px] font-semibold text-text">Generating poll</p>
+                </div>
+                {/* Progress bar */}
+                <div className="space-y-2">
+                  <div className="h-2 w-full rounded-pill bg-bg-overlay overflow-hidden">
+                    <div
+                      className="h-full rounded-pill transition-all duration-700 ease-out"
+                      style={{
+                        width: `${PHASE_PROGRESS[phase]}%`,
+                        background: "linear-gradient(90deg, var(--gold-500), var(--gold-400))",
+                      }}
+                    />
+                  </div>
+                  <p className="font-mono text-[11px] text-text-subtle tabular-nums">
+                    {PHASE_LABELS[phase]}
+                  </p>
+                </div>
+                <p className="text-[11px] text-text-subtle leading-relaxed">
+                  The AI generates a poll, then it passes through validation, duplicate detection, and quality scoring.
+                </p>
+              </div>
+            ) : result ? (
+              /* ── Result ── */
+              <div className="space-y-3">
+                {result.state === "PENDING_REVIEW" ? (
+                  <>
+                    <div className="flex items-center gap-2.5">
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-yes-500/15 text-yes-300 shrink-0"><I.check s={18} /></span>
+                      <div>
+                        <p className="font-display text-[15px] font-semibold text-text">Poll ready for review</p>
+                        <p className="font-mono text-[11px] text-yes-300">Quality: {result.quality}%</p>
+                      </div>
+                    </div>
+                    {result.title && (
+                      <p className="text-[13px] text-text-muted leading-snug line-clamp-2">{result.title}</p>
+                    )}
+                  </>
+                ) : result.state === "FILTERED" ? (
+                  <>
+                    <div className="flex items-center gap-2.5">
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-warning-bg text-warning-fg shrink-0"><I.warning s={18} /></span>
+                      <div>
+                        <p className="font-display text-[15px] font-semibold text-text">Didn&apos;t pass quality checks</p>
+                        <p className="font-mono text-[11px] text-warning-fg">Try generating again</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {result.reasons.map((r, i) => (
+                        <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-pill text-[10px] font-mono border border-warning-border bg-warning-bg/30 text-warning-fg">{r}</span>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2.5">
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-no-500/15 text-no-300 shrink-0"><I.x s={18} /></span>
+                      <div>
+                        <p className="font-display text-[15px] font-semibold text-text">Generation failed</p>
+                        <p className="font-mono text-[11px] text-no-300">AI provider error</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {result.reasons.map((r, i) => (
+                        <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-pill text-[10px] font-mono border border-no-700/40 bg-no-500/10 text-no-300">{r}</span>
+                      ))}
+                    </div>
+                  </>
+                )}
+                <div className="flex gap-2 pt-1">
+                  <button type="button" onClick={dismiss} className="btn btn-ghost btn-sm rounded-pill flex-1">
+                    Dismiss
+                  </button>
+                  <button type="button" onClick={() => { dismiss(); generate(); }} className="btn btn-gold btn-sm rounded-pill flex-1">
+                    Generate another
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
