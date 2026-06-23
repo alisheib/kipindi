@@ -19,6 +19,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { I } from "@/components/ui/glyphs";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
+import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
 import { approveKycAction, rejectKycAction, requestKycInfoAction } from "@/app/admin/players/[id]/actions";
 
 type Mode = "idle" | "rejecting" | "requesting";
@@ -30,6 +31,7 @@ export function KycReviewControls({ userId, status }: { userId: string; status: 
   // REQUEST_INFO only: specific extra documents to ask for, each a description.
   const [docReqs, setDocReqs] = useState<string[]>([]);
   const [pending, start] = useTransition();
+  const overlay = useActionOverlay();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -42,13 +44,18 @@ export function KycReviewControls({ userId, status }: { userId: string; status: 
   }
 
   const approve = () => {
+    overlay.run("Approving KYC…", "Inaendelea kuidhinisha uthibitisho. Subiri kidogo.");
     start(async () => {
-      const fd = new FormData();
-      fd.set("userId", userId);
-      const r = await approveKycAction(fd);
-      if (!r.ok) { toast({ title: "Couldn't approve", description: r.error, variant: "danger" }); return; }
-      toast({ title: "KYC approved", description: "Player notified.", variant: "success" });
-      router.refresh();
+      try {
+        const fd = new FormData();
+        fd.set("userId", userId);
+        const r = await approveKycAction(fd);
+        if (!r.ok) { overlay.fail("Couldn't approve", r.error); return; }
+        overlay.succeed("KYC approved", "Player has been notified.");
+        router.refresh();
+      } catch {
+        overlay.fail("Couldn't approve", "Server error — please try again.");
+      }
     });
   };
 
@@ -60,27 +67,33 @@ export function KycReviewControls({ userId, status }: { userId: string; status: 
       return;
     }
     const cleanDocs = docReqs.map((d) => d.trim()).filter((d) => d.length > 0);
-    // Every added extra-doc row must carry a description — empty asks help nobody.
     if (kind === "requesting" && docReqs.length > 0 && cleanDocs.length !== docReqs.length) {
       toast({ title: "Describe each document", description: "Every requested document needs a short description.", variant: "danger" });
       return;
     }
+    const label = kind === "rejecting" ? "Rejecting KYC…" : "Requesting info…";
+    setMode("idle");
+    overlay.run(label, kind === "rejecting" ? "Recording rejection and notifying player." : "Sending request to the player.");
     start(async () => {
-      const fd = new FormData();
-      fd.set("userId", userId);
-      fd.set("reason", v);
-      if (kind === "requesting") fd.set("requestedDocs", JSON.stringify(cleanDocs));
-      const r = kind === "rejecting" ? await rejectKycAction(fd) : await requestKycInfoAction(fd);
-      if (!r.ok) { toast({ title: "Couldn't submit", description: r.error, variant: "danger" }); return; }
-      toast({
-        title: kind === "rejecting" ? "KYC rejected" : "Info requested",
-        description: kind === "rejecting" ? "Player notified with your reason."
-          : cleanDocs.length > 0 ? `Player asked for ${cleanDocs.length} document${cleanDocs.length > 1 ? "s" : ""} + your note.`
-          : "Player asked to update & resubmit.",
-        variant: "success",
-      });
-      setMode("idle"); setReason(""); setDocReqs([]);
-      router.refresh();
+      try {
+        const fd = new FormData();
+        fd.set("userId", userId);
+        fd.set("reason", v);
+        if (kind === "requesting") fd.set("requestedDocs", JSON.stringify(cleanDocs));
+        const r = kind === "rejecting" ? await rejectKycAction(fd) : await requestKycInfoAction(fd);
+        if (!r.ok) { overlay.fail("Couldn't submit", r.error); return; }
+        if (kind === "rejecting") {
+          overlay.succeed("KYC rejected", "Player notified with your reason.");
+        } else {
+          overlay.succeed("Info requested", cleanDocs.length > 0
+            ? `Player asked for ${cleanDocs.length} document${cleanDocs.length > 1 ? "s" : ""}.`
+            : "Player asked to update & resubmit.");
+        }
+        setReason(""); setDocReqs([]);
+        router.refresh();
+      } catch {
+        overlay.fail("Couldn't submit", "Server error — please try again.");
+      }
     });
   };
 
@@ -91,7 +104,7 @@ export function KycReviewControls({ userId, status }: { userId: string; status: 
   if (mode !== "idle") {
     const rejecting = mode === "rejecting";
     return (
-      <div className={`space-y-2 rounded-lg border p-3 ${rejecting ? "border-no-700/50 bg-no-500/[0.06]" : "border-gold-700/50 bg-gold-500/[0.06]"}`}>
+      <><div className={`space-y-2 rounded-lg border p-3 ${rejecting ? "border-no-700/50 bg-no-500/[0.06]" : "border-gold-700/50 bg-gold-500/[0.06]"}`}>
         <label className="block font-mono text-micro tracking-[0.12em] uppercase text-text-secondary">
           {rejecting ? "Rejection reason (sent to the player)" : "What do you need? (sent to the player)"}
         </label>
@@ -104,7 +117,7 @@ export function KycReviewControls({ userId, status }: { userId: string; status: 
           placeholder={rejecting
             ? "e.g. The name on your NIDA doesn't match the name on file. Please re-check and resubmit."
             : "e.g. The back of your ID is blurry — please re-upload a clearer photo with all corners visible."}
-          className="w-full rounded-md border border-border bg-bg-inset px-3 py-2 text-[16px] sm:text-[13px] text-text outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)]"
+          className="w-full rounded-md border border-border bg-bg-inset px-3 py-2 text-[16px] sm:text-[13px] text-text outline-none admin-focus"
         />
 
         {/* Request-info only: specific extra documents to ask for. Each row is a
@@ -121,7 +134,7 @@ export function KycReviewControls({ userId, status }: { userId: string; status: 
                   onChange={(e) => setDocReqs((prev) => prev.map((v, j) => (j === i ? e.target.value : v)))}
                   maxLength={300}
                   placeholder="e.g. Proof of address (utility bill, < 3 months)"
-                  className="flex-1 min-w-0 rounded-md border border-border bg-bg-inset px-2.5 py-2 text-[16px] sm:text-[13px] text-text outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)]"
+                  className="flex-1 min-w-0 rounded-md border border-border bg-bg-inset px-2.5 py-2 text-[16px] sm:text-[13px] text-text outline-none admin-focus"
                 />
                 <button type="button" aria-label="Remove document request" onClick={() => setDocReqs((prev) => prev.filter((_, j) => j !== i))}
                   className="shrink-0 inline-flex items-center justify-center rounded-md border border-border text-text-tertiary hover:text-no-300 hover:border-no-700" style={{ width: 40, height: 40 }}>
@@ -159,33 +172,38 @@ export function KycReviewControls({ userId, status }: { userId: string; status: 
           <span className="sm:ml-auto text-center font-mono text-micro text-text-tertiary tabular-nums">{reason.length}/500</span>
         </div>
       </div>
+      <ActionOverlay state={overlay.state} onDismiss={overlay.dismiss} />
+      </>
     );
   }
 
   // ── Idle: the three outcome buttons (stack on phone, inline from sm) ──
   return (
-    <div className="grid grid-cols-1 sm:flex sm:flex-wrap sm:items-center gap-2.5">
-      <ConfirmDialog
-        tone="gold"
-        title="Approve verification · Idhinisha"
-        body="Approve this identity verification? The player will be notified and (if gated by KYC) unlocked."
-        confirmLabel="Yes, approve"
-        onConfirm={approve}
-        trigger={
-          <button type="button" disabled={pending}
-            className="btn btn-yes btn-md w-full sm:w-auto inline-flex items-center justify-center gap-1.5" style={{ borderRadius: 999, minHeight: 44 }}>
-            {pending ? <Spinner size={15} /> : <I.check s={15} />} Approve
-          </button>
-        }
-      />
-      <button type="button" onClick={() => setMode("requesting")} disabled={pending}
-        className="btn btn-gold btn-md w-full sm:w-auto inline-flex items-center justify-center gap-1.5" style={{ borderRadius: 999, minHeight: 44 }}>
-        <I.alertCircle s={15} /> Request info…
-      </button>
-      <button type="button" onClick={() => setMode("rejecting")} disabled={pending}
-        className="btn btn-no btn-md w-full sm:w-auto inline-flex items-center justify-center gap-1.5" style={{ borderRadius: 999, minHeight: 44 }}>
-        <I.x s={15} /> Reject…
-      </button>
-    </div>
+    <>
+      <div className="grid grid-cols-1 sm:flex sm:flex-wrap sm:items-center gap-2.5">
+        <ConfirmDialog
+          tone="gold"
+          title="Approve verification · Idhinisha"
+          body="Approve this identity verification? The player will be notified and (if gated by KYC) unlocked."
+          confirmLabel="Yes, approve"
+          onConfirm={approve}
+          trigger={
+            <button type="button" disabled={pending}
+              className="btn btn-yes btn-md w-full sm:w-auto inline-flex items-center justify-center gap-1.5" style={{ borderRadius: 999, minHeight: 44 }}>
+              {pending ? <Spinner size={15} /> : <I.check s={15} />} Approve
+            </button>
+          }
+        />
+        <button type="button" onClick={() => setMode("requesting")} disabled={pending}
+          className="btn btn-gold btn-md w-full sm:w-auto inline-flex items-center justify-center gap-1.5" style={{ borderRadius: 999, minHeight: 44 }}>
+          <I.alertCircle s={15} /> Request info…
+        </button>
+        <button type="button" onClick={() => setMode("rejecting")} disabled={pending}
+          className="btn btn-no btn-md w-full sm:w-auto inline-flex items-center justify-center gap-1.5" style={{ borderRadius: 999, minHeight: 44 }}>
+          <I.x s={15} /> Reject…
+        </button>
+      </div>
+      <ActionOverlay state={overlay.state} onDismiss={overlay.dismiss} />
+    </>
   );
 }
