@@ -8,6 +8,7 @@ import { NotificationsPanel } from "@/components/layout/notifications-panel";
 import { AvatarMenu } from "@/components/layout/avatar-menu";
 import { WalletBalancePill } from "@/components/layout/wallet-balance-pill";
 import { CashEye } from "@/components/ui/cash";
+import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -110,6 +111,30 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
               <WalletBalancePill balance={user.balance} />
               <CashEye bare size={14} className="inline-flex text-[var(--gold-300)]" />
             </>
+          )}
+
+          {/* Deposit CTA — gold per kit (money-commit action).
+              Icon-only on phones; label from sm: up. Hidden on the
+              deposit page itself so it doesn't feel redundant. */}
+          {user.isAuthed && !pathname.startsWith("/wallet/deposit") && (
+            <Link
+              href="/wallet/deposit"
+              aria-label={locale === "sw" ? "Weka pesa" : "Deposit"}
+              className="inline-flex items-center justify-center gap-1.5 rounded-pill font-display font-bold text-[12px] tracking-[-0.01em] transition-all duration-150 hover:brightness-110 hover:shadow-[0_0_14px_-2px_var(--gold-400)]"
+              style={{
+                height: 34,
+                padding: "0 10px",
+                background: "linear-gradient(135deg, var(--gold-500), var(--gold-600))",
+                color: "var(--gold-50)",
+                border: "1px solid color-mix(in oklab, var(--gold-400) 50%, transparent)",
+                boxShadow: "inset 0 1px 0 color-mix(in oklab, var(--gold-300) 25%, transparent), 0 2px 8px -2px color-mix(in oklab, var(--gold-500) 35%, transparent)",
+              }}
+            >
+              <I.plus s={14} />
+              <span className="hidden sm:inline">
+                {locale === "sw" ? "Weka" : "Deposit"}
+              </span>
+            </Link>
           )}
 
           {/* Notifications bell */}
