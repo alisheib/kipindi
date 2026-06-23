@@ -135,7 +135,7 @@ function ConfirmVoid({
             maxLength={500}
             autoFocus
             placeholder="e.g. Suspended by directive of the Gaming Board"
-            className="w-full rounded-md border border-border bg-bg-inset px-3 py-2 text-[16px] text-text outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)]"
+            className="w-full rounded-md border border-border bg-bg-inset px-3 py-2 text-[16px] text-text outline-none admin-focus"
           />
           <span className="mt-1 block font-mono text-[10px] text-text-subtle">{reason.trim().length}/500 — minimum 5 characters</span>
         </label>

@@ -121,7 +121,7 @@ export function SuspendControls({
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="Why are you taking this action?"
-                className="mt-1 w-full rounded-md border border-border bg-bg-overlay px-2.5 py-2 text-[13px] text-text outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
+                className="mt-1 w-full rounded-md border border-border bg-bg-overlay px-2.5 py-2 text-[13px] text-text outline-none admin-focus transition-colors"
                 rows={3}
                 maxLength={500}
                 autoFocus

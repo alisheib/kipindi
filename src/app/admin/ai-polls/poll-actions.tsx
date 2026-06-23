@@ -23,7 +23,7 @@ import {
 import type { StoredAIPoll, QualityIndicator, FilterReason } from "@/lib/server/ai-poll-generation";
 import type { AIPollConfig } from "@/lib/server/ai-poll-config";
 
-const adminTextarea = "w-full rounded-lg border border-border bg-[var(--bg-inset)] px-3 py-2.5 text-[13px] text-text placeholder:text-text-subtle outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors resize-none";
+const adminTextarea = "w-full rounded-lg border border-border bg-[var(--bg-inset)] px-3 py-2.5 text-[13px] text-text placeholder:text-text-subtle outline-none admin-focus transition-colors resize-none";
 
 /**
  * After a generate/regenerate/batch action + router.refresh(), the new poll
@@ -451,7 +451,7 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
 
 export function QualityBadges({ indicators, overall }: { indicators: QualityIndicator[]; overall: number }) {
   const statusColor = (s: "good" | "warning" | "bad") =>
-    s === "good" ? "var(--yes-300)" : s === "warning" ? "oklch(82% 0.16 80)" : "oklch(80% 0.18 25)";
+    s === "good" ? "var(--yes-300)" : s === "warning" ? "var(--gold-300)" : "var(--claret-300)";
 
   return (
     <div className="space-y-1.5">
@@ -461,7 +461,7 @@ export function QualityBadges({ indicators, overall }: { indicators: QualityIndi
         </span>
         <span
           className="font-mono text-[13px] font-bold tabular-nums"
-          style={{ color: overall >= 80 ? "var(--yes-300)" : overall >= 50 ? "oklch(82% 0.16 80)" : "oklch(80% 0.18 25)" }}
+          style={{ color: overall >= 80 ? "var(--yes-300)" : overall >= 50 ? "var(--gold-300)" : "var(--claret-300)" }}
         >
           {overall}%
         </span>
@@ -528,7 +528,7 @@ export function FilterReasonChips({ reasons }: { reasons: FilterReason[] }) {
       {reasons.map((r, i) => (
         <span
           key={i}
-          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-pill text-[10px] font-mono border border-danger-500/30 bg-danger-500/8 text-[oklch(80%_0.18_25)]"
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-pill text-[10px] font-mono border border-danger-500/30 bg-danger-500/8 text-claret-300"
         >
           {REASON_LABELS[r] ?? r}
         </span>
@@ -583,7 +583,7 @@ export function ReviewActions({ poll }: { poll: StoredAIPoll }) {
       <button onClick={regenerate} disabled={pending} className="btn btn-ghost btn-sm rounded-pill">
         Regenerate
       </button>
-      <button onClick={() => setShowReject((v) => !v)} disabled={pending} className="btn btn-ghost btn-sm rounded-pill text-[oklch(80%_0.18_25)]">
+      <button onClick={() => setShowReject((v) => !v)} disabled={pending} className="btn btn-ghost btn-sm rounded-pill text-claret-300">
         Reject…
       </button>
 
@@ -659,7 +659,7 @@ export function DeleteAction({ pollId, state, redirectTo }: { pollId: string; st
   const deleteBtn = (
     <button
       disabled={pending}
-      className="btn btn-ghost btn-sm rounded-pill text-text-subtle hover:text-[oklch(80%_0.18_25)]"
+      className="btn btn-ghost btn-sm rounded-pill text-text-subtle hover:text-claret-300"
     >
       {pending ? "Deleting…" : "Delete"}
     </button>
@@ -709,7 +709,7 @@ export function DeleteAction({ pollId, state, redirectTo }: { pollId: string; st
     <button
       onClick={() => del()}
       disabled={pending}
-      className="btn btn-ghost btn-sm rounded-pill text-text-subtle hover:text-[oklch(80%_0.18_25)]"
+      className="btn btn-ghost btn-sm rounded-pill text-text-subtle hover:text-claret-300"
     >
       {pending ? "Deleting…" : "Delete"}
     </button>
@@ -771,7 +771,7 @@ export function DeleteAllButton({ totalCount }: { totalCount: number }) {
   return (
     <ConfirmDialog
       trigger={
-        <button disabled={pending} className="btn btn-ghost btn-sm rounded-pill text-[12px] text-text-subtle hover:text-[oklch(80%_0.18_25)]">
+        <button disabled={pending} className="btn btn-ghost btn-sm rounded-pill text-[12px] text-text-subtle hover:text-claret-300">
           {pending ? "Clearing…" : "Delete all"}
         </button>
       }

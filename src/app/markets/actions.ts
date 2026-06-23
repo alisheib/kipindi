@@ -119,18 +119,37 @@ export async function createMarketAction(formData: FormData) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
   await requireAdminOrThrow(session.userId, "createMarketAction");
+  const VALID_CATEGORIES = new Set(["sports", "macro", "weather", "crypto", "culture", "tech", "other"]);
+  const titleEn = String(formData.get("titleEn") ?? "").trim();
+  const titleSw = String(formData.get("titleSw") ?? "").trim();
+  const rawCategory = String(formData.get("category") ?? "other");
+  const sourceUrl = String(formData.get("sourceUrl") ?? "").trim();
+  const resolutionCriterion = String(formData.get("resolutionCriterion") ?? "").trim();
+  const resolutionAt = String(formData.get("resolutionAt") ?? "").trim();
+  if (titleEn.length < 10) {
+    return { ok: false as const, error: "Title must be at least 10 characters." };
+  }
+  if (!sourceUrl || !/^https?:\/\/.+/.test(sourceUrl)) {
+    return { ok: false as const, error: "Source URL must be a valid HTTP(S) URL." };
+  }
+  if (!resolutionAt || Number.isNaN(Date.parse(resolutionAt))) {
+    return { ok: false as const, error: "Resolution time is required and must be a valid date." };
+  }
+  if (resolutionCriterion.length < 30) {
+    return { ok: false as const, error: "Resolution criterion must be at least 30 characters." };
+  }
+  if (!VALID_CATEGORIES.has(rawCategory)) {
+    return { ok: false as const, error: "Invalid category." };
+  }
   const input: CreateMarketInput = {
-    titleEn: String(formData.get("titleEn") ?? ""),
-    titleSw: String(formData.get("titleSw") ?? ""),
-    category: String(formData.get("category") ?? "other") as CreateMarketInput["category"],
-    sourceUrl: String(formData.get("sourceUrl") ?? ""),
-    resolutionCriterion: String(formData.get("resolutionCriterion") ?? ""),
-    resolutionAt: String(formData.get("resolutionAt") ?? ""),
+    titleEn,
+    titleSw,
+    category: rawCategory as CreateMarketInput["category"],
+    sourceUrl,
+    resolutionCriterion,
+    resolutionAt,
     proposedBy: session.userId,
   };
-  if (!input.titleEn || !input.sourceUrl || !input.resolutionAt) {
-    return { ok: false as const, error: "Title, source URL, and resolution time are required." };
-  }
   // Source-trust gate — only enabled, on-registry sources can publish a market.
   await seedDefaultSources();
   const trust = await isSourceTrusted(input.sourceUrl, input.category);

@@ -1898,6 +1898,16 @@ html.kp-reduce-motion *::after {
 .trust-item svg { width: 16px; height: 16px; color: var(--gilt); flex-shrink: 0; }
 .trust-sep { width: 1px; height: 16px; background: var(--border); }
 
+/* ── Admin quality/confidence colour helpers ─────────────────────── */
+/* Use these instead of hardcoding oklch values for quality scores.   */
+.admin-quality-good { color: var(--yes-300); }
+.admin-quality-mid  { color: var(--gold-300); }
+.admin-quality-bad  { color: var(--claret-300); }
+
+/* ── Admin focus ring ────────────────────────────────────────────── */
+/* Single source of truth for the brand focus ring on admin inputs.   */
+.admin-focus:focus { outline: none; border-color: var(--brand-500); box-shadow: 0 0 0 3px oklch(63% 0.18 262 / 0.25); }
+
 /* ── Admin tables ─────────────────────────────────────────────────── */
 /* Consistent padding, breathing room, and border treatment for every
    admin data table. Apply `.admin-tbl` on the <table> element inside

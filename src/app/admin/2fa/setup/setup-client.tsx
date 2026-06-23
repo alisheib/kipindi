@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
 import { provisionTotpAction, verifyTotpAction, removeTotpAction } from "./actions";
+import QRCode from "qrcode";
 
 export function TotpSetupClient({ initiallyEnabled }: { initiallyEnabled: boolean }) {
   const [enabled, setEnabled] = useState(initiallyEnabled);
@@ -74,9 +75,9 @@ export function TotpSetupClient({ initiallyEnabled }: { initiallyEnabled: boolea
   if (provisioning) {
     return (
       <div className="space-y-4">
-        <div className="rounded-md bg-bg-sunken/40 border border-border p-3 space-y-2">
+        <div className="rounded-md bg-bg-sunken/40 border border-border p-3 space-y-3">
           <p className="text-body-sm font-semibold text-text">1. Scan with your authenticator app</p>
-          <p className="text-caption text-text-secondary break-all font-mono">{provisioning.otpauthUrl}</p>
+          <QrImage url={provisioning.otpauthUrl} />
           <p className="text-caption text-text-tertiary">
             Or enter the secret manually:{" "}
             <span className="font-mono text-text">{provisioning.secretBase32.match(/.{1,4}/g)?.join(" ")}</span>
@@ -97,7 +98,7 @@ export function TotpSetupClient({ initiallyEnabled }: { initiallyEnabled: boolea
               placeholder="123 456"
               autoComplete="one-time-code"
               aria-label="6-digit verification code"
-              className="w-40 h-12 px-3 rounded-md bg-surface border border-border text-text font-mono text-title-sm tabular tracking-[0.2em] focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
+              className="w-40 h-12 px-3 rounded-md bg-surface border border-border text-text font-mono text-title-sm tabular tracking-[0.2em] focus:outline-none admin-focus transition-colors"
             />
           </label>
           <Button variant="primary" size="lg" leading={<I.shieldcheck s={14} />} onClick={verify} loading={busy} disabled={code.length !== 6}>
@@ -118,4 +119,15 @@ export function TotpSetupClient({ initiallyEnabled }: { initiallyEnabled: boolea
       </Button>
     </div>
   );
+}
+
+function QrImage({ url }: { url: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    QRCode.toDataURL(url, { width: 200, margin: 2, color: { dark: "#ffffffee", light: "#00000000" } })
+      .then(setSrc)
+      .catch(() => {});
+  }, [url]);
+  if (!src) return <div className="w-[200px] h-[200px] rounded-md bg-bg-overlay animate-pulse" />;
+  return <img src={src} alt="TOTP QR code" width={200} height={200} className="rounded-md" />;
 }

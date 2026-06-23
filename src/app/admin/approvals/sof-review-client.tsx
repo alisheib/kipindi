@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { useDeferredToast } from "@/components/ui/toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { I } from "@/components/ui/glyphs";
 import { useRouter } from "next/navigation";
 import { reviewSofAction } from "./actions";
@@ -46,9 +47,18 @@ export function SofReviewRow({ userId }: { userId: string }) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-1.5">
-        <Button size="sm" variant="yes" onClick={() => submit("ACCEPT")} disabled={busy !== null} loading={busy === "ACCEPT"} leading={<I.check s={12} />} aria-label="Accept declaration">
-          Accept
-        </Button>
+        <ConfirmDialog
+          trigger={
+            <Button size="sm" variant="yes" disabled={busy !== null} loading={busy === "ACCEPT"} leading={<I.check s={12} />} aria-label="Accept declaration">
+              Accept
+            </Button>
+          }
+          title="Accept source of funds"
+          body="This clears the deposit gate for this player. They will be able to deposit normally. Make sure the declared source is plausible and documented."
+          confirmLabel="Yes, accept"
+          tone="gold"
+          onConfirm={() => submit("ACCEPT")}
+        />
         <Button size="sm" variant="danger" onClick={() => setExpanded((v) => !v)} aria-label="Reject declaration" aria-expanded={expanded ? "true" : "false"} leading={<I.x s={12} />} trailing={<I.chevronDown s={11} />}>
           Reject
         </Button>
@@ -60,7 +70,7 @@ export function SofReviewRow({ userId }: { userId: string }) {
             onChange={(e) => setReason(e.target.value)}
             placeholder="Rejection reason (required)"
             aria-label="Rejection reason"
-            className="flex-1 h-8 px-2 rounded-md border border-border bg-surface text-text-secondary text-caption font-mono focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
+            className="flex-1 h-8 px-2 rounded-md border border-border bg-surface text-text-secondary text-caption font-mono focus:outline-none admin-focus transition-colors"
           />
           <Button size="sm" variant="danger" onClick={() => submit("REJECT")} loading={busy === "REJECT"}>
             Submit

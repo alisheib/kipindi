@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { setPlayerEmailAction } from "./actions";
 
 export function SetEmailForm({ userId }: { userId: string }) {
@@ -36,16 +37,23 @@ export function SetEmailForm({ userId }: { userId: string }) {
         onChange={(e) => setEmail(e.target.value)}
         placeholder="player@example.com"
         className="flex-1 min-w-0 h-8 px-2.5 rounded-md border border-border bg-bg-inset text-text font-mono text-[12px] focus:outline-none focus:border-[var(--brand-500)] transition-colors"
-        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } }}
       />
-      <button
-        type="button"
-        onClick={submit}
-        disabled={pending || !email.trim()}
-        className="h-8 px-3 rounded-md border border-gold-700 bg-gold-500/10 font-mono text-[11px] font-bold text-gold-300 hover:bg-gold-500/20 disabled:opacity-40 transition-colors"
-      >
-        {pending ? "Saving…" : "Set email"}
-      </button>
+      <ConfirmDialog
+        trigger={
+          <button
+            type="button"
+            disabled={pending || !email.trim()}
+            className="h-8 px-3 rounded-md border border-gold-700 bg-gold-500/10 font-mono text-[11px] font-bold text-gold-300 hover:bg-gold-500/20 disabled:opacity-40 transition-colors"
+          >
+            {pending ? "Saving…" : "Set email"}
+          </button>
+        }
+        title="Change player email"
+        body={<>All KYC notifications, payment receipts, and account recovery will go to <strong className="font-mono text-text">{email || "…"}</strong>. This cannot be undone without another manual change.</>}
+        confirmLabel="Yes, set email"
+        tone="warning"
+        onConfirm={submit}
+      />
     </div>
   );
 }

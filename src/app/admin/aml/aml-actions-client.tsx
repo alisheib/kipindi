@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { useDeferredToast } from "@/components/ui/toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { I } from "@/components/ui/glyphs";
 import { approveAmlAction, rejectAmlAction } from "./actions";
 import { useRouter } from "next/navigation";
@@ -50,17 +51,25 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-1.5">
-        <Button
-          size="sm"
-          variant="yes"
-          onClick={() => submit("approve")}
-          disabled={busy !== null}
-          loading={busy === "approve"}
-          leading={<I.check s={12} />}
-          aria-label="Approve transaction"
-        >
-          Approve
-        </Button>
+        <ConfirmDialog
+          trigger={
+            <Button
+              size="sm"
+              variant="yes"
+              disabled={busy !== null}
+              loading={busy === "approve"}
+              leading={<I.check s={12} />}
+              aria-label="Approve transaction"
+            >
+              Approve
+            </Button>
+          }
+          title={`Approve ${formatTzs(amount)}`}
+          body={<>This records your approval. For amounts over TZS 5M, a second officer must counter-sign before funds release. Once both officers approve, <strong>funds are released immediately</strong> and cannot be reversed.</>}
+          confirmLabel="Yes, approve"
+          tone="gold"
+          onConfirm={() => submit("approve")}
+        />
         <Button
           size="sm"
           variant="danger"
@@ -80,7 +89,7 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
             onChange={(e) => setReason(e.target.value)}
             placeholder="Rejection reason (required)"
             aria-label="Rejection reason"
-            className="flex-1 h-8 px-2 rounded-md border border-border bg-surface text-text-secondary text-caption font-mono focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
+            className="flex-1 h-8 px-2 rounded-md border border-border bg-surface text-text-secondary text-caption font-mono focus:outline-none admin-focus transition-colors"
           />
           <Button size="sm" variant="danger" onClick={() => submit("reject")} loading={busy === "reject"}>
             Submit

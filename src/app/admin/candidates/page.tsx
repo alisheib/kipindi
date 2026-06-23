@@ -276,7 +276,7 @@ export default async function AdminCandidatesPage({
                           <span
                             style={{
                               color: c.confidence >= 85 ? "var(--yes-300)"
-                                : c.confidence >= 75 ? "oklch(82% 0.16 80)"
+                                : c.confidence >= 75 ? "var(--gold-300)"
                                 : "var(--text-tertiary)",
                             }}
                           >

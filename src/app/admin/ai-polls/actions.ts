@@ -141,7 +141,16 @@ export async function rejectPollAction(formData: FormData) {
   const reasonsStr = String(formData.get("reasons") ?? "");
   const note = String(formData.get("note") ?? "");
 
-  const reasons = reasonsStr ? reasonsStr.split(",") as FilterReason[] : ["malformed_response" as FilterReason];
+  const VALID_FILTER_REASONS: Set<string> = new Set([
+    "empty_title", "empty_criterion", "invalid_date", "past_date",
+    "resolution_too_soon", "resolution_too_far", "no_options",
+    "duplicate_options", "too_few_options", "invalid_category",
+    "banned_category", "low_confidence", "title_too_long",
+    "criterion_too_long", "xss_detected", "null_bytes",
+    "duplicate_poll", "no_sources", "invalid_source_url", "malformed_response",
+  ]);
+  const rawReasons = reasonsStr ? reasonsStr.split(",").filter((r) => VALID_FILTER_REASONS.has(r)) : [];
+  const reasons: FilterReason[] = rawReasons.length > 0 ? rawReasons as FilterReason[] : ["malformed_response"];
 
   const poll = await rejectAIPoll(id, { officerId, reasons, note: note || undefined });
   if (!poll) return { ok: false as const, error: "Poll not found or not in reviewable state." };

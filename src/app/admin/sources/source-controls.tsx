@@ -141,7 +141,7 @@ export function AddSourceForm() {
         </div>
         <label className="block md:col-span-2">
           <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-1">Rationale (≥ 1 line)</span>
-          <textarea name="rationale" required rows={2} placeholder="Why this source is authoritative for this category." className="w-full rounded-lg border border-border bg-[var(--bg-inset)] px-3 py-2.5 text-[13px] text-text placeholder:text-text-subtle outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors resize-none" />
+          <textarea name="rationale" required rows={2} placeholder="Why this source is authoritative for this category." className="w-full rounded-lg border border-border bg-[var(--bg-inset)] px-3 py-2.5 text-[13px] text-text placeholder:text-text-subtle outline-none admin-focus transition-colors resize-none" />
         </label>
       </div>
       <div className="flex gap-2">

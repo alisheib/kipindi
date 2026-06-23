@@ -295,14 +295,14 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
       {/* Config */}
       <div className="overflow-hidden rounded-lg glass-panel">
         <div className="flex items-center gap-3.5 border-b border-border px-4 py-3.5" style={{ background: on ? "transparent" : "color-mix(in oklab, var(--warning-500) 8%, transparent)" }}>
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px]" style={{ background: on ? "color-mix(in oklab, var(--gold-500) 16%, transparent)" : "color-mix(in oklab, var(--warning-500) 20%, transparent)", color: on ? "var(--gold-300)" : "oklch(84% 0.15 80)" }}>
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px]" style={{ background: on ? "color-mix(in oklab, var(--gold-500) 16%, transparent)" : "color-mix(in oklab, var(--warning-500) 20%, transparent)", color: on ? "var(--gold-300)" : "var(--gold-300)" }}>
             {on ? <I.trophy s={21} /> : <I.pause s={21} />}
           </span>
           <div className="flex-1">
             <div className="text-[15px] font-bold">Proposals feature · master switch</div>
             <div className="mt-0.5 text-[12px] text-text-muted">{on ? "Live — players can submit and vote on proposals." : "Paused — the board is read-only; no new submissions."}</div>
           </div>
-          <span className="font-mono text-[11px] tracking-[0.1em]" style={{ color: on ? "var(--gold-300)" : "oklch(84% 0.15 80)" }}>{on ? "ON" : "PAUSED"}</span>
+          <span className="font-mono text-[11px] tracking-[0.1em]" style={{ color: on ? "var(--gold-300)" : "var(--gold-300)" }}>{on ? "ON" : "PAUSED"}</span>
           <Toggle on={on} gold onClick={() => setC((p) => ({ ...p, enabled: !p.enabled }))} aria-label="Proposals master switch" />
           <Button variant="gold" size="sm" leading={<I.check s={14} />} loading={pending} onClick={saveConfig}>Save</Button>
         </div>

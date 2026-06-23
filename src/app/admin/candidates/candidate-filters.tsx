@@ -73,7 +73,7 @@ export function CandidateFilterToolbar({ totalFiltered, totalAll }: { totalFilte
               if (e.key === "Enter") push({ q: search });
             }}
             placeholder="Search candidates by title, category, or ID..."
-            className="w-full h-9 pl-9 pr-3 rounded-md border border-border bg-bg-overlay text-[12.5px] text-text font-mono placeholder:text-text-subtle outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
+            className="w-full h-9 pl-9 pr-3 rounded-md border border-border bg-bg-overlay text-[12.5px] text-text font-mono placeholder:text-text-subtle outline-none admin-focus transition-colors"
           />
         </div>
         <button

@@ -129,7 +129,7 @@ function RejectForm({
         value={note}
         onChange={(e) => setNote(e.target.value)}
         placeholder="Optional note for the audit log…"
-        className="w-full rounded-md border border-border bg-bg-overlay px-2 py-1.5 text-[12px] text-text mb-2 outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
+        className="w-full rounded-md border border-border bg-bg-overlay px-2 py-1.5 text-[12px] text-text mb-2 outline-none admin-focus transition-colors"
         rows={2}
       />
       <div className="flex flex-col gap-2">
