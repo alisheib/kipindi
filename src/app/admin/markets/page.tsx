@@ -6,13 +6,12 @@ import { Select } from "@/components/ui/select";
 import Link from "next/link";
 import { listMarkets, impliedYesPct, type MarketCategory } from "@/lib/server/market-service";
 import { ProbabilityBar } from "@/components/markets/probability-bar";
-import { formatDateTime } from "@/lib/utils";
+import { formatTzs, formatDateTime } from "@/lib/utils";
 import { EmergencyVoidControl } from "./emergency-void-control";
 
 export const metadata = { title: "Admin · Markets curation" };
 export const dynamic = "force-dynamic";
 
-const fmtTzs = (n: number) => `TZS ${n.toLocaleString("en-US")}`;
 const fmtTime = (iso: string) => formatDateTime(iso);
 
 const STATUS_OPTIONS = ["LIVE", "CLOSED", "RESOLVED", "VOIDED"] as const;
@@ -90,7 +89,7 @@ export default async function AdminMarketsPage({
           <AdminKpi label="Live"      sw="Hai"           value={String(live.length)} />
           <AdminKpi label="Awaiting resolution" sw="Inangoja" value={String(closed.length)} />
           <AdminKpi label="Resolved"  sw="Imetatuliwa"   value={String(resolved.length)} />
-          <AdminKpi label="Total pool" sw="Jumla ya dimbwi" value={fmtTzs(totalPool)} />
+          <AdminKpi label="Total pool" sw="Jumla ya dimbwi" value={formatTzs(totalPool)} />
         </div>
 
         <AdminCard padding="p-3">
@@ -160,7 +159,7 @@ export default async function AdminMarketsPage({
                         <ProbabilityBar yesPct={yes} size="micro" resolved={m.status === "RESOLVED"} />
                         <p className="mt-1 font-mono text-[10px] text-text-subtle">{yes}% YES</p>
                       </td>
-                      <td className="text-right font-mono tabular-nums text-text">{fmtTzs(m.yesPool + m.noPool)}</td>
+                      <td className="text-right font-mono tabular-nums text-text">{formatTzs(m.yesPool + m.noPool)}</td>
                       <td className="font-mono text-[11px] text-text-muted whitespace-nowrap">
                         {m.status === "LIVE" ? `${timeLeftStr(m.resolutionAt)}` : fmtTime(m.resolutionAt)}
                       </td>

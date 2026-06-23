@@ -65,6 +65,11 @@ export function formatDateTimeSafe(iso: string | null | undefined): string {
   return formatDateTime(iso);
 }
 
+/** "$0.05" — USD cost for AI generation reports */
+export function formatUsd(n: number): string {
+  return `$${n.toFixed(2)}`;
+}
+
 export function hexToRgba(hex: string, alpha = 1): string {
   const h = hex.replace("#", "");
   const n = parseInt(

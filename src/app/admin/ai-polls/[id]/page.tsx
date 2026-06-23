@@ -3,7 +3,7 @@ import Link from "next/link";
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
-import { formatDateTimeSafe } from "@/lib/utils";
+import { formatDateTimeSafe, formatUsd } from "@/lib/utils";
 import {
   getAIPoll,
   type AIPollState,
@@ -46,7 +46,7 @@ const STATE_LABEL: Record<AIPollState, string> = {
   PUBLISHED: "Published",
 };
 
-function fmtUsd(n: number) { return `$${n.toFixed(2)}`; }
+const fmtUsd = formatUsd;
 function fmtDate(iso: string) {
   return formatDateTimeSafe(iso);
 }

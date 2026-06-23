@@ -92,7 +92,7 @@ export function CandidateFilterToolbar({ totalFiltered, totalAll }: { totalFilte
             }}
             className="btn btn-ghost btn-sm rounded-pill h-9 text-text-subtle hover:text-text"
           >
-            Clear all
+            Clear
           </button>
         )}
       </div>

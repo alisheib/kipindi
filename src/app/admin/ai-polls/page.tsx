@@ -5,7 +5,7 @@ import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/component
 import { parseSort, applySort, type SortDir } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
-import { formatDateTimeSafe } from "@/lib/utils";
+import { formatDateTimeSafe, formatUsd } from "@/lib/utils";
 import {
   listAIPolls,
   countAIPollsByState,
@@ -57,7 +57,7 @@ const STATE_LABEL: Record<AIPollState, string> = {
   PUBLISHED: "Published",
 };
 
-function fmtUsd(n: number) { return `$${n.toFixed(2)}`; }
+const fmtUsd = formatUsd;
 function fmtDate(iso: string) {
   return formatDateTimeSafe(iso);
 }
@@ -307,7 +307,7 @@ export default async function AdminAIPollsPage({
               </div>
               <div>
                 <p className="font-display text-[13px] font-semibold text-text-muted">
-                  {hasFilters ? "No polls match your filters" : "No polls generated yet"}
+                  {hasFilters ? "No polls match the current filters." : "No polls generated yet."}
                 </p>
                 <p className="text-caption text-text-tertiary mt-1">
                   {hasFilters

@@ -6,12 +6,11 @@ import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/component
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
 import { HousePoolForms } from "./house-pool-forms";
-import { formatDateTime } from "@/lib/utils";
+import { formatTzs, formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "House Pool · Admin" };
 
-const fmtTzs = (n: number) => `TZS ${n.toLocaleString("en-US")}`;
 const fmtPct = (n: number) => `${(n * 100).toFixed(1)}%`;
 
 export default async function HousePoolPage({
@@ -60,7 +59,7 @@ export default async function HousePoolPage({
           <AdminKpi
             label="Balance"
             sw="Salio"
-            value={fmtTzs(stats.balance)}
+            value={formatTzs(stats.balance)}
             delta={stats.isLow ? "below minimum" : "healthy"}
             deltaDir={stats.isLow ? "down" : "up"}
             gold
@@ -69,14 +68,14 @@ export default async function HousePoolPage({
             label="Active seeds"
             sw="Mbegu hai"
             value={String(stats.activeSeeds)}
-            delta={`${fmtTzs(stats.totalSeeded)} deployed`}
+            delta={`${formatTzs(stats.totalSeeded)} deployed`}
             deltaDir="flat"
           />
           <AdminKpi
             label="Seed per market"
             sw="Mbegu kwa soko"
-            value={fmtTzs(stats.config.seedPerSide * 2)}
-            delta={`${fmtTzs(stats.config.seedPerSide)} per side`}
+            value={formatTzs(stats.config.seedPerSide * 2)}
+            delta={`${formatTzs(stats.config.seedPerSide)} per side`}
             deltaDir="flat"
           />
           <AdminKpi

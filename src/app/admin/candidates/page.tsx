@@ -4,7 +4,7 @@ import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/component
 import { parseSort, applySort, type SortDir } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
-import { formatDateTimeSafe } from "@/lib/utils";
+import { formatDateTimeSafe, formatUsd } from "@/lib/utils";
 import {
   listCandidates,
   countByState,
@@ -31,7 +31,7 @@ const STATE_VARIANT: Record<Candidate["state"], "success" | "warning" | "danger"
   PUBLISHED: "success",
 };
 
-function fmtUsd(n: number) { return `$${n.toFixed(2)}`; }
+const fmtUsd = formatUsd;
 function fmtDate(iso: string) {
   return formatDateTimeSafe(iso);
 }
@@ -242,7 +242,7 @@ export default async function AdminCandidatesPage({
               </div>
               <div>
                 <p className="font-display text-[13px] font-semibold text-text-muted">
-                  {hasFilters ? "No candidates match your filters" : "No candidates ingested yet"}
+                  {hasFilters ? "No candidates match the current filters." : "No candidates ingested yet."}
                 </p>
                 <p className="text-caption text-text-tertiary mt-1">
                   {hasFilters
