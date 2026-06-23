@@ -129,7 +129,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
             Remembered it?{" "}
             <Link
               href="/auth/login"
-              className="font-semibold text-accent-400 hover:text-accent-300 underline-offset-2 hover:underline"
+              className="font-semibold text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline"
             >
               Sign in · Ingia
             </Link>

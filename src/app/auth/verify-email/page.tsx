@@ -92,7 +92,7 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
 
           <p className="border-t border-border pt-3 text-center text-[12.5px] text-text-muted">
             Need help? Email{" "}
-            <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-semibold text-accent-400 hover:text-accent-300 underline-offset-2 hover:underline">
+            <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-semibold text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline">
               {SUPPORT_EMAIL()}
             </a>
           </p>

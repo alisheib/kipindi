@@ -11,7 +11,6 @@ export async function submitNidaAction(formData: FormData) {
 
   const rawEmail = formData.get("email");
   const emailStr = rawEmail ? String(rawEmail).trim() : "";
-  console.log(`[kyc-action] submitNida user=${session.userId.slice(0, 14)}… rawEmail=${rawEmail === null ? "NULL(missing)" : `"${emailStr}"`}`);
 
   const result = await submitNidaStep(session.userId, {
     nida: String(formData.get("nida") ?? ""),
@@ -19,13 +18,6 @@ export async function submitNidaAction(formData: FormData) {
     dob: String(formData.get("dob") ?? ""),
     ...(emailStr ? { email: emailStr } : {}),
   });
-
-  // Verify the email was actually persisted
-  if (emailStr) {
-    const { db } = await import("@/lib/server/store");
-    const u = await db.user.findById(session.userId);
-    console.log(`[kyc-action] post-save check: user.email=${u?.email ?? "NULL"} (expected=${emailStr})`);
-  }
 
   revalidatePath("/profile/kyc");
   if (!result.ok) redirect(`/profile/kyc?error=${encodeURIComponent(result.error)}`);

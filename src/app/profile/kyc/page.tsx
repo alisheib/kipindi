@@ -65,7 +65,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               <span className="italic text-text-subtle">Angalia barua pepe yako. Kiungo kinaisha baada ya saa 24.</span>
             </p>
             <p className="mt-1.5">
-              <Link href="/profile/account" className="font-mono text-[11px] text-accent-400 hover:text-accent-300 underline-offset-2 hover:underline">
+              <Link href="/profile/account" className="font-mono text-[11px] text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline">
                 Didn&rsquo;t get it? Resend from your account page →
               </Link>
             </p>
@@ -145,7 +145,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                 {kyc?.rejectReason ? <>Reason: <span className="font-semibold text-text">{String(kyc.rejectReason).replace(/_/g, " ").toLowerCase()}</span>. </> : null}
                 {kyc?.rejectNote ? `${kyc.rejectNote} ` : ""}
                 Please re-enter your details below and resubmit, or email{" "}
-                <a href={`mailto:${SUPPORT_EMAIL()}?subject=KYC%20review`} className="text-accent-400 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a>.
+                <a href={`mailto:${SUPPORT_EMAIL()}?subject=KYC%20review`} className="text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a>.
                 <span className="block italic text-text-subtle text-[11.5px] mt-0.5">Tafadhali jaribu tena au wasiliana na msaada.</span>
               </p>
             </div>
@@ -240,7 +240,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                   </div>
                   <p className="mt-1.5 text-[11px] text-text-subtle">
                     Taken from your account — no need to re-enter. Wrong?{" "}
-                    <a href={`mailto:${SUPPORT_EMAIL}`} className="text-accent-400 underline-offset-2 hover:underline hover:text-accent-300">Contact support</a> before verifying.
+                    <a href={`mailto:${SUPPORT_EMAIL}`} className="text-brand-300 underline-offset-2 hover:underline hover:text-brand-200">Contact support</a> before verifying.
                   </p>
                 </>
               ) : (
@@ -411,7 +411,7 @@ function Field({
         min={min}
         max={max}
         title={title}
-        className="w-full h-11 px-3.5 rounded-md border border-border font-mono text-[13px] tabular-nums text-text focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors invalid:border-no-500"
+        className="w-full h-11 px-3.5 rounded-md border border-border font-mono text-[13px] tabular-nums text-text focus:outline-none admin-focus transition-colors invalid:border-no-500"
         style={{ background: "var(--bg-inset)" }}
       />
       {hint && <p className="mt-1.5 text-[11px] text-text-subtle">{hint}</p>}
