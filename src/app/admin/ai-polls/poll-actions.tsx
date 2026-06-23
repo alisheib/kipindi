@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -109,6 +109,17 @@ export function GenerateForm() {
     phaseTimers.current = [];
   };
 
+  // Cleanup timers on unmount (user navigates away mid-generation)
+  useEffect(() => () => clearTimers(), []);
+
+  // Escape key dismisses the result card (only when done, never mid-generation)
+  useEffect(() => {
+    if (phase !== "done") return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") dismiss(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [phase]);
+
   const generate = () => {
     setPhase("calling");
     setResult(null);
@@ -195,10 +206,10 @@ export function GenerateForm() {
         </div>
       </div>
 
-      {/* Generation overlay — covers the form while running */}
+      {/* Generation overlay — fixed scrim blocks the entire page while running */}
       {active && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center">
-          <div className="w-full max-w-[400px] rounded-xl border border-border bg-bg-elevated p-5 shadow-e4" style={{ animation: "np-rise 200ms cubic-bezier(.2,.8,.2,1)" }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={(e) => e.stopPropagation()}>
+          <div className="w-[90vw] max-w-[420px] rounded-xl border border-border bg-bg-elevated p-5 shadow-e4" style={{ animation: "np-rise 200ms cubic-bezier(.2,.8,.2,1)" }} onClick={(e) => e.stopPropagation()}>
             {phase !== "done" ? (
               /* ── In-progress ── */
               <div className="space-y-4">
