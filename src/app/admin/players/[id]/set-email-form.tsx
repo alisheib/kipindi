@@ -2,29 +2,34 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { useToast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
 import { setPlayerEmailAction } from "./actions";
 
 export function SetEmailForm({ userId }: { userId: string }) {
   const [email, setEmail] = useState("");
   const [pending, start] = useTransition();
+  const overlay = useActionOverlay();
   const router = useRouter();
-  const { toast } = useToast();
 
   const submit = () => {
     if (!email.trim() || pending) return;
+    overlay.run("Saving email…", "Updating this player's contact address.");
     start(async () => {
-      const fd = new FormData();
-      fd.set("userId", userId);
-      fd.set("email", email.trim());
-      const r = await setPlayerEmailAction(fd);
-      if (r.ok) {
-        toast({ title: "Email saved", variant: "success" });
-        setEmail("");
-        router.refresh();
-      } else {
-        toast({ title: "Failed", description: r.error, variant: "danger" });
+      try {
+        const fd = new FormData();
+        fd.set("userId", userId);
+        fd.set("email", email.trim());
+        const r = await setPlayerEmailAction(fd);
+        if (r.ok) {
+          overlay.succeed("Email saved", `Set to ${email.trim()}`);
+          setEmail("");
+          router.refresh();
+        } else {
+          overlay.fail("Failed", r.error);
+        }
+      } catch {
+        overlay.fail("Failed", "Server error — please try again.");
       }
     });
   };
@@ -54,6 +59,7 @@ export function SetEmailForm({ userId }: { userId: string }) {
         tone="warning"
         onConfirm={submit}
       />
+      <ActionOverlay state={overlay.state} onDismiss={overlay.dismiss} />
     </div>
   );
 }

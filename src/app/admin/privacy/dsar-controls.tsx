@@ -3,8 +3,9 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { useToast, useDeferredToast } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
 import { buildDsarBundleAction, fulfillDsarAction } from "./actions";
 
 export function ExportDsarBundleButton({ userId }: { userId: string }) {
@@ -43,33 +44,41 @@ export function ExportDsarBundleButton({ userId }: { userId: string }) {
 
 export function FulfillDsarButton({ id }: { id: string }) {
   const [pending, startTransition] = useTransition();
+  const overlay = useActionOverlay();
   const router = useRouter();
-  const { deferToast, toast } = useDeferredToast(pending);
   const onClick = () => {
+    overlay.run("Marking fulfilled…", "Recording completion date for this DSAR.");
     startTransition(async () => {
-      const fd = new FormData();
-      fd.set("id", id);
-      const r = await fulfillDsarAction(fd);
-      if (!r.ok) {
-        toast({ title: "Could not fulfill", description: r.error, variant: "danger" });
-      } else {
-        router.refresh();
-        deferToast({ title: "Marked fulfilled", variant: "success" });
+      try {
+        const fd = new FormData();
+        fd.set("id", id);
+        const r = await fulfillDsarAction(fd);
+        if (!r.ok) {
+          overlay.fail("Could not fulfill", r.error ?? "Unknown error.");
+        } else {
+          router.refresh();
+          overlay.succeed("DSAR fulfilled", "Completion date recorded.");
+        }
+      } catch {
+        overlay.fail("Could not fulfill", "Server error — please try again.");
       }
     });
   };
   return (
-    <ConfirmDialog
-      trigger={
-        <Button type="button" size="sm" variant="primary" loading={pending}>
-          Mark fulfilled
-        </Button>
-      }
-      title="Mark DSAR fulfilled"
-      body="This records the completion date and closes this data subject access request. The player will be notified. This action cannot be undone."
-      confirmLabel="Yes, mark fulfilled"
-      tone="warning"
-      onConfirm={onClick}
-    />
+    <>
+      <ConfirmDialog
+        trigger={
+          <Button type="button" size="sm" variant="primary" loading={pending}>
+            Mark fulfilled
+          </Button>
+        }
+        title="Mark DSAR fulfilled"
+        body="This records the completion date and closes this data subject access request. The player will be notified. This action cannot be undone."
+        confirmLabel="Yes, mark fulfilled"
+        tone="warning"
+        onConfirm={onClick}
+      />
+      <ActionOverlay state={overlay.state} onDismiss={overlay.dismiss} />
+    </>
   );
 }

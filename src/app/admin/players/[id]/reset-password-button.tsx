@@ -4,30 +4,38 @@ import { useState, useTransition } from "react";
 import { useToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
 import { adminResetPasswordAction } from "./actions";
 
 export function ResetPasswordButton({ userId }: { userId: string }) {
   const [result, setResult] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const overlay = useActionOverlay();
   const { toast } = useToast();
 
   const reset = () => {
     if (pending) return;
+    overlay.run("Resetting password…", "Generating a temporary password for this player.");
     start(async () => {
-      const fd = new FormData();
-      fd.set("userId", userId);
-      const r = await adminResetPasswordAction(fd);
-      if (r.ok) {
-        setResult(r.tempPassword);
-        toast({ title: "Password reset", description: "Copy the temporary password and share it with the player.", variant: "success" });
-      } else {
-        toast({ title: "Failed", description: r.error, variant: "danger" });
+      try {
+        const fd = new FormData();
+        fd.set("userId", userId);
+        const r = await adminResetPasswordAction(fd);
+        if (r.ok) {
+          setResult(r.tempPassword);
+          overlay.succeed("Password reset", "Copy the temporary password below.");
+        } else {
+          overlay.fail("Failed", r.error);
+        }
+      } catch {
+        overlay.fail("Failed", "Server error — please try again.");
       }
     });
   };
 
   if (result) {
     return (
+      <><ActionOverlay state={overlay.state} onDismiss={overlay.dismiss} />
       <div className="inline-flex items-center gap-2 rounded-md border border-gold-700 bg-gold-500/10 px-3 py-2">
         <I.keyRound s={14} className="text-gold-300 shrink-0" />
         <div>
@@ -42,10 +50,12 @@ export function ResetPasswordButton({ userId }: { userId: string }) {
           Copy
         </button>
       </div>
+      </>
     );
   }
 
   return (
+    <><ActionOverlay state={overlay.state} onDismiss={overlay.dismiss} />
     <ConfirmDialog
       tone="gold"
       title="Reset password · Weka upya nenosiri"
@@ -63,5 +73,6 @@ export function ResetPasswordButton({ userId }: { userId: string }) {
         </button>
       }
     />
+    </>
   );
 }

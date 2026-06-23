@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { useDeferredToast } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { I } from "@/components/ui/glyphs";
+import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
 import { useRouter } from "next/navigation";
 import { reviewSofAction } from "./actions";
 
@@ -13,7 +14,8 @@ export function SofReviewRow({ userId }: { userId: string }) {
   const [expanded, setExpanded] = useState(false);
   const [reason, setReason] = useState("");
   const [pending, startTransition] = useTransition();
-  const { deferToast, toast } = useDeferredToast(pending);
+  const overlay = useActionOverlay();
+  const { toast } = useToast();
   const router = useRouter();
 
   const submit = (decision: "ACCEPT" | "REJECT") => {
@@ -22,21 +24,28 @@ export function SofReviewRow({ userId }: { userId: string }) {
       return;
     }
     setBusy(decision);
+    overlay.run(
+      decision === "ACCEPT" ? "Accepting declaration…" : "Rejecting declaration…",
+      decision === "ACCEPT" ? "Clearing the deposit gate for this player." : "Player will be asked to re-declare.",
+    );
     startTransition(async () => {
-      const fd = new FormData();
-      fd.set("userId", userId);
-      fd.set("decision", decision);
-      fd.set("reason", reason);
-      const result = await reviewSofAction(fd);
-      if (result?.ok) {
-        router.refresh();
-        deferToast({
-          title: decision === "ACCEPT" ? "Source of funds accepted" : "Declaration rejected",
-          description: decision === "ACCEPT" ? "Player can deposit normally." : "Player asked to re-declare.",
-          variant: decision === "ACCEPT" ? "success" : "warning",
-        });
-      } else {
-        toast({ title: "Failed", description: result?.error ?? "Try again.", variant: "danger" });
+      try {
+        const fd = new FormData();
+        fd.set("userId", userId);
+        fd.set("decision", decision);
+        fd.set("reason", reason);
+        const result = await reviewSofAction(fd);
+        if (result?.ok) {
+          router.refresh();
+          overlay.succeed(
+            decision === "ACCEPT" ? "Source of funds accepted" : "Declaration rejected",
+            decision === "ACCEPT" ? "Player can deposit normally." : "Player asked to re-declare.",
+          );
+        } else {
+          overlay.fail("Failed", result?.error ?? "Try again.");
+        }
+      } catch {
+        overlay.fail("Failed", "Server error — please try again.");
       }
       setBusy(null);
       setExpanded(false);
@@ -77,6 +86,7 @@ export function SofReviewRow({ userId }: { userId: string }) {
           </Button>
         </div>
       )}
+      <ActionOverlay state={overlay.state} onDismiss={overlay.dismiss} />
     </div>
   );
 }
