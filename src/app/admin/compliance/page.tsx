@@ -9,7 +9,7 @@ import { verifyChain, getAuditPage } from "@/lib/server/audit";
 import { kycFunnel, rgRosterCounts } from "@/lib/server/analytics";
 import { detectHarmMarkersForAllUsers } from "@/lib/server/responsible-gambling";
 import { Chip } from "@/components/ui/chip";
-import { formatClock, formatDate } from "@/lib/utils";
+import { formatClock, formatDate, formatDateTime } from "@/lib/utils";
 
 export const metadata = { title: "Admin · Compliance" };
 export const dynamic = "force-dynamic";
@@ -332,7 +332,7 @@ async function PlayerSafetyPanel({ sp }: { sp: { page?: string; sort?: string; d
                   </Chip>
                 </td>
                 <td className="p-3 text-text-tertiary">{f.detail}</td>
-                <td className="p-3 font-mono whitespace-nowrap">{f.detectedAt.replace("T", " ").slice(0, 19)}</td>
+                <td className="p-3 font-mono whitespace-nowrap">{formatDateTime(f.detectedAt)}</td>
               </tr>
             ))}
             {flags.length === 0 && (

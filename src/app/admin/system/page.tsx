@@ -8,6 +8,7 @@ import { smsHealthSnapshot, sms as smsClient } from "@/lib/server/sms";
 import { rateLimitSnapshot } from "@/lib/server/rate-limit";
 import { listMarkets } from "@/lib/server/market-service";
 import { hasDatabase, pingDatabase } from "@/lib/server/prisma";
+import { formatTime } from "@/lib/utils";
 
 export const metadata = { title: "Admin · System" };
 export const dynamic = "force-dynamic";
@@ -110,7 +111,7 @@ export default async function AdminSystemPage() {
                     {health.lastOk && (
                       <>
                         {" "}Last write{" "}
-                        <span className="font-mono text-text">{health.lastOk.replace("T", " ").slice(11, 19)}</span>.
+                        <span className="font-mono text-text">{formatTime(health.lastOk)}</span>.
                       </>
                     )}
                   </>
@@ -122,8 +123,8 @@ export default async function AdminSystemPage() {
               <div className="flex justify-between"><span>Reachable</span><span className={ping.reachable ? "text-success" : "text-no-300"}>{ping.reachable ? `yes (${ping.latencyMs}ms)` : "no"}</span></div>
               <div className="flex justify-between"><span>Table exists</span><span className={ping.tableExists ? "text-success" : "text-no-300"}>{ping.tableExists ? "yes" : "no"}</span></div>
               <div className="flex justify-between"><span>Host</span><span className="text-text">{ping.hostHint ?? "—"}</span></div>
-              <div className="flex justify-between"><span>Last OK write</span><span className="text-text">{health.lastOk?.replace("T", " ").slice(11, 19) ?? "never"}</span></div>
-              <div className="flex justify-between"><span>Last failed write</span><span className={health.lastFail ? "text-no-300" : "text-text"}>{health.lastFail?.replace("T", " ").slice(11, 19) ?? "never"}</span></div>
+              <div className="flex justify-between"><span>Last OK write</span><span className="text-text">{health.lastOk ? formatTime(health.lastOk) : "never"}</span></div>
+              <div className="flex justify-between"><span>Last failed write</span><span className={health.lastFail ? "text-no-300" : "text-text"}>{health.lastFail ? formatTime(health.lastFail) : "never"}</span></div>
               <div className="flex justify-between"><span>Consecutive fails</span><span className={health.consecutiveFails > 0 ? "text-no-300" : "text-text"}>{health.consecutiveFails}</span></div>
               <div className="flex justify-between"><span>Users in store</span><span className="text-text">{totalUsers.toLocaleString()}</span></div>
               <div className="flex justify-between"><span>Audit entries</span><span className="text-text">{auditCount.toLocaleString()}</span></div>

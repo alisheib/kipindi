@@ -9,7 +9,7 @@ import { db, type StoredTxn, type StoredBet } from "@/lib/server/store";
 import { getAuditForActor, type AuditCategory } from "@/lib/server/audit";
 import { exportUserData } from "@/lib/server/user-service";
 import { I } from "@/components/ui/glyphs";
-import { formatTzs, formatTzsCompact } from "@/lib/utils";
+import { formatTzs, formatTzsCompact, formatDateTime } from "@/lib/utils";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { KycReviewControls } from "@/components/admin/kyc-review-controls";
 import { SuspendControls } from "./suspend-controls";
@@ -252,7 +252,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                 {audit.slice(0, 50).map((e) => (
                   <FeedRow
                     key={e.id}
-                    ts={e.createdAt.replace("T", " ").slice(0, 19)}
+                    ts={formatDateTime(e.createdAt)}
                     category={e.category}
                     variant={CATEGORY_VARIANT[e.category]}
                     body={e.action}
@@ -278,7 +278,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                   <tbody>
                     {betRows.map((b) => (
                       <tr key={b.id} className="border-b border-border-subtle/50 last:border-b-0">
-                        <td className="py-2 pr-3 font-mono whitespace-nowrap">{b.placedAt.replace("T", " ").slice(0, 19)}</td>
+                        <td className="py-2 pr-3 font-mono whitespace-nowrap">{formatDateTime(b.placedAt)}</td>
                         <td className="py-2 pr-3">{b.matchLabel} <span className="text-text-tertiary">· {b.windowLabel}</span></td>
                         <td className="py-2 pr-3">{b.outcomeLabel}</td>
                         <td className="py-2 pr-3 font-mono tabular text-right">{formatTzs(b.stake)}</td>
@@ -309,7 +309,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                   <tbody>
                     {txRows.map((t) => (
                       <tr key={t.id} className="border-b border-border-subtle/50 last:border-b-0">
-                        <td className="py-2 pr-3 font-mono whitespace-nowrap">{t.createdAt.replace("T", " ").slice(0, 19)}</td>
+                        <td className="py-2 pr-3 font-mono whitespace-nowrap">{formatDateTime(t.createdAt)}</td>
                         <td className="py-2 pr-3 font-medium text-text">{t.type}</td>
                         <td className="py-2 pr-3">{t.provider ?? "—"}</td>
                         <td className="py-2 pr-3"><span className="font-mono text-micro tracking-wider uppercase">{t.status}</span></td>
@@ -337,7 +337,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                 {audit.slice(0, 100).map((e) => (
                   <FeedRow
                     key={e.id}
-                    ts={e.createdAt.replace("T", " ").slice(0, 19)}
+                    ts={formatDateTime(e.createdAt)}
                     category={e.category}
                     variant={CATEGORY_VARIANT[e.category]}
                     body={`${e.action} ${e.targetType ? `· ${e.targetType}#${e.targetId?.slice(0, 12)}` : ""}`}

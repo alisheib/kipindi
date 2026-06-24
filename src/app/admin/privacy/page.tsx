@@ -10,6 +10,7 @@ import { Chip } from "@/components/ui/chip";
 import { db } from "@/lib/server/store";
 import { listDsarRequests } from "@/lib/server/privacy";
 import { ExportDsarBundleButton, FulfillDsarButton } from "./dsar-controls";
+import { formatDateTime } from "@/lib/utils";
 import { I } from "@/components/ui/glyphs";
 
 export const metadata = { title: "Admin · Privacy / DSAR" };
@@ -74,7 +75,7 @@ export default async function AdminPrivacyPage({
               <tbody className="text-text-secondary">
                 {paged.map((r) => (
                   <tr key={r.id} className="border-t border-border-subtle/50 align-top">
-                    <td className="p-3 font-mono whitespace-nowrap">{r.requestedAt.replace("T", " ").slice(0, 19)}</td>
+                    <td className="p-3 font-mono whitespace-nowrap">{formatDateTime(r.requestedAt)}</td>
                     <td className="p-3 font-mono">{r.userId.slice(0, 16)}…</td>
                     <td className="p-3">
                       <Chip size="sm" variant={r.type === "ERASURE" ? "danger" : "neutral"}>{r.type}</Chip>

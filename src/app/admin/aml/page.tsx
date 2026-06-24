@@ -3,7 +3,7 @@ import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/component
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
 import { db, type StoredTxn } from "@/lib/server/store";
-import { formatTzs } from "@/lib/utils";
+import { formatTzs, formatDateTime } from "@/lib/utils";
 import { I } from "@/components/ui/glyphs";
 import { AmlActionRow } from "./aml-actions-client";
 import { detectSuspiciousBets } from "@/lib/server/analytics";
@@ -80,7 +80,7 @@ export default async function AdminAmlPage({
                   const sig = stage1.get(t.id);
                   return (
                     <tr key={t.id}>
-                      <td className="font-mono whitespace-nowrap">{t.createdAt.replace("T", " ").slice(0, 19)}</td>
+                      <td className="font-mono whitespace-nowrap">{formatDateTime(t.createdAt)}</td>
                       <td className="font-medium text-text">{t.type}</td>
                       <td className="font-mono">
                         <a href={`/admin/players?q=${encodeURIComponent(t.userId)}`} className="hover:text-royal hover:underline">

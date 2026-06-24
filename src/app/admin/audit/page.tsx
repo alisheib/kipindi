@@ -6,6 +6,7 @@ import { getAuditPage, verifyChain, type AuditCategory } from "@/lib/server/audi
 import { MarketStats, type Stat } from "@/components/markets/market-stats";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Chip } from "@/components/ui/chip";
+import { formatDateTime } from "@/lib/utils";
 
 export const metadata = { title: "Admin · Audit log" };
 export const dynamic = "force-dynamic";
@@ -117,7 +118,7 @@ export default async function AdminAuditPage({
               <tbody className="text-text-muted">
                 {entries.map((e) => (
                   <tr key={e.id}>
-                    <td className="font-mono whitespace-nowrap text-text-subtle">{e.createdAt.replace("T", " ").slice(0, 19)}</td>
+                    <td className="font-mono whitespace-nowrap text-text-subtle">{formatDateTime(e.createdAt)}</td>
                     <td>
                       <Chip size="sm" variant={CAT_VARIANT[e.category]}>{e.category}</Chip>
                     </td>

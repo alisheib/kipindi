@@ -5,6 +5,7 @@ import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { getAuditPage } from "@/lib/server/audit";
 import { GenerateButton } from "./generate-button";
+import { formatDateTime } from "@/lib/utils";
 
 export const metadata = { title: "Admin · Reports" };
 export const dynamic = "force-dynamic";
@@ -201,7 +202,7 @@ export default async function AdminReportsPage({
                 <tbody className="text-text-muted">
                   {paged.map((e) => (
                     <tr key={e.id}>
-                      <td className="font-mono whitespace-nowrap text-text-subtle">{e.createdAt.replace("T", " ").slice(0, 19)}</td>
+                      <td className="font-mono whitespace-nowrap text-text-subtle">{formatDateTime(e.createdAt)}</td>
                       <td className="font-medium text-text">{e.action}</td>
                       <td className="font-mono">{e.actorId ?? "—"}</td>
                     </tr>

@@ -9,7 +9,7 @@ import {
   MarketOverrideForm,
   ClearOverrideButton,
 } from "./config-form";
-import { formatTzs } from "@/lib/utils";
+import { formatTzs, formatDateTime } from "@/lib/utils";
 
 export const metadata = { title: "Admin · Market config" };
 export const dynamic = "force-dynamic";
@@ -188,7 +188,7 @@ export default async function AdminConfigPage() {
                 <tbody className="text-text-muted">
                   {recent.map((e) => (
                     <tr key={e.id} className="border-b border-border/50 last:border-b-0 align-top">
-                      <td className="p-3 font-mono whitespace-nowrap text-text-subtle">{e.createdAt.replace("T", " ").slice(0, 19)}</td>
+                      <td className="p-3 font-mono whitespace-nowrap text-text-subtle">{formatDateTime(e.createdAt)}</td>
                       <td className="p-3 font-medium text-text">{e.action.replace("config.", "")}</td>
                       <td className="p-3 font-mono">{e.actorId?.slice(0, 16) ?? "—"}</td>
                       <td className="p-3 font-mono">{e.targetId ?? "—"}</td>

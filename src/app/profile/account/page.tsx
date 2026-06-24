@@ -8,7 +8,7 @@ import { getOwnActivity } from "@/lib/server/user-service";
 import { CloseAccountForm } from "./close-account-form";
 import { EmailEditor } from "@/components/profile/email-editor";
 import { PasswordSection } from "@/components/profile/password-section";
-import { formatDateTimeSafe } from "@/lib/utils";
+import { formatDateTimeSafe, formatDateTime } from "@/lib/utils";
 import { ExportDataButton } from "./export-data-button";
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from "@/lib/support-config";
 
@@ -153,7 +153,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
               {activity.slice(0, 30).map((e) => (
                 <tr key={e.id} className="border-b border-border last:border-b-0 hover:bg-bg-overlay/40 transition-colors">
                   <td className="px-3 py-2 font-mono tabular-nums whitespace-nowrap text-text-muted">
-                    {e.createdAt.replace("T", " ").slice(0, 19)}
+                    {formatDateTime(e.createdAt)}
                   </td>
                   <td className="px-3 py-2 font-mono text-text-subtle">{e.category}</td>
                   <td className="px-3 py-2 font-display font-semibold text-text">{e.action}</td>

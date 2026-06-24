@@ -7,6 +7,7 @@ import { db, type StoredTxn, type StoredSourceOfFunds } from "@/lib/server/store
 import { getAuditPage } from "@/lib/server/audit";
 import { listPendingKyc } from "@/lib/server/kyc-service";
 import { SofReviewRow } from "./sof-review-client";
+import { formatDateTime } from "@/lib/utils";
 
 export const metadata = { title: "Admin · Two-person approvals" };
 export const dynamic = "force-dynamic";
@@ -107,7 +108,7 @@ export default async function AdminApprovalsPage({
                 <tbody>
                   {kycPending.map((k) => (
                     <tr key={k.id} className="border-b border-border-subtle/50 last:border-b-0">
-                      <td className="py-2 pr-3 font-mono whitespace-nowrap">{(k.submittedAt ?? k.updatedAt).replace("T", " ").slice(0, 16)}</td>
+                      <td className="py-2 pr-3 font-mono whitespace-nowrap">{formatDateTime(k.submittedAt ?? k.updatedAt)}</td>
                       <td className="py-2 pr-3"><a href={`/admin/players/${k.userId}?tab=kyc`} className="font-mono text-royal hover:underline">{k.userId.slice(0, 14)}…</a></td>
                       <td className="py-2 pr-3 font-medium text-text">{k.fullName ?? "—"}</td>
                       <td className="py-2 pr-3 font-mono tabular">{k.documents.length}/3</td>
@@ -149,7 +150,7 @@ export default async function AdminApprovalsPage({
                 <tbody>
                   {aml.map((t) => (
                     <tr key={t.id} className="border-b border-border-subtle/50 last:border-b-0">
-                      <td className="py-2 pr-3 font-mono whitespace-nowrap">{t.createdAt.replace("T", " ").slice(0, 16)}</td>
+                      <td className="py-2 pr-3 font-mono whitespace-nowrap">{formatDateTime(t.createdAt)}</td>
                       <td className="py-2 pr-3"><a href={`/admin/players/${t.userId}`} className="font-mono text-royal hover:underline">{t.userId.slice(0, 14)}…</a></td>
                       <td className="py-2 pr-3 font-medium text-text">{t.type}</td>
                       <td className="py-2 pr-3 font-mono tabular text-right">{(Math.abs(t.amount) / 1_000_000).toFixed(2)}M</td>
@@ -188,7 +189,7 @@ export default async function AdminApprovalsPage({
                 <tbody>
                   {sof.map((s) => (
                     <tr key={s.userId} className="border-b border-border-subtle/50 last:border-b-0">
-                      <td className="py-2 pr-3 font-mono whitespace-nowrap">{s.submittedAt.replace("T", " ").slice(0, 16)}</td>
+                      <td className="py-2 pr-3 font-mono whitespace-nowrap">{formatDateTime(s.submittedAt)}</td>
                       <td className="py-2 pr-3"><a href={`/admin/players/${s.userId}`} className="font-mono text-royal hover:underline">{s.userId.slice(0, 14)}…</a></td>
                       <td className="py-2 pr-3 font-medium text-text">{s.declaredSource}</td>
                       <td className="py-2 pr-3 font-mono">{s.declaredAnnualIncomeBand}</td>
@@ -210,7 +211,7 @@ export default async function AdminApprovalsPage({
             {recent.filter((e) => e.action.startsWith("aml.") || e.action.startsWith("sof.") || e.action.startsWith("player.")).slice(0, 30).map((e) => (
               <FeedRow
                 key={e.id}
-                ts={e.createdAt.replace("T", " ").slice(0, 19)}
+                ts={formatDateTime(e.createdAt)}
                 category="ADMIN"
                 variant="warning"
                 body={`${e.action} · ${e.actorId?.slice(0, 12) ?? "system"} → ${e.targetType ?? ""}#${e.targetId?.slice(0, 12) ?? ""}`}

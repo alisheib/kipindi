@@ -18,6 +18,7 @@ import {
 } from "../analytics";
 import { getGlobalConfig } from "../market-config";
 import type { Report, Row, SignatureRow } from "./types";
+import { formatDateTime } from "@/lib/utils";
 
 /** Standard regulator attestation block — three roles applied at the foot
  *  of every hand-off-grade report. Names are intentionally placeholders;
@@ -722,7 +723,7 @@ export async function buildRgEngagement(generatorId: string): Promise<Report> {
     .filter((e) => e.action.startsWith("rg."))
     .slice(0, 200)
     .map((e) => ({
-      at: e.createdAt.replace("T", " ").slice(0, 19),
+      at: formatDateTime(e.createdAt),
       event: e.action.replace("rg.", "").replace(/[._]/g, " "),
       player: e.targetId ? maskUserId(e.targetId) : "—",
     }));
