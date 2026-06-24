@@ -156,7 +156,7 @@ export const I = {
   /* Server â€” system / infra */
   server: (p: GlyphProps) => <G {...p}><rect x="3" y="3.5" width="18" height="7" rx="2" /><rect x="3" y="13.5" width="18" height="7" rx="2" /><path d="M6.5 7h.01M6.5 17h.01" /><path d="M10.5 7h6.5M10.5 17h6.5" /></G>,
 
-  /* Landmark â€” bank / house-pool treasury */
+  /* Landmark â€” bank / treasury */
   landmark: (p: GlyphProps) => <G {...p}><path d="M12 3l8.5 4.5H3.5z" /><path d="M3.5 7.5h17" /><path d="M6 11v6.5M10 11v6.5M14 11v6.5M18 11v6.5" /><path d="M3 21h18" /></G>,
 
   /* FileText â€” report / document */

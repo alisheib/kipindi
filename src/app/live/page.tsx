@@ -12,6 +12,7 @@
  */
 import Link from "next/link";
 import { listMarkets, impliedYesPct, isClosedByTime, traderSeedsByMarket } from "@/lib/server/market-service";
+
 import { getCardChart } from "@/lib/server/market-history";
 import { TippingBar, PulseRing } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";

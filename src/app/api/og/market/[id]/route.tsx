@@ -12,6 +12,7 @@
 import { ImageResponse } from "next/og";
 import { getMarket, impliedYesPct } from "@/lib/server/market-service";
 
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 

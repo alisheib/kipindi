@@ -3,6 +3,7 @@ import { I } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
 import { FiftyLockup } from "@/components/brand";
 import { listMarkets, impliedYesPct, isClosedByTime, traderSeedsByMarket } from "@/lib/server/market-service";
+
 import { getCardChart } from "@/lib/server/market-history";
 import { getSession } from "@/lib/server/session";
 

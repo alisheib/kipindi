@@ -4,6 +4,7 @@ import { MarketCard } from "@/components/markets/market-card";
 import { listMarkets, impliedYesPct, isClosedByTime, traderSeedsByMarket, type MarketCategory } from "@/lib/server/market-service";
 import { getCardChart } from "@/lib/server/market-history";
 import { getProposalsConfig } from "@/lib/server/proposals-config";
+
 import { EmptyState } from "@/components/ui/empty-state";
 import { MarketSearch } from "./market-search";
 
