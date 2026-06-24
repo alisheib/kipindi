@@ -17,11 +17,12 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { I } from "@/components/ui/glyphs";
+import { Spinner } from "@/components/ui/spinner";
 
 export function MarketSearch() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [, startTransition] = useTransition();
+  const [searching, startTransition] = useTransition();
   const [q, setQ] = useState(searchParams.get("q") ?? "");
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -47,7 +48,7 @@ export function MarketSearch() {
   return (
     <div className="input-group market-search">
       <span className="prefix" aria-hidden>
-        <I.search s={16} />
+        {searching ? <Spinner size={16} /> : <I.search s={16} />}
       </span>
       <input
         type="search"
