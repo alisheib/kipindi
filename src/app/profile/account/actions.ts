@@ -8,7 +8,7 @@ import { audit } from "@/lib/server/audit";
 export async function exportDataAction(): Promise<{ ok: true; payload: string; filename: string } | { ok: false; error: string }> {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
-  const data = exportUserData(session.userId);
+  const data = await exportUserData(session.userId);
   audit({
     category: "COMPLIANCE",
     action: "user.data.exported",
