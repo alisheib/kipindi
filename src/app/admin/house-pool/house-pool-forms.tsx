@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useDeferredToast } from "@/components/ui/toast";
 import { topUpAction, withdrawAction, updateHousePoolConfigAction } from "./actions";
 import type { HousePoolConfig } from "@/lib/server/house-pool";
+import { formatTzs } from "@/lib/utils";
 
 /** Lightweight card — mirrors AdminCard's visual without importing the
  *  server-coupled admin-shell module into this client component. */
@@ -48,7 +49,7 @@ function TopUpForm() {
       } else {
         (e.target as HTMLFormElement).reset();
         router.refresh();
-        deferToast({ title: `Topped up · TZS ${r.balance.toLocaleString()}`, variant: "success" });
+        deferToast({ title: `Topped up · ${formatTzs(r.balance)}`, variant: "success" });
       }
     });
   };
@@ -86,7 +87,7 @@ function WithdrawForm() {
       } else {
         (e.target as HTMLFormElement).reset();
         router.refresh();
-        deferToast({ title: `Withdrawn · TZS ${r.balance.toLocaleString()} remaining`, variant: "warning" });
+        deferToast({ title: `Withdrawn · ${formatTzs(r.balance)} remaining`, variant: "warning" });
       }
     });
   };
@@ -135,10 +136,10 @@ function PoolConfigForm({ config }: { config: HousePoolConfig }) {
         <p className="font-display font-semibold text-body-sm text-text">Pool configuration</p>
       </div>
       <form onSubmit={onSubmit} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Field label="Seed per side (TZS)" hint={`Currently ${config.seedPerSide.toLocaleString()}`}>
+        <Field label="Seed per side (TZS)" hint={`Currently ${formatTzs(config.seedPerSide)}`}>
           <Input name="seedPerSide" type="number" min={0} step={10000} defaultValue={config.seedPerSide} mono size="md" />
         </Field>
-        <Field label="Min reserve (TZS)" hint={`Currently ${config.minReserve.toLocaleString()}`}>
+        <Field label="Min reserve (TZS)" hint={`Currently ${formatTzs(config.minReserve)}`}>
           <Input name="minReserve" type="number" min={0} step={10000} defaultValue={config.minReserve} mono size="md" />
         </Field>
         <div className="flex items-center self-end h-11">

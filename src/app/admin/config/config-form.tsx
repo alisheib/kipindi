@@ -11,6 +11,7 @@ import {
   clearMarketOverrideAction,
 } from "./actions";
 import type { RateConfig } from "@/lib/server/market-config";
+import { formatTzs } from "@/lib/utils";
 
 export function GlobalConfigForm({ config }: { config: RateConfig }) {
   const [pending, start] = useTransition();
@@ -72,10 +73,10 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
         >
           <Input name="aggregatorRate" type="number" step="0.1" min="0" max="10" defaultValue={aggPct} mono />
         </Field>
-        <Field label="Min stake (TZS)" hint={`Current ${config.minStake.toLocaleString()}`}>
+        <Field label="Min stake (TZS)" hint={`Current ${formatTzs(config.minStake)}`}>
           <Input name="minStake" type="number" step="100" min="100" defaultValue={config.minStake} mono />
         </Field>
-        <Field label="Max stake (TZS)" hint={`Current ${config.maxStake.toLocaleString()}`}>
+        <Field label="Max stake (TZS)" hint={`Current ${formatTzs(config.maxStake)}`}>
           <Input name="maxStake" type="number" step="1000" min="1000" defaultValue={config.maxStake} mono />
         </Field>
         <Field
@@ -86,7 +87,7 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
         </Field>
         <Field
           label="Starter balance (TZS)"
-          hint={`Currently ${(config.starterBalanceTzs ?? 0).toLocaleString()}. Credited to every newly-registered wallet.`}
+          hint={`Currently ${formatTzs(config.starterBalanceTzs ?? 0)}. Credited to every newly-registered wallet.`}
         >
           <Input
             name="starterBalanceTzs"

@@ -7,12 +7,11 @@ import { Avatar } from "@/components/ui/avatar";
 import { getAffiliateConfig } from "@/lib/server/affiliate-config";
 import { getAdminAffiliateStats } from "@/lib/server/affiliate-service";
 import { AffiliateAdminClient } from "./affiliate-admin-client";
-import { formatDateShort } from "@/lib/utils";
+import { formatDateShort, formatTzs } from "@/lib/utils";
 
 export const metadata = { title: "Affiliate · Admin" };
 export const dynamic = "force-dynamic";
 
-const fmt = (n: number) => n.toLocaleString("en-US");
 const LEDGER_CHIP: Record<string, "resolved" | "pending" | "objection"> = { PAID: "resolved", PENDING: "pending", HELD: "objection" };
 
 /**
@@ -53,9 +52,9 @@ export default async function AdminAffiliatePage({
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Total referrals"   sw="Marafiki wote"   value={fmt(stats.totalReferrals)} delta="all-time" deltaDir="flat" />
-          <AdminKpi label="Active affiliates"  sw="Wanaolipwa"      value={fmt(stats.activeAffiliates)} delta="earned a reward" deltaDir="flat" />
-          <AdminKpi label="Commission paid"    sw="Tume zilizolipwa" value={`TZS ${fmt(stats.commissionPaidTzs)}`} gold delta="all-time" />
+          <AdminKpi label="Total referrals"   sw="Marafiki wote"   value={stats.totalReferrals.toLocaleString()} delta="all-time" deltaDir="flat" />
+          <AdminKpi label="Active affiliates"  sw="Wanaolipwa"      value={stats.activeAffiliates.toLocaleString()} delta="earned a reward" deltaDir="flat" />
+          <AdminKpi label="Commission paid"    sw="Tume zilizolipwa" value={formatTzs(stats.commissionPaidTzs)} gold delta="all-time" />
           <AdminKpi label="Top referrer"       sw="Bingwa"          value={stats.topReferrer?.handle ?? "—"} gold delta={stats.topReferrer ? `${stats.topReferrer.recruits} recruits` : "none yet"} deltaDir="flat" />
         </div>
 
@@ -95,7 +94,7 @@ export default async function AdminAffiliatePage({
                         </span>
                       </td>
                       <td className="text-right font-mono text-text-muted">{b.recruits}</td>
-                      <td className="text-right font-mono font-semibold text-gold-300">{fmt(b.earnedTzs)}</td>
+                      <td className="text-right font-mono font-semibold text-gold-300">{formatTzs(b.earnedTzs)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -128,7 +127,7 @@ export default async function AdminAffiliatePage({
                         <td className="font-mono font-semibold">{r.referrerHandle}</td>
                         <td className="font-mono text-text-muted">{r.recruitMasked}</td>
                         <td className="text-text-muted">{r.type}</td>
-                        <td className="text-right font-mono font-semibold text-gold-300">{fmt(r.amountTzs)}</td>
+                        <td className="text-right font-mono font-semibold text-gold-300">{formatTzs(r.amountTzs)}</td>
                         <td className="font-mono text-text-subtle whitespace-nowrap">{formatDateShort(r.date)}</td>
                         <td><Chip size="sm" variant={LEDGER_CHIP[r.status]}>{r.status.toLowerCase()}</Chip></td>
                       </tr>

@@ -9,6 +9,7 @@ import {
   MarketOverrideForm,
   ClearOverrideButton,
 } from "./config-form";
+import { formatTzs } from "@/lib/utils";
 
 export const metadata = { title: "Admin · Market config" };
 export const dynamic = "force-dynamic";
@@ -145,7 +146,7 @@ export default async function AdminConfigPage() {
                           </td>
                           <td className="p-3 font-mono">
                             {over.minStake !== undefined || over.maxStake !== undefined
-                              ? `${over.minStake?.toLocaleString() ?? "—"} / ${over.maxStake?.toLocaleString() ?? "—"}`
+                              ? `${over.minStake != null ? formatTzs(over.minStake) : "—"} / ${over.maxStake != null ? formatTzs(over.maxStake) : "—"}`
                               : "—"}
                           </td>
                           <td className="p-3 text-right">

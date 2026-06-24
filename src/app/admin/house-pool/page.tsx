@@ -131,10 +131,10 @@ export default async function HousePoolPage({
                         </Chip>
                       </td>
                       <td className={`text-right font-mono tabular-nums ${e.amount >= 0 ? "text-yes-300" : "text-no-300"}`}>
-                        {e.amount >= 0 ? "+" : ""}{e.amount.toLocaleString("en-US")}
+                        {formatTzs(e.amount)}
                       </td>
                       <td className="text-right font-mono tabular-nums text-text-muted">
-                        {e.balanceAfter.toLocaleString("en-US")}
+                        {formatTzs(e.balanceAfter)}
                       </td>
                       <td className="font-mono text-micro text-text-subtle truncate max-w-[120px]">
                         {e.marketId ?? "\u2014"}

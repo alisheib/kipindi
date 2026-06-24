@@ -9,6 +9,7 @@ import { withLock } from "@/lib/server/locks";
 import { notifyWithdrawalSent } from "@/lib/server/wallet-service";
 
 import { TWO_PERSON_THRESHOLD_TZS } from "./constants";
+import { formatTzs } from "@/lib/utils";
 
 const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
 
@@ -188,7 +189,7 @@ export async function rejectAmlAction(formData: FormData) {
       // never turn a completed AML rejection into a 500 for the officer.
       void sendEmailToUser(txn.userId, (email) => ({
         to: email,
-        subject: `Withdrawal returned · TZS ${Math.abs(txn.amount).toLocaleString()}`,
+        subject: `Withdrawal returned · ${formatTzs(Math.abs(txn.amount))}`,
         html: amlRejectRefundHtml({ amount: Math.abs(txn.amount), reason }),
         tag: "aml-refund",
       })).catch(() => {});
