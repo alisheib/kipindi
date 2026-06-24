@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/toast";
+import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
 import { StatusBadge } from "@/components/proposals/status-badge";
 import { CategoryIcon, CATEGORY_LABEL } from "@/components/proposals/category-icon";
 import type { ProposalsConfig } from "@/lib/server/proposals-config";
@@ -108,6 +109,7 @@ function SortBtn({ field, label, current, dir, onSort }: { field: QSort; label: 
 export function AdminProposalsClient({ config, queue }: { config: ProposalsConfig; queue: AdminQueueRow[] }) {
   const router = useRouter();
   const { toast } = useToast();
+  const overlay = useActionOverlay();
   const [pending, start] = useTransition();
   const [c, setC] = useState<ProposalsConfig>(config);
   const [qFilter, setQFilter] = useState<QFilter>("all");
@@ -164,23 +166,38 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
     else toast({ title: "Couldn't save", description: r.error, variant: "danger" });
   });
 
-  const approve = () => { if (!sel) return; start(async () => {
-    const r = await approveProposalAction(sel.id);
-    if (r.ok) { toast({ title: "Approved & listed · Imeorodheshwa", variant: "success" }); resetReview(); refresh(); }
-    else toast({ title: "Couldn't approve", description: r.error, variant: "danger" });
-  }); };
+  const approve = () => { if (!sel) return;
+    overlay.run("Approving & listing…", "Creating a live market from this proposal.");
+    start(async () => {
+      try {
+        const r = await approveProposalAction(sel.id);
+        if (r.ok) { overlay.succeed("Approved & listed", `Market ${r.marketId} created.`); resetReview(); refresh(); }
+        else overlay.fail("Couldn't approve", r.error);
+      } catch { overlay.fail("Couldn't approve", "Server error — please try again."); }
+    });
+  };
 
-  const sendBack = () => { if (!sel) return; start(async () => {
-    const r = await requestChangesAction(sel.id, note);
-    if (r.ok) { toast({ title: "Changes requested", variant: "success" }); resetReview(); refresh(); }
-    else toast({ title: "Couldn't send back", description: r.error, variant: "danger" });
-  }); };
+  const sendBack = () => { if (!sel) return;
+    overlay.run("Requesting changes…", "Sending note to the proposer.");
+    start(async () => {
+      try {
+        const r = await requestChangesAction(sel.id, note);
+        if (r.ok) { overlay.succeed("Changes requested", "Proposer will be notified."); resetReview(); refresh(); }
+        else overlay.fail("Couldn't send back", r.error);
+      } catch { overlay.fail("Couldn't send back", "Server error — please try again."); }
+    });
+  };
 
-  const decline = () => { if (!sel || !reason) return; start(async () => {
-    const r = await declineProposalAction(sel.id, reason, note);
-    if (r.ok) { toast({ title: `Declined · ${reason}`, variant: "warning" }); resetReview(); refresh(); }
-    else toast({ title: "Couldn't decline", description: r.error, variant: "danger" });
-  }); };
+  const decline = () => { if (!sel || !reason) return;
+    overlay.run("Declining proposal…", `Reason: ${reason}`);
+    start(async () => {
+      try {
+        const r = await declineProposalAction(sel.id, reason, note);
+        if (r.ok) { overlay.succeed(`Declined · ${reason}`, "Proposer will be notified."); resetReview(); refresh(); }
+        else overlay.fail("Couldn't decline", r.error);
+      } catch { overlay.fail("Couldn't decline", "Server error — please try again."); }
+    });
+  };
 
   const open = sel && (sel.status === "REVIEW" || sel.status === "CHANGES_REQUESTED");
 
@@ -279,7 +296,7 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
                       style={reason === r ? { borderColor: "color-mix(in oklab, var(--claret-500) 44%, transparent)", background: "color-mix(in oklab, var(--claret-500) 16%, transparent)", color: "var(--claret-300)" } : { borderColor: "var(--border)", color: "var(--text-muted)" }}>{r}</button>
                   ))}
                 </div>
-                <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional note to the proposer (logged) · Ujumbe" className="mb-3 min-h-[56px] w-full resize-none rounded-md border border-border bg-bg-elevated px-3 py-2 text-[13px] text-text outline-none focus:border-[var(--brand-500)]" />
+                <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional note to the proposer (logged) · Ujumbe" className="mb-3 min-h-[56px] w-full resize-none rounded-md border border-border bg-bg-elevated px-3 py-2 text-[13px] text-text outline-none admin-focus transition-colors" />
                 <div className="flex gap-2">
                   <Button variant="ghost" size="md" onClick={resetReview}>Cancel</Button>
                   <Button variant="danger" size="md" fullWidth disabled={!reason} loading={pending} onClick={decline}>Confirm decline{reason ? ` · ${reason}` : ""}</Button>
@@ -312,6 +329,7 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
           <CField label="Rate limit" hint="Max open proposals per player" suffix="open" width={180} value={c.rateLimit} onChange={(n) => setC((p) => ({ ...p, rateLimit: n }))} />
         </div>
       </div>
+      <ActionOverlay state={overlay.state} onDismiss={overlay.dismiss} />
     </div>
   );
 }
