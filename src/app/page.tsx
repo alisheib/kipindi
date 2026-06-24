@@ -180,7 +180,7 @@ export default async function LandingPage() {
               <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold" style={{ color: "var(--live-400)" }}>Live · Hai</p>
               <h2 className="font-display text-[26px] md:text-[30px] font-bold text-text">Pick a side now</h2>
             </div>
-            <Link href={"/markets" as never} className="font-mono text-[12px] uppercase tracking-[0.16em] text-accent-400 hover:text-accent-300">
+            <Link href={"/markets" as never} className="font-mono text-[12px] uppercase tracking-[0.16em] text-brand-300 hover:text-brand-200">
               View all →
             </Link>
           </div>

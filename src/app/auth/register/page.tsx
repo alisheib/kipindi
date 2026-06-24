@@ -190,7 +190,7 @@ export default async function RegisterPage({
               <Checkbox
                 name="acceptTerms"
                 required
-                label={<span className="text-[13px] text-text-muted">I accept the{" "}<Link href="/legal/terms" className="text-accent-400 underline-offset-2 hover:underline">Terms</Link>{" "}and{" "}<Link href="/legal/privacy" className="text-accent-400 underline-offset-2 hover:underline">Privacy</Link>. <span className="italic text-text-subtle">Ninakubali Sheria na Faragha.</span></span>}
+                label={<span className="text-[13px] text-text-muted">I accept the{" "}<Link href="/legal/terms" className="text-brand-300 underline-offset-2 hover:underline">Terms</Link>{" "}and{" "}<Link href="/legal/privacy" className="text-brand-300 underline-offset-2 hover:underline">Privacy</Link>. <span className="italic text-text-subtle">Ninakubali Sheria na Faragha.</span></span>}
               />
               <Checkbox
                 name="marketingOptIn"
@@ -205,7 +205,7 @@ export default async function RegisterPage({
             Already have an account?{" "}
             <Link
               href={"/auth/login" as never}
-              className="font-semibold text-accent-400 hover:text-accent-300 underline-offset-2 hover:underline"
+              className="font-semibold text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline"
             >
               Sign in · Ingia
             </Link>

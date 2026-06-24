@@ -183,8 +183,8 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           <SelfExcludeConfirm />
         </form>
         <p className="font-mono text-[11px] text-text-subtle pt-1">
-          Need help now? Tanzania Helpline · <a href={`tel:${SUPPORT_PHONE_TEL()}`} className="text-accent-400 underline-offset-2 hover:underline">{SUPPORT_PHONE()}</a>.
-          International support at <a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="text-accent-400 underline-offset-2 hover:underline">begambleaware.org</a>.
+          Need help now? Tanzania Helpline · <a href={`tel:${SUPPORT_PHONE_TEL()}`} className="text-brand-300 underline-offset-2 hover:underline">{SUPPORT_PHONE()}</a>.
+          International support at <a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="text-brand-300 underline-offset-2 hover:underline">begambleaware.org</a>.
         </p>
       </section>
     </main>

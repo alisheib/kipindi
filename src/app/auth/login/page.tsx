@@ -204,7 +204,7 @@ export default async function LoginPage({
             No account?{" "}
             <Link
               href={`/auth/register${nextSafe ? `?next=${encodeURIComponent(nextSafe)}` : ""}` as never}
-              className="font-semibold text-accent-400 hover:text-accent-300 underline-offset-2 hover:underline"
+              className="font-semibold text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline"
             >
               Create one · Fungua akaunti
             </Link>

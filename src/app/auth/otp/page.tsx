@@ -102,7 +102,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
               // payload, so send the user back to start over (phone prefilled).
               <Link
                 href={`/auth/register?${new URLSearchParams({ ...(phone ? { phone } : {}), ...(nextSafe ? { next: nextSafe } : {}) }).toString()}` as never}
-                className="font-mono text-[12px] uppercase tracking-[0.14em] text-accent-400 hover:text-accent-300 transition-colors"
+                className="font-mono text-[12px] uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200 transition-colors"
               >
                 Start over
               </Link>
@@ -112,7 +112,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
                 <input type="hidden" name="purpose" value={purpose} />
                 <button
                   type="submit"
-                  className="font-mono text-[12px] uppercase tracking-[0.14em] text-accent-400 hover:text-accent-300 transition-colors"
+                  className="font-mono text-[12px] uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200 transition-colors"
                 >
                   Resend code
                 </button>
