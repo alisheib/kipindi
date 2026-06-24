@@ -174,7 +174,7 @@ export default async function LeaderboardPage() {
             <p className="text-[11px] text-text-subtle italic">Sample data · rankings update as players join and predict.</p>
           </div>
         )}
-        <table className="w-full text-[13px] min-w-[640px]">
+        <table className="admin-tbl min-w-[640px]">
           <thead className="border-b border-border bg-bg-overlay">
             <tr className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
               <th className="text-left p-3 w-14">#</th>

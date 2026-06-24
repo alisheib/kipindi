@@ -141,7 +141,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
           </nav>
         )}
         <div className="overflow-x-auto rounded-md border border-border">
-          <table className="w-full text-[12px]">
+          <table className="admin-tbl">
             <thead>
               <tr className="border-b border-border bg-bg-overlay/50 font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
                 <th className="text-left px-3 py-2 font-semibold">When</th>

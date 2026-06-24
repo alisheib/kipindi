@@ -62,7 +62,7 @@ export default async function AdminRetentionPage() {
           padding="p-0"
         >
           <div className="overflow-x-auto">
-            <table className="w-full text-caption">
+            <table className="admin-tbl">
               <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                 <tr>
                   <th className="text-left p-3">Category</th>

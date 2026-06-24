@@ -264,7 +264,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
             {tab === "bets" && (
               <>
               <div className="overflow-x-auto">
-                <table className="w-full text-caption min-w-[600px]">
+                <table className="admin-tbl min-w-[600px]">
                   <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
                     <tr>
                       <SortTh field="when" label="When" current={bet.sort} dir={bet.dir} sp={sp} baseHref={playerHref} prefix="bet" className="py-2 pr-3" />
@@ -296,7 +296,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
             {tab === "transactions" && (
               <>
               <div className="overflow-x-auto">
-                <table className="w-full text-caption min-w-[600px]">
+                <table className="admin-tbl min-w-[600px]">
                   <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
                     <tr>
                       <SortTh field="time" label="When" current={tx.sort} dir={tx.dir} sp={sp} baseHref={playerHref} prefix="tx" className="py-2 pr-3" />

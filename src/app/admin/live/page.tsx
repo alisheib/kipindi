@@ -60,7 +60,7 @@ export default async function AdminLivePage() {
             <p className="text-caption text-text-tertiary py-4 text-center">No live matches at the moment.</p>
           ) : (
             <div className="overflow-x-auto -mx-4 px-4">
-              <table className="w-full text-caption min-w-[600px]">
+              <table className="admin-tbl min-w-[600px]">
                 <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
                   <tr>
                     <th className="text-left py-2 pr-3">League</th>

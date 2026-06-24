@@ -60,7 +60,7 @@ export default async function AdminPrivacyPage({
           padding="p-0"
         >
           <div className="overflow-x-auto">
-            <table className="w-full text-caption">
+            <table className="admin-tbl">
               <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                 <tr>
                   <SortTh field="filed" label="Filed" current={sort} dir={dir} sp={sp} baseHref="/admin/privacy" className="p-3" />
@@ -114,7 +114,7 @@ export default async function AdminPrivacyPage({
             officer needs to hand them a copy of their data right now. Generates a JSON bundle with everything we hold.
           </p>
           <div className="overflow-x-auto -mx-4 px-4">
-            <table className="w-full text-caption min-w-[640px]">
+            <table className="admin-tbl min-w-[640px]">
               <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
                 <tr>
                   <th className="text-left py-2 pr-3">Player</th>

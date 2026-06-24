@@ -94,7 +94,7 @@ export default async function AdminApprovalsPage({
           ) : (
             <>
             <div className="overflow-x-auto -mx-4 px-4">
-              <table className="w-full text-caption min-w-[600px]">
+              <table className="admin-tbl min-w-[600px]">
                 <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
                   <tr>
                     <SortTh field="submitted" label="Submitted" current={kyc.sort} dir={kyc.dir} sp={sp} baseHref="/admin/approvals" prefix="kyc" className="py-2 pr-3" />
@@ -136,7 +136,7 @@ export default async function AdminApprovalsPage({
           ) : (
             <>
             <div className="overflow-x-auto -mx-4 px-4">
-              <table className="w-full text-caption min-w-[640px]">
+              <table className="admin-tbl min-w-[640px]">
                 <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
                   <tr>
                     <SortTh field="time" label="When" current={amlS.sort} dir={amlS.dir} sp={sp} baseHref="/admin/approvals" prefix="aml" className="py-2 pr-3" />
@@ -174,7 +174,7 @@ export default async function AdminApprovalsPage({
           ) : (
             <>
             <div className="overflow-x-auto -mx-4 px-4">
-              <table className="w-full text-caption min-w-[600px]">
+              <table className="admin-tbl min-w-[600px]">
                 <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
                   <tr>
                     <SortTh field="submitted" label="Submitted" current={sofS.sort} dir={sofS.dir} sp={sp} baseHref="/admin/approvals" prefix="sof" className="py-2 pr-3" />

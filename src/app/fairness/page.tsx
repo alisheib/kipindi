@@ -75,7 +75,7 @@ export default async function FairnessPage() {
           />
         ) : (
           <div className="overflow-x-auto rounded-lg glass-panel">
-            <table className="w-full text-[13px]">
+            <table className="admin-tbl">
               <thead className="border-b border-border bg-bg-overlay">
                 <tr className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
                   <th className="text-left p-3">Market</th>

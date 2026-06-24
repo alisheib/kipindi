@@ -319,7 +319,7 @@ export default async function AdminAIPollsPage({
           ) : (
             <>
               <div className="overflow-x-auto">
-                <table className="w-full text-[12px]">
+                <table className="admin-tbl">
                   <thead className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle bg-bg-overlay border-b border-border">
                     <tr>
                       <th className="text-left p-3">State</th>

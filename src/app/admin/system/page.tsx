@@ -179,7 +179,7 @@ export default async function AdminSystemPage() {
             <p className="text-caption text-text-tertiary py-4 text-center">No active rate-limit buckets — system is idle.</p>
           ) : (
             <div className="overflow-x-auto -mx-4 px-4">
-              <table className="w-full text-caption min-w-[480px]">
+              <table className="admin-tbl min-w-[480px]">
                 <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
                   <tr>
                     <th className="text-left py-2 pr-3">Action</th>

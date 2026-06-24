@@ -114,7 +114,7 @@ export default async function AdminConfigPage() {
               </p>
             ) : (
               <div className="overflow-x-auto rounded-md border border-border">
-                <table className="w-full text-[12px]">
+                <table className="admin-tbl">
                   <thead className="border-b border-border bg-bg-overlay">
                     <tr className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
                       <th className="text-left p-3">Market</th>
@@ -174,7 +174,7 @@ export default async function AdminConfigPage() {
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-[12px]">
+              <table className="admin-tbl">
                 <thead className="border-b border-border bg-bg-overlay">
                   <tr className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
                     <th className="text-left p-3">Time</th>
