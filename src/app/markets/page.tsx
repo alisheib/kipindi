@@ -17,6 +17,8 @@ const CATEGORIES: Array<{ id: "all" | MarketCategory; label: string }> = [
   { id: "weather", label: "Weather" },
   { id: "crypto",  label: "Crypto" },
   { id: "culture", label: "Culture" },
+  { id: "tech",    label: "Tech" },
+  { id: "other",   label: "Other" },
 ];
 
 // "When does it close?" filter — kit-faithful pill row above the
