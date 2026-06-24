@@ -12,9 +12,8 @@ export default async function NewProposalPage() {
   if (!session) redirect("/auth/login?next=/proposals/new");
 
   const cfg = getProposalsConfig();
-  const openCount = db.proposal
-    .listByProposer(session.userId)
-    .filter((p) => p.status === "REVIEW" || p.status === "CHANGES_REQUESTED").length;
+  const proposals = await db.proposal.listByProposer(session.userId);
+  const openCount = proposals.filter((p) => p.status === "REVIEW" || p.status === "CHANGES_REQUESTED").length;
 
   return (
     <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6">
