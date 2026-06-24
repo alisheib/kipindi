@@ -26,10 +26,10 @@ export function SetEmailForm({ userId }: { userId: string }) {
           setEmail("");
           router.refresh();
         } else {
-          overlay.fail("Failed", r.error);
+          overlay.fail("Couldn't set email", r.error);
         }
       } catch {
-        overlay.fail("Failed", "Server error — please try again.");
+        overlay.fail("Couldn't set email", "Server error — please try again.");
       }
     });
   };
