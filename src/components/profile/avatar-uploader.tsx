@@ -126,7 +126,7 @@ export function AvatarUploader({
         onClick={() => inputRef.current?.click()}
         disabled={pending}
         aria-label="Change profile photo"
-        className="absolute -bottom-1 -right-1 inline-flex h-7 w-7 items-center justify-center rounded-pill border border-border bg-bg-elevated text-text-muted hover:text-text hover:border-gold-500 transition-colors disabled:opacity-50 shadow-e2"
+        className="absolute -bottom-1 -right-1 inline-flex h-8 w-8 items-center justify-center rounded-pill border border-border bg-bg-elevated text-text-muted hover:text-text hover:border-gold-500 transition-colors disabled:opacity-50 shadow-e2"
       >
         {pending ? <Spinner size={13} /> : <I.camera s={13} />}
       </button>
@@ -137,7 +137,7 @@ export function AvatarUploader({
           type="button"
           onClick={clear}
           aria-label="Remove profile photo"
-          className="absolute -top-1 -right-1 inline-flex h-6 w-6 items-center justify-center rounded-pill border border-border bg-bg-elevated text-text-subtle hover:text-no-300 hover:border-no-700 transition-colors shadow-e2"
+          className="absolute -top-1 -right-1 inline-flex h-7 w-7 items-center justify-center rounded-pill border border-border bg-bg-elevated text-text-subtle hover:text-no-300 hover:border-no-700 transition-colors shadow-e2"
         >
           <I.trash s={11} />
         </button>

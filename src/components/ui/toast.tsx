@@ -350,7 +350,7 @@ function ToastItem({ toast, exiting, onDismiss, onPause, onResume }: { toast: To
       <button
         type="button"
         onClick={onDismiss}
-        className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
+        className="absolute right-1.5 top-1.5 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
         aria-label="Dismiss"
       >
         <I.x s={14} />
