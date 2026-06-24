@@ -203,12 +203,18 @@ function heading(text: string, color?: string): string {
   return `<h1 style="margin:0 0 12px;font-family:'Sora','Segoe UI',Helvetica,Arial,sans-serif;font-size:24px;font-weight:700;color:${color ?? TEXT};line-height:1.15;letter-spacing:-0.02em">${text}</h1>`;
 }
 
+/** Escape HTML entities — prevents XSS when interpolating user-supplied text
+ *  (officer reason notes, market titles, references) into email HTML. */
+function esc(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 function subtitle(text: string): string {
-  return `<p style="margin:0 0 16px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;color:${TEXT_MUTED};line-height:1.55">${text}</p>`;
+  return `<p style="margin:0 0 16px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;color:${TEXT_MUTED};line-height:1.55">${esc(text)}</p>`;
 }
 
 function subtitleSw(text: string): string {
-  return `<p style="margin:-10px 0 16px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;font-style:italic;color:${TEXT_SUBTLE};line-height:1.5">${text}</p>`;
+  return `<p style="margin:-10px 0 16px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;font-style:italic;color:${TEXT_SUBTLE};line-height:1.5">${esc(text)}</p>`;
 }
 
 function detailRows(rows: { label: string; value: string; tone?: "good" | "bad" }[]): string {
@@ -218,7 +224,7 @@ function detailRows(rows: { label: string; value: string; tone?: "good" | "bad" 
   return `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-top:1px solid ${BRAND_BORDER};margin-top:20px">${rows.map(
     (r) => {
       const valColor = r.tone === "good" ? YES_COLOR : r.tone === "bad" ? NO_COLOR : TEXT;
-      return `<tr><td class="sp-row-label" style="padding:11px 0;border-bottom:1px solid ${BRAND_BORDER};font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.14em;color:${TEXT_FAINT};vertical-align:top">${r.label}</td><td class="sp-row-val" style="padding:11px 0;border-bottom:1px solid ${BRAND_BORDER};text-align:right;font-family:'JetBrains Mono','Courier New',monospace;font-size:14px;font-weight:700;color:${valColor};word-break:break-word">${r.value}</td></tr>`;
+      return `<tr><td class="sp-row-label" style="padding:11px 0;border-bottom:1px solid ${BRAND_BORDER};font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.14em;color:${TEXT_FAINT};vertical-align:top">${esc(r.label)}</td><td class="sp-row-val" style="padding:11px 0;border-bottom:1px solid ${BRAND_BORDER};text-align:right;font-family:'JetBrains Mono','Courier New',monospace;font-size:14px;font-weight:700;color:${valColor};word-break:break-word">${esc(r.value)}</td></tr>`;
     },
   ).join("")}</table>`;
 }
