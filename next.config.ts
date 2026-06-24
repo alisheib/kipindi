@@ -13,6 +13,9 @@ const config: NextConfig = {
   // few CJS-only edge cases. Both work cleanly as plain Node imports
   // when treated as externals.
   serverExternalPackages: ["pdfkit", "exceljs"],
+  experimental: {
+    optimizePackageImports: ["lucide-react", "date-fns"],
+  },
   images: {
     formats: ["image/webp", "image/avif"],
     minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days
