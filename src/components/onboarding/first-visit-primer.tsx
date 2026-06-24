@@ -16,6 +16,7 @@ import { usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark, TippingBar, GiltCorner } from "@/components/brand";
+import { useModalLock } from "@/lib/use-modal-lock";
 
 const STORAGE_KEY = "50pick-primer-seen";
 const HIDE_ON = /^\/(auth|admin)(\/|$)/;
@@ -192,6 +193,7 @@ export function FirstVisitPrimer() {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [lang, setLang] = useState<"en" | "sw">("en");
+  useModalLock(open);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
