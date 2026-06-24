@@ -215,7 +215,7 @@ function Field({
         step={step}
         defaultValue={defaultValue ?? ""}
         placeholder={placeholder}
-        className="w-full h-11 px-3 rounded-lg border border-border bg-[var(--bg-inset)] font-mono text-[16px] tabular-nums text-text focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
+        className="w-full h-11 px-3 rounded-lg border border-border bg-[var(--bg-inset)] font-mono text-[16px] tabular-nums text-text focus:outline-none brand-focus transition-colors"
       />
     </label>
   );

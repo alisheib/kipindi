@@ -1904,8 +1904,9 @@ html.kp-reduce-motion *::after {
 .admin-quality-mid  { color: var(--gold-300); }
 .admin-quality-bad  { color: var(--claret-300); }
 
-/* ── Admin focus ring ────────────────────────────────────────────── */
-/* Single source of truth for the brand focus ring on admin inputs.   */
+/* ── Focus rings ─────────────────────────────────────────────────── */
+/* Single source of truth for the brand focus ring on inputs.         */
+.brand-focus:focus, .brand-focus-within:focus-within { outline: none; border-color: var(--brand-500); box-shadow: 0 0 0 3px oklch(63% 0.18 262 / 0.25); }
 .admin-focus:focus { outline: none; border-color: var(--brand-500); box-shadow: 0 0 0 3px oklch(63% 0.18 262 / 0.25); }
 
 /* ── Admin tables ─────────────────────────────────────────────────── */

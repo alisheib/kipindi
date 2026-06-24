@@ -209,7 +209,7 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
       <div
         className={cn(
           "flex items-stretch w-full h-12 rounded-lg border overflow-hidden transition-colors",
-          "focus-within:border-[var(--brand-500)] focus-within:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)]",
+          "brand-focus-within",
           invalid ? "border-no-500" : "border-border",
         )}
         style={{ background: invalid ? "oklch(58% 0.2 25 / 0.08)" : "var(--bg-inset)" }}

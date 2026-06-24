@@ -81,7 +81,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
                 maxLength={6}
                 autoComplete="one-time-code"
                 placeholder="• • • • • •"
-                className="w-full h-[52px] text-center font-mono font-semibold text-[20px] tracking-[0.3em] rounded-md bg-bg-inset border border-border text-text outline-none transition-colors focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)]"
+                className="w-full h-[52px] text-center font-mono font-semibold text-[20px] tracking-[0.3em] rounded-md bg-bg-inset border border-border text-text outline-none transition-colors brand-focus"
               />
               <p className="mt-1.5 text-[11px] text-text-subtle">
                 Code valid for 5 minutes. <span className="italic">Msimbo ni kwa dakika 5.</span>

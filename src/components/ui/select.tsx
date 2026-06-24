@@ -128,7 +128,7 @@ export function Select({
         aria-haspopup="listbox"
         className={cn(
           "flex items-center justify-between gap-2 w-full px-3 rounded-lg border border-border text-left",
-          "focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)]",
+          "focus:outline-none brand-focus",
           "transition-colors font-mono text-[16px]",
           h,
           selectedOption ? "text-text" : "text-text-subtle",

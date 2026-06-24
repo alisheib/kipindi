@@ -49,7 +49,7 @@ export function PasswordInput({
     <div>
       <span
         className={cn(
-          "flex items-stretch rounded-lg border border-border overflow-hidden focus-within:border-[var(--brand-500)] focus-within:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors",
+          "flex items-stretch rounded-lg border border-border overflow-hidden brand-focus-within transition-colors",
           heightCls[size],
         )}
       >

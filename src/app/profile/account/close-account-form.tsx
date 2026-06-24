@@ -37,7 +37,7 @@ export function CloseAccountForm() {
           rows={2}
           maxLength={500}
           placeholder="Help us improve — what made you leave?"
-          className="w-full p-3 rounded-md border border-border bg-bg-overlay text-text text-[13px] focus:outline-none focus:border-[var(--brand-500)] focus:shadow-[0_0_0_3px_oklch(63%_0.18_262_/_0.25)] transition-colors"
+          className="w-full p-3 rounded-md border border-border bg-bg-overlay text-text text-[13px] focus:outline-none brand-focus transition-colors"
         />
       </label>
       <label className="block">
