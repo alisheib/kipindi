@@ -1,5 +1,6 @@
 /**
- * Tabular-numeral helper + inline citation + sources footer.
+ * Tabular-numeral helper + inline citation + sources footer + smart
+ * paragraph renderer with numbered lists, bullet lists, and **bold**.
  *
  * The kit's hard rule: every number in chat (TZS, %, IDs, times) renders
  * in JetBrains Mono with `font-variant-numeric: tabular-nums`. <Num>
@@ -33,23 +34,9 @@ export function Sources({ items }: { items: Citation[] }) {
   );
 }
 
-/** Render a paragraph that may contain inline `[1]` / `[2]` markers and
- *  swap them with <Cite /> components anchored to the citations list.
- *  Also wraps `{n: "..."}` tokens with <Num /> — see send-message stub
- *  for the encoding. Currently the stub returns prose with TZS amounts
- *  + percentages naked; <Num /> is applied via the renderer where it
- *  matters (handoff meta), and any number-heavy reply uses the
- *  text_with_citations variant where the renderer already mono-tabular
- *  treats the whole inner-html block via the `.cm-bubble-ai .cm-num`
- *  selector cascade.
- *
- *  The simplest path that respects the kit rule + the design is:
- *  the AI replies use plain `<p>` text, and ALL numerals in the
- *  RESPONSE PROSE go through <Num>; the stub author wraps them
- *  consistently. See `lib/chat/send-message.ts`. */
+/** Render inline tokens: `[1]` → Cite, `{n}` → Num, `**bold**` → strong. */
 export function renderParagraph(p: string, citations: Citation[]): React.ReactNode {
-  // Tokens look like `[1]` or `{12,500}` for numerals. We split on both.
-  const parts = p.split(/(\[\d+\]|\{[^}]+\})/g);
+  const parts = p.split(/(\[\d+\]|\{[^}]+\}|\*\*[^*]+\*\*)/g);
   return parts.map((part, i) => {
     if (/^\[\d+\]$/.test(part)) {
       const n = parseInt(part.slice(1, -1), 10);
@@ -59,6 +46,102 @@ export function renderParagraph(p: string, citations: Citation[]): React.ReactNo
     if (/^\{[^}]+\}$/.test(part)) {
       return <Num key={i}>{part.slice(1, -1)}</Num>;
     }
+    if (/^\*\*[^*]+\*\*$/.test(part)) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
     return <span key={i}>{part}</span>;
   });
+}
+
+/** Render inline tokens for plain text (no citations): `**bold**` → strong. */
+function renderPlainInline(text: string): React.ReactNode {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) => {
+    if (/^\*\*[^*]+\*\*$/.test(part)) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
+type Block = { type: "p"; text: string } | { type: "ol"; items: string[] } | { type: "ul"; items: string[] };
+
+/** Group an array of paragraph strings into blocks: plain paragraphs,
+ *  ordered lists (lines starting with `\d+. `), and unordered lists
+ *  (lines starting with `- `). Consecutive list items are merged. */
+function groupBlocks(paragraphs: string[]): Block[] {
+  const blocks: Block[] = [];
+  let i = 0;
+  while (i < paragraphs.length) {
+    const p = paragraphs[i];
+    if (/^\d+\.\s/.test(p)) {
+      const items: string[] = [];
+      while (i < paragraphs.length && /^\d+\.\s/.test(paragraphs[i])) {
+        items.push(paragraphs[i].replace(/^\d+\.\s*/, ""));
+        i++;
+      }
+      blocks.push({ type: "ol", items });
+    } else if (/^- /.test(p)) {
+      const items: string[] = [];
+      while (i < paragraphs.length && /^- /.test(paragraphs[i])) {
+        items.push(paragraphs[i].slice(2));
+        i++;
+      }
+      blocks.push({ type: "ul", items });
+    } else {
+      blocks.push({ type: "p", text: p });
+      i++;
+    }
+  }
+  return blocks;
+}
+
+/** Render an array of paragraph strings as structured blocks (paragraphs,
+ *  numbered lists, bullet lists) with optional citation support. */
+export function renderBlocks(
+  paragraphs: string[],
+  citations?: Citation[],
+): React.ReactNode {
+  const blocks = groupBlocks(paragraphs);
+  const inline = (text: string) =>
+    citations ? renderParagraph(text, citations) : renderPlainInline(text);
+
+  return blocks.map((block, i) => {
+    if (block.type === "ol") {
+      return (
+        <ol key={i} className="cm-steps">
+          {block.items.map((item, j) => (
+            <li key={j}>{inline(item)}</li>
+          ))}
+        </ol>
+      );
+    }
+    if (block.type === "ul") {
+      return (
+        <ul key={i} className="cm-bullets">
+          {block.items.map((item, j) => (
+            <li key={j}>{inline(item)}</li>
+          ))}
+        </ul>
+      );
+    }
+    return <p key={i}>{inline(block.text)}</p>;
+  });
+}
+
+/** Split a plain text string (from live Claude) into paragraph strings,
+ *  then render as structured blocks. Splits on double-newline for
+ *  paragraphs, then detects numbered/bulleted lines within each. */
+export function renderPlainText(text: string): React.ReactNode {
+  // Split on double-newline to get major blocks, then within each block
+  // split on single newline to detect lists.
+  const lines: string[] = [];
+  for (const block of text.split(/\n\n+/)) {
+    const sublines = block.split(/\n/);
+    for (const line of sublines) {
+      const trimmed = line.trim();
+      if (trimmed) lines.push(trimmed);
+    }
+  }
+  return renderBlocks(lines);
 }

@@ -13,6 +13,7 @@
 
 import { FiftyMark } from "@/components/brand";
 import { Num } from "./Primitives";
+import { SUPPORT_EMAIL } from "@/lib/support-config";
 
 export function EscalateHandoff({
   ticketId,
@@ -42,13 +43,13 @@ export function EscalateHandoff({
           Your chat history is attached so you won&apos;t have to repeat anything. You&apos;ll get a
           notification when the support team picks up — usually faster on weekday evenings.
         </div>
-        <button
-          type="button"
+        <a
+          href={`mailto:${SUPPORT_EMAIL()}?subject=${encodeURIComponent(`Chat ticket ${ticketId} — support request`)}`}
           className="cm-escalate"
           aria-label="Connect to the support team now"
         >
           Connect to the support team
-        </button>
+        </a>
       </div>
     </div>
   );

@@ -18,7 +18,7 @@ import { AiMessage, UserMessage, TypingMessage } from "./messages/Bubbles";
 import { EmptyState } from "./messages/EmptyState";
 import { RgRedirectCard } from "./messages/RgRedirectCard";
 import { EscalateHandoff } from "./messages/EscalateHandoff";
-import { Sources, renderParagraph } from "./messages/Primitives";
+import { Sources, renderBlocks, renderPlainText } from "./messages/Primitives";
 import type { Lang, Message } from "./types";
 
 type Props = {
@@ -162,17 +162,15 @@ function RenderMessage({ m }: { m: Message }) {
   if (m.kind === "text_with_citations") {
     return (
       <AiMessage>
-        {m.paragraphs.map((p, i) => (
-          <p key={i}>{renderParagraph(p, m.citations)}</p>
-        ))}
+        {renderBlocks(m.paragraphs, m.citations)}
         <Sources items={m.citations} />
       </AiMessage>
     );
   }
-  // plain text reply
+  // plain text reply — split on newlines for proper paragraph/list rendering
   return (
     <AiMessage>
-      <p>{m.text}</p>
+      {renderPlainText(m.text)}
     </AiMessage>
   );
 }

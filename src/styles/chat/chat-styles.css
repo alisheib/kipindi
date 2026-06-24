@@ -263,6 +263,55 @@
   font-size: 13px;
   color: var(--pearl-strong);
 }
+.cm-bubble-ai strong {
+  font-weight: 600;
+  color: var(--chat-text);
+}
+
+/* Numbered steps inside AI bubbles */
+.cm-bubble-ai ol.cm-steps {
+  list-style: none;
+  counter-reset: step;
+  margin: 6px 0 0;
+  padding: 0;
+}
+.cm-bubble-ai ol.cm-steps li {
+  counter-increment: step;
+  padding-left: 22px;
+  position: relative;
+  margin-top: 5px;
+  line-height: 1.45;
+}
+.cm-bubble-ai ol.cm-steps li::before {
+  content: counter(step) ".";
+  position: absolute;
+  left: 0;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pearl);
+}
+
+/* Bullet lists inside AI bubbles */
+.cm-bubble-ai ul.cm-bullets {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+.cm-bubble-ai ul.cm-bullets li {
+  padding-left: 16px;
+  position: relative;
+  margin-top: 4px;
+  line-height: 1.45;
+}
+.cm-bubble-ai ul.cm-bullets li::before {
+  content: "•";
+  position: absolute;
+  left: 2px;
+  color: var(--pearl);
+  font-weight: 600;
+}
 
 /* Player bubble — right, indigo overlay, GILT EDGE (the only gilt allowed
    on this surface besides the escalate pill) */
@@ -439,7 +488,7 @@
 }
 .cm-composer:focus-within {
   border-color: var(--brand-500);
-  box-shadow: inset 0 2px 4px oklch(6% 0.08 268 / 0.4), 0 0 0 3px oklch(63% 0.18 262 / 0.2);
+  box-shadow: inset 0 2px 4px oklch(6% 0.08 268 / 0.4), 0 0 0 3px oklch(63% 0.18 262 / 0.25);
 }
 .cm-composer textarea {
   border: none;
@@ -494,6 +543,7 @@
   height: 38px;
   padding: 0 18px;
   border-radius: 999px;
+  text-decoration: none;
   background: linear-gradient(180deg, var(--claret-hover), var(--claret));
   color: oklch(96% 0.02 12);
   border: 1px solid var(--claret-edge);
@@ -617,6 +667,10 @@
   font-size: 13px;
   cursor: pointer;
   padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
 }
 .cm-rg-secondary {
   height: 36px;
@@ -629,6 +683,10 @@
   font-size: 13px;
   cursor: pointer;
   padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
 }
 .cm-rg-secondary:hover { background: var(--chat-overlay); color: var(--chat-text); }
 
@@ -735,6 +793,10 @@
   background: var(--chat-overlay);
   border-color: var(--pearl-soft);
   color: var(--chat-text);
+}
+.cm-empty-starter:focus-visible {
+  outline: 2px solid var(--pearl);
+  outline-offset: 2px;
 }
 .cm-empty-starter.cm-sw-tile {
   font-style: italic;

@@ -126,12 +126,15 @@ function stubReply(userText: string, lang: Lang): Reply {
       kind: "text_with_citations",
       lang,
       paragraphs: [
-        "Deposits land in your wallet within about {30 seconds} of M-Pesa confirmation. The minimum is TZS {1,000} and the daily cap before KYC tier 2 is TZS {200,000}[1].",
-        "If the deposit doesn't arrive within {2 minutes}, it usually means M-Pesa returned a soft failure — your money is safe and the transaction will auto-reverse within {24 hours}[2].",
-        "For amounts above the daily cap, complete tier 2 verification — it adds ID upload and takes about {5 minutes}[3].",
+        "To deposit money on 50pick:",
+        "1. Open your **Wallet** and tap **Deposit**[1]",
+        "2. Choose your payment method — M-Pesa, Airtel Money, or HaloPesa",
+        "3. Enter the amount — min {TZS 1,000}, daily cap {TZS 200,000} before tier 2",
+        "4. Confirm the payment on your phone — funds arrive in about {30 seconds}",
+        "If the deposit doesn't arrive within {2 minutes}, it usually means a soft failure — your money is safe and auto-reverses within {24 hours}[2]. For higher limits, complete tier 2 verification ({5 minutes})[3].",
       ],
       citations: [
-        { n: 1, href: "/help#deposits", label: "/help#deposits" },
+        { n: 1, href: "/wallet/deposit", label: "/wallet/deposit" },
         { n: 2, href: "/help#deposit-failed", label: "/help#deposit-failed" },
         { n: 3, href: "/profile/kyc", label: "/profile/kyc" },
       ],
@@ -144,9 +147,12 @@ function stubReply(userText: string, lang: Lang): Reply {
       kind: "text_with_citations",
       lang,
       paragraphs: [
-        "The conviction dial picks both your side and your stake in one gesture. Drag toward YES on the left, NO on the right. The further from centre, the stronger your conviction — and the bigger your stake.",
-        "Your stake scales from the base ({TZS 500}) up to {5×} that at the extremes. The TZS amount and the multiplier both update live as you drag[1].",
-        "When you're happy, the confirm popup locks the quote. You can't accidentally move the dial while the popup is open — the locked quote is what gets placed.",
+        "Here's how the conviction dial works:",
+        "1. Drag the dial toward **YES** (left) or **NO** (right)",
+        "2. The further from centre, the stronger your conviction — and the bigger your stake",
+        "3. Your stake scales from the base ({TZS 500}) up to {5×} at the extremes[1]",
+        "4. Tap confirm — the popup locks the quote so you can't accidentally move the dial",
+        "The locked quote is exactly what gets placed. No surprises.",
       ],
       citations: [{ n: 1, href: "/help#conviction-dial", label: "/help#conviction-dial" }],
     };
@@ -158,12 +164,16 @@ function stubReply(userText: string, lang: Lang): Reply {
       kind: "text_with_citations",
       lang,
       paragraphs: [
-        "Winnings settle after the market resolves and the {24-hour} public objection window closes. Once settled, winners receive their money directly in their wallet[1].",
-        "Withdrawals go to the M-Pesa number on your account and typically arrive within {60 seconds}. Daily cap is TZS {500,000} unless you've raised it in Profile → Account[2].",
+        "Here's how payouts and withdrawals work:",
+        "1. Winnings settle after the market resolves and the {24-hour} objection window closes[1]",
+        "2. Once settled, winnings go directly to your **Wallet**",
+        "3. To withdraw, go to **Wallet → Withdraw** and enter the amount",
+        "4. Funds go to the M-Pesa number on your account — typically within {60 seconds}[2]",
+        "Daily withdrawal cap is {TZS 500,000} unless you've raised it in **Profile → Account**.",
       ],
       citations: [
         { n: 1, href: "/fairness", label: "/fairness" },
-        { n: 2, href: "/help#withdrawals", label: "/help#withdrawals" },
+        { n: 2, href: "/wallet/withdraw", label: "/wallet/withdraw" },
       ],
     };
   }
@@ -174,8 +184,11 @@ function stubReply(userText: string, lang: Lang): Reply {
       kind: "text_with_citations",
       lang,
       paragraphs: [
-        "Tier 1 KYC unlocks deposits, betting, and withdrawals up to TZS {200,000} per day. You'll need your NIDA number and a phone selfie — takes about {3 minutes}[1].",
-        "Tier 2 (for larger limits) adds an ID document upload. Reviewed within {24 hours} by a compliance officer[2].",
+        "Here's how KYC verification works on 50pick:",
+        "1. Go to **Profile → Verify identity** to start[1]",
+        "2. **Tier 1**: Enter your NIDA number and take a phone selfie — takes about {3 minutes}",
+        "3. Tier 1 unlocks deposits, betting, and withdrawals up to {TZS 200,000}/day",
+        "4. **Tier 2**: Upload an ID document for higher limits — reviewed within {24 hours}[2]",
       ],
       citations: [
         { n: 1, href: "/profile/kyc", label: "/profile/kyc" },
@@ -190,14 +203,22 @@ function stubReply(userText: string, lang: Lang): Reply {
       role: "ai",
       kind: "text_with_citations",
       lang,
-      paragraphs: [
+      paragraphs:
         lang === "sw"
-          ? "Kila mchezaji ana kiungo cha kualika marafiki. Nenda {Wasifu → Alika na upate zawadi} kupata kiungo chako na kukishiriki."
-          : "Every player gets a personal referral link. Open {Profile → Invite & Earn} to copy and share yours[1].",
-        lang === "sw"
-          ? "Rafiki anaposajili na kucheza, unaweza kupata tume, bonasi au tuzo — kulingana na mpango ulioko hai."
-          : "When a friend signs up with your link and plays, you can earn commission, a bonus, or a milestone prize — depending on which reward modes are currently live[1].",
-      ],
+          ? [
+              "Hivi ndivyo mpango wa Alika na Upate unavyofanya kazi:",
+              "1. Nenda **Wasifu → Alika na Upate** kupata kiungo chako[1]",
+              "2. Shiriki kiungo na marafiki kupitia WhatsApp, SMS, au njia yoyote",
+              "3. Rafiki anaposajili na kucheza, unapata zawadi",
+              "4. Zawadi inaweza kuwa tume, bonasi, au tuzo — kulingana na mpango ulioko hai[1]",
+            ]
+          : [
+              "Here's how the Invite & Earn programme works:",
+              "1. Go to **Profile → Invite & Earn** to get your personal referral link[1]",
+              "2. Share it with friends via WhatsApp, SMS, or any channel",
+              "3. When a friend signs up with your link and plays, you earn rewards",
+              "4. Rewards can be commission, a bonus, or a milestone prize — depending on which modes are live[1]",
+            ],
       citations: [{ n: 1, href: "/profile/invite", label: "/profile/invite" }],
     };
   }
@@ -208,14 +229,22 @@ function stubReply(userText: string, lang: Lang): Reply {
       role: "ai",
       kind: "text_with_citations",
       lang,
-      paragraphs: [
+      paragraphs:
         lang === "sw"
-          ? "Unaweza kupendekeza soko jipya kwenye {Mapendekezo}. Wachezaji wengine wanapiga kura, lakini afisa ndiye anayeamua."
-          : "You can propose a new market on the {Proposals} board. Other players upvote it, but an officer always makes the final call[1].",
-        lang === "sw"
-          ? "Pendekezo lako likiorodheshwa na kutatuliwa, unapata tuzo iliyowekwa kwenye pochi yako."
-          : "If your proposal gets listed AND resolved, you're paid a fixed prize straight to your wallet[1].",
-      ],
+          ? [
+              "Hivi ndivyo mapendekezo ya masoko yanavyofanya kazi:",
+              "1. Nenda kwenye bodi ya **Mapendekezo** na ubonyeze **Pendekeza soko**[1]",
+              "2. Andika swali la NDIO/HAPANA na chanzo cha utatuzi",
+              "3. Wachezaji wengine wanapiga kura, lakini afisa anafanya uamuzi wa mwisho",
+              "4. Pendekezo lako likiorodheshwa NA kutatuliwa, unapata tuzo kwenye pochi yako[1]",
+            ]
+          : [
+              "Here's how player market proposals work:",
+              "1. Go to the **Proposals** board and tap **Propose a market**[1]",
+              "2. Write a clear YES/NO question with a resolution source",
+              "3. Other players upvote it, but an officer makes the final listing call",
+              "4. If your proposal gets listed AND resolved, you're paid a fixed prize to your wallet[1]",
+            ],
       citations: [{ n: 1, href: "/proposals", label: "/proposals" }],
     };
   }
