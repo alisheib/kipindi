@@ -161,8 +161,13 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
               ))}
               {activity.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="px-3 py-6 text-center text-text-subtle">
-                    No activity yet.
+                  <td colSpan={3} className="px-4 py-8 text-center">
+                    <p className="font-display text-[13px] font-semibold text-text-muted">
+                      {actFilter === "all" ? "No activity yet" : `No ${actFilter.toLowerCase()} activity`}
+                    </p>
+                    <p className="mt-1 text-[12px] italic text-text-subtle">
+                      {actFilter === "all" ? "Bets, deposits, and account changes appear here." : "Try a different category filter above."}
+                    </p>
                   </td>
                 </tr>
               )}
