@@ -411,7 +411,7 @@ function Field({
         min={min}
         max={max}
         title={title}
-        className="w-full h-11 px-3.5 rounded-md border border-border font-mono text-[13px] tabular-nums text-text focus:outline-none admin-focus transition-colors invalid:border-no-500"
+        className="w-full h-11 px-3.5 rounded-md border border-border font-mono text-[16px] tabular-nums text-text focus:outline-none admin-focus transition-colors invalid:border-no-500"
         style={{ background: "var(--bg-inset)" }}
       />
       {hint && <p className="mt-1.5 text-[11px] text-text-subtle">{hint}</p>}

@@ -27,8 +27,8 @@ const heightCls: Record<NonNullable<Props["size"]>, string> = {
 
 const fontCls: Record<NonNullable<Props["size"]>, string> = {
   sm: "text-[13px]",
-  md: "text-[14px]",
-  lg: "text-[15px]",
+  md: "text-[16px]",
+  lg: "text-[16px]",
 };
 
 export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(

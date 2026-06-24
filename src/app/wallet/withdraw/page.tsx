@@ -183,7 +183,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
               required
               placeholder="712 345 678"
               disabled={!kycApproved}
-              className="flex-1 h-11 px-3 rounded-r-md border border-border bg-bg-overlay font-mono text-[13px] tabular-nums text-text focus:outline-none brand-focus transition-colors disabled:opacity-50"
+              className="flex-1 h-11 px-3 rounded-r-md border border-border bg-bg-overlay font-mono text-[16px] tabular-nums text-text focus:outline-none brand-focus transition-colors disabled:opacity-50"
             />
           </div>
         </div>

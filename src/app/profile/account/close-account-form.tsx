@@ -37,7 +37,7 @@ export function CloseAccountForm() {
           rows={2}
           maxLength={500}
           placeholder="Help us improve — what made you leave?"
-          className="w-full p-3 rounded-md border border-border bg-bg-overlay text-text text-[13px] focus:outline-none brand-focus transition-colors"
+          className="w-full p-3 rounded-md border border-border bg-bg-overlay text-text text-[16px] focus:outline-none brand-focus transition-colors"
         />
       </label>
       <label className="block">
@@ -48,7 +48,7 @@ export function CloseAccountForm() {
           name="confirm"
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
-          className="w-full h-10 px-3 rounded-md border border-border bg-bg-overlay font-mono text-[13px] tabular-nums text-text focus:outline-none focus:border-no-700 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--no-500)_25%,transparent)] transition-colors"
+          className="w-full h-10 px-3 rounded-md border border-border bg-bg-overlay font-mono text-[16px] tabular-nums text-text focus:outline-none focus:border-no-700 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--no-500)_25%,transparent)] transition-colors"
           autoComplete="off"
         />
       </label>

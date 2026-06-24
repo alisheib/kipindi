@@ -60,7 +60,7 @@ export function PasswordInput({
           onChange={handle}
           className={cn(
             "flex-1 min-w-0 bg-transparent px-3 text-text outline-none placeholder:text-text-subtle font-mono",
-            size === "lg" ? "text-[15px]" : size === "sm" ? "text-[13px]" : "text-[14px]",
+            size === "lg" ? "text-[16px]" : size === "sm" ? "text-[13px]" : "text-[16px]",
             className,
           )}
         />
