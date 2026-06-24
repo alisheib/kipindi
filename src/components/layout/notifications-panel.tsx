@@ -170,8 +170,8 @@ export function NotificationsPanel() {
         aria-expanded={open ? "true" : "false"}
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "relative inline-flex h-10 w-10 items-center justify-center rounded-md transition-colors",
-          open ? "bg-bg-overlay text-text" : "text-text-subtle hover:text-text hover:bg-bg-overlay",
+          "relative inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors",
+          open ? "bg-bg-overlay/60 text-text" : "text-text-subtle hover:text-text hover:bg-bg-overlay/40",
         )}
       >
         <I.bell s={20} />
