@@ -48,10 +48,10 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
             overlay.succeed("Rejected", "Funds returned to wallet.");
           }
         } else {
-          overlay.fail("Failed", result?.error ?? "Try again.");
+          overlay.fail("AML action failed", result?.error ?? "Try again.");
         }
       } catch {
-        overlay.fail("Failed", "Server error — please try again.");
+        overlay.fail("AML action failed", "Server error — please try again.");
       }
       setBusy(null);
       setExpanded(false);

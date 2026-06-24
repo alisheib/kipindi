@@ -42,10 +42,10 @@ export function SofReviewRow({ userId }: { userId: string }) {
             decision === "ACCEPT" ? "Player can deposit normally." : "Player asked to re-declare.",
           );
         } else {
-          overlay.fail("Failed", result?.error ?? "Try again.");
+          overlay.fail("SOF review failed", result?.error ?? "Try again.");
         }
       } catch {
-        overlay.fail("Failed", "Server error — please try again.");
+        overlay.fail("SOF review failed", "Server error — please try again.");
       }
       setBusy(null);
       setExpanded(false);

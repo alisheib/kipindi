@@ -25,10 +25,10 @@ export function ResetPasswordButton({ userId }: { userId: string }) {
           setResult(r.tempPassword);
           overlay.succeed("Password reset", "Copy the temporary password below.");
         } else {
-          overlay.fail("Failed", r.error);
+          overlay.fail("Couldn't reset password", r.error);
         }
       } catch {
-        overlay.fail("Failed", "Server error — please try again.");
+        overlay.fail("Couldn't reset password", "Server error — please try again.");
       }
     });
   };
