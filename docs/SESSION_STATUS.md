@@ -88,7 +88,7 @@ DB-backed (verified against the real prod DB this session):
 - **store.ts** (`db`): user, kyc, otp, wallet, txn, responsible, bet, notification, sourceOfFunds,
   affiliate, referralReward, proposal, proposalVote. (14 users, 11 KYC, 150 txns, 6 affiliates live.)
 - **market-dal.ts**: markets (`PredictionMarket`) + positions. (89 markets, 43 positions live.)
-- **comments-store.ts**, **market-candidate.ts** (7 candidates), **house-pool.ts** ledger.
+- **comments-store.ts**, **market-candidate.ts** (7 candidates).
 
 In-memory **fake** retained ONLY for unit tests / local dev with no `DATABASE_URL` (the test
 suites use fixed-id records + a wipe-on-run store, so they can't share a persistent DB). It can
@@ -108,8 +108,8 @@ never serve production traffic (guard above).
 ### ⚠️ STILL in-memory (NOT yet on the DB) — next-session work
 - ~~Configs reset on deploy~~ — ✅ FIXED 2026-06-15. `SystemConfig` key/value table +
   write-through cache (migration `20260615120000_system_config`). Persisted: market-config
-  (fees/stake/levies), house-pool balance+seeds+config, affiliate-config, proposals-config,
-  source-registry disabled-categories. `getEffectiveConfig`/house-pool await-hydrate; affiliate/
+  (fees/stake/levies), affiliate-config, proposals-config,
+  source-registry disabled-categories. `getEffectiveConfig` await-hydrate; affiliate/
   proposals eager-hydrate at module load (sync getters). See `config-store.ts`.
 - **AI-poll generated content** (`ai-poll-generation.ts`): in-memory Map — but the AI polls
   themselves ARE DB-backed (`aIPoll` model); this Map is generation working-state.
@@ -219,9 +219,9 @@ ran 2026-06-14. The following are **confirmed real** but left for a decision / l
 
 **Concurrency / integrity**
 - ~~`withLock` non-atomic balance writes~~ — ✅ FIXED 2026-06-15 (db.wallet.adjust atomic deltas).
-  NOTE: house-pool seeds + market pools are still mutated via read-modify-write under withLock
-  (market-service `buyPosition`/`cashOut` set `m.yesPool = …`); same cross-instance caveat applies
-  to the POOLS (not wallets). Make pool writes atomic too if you ever run >1 instance.
+  NOTE: market pools are still mutated via read-modify-write under withLock
+  (market-service `buyPosition`/`cashOut` set `m.yesPool = …`); same cross-instance caveat applies.
+  Make pool writes atomic too if you ever run >1 instance.
 - **NIDA uniqueness** has no DB backstop (only an unlocked `kyc.list().find`) → TOCTOU multi-account
   on one national ID. Add a partial `@unique` (non-rejected) and/or `withLock(nida:…)`.
 - **Two-person AML** reads the stage-1 signature from the in-memory ring (`getAuditPage` last 200

@@ -16,7 +16,6 @@
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { createMarket, buyPosition, cashOutPosition, cashOutValue, getMarket, resolveMarket } from "../src/lib/server/market-service.ts";
 import { positionStore } from "../src/lib/server/market-dal.ts";
-import { getHousePoolBalance } from "../src/lib/server/house-pool.ts";
 import { setGlobalConfig, getGlobalConfig, getEffectiveConfig, settledPayoutWhole } from "../src/lib/server/market-config.ts";
 
 /** Backdate a position's placedAt to 10 min ago so it's past the 5-min grace window. */
@@ -76,7 +75,6 @@ await fundedUser("usr_co_b");
   await backdatePastGrace(posId); // move past the 5-min free-exit window
 
   const walletBefore = await bal("usr_co_a");
-  const houseBefore = await getHousePoolBalance();
   const poolsBefore = await pools(m.id);
 
   const r = await cashOutPosition("usr_co_a", posId);
@@ -84,8 +82,6 @@ await fundedUser("usr_co_b");
   const got = r.ok ? r.data!.value : -1;
 
   ok("player received 9,100", (await bal("usr_co_a")) - walletBefore === 9_100 && got === 9_100, `Δwallet=${(await bal("usr_co_a")) - walletBefore} value=${got}`);
-  // Fee stays in the pool (benefits remaining participants at resolution), NOT in house reserve.
-  ok("house reserve unchanged (fee stays in pool)", (await getHousePoolBalance()) - houseBefore === 0, `Δhouse=${(await getHousePoolBalance()) - houseBefore}`);
   ok("pool dropped by value paid (9,100) — fee stays in pool", poolsBefore - (await pools(m.id)) === 9_100, `Δpools=${poolsBefore - (await pools(m.id))}`);
   ok("no double cash-out", !(await cashOutPosition("usr_co_a", posId)).ok);
 }
@@ -105,11 +101,9 @@ await fundedUser("usr_co_b");
 
   await backdatePastGrace(posId); // move past the 5-min free-exit window
 
-  const houseBefore = await getHousePoolBalance();
   const walletBefore = await bal("usr_co_c");
   const r = await cashOutPosition("usr_co_c", posId);
   ok("20%: player gets 24,000 (30k − 20%)", r.ok && (await bal("usr_co_c")) - walletBefore === 24_000, `Δ=${(await bal("usr_co_c")) - walletBefore}`);
-  ok("20%: house unchanged (fee stays in pool)", (await getHousePoolBalance()) - houseBefore === 0, `Δhouse=${(await getHousePoolBalance()) - houseBefore}`);
 
   await setGlobalConfig({ cashOutFeeRate: before.cashOutFeeRate }, "officer_test");
 }
@@ -123,10 +117,9 @@ await fundedUser("usr_co_b");
   const e = await buyPosition("usr_co_e", { marketId: m.id, side: "YES", stake: 10_000 });
   await buyPosition("usr_co_f", { marketId: m.id, side: "NO", stake: 10_000 });
   const posId = e.ok ? e.data!.positionId : "";
-  const houseBefore = await getHousePoolBalance();
   const walletBefore = await bal("usr_co_e");
   const r = await cashOutPosition("usr_co_e", posId);
-  ok("rate 0 → full stake back, no fee", r.ok && (await bal("usr_co_e")) - walletBefore === 10_000 && (await getHousePoolBalance()) === houseBefore);
+  ok("rate 0 → full stake back, no fee", r.ok && (await bal("usr_co_e")) - walletBefore === 10_000);
   await setGlobalConfig({ cashOutFeeRate: 0.09 }, "officer_test");
 }
 

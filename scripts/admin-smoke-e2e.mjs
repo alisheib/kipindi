@@ -15,7 +15,7 @@ const isNoise = (t) => /eval|DevTools|React will never use eval|favicon|Failed t
 
 const STATIC = [
   "/admin", "/admin/live", "/admin/finance", "/admin/reports", "/admin/players",
-  "/admin/players/cohorts", "/admin/sources", "/admin/config", "/admin/house-pool",
+  "/admin/players/cohorts", "/admin/sources", "/admin/config",
   "/admin/ai-polls", "/admin/candidates", "/admin/proposals", "/admin/markets",
   "/admin/markets/new", "/admin/resolver-queue", "/admin/affiliate", "/admin/moderation",
   "/admin/compliance", "/admin/aml", "/admin/self-exclusions", "/admin/audit",

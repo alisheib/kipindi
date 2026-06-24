@@ -219,7 +219,7 @@ async function checkPage(page, path, label, opts = {}) {
     ["/admin/system", "Admin system"],
     ["/admin/reports", "Admin reports"],
     ["/admin/affiliate", "Admin affiliate"],
-    ["/admin/house-pool", "Admin house pool"],
+
     ["/admin/moderation", "Admin moderation"],
     ["/admin/privacy", "Admin privacy/DSAR"],
     ["/admin/players/cohorts", "Admin cohorts"],

@@ -21,7 +21,6 @@ export async function POST(req: Request) {
   const DO_CASHOUT = body.cashout !== false;
   const START = 1_000_000;
 
-  // House pool removed — conservation is now wallets + pools (2-bucket).
   const houseBefore = 0;
 
   // 1. A live market to cash out of.
@@ -86,9 +85,8 @@ export async function POST(req: Request) {
   const mkt = (await getMarket(m.id))!;
   const pools = mkt.yesPool + mkt.noPool;
   const houseAfter = 0;
-  // 3-bucket conservation: wallets + live pools + house reserve. The only NEW
-  // money entering the system is confirmed deposits; nothing else is minted or
-  // lost (cash-out fees just move pool→reserve, seeding moves reserve→pool).
+  // 2-bucket conservation: wallets + live pools. The only NEW money entering
+  // the system is confirmed deposits; nothing else is minted or lost.
   const finalSystem = sumBalances + pools + houseAfter;
   const expected = initialFunded + houseBefore + depOk * DEP;
   const conserved = finalSystem === expected;

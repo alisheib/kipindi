@@ -38,7 +38,7 @@ Both backends are always compiled; the switch happens at import time.
 ```
 
 For entities outside the `db.*` namespace (markets, positions, AI polls,
-candidates, comments, sources, TOTP, house pool, market config, market
+candidates, comments, sources, TOTP, market config, market
 history), each service file has its own inline DAL with the same pattern:
 
 ```
@@ -74,7 +74,7 @@ memoryMarkets  prismaMarkets
 | Comment | `comments-store.ts` | Comment | reports: `Set` <-> JSON `[]` |
 | TrustedSource | `source-registry.ts` | TrustedSource | inline DAL |
 | TOTP Secret | `totp.ts` | TotpSecret | inline DAL |
-| House Pool Ledger | `house-pool.ts` | HousePoolLedger | balance/config/seeds stay in-memory |
+
 | Market History | `market-history.ts` | -- | memory-only (write-heavy chart data) |
 | Market Config | `market-config.ts` | -- | memory-only (TODO: SystemConfig table) |
 

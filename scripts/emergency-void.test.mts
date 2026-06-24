@@ -16,7 +16,7 @@
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { createMarket, buyPosition, cashOutPosition, emergencyVoidMarket, getMarket, listPositionsForUser } from "../src/lib/server/market-service.ts";
 import { positionStore } from "../src/lib/server/market-dal.ts";
-import { getHousePoolBalance } from "../src/lib/server/house-pool.ts";
+
 import { listForUser } from "../src/lib/server/notification-service.ts";
 import { marketCancelledRefundHtml, marketCancelledAdminHtml } from "../src/lib/server/email.ts";
 
@@ -63,7 +63,7 @@ async function posOf(uid: string) { return (await listPositionsForUser(uid))[0];
 for (const id of ["ev_a", "ev_c", "ev_d", "ev_e"]) await fundedUser(id);
 await fundedUser("ev_b", 1_000_000, "evb@test.tz"); // player WITH email → must be mailed
 await mkAdmin("ev_admin", "void-admin@test.tz");     // officer → must get the confirmation
-const startSystem = (await sumWallets()) + (await getHousePoolBalance()); // pools = 0 (no market yet)
+const startSystem = await sumWallets(); // pools = 0 (no market yet)
 
 const m = await createMarket({
   titleEn: "Emergency void market", titleSw: null as unknown as string, category: "macro",
@@ -130,7 +130,7 @@ ok("pools zeroed", mkt.yesPool === 0 && mkt.noPool === 0, `yes=${mkt.yesPool} no
 // that stayed in the pool and was zeroed on void (fee was legitimately collected
 // but has no destination when the market is cancelled — acceptable for emergency voids).
 const cashoutFee = Math.round(stakes.ev_a * 0.09); // 900
-const endSystem = (await sumWallets()) + mkt.yesPool + mkt.noPool + (await getHousePoolBalance());
+const endSystem = (await sumWallets()) + mkt.yesPool + mkt.noPool;
 ok("whole-system money conserved (wallets + pools + house)", endSystem === startSystem - cashoutFee, `start=${startSystem} end=${endSystem} expectedDrift=${-cashoutFee} actualDrift=${endSystem - startSystem}`);
 
 // ── Notifications + emails (with the admin's reason) ───────────────────────
