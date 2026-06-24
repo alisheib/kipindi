@@ -40,14 +40,14 @@ export async function approveProposalAction(proposalId: string) {
 
 export async function requestChangesAction(proposalId: string, note: string) {
   const s = await ensureAdmin();
-  const r = requestChanges(proposalId, s.userId, note);
+  const r = await requestChanges(proposalId, s.userId, note);
   revalidatePath("/admin/proposals");
   return r;
 }
 
 export async function declineProposalAction(proposalId: string, reason: DeclineReason, note: string) {
   const s = await ensureAdmin();
-  const r = declineProposal(proposalId, s.userId, reason, note);
+  const r = await declineProposal(proposalId, s.userId, reason, note);
   revalidatePath("/admin/proposals");
   revalidatePath("/proposals");
   return r;
