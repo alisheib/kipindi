@@ -51,7 +51,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
           </div>
 
           {error && (
-            <div role="alert" className="rounded-md border border-no-700 bg-no-500/10 px-3 py-2.5 text-[13px] text-no-300">
+            <div id="otp-error" role="alert" className="rounded-md border border-no-700 bg-no-500/10 px-3 py-2.5 text-[13px] text-no-300">
               {errorMsg[error] ?? error}
               {error === "rate_limited" && retrySec > 0 && (
                 <> You can request a new code in <CountdownPill seconds={retrySec} suffix="· Subiri" />.</>
@@ -83,6 +83,8 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
                 maxLength={6}
                 autoComplete="one-time-code"
                 placeholder="• • • • • •"
+                aria-invalid={error ? "true" : undefined}
+                aria-describedby={error ? "otp-error" : "otp-hint"}
                 className="w-full h-[52px] text-center font-mono font-semibold text-[20px] tracking-[0.3em] rounded-md bg-bg-inset border border-border text-text outline-none transition-colors brand-focus"
               />
               <OtpExpiryCountdown />

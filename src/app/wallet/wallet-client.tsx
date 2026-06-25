@@ -68,6 +68,7 @@ function SubStat({ label, sw, value }: { label: string; sw: string; value: strin
 }
 
 function TxnRow({ tx }: { tx: Transaction }) {
+  const [expanded, setExpanded] = useState(false);
   const isCredit = tx.amount > 0;
   const statusTone =
     tx.status === "confirmed" ? "text-yes-300"
@@ -77,26 +78,49 @@ function TxnRow({ tx }: { tx: Transaction }) {
   const arrowBg =
     isCredit ? "bg-yes-500/10 text-yes-300" : "bg-no-500/10 text-no-300";
   return (
-    <div className="flex items-center gap-3 py-3 px-3 border-b border-border last:border-b-0">
-      <span className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-md shrink-0 ${arrowBg}`}>
-        {isCredit ? <I.arrowDown s={16} /> : <I.arrowUp s={16} />}
-      </span>
-      <div className="flex-1 min-w-0">
-        <p className="font-display text-[13.5px] font-semibold text-text leading-tight truncate">
-          {tx.description ?? tx.type}
-        </p>
-        <p className="mt-0.5 font-mono text-[10.5px] text-text-subtle tabular-nums">
-          {formatDateTimeSafe(tx.createdAt)}
-        </p>
-      </div>
-      <div className="text-right shrink-0">
-        <p className={`font-mono text-[14px] font-bold tabular-nums ${isCredit ? "text-yes-300" : "text-text"}`}>
-          <Cash>{`${isCredit ? "+" : ""}${tx.amount.toLocaleString("en-US")}`}</Cash>
-        </p>
-        <p className={`mt-0.5 font-mono text-[9px] uppercase tracking-[0.14em] font-semibold ${statusTone}`}>
-          {tx.status}
-        </p>
-      </div>
+    <div className="border-b border-border last:border-b-0">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        className="w-full flex items-center gap-3 py-3 px-3 hover:bg-bg-overlay/30 transition-colors text-left"
+      >
+        <span className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-md shrink-0 ${arrowBg}`}>
+          {isCredit ? <I.arrowDown s={16} /> : <I.arrowUp s={16} />}
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="font-display text-[13.5px] font-semibold text-text leading-tight truncate">
+            {tx.description ?? tx.type}
+          </p>
+          <p className="mt-0.5 font-mono text-[10.5px] text-text-subtle tabular-nums">
+            {formatDateTimeSafe(tx.createdAt)}
+          </p>
+        </div>
+        <div className="text-right shrink-0">
+          <p className={`font-mono text-[14px] font-bold tabular-nums ${isCredit ? "text-yes-300" : "text-text"}`}>
+            <Cash>{`${isCredit ? "+" : ""}${fmt(Math.abs(tx.amount))}`}</Cash>
+          </p>
+          <p className={`mt-0.5 font-mono text-[9px] uppercase tracking-[0.14em] font-semibold ${statusTone}`}>
+            {tx.status}
+          </p>
+        </div>
+      </button>
+      {expanded && (
+        <div className="px-3 pb-3 pt-0 grid grid-cols-2 gap-2 text-[11px]">
+          <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5">
+            <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">Type</p>
+            <p className="font-semibold text-text">{tx.type}</p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5">
+            <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">Amount</p>
+            <p className="font-mono font-bold tabular-nums text-text">{fmt(Math.abs(tx.amount))}</p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5">
+            <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">Reference</p>
+            <p className="font-mono text-text-muted truncate">{tx.id.slice(0, 16)}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -170,8 +170,9 @@ export default async function LeaderboardPage() {
 
       <section className="overflow-x-auto rounded-xl glass-panel">
         {isSynthetic && (
-          <div className="px-4 py-2 border-b border-border bg-bg-overlay/50">
-            <p className="text-[11px] text-text-subtle italic">Sample data · rankings update as players join and predict.</p>
+          <div className="px-4 py-2.5 border-b border-gold-700/40 bg-gold-500/[0.06] flex items-center gap-2">
+            <span className="inline-flex items-center rounded-pill border border-gold-700 bg-gold-500/10 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.10em] text-gold-300">Demo</span>
+            <p className="text-[11.5px] text-text-muted">Sample data — real rankings appear as players join and predict. <span className="italic text-text-subtle">Takwimu za mfano.</span></p>
           </div>
         )}
         <table className="admin-tbl min-w-[640px]">

@@ -79,15 +79,13 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
             <Link href="/markets" className="btn btn-gold btn-lg w-full" style={{ borderRadius: "var(--r-pill)" }}>
               Browse markets · Tazama masoko
             </Link>
-            {!good && (
-              <Link
-                href="/profile/account"
-                className="btn btn-ghost btn-lg w-full"
-                style={{ borderRadius: "var(--r-pill)" }}
-              >
-                Go to account · Resend link
-              </Link>
-            )}
+            <Link
+              href="/profile/account"
+              className="btn btn-ghost btn-lg w-full"
+              style={{ borderRadius: "var(--r-pill)" }}
+            >
+              {good ? "Go to account · Akaunti" : "Go to account · Resend link"}
+            </Link>
           </div>
 
           <p className="border-t border-border pt-3 text-center text-[12.5px] text-text-muted">
