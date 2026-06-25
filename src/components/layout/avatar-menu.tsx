@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { Avatar } from "@/components/ui/avatar";
 import { I } from "@/components/ui/glyphs";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { useT } from "@/lib/i18n";
+import { useT, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export function AvatarMenu({
@@ -140,6 +140,11 @@ export function AvatarMenu({
               <Item href="/positions"      icon={I.receipt}      label="Positions"    sw="Nafasi" />
               <Item href="/profile/kyc"    icon={I.shieldcheck}  label="Verify ID"    sw="Kuthibitisha kitambulisho" />
             </ul>
+            {/* Language toggle — visible only on mobile (desktop has the top-bar toggle) */}
+            <div className="border-t border-border px-3.5 py-2.5 sm:hidden">
+              <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">Language</p>
+              <MobileLangPicker locale={locale} />
+            </div>
             <div className="border-t border-border">
               <ConfirmDialog
                 tone="claret"
@@ -180,6 +185,37 @@ export function AvatarMenu({
         </>,
         document.body,
       )}
+    </div>
+  );
+}
+
+const LANG_CODES: Locale[] = ["en", "sw", "fr"];
+const LANG_LABELS: Record<Locale, string> = { en: "EN", sw: "SW", fr: "FR" };
+
+function MobileLangPicker({ locale: current }: { locale: string }) {
+  const { setLocale } = useT();
+  return (
+    <div className="flex gap-1">
+      {LANG_CODES.map((code) => {
+        const active = code === current;
+        return (
+          <button
+            key={code}
+            type="button"
+            onClick={() => setLocale(code)}
+            aria-label={`Switch to ${code}`}
+            aria-pressed={active}
+            className={cn(
+              "h-7 px-3 rounded-pill font-mono text-[11.5px] font-semibold transition-colors",
+              active
+                ? "bg-brand-500 text-white"
+                : "bg-bg-overlay text-text-subtle border border-border hover:bg-brand-500/10 hover:text-brand-300",
+            )}
+          >
+            {LANG_LABELS[code]}
+          </button>
+        );
+      })}
     </div>
   );
 }

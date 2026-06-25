@@ -15,7 +15,7 @@ export function LanguageToggle() {
 
   return (
     <div
-      className="flex"
+      className="hidden sm:flex"
       style={{
         gap: 2,
         padding: 3,
