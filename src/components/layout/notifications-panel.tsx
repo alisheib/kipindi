@@ -174,7 +174,7 @@ export function NotificationsPanel() {
   };
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative z-10">
       <button
         type="button"
         aria-label={`Notifications${unread > 0 ? ` (${unread} unread)` : ""}`}
@@ -193,15 +193,16 @@ export function NotificationsPanel() {
             className="notif-badge-pulse"
             style={{
               position: "absolute",
-              top: 0,
-              right: 0,
+              top: -1,
+              right: -1,
               width: 10,
               height: 10,
               borderRadius: 10,
               background: "#ef4444",
               border: "2px solid var(--bg-base)",
-              boxShadow: "0 0 4px #ef4444",
-              zIndex: 10,
+              boxShadow: "0 0 6px #ef4444",
+              zIndex: 20,
+              pointerEvents: "none",
             }}
           />
         )}
