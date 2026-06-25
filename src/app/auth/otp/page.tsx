@@ -4,6 +4,7 @@ import { BrandTopo } from "@/components/brand-topo";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { CountdownPill } from "@/components/ui/countdown-pill";
 import { verifyLoginOtpAction, resendOtpAction } from "../login/actions";
+import { ResendOtpButton } from "@/components/auth/resend-otp-button";
 
 export const metadata = { title: "Enter code · Weka msimbo" };
 
@@ -110,12 +111,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
               <form action={resendOtpAction}>
                 <input type="hidden" name="phone" value={phone} />
                 <input type="hidden" name="purpose" value={purpose} />
-                <button
-                  type="submit"
-                  className="font-mono text-[12px] uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200 transition-colors"
-                >
-                  Resend code
-                </button>
+                <ResendOtpButton />
               </form>
             )}
           </div>

@@ -17,12 +17,16 @@ const PROVIDERS = [
   { id: "BANK_TRANSFER",name: "Bank transfer", hue: 200 },
 ] as const;
 
-export default async function WithdrawPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+export default async function WithdrawPage({ searchParams }: { searchParams: Promise<{ error?: string; provider?: string; amount?: string; msisdn?: string }> }) {
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/wallet/withdraw");
 
   const sp = await searchParams;
   const errorMsg = sp.error ? decodeURIComponent(sp.error) : null;
+  // Restore form values on error redirect so the player doesn't re-enter everything
+  const prevProvider = sp.provider ?? "";
+  const prevAmount = sp.amount ?? "";
+  const prevMsisdn = sp.msisdn ?? "";
 
   const wallet = await db.wallet.findByUserId(session.userId);
   const kyc = await db.kyc.findByUserId(session.userId);
@@ -118,7 +122,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
                 className="relative flex flex-col items-center gap-2 px-2 py-3.5 rounded-md border border-border cursor-pointer transition-colors hover:border-gold-700 has-[:checked]:border-gold-500 has-[:checked]:bg-gold-500/10"
                 style={{ background: "var(--bg-inset)" }}
               >
-                <input type="radio" name="provider" value={p.id} required defaultChecked={i === 0} className="sr-only peer" />
+                <input type="radio" name="provider" value={p.id} required defaultChecked={prevProvider ? p.id === prevProvider : i === 0} className="sr-only peer" />
                 <span
                   className="inline-flex h-9 w-9 items-center justify-center rounded-md font-display font-bold text-[12px] text-text"
                   style={{ background: `linear-gradient(135deg, oklch(45% 0.10 ${p.hue}), oklch(30% 0.08 ${p.hue}))` }}
@@ -152,6 +156,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
               max={Math.min(5_000_000, wallet?.balance ?? 0)}
               step={1}
               placeholder="10000"
+              defaultValue={prevAmount || undefined}
               disabled={!kycApproved}
               className="flex-1 h-11 px-3 rounded-r-md border border-border bg-bg-overlay font-display font-bold text-[20px] tabular-nums text-text focus:outline-none brand-focus transition-colors disabled:opacity-50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
             />
@@ -182,6 +187,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
               maxLength={9}
               required
               placeholder="712 345 678"
+              defaultValue={prevMsisdn || undefined}
               disabled={!kycApproved}
               className="flex-1 h-11 px-3 rounded-r-md border border-border bg-bg-overlay font-mono text-[16px] tabular-nums text-text focus:outline-none brand-focus transition-colors disabled:opacity-50"
             />

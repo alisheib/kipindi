@@ -92,8 +92,11 @@ function HowItWorks() {
         onClick={toggle}
         className="inline-flex items-center justify-center rounded-md transition-all"
         style={{
-          width: 22,
-          height: 22,
+          width: 28,
+          height: 28,
+          // 28px visible + padding gives a 44px touch target (WCAG 2.5.5)
+          padding: 8,
+          boxSizing: "content-box",
           color: open ? "var(--brand-300)" : "var(--text-subtle)",
           background: open ? "oklch(63% 0.18 262 / 0.18)" : "oklch(40% 0.08 264 / 0.25)",
           border: `1px solid ${open ? "var(--brand-500)" : "var(--border)"}`,
@@ -200,8 +203,8 @@ export function MarketCard({
           <h3 className="mcardp-q">{titleEn}</h3>
         </div>
         <div className="mcardp-prob">
-          <div className="mcardp-pctcap">YES</div>
-          <div className="mcardp-pct">{yesPct}<span className="u">%</span></div>
+          <div className="mcardp-pctcap">{isResolved ? "Result" : "YES"}</div>
+          <div className="mcardp-pct">{isResolved ? (yesPct >= 50 ? "YES" : "NO") : <>{yesPct}<span className="u">%</span></>}</div>
         </div>
       </div>
 

@@ -82,6 +82,16 @@ export function BetConfirmModal({
     lastSecLabelRef.current = Math.ceil(QUOTE_HOLD_MS / 1000);
     if (stripRef.current) stripRef.current.style.transform = "scaleX(1)";
     const tick = () => {
+      // Pause the countdown while the bet submission is in flight —
+      // keeps the timer frozen so the player doesn't see "0 s" while
+      // their bet is still being placed. We bank the elapsed time and
+      // resume from there once the server responds.
+      if (pendingRef.current) {
+        // Shift the start time forward so elapsed stays frozen
+        startedAtRef.current = performance.now() - (QUOTE_HOLD_MS - (lastSecLabelRef.current * 1000));
+        rafRef.current = requestAnimationFrame(tick);
+        return;
+      }
       const elapsed = performance.now() - startedAtRef.current;
       const left = Math.max(0, QUOTE_HOLD_MS - elapsed);
       // Direct DOM transform — no React render, no CSS transition.

@@ -15,12 +15,14 @@ export function DepositAmount({
   max,
   quickAmounts,
   adminTest,
+  defaultValue,
 }: {
   max: number;
   quickAmounts: number[];
   adminTest: boolean;
+  defaultValue?: string;
 }) {
-  const [raw, setRaw] = useState<string>("");
+  const [raw, setRaw] = useState<string>(defaultValue && /^\d+$/.test(defaultValue) ? defaultValue : "");
   const num = raw ? Math.min(max, parseInt(raw, 10) || 0) : 0;
   const display = num > 0 ? num.toLocaleString("en-US") : "";
 

@@ -121,16 +121,16 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
   const [dragging, setDragging] = useState(false);
   const [hover, setHover] = useState(false);
   // closedNow flips the moment the wall clock crosses resolutionAt.
-  // Tick once a second — cheap, and the dial's already mounted as a
-  // client component. We compute lazily on mount + tick so SSR returns
-  // the open state and the client takes over without flicker.
+  // Tick every 200ms — tight enough to prevent the player interacting
+  // with the dial after the market closes (previous 1s interval left a
+  // window where a bet could be attempted on a closed market).
   const [closedNow, setClosedNow] = useState(false);
   useEffect(() => {
     if (!resolutionAt) return;
     const closeTs = Date.parse(resolutionAt);
     const update = () => setClosedNow(Date.now() >= closeTs);
     update();
-    const id = setInterval(update, 1000);
+    const id = setInterval(update, 200);
     return () => clearInterval(id);
   }, [resolutionAt]);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -1212,10 +1212,11 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
           secondaryLabel={resultData.variant === "success" ? "View positions" : undefined}
           onSecondary={resultData.variant === "success" ? () => router.push("/positions") : undefined}
           onClose={() => setResultOpen(false)}
-          // Bet-placed gets the longer 10 s hold — gives the player
-          // time to read the payout block AND notice the bell
-          // notification, so the two signals never feel out of sync.
-          autoCloseMs={resultData.variant === "success" ? 10_000 : undefined}
+          // No auto-close on success — let the player read the result
+          // and decide whether to tap "View positions" or "Done". The
+          // previous 10s timer closed the modal before mobile users
+          // could process the CTA.
+          autoCloseMs={undefined}
           stripTone={resultData.variant === "success" ? (resultData.side === "YES" ? "yes" : "no") : undefined}
         />
       )}

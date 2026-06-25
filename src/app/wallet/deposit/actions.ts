@@ -11,17 +11,23 @@ export async function depositAction(formData: FormData) {
   if (!session) redirect("/auth/login");
 
   const amount = parseInt(String(formData.get("amount") ?? "0"), 10);
-  if (!Number.isFinite(amount) || amount <= 0) redirect("/wallet/deposit?error=" + encodeURIComponent("Amount must be a positive number.") as never);
   // Pass the chosen provider through (don't coerce to MPESA) — the schema validates it.
   const provider = String(formData.get("provider") ?? "") as DepositInput["provider"];
+  const msisdn = formData.get("msisdn") ? String(formData.get("msisdn")) : undefined;
+
+  // Carry form values through the error redirect so the player doesn't
+  // have to re-enter provider + amount + phone on validation failure.
+  const carryParams = `&provider=${encodeURIComponent(provider)}&amount=${amount}${msisdn ? `&msisdn=${encodeURIComponent(msisdn)}` : ""}`;
+
+  if (!Number.isFinite(amount) || amount <= 0) redirect(("/wallet/deposit?error=" + encodeURIComponent("Amount must be a positive number.") + carryParams) as never);
   const result = await deposit(session.userId, {
     provider,
     amount,
-    msisdn: formData.get("msisdn") ? String(formData.get("msisdn")) : undefined,
+    msisdn,
   });
   revalidatePath("/wallet");
   // Surface failures instead of swallowing them — bounce back with the error.
-  if (!result.ok) redirect(("/wallet/deposit?error=" + encodeURIComponent(result.error)) as never);
+  if (!result.ok) redirect(("/wallet/deposit?error=" + encodeURIComponent(result.error) + carryParams) as never);
   // status is CONFIRMED for synchronous providers, PROCESSING when the provider
   // collects asynchronously (we credit on the webhook). The modal reflects both.
   redirect(`/wallet?deposited=${result.data!.txnId}&amount=${amount}&status=${result.data!.status}` as never);

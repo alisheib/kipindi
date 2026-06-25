@@ -20,6 +20,9 @@ export function RouteTransition({ children }: { children: React.ReactNode }) {
   }, [pathname, key]);
 
   useEffect(() => {
+    // Scroll to top on route change so deep-linked pages don't land mid-scroll
+    window.scrollTo(0, 0);
+
     const el = ref.current;
     if (!el) return;
     el.classList.remove("route-enter");

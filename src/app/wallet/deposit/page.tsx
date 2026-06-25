@@ -23,12 +23,16 @@ const PROVIDERS = [
 
 const QUICK_AMOUNTS = [1_000, 5_000, 10_000, 25_000, 50_000, 100_000];
 
-export default async function DepositPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+export default async function DepositPage({ searchParams }: { searchParams: Promise<{ error?: string; provider?: string; amount?: string; msisdn?: string }> }) {
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/wallet/deposit");
 
   const sp = await searchParams;
   const errorMsg = sp.error ? decodeURIComponent(sp.error) : null;
+  // Restore form values on error redirect so the player doesn't re-enter everything
+  const prevProvider = sp.provider ?? "";
+  const prevAmount = sp.amount ?? "";
+  const prevMsisdn = sp.msisdn ?? "";
 
   // TEMPORARY admin test-funding: ADMIN-role accounts can deposit uncapped
   // play-money to test deposits/referrals/proposals. Disable via
@@ -95,7 +99,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
                 className="relative flex flex-col items-center gap-2 px-2 py-3.5 rounded-md border border-border cursor-pointer transition-colors hover:border-gold-700 has-[:checked]:border-gold-500 has-[:checked]:bg-gold-500/10"
                 style={{ background: "var(--bg-inset)" }}
               >
-                <input type="radio" name="provider" value={p.id} required defaultChecked={i === 0} className="sr-only peer" />
+                <input type="radio" name="provider" value={p.id} required defaultChecked={prevProvider ? p.id === prevProvider : i === 0} className="sr-only peer" />
                 <span
                   className="inline-flex h-9 w-9 items-center justify-center rounded-md font-display font-bold text-[12px] text-text"
                   style={{ background: `linear-gradient(135deg, oklch(45% 0.10 ${p.hue}), oklch(30% 0.08 ${p.hue}))` }}
@@ -109,7 +113,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
         </fieldset>
 
         {/* Amount — kit-styled control (no browser number spinner); chips override. */}
-        <DepositAmount max={maxAmount} quickAmounts={quickAmounts} adminTest={adminTest} />
+        <DepositAmount max={maxAmount} quickAmounts={quickAmounts} adminTest={adminTest} defaultValue={prevAmount} />
 
         {/* Source phone */}
         <div>
@@ -129,6 +133,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
             placeholder="712 345 678"
             prefix="+255"
             mono
+            defaultValue={prevMsisdn}
           />
           <p className="mt-2 text-[11px] text-text-subtle">Leave blank to use your account number on file.</p>
         </div>

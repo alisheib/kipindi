@@ -27,18 +27,32 @@ const heightCls: Record<NonNullable<Props["size"]>, string> = {
   lg: "h-12",
 };
 
-export function PasswordInput({
-  size = "md",
-  showStrength = false,
-  className,
-  defaultValue,
-  value,
-  onChange,
-  ...rest
-}: Props) {
+export const PasswordInput = React.forwardRef<HTMLInputElement, Props>(function PasswordInput(
+  {
+    size = "md",
+    showStrength = false,
+    className,
+    defaultValue,
+    value,
+    onChange,
+    ...rest
+  },
+  forwardedRef,
+) {
   const [reveal, setReveal] = React.useState(false);
   const [val, setVal] = React.useState<string>(() => String(defaultValue ?? value ?? ""));
   React.useEffect(() => { if (value !== undefined) setVal(String(value)); }, [value]);
+
+  const internalRef = React.useRef<HTMLInputElement>(null);
+  // Merge forwarded ref + internal ref
+  const setRef = React.useCallback(
+    (el: HTMLInputElement | null) => {
+      (internalRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
+      if (typeof forwardedRef === "function") forwardedRef(el);
+      else if (forwardedRef) (forwardedRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
+    },
+    [forwardedRef],
+  );
 
   const handle = (e: React.ChangeEvent<HTMLInputElement>) => {
     setVal(e.target.value);
@@ -55,6 +69,7 @@ export function PasswordInput({
       >
         <input
           {...rest}
+          ref={setRef}
           type={reveal ? "text" : "password"}
           value={val}
           onChange={handle}
@@ -79,7 +94,7 @@ export function PasswordInput({
       {showStrength && val.length > 0 && <PasswordStrength value={val} />}
     </div>
   );
-}
+});
 
 /**
  * Strength meter — three-bar segmented gauge using the kit's yes / gold

@@ -142,7 +142,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             <div className="min-w-0">
               <p className="font-display text-[14px] font-bold text-no-300">Verification needs another look · Imekataliwa</p>
               <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
-                {kyc?.rejectReason ? <>Reason: <span className="font-semibold text-text">{String(kyc.rejectReason).replace(/_/g, " ").toLowerCase()}</span>. </> : null}
+                {kyc?.rejectReason ? <>Reason: <span className="font-semibold text-text">{humanizeRejectReason(String(kyc.rejectReason))}</span>. </> : null}
                 {kyc?.rejectNote ? `${kyc.rejectNote} ` : ""}
                 Please re-enter your details below and resubmit, or email{" "}
                 <a href={`mailto:${SUPPORT_EMAIL()}?subject=KYC%20review`} className="text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a>.
@@ -303,6 +303,9 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
           <p className="text-[10.5px] italic text-text-subtle">
             Tap each card to attach a photo, then submit for compliance review.
           </p>
+          <p className="font-mono text-[11px] font-bold tabular-nums text-text-muted">
+            {docsCount}/3 documents attached{docsCount >= 3 ? " — ready to submit" : ""}
+          </p>
           <form action={submitKycForReviewAction}>
             {docsCount >= 3 ? (
               <SubmitButton label="Submit for review · Wasilisha" pendingLabel="Submitting…" />
@@ -379,6 +382,20 @@ function Step({ n, title, detail, done, active }: { n: number; title: string; de
       <p className="mt-1 text-[11px] text-text-muted">{detail}</p>
     </div>
   );
+}
+
+const REJECT_LABELS: Record<string, string> = {
+  NIDA_MISMATCH: "NIDA details don't match our records",
+  PHOTO_UNREADABLE: "ID photo is too blurry or dark",
+  WRONG_DOCUMENT: "Wrong type of document uploaded",
+  SELFIE_MISMATCH: "Selfie doesn't match the ID photo",
+  EXPIRED_DOCUMENT: "The ID document has expired",
+  DUPLICATE_ACCOUNT: "Another account is using this NIDA",
+  UNDERAGE: "Date of birth shows under 18",
+};
+
+function humanizeRejectReason(raw: string): string {
+  return REJECT_LABELS[raw] ?? raw.replace(/_/g, " ").toLowerCase();
 }
 
 function Field({

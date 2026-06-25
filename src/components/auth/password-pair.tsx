@@ -4,16 +4,28 @@
  * PasswordPair — renders password + confirm fields with real-time mismatch
  * feedback. Used on the registration form so users see "Passwords don't match"
  * before hitting submit.
+ *
+ * The confirm field uses a custom validity check so the browser blocks
+ * form submission while the passwords don't match — no server round-trip
+ * needed to catch this.
  */
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Field } from "@/components/ui/input";
 
 export function PasswordPair() {
   const [pw, setPw] = useState("");
   const [confirm, setConfirm] = useState("");
+  const confirmRef = useRef<HTMLInputElement>(null);
   const dirty = confirm.length > 0;
   const match = pw === confirm;
+
+  // Sync custom validity so the browser blocks submit on mismatch
+  useEffect(() => {
+    confirmRef.current?.setCustomValidity(
+      dirty && !match ? "Passwords don't match" : "",
+    );
+  }, [pw, confirm, dirty, match]);
 
   return (
     <>
@@ -43,6 +55,7 @@ export function PasswordPair() {
         }
       >
         <PasswordInput
+          ref={confirmRef}
           id="passwordConfirm"
           name="passwordConfirm"
           required
