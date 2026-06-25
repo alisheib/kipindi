@@ -187,7 +187,7 @@ export function NotificationsPanel() {
         )}
       >
         <I.bell s={20} />
-        {(unread > 0 || items.length > 0) && (
+        {items.length > 0 && (
           <span
             aria-hidden
             className="notif-badge-pulse"
@@ -214,7 +214,7 @@ export function NotificationsPanel() {
               lineHeight: 1,
             }}
           >
-            {unread || items.length}
+            {unread > 0 ? unread : items.length}
           </span>
         )}
       </button>
