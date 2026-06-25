@@ -25,10 +25,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { marketStore } from "./market-dal";
 import { audit } from "./audit";
+import { ai } from "./ai-config";
 
 // --- Configuration -----------------------------------------------------------
 
-const SENTINEL_MODEL = process.env.SENTINEL_MODEL || "claude-sonnet-4-20250514";
+const SENTINEL_MODEL = process.env.SENTINEL_MODEL || ai.model;
 const SENTINEL_INTERVAL_MS = parseInt(process.env.SENTINEL_INTERVAL_MS || "180000", 10);
 const SENTINEL_CONFIDENCE_THRESHOLD = 90;
 const SENTINEL_COOLDOWN_MS = 180_000;
@@ -149,7 +150,7 @@ Has this outcome already been determined by real-world events? Search the web fo
       system: systemPrompt,
       tools: [
         OUTCOME_TOOL as unknown as Anthropic.Tool,
-        { type: "web_search_20250305", name: "web_search", max_uses: 3 } as unknown as Anthropic.Tool,
+        { type: ai.webSearchTool.type, name: ai.webSearchTool.name, max_uses: 3 } as unknown as Anthropic.Tool,
       ],
       tool_choice: { type: "auto" },
       messages: [{ role: "user", content: userPrompt }],

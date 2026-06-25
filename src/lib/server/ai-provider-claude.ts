@@ -1,8 +1,8 @@
 /**
  * Real Claude AI provider — calls the Anthropic API to generate poll candidates.
  *
- * Model: claude-sonnet-4-6 (strong reasoning for accurate poll generation).
- * Configurable via AI_POLL_MODEL env var.
+ * Model: configured centrally via ai-config.ts (default: Claude Sonnet 4).
+ * Override via AI_MODEL env var on Railway.
  *
  * This is Layer 1 of the 4-layer pipeline (L2–L4 live in ai-poll-generation.ts):
  *   L1  Generation     ← HERE
@@ -31,13 +31,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { AIProvider, AIProviderResponse, AIPollGeneration, GenerateRequest } from "./ai-provider";
 import { getAIPollConfig } from "./ai-poll-config";
-
-const MODEL = process.env.AI_POLL_MODEL || "claude-sonnet-4-20250514";
-
-// Sonnet 4.6 token pricing (USD per token).
-const PRICE_INPUT_PER_TOKEN = 3 / 1_000_000;   // $3 / MTok
-const PRICE_OUTPUT_PER_TOKEN = 15 / 1_000_000; // $15 / MTok
-const PRICE_PER_WEB_SEARCH = 0.01;             // $10 / 1,000 searches
+import { ai } from "./ai-config";
 
 const VALID_CATEGORIES = [
   "sports", "macro", "weather", "crypto", "culture", "infrastructure", "tech", "other",
@@ -151,7 +145,7 @@ export class ClaudeProvider implements AIProvider {
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
-    this.name = getAIPollConfig().webSearchEnabled ? `${MODEL} (web search)` : MODEL;
+    this.name = getAIPollConfig().webSearchEnabled ? `${ai.model} (web search)` : ai.model;
   }
 
   async generate(req: GenerateRequest): Promise<AIProviderResponse> {
@@ -171,14 +165,14 @@ export class ClaudeProvider implements AIProvider {
       const tools: Anthropic.Messages.ToolUnion[] = [SUBMIT_POLL_TOOL as unknown as Anthropic.Messages.Tool];
       if (cfg.webSearchEnabled) {
         tools.unshift({
-          type: "web_search_20250305",
-          name: "web_search",
+          type: ai.webSearchTool.type,
+          name: ai.webSearchTool.name,
           max_uses: 4,
         } as unknown as Anthropic.Messages.ToolUnion);
       }
 
       const resp = await client.messages.create({
-        model: MODEL,
+        model: ai.model,
         max_tokens: 1500,
         system: buildSystemPrompt({
           nowIso,
@@ -208,7 +202,7 @@ export class ClaudeProvider implements AIProvider {
       const tokensUsed = inTok + outTok;
       const costUsd =
         Math.round(
-          (inTok * PRICE_INPUT_PER_TOKEN + outTok * PRICE_OUTPUT_PER_TOKEN + searches * PRICE_PER_WEB_SEARCH) * 10000,
+          (inTok * ai.pricing.inputPerToken + outTok * ai.pricing.outputPerToken + searches * ai.pricing.perWebSearch) * 10000,
         ) / 10000;
 
       const content = resp.content as Array<{ type: string; name?: string; input?: unknown; text?: string }>;
