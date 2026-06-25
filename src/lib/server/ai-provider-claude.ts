@@ -1,7 +1,8 @@
 /**
  * Real Claude AI provider — calls the Anthropic API to generate poll candidates.
  *
- * Model: claude-haiku-4-5 (fast + cheap, handles structured output well).
+ * Model: claude-sonnet-4-6 (strong reasoning for accurate poll generation).
+ * Configurable via AI_POLL_MODEL env var.
  *
  * This is Layer 1 of the 4-layer pipeline (L2–L4 live in ai-poll-generation.ts):
  *   L1  Generation     ← HERE
@@ -31,11 +32,11 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { AIProvider, AIProviderResponse, AIPollGeneration, GenerateRequest } from "./ai-provider";
 import { getAIPollConfig } from "./ai-poll-config";
 
-const MODEL = "claude-haiku-4-5-20251001";
+const MODEL = process.env.AI_POLL_MODEL || "claude-sonnet-4-6-20250514";
 
-// Haiku 4.5 token pricing (USD per token).
-const PRICE_INPUT_PER_TOKEN = 1 / 1_000_000;   // $1 / MTok
-const PRICE_OUTPUT_PER_TOKEN = 5 / 1_000_000;  // $5 / MTok
+// Sonnet 4.6 token pricing (USD per token).
+const PRICE_INPUT_PER_TOKEN = 3 / 1_000_000;   // $3 / MTok
+const PRICE_OUTPUT_PER_TOKEN = 15 / 1_000_000; // $15 / MTok
 const PRICE_PER_WEB_SEARCH = 0.01;             // $10 / 1,000 searches
 
 const VALID_CATEGORIES = [
@@ -150,7 +151,7 @@ export class ClaudeProvider implements AIProvider {
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
-    this.name = getAIPollConfig().webSearchEnabled ? "claude-haiku (web search)" : "claude-haiku";
+    this.name = getAIPollConfig().webSearchEnabled ? `${MODEL} (web search)` : MODEL;
   }
 
   async generate(req: GenerateRequest): Promise<AIProviderResponse> {

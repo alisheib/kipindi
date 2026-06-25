@@ -141,9 +141,9 @@ Has this outcome already been determined by real-world events? Search the web fo
       max_tokens: 1024,
       system: systemPrompt,
       tools: [
-        OUTCOME_TOOL,
+        OUTCOME_TOOL as unknown as Anthropic.Tool,
         // Enable web search so the model can check live scores/news
-        { type: "web_search_20250305", name: "web_search", max_uses: 3 } as never,
+        { type: "web_search_20250305", name: "web_search", max_uses: 3 } as unknown as Anthropic.Tool,
       ],
       tool_choice: { type: "auto" },
       messages: [{ role: "user", content: userPrompt }],
