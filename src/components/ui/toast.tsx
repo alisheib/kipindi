@@ -283,6 +283,11 @@ function ToastItem({ toast, exiting, onDismiss, onPause, onResume }: { toast: To
     setPaused(false); onResume();
   };
   const onPointerDown = (e: React.PointerEvent) => {
+    // Don't capture the pointer when the dismiss button (or anything inside
+    // it) was clicked — setPointerCapture redirects pointerup to the
+    // container, which prevents the button's onClick from firing.
+    const target = e.target as HTMLElement;
+    if (target.closest("button[aria-label='Dismiss']")) return;
     dragStart.current = { x: e.clientX, y: e.clientY };
     // Capture so move/up keep targeting this toast even if the finger leaves it.
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
