@@ -159,6 +159,7 @@ export default async function RegisterPage({
                 required
                 defaultValue={phoneDefault}
                 size="lg"
+                aria-invalid={sp.error === "exists" ? "true" : undefined}
               />
             </Field>
 
