@@ -547,6 +547,62 @@ export async function notifyAdminsSentinelDown(opts: { reason: string; errorCoun
   } catch { /* officer email is best-effort */ }
 }
 
+/** AI spend alert: cycle spend has crossed the warn (≈80%) or the hard limit
+ *  (100%) of the configured budget. Emails + in-app SECURITY bell to every
+ *  ADMIN/COMPLIANCE officer so credit can be topped up before the AI goes dark.
+ *  Fired once per level by the usage meter (re-armed when the cycle resets). */
+export async function notifyAdminsAiCreditLimit(opts: { level: "warn" | "limit"; spentUsd: number; limitUsd: number }) {
+  const officers = (await db.user.list()).filter((u) => ["ADMIN", "COMPLIANCE"].includes(u.role));
+  const spent = `$${opts.spentUsd.toFixed(2)}`;
+  const limit = `$${opts.limitUsd.toFixed(2)}`;
+  const reached = opts.level === "limit";
+  const titleEn = reached
+    ? `🛑 AI spend reached the ${limit} limit`
+    : `⚠️ AI spend nearing the ${limit} limit (${spent})`;
+  const bodyEn = reached
+    ? `AI usage has reached your ${limit} budget for this cycle (spent ${spent}). Top up Anthropic credit and reset the cycle on the AI usage page, or the AI features will stop.`
+    : `AI usage is at ${spent} of your ${limit} budget this cycle. Plan a top-up soon — you'll get one more alert if it hits the limit.`;
+  for (const o of officers) {
+    await notify({
+      userId: o.id,
+      kind: "SECURITY",
+      titleEn,
+      titleSw: reached ? `🛑 Matumizi ya AI yamefikia kikomo cha ${limit}` : `⚠️ Matumizi ya AI yanakaribia kikomo cha ${limit} (${spent})`,
+      bodyEn,
+      bodySw: reached
+        ? `Matumizi ya AI yamefikia bajeti ya ${limit} (umetumia ${spent}). Ongeza salio la Anthropic na uweke upya mzunguko kwenye ukurasa wa matumizi ya AI.`
+        : `Matumizi ya AI yako ${spent} kati ya ${limit}. Panga kuongeza salio hivi karibuni.`,
+      href: "/admin/ai-usage",
+    }).catch(() => {});
+  }
+  try {
+    const { sendEmail } = await import("./email");
+    const { resolvePhoneEmail } = await import("./email-map");
+    const emails = [...new Set(
+      officers
+        .map((o) => (o.email || resolvePhoneEmail(o.phoneE164) || "").trim().toLowerCase())
+        .filter((e) => e && !e.endsWith("@stub") && !e.endsWith("@none")),
+    )];
+    const html =
+      `<div style="font-family:system-ui,sans-serif;line-height:1.5">` +
+      `<h2 style="margin:0 0 8px">${reached ? "🛑 AI spend limit reached" : "⚠️ AI spend nearing limit"}</h2>` +
+      `<p>This cycle's AI spend is <b>${spent}</b> of your <b>${limit}</b> budget.</p>` +
+      (reached
+        ? `<p>AI features (poll generation, the help chatbot, the market sentinel) will stop working once Anthropic credit runs out. <b>Top up credit on the Anthropic console, then reset the cycle</b> on the 50pick AI usage page.</p>`
+        : `<p>Plan a top-up soon. You'll get one more email if spend reaches the full limit.</p>`) +
+      `<p style="font-size:12px;color:#666">Adjust the limit or reset the cycle: 50pick → Admin → AI usage &amp; credits.</p></div>`;
+    for (const to of emails) {
+      sendEmail({
+        to,
+        subject: reached ? `🛑 50pick AI spend reached ${limit}` : `⚠️ 50pick AI spend nearing ${limit} (${spent})`,
+        html,
+        tag: "ai-credit-limit",
+        trackLinks: false,
+      }).catch(() => {});
+    }
+  } catch { /* officer email is best-effort */ }
+}
+
 /** Source-of-funds review outcome. ACCEPTED unblocks the deposit gate; REJECTED
  *  asks the player to re-declare (deposits over the threshold stay blocked). */
 export function notifySof(userId: string, status: "ACCEPTED" | "REJECTED") {

@@ -31,9 +31,13 @@ import { recordAiUsage } from "./ai-usage";
 // --- Configuration -----------------------------------------------------------
 
 const SENTINEL_MODEL = process.env.SENTINEL_MODEL || ai.model;
-const SENTINEL_INTERVAL_MS = parseInt(process.env.SENTINEL_INTERVAL_MS || "180000", 10);
+// Default sweep cadence: every 12 hours (cost control — Ali's call 2026-06-26).
+// Override with SENTINEL_INTERVAL_MS (ms) on Railway to tighten it.
+const SENTINEL_INTERVAL_MS = parseInt(process.env.SENTINEL_INTERVAL_MS || String(12 * 60 * 60_000), 10);
 const SENTINEL_CONFIDENCE_THRESHOLD = 90;
-const SENTINEL_COOLDOWN_MS = 180_000;
+// Per-market cooldown — don't re-check the same market within this window even
+// if a sweep runs sooner. Kept just under the interval.
+const SENTINEL_COOLDOWN_MS = parseInt(process.env.SENTINEL_COOLDOWN_MS || String(11 * 60 * 60_000), 10);
 // How many markets to check concurrently per sweep. Keeps the whole board
 // scanned within seconds (not minutes) even with many live markets, so a
 // just-settled outcome is caught fast. Tune via env if rate limits bite.
@@ -172,6 +176,7 @@ SCHEDULED RESOLUTION: ${market.resolutionAt}
 
 Search the web for the latest data, work through the steps, then call report_outcome. Report determined=true ONLY if the YES/NO result is already irreversibly locked.`;
 
+  const started = Date.now();
   try {
     const response = await anthropic.messages.create({
       model: SENTINEL_MODEL,
@@ -192,7 +197,8 @@ Search the web for the latest data, work through the steps, then call report_out
       inputTokens: u?.input_tokens ?? 0,
       outputTokens: u?.output_tokens ?? 0,
       webSearches: u?.server_tool_use?.web_search_requests ?? 0,
-      ok: true,
+      ok: true, latencyMs: Date.now() - started,
+      detail: `check · ${market.titleEn.slice(0, 80)}`,
     });
 
     // Extract the report_outcome tool call from the response
@@ -225,7 +231,12 @@ Search the web for the latest data, work through the steps, then call report_out
       action: "skipped", // caller decides the action
     };
   } catch (err) {
-    await recordAiUsage({ feature: "sentinel", model: SENTINEL_MODEL, ok: false });
+    await recordAiUsage({
+      feature: "sentinel", model: SENTINEL_MODEL, ok: false,
+      latencyMs: Date.now() - started,
+      errorType: (err as Error).message?.slice(0, 200),
+      detail: `check · ${market.titleEn.slice(0, 80)}`,
+    });
     return fail((err as Error).message);
   }
 }

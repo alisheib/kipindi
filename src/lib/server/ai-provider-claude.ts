@@ -207,7 +207,7 @@ export class ClaudeProvider implements AIProvider {
         ) / 10000;
 
       // Meter the spend (best-effort) regardless of how parsing goes below.
-      await recordAiUsage({ feature: "polls", model: ai.model, inputTokens: inTok, outputTokens: outTok, webSearches: searches, ok: true });
+      await recordAiUsage({ feature: "polls", model: ai.model, inputTokens: inTok, outputTokens: outTok, webSearches: searches, ok: true, latencyMs, detail: `generate · ${category}` });
 
       const content = resp.content as Array<{ type: string; name?: string; input?: unknown; text?: string }>;
       const rawResponse = JSON.stringify(content, null, 2).slice(0, 8000);
@@ -245,7 +245,7 @@ export class ClaudeProvider implements AIProvider {
       };
     } catch (err) {
       console.error("[50pick-polls] Claude API error:", err);
-      await recordAiUsage({ feature: "polls", model: ai.model, ok: false });
+      await recordAiUsage({ feature: "polls", model: ai.model, ok: false, latencyMs: Date.now() - start, errorType: (err as Error).message?.slice(0, 200), detail: `generate · ${category}` });
       return {
         ok: false,
         error: `Claude API error: ${(err as Error).message}`,
