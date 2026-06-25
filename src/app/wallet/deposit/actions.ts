@@ -19,7 +19,7 @@ export async function depositAction(formData: FormData) {
   // have to re-enter provider + amount + phone on validation failure.
   const carryParams = `&provider=${encodeURIComponent(provider)}&amount=${amount}${msisdn ? `&msisdn=${encodeURIComponent(msisdn)}` : ""}`;
 
-  if (!Number.isFinite(amount) || amount <= 0) redirect(("/wallet/deposit?error=" + encodeURIComponent("Amount must be a positive number.") + carryParams) as never);
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 2_000_000) redirect(("/wallet/deposit?error=" + encodeURIComponent("Amount must be between TZS 1 and TZS 2,000,000.") + carryParams) as never);
   const result = await deposit(session.userId, {
     provider,
     amount,

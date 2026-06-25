@@ -21,7 +21,7 @@ export async function withdrawAction(formData: FormData) {
   // have to re-enter provider + amount + phone on validation failure.
   const carryParams = `&provider=${encodeURIComponent(provider)}&amount=${amount}${msisdn ? `&msisdn=${encodeURIComponent(msisdn)}` : ""}`;
 
-  if (!Number.isFinite(amount) || amount <= 0) redirect(("/wallet/withdraw?error=" + encodeURIComponent("Amount must be a positive number.") + carryParams) as never);
+  if (!Number.isFinite(amount) || amount < 1000 || amount > 5_000_000) redirect(("/wallet/withdraw?error=" + encodeURIComponent("Amount must be between TZS 1,000 and TZS 5,000,000.") + carryParams) as never);
   const result = await withdraw(session.userId, {
     provider,
     amount,

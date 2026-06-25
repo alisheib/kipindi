@@ -27,7 +27,7 @@ export function OtpExpiryCountdown() {
   const warning = remaining <= 60;
 
   return (
-    <p id="otp-hint" className={`mt-1.5 text-[11px] tabular-nums ${expired ? "text-no-300 font-semibold" : warning ? "text-warning-fg" : "text-text-subtle"}`}>
+    <p id="otp-hint" aria-live="polite" className={`mt-1.5 text-[11px] tabular-nums ${expired ? "text-no-300 font-semibold" : warning ? "text-warning-fg" : "text-text-subtle"}`}>
       {expired ? (
         <>Code expired — request a new one. <span className="italic">Msimbo umeisha muda.</span></>
       ) : (

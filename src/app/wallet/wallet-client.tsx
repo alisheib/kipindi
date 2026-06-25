@@ -304,14 +304,13 @@ export function WalletPageClient({
                   Default
                 </span>
               ) : (
-                <button type="button" disabled title="Coming soon" aria-disabled className="font-mono text-[11px] font-semibold text-text-subtle/60 uppercase tracking-[0.06em] cursor-not-allowed">
+                <button type="button" disabled className="font-mono text-[11px] font-semibold text-text-subtle/60 uppercase tracking-[0.06em] cursor-not-allowed">
                   Set default
                 </button>
               )}
             </div>
           ))}
           <div
-            aria-disabled
             className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-bg-elevated/30 p-6 text-text-subtle/70 cursor-not-allowed"
           >
             <I.receipt s={15} />

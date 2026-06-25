@@ -155,7 +155,7 @@ export function MarketCard({
   const CatIco = I[categoryGlyph(category)];
   const go = (side: "YES" | "NO") => (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    try { window.dispatchEvent(new Event("50pick:navigating")); } catch {}
+    window.dispatchEvent(new Event("50pick:navigating"));
     router.push(`/markets/${id}?side=${side}`);
   };
   // Clicking the card body anywhere (not the YES/NO buttons, the info popover,
@@ -163,7 +163,7 @@ export function MarketCard({
   // a side preselected, exactly like the "Details" link. The detail page then
   // shows the pick-a-side gate. YES/NO still enter with that side locked.
   const goDetails = () => {
-    try { window.dispatchEvent(new Event("50pick:navigating")); } catch {}
+    window.dispatchEvent(new Event("50pick:navigating"));
     router.push(`/markets/${id}`);
   };
   const body = (

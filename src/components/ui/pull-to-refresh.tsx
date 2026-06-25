@@ -28,6 +28,7 @@ export function PullToRefresh() {
   const [pullY, setPullY] = useState(0);
   const startY = useRef(0);
   const active = useRef(false);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onTouchStart = useCallback((e: TouchEvent) => {
     if (window.scrollY > 5 || refreshing) return;
@@ -49,8 +50,9 @@ export function PullToRefresh() {
     if (pullY >= THRESHOLD * 0.4) {
       setRefreshing(true);
       router.refresh();
-      try { window.dispatchEvent(new Event("50pick:refresh")); } catch {}
-      setTimeout(() => {
+      window.dispatchEvent(new Event("50pick:refresh"));
+      settleTimer.current = setTimeout(() => {
+        settleTimer.current = null;
         setRefreshing(false);
         setPulling(false);
         setPullY(0);
@@ -71,6 +73,7 @@ export function PullToRefresh() {
       window.removeEventListener("touchstart", onTouchStart);
       window.removeEventListener("touchmove", onTouchMove);
       window.removeEventListener("touchend", onTouchEnd);
+      if (settleTimer.current) clearTimeout(settleTimer.current);
     };
   }, [onTouchStart, onTouchMove, onTouchEnd]);
 

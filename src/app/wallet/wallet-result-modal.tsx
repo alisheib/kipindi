@@ -27,7 +27,7 @@ export function WalletResultModal({
   // components pick up the new wallet state immediately.
   useEffect(() => {
     if (deposited || withdrawal) {
-      try { window.dispatchEvent(new Event("50pick:refresh")); } catch {}
+      window.dispatchEvent(new Event("50pick:refresh"));
     }
   }, [deposited, withdrawal]);
 

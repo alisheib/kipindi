@@ -665,7 +665,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
       // Trigger an immediate page + balance refresh so the player sees
       // their new balance and updated pool share without waiting for
       // the next 15s/30s poll tick.
-      try { window.dispatchEvent(new Event("50pick:refresh")); } catch {}
+      window.dispatchEvent(new Event("50pick:refresh"));
       // Reset the dial to its initial neutral position after a
       // successful bet. The previous behaviour kept the dial parked
       // at the user's last conviction, which read as "your bet" the
@@ -701,7 +701,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
       // server-side fires synchronously inside buyPositionAction, so
       // by the time this event dispatches the notification is already
       // available. Eliminates the 5 s "where's my receipt?" gap.
-      try { window.dispatchEvent(new Event("50pick:refresh-notifications")); } catch {}
+      window.dispatchEvent(new Event("50pick:refresh-notifications"));
       router.refresh();
     });
   };

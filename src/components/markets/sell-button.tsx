@@ -124,7 +124,7 @@ export function SellButton({
       });
       setResultData({ variant: "success", value: r.data!.value, net: realisedNet });
       setResultOpen(true);
-      try { window.dispatchEvent(new Event("50pick:refresh")); } catch {}
+      window.dispatchEvent(new Event("50pick:refresh"));
       if (realisedNet > 0) {
         dispatchWinCelebration({
           kind: "CASHOUT",
@@ -133,7 +133,7 @@ export function SellButton({
           label: "Cashed out at profit",
         });
       }
-      try { window.dispatchEvent(new Event("50pick:refresh-notifications")); } catch {}
+      window.dispatchEvent(new Event("50pick:refresh-notifications"));
       router.refresh();
     });
   };

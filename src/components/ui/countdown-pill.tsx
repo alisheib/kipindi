@@ -32,7 +32,7 @@ export function CountdownPill({
   }, [left, onExpire]);
   if (left <= 0) {
     return (
-      <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+      <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted" aria-live="polite">
         Ready · Tayari
       </span>
     );
@@ -41,7 +41,7 @@ export function CountdownPill({
   const s = left % 60;
   const display = m > 0 ? `${m}:${String(s).padStart(2, "0")}` : `${s}s`;
   return (
-    <span className="inline-flex items-center gap-1 font-mono text-[11px] tabular-nums">
+    <span className="inline-flex items-center gap-1 font-mono text-[11px] tabular-nums" aria-live="polite">
       {prefix && <span className="text-text-subtle">{prefix}</span>}
       <span className="font-bold text-warning-fg">{display}</span>
       {suffix && <span className="text-text-subtle">{suffix}</span>}
