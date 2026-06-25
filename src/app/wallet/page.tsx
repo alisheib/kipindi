@@ -5,6 +5,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import type { Transaction } from "@/lib/ui-stubs";
 import type { StoredTxn } from "@/lib/server/store";
+import { RefreshPoller } from "@/components/ui/refresh-poller";
 
 export const metadata = { title: "Wallet · Pochi" };
 export const dynamic = "force-dynamic";
@@ -41,6 +42,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
 
   return (
     <>
+      <RefreshPoller intervalMs={20_000} />
       <WalletResultModal deposited={sp.deposited} withdrawal={sp.withdrawal} status={sp.status} amount={sp.amount} />
       <WalletPageClient
         balance={balance}

@@ -18,6 +18,7 @@ import { TippingBar, PulseRing } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LivePulseGrid } from "./pulse-grid";
+import { RefreshPoller } from "@/components/ui/refresh-poller";
 
 export const metadata = { title: "Live · Hai" };
 export const dynamic = "force-dynamic";
@@ -60,6 +61,7 @@ export default async function LivePage() {
 
   return (
     <div className="relative min-h-[calc(100vh-44px)]">
+      <RefreshPoller intervalMs={15_000} />
       <BrandTopo opacity={0.04} />
 
       <div className="relative mx-auto max-w-[1280px] px-3 lg:px-6 py-6 space-y-5">

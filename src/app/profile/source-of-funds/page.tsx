@@ -27,11 +27,17 @@ const BANDS = [
   { id: "over-200m", label: "Over TZS 200M" },
 ];
 
-export default async function SourceOfFundsPage({ searchParams }: { searchParams?: Promise<{ error?: string; saved?: string }> }) {
+export default async function SourceOfFundsPage({ searchParams }: { searchParams?: Promise<{ error?: string; saved?: string; src?: string; occ?: string; band?: string; emp?: string; other?: string }> }) {
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile/source-of-funds");
   const existing = await db.sourceOfFunds.get(session.userId);
   const sp = (await searchParams) ?? {};
+  // Restore form values from error redirect (takes precedence over existing record for the current attempt)
+  const prevSource = sp.src ?? existing?.declaredSource ?? "";
+  const prevOcc = sp.occ ?? existing?.declaredOccupation ?? "";
+  const prevBand = sp.band ?? existing?.declaredAnnualIncomeBand ?? "";
+  const prevEmp = sp.emp ?? existing?.declaredEmployer ?? "";
+  const prevOther = sp.other ?? existing?.declaredOther ?? "";
   const statusTone =
     existing?.reviewStatus === "ACCEPTED" ? "yes"
     : existing?.reviewStatus === "REJECTED" ? "no"
@@ -150,7 +156,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
                     name="declaredSource"
                     value={s.id}
                     required
-                    defaultChecked={existing?.declaredSource === s.id || (!existing && i === 0)}
+                    defaultChecked={prevSource ? prevSource === s.id : i === 0}
                     className="sr-only peer"
                   />
                   <span className="font-display text-[12.5px] font-bold text-text">{s.label}</span>
@@ -167,14 +173,14 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
               required
               minLength={2}
               maxLength={200}
-              defaultValue={existing?.declaredOccupation ?? ""}
+              defaultValue={prevOcc}
               placeholder="e.g. Software engineer"
             />
             <Field
               name="declaredEmployer"
               label="Employer (optional) · Mwajiri"
               maxLength={200}
-              defaultValue={existing?.declaredEmployer ?? ""}
+              defaultValue={prevEmp}
               placeholder="Company name"
             />
           </div>
@@ -194,7 +200,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
                     name="declaredAnnualIncomeBand"
                     value={b.id}
                     required
-                    defaultChecked={existing?.declaredAnnualIncomeBand === b.id || (!existing && i === 0)}
+                    defaultChecked={prevBand ? prevBand === b.id : i === 0}
                     className="sr-only peer"
                   />
                   <span className="font-mono text-[11px] font-bold text-text text-center">{b.label}</span>
@@ -215,7 +221,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
               name="declaredOther"
               rows={3}
               maxLength={500}
-              defaultValue={existing?.declaredOther ?? ""}
+              defaultValue={prevOther}
               placeholder="Describe the source of funds in your own words"
               className="w-full p-3 rounded-md border border-border bg-bg-overlay text-text text-[16px] focus:outline-none brand-focus transition-colors"
             />

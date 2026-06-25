@@ -6,7 +6,7 @@
  * doesn't reappear on refresh. Kit rule: every consequential money mutation
  * confirms through this modal.
  */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
 
@@ -23,6 +23,14 @@ export function WalletResultModal({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(true);
+  // Trigger a global refresh so the balance pill and any other live
+  // components pick up the new wallet state immediately.
+  useEffect(() => {
+    if (deposited || withdrawal) {
+      try { window.dispatchEvent(new Event("50pick:refresh")); } catch {}
+    }
+  }, [deposited, withdrawal]);
+
   if (!deposited && !withdrawal) return null;
 
   const txnId = deposited || withdrawal || "";

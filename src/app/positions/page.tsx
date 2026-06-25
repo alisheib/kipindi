@@ -6,6 +6,7 @@ import { SellButton } from "@/components/markets/sell-button";
 import { listPositionsForUser, getMarket, cashOutValue } from "@/lib/server/market-service";
 import { currentSession } from "@/lib/server/auth-service";
 import { EmptyState } from "@/components/ui/empty-state";
+import { RefreshPoller } from "@/components/ui/refresh-poller";
 
 export const metadata = { title: "History · Historia" };
 export const dynamic = "force-dynamic";
@@ -65,6 +66,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
 
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
+      <RefreshPoller intervalMs={20_000} />
       <header>
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">History · Historia</p>
         <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">Polls you&rsquo;ve played</h1>

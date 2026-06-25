@@ -20,7 +20,9 @@ export async function submitSourceOfFundsAction(formData: FormData) {
   const validSources: StoredSourceOfFunds["declaredSource"][] = ["salary", "business", "savings", "investments", "inheritance", "other"];
   const validBands: StoredSourceOfFunds["declaredAnnualIncomeBand"][] = ["under-12m", "12m-50m", "50m-200m", "over-200m"];
 
-  const fail = (msg: string) => redirect(`/profile/source-of-funds?error=${encodeURIComponent(msg)}`);
+  // Carry form values through error redirects so the player doesn't re-enter everything
+  const carry = `&src=${encodeURIComponent(declaredSource)}&occ=${encodeURIComponent(declaredOccupation)}&band=${encodeURIComponent(declaredAnnualIncomeBand)}${declaredEmployer ? `&emp=${encodeURIComponent(declaredEmployer)}` : ""}${declaredOther ? `&other=${encodeURIComponent(declaredOther)}` : ""}`;
+  const fail = (msg: string) => redirect(`/profile/source-of-funds?error=${encodeURIComponent(msg)}${carry}`);
   if (!validSources.includes(declaredSource)) fail("Pick a source of funds.");
   if (!validBands.includes(declaredAnnualIncomeBand)) fail("Pick an annual income band.");
   if (declaredOccupation.length < 2) fail("Tell us your occupation.");
