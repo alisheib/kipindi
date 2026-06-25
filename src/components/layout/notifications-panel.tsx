@@ -185,14 +185,17 @@ export function NotificationsPanel() {
         {unread > 0 && (
           <span
             aria-hidden
+            className="notif-badge-pulse"
             style={{
               position: "absolute",
-              top: 4,
-              right: 4,
-              width: 7,
-              height: 7,
+              top: 2,
+              right: 2,
+              width: 9,
+              height: 9,
               borderRadius: 9,
               background: "var(--no-400)",
+              border: "2px solid var(--bg-base)",
+              boxShadow: "0 0 0 1px var(--no-500)",
             }}
           />
         )}
@@ -334,6 +337,9 @@ export function NotificationsPanel() {
           </div>
           <style>{`
             @keyframes np-rise { from { transform: translateY(-6px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+            @keyframes notif-badge-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.25); } }
+            .notif-badge-pulse { animation: notif-badge-pulse 2s ease-in-out infinite; }
+            @media (prefers-reduced-motion: reduce) { .notif-badge-pulse { animation: none; } }
           `}</style>
         </>,
         document.body,
