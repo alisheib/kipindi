@@ -193,18 +193,29 @@ export function NotificationsPanel() {
             className="notif-badge-pulse"
             style={{
               position: "absolute",
-              top: -1,
-              right: -1,
-              width: 10,
-              height: 10,
-              borderRadius: 10,
+              top: -4,
+              right: -6,
+              minWidth: 18,
+              height: 18,
+              borderRadius: 9,
               background: "#ef4444",
               border: "2px solid var(--bg-base)",
               boxShadow: "0 0 6px #ef4444",
               zIndex: 20,
               pointerEvents: "none",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 10,
+              fontWeight: 700,
+              color: "#fff",
+              fontFamily: "var(--font-mono)",
+              padding: "0 4px",
+              lineHeight: 1,
             }}
-          />
+          >
+            {unread}
+          </span>
         )}
       </button>
 
