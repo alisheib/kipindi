@@ -176,6 +176,7 @@ export function NotificationsPanel() {
         aria-label={`Notifications${unread > 0 ? ` (${unread} unread)` : ""}`}
         aria-expanded={open ? "true" : "false"}
         onClick={() => setOpen((v) => !v)}
+        data-unread={unread}
         className={cn(
           "relative inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors",
           open ? "bg-bg-overlay/60 text-text" : "text-text-subtle hover:text-text hover:bg-bg-overlay/40",
@@ -188,14 +189,15 @@ export function NotificationsPanel() {
             className="notif-badge-pulse"
             style={{
               position: "absolute",
-              top: 2,
-              right: 2,
-              width: 9,
-              height: 9,
-              borderRadius: 9,
-              background: "var(--no-400)",
+              top: 0,
+              right: 0,
+              width: 10,
+              height: 10,
+              borderRadius: 10,
+              background: "#ef4444",
               border: "2px solid var(--bg-base)",
-              boxShadow: "0 0 0 1px var(--no-500)",
+              boxShadow: "0 0 4px #ef4444",
+              zIndex: 10,
             }}
           />
         )}
