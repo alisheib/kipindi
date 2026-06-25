@@ -39,6 +39,15 @@ function BalanceCard({
         >
           <Cash>{fmt(balance, currency)}</Cash>
         </p>
+        {balance === 0 && pending === 0 && hold === 0 && (
+          <Link
+            href="/wallet/deposit"
+            className="mt-3 inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200 transition-colors"
+          >
+            <I.plus s={12} />
+            Add funds to start predicting · Weka pesa
+          </Link>
+        )}
         <div className="mt-5 grid grid-cols-2 gap-3">
           <SubStat label="Pending" sw="Inasubiri" value={fmt(pending, currency)} />
           <SubStat label="On hold"  sw="Imezuiwa"  value={fmt(hold, currency)} />

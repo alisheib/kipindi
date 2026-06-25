@@ -35,6 +35,8 @@ type Props = {
   /** Tone of the confirm button. claret = irreversible / destructive (default). */
   tone?: Tone;
   onConfirm: () => void;
+  /** Fires right before the dialog opens — use to snapshot form data. */
+  onOpen?: () => void;
 };
 
 export function ConfirmDialog({
@@ -45,6 +47,7 @@ export function ConfirmDialog({
   cancelLabel = "Cancel · Ghairi",
   tone = "claret",
   onConfirm,
+  onOpen,
 }: Props) {
   const [open, setOpen] = React.useState(false);
   useModalLock(open);
@@ -96,6 +99,7 @@ export function ConfirmDialog({
     type: "button",
     onClick: (e: React.MouseEvent) => {
       e.preventDefault();
+      onOpen?.();
       setOpen(true);
     },
   });

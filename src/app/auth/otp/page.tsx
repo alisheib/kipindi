@@ -5,6 +5,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { CountdownPill } from "@/components/ui/countdown-pill";
 import { verifyLoginOtpAction, resendOtpAction } from "../login/actions";
 import { ResendOtpButton } from "@/components/auth/resend-otp-button";
+import { OtpExpiryCountdown } from "@/components/auth/otp-expiry-countdown";
 
 export const metadata = { title: "Enter code · Weka msimbo" };
 
@@ -84,9 +85,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
                 placeholder="• • • • • •"
                 className="w-full h-[52px] text-center font-mono font-semibold text-[20px] tracking-[0.3em] rounded-md bg-bg-inset border border-border text-text outline-none transition-colors brand-focus"
               />
-              <p className="mt-1.5 text-[11px] text-text-subtle">
-                Code valid for 5 minutes. <span className="italic">Msimbo ni kwa dakika 5.</span>
-              </p>
+              <OtpExpiryCountdown />
             </label>
             <SubmitButton label="Verify · Thibitisha" pendingLabel="Verifying…" />
           </form>

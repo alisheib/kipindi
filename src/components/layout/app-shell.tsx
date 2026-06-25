@@ -1,5 +1,9 @@
-import { Suspense } from "react";
+import { Suspense, lazy } from "react";
 import { headers } from "next/headers";
+
+const LazyOfflineBanner = lazy(() =>
+  import("@/components/ui/offline-banner").then((m) => ({ default: m.OfflineBanner })),
+);
 import { TopAppBar } from "./top-app-bar";
 import { LiveTicker } from "./live-ticker";
 import { BottomNav } from "./bottom-nav";
@@ -85,6 +89,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <WinCelebrationHost />
       <Suspense fallback={null}>
         <AuthFlash />
+      </Suspense>
+      <Suspense fallback={null}>
+        <LazyOfflineBanner />
       </Suspense>
     </div>
   );

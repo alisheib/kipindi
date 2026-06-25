@@ -121,7 +121,7 @@ function PasswordStrength({ value }: { value: string }) {
         <span className={cn("h-[3px] flex-1 rounded-pill", score >= 2 ? fillCls : "bg-bg-overlay")} />
         <span className={cn("h-[3px] flex-1 rounded-pill", score >= 3 ? fillCls : "bg-bg-overlay")} />
       </div>
-      <p className={cn("mt-1 font-mono text-[10px] uppercase tracking-[0.14em] font-bold", fgCls)}>
+      <p className={cn("mt-1 font-mono text-[12px] sm:text-[10px] uppercase tracking-[0.14em] font-bold", fgCls)}>
         {labelEn} <span className="opacity-70 font-normal italic normal-case tracking-normal">· {labelSw}</span>
       </p>
     </div>

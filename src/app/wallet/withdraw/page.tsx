@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { WithdrawConfirm } from "./withdraw-confirm";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
@@ -217,7 +218,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
           </div>
         </div>
 
-        <SubmitButton label="Confirm withdrawal · Thibitisha" pendingLabel="Processing withdrawal…" />
+        {kycApproved ? <WithdrawConfirm /> : <SubmitButton label="Confirm withdrawal · Thibitisha" pendingLabel="Processing withdrawal…" />}
       </form>
     </main>
   );

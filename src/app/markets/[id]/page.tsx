@@ -196,12 +196,18 @@ export default async function MarketDetail({
           )}
 
           {/* 4. Your open positions — relevant context before reading the criterion */}
-          {myPositions.length > 0 && (
+          {session && (
             <section className="rounded-xl border border-border bg-bg-elevated p-5 space-y-3">
               <h2 className="font-display text-[15px] font-semibold text-text flex items-center gap-2">
                 <I.portfolio s={15} />
                 Your positions
               </h2>
+              {myPositions.length === 0 && (
+                <p className="text-[12.5px] text-text-subtle italic">
+                  You haven&rsquo;t bet on this market yet. Use the dial to get started.
+                  <span className="block text-[11.5px] mt-0.5">Bado hujaweka dau kwenye soko hili.</span>
+                </p>
+              )}
               {myPositions.map((p) => {
                 const liveValue = positionCashOutValues.get(p.id) ?? null;
                 return (

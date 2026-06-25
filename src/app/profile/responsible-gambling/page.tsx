@@ -6,6 +6,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { getRgSettings } from "@/lib/server/responsible-gambling";
 import { setLimitsAction, selfExcludeAction, coolOffAction } from "./actions";
 import { SelfExcludeConfirm } from "@/components/rg/self-exclude-confirm";
+import { CoolOffConfirm } from "@/components/rg/cool-off-confirm";
 import { SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/support-config";
 import { Select } from "@/components/ui/select";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -148,7 +149,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
               options={COOLING_OFF_OPTIONS.map((o) => ({ value: o.id, label: `${o.label} · ${o.sw}` }))}
             />
           </div>
-          <SubmitButton label="Start break" pendingLabel="Starting…" variant="ghost" size="md" />
+          <CoolOffConfirm />
         </form>
       </section>
 
