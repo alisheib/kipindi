@@ -13,6 +13,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { listComments } from "@/lib/server/comments-store";
 import { CommentsThread } from "@/components/markets/comments-thread";
+import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { formatDateTime, formatTzsCompact } from "@/lib/utils";
 
 
@@ -111,6 +112,10 @@ export default async function MarketDetail({
 
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6">
+      {/* Auto-refresh every 15s on the detail page — tighter than the
+          grid because a player on this page is about to bet and needs
+          the freshest possible odds/pool/status. */}
+      <RefreshPoller intervalMs={15_000} />
       {/* ── Back link ── */}
       <a href="/markets" className="inline-flex items-center gap-1 text-[12px] font-mono uppercase tracking-[0.16em] text-text-subtle hover:text-text transition-colors">
         <I.chevronLeft s={11} />

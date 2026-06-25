@@ -124,6 +124,7 @@ export function SellButton({
       });
       setResultData({ variant: "success", value: r.data!.value, net: realisedNet });
       setResultOpen(true);
+      try { window.dispatchEvent(new Event("50pick:refresh")); } catch {}
       if (realisedNet > 0) {
         dispatchWinCelebration({
           kind: "CASHOUT",

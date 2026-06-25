@@ -7,6 +7,7 @@
  */
 import { useState, useTransition } from "react";
 import { I } from "@/components/ui/glyphs";
+import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/components/ui/toast";
 import { haptics } from "@/lib/haptics";
 import { Avatar } from "@/components/ui/avatar";
@@ -131,6 +132,7 @@ export function CommentsThread({
               disabled={pending || body.trim().length === 0}
               className="btn btn-gold btn-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
+              {pending && <Spinner size={12} />}
               {pending ? "Posting…" : "Post · Tuma"}
             </button>
           </div>

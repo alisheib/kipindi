@@ -662,6 +662,10 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
         payoutIfWin: r.data!.payoutIfWin,
       });
       setResultOpen(true);
+      // Trigger an immediate page + balance refresh so the player sees
+      // their new balance and updated pool share without waiting for
+      // the next 15s/30s poll tick.
+      try { window.dispatchEvent(new Event("50pick:refresh")); } catch {}
       // Reset the dial to its initial neutral position after a
       // successful bet. The previous behaviour kept the dial parked
       // at the user's last conviction, which read as "your bet" the

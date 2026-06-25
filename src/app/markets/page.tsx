@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
@@ -7,6 +8,7 @@ import { getProposalsConfig } from "@/lib/server/proposals-config";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { MarketSearch } from "./market-search";
+import { RefreshPoller } from "@/components/ui/refresh-poller";
 
 export const metadata = { title: "Markets · Soko" };
 export const dynamic = "force-dynamic";
@@ -54,6 +56,10 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
       {/* Accessible page heading (WCAG 1.3.1 / 2.4.6). Visually hidden — the
           design uses a slim content-first header, not a marketing H1. */}
       <h1 className="sr-only">Markets · Soko</h1>
+      {/* Auto-refresh every 30s so odds, volumes, and time-left stay
+          current without the player needing to F5. Pauses when the tab
+          is backgrounded. Also responds to 50pick:refresh events. */}
+      <RefreshPoller intervalMs={30_000} />
       {/* Lean, content-first header — the marketing hero lives on the homepage. */}
       <div className="mb-4 flex items-center justify-between gap-3">
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">Markets · Soko</p>
@@ -80,7 +86,9 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
           <FilterBar searchParams={searchParams} />
         </aside>
         <div className="min-w-0 flex-1">
-          <SearchAwareGrid searchParams={searchParams} />
+          <Suspense fallback={<GridSkeleton />}>
+            <SearchAwareGrid searchParams={searchParams} />
+          </Suspense>
         </div>
       </div>
     </main>
@@ -312,5 +320,35 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
         </section>
       )}
     </>
+  );
+}
+
+/** Shimmer skeleton shown while the async grid is loading (filter switch,
+ *  initial load, or 30s auto-refresh with a slow server response). */
+function GridSkeleton() {
+  return (
+    <div className="market-grid" aria-hidden>
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div
+          key={i}
+          className="rounded-md border border-border bg-bg-elevated overflow-hidden kp-shimmer-track"
+          style={{ height: 220 }}
+        >
+          <div className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="h-5 w-12 rounded-pill bg-bg-overlay" />
+              <div className="h-5 w-16 rounded-pill bg-bg-overlay" />
+            </div>
+            <div className="h-4 w-3/4 rounded bg-bg-overlay" />
+            <div className="h-4 w-1/2 rounded bg-bg-overlay" />
+            <div className="h-[7px] w-full rounded-pill bg-bg-overlay mt-4" />
+            <div className="flex gap-2 mt-3">
+              <div className="h-9 flex-1 rounded-md bg-bg-overlay" />
+              <div className="h-9 flex-1 rounded-md bg-bg-overlay" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
