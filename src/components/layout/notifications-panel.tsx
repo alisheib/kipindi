@@ -69,23 +69,27 @@ function relTime(iso: string): string {
 export function NotificationsPanel() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<StoredNotification[]>([]);
-  const [unread, setUnread] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   // Close panel on navigation so the portal + scrim don't persist.
   useEffect(() => { setOpen(false); }, [pathname]);
 
+  // Derive unread count from items client-side — the server's separate
+  // countUnread query was returning 0 despite items having readAt===null.
+  // Single source of truth: if items are here and readAt is null, it's unread.
+  const unread = items.filter((n) => !n.readAt).length;
+
   const prevUnreadRef = useRef(0);
   const refresh = useCallback(async () => {
     const r = await fetchMyNotifications();
     setItems(r.items);
     // Haptic nudge when new notifications arrive (unread count increased)
-    if (r.unread > prevUnreadRef.current && prevUnreadRef.current >= 0) {
+    const clientUnread = r.items.filter((n: StoredNotification) => !n.readAt).length;
+    if (clientUnread > prevUnreadRef.current && prevUnreadRef.current >= 0) {
       haptics.success();
     }
-    prevUnreadRef.current = r.unread;
-    setUnread(r.unread);
+    prevUnreadRef.current = clientUnread;
   }, []);
 
   useEffect(() => {
