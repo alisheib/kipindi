@@ -193,8 +193,8 @@ export function NotificationsPanel() {
             className="notif-badge-pulse"
             style={{
               position: "absolute",
-              top: 8,
-              right: -6,
+              top: 12,
+              right: -2,
               minWidth: 18,
               height: 18,
               borderRadius: 9,
