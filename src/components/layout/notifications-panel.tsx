@@ -194,7 +194,7 @@ export function NotificationsPanel() {
             style={{
               position: "absolute",
               top: 12,
-              right: -2,
+              right: 6,
               minWidth: 18,
               height: 18,
               borderRadius: 9,
