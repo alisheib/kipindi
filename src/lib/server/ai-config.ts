@@ -14,7 +14,7 @@
 export const ai = {
   /** The primary model used for poll generation and sentinel monitoring.
    *  Override via AI_MODEL env var without a redeploy. */
-  model: process.env.AI_MODEL || "claude-sonnet-4-20250514",
+  model: process.env.AI_MODEL || "claude-sonnet-4-6",
 
 
   /** Web search tool definition — version-stamped by Anthropic. Update
