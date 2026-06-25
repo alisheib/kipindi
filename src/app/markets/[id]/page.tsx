@@ -90,7 +90,7 @@ export default async function MarketDetail({
   // Pre-compute cash-out values for positions (cashOutValue is async)
   const positionCashOutValues = new Map<string, number | null>();
   for (const p of myPositions) {
-    if (!isResolved && m.status === "LIVE" && p.status === "OPEN") {
+    if (!isResolved && (m.status === "LIVE" || m.status === "CLOSED") && p.status === "OPEN") {
       positionCashOutValues.set(p.id, (await cashOutValue({ side: p.side, stake: p.stake, placedAt: p.placedAt }, { id: m.id, yesPool: m.yesPool, noPool: m.noPool, resolutionAt: m.resolutionAt })).value);
     } else {
       positionCashOutValues.set(p.id, null);
@@ -132,6 +132,11 @@ export default async function MarketDetail({
             <span className="inline-flex items-center gap-1.5 rounded-pill border border-danger-border bg-danger-bg/40 px-3 py-1 text-[12px] font-semibold text-danger-fg">
               <span className="live-dot" style={{ width: 6, height: 6 }} />
               Live
+            </span>
+          )}
+          {m.status === "CLOSED" && !isResolved && (
+            <span className="inline-flex items-center gap-1.5 rounded-pill border border-warning-border bg-warning-bg/40 px-3 py-1 text-[12px] font-semibold text-warning-fg">
+              Closed · Awaiting settlement
             </span>
           )}
           {isResolved && m.resolvedOutcome && (

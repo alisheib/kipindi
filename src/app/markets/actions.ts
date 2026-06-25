@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
-import { buyPosition, cashOutPosition, resolveMarket, emergencyVoidMarket, createMarket, listPositionsForUser, type CreateMarketInput, type Side } from "@/lib/server/market-service";
+import { buyPosition, cashOutPosition, resolveMarket, emergencyVoidMarket, adminReopenMarket, createMarket, listPositionsForUser, type CreateMarketInput, type Side } from "@/lib/server/market-service";
 import { addComment, reportComment, deleteComment, restoreComment, type CommentSide } from "@/lib/server/comments-store";
 import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
 import { db } from "@/lib/server/store";
@@ -80,6 +80,24 @@ export async function resolveMarketAction(formData: FormData) {
     revalidatePath("/markets");
     revalidatePath(`/markets/${marketId}`);
     revalidatePath("/positions");
+  }
+  return r;
+}
+
+/**
+ * Admin reopen — override a sentinel closure and put the market back to LIVE.
+ * Only works on CLOSED markets that haven't entered the resolution flow.
+ */
+export async function adminReopenMarketAction(formData: FormData) {
+  const session = await currentSession();
+  if (!session) redirect("/auth/login");
+  await requireAdminOrThrow(session.userId, "adminReopenMarketAction");
+  const marketId = String(formData.get("marketId") ?? "");
+  const r = await adminReopenMarket(marketId, session.userId);
+  if (r.ok) {
+    revalidatePath("/admin/markets");
+    revalidatePath("/markets");
+    revalidatePath(`/markets/${marketId}`);
   }
   return r;
 }
