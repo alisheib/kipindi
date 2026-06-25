@@ -11,31 +11,31 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
   const L = {
     markets: locale === "sw" ? "Masoko" : locale === "fr" ? "Marchés" : "Markets",
     live: t.nav.live,
-    positions: locale === "sw" ? "Nafasi" : locale === "fr" ? "Historique" : "History",
-    leaderboard: t.nav.leaderboard,
+    wallet: locale === "sw" ? "Pochi" : locale === "fr" ? "Portefeuille" : "Wallet",
+    invite: locale === "sw" ? "Alika" : locale === "fr" ? "Inviter" : "Invite",
     profile: locale === "sw" ? "Wasifu" : locale === "fr" ? "Profil" : "Profile",
     signIn: t.common.signIn,
   };
 
   const items = isAuthed
     ? [
-        { href: "/markets",     glyph: "chart" as const,      label: L.markets },
-        { href: "/live",        glyph: "bolt" as const,       label: L.live },
-        { href: "/positions",   glyph: "wallet" as const,     label: L.positions },
-        { href: "/leaderboard", glyph: "gift" as const,       label: L.leaderboard },
-        { href: "/profile",     glyph: "profile" as const,    label: L.profile },
+        { href: "/markets",        glyph: "chart" as const,      label: L.markets },
+        { href: "/live",           glyph: "bolt" as const,       label: L.live },
+        { href: "/wallet",         glyph: "wallet" as const,     label: L.wallet },
+        { href: "/profile/invite", glyph: "gift" as const,       label: L.invite },
+        { href: "/profile",        glyph: "profile" as const,    label: L.profile },
       ]
     : [
         { href: "/markets",     glyph: "chart" as const,      label: L.markets },
         { href: "/live",        glyph: "bolt" as const,       label: L.live },
-        { href: "/leaderboard", glyph: "gift" as const,       label: L.leaderboard },
         { href: "/auth/login",  glyph: "logIn" as const,      label: L.signIn },
       ];
 
   const isActive = (href: string) => {
     if (href === "/markets") return pathname === "/" || pathname.startsWith("/markets");
-    if (href === "/positions") return pathname.startsWith("/positions");
-    if (href === "/profile") return pathname.startsWith("/profile");
+    if (href === "/wallet") return pathname.startsWith("/wallet");
+    if (href === "/profile/invite") return pathname === "/profile/invite";
+    if (href === "/profile") return pathname.startsWith("/profile") && pathname !== "/profile/invite";
     if (href === "/auth/login") return pathname === "/auth/login";
     return pathname === href;
   };
