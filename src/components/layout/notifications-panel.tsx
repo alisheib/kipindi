@@ -187,15 +187,14 @@ export function NotificationsPanel() {
         )}
       >
         <I.bell s={20} />
-        {/* DEBUG: always show badge to isolate rendering vs data issue */}
         {(unread > 0 || items.length > 0) && (
           <span
             aria-hidden
             className="notif-badge-pulse"
             style={{
               position: "absolute",
-              top: -4,
-              right: -6,
+              top: 1,
+              right: -8,
               minWidth: 18,
               height: 18,
               borderRadius: 9,
