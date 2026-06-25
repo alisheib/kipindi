@@ -321,6 +321,54 @@ export async function runSentinelSweep(): Promise<SentinelResult[]> {
   return results;
 }
 
+// --- Health alerting ---------------------------------------------------------
+// If the sweep can't reach the AI (exhausted Anthropic balance, bad key, etc.)
+// the sentinel silently stops protecting live markets. Detect that and alert
+// admins, debounced so we notify once per window rather than every 3 minutes.
+
+let lastHealthAlertAt = 0;
+const HEALTH_ALERT_COOLDOWN_MS = 6 * 60 * 60_000; // 6h
+
+function classifySweepFailure(results: SentinelResult[]): { reason: string; sample: string } | null {
+  const errors = results.filter((r) => r.action === "error" && r.error);
+  if (errors.length === 0) return null;
+  const blob = errors.map((e) => e.error!).join(" | ").toLowerCase();
+  let reason = "AI API errors";
+  if (blob.includes("credit balance") || blob.includes("billing")) reason = "Anthropic credit exhausted";
+  else if (blob.includes("authentication") || blob.includes("api key") || blob.includes("401")) reason = "invalid API key";
+  else if (blob.includes("rate_limit") || blob.includes("429")) reason = "AI rate limited";
+  else if (blob.includes("overloaded") || blob.includes("529")) reason = "AI overloaded";
+  // Always actionable: billing/auth failures. Otherwise only alert if most checks failed.
+  const billingOrAuth = reason === "Anthropic credit exhausted" || reason === "invalid API key";
+  const mostlyFailed = errors.length >= Math.max(1, Math.ceil(results.length / 2));
+  if (!billingOrAuth && !mostlyFailed) return null;
+  return { reason, sample: errors[0].error!.slice(0, 300) };
+}
+
+async function maybeAlertOnSweep(results: SentinelResult[]): Promise<void> {
+  const failure = classifySweepFailure(results);
+  if (!failure) return;
+  const now = Date.now();
+  if (now - lastHealthAlertAt < HEALTH_ALERT_COOLDOWN_MS) return;
+  lastHealthAlertAt = now;
+  const errorCount = results.filter((r) => r.action === "error").length;
+  console.error(`[sentinel] HEALTH ALERT: ${failure.reason} — ${errorCount} market(s) uncheckable. Notifying admins.`);
+  try {
+    const { notifyAdminsSentinelDown } = await import("./notification-service");
+    await notifyAdminsSentinelDown({ reason: failure.reason, errorCount, sampleError: failure.sample });
+  } catch (err) {
+    console.error("[sentinel] Failed to send health alert:", err);
+  }
+  audit({
+    category: "SYSTEM",
+    action: "sentinel.health_alert",
+    actorId: "sentinel_agent",
+    targetType: "System",
+    targetId: "market-sentinel",
+    payload: { reason: failure.reason, errorCount },
+  });
+}
+
 // --- Background Runner -------------------------------------------------------
 
 let intervalId: ReturnType<typeof setInterval> | null = null;
@@ -342,9 +390,10 @@ export function startSentinel(): void {
   // First sweep after boot delay
   setTimeout(() => {
     runSentinelSweep()
-      .then((r) => {
+      .then(async (r) => {
         const closed = r.filter((x) => x.action === "closed");
         if (closed.length > 0) console.log(`[sentinel] Boot sweep: ${closed.length} closed`);
+        await maybeAlertOnSweep(r);
       })
       .catch((err) => console.error("[sentinel] Boot sweep error:", err));
   }, 10_000);
@@ -359,6 +408,7 @@ export function startSentinel(): void {
       if (closed.length > 0 || errors.length > 0) {
         console.log(`[sentinel] Sweep: ${closed.length} closed, ${errors.length} errors, ${r.length - closed.length - errors.length} skipped`);
       }
+      await maybeAlertOnSweep(r);
     } catch (err) {
       console.error("[sentinel] Sweep error:", err);
     } finally {

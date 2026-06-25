@@ -498,6 +498,55 @@ export async function notifyAdminsAmlReview(opts: { txnKind: "WITHDRAWAL" | "DEP
   } catch { /* officer email is best-effort */ }
 }
 
+/** Operational alert: the Market Sentinel (the AI that auto-closes already-settled
+ *  live markets) is failing its checks — most often an exhausted Anthropic API
+ *  balance or an invalid key. Without this alert the sentinel can silently stop
+ *  protecting live markets and players could bet on known outcomes. Fired
+ *  debounced by the sentinel runner; in-app SECURITY bell + best-effort email to
+ *  every ADMIN/COMPLIANCE officer. */
+export async function notifyAdminsSentinelDown(opts: { reason: string; errorCount: number; sampleError: string }) {
+  const officers = (await db.user.list()).filter((u) => ["ADMIN", "COMPLIANCE"].includes(u.role));
+  for (const o of officers) {
+    await notify({
+      userId: o.id,
+      kind: "SECURITY",
+      titleEn: `⚠️ Market Sentinel is failing (${opts.reason})`,
+      titleSw: `⚠️ Mlinzi wa Soko umeshindwa (${opts.reason})`,
+      bodyEn: `The live auto-close AI could not check ${opts.errorCount} market(s) on its last sweep — live markets may be unprotected. Most likely: Anthropic billing/API key. Check now.`,
+      bodySw: `AI ya kufunga soko imeshindwa kukagua masoko ${opts.errorCount}. Angalia malipo/API key ya Anthropic mara moja.`,
+      href: "/admin/system",
+    }).catch(() => {});
+  }
+  try {
+    const { sendEmail } = await import("./email");
+    const { resolvePhoneEmail } = await import("./email-map");
+    const emails = [...new Set(
+      officers
+        .map((o) => (o.email || resolvePhoneEmail(o.phoneE164) || "").trim().toLowerCase())
+        .filter((e) => e && !e.endsWith("@stub") && !e.endsWith("@none")),
+    )];
+    const html =
+      `<div style="font-family:system-ui,sans-serif;line-height:1.5">` +
+      `<h2 style="margin:0 0 8px">⚠️ Market Sentinel is failing</h2>` +
+      `<p>Reason: <b>${opts.reason}</b></p>` +
+      `<p>On its last sweep the live auto-close AI could not check <b>${opts.errorCount}</b> market(s), ` +
+      `so a just-settled market could stay open to betting.</p>` +
+      `<p><b>Most likely fix:</b> the Anthropic API balance is exhausted or the key is invalid — ` +
+      `check Plans &amp; Billing and the <code>ANTHROPIC_API_KEY</code>.</p>` +
+      `<pre style="background:#f4f4f4;padding:8px;border-radius:6px;white-space:pre-wrap;font-size:12px">` +
+      `${opts.sampleError.slice(0, 500).replace(/</g, "&lt;")}</pre></div>`;
+    for (const to of emails) {
+      sendEmail({
+        to,
+        subject: `⚠️ Market Sentinel failing — ${opts.reason}`,
+        html,
+        tag: "sentinel-health",
+        trackLinks: false,
+      }).catch(() => {});
+    }
+  } catch { /* officer email is best-effort */ }
+}
+
 /** Source-of-funds review outcome. ACCEPTED unblocks the deposit gate; REJECTED
  *  asks the player to re-declare (deposits over the threshold stay blocked). */
 export function notifySof(userId: string, status: "ACCEPTED" | "REJECTED") {
