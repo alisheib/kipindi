@@ -7,6 +7,7 @@ import { I } from "@/components/ui/glyphs";
 import { cn } from "@/lib/utils";
 import { fetchMyNotifications, markNotifReadAction, markAllReadAction, dismissNotifAction } from "@/app/_actions/notifications";
 import type { StoredNotification } from "@/lib/server/store";
+import { haptics } from "@/lib/haptics";
 
 // No static fallbacks — players only see notifications that were really
 // emitted to their own userId. Empty inbox shows "No notifications yet."
@@ -75,9 +76,15 @@ export function NotificationsPanel() {
   // Close panel on navigation so the portal + scrim don't persist.
   useEffect(() => { setOpen(false); }, [pathname]);
 
+  const prevUnreadRef = useRef(0);
   const refresh = useCallback(async () => {
     const r = await fetchMyNotifications();
     setItems(r.items);
+    // Haptic nudge when new notifications arrive (unread count increased)
+    if (r.unread > prevUnreadRef.current && prevUnreadRef.current >= 0) {
+      haptics.success();
+    }
+    prevUnreadRef.current = r.unread;
     setUnread(r.unread);
   }, []);
 

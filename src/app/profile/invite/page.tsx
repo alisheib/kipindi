@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { currentSession } from "@/lib/server/auth-service";
@@ -95,6 +96,13 @@ export default async function InvitePage() {
 
   return (
     <div className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-3">
+      <Link
+        href="/profile"
+        className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
+      >
+        <I.chevronLeft s={14} />
+        Profile
+      </Link>
       <h1 className="sr-only">Invite &amp; Earn · Alika na upate zawadi</h1>
 
       {/* Title row */}

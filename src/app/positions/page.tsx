@@ -67,6 +67,13 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
       <RefreshPoller intervalMs={20_000} />
+      <Link
+        href="/markets"
+        className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
+      >
+        <I.chevronLeft s={14} />
+        Markets
+      </Link>
       <header>
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">History · Historia</p>
         <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">Polls you&rsquo;ve played</h1>
