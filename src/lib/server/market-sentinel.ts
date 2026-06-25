@@ -28,7 +28,7 @@ import { audit } from "./audit";
 
 // --- Configuration -----------------------------------------------------------
 
-const SENTINEL_MODEL = process.env.SENTINEL_MODEL || "claude-sonnet-4-6-20250514";
+const SENTINEL_MODEL = process.env.SENTINEL_MODEL || "claude-sonnet-4-20250514";
 const SENTINEL_INTERVAL_MS = parseInt(process.env.SENTINEL_INTERVAL_MS || "180000", 10);
 const SENTINEL_CONFIDENCE_THRESHOLD = 90;
 const SENTINEL_COOLDOWN_MS = 180_000;

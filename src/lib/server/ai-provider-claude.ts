@@ -32,7 +32,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { AIProvider, AIProviderResponse, AIPollGeneration, GenerateRequest } from "./ai-provider";
 import { getAIPollConfig } from "./ai-poll-config";
 
-const MODEL = process.env.AI_POLL_MODEL || "claude-sonnet-4-6-20250514";
+const MODEL = process.env.AI_POLL_MODEL || "claude-sonnet-4-20250514";
 
 // Sonnet 4.6 token pricing (USD per token).
 const PRICE_INPUT_PER_TOKEN = 3 / 1_000_000;   // $3 / MTok
