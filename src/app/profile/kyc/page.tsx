@@ -13,7 +13,7 @@ import { SUPPORT_EMAIL } from "@/lib/support-config";
 
 export const metadata = { title: "Verify identity · Thibitisha" };
 
-export default async function KycPage({ searchParams }: { searchParams?: Promise<{ welcome?: string; error?: string; nida?: string; submitted?: string }> }) {
+export default async function KycPage({ searchParams }: { searchParams?: Promise<{ welcome?: string; error?: string; nida?: string; submitted?: string; fullName?: string; dob?: string; email?: string }> }) {
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile/kyc");
 
@@ -210,6 +210,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               maxLength={20}
               inputMode="numeric"
               placeholder="00000000000000000000"
+              defaultValue={(sp as Record<string, string | undefined>).nida ?? ""}
             />
             <Field
               id="fullName"
@@ -219,6 +220,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               required
               minLength={3}
               maxLength={100}
+              defaultValue={(sp as Record<string, string | undefined>).fullName ?? ""}
             />
             <div>
               <label htmlFor="dob" className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
@@ -265,6 +267,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               maxLength={254}
               inputMode="text"
               placeholder="you@example.com"
+              defaultValue={(sp as Record<string, string | undefined>).email ?? ""}
             />
             <SubmitButton label="Verify NIDA · Thibitisha" pendingLabel="Verifying…" />
           </form>
@@ -400,12 +403,12 @@ function humanizeRejectReason(raw: string): string {
 
 function Field({
   id, label, hint, type, pattern, inputMode, placeholder,
-  required: req = true, minLength, maxLength, min, max, title,
+  required: req = true, minLength, maxLength, min, max, title, defaultValue,
 }: {
   id: string; label: string; hint?: string; type: string;
   pattern?: string; inputMode?: "numeric" | "text"; placeholder?: string;
   required?: boolean; minLength?: number; maxLength?: number; min?: string; max?: string;
-  title?: string;
+  title?: string; defaultValue?: string;
 }) {
   return (
     <div>
@@ -428,6 +431,7 @@ function Field({
         min={min}
         max={max}
         title={title}
+        defaultValue={defaultValue}
         className="w-full h-11 px-3.5 rounded-md border border-border font-mono text-[16px] tabular-nums text-text focus:outline-none admin-focus transition-colors invalid:border-no-500"
         style={{ background: "var(--bg-inset)" }}
       />

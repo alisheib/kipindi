@@ -91,6 +91,24 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
         </div>
       </header>
 
+      {existing?.reviewStatus === "REJECTED" && (
+        <section role="alert" className="rounded-xl border border-no-700 bg-no-500/[0.08] p-4">
+          <div className="flex items-start gap-2.5">
+            <I.alertCircle s={18} />
+            <div className="min-w-0">
+              <p className="font-display text-[14px] font-bold text-no-300">Declaration rejected · Tamko limekataliwa</p>
+              <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
+                Our compliance team could not accept your declaration as submitted.
+                Please update the form below and re-submit with accurate information.
+                <span className="block italic text-text-subtle text-[11.5px] mt-0.5">
+                  Tafadhali rekebisha na uwasilishe tena.
+                </span>
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
       {existing && existing.reviewStatus !== "REJECTED" && (
         <section className="rounded-xl border border-yes-700/60 bg-yes-500/[0.06] p-4 space-y-1.5">
           <div className="flex items-center gap-2">

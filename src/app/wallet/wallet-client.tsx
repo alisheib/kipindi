@@ -50,19 +50,20 @@ function BalanceCard({
         )}
         <div className="mt-5 grid grid-cols-2 gap-3">
           <SubStat label="Pending" sw="Inasubiri" value={fmt(pending, currency)} />
-          <SubStat label="On hold"  sw="Imezuiwa"  value={fmt(hold, currency)} />
+          <SubStat label="On hold"  sw="Imezuiwa"  value={fmt(hold, currency)} hint={hold > 0 ? "Pending withdrawals or AML review" : undefined} />
         </div>
       </div>
     </section>
   );
 }
 
-function SubStat({ label, sw, value }: { label: string; sw: string; value: string }) {
+function SubStat({ label, sw, value, hint }: { label: string; sw: string; value: string; hint?: string }) {
   return (
     <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-3 py-2.5 backdrop-blur-md">
       <p className="font-mono text-[9.5px] uppercase tracking-[0.10em] text-text-faint">{label}</p>
       <p className="font-mono font-bold text-[14px] tabular-nums text-text leading-tight"><Cash>{value}</Cash></p>
       <p className="text-[10px] italic text-text-subtle">{sw}</p>
+      {hint && <p className="mt-0.5 text-[9.5px] text-text-faint">{hint}</p>}
     </div>
   );
 }

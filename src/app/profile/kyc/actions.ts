@@ -12,15 +12,24 @@ export async function submitNidaAction(formData: FormData) {
   const rawEmail = formData.get("email");
   const emailStr = rawEmail ? String(rawEmail).trim() : "";
 
+  const nida = String(formData.get("nida") ?? "");
+  const fullName = String(formData.get("fullName") ?? "");
+  const dob = String(formData.get("dob") ?? "");
+
   const result = await submitNidaStep(session.userId, {
-    nida: String(formData.get("nida") ?? ""),
-    fullName: String(formData.get("fullName") ?? ""),
-    dob: String(formData.get("dob") ?? ""),
+    nida,
+    fullName,
+    dob,
     ...(emailStr ? { email: emailStr } : {}),
   });
 
   revalidatePath("/profile/kyc");
-  if (!result.ok) redirect(`/profile/kyc?error=${encodeURIComponent(result.error)}`);
+  // Carry form values through the error redirect so the player doesn't
+  // have to re-type a 20-digit NIDA number + full name on validation failure.
+  if (!result.ok) {
+    const carry = `&nida=${encodeURIComponent(nida)}&fullName=${encodeURIComponent(fullName)}&dob=${encodeURIComponent(dob)}${emailStr ? `&email=${encodeURIComponent(emailStr)}` : ""}`;
+    redirect(`/profile/kyc?error=${encodeURIComponent(result.error)}${carry}`);
+  }
   redirect("/profile/kyc?nida=verified");
 }
 
