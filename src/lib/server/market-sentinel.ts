@@ -8,26 +8,18 @@
  *
  * Architecture:
  *   1. Polls all LIVE markets every N minutes (configurable)
- *   2. For each market whose outcome COULD be determined before resolutionAt,
- *      asks Claude Sonnet 4.6 with web search: "Has this outcome been decided?"
- *   3. If the model returns high confidence (≥90) that the outcome is determined,
- *      the sentinel closes the market immediately (CLOSED status, no new bets)
- *      and flags it for admin resolution with the AI's recommended outcome.
- *   4. The admin still has final say — the sentinel closes but doesn't settle.
- *      This prevents payout errors from an AI hallucination while still
- *      protecting players from betting on determined outcomes.
- *
- * Model choice: Claude Sonnet 4.6 (not Haiku) — this is a judgment call that
- * affects real money. Sonnet's stronger reasoning + web search accuracy is
- * worth the higher cost. A wrong close is recoverable (admin reopens); a
- * missed close means players lose money on a rigged bet.
+ *   2. For each market, asks Claude Sonnet 4.6 with web search:
+ *      "Has this outcome been decided?"
+ *   3. If ≥90% confidence → CLOSE market (no new bets)
+ *   4. Admin still resolves manually (two-officer dance → payouts)
  *
  * Safety:
- *   - Sentinel can only CLOSE markets, never RESOLVE (no payouts without human)
- *   - 90% confidence threshold prevents trigger-happy closures
- *   - Full audit trail for every sentinel action
- *   - Admin notification on every closure
- *   - Cooldown per market (don't re-check a market more than once per 3 min)
+ *   - Can only CLOSE, never RESOLVE (no payouts without human)
+ *   - 90% confidence threshold prevents false closures
+ *   - Full audit trail
+ *   - Cooldown per market (3 min between checks)
+ *   - Singleton Anthropic client (no resource leak)
+ *   - Cooldown map cleaned up every sweep (no memory leak)
  */
 
 import Anthropic from "@anthropic-ai/sdk";
@@ -37,11 +29,20 @@ import { audit } from "./audit";
 // --- Configuration -----------------------------------------------------------
 
 const SENTINEL_MODEL = process.env.SENTINEL_MODEL || "claude-sonnet-4-6-20250514";
-const SENTINEL_INTERVAL_MS = parseInt(process.env.SENTINEL_INTERVAL_MS || "180000", 10); // 3 min default
-const SENTINEL_CONFIDENCE_THRESHOLD = 90; // only close if AI is ≥90% confident
-const SENTINEL_COOLDOWN_MS = 180_000; // don't re-check same market within 3 min
+const SENTINEL_INTERVAL_MS = parseInt(process.env.SENTINEL_INTERVAL_MS || "180000", 10);
+const SENTINEL_CONFIDENCE_THRESHOLD = 90;
+const SENTINEL_COOLDOWN_MS = 180_000;
 
-// Track when each market was last checked to avoid hammering the API
+// Singleton Anthropic client — reused across all checks
+let client: Anthropic | null = null;
+function getClient(): Anthropic | null {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return null;
+  if (!client) client = new Anthropic({ apiKey });
+  return client;
+}
+
+// Per-market cooldown tracker
 const lastChecked = new Map<string, number>();
 
 // --- AI Judgment Tool --------------------------------------------------------
@@ -80,7 +81,7 @@ const OUTCOME_TOOL = {
   },
 };
 
-// --- Core Logic --------------------------------------------------------------
+// --- Types -------------------------------------------------------------------
 
 export type SentinelResult = {
   marketId: string;
@@ -94,6 +95,8 @@ export type SentinelResult = {
   error?: string;
 };
 
+// --- Core Logic --------------------------------------------------------------
+
 async function checkMarket(market: {
   id: string;
   titleEn: string;
@@ -102,13 +105,17 @@ async function checkMarket(market: {
   resolutionCriterion?: string;
   resolutionAt: string;
 }): Promise<SentinelResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return { marketId: market.id, title: market.titleEn, determined: false, outcome: "UNKNOWN", confidence: 0, evidence: "", action: "error", error: "No ANTHROPIC_API_KEY" };
-  }
+  const fail = (error: string): SentinelResult => ({
+    marketId: market.id, title: market.titleEn,
+    determined: false, outcome: "UNKNOWN", confidence: 0,
+    evidence: "", action: "error", error,
+  });
 
-  const client = new Anthropic({ apiKey });
+  const anthropic = getClient();
+  if (!anthropic) return fail("No ANTHROPIC_API_KEY");
+
   const now = new Date().toISOString();
+  const criterion = market.resolutionCriterion?.trim() || "Not specified";
 
   const systemPrompt = `You are the 50pick Market Sentinel — a real-time monitor for a licensed prediction-market platform in Tanzania.
 
@@ -128,65 +135,55 @@ IMPORTANT:
   const userPrompt = `Check this live market:
 
 TITLE: ${market.titleEn}
-SWAHILI: ${market.titleSw}
+SWAHILI: ${market.titleSw || market.titleEn}
 CATEGORY: ${market.category}
-RESOLUTION CRITERION: ${market.resolutionCriterion || "Not specified"}
+RESOLUTION CRITERION: ${criterion}
 SCHEDULED RESOLUTION: ${market.resolutionAt}
 
 Has this outcome already been determined by real-world events? Search the web for the latest news/scores/data and report your finding using the report_outcome tool.`;
 
   try {
-    const response = await client.messages.create({
+    const response = await anthropic.messages.create({
       model: SENTINEL_MODEL,
       max_tokens: 1024,
       system: systemPrompt,
       tools: [
         OUTCOME_TOOL as unknown as Anthropic.Tool,
-        // Enable web search so the model can check live scores/news
         { type: "web_search_20250305", name: "web_search", max_uses: 3 } as unknown as Anthropic.Tool,
       ],
       tool_choice: { type: "auto" },
       messages: [{ role: "user", content: userPrompt }],
     });
 
-    // Extract the report_outcome tool call
+    // Extract the report_outcome tool call from the response
     const toolUse = response.content.find(
       (b) => b.type === "tool_use" && b.name === "report_outcome",
     );
     if (!toolUse || toolUse.type !== "tool_use") {
-      return {
-        marketId: market.id, title: market.titleEn,
-        determined: false, outcome: "UNKNOWN", confidence: 0,
-        evidence: "Model did not call report_outcome tool",
-        action: "error", error: "No tool call in response",
-      };
+      return fail("Model did not call report_outcome tool");
     }
 
-    const input = toolUse.input as {
-      determined: boolean;
-      outcome: "YES" | "NO" | "UNKNOWN";
-      confidence: number;
-      evidence: string;
-      sourceUrl?: string;
-    };
+    // Validate input types — the model should return structured data but
+    // we can't trust it blindly on a real-money system
+    const raw = toolUse.input as Record<string, unknown>;
+    const determined = !!raw.determined;
+    const outcome = (["YES", "NO", "UNKNOWN"].includes(String(raw.outcome)) ? String(raw.outcome) : "UNKNOWN") as "YES" | "NO" | "UNKNOWN";
+    const confidence = Math.max(0, Math.min(100, Math.round(Number(raw.confidence) || 0)));
+    const evidence = String(raw.evidence || "");
+    const sourceUrl = raw.sourceUrl ? String(raw.sourceUrl) : undefined;
 
     return {
       marketId: market.id,
       title: market.titleEn,
-      determined: input.determined,
-      outcome: input.outcome,
-      confidence: input.confidence,
-      evidence: input.evidence,
-      sourceUrl: input.sourceUrl,
+      determined,
+      outcome,
+      confidence,
+      evidence,
+      sourceUrl,
       action: "skipped", // caller decides the action
     };
   } catch (err) {
-    return {
-      marketId: market.id, title: market.titleEn,
-      determined: false, outcome: "UNKNOWN", confidence: 0,
-      evidence: "", action: "error",
-      error: (err as Error).message,
-    };
+    return fail((err as Error).message);
   }
 }
 
@@ -195,18 +192,27 @@ export async function runSentinelSweep(): Promise<SentinelResult[]> {
   const results: SentinelResult[] = [];
   const now = Date.now();
 
-  // Get all live markets
-  const allMarkets = (await marketStore.values()).filter((m) => m.status === "LIVE");
+  // Clean stale cooldown entries (older than 1 hour) to prevent memory leak
+  for (const [id, ts] of lastChecked.entries()) {
+    if (now - ts > 3_600_000) lastChecked.delete(id);
+  }
+
+  let allMarkets;
+  try {
+    allMarkets = (await marketStore.values()).filter((m) => m.status === "LIVE");
+  } catch (err) {
+    console.error("[sentinel] Failed to read markets:", err);
+    return results;
+  }
 
   if (allMarkets.length === 0) return results;
 
   for (const market of allMarkets) {
-
     // Skip if checked recently (cooldown)
     const lastCheck = lastChecked.get(market.id) ?? 0;
     if (now - lastCheck < SENTINEL_COOLDOWN_MS) continue;
 
-    // Skip markets that close within 5 minutes — they'll auto-close anyway
+    // Skip markets closing within 5 minutes — auto-close handles those
     const timeToClose = Date.parse(market.resolutionAt) - now;
     if (timeToClose < 5 * 60_000) continue;
 
@@ -225,12 +231,14 @@ export async function runSentinelSweep(): Promise<SentinelResult[]> {
       continue;
     }
 
-    // HIGH CONFIDENCE: outcome is determined — close the market
-    // The sentinel does NOT resolve (no payouts) — it only closes to prevent
-    // new bets. An admin must still confirm the resolution.
+    // HIGH CONFIDENCE: outcome determined — close market to block new bets
     try {
       const fresh = await marketStore.get(market.id);
-      if (!fresh || fresh.status !== "LIVE") continue; // raced with admin
+      if (!fresh || fresh.status !== "LIVE") {
+        result.action = "skipped";
+        results.push(result);
+        continue;
+      }
       fresh.status = "CLOSED";
       fresh.updatedAt = new Date().toISOString();
       await marketStore.set(fresh);
@@ -250,9 +258,6 @@ export async function runSentinelSweep(): Promise<SentinelResult[]> {
         },
       });
 
-      // Audit log is the primary notification — admins check the audit
-      // dashboard. A future enhancement can push to admin notifications.
-
       result.action = "closed";
     } catch (err) {
       result.action = "error";
@@ -268,10 +273,10 @@ export async function runSentinelSweep(): Promise<SentinelResult[]> {
 // --- Background Runner -------------------------------------------------------
 
 let intervalId: ReturnType<typeof setInterval> | null = null;
+let sweepRunning = false; // prevent concurrent sweeps
 
-/** Start the sentinel background loop. Safe to call multiple times (idempotent). */
 export function startSentinel(): void {
-  if (intervalId) return; // already running
+  if (intervalId) return;
   if (!process.env.ANTHROPIC_API_KEY) {
     console.warn("[sentinel] ANTHROPIC_API_KEY not set — sentinel disabled");
     return;
@@ -281,35 +286,36 @@ export function startSentinel(): void {
     return;
   }
 
-  console.log(`[sentinel] Starting market sentinel (interval: ${SENTINEL_INTERVAL_MS / 1000}s, model: ${SENTINEL_MODEL}, threshold: ${SENTINEL_CONFIDENCE_THRESHOLD}%)`);
+  console.log(`[sentinel] Starting (interval: ${SENTINEL_INTERVAL_MS / 1000}s, model: ${SENTINEL_MODEL}, threshold: ${SENTINEL_CONFIDENCE_THRESHOLD}%)`);
 
-  // Run first sweep after a short delay (let the server finish booting)
+  // First sweep after boot delay
   setTimeout(() => {
-    runSentinelSweep().then((results) => {
-      const closed = results.filter((r) => r.action === "closed");
-      if (closed.length > 0) {
-        console.log(`[sentinel] Sweep complete: ${closed.length} market(s) closed`, closed.map((r) => `${r.title} → ${r.outcome} (${r.confidence}%)`));
-      }
-    }).catch((err) => {
-      console.error("[sentinel] Sweep error:", err);
-    });
+    runSentinelSweep()
+      .then((r) => {
+        const closed = r.filter((x) => x.action === "closed");
+        if (closed.length > 0) console.log(`[sentinel] Boot sweep: ${closed.length} closed`);
+      })
+      .catch((err) => console.error("[sentinel] Boot sweep error:", err));
   }, 10_000);
 
   intervalId = setInterval(async () => {
+    if (sweepRunning) return; // skip if previous sweep still running
+    sweepRunning = true;
     try {
-      const results = await runSentinelSweep();
-      const closed = results.filter((r) => r.action === "closed");
-      const errors = results.filter((r) => r.action === "error");
+      const r = await runSentinelSweep();
+      const closed = r.filter((x) => x.action === "closed");
+      const errors = r.filter((x) => x.action === "error");
       if (closed.length > 0 || errors.length > 0) {
-        console.log(`[sentinel] Sweep: ${closed.length} closed, ${errors.length} errors, ${results.length - closed.length - errors.length} unchanged`);
+        console.log(`[sentinel] Sweep: ${closed.length} closed, ${errors.length} errors, ${r.length - closed.length - errors.length} skipped`);
       }
     } catch (err) {
       console.error("[sentinel] Sweep error:", err);
+    } finally {
+      sweepRunning = false;
     }
   }, SENTINEL_INTERVAL_MS);
 }
 
-/** Stop the sentinel. */
 export function stopSentinel(): void {
   if (intervalId) {
     clearInterval(intervalId);

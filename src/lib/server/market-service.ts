@@ -653,7 +653,10 @@ export async function cashOutPosition(
 
     const m = await marketStore.get(p.marketId);
     if (!m) return { ok: false as const, error: "Market not found.", code: "NOT_FOUND" as const };
-    if (m.status !== "LIVE") return { ok: false as const, error: "Cash-out only available while the market is LIVE.", code: "INVALID" as const };
+    // Allow cash-out on LIVE and CLOSED (sentinel-closed) markets. Players
+    // shouldn't be trapped in positions just because the sentinel detected an
+    // early outcome. Only block cash-out once the market is actually RESOLVED/VOIDED.
+    if (m.status === "RESOLVED" || m.status === "VOIDED") return { ok: false as const, error: "Market has been settled — position is final.", code: "INVALID" as const };
 
     const wallet = await db.wallet.findByUserId(userId);
     if (!wallet) return { ok: false as const, error: "Wallet not found.", code: "NOT_FOUND" as const };
@@ -957,6 +960,35 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
 
   return { ok: true, data: { stage: "complete", winnersPaid } };
   }); // end withLock market
+}
+
+/**
+ * ADMIN REOPEN — reverses a sentinel closure so the market goes back to LIVE.
+ * Only works on CLOSED markets that haven't entered the resolution flow yet
+ * (no stage-1 officer recorded). If the sentinel was wrong, this is the fix.
+ */
+export async function adminReopenMarket(marketId: string, officerId: string): Promise<ServiceResult<{ market: StoredMarket }>> {
+  return withLock(`market:${marketId}`, async () => {
+    const m = await marketStore.get(marketId);
+    if (!m) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
+    if (m.status !== "CLOSED") return { ok: false, error: "Only closed markets can be reopened.", code: "INVALID" };
+    if (m.resolutionStage1By) return { ok: false, error: "Cannot reopen — resolution already started.", code: "INVALID" };
+
+    m.status = "LIVE";
+    m.updatedAt = new Date().toISOString();
+    await marketStore.set(m);
+
+    audit({
+      category: "ADMIN",
+      action: "market.reopened",
+      actorId: officerId,
+      targetType: "Market",
+      targetId: m.id,
+      payload: { reason: "Sentinel judgment overridden by admin" },
+    });
+
+    return { ok: true, data: { market: m } };
+  });
 }
 
 /**

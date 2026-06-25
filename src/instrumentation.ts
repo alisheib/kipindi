@@ -19,10 +19,13 @@
  * register() fires once on server startup — start the market sentinel here.
  */
 export async function register() {
-  // Only start on the Node.js runtime (not edge/middleware)
   if (process.env.NEXT_RUNTIME === "nodejs") {
-    const { startSentinel } = await import("./lib/server/market-sentinel");
-    startSentinel();
+    try {
+      const { startSentinel } = await import("./lib/server/market-sentinel");
+      startSentinel();
+    } catch (err) {
+      console.error("[instrumentation] Failed to start sentinel:", err);
+    }
   }
 }
 
