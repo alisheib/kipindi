@@ -33,6 +33,10 @@ const SENTINEL_MODEL = process.env.SENTINEL_MODEL || ai.model;
 const SENTINEL_INTERVAL_MS = parseInt(process.env.SENTINEL_INTERVAL_MS || "180000", 10);
 const SENTINEL_CONFIDENCE_THRESHOLD = 90;
 const SENTINEL_COOLDOWN_MS = 180_000;
+// How many markets to check concurrently per sweep. Keeps the whole board
+// scanned within seconds (not minutes) even with many live markets, so a
+// just-settled outcome is caught fast. Tune via env if rate limits bite.
+const SENTINEL_CONCURRENCY = parseInt(process.env.SENTINEL_CONCURRENCY || "6", 10);
 
 // Singleton Anthropic client — reused across all checks
 let client: Anthropic | null = null;
@@ -51,19 +55,30 @@ const lastChecked = new Map<string, number>();
 const OUTCOME_TOOL = {
   name: "report_outcome",
   description:
-    "Report whether the market's outcome has already been determined. " +
+    "Report whether the market's outcome is already IRREVERSIBLY SETTLED (locked). " +
     "Call this exactly once with your assessment.",
   input_schema: {
     type: "object" as const,
     properties: {
+      reasoning: {
+        type: "string" as const,
+        description:
+          "Show your work BEFORE deciding: (1) the exact threshold/condition and comparison " +
+          "operator you parsed (e.g. 'more than 3' = strictly >3, needs 4+); (2) the measurement " +
+          "window and whether the quantity is cumulative; (3) the CURRENT real value found via web " +
+          "search, including anything accumulated before the market opened; (4) whether the result " +
+          "is locked and why (can it still change?).",
+      },
       determined: {
         type: "boolean" as const,
-        description: "true if the outcome is already known/decided, false if still open.",
+        description:
+          "true ONLY if the YES/NO result is already irreversibly LOCKED — nothing that can still " +
+          "happen could change it. false if the outcome could still change, or you cannot verify.",
       },
       outcome: {
         type: "string" as const,
         enum: ["YES", "NO", "UNKNOWN"],
-        description: "The determined outcome. UNKNOWN if not yet decided.",
+        description: "The locked outcome. UNKNOWN if not yet locked.",
       },
       confidence: {
         type: "number" as const,
@@ -71,14 +86,14 @@ const OUTCOME_TOOL = {
       },
       evidence: {
         type: "string" as const,
-        description: "Brief summary of the evidence (what happened, when, source).",
+        description: "Brief summary of the evidence (what happened, the current value, when, source).",
       },
       sourceUrl: {
         type: "string" as const,
-        description: "URL of the source confirming the outcome, if found.",
+        description: "URL of the source confirming the current value/outcome, if found.",
       },
     },
-    required: ["determined", "outcome", "confidence", "evidence"],
+    required: ["reasoning", "determined", "outcome", "confidence", "evidence"],
   },
 };
 
@@ -91,6 +106,7 @@ export type SentinelResult = {
   outcome: "YES" | "NO" | "UNKNOWN";
   confidence: number;
   evidence: string;
+  reasoning?: string;
   sourceUrl?: string;
   action: "closed" | "skipped" | "below_threshold" | "error";
   error?: string;
@@ -105,6 +121,8 @@ async function checkMarket(market: {
   category: string;
   resolutionCriterion?: string;
   resolutionAt: string;
+  sourceUrl?: string | null;
+  createdAt?: string;
 }): Promise<SentinelResult> {
   const fail = (error: string): SentinelResult => ({
     marketId: market.id, title: market.titleEn,
@@ -118,39 +136,49 @@ async function checkMarket(market: {
   const now = new Date().toISOString();
   const criterion = market.resolutionCriterion?.trim() || "Not specified";
 
-  const systemPrompt = `You are the 50pick Market Sentinel — a real-time monitor for a licensed prediction-market platform in Tanzania.
-
-Your job: determine whether a live market's outcome has ALREADY been decided by real-world events, even though the market's scheduled resolution time hasn't arrived yet.
+  const systemPrompt = `You are the 50pick Market Sentinel — a real-time integrity monitor for a LICENSED, REAL-MONEY prediction-market platform in Tanzania. Real money is at stake. If a market stays open after its outcome is already settled, players can bet on a known result and the house loses money. If you close a market whose outcome is NOT yet settled, you block legitimate betting. Both are costly — be VIGILANT and PRECISE.
 
 CURRENT DATE/TIME: ${now}
 
-You MUST use web search to find the latest information about this event. Do NOT rely on training data — the event may have happened minutes ago.
+YOUR JOB
+Decide whether this market's outcome is already IRREVERSIBLY SETTLED ("locked") by real-world events — i.e. nothing that can still happen could change the YES/NO result. The platform closes a market to new bets only when it is locked. A human officer still does the final payout; you never pay out.
 
-IMPORTANT:
-- Only report determined=true if you find CONCRETE EVIDENCE that the outcome is settled.
-- A match being in progress is NOT enough — the specific condition in the resolution criterion must be met.
-- If the event hasn't happened yet or is still in progress with the outcome uncertain, report determined=false.
-- Be conservative. A false "determined" closes the market and blocks player bets. Only trigger on clear evidence.
-- Confidence must be ≥90 for the platform to act on your assessment.`;
+YOU MUST USE WEB SEARCH — never answer from memory. The deciding event may have happened minutes ago. Search for the latest score/result/data; prefer the official source if one is given. Search more than once, from different angles, if the first result is unclear or incomplete.
 
-  const userPrompt = `Check this live market:
+HOW TO JUDGE — follow these steps exactly:
+1. Parse the EXACT condition and its comparison operator, literally. A difference of one unit decides the winner:
+   - "more than N" / "over N" = STRICTLY greater than N → needs N+1 or more (so "more than 3" needs 4).
+   - "at least N" / "N or more" / "N+" = greater than or equal to N → N is enough.
+   - "under N" / "less than N" / "fewer than N" = STRICTLY less than N.
+   - "exactly N" = equal to N only.
+2. Identify the measurement WINDOW (this match? this tournament? this season? a date range?) and whether the quantity is CUMULATIVE (a running total that only ever goes UP — goals, points, wins across a tournament) or a single event.
+3. Establish the CURRENT real value from the web. For a cumulative condition this is the running total across the WHOLE window to date — you MUST include anything accumulated BEFORE this market opened, not only what happened since.
+4. Decide if the result is LOCKED:
+   - YES is locked when the condition is ALREADY satisfied and CANNOT be undone. Cumulative totals only rise, so once the total crosses the YES threshold it is permanent regardless of matches still to come (e.g. "more than 3 goals" and the player now has 4 total → locked YES, even mid-tournament).
+   - NO is locked when the condition can NO LONGER be reached — the window has ended, OR the participant can no longer add to the count (eliminated, match/tournament over, withdrawn) AND the current value cannot reach the threshold (e.g. "more than 3 goals" and the tournament ended with the player on 2, or the player was eliminated on 2 → locked NO).
+   - If the participant could STILL change the result (matches/time remain and the threshold is still reachable), it is NOT locked → determined=false. "Close", "on track", or "likely" is NOT settled.
+5. Be conservative. If you cannot verify the current value from a reliable source with high confidence, report determined=false. Report determined=true with confidence ≥90 ONLY with concrete evidence the result is locked.`;
 
-TITLE: ${market.titleEn}
-SWAHILI: ${market.titleSw || market.titleEn}
+  const userPrompt = `Assess this live market.
+
+TITLE (EN): ${market.titleEn}
+TITLE (SW): ${market.titleSw || market.titleEn}
 CATEGORY: ${market.category}
 RESOLUTION CRITERION: ${criterion}
+OFFICIAL SOURCE (resolve against this if given): ${market.sourceUrl || "none provided"}
+MARKET OPENED: ${market.createdAt || "unknown"}
 SCHEDULED RESOLUTION: ${market.resolutionAt}
 
-Has this outcome already been determined by real-world events? Search the web for the latest news/scores/data and report your finding using the report_outcome tool.`;
+Search the web for the latest data, work through the steps, then call report_outcome. Report determined=true ONLY if the YES/NO result is already irreversibly locked.`;
 
   try {
     const response = await anthropic.messages.create({
       model: SENTINEL_MODEL,
-      max_tokens: 1024,
+      max_tokens: 2048,
       system: systemPrompt,
       tools: [
         OUTCOME_TOOL as unknown as Anthropic.Tool,
-        { type: ai.webSearchTool.type, name: ai.webSearchTool.name, max_uses: 3 } as unknown as Anthropic.Tool,
+        { type: ai.webSearchTool.type, name: ai.webSearchTool.name, max_uses: 5 } as unknown as Anthropic.Tool,
       ],
       tool_choice: { type: "auto" },
       messages: [{ role: "user", content: userPrompt }],
@@ -171,6 +199,7 @@ Has this outcome already been determined by real-world events? Search the web fo
     const outcome = (["YES", "NO", "UNKNOWN"].includes(String(raw.outcome)) ? String(raw.outcome) : "UNKNOWN") as "YES" | "NO" | "UNKNOWN";
     const confidence = Math.max(0, Math.min(100, Math.round(Number(raw.confidence) || 0)));
     const evidence = String(raw.evidence || "");
+    const reasoning = raw.reasoning ? String(raw.reasoning) : undefined;
     const sourceUrl = raw.sourceUrl ? String(raw.sourceUrl) : undefined;
 
     return {
@@ -180,6 +209,7 @@ Has this outcome already been determined by real-world events? Search the web fo
       outcome,
       confidence,
       evidence,
+      reasoning,
       sourceUrl,
       action: "skipped", // caller decides the action
     };
@@ -208,37 +238,37 @@ export async function runSentinelSweep(): Promise<SentinelResult[]> {
 
   if (allMarkets.length === 0) return results;
 
-  for (const market of allMarkets) {
-    // Skip if checked recently (cooldown)
+  // Build the due list (cooldown + skip-near-close), marking lastChecked up front
+  // so a concurrent sweep can't double-pick the same market.
+  const due = allMarkets.filter((market) => {
     const lastCheck = lastChecked.get(market.id) ?? 0;
-    if (now - lastCheck < SENTINEL_COOLDOWN_MS) continue;
-
+    if (now - lastCheck < SENTINEL_COOLDOWN_MS) return false;
     // Skip markets closing within 5 minutes — auto-close handles those
     const timeToClose = Date.parse(market.resolutionAt) - now;
-    if (timeToClose < 5 * 60_000) continue;
-
+    if (timeToClose < 5 * 60_000) return false;
     lastChecked.set(market.id, now);
+    return true;
+  });
 
+  if (due.length === 0) return results;
+
+  // Check one market end-to-end: AI judgment → (if locked & confident) close + audit.
+  const processOne = async (market: (typeof due)[number]): Promise<SentinelResult> => {
     const result = await checkMarket(market);
 
-    if (result.action === "error") {
-      results.push(result);
-      continue;
-    }
+    if (result.action === "error") return result;
 
     if (!result.determined || result.confidence < SENTINEL_CONFIDENCE_THRESHOLD) {
       result.action = result.determined ? "below_threshold" : "skipped";
-      results.push(result);
-      continue;
+      return result;
     }
 
-    // HIGH CONFIDENCE: outcome determined — close market to block new bets
+    // HIGH CONFIDENCE: outcome locked — close market to block new bets
     try {
       const fresh = await marketStore.get(market.id);
       if (!fresh || fresh.status !== "LIVE") {
         result.action = "skipped";
-        results.push(result);
-        continue;
+        return result;
       }
       fresh.status = "CLOSED";
       fresh.updatedAt = new Date().toISOString();
@@ -254,6 +284,7 @@ export async function runSentinelSweep(): Promise<SentinelResult[]> {
           outcome: result.outcome,
           confidence: result.confidence,
           evidence: result.evidence,
+          reasoning: result.reasoning,
           sourceUrl: result.sourceUrl,
           model: SENTINEL_MODEL,
         },
@@ -265,7 +296,26 @@ export async function runSentinelSweep(): Promise<SentinelResult[]> {
       result.error = `Close failed: ${(err as Error).message}`;
     }
 
-    results.push(result);
+    return result;
+  };
+
+  // Process in bounded-concurrency batches so the whole board is scanned fast
+  // (a just-settled outcome shouldn't wait behind dozens of sequential calls).
+  for (let i = 0; i < due.length; i += SENTINEL_CONCURRENCY) {
+    const batch = due.slice(i, i + SENTINEL_CONCURRENCY);
+    const settled = await Promise.allSettled(batch.map(processOne));
+    for (let j = 0; j < settled.length; j++) {
+      const s = settled[j];
+      if (s.status === "fulfilled") {
+        results.push(s.value);
+      } else {
+        results.push({
+          marketId: batch[j].id, title: batch[j].titleEn,
+          determined: false, outcome: "UNKNOWN", confidence: 0,
+          evidence: "", action: "error", error: String(s.reason),
+        });
+      }
+    }
   }
 
   return results;
