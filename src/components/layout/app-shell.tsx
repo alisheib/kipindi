@@ -4,6 +4,9 @@ import { headers } from "next/headers";
 const LazyOfflineBanner = lazy(() =>
   import("@/components/ui/offline-banner").then((m) => ({ default: m.OfflineBanner })),
 );
+const LazyPullToRefresh = lazy(() =>
+  import("@/components/ui/pull-to-refresh").then((m) => ({ default: m.PullToRefresh })),
+);
 import { TopAppBar } from "./top-app-bar";
 import { LiveTicker } from "./live-ticker";
 import { BottomNav } from "./bottom-nav";
@@ -92,6 +95,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       </Suspense>
       <Suspense fallback={null}>
         <LazyOfflineBanner />
+      </Suspense>
+      <Suspense fallback={null}>
+        <LazyPullToRefresh />
       </Suspense>
     </div>
   );

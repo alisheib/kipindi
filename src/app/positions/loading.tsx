@@ -1,17 +1,45 @@
-import { BrandSpinner } from "@/components/brand";
-
 export default function PositionsLoading() {
   return (
-    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6">
-      <header className="mb-6">
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">Positions · Madau</p>
-        <h1 className="font-display text-[28px] font-bold text-text">Your predictions</h1>
+    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
+      <header>
+        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">History · Historia</p>
+        <h1 className="font-display text-[28px] font-bold text-text">Polls you&rsquo;ve played</h1>
+        <p className="text-[15px] italic text-text-subtle">Kura ulizocheza</p>
       </header>
-      <div className="grid place-items-center py-20 rounded-lg border border-border bg-bg-elevated/40">
-        <div className="flex flex-col items-center gap-4">
-          <BrandSpinner size={56} />
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-muted">Loading your positions</p>
-        </div>
+
+      {/* Tab skeleton */}
+      <nav className="flex items-center gap-1 border-b border-border" aria-hidden>
+        {["All", "Open", "Settled"].map((t, i) => (
+          <div
+            key={t}
+            className={`h-9 px-3.5 rounded-t-md ${i === 0 ? "bg-bg-overlay" : ""}`}
+            style={{ width: 70 }}
+          >
+            <span className="font-display text-[13px] text-text-subtle">{t}</span>
+          </div>
+        ))}
+      </nav>
+
+      {/* Position card skeletons */}
+      <div className="space-y-3" aria-hidden>
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div
+            key={i}
+            className="rounded-xl border border-border bg-bg-elevated p-4 kp-shimmer-track"
+          >
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-2">
+                <div className="h-5 w-12 rounded-pill bg-bg-overlay" />
+                <div className="h-4 w-24 rounded bg-bg-overlay" />
+              </div>
+              <div className="h-4 w-3/4 rounded bg-bg-overlay" />
+              <div className="flex gap-4">
+                <div className="h-3 w-20 rounded bg-bg-overlay" />
+                <div className="h-3 w-16 rounded bg-bg-overlay" />
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </main>
   );
