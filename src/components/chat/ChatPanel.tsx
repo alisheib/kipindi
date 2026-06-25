@@ -149,9 +149,22 @@ export function ChatPanel({ lang, messages, pending, onClose, onSend, variant }:
   );
 }
 
+function TimeLabel({ ts }: { ts?: number }) {
+  if (!ts) return null;
+  const d = new Date(ts);
+  const h = d.getHours().toString().padStart(2, "0");
+  const min = d.getMinutes().toString().padStart(2, "0");
+  return <span className="cm-time">{h}:{min}</span>;
+}
+
 function RenderMessage({ m }: { m: Message }) {
   if (m.role === "user") {
-    return <UserMessage>{m.text}</UserMessage>;
+    return (
+      <div>
+        <UserMessage>{m.text}</UserMessage>
+        <TimeLabel ts={m.ts} />
+      </div>
+    );
   }
   if (m.kind === "rg_redirect") {
     return <RgRedirectCard lang={m.lang} />;
@@ -169,8 +182,11 @@ function RenderMessage({ m }: { m: Message }) {
   }
   // plain text reply — split on newlines for proper paragraph/list rendering
   return (
-    <AiMessage>
-      {renderPlainText(m.text)}
-    </AiMessage>
+    <div>
+      <AiMessage>
+        {renderPlainText(m.text)}
+      </AiMessage>
+      <TimeLabel ts={m.ts} />
+    </div>
   );
 }

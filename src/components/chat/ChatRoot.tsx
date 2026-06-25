@@ -142,7 +142,7 @@ export function ChatRoot() {
           }));
         const liveResult = await chatWithClaude(historyForClaude, text);
         const reply: Message = liveResult
-          ? { id: `m_${Date.now().toString(36)}`, role: "ai", kind: "text", lang: user.lang, text: liveResult.text }
+          ? { id: `m_${Date.now().toString(36)}`, role: "ai", kind: "text", lang: user.lang, text: liveResult.text, ts: Date.now() }
           : await sendMessage([...messages, user], text);
         // Per the design spec, surface the escalate-to-support card
         // after 2 consecutive unresolved AI text replies — at that

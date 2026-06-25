@@ -15,13 +15,21 @@ export function CountdownPill({
   seconds,
   prefix,
   suffix,
-}: { seconds: number; prefix?: string; suffix?: string }) {
+  onExpire,
+}: { seconds: number; prefix?: string; suffix?: string; onExpire?: () => void }) {
   const [left, setLeft] = React.useState(Math.max(0, Math.floor(seconds)));
+  const expiredRef = React.useRef(false);
   React.useEffect(() => {
     if (left <= 0) return;
     const id = setInterval(() => setLeft((v) => Math.max(0, v - 1)), 1000);
     return () => clearInterval(id);
   }, [left]);
+  React.useEffect(() => {
+    if (left <= 0 && !expiredRef.current) {
+      expiredRef.current = true;
+      onExpire?.();
+    }
+  }, [left, onExpire]);
   if (left <= 0) {
     return (
       <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">

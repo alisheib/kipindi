@@ -8,6 +8,7 @@ import { PhoneInput } from "@/components/ui/phone-input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { CountdownPill } from "@/components/ui/countdown-pill";
+import { RateLimitBanner } from "@/components/auth/rate-limit-banner";
 import { startLoginAction } from "./actions";
 import { SUPPORT_EMAIL, HELPLINE } from "@/lib/support-config";
 
@@ -88,7 +89,7 @@ export default async function LoginPage({
           tone: "warning" as const,
           title: "Too many tries · Majaribio mengi",
           body: Number.isFinite(retrySec) && retrySec > 0
-            ? <>You can try again in <CountdownPill seconds={retrySec} suffix="· Subiri" />.</>
+            ? <RateLimitBanner seconds={retrySec} clearHref={`/auth/login${nextSafe ? `?next=${encodeURIComponent(nextSafe)}` : ""}`} />
             : "Wait a couple of minutes and try the same phone again.",
           cta: null,
         };
@@ -179,9 +180,11 @@ export default async function LoginPage({
                 minLength={8}
                 size="lg"
                 placeholder="••••••••"
+                aria-invalid={sp.error === "wrong_credentials" ? "true" : undefined}
+                aria-describedby={sp.error === "wrong_credentials" ? "login-error" : undefined}
               />
               {sp.error === "wrong_credentials" && (
-                <p className="mt-1.5 flex items-center gap-1.5 text-[12px] text-no-300 font-medium">
+                <p id="login-error" className="mt-1.5 flex items-center gap-1.5 text-[12px] text-no-300 font-medium">
                   <I.alertCircle s={13} />
                   Wrong phone or password · Simu au nenosiri si sahihi
                 </p>

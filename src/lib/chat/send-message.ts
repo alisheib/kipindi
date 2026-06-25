@@ -306,5 +306,5 @@ export async function sendMessage(history: Message[], userText: string): Promise
 
 /** Helper for the client — generates the user-side Message envelope. */
 export function buildUserMessage(text: string): Message {
-  return { id: nextId(), role: "user", lang: detectLang(text), text };
+  return { id: nextId(), role: "user", lang: detectLang(text), text, ts: Date.now() };
 }

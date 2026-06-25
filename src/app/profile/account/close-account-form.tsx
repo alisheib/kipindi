@@ -1,33 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { useFormStatus } from "react-dom";
+import { useRef, useState } from "react";
 import { I } from "@/components/ui/glyphs";
-import { Spinner } from "@/components/ui/spinner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { closeAccountAction } from "./actions";
-
-/** Pending-aware confirm button — disabled until the phrase matches AND while
- *  the irreversible close action is in flight, so it can never fire twice. */
-function CloseButton({ canSubmit }: { canSubmit: boolean }) {
-  const { pending } = useFormStatus();
-  return (
-    <button
-      type="submit"
-      disabled={!canSubmit || pending}
-      aria-busy={pending}
-      className="btn btn-claret btn-md inline-flex items-center gap-1.5"
-    >
-      {pending ? <Spinner size={13} /> : <I.alertOctagon s={13} />}
-      {pending ? "Closing…" : "Permanently close my account"}
-    </button>
-  );
-}
 
 export function CloseAccountForm() {
   const [confirm, setConfirm] = useState("");
   const canSubmit = confirm.trim() === "CLOSE MY ACCOUNT";
+  const formRef = useRef<HTMLFormElement>(null);
+
   return (
-    <form action={closeAccountAction} className="space-y-3">
+    <form ref={formRef} action={closeAccountAction} className="space-y-3">
       <label className="block">
         <span className="block font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">
           Reason (optional) · Sababu
@@ -52,7 +36,34 @@ export function CloseAccountForm() {
           autoComplete="off"
         />
       </label>
-      <CloseButton canSubmit={canSubmit} />
+      <ConfirmDialog
+        tone="claret"
+        title="Close your account permanently"
+        body={
+          <>
+            <p className="mb-2">
+              This is <strong className="text-text">irreversible</strong>. Your wallet, positions,
+              and all account data will be permanently deleted. You will be signed out immediately.
+            </p>
+            <p className="text-text-subtle italic text-[12.5px]">
+              Akaunti yako itafungwa kabisa na huwezi kuirudisha.
+            </p>
+          </>
+        }
+        confirmLabel="Yes, close permanently"
+        cancelLabel="Keep my account"
+        onConfirm={() => formRef.current?.requestSubmit()}
+        trigger={
+          <button
+            type="button"
+            disabled={!canSubmit}
+            className="btn btn-claret btn-md inline-flex items-center gap-1.5 disabled:opacity-40"
+          >
+            <I.alertOctagon s={13} />
+            Permanently close my account
+          </button>
+        }
+      />
     </form>
   );
 }

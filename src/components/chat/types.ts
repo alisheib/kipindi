@@ -11,10 +11,12 @@ export type Lang = "en" | "sw";
 
 export type Citation = { n: number; href: string; label: string };
 
+/** Base fields shared by all message variants. */
+type MsgBase = { id: string; ts?: number };
+
 export type Message =
-  | { id: string; role: "user"; lang: Lang; text: string }
-  | {
-      id: string;
+  | (MsgBase & { role: "user"; lang: Lang; text: string })
+  | (MsgBase & {
       role: "ai";
       kind: "text";
       lang: Lang;
@@ -23,9 +25,8 @@ export type Message =
        *  surfacing the escalate-to-support card. Two consecutive `true`s
        *  trigger the auto-escalate per the design spec. */
       unresolved?: boolean;
-    }
-  | {
-      id: string;
+    })
+  | (MsgBase & {
       role: "ai";
       kind: "text_with_citations";
       lang: Lang;
@@ -34,9 +35,9 @@ export type Message =
        *  text corresponds to citations[n-1]. */
       paragraphs: string[];
       citations: Citation[];
-    }
-  | { id: string; role: "ai"; kind: "rg_redirect"; lang: Lang }
-  | { id: string; role: "ai"; kind: "escalate"; lang: Lang; ticketId: string; etaMinutes: number };
+    })
+  | (MsgBase & { role: "ai"; kind: "rg_redirect"; lang: Lang })
+  | (MsgBase & { role: "ai"; kind: "escalate"; lang: Lang; ticketId: string; etaMinutes: number });
 
 export type ChatState = {
   open: boolean;

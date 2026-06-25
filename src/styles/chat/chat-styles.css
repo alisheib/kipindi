@@ -841,3 +841,16 @@
 @media (prefers-reduced-motion: reduce) {
   .hm-halo-pulse { animation: none; opacity: 0.6; }
 }
+
+/* ---------- Message timestamps --------------------------------------- */
+.cm-time {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--chat-text-subtle);
+  margin-top: 2px;
+  padding: 0 4px;
+  text-align: inherit;
+}
+.cm-row-user .cm-time { text-align: right; }
+.cm-row-ai .cm-time   { text-align: left; padding-left: 40px; }
