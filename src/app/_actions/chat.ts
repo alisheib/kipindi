@@ -113,11 +113,21 @@ export async function chatWithClaude(
       ...history.slice(-10),
       { role: "user" as const, content: userText },
     ];
+    const model = "claude-haiku-4-5-20251001";
     const resp = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
+      model,
       max_tokens: 350,
       system: SYSTEM_PROMPT,
       messages,
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const usage = resp.usage as any;
+    const { recordAiUsage } = await import("@/lib/server/ai-usage");
+    await recordAiUsage({
+      feature: "chat", model,
+      inputTokens: usage?.input_tokens ?? 0,
+      outputTokens: usage?.output_tokens ?? 0,
+      ok: true,
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const text = (resp.content as any[])
@@ -127,6 +137,10 @@ export async function chatWithClaude(
     return { text: text || "I'm not sure about that. Can you tell me more?" };
   } catch (err) {
     console.error("[50pick-chat] Claude API error:", err);
+    try {
+      const { recordAiUsage } = await import("@/lib/server/ai-usage");
+      await recordAiUsage({ feature: "chat", model: "claude-haiku-4-5-20251001", ok: false });
+    } catch { /* best-effort */ }
     return null;
   }
 }

@@ -57,6 +57,7 @@ export const NAV_GROUPS: ReadonlyArray<{
     group: { en: "System", sw: "Mfumo" },
     items: [
       { href: "/admin/system",    label: "System",    key: "system" },
+      { href: "/admin/ai-usage",  label: "AI usage & credits", key: "ai-usage" },
       { href: "/admin/approvals", label: "Approvals", key: "approvals" },
       { href: "/admin/2fa/setup", label: "2FA setup", key: "2fa" },
     ],

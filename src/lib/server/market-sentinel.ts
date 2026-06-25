@@ -26,6 +26,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { marketStore } from "./market-dal";
 import { audit } from "./audit";
 import { ai } from "./ai-config";
+import { recordAiUsage } from "./ai-usage";
 
 // --- Configuration -----------------------------------------------------------
 
@@ -184,6 +185,16 @@ Search the web for the latest data, work through the steps, then call report_out
       messages: [{ role: "user", content: userPrompt }],
     });
 
+    // Meter the spend (best-effort).
+    const u = response.usage as { input_tokens?: number; output_tokens?: number; server_tool_use?: { web_search_requests?: number } } | undefined;
+    await recordAiUsage({
+      feature: "sentinel", model: SENTINEL_MODEL,
+      inputTokens: u?.input_tokens ?? 0,
+      outputTokens: u?.output_tokens ?? 0,
+      webSearches: u?.server_tool_use?.web_search_requests ?? 0,
+      ok: true,
+    });
+
     // Extract the report_outcome tool call from the response
     const toolUse = response.content.find(
       (b) => b.type === "tool_use" && b.name === "report_outcome",
@@ -214,6 +225,7 @@ Search the web for the latest data, work through the steps, then call report_out
       action: "skipped", // caller decides the action
     };
   } catch (err) {
+    await recordAiUsage({ feature: "sentinel", model: SENTINEL_MODEL, ok: false });
     return fail((err as Error).message);
   }
 }

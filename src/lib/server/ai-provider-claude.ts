@@ -32,6 +32,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { AIProvider, AIProviderResponse, AIPollGeneration, GenerateRequest } from "./ai-provider";
 import { getAIPollConfig } from "./ai-poll-config";
 import { ai } from "./ai-config";
+import { recordAiUsage } from "./ai-usage";
 
 const VALID_CATEGORIES = [
   "sports", "macro", "weather", "crypto", "culture", "infrastructure", "tech", "other",
@@ -205,6 +206,9 @@ export class ClaudeProvider implements AIProvider {
           (inTok * ai.pricing.inputPerToken + outTok * ai.pricing.outputPerToken + searches * ai.pricing.perWebSearch) * 10000,
         ) / 10000;
 
+      // Meter the spend (best-effort) regardless of how parsing goes below.
+      await recordAiUsage({ feature: "polls", model: ai.model, inputTokens: inTok, outputTokens: outTok, webSearches: searches, ok: true });
+
       const content = resp.content as Array<{ type: string; name?: string; input?: unknown; text?: string }>;
       const rawResponse = JSON.stringify(content, null, 2).slice(0, 8000);
 
@@ -241,6 +245,7 @@ export class ClaudeProvider implements AIProvider {
       };
     } catch (err) {
       console.error("[50pick-polls] Claude API error:", err);
+      await recordAiUsage({ feature: "polls", model: ai.model, ok: false });
       return {
         ok: false,
         error: `Claude API error: ${(err as Error).message}`,
