@@ -57,6 +57,141 @@ function BalanceCard({
   );
 }
 
+type BonusGrantView = {
+  id: string;
+  amountTzs: number;
+  remainingTzs: number;
+  source: string;
+  progressPct: number;
+  wageredTzs: number;
+  wagerRequiredTzs: number;
+  remainingWagerTzs: number;
+  expiresAt: string | null;
+};
+
+const BONUS_SOURCE_LABEL: Record<string, string> = {
+  ADMIN: "Gift", REFERRAL: "Referral", PROPOSAL: "Proposal", INVITE: "Invite", PROMOTION: "Promo", CASHBACK: "Cashback",
+};
+
+/**
+ * Bonus wallet — a deliberately playful counterpart to the main balance card.
+ * Vivid violet→fuchsia gradient + gift motif so it reads as "fun money", with a
+ * play-through meter that turns bonus into withdrawable cash. Shown beside the
+ * main wallet always (friendly empty state when the player has no bonuses).
+ */
+function BonusWalletCard({
+  bonusBalance, activeCount, grants, currency,
+}: { bonusBalance: number; activeCount: number; grants: BonusGrantView[]; currency: string }) {
+  const totalReq = grants.reduce((s, g) => s + g.wagerRequiredTzs, 0);
+  const totalWagered = grants.reduce((s, g) => s + Math.min(g.wageredTzs, g.wagerRequiredTzs), 0);
+  const totalRemainingWager = grants.reduce((s, g) => s + g.remainingWagerTzs, 0);
+  const overallPct = totalReq > 0 ? Math.min(100, Math.round((totalWagered / totalReq) * 100)) : 0;
+  const hasBonus = bonusBalance > 0 || activeCount > 0;
+
+  return (
+    <section
+      className="relative overflow-hidden rounded-xl"
+      style={{
+        background: "linear-gradient(135deg, oklch(42% 0.19 318), oklch(30% 0.17 286) 55%, oklch(26% 0.14 274))",
+        border: "1px solid oklch(80% 0.16 330 / 0.34)",
+        boxShadow: "inset 0 1px 0 oklch(92% 0.10 330 / 0.18), 0 12px 34px oklch(20% 0.14 312 / 0.45)",
+      }}
+    >
+      {/* playful glow + gift motif */}
+      <div className="absolute -right-6 -top-8 opacity-[0.13] text-white animate-pulse" aria-hidden style={{ animationDuration: "3.5s" }}>
+        <I.gift s={150} />
+      </div>
+      <div className="absolute -left-10 -bottom-12 h-40 w-40 rounded-full opacity-30" aria-hidden
+        style={{ background: "radial-gradient(circle, oklch(80% 0.18 330 / 0.5), transparent 70%)" }} />
+
+      <div className="relative z-10 p-5 lg:p-6">
+        <div className="flex items-center gap-1.5" style={{ color: "oklch(90% 0.10 330)" }}>
+          <I.gift s={13} />
+          <p className="font-mono text-[10.5px] uppercase tracking-[0.16em] font-bold">Bonus · Bonasi</p>
+          <span className="ml-auto inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] font-bold"
+            style={{ background: "oklch(92% 0.10 330 / 0.16)", color: "oklch(94% 0.06 330)" }}>
+            Play to unlock
+          </span>
+        </div>
+
+        <p
+          data-testid="bonus-balance"
+          data-bonus={bonusBalance}
+          className="mt-1.5 font-mono text-[38px] font-bold tabular-nums text-white leading-none tracking-[-0.02em]"
+        >
+          <Cash>{fmt(bonusBalance, currency)}</Cash>
+        </p>
+
+        {hasBonus ? (
+          <>
+            <div className="mt-4">
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <p className="font-mono text-[10px] uppercase tracking-[0.12em]" style={{ color: "oklch(90% 0.06 330)" }}>
+                  Unlock progress · Maendeleo
+                </p>
+                <p className="font-mono text-[12px] font-bold text-white tabular-nums">{overallPct}%</p>
+              </div>
+              <div className="h-2.5 w-full rounded-pill overflow-hidden" style={{ background: "oklch(20% 0.06 300 / 0.6)" }}>
+                <div className="h-full rounded-pill transition-[width] duration-500"
+                  style={{ width: `${overallPct}%`, background: "linear-gradient(90deg, oklch(82% 0.17 330), oklch(86% 0.16 90))" }} />
+              </div>
+              {totalRemainingWager > 0 && (
+                <p className="mt-2 text-[12px]" style={{ color: "oklch(92% 0.05 330)" }}>
+                  Play <span className="font-mono font-bold text-white"><Cash>{fmt(totalRemainingWager, currency)}</Cash></span> more to turn this into withdrawable cash.
+                  <span className="block italic text-[10.5px] mt-0.5" style={{ color: "oklch(82% 0.05 330)" }}>
+                    Cheza zaidi ili kuibadilisha kuwa pesa unayoweza kutoa.
+                  </span>
+                </p>
+              )}
+            </div>
+
+            {grants.length > 0 && (
+              <div className="mt-4 space-y-2">
+                {grants.slice(0, 3).map((g) => (
+                  <div key={g.id} className="rounded-md px-3 py-2 backdrop-blur-md"
+                    style={{ background: "oklch(96% 0.02 330 / 0.08)", border: "1px solid oklch(90% 0.08 330 / 0.14)" }}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: "oklch(88% 0.06 330)" }}>
+                        {BONUS_SOURCE_LABEL[g.source] ?? g.source}
+                      </span>
+                      <span className="font-mono text-[12px] font-bold text-white tabular-nums"><Cash>{fmt(g.remainingTzs, currency)}</Cash></span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 w-full rounded-pill overflow-hidden" style={{ background: "oklch(20% 0.06 300 / 0.6)" }}>
+                      <div className="h-full rounded-pill" style={{ width: `${g.progressPct}%`, background: "oklch(84% 0.16 330)" }} />
+                    </div>
+                    <div className="mt-1 flex items-center justify-between font-mono text-[9.5px]" style={{ color: "oklch(80% 0.05 330)" }}>
+                      <span>{fmt(g.wageredTzs, currency)} / {fmt(g.wagerRequiredTzs, currency)} played</span>
+                      {g.expiresAt && <span>exp {formatDateTimeSafe(g.expiresAt).split(",")[0]}</span>}
+                    </div>
+                  </div>
+                ))}
+                {grants.length > 3 && (
+                  <p className="text-center font-mono text-[10px]" style={{ color: "oklch(82% 0.05 330)" }}>+{grants.length - 3} more bonus{grants.length - 3 > 1 ? "es" : ""}</p>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="mt-4">
+            <p className="text-[13px] text-white/90 leading-snug">
+              No bonuses yet — earn them by inviting friends and winning proposals.
+              <span className="block italic text-[11px] mt-0.5" style={{ color: "oklch(84% 0.05 330)" }}>
+                Bado hujapata bonasi — zipate kwa kualika marafiki.
+              </span>
+            </p>
+            <Link href="/profile/invite"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-pill px-3.5 h-8 font-mono text-[11px] uppercase tracking-[0.12em] font-bold text-white transition-opacity hover:opacity-90"
+              style={{ background: "oklch(60% 0.18 330 / 0.55)", border: "1px solid oklch(85% 0.12 330 / 0.4)" }}>
+              <I.gift s={12} />
+              Invite & earn · Alika upate
+            </Link>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function SubStat({ label, sw, value, hint }: { label: string; sw: string; value: string; hint?: string }) {
   return (
     <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-3 py-2.5 backdrop-blur-md">
@@ -183,10 +318,12 @@ const LIMITS = [
 export function WalletPageClient({
   balance, pending, hold, currency,
   transactions,
+  bonusBalance, bonusActiveCount, bonusWagerRemaining, bonusGrants,
   isAuthed,
 }: {
   balance: number; pending: number; hold: number; currency: string;
   transactions: Transaction[];
+  bonusBalance: number; bonusActiveCount: number; bonusWagerRemaining: number; bonusGrants: BonusGrantView[];
   isAuthed: boolean;
 }) {
   const [tab, setTab] = useState<typeof TABS[number]["v"]>("activity");
@@ -217,7 +354,14 @@ export function WalletPageClient({
         )}
       </header>
 
-      <BalanceCard balance={balance} pending={pending} hold={hold} currency={currency} />
+      {/* Two wallets, one page: main (royal/gold) + bonus (violet/fuchsia). */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+        <BalanceCard balance={balance} pending={pending} hold={hold} currency={currency} />
+        <BonusWalletCard bonusBalance={bonusBalance} activeCount={bonusActiveCount} grants={bonusGrants} currency={currency} />
+      </div>
+      {bonusWagerRemaining > 0 && (
+        <p className="sr-only">Bonus play-through remaining: {fmt(bonusWagerRemaining, currency)}</p>
+      )}
 
       {/* Kit tabs — line variant rebuilt inline so we don't pull the legacy Tabs component. */}
       <nav role="tablist" aria-label="Wallet sections" className="flex items-center gap-1 border-b border-border">

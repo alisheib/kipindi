@@ -5,6 +5,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import type { Transaction } from "@/lib/ui-stubs";
 import type { StoredTxn } from "@/lib/server/store";
+import { getBonusSummary } from "@/lib/server/bonus-service";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 
 export const metadata = { title: "Wallet · Pochi" };
@@ -40,6 +41,23 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
   const currency = w?.currency ?? "TZS";
   const txns: Transaction[] = ((await db.txn.findByUser(session.userId, 50)) as StoredTxn[]).map(adaptTxn);
 
+  // Bonus wallet — second balance shown alongside the main wallet. Only the
+  // active grants drive the play-through card; map to a lean serializable shape.
+  const bonus = await getBonusSummary(session.userId);
+  const bonusGrants = bonus.grants
+    .filter((g) => g.status === "ACTIVE")
+    .map((g) => ({
+      id: g.id,
+      amountTzs: g.amountTzs,
+      remainingTzs: g.remainingTzs,
+      source: g.source,
+      progressPct: g.progressPct,
+      wageredTzs: g.wageredTzs,
+      wagerRequiredTzs: g.wagerRequiredTzs,
+      remainingWagerTzs: g.remainingWagerTzs,
+      expiresAt: g.expiresAt,
+    }));
+
   return (
     <>
       <RefreshPoller intervalMs={20_000} />
@@ -50,6 +68,10 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
         hold={hold}
         currency={currency}
         transactions={txns}
+        bonusBalance={bonus.bonusBalance}
+        bonusActiveCount={bonus.activeCount}
+        bonusWagerRemaining={bonus.activeWagerRemainingTzs}
+        bonusGrants={bonusGrants}
         isAuthed={true}
       />
     </>
