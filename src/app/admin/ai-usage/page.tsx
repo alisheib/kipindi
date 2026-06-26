@@ -6,6 +6,7 @@ import { Chip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { I } from "@/components/ui/glyphs";
 import { getAiUsageSummary, listAiUsage, type AiFeature, type UsageBucket, type AiUsageFilter, type AiUsageEventRecord } from "@/lib/server/ai-usage";
+import { getAnthropicSpend } from "@/lib/server/anthropic-billing";
 import { CreditControls } from "./credit-controls";
 
 export const metadata = { title: "Admin \u00b7 AI usage & credits" };
@@ -63,9 +64,10 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
   // Fetch all matching rows for in-memory sort (the DAL returns newest-first;
   // we re-sort client-side so SortTh column headers work). Cap at 10k to keep
   // memory bounded; the 180-day retention + filters keeps this well under.
-  const [summary, listed] = await Promise.all([
+  const [summary, listed, anthropic] = await Promise.all([
     getAiUsageSummary(),
     listAiUsage(filter, 1, 10_000),
+    getAnthropicSpend(),
   ]);
   const s = summary;
 
@@ -136,11 +138,26 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
           </div>
         </div>
 
-        {/* Spend KPIs */}
+        {/* Spend KPIs — real Anthropic data when available, else our estimates */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Spend today" sw="Leo" value={usd(s.windows.today.costUsd)} delta={`${s.windows.today.calls} calls`} />
-          <AdminKpi label="Last 7 days" sw="Siku 7" value={usd(s.windows.last7.costUsd)} delta={`${s.windows.last7.calls} calls`} />
-          <AdminKpi label="Last 30 days" sw="Siku 30" value={usd(s.windows.last30.costUsd)} delta={`${s.windows.last30.calls} calls`} />
+          <AdminKpi
+            label={anthropic ? "Spend today (Anthropic)" : "Spend today"}
+            sw="Leo"
+            value={usd(anthropic?.today ?? s.windows.today.costUsd)}
+            delta={anthropic ? `est. ${usd(s.windows.today.costUsd)} \u00b7 ${s.windows.today.calls} calls` : `${s.windows.today.calls} calls`}
+          />
+          <AdminKpi
+            label={anthropic ? "Last 7 days (Anthropic)" : "Last 7 days"}
+            sw="Siku 7"
+            value={usd(anthropic?.last7 ?? s.windows.last7.costUsd)}
+            delta={anthropic ? `est. ${usd(s.windows.last7.costUsd)} \u00b7 ${s.windows.last7.calls} calls` : `${s.windows.last7.calls} calls`}
+          />
+          <AdminKpi
+            label={anthropic ? "Last 30 days (Anthropic)" : "Last 30 days"}
+            sw="Siku 30"
+            value={usd(anthropic?.last30 ?? s.windows.last30.costUsd)}
+            delta={anthropic ? `est. ${usd(s.windows.last30.costUsd)} \u00b7 ${s.windows.last30.calls} calls` : `${s.windows.last30.calls} calls`}
+          />
           <AdminKpi label="Stored (180d)" sw="Jumla" value={usd(s.windows.all.costUsd)} delta={`${s.windows.all.calls} calls`} />
         </div>
 
@@ -330,7 +347,10 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
           <AdminPagination total={total} page={page} baseHref={baseHref} />
 
           <p className="px-4 py-3 text-[11px] text-text-tertiary leading-snug border-t border-border">
-            Cost is metered from token counts \u00d7 public Anthropic pricing. Haiku $1/$5, Sonnet $3/$15, Opus $5/$25 per 1M tokens; web search $0.01/call. Ledger retained 180 days.
+            {anthropic
+              ? <>KPI tiles show <strong>real Anthropic-reported costs</strong> (via Cost API, cached 10 min). Per-call costs below are estimates from token counts. </>
+              : <>Cost estimated from token counts \u00d7 Anthropic pricing. Set <code className="text-text-subtle">ANTHROPIC_ADMIN_KEY</code> on Railway for real Anthropic-reported costs. </>}
+            Haiku $1/$5, Sonnet $3/$15, Opus $5/$25 per 1M tokens; web search $0.01/call. Ledger retained 180 days.
           </p>
         </AdminCard>
       </div>
