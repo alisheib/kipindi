@@ -15,6 +15,9 @@
  *
  * Kit-faithful: uses --gold-300 gradient, 3px height, z-[2000] (above
  * everything except the toast layer at 1800). No layout impact.
+ *
+ * Safety: auto-completes after 8s so the bar never gets stuck permanently
+ * (e.g. same-page link click, cancelled navigation, network timeout).
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -28,23 +31,28 @@ export function NavProgress() {
   const barRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
   const startRef = useRef<number>(0);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const routeRef = useRef(pathname + "?" + searchParams?.toString());
+
+  // Force-complete the bar (used by both route-landed and auto-timeout).
+  const completeBar = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = null;
+    if (barRef.current) barRef.current.style.transform = "scaleX(1)";
+    setCompleting(true);
+    setTimeout(() => { setActive(false); setCompleting(false); }, 300);
+  }, []);
 
   // When pathname or search params change, the route has landed — complete the bar.
   useEffect(() => {
     const next = pathname + "?" + searchParams?.toString();
     if (next !== routeRef.current) {
       routeRef.current = next;
-      if (active) {
-        // Snap to 100%, then fade out
-        if (rafRef.current) cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-        if (barRef.current) barRef.current.style.transform = "scaleX(1)";
-        setCompleting(true);
-        setTimeout(() => { setActive(false); setCompleting(false); }, 300);
-      }
+      if (active) completeBar();
     }
-  }, [pathname, searchParams, active]);
+  }, [pathname, searchParams, active, completeBar]);
 
   // Animate the bar from 0 → ~85% with diminishing speed
   const startBar = useCallback(() => {
@@ -61,7 +69,11 @@ export function NavProgress() {
       if (pct < 0.85) rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
-  }, [active]);
+    // Safety: auto-complete after 8s so the bar never gets stuck permanently
+    // (e.g. same-page link click, cancelled navigation, network timeout).
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(completeBar, 8000);
+  }, [active, completeBar]);
 
   // Listen for clicks on internal links
   useEffect(() => {
@@ -84,9 +96,10 @@ export function NavProgress() {
     return () => window.removeEventListener("50pick:navigating", onNav);
   }, [startBar]);
 
-  // Cleanup RAF on unmount
+  // Cleanup RAF + timeout on unmount
   useEffect(() => () => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
   }, []);
 
   if (!active) return null;
