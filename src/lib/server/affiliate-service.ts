@@ -22,6 +22,8 @@ import { audit } from "./audit";
 import { randomId } from "./crypto";
 import { notifyReferralJoined, notifyReferralReward } from "./notification-service";
 import { creditInternal } from "./wallet-service";
+import { creditBonus } from "./bonus-service";
+import { getBonusConfig } from "./bonus-config";
 import { sendEmailToUser, referralRewardHtml } from "./email";
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I ambiguity
@@ -133,8 +135,17 @@ export async function resolveReferralPreview(code: string) {
 }
 
 // ── Wallet credit (internal) ─────────────────────────────────────────────
-/** Credit a referral reward to a wallet via the shared, locked credit path. */
+/** Credit a referral reward. Routes to the BONUS wallet when the bonus program
+ *  is enabled and affiliate→bonus routing is on (Ali's default — rewards must be
+ *  played through); otherwise credits real balance directly. Falls back to real
+ *  if a bonus credit can't be made, so a reward is never silently dropped. */
 async function creditWallet(userId: string, amount: number, description: string): Promise<boolean> {
+  const bcfg = getBonusConfig();
+  if (bcfg.enabled && bcfg.affiliateToBonus) {
+    const r = await creditBonus(userId, { amountTzs: amount, source: "REFERRAL", note: description });
+    if (r.ok) return true;
+    // bonus credit failed (disabled mid-flight / wallet issue) → fall through to real.
+  }
   return (await creditInternal(userId, amount, { description })) !== null;
 }
 

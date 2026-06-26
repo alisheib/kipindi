@@ -18,7 +18,7 @@ import { audit } from "./audit";
 import { db } from "./store";
 import { randomId } from "./crypto";
 import { withLock } from "./locks";
-import { spendBonusLocked, recordWagering, refundBonusToActive } from "./bonus-service";
+import { spendBonusLocked, recordWagering, refundBonusToActive, expireActiveGrants } from "./bonus-service";
 import { isLockedOut } from "./responsible-gambling";
 import { rateCheck } from "./rate-limit";
 import { getEffectiveConfig, payoutForWhole, settledPayoutWhole } from "./market-config";
@@ -1253,6 +1253,10 @@ export async function seedDemoMarkets() {
   autoResolveExpiredDemoMarkets().catch(() => {});
   notifyDueMarketsForResolution().catch(() => {});
   repairOrphanedPositions().catch(() => {});
+  // 3. Expire bonus grants past their validity window — removes the unspent
+  //    remainder from the bonus wallet and notifies the player. Idempotent and
+  //    self-healing like the sweeps above (no cron needed).
+  expireActiveGrants().catch(() => {});
 
   // NOTE: demo "Demo · " markets are no longer seeded (tester feedback) and
   // are hidden from every player listing by isDemoMarket(). Any that already

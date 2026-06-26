@@ -25,6 +25,8 @@ import { randomId } from "./crypto";
 import { withLock } from "./locks";
 import { maskName } from "./affiliate-service";
 import { creditInternal } from "./wallet-service";
+import { creditBonus } from "./bonus-service";
+import { getBonusConfig } from "./bonus-config";
 import {
   notifyProposalUnderReview,
   notifyProposalListed,
@@ -305,7 +307,18 @@ export async function onMarketResolved(marketId: string, opts: { voided: boolean
     // Only record the prize as paid if the credit actually landed. Otherwise we
     // mark the proposal RESOLVED with prizePaidTzs 0 and audit the failure so an
     // officer can settle manually — never claim a payout that didn't move.
-    const credited = (await creditInternal(p.proposerId, prize, { description: `Proposal prize · "${p.titleEn.slice(0, 50)}"` })) !== null;
+    // Route to the BONUS wallet when bonus + proposal→bonus routing are on
+    // (Ali's default — prizes must be played through); else credit real. Falls
+    // back to real if a bonus credit can't be made so the prize is never lost.
+    const prizeDesc = `Proposal prize · "${p.titleEn.slice(0, 50)}"`;
+    const bcfg = getBonusConfig();
+    let credited: boolean;
+    if (bcfg.enabled && bcfg.proposalToBonus) {
+      const r = await creditBonus(p.proposerId, { amountTzs: prize, source: "PROPOSAL", sourceRef: `proposal:${p.id}`, note: prizeDesc });
+      credited = r.ok ? true : (await creditInternal(p.proposerId, prize, { description: prizeDesc })) !== null;
+    } else {
+      credited = (await creditInternal(p.proposerId, prize, { description: prizeDesc })) !== null;
+    }
     if (credited) {
       await db.proposal.update(p.id, { status: "RESOLVED", prizePaidTzs: prize });
       audit({ category: "WALLET", action: "proposal.prize_paid", actorId: null, targetType: "Proposal", targetId: p.id, payload: { proposerId: p.proposerId, prize, marketId } });
