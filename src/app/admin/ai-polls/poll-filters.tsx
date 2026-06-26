@@ -80,7 +80,7 @@ export function PollFilterToolbar({ totalFiltered, totalAll }: { totalFiltered: 
         <button
           type="button"
           onClick={() => push({ q: search })}
-          className="btn btn-gold btn-sm rounded-pill h-9 min-w-[80px]"
+          className="btn btn-gold btn-sm rounded-pill min-w-[80px]"
         >
           Search
         </button>
@@ -91,7 +91,7 @@ export function PollFilterToolbar({ totalFiltered, totalAll }: { totalFiltered: 
               setSearch("");
               startTransition(() => router.push("/admin/ai-polls"));
             }}
-            className="btn btn-ghost btn-sm rounded-pill h-9 text-text-subtle hover:text-text"
+            className="btn btn-ghost btn-sm rounded-pill text-text-subtle hover:text-text"
           >
             Clear
           </button>

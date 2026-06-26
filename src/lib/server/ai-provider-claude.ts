@@ -32,7 +32,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { AIProvider, AIProviderResponse, AIPollGeneration, GenerateRequest } from "./ai-provider";
 import { getAIPollConfig } from "./ai-poll-config";
 import { ai } from "./ai-config";
-import { recordAiUsage } from "./ai-usage";
+import { recordAiUsage, costOf } from "./ai-usage";
 import { getPlatformTimezone } from "./platform-config";
 
 const VALID_CATEGORIES = [
@@ -205,10 +205,7 @@ export class ClaudeProvider implements AIProvider {
       const outTok = usage?.output_tokens ?? 0;
       const searches = usage?.server_tool_use?.web_search_requests ?? 0;
       const tokensUsed = inTok + outTok;
-      const costUsd =
-        Math.round(
-          (inTok * ai.pricing.inputPerToken + outTok * ai.pricing.outputPerToken + searches * ai.pricing.perWebSearch) * 10000,
-        ) / 10000;
+      const costUsd = costOf(activeModel, inTok, outTok, searches);
 
       // Meter the spend (best-effort) regardless of how parsing goes below.
       await recordAiUsage({ feature: "polls", model: activeModel, inputTokens: inTok, outputTokens: outTok, webSearches: searches, ok: true, latencyMs, detail: `generate · ${category}` });

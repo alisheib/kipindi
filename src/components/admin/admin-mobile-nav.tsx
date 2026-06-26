@@ -18,7 +18,7 @@ export function AdminMobileNavTrigger({ groups, badges, activeKey }: { groups: R
         aria-label="Open admin navigation"
         aria-expanded={open ? "true" : "false"}
         onClick={() => setOpen(true)}
-        className="lg:hidden inline-flex h-9 w-9 items-center justify-center rounded-md text-text-secondary hover:bg-surface-hover"
+        className="lg:hidden inline-flex h-9 w-9 items-center justify-center rounded-md text-text-secondary hover:bg-bg-overlay"
       >
         <I.menu s={18} />
       </button>
@@ -39,7 +39,7 @@ export function AdminMobileNavTrigger({ groups, badges, activeKey }: { groups: R
                 type="button"
                 aria-label="Close admin navigation"
                 onClick={() => setOpen(false)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-tertiary hover:bg-surface-hover"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-tertiary hover:bg-bg-overlay"
               >
                 <I.x s={16} />
               </button>
@@ -61,8 +61,8 @@ export function AdminMobileNavTrigger({ groups, badges, activeKey }: { groups: R
                         className={[
                           "flex items-center justify-between rounded-md px-2.5 py-2 text-body-sm transition-colors",
                           active
-                            ? "bg-surface-pressed text-royal font-semibold"
-                            : "text-text-secondary hover:bg-surface-hover hover:text-text",
+                            ? "bg-bg-inset text-royal font-semibold"
+                            : "text-text-secondary hover:bg-bg-overlay hover:text-text",
                         ].join(" ")}
                       >
                         <span>{it.label}</span>

@@ -184,7 +184,7 @@ export function KycExtraDocUploader({
           disabled={working}
           aria-busy={working ? "true" : "false"}
           className={`btn btn-sm shrink-0 ${done ? "btn-ghost" : "btn-gold"}`}
-          style={{ borderRadius: 999, minHeight: 40 }}
+          style={{ borderRadius: 999 }}
         >
           {done ? "Replace" : "Upload"}
         </button>

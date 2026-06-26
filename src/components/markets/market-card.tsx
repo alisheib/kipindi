@@ -220,7 +220,7 @@ export function MarketCard({
           </button>
         </div>
       ) : (
-        <div className="btn btn-ghost btn-md" style={{ justifyContent: "center", pointerEvents: "none", opacity: 0.85 }}>
+        <div className="btn btn-ghost btn-md justify-center pointer-events-none opacity-85">
           <I.resolved s={15} /> {isResolved ? `Resolved ${yesPct >= 50 ? "YES" : "NO"}` : "Closed"}
         </div>
       )}

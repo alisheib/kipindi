@@ -155,7 +155,7 @@ export function KycReviewControls({ userId, status }: { userId: string; status: 
             onClick={rejecting ? reject : requestInfo}
             disabled={pending}
             className={`btn ${rejecting ? "btn-no" : "btn-gold"} btn-md w-full sm:w-auto inline-flex items-center justify-center gap-1.5`}
-            style={{ borderRadius: 999, minHeight: 44 }}
+            style={{ borderRadius: 999 }}
           >
             {pending ? <Spinner size={15} /> : rejecting ? <I.x s={15} /> : <I.alertCircle s={15} />}
             {rejecting ? "Confirm rejection" : "Send request"}
@@ -165,7 +165,7 @@ export function KycReviewControls({ userId, status }: { userId: string; status: 
             onClick={() => { setMode("idle"); setReason(""); setDocReqs([]); }}
             disabled={pending}
             className="btn btn-ghost btn-md w-full sm:w-auto"
-            style={{ borderRadius: 999, minHeight: 44 }}
+            style={{ borderRadius: 999 }}
           >
             Cancel
           </button>
@@ -189,17 +189,17 @@ export function KycReviewControls({ userId, status }: { userId: string; status: 
           onConfirm={approve}
           trigger={
             <button type="button" disabled={pending}
-              className="btn btn-yes btn-md w-full sm:w-auto inline-flex items-center justify-center gap-1.5" style={{ borderRadius: 999, minHeight: 44 }}>
+              className="btn btn-yes btn-md w-full sm:w-auto inline-flex items-center justify-center gap-1.5" style={{ borderRadius: 999 }}>
               {pending ? <Spinner size={15} /> : <I.check s={15} />} Approve
             </button>
           }
         />
         <button type="button" onClick={() => setMode("requesting")} disabled={pending}
-          className="btn btn-gold btn-md w-full sm:w-auto inline-flex items-center justify-center gap-1.5" style={{ borderRadius: 999, minHeight: 44 }}>
+          className="btn btn-gold btn-md w-full sm:w-auto inline-flex items-center justify-center gap-1.5" style={{ borderRadius: 999 }}>
           <I.alertCircle s={15} /> Request info…
         </button>
         <button type="button" onClick={() => setMode("rejecting")} disabled={pending}
-          className="btn btn-no btn-md w-full sm:w-auto inline-flex items-center justify-center gap-1.5" style={{ borderRadius: 999, minHeight: 44 }}>
+          className="btn btn-no btn-md w-full sm:w-auto inline-flex items-center justify-center gap-1.5" style={{ borderRadius: 999 }}>
           <I.x s={15} /> Reject…
         </button>
       </div>
