@@ -74,10 +74,12 @@ const BONUS_SOURCE_LABEL: Record<string, string> = {
 };
 
 /**
- * Bonus wallet — a deliberately playful counterpart to the main balance card.
- * Vivid violet→fuchsia gradient + gift motif so it reads as "fun money", with a
- * play-through meter that turns bonus into withdrawable cash. Shown beside the
- * main wallet always (friendly empty state when the player has no bonuses).
+ * Bonus wallet — the "prize money" counterpart to the royal main balance card.
+ * Uses the platform's gold/jackpot accent (--g-jackpot / --glow-jackpot) so it
+ * reads as a glowing reward and stays ON-palette, while the warm gold clearly
+ * sets it apart from the cool-royal main wallet. A play-through meter (gold →
+ * emerald) turns bonus into withdrawable cash. Shown beside the main wallet
+ * always (friendly empty state when the player has no bonuses).
  */
 function BonusWalletCard({
   bonusBalance, activeCount, grants, currency,
@@ -92,24 +94,23 @@ function BonusWalletCard({
     <section
       className="relative overflow-hidden rounded-xl"
       style={{
-        background: "linear-gradient(135deg, oklch(42% 0.19 318), oklch(30% 0.17 286) 55%, oklch(26% 0.14 274))",
-        border: "1px solid oklch(80% 0.16 330 / 0.34)",
-        boxShadow: "inset 0 1px 0 oklch(92% 0.10 330 / 0.18), 0 12px 34px oklch(20% 0.14 312 / 0.45)",
+        background: "linear-gradient(135deg, oklch(30% 0.085 80), oklch(18% 0.055 72))",
+        border: "1px solid var(--border-gold)",
+        boxShadow: "inset 0 1px 0 oklch(92% 0.10 84 / 0.18), var(--glow-jackpot)",
       }}
     >
-      {/* playful glow + gift motif */}
-      <div className="absolute -right-6 -top-8 opacity-[0.13] text-white animate-pulse" aria-hidden style={{ animationDuration: "3.5s" }}>
+      {/* warm gift motif + jackpot glow */}
+      <div className="absolute -right-6 -top-8 opacity-[0.12] text-gold-300 animate-pulse" aria-hidden style={{ animationDuration: "3.5s" }}>
         <I.gift s={150} />
       </div>
       <div className="absolute -left-10 -bottom-12 h-40 w-40 rounded-full opacity-30" aria-hidden
-        style={{ background: "radial-gradient(circle, oklch(80% 0.18 330 / 0.5), transparent 70%)" }} />
+        style={{ background: "radial-gradient(circle, oklch(82% 0.16 82 / 0.5), transparent 70%)" }} />
 
       <div className="relative z-10 p-5 lg:p-6">
-        <div className="flex items-center gap-1.5" style={{ color: "oklch(90% 0.10 330)" }}>
+        <div className="flex items-center gap-1.5 text-gold-300">
           <I.gift s={13} />
           <p className="font-mono text-[10.5px] uppercase tracking-[0.16em] font-bold">Bonus · Bonasi</p>
-          <span className="ml-auto inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] font-bold"
-            style={{ background: "oklch(92% 0.10 330 / 0.16)", color: "oklch(94% 0.06 330)" }}>
+          <span className="ml-auto inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] font-bold bg-gold-500/15 text-gold-200">
             Play to unlock
           </span>
         </div>
@@ -117,7 +118,7 @@ function BonusWalletCard({
         <p
           data-testid="bonus-balance"
           data-bonus={bonusBalance}
-          className="mt-1.5 font-mono text-[38px] font-bold tabular-nums text-white leading-none tracking-[-0.02em]"
+          className="mt-1.5 font-mono text-[38px] font-bold tabular-nums text-text leading-none tracking-[-0.02em]"
         >
           <Cash>{fmt(bonusBalance, currency)}</Cash>
         </p>
@@ -126,19 +127,19 @@ function BonusWalletCard({
           <>
             <div className="mt-4">
               <div className="flex items-center justify-between gap-2 mb-1.5">
-                <p className="font-mono text-[10px] uppercase tracking-[0.12em]" style={{ color: "oklch(90% 0.06 330)" }}>
+                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-gold-200/80">
                   Unlock progress · Maendeleo
                 </p>
-                <p className="font-mono text-[12px] font-bold text-white tabular-nums">{overallPct}%</p>
+                <p className="font-mono text-[12px] font-bold text-text tabular-nums">{overallPct}%</p>
               </div>
-              <div className="h-2.5 w-full rounded-pill overflow-hidden" style={{ background: "oklch(20% 0.06 300 / 0.6)" }}>
-                <div className="h-full rounded-pill transition-[width] duration-500"
-                  style={{ width: `${overallPct}%`, background: "linear-gradient(90deg, oklch(82% 0.17 330), oklch(86% 0.16 90))" }} />
+              <div className="h-2.5 w-full rounded-pill overflow-hidden bg-bg-sunken/70">
+                <div className={`h-full rounded-pill transition-[width] duration-500 ${overallPct > 0 && overallPct < 100 ? "prog-sweep" : ""}`}
+                  style={{ width: `${overallPct}%`, background: "linear-gradient(90deg, var(--gold-500), var(--yes-400))" }} />
               </div>
               {totalRemainingWager > 0 && (
-                <p className="mt-2 text-[12px]" style={{ color: "oklch(92% 0.05 330)" }}>
-                  Play <span className="font-mono font-bold text-white"><Cash>{fmt(totalRemainingWager, currency)}</Cash></span> more to turn this into withdrawable cash.
-                  <span className="block italic text-[10.5px] mt-0.5" style={{ color: "oklch(82% 0.05 330)" }}>
+                <p className="mt-2 text-[12px] text-gold-100/90">
+                  Play <span className="font-mono font-bold text-text"><Cash>{fmt(totalRemainingWager, currency)}</Cash></span> more to turn this into withdrawable cash.
+                  <span className="block italic text-[10.5px] mt-0.5 text-gold-200/60">
                     Cheza zaidi ili kuibadilisha kuwa pesa unayoweza kutoa.
                   </span>
                 </p>
@@ -148,42 +149,39 @@ function BonusWalletCard({
             {grants.length > 0 && (
               <div className="mt-4 space-y-2">
                 {grants.slice(0, 3).map((g) => (
-                  <div key={g.id} className="rounded-md px-3 py-2 backdrop-blur-md"
-                    style={{ background: "oklch(96% 0.02 330 / 0.08)", border: "1px solid oklch(90% 0.08 330 / 0.14)" }}>
+                  <div key={g.id} className="rounded-md px-3 py-2 bg-gold-500/[0.06] border border-gold-700/25">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: "oklch(88% 0.06 330)" }}>
+                      <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-gold-200/80">
                         {BONUS_SOURCE_LABEL[g.source] ?? g.source}
                       </span>
-                      <span className="font-mono text-[12px] font-bold text-white tabular-nums"><Cash>{fmt(g.remainingTzs, currency)}</Cash></span>
+                      <span className="font-mono text-[12px] font-bold text-text tabular-nums"><Cash>{fmt(g.remainingTzs, currency)}</Cash></span>
                     </div>
-                    <div className="mt-1.5 h-1.5 w-full rounded-pill overflow-hidden" style={{ background: "oklch(20% 0.06 300 / 0.6)" }}>
-                      <div className="h-full rounded-pill" style={{ width: `${g.progressPct}%`, background: "oklch(84% 0.16 330)" }} />
+                    <div className="mt-1.5 h-1.5 w-full rounded-pill overflow-hidden bg-bg-sunken/70">
+                      <div className={`h-full rounded-pill ${g.progressPct > 0 && g.progressPct < 100 ? "prog-sweep" : ""}`} style={{ width: `${g.progressPct}%`, background: "var(--gold-400)" }} />
                     </div>
-                    <div className="mt-1 flex items-center justify-between font-mono text-[9.5px]" style={{ color: "oklch(80% 0.05 330)" }}>
+                    <div className="mt-1 flex items-center justify-between font-mono text-[9.5px] text-gold-200/55">
                       <span>{fmt(g.wageredTzs, currency)} / {fmt(g.wagerRequiredTzs, currency)} played</span>
                       {g.expiresAt && <span>exp {formatDateTimeSafe(g.expiresAt).split(",")[0]}</span>}
                     </div>
                   </div>
                 ))}
                 {grants.length > 3 && (
-                  <p className="text-center font-mono text-[10px]" style={{ color: "oklch(82% 0.05 330)" }}>+{grants.length - 3} more bonus{grants.length - 3 > 1 ? "es" : ""}</p>
+                  <p className="text-center font-mono text-[10px] text-gold-200/60">+{grants.length - 3} more bonus{grants.length - 3 > 1 ? "es" : ""}</p>
                 )}
               </div>
             )}
           </>
         ) : (
           <div className="mt-4">
-            <p className="text-[13px] text-white/90 leading-snug">
+            <p className="text-[13px] text-text/90 leading-snug">
               No bonuses yet — earn them by inviting friends and winning proposals.
-              <span className="block italic text-[11px] mt-0.5" style={{ color: "oklch(84% 0.05 330)" }}>
+              <span className="block italic text-[11px] mt-0.5 text-gold-200/60">
                 Bado hujapata bonasi — zipate kwa kualika marafiki.
               </span>
             </p>
-            <Link href="/profile/invite"
-              className="mt-3 inline-flex items-center gap-1.5 rounded-pill px-3.5 h-8 font-mono text-[11px] uppercase tracking-[0.12em] font-bold text-white transition-opacity hover:opacity-90"
-              style={{ background: "oklch(60% 0.18 330 / 0.55)", border: "1px solid oklch(85% 0.12 330 / 0.4)" }}>
+            <Link href="/profile/invite" className="btn btn-gold btn-sm rounded-pill mt-3 inline-flex">
               <I.gift s={12} />
-              Invite & earn · Alika upate
+              Invite &amp; earn · Alika upate
             </Link>
           </div>
         )}
@@ -354,7 +352,7 @@ export function WalletPageClient({
         )}
       </header>
 
-      {/* Two wallets, one page: main (royal/gold) + bonus (violet/fuchsia). */}
+      {/* Two wallets, one page: main (cool royal) + bonus (warm gold/jackpot). */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
         <BalanceCard balance={balance} pending={pending} hold={hold} currency={currency} />
         <BonusWalletCard bonusBalance={bonusBalance} activeCount={bonusActiveCount} grants={bonusGrants} currency={currency} />

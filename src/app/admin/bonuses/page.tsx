@@ -57,7 +57,7 @@ export default async function AdminBonusesPage({
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Outstanding bonus" sw="Bonasi inayodaiwa" value={formatTzs(stats.outstandingTzs)} gold delta="liability now" deltaDir="flat" />
+          <AdminKpi label="Outstanding bonus" sw="Bonasi inayodaiwa" value={formatTzs(stats.outstandingTzs)} gold pulse delta="liability now" deltaDir="flat" />
           <AdminKpi label="Active grants" sw="Bonasi hai" value={stats.activeGrants.toLocaleString()} delta="in play" deltaDir="flat" />
           <AdminKpi label="Total granted" sw="Jumla iliyotolewa" value={formatTzs(stats.totalGrantedTzs)} delta="all-time" deltaDir="flat" />
           <AdminKpi label="Unlocked to cash" sw="Imefunguliwa" value={formatTzs(stats.totalFulfilledTzs)} delta="played through" deltaDir="flat" />
@@ -112,7 +112,7 @@ export default async function AdminBonusesPage({
                         <td className="min-w-[160px]">
                           <div className="flex items-center gap-2">
                             <div className="h-1.5 flex-1 rounded-pill bg-bg-sunken overflow-hidden">
-                              <div className="h-full rounded-pill bg-royal-400" style={{ width: `${r.progressPct}%` }} />
+                              <div className={`h-full rounded-pill bg-royal-400 ${r.status === "ACTIVE" && r.progressPct > 0 && r.progressPct < 100 ? "prog-sweep" : ""}`} style={{ width: `${r.progressPct}%` }} />
                             </div>
                             <span className="font-mono text-micro text-text-subtle whitespace-nowrap">{r.progressPct}%</span>
                           </div>

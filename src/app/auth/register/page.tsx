@@ -116,18 +116,18 @@ export default async function RegisterPage({
             <div
               className="overflow-hidden rounded-xl border"
               style={{
-                borderColor: "color-mix(in oklab, oklch(70% 0.18 330) 40%, transparent)",
-                background: "linear-gradient(135deg, color-mix(in oklab, oklch(60% 0.2 320) 20%, var(--bg-elevated)), var(--bg-elevated))",
+                borderColor: "color-mix(in oklab, var(--gold-500) 36%, transparent)",
+                background: "linear-gradient(135deg, color-mix(in oklab, var(--gold-500) 16%, var(--bg-elevated)), var(--bg-elevated))",
               }}
             >
               <div className="flex items-center gap-3 p-3.5">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[11px]" style={{ background: "color-mix(in oklab, oklch(70% 0.18 330) 22%, transparent)", color: "oklch(88% 0.12 330)" }}>
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[11px] bg-gold-500/15 text-gold-300">
                   <I.gift s={20} />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-[14px] font-bold text-text">Claim your TZS {invite.bonusAmountTzs.toLocaleString()} welcome bonus</p>
                   <p className="font-display italic text-text-subtle text-[11px]">Pata bonasi yako ya kukukaribisha</p>
-                  <p className="mt-1 text-[12px] text-text-muted">Sign up to add it to your bonus wallet — play it through to turn it into cash.</p>
+                  <p className="mt-1 text-[12px] font-semibold text-gold-300">Added to your bonus wallet — play it through to turn it into cash.</p>
                 </div>
               </div>
             </div>

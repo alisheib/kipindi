@@ -142,12 +142,12 @@ export function BonusAdminClient({ config }: { config: BonusConfig }) {
       {/* Defaults */}
       <div className="rounded-lg border border-border bg-bg-elevated p-4">
         <p className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-subtle mb-3">Defaults · platform-wide · Misingi</p>
-        <div className="flex flex-wrap gap-4">
-          <NumField label="Wagering multiplier" hint="Play this × the bonus to unlock it" suffix="×" width={170}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <NumField label="Wagering multiplier" hint="Play this × the bonus to unlock it" suffix="×"
             value={c.defaultWagerMultiplier} onChange={(n) => setC((p) => ({ ...p, defaultWagerMultiplier: n }))} />
-          <NumField label="Expiry" hint="Days before an unused bonus expires" suffix="days" width={150}
+          <NumField label="Expiry" hint="Days before an unused bonus expires" suffix="days"
             value={c.defaultExpiryDays} onChange={(n) => setC((p) => ({ ...p, defaultExpiryDays: n }))} />
-          <NumField label="Monthly cap" hint="0 = no cap (admin discretion)" prefix="TZS" width={180}
+          <NumField label="Monthly cap" hint="0 = no cap (admin discretion)" prefix="TZS"
             value={c.monthlyCapTzs} onChange={(n) => setC((p) => ({ ...p, monthlyCapTzs: n }))} />
         </div>
       </div>
@@ -196,21 +196,23 @@ export function GrantBonusForm() {
   };
 
   return (
-    <div className="flex flex-wrap items-end gap-4">
-      <div style={{ width: 200 }}>
-        <div className="mb-1.5 text-[12px] font-semibold text-text">Player phone</div>
-        <Input prefix="+255" mono size="sm" placeholder="712 345 678" value={phone}
-          onChange={(e) => setPhone(e.target.value)} />
-        <div className="mt-1.5 text-[10.5px] text-text-subtle">Any TZ format · 0712…, 255…, +255…</div>
-      </div>
-      <NumField label="Amount" prefix="TZS" width={150} value={amount} onChange={setAmount} />
-      <NumField label="Multiplier" hint="Blank = default" suffix="×" width={120}
-        value={multiplier === "" ? 0 : multiplier} onChange={(n) => setMultiplier(n === 0 ? "" : n)} />
-      <NumField label="Expiry" hint="Blank = default" suffix="days" width={120}
-        value={expiry === "" ? 0 : expiry} onChange={(n) => setExpiry(n === 0 ? "" : n)} />
-      <div style={{ width: 220 }}>
-        <div className="mb-1.5 text-[12px] font-semibold text-text">Note (optional)</div>
-        <Input size="sm" placeholder="e.g. retention gift" value={note} onChange={(e) => setNote(e.target.value)} />
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="w-full">
+          <div className="mb-1.5 text-[12px] font-semibold text-text">Player phone</div>
+          <Input prefix="+255" mono size="sm" placeholder="712 345 678" value={phone}
+            onChange={(e) => setPhone(e.target.value)} />
+          <div className="mt-1.5 text-[10.5px] text-text-subtle">Any TZ format · 0712…, 255…, +255…</div>
+        </div>
+        <NumField label="Amount" prefix="TZS" value={amount} onChange={setAmount} />
+        <NumField label="Multiplier" hint="Blank = default" suffix="×"
+          value={multiplier === "" ? 0 : multiplier} onChange={(n) => setMultiplier(n === 0 ? "" : n)} />
+        <NumField label="Expiry" hint="Blank = default" suffix="days"
+          value={expiry === "" ? 0 : expiry} onChange={(n) => setExpiry(n === 0 ? "" : n)} />
+        <div className="w-full sm:col-span-2 lg:col-span-1">
+          <div className="mb-1.5 text-[12px] font-semibold text-text">Note (optional)</div>
+          <Input size="sm" placeholder="e.g. retention gift" value={note} onChange={(e) => setNote(e.target.value)} />
+        </div>
       </div>
       <Button variant="gold" size="sm" leading={<I.plus s={14} />} loading={pending} onClick={grant}>Grant bonus</Button>
     </div>

@@ -37,23 +37,23 @@ export function CreateCampaignForm() {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-end gap-4">
-        <div style={{ width: 220 }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="w-full">
           <div className="mb-1.5 text-[12px] font-semibold text-text">Campaign name</div>
           <Input size="sm" placeholder="June Launch Push" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
-        <NumField label="Bonus per invitee" prefix="TZS" width={160} value={bonus} onChange={setBonus} />
-        <NumField label="Multiplier" hint="Blank = default" suffix="×" width={120}
+        <NumField label="Bonus per invitee" prefix="TZS" value={bonus} onChange={setBonus} />
+        <NumField label="Multiplier" hint="Blank = default" suffix="×"
           value={multiplier === "" ? 0 : multiplier} onChange={(n) => setMultiplier(n === 0 ? "" : n)} />
-        <NumField label="Expiry" hint="Blank = default" suffix="days" width={120}
+        <NumField label="Expiry" hint="Blank = default" suffix="days"
           value={expiry === "" ? 0 : expiry} onChange={(n) => setExpiry(n === 0 ? "" : n)} />
       </div>
-      <div className="flex flex-wrap gap-4">
-        <div style={{ width: 320, maxWidth: "100%" }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="w-full">
           <div className="mb-1.5 text-[12px] font-semibold text-text">Message (English)</div>
           <Input size="sm" value={messageEn} onChange={(e) => setMessageEn(e.target.value)} />
         </div>
-        <div style={{ width: 320, maxWidth: "100%" }}>
+        <div className="w-full">
           <div className="mb-1.5 text-[12px] font-semibold text-text">Message (Swahili)</div>
           <Input size="sm" value={messageSw} onChange={(e) => setMessageSw(e.target.value)} />
         </div>
