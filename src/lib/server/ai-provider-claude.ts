@@ -33,6 +33,7 @@ import type { AIProvider, AIProviderResponse, AIPollGeneration, GenerateRequest 
 import { getAIPollConfig } from "./ai-poll-config";
 import { ai } from "./ai-config";
 import { recordAiUsage } from "./ai-usage";
+import { getPlatformTimezone } from "./platform-config";
 
 const VALID_CATEGORIES = [
   "sports", "macro", "weather", "crypto", "culture", "infrastructure", "tech", "other",
@@ -117,7 +118,7 @@ function buildSystemPrompt(opts: {
 
 Your job: generate ONE excellent YES/NO prediction-market question for the given category, then submit it by calling the submit_poll tool.
 
-CURRENT DATE/TIME (authoritative — trust this over your own sense of "now"): ${opts.nowIso} (platform timezone: ${process.env.PLATFORM_TIMEZONE || "Africa/Dar_es_Salaam"})
+CURRENT DATE/TIME (authoritative — trust this over your own sense of "now"): ${opts.nowIso} (platform timezone: ${getPlatformTimezone()})
 
 WHAT MAKES A GREAT 50pick MARKET (aim for ALL of these):
 - HOT & topical: tied to a real, named, upcoming event people are already talking about. No vague or evergreen filler.

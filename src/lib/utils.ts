@@ -33,8 +33,8 @@ export function formatNumber(value: number): string {
  *  use this timezone. Change it in admin → changes everywhere instantly.
  *  Admin/audit trails always store UTC; this only affects display. */
 import { getPlatformTimezone } from "@/lib/server/platform-config";
-/** Live-reading getter — always returns the current admin-configured timezone. */
-export const PLATFORM_TZ = getPlatformTimezone();
+/** Reads the current admin-configured timezone. Dynamic — reflects admin changes. */
+export function PLATFORM_TZ_GET(): string { return getPlatformTimezone(); }
 function tz(): string { return getPlatformTimezone(); }
 
 /** "11 Jun 2026" */
