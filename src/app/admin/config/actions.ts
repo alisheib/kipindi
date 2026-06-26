@@ -10,6 +10,7 @@ import {
   clearMarketOverride,
   type RateConfig,
 } from "@/lib/server/market-config";
+import { setPlatformConfig } from "@/lib/server/platform-config";
 
 const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
 
@@ -88,6 +89,15 @@ export async function setMarketOverrideAction(formData: FormData) {
     return { ok: false as const, error: "No values to update." };
   }
   const r = await setMarketOverride(marketId, updates, s.userId);
+  revalidatePath("/admin/config");
+  return r;
+}
+
+export async function updatePlatformTimezoneAction(formData: FormData) {
+  const s = await ensureAdmin();
+  const tz = String(formData.get("timezone") ?? "").trim();
+  if (!tz) return { ok: false as const, error: "Timezone is required." };
+  const r = await setPlatformConfig({ timezone: tz }, s.userId);
   revalidatePath("/admin/config");
   return r;
 }

@@ -27,37 +27,39 @@ export function formatNumber(value: number): string {
 
 /* ── Date formatting ─────────────────────────────────────────────── */
 
-/** Platform timezone — configurable via PLATFORM_TIMEZONE env var.
+/** Platform timezone — admin-configurable at /admin/config, persisted to DB.
  *  Defaults to Africa/Dar_es_Salaam (EAT, UTC+3) for Tanzania.
  *  ALL player-visible times, AI sentinel prompts, and resolution displays
- *  use this timezone. Change it in one place → changes everywhere.
+ *  use this timezone. Change it in admin → changes everywhere instantly.
  *  Admin/audit trails always store UTC; this only affects display. */
-export const PLATFORM_TZ = process.env.PLATFORM_TIMEZONE || "Africa/Dar_es_Salaam";
-const TZ = PLATFORM_TZ;
+import { getPlatformTimezone } from "@/lib/server/platform-config";
+/** Live-reading getter — always returns the current admin-configured timezone. */
+export const PLATFORM_TZ = getPlatformTimezone();
+function tz(): string { return getPlatformTimezone(); }
 
 /** "11 Jun 2026" */
 export function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: TZ });
+  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: tz() });
 }
 
 /** "11 Jun" */
 export function formatDateShort(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: TZ });
+  return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: tz() });
 }
 
 /** "11 Jun 2026, 14:30" */
 export function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: TZ });
+  return new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: tz() });
 }
 
 /** "14:30:05" — time-only for feeds / audit */
 export function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: TZ });
+  return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: tz() });
 }
 
 /** "14:30" — short clock for compact feeds */
 export function formatClock(iso: string): string {
-  return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: TZ });
+  return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: tz() });
 }
 
 /** "2026-06-11" — sortable date string */

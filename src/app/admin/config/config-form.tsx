@@ -9,6 +9,7 @@ import {
   updateGlobalConfigAction,
   setMarketOverrideAction,
   clearMarketOverrideAction,
+  updatePlatformTimezoneAction,
 } from "./actions";
 import type { RateConfig } from "@/lib/server/market-config";
 import { formatTzs } from "@/lib/utils";
@@ -165,6 +166,37 @@ export function MarketOverrideForm({ globalConfig }: { globalConfig: RateConfig 
       </div>
       <Button type="submit" variant="primary" loading={pending}>
         Save override
+      </Button>
+    </form>
+  );
+}
+
+export function TimezoneForm({ current }: { current: string }) {
+  const [pending, start] = useTransition();
+  const router = useRouter();
+  const { deferToast, toast } = useDeferredToast(pending);
+
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    start(async () => {
+      const r = await updatePlatformTimezoneAction(fd);
+      if (!r.ok) {
+        toast({ title: "Invalid timezone", description: r.error, variant: "danger" });
+      } else {
+        router.refresh();
+        deferToast({ title: "Timezone updated — all times now use " + (r as { ok: true; config: { timezone: string } }).config.timezone, variant: "success" });
+      }
+    });
+  };
+
+  return (
+    <form onSubmit={onSubmit} className="flex items-end gap-3">
+      <Field label="Platform timezone (IANA)" hint={`Current: ${current}. All player times, AI prompts, and displays use this.`} className="flex-1 min-w-[240px]">
+        <Input name="timezone" defaultValue={current} placeholder="Africa/Dar_es_Salaam" mono />
+      </Field>
+      <Button type="submit" loading={pending}>
+        Set timezone
       </Button>
     </form>
   );

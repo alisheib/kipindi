@@ -8,14 +8,17 @@ import {
   GlobalConfigForm,
   MarketOverrideForm,
   ClearOverrideButton,
+  TimezoneForm,
 } from "./config-form";
 import { formatTzs, formatDateTime } from "@/lib/utils";
+import { getPlatformConfig } from "@/lib/server/platform-config";
 
 export const metadata = { title: "Admin · Market config" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminConfigPage() {
   const config = await getGlobalConfig();
+  const platform = await getPlatformConfig();
   const overrides = await listMarketOverrides();
   const overrideMarketNames = new Map<string, string>();
   for (const { marketId } of overrides) {
@@ -50,6 +53,16 @@ export default async function AdminConfigPage() {
           <AdminKpi label="TRA on commission" sw="TRA"       value={`${(config.traTaxOnCommissionRate * 100).toFixed(0)}%`} delta="of operator take" />
           <AdminKpi label="GBT on commission" sw="GBT"       value={`${(config.gbtLevyOnCommissionRate * 100).toFixed(0)}%`} delta="of operator take" />
         </div>
+
+        {/* Platform timezone */}
+        <AdminCard title="Platform timezone" sw="Saa za jukwaa">
+          <p className="text-caption text-text-secondary mb-3">
+            All player-visible times, AI sentinel prompts, and poll generation use this timezone.
+            Change it here and it changes <strong>everywhere instantly</strong> — no redeploy needed.
+            Uses IANA format (e.g. Africa/Dar_es_Salaam, Asia/Dubai, Europe/London).
+          </p>
+          <TimezoneForm current={platform.timezone} />
+        </AdminCard>
 
         {/* Pari-mutuel formula */}
         <AdminCard className="border-info-border bg-info-bg/15">
