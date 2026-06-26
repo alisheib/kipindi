@@ -283,9 +283,12 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
       {resolved.length > 0 && (
         <section className="mt-10">
           <div className="mb-3 flex items-baseline justify-between gap-2">
-            <h2 className="font-display text-[20px] font-semibold text-text">{searching ? "Matching resolved markets" : "Recently resolved"}</h2>
+            <h2 className="font-display text-[20px] font-semibold text-text">
+              {searching ? "Matching resolved markets" : "Recently resolved"}
+              {!searching && <span className="ml-2 text-[13px] italic font-normal text-text-subtle">· Matokeo ya hivi karibuni</span>}
+            </h2>
             <a href="/results" className="font-mono text-[11.5px] font-semibold text-brand-300 hover:text-text transition-colors whitespace-nowrap">
-              All results →
+              All results · Yote →
             </a>
           </div>
           <div className="market-grid">

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
@@ -5,6 +6,8 @@ import { listMarkets, impliedYesPct, type MarketCategory } from "@/lib/server/ma
 import { getCardChart } from "@/lib/server/market-history";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ResultsSearch } from "./results-search";
+import { RefreshPoller } from "@/components/ui/refresh-poller";
+import { formatTzsCompact } from "@/lib/utils";
 
 export const metadata = { title: "Results · Matokeo" };
 export const dynamic = "force-dynamic";
@@ -38,9 +41,41 @@ export default async function ResultsPage({
   const activeSort: SortField = sp.sort === "volume" ? "volume" : "resolved";
   const qRaw = (sp.q ?? "").trim().slice(0, 100);
   const searching = qRaw.length > 0;
-  const tokens = qRaw.toLowerCase().split(/\s+/).filter(Boolean);
   const pageNum = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
 
+  return (
+    <main className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6">
+      <h1 className="sr-only">Results · Matokeo</h1>
+      {/* Refresh every 60s — new resolutions should appear without F5 */}
+      <RefreshPoller intervalMs={60_000} />
+
+      <Suspense fallback={<ResultsSkeleton />}>
+        <ResultsContent
+          activeCat={activeCat}
+          activeSort={activeSort}
+          qRaw={qRaw}
+          searching={searching}
+          pageNum={pageNum}
+        />
+      </Suspense>
+    </main>
+  );
+}
+
+async function ResultsContent({
+  activeCat,
+  activeSort,
+  qRaw,
+  searching,
+  pageNum,
+}: {
+  activeCat: string;
+  activeSort: SortField;
+  qRaw: string;
+  searching: boolean;
+  pageNum: number;
+}) {
+  const tokens = qRaw.toLowerCase().split(/\s+/).filter(Boolean);
   const matches = (m: { titleEn: string; titleSw: string; category: string; resolutionCriterion?: string }) => {
     if (!searching) return true;
     const hay = `${m.titleEn} ${m.titleSw} ${m.category} ${m.resolutionCriterion ?? ""}`.toLowerCase();
@@ -97,9 +132,7 @@ export default async function ResultsPage({
   };
 
   return (
-    <main className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6">
-      <h1 className="sr-only">Results · Matokeo</h1>
-
+    <>
       {/* Header */}
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
@@ -107,18 +140,20 @@ export default async function ResultsPage({
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">Results · Matokeo</p>
         </div>
         <p className="font-mono text-[10.5px] text-text-subtle tabular-nums whitespace-nowrap">
-          {totalCount} resolved · TZS {(totalVolume / 1000).toFixed(0)}k settled
+          {totalCount} resolved · {formatTzsCompact(totalVolume)} settled
         </p>
       </div>
 
-      {/* Search */}
+      {/* Search — sticky below app bar, same as /markets */}
       <div className="sticky top-[56px] z-20 bg-bg-base py-2.5">
-        <ResultsSearch />
+        <Suspense>
+          <ResultsSearch />
+        </Suspense>
       </div>
 
       {/* Filters + Grid */}
       <div className="mt-1 flex flex-col gap-5 lg:flex-row lg:gap-6">
-        {/* Sidebar filters */}
+        {/* Sidebar filters — sticky on desktop, horizontal scroll on mobile */}
         <aside className="lg:w-[208px] lg:shrink-0 lg:sticky lg:top-[122px] lg:self-start lg:max-h-[calc(100dvh-134px)] lg:overflow-y-auto lg:overflow-x-hidden kp-thin-scroll lg:pb-3">
           <div className="space-y-2.5 lg:space-y-4">
             {/* Sort */}
@@ -171,11 +206,13 @@ export default async function ResultsPage({
             {/* Outcome summary */}
             {totalCount > 0 && (
               <div className="rounded-lg border border-border bg-bg-elevated/60 p-3 space-y-2">
-                <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle">Outcomes</p>
+                <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle">
+                  Outcomes · <span className="italic font-normal">Matokeo</span>
+                </p>
                 <div className="space-y-1.5">
-                  <OutcomeStat label="YES wins" count={yesWins} total={totalCount} color="var(--yes-400)" />
-                  <OutcomeStat label="NO wins" count={noWins} total={totalCount} color="var(--no-400)" />
-                  {voidCount > 0 && <OutcomeStat label="Voided" count={voidCount} total={totalCount} color="var(--text-subtle)" />}
+                  <OutcomeStat label="YES" sw="Ndiyo" count={yesWins} total={totalCount} color="var(--yes-400)" />
+                  <OutcomeStat label="NO" sw="Hapana" count={noWins} total={totalCount} color="var(--no-400)" />
+                  {voidCount > 0 && <OutcomeStat label="Void" sw="Batili" count={voidCount} total={totalCount} color="var(--text-subtle)" />}
                 </div>
               </div>
             )}
@@ -215,7 +252,7 @@ export default async function ResultsPage({
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <nav aria-label="Results pagination" className="mt-6 flex items-center justify-center gap-1.5">
+                <nav aria-label="Results pagination" className="mt-6 flex flex-wrap items-center justify-center gap-1.5">
                   {safePage > 1 && (
                     <a
                       href={buildHref({ page: safePage - 1 })}
@@ -227,14 +264,14 @@ export default async function ResultsPage({
                   )}
                   {pageButtons(safePage, totalPages).map((p, i) =>
                     p === null ? (
-                      <span key={`e${i}`} className="px-1 text-text-subtle">…</span>
+                      <span key={`e${i}`} className="px-1 text-text-subtle select-none">…</span>
                     ) : (
                       <a
                         key={p}
                         href={buildHref({ page: p })}
                         aria-current={p === safePage ? "page" : undefined}
                         className={
-                          "inline-flex h-8 min-w-[32px] items-center justify-center rounded-md border px-2 font-mono text-[12px] font-semibold transition-all " +
+                          "inline-flex h-8 min-w-[32px] items-center justify-center rounded-md border px-2 font-mono text-[12px] font-semibold tabular-nums transition-all " +
                           (p === safePage
                             ? "border-brand-500 text-text"
                             : "border-border bg-bg-elevated/60 text-text-muted hover:border-brand-400 hover:text-text")
@@ -280,22 +317,23 @@ export default async function ResultsPage({
                   <Link href="/markets" className="btn btn-gold btn-sm">Browse live markets →</Link>
                 )
               }
-              className="max-w-[360px]"
             />
           )}
         </div>
       </div>
-    </main>
+    </>
   );
 }
 
 /** Outcome mini-bar in sidebar */
-function OutcomeStat({ label, count, total, color }: { label: string; count: number; total: number; color: string }) {
+function OutcomeStat({ label, sw, count, total, color }: { label: string; sw: string; count: number; total: number; color: string }) {
   const pct = total > 0 ? Math.round((count / total) * 100) : 0;
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <span className="font-mono text-[10.5px] text-text-muted">{label}</span>
+        <span className="font-mono text-[10.5px] text-text-muted">
+          {label} <span className="italic font-normal text-text-subtle">· {sw}</span>
+        </span>
         <span className="font-mono text-[10.5px] tabular-nums text-text-subtle">{count} ({pct}%)</span>
       </div>
       <div className="h-1.5 w-full rounded-pill bg-bg-overlay overflow-hidden">
@@ -315,4 +353,61 @@ function pageButtons(current: number, total: number): (number | null)[] {
   if (current < total - 2) pages.push(null);
   pages.push(total);
   return pages;
+}
+
+/** Shimmer skeleton shown while the async content loads (same pattern as
+ *  /markets GridSkeleton — card-sized placeholders with shimmer tracks). */
+function ResultsSkeleton() {
+  return (
+    <>
+      {/* Header skeleton */}
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="h-5 w-5 rounded bg-bg-overlay kp-shimmer-track" />
+          <div className="h-4 w-32 rounded bg-bg-overlay kp-shimmer-track" />
+        </div>
+        <div className="h-3.5 w-36 rounded bg-bg-overlay kp-shimmer-track" />
+      </div>
+
+      {/* Search skeleton */}
+      <div className="mb-4 h-[44px] rounded-md bg-bg-overlay kp-shimmer-track" style={{ maxWidth: 460 }} />
+
+      {/* Filters + grid */}
+      <div className="mt-1 flex flex-col gap-5 lg:flex-row lg:gap-6">
+        {/* Sidebar skeleton */}
+        <aside className="lg:w-[208px] lg:shrink-0 space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-8 rounded-md bg-bg-overlay kp-shimmer-track" />
+          ))}
+        </aside>
+
+        {/* Grid skeleton */}
+        <div className="min-w-0 flex-1">
+          <div className="market-grid" aria-hidden>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={i}
+                className="rounded-md border border-border bg-bg-elevated overflow-hidden kp-shimmer-track"
+                style={{ height: 220 }}
+              >
+                <div className="p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-5 w-12 rounded-pill bg-bg-overlay" />
+                    <div className="h-5 w-16 rounded-pill bg-bg-overlay" />
+                  </div>
+                  <div className="h-4 w-3/4 rounded bg-bg-overlay" />
+                  <div className="h-4 w-1/2 rounded bg-bg-overlay" />
+                  <div className="h-[7px] w-full rounded-pill bg-bg-overlay mt-4" />
+                  <div className="flex gap-2 mt-3">
+                    <div className="h-9 flex-1 rounded-md bg-bg-overlay" />
+                    <div className="h-9 flex-1 rounded-md bg-bg-overlay" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  );
 }
