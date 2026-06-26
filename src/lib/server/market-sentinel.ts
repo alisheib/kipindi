@@ -639,30 +639,44 @@ function recordSweepSummary(r: SentinelResult[]): void {
   }
 }
 
+export type BootDecision = { kind: "resume" | "grace" | "first"; targetAt: number | null; delayMs: number };
+
+/**
+ * Pure decision for what to do on boot, given the persisted schedule. Extracted
+ * so the deploy-proof behaviour is unit-testable without real timers:
+ *  - resume: a future target survives the restart → keep the SAME nextSweepAt
+ *  - grace:  the target was missed while we were down → run after a short grace
+ *  - first:  nothing persisted (first ever boot) → one full interval out
+ * All times are epoch-ms (UTC), so this is timezone-independent by construction.
+ */
+export function computeBootSchedule(
+  persisted: { nextSweepAt: number | null } | null,
+  now: number,
+  intervalMs: number,
+  graceMs: number,
+): BootDecision {
+  if (persisted?.nextSweepAt != null && persisted.nextSweepAt > now) {
+    return { kind: "resume", targetAt: persisted.nextSweepAt, delayMs: persisted.nextSweepAt - now };
+  }
+  if (persisted?.nextSweepAt != null) {
+    return { kind: "grace", targetAt: null, delayMs: graceMs };
+  }
+  return { kind: "first", targetAt: null, delayMs: intervalMs };
+}
+
 export function startSentinel(): void {
   if (timer) return;
   if (!process.env.ANTHROPIC_API_KEY) { console.warn("[sentinel] ANTHROPIC_API_KEY not set — sentinel disabled"); return; }
   if (process.env.SENTINEL_ENABLED === "false") { console.warn("[sentinel] SENTINEL_ENABLED=false — sentinel disabled"); return; }
 
   (async () => {
-    currentIntervalMs = (await getLiveConfig()).intervalMs;
+    const cfg = await getLiveConfig();
+    currentIntervalMs = cfg.intervalMs;
     const persisted = await loadConfig<SentinelSchedule>(SCHEDULE_KEY);
     if (persisted?.lastSweepAt != null) lastSweepAt = persisted.lastSweepAt;
-    const now = Date.now();
-
-    if (persisted?.nextSweepAt != null && persisted.nextSweepAt > now) {
-      // Resume the SAME target — a deploy doesn't reset the countdown.
-      arm(persisted.nextSweepAt - now, persisted.nextSweepAt);
-      console.log(`[sentinel] Resumed — next sweep in ${Math.round((persisted.nextSweepAt - now) / 1000)}s (deploy-proof, interval ${currentIntervalMs / 1000}s)`);
-    } else if (persisted?.nextSweepAt != null) {
-      // Target was missed while we were down — run soon (after a short grace).
-      arm(BOOT_GRACE_MS);
-      console.log(`[sentinel] Missed target during downtime — sweeping in ${BOOT_GRACE_MS / 1000}s`);
-    } else {
-      // First ever boot — schedule the first sweep one interval out.
-      arm(currentIntervalMs);
-      console.log(`[sentinel] Started (interval ${currentIntervalMs / 1000}s, triage ${TRIAGE_MODEL}, deep ${(await getLiveConfig()).model})`);
-    }
+    const decision = computeBootSchedule(persisted, Date.now(), currentIntervalMs, BOOT_GRACE_MS);
+    arm(decision.delayMs, decision.targetAt ?? undefined);
+    console.log(`[sentinel] ${decision.kind} — next sweep in ${Math.round(decision.delayMs / 1000)}s (deploy-proof, interval ${currentIntervalMs / 1000}s, triage ${TRIAGE_MODEL}, deep ${cfg.model})`);
   })().catch((err) => console.error("[sentinel] Start error:", err));
 }
 
@@ -676,6 +690,12 @@ export async function getSentinelStatus(): Promise<{
   nextSweepAt: number | null;
   lastSweepAt: number | null;
   lastSummary: SweepSummary | null;
+  /** Server clock at the moment of this read (epoch-ms). The client diffs this
+   *  against its own clock to render an accurate countdown even if the admin's
+   *  device clock is wrong/changed — the timer is driven by server time, UTC. */
+  serverNow: number;
+  /** Platform timezone (e.g. Africa/Dar_es_Salaam) for formatting wall-clock times. */
+  timezone: string;
 }> {
   let next = nextSweepAt;
   let last = lastSweepAt;
@@ -684,15 +704,22 @@ export async function getSentinelStatus(): Promise<{
     const persisted = await loadConfig<SentinelSchedule>(SCHEDULE_KEY);
     if (persisted) { next = persisted.nextSweepAt; last = persisted.lastSweepAt; interval = persisted.intervalMs || interval; }
   }
-  return { enabled: sentinelEnabled(), running: !!timer, sweeping: sweepRunning, intervalMs: interval, nextSweepAt: next, lastSweepAt: last, lastSummary };
+  return {
+    enabled: sentinelEnabled(), running: !!timer, sweeping: sweepRunning,
+    intervalMs: interval, nextSweepAt: next, lastSweepAt: last, lastSummary,
+    serverNow: Date.now(), timezone: getPlatformTimezone(),
+  };
 }
 
-/** Reset the countdown: schedule the next sweep one full interval from now. */
-export async function resetSentinelTimer(): Promise<{ nextSweepAt: number; intervalMs: number }> {
+/** Reset the countdown: schedule the next sweep one full interval from now.
+ *  No-op (returns current state) when the sentinel is disabled, so the timer is
+ *  never armed without an API key / when SENTINEL_ENABLED=false. */
+export async function resetSentinelTimer(): Promise<{ nextSweepAt: number | null; intervalMs: number }> {
+  if (!sentinelEnabled()) return { nextSweepAt, intervalMs: currentIntervalMs };
   currentIntervalMs = (await getLiveConfig()).intervalMs;
   arm(currentIntervalMs);
   audit({ category: "ADMIN", action: "sentinel.timer_reset", actorId: "admin", targetType: "System", targetId: "market-sentinel", payload: { nextSweepAt, intervalMs: currentIntervalMs } });
-  return { nextSweepAt: nextSweepAt!, intervalMs: currentIntervalMs };
+  return { nextSweepAt, intervalMs: currentIntervalMs };
 }
 
 /** Run a sweep NOW (the "finish timer & execute" button), then re-arm the

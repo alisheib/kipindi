@@ -16,6 +16,8 @@ type Status = {
   nextSweepAt: number | null;
   lastSweepAt: number | null;
   lastSummary: { closed: number; errors: number; total: number; at: number } | null;
+  serverNow: number;
+  timezone: string;
 };
 
 /** ms → "1h 04m 12s" / "4m 12s" / "12s" — compact, monospace-friendly. */
@@ -28,9 +30,9 @@ function fmtRemaining(ms: number): string {
   if (m > 0) return `${m}m ${String(sec).padStart(2, "0")}s`;
   return `${sec}s`;
 }
-function fmtClock(ts: number | null): string {
+function fmtClock(ts: number | null, timeZone?: string): string {
   if (!ts) return "—";
-  try { return new Date(ts).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }); } catch { return "—"; }
+  try { return new Date(ts).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: timeZone || undefined }); } catch { return "—"; }
 }
 
 /**
@@ -42,13 +44,19 @@ function fmtClock(ts: number | null): string {
  */
 export function SentinelCountdown() {
   const [status, setStatus] = useState<Status | null>(null);
-  const [now, setNow] = useState(0); // 0 until mounted → SSR/client render match
+  const [now, setNow] = useState(0); // client epoch; 0 until mounted → SSR/client render match
   const [open, setOpen] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const boxRef = useRef<HTMLDivElement>(null);
+  // server clock − client clock, captured at each fetch. The countdown is driven
+  // by server time, so it stays correct even if the admin's device clock is wrong
+  // or changes (DST, manual change, timezone switch). All values are epoch-ms UTC.
+  const offsetRef = useRef(0);
 
-  const refresh = () => { getSentinelStatusAction().then(setStatus).catch(() => {}); };
+  const refresh = () => {
+    getSentinelStatusAction().then((s) => { offsetRef.current = s.serverNow - Date.now(); setStatus(s); }).catch(() => {});
+  };
 
   useEffect(() => {
     refresh();
@@ -81,7 +89,9 @@ export function SentinelCountdown() {
   });
 
   // Loading / disabled placeholders keep SSR and first client render identical.
-  const remaining = status?.nextSweepAt && now ? Math.max(0, status.nextSweepAt - now) : null;
+  // Drive the countdown off SERVER time (client clock + measured offset).
+  const serverNow = now ? now + offsetRef.current : 0;
+  const remaining = status?.nextSweepAt && serverNow ? Math.max(0, status.nextSweepAt - serverNow) : null;
   const soon = remaining != null && remaining < 5 * 60_000; // < 5 min → emphasize
   const label = !status
     ? "…"
@@ -131,8 +141,8 @@ export function SentinelCountdown() {
 
           <div className="space-y-1.5 mb-3 font-mono text-[11px]">
             <Row label="Next sweep" value={status?.sweeping ? "running…" : remaining != null ? `in ${fmtRemaining(remaining)}` : "—"} accent />
-            <Row label="At" value={fmtClock(status?.nextSweepAt ?? null)} />
-            <Row label="Last sweep" value={fmtClock(status?.lastSweepAt ?? null)} />
+            <Row label="At" value={fmtClock(status?.nextSweepAt ?? null, status?.timezone)} />
+            <Row label="Last sweep" value={fmtClock(status?.lastSweepAt ?? null, status?.timezone)} />
             <Row label="Interval" value={status ? fmtRemaining(status.intervalMs) : "—"} />
             {status?.lastSummary && (
               <Row label="Last result" value={`${status.lastSummary.closed} closed / ${status.lastSummary.total}`} />

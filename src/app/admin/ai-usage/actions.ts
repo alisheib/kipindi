@@ -73,7 +73,7 @@ export async function getSentinelStatusAction() {
 }
 
 /** Reset the countdown — schedule the next sweep one full interval from now. */
-export async function resetSentinelTimerAction(): Promise<{ ok: boolean; nextSweepAt?: number; error?: string }> {
+export async function resetSentinelTimerAction(): Promise<{ ok: boolean; nextSweepAt?: number | null; error?: string }> {
   await ensureAdmin();
   try {
     const { resetSentinelTimer } = await import("@/lib/server/market-sentinel");
