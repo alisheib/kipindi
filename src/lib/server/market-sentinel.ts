@@ -38,6 +38,7 @@ import { recordAiUsage } from "./ai-usage";
 import { getAiOpsConfig } from "./ai-ops-config";
 import { withLock } from "./locks";
 import { getPlatformTimezone } from "./platform-config";
+import { loadConfig, saveConfig } from "./config-store";
 
 // --- Configuration -----------------------------------------------------------
 
@@ -565,81 +566,167 @@ async function maybeAlertOnSweep(results: SentinelResult[]): Promise<void> {
   });
 }
 
-// --- Background Runner -------------------------------------------------------
+// --- Background Runner (durable, self-rescheduling) --------------------------
+//
+// The schedule is PERSISTED (SystemConfig key "sentinel.schedule") so the
+// countdown to the next sweep survives Railway deploys: a restart resumes the
+// SAME nextSweepAt instead of resetting the clock. Without this, frequent pushes
+// (each restarting the process) reset a fresh in-memory timer and the sweep
+// could be starved indefinitely. We use a self-rescheduling setTimeout (not
+// setInterval) so each tick re-reads the live interval and re-persists the next
+// fire time — giving the admin UI a precise, deploy-proof countdown.
 
-let intervalId: ReturnType<typeof setInterval> | null = null;
+const SCHEDULE_KEY = "sentinel.schedule";
+// On boot, if the persisted nextSweepAt was missed while we were down, run after
+// this short grace (not instantly) so a deploy storm doesn't hammer the API.
+const BOOT_GRACE_MS = 90_000;
+
+type SentinelSchedule = { nextSweepAt: number; lastSweepAt: number | null; intervalMs: number };
+type SweepSummary = { closed: number; errors: number; total: number; at: number };
+
+let timer: ReturnType<typeof setTimeout> | null = null;
 let sweepRunning = false;
 let currentIntervalMs = ENV_INTERVAL_MS;
+let nextSweepAt: number | null = null;
+let lastSweepAt: number | null = null;
+let lastSummary: SweepSummary | null = null;
 
-async function scheduleSweep(): Promise<void> {
-  const cfg = await getLiveConfig();
-  const newInterval = cfg.intervalMs;
+function sentinelEnabled(): boolean {
+  return !!process.env.ANTHROPIC_API_KEY && process.env.SENTINEL_ENABLED !== "false";
+}
 
-  // Restart the interval if the admin changed it
-  if (intervalId && newInterval !== currentIntervalMs) {
-    clearInterval(intervalId);
-    intervalId = null;
-    console.log(`[sentinel] Interval changed: ${currentIntervalMs / 1000}s → ${newInterval / 1000}s`);
-    currentIntervalMs = newInterval;
+async function persistSchedule(): Promise<void> {
+  if (nextSweepAt == null) return;
+  await saveConfig(SCHEDULE_KEY, { nextSweepAt, lastSweepAt, intervalMs: currentIntervalMs } satisfies SentinelSchedule);
+}
+
+/** Arm the one-shot timer to fire `delayMs` from now and record/persist the
+ *  target. Pass an explicit `targetAt` to resume an existing target across a
+ *  restart (so the countdown does not reset on deploy). */
+function arm(delayMs: number, targetAt?: number): void {
+  if (timer) { clearTimeout(timer); timer = null; }
+  nextSweepAt = targetAt ?? (Date.now() + Math.max(0, delayMs));
+  const wait = Math.max(0, nextSweepAt - Date.now());
+  void persistSchedule();
+  timer = setTimeout(fireSweep, wait);
+}
+
+async function fireSweep(): Promise<void> {
+  if (sweepRunning) { arm(15_000); return; } // a manual run is in flight — retry shortly
+  sweepRunning = true;
+  try {
+    const r = await runSentinelSweep();
+    recordSweepSummary(r);
+    await maybeAlertOnSweep(r);
+  } catch (err) {
+    console.error("[sentinel] Sweep error:", err);
+  } finally {
+    sweepRunning = false;
+    lastSweepAt = Date.now();
+    // Re-read the live interval each cycle so an admin change takes effect.
+    currentIntervalMs = (await getLiveConfig()).intervalMs;
+    arm(currentIntervalMs);
   }
+}
 
-  if (intervalId) return; // already running at the right interval
-
-  currentIntervalMs = newInterval;
-  intervalId = setInterval(async () => {
-    if (sweepRunning) return;
-    sweepRunning = true;
-    try {
-      const r = await runSentinelSweep();
-      const closed = r.filter((x) => x.action === "closed");
-      const errors = r.filter((x) => x.action === "error");
-      const triaged = r.filter((x) => x.action === "triage_skip");
-      if (closed.length > 0 || errors.length > 0) {
-        console.log(`[sentinel] Sweep: ${closed.length} closed, ${errors.length} errors, ${triaged.length} triage-skipped, ${r.length - closed.length - errors.length - triaged.length} deep-skipped`);
-      }
-      await maybeAlertOnSweep(r);
-      // Check if interval was changed by admin while we were sweeping
-      await scheduleSweep();
-    } catch (err) {
-      console.error("[sentinel] Sweep error:", err);
-    } finally {
-      sweepRunning = false;
-    }
-  }, currentIntervalMs);
+function recordSweepSummary(r: SentinelResult[]): void {
+  const closed = r.filter((x) => x.action === "closed").length;
+  const errors = r.filter((x) => x.action === "error").length;
+  lastSummary = { closed, errors, total: r.length, at: Date.now() };
+  if (closed > 0 || errors > 0) {
+    const triaged = r.filter((x) => x.action === "triage_skip").length;
+    console.log(`[sentinel] Sweep: ${closed} closed, ${errors} errors, ${triaged} triage-skipped, ${r.length - closed - errors - triaged} deep-skipped`);
+  }
 }
 
 export function startSentinel(): void {
-  if (intervalId) return;
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.warn("[sentinel] ANTHROPIC_API_KEY not set — sentinel disabled");
-    return;
-  }
-  if (process.env.SENTINEL_ENABLED === "false") {
-    console.warn("[sentinel] SENTINEL_ENABLED=false — sentinel disabled");
-    return;
-  }
+  if (timer) return;
+  if (!process.env.ANTHROPIC_API_KEY) { console.warn("[sentinel] ANTHROPIC_API_KEY not set — sentinel disabled"); return; }
+  if (process.env.SENTINEL_ENABLED === "false") { console.warn("[sentinel] SENTINEL_ENABLED=false — sentinel disabled"); return; }
 
-  getLiveConfig().then(async (cfg) => {
-    console.log(`[sentinel] Starting two-tier (interval: ${cfg.intervalMs / 1000}s, triage: ${TRIAGE_MODEL}, deep: ${cfg.model}, threshold: ${SENTINEL_CONFIDENCE_THRESHOLD}%, triage cutoff: ${TRIAGE_THRESHOLD})`);
-    // No boot sweep — just start the recurring interval. Boot sweeps
-    // fire on every deploy/restart which burns credit unnecessarily.
-    // The first real sweep will run after the configured interval.
-    await scheduleSweep();
-  }).catch((err) => console.error("[sentinel] Start error:", err));
+  (async () => {
+    currentIntervalMs = (await getLiveConfig()).intervalMs;
+    const persisted = await loadConfig<SentinelSchedule>(SCHEDULE_KEY);
+    if (persisted?.lastSweepAt != null) lastSweepAt = persisted.lastSweepAt;
+    const now = Date.now();
+
+    if (persisted?.nextSweepAt != null && persisted.nextSweepAt > now) {
+      // Resume the SAME target — a deploy doesn't reset the countdown.
+      arm(persisted.nextSweepAt - now, persisted.nextSweepAt);
+      console.log(`[sentinel] Resumed — next sweep in ${Math.round((persisted.nextSweepAt - now) / 1000)}s (deploy-proof, interval ${currentIntervalMs / 1000}s)`);
+    } else if (persisted?.nextSweepAt != null) {
+      // Target was missed while we were down — run soon (after a short grace).
+      arm(BOOT_GRACE_MS);
+      console.log(`[sentinel] Missed target during downtime — sweeping in ${BOOT_GRACE_MS / 1000}s`);
+    } else {
+      // First ever boot — schedule the first sweep one interval out.
+      arm(currentIntervalMs);
+      console.log(`[sentinel] Started (interval ${currentIntervalMs / 1000}s, triage ${TRIAGE_MODEL}, deep ${(await getLiveConfig()).model})`);
+    }
+  })().catch((err) => console.error("[sentinel] Start error:", err));
 }
 
-/** Force the sentinel to re-read config and apply any interval change NOW,
- *  instead of waiting for the current interval to fire. Called by the admin
- *  action after saving a new interval. No-op if the sentinel isn't running. */
+/** Live status for the admin countdown widget. Falls back to persisted values if
+ *  the in-memory schedule hasn't hydrated yet (status read right after boot). */
+export async function getSentinelStatus(): Promise<{
+  enabled: boolean;
+  running: boolean;
+  sweeping: boolean;
+  intervalMs: number;
+  nextSweepAt: number | null;
+  lastSweepAt: number | null;
+  lastSummary: SweepSummary | null;
+}> {
+  let next = nextSweepAt;
+  let last = lastSweepAt;
+  let interval = currentIntervalMs;
+  if (next == null) {
+    const persisted = await loadConfig<SentinelSchedule>(SCHEDULE_KEY);
+    if (persisted) { next = persisted.nextSweepAt; last = persisted.lastSweepAt; interval = persisted.intervalMs || interval; }
+  }
+  return { enabled: sentinelEnabled(), running: !!timer, sweeping: sweepRunning, intervalMs: interval, nextSweepAt: next, lastSweepAt: last, lastSummary };
+}
+
+/** Reset the countdown: schedule the next sweep one full interval from now. */
+export async function resetSentinelTimer(): Promise<{ nextSweepAt: number; intervalMs: number }> {
+  currentIntervalMs = (await getLiveConfig()).intervalMs;
+  arm(currentIntervalMs);
+  audit({ category: "ADMIN", action: "sentinel.timer_reset", actorId: "admin", targetType: "System", targetId: "market-sentinel", payload: { nextSweepAt, intervalMs: currentIntervalMs } });
+  return { nextSweepAt: nextSweepAt!, intervalMs: currentIntervalMs };
+}
+
+/** Run a sweep NOW (the "finish timer & execute" button), then re-arm the
+ *  countdown one interval out. Idempotent against the scheduled tick via the
+ *  sweepRunning guard. Returns the sweep summary. */
+export async function runSentinelNow(): Promise<{ ok: boolean; summary?: SweepSummary; reason?: string }> {
+  if (!sentinelEnabled()) return { ok: false, reason: "Sentinel is disabled (no API key or SENTINEL_ENABLED=false)." };
+  if (sweepRunning) return { ok: false, reason: "A sweep is already running — try again in a moment." };
+  if (timer) { clearTimeout(timer); timer = null; }
+  sweepRunning = true;
+  try {
+    const r = await runSentinelSweep();
+    recordSweepSummary(r);
+    await maybeAlertOnSweep(r);
+    audit({ category: "ADMIN", action: "sentinel.manual_run", actorId: "admin", targetType: "System", targetId: "market-sentinel", payload: lastSummary ? { ...lastSummary } : undefined });
+    return { ok: true, summary: lastSummary ?? undefined };
+  } catch (err) {
+    return { ok: false, reason: String((err as Error)?.message ?? err) };
+  } finally {
+    sweepRunning = false;
+    lastSweepAt = Date.now();
+    currentIntervalMs = (await getLiveConfig()).intervalMs;
+    arm(currentIntervalMs);
+  }
+}
+
+/** Re-arm with the current interval — called after an admin changes the interval
+ *  so the new cadence takes effect immediately (resets the countdown). */
 export async function applySentinelConfigChange(): Promise<void> {
-  if (!intervalId) return;
-  await scheduleSweep();
+  if (!timer) return;
+  currentIntervalMs = (await getLiveConfig()).intervalMs;
+  arm(currentIntervalMs);
 }
 
 export function stopSentinel(): void {
-  if (intervalId) {
-    clearInterval(intervalId);
-    intervalId = null;
-    console.log("[sentinel] Stopped");
-  }
+  if (timer) { clearTimeout(timer); timer = null; console.log("[sentinel] Stopped"); }
 }

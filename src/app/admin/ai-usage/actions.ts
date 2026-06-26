@@ -65,6 +65,39 @@ export async function setAiModelAction(fd: FormData): Promise<{ ok: boolean; err
   return { ok: true };
 }
 
+/** Live sentinel status for the countdown widget (next sweep time, interval). */
+export async function getSentinelStatusAction() {
+  await ensureAdmin();
+  const { getSentinelStatus } = await import("@/lib/server/market-sentinel");
+  return getSentinelStatus();
+}
+
+/** Reset the countdown — schedule the next sweep one full interval from now. */
+export async function resetSentinelTimerAction(): Promise<{ ok: boolean; nextSweepAt?: number; error?: string }> {
+  await ensureAdmin();
+  try {
+    const { resetSentinelTimer } = await import("@/lib/server/market-sentinel");
+    const r = await resetSentinelTimer();
+    return { ok: true, nextSweepAt: r.nextSweepAt };
+  } catch (e) {
+    return { ok: false, error: String((e as Error)?.message ?? e) };
+  }
+}
+
+/** "Finish timer & execute" — run a sentinel sweep right now, then re-arm. */
+export async function runSentinelNowAction(): Promise<{ ok: boolean; closed?: number; errors?: number; total?: number; error?: string }> {
+  await ensureAdmin();
+  try {
+    const { runSentinelNow } = await import("@/lib/server/market-sentinel");
+    const r = await runSentinelNow();
+    revalidatePath("/admin/resolver-queue");
+    if (!r.ok) return { ok: false, error: r.reason };
+    return { ok: true, closed: r.summary?.closed ?? 0, errors: r.summary?.errors ?? 0, total: r.summary?.total ?? 0 };
+  } catch (e) {
+    return { ok: false, error: String((e as Error)?.message ?? e) };
+  }
+}
+
 /** Set how often the sentinel sweeps live markets. Takes effect on next tick. */
 export async function setSentinelIntervalAction(fd: FormData): Promise<{ ok: boolean; error?: string }> {
   const s = await ensureAdmin();

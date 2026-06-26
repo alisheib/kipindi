@@ -11,6 +11,7 @@ import { AdminMobileNavTrigger } from "./admin-mobile-nav";
 import { AdminSidebarNav } from "./admin-sidebar-nav";
 import { NAV_GROUPS } from "./admin-nav-groups";
 import { PeriodPicker } from "./period-picker";
+import { SentinelCountdown } from "./sentinel-countdown";
 import { formatDateISO } from "@/lib/utils";
 
 export type AdminSession = {
@@ -104,6 +105,8 @@ export async function AdminTopBar({ crumbs, session, activeKey }: { crumbs: stri
       </nav>
       </div>
       <div className="flex items-center gap-2 shrink-0">
+        {/* Live market-sentinel countdown (deploy-proof) + reset / run-now. */}
+        <SentinelCountdown />
         {/* No notification bell here — the platform's main bell (in AppShell's
             top bar) is the single notification surface for everyone, admins
             included. New-KYC alerts arrive there as in-app notifications. */}
