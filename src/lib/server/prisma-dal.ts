@@ -29,6 +29,8 @@ import type {
   StoredReferralReward,
   StoredProposal,
   StoredProposalVote,
+  StoredBonusGrant,
+  BonusGrantStatus,
 } from "./store";
 
 // ---------------------------------------------------------------------------
@@ -148,10 +150,33 @@ function toStoredWallet(w: any): StoredWallet {
     balance: num(w.balance),
     pending: num(w.pending),
     hold: num(w.hold),
+    bonusBalance: num(w.bonusBalance),
     currency: "TZS",
     status: w.status,
     createdAt: iso(w.createdAt)!,
     updatedAt: iso(w.updatedAt)!,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toStoredBonusGrant(g: any): StoredBonusGrant {
+  return {
+    id: g.id,
+    userId: g.userId,
+    walletId: g.walletId,
+    amountTzs: num(g.amountTzs),
+    remainingTzs: num(g.remainingTzs),
+    wagerMultiplier: num(g.wagerMultiplier),
+    wagerRequiredTzs: num(g.wagerRequiredTzs),
+    wageredTzs: num(g.wageredTzs),
+    source: g.source,
+    sourceRef: g.sourceRef ?? null,
+    status: g.status,
+    expiresAt: iso(g.expiresAt),
+    fulfilledAt: iso(g.fulfilledAt),
+    note: g.note ?? null,
+    createdAt: iso(g.createdAt)!,
+    updatedAt: iso(g.updatedAt)!,
   };
 }
 
@@ -556,6 +581,7 @@ export const prismaDb = {
           balance: w.balance,
           pending: w.pending,
           hold: w.hold,
+          bonusBalance: w.bonusBalance ?? 0,
           currency: w.currency,
           status: w.status,
           createdAt: new Date(w.createdAt),
@@ -579,19 +605,21 @@ export const prismaDb = {
     // updated wallet, or null if missing or a guard failed (insufficient funds).
     adjust: async (
       id: string,
-      deltas: { balance?: number; hold?: number; pending?: number },
-      opts?: { requireBalanceGte?: number; requireHoldGte?: number },
+      deltas: { balance?: number; hold?: number; pending?: number; bonusBalance?: number },
+      opts?: { requireBalanceGte?: number; requireHoldGte?: number; requireBonusBalanceGte?: number },
     ): Promise<StoredWallet | null> => {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const where: any = { id };
         if (opts?.requireBalanceGte !== undefined) where.balance = { gte: opts.requireBalanceGte };
         if (opts?.requireHoldGte !== undefined) where.hold = { gte: opts.requireHoldGte };
+        if (opts?.requireBonusBalanceGte !== undefined) where.bonusBalance = { gte: opts.requireBonusBalanceGte };
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const data: any = {};
         if (deltas.balance !== undefined) data.balance = { increment: deltas.balance };
         if (deltas.hold !== undefined) data.hold = { increment: deltas.hold };
         if (deltas.pending !== undefined) data.pending = { increment: deltas.pending };
+        if (deltas.bonusBalance !== undefined) data.bonusBalance = { increment: deltas.bonusBalance };
         const res = await pc().wallet.updateMany({ where, data });
         if (res.count === 0) return null;
         const row = await pc().wallet.findUnique({ where: { id } });
@@ -1090,6 +1118,89 @@ export const prismaDb = {
         where: { proposalId },
       });
       return rows.map(toStoredVote);
+    },
+  },
+
+  // ── BONUS GRANT ───────────────────────────────────────────────────────────
+  bonusGrant: {
+    create: async (g: StoredBonusGrant): Promise<StoredBonusGrant> => {
+      const row = await pc().bonusGrant.create({
+        data: {
+          id: g.id,
+          userId: g.userId,
+          walletId: g.walletId,
+          amountTzs: g.amountTzs,
+          remainingTzs: g.remainingTzs,
+          wagerMultiplier: g.wagerMultiplier,
+          wagerRequiredTzs: g.wagerRequiredTzs,
+          wageredTzs: g.wageredTzs,
+          source: g.source,
+          sourceRef: g.sourceRef,
+          status: g.status,
+          expiresAt: g.expiresAt ? new Date(g.expiresAt) : null,
+          fulfilledAt: g.fulfilledAt ? new Date(g.fulfilledAt) : null,
+          note: g.note,
+          createdAt: new Date(g.createdAt),
+        },
+      });
+      return toStoredBonusGrant(row);
+    },
+    findById: async (id: string): Promise<StoredBonusGrant | null> => {
+      const row = await pc().bonusGrant.findUnique({ where: { id } });
+      return row ? toStoredBonusGrant(row) : null;
+    },
+    findBySourceRef: async (sourceRef: string): Promise<StoredBonusGrant | null> => {
+      const row = await pc().bonusGrant.findFirst({ where: { sourceRef } });
+      return row ? toStoredBonusGrant(row) : null;
+    },
+    update: async (id: string, patch: Partial<StoredBonusGrant>): Promise<StoredBonusGrant | null> => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const data: Record<string, any> = {};
+        for (const [k, v] of Object.entries(patch)) {
+          if (k === "createdAt" || k === "updatedAt") continue;
+          if (k === "expiresAt" || k === "fulfilledAt") {
+            data[k] = v ? new Date(v as string) : null;
+          } else {
+            data[k] = v;
+          }
+        }
+        const row = await pc().bonusGrant.update({ where: { id }, data });
+        return toStoredBonusGrant(row);
+      } catch {
+        return null;
+      }
+    },
+    listByUser: async (userId: string): Promise<StoredBonusGrant[]> => {
+      const rows = await pc().bonusGrant.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+      });
+      return rows.map(toStoredBonusGrant);
+    },
+    listActiveByUser: async (userId: string): Promise<StoredBonusGrant[]> => {
+      const rows = await pc().bonusGrant.findMany({
+        where: { userId, status: "ACTIVE" },
+        orderBy: { createdAt: "asc" }, // FIFO
+      });
+      return rows.map(toStoredBonusGrant);
+    },
+    listExpired: async (nowIso: string): Promise<StoredBonusGrant[]> => {
+      const rows = await pc().bonusGrant.findMany({
+        where: { status: "ACTIVE", expiresAt: { lt: new Date(nowIso) } },
+      });
+      return rows.map(toStoredBonusGrant);
+    },
+    listByStatus: async (status: BonusGrantStatus): Promise<StoredBonusGrant[]> => {
+      const rows = await pc().bonusGrant.findMany({ where: { status } });
+      return rows.map(toStoredBonusGrant);
+    },
+    listAll: async (limit = 1000): Promise<StoredBonusGrant[]> => {
+      const rows = await pc().bonusGrant.findMany({
+        orderBy: { createdAt: "desc" },
+        take: limit,
+      });
+      return rows.map(toStoredBonusGrant);
     },
   },
 };

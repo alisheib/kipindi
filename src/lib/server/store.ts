@@ -95,8 +95,41 @@ export type StoredWallet = {
   balance: number;
   pending: number;
   hold: number;
+  /** Non-withdrawable promotional funds. Optional so snapshots/rows created
+   *  before the bonus wallet shipped restore cleanly (treated as 0). Invariant:
+   *  bonusBalance == Σ remainingTzs over the wallet's ACTIVE BonusGrants. */
+  bonusBalance?: number;
   currency: "TZS";
   status: "ACTIVE" | "FROZEN" | "CLOSED";
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type BonusSource = "ADMIN" | "REFERRAL" | "PROPOSAL" | "INVITE" | "PROMOTION" | "CASHBACK";
+export type BonusGrantStatus = "ACTIVE" | "FULFILLED" | "EXPIRED" | "CANCELLED" | "FORFEITED";
+
+/**
+ * One promotional bonus credit. Lives in Wallet.bonusBalance and is not
+ * withdrawable until `wageredTzs` >= `wagerRequiredTzs` (turnover target =
+ * amountTzs × wagerMultiplier), at which point bonus-service converts
+ * `remainingTzs` to real balance and marks the grant FULFILLED. All money fields
+ * are whole TZS integers.
+ */
+export type StoredBonusGrant = {
+  id: string;
+  userId: string;
+  walletId: string;
+  amountTzs: number;
+  remainingTzs: number;
+  wagerMultiplier: number;
+  wagerRequiredTzs: number;
+  wageredTzs: number;
+  source: BonusSource;
+  sourceRef: string | null;
+  status: BonusGrantStatus;
+  expiresAt: string | null;
+  fulfilledAt: string | null;
+  note: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -171,7 +204,8 @@ export type StoredNotification = {
     | "RG"
     | "SECURITY"
     | "AFFILIATE"
-    | "PROPOSAL";
+    | "PROPOSAL"
+    | "BONUS";
   titleEn: string;
   titleSw: string;
   bodyEn: string;
@@ -294,6 +328,7 @@ declare global {
     referralRewards: Map<string, StoredReferralReward>;
     proposals: Map<string, StoredProposal>;
     proposalVotes: Map<string, StoredProposalVote>;
+    bonusGrants: Map<string, StoredBonusGrant>;
   } | undefined;
 }
 
@@ -313,6 +348,7 @@ const store = globalThis.__50PICK_STORE ?? (globalThis.__50PICK_STORE = {
   referralRewards: new Map(),
   proposals: new Map(),
   proposalVotes: new Map(),
+  bonusGrants: new Map(),
 });
 
 // Hot-reload safety: if a previous build created the global without the newer maps,
@@ -327,6 +363,7 @@ if (!store.affiliates)      store.affiliates = new Map();
 if (!store.referralRewards) store.referralRewards = new Map();
 if (!store.proposals)       store.proposals = new Map();
 if (!store.proposalVotes)   store.proposalVotes = new Map();
+if (!store.bonusGrants)     store.bonusGrants = new Map();
 
 const memoryDb = {
   // USER
@@ -432,18 +469,20 @@ const memoryDb = {
      */
     adjust: (
       id: string,
-      deltas: { balance?: number; hold?: number; pending?: number },
-      opts?: { requireBalanceGte?: number; requireHoldGte?: number },
+      deltas: { balance?: number; hold?: number; pending?: number; bonusBalance?: number },
+      opts?: { requireBalanceGte?: number; requireHoldGte?: number; requireBonusBalanceGte?: number },
     ): StoredWallet | null => {
       const w = store.wallets.get(id);
       if (!w) return null;
       if (opts?.requireBalanceGte !== undefined && w.balance < opts.requireBalanceGte) return null;
       if (opts?.requireHoldGte !== undefined && w.hold < opts.requireHoldGte) return null;
+      if (opts?.requireBonusBalanceGte !== undefined && (w.bonusBalance ?? 0) < opts.requireBonusBalanceGte) return null;
       const next: StoredWallet = {
         ...w,
         balance: w.balance + (deltas.balance ?? 0),
         hold: w.hold + (deltas.hold ?? 0),
         pending: w.pending + (deltas.pending ?? 0),
+        bonusBalance: (w.bonusBalance ?? 0) + (deltas.bonusBalance ?? 0),
         updatedAt: new Date().toISOString(),
       };
       store.wallets.set(id, next);
@@ -602,6 +641,43 @@ const memoryDb = {
     delete: (proposalId: string, userId: string): void => { store.proposalVotes.delete(`${proposalId}:${userId}`); },
     listByProposal: (proposalId: string): StoredProposalVote[] =>
       (Array.from(store.proposalVotes.values()) as StoredProposalVote[]).filter((v) => v.proposalId === proposalId),
+  },
+  bonusGrant: {
+    create: (g: StoredBonusGrant): StoredBonusGrant => { store.bonusGrants.set(g.id, g); return g; },
+    findById: (id: string): StoredBonusGrant | null => store.bonusGrants.get(id) ?? null,
+    /** Idempotency: find a grant already created for this source reference. */
+    findBySourceRef: (sourceRef: string): StoredBonusGrant | null => {
+      for (const g of store.bonusGrants.values()) if (g.sourceRef === sourceRef) return g;
+      return null;
+    },
+    update: (id: string, patch: Partial<StoredBonusGrant>): StoredBonusGrant | null => {
+      const g = store.bonusGrants.get(id);
+      if (!g) return null;
+      const next: StoredBonusGrant = { ...g, ...patch, updatedAt: new Date().toISOString() };
+      store.bonusGrants.set(id, next);
+      return next;
+    },
+    /** All grants for a user, newest first (history / admin player view). */
+    listByUser: (userId: string): StoredBonusGrant[] =>
+      Array.from(store.bonusGrants.values())
+        .filter((g) => g.userId === userId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    /** ACTIVE grants for a user, OLDEST first (FIFO wagering / spend order). */
+    listActiveByUser: (userId: string): StoredBonusGrant[] =>
+      Array.from(store.bonusGrants.values())
+        .filter((g) => g.userId === userId && g.status === "ACTIVE")
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+    /** ACTIVE grants whose expiry has passed — for the expiry sweep. */
+    listExpired: (nowIso: string): StoredBonusGrant[] =>
+      Array.from(store.bonusGrants.values())
+        .filter((g) => g.status === "ACTIVE" && !!g.expiresAt && g.expiresAt < nowIso),
+    listByStatus: (status: BonusGrantStatus): StoredBonusGrant[] =>
+      Array.from(store.bonusGrants.values()).filter((g) => g.status === status),
+    /** All grants — admin ledger / analytics. */
+    listAll: (limit = 1000): StoredBonusGrant[] =>
+      Array.from(store.bonusGrants.values())
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .slice(0, limit),
   },
 };
 

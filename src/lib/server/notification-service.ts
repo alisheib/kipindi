@@ -227,6 +227,51 @@ export function notifyReferralReward(userId: string, opts: { type: "COMMISSION" 
   });
 }
 
+/* ---- Bonus-wallet emitters ---- */
+
+/** A bonus was credited to the player's bonus wallet. */
+export function notifyBonusCredited(userId: string, opts: { amountTzs: number; wagerRequiredTzs: number }) {
+  const amount = Math.round(opts.amountTzs).toLocaleString();
+  const target = Math.round(opts.wagerRequiredTzs).toLocaleString();
+  return notify({
+    userId,
+    kind: "BONUS",
+    titleEn: `Bonus credited · TZS ${amount}`,
+    titleSw: `Bonasi imewekwa · TZS ${amount}`,
+    bodyEn: `Play TZS ${target} to unlock it as withdrawable cash. Tap to view.`,
+    bodySw: `Cheza TZS ${target} ili kuibadilisha kuwa pesa unayoweza kutoa. Bonyeza kuona.`,
+    href: "/wallet",
+  });
+}
+
+/** A bonus finished its wagering and converted to real, withdrawable balance. */
+export function notifyBonusFulfilled(userId: string, opts: { amountTzs: number }) {
+  const amount = Math.round(opts.amountTzs).toLocaleString();
+  return notify({
+    userId,
+    kind: "BONUS",
+    titleEn: `Bonus unlocked · TZS ${amount} is now withdrawable!`,
+    titleSw: `Bonasi imefunguliwa · TZS ${amount} sasa unaweza kuitoa!`,
+    bodyEn: "Your bonus is now real cash in your main wallet. Tap to view.",
+    bodySw: "Bonasi yako sasa ni pesa halisi kwenye pochi yako kuu. Bonyeza kuona.",
+    href: "/wallet",
+  });
+}
+
+/** An unfulfilled bonus expired and was removed from the bonus wallet. */
+export function notifyBonusExpired(userId: string, opts: { amountTzs: number }) {
+  const amount = Math.round(opts.amountTzs).toLocaleString();
+  return notify({
+    userId,
+    kind: "BONUS",
+    titleEn: `Bonus expired · TZS ${amount}`,
+    titleSw: `Bonasi imeisha muda · TZS ${amount}`,
+    bodyEn: "An unfinished bonus reached its expiry date and was removed.",
+    bodySw: "Bonasi ambayo haikukamilika imefikia tarehe ya mwisho na imeondolewa.",
+    href: "/wallet",
+  });
+}
+
 /* ---- Player market-proposal emitters ---- */
 
 export function notifyProposalUnderReview(userId: string, opts: { titleEn: string }) {

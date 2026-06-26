@@ -271,6 +271,7 @@ model User {
   positions               Position[]
   marketComments          Comment[]
   totpSecret              TotpSecret?
+  bonusGrants             BonusGrant[]
 
   @@index([role, status])
   @@index([createdAt])
@@ -392,11 +393,17 @@ model Wallet {
   balance   Decimal      @default(0) @db.Decimal(18, 2)
   pending   Decimal      @default(0) @db.Decimal(18, 2)
   hold      Decimal      @default(0) @db.Decimal(18, 2)
+  // Non-withdrawable promotional funds. Held separately from `balance` so bonus
+  // money can never be withdrawn until its wagering requirement is met (at which
+  // point bonus-service moves the remainder into `balance`). Invariant:
+  // bonusBalance == Σ remainingTzs over the wallet's ACTIVE BonusGrants.
+  bonusBalance Decimal   @default(0) @db.Decimal(18, 2)
   currency  String       @default("TZS")
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
   transactions Transaction[]
+  bonusGrants  BonusGrant[]
 
   @@index([status])
 }
@@ -441,6 +448,61 @@ model Transaction {
   @@index([walletId, createdAt])
   @@index([type, status])
   @@index([providerRef])
+}
+
+// ============================================================================
+// BONUS WALLET — non-withdrawable promotional grants with wagering requirements
+// ============================================================================
+//
+// A BonusGrant is one promotional credit (admin gift, affiliate reward, proposal
+// prize, invite-campaign bonus, future cashback). It lives in Wallet.bonusBalance
+// and is NOT withdrawable until its wagering requirement (amount × multiplier of
+// turnover) is met — at which point bonus-service moves `remainingTzs` into the
+// real `balance` and marks the grant FULFILLED. Per Ali (2026-06-26): grants
+// accumulate (FIFO wagering, no one-at-a-time restriction); withdrawing real
+// balance leaves active bonuses untouched (coexist).
+
+enum BonusSource {
+  ADMIN       // manual operator grant
+  REFERRAL    // affiliate reward routed to bonus
+  PROPOSAL    // proposal prize routed to bonus
+  INVITE      // bulk invite-campaign bonus
+  PROMOTION   // generic marketing promotion
+  CASHBACK    // deposit-loss cashback (deferred feature; enum reserved)
+}
+
+enum BonusGrantStatus {
+  ACTIVE      // wagering in progress; remainingTzs sits in bonusBalance
+  FULFILLED   // wagering met; remainingTzs converted to real balance
+  EXPIRED     // expiresAt passed before fulfilment; remainder removed
+  CANCELLED   // admin/player cancelled; remainder removed
+  FORFEITED   // forfeited (reserved for policies that void on withdrawal)
+}
+
+model BonusGrant {
+  id               String           @id // bg_{id}
+  userId           String
+  walletId         String
+  amountTzs        Int                              // original grant amount
+  remainingTzs     Int                              // unspent portion (in bonusBalance)
+  wagerMultiplier  Decimal          @db.Decimal(4, 1) // e.g. 5.0
+  wagerRequiredTzs Int                              // amountTzs × multiplier (precomputed turnover target)
+  wageredTzs       Int              @default(0)     // turnover accrued toward the requirement
+  source           BonusSource
+  sourceRef        String?                          // idempotency key / FK to invite/affiliate/proposal
+  status           BonusGrantStatus @default(ACTIVE)
+  expiresAt        DateTime?
+  fulfilledAt      DateTime?
+  note             String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  wallet           Wallet           @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([status, expiresAt])
+  @@index([sourceRef])
 }
 
 // ============================================================================
