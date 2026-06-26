@@ -111,7 +111,7 @@ export async function AdminTopBar({ crumbs, session, activeKey }: { crumbs: stri
             (Reports, Finance, Audit, System…) where player search is out of
             context and confusing. The dedicated /admin/players page has its own
             search — that's the single, correctly-scoped place to find a player. */}
-        <span className="font-mono text-micro tracking-[0.14em] uppercase px-2.5 h-7 inline-flex items-center rounded-md border border-border bg-surface text-text-secondary">
+        <span className="font-mono text-micro tracking-[0.14em] uppercase px-2.5 h-7 inline-flex items-center rounded-md border border-border bg-bg-inset text-text-secondary">
           ACTIVE
         </span>
         <span className="font-mono text-micro tracking-[0.14em] px-2.5 h-7 inline-flex items-center rounded-md border border-border bg-bg-elevated text-text gap-1.5">

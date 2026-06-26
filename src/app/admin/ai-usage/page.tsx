@@ -6,6 +6,7 @@ import { Chip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { I } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { getAiUsageSummary, listAiUsage, type AiFeature, type UsageBucket, type AiUsageFilter, type AiUsageEventRecord } from "@/lib/server/ai-usage";
 import { getAnthropicSpend } from "@/lib/server/anthropic-billing";
 import { CreditControls } from "./credit-controls";
@@ -256,40 +257,56 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
           {/* Filters */}
           <div className="px-4 lg:px-5 pt-4 pb-3">
             <form method="get" className="flex flex-wrap items-center gap-3">
-              <label className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1">
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Feature</span>
-                <select name="feature" defaultValue={filter.feature ?? ""} className="h-9 rounded-md border border-border bg-surface px-2.5 text-body-sm text-text font-mono admin-focus transition-colors">
-                  <option value="">All features</option>
-                  {FEATURES.map((f) => <option key={f} value={f}>{FEATURE_LABEL[f]}</option>)}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1">
+                <div className="w-[160px]">
+                  <Select
+                    name="feature"
+                    defaultValue={filter.feature ?? ""}
+                    size="xs"
+                    placeholder="All features"
+                    options={[
+                      { value: "", label: "All features" },
+                      ...FEATURES.map((f) => ({ value: f, label: FEATURE_LABEL[f] })),
+                    ]}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Status</span>
-                <select name="status" defaultValue={status} className="h-9 rounded-md border border-border bg-surface px-2.5 text-body-sm text-text font-mono admin-focus transition-colors">
-                  <option value="">All statuses</option>
-                  <option value="ok">OK</option>
-                  <option value="error">Errors</option>
-                </select>
-              </label>
+                <div className="w-[140px]">
+                  <Select
+                    name="status"
+                    defaultValue={status}
+                    size="xs"
+                    placeholder="All statuses"
+                    options={[
+                      { value: "", label: "All statuses" },
+                      { value: "ok", label: "OK" },
+                      { value: "error", label: "Errors" },
+                    ]}
+                  />
+                </div>
+              </div>
               <label className="flex flex-col gap-1">
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">From</span>
-                <input type="date" name="since" defaultValue={sinceDay} className="h-9 rounded-md border border-border bg-surface px-2.5 text-body-sm text-text font-mono admin-focus transition-colors" />
+                <input type="date" name="since" defaultValue={sinceDay} className="h-9 rounded-md border border-border bg-bg-inset px-2.5 text-body-sm text-text font-mono admin-focus transition-colors" />
               </label>
               <label className="flex flex-col gap-1">
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">To</span>
-                <input type="date" name="until" defaultValue={untilDay} className="h-9 rounded-md border border-border bg-surface px-2.5 text-body-sm text-text font-mono admin-focus transition-colors" />
+                <input type="date" name="until" defaultValue={untilDay} className="h-9 rounded-md border border-border bg-bg-inset px-2.5 text-body-sm text-text font-mono admin-focus transition-colors" />
               </label>
               <label className="flex flex-col gap-1 flex-1 min-w-[180px]">
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Search</span>
                 <div className="relative">
                   <I.search size={14} aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
-                  <input type="text" name="q" defaultValue={q} placeholder="model, error, detail…" className="w-full h-9 pl-9 pr-3 rounded-md border border-border bg-surface text-body-sm text-text font-mono admin-focus transition-colors" />
+                  <input type="text" name="q" defaultValue={q} placeholder="model, error, detail…" className="w-full h-9 pl-9 pr-3 rounded-md border border-border bg-bg-inset text-body-sm text-text font-mono admin-focus transition-colors" />
                 </div>
               </label>
               <div className="flex items-center gap-2 pt-4">
-                <Button type="submit" size="sm" style={{ height: 36 }}>Filter</Button>
+                <Button type="submit" size="sm">Filter</Button>
                 {(filter.feature || status || q || sinceDay || untilDay) && (
-                  <a href="/admin/ai-usage" className="btn btn-ghost btn-sm" style={{ height: 36 }}>Clear</a>
+                  <a href="/admin/ai-usage" className="btn btn-ghost btn-sm">Clear</a>
                 )}
               </div>
             </form>

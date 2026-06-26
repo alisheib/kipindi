@@ -101,7 +101,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                 defaultValue={query}
                 placeholder="Phone (+255…), display name, or usr_…"
                 aria-label="Search players"
-                className="w-full h-9 pl-9 pr-3 rounded-md bg-surface border border-border text-text font-mono text-body-sm focus:outline-none admin-focus transition-colors"
+                className="w-full h-9 pl-9 pr-3 rounded-md bg-bg-inset border border-border text-text font-mono text-body-sm focus:outline-none admin-focus transition-colors"
               />
             </div>
             <div className="w-full sm:w-[180px]">
@@ -121,11 +121,11 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                 ]}
               />
             </div>
-            <button type="submit" className="btn btn-primary btn-sm" style={{ height: 36 }}>
+            <button type="submit" className="btn btn-primary btn-sm">
               Search
             </button>
             {(query || statusFilter) && (
-              <a href="/admin/players" className="btn btn-ghost btn-sm" style={{ height: 36 }}>
+              <a href="/admin/players" className="btn btn-ghost btn-sm">
                 Clear
               </a>
             )}

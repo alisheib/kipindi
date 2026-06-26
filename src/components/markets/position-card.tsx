@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { cn, formatDateTime } from "@/lib/utils";
 import { Cash } from "@/components/ui/cash";
+import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 
 type Props = {
@@ -32,28 +33,14 @@ export function PositionCard({ marketId, marketTitle, side, stake, current, payo
       className={cn("block w-full rounded-xl border border-border bg-bg-elevated p-4 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-[var(--brand-500)] hover:shadow-[0_0_0_1px_var(--brand-500),0_14px_34px_oklch(8%_0.08_264_/_0.6),0_0_30px_oklch(63%_0.18_262_/_0.24)]", className)}
     >
       <div className="mb-2.5 flex items-center justify-between">
-        <span
-          className={cn(
-            "inline-flex items-center rounded-pill border px-2.5 py-0.5 text-[12px] font-semibold",
-            side === "YES"
-              ? "border-yes-700 bg-yes-500/15 text-yes-300"
-              : "border-no-700 bg-no-500/15 text-no-300",
-          )}
-        >
-          {side}
-        </span>
-        <span
-          className={cn(
-            "inline-flex items-center rounded-pill border px-2.5 py-0.5 text-[12px] font-semibold",
-            status === "WIN"  && "border-gold-subtleHover bg-gold-subtle text-gold-300",
-            status === "LOSS" && "border-no-700 bg-no-500/15 text-no-300",
-            status === "OPEN" && "border-info-border bg-info-bg/40 text-info-fg",
-            status === "VOID" && "border-border bg-bg-overlay text-text-muted",
-            status === "CASHED_OUT" && "border-warning-border bg-warning-bg/40 text-warning-fg",
-          )}
-        >
-          {statusLabel}
-        </span>
+        <Chip size="sm" variant={side === "YES" ? "yes" : "no"}>{side}</Chip>
+        <Chip size="sm" variant={
+          status === "WIN" ? "gold"
+          : status === "LOSS" ? "no"
+          : status === "OPEN" ? "info"
+          : status === "VOID" ? "neutral"
+          : "warning"
+        }>{statusLabel}</Chip>
       </div>
       <div className="mb-3.5">
         <p className="font-display text-[15px] font-semibold leading-tight tracking-[-0.005em] text-text line-clamp-2">

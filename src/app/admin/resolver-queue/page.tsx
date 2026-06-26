@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
+import { Chip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { I } from "@/components/ui/glyphs";
 import { Select } from "@/components/ui/select";
@@ -86,7 +87,7 @@ export default async function ResolverQueuePage({
                 defaultValue={query}
                 placeholder="Search title…"
                 aria-label="Search resolver queue"
-                className="w-full h-9 pl-9 pr-3 rounded-md bg-surface border border-border text-text font-mono text-body-sm focus:outline-none admin-focus transition-colors"
+                className="w-full h-9 pl-9 pr-3 rounded-md bg-bg-inset border border-border text-text font-mono text-body-sm focus:outline-none admin-focus transition-colors"
               />
             </div>
             <div className="w-full sm:w-[160px]">
@@ -97,8 +98,8 @@ export default async function ResolverQueuePage({
               <Select name="category" defaultValue={categoryFilter} size="xs" placeholder="All categories"
                 options={[{ value: "", label: "All categories" }, ...CATEGORY_OPTIONS.map((c) => ({ value: c, label: c }))]} />
             </div>
-            <button type="submit" className="btn btn-primary btn-sm" style={{ height: 36 }}>Filter</button>
-            {hasFilter && <a href="/admin/resolver-queue" className="btn btn-ghost btn-sm" style={{ height: 36 }}>Clear</a>}
+            <button type="submit" className="btn btn-primary btn-sm">Filter</button>
+            {hasFilter && <a href="/admin/resolver-queue" className="btn btn-ghost btn-sm">Clear</a>}
           </form>
         </AdminCard>
 
@@ -129,15 +130,11 @@ export default async function ResolverQueuePage({
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline gap-2">
-                        <span
-                          className={`inline-flex items-center rounded-pill border px-2.5 py-0.5 text-[11px] font-bold whitespace-nowrap ${
-                            t.tone === "overdue" ? "border-no-700 bg-no-500/15 text-no-300"
-                            : t.tone === "soon" ? "border-warning-border bg-warning-bg/40 text-warning-fg"
-                            : "border-border bg-bg-overlay text-text-muted"
-                          }`}
-                        >
-                          {t.label}
-                        </span>
+                        <Chip size="sm" variant={
+                          t.tone === "overdue" ? "danger"
+                          : t.tone === "soon" ? "warning"
+                          : "neutral"
+                        }>{t.label}</Chip>
                         <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{m.category}</span>
                         <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1 font-mono text-[11px] text-teal-300 hover:text-teal-200">
                           Source

@@ -52,7 +52,7 @@ export function EmailEditor({ currentEmail, currentName, verified }: { currentEm
 
   return (
     <div className="rounded-lg border border-border bg-bg-inset/40 px-3.5 py-2.5">
-      <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle">Contact email · Barua pepe</p>
+      <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">Contact email · Barua pepe</p>
       {editing ? (
         <div className="mt-1.5 flex items-center gap-2">
           <input
@@ -66,7 +66,7 @@ export function EmailEditor({ currentEmail, currentName, verified }: { currentEm
             aria-label="Contact email"
             className="flex-1 min-w-0 bg-transparent border-b border-gold-500 focus:outline-none text-[14px] text-text px-0 py-0.5"
           />
-          <button type="button" onClick={save} disabled={pending} className="btn btn-gold shrink-0" style={{ borderRadius: "var(--r-pill)", height: 30, padding: "0 14px", fontSize: 13 }}>
+          <button type="button" onClick={save} disabled={pending} className="btn btn-gold btn-sm shrink-0">
             {pending ? <Spinner size={14} /> : "Save"}
           </button>
         </div>

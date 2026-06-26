@@ -143,14 +143,12 @@ export default async function MarketPredictorsPage({
           <div className="flex items-start gap-4">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1.5">
-                <span className={`inline-flex items-center rounded-pill border px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap ${
-                  m.status === "LIVE"     ? "border-yes-700 bg-yes-500/15 text-yes-300"
-                  : m.status === "RESOLVED" ? "border-gold-subtleHover bg-gold-subtle text-gold-300"
-                  : m.status === "CLOSED"   ? "border-warning-border bg-warning-bg/40 text-warning-fg"
-                  : "border-border bg-bg-overlay text-text-muted"
-                }`}>
-                  {STATUS_LABEL[m.status] ?? m.status}
-                </span>
+                <Chip size="sm" variant={
+                  m.status === "LIVE" ? "success"
+                  : m.status === "RESOLVED" ? "gold"
+                  : m.status === "CLOSED" ? "warning"
+                  : "neutral"
+                }>{STATUS_LABEL[m.status] ?? m.status}</Chip>
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{m.category}</span>
               </div>
               <h2 className="font-display text-[17px] font-semibold text-text leading-snug">{m.titleEn}</h2>
@@ -212,7 +210,7 @@ export default async function MarketPredictorsPage({
                 defaultValue={query}
                 placeholder="Phone, display name or usr_…"
                 aria-label="Search predictors"
-                className="w-full h-9 pl-9 pr-3 rounded-md bg-surface border border-border text-text font-mono text-body-sm focus:outline-none admin-focus transition-colors"
+                className="w-full h-9 pl-9 pr-3 rounded-md bg-bg-inset border border-border text-text font-mono text-body-sm focus:outline-none admin-focus transition-colors"
               />
             </div>
             <div className="w-full sm:w-[140px]">
@@ -221,9 +219,9 @@ export default async function MarketPredictorsPage({
             <div className="w-full sm:w-[150px]">
               <Select name="status" defaultValue={statusFilter} size="xs" placeholder="All statuses" options={STATUS_OPTIONS} />
             </div>
-            <button type="submit" className="btn btn-primary btn-sm" style={{ height: 36 }}>Filter</button>
+            <button type="submit" className="btn btn-primary btn-sm">Filter</button>
             {hasFilter && (
-              <a href={`/admin/markets/${id}`} className="btn btn-ghost btn-sm" style={{ height: 36 }}>Clear</a>
+              <a href={`/admin/markets/${id}`} className="btn btn-ghost btn-sm">Clear</a>
             )}
           </form>
           <p className="mt-2 font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
@@ -271,13 +269,7 @@ export default async function MarketPredictorsPage({
                         {u ? maskPhone(u.phoneE164) : "—"}
                       </td>
                       <td>
-                        <span className={`inline-flex items-center rounded-pill border px-2.5 py-0.5 text-[11px] font-bold whitespace-nowrap ${
-                          p.side === "YES"
-                            ? "border-yes-700 bg-yes-500/15 text-yes-300"
-                            : "border-no-700 bg-no-500/15 text-no-300"
-                        }`}>
-                          {p.side}
-                        </span>
+                        <Chip size="sm" variant={p.side === "YES" ? "yes" : "no"}>{p.side}</Chip>
                       </td>
                       <td className="text-right font-mono tabular-nums text-text whitespace-nowrap">
                         {formatTzs(p.stake)}

@@ -105,11 +105,11 @@ export function NotifyPrompt({ marketId, marketTitle }: { marketId: string; mark
       onClick={toggle}
       disabled={pending}
       aria-pressed={watching}
-      className={`w-full inline-flex items-center justify-center gap-2 rounded-md border px-3 h-10 font-display font-semibold text-[13px] transition-colors ${
+      className={`btn w-full ${
         watching
-          ? "border-yes-700 bg-yes-500/15 text-yes-300 hover:border-yes-500"
-          : "border-border bg-bg-elevated text-text-muted hover:border-border-strong hover:text-text"
-      } disabled:opacity-50`}
+          ? "btn-yes"
+          : "btn-ghost"
+      }`}
     >
       {watching ? <I.bellRing s={14} /> : <I.bell s={14} />}
       {watching ? "Watching · I'll ping you on resolve" : "Notify me when this resolves"}

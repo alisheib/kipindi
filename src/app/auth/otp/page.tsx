@@ -70,7 +70,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
             <input type="hidden" name="purpose" value={purpose} />
             {nextSafe && <input type="hidden" name="next" value={nextSafe} />}
             <label className="block">
-              <span className="block font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5">
+              <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5">
                 Code · Msimbo
               </span>
               <input

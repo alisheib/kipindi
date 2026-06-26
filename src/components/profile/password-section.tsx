@@ -44,7 +44,7 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
         <div className="flex items-center gap-2.5 min-w-0">
           <I.keyRound s={14} className="text-text-subtle shrink-0" />
           <div className="min-w-0">
-            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Password</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">Password</p>
             <p className="text-[13px] text-text-muted">
               {hasPassword ? "Set · change anytime" : "Not set · add a password for extra security"}
             </p>
@@ -65,7 +65,7 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
     <div className="space-y-3">
       <div className="flex items-center gap-2.5">
         <I.keyRound s={14} className="text-gold-300 shrink-0" />
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-gold-300">
+        <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
           {hasPassword ? "Change password · Badilisha nenosiri" : "Set password · Weka nenosiri"}
         </p>
       </div>

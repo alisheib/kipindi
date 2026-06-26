@@ -54,7 +54,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
         </header>
 
         <section
-          className="relative overflow-hidden rounded-xl border border-gold-700 bg-bg-elevated p-5 lg:p-6 space-y-4"
+          className="relative overflow-hidden rounded-xl border border-gold-700 bg-bg-elevated p-6 space-y-5"
           style={{ boxShadow: "0 0 0 1px color-mix(in oklab, var(--gilt) 30%, transparent) inset" }}
         >
           <div className="absolute -right-6 -top-6 opacity-[0.06]" aria-hidden>
@@ -76,7 +76,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
             <div>
               <label
                 htmlFor="phone"
-                className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-1.5"
+                className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
               >
                 Phone · Simu
               </label>
@@ -85,7 +85,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
             <div>
               <label
                 htmlFor="password"
-                className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-1.5"
+                className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
               >
                 Password · Nenosiri
               </label>

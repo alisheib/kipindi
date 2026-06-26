@@ -2,6 +2,7 @@ import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-she
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { I } from "@/components/ui/glyphs";
+import { Chip } from "@/components/ui/chip";
 import { Select } from "@/components/ui/select";
 import Link from "next/link";
 import { listMarkets, impliedYesPct, type MarketCategory } from "@/lib/server/market-service";
@@ -101,7 +102,7 @@ export default async function AdminMarketsPage({
                 defaultValue={query}
                 placeholder="Search title (EN / SW) or mkt_… id"
                 aria-label="Search markets"
-                className="w-full h-9 pl-9 pr-3 rounded-md bg-surface border border-border text-text font-mono text-body-sm focus:outline-none admin-focus transition-colors"
+                className="w-full h-9 pl-9 pr-3 rounded-md bg-bg-inset border border-border text-text font-mono text-body-sm focus:outline-none admin-focus transition-colors"
               />
             </div>
             <div className="w-full sm:w-[160px]">
@@ -112,11 +113,11 @@ export default async function AdminMarketsPage({
               <Select name="category" defaultValue={categoryFilter} size="xs" placeholder="All categories"
                 options={[{ value: "", label: "All categories" }, ...CATEGORY_OPTIONS.map((c) => ({ value: c, label: c }))]} />
             </div>
-            <button type="submit" className="btn btn-primary btn-sm" style={{ height: 36 }}>
+            <button type="submit" className="btn btn-primary btn-sm">
               Search
             </button>
             {hasFilter && (
-              <a href="/admin/markets" className="btn btn-ghost btn-sm" style={{ height: 36 }}>
+              <a href="/admin/markets" className="btn btn-ghost btn-sm">
                 Clear
               </a>
             )}
@@ -164,12 +165,12 @@ export default async function AdminMarketsPage({
                         {m.status === "LIVE" ? `${timeLeftStr(m.resolutionAt)}` : fmtTime(m.resolutionAt)}
                       </td>
                       <td>
-                        <span className={`inline-flex items-center rounded-pill border px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap ${
-                          m.status === "LIVE" ? "border-yes-700 bg-yes-500/15 text-yes-300"
-                          : m.status === "RESOLVED" ? "border-gold-subtleHover bg-gold-subtle text-gold-300"
-                          : m.status === "CLOSED" ? "border-warning-border bg-warning-bg/40 text-warning-fg"
-                          : "border-border bg-bg-overlay text-text-muted"
-                        }`}>{m.status}</span>
+                        <Chip size="sm" variant={
+                          m.status === "LIVE" ? "success"
+                          : m.status === "RESOLVED" ? "gold"
+                          : m.status === "CLOSED" ? "warning"
+                          : "neutral"
+                        }>{m.status}</Chip>
                       </td>
                       <td>
                         <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-teal-300 hover:text-teal-200">

@@ -37,7 +37,7 @@ export function MarketStats({ stats, className }: { stats: Stat[]; className?: s
           key={s.k}
           className="rounded-md border border-border bg-bg-elevated px-3.5 py-3"
         >
-          <p className="font-mono text-[9px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">
+          <p className="font-mono text-[9px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-1.5">
             {s.k}
           </p>
           <p className="flex items-baseline gap-1">

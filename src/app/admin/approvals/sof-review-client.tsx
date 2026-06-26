@@ -79,7 +79,7 @@ export function SofReviewRow({ userId }: { userId: string }) {
             onChange={(e) => setReason(e.target.value)}
             placeholder="Rejection reason (required)"
             aria-label="Rejection reason"
-            className="flex-1 h-8 px-2 rounded-md border border-border bg-surface text-text-secondary text-caption font-mono focus:outline-none admin-focus transition-colors"
+            className="flex-1 h-8 px-2 rounded-md border border-border bg-bg-inset text-text-secondary text-caption font-mono focus:outline-none admin-focus transition-colors"
           />
           <Button size="sm" variant="danger" onClick={() => submit("REJECT")} loading={busy === "REJECT"}>
             Submit

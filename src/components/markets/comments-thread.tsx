@@ -140,7 +140,7 @@ export function CommentsThread({
       ) : (
         <a
           href={signInHref}
-          className="mb-5 block rounded-md border border-border bg-bg-overlay px-4 py-3 text-center text-[13px] text-text-muted hover:border-[var(--brand-500)] transition-colors"
+          className="btn btn-ghost btn-md mb-5 block w-full text-center"
         >
           Sign in to join the discussion · <span className="italic text-text-subtle">Ingia ili kujadili</span>
         </a>

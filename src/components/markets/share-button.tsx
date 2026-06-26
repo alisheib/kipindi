@@ -67,7 +67,7 @@ export function ShareButton({
         <>
           <div
             aria-hidden
-            className="fixed inset-0 z-popover bg-bg-overlay/60 backdrop-blur-sm"
+            className="fixed inset-0 z-popover bg-black/60 backdrop-blur-md"
             onClick={() => setOpen(false)}
           />
           <div
