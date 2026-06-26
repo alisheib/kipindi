@@ -619,23 +619,13 @@ export function startSentinel(): void {
     return;
   }
 
-  getLiveConfig().then((cfg) => {
+  getLiveConfig().then(async (cfg) => {
     console.log(`[sentinel] Starting two-tier (interval: ${cfg.intervalMs / 1000}s, triage: ${TRIAGE_MODEL}, deep: ${cfg.model}, threshold: ${SENTINEL_CONFIDENCE_THRESHOLD}%, triage cutoff: ${TRIAGE_THRESHOLD})`);
-  }).catch(() => {});
-
-  // First sweep after boot delay
-  setTimeout(() => {
-    runSentinelSweep()
-      .then(async (r) => {
-        const closed = r.filter((x) => x.action === "closed");
-        const triaged = r.filter((x) => x.action === "triage_skip");
-        if (closed.length > 0) console.log(`[sentinel] Boot sweep: ${closed.length} closed, ${triaged.length} triage-skipped`);
-        await maybeAlertOnSweep(r);
-        // Start the recurring interval
-        await scheduleSweep();
-      })
-      .catch((err) => console.error("[sentinel] Boot sweep error:", err));
-  }, 10_000);
+    // No boot sweep — just start the recurring interval. Boot sweeps
+    // fire on every deploy/restart which burns credit unnecessarily.
+    // The first real sweep will run after the configured interval.
+    await scheduleSweep();
+  }).catch((err) => console.error("[sentinel] Start error:", err));
 }
 
 /** Force the sentinel to re-read config and apply any interval change NOW,
