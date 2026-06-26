@@ -39,6 +39,7 @@ export const NAV_GROUPS: ReadonlyArray<{
     group: { en: "Growth", sw: "Ukuaji" },
     items: [
       { href: "/admin/affiliate", label: "Affiliate", key: "affiliate" },
+      { href: "/admin/bonuses",   label: "Bonuses",   key: "bonuses" },
     ],
   },
   {

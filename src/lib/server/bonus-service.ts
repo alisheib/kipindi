@@ -347,3 +347,77 @@ export async function getBonusSummary(userId: string): Promise<{
     grants,
   };
 }
+
+/** Mask a player for the operator ledger: prefer display name, else +255•••123.
+ *  Inlined (not imported from affiliate-service) to keep this module free of a
+ *  future circular dependency when affiliate routing calls into bonus-service. */
+function maskHandle(displayName: string | null, phoneE164: string): string {
+  const name = (displayName ?? "").trim();
+  if (name) return name;
+  const digits = (phoneE164 ?? "").replace(/\D/g, "");
+  return digits.length >= 6 ? `+${digits.slice(0, 3)}•••${digits.slice(-3)}` : (phoneE164 || "—");
+}
+
+export type AdminBonusLedgerRow = {
+  id: string;
+  userId: string;
+  playerHandle: string;
+  amountTzs: number;
+  remainingTzs: number;
+  wageredTzs: number;
+  wagerRequiredTzs: number;
+  progressPct: number;
+  source: BonusSource;
+  status: StoredBonusGrant["status"];
+  createdAt: string;
+  expiresAt: string | null;
+};
+
+/**
+ * Operator dashboard data for /admin/bonuses: outstanding liability, counts, and
+ * the recent grant ledger with masked player handles.
+ */
+export async function getAdminBonusStats(limit = 200): Promise<{
+  outstandingTzs: number;
+  activeGrants: number;
+  totalGrantedTzs: number;
+  totalFulfilledTzs: number;
+  ledger: AdminBonusLedgerRow[];
+}> {
+  const wallets = await db.wallet.listAll();
+  const outstandingTzs = wallets.reduce((s, w) => s + (w.bonusBalance ?? 0), 0);
+
+  const all = await db.bonusGrant.listAll(5000);
+  const activeGrants = all.filter((g) => g.status === "ACTIVE").length;
+  const totalGrantedTzs = all.reduce((s, g) => s + g.amountTzs, 0);
+  const totalFulfilledTzs = all.filter((g) => g.status === "FULFILLED").reduce((s, g) => s + g.amountTzs, 0);
+
+  const recent = all.slice(0, limit);
+  const userIds = Array.from(new Set(recent.map((g) => g.userId)));
+  const users = new Map<string, { displayName: string | null; phoneE164: string }>();
+  for (const id of userIds) {
+    const u = await db.user.findById(id);
+    if (u) users.set(id, { displayName: u.displayName, phoneE164: u.phoneE164 });
+  }
+
+  const ledger: AdminBonusLedgerRow[] = recent.map((g) => {
+    const v = toGrantView(g);
+    const u = users.get(g.userId);
+    return {
+      id: g.id,
+      userId: g.userId,
+      playerHandle: maskHandle(u?.displayName ?? null, u?.phoneE164 ?? ""),
+      amountTzs: g.amountTzs,
+      remainingTzs: g.remainingTzs,
+      wageredTzs: g.wageredTzs,
+      wagerRequiredTzs: g.wagerRequiredTzs,
+      progressPct: v.progressPct,
+      source: g.source,
+      status: g.status,
+      createdAt: g.createdAt,
+      expiresAt: g.expiresAt,
+    };
+  });
+
+  return { outstandingTzs, activeGrants, totalGrantedTzs, totalFulfilledTzs, ledger };
+}
