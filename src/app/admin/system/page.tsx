@@ -1,6 +1,6 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { I } from "@/components/ui/glyphs";
-import { SystemActions, SupportConfigForm } from "./system-client";
+import { SystemActions, SupportConfigForm, TimezoneForm } from "./system-client";
 import { getSupportConfig } from "@/lib/support-config";
 import { db } from "@/lib/server/store";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
@@ -9,6 +9,7 @@ import { rateLimitSnapshot } from "@/lib/server/rate-limit";
 import { listMarkets } from "@/lib/server/market-service";
 import { hasDatabase, pingDatabase } from "@/lib/server/prisma";
 import { formatTime } from "@/lib/utils";
+import { getPlatformConfig } from "@/lib/server/platform-config";
 
 export const metadata = { title: "Admin · System" };
 export const dynamic = "force-dynamic";
@@ -19,6 +20,7 @@ function bootstrapPhones(): string[] {
 }
 
 export default async function AdminSystemPage() {
+  const platform = await getPlatformConfig();
   const chain = verifyChain();
   const auditCount = getAuditPage({ limit: 100_000 }).length;
   const smsHealth = smsHealthSnapshot();
@@ -48,6 +50,16 @@ export default async function AdminSystemPage() {
           <AdminKpi label="Markets live"  sw="Soko hai"              value={liveMarkets.toLocaleString()} delta={`${resolvedMarkets} resolved`} />
           <AdminKpi label="SMS provider"  sw="Watoa SMS"            value={smsHealth.sent + smsHealth.failed === 0 ? "Idle" : `${(smsHealth.successRate * 100).toFixed(1)}% ok`} delta={`${smsClient.name} · ${smsHealth.sent} sent`} />
         </div>
+
+        {/* Platform timezone */}
+        <AdminCard title="Platform timezone" sw="Saa za jukwaa">
+          <p className="text-caption text-text-secondary mb-3">
+            All player-visible times, AI sentinel prompts, and poll generation use this timezone.
+            Change it here and it changes <strong>everywhere instantly</strong> — no redeploy needed.
+            Uses IANA format (e.g. Africa/Dar_es_Salaam, Asia/Dubai, Europe/London).
+          </p>
+          <TimezoneForm current={platform.timezone} />
+        </AdminCard>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <AdminCard title="Audit chain integrity" sw="Mlolongo · uadilifu">

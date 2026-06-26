@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useDeferredToast, useToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
 import { Input, Field } from "@/components/ui/input";
-import { verifyChainAction, updateSupportConfigAction } from "./actions";
+import { verifyChainAction, updateSupportConfigAction, updatePlatformTimezoneAction } from "./actions";
 import type { SupportConfig } from "@/lib/support-config";
 
 export function SystemActions({ kind }: { kind: "verify-chain" }) {
@@ -77,6 +77,37 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
       </div>
       <Button type="submit" variant="yes" loading={pending}>
         Save · Hifadhi
+      </Button>
+    </form>
+  );
+}
+
+export function TimezoneForm({ current }: { current: string }) {
+  const [pending, start] = useTransition();
+  const router = useRouter();
+  const { deferToast, toast } = useDeferredToast(pending);
+
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    start(async () => {
+      const r = await updatePlatformTimezoneAction(fd);
+      if (!r.ok) {
+        toast({ title: "Invalid timezone", description: r.error, variant: "danger" });
+      } else {
+        router.refresh();
+        deferToast({ title: "Timezone updated", variant: "success" });
+      }
+    });
+  };
+
+  return (
+    <form onSubmit={onSubmit} className="flex items-end gap-3 flex-wrap">
+      <Field label="Platform timezone (IANA)" hint={`Current: ${current}`} className="flex-1 min-w-[240px]">
+        <Input name="timezone" defaultValue={current} placeholder="Africa/Dar_es_Salaam" mono />
+      </Field>
+      <Button type="submit" loading={pending}>
+        Set timezone
       </Button>
     </form>
   );

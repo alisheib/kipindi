@@ -7,6 +7,7 @@ import { verifyChain } from "@/lib/server/audit";
 import { audit } from "@/lib/server/audit";
 import { revalidatePath } from "next/cache";
 import { setSupportConfig } from "@/lib/support-config";
+import { setPlatformConfig } from "@/lib/server/platform-config";
 
 const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
 
@@ -43,4 +44,13 @@ export async function updateSupportConfigAction(formData: FormData) {
   setSupportConfig({ email, phone, phoneTel, helpline, helplineTel });
   revalidatePath("/admin/system");
   return { ok: true as const };
+}
+
+export async function updatePlatformTimezoneAction(formData: FormData) {
+  const s = await requireAdmin();
+  const tz = String(formData.get("timezone") ?? "").trim();
+  if (!tz) return { ok: false as const, error: "Timezone is required." };
+  const r = await setPlatformConfig({ timezone: tz }, s.userId);
+  revalidatePath("/admin/system");
+  return r;
 }
