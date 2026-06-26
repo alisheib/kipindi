@@ -48,6 +48,11 @@ export async function setAiModelAction(fd: FormData): Promise<{ ok: boolean; err
     return { ok: false, error: "Invalid model selection." };
   }
   await setAiModel(model);
+  // Notify sentinel so next sweep uses the new model immediately
+  try {
+    const { applySentinelConfigChange } = await import("@/lib/server/market-sentinel");
+    await applySentinelConfigChange();
+  } catch { /* sentinel may not be running in dev */ }
   audit({
     category: "ADMIN",
     action: "ai.model_changed",
@@ -69,6 +74,12 @@ export async function setSentinelIntervalAction(fd: FormData): Promise<{ ok: boo
     return { ok: false, error: "Invalid interval selection." };
   }
   await setSentinelInterval(ms);
+  // Force the running sentinel to immediately pick up the new interval
+  // instead of waiting for the old interval to fire its next tick.
+  try {
+    const { applySentinelConfigChange } = await import("@/lib/server/market-sentinel");
+    await applySentinelConfigChange();
+  } catch { /* sentinel may not be running in dev */ }
   audit({
     category: "ADMIN",
     action: "ai.sentinel_interval_changed",

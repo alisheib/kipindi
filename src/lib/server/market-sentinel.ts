@@ -638,6 +638,14 @@ export function startSentinel(): void {
   }, 10_000);
 }
 
+/** Force the sentinel to re-read config and apply any interval change NOW,
+ *  instead of waiting for the current interval to fire. Called by the admin
+ *  action after saving a new interval. No-op if the sentinel isn't running. */
+export async function applySentinelConfigChange(): Promise<void> {
+  if (!intervalId) return;
+  await scheduleSweep();
+}
+
 export function stopSentinel(): void {
   if (intervalId) {
     clearInterval(intervalId);
