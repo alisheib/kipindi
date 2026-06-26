@@ -86,6 +86,30 @@ async function makeMarket() {
   ok("real refunded to real (2,000)", (await real("usr_bb_void")) === 2_000, `real=${await real("usr_bb_void")}`);
   ok("bonus refunded to bonus (back to 10,000)", (await bonus("usr_bb_void")) === 10_000, `bonus=${await bonus("usr_bb_void")}`);
   ok("opposite bettor fully refunded to real (5,000)", (await real("usr_bb_opp")) === 5_000, `real=${await real("usr_bb_opp")}`);
+  // Leak fix: the voided bet's turnover must be REVERSED (else free wagering).
+  const gVoid = (await db.bonusGrant.listByUser("usr_bb_void"))[0];
+  ok("wagering turnover reversed on void (back to 0)", gVoid.wageredTzs === 0, `wagered=${gVoid.wageredTzs}`);
+}
+
+// ── Leak fix: repeated void cycles can NOT clear a bonus to cash ──────────────
+{
+  await fundedUser("usr_bb_exploit", 0);
+  await fundedUser("usr_bb_exploit_opp", 200_000);
+  await creditBonus("usr_bb_exploit", { amountTzs: 10_000, source: "INVITE", wagerMultiplier: 5 }); // req 50,000
+  // Try to clear the 50k requirement by betting bonus then getting the market
+  // voided, 6 times. Each void must reverse turnover + return bonus, never pay real.
+  for (let i = 0; i < 6; i++) {
+    const m = await makeMarket();
+    await buyPosition("usr_bb_exploit", { marketId: m.id, side: "YES", stake: 8_000 }); // bonus-funded
+    await buyPosition("usr_bb_exploit_opp", { marketId: m.id, side: "NO", stake: 8_000 });
+    await resolveMarket({ marketId: m.id, outcome: "VOID", officerId: "off_a" });
+    await resolveMarket({ marketId: m.id, outcome: "VOID", officerId: "off_b" });
+  }
+  ok("real balance still 0 after 6 void cycles (no bonus→cash leak)", (await real("usr_bb_exploit")) === 0, `real=${await real("usr_bb_exploit")}`);
+  ok("bonus still 10,000 (nothing converted)", (await bonus("usr_bb_exploit")) === 10_000, `bonus=${await bonus("usr_bb_exploit")}`);
+  const gx = (await db.bonusGrant.listByUser("usr_bb_exploit"))[0];
+  ok("grant still ACTIVE, not fulfilled", gx.status === "ACTIVE", `status=${gx.status}`);
+  ok("wagering did NOT accumulate across voids", gx.wageredTzs === 0, `wagered=${gx.wageredTzs}`);
 }
 
 // ── Wagering fulfilment via real-money turnover converts bonus → cash ─────────

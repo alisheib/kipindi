@@ -103,7 +103,17 @@ export async function creditBonus(userId: string, input: CreditBonusInput): Prom
       createdAt: nowIso,
       updatedAt: nowIso,
     };
-    await db.bonusGrant.create(grant);
+    try {
+      await db.bonusGrant.create(grant);
+    } catch {
+      // A concurrent insert with the same sourceRef (another instance) tripped the
+      // DB unique constraint — return the winning grant rather than double-credit.
+      if (input.sourceRef) {
+        const existing = await db.bonusGrant.findBySourceRef(input.sourceRef);
+        if (existing) return { ok: true, grant: existing, deduped: true };
+      }
+      return { ok: false, error: "Could not create bonus grant.", code: "INVALID" };
+    }
     await db.wallet.adjust(wallet.id, { bonusBalance: amount });
     audit({
       category: "WALLET",
@@ -134,69 +144,110 @@ export type WageringResult = { fulfilled: StoredBonusGrant[]; creditedToRealTzs:
 export async function recordWagering(userId: string, stakeTzs: number): Promise<WageringResult> {
   const amount = tzs(stakeTzs);
   if (!(amount > 0)) return { fulfilled: [], creditedToRealTzs: 0 };
+  const result = await withLock(`wallet:${userId}`, () => recordWageringCore(userId, amount));
+  for (const g of result.fulfilled) notifyBonusFulfilled(userId, { amountTzs: g.amountTzs }).catch(() => {});
+  return result;
+}
 
+/**
+ * Lock-free variant for callers ALREADY holding `withLock("wallet:<userId>")`
+ * (bet placement records turnover inside its own wallet lock so spend + wagering
+ * + fulfilment are one atomic unit — re-acquiring the key would deadlock). The
+ * caller must fire notifyBonusFulfilled for the returned grants after the lock.
+ */
+export async function recordWageringLocked(userId: string, stakeTzs: number): Promise<WageringResult> {
+  const amount = tzs(stakeTzs);
+  if (!(amount > 0)) return { fulfilled: [], creditedToRealTzs: 0 };
+  return recordWageringCore(userId, amount);
+}
+
+async function recordWageringCore(userId: string, amount: number): Promise<WageringResult> {
   const fulfilled: StoredBonusGrant[] = [];
   let creditedToReal = 0;
+  let remainingTurnover = amount;
+  const active = await db.bonusGrant.listActiveByUser(userId); // FIFO oldest-first
+  for (const g of active) {
+    if (remainingTurnover <= 0) break;
+    if (g.status !== "ACTIVE") continue; // robustness: never double-touch a closed grant
+    const need = Math.max(0, g.wagerRequiredTzs - g.wageredTzs);
+    const applied = Math.min(remainingTurnover, need);
+    const newWagered = g.wageredTzs + applied;
+    remainingTurnover -= applied;
 
-  await withLock(`wallet:${userId}`, async () => {
-    let remainingTurnover = amount;
-    const active = await db.bonusGrant.listActiveByUser(userId); // FIFO oldest-first
-    for (const g of active) {
-      if (remainingTurnover <= 0) break;
-      const need = Math.max(0, g.wagerRequiredTzs - g.wageredTzs);
-      const applied = Math.min(remainingTurnover, need);
-      const newWagered = g.wageredTzs + applied;
-      remainingTurnover -= applied;
-
-      if (newWagered >= g.wagerRequiredTzs) {
-        // Fulfilled — convert the unspent remainder to real, withdrawable balance.
-        const moved = g.remainingTzs;
-        if (moved > 0) {
-          const updatedWallet = await db.wallet.adjust(g.walletId, { bonusBalance: -moved, balance: moved });
-          const now = new Date().toISOString();
-          await db.txn.create({
-            id: `txn_${randomId(12)}`,
-            walletId: g.walletId,
-            userId,
-            type: "BONUS_CREDIT",
-            status: "CONFIRMED",
-            amount: moved,
-            fee: 0,
-            taxWithheld: 0,
-            balanceAfter: updatedWallet?.balance ?? null,
-            currency: "TZS",
-            provider: "INTERNAL",
-            providerRef: null,
-            msisdn: null,
-            description: "Bonus unlocked — wagering completed",
-            betId: null,
-            amlReason: null,
-            createdAt: now,
-            updatedAt: now,
-            completedAt: now,
-          });
-          creditedToReal += moved;
-        }
-        const done = await db.bonusGrant.update(g.id, { wageredTzs: newWagered, remainingTzs: 0, status: "FULFILLED", fulfilledAt: new Date().toISOString() });
-        if (done) fulfilled.push(done);
-        audit({
-          category: "WALLET",
-          action: "bonus.fulfilled",
-          actorId: userId,
-          targetType: "BonusGrant",
-          targetId: g.id,
-          payload: { amountTzs: g.amountTzs, movedToRealTzs: moved, wageredTzs: newWagered, wagerRequiredTzs: g.wagerRequiredTzs },
+    if (newWagered >= g.wagerRequiredTzs) {
+      // Fulfilled — convert the unspent remainder to real, withdrawable balance.
+      const moved = g.remainingTzs;
+      if (moved > 0) {
+        const updatedWallet = await db.wallet.adjust(g.walletId, { bonusBalance: -moved, balance: moved });
+        const now = new Date().toISOString();
+        await db.txn.create({
+          id: `txn_${randomId(12)}`,
+          walletId: g.walletId,
+          userId,
+          type: "BONUS_CREDIT",
+          status: "CONFIRMED",
+          amount: moved,
+          fee: 0,
+          taxWithheld: 0,
+          balanceAfter: updatedWallet?.balance ?? null,
+          currency: "TZS",
+          provider: "INTERNAL",
+          providerRef: null,
+          msisdn: null,
+          description: "Bonus unlocked — wagering completed",
+          betId: null,
+          amlReason: null,
+          createdAt: now,
+          updatedAt: now,
+          completedAt: now,
         });
-      } else if (applied > 0) {
-        await db.bonusGrant.update(g.id, { wageredTzs: newWagered });
+        creditedToReal += moved;
       }
+      const done = await db.bonusGrant.update(g.id, { wageredTzs: newWagered, remainingTzs: 0, status: "FULFILLED", fulfilledAt: new Date().toISOString() });
+      if (done) fulfilled.push(done);
+      audit({
+        category: "WALLET",
+        action: "bonus.fulfilled",
+        actorId: userId,
+        targetType: "BonusGrant",
+        targetId: g.id,
+        payload: { amountTzs: g.amountTzs, movedToRealTzs: moved, wageredTzs: newWagered, wagerRequiredTzs: g.wagerRequiredTzs },
+      });
+    } else if (applied > 0) {
+      await db.bonusGrant.update(g.id, { wageredTzs: newWagered });
     }
-  });
-
-  for (const g of fulfilled) {
-    notifyBonusFulfilled(userId, { amountTzs: g.amountTzs }).catch(() => {});
   }
   return { fulfilled, creditedToRealTzs: creditedToReal };
+}
+
+/**
+ * Reverse `stakeTzs` of previously-credited turnover (used when a bet is REFUNDED
+ * — void / one-sided / emergency / orphan). Without this, a player could place a
+ * bonus- or real-funded bet (turnover counted toward wagering), have it refunded,
+ * keep the turnover credit, and clear the bonus to withdrawable cash with no risk.
+ * Decrements `wageredTzs` on the user's ACTIVE grants, newest-first, never below 0.
+ * A grant that already FULFILLED from legitimate turnover is left untouched (its
+ * cash is real) — but the per-bet reversal prevents turnover from ever
+ * accumulating across refunded bets. Returns the amount of turnover reversed.
+ */
+export async function reverseWagering(userId: string, stakeTzs: number): Promise<number> {
+  const amount = tzs(stakeTzs);
+  if (!(amount > 0)) return 0;
+  return withLock(`wallet:${userId}`, async () => {
+    let toReverse = amount;
+    let reversed = 0;
+    const active = (await db.bonusGrant.listActiveByUser(userId)).reverse(); // newest-first
+    for (const g of active) {
+      if (toReverse <= 0) break;
+      const take = Math.min(toReverse, g.wageredTzs);
+      if (take <= 0) continue;
+      await db.bonusGrant.update(g.id, { wageredTzs: g.wageredTzs - take });
+      reversed += take;
+      toReverse -= take;
+    }
+    if (reversed > 0) audit({ category: "WALLET", action: "bonus.wagering_reversed", actorId: userId, targetType: "Wallet", targetId: userId, payload: { requested: amount, reversed } });
+    return reversed;
+  });
 }
 
 /**
@@ -244,7 +295,17 @@ async function spendBonusCore(userId: string, amount: number): Promise<{ spent: 
     toSpend -= take;
   }
   if (spent > 0) {
-    await db.wallet.adjust(wallet.id, { bonusBalance: -spent });
+    // Guarded debit (defense-in-depth): never drive bonusBalance negative even if
+    // a future caller forgets the wallet lock. On a guard miss, roll back the
+    // per-grant remaining decrements we just made and report nothing spent.
+    const adjusted = await db.wallet.adjust(wallet.id, { bonusBalance: -spent }, { requireBonusBalanceGte: spent });
+    if (!adjusted) {
+      for (const a of allocations) {
+        const g = await db.bonusGrant.findById(a.grantId);
+        if (g) await db.bonusGrant.update(a.grantId, { remainingTzs: g.remainingTzs + a.amount });
+      }
+      return { spent: 0, allocations: [] };
+    }
     audit({ category: "WALLET", action: "bonus.spent", actorId: userId, targetType: "Wallet", targetId: wallet.id, payload: { spent, allocations } });
   }
   return { spent, allocations };

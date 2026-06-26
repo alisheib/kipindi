@@ -18,7 +18,8 @@ import { audit } from "./audit";
 import { db } from "./store";
 import { randomId } from "./crypto";
 import { withLock } from "./locks";
-import { spendBonusLocked, recordWagering, refundBonusToActive, expireActiveGrants } from "./bonus-service";
+import { spendBonusLocked, recordWageringLocked, reverseWagering, refundBonusToActive, expireActiveGrants } from "./bonus-service";
+import { notifyBonusFulfilled } from "./notification-service";
 import { isLockedOut } from "./responsible-gambling";
 import { rateCheck } from "./rate-limit";
 import { getEffectiveConfig, payoutForWhole, settledPayoutWhole } from "./market-config";
@@ -236,6 +237,7 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
   if (market.status !== "LIVE") return { ok: false, error: "Market is not accepting predictions.", code: "INVALID" };
   if (Date.parse(market.resolutionAt) <= Date.now()) return { ok: false, error: "Market has closed.", code: "INVALID" };
 
+  let wageringFulfilled: { amountTzs: number }[] = [];
   const result = await withLock(`wallet:${userId}`, async () => {
     const wallet = await db.wallet.findByUserId(userId);
     if (!wallet || wallet.status !== "ACTIVE") return { ok: false as const, error: "Wallet unavailable.", code: "NOT_FOUND" as const };
@@ -356,16 +358,21 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
       audit({ category: "SYSTEM", action: "affiliate.accrual_error", actorId: userId, targetType: "Position", targetId: positionId, payload: { error: String(err) } });
     }
 
+    // Wagering accrues on the FULL stake (turnover) INSIDE this wallet lock, so
+    // spend + wagering + any fulfilment are one atomic unit (no race with a
+    // concurrent second bet on the same wallet). Turnover from this bet is
+    // reversed if the bet is later refunded (see reverseWagering in the void
+    // paths) — that's what prevents bonus from clearing to cash with no risk.
+    // Best-effort: a wagering hiccup must never fail a placed bet.
+    try {
+      const wr = await recordWageringLocked(userId, opts.stake);
+      wageringFulfilled = wr.fulfilled;
+    } catch { /* never block a bet */ }
+
     return { ok: true as const, data: { positionId, balance: newBalance, payoutIfWin } };
   });
 
-  // Wagering accrues on the FULL stake (turnover), credited to the player's
-  // oldest active bonus grant(s) — done AFTER releasing the wallet lock so
-  // recordWagering can take its own wallet lock without re-entrancy. Best-effort:
-  // a wagering hiccup must never fail a placed bet.
-  if (result.ok) {
-    try { await recordWagering(userId, opts.stake); } catch { /* never block a bet */ }
-  }
+  for (const g of wageringFulfilled) notifyBonusFulfilled(userId, { amountTzs: g.amountTzs }).catch(() => {});
   return result;
 }
 
@@ -601,10 +608,15 @@ export async function repairOrphanedPositions(): Promise<{ repaired: number; ref
     const w = await db.wallet.findByUserId(p.userId);
     if (!w) continue;
     const bonusPart = p.bonusStakeTzs ?? 0;
-    let realRefund = p.stake - bonusPart;
+    const realRefund = p.stake - bonusPart;
+    // Reverse this bet's turnover (it never settled) and return the bonus portion
+    // to the bonus wallet — never to real (no active grant → bonus is forfeit).
+    await reverseWagering(p.userId, p.stake);
     if (bonusPart > 0) {
       const { refundedToBonus } = await refundBonusToActive(p.userId, bonusPart);
-      realRefund += (bonusPart - refundedToBonus); // no active grant → fall back to real
+      if (refundedToBonus < bonusPart) {
+        audit({ category: "WALLET", action: "bonus.refund_forfeited", actorId: p.userId, targetType: "Position", targetId: p.id, payload: { requested: bonusPart, refundedToBonus, forfeited: bonusPart - refundedToBonus, reason: "orphan refund, no active grant" } });
+      }
     }
     let newBal = w.balance;
     if (realRefund > 0) {
@@ -815,6 +827,9 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   // it while holding the market lock would invert buyPosition's wallet→market
   // order and could deadlock. Collected here, applied below.
   const pendingBonusRefunds: Array<{ userId: string; amount: number }> = [];
+  // Every refunded bet's turnover must be reversed (it was never risked) so a
+  // refunded bonus/real bet can't clear wagering to cash for free.
+  const pendingWagerReversals: Array<{ userId: string; stake: number }> = [];
   const result = await withLock(`market:${opts.marketId}`, async (): Promise<ServiceResult<{ stage: "stage1" | "complete"; winnersPaid?: number }>> => {
   const m = await marketStore.get(opts.marketId);
   if (!m) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
@@ -887,6 +902,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
       }
       p.status = "VOID"; p.finalPayout = p.stake; p.settledAt = m.resolutionStage2At!;
       await positionStore.set(p);
+      pendingWagerReversals.push({ userId: p.userId, stake: p.stake });
       if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
       if (realPart > 0) await db.txn.create({
         id: `txn_${randomId(12)}`,
@@ -946,6 +962,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
       p.finalPayout = p.stake;
       p.settledAt = m.resolutionStage2At!;
       await positionStore.set(p);
+      pendingWagerReversals.push({ userId: p.userId, stake: p.stake });
       if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
       if (realPart > 0) await db.txn.create({
         id: `txn_${randomId(12)}`,
@@ -1046,31 +1063,18 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   return { ok: true, data: { stage: "complete", winnersPaid } };
   }); // end withLock market
 
-  // Apply bonus refunds now the market lock is released. If the player has no
-  // ACTIVE grant left to hold the bonus, refundBonusToActive returns 0 and we
-  // fall back to crediting that remainder to real balance (player never loses
-  // money). Wagering progress is never reversed.
+  // Apply, now the market lock is released (refund helpers take the wallet lock —
+  // taking it inside the market lock would invert buyPosition's wallet→market
+  // order and could deadlock). Reverse each refunded bet's turnover first, then
+  // return the bonus principal to the bonus wallet. Bonus is NEVER converted to
+  // real here: if the source grant is gone, the bonus principal is forfeit (it
+  // must never become withdrawable cash without meeting the wagering requirement).
+  for (const r of pendingWagerReversals) await reverseWagering(r.userId, r.stake);
   for (const r of pendingBonusRefunds) {
     if (r.amount <= 0) continue;
     const { refundedToBonus } = await refundBonusToActive(r.userId, r.amount);
-    const remainder = r.amount - refundedToBonus;
-    if (remainder > 0) {
-      const w = await db.wallet.findByUserId(r.userId);
-      if (w) {
-        const updated = await db.wallet.adjust(w.id, { balance: remainder });
-        const now = new Date().toISOString();
-        await db.txn.create({
-          id: `txn_${randomId(12)}`,
-          walletId: w.id, userId: r.userId,
-          type: "BET_REFUND", status: "CONFIRMED",
-          amount: remainder, fee: 0, taxWithheld: 0,
-          balanceAfter: updated?.balance ?? null, currency: "TZS",
-          provider: "INTERNAL", providerRef: null, msisdn: null,
-          description: "Bonus refund (no active bonus) — credited to balance",
-          betId: null, amlReason: null,
-          createdAt: now, updatedAt: now, completedAt: now,
-        });
-      }
+    if (refundedToBonus < r.amount) {
+      audit({ category: "WALLET", action: "bonus.refund_forfeited", actorId: r.userId, targetType: "User", targetId: r.userId, payload: { requested: r.amount, refundedToBonus, forfeited: r.amount - refundedToBonus, reason: "no active grant to hold refunded bonus" } });
     }
   }
   return result;
@@ -1135,7 +1139,9 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
   const reason = (opts.reason ?? "").trim();
   if (reason.length < 5) return { ok: false, error: "A reason (≥ 5 characters) is required for an emergency void.", code: "INVALID" };
 
-  return withLock(`market:${opts.marketId}`, async () => {
+  const pendingBonusRefunds: Array<{ userId: string; amount: number }> = [];
+  const pendingWagerReversals: Array<{ userId: string; stake: number }> = [];
+  const result = await withLock(`market:${opts.marketId}`, async () => {
     const m = await marketStore.get(opts.marketId);
     if (!m) return { ok: false as const, error: "Market not found.", code: "NOT_FOUND" as const };
     if (m.status === "RESOLVED" || m.status === "VOIDED") {
@@ -1153,17 +1159,26 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
     for (const p of open) {
       const w = await db.wallet.findByUserId(p.userId);
       if (!w) continue;
-      const updated = await db.wallet.adjust(w.id, { balance: p.stake });
-      const balanceAfter = updated?.balance ?? w.balance + p.stake;
+      // Split: real portion → real now; bonus portion → bonus wallet after the
+      // lock; reverse the bet's turnover (it never settled).
+      const bonusPart = p.bonusStakeTzs ?? 0;
+      const realPart = p.stake - bonusPart;
+      let balanceAfter = w.balance;
+      if (realPart > 0) {
+        const updated = await db.wallet.adjust(w.id, { balance: realPart });
+        balanceAfter = updated?.balance ?? w.balance + realPart;
+      }
       p.status = "VOID";
       p.finalPayout = p.stake;
       p.settledAt = now;
       await positionStore.set(p);
-      await db.txn.create({
+      pendingWagerReversals.push({ userId: p.userId, stake: p.stake });
+      if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
+      if (realPart > 0) await db.txn.create({
         id: `txn_${randomId(12)}`,
         walletId: w.id, userId: p.userId,
         type: "BET_REFUND", status: "CONFIRMED",
-        amount: p.stake, fee: 0, taxWithheld: 0,
+        amount: realPart, fee: 0, taxWithheld: 0,
         balanceAfter, currency: "TZS",
         provider: "INTERNAL", providerRef: null, msisdn: null,
         description: `Emergency refund · "${m.titleEn.slice(0, 60)}" cancelled`,
@@ -1224,6 +1239,18 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
 
     return { ok: true as const, data: { refundedCount, refundedTzs } };
   });
+
+  // After the market lock: reverse turnover + return bonus principal to bonus
+  // (never to real — forfeit if no active grant). See resolveMarket for rationale.
+  for (const r of pendingWagerReversals) await reverseWagering(r.userId, r.stake);
+  for (const r of pendingBonusRefunds) {
+    if (r.amount <= 0) continue;
+    const { refundedToBonus } = await refundBonusToActive(r.userId, r.amount);
+    if (refundedToBonus < r.amount) {
+      audit({ category: "WALLET", action: "bonus.refund_forfeited", actorId: r.userId, targetType: "User", targetId: r.userId, payload: { requested: r.amount, refundedToBonus, forfeited: r.amount - refundedToBonus, reason: "emergency void, no active grant" } });
+    }
+  }
+  return result;
 }
 
 /** Seed the demo with a deep, varied catalogue and top up automatically

@@ -490,7 +490,7 @@ model BonusGrant {
   wagerRequiredTzs Int                              // amountTzs × multiplier (precomputed turnover target)
   wageredTzs       Int              @default(0)     // turnover accrued toward the requirement
   source           BonusSource
-  sourceRef        String?                          // idempotency key / FK to invite/affiliate/proposal
+  sourceRef        String?          @unique          // idempotency key (NULLs allowed/non-conflicting in Postgres)
   status           BonusGrantStatus @default(ACTIVE)
   expiresAt        DateTime?
   fulfilledAt      DateTime?
@@ -503,7 +503,6 @@ model BonusGrant {
 
   @@index([userId, status])
   @@index([status, expiresAt])
-  @@index([sourceRef])
 }
 
 // ============================================================================
