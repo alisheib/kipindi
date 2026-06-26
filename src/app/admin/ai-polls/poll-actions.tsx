@@ -303,41 +303,82 @@ export function GenerateForm() {
 
 /* ─── Batch generate ─── */
 
+type BatchPhase = "idle" | "running" | "done";
+type BatchSummary = { total: number; pending: number; filtered: number };
+
 export function BatchGenerateForm({ maxBatch, remaining }: { maxBatch: number; remaining: number }) {
   const [pending, start] = useTransition();
   const suggested = Math.min(maxBatch, Math.max(1, remaining || 3));
   const [count, setCount] = useState(String(suggested));
   const [prompt, setPrompt] = useState("");
-  const overlay = useActionOverlay();
+  const [phase, setPhase] = useState<BatchPhase>("idle");
+  const [total, setTotal] = useState(0);
+  const [pct, setPct] = useState(0);
+  const [summary, setSummary] = useState<BatchSummary | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const tick = useRef<ReturnType<typeof setInterval> | null>(null);
   const router = useRouter();
 
+  const clearTick = () => { if (tick.current) { clearInterval(tick.current); tick.current = null; } };
+  useEffect(() => () => clearTick(), []);
+  useEffect(() => {
+    if (phase !== "done") return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") dismiss(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [phase]);
+
+  // Per-poll progress is SIMULATED (the batch action is one server round-trip
+  // with no per-poll callback): the bar eases toward ~92% across the estimated
+  // run, then snaps to 100% when the real response lands — same fake-timer
+  // approach the single-poll form uses, just paced for N polls.
   const run = () => {
-    const n = parseInt(count, 10) || 1;
-    overlay.run(
-      `Generating ${n} poll${n !== 1 ? "s" : ""}…`,
-      "Each poll goes through the full 4-layer pipeline. This may take a moment.",
-    );
+    const n = Math.max(1, parseInt(count, 10) || 1);
+    setTotal(n);
+    setPct(0);
+    setSummary(null);
+    setError(null);
+    setPhase("running");
+    clearTick();
+    // Ease toward a 92% cap; pace so a full batch takes roughly n × ~3.5s.
+    const target = 92;
+    const step = Math.max(1.5, target / ((n * 3500) / 350));
+    tick.current = setInterval(() => {
+      setPct((p) => (p >= target ? p : Math.min(target, p + step)));
+    }, 350);
+
     start(async () => {
       try {
         const fd = new FormData();
         fd.set("count", count);
         fd.set("prompt", prompt);
         const r = await generatePollBatchAction(fd);
+        clearTick();
         router.refresh();
         if (r.ok) {
-          overlay.succeed(
-            `Batch complete — ${r.total} generated`,
-            `${r.summary.PENDING_REVIEW} ready for review · ${r.summary.FILTERED + r.summary.VALIDATION_FAILED} filtered`,
-          );
+          setSummary({ total: r.total, pending: r.summary.PENDING_REVIEW, filtered: r.summary.FILTERED + r.summary.VALIDATION_FAILED });
+          setPct(100);
+          setPhase("done");
           if (r.summary.PENDING_REVIEW > 0) revealElement("ai-polls-pending");
         } else {
-          overlay.fail("Batch failed", "Server error — try again with fewer polls.");
+          setError("Server error — try again with fewer polls.");
+          setPct(100);
+          setPhase("done");
         }
       } catch {
-        overlay.fail("Batch failed", "Server error — please try again.");
+        clearTick();
+        setError("Server error — please try again.");
+        setPct(100);
+        setPhase("done");
       }
     });
   };
+
+  const dismiss = () => { setPhase("idle"); setSummary(null); setError(null); setPct(0); };
+
+  const active = phase !== "idle";
+  // Estimated poll currently in flight (1-based), derived from the simulated %.
+  const currentPoll = Math.min(total, Math.floor((pct / 100) * total) + 1);
 
   return (
     <div className="flex flex-wrap items-end gap-3 pt-3 mt-3 border-t border-border/60">
@@ -367,7 +408,7 @@ export function BatchGenerateForm({ maxBatch, remaining }: { maxBatch: number; r
       <button
         type="button"
         onClick={run}
-        disabled={pending}
+        disabled={pending || active}
         className="btn btn-ghost btn-sm rounded-pill min-w-[150px]"
       >
         {pending ? (
@@ -382,7 +423,51 @@ export function BatchGenerateForm({ maxBatch, remaining }: { maxBatch: number; r
       <span className="text-[11px] text-text-subtle font-mono">
         Cycles across categories. Each poll runs the full 4-layer pipeline.
       </span>
-      <ActionOverlay state={overlay.state} onDismiss={overlay.dismiss} />
+
+      {/* Simulated per-poll progress overlay */}
+      {active && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={(e) => e.stopPropagation()}>
+          <div className="w-[90vw] max-w-[440px] rounded-xl border border-border bg-bg-elevated p-5 shadow-e4" style={{ animation: "np-rise 200ms cubic-bezier(.2,.8,.2,1)" }} onClick={(e) => e.stopPropagation()}>
+            {phase === "running" ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <span className="inline-block h-5 w-5 rounded-full border-2 border-gold-300 border-t-transparent animate-spin shrink-0" />
+                  <p className="font-display text-[15px] font-semibold text-text">Generating {total} poll{total !== 1 ? "s" : ""}</p>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-2 w-full rounded-pill bg-bg-overlay overflow-hidden">
+                    <div
+                      className="h-full rounded-pill transition-all duration-300 ease-out"
+                      style={{ width: `${pct}%`, background: "linear-gradient(90deg, var(--gold-500), var(--gold-400))" }}
+                    />
+                  </div>
+                  <p className="font-mono text-[11px] text-text-subtle tabular-nums">
+                    Poll {currentPoll} of {total} · {Math.round(pct)}%
+                  </p>
+                </div>
+                <p className="text-[11px] text-text-subtle leading-relaxed">
+                  Each poll runs the full 4-layer pipeline: AI generation, validation, duplicate detection, and quality scoring.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${error ? "bg-no-500/15 text-no-300" : "bg-yes-500/15 text-yes-300"}`}>
+                    {error ? <I.x s={18} /> : <I.check s={18} />}
+                  </span>
+                  <p className="font-display text-[15px] font-semibold text-text">
+                    {error ? "Batch failed" : `Batch complete — ${summary?.total ?? 0} generated`}
+                  </p>
+                </div>
+                <p className="text-[12.5px] text-text-muted">
+                  {error ?? `${summary?.pending ?? 0} ready for review · ${summary?.filtered ?? 0} filtered`}
+                </p>
+                <button type="button" onClick={dismiss} className="btn btn-ghost btn-sm rounded-pill w-full">Dismiss</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
