@@ -12,6 +12,7 @@ import { getAnthropicSpend } from "@/lib/server/anthropic-billing";
 import { CreditControls } from "./credit-controls";
 import { AiOpsControls } from "./ai-ops-controls";
 import { getAiOpsConfig, AVAILABLE_MODELS, INTERVAL_OPTIONS } from "@/lib/server/ai-ops-config";
+import { ai } from "@/lib/server/ai-config";
 
 export const metadata = { title: "Admin \u00b7 AI usage & credits" };
 export const dynamic = "force-dynamic";
@@ -201,13 +202,14 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
 
         {/* AI operations — model + sentinel interval */}
         <AdminCard title="AI operations" sw="Mipangilio ya AI">
-          <p className="text-caption text-text-secondary mb-3">
-            Choose the Claude model for poll generation and sentinel deep checks. Adjust how often the sentinel sweeps live markets.
-            Changes take effect on the next AI call or sweep tick — no redeploy needed.
+          <p className="text-caption text-text-secondary mb-4">
+            Control which Claude model powers the platform and how aggressively the sentinel monitors live markets.
+            All changes apply immediately — no redeploy needed. Each setting explains exactly what it affects below.
           </p>
           <AiOpsControls
             currentModel={aiOps.model}
             currentIntervalMs={aiOps.sentinelIntervalMs}
+            triageModel={ai.triageModel}
             models={AVAILABLE_MODELS}
             intervals={INTERVAL_OPTIONS}
           />
