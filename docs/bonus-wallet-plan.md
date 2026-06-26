@@ -1,8 +1,23 @@
 # Bonus Wallet — Feature Specification & Implementation Plan
 
 **Date:** 2026-06-26
-**Status:** PLANNING COMPLETE — Awaiting Ali's answers on 6 design decisions before implementation
-**Session:** Ended mid-planning. Next session resumes from this document.
+**Status:** ✅ SHIPPED — all 8 phases + the bulk-poll progress fix built, tested, and deployed (commits `2284499`…`a22c1a4`).
+**Session:** Implemented end-to-end 2026-06-26.
+
+### Final decisions (Ali, 2026-06-26)
+- **Wagering:** 5× default, by **turnover** (any bet stake counts — the plan's literal "bonus-funded stake only" rule is unclearable for 5×). Admin-configurable.
+- **Expiry:** 30 days. Auto-expired by the self-healing maintenance sweep.
+- **Withdrawals:** COEXIST — withdrawing real balance leaves active bonuses untouched (no forfeit).
+- **Multiple bonuses:** ACCUMULATE (FIFO), industry standard — no one-at-a-time limit, no queue/popup.
+- **Affiliate rewards + proposal prizes:** route to the BONUS wallet (admin-toggleable; safe fallback to real).
+- **Campaign cap/approval:** none — admin discretion (audit-logged).
+- **Cashback (10% deposit-back):** DEFERRED to a follow-up (enum value `CASHBACK` reserved).
+
+### Key safety properties implemented
+- Cash-out is BLOCKED on bonus-funded positions (would convert bonus → withdrawable cash).
+- Bet placement is real-first, then bonus; void/one-sided/orphan refunds split real→real, bonus→bonus (wagering never reversed).
+- All bonus money moves under `withLock("wallet:<userId>")`; invariant `bonusBalance == Σ remainingTzs over ACTIVE grants`.
+- Tests: `bonus-service` (59), `bonus-betting` (19), `invite-service` (22) — all wired into the predeploy gauntlet.
 
 ---
 
