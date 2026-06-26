@@ -243,25 +243,25 @@ export function NotificationsPanel() {
             )}
             style={{ animation: "np-rise 180ms cubic-bezier(.2,.8,.2,1)" }}
           >
-            <div className="flex h-11 items-center justify-between border-b border-border bg-transparent px-3 shrink-0">
-              <p className="font-mono text-micro font-bold uppercase tracking-[0.18em] text-text">
-                Notifications · Taarifa
+            <div className="flex items-center justify-between border-b border-border bg-transparent px-3 shrink-0" style={{ height: 44 }}>
+              <p className="font-mono text-micro font-bold uppercase tracking-[0.18em] text-text min-w-0 truncate">
+                Notifications
               </p>
-              <div className="flex items-center gap-0.5">
+              <div className="flex items-center shrink-0">
                 {items.length > 0 && (
                   <>
                     <button
                       type="button"
                       onClick={handleMarkAll}
-                      className="h-7 px-2 rounded-md font-mono text-micro font-bold uppercase tracking-[0.14em] text-text-subtle hover:text-text hover:bg-bg-overlay transition-colors"
+                      className="h-7 px-1.5 rounded-md font-mono text-[9.5px] font-bold uppercase tracking-[0.10em] text-text-subtle hover:text-text hover:bg-bg-overlay transition-colors whitespace-nowrap"
                     >
                       Read all
                     </button>
-                    <span className="text-border text-[10px]">|</span>
+                    <span className="text-border text-[9px] mx-0.5">|</span>
                     <button
                       type="button"
                       onClick={handleClearAll}
-                      className="h-7 px-2 rounded-md font-mono text-micro font-bold uppercase tracking-[0.14em] text-text-subtle hover:text-no-300 hover:bg-bg-overlay transition-colors"
+                      className="h-7 px-1.5 rounded-md font-mono text-[9.5px] font-bold uppercase tracking-[0.10em] text-text-subtle hover:text-no-300 hover:bg-bg-overlay transition-colors whitespace-nowrap"
                     >
                       Clear all
                     </button>
@@ -271,9 +271,9 @@ export function NotificationsPanel() {
                   type="button"
                   aria-label="Close"
                   onClick={() => setOpen(false)}
-                  className="h-8 w-8 inline-flex items-center justify-center rounded-md text-text-subtle hover:text-text hover:bg-bg-overlay transition-colors"
+                  className="ml-0.5 h-7 w-7 inline-flex items-center justify-center rounded-md text-text-subtle hover:text-text hover:bg-bg-overlay transition-colors"
                 >
-                  <I.x s={14} />
+                  <I.x s={13} />
                 </button>
               </div>
             </div>
