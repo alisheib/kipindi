@@ -237,11 +237,10 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
       : liveAll.filter(x => x.ms <= whenCfg.cutoffMs!)
     ).map(x => x.m);
   }
-  // Resolved markets are searchable too (players look up something that already
-  // settled); otherwise keep the short "recently resolved" strip.
+  // Show a small resolved teaser — the full browsable archive lives at /results.
   const resolved = searching
-    ? (await listMarkets({ status: "RESOLVED" })).filter(matches).slice(0, 12)
-    : (await listMarkets({ status: "RESOLVED" })).slice(0, 6);
+    ? (await listMarkets({ status: "RESOLVED" })).filter(matches).slice(0, 6)
+    : (await listMarkets({ status: "RESOLVED" })).slice(0, 3);
   const traderMap = await traderSeedsByMarket();
   const allForCharts = [...live, ...resolved];
   const cardCharts = new Map(await Promise.all(allForCharts.map(async (m) => [m.id, await getCardChart(m.id)] as const)));
@@ -283,7 +282,12 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
 
       {resolved.length > 0 && (
         <section className="mt-10">
-          <h2 className="mb-3 font-display text-[20px] font-semibold text-text">{searching ? "Matching resolved markets" : "Recently resolved"}</h2>
+          <div className="mb-3 flex items-baseline justify-between gap-2">
+            <h2 className="font-display text-[20px] font-semibold text-text">{searching ? "Matching resolved markets" : "Recently resolved"}</h2>
+            <a href="/results" className="font-mono text-[11.5px] font-semibold text-brand-300 hover:text-text transition-colors whitespace-nowrap">
+              All results →
+            </a>
+          </div>
           <div className="market-grid">
             {resolved.map((m) => (
               <MarketCard

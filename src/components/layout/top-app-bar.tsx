@@ -29,10 +29,12 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
   const { t, locale } = useT();
 
   const POSITIONS = locale === "sw" ? "Nafasi" : locale === "fr" ? "Historique" : "History";
+  const RESULTS = locale === "sw" ? "Matokeo" : locale === "fr" ? "Résultats" : "Results";
   const NAV_ITEMS = user.isAuthed
     ? ([
         { href: "/markets",     label: locale === "sw" ? "Masoko" : locale === "fr" ? "Marchés" : "Markets" },
         { href: "/live",        label: t.nav.live },
+        { href: "/results",     label: RESULTS },
         { href: "/positions",   label: POSITIONS },
         { href: "/wallet",      label: t.nav.wallet },
         { href: "/proposals",   label: locale === "sw" ? "Kupendekeza" : locale === "fr" ? "Proposer" : "Propose" },
@@ -42,6 +44,7 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
     : ([
         { href: "/markets",     label: locale === "sw" ? "Masoko" : locale === "fr" ? "Marchés" : "Markets" },
         { href: "/live",        label: t.nav.live },
+        { href: "/results",     label: RESULTS },
         { href: "/leaderboard", label: t.nav.leaderboard },
       ] as const);
 
@@ -73,6 +76,8 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
               ? pathname === "/" || pathname.startsWith("/markets")
               : it.href === "/proposals"
               ? pathname.startsWith("/proposals")
+              : it.href === "/results"
+              ? pathname.startsWith("/results")
               : pathname === it.href;
             return (
               <Link
