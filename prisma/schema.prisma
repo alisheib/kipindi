@@ -1054,6 +1054,10 @@ model Position {
   market          PredictionMarket @relation(fields: [marketId], references: [id], onDelete: Cascade)
   side            MarketSide
   stake           Decimal          @db.Decimal(18, 2)
+  // Portion of `stake` funded from the bonus wallet (whole TZS). 0 = fully real.
+  // Used to split refunds (bonus part returns to bonus on void) and to block
+  // cash-out of bonus-funded positions (would otherwise convert bonus → cash).
+  bonusStakeTzs   Int              @default(0)
   potentialPayout Decimal          @db.Decimal(18, 2)
   status          PositionStatus   @default(OPEN)
   finalPayout     Decimal?         @db.Decimal(18, 2)

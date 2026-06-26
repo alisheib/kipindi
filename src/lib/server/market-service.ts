@@ -18,6 +18,7 @@ import { audit } from "./audit";
 import { db } from "./store";
 import { randomId } from "./crypto";
 import { withLock } from "./locks";
+import { spendBonusLocked, recordWagering, refundBonusToActive } from "./bonus-service";
 import { isLockedOut } from "./responsible-gambling";
 import { rateCheck } from "./rate-limit";
 import { getEffectiveConfig, payoutForWhole, settledPayoutWhole } from "./market-config";
@@ -83,6 +84,9 @@ export type StoredPosition = {
   marketId: string;
   side: Side;
   stake: number;
+  /** Portion of `stake` funded from the bonus wallet (whole TZS). 0 = fully real.
+   *  Optional so positions created before the bonus wallet shipped read as 0. */
+  bonusStakeTzs?: number;
   potentialPayout: number;
   status: "OPEN" | "WIN" | "LOSS" | "VOID" | "CASHED_OUT";
   finalPayout: number | null;
@@ -232,16 +236,35 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
   if (market.status !== "LIVE") return { ok: false, error: "Market is not accepting predictions.", code: "INVALID" };
   if (Date.parse(market.resolutionAt) <= Date.now()) return { ok: false, error: "Market has closed.", code: "INVALID" };
 
-  return withLock(`wallet:${userId}`, async () => {
+  const result = await withLock(`wallet:${userId}`, async () => {
     const wallet = await db.wallet.findByUserId(userId);
     if (!wallet || wallet.status !== "ACTIVE") return { ok: false as const, error: "Wallet unavailable.", code: "NOT_FOUND" as const };
-    if (wallet.balance < opts.stake) return { ok: false as const, error: "Not enough balance.", code: "INVALID" as const };
 
-    // Atomic, overdraw-guarded debit (WHERE balance >= stake) so two concurrent
-    // bets on the same wallet can't both pass the check above and double-spend.
-    const debited = await db.wallet.adjust(wallet.id, { balance: -opts.stake }, { requireBalanceGte: opts.stake });
-    if (!debited) return { ok: false as const, error: "Not enough balance.", code: "INVALID" as const };
-    const newBalance = debited.balance;
+    // Real-first funding: spend the player's own (withdrawable) balance first,
+    // then top up the remainder from the bonus wallet. Both debits run inside
+    // THIS wallet lock so the affordability check and the two debits can't be
+    // split by a concurrent bet/withdraw (no double-spend).
+    const realAvail = wallet.balance;
+    const bonusAvail = wallet.bonusBalance ?? 0;
+    const realPart = Math.min(opts.stake, realAvail);
+    const bonusPart = opts.stake - realPart;
+    if (bonusPart > bonusAvail) return { ok: false as const, error: "Not enough balance.", code: "INVALID" as const };
+
+    let newBalance = realAvail;
+    if (realPart > 0) {
+      // Atomic, overdraw-guarded debit (WHERE balance >= realPart).
+      const debited = await db.wallet.adjust(wallet.id, { balance: -realPart }, { requireBalanceGte: realPart });
+      if (!debited) return { ok: false as const, error: "Not enough balance.", code: "INVALID" as const };
+      newBalance = debited.balance;
+    }
+    if (bonusPart > 0) {
+      // Lock-free spend — we already hold wallet:<userId>.
+      const spend = await spendBonusLocked(userId, bonusPart);
+      if (spend.spent < bonusPart) {
+        if (realPart > 0) await db.wallet.adjust(wallet.id, { balance: realPart }); // roll back real debit
+        return { ok: false as const, error: "Not enough balance.", code: "INVALID" as const };
+      }
+    }
 
     const payoutIfWin = await projectedPayout(market, opts.side, opts.stake);
     const positionId = `pos_${randomId(10)}`;
@@ -252,6 +275,7 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
       marketId: opts.marketId,
       side: opts.side,
       stake: opts.stake,
+      bonusStakeTzs: bonusPart,
       potentialPayout: payoutIfWin,
       status: "OPEN",
       finalPayout: null,
@@ -280,14 +304,20 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
       recordSnapshot(fresh.id, fresh.yesPool, fresh.noPool);
     });
 
+    // The real-wallet ledger records only the REAL cash that left `balance`
+    // (-realPart). The bonus-funded portion moves on the bonus wallet and is
+    // tracked via BonusGrant + bonus audit entries, not here, so balanceAfter
+    // stays reconcilable with the running real-balance sum.
     await db.txn.create({
       id: `txn_${randomId(12)}`,
       walletId: wallet.id, userId,
       type: "BET_PLACED", status: "CONFIRMED",
-      amount: -opts.stake, fee: 0, taxWithheld: 0,
+      amount: -realPart, fee: 0, taxWithheld: 0,
       balanceAfter: newBalance, currency: "TZS",
       provider: "INTERNAL", providerRef: null, msisdn: null,
-      description: `${opts.side} on "${market.titleEn.slice(0, 60)}"`,
+      description: bonusPart > 0
+        ? `${opts.side} on "${market.titleEn.slice(0, 50)}" (incl. TZS ${bonusPart.toLocaleString()} bonus)`
+        : `${opts.side} on "${market.titleEn.slice(0, 60)}"`,
       betId: positionId,
       amlReason: null,
       createdAt: placedAt, updatedAt: placedAt, completedAt: placedAt,
@@ -328,6 +358,15 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
 
     return { ok: true as const, data: { positionId, balance: newBalance, payoutIfWin } };
   });
+
+  // Wagering accrues on the FULL stake (turnover), credited to the player's
+  // oldest active bonus grant(s) — done AFTER releasing the wallet lock so
+  // recordWagering can take its own wallet lock without re-entrancy. Best-effort:
+  // a wagering hiccup must never fail a placed bet.
+  if (result.ok) {
+    try { await recordWagering(userId, opts.stake); } catch { /* never block a bet */ }
+  }
+  return result;
 }
 
 export async function listPositionsForUser(userId: string, limit = 100) {
@@ -556,20 +595,31 @@ export async function repairOrphanedPositions(): Promise<{ repaired: number; ref
   for (const p of await positionStore.values()) {
     if (p.status !== "OPEN") continue;
     if (await marketStore.has(p.marketId)) continue; // market still exists → nothing to repair
-    // Orphaned — refund the stake to the wallet, mark VOID, audit.
+    // Orphaned — refund the stake, mark VOID, audit. Split: real portion → real
+    // balance, bonus portion → bonus wallet (no market lock held here, so the
+    // wallet-locked bonus refund is safe to call directly).
     const w = await db.wallet.findByUserId(p.userId);
     if (!w) continue;
-    const updated = await db.wallet.adjust(w.id, { balance: p.stake });
-    const newBal = updated?.balance ?? w.balance + p.stake;
+    const bonusPart = p.bonusStakeTzs ?? 0;
+    let realRefund = p.stake - bonusPart;
+    if (bonusPart > 0) {
+      const { refundedToBonus } = await refundBonusToActive(p.userId, bonusPart);
+      realRefund += (bonusPart - refundedToBonus); // no active grant → fall back to real
+    }
+    let newBal = w.balance;
+    if (realRefund > 0) {
+      const updated = await db.wallet.adjust(w.id, { balance: realRefund });
+      newBal = updated?.balance ?? w.balance + realRefund;
+    }
     p.status = "VOID";
     p.finalPayout = p.stake;
     p.settledAt = new Date().toISOString();
     await positionStore.set(p);
-    await db.txn.create({
+    if (realRefund > 0) await db.txn.create({
       id: `txn_${randomId(12)}`,
       walletId: w.id, userId: p.userId,
       type: "BET_REFUND", status: "CONFIRMED",
-      amount: p.stake, fee: 0, taxWithheld: 0,
+      amount: realRefund, fee: 0, taxWithheld: 0,
       balanceAfter: newBal, currency: "TZS",
       provider: "INTERNAL", providerRef: null, msisdn: null,
       description: `Refund · orphaned position (market record missing)`,
@@ -659,6 +709,13 @@ export async function cashOutPosition(
     if (!p) return { ok: false as const, error: "Position not found.", code: "NOT_FOUND" as const };
     if (p.userId !== userId) return { ok: false as const, error: "Not your position.", code: "INVALID" as const };
     if (p.status !== "OPEN") return { ok: false as const, error: "Position is no longer open.", code: "INVALID" as const };
+
+    // Bonus-funded bets cannot be cashed out — cash-out pays into the REAL
+    // wallet, which would convert non-withdrawable bonus into withdrawable cash
+    // and bypass the wagering requirement. Such bets must ride to settlement.
+    if ((p.bonusStakeTzs ?? 0) > 0) {
+      return { ok: false as const, error: "Bonus-funded bets can't be cashed out — play them through to settlement · Dau la bonasi haliwezi kuuzwa mapema.", code: "INVALID" as const };
+    }
 
     const m = await marketStore.get(p.marketId);
     if (!m) return { ok: false as const, error: "Market not found.", code: "NOT_FOUND" as const };
@@ -753,7 +810,12 @@ export async function cashOutPosition(
 }
 
 export async function resolveMarket(opts: { marketId: string; outcome: Side | "VOID"; officerId: string }): Promise<ServiceResult<{ stage: "stage1" | "complete"; winnersPaid?: number }>> {
-  return withLock(`market:${opts.marketId}`, async () => {
+  // Bonus portions of refunded bets are returned to the bonus wallet AFTER the
+  // market lock releases — refundBonusToActive takes the wallet lock, and taking
+  // it while holding the market lock would invert buyPosition's wallet→market
+  // order and could deadlock. Collected here, applied below.
+  const pendingBonusRefunds: Array<{ userId: string; amount: number }> = [];
+  const result = await withLock(`market:${opts.marketId}`, async (): Promise<ServiceResult<{ stage: "stage1" | "complete"; winnersPaid?: number }>> => {
   const m = await marketStore.get(opts.marketId);
   if (!m) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
   if (m.status === "RESOLVED" || m.status === "VOIDED") return { ok: false, error: "Market already resolved.", code: "INVALID" };
@@ -814,15 +876,23 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
     for (const p of myPositions) {
       const w = await db.wallet.findByUserId(p.userId);
       if (!w) continue;
-      const updated = await db.wallet.adjust(w.id, { balance: p.stake });
-      const balanceAfter = updated?.balance ?? w.balance + p.stake;
+      // Split: real portion → real balance now; bonus portion → bonus wallet
+      // after the lock (queued in pendingBonusRefunds).
+      const bonusPart = p.bonusStakeTzs ?? 0;
+      const realPart = p.stake - bonusPart;
+      let balanceAfter = w.balance;
+      if (realPart > 0) {
+        const updated = await db.wallet.adjust(w.id, { balance: realPart });
+        balanceAfter = updated?.balance ?? w.balance + realPart;
+      }
       p.status = "VOID"; p.finalPayout = p.stake; p.settledAt = m.resolutionStage2At!;
       await positionStore.set(p);
-      await db.txn.create({
+      if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
+      if (realPart > 0) await db.txn.create({
         id: `txn_${randomId(12)}`,
         walletId: w.id, userId: p.userId,
         type: "BET_REFUND", status: "CONFIRMED",
-        amount: p.stake, fee: 0, taxWithheld: 0,
+        amount: realPart, fee: 0, taxWithheld: 0,
         balanceAfter, currency: "TZS",
         provider: "INTERNAL", providerRef: null, msisdn: null,
         description: `One-sided refund · "${m.titleEn.slice(0, 60)}"`,
@@ -865,17 +935,23 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
     for (const p of myPositions) {
       const w = await db.wallet.findByUserId(p.userId);
       if (!w) continue;
-      const updated = await db.wallet.adjust(w.id, { balance: p.stake });
-      const balanceAfter = updated?.balance ?? w.balance + p.stake;
+      const bonusPart = p.bonusStakeTzs ?? 0;
+      const realPart = p.stake - bonusPart;
+      let balanceAfter = w.balance;
+      if (realPart > 0) {
+        const updated = await db.wallet.adjust(w.id, { balance: realPart });
+        balanceAfter = updated?.balance ?? w.balance + realPart;
+      }
       p.status = "VOID";
       p.finalPayout = p.stake;
       p.settledAt = m.resolutionStage2At!;
       await positionStore.set(p);
-      await db.txn.create({
+      if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
+      if (realPart > 0) await db.txn.create({
         id: `txn_${randomId(12)}`,
         walletId: w.id, userId: p.userId,
         type: "BET_REFUND", status: "CONFIRMED",
-        amount: p.stake, fee: 0, taxWithheld: 0,
+        amount: realPart, fee: 0, taxWithheld: 0,
         balanceAfter, currency: "TZS",
         provider: "INTERNAL", providerRef: null, msisdn: null,
         description: `Refund · "${m.titleEn.slice(0, 60)}" voided`,
@@ -969,6 +1045,35 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
 
   return { ok: true, data: { stage: "complete", winnersPaid } };
   }); // end withLock market
+
+  // Apply bonus refunds now the market lock is released. If the player has no
+  // ACTIVE grant left to hold the bonus, refundBonusToActive returns 0 and we
+  // fall back to crediting that remainder to real balance (player never loses
+  // money). Wagering progress is never reversed.
+  for (const r of pendingBonusRefunds) {
+    if (r.amount <= 0) continue;
+    const { refundedToBonus } = await refundBonusToActive(r.userId, r.amount);
+    const remainder = r.amount - refundedToBonus;
+    if (remainder > 0) {
+      const w = await db.wallet.findByUserId(r.userId);
+      if (w) {
+        const updated = await db.wallet.adjust(w.id, { balance: remainder });
+        const now = new Date().toISOString();
+        await db.txn.create({
+          id: `txn_${randomId(12)}`,
+          walletId: w.id, userId: r.userId,
+          type: "BET_REFUND", status: "CONFIRMED",
+          amount: remainder, fee: 0, taxWithheld: 0,
+          balanceAfter: updated?.balance ?? null, currency: "TZS",
+          provider: "INTERNAL", providerRef: null, msisdn: null,
+          description: "Bonus refund (no active bonus) — credited to balance",
+          betId: null, amlReason: null,
+          createdAt: now, updatedAt: now, completedAt: now,
+        });
+      }
+    }
+  }
+  return result;
 }
 
 /**

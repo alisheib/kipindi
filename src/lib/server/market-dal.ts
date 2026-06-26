@@ -75,6 +75,7 @@ function toStoredPosition(r: any): StoredPosition {
     marketId: r.marketId,
     side: r.side as Side,
     stake: num(r.stake),
+    bonusStakeTzs: r.bonusStakeTzs != null ? num(r.bonusStakeTzs) : 0,
     potentialPayout: num(r.potentialPayout),
     status: r.status as StoredPosition["status"],
     finalPayout: r.finalPayout != null ? num(r.finalPayout) : null,
@@ -218,7 +219,8 @@ const prismaPositions: PositionStore = {
       where: { id: p.id },
       create: {
         id: p.id, userId: p.userId, marketId: p.marketId,
-        side: p.side, stake: p.stake, potentialPayout: p.potentialPayout,
+        side: p.side, stake: p.stake, bonusStakeTzs: p.bonusStakeTzs ?? 0,
+        potentialPayout: p.potentialPayout,
         status: p.status, finalPayout: p.finalPayout,
         placedAt: new Date(p.placedAt),
         settledAt: p.settledAt ? new Date(p.settledAt) : null,

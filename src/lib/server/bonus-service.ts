@@ -210,30 +210,65 @@ export async function recordWagering(userId: string, stakeTzs: number): Promise<
 export async function spendBonus(userId: string, amountTzs: number): Promise<{ spent: number; allocations: BonusAllocation[] }> {
   const amount = tzs(amountTzs);
   if (!(amount > 0)) return { spent: 0, allocations: [] };
+  return withLock(`wallet:${userId}`, () => spendBonusCore(userId, amount));
+}
 
+/**
+ * Lock-free variant of spendBonus for callers that ALREADY hold
+ * `withLock("wallet:<userId>")` — e.g. bet placement, which must debit real +
+ * bonus atomically inside its own wallet lock (re-acquiring the same key would
+ * deadlock). Do NOT call this without holding the wallet lock.
+ */
+export async function spendBonusLocked(userId: string, amountTzs: number): Promise<{ spent: number; allocations: BonusAllocation[] }> {
+  const amount = tzs(amountTzs);
+  if (!(amount > 0)) return { spent: 0, allocations: [] };
+  return spendBonusCore(userId, amount);
+}
+
+async function spendBonusCore(userId: string, amount: number): Promise<{ spent: number; allocations: BonusAllocation[] }> {
+  const wallet = await db.wallet.findByUserId(userId);
+  if (!wallet) return { spent: 0, allocations: [] };
+  let toSpend = Math.min(amount, wallet.bonusBalance ?? 0);
+  if (toSpend <= 0) return { spent: 0, allocations: [] };
+
+  const allocations: BonusAllocation[] = [];
+  let spent = 0;
+  const active = await db.bonusGrant.listActiveByUser(userId); // FIFO
+  for (const g of active) {
+    if (toSpend <= 0) break;
+    const take = Math.min(toSpend, g.remainingTzs);
+    if (take <= 0) continue;
+    await db.bonusGrant.update(g.id, { remainingTzs: g.remainingTzs - take });
+    allocations.push({ grantId: g.id, amount: take });
+    spent += take;
+    toSpend -= take;
+  }
+  if (spent > 0) {
+    await db.wallet.adjust(wallet.id, { bonusBalance: -spent });
+    audit({ category: "WALLET", action: "bonus.spent", actorId: userId, targetType: "Wallet", targetId: wallet.id, payload: { spent, allocations } });
+  }
+  return { spent, allocations };
+}
+
+/**
+ * Refund `amountTzs` of bonus stake back into the bonus wallet on a market void
+ * (the bonus portion of a refunded bet returns to bonus, not real). Adds it to
+ * the player's oldest ACTIVE grant and bumps bonusBalance, under the wallet lock.
+ * Wagering progress is NOT reversed. Returns how much landed in the bonus wallet;
+ * if the player has no ACTIVE grant left to hold it, returns 0 so the caller can
+ * refund that remainder to real balance instead (player never loses money).
+ */
+export async function refundBonusToActive(userId: string, amountTzs: number): Promise<{ refundedToBonus: number }> {
+  const amount = tzs(amountTzs);
+  if (!(amount > 0)) return { refundedToBonus: 0 };
   return withLock(`wallet:${userId}`, async () => {
-    const wallet = await db.wallet.findByUserId(userId);
-    if (!wallet) return { spent: 0, allocations: [] };
-    let toSpend = Math.min(amount, wallet.bonusBalance ?? 0);
-    if (toSpend <= 0) return { spent: 0, allocations: [] };
-
-    const allocations: BonusAllocation[] = [];
-    let spent = 0;
-    const active = await db.bonusGrant.listActiveByUser(userId); // FIFO
-    for (const g of active) {
-      if (toSpend <= 0) break;
-      const take = Math.min(toSpend, g.remainingTzs);
-      if (take <= 0) continue;
-      await db.bonusGrant.update(g.id, { remainingTzs: g.remainingTzs - take });
-      allocations.push({ grantId: g.id, amount: take });
-      spent += take;
-      toSpend -= take;
-    }
-    if (spent > 0) {
-      await db.wallet.adjust(wallet.id, { bonusBalance: -spent });
-      audit({ category: "WALLET", action: "bonus.spent", actorId: userId, targetType: "Wallet", targetId: wallet.id, payload: { spent, allocations } });
-    }
-    return { spent, allocations };
+    const active = await db.bonusGrant.listActiveByUser(userId); // oldest first
+    const target = active[0];
+    if (!target) return { refundedToBonus: 0 };
+    await db.bonusGrant.update(target.id, { remainingTzs: target.remainingTzs + amount });
+    await db.wallet.adjust(target.walletId, { bonusBalance: amount });
+    audit({ category: "WALLET", action: "bonus.refund_to_active", actorId: userId, targetType: "BonusGrant", targetId: target.id, payload: { amount } });
+    return { refundedToBonus: amount };
   });
 }
 
