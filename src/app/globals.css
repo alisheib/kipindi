@@ -1121,6 +1121,12 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 .kp-slide-up { animation: kp-slide-up var(--dur-arrive) var(--ease-arrive) both; }
 @keyframes kp-slide-up { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
+/* ---------- Popover/overlay rise — used by notifications panel, admin
+   action-overlay, AI-poll overlays, and the sentinel countdown. Defined
+   globally (was previously only inline in notifications-panel, so it was a
+   no-op on admin pages that don't mount the bell). ---------- */
+@keyframes np-rise { from { transform: translateY(-6px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
 /* ---------- Skeleton shimmer ----------------------------------------------
    The loading sheen swept across PageLoader rows + the markets/live/leaderboard
    grid placeholders. Quiet pearl highlight (NOT gilt — gold is reserved for

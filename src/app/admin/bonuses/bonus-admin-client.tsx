@@ -42,7 +42,7 @@ function NumField({
 }) {
   return (
     <div style={{ width: width ?? "100%" }}>
-      <div className="mb-1.5 text-[12px] font-semibold text-text">{label}</div>
+      <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">{label}</div>
       <Input
         prefix={prefix || undefined}
         trailing={suffix ? <span className="text-[11px]">{suffix}</span> : undefined}
@@ -199,7 +199,7 @@ export function GrantBonusForm() {
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <div className="w-full">
-          <div className="mb-1.5 text-[12px] font-semibold text-text">Player phone</div>
+          <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">Player phone</div>
           <Input prefix="+255" mono size="sm" placeholder="712 345 678" value={phone}
             onChange={(e) => setPhone(e.target.value)} />
           <div className="mt-1.5 text-[10.5px] text-text-subtle">Any TZ format · 0712…, 255…, +255…</div>
@@ -210,7 +210,7 @@ export function GrantBonusForm() {
         <NumField label="Expiry" hint="Blank = default" suffix="days"
           value={expiry === "" ? 0 : expiry} onChange={(n) => setExpiry(n === 0 ? "" : n)} />
         <div className="w-full sm:col-span-2 lg:col-span-1">
-          <div className="mb-1.5 text-[12px] font-semibold text-text">Note (optional)</div>
+          <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">Note (optional)</div>
           <Input size="sm" placeholder="e.g. retention gift" value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
       </div>

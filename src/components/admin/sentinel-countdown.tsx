@@ -126,7 +126,7 @@ export function SentinelCountdown() {
 
       {open && (
         <div
-          className="absolute right-0 top-full mt-2 w-[256px] rounded-lg glass-panel p-3.5 shadow-e4 z-50"
+          className="absolute right-0 top-full mt-2 w-[256px] max-w-[calc(100vw-24px)] rounded-lg glass-panel p-3.5 shadow-e4 z-50"
           style={{ animation: "np-rise 160ms cubic-bezier(.2,.8,.2,1)" }}
         >
           <div className="flex items-center gap-2 mb-2.5">
