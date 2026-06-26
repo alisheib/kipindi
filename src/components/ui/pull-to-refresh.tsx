@@ -18,7 +18,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Spinner } from "@/components/ui/spinner";
 
-const THRESHOLD = 60; // px of pull before triggering
+const THRESHOLD = 80; // px of pull before triggering (raised from 60 to prevent accidental triggers)
 const SETTLE_MS = 600; // how long the spinner shows after refresh
 
 export function PullToRefresh() {
@@ -47,7 +47,7 @@ export function PullToRefresh() {
   const onTouchEnd = useCallback(() => {
     if (!active.current) { setPulling(false); setPullY(0); return; }
     active.current = false;
-    if (pullY >= THRESHOLD * 0.4) {
+    if (pullY >= THRESHOLD * 0.6) {
       setRefreshing(true);
       router.refresh();
       window.dispatchEvent(new Event("50pick:refresh"));
