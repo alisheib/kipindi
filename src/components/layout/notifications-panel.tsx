@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { cn } from "@/lib/utils";
-import { fetchMyNotifications, markNotifReadAction, markAllReadAction, dismissNotifAction } from "@/app/_actions/notifications";
+import { fetchMyNotifications, markNotifReadAction, markAllReadAction, dismissNotifAction, dismissAllAction } from "@/app/_actions/notifications";
 import type { StoredNotification } from "@/lib/server/store";
 import { haptics } from "@/lib/haptics";
 
@@ -173,6 +173,12 @@ export function NotificationsPanel() {
     await refresh();
   };
 
+  const handleClearAll = async () => {
+    if (items.length === 0) return;
+    await dismissAllAction();
+    await refresh();
+  };
+
   return (
     <div ref={ref} className="relative z-10">
       <button
@@ -241,14 +247,26 @@ export function NotificationsPanel() {
               <p className="font-mono text-micro font-bold uppercase tracking-[0.18em] text-text">
                 Notifications · Taarifa
               </p>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={handleMarkAll}
-                  className="h-7 px-2 rounded-md font-mono text-micro font-bold uppercase tracking-[0.14em] text-text-subtle hover:text-text hover:bg-bg-overlay transition-colors"
-                >
-                  Mark all · Chagua zote
-                </button>
+              <div className="flex items-center gap-0.5">
+                {items.length > 0 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleMarkAll}
+                      className="h-7 px-2 rounded-md font-mono text-micro font-bold uppercase tracking-[0.14em] text-text-subtle hover:text-text hover:bg-bg-overlay transition-colors"
+                    >
+                      Read all
+                    </button>
+                    <span className="text-border text-[10px]">|</span>
+                    <button
+                      type="button"
+                      onClick={handleClearAll}
+                      className="h-7 px-2 rounded-md font-mono text-micro font-bold uppercase tracking-[0.14em] text-text-subtle hover:text-no-300 hover:bg-bg-overlay transition-colors"
+                    >
+                      Clear all
+                    </button>
+                  </>
+                )}
                 <button
                   type="button"
                   aria-label="Close"

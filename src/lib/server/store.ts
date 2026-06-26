@@ -518,6 +518,17 @@ const memoryDb = {
       store.notifications.set(id, next);
       return next;
     },
+    dismissAll: (userId: string) => {
+      const now = new Date().toISOString();
+      let count = 0;
+      for (const n of store.notifications.values()) {
+        if (n.userId === userId && !n.dismissedAt) {
+          store.notifications.set(n.id, { ...n, dismissedAt: now });
+          count++;
+        }
+      }
+      return count;
+    },
   },
   sourceOfFunds: {
     get: (userId: string) => store.sourceOfFunds.get(userId) ?? null,

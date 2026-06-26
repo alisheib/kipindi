@@ -65,6 +65,10 @@ export async function dismiss(id: string, userId: string) {
   return await db.notification.dismiss(id, userId);
 }
 
+export async function dismissAll(userId: string) {
+  return await db.notification.dismissAll(userId);
+}
+
 /* ---- Convenience emitters used by other services ---- */
 
 /**

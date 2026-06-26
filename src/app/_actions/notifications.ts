@@ -1,7 +1,7 @@
 "use server";
 
 import { currentSession } from "@/lib/server/auth-service";
-import { listForUser, unreadCount, markRead, markAllRead, dismiss } from "@/lib/server/notification-service";
+import { listForUser, unreadCount, markRead, markAllRead, dismiss, dismissAll } from "@/lib/server/notification-service";
 import type { StoredNotification } from "@/lib/server/store";
 
 export async function fetchMyNotifications(): Promise<{ items: StoredNotification[]; unread: number }> {
@@ -32,4 +32,11 @@ export async function dismissNotifAction(id: string) {
   if (!session) return { ok: false as const };
   await dismiss(id, session.userId);
   return { ok: true as const };
+}
+
+export async function dismissAllAction() {
+  const session = await currentSession();
+  if (!session) return { ok: false as const, count: 0 };
+  const count = await dismissAll(session.userId);
+  return { ok: true as const, count };
 }
