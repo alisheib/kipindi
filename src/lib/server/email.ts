@@ -465,6 +465,23 @@ export function oneSidedRefundHtml({ reference, stake, marketTitle, settledAt }:
   `);
 }
 
+export function inviteHtml({ campaignName, bonusAmountTzs, code, message }: {
+  campaignName: string; bonusAmountTzs: number; code: string; message?: string;
+}): string {
+  return wrap(`
+    ${eyebrow("You're invited · Umealikwa")}
+    ${heading(`Get a TZS ${Math.round(bonusAmountTzs).toLocaleString("en-US")} bonus on 50pick`)}
+    ${subtitle(message?.trim() ? message.trim() : "Join 50pick and start predicting. Your welcome bonus is waiting.")}
+    ${subtitleSw("Jiunge na 50pick uanze kutabiri. Bonasi yako ya kukukaribisha inakusubiri.")}
+    ${detailRows([
+      { label: "Welcome bonus", value: fmtTzs(bonusAmountTzs), tone: "good" },
+      { label: "Invite code", value: code },
+      { label: "Campaign", value: campaignName },
+    ])}
+    ${ctaButton(`/auth/register?invite=${encodeURIComponent(code)}`, "Claim your bonus · Pata bonasi")}
+  `);
+}
+
 export function passwordResetHtml({ resetLink }: { resetLink: string }): string {
   return wrap(`
     ${eyebrow("Password reset", "Badilisha nenosiri")}

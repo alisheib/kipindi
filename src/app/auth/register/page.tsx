@@ -9,6 +9,7 @@ import { PasswordPair } from "@/components/auth/password-pair";
 import { DateSelect } from "@/components/ui/date-select";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { resolveReferralPreview } from "@/lib/server/affiliate-service";
+import { getInvitePreview } from "@/lib/server/invite-service";
 import { startRegisterAction } from "./actions";
 import { HELPLINE } from "@/lib/support-config";
 
@@ -17,7 +18,7 @@ export const metadata = { title: "Create account · Fungua akaunti" };
 export default async function RegisterPage({
   searchParams,
 }: {
-  searchParams: Promise<{ phone?: string; error?: string; message?: string; ref?: string; next?: string }>;
+  searchParams: Promise<{ phone?: string; error?: string; message?: string; ref?: string; invite?: string; next?: string }>;
 }) {
   // Bounce-authed-users guard lives in src/app/auth/layout.tsx so the
   // redirect happens before any page hooks run (avoids a Next.js 16
@@ -31,6 +32,8 @@ export default async function RegisterPage({
   const nextRaw = (sp.next ?? "").trim();
   const nextOk = /^\/(?![/\\])/.test(nextRaw) ? nextRaw : "";
   const referral = refCode ? await resolveReferralPreview(refCode) : null;
+  const inviteCode = (sp.invite ?? "").trim().slice(0, 24);
+  const invite = inviteCode ? await getInvitePreview(inviteCode) : null;
 
   const errorPanel = (() => {
     if (!sp.error) return null;
@@ -109,6 +112,27 @@ export default async function RegisterPage({
             </div>
           )}
 
+          {invite && (
+            <div
+              className="overflow-hidden rounded-xl border"
+              style={{
+                borderColor: "color-mix(in oklab, oklch(70% 0.18 330) 40%, transparent)",
+                background: "linear-gradient(135deg, color-mix(in oklab, oklch(60% 0.2 320) 20%, var(--bg-elevated)), var(--bg-elevated))",
+              }}
+            >
+              <div className="flex items-center gap-3 p-3.5">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[11px]" style={{ background: "color-mix(in oklab, oklch(70% 0.18 330) 22%, transparent)", color: "oklch(88% 0.12 330)" }}>
+                  <I.gift s={20} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[14px] font-bold text-text">Claim your TZS {invite.bonusAmountTzs.toLocaleString()} welcome bonus</p>
+                  <p className="font-display italic text-text-subtle text-[11px]">Pata bonasi yako ya kukukaribisha</p>
+                  <p className="mt-1 text-[12px] text-text-muted">Sign up to add it to your bonus wallet — play it through to turn it into cash.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {errorPanel && (
             <div
               role="alert"
@@ -139,6 +163,7 @@ export default async function RegisterPage({
 
           <form action={startRegisterAction} className="space-y-4">
             {referral && <input type="hidden" name="ref" value={refCode} />}
+            {invite && <input type="hidden" name="invite" value={inviteCode} />}
             {nextOk && <input type="hidden" name="next" value={nextOk} />}
             {referral && (
               <Field label="Referral code · auto-filled">

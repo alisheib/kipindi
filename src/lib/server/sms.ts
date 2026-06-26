@@ -144,3 +144,14 @@ export function otpMessage(code: string, locale: "EN" | "SW" | "FR" = "SW"): str
     default:   return `50pick code: ${code}. Valid 5 min. Don't share.`;
   }
 }
+
+const SMS_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://www.50pick.tz";
+
+/** Invite SMS: the campaign's short message + the bonus + a register link with
+ *  the campaign code. Kept compact to fit a single SMS segment where possible. */
+export function inviteMessage(opts: { message: string; code: string; bonusTzs: number }): string {
+  const base = opts.message.trim();
+  const bonus = `Bonus TZS ${Math.round(opts.bonusTzs).toLocaleString("en-US")}`;
+  const link = `${SMS_BASE_URL}/auth/register?invite=${encodeURIComponent(opts.code)}`;
+  return `${base ? base + " " : ""}${bonus}. 50pick: ${link}`;
+}

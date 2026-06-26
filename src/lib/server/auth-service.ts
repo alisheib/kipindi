@@ -317,6 +317,8 @@ export type PasswordRegisterInput = {
   marketingOptIn?: boolean;
   /** Affiliate referral code from a ?ref= link, if the user arrived via one. */
   referralCode?: string;
+  /** Invite-campaign code from a ?invite= link — grants the campaign bonus. */
+  inviteCode?: string;
 };
 
 export async function registerWithPassword(input: PasswordRegisterInput): Promise<ServiceResult<{ userId: string; role: string }>> {
@@ -425,6 +427,18 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
       await bindRecruit({ recruitUserId: user.id, code: input.referralCode, ip: meta.ip });
     } catch (e) {
       audit({ category: "SYSTEM", action: "affiliate.bind.failed", actorId: user.id, targetType: "User", targetId: user.id, payload: { error: String((e as Error)?.message ?? e) } });
+    }
+  }
+
+  // Invite-campaign binding — if the user arrived via a ?invite= link, grant the
+  // campaign bonus (to the bonus wallet) and mark their invite entry registered.
+  // Best-effort; never blocks registration (unknown codes are a silent no-op).
+  if (input.inviteCode) {
+    try {
+      const { bindRegistration } = await import("./invite-service");
+      await bindRegistration(user.id, input.inviteCode, { phone, email: user.email });
+    } catch (e) {
+      audit({ category: "SYSTEM", action: "invite.bind.failed", actorId: user.id, targetType: "User", targetId: user.id, payload: { error: String((e as Error)?.message ?? e) } });
     }
   }
 

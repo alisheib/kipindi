@@ -134,6 +134,43 @@ export type StoredBonusGrant = {
   updatedAt: string;
 };
 
+export type CampaignStatus = "DRAFT" | "SENDING" | "SENT" | "CANCELLED";
+export type ContactType = "EMAIL" | "PHONE";
+export type InviteEntryStatus = "QUEUED" | "SENT" | "DELIVERED" | "REGISTERED" | "FAILED" | "BOUNCED";
+
+/** A bulk invite campaign — branded SMS/email invites that grant the invitee a
+ *  bonus when they register with the campaign's `code`. */
+export type StoredInviteCampaign = {
+  id: string;
+  code: string;
+  name: string;
+  bonusAmountTzs: number;
+  wagerMultiplier: number;
+  expiresInDays: number;
+  messageEn: string;
+  messageSw: string;
+  status: CampaignStatus;
+  totalInvites: number;
+  totalRegistered: number;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type StoredInviteEntry = {
+  id: string;
+  campaignId: string;
+  contactType: ContactType;
+  contactValue: string;
+  bonusAmountTzs: number;
+  status: InviteEntryStatus;
+  sentAt: string | null;
+  registeredUserId: string | null;
+  bonusGrantId: string | null;
+  failureReason: string | null;
+  createdAt: string;
+};
+
 export type StoredTxn = {
   id: string;
   walletId: string;
@@ -329,6 +366,8 @@ declare global {
     proposals: Map<string, StoredProposal>;
     proposalVotes: Map<string, StoredProposalVote>;
     bonusGrants: Map<string, StoredBonusGrant>;
+    inviteCampaigns: Map<string, StoredInviteCampaign>;
+    inviteEntries: Map<string, StoredInviteEntry>;
   } | undefined;
 }
 
@@ -349,6 +388,8 @@ const store = globalThis.__50PICK_STORE ?? (globalThis.__50PICK_STORE = {
   proposals: new Map(),
   proposalVotes: new Map(),
   bonusGrants: new Map(),
+  inviteCampaigns: new Map(),
+  inviteEntries: new Map(),
 });
 
 // Hot-reload safety: if a previous build created the global without the newer maps,
@@ -364,6 +405,8 @@ if (!store.referralRewards) store.referralRewards = new Map();
 if (!store.proposals)       store.proposals = new Map();
 if (!store.proposalVotes)   store.proposalVotes = new Map();
 if (!store.bonusGrants)     store.bonusGrants = new Map();
+if (!store.inviteCampaigns) store.inviteCampaigns = new Map();
+if (!store.inviteEntries)   store.inviteEntries = new Map();
 
 const memoryDb = {
   // USER
@@ -678,6 +721,41 @@ const memoryDb = {
       Array.from(store.bonusGrants.values())
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         .slice(0, limit),
+  },
+  inviteCampaign: {
+    create: (c: StoredInviteCampaign): StoredInviteCampaign => { store.inviteCampaigns.set(c.id, c); return c; },
+    findById: (id: string): StoredInviteCampaign | null => store.inviteCampaigns.get(id) ?? null,
+    findByCode: (code: string): StoredInviteCampaign | null => {
+      const norm = code.trim().toUpperCase();
+      for (const c of store.inviteCampaigns.values()) if (c.code === norm) return c;
+      return null;
+    },
+    update: (id: string, patch: Partial<StoredInviteCampaign>): StoredInviteCampaign | null => {
+      const c = store.inviteCampaigns.get(id);
+      if (!c) return null;
+      const next: StoredInviteCampaign = { ...c, ...patch, updatedAt: new Date().toISOString() };
+      store.inviteCampaigns.set(id, next);
+      return next;
+    },
+    list: (limit = 500): StoredInviteCampaign[] =>
+      Array.from(store.inviteCampaigns.values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, limit),
+  },
+  inviteEntry: {
+    create: (e: StoredInviteEntry): StoredInviteEntry => { store.inviteEntries.set(e.id, e); return e; },
+    findById: (id: string): StoredInviteEntry | null => store.inviteEntries.get(id) ?? null,
+    findByCampaign: (campaignId: string): StoredInviteEntry[] =>
+      Array.from(store.inviteEntries.values()).filter((e) => e.campaignId === campaignId).sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+    findByCampaignAndContact: (campaignId: string, contactValue: string): StoredInviteEntry | null => {
+      for (const e of store.inviteEntries.values()) if (e.campaignId === campaignId && e.contactValue === contactValue) return e;
+      return null;
+    },
+    update: (id: string, patch: Partial<StoredInviteEntry>): StoredInviteEntry | null => {
+      const e = store.inviteEntries.get(id);
+      if (!e) return null;
+      const next: StoredInviteEntry = { ...e, ...patch };
+      store.inviteEntries.set(id, next);
+      return next;
+    },
   },
 };
 

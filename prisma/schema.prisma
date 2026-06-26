@@ -272,6 +272,7 @@ model User {
   marketComments          Comment[]
   totpSecret              TotpSecret?
   bonusGrants             BonusGrant[]
+  inviteCampaigns         InviteCampaign[]
 
   @@index([role, status])
   @@index([createdAt])
@@ -503,6 +504,74 @@ model BonusGrant {
   @@index([userId, status])
   @@index([status, expiresAt])
   @@index([sourceRef])
+}
+
+// ============================================================================
+// INVITE CAMPAIGNS — bulk player acquisition: branded SMS/email invites that
+// grant the invitee a bonus when they register with the campaign's code.
+// ============================================================================
+
+enum CampaignStatus {
+  DRAFT
+  SENDING
+  SENT
+  CANCELLED
+}
+
+enum ContactType {
+  EMAIL
+  PHONE
+}
+
+enum InviteEntryStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  REGISTERED
+  FAILED
+  BOUNCED
+}
+
+model InviteCampaign {
+  id              String         @id // inv_{id}
+  code            String         @unique // public invite code embedded in links
+  name            String
+  bonusAmountTzs  Int
+  wagerMultiplier Decimal        @db.Decimal(4, 1)
+  expiresInDays   Int
+  messageEn       String
+  messageSw       String
+  status          CampaignStatus @default(DRAFT)
+  totalInvites    Int            @default(0)
+  totalRegistered Int            @default(0)
+  createdById     String
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  entries   InviteEntry[]
+  createdBy User          @relation(fields: [createdById], references: [id])
+
+  @@index([status])
+  @@index([createdById])
+}
+
+model InviteEntry {
+  id               String            @id // ive_{id}
+  campaignId       String
+  contactType      ContactType
+  contactValue     String // email or +255…
+  bonusAmountTzs   Int
+  status           InviteEntryStatus @default(QUEUED)
+  sentAt           DateTime?
+  registeredUserId String?
+  bonusGrantId     String?
+  failureReason    String?
+  createdAt        DateTime          @default(now())
+
+  campaign InviteCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, contactValue])
+  @@index([campaignId, status])
 }
 
 // ============================================================================

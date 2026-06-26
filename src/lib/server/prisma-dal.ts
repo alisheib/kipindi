@@ -31,6 +31,8 @@ import type {
   StoredProposalVote,
   StoredBonusGrant,
   BonusGrantStatus,
+  StoredInviteCampaign,
+  StoredInviteEntry,
 } from "./store";
 
 // ---------------------------------------------------------------------------
@@ -343,6 +345,43 @@ function toStoredVote(v: any): StoredProposalVote {
     userId: v.userId,
     dir: (v.dir as string).toLowerCase() as "up" | "down",
     createdAt: iso(v.createdAt)!,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toStoredInviteCampaign(c: any): StoredInviteCampaign {
+  return {
+    id: c.id,
+    code: c.code,
+    name: c.name,
+    bonusAmountTzs: num(c.bonusAmountTzs),
+    wagerMultiplier: num(c.wagerMultiplier),
+    expiresInDays: num(c.expiresInDays),
+    messageEn: c.messageEn,
+    messageSw: c.messageSw,
+    status: c.status,
+    totalInvites: num(c.totalInvites),
+    totalRegistered: num(c.totalRegistered),
+    createdById: c.createdById,
+    createdAt: iso(c.createdAt)!,
+    updatedAt: iso(c.updatedAt)!,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toStoredInviteEntry(e: any): StoredInviteEntry {
+  return {
+    id: e.id,
+    campaignId: e.campaignId,
+    contactType: e.contactType,
+    contactValue: e.contactValue,
+    bonusAmountTzs: num(e.bonusAmountTzs),
+    status: e.status,
+    sentAt: iso(e.sentAt),
+    registeredUserId: e.registeredUserId ?? null,
+    bonusGrantId: e.bonusGrantId ?? null,
+    failureReason: e.failureReason ?? null,
+    createdAt: iso(e.createdAt)!,
   };
 }
 
@@ -1201,6 +1240,86 @@ export const prismaDb = {
         take: limit,
       });
       return rows.map(toStoredBonusGrant);
+    },
+  },
+
+  // ── INVITE CAMPAIGN ───────────────────────────────────────────────────────
+  inviteCampaign: {
+    create: async (c: StoredInviteCampaign): Promise<StoredInviteCampaign> => {
+      const row = await pc().inviteCampaign.create({
+        data: {
+          id: c.id, code: c.code, name: c.name,
+          bonusAmountTzs: c.bonusAmountTzs, wagerMultiplier: c.wagerMultiplier,
+          expiresInDays: c.expiresInDays, messageEn: c.messageEn, messageSw: c.messageSw,
+          status: c.status, totalInvites: c.totalInvites, totalRegistered: c.totalRegistered,
+          createdById: c.createdById, createdAt: new Date(c.createdAt),
+        },
+      });
+      return toStoredInviteCampaign(row);
+    },
+    findById: async (id: string): Promise<StoredInviteCampaign | null> => {
+      const row = await pc().inviteCampaign.findUnique({ where: { id } });
+      return row ? toStoredInviteCampaign(row) : null;
+    },
+    findByCode: async (code: string): Promise<StoredInviteCampaign | null> => {
+      const row = await pc().inviteCampaign.findUnique({ where: { code: code.trim().toUpperCase() } });
+      return row ? toStoredInviteCampaign(row) : null;
+    },
+    update: async (id: string, patch: Partial<StoredInviteCampaign>): Promise<StoredInviteCampaign | null> => {
+      try {
+        const { createdAt: _c, updatedAt: _u, ...rest } = patch;
+        const row = await pc().inviteCampaign.update({ where: { id }, data: rest });
+        return toStoredInviteCampaign(row);
+      } catch {
+        return null;
+      }
+    },
+    list: async (limit = 500): Promise<StoredInviteCampaign[]> => {
+      const rows = await pc().inviteCampaign.findMany({ orderBy: { createdAt: "desc" }, take: limit });
+      return rows.map(toStoredInviteCampaign);
+    },
+  },
+
+  // ── INVITE ENTRY ──────────────────────────────────────────────────────────
+  inviteEntry: {
+    create: async (e: StoredInviteEntry): Promise<StoredInviteEntry> => {
+      const row = await pc().inviteEntry.create({
+        data: {
+          id: e.id, campaignId: e.campaignId, contactType: e.contactType,
+          contactValue: e.contactValue, bonusAmountTzs: e.bonusAmountTzs, status: e.status,
+          sentAt: e.sentAt ? new Date(e.sentAt) : null,
+          registeredUserId: e.registeredUserId, bonusGrantId: e.bonusGrantId,
+          failureReason: e.failureReason, createdAt: new Date(e.createdAt),
+        },
+      });
+      return toStoredInviteEntry(row);
+    },
+    findById: async (id: string): Promise<StoredInviteEntry | null> => {
+      const row = await pc().inviteEntry.findUnique({ where: { id } });
+      return row ? toStoredInviteEntry(row) : null;
+    },
+    findByCampaign: async (campaignId: string): Promise<StoredInviteEntry[]> => {
+      const rows = await pc().inviteEntry.findMany({ where: { campaignId }, orderBy: { createdAt: "asc" } });
+      return rows.map(toStoredInviteEntry);
+    },
+    findByCampaignAndContact: async (campaignId: string, contactValue: string): Promise<StoredInviteEntry | null> => {
+      const row = await pc().inviteEntry.findUnique({ where: { campaignId_contactValue: { campaignId, contactValue } } });
+      return row ? toStoredInviteEntry(row) : null;
+    },
+    update: async (id: string, patch: Partial<StoredInviteEntry>): Promise<StoredInviteEntry | null> => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const data: Record<string, any> = {};
+        for (const [k, v] of Object.entries(patch)) {
+          if (k === "createdAt") continue;
+          if (k === "sentAt") data[k] = v ? new Date(v as string) : null;
+          else data[k] = v;
+        }
+        const row = await pc().inviteEntry.update({ where: { id }, data });
+        return toStoredInviteEntry(row);
+      } catch {
+        return null;
+      }
     },
   },
 };

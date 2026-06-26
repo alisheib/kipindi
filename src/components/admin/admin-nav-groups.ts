@@ -40,6 +40,7 @@ export const NAV_GROUPS: ReadonlyArray<{
     items: [
       { href: "/admin/affiliate", label: "Affiliate", key: "affiliate" },
       { href: "/admin/bonuses",   label: "Bonuses",   key: "bonuses" },
+      { href: "/admin/invites",   label: "Invites",   key: "invites" },
     ],
   },
   {

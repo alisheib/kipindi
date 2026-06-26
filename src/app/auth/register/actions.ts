@@ -17,6 +17,7 @@ export async function startRegisterAction(formData: FormData) {
   const acceptAge = formData.get("acceptAge") === "on" || formData.get("acceptAge") === "true";
   const marketingOptIn = formData.get("marketingOptIn") === "on";
   const referralCode = String(formData.get("ref") ?? "").trim().slice(0, 16) || undefined;
+  const inviteCode = String(formData.get("invite") ?? "").trim().slice(0, 24) || undefined;
   // Safe post-auth destination (the market the player tapped, etc.). Validated
   // same-origin relative, never an /auth/* loop.
   const nextRaw = String(formData.get("next") ?? "").trim();
@@ -24,7 +25,7 @@ export async function startRegisterAction(formData: FormData) {
 
   const result = await registerWithPassword({
     phone, password, passwordConfirm, dob,
-    acceptTerms, acceptAge, marketingOptIn, referralCode,
+    acceptTerms, acceptAge, marketingOptIn, referralCode, inviteCode,
   });
 
   if (!result.ok) {
