@@ -12,13 +12,15 @@
  */
 
 export const ai = {
-  /** The primary model used for poll generation and sentinel monitoring.
+  /** The primary model used for poll generation and sentinel deep checks.
    *  Override via AI_MODEL env var without a redeploy.
-   *  Sonnet 4.6 for both poll generation and the sentinel — sharper reasoning on
-   *  tricky cumulative/threshold polls. (Sweep runs every 12h to keep cost low;
-   *  see SENTINEL_INTERVAL_MS in market-sentinel.ts.) */
+   *  Sonnet 4.6 — sharper reasoning on tricky cumulative/threshold polls. */
   model: process.env.AI_MODEL || "claude-sonnet-4-6",
 
+  /** The triage model used for sentinel quick scans (no web search).
+   *  Haiku 4.5 — cheap enough to run every 4h across all live markets.
+   *  Override via SENTINEL_TRIAGE_MODEL env var. */
+  triageModel: process.env.SENTINEL_TRIAGE_MODEL || "claude-haiku-4-5-20251001",
 
   /** Web search tool definition — version-stamped by Anthropic. Update
    *  here when they release a new version. */

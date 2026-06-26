@@ -1,23 +1,31 @@
 /**
- * Market Sentinel Agent — AI-powered live market monitor.
+ * Market Sentinel Agent — two-tier AI-powered live market monitor.
  *
  * Continuously monitors LIVE markets for early resolution triggers.
  * Example: "Will Ronaldo score in this match?" — he scores at minute 30,
  * the sentinel detects it via web search and immediately closes the market
  * so no players can bet on an already-determined outcome.
  *
- * Architecture:
- *   1. Polls all LIVE markets every N minutes (configurable)
- *   2. For each market, asks Claude Sonnet 4.6 with web search:
- *      "Has this outcome been decided?"
- *   3. If ≥90% confidence → CLOSE market (no new bets)
- *   4. Admin still resolves manually (two-officer dance → payouts)
+ * Architecture (two-tier for cost efficiency):
+ *   1. TIER 1 — Haiku Quick Scan (every sweep, ~$0.002/market)
+ *      No web search. Reads the market title + category + time remaining and
+ *      scores how likely it is that the outcome MAY have been settled since
+ *      the market opened. Pure reasoning, no external data.
+ *
+ *   2. TIER 2 — Sonnet Deep Check (only markets flagged by triage, ~$0.05/market)
+ *      Full web search + structured tool call. 90% confidence threshold.
+ *      If determined → CLOSE market (no new bets) + store AI recommendation
+ *      on the market record so the resolver queue can show it.
+ *
+ *   3. Officer resolves (two-officer dance → payouts). AI never auto-resolves.
+ *      The sentinel pre-fills outcome + evidence so the officer's job is
+ *      "verify + confirm" instead of "research + decide".
  *
  * Safety:
  *   - Can only CLOSE, never RESOLVE (no payouts without human)
  *   - 90% confidence threshold prevents false closures
  *   - Full audit trail
- *   - Cooldown per market (3 min between checks)
+ *   - Cooldown per market (configurable between checks)
  *   - Singleton Anthropic client (no resource leak)
  *   - Cooldown map cleaned up every sweep (no memory leak)
  */
@@ -27,21 +35,24 @@ import { marketStore } from "./market-dal";
 import { audit } from "./audit";
 import { ai } from "./ai-config";
 import { recordAiUsage } from "./ai-usage";
+import { withLock } from "./locks";
 
 // --- Configuration -----------------------------------------------------------
 
 const SENTINEL_MODEL = process.env.SENTINEL_MODEL || ai.model;
-// Default sweep cadence: every 12 hours (cost control — Ali's call 2026-06-26).
-// Override with SENTINEL_INTERVAL_MS (ms) on Railway to tighten it.
-const SENTINEL_INTERVAL_MS = parseInt(process.env.SENTINEL_INTERVAL_MS || String(12 * 60 * 60_000), 10);
+const TRIAGE_MODEL = process.env.SENTINEL_TRIAGE_MODEL || "claude-haiku-4-5-20251001";
+// Default sweep cadence: every 4 hours. Haiku triage makes frequent sweeps
+// affordable — only flagged markets hit Sonnet. Override with env.
+const SENTINEL_INTERVAL_MS = parseInt(process.env.SENTINEL_INTERVAL_MS || String(4 * 60 * 60_000), 10);
 const SENTINEL_CONFIDENCE_THRESHOLD = 90;
-// Per-market cooldown — don't re-check the same market within this window even
-// if a sweep runs sooner. Kept just under the interval.
-const SENTINEL_COOLDOWN_MS = parseInt(process.env.SENTINEL_COOLDOWN_MS || String(11 * 60 * 60_000), 10);
-// How many markets to check concurrently per sweep. Keeps the whole board
-// scanned within seconds (not minutes) even with many live markets, so a
-// just-settled outcome is caught fast. Tune via env if rate limits bite.
+// Per-market cooldown — don't re-check the same market within this window.
+const SENTINEL_COOLDOWN_MS = parseInt(process.env.SENTINEL_COOLDOWN_MS || String(3.5 * 60 * 60_000), 10);
+// How many markets to check concurrently per sweep.
 const SENTINEL_CONCURRENCY = parseInt(process.env.SENTINEL_CONCURRENCY || "6", 10);
+// Triage score threshold: markets scoring above this get a Sonnet deep check.
+// 0-100 scale. 30 = fairly liberal — we'd rather spend a Sonnet call than miss
+// a settled market on a real-money platform.
+const TRIAGE_THRESHOLD = parseInt(process.env.SENTINEL_TRIAGE_THRESHOLD || "30", 10);
 
 // Singleton Anthropic client — reused across all checks
 let client: Anthropic | null = null;
@@ -55,7 +66,124 @@ function getClient(): Anthropic | null {
 // Per-market cooldown tracker
 const lastChecked = new Map<string, number>();
 
-// --- AI Judgment Tool --------------------------------------------------------
+// --- Types -------------------------------------------------------------------
+
+type MarketInput = {
+  id: string;
+  titleEn: string;
+  titleSw: string;
+  category: string;
+  resolutionCriterion?: string;
+  resolutionAt: string;
+  sourceUrl?: string | null;
+  createdAt?: string;
+};
+
+export type SentinelResult = {
+  marketId: string;
+  title: string;
+  determined: boolean;
+  outcome: "YES" | "NO" | "UNKNOWN";
+  confidence: number;
+  evidence: string;
+  reasoning?: string;
+  sourceUrl?: string;
+  triageScore?: number;
+  action: "closed" | "skipped" | "below_threshold" | "triage_skip" | "error";
+  error?: string;
+};
+
+// --- Tier 1: Haiku Quick Scan ------------------------------------------------
+
+const TRIAGE_TOOL = {
+  name: "report_triage",
+  description:
+    "Report how likely it is that this market's outcome MAY ALREADY BE SETTLED " +
+    "based on the category, title, time elapsed, and your general knowledge. " +
+    "Call this exactly once.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      reasoning: {
+        type: "string" as const,
+        description:
+          "Brief reasoning: what kind of event is this? Has enough time " +
+          "passed that the outcome might already be known? Are there signals " +
+          "in the title (e.g. a specific match date, a past event, a near-term " +
+          "deadline) suggesting it may be resolved?",
+      },
+      score: {
+        type: "number" as const,
+        description:
+          "0-100 likelihood that a web search would reveal this outcome " +
+          "is ALREADY settled. 0 = definitely still open (far future event). " +
+          "100 = almost certainly settled (past event, expired deadline). " +
+          "Score high (70+) for: past dates, completed tournaments, expired " +
+          "deadlines. Score medium (30-70) for: ongoing events where the " +
+          "outcome might have been decided. Score low (0-30) for: future events, " +
+          "long-running conditions with no deadline pressure.",
+      },
+    },
+    required: ["reasoning", "score"],
+  },
+};
+
+async function triageMarket(market: MarketInput): Promise<{ score: number; reasoning: string } | null> {
+  const anthropic = getClient();
+  if (!anthropic) return null;
+
+  const now = new Date();
+  const elapsed = Date.now() - Date.parse(market.createdAt || now.toISOString());
+  const remaining = Date.parse(market.resolutionAt) - Date.now();
+  const elapsedHours = Math.round(elapsed / 3_600_000);
+  const remainingHours = Math.round(remaining / 3_600_000);
+
+  const started = Date.now();
+  try {
+    const response = await anthropic.messages.create({
+      model: TRIAGE_MODEL,
+      max_tokens: 400,
+      system: `You are a quick-scan triage agent for a prediction market platform. Your ONLY job is to estimate how likely it is that a market's outcome has ALREADY been settled by real-world events, based on the title, category, and timing. You have NO web access — use only what you can infer from the title and dates. Current date/time: ${now.toISOString()}`,
+      tools: [TRIAGE_TOOL as unknown as Anthropic.Tool],
+      tool_choice: { type: "tool" as const, name: "report_triage" },
+      messages: [{
+        role: "user",
+        content: `Quick-scan this market. How likely is it that the outcome is ALREADY settled?\n\nTITLE: ${market.titleEn}\nCATEGORY: ${market.category}\nOPENED: ${elapsedHours}h ago\nSCHEDULED RESOLUTION: ${remainingHours > 0 ? `in ${remainingHours}h` : `${Math.abs(remainingHours)}h overdue`}\nRESOLUTION CRITERION: ${(market.resolutionCriterion || "Not specified").slice(0, 200)}`,
+      }],
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const u = response.usage as any;
+    await recordAiUsage({
+      feature: "sentinel", model: TRIAGE_MODEL,
+      inputTokens: u?.input_tokens ?? 0,
+      outputTokens: u?.output_tokens ?? 0,
+      ok: true, latencyMs: Date.now() - started,
+      detail: `triage · ${market.titleEn.slice(0, 80)}`,
+    });
+
+    const toolUse = response.content.find(
+      (b) => b.type === "tool_use" && b.name === "report_triage",
+    );
+    if (!toolUse || toolUse.type !== "tool_use") return null;
+
+    const raw = toolUse.input as Record<string, unknown>;
+    const score = Math.max(0, Math.min(100, Math.round(Number(raw.score) || 0)));
+    const reasoning = String(raw.reasoning || "");
+    return { score, reasoning };
+  } catch (err) {
+    await recordAiUsage({
+      feature: "sentinel", model: TRIAGE_MODEL, ok: false,
+      latencyMs: Date.now() - started,
+      errorType: (err as Error).message?.slice(0, 200),
+      detail: `triage · ${market.titleEn.slice(0, 80)}`,
+    });
+    // On triage error, escalate to deep check (fail-open for safety)
+    return { score: 100, reasoning: `Triage error — escalating: ${(err as Error).message}` };
+  }
+}
+
+// --- Tier 2: Sonnet Deep Check -----------------------------------------------
 
 const OUTCOME_TOOL = {
   name: "report_outcome",
@@ -102,33 +230,7 @@ const OUTCOME_TOOL = {
   },
 };
 
-// --- Types -------------------------------------------------------------------
-
-export type SentinelResult = {
-  marketId: string;
-  title: string;
-  determined: boolean;
-  outcome: "YES" | "NO" | "UNKNOWN";
-  confidence: number;
-  evidence: string;
-  reasoning?: string;
-  sourceUrl?: string;
-  action: "closed" | "skipped" | "below_threshold" | "error";
-  error?: string;
-};
-
-// --- Core Logic --------------------------------------------------------------
-
-async function checkMarket(market: {
-  id: string;
-  titleEn: string;
-  titleSw: string;
-  category: string;
-  resolutionCriterion?: string;
-  resolutionAt: string;
-  sourceUrl?: string | null;
-  createdAt?: string;
-}): Promise<SentinelResult> {
+async function deepCheckMarket(market: MarketInput): Promise<SentinelResult> {
   const fail = (error: string): SentinelResult => ({
     marketId: market.id, title: market.titleEn,
     determined: false, outcome: "UNKNOWN", confidence: 0,
@@ -198,7 +300,7 @@ Search the web for the latest data, work through the steps, then call report_out
       outputTokens: u?.output_tokens ?? 0,
       webSearches: u?.server_tool_use?.web_search_requests ?? 0,
       ok: true, latencyMs: Date.now() - started,
-      detail: `check · ${market.titleEn.slice(0, 80)}`,
+      detail: `deep · ${market.titleEn.slice(0, 80)}`,
     });
 
     // Extract the report_outcome tool call from the response
@@ -235,20 +337,25 @@ Search the web for the latest data, work through the steps, then call report_out
       feature: "sentinel", model: SENTINEL_MODEL, ok: false,
       latencyMs: Date.now() - started,
       errorType: (err as Error).message?.slice(0, 200),
-      detail: `check · ${market.titleEn.slice(0, 80)}`,
+      detail: `deep · ${market.titleEn.slice(0, 80)}`,
     });
     return fail((err as Error).message);
   }
 }
 
-/** Run one sentinel sweep across all live markets. */
+// --- Sweep Logic (two-tier) --------------------------------------------------
+
+/** Run one sentinel sweep across all live markets.
+ *  Tier 1: Haiku triage (all markets, cheap). Tier 2: Sonnet deep (flagged only). */
 export async function runSentinelSweep(): Promise<SentinelResult[]> {
   const results: SentinelResult[] = [];
   const now = Date.now();
 
-  // Clean stale cooldown entries (older than 1 hour) to prevent memory leak
+  // Clean stale cooldown entries to prevent memory leak. Use the cooldown
+  // window so entries survive long enough to actually enforce the cooldown.
+  const cleanupThreshold = Math.max(SENTINEL_COOLDOWN_MS, 3_600_000);
   for (const [id, ts] of lastChecked.entries()) {
-    if (now - ts > 3_600_000) lastChecked.delete(id);
+    if (now - ts > cleanupThreshold) lastChecked.delete(id);
   }
 
   let allMarkets;
@@ -261,8 +368,7 @@ export async function runSentinelSweep(): Promise<SentinelResult[]> {
 
   if (allMarkets.length === 0) return results;
 
-  // Build the due list (cooldown + skip-near-close), marking lastChecked up front
-  // so a concurrent sweep can't double-pick the same market.
+  // Build the due list (cooldown + skip-near-close)
   const due = allMarkets.filter((market) => {
     const lastCheck = lastChecked.get(market.id) ?? 0;
     if (now - lastCheck < SENTINEL_COOLDOWN_MS) return false;
@@ -275,9 +381,41 @@ export async function runSentinelSweep(): Promise<SentinelResult[]> {
 
   if (due.length === 0) return results;
 
-  // Check one market end-to-end: AI judgment → (if locked & confident) close + audit.
-  const processOne = async (market: (typeof due)[number]): Promise<SentinelResult> => {
-    const result = await checkMarket(market);
+  // --- Tier 1: Haiku triage (all due markets, concurrent) ---
+  const triageResults = await Promise.allSettled(
+    due.map(async (m) => ({ market: m, triage: await triageMarket(m) })),
+  );
+
+  const flagged: { market: (typeof due)[number]; triageScore: number }[] = [];
+  for (let i = 0; i < triageResults.length; i++) {
+    const r = triageResults[i];
+    if (r.status === "fulfilled" && r.value.triage) {
+      const score = r.value.triage.score;
+      if (score >= TRIAGE_THRESHOLD) {
+        flagged.push({ market: r.value.market, triageScore: score });
+      } else {
+        results.push({
+          marketId: r.value.market.id,
+          title: r.value.market.titleEn,
+          determined: false, outcome: "UNKNOWN", confidence: 0,
+          evidence: "", triageScore: score,
+          action: "triage_skip",
+        });
+      }
+    } else if (r.status === "rejected") {
+      // Triage failed — escalate to deep check (fail-open for safety)
+      flagged.push({ market: due[i], triageScore: 100 });
+    }
+  }
+
+  if (flagged.length === 0) return results;
+
+  console.log(`[sentinel] Triage: ${due.length} scanned, ${flagged.length} flagged for deep check (threshold: ${TRIAGE_THRESHOLD})`);
+
+  // --- Tier 2: Sonnet deep check (flagged markets only, bounded concurrency) ---
+  const processOne = async (item: (typeof flagged)[number]): Promise<SentinelResult> => {
+    const result = await deepCheckMarket(item.market);
+    result.triageScore = item.triageScore;
 
     if (result.action === "error") return result;
 
@@ -286,34 +424,57 @@ export async function runSentinelSweep(): Promise<SentinelResult[]> {
       return result;
     }
 
-    // HIGH CONFIDENCE: outcome locked — close market to block new bets
+    // HIGH CONFIDENCE: outcome locked — close market + store AI recommendation.
+    // Lock the market to prevent a concurrent buyPosition from having its pool
+    // increment overwritten by the sentinel's read-modify-write.
     try {
-      const fresh = await marketStore.get(market.id);
-      if (!fresh || fresh.status !== "LIVE") {
-        result.action = "skipped";
-        return result;
-      }
-      fresh.status = "CLOSED";
-      fresh.updatedAt = new Date().toISOString();
-      await marketStore.set(fresh);
-
-      audit({
-        category: "SYSTEM",
-        action: "sentinel.market_closed",
-        actorId: "sentinel_agent",
-        targetType: "Market",
-        targetId: market.id,
-        payload: {
-          outcome: result.outcome,
-          confidence: result.confidence,
-          evidence: result.evidence,
-          reasoning: result.reasoning,
-          sourceUrl: result.sourceUrl,
-          model: SENTINEL_MODEL,
-        },
+      await withLock(`market:${item.market.id}`, async () => {
+        const fresh = await marketStore.get(item.market.id);
+        if (!fresh || fresh.status !== "LIVE") {
+          result.action = "skipped";
+          return;
+        }
+        fresh.status = "CLOSED";
+        fresh.updatedAt = new Date().toISOString();
+        // Store AI recommendation for the resolver queue
+        fresh.sentinelOutcome = result.outcome === "YES" || result.outcome === "NO" ? result.outcome : null;
+        fresh.sentinelEvidence = result.evidence?.slice(0, 500) || null;
+        fresh.sentinelReasoning = result.reasoning?.slice(0, 1000) || null;
+        fresh.sentinelSourceUrl = result.sourceUrl || null;
+        fresh.sentinelConfidence = result.confidence;
+        fresh.sentinelClosedAt = new Date().toISOString();
+        await marketStore.set(fresh);
+        result.action = "closed";
       });
 
-      result.action = "closed";
+      if (result.action === "closed") {
+        audit({
+          category: "SYSTEM",
+          action: "sentinel.market_closed",
+          actorId: "sentinel_agent",
+          targetType: "Market",
+          targetId: item.market.id,
+          payload: {
+            outcome: result.outcome,
+            confidence: result.confidence,
+            evidence: result.evidence,
+            reasoning: result.reasoning,
+            sourceUrl: result.sourceUrl,
+            triageScore: item.triageScore,
+            model: SENTINEL_MODEL,
+            triageModel: TRIAGE_MODEL,
+          },
+        });
+
+        // Notify admins that this market is ready for resolution with AI recommendation
+        try {
+          const { notifyAdminMarketResolution } = await import("./notification-service");
+          await notifyAdminMarketResolution("sentinel_agent", {
+            title: item.market.titleEn,
+            marketId: item.market.id,
+          });
+        } catch { /* notification is best-effort */ }
+      }
     } catch (err) {
       result.action = "error";
       result.error = `Close failed: ${(err as Error).message}`;
@@ -322,10 +483,9 @@ export async function runSentinelSweep(): Promise<SentinelResult[]> {
     return result;
   };
 
-  // Process in bounded-concurrency batches so the whole board is scanned fast
-  // (a just-settled outcome shouldn't wait behind dozens of sequential calls).
-  for (let i = 0; i < due.length; i += SENTINEL_CONCURRENCY) {
-    const batch = due.slice(i, i + SENTINEL_CONCURRENCY);
+  // Process in bounded-concurrency batches
+  for (let i = 0; i < flagged.length; i += SENTINEL_CONCURRENCY) {
+    const batch = flagged.slice(i, i + SENTINEL_CONCURRENCY);
     const settled = await Promise.allSettled(batch.map(processOne));
     for (let j = 0; j < settled.length; j++) {
       const s = settled[j];
@@ -333,9 +493,10 @@ export async function runSentinelSweep(): Promise<SentinelResult[]> {
         results.push(s.value);
       } else {
         results.push({
-          marketId: batch[j].id, title: batch[j].titleEn,
+          marketId: batch[j].market.id, title: batch[j].market.titleEn,
           determined: false, outcome: "UNKNOWN", confidence: 0,
-          evidence: "", action: "error", error: String(s.reason),
+          evidence: "", triageScore: batch[j].triageScore,
+          action: "error", error: String(s.reason),
         });
       }
     }
@@ -345,9 +506,6 @@ export async function runSentinelSweep(): Promise<SentinelResult[]> {
 }
 
 // --- Health alerting ---------------------------------------------------------
-// If the sweep can't reach the AI (exhausted Anthropic balance, bad key, etc.)
-// the sentinel silently stops protecting live markets. Detect that and alert
-// admins, debounced so we notify once per window rather than every 3 minutes.
 
 let lastHealthAlertAt = 0;
 const HEALTH_ALERT_COOLDOWN_MS = 6 * 60 * 60_000; // 6h
@@ -361,7 +519,6 @@ function classifySweepFailure(results: SentinelResult[]): { reason: string; samp
   else if (blob.includes("authentication") || blob.includes("api key") || blob.includes("401")) reason = "invalid API key";
   else if (blob.includes("rate_limit") || blob.includes("429")) reason = "AI rate limited";
   else if (blob.includes("overloaded") || blob.includes("529")) reason = "AI overloaded";
-  // Always actionable: billing/auth failures. Otherwise only alert if most checks failed.
   const billingOrAuth = reason === "Anthropic credit exhausted" || reason === "invalid API key";
   const mostlyFailed = errors.length >= Math.max(1, Math.ceil(results.length / 2));
   if (!billingOrAuth && !mostlyFailed) return null;
@@ -395,7 +552,7 @@ async function maybeAlertOnSweep(results: SentinelResult[]): Promise<void> {
 // --- Background Runner -------------------------------------------------------
 
 let intervalId: ReturnType<typeof setInterval> | null = null;
-let sweepRunning = false; // prevent concurrent sweeps
+let sweepRunning = false;
 
 export function startSentinel(): void {
   if (intervalId) return;
@@ -408,28 +565,30 @@ export function startSentinel(): void {
     return;
   }
 
-  console.log(`[sentinel] Starting (interval: ${SENTINEL_INTERVAL_MS / 1000}s, model: ${SENTINEL_MODEL}, threshold: ${SENTINEL_CONFIDENCE_THRESHOLD}%)`);
+  console.log(`[sentinel] Starting two-tier (interval: ${SENTINEL_INTERVAL_MS / 1000}s, triage: ${TRIAGE_MODEL}, deep: ${SENTINEL_MODEL}, threshold: ${SENTINEL_CONFIDENCE_THRESHOLD}%, triage cutoff: ${TRIAGE_THRESHOLD})`);
 
   // First sweep after boot delay
   setTimeout(() => {
     runSentinelSweep()
       .then(async (r) => {
         const closed = r.filter((x) => x.action === "closed");
-        if (closed.length > 0) console.log(`[sentinel] Boot sweep: ${closed.length} closed`);
+        const triaged = r.filter((x) => x.action === "triage_skip");
+        if (closed.length > 0) console.log(`[sentinel] Boot sweep: ${closed.length} closed, ${triaged.length} triage-skipped`);
         await maybeAlertOnSweep(r);
       })
       .catch((err) => console.error("[sentinel] Boot sweep error:", err));
   }, 10_000);
 
   intervalId = setInterval(async () => {
-    if (sweepRunning) return; // skip if previous sweep still running
+    if (sweepRunning) return;
     sweepRunning = true;
     try {
       const r = await runSentinelSweep();
       const closed = r.filter((x) => x.action === "closed");
       const errors = r.filter((x) => x.action === "error");
+      const triaged = r.filter((x) => x.action === "triage_skip");
       if (closed.length > 0 || errors.length > 0) {
-        console.log(`[sentinel] Sweep: ${closed.length} closed, ${errors.length} errors, ${r.length - closed.length - errors.length} skipped`);
+        console.log(`[sentinel] Sweep: ${closed.length} closed, ${errors.length} errors, ${triaged.length} triage-skipped, ${r.length - closed.length - errors.length - triaged.length} deep-skipped`);
       }
       await maybeAlertOnSweep(r);
     } catch (err) {

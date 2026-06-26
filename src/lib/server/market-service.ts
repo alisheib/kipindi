@@ -63,6 +63,15 @@ export type StoredMarket = {
    *  their resolution. Set once by the resolution-due sweep so the alert fires
    *  exactly once per market. Null = not yet alerted (or not yet due). */
   resolutionNotifiedAt?: string | null;
+  /** AI sentinel recommendation — populated when the sentinel closes this
+   *  market. Officers see this in the resolver queue as a pre-filled suggestion
+   *  so their job is "verify + confirm" instead of "research + decide". */
+  sentinelOutcome?: "YES" | "NO" | null;
+  sentinelEvidence?: string | null;
+  sentinelReasoning?: string | null;
+  sentinelSourceUrl?: string | null;
+  sentinelConfidence?: number | null;
+  sentinelClosedAt?: string | null;
   proposedBy: string;
   createdAt: string;
   updatedAt: string;
@@ -976,6 +985,14 @@ export async function adminReopenMarket(marketId: string, officerId: string): Pr
 
     m.status = "LIVE";
     m.updatedAt = new Date().toISOString();
+    // Clear stale sentinel recommendation so the resolver queue doesn't show
+    // outdated AI assessment if the market is later closed by time.
+    m.sentinelOutcome = null;
+    m.sentinelEvidence = null;
+    m.sentinelReasoning = null;
+    m.sentinelSourceUrl = null;
+    m.sentinelConfidence = null;
+    m.sentinelClosedAt = null;
     await marketStore.set(m);
 
     audit({

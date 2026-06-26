@@ -85,7 +85,8 @@ for (const c of cases) {
   let ok = false;
   if (r && r.action !== "error") {
     if (!c.expect.determined) {
-      ok = !r.determined || r.confidence < 90; // should NOT be locked
+      // triage_skip also counts as passing — triage correctly skipped it
+      ok = r.action === "triage_skip" || !r.determined || r.confidence < 90;
     } else {
       ok = r.determined && r.confidence >= 90 && r.outcome === c.expect.outcome;
     }
@@ -94,7 +95,7 @@ for (const c of cases) {
   console.log(`${ok ? "PASS" : "FAIL"}  [${c.m.id}] ${c.m.titleEn}`);
   console.log(`   expected: ${c.expect.determined ? `LOCKED ${c.expect.outcome}` : "OPEN (not locked)"} — ${c.why}`);
   if (r) {
-    console.log(`   AI said : determined=${r.determined} outcome=${r.outcome} confidence=${r.confidence} action=${r.action}`);
+    console.log(`   AI said : determined=${r.determined} outcome=${r.outcome} confidence=${r.confidence} action=${r.action} triage=${r.triageScore ?? "n/a"}`);
     if (r.reasoning) console.log(`   reasoning: ${r.reasoning.replace(/\s+/g, " ").slice(0, 400)}`);
     if (r.evidence) console.log(`   evidence : ${r.evidence.replace(/\s+/g, " ").slice(0, 200)}`);
     if (r.error) console.log(`   ERROR    : ${r.error}`);

@@ -965,6 +965,14 @@ model PredictionMarket {
   /** When officers were alerted this market is closed-by-time + awaiting their
    *  resolution. Set once by the resolution-due sweep (one alert per market). */
   resolutionNotifiedAt DateTime?
+  /** AI sentinel recommendation — populated when the sentinel auto-closes this
+   *  market. Officers see this pre-filled in the resolver queue. */
+  sentinelOutcome      String?   // YES or NO
+  sentinelEvidence     String?   @db.Text
+  sentinelReasoning    String?   @db.Text
+  sentinelSourceUrl    String?
+  sentinelConfidence   Int?
+  sentinelClosedAt     DateTime?
   proposedBy          String
   createdAt           DateTime               @default(now())
   updatedAt           DateTime               @updatedAt

@@ -164,6 +164,49 @@ export default async function ResolverQueuePage({
                     </div>
                   </div>
 
+                  {/* AI Sentinel recommendation (if this market was closed by AI) */}
+                  {m.sentinelOutcome && (
+                    <div className="px-4 py-3 border-b border-border">
+                      <div className="flex items-center gap-2 mb-2">
+                        <I.sparkle s={14} className="text-brand-300" />
+                        <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-semibold text-brand-300">AI recommendation</span>
+                        {m.sentinelConfidence != null && (
+                          <span className="font-mono text-[10px] tabular-nums text-text-subtle">{m.sentinelConfidence}% confidence</span>
+                        )}
+                      </div>
+                      <div className={`rounded-md border p-3 ${
+                        m.sentinelOutcome === "YES" ? "border-yes-700/50 bg-yes-500/10" : "border-no-700/50 bg-no-500/10"
+                      }`}>
+                        <p className="font-display text-[14px] font-bold text-text">
+                          Sentinel says: <span className={m.sentinelOutcome === "YES" ? "text-yes-300" : "text-no-300"}>{m.sentinelOutcome}</span>
+                        </p>
+                        {m.sentinelEvidence && (
+                          <p className="mt-1 text-[12px] text-text-secondary leading-snug">{m.sentinelEvidence}</p>
+                        )}
+                        {m.sentinelSourceUrl && (
+                          <a href={m.sentinelSourceUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 font-mono text-[11px] text-teal-300 hover:text-teal-200">
+                            AI source <I.ext size={10} />
+                          </a>
+                        )}
+                        {m.sentinelReasoning && (
+                          <details className="mt-2">
+                            <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle hover:text-text-muted">
+                              AI reasoning
+                            </summary>
+                            <p className="mt-1 text-[11px] text-text-muted leading-relaxed pl-2 border-l-2 border-border">
+                              {m.sentinelReasoning}
+                            </p>
+                          </details>
+                        )}
+                      </div>
+                      {m.sentinelClosedAt && (
+                        <p className="mt-1 font-mono text-[10px] text-text-subtle">
+                          Closed by sentinel at {fmtTime(m.sentinelClosedAt)}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   <div className="px-4 py-3 border-b border-border">
                     <div className="flex items-center gap-2 mb-2">
                       <I.users s={14} />

@@ -1,11 +1,14 @@
 import Link from "next/link";
-import type { Route } from "next";
-import { Button } from "@/components/ui/button";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
-import { getAiUsageSummary, listAiUsage, type AiFeature, type UsageBucket, type AiUsageFilter } from "@/lib/server/ai-usage";
+import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
+import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
+import { Chip } from "@/components/ui/chip";
+import { EmptyState } from "@/components/ui/empty-state";
+import { I } from "@/components/ui/glyphs";
+import { getAiUsageSummary, listAiUsage, type AiFeature, type UsageBucket, type AiUsageFilter, type AiUsageEventRecord } from "@/lib/server/ai-usage";
 import { CreditControls } from "./credit-controls";
 
-export const metadata = { title: "Admin · AI usage & credits" };
+export const metadata = { title: "Admin \u00b7 AI usage & credits" };
 export const dynamic = "force-dynamic";
 
 function usd(n: number): string {
@@ -16,7 +19,6 @@ function tok(n: number): string {
   return n.toLocaleString();
 }
 function ts(iso: string): string {
-  // Compact, sortable, timezone-explicit (UTC) — operator-facing audit trail.
   return iso.replace("T", " ").replace(/\.\d+Z$/, "Z");
 }
 
@@ -25,6 +27,12 @@ const FEATURE_LABEL: Record<AiFeature, string> = {
   chat: "Help chatbot",
   sentinel: "Market Sentinel",
   other: "Other",
+};
+const FEATURE_VARIANT: Record<AiFeature, "info" | "success" | "warning" | "neutral"> = {
+  polls: "info",
+  chat: "success",
+  sentinel: "warning",
+  other: "neutral",
 };
 const FEATURES: AiFeature[] = ["sentinel", "polls", "chat", "other"];
 
@@ -40,8 +48,9 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
   const q = one(sp.q).trim();
   const sinceDay = one(sp.since);
   const untilDay = one(sp.until);
-  const pageSize = Math.min(200, Math.max(10, parseInt(one(sp.size) || "50", 10) || 50));
-  const page = Math.max(1, parseInt(one(sp.page) || "1", 10) || 1);
+  const sortRaw = one(sp.sort);
+  const dirRaw = one(sp.dir);
+  const pageRaw = one(sp.page);
 
   const filter: AiUsageFilter = {
     feature: FEATURES.includes(feature as AiFeature) ? feature : undefined,
@@ -51,23 +60,51 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
     search: q || undefined,
   };
 
-  const [summary, listed] = await Promise.all([getAiUsageSummary(), listAiUsage(filter, page, pageSize)]);
-  const { rows, total } = listed;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  // Fetch all matching rows for in-memory sort (the DAL returns newest-first;
+  // we re-sort client-side so SortTh column headers work). Cap at 10k to keep
+  // memory bounded; the 180-day retention + filters keeps this well under.
+  const [summary, listed] = await Promise.all([
+    getAiUsageSummary(),
+    listAiUsage(filter, 1, 10_000),
+  ]);
   const s = summary;
 
-  // Build a querystring that preserves filters while overriding `page`.
-  const linkTo = (toPage: number) => {
-    const p = new URLSearchParams();
-    if (filter.feature) p.set("feature", filter.feature);
-    if (status) p.set("status", status);
-    if (q) p.set("q", q);
-    if (sinceDay) p.set("since", sinceDay);
-    if (untilDay) p.set("until", untilDay);
-    if (pageSize !== 50) p.set("size", String(pageSize));
-    p.set("page", String(toPage));
-    return `/admin/ai-usage?${p.toString()}` as Route;
+  // Sort
+  const SORT_KEYS = ["time", "feature", "model", "in", "out", "search", "cost", "ms", "status"] as const;
+  const { sort, dir } = parseSort(
+    { sort: sortRaw, dir: dirRaw },
+    SORT_KEYS,
+    "time",
+    "desc",
+  );
+  const sorted = applySort(listed.rows, sort, dir, {
+    time: (e: AiUsageEventRecord) => e.createdAt,
+    feature: (e: AiUsageEventRecord) => e.feature,
+    model: (e: AiUsageEventRecord) => e.model,
+    in: (e: AiUsageEventRecord) => e.inputTokens,
+    out: (e: AiUsageEventRecord) => e.outputTokens,
+    search: (e: AiUsageEventRecord) => e.webSearches,
+    cost: (e: AiUsageEventRecord) => e.costUsd,
+    ms: (e: AiUsageEventRecord) => e.latencyMs ?? 0,
+    status: (e: AiUsageEventRecord) => e.ok ? "ok" : "error",
+  });
+
+  // Paginate
+  const page = parsePage(pageRaw, sorted.length, PER_PAGE);
+  const rows = sorted.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const total = sorted.length;
+
+  // Build baseHref preserving filters but not page
+  const spFlat: Record<string, string | undefined> = {
+    feature: filter.feature,
+    status,
+    q: q || undefined,
+    since: sinceDay || undefined,
+    until: untilDay || undefined,
+    sort: sortRaw || undefined,
+    dir: dirRaw || undefined,
   };
+  const baseHref = buildBaseHref("/admin/ai-usage", spFlat);
 
   const c = s.credit;
   const pctSpent = c.limitUsd > 0 ? Math.min(100, (c.spentThisCycleUsd / c.limitUsd) * 100) : 0;
@@ -81,19 +118,22 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
   const health = s.health;
   const banner =
     health === "failing"
-      ? { cls: "border-no-700/60 bg-no-500/10", title: "⚠️ AI calls are FAILING", body: `Every AI call in the last 24h errored (${s.recent24h.err} failed). The Sentinel, poll generation and chatbot are down — almost always an exhausted Anthropic balance or a bad key. Top up and reset the cycle below.` }
+      ? { cls: "border-no-700/60 bg-no-500/10", icon: <I.warning s={16} className="text-no-300 shrink-0 mt-0.5" />, title: "AI calls are FAILING", body: `Every AI call in the last 24h errored (${s.recent24h.err} failed). The Sentinel, poll generation and chatbot are down \u2014 almost always an exhausted Anthropic balance or a bad key. Top up and reset the cycle below.` }
       : health === "idle"
-      ? { cls: "border-border bg-bg-overlay", title: "AI idle", body: "No AI calls in the last 24h — normal during quiet periods." }
-      : { cls: "border-success/40 bg-success/10", title: "✓ AI is healthy", body: `${s.recent24h.ok} successful AI call${s.recent24h.ok === 1 ? "" : "s"} in the last 24h, ${s.recent24h.err} error${s.recent24h.err === 1 ? "" : "s"}.` };
+      ? { cls: "border-border bg-bg-overlay", icon: <I.clock s={16} className="text-text-tertiary shrink-0 mt-0.5" />, title: "AI idle", body: "No AI calls in the last 24h \u2014 normal during quiet periods." }
+      : { cls: "border-success/40 bg-success/10", icon: <I.checkCircle s={16} className="text-success shrink-0 mt-0.5" />, title: "AI is healthy", body: `${s.recent24h.ok} successful AI call${s.recent24h.ok === 1 ? "" : "s"} in the last 24h, ${s.recent24h.err} error${s.recent24h.err === 1 ? "" : "s"}.` };
 
   return (
     <>
       <AdminPageHead title="AI usage & credits" sw="Matumizi ya AI na salio" period={false} />
       <div className="px-4 lg:px-6 py-5 space-y-4">
-        {/* Health */}
-        <div className={`rounded-lg border px-4 py-3 ${banner.cls}`}>
-          <p className="font-bold text-text">{banner.title}</p>
-          <p className="text-caption mt-0.5 text-text-secondary">{banner.body}</p>
+        {/* Health banner */}
+        <div className={`rounded-lg border px-4 py-3 flex items-start gap-3 ${banner.cls}`}>
+          {banner.icon}
+          <div>
+            <p className="font-bold text-text">{banner.title}</p>
+            <p className="text-caption mt-0.5 text-text-secondary">{banner.body}</p>
+          </div>
         </div>
 
         {/* Spend KPIs */}
@@ -137,112 +177,149 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
           <CreditControls limitUsd={c.limitUsd} />
         </AdminCard>
 
-        {/* Per-feature */}
-        <AdminCard title="By feature (stored window)" sw="Kwa kipengele">
-          <div className="overflow-x-auto -mx-4 px-4">
-            <table className="admin-tbl min-w-[640px]">
-              <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
+        {/* Per-feature breakdown */}
+        <AdminCard title="By feature (stored window)" sw="Kwa kipengele" padding="p-0">
+          <div className="overflow-x-auto">
+            <table className="admin-tbl">
+              <thead className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle bg-bg-overlay border-b border-border">
                 <tr>
-                  <th className="text-left py-2 pr-3">Feature</th>
-                  <th className="text-right py-2 pr-3">Calls</th>
-                  <th className="text-right py-2 pr-3">OK</th>
-                  <th className="text-right py-2 pr-3">Errors</th>
-                  <th className="text-right py-2 pr-3">In tok</th>
-                  <th className="text-right py-2 pr-3">Out tok</th>
-                  <th className="text-right py-2 pr-3">Searches</th>
-                  <th className="text-right py-2 pl-3">Cost</th>
+                  <th className="text-left p-3">Feature</th>
+                  <th className="text-right p-3">Calls</th>
+                  <th className="text-right p-3">OK</th>
+                  <th className="text-right p-3">Errors</th>
+                  <th className="text-right p-3">In tok</th>
+                  <th className="text-right p-3">Out tok</th>
+                  <th className="text-right p-3">Searches</th>
+                  <th className="text-right p-3">Cost</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="text-text-muted">
                 {FEATURES.map((f) => ({ f, b: s.byFeature[f] })).filter((r) => r.b.calls > 0).map(({ f, b }: { f: AiFeature; b: UsageBucket }) => (
-                  <tr key={f} className="border-b border-border-subtle/40 last:border-b-0">
-                    <td className="py-2 pr-3 text-text">{FEATURE_LABEL[f]}</td>
-                    <td className="py-2 pr-3 font-mono tabular-nums text-right text-text">{b.calls.toLocaleString()}</td>
-                    <td className="py-2 pr-3 font-mono tabular-nums text-right text-text-tertiary">{b.ok.toLocaleString()}</td>
-                    <td className={`py-2 pr-3 font-mono tabular-nums text-right ${b.err > 0 ? "text-no-300 font-semibold" : "text-text-tertiary"}`}>{b.err.toLocaleString()}</td>
-                    <td className="py-2 pr-3 font-mono tabular-nums text-right text-text-tertiary">{tok(b.inTok)}</td>
-                    <td className="py-2 pr-3 font-mono tabular-nums text-right text-text-tertiary">{tok(b.outTok)}</td>
-                    <td className="py-2 pr-3 font-mono tabular-nums text-right text-text-tertiary">{tok(b.searches)}</td>
-                    <td className="py-2 pl-3 font-mono tabular-nums text-right text-text">{usd(b.costUsd)}</td>
+                  <tr key={f} className="border-b border-border/60 last:border-b-0">
+                    <td className="p-3 text-text">
+                      <div className="flex items-center gap-2">
+                        <Chip size="sm" variant={FEATURE_VARIANT[f]}>{f.toUpperCase()}</Chip>
+                        <span>{FEATURE_LABEL[f]}</span>
+                      </div>
+                    </td>
+                    <td className="p-3 font-mono tabular-nums text-right text-text">{b.calls.toLocaleString()}</td>
+                    <td className="p-3 font-mono tabular-nums text-right text-text-tertiary">{b.ok.toLocaleString()}</td>
+                    <td className={`p-3 font-mono tabular-nums text-right ${b.err > 0 ? "text-no-300 font-semibold" : "text-text-tertiary"}`}>{b.err.toLocaleString()}</td>
+                    <td className="p-3 font-mono tabular-nums text-right text-text-tertiary">{tok(b.inTok)}</td>
+                    <td className="p-3 font-mono tabular-nums text-right text-text-tertiary">{tok(b.outTok)}</td>
+                    <td className="p-3 font-mono tabular-nums text-right text-text-tertiary">{tok(b.searches)}</td>
+                    <td className="p-3 font-mono tabular-nums text-right text-text">{usd(b.costUsd)}</td>
                   </tr>
                 ))}
                 {s.windows.all.calls === 0 && (
-                  <tr><td colSpan={8} className="py-4 text-center text-caption text-text-tertiary">No AI usage recorded yet.</td></tr>
+                  <tr>
+                    <td colSpan={8} className="!p-0">
+                      <EmptyState
+                        kind="default"
+                        title="No AI usage recorded yet"
+                        titleSw="Bado hakuna matumizi ya AI"
+                        body="AI calls will appear here once the chatbot, sentinel, or poll generator runs."
+                      />
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
           </div>
         </AdminCard>
 
-        {/* Per-call ledger — filters + paginated detail */}
-        <AdminCard title="Every API call" sw="Kila ombi la API" action={<span className="font-mono text-[10px] text-text-subtle">{total.toLocaleString()} matching</span>}>
+        {/* Per-call ledger — sortable, filterable, paginated */}
+        <AdminCard
+          title="Every API call"
+          sw="Kila ombi la API"
+          padding="p-0"
+          action={<span className="font-mono text-[10px] text-text-subtle">{total.toLocaleString()} matching</span>}
+        >
           {/* Filters (GET form — no client JS needed) */}
-          <form method="get" className="flex flex-wrap items-end gap-2 mb-3">
-            <label className="flex flex-col gap-1">
-              <span className="text-micro uppercase tracking-[0.14em] text-text-tertiary">Feature</span>
-              <select name="feature" defaultValue={filter.feature ?? ""} className="h-9 rounded-md border border-border bg-bg-overlay px-2 text-[13px] text-text">
-                <option value="">All</option>
-                {FEATURES.map((f) => <option key={f} value={f}>{FEATURE_LABEL[f]}</option>)}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-micro uppercase tracking-[0.14em] text-text-tertiary">Status</span>
-              <select name="status" defaultValue={status} className="h-9 rounded-md border border-border bg-bg-overlay px-2 text-[13px] text-text">
-                <option value="">All</option>
-                <option value="ok">OK</option>
-                <option value="error">Errors</option>
-              </select>
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-micro uppercase tracking-[0.14em] text-text-tertiary">From</span>
-              <input type="date" name="since" defaultValue={sinceDay} className="h-9 rounded-md border border-border bg-bg-overlay px-2 text-[13px] text-text" />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-micro uppercase tracking-[0.14em] text-text-tertiary">To</span>
-              <input type="date" name="until" defaultValue={untilDay} className="h-9 rounded-md border border-border bg-bg-overlay px-2 text-[13px] text-text" />
-            </label>
-            <label className="flex flex-col gap-1 flex-1 min-w-[160px]">
-              <span className="text-micro uppercase tracking-[0.14em] text-text-tertiary">Search (model / error / detail)</span>
-              <input type="text" name="q" defaultValue={q} placeholder="e.g. sentinel, credit balance, sonnet" className="h-9 rounded-md border border-border bg-bg-overlay px-2 text-[13px] text-text" />
-            </label>
-            <Button type="submit" size="sm">Apply</Button>
-            <Link href="/admin/ai-usage" className="h-9 inline-flex items-center rounded-md border border-border px-3 text-[13px] text-text-secondary">Clear</Link>
-          </form>
+          <div className="px-4 lg:px-5 pt-4 pb-2">
+            <form method="get" className="flex flex-wrap items-end gap-2">
+              <label className="flex flex-col gap-1">
+                <span className="text-micro uppercase tracking-[0.14em] text-text-tertiary">Feature</span>
+                <select name="feature" defaultValue={filter.feature ?? ""} className="h-9 rounded-md border border-border bg-bg-overlay px-2 text-[13px] text-text">
+                  <option value="">All</option>
+                  {FEATURES.map((f) => <option key={f} value={f}>{FEATURE_LABEL[f]}</option>)}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-micro uppercase tracking-[0.14em] text-text-tertiary">Status</span>
+                <select name="status" defaultValue={status} className="h-9 rounded-md border border-border bg-bg-overlay px-2 text-[13px] text-text">
+                  <option value="">All</option>
+                  <option value="ok">OK</option>
+                  <option value="error">Errors</option>
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-micro uppercase tracking-[0.14em] text-text-tertiary">From</span>
+                <input type="date" name="since" defaultValue={sinceDay} className="h-9 rounded-md border border-border bg-bg-overlay px-2 text-[13px] text-text" />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-micro uppercase tracking-[0.14em] text-text-tertiary">To</span>
+                <input type="date" name="until" defaultValue={untilDay} className="h-9 rounded-md border border-border bg-bg-overlay px-2 text-[13px] text-text" />
+              </label>
+              <label className="flex flex-col gap-1 flex-1 min-w-[160px]">
+                <span className="text-micro uppercase tracking-[0.14em] text-text-tertiary">Search (model / error / detail)</span>
+                <input type="text" name="q" defaultValue={q} placeholder="e.g. sentinel, credit balance, sonnet" className="h-9 rounded-md border border-border bg-bg-overlay px-2 text-[13px] text-text" />
+              </label>
+              <button type="submit" className="btn btn-primary btn-sm h-9">
+                <I.search s={12} />
+                Apply
+              </button>
+              <Link href="/admin/ai-usage" className="btn btn-ghost btn-sm h-9">Clear</Link>
+            </form>
+          </div>
 
-          <div className="overflow-x-auto -mx-4 px-4">
-            <table className="admin-tbl min-w-[820px]">
-              <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
+          <div className="overflow-x-auto">
+            <table className="admin-tbl">
+              <thead className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle bg-bg-overlay border-b border-border">
                 <tr>
-                  <th className="text-left py-2 pr-3">Time (UTC)</th>
-                  <th className="text-left py-2 pr-3">Feature</th>
-                  <th className="text-left py-2 pr-3">Model</th>
-                  <th className="text-right py-2 pr-3">In</th>
-                  <th className="text-right py-2 pr-3">Out</th>
-                  <th className="text-right py-2 pr-3">Search</th>
-                  <th className="text-right py-2 pr-3">Cost</th>
-                  <th className="text-right py-2 pr-3">ms</th>
-                  <th className="text-left py-2 pl-3">Status / detail</th>
+                  <SortTh field="time" label="Time (UTC)" current={sort} dir={dir} sp={spFlat} baseHref="/admin/ai-usage" />
+                  <SortTh field="feature" label="Feature" current={sort} dir={dir} sp={spFlat} baseHref="/admin/ai-usage" />
+                  <SortTh field="model" label="Model" current={sort} dir={dir} sp={spFlat} baseHref="/admin/ai-usage" />
+                  <SortTh field="in" label="In" current={sort} dir={dir} sp={spFlat} baseHref="/admin/ai-usage" align="right" />
+                  <SortTh field="out" label="Out" current={sort} dir={dir} sp={spFlat} baseHref="/admin/ai-usage" align="right" />
+                  <SortTh field="search" label="Search" current={sort} dir={dir} sp={spFlat} baseHref="/admin/ai-usage" align="right" />
+                  <SortTh field="cost" label="Cost" current={sort} dir={dir} sp={spFlat} baseHref="/admin/ai-usage" align="right" />
+                  <SortTh field="ms" label="ms" current={sort} dir={dir} sp={spFlat} baseHref="/admin/ai-usage" align="right" />
+                  <SortTh field="status" label="Status" current={sort} dir={dir} sp={spFlat} baseHref="/admin/ai-usage" />
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="text-text-muted">
                 {rows.length === 0 ? (
-                  <tr><td colSpan={9} className="py-6 text-center text-caption text-text-tertiary">No calls match these filters.</td></tr>
+                  <tr>
+                    <td colSpan={9} className="!p-0">
+                      <EmptyState
+                        kind="audit"
+                        title="No calls match these filters"
+                        titleSw="Hakuna maombi yanayolingana na chujio hili"
+                        body="Try clearing filters or widening the date range."
+                      />
+                    </td>
+                  </tr>
                 ) : rows.map((e) => (
-                  <tr key={e.id} className="border-b border-border-subtle/40 last:border-b-0 align-top">
-                    <td className="py-2 pr-3 font-mono tabular-nums text-text-tertiary whitespace-nowrap text-[11.5px]">{ts(e.createdAt)}</td>
-                    <td className="py-2 pr-3 text-text whitespace-nowrap">{FEATURE_LABEL[(e.feature as AiFeature)] ?? e.feature}</td>
-                    <td className="py-2 pr-3 font-mono text-text-tertiary whitespace-nowrap text-[11.5px]">{e.model}</td>
-                    <td className="py-2 pr-3 font-mono tabular-nums text-right text-text-tertiary">{tok(e.inputTokens)}</td>
-                    <td className="py-2 pr-3 font-mono tabular-nums text-right text-text-tertiary">{tok(e.outputTokens)}</td>
-                    <td className="py-2 pr-3 font-mono tabular-nums text-right text-text-tertiary">{e.webSearches || ""}</td>
-                    <td className="py-2 pr-3 font-mono tabular-nums text-right text-text">{usd(e.costUsd)}</td>
-                    <td className="py-2 pr-3 font-mono tabular-nums text-right text-text-tertiary">{e.latencyMs ?? ""}</td>
-                    <td className="py-2 pl-3 text-[12px]">
+                  <tr key={e.id} className="border-b border-border/60 last:border-b-0 align-top">
+                    <td className="p-3 font-mono tabular-nums text-text-tertiary whitespace-nowrap text-[11.5px]">{ts(e.createdAt)}</td>
+                    <td className="p-3 whitespace-nowrap">
+                      <Chip size="sm" variant={FEATURE_VARIANT[(e.feature as AiFeature)] ?? "neutral"}>
+                        {e.feature.toUpperCase()}
+                      </Chip>
+                    </td>
+                    <td className="p-3 font-mono text-text-tertiary whitespace-nowrap text-[11.5px]">{e.model}</td>
+                    <td className="p-3 font-mono tabular-nums text-right text-text-tertiary">{tok(e.inputTokens)}</td>
+                    <td className="p-3 font-mono tabular-nums text-right text-text-tertiary">{tok(e.outputTokens)}</td>
+                    <td className="p-3 font-mono tabular-nums text-right text-text-tertiary">{e.webSearches || ""}</td>
+                    <td className="p-3 font-mono tabular-nums text-right text-text">{usd(e.costUsd)}</td>
+                    <td className="p-3 font-mono tabular-nums text-right text-text-tertiary">{e.latencyMs ?? ""}</td>
+                    <td className="p-3 text-[12px]">
                       {e.ok
-                        ? <span className="text-success">OK</span>
-                        : <span className="text-no-300 font-semibold">ERROR</span>}
-                      {e.errorType && <span className="text-no-200"> · {e.errorType.slice(0, 120)}</span>}
-                      {e.ok && e.detail && <span className="text-text-tertiary"> · {e.detail.slice(0, 120)}</span>}
+                        ? <Chip size="sm" variant="success">OK</Chip>
+                        : <Chip size="sm" variant="danger">ERROR</Chip>}
+                      {e.errorType && <span className="text-no-200 ml-1.5 text-[11px]">{e.errorType.slice(0, 120)}</span>}
+                      {e.ok && e.detail && <span className="text-text-tertiary ml-1.5 text-[11px]">{e.detail.slice(0, 120)}</span>}
                     </td>
                   </tr>
                 ))}
@@ -250,21 +327,10 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
             </table>
           </div>
 
-          {/* Pagination */}
-          <div className="flex items-center justify-between mt-3 text-[12px] text-text-tertiary">
-            <span>Page {page} of {totalPages} · {pageSize}/page</span>
-            <div className="flex gap-2">
-              {page > 1
-                ? <Link href={linkTo(page - 1)} className="rounded-md border border-border px-3 py-1.5 text-text-secondary">← Prev</Link>
-                : <span className="rounded-md border border-border-subtle px-3 py-1.5 text-text-subtle opacity-50">← Prev</span>}
-              {page < totalPages
-                ? <Link href={linkTo(page + 1)} className="rounded-md border border-border px-3 py-1.5 text-text-secondary">Next →</Link>
-                : <span className="rounded-md border border-border-subtle px-3 py-1.5 text-text-subtle opacity-50">Next →</span>}
-            </div>
-          </div>
+          <AdminPagination total={total} page={page} baseHref={baseHref} />
 
-          <p className="mt-3 text-[11px] text-text-tertiary leading-snug">
-            Cost is metered from token counts × public Anthropic pricing (Sonnet $3/$15, Haiku $1/$5 per 1M tokens; web search $0.01/call). Ledger retained 180 days.
+          <p className="px-4 py-3 text-[11px] text-text-tertiary leading-snug border-t border-border">
+            Cost is metered from token counts \u00d7 public Anthropic pricing. Haiku $1/$5, Sonnet $3/$15, Opus $5/$25 per 1M tokens; web search $0.01/call. Ledger retained 180 days.
           </p>
         </AdminCard>
       </div>
