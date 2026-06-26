@@ -852,6 +852,13 @@ export const prismaDb = {
         return null;
       }
     },
+    dismissAll: async (userId: string): Promise<number> => {
+      const result = await pc().notification.updateMany({
+        where: { userId, dismissedAt: null },
+        data: { dismissedAt: new Date() },
+      });
+      return result.count;
+    },
   },
 
   // ── SOURCE OF FUNDS ───────────────────────────────────────────────────────
