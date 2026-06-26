@@ -69,12 +69,15 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
   // Fetch all matching rows for in-memory sort (the DAL returns newest-first;
   // we re-sort client-side so SortTh column headers work). Cap at 10k to keep
   // memory bounded; the 180-day retention + filters keeps this well under.
-  const [summary, listed, anthropic, aiOps] = await Promise.all([
+  const { listMarkets } = await import("@/lib/server/market-service");
+  const [summary, listed, anthropic, aiOps, allMarkets] = await Promise.all([
     getAiUsageSummary(),
     listAiUsage(filter, 1, 10_000),
     getAnthropicSpend(),
     getAiOpsConfig(),
+    listMarkets(),
   ]);
+  const liveMarketCount = allMarkets.filter((m) => m.status === "LIVE").length;
   const s = summary;
 
   // Sort
@@ -212,6 +215,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
             triageModel={ai.triageModel}
             models={AVAILABLE_MODELS}
             intervals={INTERVAL_OPTIONS}
+            liveMarketCount={liveMarketCount}
           />
         </AdminCard>
 

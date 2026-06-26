@@ -17,12 +17,14 @@ export function AiOpsControls({
   triageModel,
   models,
   intervals,
+  liveMarketCount,
 }: {
   currentModel: string;
   currentIntervalMs: number;
   triageModel: string;
   models: readonly ModelOption[];
   intervals: readonly IntervalOption[];
+  liveMarketCount: number;
 }) {
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -138,10 +140,14 @@ export function AiOpsControls({
         <div className="mt-2 rounded-md border border-border bg-bg-overlay px-3 py-2.5 text-[11px] text-text-muted leading-relaxed space-y-1">
           <p>
             <I.clock s={11} className="inline text-gold-300 mr-1" />
-            <strong className="text-text">How often the sentinel scans all live markets.</strong> Each sweep: Haiku triages every market (~$0.002 each), then flagged markets get a full Sonnet deep check (~$0.05 each).
+            <strong className="text-text">How often the sentinel scans all live markets.</strong> Each sweep: Haiku triages every market (~$0.002 each), then flagged markets get a full deep check (~$0.05 each).
+          </p>
+          <p>
+            <strong className="text-text">Only LIVE markets are scanned.</strong> Resolved, voided, and closed markets are skipped. Once a market leaves LIVE status, it stops costing you.
+            Currently <strong className="text-gold-300">{liveMarketCount} live market{liveMarketCount !== 1 ? "s" : ""}</strong> — triage cost per sweep: ~${(liveMarketCount * 0.002).toFixed(2)}.
           </p>
           <p className="text-no-300">
-            Shorter intervals = faster detection of settled outcomes, but higher cost. With 60 live markets at every-15-min, expect ~$2/day in triage alone. At every-4-hours, ~$0.20/day.
+            Shorter intervals = faster detection of settled outcomes, but higher cost. With {liveMarketCount} markets at every-15-min, expect ~${(liveMarketCount * 0.002 * 96).toFixed(1)}/day in triage. At every-4-hours, ~${(liveMarketCount * 0.002 * 6).toFixed(2)}/day.
           </p>
           <p className="text-text-subtle">
             Changes apply immediately — no need to wait for the old timer.
