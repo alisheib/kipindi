@@ -138,6 +138,8 @@ export function AvatarMenu({
               <Item href="/profile/invite" icon={I.gift}         label="Invite & Earn" sw="Alika na upate zawadi" accent />
               <Item href="/proposals"      icon={I.trophy}       label="Propose & earn" sw="Pendekeza na upate zawadi" accent />
               <Item href="/positions"      icon={I.receipt}      label="Positions"    sw="Nafasi" />
+              <Item href="/results"        icon={I.flag}         label="Results"      sw="Matokeo" />
+              <Item href="/leaderboard"    icon={I.crown}        label="Leaderboard"  sw="Jedwali la Washindi" />
               <Item href="/profile/kyc"    icon={I.shieldcheck}  label="Verify ID"    sw="Kuthibitisha kitambulisho" />
             </ul>
             {/* Language toggle — visible only on mobile (desktop has the top-bar toggle) */}
