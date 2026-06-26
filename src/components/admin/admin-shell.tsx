@@ -238,10 +238,11 @@ export function AdminCard({
   padding?: string;
   className?: string;
 } & Omit<React.HTMLAttributes<HTMLElement>, "children" | "title">) {
+  const isFlush = padding === "p-0";
   return (
     <div {...rest} className={["rounded-lg glass-panel", padding, className ?? ""].join(" ")}>
       {(title || action) && (
-        <div className="flex items-start justify-between mb-3 gap-3">
+        <div className={`flex items-start justify-between gap-3 ${isFlush ? "px-4 pt-4 pb-3" : "mb-3"}`}>
           <div className="min-w-0">
             {title && <p className="font-display font-semibold text-body-sm text-text leading-tight">{title}</p>}
             {sw && (
