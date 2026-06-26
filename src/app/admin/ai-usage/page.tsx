@@ -175,24 +175,24 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
             <strong> Auto Reload</strong> on Anthropic too, so the balance never actually hits zero.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-            <div className="rounded-md border border-border bg-bg-overlay px-3 py-2">
-              <div className="text-micro uppercase tracking-[0.14em] text-text-tertiary">Limit / cycle</div>
+            <div className="rounded-md border border-border bg-bg-overlay px-4 py-3">
+              <div className="text-micro uppercase tracking-[0.14em] text-text-tertiary mb-1">Limit / cycle</div>
               <div className="text-text font-semibold tabular-nums">{usd(c.limitUsd)}</div>
             </div>
-            <div className="rounded-md border border-border bg-bg-overlay px-3 py-2">
-              <div className="text-micro uppercase tracking-[0.14em] text-text-tertiary">Spent this cycle</div>
+            <div className="rounded-md border border-border bg-bg-overlay px-4 py-3">
+              <div className="text-micro uppercase tracking-[0.14em] text-text-tertiary mb-1">Spent this cycle</div>
               <div className="text-text font-semibold tabular-nums">{usd(c.spentThisCycleUsd)}</div>
-              <div className="text-[11px] text-text-tertiary">{pctSpent.toFixed(0)}% of limit</div>
+              <div className="text-[11px] text-text-tertiary mt-0.5">{pctSpent.toFixed(0)}% of limit</div>
             </div>
-            <div className={`rounded-md border px-3 py-2 ${creditToneCls}`}>
-              <div className="text-micro uppercase tracking-[0.14em] text-text-tertiary">Remaining (est.)</div>
+            <div className={`rounded-md border px-4 py-3 ${creditToneCls}`}>
+              <div className="text-micro uppercase tracking-[0.14em] text-text-tertiary mb-1">Remaining (est.)</div>
               <div className="text-text font-semibold tabular-nums">{usd(c.remainingUsd)}</div>
             </div>
-            <div className="rounded-md border border-border bg-bg-overlay px-3 py-2">
-              <div className="text-micro uppercase tracking-[0.14em] text-text-tertiary">Cycle started</div>
+            <div className="rounded-md border border-border bg-bg-overlay px-4 py-3">
+              <div className="text-micro uppercase tracking-[0.14em] text-text-tertiary mb-1">Cycle started</div>
               <div className="text-text font-semibold tabular-nums text-[13px]">{c.cycleStartIso.slice(0, 10)}</div>
               {c.alertedLevel !== "none" && (
-                <div className="text-[11px] text-warning-fg">alerted: {c.alertedLevel}</div>
+                <div className="text-[11px] text-warning-fg mt-0.5">alerted: {c.alertedLevel}</div>
               )}
             </div>
           </div>
