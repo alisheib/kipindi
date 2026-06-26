@@ -14,7 +14,9 @@
 export const ai = {
   /** The primary model used for poll generation and sentinel deep checks.
    *  Override via AI_MODEL env var without a redeploy.
-   *  Sonnet 4.6 — sharper reasoning on tricky cumulative/threshold polls. */
+   *  Sonnet 4.6 — sharper reasoning on tricky cumulative/threshold polls.
+   *  NOTE: This is the static default. Use getConfiguredModel() for the
+   *  live admin-tunable value (reads from config-store). */
   model: process.env.AI_MODEL || "claude-sonnet-4-6",
 
   /** The triage model used for sentinel quick scans (no web search).
@@ -37,3 +39,15 @@ export const ai = {
     perWebSearch:   0.01,            // $10 / 1,000 searches
   },
 } as const;
+
+/** Return the live admin-configured model (config-store → env → default).
+ *  Async because it reads from the DB on first call; cached in-process. */
+export async function getConfiguredModel(): Promise<string> {
+  try {
+    const { getAiOpsConfig } = await import("./ai-ops-config");
+    const ops = await getAiOpsConfig();
+    return ops.model;
+  } catch {
+    return ai.model;
+  }
+}

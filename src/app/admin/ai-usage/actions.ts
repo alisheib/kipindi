@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { setCreditLimit, resetCreditCycle } from "@/lib/server/ai-usage";
+import { setAiModel, setSentinelInterval, AVAILABLE_MODELS, INTERVAL_OPTIONS } from "@/lib/server/ai-ops-config";
+import { audit } from "@/lib/server/audit";
 
 const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
 
@@ -34,6 +36,47 @@ export async function setCreditLimitAction(fd: FormData): Promise<{ ok: boolean;
 export async function resetCreditCycleAction(): Promise<{ ok: boolean; error?: string }> {
   await ensureAdmin();
   await resetCreditCycle();
+  revalidatePath("/admin/ai-usage");
+  return { ok: true };
+}
+
+/** Set the primary Claude model for poll generation + sentinel deep checks. */
+export async function setAiModelAction(fd: FormData): Promise<{ ok: boolean; error?: string }> {
+  const s = await ensureAdmin();
+  const model = String(fd.get("model") ?? "").trim();
+  if (!AVAILABLE_MODELS.some((m) => m.id === model)) {
+    return { ok: false, error: "Invalid model selection." };
+  }
+  await setAiModel(model);
+  audit({
+    category: "ADMIN",
+    action: "ai.model_changed",
+    actorId: s.userId,
+    targetType: "System",
+    targetId: "ai-config",
+    payload: { model },
+  });
+  revalidatePath("/admin/ai-usage");
+  return { ok: true };
+}
+
+/** Set how often the sentinel sweeps live markets. Takes effect on next tick. */
+export async function setSentinelIntervalAction(fd: FormData): Promise<{ ok: boolean; error?: string }> {
+  const s = await ensureAdmin();
+  const raw = String(fd.get("intervalMs") ?? "").trim();
+  const ms = Number(raw);
+  if (!INTERVAL_OPTIONS.some((o) => o.ms === ms)) {
+    return { ok: false, error: "Invalid interval selection." };
+  }
+  await setSentinelInterval(ms);
+  audit({
+    category: "ADMIN",
+    action: "ai.sentinel_interval_changed",
+    actorId: s.userId,
+    targetType: "System",
+    targetId: "market-sentinel",
+    payload: { intervalMs: ms },
+  });
   revalidatePath("/admin/ai-usage");
   return { ok: true };
 }

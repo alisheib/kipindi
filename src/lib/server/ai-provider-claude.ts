@@ -147,13 +147,16 @@ export class ClaudeProvider implements AIProvider {
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
-    this.name = getAIPollConfig().webSearchEnabled ? `${ai.model} (web search)` : ai.model;
+    this.name = getAIPollConfig().webSearchEnabled ? `Claude (web search)` : `Claude`;
   }
 
   async generate(req: GenerateRequest): Promise<AIProviderResponse> {
     const start = Date.now();
     const cfg = getAIPollConfig();
     const category = VALID_CATEGORIES.includes(req.category) ? req.category : "other";
+    // Resolve the live admin-configured model (config-store → env → default)
+    const { getConfiguredModel } = await import("./ai-config");
+    const activeModel = await getConfiguredModel();
     const nowIso = new Date().toISOString();
 
     const guidance = CATEGORY_GUIDANCE[category] ?? CATEGORY_GUIDANCE.other;
@@ -174,7 +177,7 @@ export class ClaudeProvider implements AIProvider {
       }
 
       const resp = await client.messages.create({
-        model: ai.model,
+        model: activeModel,
         max_tokens: 1500,
         system: buildSystemPrompt({
           nowIso,
@@ -208,7 +211,7 @@ export class ClaudeProvider implements AIProvider {
         ) / 10000;
 
       // Meter the spend (best-effort) regardless of how parsing goes below.
-      await recordAiUsage({ feature: "polls", model: ai.model, inputTokens: inTok, outputTokens: outTok, webSearches: searches, ok: true, latencyMs, detail: `generate · ${category}` });
+      await recordAiUsage({ feature: "polls", model: activeModel, inputTokens: inTok, outputTokens: outTok, webSearches: searches, ok: true, latencyMs, detail: `generate · ${category}` });
 
       const content = resp.content as Array<{ type: string; name?: string; input?: unknown; text?: string }>;
       const rawResponse = JSON.stringify(content, null, 2).slice(0, 8000);
@@ -246,7 +249,7 @@ export class ClaudeProvider implements AIProvider {
       };
     } catch (err) {
       console.error("[50pick-polls] Claude API error:", err);
-      await recordAiUsage({ feature: "polls", model: ai.model, ok: false, latencyMs: Date.now() - start, errorType: (err as Error).message?.slice(0, 200), detail: `generate · ${category}` });
+      await recordAiUsage({ feature: "polls", model: activeModel, ok: false, latencyMs: Date.now() - start, errorType: (err as Error).message?.slice(0, 200), detail: `generate · ${category}` });
       return {
         ok: false,
         error: `Claude API error: ${(err as Error).message}`,

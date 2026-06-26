@@ -35,17 +35,30 @@ import { marketStore } from "./market-dal";
 import { audit } from "./audit";
 import { ai } from "./ai-config";
 import { recordAiUsage } from "./ai-usage";
+import { getAiOpsConfig } from "./ai-ops-config";
 import { withLock } from "./locks";
 import { getPlatformTimezone } from "./platform-config";
 
 // --- Configuration -----------------------------------------------------------
 
-const SENTINEL_MODEL = process.env.SENTINEL_MODEL || ai.model;
+// Env-var defaults (overridden at runtime by admin-tunable config-store values)
+const ENV_SENTINEL_MODEL = process.env.SENTINEL_MODEL || ai.model;
 const TRIAGE_MODEL = process.env.SENTINEL_TRIAGE_MODEL || "claude-haiku-4-5-20251001";
-// Default sweep cadence: every 4 hours. Haiku triage makes frequent sweeps
-// affordable — only flagged markets hit Sonnet. Override with env.
-const SENTINEL_INTERVAL_MS = parseInt(process.env.SENTINEL_INTERVAL_MS || String(4 * 60 * 60_000), 10);
+const ENV_INTERVAL_MS = parseInt(process.env.SENTINEL_INTERVAL_MS || String(4 * 60 * 60_000), 10);
 const SENTINEL_CONFIDENCE_THRESHOLD = 90;
+
+/** Read the live-configured model + interval (config-store → env → defaults). */
+async function getLiveConfig() {
+  try {
+    const ops = await getAiOpsConfig();
+    return {
+      model: process.env.SENTINEL_MODEL || ops.model || ENV_SENTINEL_MODEL,
+      intervalMs: ops.sentinelIntervalMs || ENV_INTERVAL_MS,
+    };
+  } catch {
+    return { model: ENV_SENTINEL_MODEL, intervalMs: ENV_INTERVAL_MS };
+  }
+}
 // Per-market cooldown — don't re-check the same market within this window.
 const SENTINEL_COOLDOWN_MS = parseInt(process.env.SENTINEL_COOLDOWN_MS || String(3.5 * 60 * 60_000), 10);
 // How many markets to check concurrently per sweep.
@@ -231,7 +244,8 @@ const OUTCOME_TOOL = {
   },
 };
 
-async function deepCheckMarket(market: MarketInput): Promise<SentinelResult> {
+async function deepCheckMarket(market: MarketInput, sentinelModel?: string): Promise<SentinelResult> {
+  const SENTINEL_MODEL = sentinelModel || ENV_SENTINEL_MODEL;
   const fail = (error: string): SentinelResult => ({
     marketId: market.id, title: market.titleEn,
     determined: false, outcome: "UNKNOWN", confidence: 0,
@@ -414,8 +428,9 @@ export async function runSentinelSweep(): Promise<SentinelResult[]> {
   console.log(`[sentinel] Triage: ${due.length} scanned, ${flagged.length} flagged for deep check (threshold: ${TRIAGE_THRESHOLD})`);
 
   // --- Tier 2: Sonnet deep check (flagged markets only, bounded concurrency) ---
+  const liveConfig = await getLiveConfig();
   const processOne = async (item: (typeof flagged)[number]): Promise<SentinelResult> => {
-    const result = await deepCheckMarket(item.market);
+    const result = await deepCheckMarket(item.market, liveConfig.model);
     result.triageScore = item.triageScore;
 
     if (result.action === "error") return result;
@@ -462,7 +477,7 @@ export async function runSentinelSweep(): Promise<SentinelResult[]> {
             reasoning: result.reasoning,
             sourceUrl: result.sourceUrl,
             triageScore: item.triageScore,
-            model: SENTINEL_MODEL,
+            model: liveConfig.model,
             triageModel: TRIAGE_MODEL,
           },
         });
@@ -554,32 +569,23 @@ async function maybeAlertOnSweep(results: SentinelResult[]): Promise<void> {
 
 let intervalId: ReturnType<typeof setInterval> | null = null;
 let sweepRunning = false;
+let currentIntervalMs = ENV_INTERVAL_MS;
 
-export function startSentinel(): void {
-  if (intervalId) return;
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.warn("[sentinel] ANTHROPIC_API_KEY not set — sentinel disabled");
-    return;
+async function scheduleSweep(): Promise<void> {
+  const cfg = await getLiveConfig();
+  const newInterval = cfg.intervalMs;
+
+  // Restart the interval if the admin changed it
+  if (intervalId && newInterval !== currentIntervalMs) {
+    clearInterval(intervalId);
+    intervalId = null;
+    console.log(`[sentinel] Interval changed: ${currentIntervalMs / 1000}s → ${newInterval / 1000}s`);
+    currentIntervalMs = newInterval;
   }
-  if (process.env.SENTINEL_ENABLED === "false") {
-    console.warn("[sentinel] SENTINEL_ENABLED=false — sentinel disabled");
-    return;
-  }
 
-  console.log(`[sentinel] Starting two-tier (interval: ${SENTINEL_INTERVAL_MS / 1000}s, triage: ${TRIAGE_MODEL}, deep: ${SENTINEL_MODEL}, threshold: ${SENTINEL_CONFIDENCE_THRESHOLD}%, triage cutoff: ${TRIAGE_THRESHOLD})`);
+  if (intervalId) return; // already running at the right interval
 
-  // First sweep after boot delay
-  setTimeout(() => {
-    runSentinelSweep()
-      .then(async (r) => {
-        const closed = r.filter((x) => x.action === "closed");
-        const triaged = r.filter((x) => x.action === "triage_skip");
-        if (closed.length > 0) console.log(`[sentinel] Boot sweep: ${closed.length} closed, ${triaged.length} triage-skipped`);
-        await maybeAlertOnSweep(r);
-      })
-      .catch((err) => console.error("[sentinel] Boot sweep error:", err));
-  }, 10_000);
-
+  currentIntervalMs = newInterval;
   intervalId = setInterval(async () => {
     if (sweepRunning) return;
     sweepRunning = true;
@@ -592,12 +598,44 @@ export function startSentinel(): void {
         console.log(`[sentinel] Sweep: ${closed.length} closed, ${errors.length} errors, ${triaged.length} triage-skipped, ${r.length - closed.length - errors.length - triaged.length} deep-skipped`);
       }
       await maybeAlertOnSweep(r);
+      // Check if interval was changed by admin while we were sweeping
+      await scheduleSweep();
     } catch (err) {
       console.error("[sentinel] Sweep error:", err);
     } finally {
       sweepRunning = false;
     }
-  }, SENTINEL_INTERVAL_MS);
+  }, currentIntervalMs);
+}
+
+export function startSentinel(): void {
+  if (intervalId) return;
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.warn("[sentinel] ANTHROPIC_API_KEY not set — sentinel disabled");
+    return;
+  }
+  if (process.env.SENTINEL_ENABLED === "false") {
+    console.warn("[sentinel] SENTINEL_ENABLED=false — sentinel disabled");
+    return;
+  }
+
+  getLiveConfig().then((cfg) => {
+    console.log(`[sentinel] Starting two-tier (interval: ${cfg.intervalMs / 1000}s, triage: ${TRIAGE_MODEL}, deep: ${cfg.model}, threshold: ${SENTINEL_CONFIDENCE_THRESHOLD}%, triage cutoff: ${TRIAGE_THRESHOLD})`);
+  }).catch(() => {});
+
+  // First sweep after boot delay
+  setTimeout(() => {
+    runSentinelSweep()
+      .then(async (r) => {
+        const closed = r.filter((x) => x.action === "closed");
+        const triaged = r.filter((x) => x.action === "triage_skip");
+        if (closed.length > 0) console.log(`[sentinel] Boot sweep: ${closed.length} closed, ${triaged.length} triage-skipped`);
+        await maybeAlertOnSweep(r);
+        // Start the recurring interval
+        await scheduleSweep();
+      })
+      .catch((err) => console.error("[sentinel] Boot sweep error:", err));
+  }, 10_000);
 }
 
 export function stopSentinel(): void {
