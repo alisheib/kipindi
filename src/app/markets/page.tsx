@@ -204,6 +204,11 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
   // A name search is global: ignore the category filter so a remembered market
   // surfaces no matter which topic chip happens to be active.
   const effectiveCat = searching ? undefined : cat;
+  // Total live count (unfiltered) — used to distinguish "platform has zero
+  // markets" from "no markets match the active filter".
+  const totalLive = effectiveCat
+    ? (await listMarkets({ status: "LIVE" })).filter(m => !isClosedByTime(m)).length
+    : 0; // no category filter means bettable IS total
   // Sort by closest-to-resolution first so the demo-friendly minute-scale
   // markets float to the top. Past-resolution markets sink (they're in the
   // resolver queue, not the live grid).
@@ -273,27 +278,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
             />
           );
         })}
-        {live.length === 0 && (
-          <div className="col-span-full">
-            <EmptyState
-              kind="markets"
-              title={searching ? `No live markets match “${qRaw}”` : "No markets in this category yet"}
-              titleSw={searching ? "Hakuna soko hai linalolingana" : "Hakuna soko bado kwenye aina hii"}
-              body={searching
-                ? "Check the spelling, try fewer words, or clear the search to see everything. Resolved markets that match appear below."
-                : "Try a different category, or check back soon — operators publish new markets daily."}
-              bodySw={searching ? "Angalia tahajia au futa utafutaji." : "Jaribu aina nyingine au rudi baadaye."}
-              action={
-                <Link
-                  href="/markets"
-                  className="inline-flex h-9 items-center px-4 rounded-pill border border-border-strong bg-bg-elevated font-semibold text-text hover:bg-bg-overlay text-[13px] transition-colors"
-                >
-                  {searching ? "Clear search · Futa" : "See all categories"}
-                </Link>
-              }
-            />
-          </div>
-        )}
+        {live.length === 0 && <LiveEmptyState searching={searching} qRaw={qRaw} hasAnyLive={effectiveCat ? totalLive > 0 : bettable.length > 0} />}
       </section>
 
       {resolved.length > 0 && (
@@ -320,6 +305,44 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
         </section>
       )}
     </>
+  );
+}
+
+function LiveEmptyState({ searching, qRaw, hasAnyLive }: { searching: boolean; qRaw: string; hasAnyLive: boolean }) {
+  const noMarketsAtAll = !hasAnyLive && !searching;
+  return (
+    <div className="col-span-full">
+      <EmptyState
+        kind="markets"
+        title={
+          searching ? `No live markets match "${qRaw}"`
+          : noMarketsAtAll ? "No markets available"
+          : "No markets in this category"
+        }
+        titleSw={
+          searching ? "Hakuna soko hai linalolingana"
+          : noMarketsAtAll ? "Hakuna masoko kwa sasa"
+          : "Hakuna soko kwenye aina hii"
+        }
+        body={
+          searching ? "Check the spelling, try fewer words, or clear the search to see everything. Resolved markets that match appear below."
+          : noMarketsAtAll ? "Markets will appear here once operators publish them. Check back soon."
+          : "Try a different category, or check back soon — new markets are published regularly."
+        }
+        bodySw={
+          searching ? "Angalia tahajia au futa utafutaji."
+          : noMarketsAtAll ? "Masoko yatatokea hapa opereta watakapoyachapisha. Rudi baadaye."
+          : "Jaribu aina nyingine au rudi baadaye."
+        }
+        action={
+          noMarketsAtAll ? undefined : (
+            <Link href="/markets" className="btn btn-ghost btn-sm">
+              {searching ? "Clear search · Futa" : "See all categories · Aina zote"}
+            </Link>
+          )
+        }
+      />
+    </div>
   );
 }
 
