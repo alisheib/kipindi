@@ -36,6 +36,7 @@ import { audit } from "./audit";
 import { ai } from "./ai-config";
 import { recordAiUsage } from "./ai-usage";
 import { withLock } from "./locks";
+import { PLATFORM_TZ } from "@/lib/utils";
 
 // --- Configuration -----------------------------------------------------------
 
@@ -143,7 +144,7 @@ async function triageMarket(market: MarketInput): Promise<{ score: number; reaso
     const response = await anthropic.messages.create({
       model: TRIAGE_MODEL,
       max_tokens: 400,
-      system: `You are a quick-scan triage agent for a prediction market platform. Your ONLY job is to estimate how likely it is that a market's outcome has ALREADY been settled by real-world events, based on the title, category, and timing. You have NO web access — use only what you can infer from the title and dates. Current date/time: ${now.toISOString()}`,
+      system: `You are a quick-scan triage agent for a prediction market platform. Your ONLY job is to estimate how likely it is that a market's outcome has ALREADY been settled by real-world events, based on the title, category, and timing. You have NO web access — use only what you can infer from the title and dates. Current date/time: ${now.toISOString()} (platform timezone: ${PLATFORM_TZ})`,
       tools: [TRIAGE_TOOL as unknown as Anthropic.Tool],
       tool_choice: { type: "tool" as const, name: "report_triage" },
       messages: [{
@@ -245,7 +246,7 @@ async function deepCheckMarket(market: MarketInput): Promise<SentinelResult> {
 
   const systemPrompt = `You are the 50pick Market Sentinel — a real-time integrity monitor for a LICENSED, REAL-MONEY prediction-market platform in Tanzania. Real money is at stake. If a market stays open after its outcome is already settled, players can bet on a known result and the house loses money. If you close a market whose outcome is NOT yet settled, you block legitimate betting. Both are costly — be VIGILANT and PRECISE.
 
-CURRENT DATE/TIME: ${now}
+CURRENT DATE/TIME: ${now} (platform timezone: ${PLATFORM_TZ})
 
 YOUR JOB
 Decide whether this market's outcome is already IRREVERSIBLY SETTLED ("locked") by real-world events — i.e. nothing that can still happen could change the YES/NO result. The platform closes a market to new bets only when it is locked. A human officer still does the final payout; you never pay out.

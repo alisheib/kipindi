@@ -27,29 +27,37 @@ export function formatNumber(value: number): string {
 
 /* ── Date formatting ─────────────────────────────────────────────── */
 
+/** Platform timezone — configurable via PLATFORM_TIMEZONE env var.
+ *  Defaults to Africa/Dar_es_Salaam (EAT, UTC+3) for Tanzania.
+ *  ALL player-visible times, AI sentinel prompts, and resolution displays
+ *  use this timezone. Change it in one place → changes everywhere.
+ *  Admin/audit trails always store UTC; this only affects display. */
+export const PLATFORM_TZ = process.env.PLATFORM_TIMEZONE || "Africa/Dar_es_Salaam";
+const TZ = PLATFORM_TZ;
+
 /** "11 Jun 2026" */
 export function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: TZ });
 }
 
 /** "11 Jun" */
 export function formatDateShort(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+  return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: TZ });
 }
 
 /** "11 Jun 2026, 14:30" */
 export function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: TZ });
 }
 
 /** "14:30:05" — time-only for feeds / audit */
 export function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: TZ });
 }
 
 /** "14:30" — short clock for compact feeds */
 export function formatClock(iso: string): string {
-  return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: TZ });
 }
 
 /** "2026-06-11" — sortable date string */
