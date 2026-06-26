@@ -1274,6 +1274,18 @@ export const prismaDb = {
         return null;
       }
     },
+    incrementCounters: async (id: string, deltas: { invites?: number; registered?: number }): Promise<StoredInviteCampaign | null> => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const data: any = {};
+        if (deltas.invites !== undefined) data.totalInvites = { increment: deltas.invites };
+        if (deltas.registered !== undefined) data.totalRegistered = { increment: deltas.registered };
+        const row = await pc().inviteCampaign.update({ where: { id }, data });
+        return toStoredInviteCampaign(row);
+      } catch {
+        return null;
+      }
+    },
     list: async (limit = 500): Promise<StoredInviteCampaign[]> => {
       const rows = await pc().inviteCampaign.findMany({ orderBy: { createdAt: "desc" }, take: limit });
       return rows.map(toStoredInviteCampaign);

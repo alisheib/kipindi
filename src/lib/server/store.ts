@@ -737,6 +737,20 @@ const memoryDb = {
       store.inviteCampaigns.set(id, next);
       return next;
     },
+    /** Atomic counter bumps (avoid read-modify-write races when many invitees
+     *  register concurrently). Deltas, like wallet.adjust. */
+    incrementCounters: (id: string, deltas: { invites?: number; registered?: number }): StoredInviteCampaign | null => {
+      const c = store.inviteCampaigns.get(id);
+      if (!c) return null;
+      const next: StoredInviteCampaign = {
+        ...c,
+        totalInvites: c.totalInvites + (deltas.invites ?? 0),
+        totalRegistered: c.totalRegistered + (deltas.registered ?? 0),
+        updatedAt: new Date().toISOString(),
+      };
+      store.inviteCampaigns.set(id, next);
+      return next;
+    },
     list: (limit = 500): StoredInviteCampaign[] =>
       Array.from(store.inviteCampaigns.values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, limit),
   },

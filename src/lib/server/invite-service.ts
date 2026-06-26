@@ -13,6 +13,7 @@
 import { db, type StoredInviteCampaign, type StoredInviteEntry, type ContactType } from "./store";
 import { randomId } from "./crypto";
 import { audit } from "./audit";
+import { withLock } from "./locks";
 import { getBonusConfig } from "./bonus-config";
 import { creditBonus } from "./bonus-service";
 import { tzPhone } from "./validators";
@@ -132,7 +133,7 @@ export async function addContacts(campaignId: string, text: string, adminId: str
     });
     added++;
   }
-  if (added > 0) await db.inviteCampaign.update(campaignId, { totalInvites: campaign.totalInvites + added });
+  if (added > 0) await db.inviteCampaign.incrementCounters(campaignId, { invites: added });
   audit({ category: "ADMIN", action: "invite.contacts_added", actorId: adminId, targetType: "InviteCampaign", targetId: campaignId, payload: { added, skipped, invalid: invalid.length } });
   return { ok: true, added, skipped, invalid };
 }
@@ -141,9 +142,12 @@ export async function addContacts(campaignId: string, text: string, adminId: str
  *  entry — a failed send marks that entry FAILED and the campaign continues. */
 export async function sendCampaign(campaignId: string, adminId: string):
   Promise<{ ok: true; sent: number; failed: number } | { ok: false; error: string }> {
+  // Serialize per campaign so two concurrent "Send" clicks can't both read the
+  // same QUEUED entries and double-deliver an invite.
+  return withLock(`invite-send:${campaignId}`, async () => {
   const campaign = await db.inviteCampaign.findById(campaignId);
-  if (!campaign) return { ok: false, error: "Campaign not found." };
-  if (campaign.status === "CANCELLED") return { ok: false, error: "Campaign is cancelled." };
+  if (!campaign) return { ok: false as const, error: "Campaign not found." };
+  if (campaign.status === "CANCELLED") return { ok: false as const, error: "Campaign is cancelled." };
 
   await db.inviteCampaign.update(campaignId, { status: "SENDING" });
   const entries = (await db.inviteEntry.findByCampaign(campaignId)).filter((e) => e.status === "QUEUED");
@@ -170,7 +174,8 @@ export async function sendCampaign(campaignId: string, adminId: string):
   }
   await db.inviteCampaign.update(campaignId, { status: "SENT" });
   audit({ category: "ADMIN", action: "invite.campaign_sent", actorId: adminId, targetType: "InviteCampaign", targetId: campaignId, payload: { sent, failed } });
-  return { ok: true, sent, failed };
+  return { ok: true as const, sent, failed };
+  });
 }
 
 export async function cancelCampaign(campaignId: string, adminId: string):
@@ -215,7 +220,7 @@ export async function bindRegistration(userId: string, code: string, contact?: {
     await db.inviteEntry.update(entry.id, { status: "REGISTERED", registeredUserId: userId, bonusGrantId: r.grant.id });
   }
   if (!r.deduped) {
-    await db.inviteCampaign.update(campaign.id, { totalRegistered: campaign.totalRegistered + 1 });
+    await db.inviteCampaign.incrementCounters(campaign.id, { registered: 1 });
   }
   audit({ category: "ADMIN", action: "invite.registered", actorId: userId, targetType: "InviteCampaign", targetId: campaign.id, payload: { grantedTzs: amount, deduped: r.deduped } });
   return { grantedTzs: amount };

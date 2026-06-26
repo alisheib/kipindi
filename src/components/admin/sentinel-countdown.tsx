@@ -165,9 +165,6 @@ export function SentinelCountdown() {
           </div>
 
           {msg && <p className="mt-2.5 text-[11px] text-text-muted leading-snug">{msg}</p>}
-          <p className="mt-2 text-[10px] text-text-subtle leading-snug">
-            The timer is deploy-proof — a push to Railway no longer resets it.
-          </p>
         </div>
       )}
     </div>
