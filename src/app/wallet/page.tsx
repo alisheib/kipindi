@@ -6,6 +6,7 @@ import { db } from "@/lib/server/store";
 import type { Transaction } from "@/lib/ui-stubs";
 import type { StoredTxn } from "@/lib/server/store";
 import { getBonusSummary } from "@/lib/server/bonus-service";
+import { getBonusConfig } from "@/lib/server/bonus-config";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 
 export const metadata = { title: "Wallet · Pochi" };
@@ -44,6 +45,8 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
   // Bonus wallet — second balance shown alongside the main wallet. Only the
   // active grants drive the play-through card; map to a lean serializable shape.
   const bonus = await getBonusSummary(session.userId);
+  const bonusCfg = getBonusConfig();
+  const cashbackPercent = bonusCfg.enabled && bonusCfg.cashbackEnabled ? bonusCfg.cashbackPercentage : 0;
   const bonusGrants = bonus.grants
     .filter((g) => g.status === "ACTIVE")
     .map((g) => ({
@@ -72,6 +75,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
         bonusActiveCount={bonus.activeCount}
         bonusWagerRemaining={bonus.activeWagerRemainingTzs}
         bonusGrants={bonusGrants}
+        cashbackPercent={cashbackPercent}
         isAuthed={true}
       />
     </>

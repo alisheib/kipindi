@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { AdminPageHead, AdminKpi, AdminCard } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
+import { EmptyState } from "@/components/ui/empty-state";
 import { listCampaigns, getInviteStats } from "@/lib/server/invite-service";
 import { formatTzs, formatDateShort } from "@/lib/utils";
 import { CreateCampaignForm } from "./invite-admin-client";
@@ -33,7 +34,13 @@ export default async function AdminInvitesPage() {
 
         <AdminCard title="Campaigns" sw="Kampeni zote" padding={campaigns.length > 0 ? "p-0" : "p-4"}>
           {campaigns.length === 0 ? (
-            <p className="text-caption text-text-tertiary py-4 text-center">No campaigns yet. Create one above to start inviting players.</p>
+            <EmptyState
+              kind="default"
+              title="No campaigns yet"
+              titleSw="Hakuna kampeni bado"
+              body="Create one above to start inviting players and granting sign-up bonuses."
+              bodySw="Tengeneza moja juu kuanza kualika wachezaji."
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="admin-tbl min-w-[720px]">

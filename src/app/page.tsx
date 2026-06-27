@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
+import { CashbackPromo } from "@/components/ui/cashback-promo";
 import { FiftyLockup } from "@/components/brand";
+import { getBonusConfig } from "@/lib/server/bonus-config";
 import { listMarkets, impliedYesPct, isClosedByTime, traderSeedsByMarket } from "@/lib/server/market-service";
 
 import { getCardChart } from "@/lib/server/market-history";
@@ -26,6 +28,8 @@ export default async function LandingPage() {
   const cardCharts = new Map(await Promise.all(live.map(async (m) => [m.id, await getCardChart(m.id)] as const)));
   const session = await getSession();
   const isAuthed = !!session;
+  const bonusCfg = getBonusConfig();
+  const showCashback = bonusCfg.enabled && bonusCfg.cashbackEnabled && bonusCfg.cashbackPercentage > 0;
 
   return (
     <div className="space-y-8 lg:space-y-10">
@@ -172,6 +176,9 @@ export default async function LandingPage() {
 
       {/* Rest of page — centered container */}
       <div className="mx-auto max-w-[1280px] px-3 lg:px-6 space-y-8 lg:space-y-10">
+
+      {/* Cashback offer — awareness hook above the fold of the content area */}
+      {showCashback && <CashbackPromo percent={bonusCfg.cashbackPercentage} />}
 
       {/* LIVE MARKETS — surfaced immediately, no scroll-the-marketing-page-first */}
       {live.length > 0 && (

@@ -2,6 +2,7 @@ import { AdminPageHead, AdminKpi, AdminCard } from "@/components/admin/admin-she
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
+import { EmptyState } from "@/components/ui/empty-state";
 import { I } from "@/components/ui/glyphs";
 import { Avatar } from "@/components/ui/avatar";
 import { getAffiliateConfig } from "@/lib/server/affiliate-config";
@@ -76,7 +77,12 @@ export default async function AdminAffiliatePage({
         {/* Leaderboard */}
         <AdminCard title="Referral leaderboard" sw="Mabingwa wa marafiki" padding={stats.leaderboard.length > 0 ? "p-0" : "p-4"}>
           {stats.leaderboard.length === 0 ? (
-            <p className="text-caption text-text-tertiary py-4 text-center">No affiliates have earned yet.</p>
+            <EmptyState
+              kind="leaderboard"
+              title="No affiliates have earned yet"
+              titleSw="Hakuna marafiki walioshinda bado"
+              body="Top referrers appear here as their friends sign up and play."
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="admin-tbl min-w-[480px]">
@@ -106,7 +112,12 @@ export default async function AdminAffiliatePage({
         {/* Payout ledger */}
         <AdminCard title="Payout ledger" sw="Daftari la malipo" padding={ledgerSorted.length > 0 ? "p-0" : "p-4"}>
           {ledgerSorted.length === 0 ? (
-            <p className="text-caption text-text-tertiary py-4 text-center">No payouts yet. Rewards appear here as friends sign up and play.</p>
+            <EmptyState
+              kind="default"
+              title="No payouts yet"
+              titleSw="Hakuna malipo bado"
+              body="Rewards appear here as friends sign up and play."
+            />
           ) : (
             <>
               <div className="overflow-x-auto">

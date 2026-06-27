@@ -7,6 +7,7 @@ import { I } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
 import { Input, Field } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { Spinner } from "@/components/ui/spinner";
 import { useDeferredToast } from "@/components/ui/toast";
 import { createCampaignAction, addContactsStructuredAction, sendCampaignAction, cancelCampaignAction } from "./invite-actions";
 
@@ -83,7 +84,17 @@ export function CampaignControls({ campaignId, status, queued, smsLive }: { camp
   const [amount, setAmount] = useState<number | "">("");
   const [emailErr, setEmailErr] = useState<string | undefined>();
   const [rows, setRows] = useState<StagedRow[]>([]);
+  const [busy, setBusy] = useState<string | null>(null); // which phase is in flight (for live feedback)
   const locked = status === "CANCELLED";
+
+  // Run a server action with an explicit phase label so the admin always sees
+  // what's happening ("Adding contacts…", "Sending invites…", "Cancelling…").
+  const run = (label: string, fn: () => Promise<void>) => {
+    setBusy(label);
+    start(async () => {
+      try { await fn(); } finally { setBusy(null); }
+    });
+  };
 
   const addToList = () => {
     const e = email.trim();
@@ -99,7 +110,7 @@ export function CampaignControls({ campaignId, status, queued, smsLive }: { camp
 
   const submitRows = () => {
     if (rows.length === 0) { toast({ title: "Add at least one contact to the list", variant: "danger" }); return; }
-    start(async () => {
+    run(`Adding ${rows.length} contact${rows.length === 1 ? "" : "s"}…`, async () => {
       const r = await addContactsStructuredAction(
         campaignId,
         rows.map((row) => ({ email: row.email || null, phone: row.phone || null, bonusAmountTzs: row.amount === "" ? null : Number(row.amount) })),
@@ -112,7 +123,7 @@ export function CampaignControls({ campaignId, status, queued, smsLive }: { camp
     });
   };
   const send = () => {
-    start(async () => {
+    run(`Sending ${queued} invite${queued === 1 ? "" : "s"}…`, async () => {
       const r = await sendCampaignAction(campaignId);
       if (r.ok) {
         router.refresh();
@@ -122,7 +133,7 @@ export function CampaignControls({ campaignId, status, queued, smsLive }: { camp
     });
   };
   const cancel = () => {
-    start(async () => {
+    run("Cancelling campaign…", async () => {
       const r = await cancelCampaignAction(campaignId);
       if (r.ok) { router.refresh(); deferToast({ title: "Campaign cancelled", variant: "success" }); }
       else toast({ title: "Couldn't cancel", description: r.error, variant: "danger" });
@@ -157,10 +168,16 @@ export function CampaignControls({ campaignId, status, queued, smsLive }: { camp
       {/* Staged list */}
       {rows.length > 0 && (
         <div className="rounded-lg border border-border overflow-hidden">
-          <div className="px-3 py-2 bg-bg-elevated font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">
-            {rows.length} contact{rows.length === 1 ? "" : "s"} staged
+          <div className="flex items-center justify-between gap-2 px-3 py-2 bg-bg-elevated">
+            <span className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">
+              {rows.length} contact{rows.length === 1 ? "" : "s"} staged · not yet saved
+            </span>
+            <button type="button" onClick={() => setRows([])} disabled={pending}
+              className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle hover:text-no-300 transition-colors disabled:opacity-40">
+              Clear all
+            </button>
           </div>
-          <ul className="divide-y divide-border">
+          <ul className="divide-y divide-border max-h-72 overflow-y-auto">
             {rows.map((row, i) => (
               <li key={i} className="flex items-center gap-2 px-3 py-2 text-[12px]">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 flex-1 min-w-0">
@@ -177,8 +194,17 @@ export function CampaignControls({ campaignId, status, queued, smsLive }: { camp
         </div>
       )}
 
+      {/* Zero-queued hint — tells the admin why Send is unavailable. */}
+      {!locked && queued === 0 && !busy && (
+        <p className="text-[11.5px] text-text-subtle">
+          {rows.length > 0
+            ? "Press “Add to campaign” to queue these contacts, then Send."
+            : "No invites queued yet — add contacts above, then Send."}
+        </p>
+      )}
+
       {/* Actions */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button variant="aqua-ghost" size="sm" leading={<I.plus s={13} />} loading={pending} onClick={submitRows} disabled={rows.length === 0 || locked}>
           Add {rows.length > 0 ? `${rows.length} ` : ""}to campaign
         </Button>
@@ -187,6 +213,13 @@ export function CampaignControls({ campaignId, status, queued, smsLive }: { camp
         </Button>
         {!locked && (
           <Button variant="ghost" size="sm" loading={pending} onClick={cancel}>Cancel campaign</Button>
+        )}
+        {/* Live phase indicator — the admin always knows what's happening now. */}
+        {busy && (
+          <span className="inline-flex items-center gap-2 text-[12px] text-text-muted" role="status" aria-live="polite">
+            <Spinner size={13} />
+            {busy}
+          </span>
         )}
       </div>
     </div>

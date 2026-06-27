@@ -3,9 +3,11 @@ import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { Input } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { CashbackPromo } from "@/components/ui/cashback-promo";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
+import { getBonusConfig } from "@/lib/server/bonus-config";
 import { depositAction } from "./actions";
 import { DepositAmount } from "./deposit-amount";
 
@@ -41,6 +43,8 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
   const adminTest = !!user && ADMIN_TEST_ROLES.has(user.role) && process.env.ADMIN_TEST_DEPOSITS !== "false";
   const maxAmount = adminTest ? 1_000_000_000 : 2_000_000;
   const quickAmounts = adminTest ? [100_000, 1_000_000, 5_000_000, 20_000_000, 100_000_000] : QUICK_AMOUNTS;
+  const bonusCfg = getBonusConfig();
+  const showCashback = bonusCfg.enabled && bonusCfg.cashbackEnabled && bonusCfg.cashbackPercentage > 0;
 
   return (
     <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
@@ -85,6 +89,8 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
           </div>
         </div>
       )}
+
+      {showCashback && <CashbackPromo percent={bonusCfg.cashbackPercentage} compact cta={false} />}
 
       <form action={depositAction} className="rounded-xl glass-panel p-5 lg:p-6 space-y-5">
         {/* Provider grid */}

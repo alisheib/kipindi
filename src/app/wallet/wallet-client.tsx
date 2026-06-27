@@ -7,6 +7,7 @@ import { FiftyMark } from "@/components/brand";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { Transaction } from "@/lib/ui-stubs";
 import { Cash } from "@/components/ui/cash";
+import { CashbackPromo } from "@/components/ui/cashback-promo";
 import { formatDateTimeSafe } from "@/lib/utils";
 
 const TXNS_PER_PAGE = 12;
@@ -317,11 +318,13 @@ export function WalletPageClient({
   balance, pending, hold, currency,
   transactions,
   bonusBalance, bonusActiveCount, bonusWagerRemaining, bonusGrants,
+  cashbackPercent = 0,
   isAuthed,
 }: {
   balance: number; pending: number; hold: number; currency: string;
   transactions: Transaction[];
   bonusBalance: number; bonusActiveCount: number; bonusWagerRemaining: number; bonusGrants: BonusGrantView[];
+  cashbackPercent?: number;
   isAuthed: boolean;
 }) {
   const [tab, setTab] = useState<typeof TABS[number]["v"]>("activity");
@@ -360,6 +363,8 @@ export function WalletPageClient({
       {bonusWagerRemaining > 0 && (
         <p className="sr-only">Bonus play-through remaining: {fmt(bonusWagerRemaining, currency)}</p>
       )}
+
+      {cashbackPercent > 0 && <CashbackPromo percent={cashbackPercent} />}
 
       {/* Kit tabs — line variant rebuilt inline so we don't pull the legacy Tabs component. */}
       <nav role="tablist" aria-label="Wallet sections" className="flex items-center gap-1 border-b border-border">

@@ -3,6 +3,7 @@ import type { Route } from "next";
 import { notFound } from "next/navigation";
 import { AdminPageHead, AdminKpi, AdminCard } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
+import { EmptyState } from "@/components/ui/empty-state";
 import { I } from "@/components/ui/glyphs";
 import { getCampaignDetail } from "@/lib/server/invite-service";
 import { smsConfigured } from "@/lib/server/sms";
@@ -64,7 +65,13 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
 
         <AdminCard title="Contacts" sw="Anwani" padding={entries.length > 0 ? "p-0" : "p-4"}>
           {entries.length === 0 ? (
-            <p className="text-caption text-text-tertiary py-4 text-center">No contacts yet. Add some above, then send.</p>
+            <EmptyState
+              kind="default"
+              title="No contacts yet"
+              titleSw="Hakuna anwani bado"
+              body="Add email or phone contacts above, then press Send to deliver the invites."
+              bodySw="Ongeza barua pepe au simu juu, kisha bonyeza Tuma."
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="admin-tbl min-w-[560px]">

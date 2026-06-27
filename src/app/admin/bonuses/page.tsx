@@ -1,6 +1,7 @@
 import { AdminPageHead, AdminKpi, AdminCard } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { Chip } from "@/components/ui/chip";
+import { EmptyState } from "@/components/ui/empty-state";
 import { I } from "@/components/ui/glyphs";
 import { getBonusConfig } from "@/lib/server/bonus-config";
 import { getAdminBonusStats } from "@/lib/server/bonus-service";
@@ -87,7 +88,13 @@ export default async function AdminBonusesPage({
         {/* Grant ledger */}
         <AdminCard title="Grant ledger" sw="Daftari la bonasi" padding={stats.ledger.length > 0 ? "p-0" : "p-4"}>
           {stats.ledger.length === 0 ? (
-            <p className="text-caption text-text-tertiary py-4 text-center">No bonuses granted yet. Grants from admin, affiliate, proposals and invites appear here.</p>
+            <EmptyState
+              kind="default"
+              title="No bonuses granted yet"
+              titleSw="Hakuna bonasi bado"
+              body="Grants from admin, affiliate, proposals, invites and deposit cashback appear here."
+              bodySw="Bonasi za admin, marafiki, mapendekezo na marejesho zitaonekana hapa."
+            />
           ) : (
             <>
               <div className="overflow-x-auto">
