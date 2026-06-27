@@ -56,7 +56,11 @@ function defaults(): AIPollConfig {
     // 240d (~8 months) so naturally year-end-framed markets (e.g. "by 31 Dec")
     // pass when generated mid-year, while still capping runaway long-dated polls.
     maxLeadTimeDays: envInt("AI_POLL_MAX_LEAD_DAYS", 240, 1, 365 * 3),
-    minConfidence: envInt("AI_POLL_MIN_CONFIDENCE", 60, 0, 100),
+    // 50, not 60: Sonnet rates its own confidence conservatively, so many sound
+    // polls self-score 50–59 and were being filtered before a human ever saw
+    // them — double-gating, since every poll is human-reviewed before publish.
+    // The human queue is the real quality bar; this just blocks obvious junk.
+    minConfidence: envInt("AI_POLL_MIN_CONFIDENCE", 50, 0, 100),
     maxBatchPerRun: envInt("AI_POLL_MAX_BATCH", 25, 1, 200),
   };
 }

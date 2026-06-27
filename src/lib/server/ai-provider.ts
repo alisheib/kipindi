@@ -52,6 +52,10 @@ export type GenerateRequest = {
   category: string;
   prompt?: string;          // optional admin freeform guidance
   locale?: "en" | "sw";
+  /** Existing market / in-review poll titles to steer AWAY from, so the model
+   *  doesn't re-propose a question we already have (which would be filtered as a
+   *  duplicate AFTER we'd already paid for the generation). */
+  avoidTitles?: string[];
 };
 
 /* ─── Provider interface ─── */

@@ -625,11 +625,29 @@ export async function aiPollSpend(): Promise<{ totalTokens: number; totalUsd: nu
 }
 
 /** Generate a new AI poll. Returns immediately with GENERATING state, then updates in-place. */
+/** Titles the model should NOT re-propose: in-play polls (not terminal) + live
+ *  markets — the exact set the duplicate filter rejects against. Feeding these
+ *  into the prompt prevents paying to generate a near-duplicate that would just
+ *  be filtered. Best-effort; capped in the prompt builder. */
+async function gatherExistingTitles(): Promise<string[]> {
+  const titles: string[] = [];
+  try {
+    for (const p of await store.values()) {
+      if (p.titleEn && p.state !== "VALIDATION_FAILED" && p.state !== "FILTERED" && p.state !== "REJECTED") titles.push(p.titleEn);
+    }
+    for (const m of await listMarkets()) if (m.titleEn) titles.push(m.titleEn);
+  } catch { /* steering is best-effort — never block generation */ }
+  return Array.from(new Set(titles)).slice(-80);
+}
+
 export async function generateAIPoll(opts: {
   category: string;
   prompt?: string;
   actorId: string;
   regenerationOf?: string;
+  /** Pre-gathered avoid-list (batch path passes one shared list so it isn't
+   *  re-queried per poll). Falls back to gathering when omitted. */
+  avoidTitles?: string[];
 }): Promise<StoredAIPoll> {
   const now = new Date().toISOString();
   const parentPoll = opts.regenerationOf ? await store.get(opts.regenerationOf) : null;
@@ -679,11 +697,13 @@ export async function generateAIPoll(opts: {
     payload: { category: opts.category, prompt: opts.prompt, regenerationOf: opts.regenerationOf },
   });
 
-  // Call the AI provider
+  // Call the AI provider — steer away from existing questions so we don't pay
+  // to generate a duplicate that the filter would reject post-hoc.
+  const avoidTitles = opts.avoidTitles ?? (await gatherExistingTitles());
   const provider = getAIProvider();
   let response: AIProviderResponse;
   try {
-    response = await provider.generate({ category: opts.category, prompt: opts.prompt });
+    response = await provider.generate({ category: opts.category, prompt: opts.prompt, avoidTitles });
   } catch (err) {
     poll.state = "VALIDATION_FAILED";
     poll.filterReasons = ["provider_error"];
@@ -841,11 +861,16 @@ export async function generateAIPollBatch(opts: {
     GENERATING: 0, VALIDATION_FAILED: 0, FILTERED: 0,
     PENDING_REVIEW: 0, EDITING: 0, APPROVED: 0, REJECTED: 0, PUBLISHED: 0,
   };
+  // Gather the avoid-list ONCE for the whole batch (not per poll), and grow it
+  // as the batch produces keepers so later polls don't duplicate earlier ones
+  // in the same run.
+  const avoidTitles = await gatherExistingTitles();
   for (let i = 0; i < n; i++) {
     const category = cats[i % cats.length];
-    const poll = await generateAIPoll({ category, prompt: opts.prompt, actorId: opts.actorId });
+    const poll = await generateAIPoll({ category, prompt: opts.prompt, actorId: opts.actorId, avoidTitles });
     generated.push(poll);
     summary[poll.state]++;
+    if (poll.titleEn && (poll.state === "PENDING_REVIEW" || poll.state === "EDITING")) avoidTitles.push(poll.titleEn);
   }
   return { generated, summary };
 }

@@ -111,10 +111,16 @@ function buildSystemPrompt(opts: {
   minLeadHours: number;
   maxLeadDays: number;
   webSearch: boolean;
+  avoidTitles?: string[];
 }): string {
   const earliest = new Date(Date.now() + opts.minLeadHours * 3_600_000).toISOString();
   const latest = new Date(Date.now() + opts.maxLeadDays * 86_400_000).toISOString();
-  return `You are the 50pick poll generator — the sharpest prediction-market question writer in Tanzania, working for a GBT-licensed pari-mutuel platform.
+  // Cap the list so the prompt stays small even with a big board.
+  const avoid = (opts.avoidTitles ?? []).slice(0, 60);
+  const avoidBlock = avoid.length
+    ? `\n\nDO NOT DUPLICATE — the platform ALREADY has these questions live or in review. Your question must be MEANINGFULLY DIFFERENT (different subject, threshold, or resolution moment); never a paraphrase of any of these:\n${avoid.map((t) => `- ${t}`).join("\n")}\n`
+    : "";
+  return `You are the 50pick poll generator — the sharpest prediction-market question writer in Tanzania, working for a GBT-licensed pari-mutuel platform.${avoidBlock}
 
 Your job: generate ONE excellent YES/NO prediction-market question for the given category, then submit it by calling the submit_poll tool.
 
@@ -184,6 +190,7 @@ export class ClaudeProvider implements AIProvider {
           minLeadHours: cfg.minLeadTimeHours,
           maxLeadDays: cfg.maxLeadTimeDays,
           webSearch: cfg.webSearchEnabled,
+          avoidTitles: req.avoidTitles,
         }),
         // When web search is on the model must be free to call it before
         // submit_poll, so we can only force *some* tool, not submit_poll
