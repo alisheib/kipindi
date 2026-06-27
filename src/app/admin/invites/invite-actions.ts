@@ -5,8 +5,8 @@ import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import {
-  createCampaign, addContacts, sendCampaign, cancelCampaign,
-  type CreateCampaignInput,
+  createCampaign, addContacts, addContactsStructured, sendCampaign, cancelCampaign,
+  type CreateCampaignInput, type ContactRow,
 } from "@/lib/server/invite-service";
 
 const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
@@ -36,8 +36,16 @@ export async function addContactsAction(campaignId: string, text: string):
   return r;
 }
 
+export async function addContactsStructuredAction(campaignId: string, rows: ContactRow[]):
+  Promise<{ ok: true; added: number; skipped: number; invalid: number } | { ok: false; error: string }> {
+  const s = await ensureAdmin();
+  const r = await addContactsStructured(campaignId, rows, s.userId);
+  revalidatePath(`/admin/invites/${campaignId}`);
+  return r;
+}
+
 export async function sendCampaignAction(campaignId: string):
-  Promise<{ ok: true; sent: number; failed: number } | { ok: false; error: string }> {
+  Promise<{ ok: true; sent: number; failed: number; pending: number } | { ok: false; error: string }> {
   const s = await ensureAdmin();
   const r = await sendCampaign(campaignId, s.userId);
   revalidatePath(`/admin/invites/${campaignId}`);

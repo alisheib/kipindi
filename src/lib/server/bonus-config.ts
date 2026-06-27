@@ -13,6 +13,12 @@
  *   - affiliate rewards  → bonus wallet (affiliateToBonus = true)
  *   - proposal prizes    → bonus wallet (proposalToBonus  = true)
  *   - no monthly cap (monthlyCapTzs = 0 → unlimited; admins have full discretion)
+ *
+ * Deposit cashback (Ali 2026-06-27): every confirmed deposit credits a bonus
+ * worth `cashbackPercentage`% of the deposit into the bonus wallet. No min
+ * deposit, no cap — 10% on every deposit, always. Cashback grants use the same
+ * default wagering multiplier + expiry as any other bonus (consistency), so they
+ * play through exactly like a normal bonus before becoming withdrawable.
  */
 import { audit } from "./audit";
 import { loadConfig, saveConfig } from "./config-store";
@@ -36,6 +42,12 @@ export type BonusConfig = {
   /** Optional ceiling on total bonus TZS granted per calendar month across all
    *  sources. 0 = no cap (default — admins have full discretion). */
   monthlyCapTzs: number;
+  /** Deposit cashback master switch. When true, every confirmed deposit credits
+   *  a CASHBACK bonus worth `cashbackPercentage`% of the deposit. */
+  cashbackEnabled: boolean;
+  /** Cashback rate as a whole/fractional percent of the deposit (e.g. 10 = 10%).
+   *  Floored to whole TZS when credited. */
+  cashbackPercentage: number;
 };
 
 export const DEFAULT_BONUS_CONFIG: BonusConfig = {
@@ -45,6 +57,8 @@ export const DEFAULT_BONUS_CONFIG: BonusConfig = {
   affiliateToBonus: true,
   proposalToBonus: true,
   monthlyCapTzs: 0,
+  cashbackEnabled: true,
+  cashbackPercentage: 10,
 };
 
 declare global {
@@ -73,6 +87,8 @@ function validate(c: BonusConfig): { ok: true } | { ok: false; reason: string } 
     return { ok: false, reason: "Expiry must be 1–365 days." };
   if (!Number.isFinite(c.monthlyCapTzs) || c.monthlyCapTzs < 0 || c.monthlyCapTzs > 1_000_000_000)
     return { ok: false, reason: "Monthly cap must be 0 (unlimited) – 1,000,000,000 TZS." };
+  if (!Number.isFinite(c.cashbackPercentage) || c.cashbackPercentage < 0 || c.cashbackPercentage > 100)
+    return { ok: false, reason: "Cashback percentage must be 0–100%." };
   return { ok: true };
 }
 

@@ -59,18 +59,18 @@ export const consoleSms: SmsProvider = {
 const selcomSms: SmsProvider = {
   name: "selcom",
   async send(to, body, opts) {
-    // const res = await fetch(`https://apigw.selcommobile.com/v1/sms/send`, {
-    //   method: "POST",
-    //   headers: { Authorization: `Bearer ${process.env.SMS_API_KEY!}`, "Content-Type": "application/json" },
-    //   body: JSON.stringify({ msisdn: to, message: body, senderId: opts?.senderId ?? process.env.SMS_SENDER_ID ?? "KIPINDI" }),
-    // });
-    // if (!res.ok) throw new Error(`selcom sms failed: ${res.status}`);
-    // const json = await res.json();
-    // return { id: json.id, cost: json.cost };
-    void opts;
-    void body;
-    void to;
-    throw new Error("selcom adapter not configured — set SMS_PROVIDER=console or sign Selcom agreement");
+    const apiKey = process.env.SMS_API_KEY;
+    if (!apiKey) throw new Error("selcom: SMS_API_KEY not set");
+    const senderId = opts?.senderId ?? process.env.SMS_SENDER_ID ?? "KIPINDI";
+    const endpoint = process.env.SMS_API_URL ?? "https://apigw.selcommobile.com/v1/sms/send";
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ msisdn: to, message: body, senderId }),
+    });
+    if (!res.ok) throw new Error(`selcom sms failed: ${res.status}`);
+    const json = (await res.json().catch(() => ({}))) as { id?: string; messageId?: string; cost?: number };
+    return { id: json.id ?? json.messageId ?? `selcom_${res.status}`, cost: json.cost };
   },
 };
 
@@ -93,6 +93,21 @@ function pickProvider(): SmsProvider {
     case "console":
     default:                 return consoleSms;
   }
+}
+
+/**
+ * Whether SMS will ACTUALLY deliver right now — used by callers (e.g. invite
+ * campaigns) to avoid marking a phone message "sent" when nothing leaves the box.
+ *  - A real provider (selcom/beem/…) counts as configured only with an API key.
+ *  - The `console` provider is a working stub in dev/test but in PRODUCTION it
+ *    delivers nothing, so it is NOT considered configured there.
+ * To go live: sign the provider (e.g. Selcom), then set SMS_PROVIDER=selcom,
+ * SMS_API_KEY=<key>, and SMS_SENDER_ID=<TCRA-licensed sender id>.
+ */
+export function smsConfigured(): boolean {
+  const provider = (process.env.SMS_PROVIDER ?? "console").toLowerCase();
+  if (provider === "console") return process.env.NODE_ENV !== "production";
+  return !!process.env.SMS_API_KEY;
 }
 
 let smsHealth = { sent: 0, failed: 0 };

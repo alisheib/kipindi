@@ -5,9 +5,13 @@ import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, Field } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { useDeferredToast } from "@/components/ui/toast";
-import { createCampaignAction, addContactsAction, sendCampaignAction, cancelCampaignAction } from "./invite-actions";
+import { createCampaignAction, addContactsStructuredAction, sendCampaignAction, cancelCampaignAction } from "./invite-actions";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+type StagedRow = { email: string; phone: string; amount: number | "" };
 
 /** Create-campaign form (on the list page). */
 export function CreateCampaignForm() {
@@ -63,29 +67,58 @@ export function CreateCampaignForm() {
   );
 }
 
-/** Add-contacts + send controls (on the detail page). */
-export function CampaignControls({ campaignId, status, queued }: { campaignId: string; status: string; queued: number }) {
+/** Add-contacts + send controls (on the detail page).
+ *
+ *  Contacts are entered in SEPARATE email / phone fields (one or both — at least
+ *  one required) and staged into a reviewable list before submitting, so admins
+ *  can't make the per-line paste mistakes the old single textarea invited. A row
+ *  with both an email and a phone reaches the invitee on both channels. */
+export function CampaignControls({ campaignId, status, queued, smsLive }: { campaignId: string; status: string; queued: number; smsLive: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const { deferToast, toast } = useDeferredToast(pending);
-  const [text, setText] = useState("");
 
-  const add = () => {
-    if (!text.trim()) { toast({ title: "Paste some contacts first", variant: "danger" }); return; }
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");        // raw 9 digits (PhoneInput strips to canonical)
+  const [amount, setAmount] = useState<number | "">("");
+  const [emailErr, setEmailErr] = useState<string | undefined>();
+  const [rows, setRows] = useState<StagedRow[]>([]);
+  const locked = status === "CANCELLED";
+
+  const addToList = () => {
+    const e = email.trim();
+    const p = phone.trim();
+    if (!e && !p) { toast({ title: "Enter an email or a phone", variant: "danger" }); return; }
+    if (e && !EMAIL_RE.test(e)) { setEmailErr("That doesn't look like an email"); return; }
+    if (p && !/^[67]\d{8}$/.test(p)) { toast({ title: "Phone must be a 9-digit TZ mobile (6… or 7…)", variant: "danger" }); return; }
+    setEmailErr(undefined);
+    setRows((r) => [...r, { email: e, phone: p, amount }]);
+    setEmail(""); setPhone(""); setAmount("");
+  };
+  const removeRow = (i: number) => setRows((r) => r.filter((_, idx) => idx !== i));
+
+  const submitRows = () => {
+    if (rows.length === 0) { toast({ title: "Add at least one contact to the list", variant: "danger" }); return; }
     start(async () => {
-      const r = await addContactsAction(campaignId, text);
+      const r = await addContactsStructuredAction(
+        campaignId,
+        rows.map((row) => ({ email: row.email || null, phone: row.phone || null, bonusAmountTzs: row.amount === "" ? null : Number(row.amount) })),
+      );
       if (r.ok) {
-        setText("");
+        setRows([]);
         router.refresh();
-        deferToast({ title: `${r.added} added · ${r.skipped} duplicate · ${r.invalid.length} invalid`, variant: "success" });
+        deferToast({ title: `${r.added} added · ${r.skipped} duplicate · ${r.invalid} invalid`, variant: "success" });
       } else toast({ title: "Couldn't add", description: r.error, variant: "danger" });
     });
   };
   const send = () => {
     start(async () => {
       const r = await sendCampaignAction(campaignId);
-      if (r.ok) { router.refresh(); deferToast({ title: `Sent ${r.sent} · ${r.failed} failed`, variant: "success" }); }
-      else toast({ title: "Couldn't send", description: r.error, variant: "danger" });
+      if (r.ok) {
+        router.refresh();
+        const extra = r.pending > 0 ? ` · ${r.pending} phone pending (SMS not live yet)` : "";
+        deferToast({ title: `Sent ${r.sent}${r.failed > 0 ? ` · ${r.failed} failed` : ""}${extra}`, variant: r.pending > 0 ? "warning" : "success" });
+      } else toast({ title: "Couldn't send", description: r.error, variant: "danger" });
     });
   };
   const cancel = () => {
@@ -97,24 +130,64 @@ export function CampaignControls({ campaignId, status, queued }: { campaignId: s
   };
 
   return (
-    <div className="space-y-3">
-      <div>
-        <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">Add contacts · one per line (email or phone, optional <span className="font-mono">,amount</span>)</div>
-        <textarea
-          className="w-full min-h-[120px] rounded-lg border border-border bg-[var(--bg-inset)] px-3 py-2.5 font-mono text-[12px] text-text placeholder:text-text-subtle outline-none admin-focus transition-colors resize-none"
-          placeholder={"jane@example.com\n0712345678\n+255713000111,15000"}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-        />
-        <div className="mt-2 flex flex-wrap gap-2">
-          <Button variant="ghost" size="sm" leading={<I.plus s={13} />} loading={pending} onClick={add} disabled={status === "CANCELLED"}>Add contacts</Button>
-          <Button variant="gold" size="sm" leading={<I.megaphone s={13} />} loading={pending} onClick={send} disabled={queued === 0 || status === "CANCELLED"}>
-            Send {queued > 0 ? `(${queued} queued)` : ""}
-          </Button>
-          {status !== "CANCELLED" && (
-            <Button variant="ghost" size="sm" loading={pending} onClick={cancel}>Cancel campaign</Button>
-          )}
+    <div className="space-y-4">
+      {/* Structured contact entry */}
+      <div className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <Field label="Email" hint="jane@example.com" error={emailErr} className="lg:col-span-2">
+            <Input
+              type="email" inputMode="email" autoComplete="off" size="sm" placeholder="jane@example.com"
+              value={email} error={emailErr} onChange={(e) => { setEmail(e.target.value); if (emailErr) setEmailErr(undefined); }}
+            />
+          </Field>
+          <Field label="Phone" hint={smsLive ? "Any TZ mobile" : "Captured now · SMS sends once live"}>
+            <PhoneInput size="sm" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          </Field>
+          <Field label="Bonus" hint="Blank = campaign default">
+            <Input
+              prefix="TZS" mono size="sm" inputMode="numeric" placeholder="default" value={amount}
+              onChange={(e) => { const n = Number(e.target.value.replace(/[^\d]/g, "")); setAmount(Number.isFinite(n) && n > 0 ? n : ""); }}
+            />
+          </Field>
         </div>
+        <div className="text-[10.5px] text-text-subtle">Fill an email, a phone, or both — at least one is required. Add several, review the list, then submit.</div>
+        <Button variant="ghost" size="sm" leading={<I.plus s={13} />} onClick={addToList} disabled={locked}>Add to list</Button>
+      </div>
+
+      {/* Staged list */}
+      {rows.length > 0 && (
+        <div className="rounded-lg border border-border overflow-hidden">
+          <div className="px-3 py-2 bg-bg-elevated font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">
+            {rows.length} contact{rows.length === 1 ? "" : "s"} staged
+          </div>
+          <ul className="divide-y divide-border">
+            {rows.map((row, i) => (
+              <li key={i} className="flex items-center gap-2 px-3 py-2 text-[12px]">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 flex-1 min-w-0">
+                  {row.email && <span className="font-mono text-text-muted truncate">{row.email}</span>}
+                  {row.phone && <span className="font-mono text-text-muted">+255 {row.phone}</span>}
+                  {row.amount !== "" && <span className="font-mono text-gold-300">TZS {Number(row.amount).toLocaleString("en-US")}</span>}
+                </div>
+                <button type="button" onClick={() => removeRow(i)} className="text-text-subtle hover:text-no-300 transition-colors shrink-0" aria-label="Remove">
+                  <I.x s={14} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="flex flex-wrap gap-2">
+        <Button variant="aqua-ghost" size="sm" leading={<I.plus s={13} />} loading={pending} onClick={submitRows} disabled={rows.length === 0 || locked}>
+          Add {rows.length > 0 ? `${rows.length} ` : ""}to campaign
+        </Button>
+        <Button variant="gold" size="sm" leading={<I.megaphone s={13} />} loading={pending} onClick={send} disabled={queued === 0 || locked}>
+          Send {queued > 0 ? `(${queued} queued)` : ""}
+        </Button>
+        {!locked && (
+          <Button variant="ghost" size="sm" loading={pending} onClick={cancel}>Cancel campaign</Button>
+        )}
       </div>
     </div>
   );

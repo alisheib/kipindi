@@ -210,6 +210,30 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string): Prom
         .reduce((sum, x) => sum + x.amount, 0);
       await onRecruitDeposit(t.userId, { cumulativeDepositsTzs });
     } catch { /* affiliate accrual must never break a deposit */ }
+
+    // Deposit cashback — credit `cashbackPercentage`% of the deposit into the
+    // bonus wallet (non-withdrawable, plays through like any bonus). Runs only on
+    // the call that actually credited (so a webhook retry, which finds the txn
+    // already CONFIRMED, never re-fires) and is doubly idempotent via the grant's
+    // unique sourceRef. creditBonus takes the wallet lock itself, so it MUST run
+    // here — outside settleDepositConfirmed's own lock (locks.ts is not
+    // re-entrant). Best-effort: cashback must never break a confirmed deposit.
+    try {
+      const { getBonusConfig } = await import("./bonus-config");
+      const cfg = getBonusConfig();
+      if (cfg.enabled && cfg.cashbackEnabled && cfg.cashbackPercentage > 0) {
+        const cashbackTzs = Math.floor((t.amount * cfg.cashbackPercentage) / 100);
+        if (cashbackTzs > 0) {
+          const { creditBonus } = await import("./bonus-service");
+          await creditBonus(t.userId, {
+            amountTzs: cashbackTzs,
+            source: "CASHBACK",
+            sourceRef: `deposit:${t.id}`, // exactly-once per deposit
+            note: `${cfg.cashbackPercentage}% cashback on deposit ${t.id}`,
+          });
+        }
+      }
+    } catch { /* cashback must never break a deposit */ }
   }
   return { credited: outcome.credited, balance: outcome.balance };
 }

@@ -5,6 +5,7 @@ import { AdminPageHead, AdminKpi, AdminCard } from "@/components/admin/admin-she
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { getCampaignDetail } from "@/lib/server/invite-service";
+import { smsConfigured } from "@/lib/server/sms";
 import { formatTzs, formatDateShort } from "@/lib/utils";
 import { CampaignControls } from "../invite-admin-client";
 
@@ -24,6 +25,8 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
   if (!detail) notFound();
   const { campaign, entries, counts } = detail;
   const queued = counts.QUEUED ?? 0;
+  const smsLive = smsConfigured();
+  const queuedPhone = entries.filter((e) => e.contactType === "PHONE" && e.status === "QUEUED").length;
 
   return (
     <>
@@ -45,8 +48,18 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
           <AdminKpi label="Expiry" sw="Muda" value={`${campaign.expiresInDays}d`} delta="bonus validity" deltaDir="flat" />
         </div>
 
+        {!smsLive && queuedPhone > 0 && (
+          <div className="flex items-start gap-2.5 rounded-lg border border-gold-700/60 bg-gold-500/10 px-3.5 py-3 text-[12.5px] text-text-muted">
+            <span className="text-gold-300 shrink-0 mt-0.5"><I.warning s={15} /></span>
+            <span>
+              <span className="font-semibold text-text">{queuedPhone} phone {queuedPhone === 1 ? "invite is" : "invites are"} waiting.</span>{" "}
+              SMS isn&apos;t live yet, so phone invites stay queued (email invites send normally). They&apos;ll go out automatically once an SMS provider is configured — set <span className="font-mono">SMS_PROVIDER</span>, <span className="font-mono">SMS_API_KEY</span> and <span className="font-mono">SMS_SENDER_ID</span>, then press Send again.
+            </span>
+          </div>
+        )}
+
         <AdminCard title="Manage" sw="Simamia">
-          <CampaignControls campaignId={campaign.id} status={campaign.status} queued={queued} />
+          <CampaignControls campaignId={campaign.id} status={campaign.status} queued={queued} smsLive={smsLive} />
         </AdminCard>
 
         <AdminCard title="Contacts" sw="Anwani" padding={entries.length > 0 ? "p-0" : "p-4"}>

@@ -18,7 +18,7 @@ import { getBonusConfig } from "./bonus-config";
 import { creditBonus } from "./bonus-service";
 import { tzPhone } from "./validators";
 import { sendEmail, inviteHtml } from "./email";
-import { sms, inviteMessage } from "./sms";
+import { sms, inviteMessage, smsConfigured } from "./sms";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -108,6 +108,32 @@ export async function createCampaign(input: CreateCampaignInput, adminId: string
   return { ok: true, campaign };
 }
 
+/** Create one QUEUED entry for a (type,value) if the campaign doesn't already
+ *  have that contact. Returns true if a new entry was created. */
+async function addEntryIfNew(
+  campaign: StoredInviteCampaign,
+  type: ContactType,
+  value: string,
+  bonusAmountTzs?: number,
+): Promise<boolean> {
+  const existing = await db.inviteEntry.findByCampaignAndContact(campaign.id, value);
+  if (existing) return false;
+  await db.inviteEntry.create({
+    id: `ive_${randomId(10)}`,
+    campaignId: campaign.id,
+    contactType: type,
+    contactValue: value,
+    bonusAmountTzs: bonusAmountTzs ?? campaign.bonusAmountTzs,
+    status: "QUEUED",
+    sentAt: null,
+    registeredUserId: null,
+    bonusGrantId: null,
+    failureReason: null,
+    createdAt: new Date().toISOString(),
+  });
+  return true;
+}
+
 /** Add contacts to a DRAFT/SENT campaign. Skips duplicates already on the campaign. */
 export async function addContacts(campaignId: string, text: string, adminId: string):
   Promise<{ ok: true; added: number; skipped: number; invalid: string[] } | { ok: false; error: string }> {
@@ -116,32 +142,58 @@ export async function addContacts(campaignId: string, text: string, adminId: str
   const { valid, invalid } = parseContacts(text);
   let added = 0, skipped = 0;
   for (const c of valid) {
-    const existing = await db.inviteEntry.findByCampaignAndContact(campaignId, c.value);
-    if (existing) { skipped++; continue; }
-    await db.inviteEntry.create({
-      id: `ive_${randomId(10)}`,
-      campaignId,
-      contactType: c.type,
-      contactValue: c.value,
-      bonusAmountTzs: c.bonusAmountTzs ?? campaign.bonusAmountTzs,
-      status: "QUEUED",
-      sentAt: null,
-      registeredUserId: null,
-      bonusGrantId: null,
-      failureReason: null,
-      createdAt: new Date().toISOString(),
-    });
-    added++;
+    if (await addEntryIfNew(campaign, c.type, c.value, c.bonusAmountTzs)) added++;
+    else skipped++;
   }
   if (added > 0) await db.inviteCampaign.incrementCounters(campaignId, { invites: added });
   audit({ category: "ADMIN", action: "invite.contacts_added", actorId: adminId, targetType: "InviteCampaign", targetId: campaignId, payload: { added, skipped, invalid: invalid.length } });
   return { ok: true, added, skipped, invalid };
 }
 
+/** A structured contact row from the redesigned admin form: an email and/or a
+ *  phone (at least one), with an optional per-invitee bonus override. */
+export type ContactRow = { email?: string | null; phone?: string | null; bonusAmountTzs?: number | null };
+
+/**
+ * Add contacts from the split email/phone form. Each row may carry an email, a
+ * phone, or both — a row with both becomes TWO entries so the invitee is reached
+ * on each channel. Validates/normalizes each value (email lowercased, phone →
+ * E.164); a row with neither a valid email nor a valid phone is reported in
+ * `invalid`. Skips contacts already on the campaign. This is the admin-proof
+ * replacement for the error-prone single-textarea path.
+ */
+export async function addContactsStructured(campaignId: string, rows: ContactRow[], adminId: string):
+  Promise<{ ok: true; added: number; skipped: number; invalid: number } | { ok: false; error: string }> {
+  const campaign = await db.inviteCampaign.findById(campaignId);
+  if (!campaign) return { ok: false, error: "Campaign not found." };
+  let added = 0, skipped = 0, invalid = 0;
+  for (const row of rows ?? []) {
+    const amount = row.bonusAmountTzs && row.bonusAmountTzs > 0 ? Math.round(row.bonusAmountTzs) : undefined;
+    const emailRaw = (row.email ?? "").trim();
+    const phoneRaw = (row.phone ?? "").trim();
+    const email = emailRaw ? classifyContact(emailRaw) : null;
+    const phone = phoneRaw ? classifyContact(phoneRaw) : null;
+    // A row must yield at least one valid channel of the kind the admin entered.
+    const emailValid = !!email && email.type === "EMAIL";
+    const phoneValid = !!phone && phone.type === "PHONE";
+    if (!emailValid && !phoneValid) { invalid++; continue; }
+    if (emailValid) { if (await addEntryIfNew(campaign, "EMAIL", email!.value, amount)) added++; else skipped++; }
+    if (phoneValid) { if (await addEntryIfNew(campaign, "PHONE", phone!.value, amount)) added++; else skipped++; }
+  }
+  if (added > 0) await db.inviteCampaign.incrementCounters(campaignId, { invites: added });
+  audit({ category: "ADMIN", action: "invite.contacts_added", actorId: adminId, targetType: "InviteCampaign", targetId: campaignId, payload: { added, skipped, invalid, structured: true } });
+  return { ok: true, added, skipped, invalid };
+}
+
 /** Send all QUEUED entries (email via Postmark, phone via SMS). Best-effort per
- *  entry — a failed send marks that entry FAILED and the campaign continues. */
+ *  entry — a failed send marks that entry FAILED and the campaign continues.
+ *
+ *  SMS honesty: when no SMS provider is live (`smsConfigured()` is false), phone
+ *  entries are left QUEUED and reported as `pending` rather than marked SENT —
+ *  so the admin is never told "delivered" when nothing left the box. They go out
+ *  automatically on the next Send once a provider (e.g. Selcom) is wired. */
 export async function sendCampaign(campaignId: string, adminId: string):
-  Promise<{ ok: true; sent: number; failed: number } | { ok: false; error: string }> {
+  Promise<{ ok: true; sent: number; failed: number; pending: number } | { ok: false; error: string }> {
   // Serialize per campaign so two concurrent "Send" clicks can't both read the
   // same QUEUED entries and double-deliver an invite.
   return withLock(`invite-send:${campaignId}`, async () => {
@@ -149,10 +201,14 @@ export async function sendCampaign(campaignId: string, adminId: string):
   if (!campaign) return { ok: false as const, error: "Campaign not found." };
   if (campaign.status === "CANCELLED") return { ok: false as const, error: "Campaign is cancelled." };
 
+  const smsLive = smsConfigured();
   await db.inviteCampaign.update(campaignId, { status: "SENDING" });
   const entries = (await db.inviteEntry.findByCampaign(campaignId)).filter((e) => e.status === "QUEUED");
-  let sent = 0, failed = 0;
+  let sent = 0, failed = 0, pending = 0;
   for (const e of entries) {
+    // No live SMS channel → leave phone invites QUEUED (they'll send once a
+    // provider is configured). Never mark them SENT — that would lie to the admin.
+    if (e.contactType === "PHONE" && !smsLive) { pending++; continue; }
     try {
       if (e.contactType === "EMAIL") {
         const r = await sendEmail({
@@ -172,9 +228,11 @@ export async function sendCampaign(campaignId: string, adminId: string):
       failed++;
     }
   }
+  // SENDING → SENT once this pass is done. Pending phone invites stay QUEUED so a
+  // later Send (after SMS is live) picks them up.
   await db.inviteCampaign.update(campaignId, { status: "SENT" });
-  audit({ category: "ADMIN", action: "invite.campaign_sent", actorId: adminId, targetType: "InviteCampaign", targetId: campaignId, payload: { sent, failed } });
-  return { ok: true as const, sent, failed };
+  audit({ category: "ADMIN", action: "invite.campaign_sent", actorId: adminId, targetType: "InviteCampaign", targetId: campaignId, payload: { sent, failed, pending } });
+  return { ok: true as const, sent, failed, pending };
   });
 }
 
