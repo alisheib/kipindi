@@ -61,17 +61,19 @@ export type AffiliateConfig = {
 };
 
 /**
- * Per tester feedback the program runs ONE simple reward: TZS 10,000 to the
- * referrer when a friend places their first bet. The commission (revenue-share)
- * and deposit-bonus modes ship disabled — the operator can re-enable and retune
- * any of them at /admin/affiliate. Keeping a single, clear earning line ("Get
- * 10,000 TZS when a friend places their bet") reads cleanly for players.
+ * Testing config (Ali, 2026-06-28): the referral reward fires the moment an
+ * invited friend JOINS (signs up) — no deposit or bet required — because deposits
+ * aren't wired yet, so we can't gate the reward on play/funding. ONE clear line:
+ * TZS 10,000 to the REFERRER when a friend signs up with their link. The reward
+ * lands in the referrer's bonus wallet (non-withdrawable, plays through), so no
+ * real cash is created. The play-required prize and the deposit-bonus modes ship
+ * disabled; the operator can retune any of them at /admin/affiliate.
  */
 export const DEFAULT_AFFILIATE_CONFIG: AffiliateConfig = {
   enabled: true,
   commission: { enabled: false, rate: 0.5, windowMonths: 24, capPerRecruitTzs: 250_000 },
-  bonus: { enabled: false, recipient: "BOTH", newAmountTzs: 2_000, referrerAmountTzs: 2_000, trigger: "FIRST_DEPOSIT" },
-  prize: { enabled: true, milestone: "FIRST_BET", depositThresholdTzs: 10_000, amountTzs: 10_000, capPerReferrer: 20 },
+  bonus: { enabled: true, recipient: "REFERRER", newAmountTzs: 2_000, referrerAmountTzs: 10_000, trigger: "SIGNUP" },
+  prize: { enabled: false, milestone: "FIRST_BET", depositThresholdTzs: 10_000, amountTzs: 10_000, capPerReferrer: 20 },
 };
 
 declare global {

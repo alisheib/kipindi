@@ -489,8 +489,8 @@ export async function getPlayerReferralSummary(userId: string) {
   if (cfg.bonus.enabled && (cfg.bonus.recipient === "REFERRER" || cfg.bonus.recipient === "BOTH") && cfg.bonus.referrerAmountTzs > 0) {
     promises.push({
       icon: "gift",
-      en: `Plus a TZS ${cfg.bonus.referrerAmountTzs.toLocaleString()} bonus on each friend's ${cfg.bonus.trigger === "SIGNUP" ? "sign-up" : "first deposit"}`,
-      sw: `Pamoja na bonasi ya TZS ${cfg.bonus.referrerAmountTzs.toLocaleString()} kwa kila rafiki`,
+      en: `Get TZS ${cfg.bonus.referrerAmountTzs.toLocaleString()} when a friend ${cfg.bonus.trigger === "SIGNUP" ? "signs up" : "makes their first deposit"}`,
+      sw: `Pata TZS ${cfg.bonus.referrerAmountTzs.toLocaleString()} rafiki ${cfg.bonus.trigger === "SIGNUP" ? "anapojisajili" : "anapoweka amana ya kwanza"}`,
     });
   }
 
