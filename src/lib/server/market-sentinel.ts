@@ -363,9 +363,10 @@ Search the web for the latest data, work through the steps, then call report_out
 
 /** Run one sentinel sweep across all live markets.
  *  Tier 1: Haiku triage (all markets, cheap). Tier 2: Sonnet deep (flagged only). */
-export async function runSentinelSweep(): Promise<SentinelResult[]> {
+export async function runSentinelSweep(opts?: { force?: boolean }): Promise<SentinelResult[]> {
   const results: SentinelResult[] = [];
   const now = Date.now();
+  const force = opts?.force === true;
 
   // Clean stale cooldown entries to prevent memory leak. Use the cooldown
   // window so entries survive long enough to actually enforce the cooldown.
@@ -384,10 +385,15 @@ export async function runSentinelSweep(): Promise<SentinelResult[]> {
 
   if (allMarkets.length === 0) return results;
 
-  // Build the due list (cooldown + skip-near-close)
+  // Build the due list. A manual "Run now" (force) bypasses the per-market
+  // cooldown so the operator can re-check immediately; scheduled sweeps still
+  // respect it. The <5-min-to-close skip stays in both modes (those resolve via
+  // auto-close imminently).
   const due = allMarkets.filter((market) => {
-    const lastCheck = lastChecked.get(market.id) ?? 0;
-    if (now - lastCheck < SENTINEL_COOLDOWN_MS) return false;
+    if (!force) {
+      const lastCheck = lastChecked.get(market.id) ?? 0;
+      if (now - lastCheck < SENTINEL_COOLDOWN_MS) return false;
+    }
     // Skip markets closing within 5 minutes — auto-close handles those
     const timeToClose = Date.parse(market.resolutionAt) - now;
     if (timeToClose < 5 * 60_000) return false;
@@ -731,7 +737,8 @@ export async function runSentinelNow(): Promise<{ ok: boolean; summary?: SweepSu
   if (timer) { clearTimeout(timer); timer = null; }
   sweepRunning = true;
   try {
-    const r = await runSentinelSweep();
+    // force: bypass the per-market cooldown so a manual run always re-checks.
+    const r = await runSentinelSweep({ force: true });
     recordSweepSummary(r);
     await maybeAlertOnSweep(r);
     audit({ category: "ADMIN", action: "sentinel.manual_run", actorId: "admin", targetType: "System", targetId: "market-sentinel", payload: lastSummary ? { ...lastSummary } : undefined });

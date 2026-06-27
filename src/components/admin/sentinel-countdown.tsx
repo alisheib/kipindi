@@ -84,8 +84,12 @@ export function SentinelCountdown() {
   const runNow = () => start(async () => {
     setMsg("Running sweep…");
     const r = await runSentinelNowAction();
-    if (r.ok) { setMsg(`Done · ${r.closed} closed of ${r.total} live.`); refresh(); }
-    else setMsg(r.error ?? "Couldn't run.");
+    if (!r.ok) { setMsg(r.error ?? "Couldn't run."); return; }
+    if ((r.total ?? 0) === 0) { setMsg("No live markets to check right now."); refresh(); return; }
+    const parts = [`${r.closed ?? 0} closed`];
+    if ((r.errors ?? 0) > 0) parts.push(`${r.errors} errored (check AI usage / credit)`);
+    setMsg(`Done · ${parts.join(" · ")} of ${r.total} live.`);
+    refresh();
   });
 
   // Loading / disabled placeholders keep SSR and first client render identical.
