@@ -5,6 +5,7 @@ import { MarketCard } from "@/components/markets/market-card";
 import { listMarkets, impliedYesPct, type MarketCategory } from "@/lib/server/market-service";
 import { getCardChart } from "@/lib/server/market-history";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { ResultsSearch } from "./results-search";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { formatTzsCompact } from "@/lib/utils";
@@ -12,7 +13,7 @@ import { formatTzsCompact } from "@/lib/utils";
 export const metadata = { title: "Results · Matokeo" };
 export const dynamic = "force-dynamic";
 
-const PER_PAGE = 12;
+const PER_PAGE = PLAYER_PER_PAGE;
 
 const CATEGORIES: Array<{ id: "all" | MarketCategory; label: string }> = [
   { id: "all",     label: "All" },
@@ -130,6 +131,16 @@ async function ResultsContent({
     const qs = params.toString();
     return qs ? `/results?${qs}` : "/results";
   };
+
+  // Base href for the shared pager (current filters minus the page param).
+  const resultsBaseHref = (() => {
+    const params = new URLSearchParams();
+    if (activeCat !== "all") params.set("cat", activeCat);
+    if (activeSort !== "resolved") params.set("sort", activeSort);
+    if (qRaw) params.set("q", qRaw);
+    const qs = params.toString();
+    return qs ? `/results?${qs}` : "/results";
+  })();
 
   return (
     <>
@@ -250,51 +261,11 @@ async function ResultsContent({
                 ))}
               </section>
 
-              {/* Pagination */}
+              {/* Pagination — shared platform pager */}
               {totalPages > 1 && (
-                <nav aria-label="Results pagination" className="mt-6 flex flex-wrap items-center justify-center gap-1.5">
-                  {safePage > 1 && (
-                    <a
-                      href={buildHref({ page: safePage - 1 })}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-bg-elevated/60 text-text-subtle hover:text-text hover:border-brand-400 transition-all"
-                      aria-label="Previous page"
-                    >
-                      <I.chevronLeft s={14} />
-                    </a>
-                  )}
-                  {pageButtons(safePage, totalPages).map((p, i) =>
-                    p === null ? (
-                      <span key={`e${i}`} className="px-1 text-text-subtle select-none">…</span>
-                    ) : (
-                      <a
-                        key={p}
-                        href={buildHref({ page: p })}
-                        aria-current={p === safePage ? "page" : undefined}
-                        className={
-                          "inline-flex h-8 min-w-[32px] items-center justify-center rounded-md border px-2 font-mono text-[12px] font-semibold tabular-nums transition-all " +
-                          (p === safePage
-                            ? "border-brand-500 text-text"
-                            : "border-border bg-bg-elevated/60 text-text-muted hover:border-brand-400 hover:text-text")
-                        }
-                        style={p === safePage ? { background: "oklch(40% 0.12 262 / 0.35)" } : undefined}
-                      >
-                        {p}
-                      </a>
-                    ),
-                  )}
-                  {safePage < totalPages && (
-                    <a
-                      href={buildHref({ page: safePage + 1 })}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-bg-elevated/60 text-text-subtle hover:text-text hover:border-brand-400 transition-all"
-                      aria-label="Next page"
-                    >
-                      <I.chevronRight s={14} />
-                    </a>
-                  )}
-                  <span className="ml-3 font-mono text-[10.5px] text-text-subtle tabular-nums">
-                    {(safePage - 1) * PER_PAGE + 1}–{Math.min(safePage * PER_PAGE, totalCount)} of {totalCount}
-                  </span>
-                </nav>
+                <div className="mt-6 rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">
+                  <Pagination total={totalCount} page={safePage} perPage={PER_PAGE} baseHref={resultsBaseHref} />
+                </div>
               )}
             </>
           ) : (
@@ -341,18 +312,6 @@ function OutcomeStat({ label, sw, count, total, color }: { label: string; sw: st
       </div>
     </div>
   );
-}
-
-/** Smart page buttons: 1 … 4 [5] 6 … 10 */
-function pageButtons(current: number, total: number): (number | null)[] {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-  const pages: (number | null)[] = [];
-  pages.push(1);
-  if (current > 3) pages.push(null);
-  for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) pages.push(i);
-  if (current < total - 2) pages.push(null);
-  pages.push(total);
-  return pages;
 }
 
 /** Shimmer skeleton shown while the async content loads (same pattern as

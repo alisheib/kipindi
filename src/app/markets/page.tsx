@@ -7,6 +7,7 @@ import { getCardChart } from "@/lib/server/market-history";
 import { getProposalsConfig } from "@/lib/server/proposals-config";
 
 import { EmptyState } from "@/components/ui/empty-state";
+import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { MarketSearch } from "./market-search";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 
@@ -48,7 +49,7 @@ function timeLeftStr(iso: string): string {
   return `${m}m left`;
 }
 
-export default async function MarketsPage({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string; q?: string }> }) {
+export default async function MarketsPage({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string; q?: string; page?: string }> }) {
   const allLive = (await listMarkets({ status: "LIVE" })).filter((m) => !isClosedByTime(m));
   const totalVolume = allLive.reduce((s, m) => s + m.yesPool + m.noPool, 0);
   return (
@@ -117,7 +118,7 @@ function ProposalEntryCard() {
   );
 }
 
-async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string; q?: string }> }) {
+async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string; q?: string; page?: string }> }) {
   const sp = await searchParams;
   const activeWhen = (sp.when as WhenFilter | undefined) ?? "today";
   const activeCat = sp.cat ?? "all";
@@ -181,7 +182,7 @@ async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: strin
   );
 }
 
-async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string; q?: string }> }) {
+async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string; q?: string; page?: string }> }) {
   const sp = await searchParams;
   const cat = (sp.cat as MarketCategory | undefined) ?? undefined;
   const whenId = (sp.when as WhenFilter | undefined) ?? "today";
@@ -237,12 +238,28 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
       : liveAll.filter(x => x.ms <= whenCfg.cutoffMs!)
     ).map(x => x.m);
   }
+  // Paginate the live grid with the shared player page size so a long board
+  // pages like every other list instead of rendering an unbounded wall.
+  const pageNum = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
+  const totalLiveCount = live.length;
+  const totalLivePages = Math.max(1, Math.ceil(totalLiveCount / PLAYER_PER_PAGE));
+  const safePage = Math.min(pageNum, totalLivePages);
+  const pagedLive = live.slice((safePage - 1) * PLAYER_PER_PAGE, safePage * PLAYER_PER_PAGE);
+  const marketsBaseHref = (() => {
+    const params = new URLSearchParams();
+    if (whenId !== "today") params.set("when", whenId);
+    if (sp.cat && sp.cat !== "all") params.set("cat", sp.cat);
+    if (qRaw) params.set("q", qRaw);
+    const qs = params.toString();
+    return qs ? `/markets?${qs}` : "/markets";
+  })();
+
   // Show a small resolved teaser — the full browsable archive lives at /results.
   const resolved = searching
     ? (await listMarkets({ status: "RESOLVED" })).filter(matches).slice(0, 6)
     : (await listMarkets({ status: "RESOLVED" })).slice(0, 3);
   const traderMap = await traderSeedsByMarket();
-  const allForCharts = [...live, ...resolved];
+  const allForCharts = [...pagedLive, ...resolved];
   const cardCharts = new Map(await Promise.all(allForCharts.map(async (m) => [m.id, await getCardChart(m.id)] as const)));
 
   const resultCount = live.length + resolved.length;
@@ -256,7 +273,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
         </p>
       )}
       <section className="market-grid">
-        {live.map((m) => {
+        {pagedLive.map((m) => {
           const cc = cardCharts.get(m.id) ?? { spark: [] };
           return (
             <MarketCard
@@ -279,6 +296,13 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
         })}
         {live.length === 0 && <LiveEmptyState searching={searching} qRaw={qRaw} hasAnyLive={effectiveCat ? totalLive > 0 : bettable.length > 0} />}
       </section>
+
+      {/* Pagination — shared platform pager (live grid) */}
+      {totalLivePages > 1 && (
+        <div className="mt-6 rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">
+          <Pagination total={totalLiveCount} page={safePage} perPage={PLAYER_PER_PAGE} baseHref={marketsBaseHref} />
+        </div>
+      )}
 
       {resolved.length > 0 && (
         <section className="mt-10">

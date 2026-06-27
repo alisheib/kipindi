@@ -40,7 +40,9 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
   const pending = w?.pending ?? 0;
   const hold = w?.hold ?? 0;
   const currency = w?.currency ?? "TZS";
-  const txns: Transaction[] = ((await db.txn.findByUser(session.userId, 50)) as StoredTxn[]).map(adaptTxn);
+  // Fetch a deep history (was 50) so the paginated activity list can page back
+  // through real history instead of silently hiding everything past 50.
+  const txns: Transaction[] = ((await db.txn.findByUser(session.userId, 1000)) as StoredTxn[]).map(adaptTxn);
 
   // Bonus wallet — second balance shown alongside the main wallet. Only the
   // active grants drive the play-through card; map to a lean serializable shape.

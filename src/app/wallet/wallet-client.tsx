@@ -260,35 +260,50 @@ function TxnRow({ tx }: { tx: Transaction }) {
   );
 }
 
+/** Client pager — visually identical to the shared <Pagination> (numbered
+ *  buttons + "X–Y of Z" count) but driven by client state, since the wallet
+ *  activity list is client-rendered inside tabs. `page` is 0-indexed. */
 function TxnPager({
-  page, pageCount, total, onPrev, onNext,
-}: { page: number; pageCount: number; total: number; onPrev: () => void; onNext: () => void }) {
+  page, pageCount, total, perPage, onGoto,
+}: { page: number; pageCount: number; total: number; perPage: number; onGoto: (p: number) => void }) {
+  const cur = page + 1; // 1-indexed for display
+  const pages: (number | "...")[] = [];
+  if (pageCount <= 7) {
+    for (let i = 1; i <= pageCount; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (cur > 3) pages.push("...");
+    for (let i = Math.max(2, cur - 1); i <= Math.min(pageCount - 1, cur + 1); i++) pages.push(i);
+    if (cur < pageCount - 2) pages.push("...");
+    pages.push(pageCount);
+  }
+  const btnBase = "inline-flex items-center justify-center h-8 min-w-[32px] px-2 rounded-md font-mono text-[11px] tracking-[0.10em] transition-colors";
+  const btnActive = "border border-brand-500 bg-brand-500/15 text-brand-300 font-bold";
+  const btnInactive = "border border-border bg-bg-elevated text-text-muted hover:border-border-strong hover:text-text";
+  const btnDisabled = "border border-border bg-bg-elevated text-text-subtle/40 pointer-events-none";
   return (
-    <nav className="flex items-center justify-between gap-3" aria-label="Activity pages">
-      <p className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-text-subtle tabular-nums">
-        Page {page + 1} of {pageCount} · {total} total
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 border-t border-border" aria-label="Activity pages">
+      <p className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle tabular-nums">
+        {(page * perPage + 1).toLocaleString()}–{Math.min((page + 1) * perPage, total).toLocaleString()} of {total.toLocaleString()}
       </p>
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onPrev}
-          disabled={page === 0}
-          aria-label="Previous page"
-          className="inline-flex h-8 items-center gap-1 rounded-md border border-border bg-bg-elevated px-3 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted hover:text-text hover:border-brand-400 disabled:opacity-40 disabled:hover:border-border disabled:hover:text-text-muted transition-colors"
-        >
-          <I.chevronLeft s={13} /> Prev
+      <div className="flex flex-wrap items-center justify-end gap-1">
+        <button type="button" onClick={() => onGoto(page - 1)} disabled={page === 0} className={`${btnBase} ${page > 0 ? btnInactive : btnDisabled}`} aria-label="Previous page">
+          <I.chevronLeft s={14} />
         </button>
-        <button
-          type="button"
-          onClick={onNext}
-          disabled={page >= pageCount - 1}
-          aria-label="Next page"
-          className="inline-flex h-8 items-center gap-1 rounded-md border border-border bg-bg-elevated px-3 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted hover:text-text hover:border-brand-400 disabled:opacity-40 disabled:hover:border-border disabled:hover:text-text-muted transition-colors"
-        >
-          Next <I.chevronRight s={13} />
+        {pages.map((p, i) =>
+          p === "..." ? (
+            <span key={`d${i}`} className="px-1 text-text-subtle">…</span>
+          ) : (
+            <button type="button" key={p} onClick={() => onGoto(p - 1)} className={`${btnBase} ${p === cur ? btnActive : btnInactive}`}>
+              {p}
+            </button>
+          ),
+        )}
+        <button type="button" onClick={() => onGoto(page + 1)} disabled={page >= pageCount - 1} className={`${btnBase} ${page < pageCount - 1 ? btnInactive : btnDisabled}`} aria-label="Next page">
+          <I.chevronRight s={14} />
         </button>
       </div>
-    </nav>
+    </div>
   );
 }
 
@@ -396,16 +411,16 @@ export function WalletPageClient({
           <section className="space-y-3">
             <div className="rounded-xl glass-panel overflow-hidden">
               {pagedTxns.map((t) => <TxnRow key={t.id} tx={t} />)}
+              {pageCount > 1 && (
+                <TxnPager
+                  page={safePage}
+                  pageCount={pageCount}
+                  total={transactions.length}
+                  perPage={TXNS_PER_PAGE}
+                  onGoto={(p) => setPage(Math.min(Math.max(0, p), pageCount - 1))}
+                />
+              )}
             </div>
-            {pageCount > 1 && (
-              <TxnPager
-                page={safePage}
-                pageCount={pageCount}
-                total={transactions.length}
-                onPrev={() => setPage((p) => Math.max(0, p - 1))}
-                onNext={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
-              />
-            )}
           </section>
         ) : (
           <EmptyState

@@ -7,6 +7,7 @@ import { getProposalsConfig } from "@/lib/server/proposals-config";
 import { Chip } from "@/components/ui/chip";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { VoteControl } from "@/components/proposals/vote-control";
 import { StatusBadge } from "@/components/proposals/status-badge";
 import { CategoryIcon, CATEGORY_LABEL } from "@/components/proposals/category-icon";
@@ -31,14 +32,16 @@ function ageStr(iso: string): string {
   return `${m}m ago · dakika ${m}`;
 }
 
-export default async function ProposalsPage({ searchParams }: { searchParams: Promise<{ f?: string }> }) {
+export default async function ProposalsPage({ searchParams }: { searchParams: Promise<{ f?: string; page?: string }> }) {
   const sp = await searchParams;
   const filter: BoardFilter = (["hot", "new", "listed", "mine"] as const).includes(sp.f as BoardFilter) ? (sp.f as BoardFilter) : "hot";
   const session = await currentSession();
   if (filter === "mine" && !session) redirect("/auth/login?next=/proposals");
 
   const cfg = getProposalsConfig();
-  const { proposals, totalProposals, totalVotes, enabled } = await listBoard(session?.userId ?? null, filter);
+  const pageNum = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
+  const { proposals, matchedCount, totalProposals, totalVotes, enabled, page } = await listBoard(session?.userId ?? null, filter, pageNum, PLAYER_PER_PAGE);
+  const proposalsBaseHref = `/proposals?f=${filter}`;
 
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-3.5">
@@ -113,11 +116,18 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
 
       {/* List / empty */}
       {proposals.length > 0 ? (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {proposals.map((p) => (
-            <ProposalCard key={p.id} p={p} disabled={!enabled} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {proposals.map((p) => (
+              <ProposalCard key={p.id} p={p} disabled={!enabled} />
+            ))}
+          </div>
+          {matchedCount > PLAYER_PER_PAGE && (
+            <div className="rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">
+              <Pagination total={matchedCount} page={page} perPage={PLAYER_PER_PAGE} baseHref={proposalsBaseHref} />
+            </div>
+          )}
+        </>
       ) : totalProposals === 0 ? (
         <EmptyState
           kind="markets"

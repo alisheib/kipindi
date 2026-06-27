@@ -6,6 +6,7 @@ import { SellButton } from "@/components/markets/sell-button";
 import { listPositionsForUser, getMarket, cashOutValue } from "@/lib/server/market-service";
 import { currentSession } from "@/lib/server/auth-service";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 
 export const metadata = { title: "History · Historia" };
@@ -13,18 +14,26 @@ export const dynamic = "force-dynamic";
 
 const fmtTzs = (n: number) => `TZS ${Math.round(n).toLocaleString("en-US")}`;
 
-export default async function PositionsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+export default async function PositionsPage({ searchParams }: { searchParams: Promise<{ tab?: string; page?: string }> }) {
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/positions");
   const sp = await searchParams;
   const activeTab: "open" | "settled" | "all" = (["open", "settled", "all"] as const).includes(sp.tab as "open" | "settled" | "all") ? (sp.tab as "open" | "settled" | "all") : "all";
 
-  const positions = await listPositionsForUser(session.userId);
+  // Fetch the full history (no silent 100-cap), then paginate the settled
+  // archive with the shared player page size so older positions stay reachable.
+  const positions = await listPositionsForUser(session.userId, 5_000);
   const open = positions.filter((p) => p.status === "OPEN");
   const settled = positions.filter((p) => p.status !== "OPEN");
 
-  // Pre-fetch all referenced markets so we don't await inside JSX .map()
-  const marketIds = [...new Set(positions.map((p) => p.marketId))];
+  const settledTotalPages = Math.max(1, Math.ceil(settled.length / PLAYER_PER_PAGE));
+  const settledPage = Math.min(Math.max(1, parseInt(sp.page ?? "1", 10) || 1), settledTotalPages);
+  const pagedSettled = settled.slice((settledPage - 1) * PLAYER_PER_PAGE, settledPage * PLAYER_PER_PAGE);
+  const settledBaseHref = activeTab === "all" ? "/positions" : `/positions?tab=${activeTab}`;
+
+  // Pre-fetch only the markets actually rendered (open + the visible settled
+  // page) so a long history doesn't fan out into thousands of getMarket calls.
+  const marketIds = [...new Set([...open, ...pagedSettled].map((p) => p.marketId))];
   const marketMap = new Map<string, Awaited<ReturnType<typeof getMarket>>>();
   for (const mid of marketIds) {
     marketMap.set(mid, await getMarket(mid));
@@ -201,25 +210,32 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
             bodySw="Utabiri uliokamilika utaonekana hapa baada ya soko kutatuliwa."
           />
         ) : (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {settled.map((p) => {
-              const m = marketMap.get(p.marketId);
-              if (!m) return null;
-              return (
-                <PositionCard
-                  key={p.id}
-                  marketId={p.marketId}
-                  marketTitle={m.titleEn}
-                  side={p.side}
-                  stake={p.stake}
-                  current={p.finalPayout ?? 0}
-                  payout={p.finalPayout ?? 0}
-                  status={p.status as "WIN" | "LOSS" | "VOID" | "CASHED_OUT"}
-                  placedAt={p.placedAt}
-                />
-              );
-            })}
-          </div>
+          <>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {pagedSettled.map((p) => {
+                const m = marketMap.get(p.marketId);
+                if (!m) return null;
+                return (
+                  <PositionCard
+                    key={p.id}
+                    marketId={p.marketId}
+                    marketTitle={m.titleEn}
+                    side={p.side}
+                    stake={p.stake}
+                    current={p.finalPayout ?? 0}
+                    payout={p.finalPayout ?? 0}
+                    status={p.status as "WIN" | "LOSS" | "VOID" | "CASHED_OUT"}
+                    placedAt={p.placedAt}
+                  />
+                );
+              })}
+            </div>
+            {settledTotalPages > 1 && (
+              <div className="mt-4 rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">
+                <Pagination total={settled.length} page={settledPage} perPage={PLAYER_PER_PAGE} baseHref={settledBaseHref} />
+              </div>
+            )}
+          </>
         )}
       </Section>}
     </main>

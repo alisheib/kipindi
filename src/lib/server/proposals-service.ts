@@ -212,11 +212,10 @@ async function toView(p: StoredProposal, viewerId: string | null) {
   };
 }
 
-/** Max cards rendered per board view — the board is a curated feed, not an
- *  archive. Totals (for the stats strip) still reflect every proposal. */
-const BOARD_PAGE_SIZE = 60;
+/** Default board page size when a caller doesn't specify one. */
+const BOARD_PAGE_SIZE = 12;
 
-export async function listBoard(viewerId: string | null, filter: BoardFilter = "hot") {
+export async function listBoard(viewerId: string | null, filter: BoardFilter = "hot", page = 1, perPage = BOARD_PAGE_SIZE) {
   const cfg = getProposalsConfig();
   const all = await db.proposal.list(5000);
   const totalVotes = all.reduce((s, p) => s + p.up + p.down, 0);
@@ -225,7 +224,20 @@ export async function listBoard(viewerId: string | null, filter: BoardFilter = "
   else if (filter === "listed") views = views.filter((v) => v.status === "LISTED" || v.status === "RESOLVED");
   else if (filter === "mine") views = views.filter((v) => v.isMine);
   // "new" keeps the recency order from db.proposal.list
-  return { proposals: views.slice(0, BOARD_PAGE_SIZE), totalProposals: all.length, totalVotes, enabled: cfg.enabled };
+  // Paginate the filtered set so every proposal is reachable (no silent cap),
+  // consistent with the rest of the player lists. `matchedCount` drives the pager.
+  const matchedCount = views.length;
+  const totalPages = Math.max(1, Math.ceil(matchedCount / perPage));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  return {
+    proposals: views.slice((safePage - 1) * perPage, safePage * perPage),
+    matchedCount,
+    totalProposals: all.length,
+    totalVotes,
+    enabled: cfg.enabled,
+    page: safePage,
+    perPage,
+  };
 }
 
 export async function getProposalDetail(id: string, viewerId: string | null) {
