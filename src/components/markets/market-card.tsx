@@ -229,22 +229,24 @@ export function MarketCard({
         <span>{predictors.toLocaleString()} predictors</span>
         <span className="dot" />
         <span>{fmtTzs(volume)}</span>
-        <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6 }} className={live ? "live" : undefined}>
-          {timeLeft}
-          {live && <HowItWorks />}
+        <span className="mcardp-meta-right">
+          <span className={live ? "live" : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            {timeLeft}
+            {live && <HowItWorks />}
+          </span>
         </span>
-        {live && (
-          <a
-            href={`/markets/${id}`}
-            onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-1 font-semibold text-[11.5px] hover:underline"
-            style={{ marginLeft: "auto", color: "var(--accent-400)", textDecoration: "none" }}
-          >
-            Details · Soma zaidi
-            <I.chevronRight s={11} />
-          </a>
-        )}
       </div>
+      {live && (
+        <a
+          href={`/markets/${id}`}
+          onClick={(e) => e.stopPropagation()}
+          className="mcardp-details"
+          style={{ color: "var(--accent-400)" }}
+        >
+          Details · Soma zaidi
+          <I.chevronRight s={11} />
+        </a>
+      )}
     </>
   );
 
