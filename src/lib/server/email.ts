@@ -714,6 +714,64 @@ export function referralRewardHtml({ amount, referredName, totalEarned }: {
   `);
 }
 
+export function bonusCreditedHtml({ amountTzs, wagerRequiredTzs, sourceLabel }: {
+  amountTzs: number; wagerRequiredTzs: number; sourceLabel?: string;
+}): string {
+  return wrap(`
+    ${eyebrow("Bonus added", "Bonasi imeongezwa")}
+    ${heading(`Bonus added · ${fmtTzs(amountTzs)}`)}
+    ${subtitle(`${sourceLabel ? sourceLabel + ". " : ""}Play through ${fmtTzs(wagerRequiredTzs)} in bets and it becomes withdrawable cash.`)}
+    ${subtitleSw(`Cheza dau ya ${fmtTzs(wagerRequiredTzs)} ili kuibadilisha kuwa pesa unayoweza kutoa.`)}
+    ${detailRows([
+      { label: "Bonus", value: fmtTzs(amountTzs), tone: "good" },
+      { label: "Play-through", value: fmtTzs(wagerRequiredTzs) },
+    ])}
+    ${ctaButton("/wallet", "View wallet · Pochi")}
+  `);
+}
+
+export function bonusFulfilledHtml({ amountTzs }: { amountTzs: number }): string {
+  return wrap(`
+    ${eyebrow("Bonus unlocked", "Bonasi imefunguliwa")}
+    ${heading(`Bonus unlocked · ${fmtTzs(amountTzs)}`)}
+    ${subtitle(`You finished the play-through — ${fmtTzs(amountTzs)} is now real, withdrawable balance.`)}
+    ${subtitleSw(`Umemaliza masharti — ${fmtTzs(amountTzs)} sasa ni pesa halisi unayoweza kutoa.`)}
+    ${detailRows([{ label: "Now withdrawable", value: fmtTzs(amountTzs), tone: "good" }])}
+    ${ctaButton("/wallet", "Withdraw · Toa pesa")}
+  `);
+}
+
+/** Source-of-Funds review outcome. status drives the copy + CTA. */
+export function sofDecisionHtml({ status, note }: {
+  status: "ACCEPTED" | "REJECTED" | "MORE_INFO"; note?: string;
+}): string {
+  if (status === "ACCEPTED") {
+    return wrap(`
+      ${eyebrow("Source of funds", "Chanzo cha fedha")}
+      ${heading("Source of funds accepted")}
+      ${subtitle("Your source-of-funds review is complete. Higher deposit and withdrawal limits are now unlocked.")}
+      ${subtitleSw("Ukaguzi wa chanzo cha fedha umekamilika. Vikomo vya juu sasa vimefunguliwa.")}
+      ${ctaButton("/wallet/deposit", "Make a deposit · Weka pesa")}
+    `);
+  }
+  if (status === "MORE_INFO") {
+    return wrap(`
+      ${eyebrow("Source of funds", "Chanzo cha fedha")}
+      ${heading("We need a bit more")}
+      ${subtitle(note ? `Our compliance team needs more information: ${note}` : "Our compliance team needs more information to complete your source-of-funds review.")}
+      ${subtitleSw("Timu yetu inahitaji maelezo zaidi kukamilisha ukaguzi.")}
+      ${ctaButton("/profile/source-of-funds", "Update details · Sasisha")}
+    `);
+  }
+  return wrap(`
+    ${eyebrow("Source of funds", "Chanzo cha fedha")}
+    ${heading("Source of funds not accepted")}
+    ${subtitle(note ? `Your source-of-funds submission wasn't accepted: ${note}` : "Your source-of-funds submission wasn't accepted. You can resubmit with updated information.")}
+    ${subtitleSw("Wasilisho lako halikukubaliwa. Unaweza kuwasilisha tena.")}
+    ${ctaButton("/profile/source-of-funds", "Resubmit · Wasilisha tena")}
+  `);
+}
+
 export function loginNotificationHtml({ name, time, ip }: { name: string; time: string; ip: string }): string {
   return wrap(`
     ${eyebrow("Sign-in", "Umeingia")}

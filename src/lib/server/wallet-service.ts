@@ -236,7 +236,12 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string): Prom
           });
         }
       }
-    } catch { /* cashback must never break a deposit */ }
+    } catch (err) {
+      // Cashback must never break a confirmed deposit — but record the miss so an
+      // owed-but-undelivered cashback is reconcilable (it's idempotent by
+      // sourceRef, so a manual retry is safe).
+      audit({ category: "WALLET", action: "cashback.failed", actorId: t.userId, targetType: "Transaction", targetId: t.id, payload: { error: String((err as Error)?.message ?? err) } });
+    }
   }
   return { credited: outcome.credited, balance: outcome.balance };
 }

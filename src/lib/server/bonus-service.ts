@@ -32,6 +32,16 @@ import { withLock } from "./locks";
 import { audit } from "./audit";
 import { getBonusConfig } from "./bonus-config";
 import { notifyBonusCredited, notifyBonusFulfilled, notifyBonusExpired } from "./notification-service";
+import { sendEmailToUser, bonusCreditedHtml, bonusFulfilledHtml } from "./email";
+
+const BONUS_SOURCE_EMAIL_LABEL: Record<string, string> = {
+  CASHBACK: "10% deposit cashback",
+  INVITE: "Invite bonus",
+  REFERRAL: "Referral bonus",
+  PROPOSAL: "Proposal prize",
+  PROMOTION: "Promotion",
+  ADMIN: "Bonus credit",
+};
 
 const tzs = (n: number) => Math.round(n);
 
@@ -127,7 +137,15 @@ export async function creditBonus(userId: string, input: CreditBonusInput): Prom
   });
 
   if (result.ok && !result.deduped) {
-    notifyBonusCredited(userId, { amountTzs: result.grant.amountTzs, wagerRequiredTzs: result.grant.wagerRequiredTzs }).catch(() => {});
+    const g = result.grant;
+    notifyBonusCredited(userId, { amountTzs: g.amountTzs, wagerRequiredTzs: g.wagerRequiredTzs }).catch(() => {});
+    // Dual-channel: money events email the player too (matches deposits/wins).
+    sendEmailToUser(userId, (email) => ({
+      to: email,
+      subject: `Bonus added · TZS ${Math.round(g.amountTzs).toLocaleString("en-US")}`,
+      html: bonusCreditedHtml({ amountTzs: g.amountTzs, wagerRequiredTzs: g.wagerRequiredTzs, sourceLabel: BONUS_SOURCE_EMAIL_LABEL[g.source] }),
+      tag: "bonus",
+    })).catch(() => {});
   }
   return result;
 }
@@ -145,7 +163,15 @@ export async function recordWagering(userId: string, stakeTzs: number): Promise<
   const amount = tzs(stakeTzs);
   if (!(amount > 0)) return { fulfilled: [], creditedToRealTzs: 0 };
   const result = await withLock(`wallet:${userId}`, () => recordWageringCore(userId, amount));
-  for (const g of result.fulfilled) notifyBonusFulfilled(userId, { amountTzs: g.amountTzs }).catch(() => {});
+  for (const g of result.fulfilled) {
+    notifyBonusFulfilled(userId, { amountTzs: g.amountTzs }).catch(() => {});
+    sendEmailToUser(userId, (email) => ({
+      to: email,
+      subject: `Bonus unlocked · TZS ${Math.round(g.amountTzs).toLocaleString("en-US")}`,
+      html: bonusFulfilledHtml({ amountTzs: g.amountTzs }),
+      tag: "bonus",
+    })).catch(() => {});
+  }
   return result;
 }
 

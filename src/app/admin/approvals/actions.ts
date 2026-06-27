@@ -6,6 +6,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { notifySof } from "@/lib/server/notification-service";
+import { sendEmailToUser, sofDecisionHtml } from "@/lib/server/email";
 import { withLock } from "@/lib/server/locks";
 
 const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
@@ -63,6 +64,14 @@ export async function reviewSofAction(formData: FormData): Promise<{ ok: true } 
     });
 
     notifySof(userId, decision === "ACCEPT" ? "ACCEPTED" : "REJECTED");
+    // Dual-channel: a SoF decision gates the player's deposits, so email it too
+    // (not bell-only) — matches the KYC decision flow.
+    sendEmailToUser(userId, (email) => ({
+      to: email,
+      subject: decision === "ACCEPT" ? "Source of funds accepted" : "Source of funds — action needed",
+      html: sofDecisionHtml({ status: decision === "ACCEPT" ? "ACCEPTED" : "REJECTED", note: reason || undefined }),
+      tag: "compliance",
+    })).catch(() => {});
 
     revalidatePath("/admin/approvals");
     return { ok: true as const };

@@ -25,7 +25,7 @@ import { rateCheck } from "./rate-limit";
 import { getEffectiveConfig, payoutForWhole, settledPayoutWhole } from "./market-config";
 import { recordSnapshot, seedHistory } from "./market-history";
 import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, notifyAdminMarketResolution, notifyMarketCancelled, notifyAdminMarketCancelled, notifyOneSidedRefund } from "./notification-service";
-import { sendEmailToUser, betPlacedHtml, winNotificationHtml, lossNotificationHtml, cashOutReceiptHtml, oneSidedRefundHtml, marketResolutionAdminHtml, marketCancelledRefundHtml, marketCancelledAdminHtml } from "./email";
+import { sendEmailToUser, betPlacedHtml, winNotificationHtml, lossNotificationHtml, cashOutReceiptHtml, oneSidedRefundHtml, marketResolutionAdminHtml, marketCancelledRefundHtml, marketCancelledAdminHtml, bonusFulfilledHtml } from "./email";
 import { onRecruitBet } from "./affiliate-service";
 import type { ServiceResult } from "./auth-service";
 import { marketStore, positionStore } from "./market-dal";
@@ -367,12 +367,26 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
     try {
       const wr = await recordWageringLocked(userId, opts.stake);
       wageringFulfilled = wr.fulfilled;
-    } catch { /* never block a bet */ }
+    } catch (err) {
+      // Never block a placed bet — but DON'T fail silently: a lost turnover
+      // accrual stalls bonus clearing, so leave a trace (mirrors the affiliate
+      // accrual_error handling above).
+      audit({ category: "SYSTEM", action: "bonus.wagering_error", actorId: userId, targetType: "Position", targetId: positionId, payload: { stake: opts.stake, error: String((err as Error)?.message ?? err) } });
+    }
 
     return { ok: true as const, data: { positionId, balance: newBalance, payoutIfWin } };
   });
 
-  for (const g of wageringFulfilled) notifyBonusFulfilled(userId, { amountTzs: g.amountTzs }).catch(() => {});
+  // Dual-channel on the bet-placement fulfilment path too (matches recordWagering).
+  for (const g of wageringFulfilled) {
+    notifyBonusFulfilled(userId, { amountTzs: g.amountTzs }).catch(() => {});
+    sendEmailToUser(userId, (email) => ({
+      to: email,
+      subject: `Bonus unlocked · TZS ${Math.round(g.amountTzs).toLocaleString("en-US")}`,
+      html: bonusFulfilledHtml({ amountTzs: g.amountTzs }),
+      tag: "bonus",
+    })).catch(() => {});
+  }
   return result;
 }
 
