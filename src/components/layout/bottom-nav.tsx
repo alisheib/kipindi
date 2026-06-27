@@ -41,42 +41,55 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
   };
 
   return (
+    // Floating, rounded "pill" bar (Instagram-style shape) — inset from the
+    // screen edges, lifted above the home indicator, with the active item held
+    // in a rounded capsule. Our colours, icons, labels and routing — only the
+    // shape is borrowed.
     <nav
       aria-label="Primary"
-      className="xl:hidden fixed inset-x-0 bottom-0 z-40 grid items-center"
+      className="xl:hidden fixed left-2.5 right-2.5 z-40 rounded-[26px] border border-border"
       style={{
-        height: 64,
-        gridTemplateColumns: `repeat(${items.length}, 1fr)`,
-        padding: "0 6px",
-        paddingBottom: "env(safe-area-inset-bottom)",
-        background: "var(--panel)",
-        borderTop: "1px solid var(--border)",
+        bottom: "calc(9px + env(safe-area-inset-bottom))",
+        background: "var(--bg-elevated)",
+        boxShadow: "0 12px 32px -10px oklch(8% 0.09 264 / 0.75), inset 0 1px 0 oklch(92% 0.04 264 / 0.05)",
       }}
     >
-      {items.map((it) => {
-        const on = isActive(it.href);
-        const Ico = I[it.glyph];
-        return (
-          <Link
-            key={it.href}
-            href={it.href as never}
-            aria-label={it.label}
-            aria-current={on ? "page" : undefined}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 4,
-              color: on ? "var(--accent-400)" : "var(--text-subtle)",
-              cursor: "pointer",
-              textDecoration: "none",
-            }}
-          >
-            <Ico s={21} />
-            <span className={`text-[10px] ${on ? "font-semibold" : "font-medium"}`}>{it.label}</span>
-          </Link>
-        );
-      })}
+      <ul
+        className="grid items-stretch px-1.5 py-1.5"
+        style={{ gridTemplateColumns: `repeat(${items.length}, 1fr)`, minHeight: 56 }}
+      >
+        {items.map((it) => {
+          const on = isActive(it.href);
+          const Ico = I[it.glyph];
+          return (
+            <li key={it.href} className="flex">
+              <Link
+                href={it.href as never}
+                aria-label={it.label}
+                aria-current={on ? "page" : undefined}
+                className="flex flex-1 flex-col items-center justify-center gap-1 rounded-[18px] transition-colors"
+                style={{
+                  color: on ? "var(--accent-400)" : "var(--text-subtle)",
+                  textDecoration: "none",
+                }}
+              >
+                {/* Active capsule — the lighter rounded highlight behind the icon. */}
+                <span
+                  className="flex items-center justify-center rounded-full transition-all duration-200"
+                  style={{
+                    width: 50,
+                    height: 30,
+                    background: on ? "oklch(72% 0.11 195 / 0.18)" : "transparent",
+                  }}
+                >
+                  <Ico s={22} />
+                </span>
+                <span className={`text-[9.5px] leading-none ${on ? "font-bold" : "font-medium"}`}>{it.label}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
     </nav>
   );
 }
