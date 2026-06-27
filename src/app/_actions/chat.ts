@@ -2,6 +2,7 @@
 
 import { getSession } from "@/lib/server/session";
 import { rateCheck } from "@/lib/server/rate-limit";
+import { loadConfig, saveConfig } from "@/lib/server/config-store";
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from "@/lib/support-config";
 
 /**
@@ -34,16 +35,28 @@ const dailyCounts: Map<string, { day: string; count: number }> =
   globalThis.__50PICK_CHAT_DAILY ?? (globalThis.__50PICK_CHAT_DAILY = new Map());
 
 /** Reserve one question for this user today. Returns false once the daily cap
- *  is hit. UTC-day based; the entry self-resets on the first call of a new day. */
-function consumeDailyQuota(userId: string): boolean {
+ *  is hit. UTC-day based.
+ *
+ *  Durable: the count is persisted to the config-store (DB) and the in-memory
+ *  map is hydrated from it whenever the local entry is missing or stale (e.g.
+ *  right after a deploy). This stops the trivial "chat across a deploy to reset
+ *  your counter" bypass — the cap now survives restarts and is shared via the
+ *  DB. The in-memory map stays the per-instance fast/atomic path; the DB write
+ *  is fire-and-forget so it never blocks the reply. */
+async function consumeDailyQuota(userId: string): Promise<boolean> {
   const day = new Date().toISOString().slice(0, 10);
-  const cur = dailyCounts.get(userId);
+  const key = `chat.daily.${userId}`;
+  let cur = dailyCounts.get(userId);
   if (!cur || cur.day !== day) {
-    dailyCounts.set(userId, { day, count: 1 });
-    return true;
+    // Cold/stale locally — rehydrate from the durable store so a deploy or a
+    // second instance can't hand the user a fresh allowance.
+    const stored = await loadConfig<{ day: string; count: number }>(key).catch(() => null);
+    cur = stored && stored.day === day ? stored : { day, count: 0 };
   }
-  if (cur.count >= DAILY_LIMIT) return false;
-  cur.count += 1;
+  if (cur.count >= DAILY_LIMIT) { dailyCounts.set(userId, cur); return false; }
+  const next = { day, count: cur.count + 1 };
+  dailyCounts.set(userId, next);
+  void saveConfig(key, next); // durable, best-effort
   return true;
 }
 
@@ -102,7 +115,7 @@ export async function chatWithClaude(
 
   // Hard daily cap — once reached, return the capacity message and do NOT
   // call the API. This is the real defence against sustained token burn.
-  if (!consumeDailyQuota(session.userId)) {
+  if (!(await consumeDailyQuota(session.userId))) {
     return { text: CAPACITY_MESSAGE };
   }
 
@@ -119,7 +132,7 @@ export async function chatWithClaude(
       max_tokens: 350,
       system: SYSTEM_PROMPT,
       messages,
-    });
+    }, { timeout: 15_000 }); // user-facing: don't let a hung API call block the request
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const usage = resp.usage as any;
     const { recordAiUsage } = await import("@/lib/server/ai-usage");
