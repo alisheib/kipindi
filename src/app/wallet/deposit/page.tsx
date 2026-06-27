@@ -40,7 +40,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
   // play-money to test deposits/referrals/proposals. Disable via
   // ADMIN_TEST_DEPOSITS=false. Mirrors the wallet-service bypass.
   const user = await db.user.findById(session.userId);
-  const adminTest = !!user && ADMIN_TEST_ROLES.has(user.role) && process.env.ADMIN_TEST_DEPOSITS !== "false";
+  const adminTest = !!user && ADMIN_TEST_ROLES.has(user.role) && process.env.NODE_ENV !== "production" && process.env.ADMIN_TEST_DEPOSITS !== "false";
   const maxAmount = adminTest ? 1_000_000_000 : 2_000_000;
   const quickAmounts = adminTest ? [100_000, 1_000_000, 5_000_000, 20_000_000, 100_000_000] : QUICK_AMOUNTS;
   const bonusCfg = getBonusConfig();

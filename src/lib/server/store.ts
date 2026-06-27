@@ -435,8 +435,15 @@ const memoryDb = {
   },
   kyc: {
     findByUserId: (userId: string) => {
-      for (const k of store.kyc.values()) if (k.userId === userId) return k;
-      return null;
+      // Return the NEWEST submission for this user (matches the Prisma DAL's
+      // orderBy createdAt desc) so a resubmission reads the latest record, not
+      // a stale one — important for KYC review/compliance.
+      let latest: StoredKyc | null = null;
+      for (const k of store.kyc.values()) {
+        if (k.userId !== userId) continue;
+        if (!latest || k.createdAt > latest.createdAt) latest = k;
+      }
+      return latest;
     },
     upsert: (k: StoredKyc) => { store.kyc.set(k.id, k); return k; },
     /** Find any KYC submission carrying this NIDA number. Used to enforce
@@ -452,13 +459,12 @@ const memoryDb = {
   otp: {
     create: (o: StoredOtp) => { store.otps.set(o.id, o); return o; },
     findActive: (phone: string, purpose: string) => {
+      // Most-recent active OTP (createdAt desc) — matches the Prisma DAL ordering
+      // so the same code is selected in tests and prod under clock skew.
       const now = Date.now();
-      for (const o of Array.from(store.otps.values()).reverse()) {
-        if (o.phoneE164 === phone && o.purpose === purpose && !o.consumedAt && new Date(o.expiresAt).getTime() > now) {
-          return o;
-        }
-      }
-      return null;
+      return Array.from(store.otps.values())
+        .filter((o) => o.phoneE164 === phone && o.purpose === purpose && !o.consumedAt && new Date(o.expiresAt).getTime() > now)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0] ?? null;
     },
     /** Return ALL active (unconsumed, unexpired) OTPs for a phone+purpose,
      *  ordered most-recent-first. Used by verifyOtpAndAuth to accept any

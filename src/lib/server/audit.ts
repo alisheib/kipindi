@@ -66,6 +66,17 @@ declare global {
 const ring: AuditEntry[] = globalThis.__50PICK_AUDIT_RING ?? (globalThis.__50PICK_AUDIT_RING = []);
 
 function chainSecret(): string {
+  // In production the audit chain MUST have its own dedicated secret. Falling back
+  // to SESSION_SECRET would let anyone able to mint sessions also forge audit
+  // hashes (the chain would no longer be independently tamper-evident), and the
+  // dev placeholder must never anchor a real chain.
+  if (process.env.NODE_ENV === "production") {
+    const s = process.env.AUDIT_CHAIN_SECRET;
+    if (!s || s === process.env.SESSION_SECRET) {
+      throw new Error("AUDIT_CHAIN_SECRET must be set in production and distinct from SESSION_SECRET");
+    }
+    return s;
+  }
   return process.env.AUDIT_CHAIN_SECRET ?? process.env.SESSION_SECRET ?? "dev-only-audit-chain-secret";
 }
 

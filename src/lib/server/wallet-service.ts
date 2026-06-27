@@ -34,7 +34,10 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
   const ADMIN_TEST_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
   const depositor = await db.user.findById(userId);
   const adminTestEnv = process.env.ADMIN_TEST_DEPOSITS;
-  const adminTestAllowed = adminTestEnv === "true" || (adminTestEnv === undefined && process.env.NODE_ENV !== "production");
+  // Hard rule: the uncapped, gate-skipping admin test-deposit path can NEVER be
+  // active in production — not even if ADMIN_TEST_DEPOSITS="true" leaks into the
+  // prod env. Off-prod it defaults on (unless explicitly disabled).
+  const adminTestAllowed = process.env.NODE_ENV !== "production" && adminTestEnv !== "false";
   const adminTest = !!depositor && ADMIN_TEST_ROLES.has(depositor.role) && adminTestAllowed;
 
   const parse = (adminTest ? AdminDepositSchema : DepositSchema).safeParse(input);

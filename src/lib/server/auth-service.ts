@@ -157,7 +157,9 @@ async function issueOtp(phone: string, purpose: "login" | "register" | "withdraw
  */
 const TEST_FLOAT_TZS = 1_000_000;
 async function applyTestFloat(userId: string): Promise<void> {
-  if (process.env.TEST_FUNDING !== "true") return;
+  // Defense-in-depth: never mint test float on a production deployment, even if
+  // TEST_FUNDING is somehow left set to "true" in the prod environment.
+  if (process.env.TEST_FUNDING !== "true" || process.env.NODE_ENV === "production") return;
   try {
     const w = await db.wallet.findByUserId(userId);
     if (!w || w.status !== "ACTIVE" || w.balance >= TEST_FLOAT_TZS) return;

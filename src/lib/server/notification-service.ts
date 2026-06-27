@@ -16,30 +16,40 @@ export type NotifyInput = Omit<StoredNotification, "id" | "userId" | "readAt" | 
   userId: string;
 };
 
-export async function notify(input: NotifyInput) {
-  const n: StoredNotification = {
-    id: `ntf_${randomId(10)}`,
-    userId: input.userId,
-    kind: input.kind,
-    titleEn: input.titleEn,
-    titleSw: input.titleSw,
-    bodyEn: input.bodyEn,
-    bodySw: input.bodySw,
-    href: input.href,
-    readAt: null,
-    dismissedAt: null,
-    createdAt: new Date().toISOString(),
-  };
-  await db.notification.create(n);
-  audit({
-    category: "SYSTEM",
-    action: "notification.delivered",
-    actorId: null,
-    targetType: "Notification",
-    targetId: n.id,
-    payload: { userId: n.userId, kind: n.kind },
-  });
-  return n;
+export async function notify(input: NotifyInput): Promise<StoredNotification | null> {
+  // Best-effort by contract: notifications are paired with money/auth/compliance
+  // flows that have ALREADY committed under a lock. A DB hiccup writing the inbox
+  // row must never reject into (and crash) those callers — many fire this without
+  // awaiting. So we swallow + log here, immunising every caller (current and
+  // future) instead of relying on each call site to remember `.catch()`.
+  try {
+    const n: StoredNotification = {
+      id: `ntf_${randomId(10)}`,
+      userId: input.userId,
+      kind: input.kind,
+      titleEn: input.titleEn,
+      titleSw: input.titleSw,
+      bodyEn: input.bodyEn,
+      bodySw: input.bodySw,
+      href: input.href,
+      readAt: null,
+      dismissedAt: null,
+      createdAt: new Date().toISOString(),
+    };
+    await db.notification.create(n);
+    audit({
+      category: "SYSTEM",
+      action: "notification.delivered",
+      actorId: null,
+      targetType: "Notification",
+      targetId: n.id,
+      payload: { userId: n.userId, kind: n.kind },
+    });
+    return n;
+  } catch (err) {
+    console.error("[notify] failed to record notification:", (err as Error)?.message ?? err);
+    return null;
+  }
 }
 
 export async function listForUser(userId: string, limit = 30) {
