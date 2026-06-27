@@ -47,11 +47,18 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
     // shape is borrowed.
     <nav
       aria-label="Primary"
-      className="xl:hidden fixed left-2.5 right-2.5 z-40 rounded-[26px] border border-border"
+      className="xl:hidden fixed left-2.5 right-2.5 z-40 rounded-[26px] border border-border-strong"
       style={{
         bottom: "calc(9px + env(safe-area-inset-bottom))",
-        background: "var(--bg-elevated)",
-        boxShadow: "0 12px 32px -10px oklch(8% 0.09 264 / 0.75), inset 0 1px 0 oklch(92% 0.04 264 / 0.05)",
+        // v2 kit "Dark Glass": translucent fill + GPU backdrop blur/saturate, a
+        // top gloss light-edge and a faint inner sheen, over the float shadow.
+        background: "color-mix(in oklab, var(--bg-elevated) 78%, transparent)",
+        backdropFilter: "blur(16px) saturate(1.2)",
+        WebkitBackdropFilter: "blur(16px) saturate(1.2)",
+        boxShadow:
+          "0 14px 36px -10px oklch(8% 0.09 264 / 0.8), " +   // float drop shadow
+          "inset 0 1px 0 oklch(100% 0 0 / 0.12), " +          // top gloss highlight
+          "inset 0 -1px 0 oklch(0% 0 0 / 0.20)",              // bottom inner shade
       }}
     >
       <ul
