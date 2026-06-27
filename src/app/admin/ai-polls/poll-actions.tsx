@@ -103,7 +103,6 @@ export function GenerateForm() {
   const [result, setResult] = useState<GenResult>(null);
   const phaseTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const router = useRouter();
-  const { deferToast } = useDeferredToast(pending);
 
   const clearTimers = () => {
     phaseTimers.current.forEach(clearTimeout);
@@ -421,7 +420,7 @@ export function BatchGenerateForm({ maxBatch, remaining }: { maxBatch: number; r
         )}
       </button>
       <span className="text-[11px] text-text-subtle font-mono">
-        Cycles across categories. Each poll runs the full 4-layer pipeline.
+        Two-tier: brainstorm → free filter → enrich keepers. Fewer rejects, lower cost.
       </span>
 
       {/* Simulated per-poll progress overlay */}
@@ -442,11 +441,11 @@ export function BatchGenerateForm({ maxBatch, remaining }: { maxBatch: number; r
                     />
                   </div>
                   <p className="font-mono text-[11px] text-text-subtle tabular-nums">
-                    Poll {currentPoll} of {total} · {Math.round(pct)}%
+                    {pct < 28 ? "Brainstorming ideas across categories…" : `Refining poll ${currentPoll} of ${total}`} · {Math.round(pct)}%
                   </p>
                 </div>
                 <p className="text-[11px] text-text-subtle leading-relaxed">
-                  Each poll runs the full 4-layer pipeline: AI generation, validation, duplicate detection, and quality scoring.
+                  Two-tier: a cheap pass brainstorms ideas and filters duplicates / out-of-window dates for free, then the full Sonnet + web-search pipeline runs only on the keepers.
                 </p>
               </div>
             ) : (
@@ -496,7 +495,17 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
       fd.set("maxBatchPerRun", maxBatch);
       const r = await updatePollConfigAction(fd);
       router.refresh();
-      if (r.ok) deferToast({ title: "Settings saved", variant: "success" });
+      if (r.ok) {
+        // Re-seed from the server's CLAMPED values so an out-of-range entry
+        // (e.g. confidence 200) snaps back to what was actually saved (100).
+        setWebSearch(r.config.webSearchEnabled);
+        setDailyTarget(String(r.config.dailyTarget));
+        setMinLead(String(r.config.minLeadTimeHours));
+        setMaxLead(String(r.config.maxLeadTimeDays));
+        setMinConf(String(r.config.minConfidence));
+        setMaxBatch(String(r.config.maxBatchPerRun));
+        deferToast({ title: "Settings saved", variant: "success" });
+      }
     });
   };
 
@@ -984,7 +993,7 @@ function RejectForm({ pollId, onClose, overlay }: { pollId: string; onClose: () 
   };
 
   return (
-    <div className="mt-2 z-10 rounded-md border border-border bg-bg-elevated p-3 shadow-lg w-[280px]">
+    <div className="mt-2 z-10 rounded-md border border-border bg-bg-elevated p-3 shadow-lg w-[min(280px,calc(100vw-2rem))]">
       <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-2">
         Reject reason
       </p>
@@ -1043,7 +1052,7 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
   };
 
   return (
-    <div className="mt-2 z-10 rounded-md border border-border bg-bg-elevated p-3 shadow-lg w-[360px] space-y-2">
+    <div className="mt-2 z-10 rounded-md border border-border bg-bg-elevated p-3 shadow-lg w-[min(360px,calc(100vw-2rem))] space-y-2">
       <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle">
         Edit poll
       </p>

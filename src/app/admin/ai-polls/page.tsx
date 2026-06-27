@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import type { Route } from "next";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, type SortDir } from "@/components/admin/admin-sort";
@@ -205,6 +206,10 @@ export default async function AdminAIPollsPage({
               <p className="text-caption italic text-text-tertiary">
                 Controls volume, accuracy strictness, and cost. Saved live — no deploy needed.
               </p>
+              <p className="text-caption text-text-tertiary mt-0.5">
+                The AI model &amp; spend limits live in{" "}
+                <Link href={"/admin/ai-usage" as Route} className="text-royal-300 underline-offset-2 hover:underline">AI usage &amp; credits →</Link>
+              </p>
             </div>
           </div>
           <ConfigPanel config={config} />
@@ -250,9 +255,9 @@ export default async function AdminAIPollsPage({
             <div className="flex items-center justify-between px-4 lg:px-5 pt-4">
               <div>
                 <p className="font-display font-semibold text-body-sm text-text">
-                  Approved \u00b7 ready to publish
+                  Approved · ready to publish
                 </p>
-                <p className="text-caption italic text-text-tertiary">Yaliyoidhinishwa \u00b7 tayari kuchapishwa</p>
+                <p className="text-caption italic text-text-tertiary">Yaliyoidhinishwa · tayari kuchapishwa</p>
               </div>
               <Chip size="sm" variant="success">{approvedSorted.length} approved</Chip>
             </div>
@@ -319,7 +324,7 @@ export default async function AdminAIPollsPage({
           ) : (
             <>
               <div className="overflow-x-auto">
-                <table className="admin-tbl">
+                <table className="admin-tbl min-w-[760px]">
                   <thead className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle bg-bg-overlay border-b border-border">
                     <tr>
                       <th className="text-left p-3">State</th>
@@ -490,7 +495,7 @@ function FilterToolbarSkeleton() {
 
 function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish" }) {
   return (
-    <div id={`poll-${poll.id}`} className="px-4 lg:px-5 py-4 flex items-start gap-4 scroll-mt-24">
+    <div id={`poll-${poll.id}`} className="px-4 lg:px-5 py-4 flex flex-col sm:flex-row items-stretch sm:items-start gap-4 scroll-mt-24">
       <div className="flex-1 min-w-0">
         {/* Header badges */}
         <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -602,13 +607,13 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
         {poll.reviewedBy && (
           <p className="mt-2 font-mono text-[10px] text-text-subtle">
             Reviewed by {poll.reviewedBy.slice(-6)} at {fmtDate(poll.reviewedAt ?? "")}
-            {poll.reviewNote && ` {"\u00b7"} "${poll.reviewNote}"`}
+            {poll.reviewNote && ` · "${poll.reviewNote}"`}
           </p>
         )}
       </div>
 
-      {/* Action buttons */}
-      <div className="shrink-0 flex flex-col gap-2">
+      {/* Action buttons — full-width under the content on phones, fixed column ≥sm */}
+      <div className="shrink-0 flex flex-col gap-2 w-full sm:w-auto">
         {mode === "review" && <ReviewActions poll={poll} />}
         {mode === "publish" && <PublishActions poll={poll} />}
         <DeleteAction pollId={poll.id} state={poll.state} />

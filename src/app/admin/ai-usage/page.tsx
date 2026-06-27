@@ -222,7 +222,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
         {/* Per-feature breakdown */}
         <AdminCard title="By feature (stored window)" sw="Kwa kipengele" padding="p-0">
           <div className="overflow-x-auto">
-            <table className="admin-tbl">
+            <table className="admin-tbl min-w-[860px]">
               <thead className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle bg-bg-overlay border-b border-border">
                 <tr>
                   <th className="text-left p-3">Feature</th>
@@ -336,7 +336,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
           </div>
 
           <div className="overflow-x-auto">
-            <table className="admin-tbl">
+            <table className="admin-tbl min-w-[860px]">
               <thead className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle bg-bg-overlay border-b border-border">
                 <tr>
                   <SortTh field="time" label="Time (UTC)" current={sort} dir={dir} sp={spFlat} baseHref="/admin/ai-usage" />
