@@ -14,13 +14,19 @@ const CATEGORIES = ["sports", "macro", "weather", "crypto", "culture", "tech", "
 export function ToggleSource({ id, enabled }: { id: string; enabled: boolean }) {
   const [pending, start] = useTransition();
   const router = useRouter();
+  const { deferToast, toast } = useDeferredToast(pending);
   const onClick = () => {
     start(async () => {
-      const fd = new FormData();
-      fd.set("id", id);
-      fd.set("enabled", String(!enabled));
-      await toggleSourceAction(fd);
-      router.refresh();
+      try {
+        const fd = new FormData();
+        fd.set("id", id);
+        fd.set("enabled", String(!enabled));
+        await toggleSourceAction(fd);
+        router.refresh();
+        deferToast({ title: enabled ? "Source disabled" : "Source enabled", variant: "success" });
+      } catch {
+        toast({ title: "Couldn't update source", variant: "danger" });
+      }
     });
   };
   return <Toggle on={enabled} onClick={onClick} disabled={pending} aria-label="Toggle source enabled" />;
@@ -62,13 +68,19 @@ export function RemoveSource({ id, label }: { id: string; label: string }) {
 export function ToggleCategory({ category, enabled }: { category: string; enabled: boolean }) {
   const [pending, start] = useTransition();
   const router = useRouter();
+  const { deferToast, toast } = useDeferredToast(pending);
   const onClick = () => {
     start(async () => {
-      const fd = new FormData();
-      fd.set("category", category);
-      fd.set("enabled", String(!enabled));
-      await toggleCategoryAction(fd);
-      router.refresh();
+      try {
+        const fd = new FormData();
+        fd.set("category", category);
+        fd.set("enabled", String(!enabled));
+        await toggleCategoryAction(fd);
+        router.refresh();
+        deferToast({ title: `Category ${enabled ? "disabled" : "enabled"} · ${category}`, variant: "success" });
+      } catch {
+        toast({ title: "Couldn't update category", variant: "danger" });
+      }
     });
   };
   return (

@@ -14,7 +14,7 @@ export default function PrivacyPage() {
       <LegalSection n="1" title="Data controller">
         <p>
           50pick Ltd, Dar es Salaam, Tanzania. Contact:{" "}
-          <span className="font-mono text-text-muted">privacy@50pick.com</span>. Our data protection
+          <span className="font-mono text-text-muted">privacy@50pick.tz</span>. Our data protection
           officer (DPO) is reachable at the same address.
         </p>
       </LegalSection>

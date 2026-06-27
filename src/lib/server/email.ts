@@ -339,6 +339,7 @@ export function withdrawalSentHtml({ amount, destination, reference }: {
     ${eyebrow("Withdrawal sent", "Pesa imetumwa")}
     ${heading("Withdrawal on its way")}
     ${subtitle("Your provider should pay out within moments.")}
+    ${subtitleSw("Mtoa huduma wako atalipa hivi punde.")}
     ${detailRows([
       { label: "Amount", value: fmtTzs(amount) },
       { label: "Destination", value: destination },
@@ -706,6 +707,7 @@ export function referralRewardHtml({ amount, referredName, totalEarned }: {
     ${eyebrow("Referral reward", "Umepata tuzo")}
     ${heading(`You earned ${fmtTzs(amount)}`)}
     ${subtitle(`${referredName} joined through your referral link.`)}
+    ${subtitleSw("Rafiki uliyemwalika amejiunga — umepata tuzo.")}
     ${detailRows([
       { label: "Reward", value: fmtTzs(amount), tone: "good" },
       { label: "Total earned", value: fmtTzs(totalEarned) },
@@ -732,6 +734,45 @@ export function referralEarningHtml({ type, amountTzs }: {
     ${subtitleSw("Ipo kwenye pochi yako. Endelea kualika marafiki kupata zaidi.")}
     ${detailRows([{ label: "Reward", value: fmtTzs(amountTzs), tone: "good" }])}
     ${ctaButton("/profile/invite", "Invite more · Alika zaidi")}
+  `);
+}
+
+/** Admin alert — Market Sentinel sweep failing. Kit-styled (was bespoke HTML). */
+export function sentinelDownAdminHtml({ reason, errorCount, sampleError }: {
+  reason: string; errorCount: number; sampleError: string;
+}): string {
+  return wrap(`
+    ${eyebrow("Market Sentinel", "Mlinzi wa soko")}
+    ${heading("Market Sentinel is failing")}
+    ${subtitle(`On its last sweep the auto-close AI could not check ${errorCount} market(s), so a just-settled market could stay open to betting.`)}
+    ${subtitle("Most likely fix: the Anthropic API balance is exhausted or the key is invalid — check Plans & Billing and ANTHROPIC_API_KEY.")}
+    ${detailRows([
+      { label: "Reason", value: reason, tone: "bad" },
+      { label: "Markets affected", value: String(errorCount) },
+      { label: "Last error", value: sampleError.slice(0, 200) },
+    ])}
+    ${ctaButton("/admin/system", "Open admin · Fungua")}
+  `);
+}
+
+/** Admin alert — AI cycle spend nearing/at the configured budget. Kit-styled. */
+export function aiCreditLimitAdminHtml({ level, spentUsd, limitUsd }: {
+  level: "warn" | "limit"; spentUsd: number; limitUsd: number;
+}): string {
+  const reached = level === "limit";
+  const spent = `$${spentUsd.toFixed(2)}`;
+  const limit = `$${limitUsd.toFixed(2)}`;
+  return wrap(`
+    ${eyebrow("AI spend", "Matumizi ya AI")}
+    ${heading(reached ? `AI spend reached the ${limit} limit` : `AI spend nearing the ${limit} limit`)}
+    ${subtitle(reached
+      ? "AI features (poll generation, the help chatbot, the market sentinel) will stop once Anthropic credit runs out. Top up credit on the Anthropic console, then reset the cycle on the AI usage page."
+      : "Plan a top-up soon. You'll get one more email if spend reaches the full limit.")}
+    ${detailRows([
+      { label: "Spent this cycle", value: spent, tone: reached ? "bad" : undefined },
+      { label: "Budget", value: limit },
+    ])}
+    ${ctaButton("/admin/ai-usage", "AI usage & credits")}
   `);
 }
 

@@ -16,7 +16,10 @@ export type SupportConfig = {
 };
 
 const DEFAULTS: SupportConfig = {
-  email: "msaada@50pick.co.tz",
+  // Must match the email service's ReplyTo (support@50pick.tz) so a user who
+  // replies to a 50pick email and a user who taps "contact support" in the app
+  // reach the SAME inbox, on the one licensed domain.
+  email: "support@50pick.tz",
   phone: "+255 22 211 5811",
   phoneTel: "+255222115811",
   helpline: "0800 11 0011",

@@ -152,7 +152,7 @@ export async function buildDsarBundle(userId: string) {
     notificationsCount: notifications.length,
     rights: {
       access: "Granted (this document).",
-      correction: "Submit a correction request via /profile/account or by contacting privacy@kipindi.tz.",
+      correction: "Submit a correction request via /profile/account or by contacting privacy@50pick.tz.",
       erasure: "Available 7 years after account closure subject to AML retention requirements (POCA Cap 423 §16).",
       portability: "This bundle is the portability format (machine-readable JSON).",
     },

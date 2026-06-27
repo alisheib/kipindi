@@ -577,23 +577,14 @@ export async function notifyAdminsSentinelDown(opts: { reason: string; errorCoun
     }).catch(() => {});
   }
   try {
-    const { sendEmail } = await import("./email");
+    const { sendEmail, sentinelDownAdminHtml } = await import("./email");
     const { resolvePhoneEmail } = await import("./email-map");
     const emails = [...new Set(
       officers
         .map((o) => (o.email || resolvePhoneEmail(o.phoneE164) || "").trim().toLowerCase())
         .filter((e) => e && !e.endsWith("@stub") && !e.endsWith("@none")),
     )];
-    const html =
-      `<div style="font-family:system-ui,sans-serif;line-height:1.5">` +
-      `<h2 style="margin:0 0 8px">⚠️ Market Sentinel is failing</h2>` +
-      `<p>Reason: <b>${opts.reason}</b></p>` +
-      `<p>On its last sweep the live auto-close AI could not check <b>${opts.errorCount}</b> market(s), ` +
-      `so a just-settled market could stay open to betting.</p>` +
-      `<p><b>Most likely fix:</b> the Anthropic API balance is exhausted or the key is invalid — ` +
-      `check Plans &amp; Billing and the <code>ANTHROPIC_API_KEY</code>.</p>` +
-      `<pre style="background:#f4f4f4;padding:8px;border-radius:6px;white-space:pre-wrap;font-size:12px">` +
-      `${opts.sampleError.slice(0, 500).replace(/</g, "&lt;")}</pre></div>`;
+    const html = sentinelDownAdminHtml({ reason: opts.reason, errorCount: opts.errorCount, sampleError: opts.sampleError });
     for (const to of emails) {
       sendEmail({
         to,
@@ -635,21 +626,14 @@ export async function notifyAdminsAiCreditLimit(opts: { level: "warn" | "limit";
     }).catch(() => {});
   }
   try {
-    const { sendEmail } = await import("./email");
+    const { sendEmail, aiCreditLimitAdminHtml } = await import("./email");
     const { resolvePhoneEmail } = await import("./email-map");
     const emails = [...new Set(
       officers
         .map((o) => (o.email || resolvePhoneEmail(o.phoneE164) || "").trim().toLowerCase())
         .filter((e) => e && !e.endsWith("@stub") && !e.endsWith("@none")),
     )];
-    const html =
-      `<div style="font-family:system-ui,sans-serif;line-height:1.5">` +
-      `<h2 style="margin:0 0 8px">${reached ? "🛑 AI spend limit reached" : "⚠️ AI spend nearing limit"}</h2>` +
-      `<p>This cycle's AI spend is <b>${spent}</b> of your <b>${limit}</b> budget.</p>` +
-      (reached
-        ? `<p>AI features (poll generation, the help chatbot, the market sentinel) will stop working once Anthropic credit runs out. <b>Top up credit on the Anthropic console, then reset the cycle</b> on the 50pick AI usage page.</p>`
-        : `<p>Plan a top-up soon. You'll get one more email if spend reaches the full limit.</p>`) +
-      `<p style="font-size:12px;color:#666">Adjust the limit or reset the cycle: 50pick → Admin → AI usage &amp; credits.</p></div>`;
+    const html = aiCreditLimitAdminHtml({ level: opts.level, spentUsd: opts.spentUsd, limitUsd: opts.limitUsd });
     for (const to of emails) {
       sendEmail({
         to,
