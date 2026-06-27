@@ -20,7 +20,7 @@
 
 import { randomId } from "./crypto";
 import { audit } from "./audit";
-import { getAIProvider, type AIPollGeneration, type AIProviderResponse } from "./ai-provider";
+import { getAIProvider, type AIPollGeneration, type AIProviderResponse, type PollIdea } from "./ai-provider";
 import { getAIPollConfig } from "./ai-poll-config";
 import { listMarkets } from "./market-service";
 import { listSources, seedDefaultSources } from "./source-registry";
@@ -836,6 +836,51 @@ const BATCH_CATEGORIES = ["sports", "macro", "weather", "crypto", "culture", "in
  * Runs sequentially so in-batch duplicates are caught (each poll sees the ones
  * generated before it) and the API isn't hammered in parallel.
  */
+export type IdeaFilterResult = { kept: PollIdea[]; dropped: Array<{ idea: PollIdea; reason: string }> };
+
+/**
+ * Tier-1.5 — FREE code-side filter of brainstormed ideas before paying for the
+ * expensive Tier-2 enrichment. Drops ideas with an invalid/banned category, an
+ * unparseable/out-of-window date, an empty title, or a duplicate (vs the existing
+ * board AND earlier ideas in the same batch). Pure + deterministic so it's unit
+ * tested. Uses the SAME normaliseTitle + VALID_CATEGORIES as the post-hoc filter,
+ * with a 24h grace on the lower date bound (the guess is day-granular; Tier 2 +
+ * validateAndFilter enforce the real window).
+ */
+export function filterIdeas(
+  ideas: PollIdea[],
+  opts: { minLeadHours: number; maxLeadDays: number; avoidTitles: string[]; now: number },
+): IdeaFilterResult {
+  const earliest = opts.now + opts.minLeadHours * 3_600_000 - 86_400_000; // 24h grace
+  const latest = opts.now + opts.maxLeadDays * 86_400_000;
+  const seen = new Set(opts.avoidTitles.map(normaliseTitle).filter(Boolean));
+  const kept: PollIdea[] = [];
+  const dropped: Array<{ idea: PollIdea; reason: string }> = [];
+  for (const idea of ideas) {
+    const cat = (idea.category || "").toLowerCase();
+    if (!VALID_CATEGORIES.has(cat)) { dropped.push({ idea, reason: "invalid_category" }); continue; }
+    const fp = normaliseTitle(idea.titleEn || "");
+    if (!fp) { dropped.push({ idea, reason: "empty_title" }); continue; }
+    const t = Date.parse(idea.resolutionDateGuess);
+    if (!Number.isFinite(t)) { dropped.push({ idea, reason: "invalid_date" }); continue; }
+    if (t < earliest) { dropped.push({ idea, reason: "resolution_too_soon" }); continue; }
+    if (t > latest) { dropped.push({ idea, reason: "resolution_too_far" }); continue; }
+    if (seen.has(fp)) { dropped.push({ idea, reason: "duplicate" }); continue; }
+    seen.add(fp);
+    kept.push({ ...idea, category: cat });
+  }
+  return { kept, dropped };
+}
+
+/** Seed prompt that pins Tier-2 (Sonnet + web search) to a specific idea. */
+function ideaSteer(idea: PollIdea, operatorPrompt?: string): string {
+  return `Build the prediction market for THIS specific idea (refine the wording but keep the same subject — do not invent a different market):
+Idea: ${idea.titleEn}
+Why it's bettable: ${idea.why}
+Target resolution around: ${idea.resolutionDateGuess}.
+Find the exact publicly-verifiable resolution criterion + real source URLs, set an accurate resolutionAt, and translate to Swahili.${operatorPrompt ? `\nOperator guidance (priority): ${operatorPrompt}` : ""}`;
+}
+
 export async function generateAIPollBatch(opts: {
   count: number;
   categories?: string[];
@@ -861,16 +906,42 @@ export async function generateAIPollBatch(opts: {
     GENERATING: 0, VALIDATION_FAILED: 0, FILTERED: 0,
     PENDING_REVIEW: 0, EDITING: 0, APPROVED: 0, REJECTED: 0, PUBLISHED: 0,
   };
-  // Gather the avoid-list ONCE for the whole batch (not per poll), and grow it
-  // as the batch produces keepers so later polls don't duplicate earlier ones
-  // in the same run.
-  const avoidTitles = await gatherExistingTitles();
-  for (let i = 0; i < n; i++) {
-    const category = cats[i % cats.length];
-    const poll = await generateAIPoll({ category, prompt: opts.prompt, actorId: opts.actorId, avoidTitles });
+  // Two-tier: cheap Haiku ideation + free code filter, then Sonnet+web-search
+  // enrichment ONLY on the survivors — so we stop paying full price for polls
+  // that would be filtered for date/category/duplicate reasons. The avoid-list
+  // grows intra-batch so a run never duplicates its own picks. Falls back to
+  // free-choice generation if ideation yields too few (see top-up below).
+  const liveAvoid = await gatherExistingTitles();
+  const provider = getAIProvider();
+
+  // ── Tier 1: ideate (over-generate ~2n, bounded by maxBatchPerRun*2) ──
+  const poolSize = Math.min(cfg.maxBatchPerRun * 2, n * 2 + 4);
+  let ideas: PollIdea[] = [];
+  try {
+    const res = await provider.ideate({ categories: cats, count: poolSize, prompt: opts.prompt, avoidTitles: liveAvoid });
+    if (res.ok) ideas = res.ideas;
+  } catch { /* ideation is best-effort — top-up below covers a total failure */ }
+
+  // ── Tier 1.5: free filter ──
+  const { kept } = filterIdeas(ideas, { minLeadHours: cfg.minLeadTimeHours, maxLeadDays: cfg.maxLeadTimeDays, avoidTitles: liveAvoid, now: Date.now() });
+  audit({ category: "ADMIN", action: "aipoll.batch_ideated", actorId: opts.actorId, targetType: "AIPoll", targetId: "batch", payload: { ideasReturned: ideas.length, keptAfterFilter: kept.length, requested: n } });
+
+  // ── Tier 2: enrich survivors (up to n), each pinned to its idea ──
+  for (const idea of kept.slice(0, n)) {
+    const poll = await generateAIPoll({ category: idea.category, prompt: ideaSteer(idea, opts.prompt), actorId: opts.actorId, avoidTitles: liveAvoid });
     generated.push(poll);
     summary[poll.state]++;
-    if (poll.titleEn && (poll.state === "PENDING_REVIEW" || poll.state === "EDITING")) avoidTitles.push(poll.titleEn);
+    if (poll.titleEn && (poll.state === "PENDING_REVIEW" || poll.state === "EDITING")) liveAvoid.push(poll.titleEn);
+  }
+
+  // ── Top-up / fallback: if ideation produced fewer than requested (or failed),
+  //    fill the remainder with free-choice generation so volume is still met. ──
+  for (let i = 0; generated.length < n && i < n; i++) {
+    const category = cats[i % cats.length];
+    const poll = await generateAIPoll({ category, prompt: opts.prompt, actorId: opts.actorId, avoidTitles: liveAvoid });
+    generated.push(poll);
+    summary[poll.state]++;
+    if (poll.titleEn && (poll.state === "PENDING_REVIEW" || poll.state === "EDITING")) liveAvoid.push(poll.titleEn);
   }
   return { generated, summary };
 }

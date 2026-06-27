@@ -29,7 +29,7 @@
  * where the model answers in prose instead of calling the tool.
  */
 import Anthropic from "@anthropic-ai/sdk";
-import type { AIProvider, AIProviderResponse, AIPollGeneration, GenerateRequest } from "./ai-provider";
+import type { AIProvider, AIProviderResponse, AIPollGeneration, GenerateRequest, IdeateRequest, IdeateResponse, PollIdea } from "./ai-provider";
 import { getAIPollConfig } from "./ai-poll-config";
 import { ai } from "./ai-config";
 import { recordAiUsage, costOf } from "./ai-usage";
@@ -41,6 +41,35 @@ const VALID_CATEGORIES = [
 
 /** The structured-output contract. The model fills this in by calling the
  *  `submit_poll` tool — the input we get back is already valid JSON. */
+/** Tier-1 ideation model — cheap Haiku, env-overridable; same family the
+ *  sentinel triage uses. No web search at this tier. */
+const IDEATION_MODEL = process.env.AI_POLL_IDEATION_MODEL || "claude-haiku-4-5-20251001";
+
+const SUBMIT_IDEAS_TOOL = {
+  name: "submit_ideas",
+  description: "Submit the brainstormed prediction-market ideas. Call exactly once with all ideas.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      ideas: {
+        type: "array",
+        description: "The candidate poll ideas.",
+        items: {
+          type: "object",
+          properties: {
+            titleEn: { type: "string", description: "English YES/NO question, under 200 chars." },
+            category: { type: "string", enum: VALID_CATEGORIES },
+            resolutionDateGuess: { type: "string", description: "Approximate resolution date, ISO YYYY-MM-DD." },
+            why: { type: "string", description: "One short line on why it's a hot, uncertain, bettable market." },
+          },
+          required: ["titleEn", "category", "resolutionDateGuess", "why"],
+        },
+      },
+    },
+    required: ["ideas"],
+  },
+};
+
 const SUBMIT_POLL_TOOL = {
   name: "submit_poll",
   description:
@@ -264,6 +293,84 @@ export class ClaudeProvider implements AIProvider {
       };
     }
   }
+
+  async ideate(req: IdeateRequest): Promise<IdeateResponse> {
+    const start = Date.now();
+    const nowIso = new Date().toISOString();
+    const cfg = getAIPollConfig();
+    const cats = req.categories.filter((c) => VALID_CATEGORIES.includes(c));
+    const categories = cats.length ? cats : ["sports"];
+    const count = Math.max(1, Math.min(50, Math.floor(req.count) || 1));
+    const userPrompt = req.prompt
+      ? `Brainstorm ${count} prediction-market ideas across: ${categories.join(", ")}. Operator steer (priority): ${req.prompt}`
+      : `Brainstorm ${count} fresh, hot, genuinely-uncertain prediction-market ideas across: ${categories.join(", ")}.`;
+    try {
+      const client = new Anthropic({ apiKey: this.apiKey });
+      const resp = await client.messages.create({
+        model: IDEATION_MODEL,
+        max_tokens: 1500,
+        system: buildIdeationPrompt({ nowIso, minLeadHours: cfg.minLeadTimeHours, maxLeadDays: cfg.maxLeadTimeDays, categories, count, avoidTitles: req.avoidTitles }),
+        tool_choice: { type: "tool", name: "submit_ideas" },
+        tools: [SUBMIT_IDEAS_TOOL as unknown as Anthropic.Messages.Tool],
+        messages: [{ role: "user", content: userPrompt }],
+      });
+      const latencyMs = Date.now() - start;
+      const usage = resp.usage as { input_tokens?: number; output_tokens?: number } | undefined;
+      const inTok = usage?.input_tokens ?? 0;
+      const outTok = usage?.output_tokens ?? 0;
+      const costUsd = costOf(IDEATION_MODEL, inTok, outTok, 0);
+      await recordAiUsage({ feature: "polls", model: IDEATION_MODEL, inputTokens: inTok, outputTokens: outTok, webSearches: 0, ok: true, latencyMs, detail: `ideate · ${count}` });
+
+      const content = resp.content as Array<{ type: string; name?: string; input?: unknown }>;
+      const toolCall = content.find((b) => b.type === "tool_use" && b.name === "submit_ideas");
+      const rawIdeas = (toolCall?.input as { ideas?: unknown } | undefined)?.ideas;
+      const ideas: PollIdea[] = Array.isArray(rawIdeas)
+        ? rawIdeas
+            .map((x) => x as Record<string, unknown>)
+            .filter((x) => x && typeof x.titleEn === "string")
+            .map((x) => ({
+              titleEn: String(x.titleEn).slice(0, 240),
+              category: String(x.category ?? "other").toLowerCase(),
+              resolutionDateGuess: String(x.resolutionDateGuess ?? ""),
+              why: String(x.why ?? "").slice(0, 240),
+            }))
+        : [];
+      return { ok: true, ideas, tokensUsed: inTok + outTok, costUsd, latencyMs };
+    } catch (err) {
+      await recordAiUsage({ feature: "polls", model: IDEATION_MODEL, ok: false, latencyMs: Date.now() - start, errorType: (err as Error).message?.slice(0, 200), detail: "ideate" });
+      return { ok: false, ideas: [], error: `Ideation error: ${(err as Error).message}`, tokensUsed: 0, costUsd: 0, latencyMs: Date.now() - start };
+    }
+  }
+}
+
+function buildIdeationPrompt(opts: {
+  nowIso: string;
+  minLeadHours: number;
+  maxLeadDays: number;
+  categories: string[];
+  count: number;
+  avoidTitles?: string[];
+}): string {
+  const earliest = new Date(Date.now() + opts.minLeadHours * 3_600_000).toISOString().slice(0, 10);
+  const latest = new Date(Date.now() + opts.maxLeadDays * 86_400_000).toISOString().slice(0, 10);
+  const avoid = (opts.avoidTitles ?? []).slice(0, 60);
+  const avoidBlock = avoid.length
+    ? `\n\nDO NOT repeat anything equivalent to these existing questions:\n${avoid.map((t) => `- ${t}`).join("\n")}\n`
+    : "";
+  return `You are the 50pick idea scout. Brainstorm ${opts.count} DISTINCT prediction-market IDEAS for a GBT-licensed Tanzanian pari-mutuel platform. This is a cheap first pass — just the seed of each market, no sources or full criteria yet.${avoidBlock}
+
+CURRENT DATE: ${opts.nowIso}
+
+For EACH idea give: titleEn (a crisp binary YES/NO question), category (one of: ${opts.categories.join(", ")}), resolutionDateGuess (approx resolution date between ${earliest} and ${latest}), and why (one line: why it's hot + genuinely uncertain).
+
+RULES:
+- Each idea = a real, named, UPCOMING event resolving between ${earliest} and ${latest}. Never already-decided.
+- Genuinely uncertain (coin-flip-ish), crisp and specific. No vague/evergreen filler.
+- Anchor in Tanzania / East Africa where possible (global ok for crypto, weather, major world sport).
+- NEVER: politics, elections, religion, violence, war, adult content, death/health of individuals (banned under the GBT license).
+- All ${opts.count} ideas must be DISTINCT from each other and from any existing question listed above.
+
+Call submit_ideas exactly once with all ${opts.count} ideas.`;
 }
 
 function tryParseJson(text: string): AIPollGeneration | null {

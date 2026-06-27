@@ -58,11 +58,42 @@ export type GenerateRequest = {
   avoidTitles?: string[];
 };
 
+/* ─── Tier-1 ideation (cheap Haiku brainstorm; no web search) ─── */
+
+/** A lightweight poll *idea* — just enough to code-filter (date/category/dupe)
+ *  before paying for the expensive Tier-2 enrichment. No criterion/sources/SW. */
+export type PollIdea = {
+  titleEn: string;
+  category: string;
+  /** Approximate ISO date (YYYY-MM-DD) — a cheap pre-screen; Tier 2 derives the
+   *  real resolutionAt via web search. */
+  resolutionDateGuess: string;
+  why: string;
+};
+
+export type IdeateRequest = {
+  categories: string[];
+  count: number;
+  prompt?: string;
+  avoidTitles?: string[];
+};
+
+export type IdeateResponse = {
+  ok: boolean;
+  ideas: PollIdea[];
+  error?: string;
+  tokensUsed: number;
+  costUsd: number;
+  latencyMs: number;
+};
+
 /* ─── Provider interface ─── */
 
 export interface AIProvider {
   name: string;
   generate(req: GenerateRequest): Promise<AIProviderResponse>;
+  /** Tier-1: cheap idea brainstorm (Haiku, no web search). */
+  ideate(req: IdeateRequest): Promise<IdeateResponse>;
 }
 
 /* ─── Mock data pools ─── */
@@ -243,6 +274,18 @@ function simulateCost(tokens: number): number {
 
 export class MockClaudeProvider implements AIProvider {
   name = "mock-claude-opus";
+
+  async ideate(req: IdeateRequest): Promise<IdeateResponse> {
+    const cats = req.categories.length ? req.categories : ["sports"];
+    const when = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
+    const ideas: PollIdea[] = [];
+    for (let i = 0; i < Math.max(1, req.count); i++) {
+      const category = cats[i % cats.length];
+      ideas.push({ titleEn: `Mock ${category} idea #${i + 1}`, category, resolutionDateGuess: when, why: "mock ideation" });
+    }
+    await new Promise((r) => setTimeout(r, 5));
+    return { ok: true, ideas, tokensUsed: 60, costUsd: 0.0002, latencyMs: 20 };
+  }
 
   async generate(req: GenerateRequest): Promise<AIProviderResponse> {
     const scenario = pickScenario();
