@@ -24,7 +24,7 @@ import { notifyReferralJoined, notifyReferralReward } from "./notification-servi
 import { creditInternal } from "./wallet-service";
 import { creditBonus } from "./bonus-service";
 import { getBonusConfig } from "./bonus-config";
-import { sendEmailToUser, referralRewardHtml } from "./email";
+import { sendEmailToUser, referralRewardHtml, referralEarningHtml } from "./email";
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I ambiguity
 
@@ -289,7 +289,15 @@ async function payBonus(opts: { referrerUserId: string; recruitUserId: string; h
       status: finalStatus,
       note: who === "new" ? "new-player bonus" : "referrer bonus",
     });
-    if (finalStatus === "PAID") notifyReferralReward(userId, { type: "BONUS", amountTzs: amount });
+    if (finalStatus === "PAID") {
+      notifyReferralReward(userId, { type: "BONUS", amountTzs: amount });
+      sendEmailToUser(userId, (email) => ({
+        to: email,
+        subject: `Referral bonus · TZS ${Math.round(amount).toLocaleString("en-US")}`,
+        html: referralEarningHtml({ type: "BONUS", amountTzs: amount }),
+        tag: "referral",
+      })).catch(() => {});
+    }
   };
 
   if (cfg.bonus.recipient === "NEW" || cfg.bonus.recipient === "BOTH") await payTo(opts.recruitUserId, cfg.bonus.newAmountTzs, "new");
@@ -391,7 +399,15 @@ export async function onRecruitBet(recruitUserId: string, opts: { stake: number;
       amountTzs: cut,
       status: credited ? "PAID" : "HELD",
     });
-    if (credited) notifyReferralReward(referrerUserId, { type: "COMMISSION", amountTzs: cut });
+    if (credited) {
+      notifyReferralReward(referrerUserId, { type: "COMMISSION", amountTzs: cut });
+      sendEmailToUser(referrerUserId, (email) => ({
+        to: email,
+        subject: `Referral commission · TZS ${Math.round(cut).toLocaleString("en-US")}`,
+        html: referralEarningHtml({ type: "COMMISSION", amountTzs: cut }),
+        tag: "referral",
+      })).catch(() => {});
+    }
     if (acct) { /* totals updated inside recordReward */ }
   }
 }

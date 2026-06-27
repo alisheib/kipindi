@@ -503,6 +503,9 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
             createdAt: cur.resolutionStage2At!, updatedAt: cur.resolutionStage2At!, completedAt: cur.resolutionStage2At!,
           });
           winnersPaid += payout;
+          // Tamper-evident chain entry for the credit (the txn row is the ledger;
+          // this puts the payout in the HMAC audit chain a regulator walks).
+          audit({ category: "WALLET", action: "bet.payout", actorId: p.userId, targetType: "Position", targetId: p.id, payload: { marketId: cur.id, outcome, payout, balanceAfter: newBal, auto: true } });
           notifyWin(p.userId, payout, cur.titleEn, "/positions");
           sendEmailToUser(p.userId, (email) => ({
             to: email,
@@ -1021,6 +1024,9 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
           createdAt: m.resolutionStage2At!, updatedAt: m.resolutionStage2At!, completedAt: m.resolutionStage2At!,
         });
         winnersPaid += payout;
+        // Tamper-evident chain entry for the payout credit (txn row is the
+        // ledger; this anchors it in the HMAC audit chain too).
+        audit({ category: "WALLET", action: "bet.payout", actorId: p.userId, targetType: "Position", targetId: p.id, payload: { marketId: m.id, outcome: opts.outcome, payout, balanceAfter } });
         // Win receipt — opens the position so they can see the payout.
         notifyWin(p.userId, payout, m.titleEn, "/positions");
         sendEmailToUser(p.userId, (email) => ({

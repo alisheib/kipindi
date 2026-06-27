@@ -714,6 +714,27 @@ export function referralRewardHtml({ amount, referredName, totalEarned }: {
   `);
 }
 
+/** Referral earning (commission / bonus / prize) landed in the wallet. Unified
+ *  so every referral money event emails the player consistently. */
+export function referralEarningHtml({ type, amountTzs }: {
+  type: "COMMISSION" | "BONUS" | "PRIZE"; amountTzs: number;
+}): string {
+  const en = type === "COMMISSION" ? "Referral commission earned"
+    : type === "BONUS" ? "Referral bonus added"
+    : "Milestone reward";
+  const sw = type === "COMMISSION" ? "Umepata kamisheni ya rafiki"
+    : type === "BONUS" ? "Bonasi ya rafiki imeongezwa"
+    : "Zawadi ya hatua";
+  return wrap(`
+    ${eyebrow("Referral reward", sw)}
+    ${heading(`${en} · ${fmtTzs(amountTzs)}`)}
+    ${subtitle("It's in your wallet. Keep inviting friends to earn more.")}
+    ${subtitleSw("Ipo kwenye pochi yako. Endelea kualika marafiki kupata zaidi.")}
+    ${detailRows([{ label: "Reward", value: fmtTzs(amountTzs), tone: "good" }])}
+    ${ctaButton("/profile/invite", "Invite more · Alika zaidi")}
+  `);
+}
+
 export function bonusCreditedHtml({ amountTzs, wagerRequiredTzs, sourceLabel }: {
   amountTzs: number; wagerRequiredTzs: number; sourceLabel?: string;
 }): string {
