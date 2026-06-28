@@ -510,11 +510,13 @@ export async function creditInternal(
     const updated = await db.wallet.adjust(wallet.id, { balance: amount });
     const newBalance = updated?.balance ?? wallet.balance + amount;
     const now = new Date().toISOString();
+    const txnId = `txn_${randomId(12)}`;
+    const txnType = opts.type ?? "BONUS_CREDIT";
     await db.txn.create({
-      id: `txn_${randomId(12)}`,
+      id: txnId,
       walletId: wallet.id,
       userId,
-      type: opts.type ?? "BONUS_CREDIT",
+      type: txnType,
       status: "CONFIRMED",
       amount,
       fee: 0,
@@ -530,6 +532,14 @@ export async function creditInternal(
       createdAt: now,
       updatedAt: now,
       completedAt: now,
+    });
+    audit({
+      category: "WALLET",
+      action: "wallet.credit_internal",
+      actorId: null,
+      targetType: "Wallet",
+      targetId: wallet.id,
+      payload: { userId, txnId, type: txnType, amount, balanceAfter: newBalance, description: opts.description },
     });
     return newBalance;
   });

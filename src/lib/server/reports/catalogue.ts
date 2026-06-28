@@ -11,7 +11,7 @@
 
 import { createHash } from "node:crypto";
 import { db } from "../store";
-import { getAuditPage, verifyChain } from "../audit";
+import { getAuditPage, verifyChain, verifyChainFull } from "../audit";
 import {
   providerSummary, depositsTotal, withdrawalsTotal,
   grossGamingRevenue, netGamingRevenue, kycFunnel, rgRosterCounts,
@@ -438,12 +438,13 @@ export async function buildIsoAudit(generatorId: string): Promise<Report> {
     },
     summary: [
       { label: "Total entries", value: entries.length.toLocaleString(), tone: "neutral" },
-      // Run the REAL verifier — never attest "Valid" to a regulator without it.
-      ((): SummaryItem => {
-        const v = verifyChain();
+      // Full-chain verification against the persisted DB — not just the in-memory
+      // 10k ring. Falls back to in-memory when no DB is available.
+      await (async (): Promise<SummaryItem> => {
+        const v = await verifyChainFull();
         return v.valid
-          ? { label: "Chain verification", value: "Valid", tone: "good", delta: "HMAC-SHA-256, no breaks (in-memory window)" }
-          : { label: "Chain verification", value: "BROKEN", tone: "bad", delta: `First break at ${v.firstBreakAt ?? "unknown"}` };
+          ? { label: "Chain verification", value: "Valid", tone: "good", delta: `HMAC-SHA-256, ${v.total.toLocaleString()} entries verified (full DB chain)` }
+          : { label: "Chain verification", value: "BROKEN", tone: "bad", delta: `First break at ${v.firstBreakAt ?? "unknown"} (entry #${v.index ?? "?"} of ${v.total})` };
       })(),
       { label: "Earliest entry", value: entries[entries.length - 1]?.createdAt?.slice(0, 19).replace("T", " ") ?? "—", tone: "neutral" },
       { label: "Latest entry", value: entries[0]?.createdAt?.slice(0, 19).replace("T", " ") ?? "—", tone: "neutral" },

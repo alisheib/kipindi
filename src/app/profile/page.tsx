@@ -36,9 +36,14 @@ export default async function ProfilePage() {
 
   const wallet = await db.wallet.findByUserId(user.id);
   const kyc = await db.kyc.findByUserId(user.id);
+  const sof = await db.sourceOfFunds.get(user.id);
   const positions = await listPositionsForUser(user.id, 500);
   const initials = displayInitials(user);
   const displayName = user.displayName ?? "Set your name";
+
+  // SoF discoverability: show a banner when the player has a PENDING or
+  // REJECTED declaration (they may not know they need to act).
+  const sofNeedsBanner = sof && (sof.reviewStatus === "PENDING" || sof.reviewStatus === "REJECTED");
 
   const kycLevel = kyc?.status ?? "NOT_STARTED";
   const kycPill =
@@ -178,6 +183,31 @@ export default async function ProfilePage() {
               </div>
               <Link href="/profile/kyc" className="btn btn-gold btn-md mt-4 inline-flex" style={{ borderRadius: "var(--r-pill)" }}>
                 Continue verification · Endelea
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── SoF banner when declaration is pending or rejected */}
+      {sofNeedsBanner && (
+        <section className="rounded-xl border border-warning-border bg-warning-bg/30 p-5">
+          <div className="flex items-start gap-3">
+            <I.fileSignature s={20} />
+            <div className="min-w-0">
+              <p className="font-display text-[15px] font-semibold text-text leading-tight">
+                {sof.reviewStatus === "REJECTED" ? "Source of funds — please resubmit" : "Source of funds under review"}
+                <span className="block italic text-text-subtle text-[12px] mt-0.5">
+                  {sof.reviewStatus === "REJECTED" ? "Chanzo cha fedha — tafadhali wasilisha tena" : "Chanzo cha fedha kinakaguliwa"}
+                </span>
+              </p>
+              <p className="mt-1 text-[13px] text-text-muted leading-snug">
+                {sof.reviewStatus === "REJECTED"
+                  ? "Your source-of-funds declaration was not accepted. Please update and resubmit to unlock higher deposit limits."
+                  : "Your declaration is being reviewed. We'll notify you once it's cleared."}
+              </p>
+              <Link href="/profile/source-of-funds" className="btn btn-gold btn-md mt-3 inline-flex" style={{ borderRadius: "var(--r-pill)" }}>
+                {sof.reviewStatus === "REJECTED" ? "Update declaration · Sasisha" : "View status · Tazama hali"}
               </Link>
             </div>
           </div>

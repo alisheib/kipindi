@@ -31,9 +31,9 @@ export async function saveProposalsConfigAction(config: ProposalsConfig) {
   return r;
 }
 
-export async function approveProposalAction(proposalId: string) {
+export async function approveProposalAction(proposalId: string, sourceUrl: string) {
   const s = await ensureAdmin();
-  const r = await approveAndList(proposalId, s.userId);
+  const r = await approveAndList(proposalId, s.userId, sourceUrl);
   revalidatePath("/admin/proposals");
   revalidatePath("/proposals");
   return r;

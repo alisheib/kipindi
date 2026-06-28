@@ -120,6 +120,7 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
   const [declining, setDeclining] = useState(false);
   const [reason, setReason] = useState<DeclineReason | null>(null);
   const [note, setNote] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
 
   const on = c.enabled;
 
@@ -158,7 +159,7 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
   };
 
   const refresh = () => router.refresh();
-  const resetReview = () => { setDeclining(false); setReason(null); setNote(""); };
+  const resetReview = () => { setDeclining(false); setReason(null); setNote(""); setSourceUrl(""); };
 
   const saveConfig = () => start(async () => {
     const r = await saveProposalsConfigAction(c);
@@ -167,10 +168,11 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
   });
 
   const approve = () => { if (!sel) return;
+    if (!sourceUrl.trim()) { toast({ title: "Source URL required", description: "Enter the trusted source URL before approving.", variant: "danger" }); return; }
     overlay.run("Approving & listing…", "Creating a live market from this proposal.");
     start(async () => {
       try {
-        const r = await approveProposalAction(sel.id);
+        const r = await approveProposalAction(sel.id, sourceUrl.trim());
         if (r.ok) { overlay.succeed("Approved & listed", `Market ${r.marketId} created.`); resetReview(); refresh(); }
         else overlay.fail("Couldn't approve", r.error);
       } catch { overlay.fail("Couldn't approve", "Server error — please try again."); }
@@ -282,10 +284,17 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
             {!open ? (
               <p className="text-[12.5px] text-text-muted">This proposal is <strong>{sel.status.toLowerCase().replace("_", " ")}</strong> — no further action.</p>
             ) : !declining ? (
-              <div className="flex flex-wrap gap-2">
-                <Button variant="gold" size="md" loading={pending} leading={<I.checkCircle size={15} />} onClick={approve}>Approve &amp; list · Orodhesha</Button>
-                <Button variant="ghost" size="md" loading={pending} leading={<I.edit s={15} />} onClick={sendBack}>Request changes</Button>
-                <Button variant="ghost" size="md" leading={<I.xCircle size={15} />} onClick={() => setDeclining(true)} className="!text-claret-300">Decline</Button>
+              <div className="space-y-2.5">
+                <div>
+                  <div className="mb-1.5 text-[12px] font-semibold text-text">Source URL · Chanzo</div>
+                  <Input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://... (trusted source for resolution)" mono size="sm" />
+                  <p className="mt-1 text-[10.5px] text-text-subtle">Required — must be on the approved source registry.</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="gold" size="md" loading={pending} leading={<I.checkCircle size={15} />} onClick={approve}>Approve &amp; list · Orodhesha</Button>
+                  <Button variant="ghost" size="md" loading={pending} leading={<I.edit s={15} />} onClick={sendBack}>Request changes</Button>
+                  <Button variant="ghost" size="md" leading={<I.xCircle size={15} />} onClick={() => setDeclining(true)} className="!text-claret-300">Decline</Button>
+                </div>
               </div>
             ) : (
               <div>

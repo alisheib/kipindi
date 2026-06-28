@@ -6,6 +6,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { notify } from "@/lib/server/notification-service";
+import { sendEmailToUser, sofSubmittedHtml } from "@/lib/server/email";
 import type { StoredSourceOfFunds } from "@/lib/server/store";
 
 export async function submitSourceOfFundsAction(formData: FormData) {
@@ -54,8 +55,7 @@ export async function submitSourceOfFundsAction(formData: FormData) {
     payload: { declaredSource, declaredAnnualIncomeBand },
   });
 
-  // Acknowledge receipt in the in-app inbox — parity with the KYC-submitted
-  // signal, so the player knows the declaration landed and is under review.
+  // Dual-channel: in-app inbox + email — parity with KYC-submitted flow.
   await notify({
     userId: session.userId,
     kind: "KYC",
@@ -65,6 +65,12 @@ export async function submitSourceOfFundsAction(formData: FormData) {
     bodySw: "Asante — taarifa yako inakaguliwa. Tutakujulisha ikikamilika.",
     href: "/profile/source-of-funds",
   });
+  sendEmailToUser(session.userId, (email) => ({
+    to: email,
+    subject: "Source of funds received · Chanzo cha fedha kimepokelewa",
+    html: sofSubmittedHtml(),
+    tag: "compliance",
+  })).catch(() => {});
 
   revalidatePath("/profile/source-of-funds");
   redirect("/profile/source-of-funds?saved=1");

@@ -253,8 +253,16 @@ export function timelineStep(v: ProposalView): number {
 }
 
 // ── Officer actions ─────────────────────────────────────────────────────
-export async function approveAndList(proposalId: string, officerId: string):
+export async function approveAndList(proposalId: string, officerId: string, sourceUrl: string):
   | Promise<{ ok: true; marketId: string } | { ok: false; error: string }> {
+  // Source-trust gate — officer must supply a valid source URL at approval time.
+  // Proposals bypass the direct createMarketAction path which has its own gate,
+  // so we enforce here to prevent markets going live with no source of truth.
+  const url = (sourceUrl ?? "").trim();
+  if (!url) return { ok: false as const, error: "A source URL is required to list a proposal." };
+  const { isSourceTrusted, seedDefaultSources } = await import("./source-registry");
+  await seedDefaultSources();
+
   // Serialize per-proposal and re-check status INSIDE the lock — otherwise two
   // officers (or a double-click) both pass the status guard and create TWO live
   // markets from one proposal, leaving an orphaned duplicate. (Audit finding.)
@@ -264,13 +272,16 @@ export async function approveAndList(proposalId: string, officerId: string):
     if (p.status === "LISTED" || p.status === "RESOLVED") return { ok: false as const, error: "Already listed." };
     if (p.status === "DECLINED") return { ok: false as const, error: "Proposal was declined." };
 
+    const trust = await isSourceTrusted(url, toMarketCategory(p.category));
+    if (!trust.ok) return { ok: false as const, error: `Source not approved: ${trust.reason}. Add or enable it at /admin/sources.` };
+
     // Create the real market through the existing pipeline.
     const { createMarket } = await import("./market-service");
     const market = await createMarket({
       titleEn: p.titleEn,
       titleSw: p.titleSw ?? p.titleEn,
       category: toMarketCategory(p.category),
-      sourceUrl: "",
+      sourceUrl: url,
       resolutionCriterion: p.resolutionCriterion,
       resolutionAt: new Date(`${p.resolutionDate}T23:59:59.000Z`).toISOString(),
       proposedBy: p.proposerId,

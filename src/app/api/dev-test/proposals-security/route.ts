@@ -58,9 +58,9 @@ export async function POST() {
     ok("queue masks proposer", (await getAdminQueue("all")).every((q) => !q.proposerMasked.includes("Juma Hassan Mwita")));
 
     // 3 · officer approves → LISTED; can't re-approve / can't decline a listed one
-    const a = await approveAndList(pid, off1.id);
+    const a = await approveAndList(pid, off1.id, "https://www.bbc.com/test-source");
     ok("officer approve lists it", a.ok === true);
-    ok("re-approve blocked", (await approveAndList(pid, off1.id)).ok === false);
+    ok("re-approve blocked", (await approveAndList(pid, off1.id, "https://www.bbc.com/test-source")).ok === false);
     ok("decline of a listed proposal blocked", (await declineProposal(pid, off1.id, "Politics")).ok === false);
     const marketId = (a as { marketId: string }).marketId;
 
@@ -68,7 +68,7 @@ export async function POST() {
     const r2 = await createProposal((await mkUser()).id, { titleEn: "A proposal to be declined here", resolutionCriterion: "Resolves from an official source.", category: "culture", resolutionDate: futureDate() });
     const dpid = (r2 as { proposal: { id: string } }).proposal.id;
     await declineProposal(dpid, off1.id, "Ambiguous outcome");
-    ok("approve of a declined proposal blocked", (await approveAndList(dpid, off1.id)).ok === false);
+    ok("approve of a declined proposal blocked", (await approveAndList(dpid, off1.id, "https://www.bbc.com/test-source")).ok === false);
 
     // 5 · VOID resolution pays NO prize but marks resolved
     const proposerBefore = await bal(P.id);

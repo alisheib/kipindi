@@ -1,4 +1,5 @@
 import { LegalHeader, LegalSection } from "../_components";
+import { SUPPORT_EMAIL } from "@/lib/support-config";
 
 export const metadata = { title: "Privacy Policy" };
 
@@ -14,7 +15,7 @@ export default function PrivacyPage() {
       <LegalSection n="1" title="Data controller">
         <p>
           50pick Ltd, Dar es Salaam, Tanzania. Contact:{" "}
-          <span className="font-mono text-text-muted">privacy@50pick.tz</span>. Our data protection
+          <span className="font-mono text-text-muted">{SUPPORT_EMAIL()}</span>. Our data protection
           officer (DPO) is reachable at the same address.
         </p>
       </LegalSection>

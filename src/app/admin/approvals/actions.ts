@@ -37,10 +37,10 @@ export async function reviewSofAction(formData: FormData): Promise<{ ok: true } 
   const reason = String(formData.get("reason") ?? "").trim().slice(0, 500);
 
   if (!userId) return { ok: false, error: "Missing user id." };
-  if (decision !== "ACCEPT" && decision !== "REJECT") return { ok: false, error: "Invalid decision." };
+  if (decision !== "ACCEPT" && decision !== "REJECT" && decision !== "MORE_INFO") return { ok: false, error: "Invalid decision." };
   // An officer must never clear their own declaration (separation of duties).
   if (session.userId === userId) return { ok: false, error: "You cannot review your own source-of-funds declaration." };
-  if (decision === "REJECT" && reason.length < 5) return { ok: false, error: "A rejection reason (≥ 5 characters) is required." };
+  if ((decision === "REJECT" || decision === "MORE_INFO") && reason.length < 5) return { ok: false, error: "A reason/note (≥ 5 characters) is required." };
 
   return withLock(`sof-review:${userId}`, async () => {
     const sof = await db.sourceOfFunds.get(userId);
@@ -48,29 +48,33 @@ export async function reviewSofAction(formData: FormData): Promise<{ ok: true } 
     if (sof.reviewStatus !== "PENDING") return { ok: false as const, error: `Already ${sof.reviewStatus.toLowerCase()}.` };
 
     const now = new Date().toISOString();
+    const statusMap = { ACCEPT: "ACCEPTED", REJECT: "REJECTED", MORE_INFO: "PENDING" } as const;
     await db.sourceOfFunds.upsert({
       ...sof,
-      reviewStatus: decision === "ACCEPT" ? "ACCEPTED" : "REJECTED",
+      reviewStatus: statusMap[decision as keyof typeof statusMap],
       reviewerId: session.userId,
       reviewedAt: now,
     });
 
+    const actionMap = { ACCEPT: "sof.accepted", REJECT: "sof.rejected", MORE_INFO: "sof.more_info_requested" } as const;
     audit({
       category: "COMPLIANCE",
-      action: decision === "ACCEPT" ? "sof.accepted" : "sof.rejected",
+      action: actionMap[decision as keyof typeof actionMap],
       actorId: session.userId,
       targetType: "User",
       targetId: userId,
       payload: { declaredSource: sof.declaredSource, declaredAnnualIncomeBand: sof.declaredAnnualIncomeBand, reason: reason || null },
     });
 
-    notifySof(userId, decision === "ACCEPT" ? "ACCEPTED" : "REJECTED");
+    const notifyStatusMap = { ACCEPT: "ACCEPTED", REJECT: "REJECTED", MORE_INFO: "MORE_INFO" } as const;
+    const notifyStatus = notifyStatusMap[decision as keyof typeof notifyStatusMap];
+    notifySof(userId, notifyStatus);
     // Dual-channel: a SoF decision gates the player's deposits, so email it too
     // (not bell-only) — matches the KYC decision flow.
     sendEmailToUser(userId, (email) => ({
       to: email,
-      subject: decision === "ACCEPT" ? "Source of funds accepted" : "Source of funds — action needed",
-      html: sofDecisionHtml({ status: decision === "ACCEPT" ? "ACCEPTED" : "REJECTED", note: reason || undefined }),
+      subject: decision === "ACCEPT" ? "Source of funds accepted" : decision === "MORE_INFO" ? "Source of funds — more info needed" : "Source of funds — action needed",
+      html: sofDecisionHtml({ status: notifyStatus, note: reason || undefined }),
       tag: "compliance",
     })).catch(() => {});
 

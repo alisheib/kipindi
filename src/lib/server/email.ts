@@ -834,6 +834,16 @@ export function sofDecisionHtml({ status, note }: {
   `);
 }
 
+export function sofSubmittedHtml(): string {
+  return wrap(`
+    ${eyebrow("Compliance", "Uzingatiaji")}
+    ${heading("Source of funds received")}
+    ${subtitle("We've received your source-of-funds declaration. Our compliance team will review it shortly and let you know once it's cleared.")}
+    ${subtitleSw("Tumeipokea taarifa yako ya chanzo cha fedha. Timu yetu itaipitia na kukujulisha ikikamilika.")}
+    ${ctaButton("/profile/source-of-funds", "View status · Tazama hali")}
+  `);
+}
+
 export function loginNotificationHtml({ name, time, ip }: { name: string; time: string; ip: string }): string {
   return wrap(`
     ${eyebrow("Sign-in", "Umeingia")}

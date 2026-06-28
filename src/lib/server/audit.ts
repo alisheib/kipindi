@@ -319,6 +319,67 @@ export function verifyChain(): { valid: boolean; firstBreakAt?: string; index?: 
   return { valid: true };
 }
 
+/**
+ * Full-chain verification against the persisted Postgres `AuditLog` table.
+ * Unlike `verifyChain()` (which validates the in-memory 10k ring only), this
+ * walks the entire persisted log in batches and validates every HMAC link.
+ * Used by the regulator-facing ISO integrity report (catalogue.ts).
+ *
+ * Returns:
+ *  - `{ valid: true, total }` if the entire chain is intact
+ *  - `{ valid: false, firstBreakAt, index, total }` at the first tamper point
+ *  - Falls back to `verifyChain()` (in-memory) when no DB is available
+ */
+export async function verifyChainFull(): Promise<{ valid: boolean; firstBreakAt?: string; index?: number; total: number }> {
+  const db = prisma();
+  if (!db) return { ...verifyChain(), total: ring.length };
+  const BATCH = 1000;
+  let offset = 0;
+  let prevHash = GENESIS;
+  let total = 0;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const rows = await db.auditLog.findMany({
+      orderBy: { createdAt: "asc" },
+      skip: offset,
+      take: BATCH,
+      select: {
+        id: true, category: true, action: true, actorId: true, targetType: true,
+        targetId: true, payload: true, ip: true, userAgent: true, createdAt: true,
+        prevHash: true, entryHash: true,
+      },
+    });
+    if (rows.length === 0) break;
+    const ordered = offset === 0 ? reconstructChainOrder(rows) : rows;
+    for (const r of ordered) {
+      if (r.prevHash !== prevHash) {
+        return { valid: false, firstBreakAt: r.id, index: total, total };
+      }
+      const recomputed = hashEntry({
+        id:         r.id,
+        category:   r.category as AuditCategory,
+        action:     r.action,
+        actorId:    r.actorId,
+        targetType: r.targetType,
+        targetId:   r.targetId,
+        payload:    (r.payload as Record<string, unknown> | null) ?? undefined,
+        ip:         r.ip,
+        userAgent:  r.userAgent,
+        createdAt:  r.createdAt.toISOString(),
+        prevHash:   r.prevHash,
+      });
+      if (recomputed !== r.entryHash) {
+        return { valid: false, firstBreakAt: r.id, index: total, total };
+      }
+      prevHash = r.entryHash;
+      total++;
+    }
+    offset += rows.length;
+    if (rows.length < BATCH) break;
+  }
+  return { valid: true, total };
+}
+
 /** All entries for a specific user — used by the user's self-service activity feed. */
 export function getAuditForActor(actorId: string, limit = 200): AuditEntry[] {
   return ring.filter((e) => e.actorId === actorId).slice(-limit).reverse();

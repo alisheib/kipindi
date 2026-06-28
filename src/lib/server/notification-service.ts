@@ -660,7 +660,7 @@ export async function notifyAdminsAiCreditLimit(opts: { level: "warn" | "limit";
 
 /** Source-of-funds review outcome. ACCEPTED unblocks the deposit gate; REJECTED
  *  asks the player to re-declare (deposits over the threshold stay blocked). */
-export function notifySof(userId: string, status: "ACCEPTED" | "REJECTED") {
+export function notifySof(userId: string, status: "ACCEPTED" | "REJECTED" | "MORE_INFO") {
   if (status === "ACCEPTED") {
     return notify({
       userId,
@@ -670,6 +670,17 @@ export function notifySof(userId: string, status: "ACCEPTED" | "REJECTED") {
       bodyEn: "Your declaration was accepted — you can deposit as normal.",
       bodySw: "Tamko lako limekubaliwa — unaweza kuweka pesa kama kawaida.",
       href: "/wallet",
+    });
+  }
+  if (status === "MORE_INFO") {
+    return notify({
+      userId,
+      kind: "KYC",
+      titleEn: "More info needed for source of funds",
+      titleSw: "Taarifa zaidi zinahitajika",
+      bodyEn: "Our compliance team needs a bit more information about your source of funds. Please check your email and update your declaration.",
+      bodySw: "Timu yetu inahitaji maelezo zaidi kuhusu chanzo chako cha fedha. Tafadhali angalia barua pepe yako na usasishe tamko lako.",
+      href: "/profile/source-of-funds",
     });
   }
   return notify({

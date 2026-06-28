@@ -85,7 +85,7 @@ export async function POST() {
     ok("rate limit blocks the 4th open proposal", fourth.ok === false && (fourth as { code: string }).code === "RATE_LIMITED");
 
     // 5 · officer approve & list → real market
-    const appr = await approveAndList(pid, officer1.id);
+    const appr = await approveAndList(pid, officer1.id, "https://www.bbc.com/test-source");
     ok("approve & list creates a market", appr.ok === true && !!(appr as { marketId: string }).marketId);
     const marketId = (appr as { marketId: string }).marketId;
     d = (await getProposalDetail(pid, null))!;

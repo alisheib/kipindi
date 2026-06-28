@@ -47,13 +47,15 @@ export function Toggle({
         style={{
           position: "absolute",
           top: 3,
-          left: on ? 21 : 3,
+          left: 3,
           width: 20,
           height: 20,
           borderRadius: 999,
           background: "#fff",
-          transition: "left .18s cubic-bezier(0.2, 0.8, 0.2, 1)",
+          transform: on ? "translateX(18px)" : "translateX(0)",
+          transition: "transform .18s cubic-bezier(0.2, 0.8, 0.2, 1)",
           boxShadow: "0 1px 3px oklch(10% 0.05 264 / 0.5)",
+          willChange: "transform",
         }}
       />
     </button>
