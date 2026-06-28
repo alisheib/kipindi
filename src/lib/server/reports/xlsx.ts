@@ -34,7 +34,21 @@ function applyValue(cell: ExcelJS.Cell, raw: string | number | null, format?: Co
   }
   if (format === "datetime") cell.value = raw ? fmtDateTime(String(raw)) : "";
   else if (format === "date") cell.value = raw ? fmtDate(String(raw)) : "";
-  else cell.value = String(raw);
+  else cell.value = neutralizeFormula(String(raw));
+}
+
+/**
+ * Spreadsheet formula-injection guard. A cell whose text starts with = + - @ (or
+ * a leading tab/CR) can be executed as a formula by Excel/Sheets — directly when
+ * a workbook is re-saved to CSV and re-opened, or via legacy auto-conversion.
+ * Untrusted operator/player strings (market titles, display names, regions,
+ * provider refs) reach these reports, which are handed to regulators. Prefix a
+ * single quote so the value is always rendered as literal text (OWASP CSV-
+ * injection mitigation). Normal values (not starting with those chars) are
+ * untouched, so legitimate data is unchanged.
+ */
+function neutralizeFormula(s: string): string {
+  return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
 }
 
 export async function renderXlsx(report: Report): Promise<Buffer> {

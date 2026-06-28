@@ -11,13 +11,13 @@
 
 import { createHash } from "node:crypto";
 import { db } from "../store";
-import { getAuditPage } from "../audit";
+import { getAuditPage, verifyChain } from "../audit";
 import {
   providerSummary, depositsTotal, withdrawalsTotal,
   grossGamingRevenue, netGamingRevenue, kycFunnel, rgRosterCounts,
 } from "../analytics";
 import { getGlobalConfig } from "../market-config";
-import type { Report, Row, SignatureRow } from "./types";
+import type { Report, Row, SignatureRow, SummaryItem } from "./types";
 import { formatDateTime } from "@/lib/utils";
 
 /** Standard regulator attestation block — three roles applied at the foot
@@ -432,7 +432,13 @@ export async function buildIsoAudit(generatorId: string): Promise<Report> {
     },
     summary: [
       { label: "Total entries", value: entries.length.toLocaleString(), tone: "neutral" },
-      { label: "Chain verification", value: "Valid", tone: "good", delta: "HMAC-SHA-256, no breaks" },
+      // Run the REAL verifier — never attest "Valid" to a regulator without it.
+      ((): SummaryItem => {
+        const v = verifyChain();
+        return v.valid
+          ? { label: "Chain verification", value: "Valid", tone: "good", delta: "HMAC-SHA-256, no breaks (in-memory window)" }
+          : { label: "Chain verification", value: "BROKEN", tone: "bad", delta: `First break at ${v.firstBreakAt ?? "unknown"}` };
+      })(),
       { label: "Earliest entry", value: entries[entries.length - 1]?.createdAt?.slice(0, 19).replace("T", " ") ?? "—", tone: "neutral" },
       { label: "Latest entry", value: entries[0]?.createdAt?.slice(0, 19).replace("T", " ") ?? "—", tone: "neutral" },
     ],
@@ -461,7 +467,7 @@ export async function buildIsoAudit(generatorId: string): Promise<Report> {
       },
     ],
     notes: [
-      "Each entryHash = HMAC-SHA-256(prevHash || category || action || createdAt || payload, SESSION_SECRET).",
+      "Each entryHash = HMAC-SHA-256(prevHash || category || action || createdAt || payload, AUDIT_CHAIN_SECRET).",
       "If a single field is modified, the chain breaks at the next verify. Cf. ISO/IEC 27001:2022 A.8.15.",
       "Full payloads are available on /admin/audit; this report is the index for a regulator first-pass.",
     ],
