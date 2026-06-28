@@ -6,6 +6,8 @@ import { useDeferredToast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { DateSelect } from "@/components/ui/date-select";
+import { TimeSelect } from "@/components/ui/time-select";
 import { Toggle } from "@/components/ui/toggle";
 import { I } from "@/components/ui/glyphs";
 import {
@@ -107,28 +109,31 @@ export function GenerateForm() {
   // Controlled Poll state
   const [controlled, setControlled] = useState(false);
   const [controlledTitle, setControlledTitle] = useState("");
-  // Split date (DD/MM/YYYY) and time (HH:MM) for resolution + selection close
-  const [resDate, setResDate] = useState("");       // DD/MM/YYYY
-  const [resTime, setResTime] = useState("");       // HH:MM
-  const [selDate, setSelDate] = useState("");       // DD/MM/YYYY
-  const [selTime, setSelTime] = useState("");       // HH:MM
+  // ISO date (YYYY-MM-DD from DateSelect) + 24h time (HH:MM from TimeSelect)
+  // for resolution + selection close. The kit components guarantee a real
+  // calendar date and an in-range 24-hour time — an out-of-range value can't
+  // even be typed, so the parse below only ever combines two valid halves.
+  const [resDate, setResDate] = useState("");       // YYYY-MM-DD
+  const [resTime, setResTime] = useState("");       // HH:MM (24h)
+  const [selDate, setSelDate] = useState("");       // YYYY-MM-DD
+  const [selTime, setSelTime] = useState("");       // HH:MM (24h)
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const formRef = useRef<HTMLDivElement>(null);
+  // Lower bound for the date pickers — no resolving/closing in the past.
+  const todayIso = new Date().toISOString().slice(0, 10);
 
   const clearTimers = () => {
     phaseTimers.current.forEach(clearTimeout);
     phaseTimers.current = [];
   };
 
-  /** Parse DD/MM/YYYY + HH:MM into an ISO string. Returns null if invalid. */
-  const parseDateTimeFields = (date: string, time: string): string | null => {
-    const dm = date.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (!dm) return null;
-    const [, d, m, y] = dm;
-    const tm = time.match(/^(\d{1,2}):(\d{2})$/);
-    const h = tm ? tm[1] : "00";
-    const mi = tm ? tm[2] : "00";
-    const dt = new Date(`${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}T${h.padStart(2, "0")}:${mi}:00`);
+  /** Combine an ISO date (YYYY-MM-DD) + 24h time (HH:MM) into a UTC ISO string.
+   *  Time defaults to 00:00 when blank. Returns null if the date is missing or
+   *  the combination is somehow not a real instant. */
+  const combineDateTime = (isoDate: string, time: string): string | null => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return null;
+    const t = /^([01]\d|2[0-3]):[0-5]\d$/.test(time) ? time : "00:00";
+    const dt = new Date(`${isoDate}T${t}:00`);
     return Number.isNaN(dt.getTime()) ? null : dt.toISOString();
   };
 
@@ -141,27 +146,27 @@ export function GenerateForm() {
     if (controlledTitle && controlledTitle.length > 200) errs.title = "Title must be under 200 characters.";
     // Resolution date is optional but if provided must be valid + in the future
     if (resDate) {
-      const resIso = parseDateTimeFields(resDate, resTime);
+      const resIso = combineDateTime(resDate, resTime);
       if (!resIso) {
-        errs.resDate = "Invalid date. Use DD/MM/YYYY format.";
+        errs.resDate = "Pick a valid resolution date.";
       } else if (new Date(resIso).getTime() <= Date.now() + 3 * 3600_000) {
-        errs.resDate = "Resolution date must be at least 3 hours in the future.";
+        errs.resDate = "Resolution must be at least 3 hours from now.";
       }
     }
     if (selDate) {
-      const selIso = parseDateTimeFields(selDate, selTime);
+      const selIso = combineDateTime(selDate, selTime);
       if (!selIso) {
-        errs.selDate = "Invalid date. Use DD/MM/YYYY format.";
+        errs.selDate = "Pick a valid selection-close date.";
       } else if (new Date(selIso).getTime() <= Date.now()) {
         errs.selDate = "Selection close must be in the future.";
       }
     }
     // Cross-validation: selectionClosedAt < resolutionAt
     if (selDate && resDate && !errs.selDate && !errs.resDate) {
-      const selIso = parseDateTimeFields(selDate, selTime)!;
-      const resIso = parseDateTimeFields(resDate, resTime)!;
+      const selIso = combineDateTime(selDate, selTime)!;
+      const resIso = combineDateTime(resDate, resTime)!;
       if (new Date(selIso).getTime() >= new Date(resIso).getTime()) {
-        errs.selDate = "Selection close must be before resolution date.";
+        errs.selDate = "Selection close must be before the resolution date.";
       }
     }
     return errs;
@@ -212,11 +217,11 @@ export function GenerateForm() {
       fd.set("prompt", prompt);
       if (controlled && controlledTitle) fd.set("controlledTitle", controlledTitle);
       if (controlled && resDate) {
-        const resIso = parseDateTimeFields(resDate, resTime);
+        const resIso = combineDateTime(resDate, resTime);
         if (resIso) fd.set("controlledResolutionAt", resIso);
       }
       if (controlled && selDate) {
-        const selIso = parseDateTimeFields(selDate, selTime);
+        const selIso = combineDateTime(selDate, selTime);
         if (selIso) fd.set("controlledSelectionClosedAt", selIso);
       }
       try {
@@ -314,30 +319,25 @@ export function GenerateForm() {
                 <label className="mb-1 flex items-center gap-1.5 text-[11.5px] font-semibold text-text">
                   <I.calendarClock s={12} className="text-text-subtle shrink-0" /> Selection Close · Kufunga uchaguzi
                 </label>
-                <div className="grid grid-cols-[1fr_auto] gap-2">
-                  <Input
-                    value={selDate}
-                    onChange={(e) => { setSelDate(e.target.value); setFormErrors((p) => { const n = { ...p }; delete n.selDate; return n; }); }}
-                    placeholder="DD/MM/YYYY"
-                    size="sm"
-                    mono
-                    error={!!formErrors.selDate}
-                    prefix="DD/MM"
-                  />
-                  <Input
+                <div className="flex flex-wrap items-start gap-2">
+                  <div className="min-w-[150px] flex-1">
+                    <DateSelect
+                      value={selDate}
+                      min={todayIso}
+                      onChange={(iso) => { setSelDate(iso); setFormErrors((p) => { const n = { ...p }; delete n.selDate; return n; }); }}
+                    />
+                  </div>
+                  <TimeSelect
                     value={selTime}
-                    onChange={(e) => setSelTime(e.target.value)}
-                    placeholder="HH:MM"
-                    size="sm"
-                    mono
+                    size="md"
                     error={!!formErrors.selDate}
-                    trailing={<span className="text-[9px]">hrs</span>}
-                    containerClassName="w-[100px]"
+                    aria-label="Selection close time, 24-hour"
+                    onChange={(t) => { setSelTime(t); setFormErrors((p) => { const n = { ...p }; delete n.selDate; return n; }); }}
                   />
                 </div>
                 {formErrors.selDate
                   ? <p className="mt-1 text-[11px] text-no-300">{formErrors.selDate}</p>
-                  : <p className="mt-0.5 text-[10px] text-text-subtle">When new bets stop · Wakati wa kufunga</p>
+                  : <p className="mt-1 text-[10px] text-text-subtle">When new bets stop · time defaults to 00:00 if blank</p>
                 }
               </div>
 
@@ -346,30 +346,25 @@ export function GenerateForm() {
                 <label className="mb-1 flex items-center gap-1.5 text-[11.5px] font-semibold text-text">
                   <I.calendarClock s={12} className="text-text-subtle shrink-0" /> Resolution Date · Tarehe ya matokeo
                 </label>
-                <div className="grid grid-cols-[1fr_auto] gap-2">
-                  <Input
-                    value={resDate}
-                    onChange={(e) => { setResDate(e.target.value); setFormErrors((p) => { const n = { ...p }; delete n.resDate; return n; }); }}
-                    placeholder="DD/MM/YYYY"
-                    size="sm"
-                    mono
-                    error={!!formErrors.resDate}
-                    prefix="DD/MM"
-                  />
-                  <Input
+                <div className="flex flex-wrap items-start gap-2">
+                  <div className="min-w-[150px] flex-1">
+                    <DateSelect
+                      value={resDate}
+                      min={todayIso}
+                      onChange={(iso) => { setResDate(iso); setFormErrors((p) => { const n = { ...p }; delete n.resDate; return n; }); }}
+                    />
+                  </div>
+                  <TimeSelect
                     value={resTime}
-                    onChange={(e) => setResTime(e.target.value)}
-                    placeholder="HH:MM"
-                    size="sm"
-                    mono
+                    size="md"
                     error={!!formErrors.resDate}
-                    trailing={<span className="text-[9px]">hrs</span>}
-                    containerClassName="w-[100px]"
+                    aria-label="Resolution time, 24-hour"
+                    onChange={(t) => { setResTime(t); setFormErrors((p) => { const n = { ...p }; delete n.resDate; return n; }); }}
                   />
                 </div>
                 {formErrors.resDate
                   ? <p className="mt-1 text-[11px] text-no-300">{formErrors.resDate}</p>
-                  : <p className="mt-0.5 text-[10px] text-text-subtle">When outcome is known · Wakati matokeo yanajulikana</p>
+                  : <p className="mt-1 text-[10px] text-text-subtle">When outcome is known · time defaults to 00:00 if blank</p>
                 }
               </div>
             </div>
@@ -1253,10 +1248,23 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
   const [titleSw, setTitleSw] = useState(poll.titleSw);
   const [category, setCategory] = useState(poll.category);
   const [criterion, setCriterion] = useState(poll.resolutionCriterion);
-  const [resAt, setResAt] = useState(poll.resolutionAt ? new Date(poll.resolutionAt).toISOString().slice(0, 16) : "");
+  const initialDt = poll.resolutionAt ? new Date(poll.resolutionAt) : null;
+  const validInit = initialDt && !Number.isNaN(initialDt.getTime()) ? initialDt : null;
+  const [editDate, setEditDate] = useState(validInit ? validInit.toISOString().slice(0, 10) : "");   // YYYY-MM-DD
+  const [editTime, setEditTime] = useState(validInit ? validInit.toISOString().slice(11, 16) : "");  // HH:MM
+  const [dateError, setDateError] = useState("");
   const router = useRouter();
 
   const submit = () => {
+    // A resolution date is mandatory on edit — guard the unsafe Date() parse.
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(editDate)) {
+      setDateError("Pick a resolution date.");
+      return;
+    }
+    const t = /^([01]\d|2[0-3]):[0-5]\d$/.test(editTime) ? editTime : "00:00";
+    const resIso = new Date(`${editDate}T${t}:00`);
+    if (Number.isNaN(resIso.getTime())) { setDateError("Pick a valid resolution date."); return; }
+    if (resIso.getTime() <= Date.now() + 3 * 3600_000) { setDateError("Resolution must be at least 3 hours from now."); return; }
     onClose();
     overlay.run("Saving changes…", "Re-validating poll through the quality pipeline.");
     start(async () => {
@@ -1267,7 +1275,7 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
         fd.set("titleSw", titleSw);
         fd.set("category", category);
         fd.set("resolutionCriterion", criterion);
-        fd.set("resolutionAt", new Date(resAt).toISOString());
+        fd.set("resolutionAt", resIso.toISOString());
         const r = await editPollAction(fd);
         router.refresh();
         if (!r.ok) overlay.fail("Edit failed", r.error);
@@ -1300,10 +1308,16 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
         <span className="text-[10px] text-text-subtle">Resolution criterion</span>
         <textarea value={criterion} onChange={(e) => setCriterion(e.target.value)} className={adminTextarea} rows={2} />
       </label>
-      <label className="block">
+      <div className="block">
         <span className="text-[10px] text-text-subtle">Resolves at</span>
-        <Input type="datetime-local" value={resAt} onChange={(e) => setResAt(e.target.value)} mono size="sm" />
-      </label>
+        <div className="flex flex-wrap items-start gap-2 mt-1">
+          <div className="min-w-[150px] flex-1">
+            <DateSelect value={editDate} onChange={(iso) => { setEditDate(iso); setDateError(""); }} />
+          </div>
+          <TimeSelect value={editTime} size="md" error={!!dateError} aria-label="Resolution time, 24-hour" onChange={(t) => { setEditTime(t); setDateError(""); }} />
+        </div>
+        {dateError && <p className="mt-1 text-[11px] text-no-300">{dateError}</p>}
+      </div>
       <div className="flex flex-col gap-2 pt-1">
         <button type="button" onClick={submit} disabled={pending} className="btn btn-gold btn-md w-full">
           {pending ? "Saving…" : "Save & re-validate"}

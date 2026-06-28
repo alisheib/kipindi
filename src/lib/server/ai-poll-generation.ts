@@ -331,7 +331,16 @@ type ValidationResult = {
   sanitised: AIPollGeneration | null;
 };
 
-async function validateAndFilter(gen: AIPollGeneration | null | undefined, rawResponse: string | null): Promise<ValidationResult> {
+async function validateAndFilter(
+  gen: AIPollGeneration | null | undefined,
+  rawResponse: string | null,
+  /** Controlled-mode overrides. When the operator supplies an explicit title or
+   *  resolution date, THOSE are the values that ship — so they (not the AI's
+   *  throwaway values) must be the ones the date-window / title checks run on.
+   *  Without this, a controlled poll was validated against the AI's date and a
+   *  bad operator date sailed through unchecked. */
+  overrides?: { resolutionAt?: string; titleEn?: string },
+): Promise<ValidationResult> {
   const reasons: FilterReason[] = [];
   const quality: QualityIndicator[] = [];
 
@@ -366,6 +375,14 @@ async function validateAndFilter(gen: AIPollGeneration | null | undefined, rawRe
     confidence: typeof gen.confidence === "number" ? Math.max(0, Math.min(100, Math.round(gen.confidence))) : 0,
     reasoning: sanitise(gen.reasoning ?? ""),
   };
+
+  // Controlled-mode overrides take precedence over the AI's values for the
+  // checks below, so the title/date that will actually ship are the validated
+  // ones. (copyGenerationToPoll re-applies these after validation too.)
+  if (overrides?.titleEn) sanitised.titleEn = sanitise(overrides.titleEn);
+  if (typeof overrides?.resolutionAt === "string" && overrides.resolutionAt) {
+    sanitised.resolutionAt = overrides.resolutionAt;
+  }
 
   // Check for null bytes / XSS in the ORIGINAL string values. We walk the raw
   // field values rather than JSON.stringify(gen) because JSON escapes control
@@ -772,7 +789,10 @@ export async function generateAIPoll(opts: {
   // VALIDATION_FAILED rather than letting the server action crash.
   let validation: ValidationResult;
   try {
-    validation = await validateAndFilter(response.generation, response.rawResponse ?? null);
+    validation = await validateAndFilter(response.generation, response.rawResponse ?? null, {
+      titleEn: opts.controlledTitle,
+      resolutionAt: opts.controlledResolutionAt,
+    });
   } catch (err) {
     poll.state = "VALIDATION_FAILED";
     poll.filterReasons = ["malformed_response"];
@@ -834,10 +854,10 @@ export async function generateAIPoll(opts: {
 }
 
 function copyGenerationToPoll(poll: StoredAIPoll, gen: AIPollGeneration) {
-  // In controlled mode, admin may have pre-set title — keep it if AI didn't
-  // provide one, or if the admin explicitly set one (non-empty before gen).
+  // Controlled mode: if the operator pre-set a title (non-empty before gen),
+  // it WINS — the AI must not silently overwrite an explicitly chosen title.
+  // Only borrow the AI's title when the operator left it blank.
   if (!poll.titleEn) poll.titleEn = gen.titleEn;
-  else if (gen.titleEn) poll.titleEn = gen.titleEn; // AI can improve on it
   poll.titleSw = gen.titleSw ?? "";
   poll.category = gen.category;
   poll.resolutionCriterion = gen.resolutionCriterion;
@@ -847,6 +867,13 @@ function copyGenerationToPoll(poll: StoredAIPoll, gen: AIPollGeneration) {
   // the poll already has one set (controlled mode).
   const effectiveResAt = poll.resolutionAt || gen.resolutionAt;
   if (!poll.selectionClosedAt && effectiveResAt) {
+    poll.selectionClosedAt = computeSelectionClosedAt(effectiveResAt, gen.category);
+  }
+  // Backstop: selection close must be strictly before resolution. A controlled
+  // value that isn't (operator slip / client bypass) falls back to the category
+  // default lead time rather than shipping an impossible betting window.
+  if (poll.selectionClosedAt && effectiveResAt &&
+      Date.parse(poll.selectionClosedAt) >= Date.parse(effectiveResAt)) {
     poll.selectionClosedAt = computeSelectionClosedAt(effectiveResAt, gen.category);
   }
   poll.options = gen.options;
