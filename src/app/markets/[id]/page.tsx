@@ -91,6 +91,7 @@ export default async function MarketDetail({
   // has run yet. The dial cannot accept a bet here (server enforces),
   // so the page swaps it out for an "awaiting settlement" card.
   const closedByTime = isClosedByTime(m) && !isResolved;
+  const selectionClosed = isSelectionClosed(m) && !isResolved;
 
   // Pre-compute cash-out values for positions (cashOutValue is async)
   const positionCashOutValues = new Map<string, number | null>();
@@ -293,7 +294,7 @@ export default async function MarketDetail({
             order-1 on mobile (above-the-fold, first thing seen),
             order-2 + sticky on desktop (stays in view while scrolling) */}
         <aside className="order-1 lg:order-2 space-y-3 lg:sticky lg:top-6">
-          {!isResolved && m.status === "LIVE" && !closedByTime ? (
+          {!isResolved && m.status === "LIVE" && !closedByTime && !selectionClosed ? (
             session ? (
               <>
               {/* Hedge warning — shown when player already has a position */}
@@ -361,6 +362,21 @@ export default async function MarketDetail({
                 })()}
               </div>
             )
+          ) : selectionClosed && !closedByTime ? (
+            <div className="rounded-xl border border-border bg-bg-elevated p-6 text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <I.hourglassOff s={18} className="text-gold-300" />
+              </div>
+              <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
+                Selection closed · Uchaguzi umefungwa
+              </p>
+              <h3 className="mt-1.5 font-display text-[16px] font-bold text-text">Waiting for results</h3>
+              <p className="mt-1 text-[13px] italic text-text-subtle">Tunasubiri matokeo.</p>
+              <p className="mt-3 text-[12px] text-text-muted leading-snug">
+                New predictions are no longer accepted. The market is waiting for the outcome to be determined.
+                {m.resolutionAt && ` Results expected by ${new Date(m.resolutionAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}.`}
+              </p>
+            </div>
           ) : closedByTime ? (
             <div className="rounded-xl border border-warning-border bg-warning-bg/30 p-6 text-center">
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-warning-fg">

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { PositionCard } from "@/components/markets/position-card";
 import { SellButton } from "@/components/markets/sell-button";
-import { listPositionsForUser, getMarket, cashOutValue } from "@/lib/server/market-service";
+import { listPositionsForUser, getMarket, cashOutValue, isSelectionClosed } from "@/lib/server/market-service";
 import { currentSession } from "@/lib/server/auth-service";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
@@ -183,6 +183,12 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                     status="OPEN"
                     placedAt={p.placedAt}
                   />
+                  {m.selectionClosedAt && (
+                    <p className={`flex items-center gap-1.5 text-[11px] font-mono ${isSelectionClosed(m) ? "text-gold-300" : "text-text-subtle"}`}>
+                      <I.calendarClock s={11} />
+                      {isSelectionClosed(m) ? "Selection closed \u00b7 Uchaguzi umefungwa" : `Selection closes ${new Date(m.selectionClosedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`}
+                    </p>
+                  )}
                   {liveValue !== null && (
                     <SellButton
                       positionId={p.id}

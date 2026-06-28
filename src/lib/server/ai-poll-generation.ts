@@ -1082,6 +1082,10 @@ export async function editAIPoll(id: string, opts: {
     }
   }
   if (opts.selectionClosedAt !== undefined) poll.selectionClosedAt = opts.selectionClosedAt;
+  // Guard: selectionClosedAt must be before resolutionAt
+  if (poll.selectionClosedAt && poll.resolutionAt && Date.parse(poll.selectionClosedAt) >= Date.parse(poll.resolutionAt)) {
+    poll.selectionClosedAt = computeSelectionClosedAt(poll.resolutionAt, poll.category);
+  }
   if (opts.options !== undefined) {
     poll.options = opts.options.map((o) => ({
       label: sanitise(o.label),
