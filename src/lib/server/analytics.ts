@@ -92,11 +92,15 @@ export async function activePlayers(period: Period = "today") {
   return new Set(ts.map((t) => t.userId)).size;
 }
 
-/** Sum of all wallet balances across all users. Single-pass over wallets. */
+/** Real money owed to players = spendable balance PLUS funds on hold (in-flight
+ *  and AML-held withdrawals). Held funds are still the operator's liability until
+ *  they actually leave the platform, so excluding them understated the regulator-
+ *  facing "wallet liability" figure. Bonus balances are non-withdrawable and so
+ *  are tracked separately, not here. Single-pass over wallets. */
 export async function walletLiabilityTotal() {
   let total = 0;
   for (const w of await db.wallet.listAll()) {
-    if (w.status === "ACTIVE") total += w.balance;
+    if (w.status === "ACTIVE") total += w.balance + (w.hold ?? 0);
   }
   return total;
 }

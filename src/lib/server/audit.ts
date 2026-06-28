@@ -323,3 +323,11 @@ export function verifyChain(): { valid: boolean; firstBreakAt?: string; index?: 
 export function getAuditForActor(actorId: string, limit = 200): AuditEntry[] {
   return ring.filter((e) => e.actorId === actorId).slice(-limit).reverse();
 }
+
+/** All entries TARGETING an entity (e.g. admin actions taken AGAINST a player) —
+ *  the counterpart to getAuditForActor. An officer reviewing a player needs to
+ *  see who suspended / reset / emailed the account, which are stamped with the
+ *  officer as actor and the player as target. */
+export function getAuditForTarget(targetType: string, targetId: string, limit = 200): AuditEntry[] {
+  return ring.filter((e) => e.targetType === targetType && e.targetId === targetId).slice(-limit).reverse();
+}

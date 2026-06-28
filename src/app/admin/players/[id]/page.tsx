@@ -6,7 +6,8 @@ import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Avatar } from "@/components/ui/avatar";
 import { Chip } from "@/components/ui/chip";
 import { db, type StoredTxn, type StoredBet } from "@/lib/server/store";
-import { getAuditForActor, type AuditCategory } from "@/lib/server/audit";
+import { getAuditForActor, getAuditForTarget, audit as recordAudit, type AuditCategory } from "@/lib/server/audit";
+import { currentSession } from "@/lib/server/auth-service";
 import { exportUserData } from "@/lib/server/user-service";
 import { I } from "@/components/ui/glyphs";
 import { formatTzs, formatTzsCompact, formatDateTime } from "@/lib/utils";
@@ -61,13 +62,24 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
 
   const user = await db.user.findById(id);
   if (!user) notFound();
+  // Access audit — record which officer opened this player's full PII record
+  // (KYC doc views + exports were audited; opening the record itself was not).
+  const viewer = await currentSession();
+  if (viewer) {
+    recordAudit({ category: "COMPLIANCE", action: "player.record_viewed", actorId: viewer.userId, targetType: "User", targetId: id });
+  }
   const wallet = await db.wallet.findByUserId(id);
   const kyc = await db.kyc.findByUserId(id);
   const rg = await db.responsible.get(id);
   const data = await exportUserData(id);
   const txns = data.transactions as StoredTxn[];
   const bets = data.bets as StoredBet[];
-  const audit = getAuditForActor(id, 200);
+  // Merge the player's OWN actions with admin actions taken AGAINST them, so an
+  // officer can see who suspended / reset / emailed / approved this account.
+  const audit = [...getAuditForActor(id, 200), ...getAuditForTarget("User", id, 200)]
+    .filter((e, i, arr) => arr.findIndex((x) => x.id === e.id) === i)
+    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
+    .slice(0, 200);
 
   const lifetimeStakes = txns.filter((t) => t.type === "BET_PLACED" && t.status === "CONFIRMED").reduce((s, t) => s + Math.abs(t.amount), 0);
   const lifetimePayouts = txns.filter((t) => (t.type === "BET_PAYOUT" || t.type === "CASHOUT") && t.status === "CONFIRMED").reduce((s, t) => s + Math.abs(t.amount), 0);

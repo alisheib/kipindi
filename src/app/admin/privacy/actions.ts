@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { fileDsarRequest, fulfillDsarRequest, buildDsarBundle } from "@/lib/server/privacy";
 import { getSession } from "@/lib/server/session";
 import { db } from "@/lib/server/store";
+import { audit } from "@/lib/server/audit";
 import { COMPLIANCE_ROLES } from "@/lib/server/roles";
 
 const ADMIN_ROLES = COMPLIANCE_ROLES; // role tier — see @/lib/server/roles
@@ -52,5 +53,9 @@ export async function buildDsarBundleAction(formData: FormData) {
   const userId = String(formData.get("userId") || "").trim();
   const bundle = await buildDsarBundle(userId);
   if (!bundle) return { ok: false as const, error: "User not found" };
+  // Exporting a data subject's entire record is the most sensitive read in the
+  // console — log WHO exported WHOSE data (the sibling player-detail export
+  // already audits; this DSAR path did not).
+  audit({ category: "COMPLIANCE", action: "privacy.dsar.exported", actorId: auth.userId, targetType: "User", targetId: userId });
   return { ok: true as const, bundle };
 }

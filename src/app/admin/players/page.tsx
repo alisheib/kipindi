@@ -166,7 +166,8 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                           </div>
                         </a>
                       </td>
-                      <td className="font-mono whitespace-nowrap">{u.phoneE164}</td>
+                      {/* Masked in the broad list view — full number only on the detail page (PII minimization). Search still matches the full number. */}
+                      <td className="font-mono whitespace-nowrap">{u.phoneE164.length > 6 ? `${u.phoneE164.slice(0, 4)}****${u.phoneE164.slice(-2)}` : u.phoneE164}</td>
                       <td><Chip size="sm" variant={STATUS_VARIANT[u.status] ?? "neutral"}>{u.status}</Chip></td>
                       <td className="font-mono tabular text-right whitespace-nowrap">{wallet ? formatTzs(wallet.balance) : "—"}</td>
                       <td className="font-mono whitespace-nowrap">{formatDate(u.createdAt)}</td>
