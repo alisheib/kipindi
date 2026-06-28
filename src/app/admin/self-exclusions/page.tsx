@@ -107,7 +107,7 @@ export default async function AdminSelfExclusionsPage({
                       <a href={`/admin/players/${r.userId}`} className="font-medium text-text hover:text-royal hover:underline">{r.displayName ?? "—"}</a>
                       <span className="block font-mono text-micro text-text-tertiary">{r.userId.slice(0, 14)}…</span>
                     </td>
-                    <td className="font-mono whitespace-nowrap">{r.phoneE164}</td>
+                    <td className="font-mono whitespace-nowrap">{r.phoneE164.length > 6 ? `${r.phoneE164.slice(0, 4)}****${r.phoneE164.slice(-2)}` : r.phoneE164}</td>
                     <td>
                       {r.status === "self_exclusion" ? (
                         <Chip size="sm" variant="danger"><I.lock s={10} /> excluded</Chip>

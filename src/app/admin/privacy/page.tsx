@@ -134,7 +134,7 @@ export default async function AdminPrivacyPage({
                       </a>
                       <span className="block font-mono text-micro text-text-tertiary">{u.id.slice(0, 14)}…</span>
                     </td>
-                    <td className="py-2 pr-3 font-mono whitespace-nowrap">{u.phoneE164}</td>
+                    <td className="py-2 pr-3 font-mono whitespace-nowrap">{u.phoneE164.length > 6 ? `${u.phoneE164.slice(0, 4)}****${u.phoneE164.slice(-2)}` : u.phoneE164}</td>
                     <td className="py-2 pr-3">
                       <Chip size="sm" variant={u.status === "ACTIVE" ? "success" : "neutral"}>{u.status}</Chip>
                     </td>

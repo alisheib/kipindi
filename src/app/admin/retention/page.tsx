@@ -99,11 +99,11 @@ export default async function AdminRetentionPage() {
             <div className="flex items-start gap-3">
               <I.archive size={18} className="text-info shrink-0 mt-0.5" />
               <div className="text-caption text-text-secondary space-y-1">
-                <p className="text-text font-bold">Automated purge (production)</p>
+                <p className="text-text font-bold">Automated purge <span className="font-normal text-text-tertiary">· target architecture (not yet enforced)</span></p>
                 <p>
-                  In production the nightly cron <code className="font-mono">retention.purge.daily</code> runs at 02:30 EAT
-                  and purges OTP hashes &gt; 30 days, sessions &gt; 7 days, and tickets &gt; 3 years from close. Each purge run
-                  emits an audit entry under <code className="font-mono">SYSTEM</code> with the row count.
+                  Planned: a nightly cron <code className="font-mono">retention.purge.daily</code> at 02:30 EAT purging
+                  OTP hashes &gt; 30 days, sessions &gt; 7 days, and tickets &gt; 3 years from close, each emitting a
+                  <code className="font-mono"> SYSTEM</code> audit row. This job is not wired in the current build.
                 </p>
               </div>
             </div>
@@ -112,12 +112,12 @@ export default async function AdminRetentionPage() {
             <div className="flex items-start gap-3">
               <I.alertCircle s={18} />
               <div className="text-caption text-text-secondary space-y-1">
-                <p className="text-text font-bold">Erasure-vs-AML conflict</p>
+                <p className="text-text font-bold">Erasure-vs-AML conflict <span className="font-normal text-text-tertiary">· policy (routine not yet wired)</span></p>
                 <p>
-                  Where a player invokes their right to erasure (PDPA §31 / GDPR Art. 17) and we hold AML records subject to
-                  POCA Cap 423 §16 (7-year minimum), we partially fulfil: PII fields are pseudonymised (hashed-NIDA replaces
-                  full name + phone) but the financial record stays for the statutory period. This is logged under
-                  <code className="font-mono"> ADMIN · privacy.erasure.partial</code>.
+                  Policy: where a player invokes erasure (PDPA §31 / GDPR Art. 17) and we hold AML records subject to
+                  POCA Cap 423 §16 (7-year minimum), we partially fulfil — PII fields pseudonymised (hashed-NIDA replaces
+                  full name + phone), financial record retained for the statutory period. The automated routine is not yet
+                  wired, so manual erasure-fulfillment is currently blocked in the DSAR queue (escalate to engineering).
                 </p>
               </div>
             </div>

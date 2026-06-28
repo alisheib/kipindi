@@ -160,6 +160,11 @@ export async function createMarketAction(formData: FormData) {
   if (!resolutionAt || Number.isNaN(Date.parse(resolutionAt))) {
     return { ok: false as const, error: "Resolution time is required and must be a valid date." };
   }
+  if (Date.parse(resolutionAt) <= Date.now()) {
+    // A past resolution time publishes a market that is instantly closed-by-time,
+    // un-bettable, and drops straight into the resolver queue. Reject it.
+    return { ok: false as const, error: "Resolution time must be in the future." };
+  }
   if (resolutionCriterion.length < 30) {
     return { ok: false as const, error: "Resolution criterion must be at least 30 characters." };
   }
@@ -228,6 +233,10 @@ export async function deleteCommentAction(formData: FormData) {
 export async function restoreCommentAction(formData: FormData) {
   const session = await currentSession();
   if (!session) return { ok: false as const, error: "Sign in first." };
+  // Moderator-only action — gate at the action layer too (the store also checks
+  // isMod; this keeps it consistent with every other admin action). Delete stays
+  // ungated here because a comment's own author may delete it (store decides).
+  await requireAdminOrThrow(session.userId, "restoreCommentAction");
   const commentId = String(formData.get("commentId") ?? "");
   const marketId = String(formData.get("marketId") ?? "");
   const r = await restoreComment(session.userId, commentId);

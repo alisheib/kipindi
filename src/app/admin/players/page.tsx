@@ -189,8 +189,8 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
 
         <AdminCard className="border-info-border bg-info-bg/15">
           <div className="text-caption text-text-secondary space-y-1">
-            <p className="text-text font-bold">Privileged actions (production)</p>
-            <p>Freeze wallet, override KYC, manual self-exclusion, transaction reversal, and account closure are gated behind two-person approval (compliance officer + AML lead for amounts ≥ TZS 5M). Every action is recorded in the <code>ADMIN</code> audit category with the reviewer&apos;s user-id, IP, and reason.</p>
+            <p className="text-text font-bold">Privileged actions</p>
+            <p>Live today: suspend / restore, KYC decisions, credential changes, and data export — each is ADMIN/COMPLIANCE-tier, requires step-up 2FA, and is recorded in the <code>ADMIN</code>/<code>COMPLIANCE</code> audit category with the reviewer&apos;s user-id and reason. <em>Target architecture (not yet enforced):</em> two-person approval on wallet freeze / transaction reversal / account closure, and IP capture.</p>
           </div>
         </AdminCard>
       </div>

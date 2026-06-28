@@ -35,9 +35,15 @@ async function regulatorSignatures(generatorId: string) {
   ];
 }
 
-const SX_NIDA_SALT = process.env.SX_REGISTER_SALT ?? "tz-gbt-shared-salt-replace-in-prod";
 function hashNida(nida: string): string {
-  return createHash("sha256").update(`${SX_NIDA_SALT}:${nida}`, "utf8").digest("hex");
+  const salt = process.env.SX_REGISTER_SALT;
+  // In production a real, secret salt is mandatory — without it the "anonymized"
+  // cross-operator NIDA hashes are dictionary-reversible over the NIDA space.
+  // Mirror the AUDIT_CHAIN_SECRET guard: refuse rather than ship a guessable salt.
+  if (process.env.NODE_ENV === "production" && !salt) {
+    throw new Error("SX_REGISTER_SALT must be set in production before generating the self-exclusion register.");
+  }
+  return createHash("sha256").update(`${salt ?? "tz-gbt-salt-dev-only"}:${nida}`, "utf8").digest("hex");
 }
 
 function makeReference(acronym: string, generatorId: string): string {
@@ -347,7 +353,7 @@ export async function buildSxRegister(generatorId: string): Promise<Report> {
     if (sxAt < now && coAt < now) continue;
     const kyc = await db.kyc.findByUserId(u.id);
     const nidaHash = kyc?.nidaNumber ? hashNida(kyc.nidaNumber) : "";
-    const phoneHash = createHash("sha256").update(`${SX_NIDA_SALT}:${u.phoneE164}`, "utf8").digest("hex");
+    const phoneHash = hashNida(u.phoneE164); // same salted-SHA-256 (prod-salt-guarded)
     if (sxAt > now) {
       rows.push({
         rowNo: rows.length + 1,
