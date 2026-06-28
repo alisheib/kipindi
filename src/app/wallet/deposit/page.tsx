@@ -149,7 +149,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
       </form>
 
       <p className="px-1 text-center text-[11.5px] text-text-subtle leading-relaxed">
-        Funds typically arrive within 60 seconds. Provider may charge a separate fee.
+        Funds usually arrive within a minute — mobile-money confirmation can occasionally take longer. Provider may charge a separate fee.
       </p>
     </main>
   );

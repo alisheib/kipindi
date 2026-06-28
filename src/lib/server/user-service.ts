@@ -14,6 +14,9 @@ import { audit, getAuditForActor, type AuditEntry } from "./audit";
 import { db } from "./store";
 import { destroySession } from "./session";
 import { revokeUserSessions } from "./session-registry";
+import { sendEmailToUser, accountClosedHtml } from "./email";
+import { notify } from "./notification-service";
+import { displayLabel } from "@/lib/display-label";
 import type { ServiceResult } from "./auth-service";
 
 export type UserDataExport = {
@@ -69,6 +72,27 @@ export async function closeAccount(userId: string, reason?: string): Promise<Ser
   if (wallet && wallet.status !== "CLOSED") {
     await db.wallet.update(wallet.id, { status: "CLOSED" });
   }
+
+  // Closure confirmation — dual-channel (email + in-app), best-effort. Sent
+  // before the session is destroyed; both swallow their own errors so a mail
+  // hiccup can never block the closure. The userId remains valid for the inbox.
+  await sendEmailToUser(userId, (email) => ({
+    to: email,
+    subject: "Your 50pick account is closed",
+    html: accountClosedHtml({ name: displayLabel(user), time: new Date(closedAt).toLocaleString("en-GB", { timeZone: "Africa/Dar_es_Salaam" }) }),
+    tag: "account-closed",
+    trackLinks: false,
+  }));
+  await notify({
+    userId,
+    kind: "SECURITY",
+    titleEn: "Account closed",
+    titleSw: "Akaunti imefungwa",
+    bodyEn: "Your 50pick account has been closed as requested. If this wasn't you, contact support immediately.",
+    bodySw: "Akaunti yako ya 50pick imefungwa kama ulivyoomba. Kama si wewe, wasiliana na usaidizi.",
+    href: null,
+  });
+
   await destroySession();
   await revokeUserSessions(userId); // kill any session on any device, not just this one
 

@@ -17,7 +17,8 @@ import { LoginRequestSchema, OtpVerifySchema, RegisterSchema } from "./validator
 import type { z } from "zod";
 import { createSession, destroySession, getSession, type SessionData } from "./session";
 import { withLock } from "./locks";
-import { sendEmail, welcomeHtml, loginNotificationHtml } from "./email";
+import { sendEmail, sendEmailToUser, welcomeHtml, loginNotificationHtml } from "./email";
+import { displayLabel } from "@/lib/display-label";
 import { resolvePhoneEmail } from "./email-map";
 import { validatePasswordStrength } from "./password-policy";
 
@@ -279,9 +280,28 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
     }
     audit({ category: "AUTH", action: "user.registered", actorId: user.id, targetType: "User", targetId: user.id, payload: { phone } });
     isNew = true;
+    // Welcome email — parity with the password registration path. Best-effort;
+    // no-ops cleanly when an OTP-only user has no email on file yet.
+    sendEmailToUser(user.id, (email) => ({
+      to: email,
+      subject: "Welcome to 50pick · Karibu",
+      html: welcomeHtml({ name: displayLabel(user!) }),
+      tag: "welcome",
+    })).catch(() => {});
   } else {
     await db.user.update(user.id, { lastLoginAt: new Date().toISOString() });
     audit({ category: "AUTH", action: "user.login", actorId: user.id, targetType: "User", targetId: user.id, ip: meta.ip, userAgent: meta.ua });
+    // New sign-in security email — parity with the password login path.
+    sendEmailToUser(user.id, (email) => ({
+      to: email,
+      subject: "New sign-in to your 50pick account",
+      html: loginNotificationHtml({
+        name: displayLabel(user!),
+        time: new Date().toLocaleString("en-GB", { timeZone: "Africa/Dar_es_Salaam" }),
+        ip: meta.ip ?? "unknown",
+      }),
+      tag: "login-otp",
+    })).catch(() => {});
   }
 
   await createSession({

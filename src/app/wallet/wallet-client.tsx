@@ -313,20 +313,21 @@ const TABS = [
   { v: "limits",   en: "Limits",    sw: "Vikomo" },
 ] as const;
 
-type Method = { id: string; name: string; phone: string; hue: number; default?: boolean };
+// Supported payment channels (not per-user saved accounts — saved methods aren't
+// a feature yet). The player picks one and enters their number at deposit/withdrawal.
+type Method = { id: string; name: string; kind: string; hue: number };
 const METHODS: Method[] = [
-  { id: "MPESA",        name: "M-Pesa",        phone: "+2557*****99", default: true, hue: 152 },
-  { id: "AIRTEL_MONEY", name: "Airtel Money",  phone: "+2556*****20", hue: 22 },
-  { id: "HALO_PESA",    name: "HaloPesa",      phone: "+2556*****11", hue: 80 },
-  { id: "MIXX",         name: "Mixx by Yas",   phone: "+2557*****99", hue: 280 },
+  { id: "MPESA",        name: "M-Pesa",       kind: "Mobile money", hue: 152 },
+  { id: "AIRTEL_MONEY", name: "Airtel Money", kind: "Mobile money", hue: 22 },
+  { id: "HALO_PESA",    name: "HaloPesa",     kind: "Mobile money", hue: 80 },
+  { id: "MIXX",         name: "Mixx by Yas",  kind: "Mobile money", hue: 280 },
 ];
 
-const LIMITS = [
-  { label: "Daily deposit",   sw: "Amana ya siku",  value: "TZS 50,000" },
-  { label: "Weekly deposit",  sw: "Amana ya wiki",  value: "TZS 250,000" },
-  { label: "Monthly deposit", sw: "Amana ya mwezi", value: "TZS 1,000,000" },
-  { label: "Daily loss",      sw: "Hasara ya siku", value: "TZS 20,000" },
-  { label: "Session limit",   sw: "Muda wa kikao",  value: "60 min" },
+// Real platform transaction caps (validators.ts). Personal responsible-gambling
+// limits live on the RG page; we point there rather than inventing per-user numbers.
+const TXN_CAPS = [
+  { label: "Per deposit",    sw: "Kila amana",   value: "TZS 500 – 2,000,000" },
+  { label: "Per withdrawal", sw: "Kila kutoa",   value: "TZS 1,000 – 5,000,000" },
 ];
 
 export function WalletPageClient({
@@ -440,13 +441,17 @@ export function WalletPageClient({
       )}
 
       {tab === "methods" && (
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {METHODS.map((m) => (
-            <div
-              key={m.id}
-              className="flex items-center justify-between gap-3 rounded-xl border border-border bg-bg-elevated p-4"
-            >
-              <div className="flex items-center gap-3 min-w-0">
+        <section className="space-y-3">
+          <p className="text-[12.5px] text-text-muted leading-snug">
+            Supported payment channels. Choose one and enter your number when you deposit or withdraw.
+            <span className="block italic text-text-subtle text-[11.5px] mt-0.5">Chagua njia na uweke namba yako wakati wa kuweka au kutoa pesa.</span>
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {METHODS.map((m) => (
+              <div
+                key={m.id}
+                className="flex items-center gap-3 rounded-xl border border-border bg-bg-elevated p-4"
+              >
                 <span
                   className="inline-flex h-10 w-10 items-center justify-center rounded-md font-display font-bold text-[13px] text-text shrink-0"
                   style={{ background: `linear-gradient(135deg, oklch(45% 0.10 ${m.hue}), oklch(30% 0.08 ${m.hue}))` }}
@@ -455,36 +460,21 @@ export function WalletPageClient({
                 </span>
                 <div className="min-w-0">
                   <p className="font-display text-[13.5px] font-semibold text-text leading-tight truncate">{m.name}</p>
-                  <p className="mt-0.5 font-mono text-[11px] text-text-subtle tabular-nums">
-                    <I.phone s={10} className="inline mr-1" />
-                    {m.phone}
-                  </p>
+                  <p className="mt-0.5 font-mono text-[11px] text-text-subtle">{m.kind}</p>
                 </div>
               </div>
-              {m.default ? (
-                <span className="inline-flex items-center rounded-pill border border-gold-700 bg-gold-500/10 px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-gold-300">
-                  Default
-                </span>
-              ) : (
-                <button type="button" disabled className="font-mono text-[11px] font-semibold text-text-subtle/60 uppercase tracking-[0.06em] cursor-not-allowed">
-                  Set default
-                </button>
-              )}
-            </div>
-          ))}
-          <div
-            className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-bg-elevated/30 p-6 text-text-subtle/70 cursor-not-allowed"
-          >
-            <I.receipt s={15} />
-            <span className="font-display text-[13px] font-semibold">Add a card · Ongeza kadi</span>
-            <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-subtle">Coming soon</span>
+            ))}
           </div>
         </section>
       )}
 
       {tab === "limits" && (
         <section className="space-y-3">
-          {LIMITS.map((l) => (
+          <p className="text-[12.5px] text-text-muted leading-snug">
+            Platform transaction caps. To set your own daily/weekly deposit and loss limits, use Responsible Gambling.
+            <span className="block italic text-text-subtle text-[11.5px] mt-0.5">Kuweka vikomo vyako, tumia ukurasa wa Uchezaji wa Busara.</span>
+          </p>
+          {TXN_CAPS.map((l) => (
             <div
               key={l.label}
               className="flex items-center justify-between gap-3 rounded-xl border border-border bg-bg-elevated px-4 py-3.5"
@@ -493,17 +483,19 @@ export function WalletPageClient({
                 <p className="font-display text-[13.5px] font-semibold text-text leading-tight">{l.label}</p>
                 <p className="mt-0.5 text-[11.5px] italic text-text-subtle">{l.sw}</p>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono font-bold text-[14px] tabular-nums text-text">{l.value}</span>
-                <Link
-                  href="/profile/responsible-gambling"
-                  className="inline-flex items-center px-2.5 h-7 rounded-md border border-border bg-bg-overlay text-text-muted hover:text-text font-mono text-[11px] font-semibold transition-colors"
-                >
-                  Edit
-                </Link>
-              </div>
+              <span className="font-mono font-bold text-[14px] tabular-nums text-text">{l.value}</span>
             </div>
           ))}
+          <Link
+            href="/profile/responsible-gambling"
+            className="flex items-center justify-between gap-3 rounded-xl border border-border bg-bg-overlay px-4 py-3.5 hover:border-border-strong transition-colors"
+          >
+            <div>
+              <p className="font-display text-[13.5px] font-semibold text-text leading-tight">Set personal limits · Vikomo vyako</p>
+              <p className="mt-0.5 text-[11.5px] italic text-text-subtle">Daily, weekly & loss limits</p>
+            </div>
+            <I.chevronRight s={16} className="text-text-subtle" />
+          </Link>
           <div className="rounded-xl glass-panel p-4 space-y-2">
             <p className="font-display text-[13.5px] font-semibold text-text">
               Self-exclusion <span className="text-text-subtle italic font-normal">· Kujitenga</span>

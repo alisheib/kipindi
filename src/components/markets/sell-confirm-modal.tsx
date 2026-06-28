@@ -54,8 +54,11 @@ export function SellConfirmModal({ open, pending, stake, value, onConfirm, onCan
 
   if (!mounted || !open) return null;
 
-  const net = value - stake;
-  const profit = net >= 0;
+  // Cash-out is an early exit, never a profit. `value` is the stake returned —
+  // full inside the free-exit window, stake − fee outside it.
+  const fee = Math.max(0, stake - value);
+  const isFree = fee <= 0;
+  const feePct = stake > 0 ? Math.round((fee / stake) * 100) : 0;
 
   return createPortal(
     <div
@@ -100,13 +103,13 @@ export function SellConfirmModal({ open, pending, stake, value, onConfirm, onCan
           <div
             className="rounded-lg border p-4"
             style={{
-              borderColor: profit ? "oklch(45% 0.13 152)" : "oklch(48% 0.15 22)",
-              background:  profit ? "oklch(40% 0.10 152 / 0.18)" : "oklch(40% 0.13 22 / 0.18)",
+              borderColor: isFree ? "oklch(45% 0.13 152)" : "oklch(50% 0.10 264)",
+              background:  isFree ? "oklch(40% 0.10 152 / 0.18)" : "oklch(40% 0.08 264 / 0.18)",
             }}
           >
             <div className="flex items-baseline justify-between">
               <div>
-                <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle mb-1">Sellback · Pesa sasa</p>
+                <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle mb-1">You receive · Utapokea</p>
                 <p
                   className="font-mono font-bold text-[24px] tabular-nums leading-none text-text"
                 >
@@ -114,14 +117,14 @@ export function SellConfirmModal({ open, pending, stake, value, onConfirm, onCan
                 </p>
               </div>
               <div className="text-right">
-                <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle mb-1">Net · Faida / hasara</p>
+                <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle mb-1">Early-exit fee · Ada</p>
                 <p
                   className="font-mono font-bold text-[18px] tabular-nums leading-none"
-                  style={{ color: profit ? "oklch(78% 0.13 152)" : "oklch(78% 0.16 22)" }}
+                  style={{ color: isFree ? "oklch(78% 0.13 152)" : "var(--text)" }}
                 >
-                  {profit ? "+" : "−"}TZS {fmt(Math.abs(net))}
+                  {isFree ? "No fee" : `−TZS ${fmt(fee)}`}
                 </p>
-                <p className="mt-1 font-mono text-[10px] text-text-subtle">on TZS {fmt(stake)} stake</p>
+                <p className="mt-1 font-mono text-[10px] text-text-subtle">{isFree ? "free exit window" : `${feePct}% of TZS ${fmt(stake)} stake`}</p>
               </div>
             </div>
           </div>
@@ -129,9 +132,9 @@ export function SellConfirmModal({ open, pending, stake, value, onConfirm, onCan
           <div className="mt-3 flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg/30 p-3">
             <I.warning s={14} />
             <p className="text-[12px] text-text-muted leading-snug">
-              {profit
-                ? <>Locking in <strong className="text-text">TZS {fmt(net)} profit</strong> now means you give up any further upside if the market resolves your way.</>
-                : <>Selling now <strong className="text-text">crystallises a TZS {fmt(Math.abs(net))} loss</strong>. The position would still pay full odds if the market resolves your way.</>
+              {isFree
+                ? <>Free exit: you get your full <strong className="text-text">TZS {fmt(stake)} stake</strong> back. You give up any winnings if the market resolves your way.</>
+                : <>Early exit returns <strong className="text-text">TZS {fmt(value)}</strong> of your TZS {fmt(stake)} stake (a {feePct}% fee). Wait for the market to end and you keep full odds if you&apos;re right.</>
               }
               <span className="block italic text-text-subtle text-[11px] mt-0.5">
                 Stake itatoka kwenye bwawa baada ya kuthibitisha.
@@ -145,7 +148,7 @@ export function SellConfirmModal({ open, pending, stake, value, onConfirm, onCan
               type="button"
               onClick={() => { haptics.confirm(); onConfirm(); }}
               disabled={pending}
-              className={`btn ${profit ? "btn-gold" : "btn-no"} btn-lg w-full`}
+              className="btn btn-primary btn-lg w-full"
             >
               {pending ? "Selling…" : `Sell · TZS ${fmt(value)}`}
             </button>

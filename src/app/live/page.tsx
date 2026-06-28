@@ -58,6 +58,12 @@ export default async function LivePage() {
   }));
 
   const tippingMarkets = markets.filter((m) => Math.abs(m.yesPct - 50) < 8).length;
+  // The genuinely most-contested market = the one whose odds sit closest to 50/50,
+  // NOT markets[0] (which is just the soonest-closing, since listMarkets sorts by
+  // resolutionAt). This is what the "Most contested" hero below should feature.
+  const mostContested = markets.length
+    ? markets.reduce((best, m) => (Math.abs(m.yesPct - 50) < Math.abs(best.yesPct - 50) ? m : best))
+    : null;
 
   return (
     <div className="relative min-h-[calc(100vh-44px)]">
@@ -108,21 +114,21 @@ export default async function LivePage() {
                 Every bar above is the live pool of stakes. Each new prediction <em>tips the bar</em> —
                 the needle leans toward the leading side and shimmers gold the moment a market resolves.
                 When you stake, you join a pool; if you&apos;re right, you share the losing pool minus a
-                a small operator margin. The math is in the open. <span className="italic text-text-subtle">Hesabu wazi kabisa.</span>
+                small operator margin. The math is in the open. <span className="italic text-text-subtle">Hesabu wazi kabisa.</span>
               </p>
             </section>
 
             {/* Static snapshot of one bar at scale — for the "this is the brand" moment */}
-            {markets[0] && (
+            {mostContested && (
               <section className="rounded-xl glass-panel p-6 lg:p-10">
                 <div className="flex flex-wrap items-baseline gap-2 mb-3">
                   <p className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-text-subtle">Most contested · Lililo na shaka zaidi</p>
                 </div>
                 <h2 className="font-display text-[20px] lg:text-[26px] font-semibold text-text leading-tight max-w-[60ch] mb-5">
-                  {markets[0].titleEn}
+                  {mostContested.titleEn}
                 </h2>
-                <TippingBar yesPct={markets[0].yesPct} height={36} showLabels />
-                <Link href={`/markets/${markets[0].id}` as never} className="btn btn-gold btn-lg mt-5">
+                <TippingBar yesPct={mostContested.yesPct} height={36} showLabels />
+                <Link href={`/markets/${mostContested.id}` as never} className="btn btn-gold btn-lg mt-5">
                   Open market →
                 </Link>
               </section>

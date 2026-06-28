@@ -25,10 +25,13 @@ type Props = {
   balance: number;
   /** Pre-selected side from URL ?side= param (if arriving from card). */
   initialSide?: "YES" | "NO";
+  /** Total effective fee for this market — passed straight to the dial so its
+   *  payout/lean projection matches server settlement. */
+  feeRate?: number;
 };
 
 export function SidePicker({
-  marketId, marketTitle, yesPool, noPool, yesPct, resolutionAt, balance, initialSide,
+  marketId, marketTitle, yesPool, noPool, yesPct, resolutionAt, balance, initialSide, feeRate,
 }: Props) {
   const [side, setSide] = useState<"YES" | "NO" | null>(initialSide ?? null);
 
@@ -66,6 +69,7 @@ export function SidePicker({
           resolutionAt={resolutionAt}
           balance={balance}
           lockedSide={side}
+          feeRate={feeRate}
         />
         <NotifyPrompt marketId={marketId} marketTitle={marketTitle} />
       </div>

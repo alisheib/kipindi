@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/support-config";
@@ -195,8 +196,8 @@ function QuickLinkCard({
   href: string;
 }) {
   return (
-    <a
-      href={href}
+    <Link
+      href={href as never}
       className="flex items-center gap-3 rounded-xl glass-panel p-4 hover:border-gold-700 transition-colors"
     >
       <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-gold-500/10 text-gold-300 shrink-0">
@@ -207,6 +208,6 @@ function QuickLinkCard({
         {titleSw && <p className="text-[11px] italic text-text-subtle truncate">{titleSw}</p>}
         <p className="mt-0.5 text-[11px] text-text-subtle">{sub}</p>
       </div>
-    </a>
+    </Link>
   );
 }

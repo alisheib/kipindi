@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { FiftyLockup } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -10,6 +11,11 @@ import { OtpExpiryCountdown } from "@/components/auth/otp-expiry-countdown";
 export const metadata = { title: "Enter code · Weka msimbo" };
 
 export default async function OtpPage({ searchParams }: { searchParams: Promise<{ purpose?: string; phone?: string; error?: string; sent?: string; next?: string; retry?: string }> }) {
+  // SMS OTP is not wired yet — the live auth flow is password-based. Until the
+  // licensed SMS provider is live (OTP_ENABLED=1), this page is dormant and would
+  // only confuse a player who lands here via a stale link, so bounce to login.
+  if (process.env.OTP_ENABLED !== "1") redirect("/auth/login");
+
   const sp = await searchParams;
   const purpose = (sp.purpose ?? "login") as "login" | "register" | "withdraw" | "reauth" | "self_exclusion";
   const phone = sp.phone ?? "";

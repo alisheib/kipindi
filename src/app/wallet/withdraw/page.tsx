@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { Input, Field as KitField } from "@/components/ui/input";
+import { Cash } from "@/components/ui/cash";
 import { WithdrawConfirm } from "./withdraw-confirm";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
@@ -68,13 +70,13 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
           </div>
           <div className="text-right shrink-0">
             <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Available</p>
-            <p className="font-display font-bold text-[22px] tabular-nums text-text leading-none">
-              TZS {(wallet?.balance ?? 0).toLocaleString()}
-            </p>
+            <Cash className="font-display font-bold text-[22px] tabular-nums text-text leading-none block">
+              {`TZS ${(wallet?.balance ?? 0).toLocaleString()}`}
+            </Cash>
             {(wallet?.hold ?? 0) > 0 && (
-              <p className="mt-1 font-mono text-[10.5px] tabular-nums text-warning-fg">
-                hold {(wallet?.hold ?? 0).toLocaleString()}
-              </p>
+              <Cash className="mt-1 font-mono text-[10.5px] tabular-nums text-warning-fg block">
+                {`hold ${(wallet?.hold ?? 0).toLocaleString()}`}
+              </Cash>
             )}
           </div>
         </div>
@@ -136,64 +138,49 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
           </div>
         </fieldset>
 
-        <div>
-          <label
-            htmlFor="amount"
-            className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2"
-          >
-            Amount · Kiasi
-          </label>
-          <div className="flex">
-            <span className="inline-flex items-center px-3 h-11 rounded-l-md border border-r-0 border-border bg-bg-overlay font-mono text-[13px] font-bold text-text-subtle">
-              TZS
-            </span>
-            <input
-              id="amount"
-              name="amount"
-              type="number"
-              required
-              inputMode="numeric"
-              min={1000}
-              max={Math.min(5_000_000, wallet?.balance ?? 0)}
-              step={1}
-              placeholder="10000"
-              defaultValue={prevAmount || undefined}
-              disabled={!kycApproved}
-              className="flex-1 h-11 px-3 rounded-r-md border border-border bg-bg-overlay font-display font-bold text-[20px] tabular-nums text-text focus:outline-none brand-focus transition-colors disabled:opacity-50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
-            />
-          </div>
-          <p className="mt-2 text-[11px] text-text-subtle">
-            Min TZS 1,000 · Max TZS 5,000,000 per withdrawal.
-            Amounts ≥ <span className="font-mono text-text-muted">TZS 1,000,000</span> may require AML review (up to 24 hours).
-          </p>
-        </div>
+        <KitField
+          label="Amount · Kiasi"
+          hint={
+            <>
+              Min TZS 1,000 · Max TZS 5,000,000 per withdrawal.
+              Amounts ≥ <span className="font-mono text-text-muted">TZS 1,000,000</span> may require AML review (up to 24 hours).
+            </>
+          }
+        >
+          <Input
+            id="amount"
+            name="amount"
+            type="number"
+            required
+            inputMode="numeric"
+            min={1000}
+            max={Math.min(5_000_000, wallet?.balance ?? 0)}
+            step={1}
+            placeholder="10000"
+            defaultValue={prevAmount || undefined}
+            disabled={!kycApproved}
+            prefix="TZS"
+            mono
+            className="[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+          />
+        </KitField>
 
-        <div>
-          <label
-            htmlFor="msisdn"
-            className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2"
-          >
-            Destination phone · Simu
-          </label>
-          <div className="flex">
-            <span className="inline-flex items-center px-3 h-11 rounded-l-md border border-r-0 border-border bg-bg-overlay font-mono text-[13px] text-text-subtle">
-              +255
-            </span>
-            <input
-              id="msisdn"
-              name="msisdn"
-              type="tel"
-              inputMode="numeric"
-              pattern="\d{9}"
-              maxLength={9}
-              required
-              placeholder="712 345 678"
-              defaultValue={prevMsisdn || undefined}
-              disabled={!kycApproved}
-              className="flex-1 h-11 px-3 rounded-r-md border border-border bg-bg-overlay font-mono text-[16px] tabular-nums text-text focus:outline-none brand-focus transition-colors disabled:opacity-50"
-            />
-          </div>
-        </div>
+        <KitField label="Destination phone · Simu">
+          <Input
+            id="msisdn"
+            name="msisdn"
+            type="tel"
+            inputMode="numeric"
+            pattern="\d{9}"
+            maxLength={9}
+            required
+            placeholder="712 345 678"
+            defaultValue={prevMsisdn || undefined}
+            disabled={!kycApproved}
+            prefix="+255"
+            mono
+          />
+        </KitField>
 
         <div className="flex items-start gap-2.5 rounded-md border border-info-border bg-info-bg/30 px-3 py-2.5 text-[12.5px] leading-snug">
           <I.shieldcheck s={14} />

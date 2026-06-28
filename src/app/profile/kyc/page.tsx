@@ -6,6 +6,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { getKycStatus, startKyc } from "@/lib/server/kyc-service";
 import { DateSelect } from "@/components/ui/date-select";
+import { Input, Field as KitField } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { submitNidaAction, submitKycForReviewAction } from "./actions";
 import { KycDocUploader, KycExtraDocUploader } from "@/components/profile/kyc-doc-uploader";
@@ -242,7 +243,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                   </div>
                   <p className="mt-1.5 text-[11px] text-text-subtle">
                     Taken from your account — no need to re-enter. Wrong?{" "}
-                    <a href={`mailto:${SUPPORT_EMAIL}`} className="text-brand-300 underline-offset-2 hover:underline hover:text-brand-200">Contact support</a> before verifying.
+                    <a href={`mailto:${SUPPORT_EMAIL()}`} className="text-brand-300 underline-offset-2 hover:underline hover:text-brand-200">Contact support</a> before verifying.
                   </p>
                 </>
               ) : (
@@ -401,6 +402,10 @@ function humanizeRejectReason(raw: string): string {
   return REJECT_LABELS[raw] ?? raw.replace(/_/g, " ").toLowerCase();
 }
 
+// Delegates to the kit <Input>/<Field> atoms so this player-facing form matches
+// the rest of the platform (brand focus ring — NOT admin-focus — shared height,
+// --bg-inset background). Keeps the same call signature so every call site is
+// untouched.
 function Field({
   id, label, hint, type, pattern, inputMode, placeholder,
   required: req = true, minLength, maxLength, min, max, title, defaultValue,
@@ -411,14 +416,8 @@ function Field({
   title?: string; defaultValue?: string;
 }) {
   return (
-    <div>
-      <label
-        htmlFor={id}
-        className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2"
-      >
-        {label}
-      </label>
-      <input
+    <KitField label={label} hint={hint}>
+      <Input
         id={id}
         name={id}
         type={type}
@@ -432,10 +431,8 @@ function Field({
         max={max}
         title={title}
         defaultValue={defaultValue}
-        className="w-full h-11 px-3.5 rounded-md border border-border font-mono text-[16px] tabular-nums text-text focus:outline-none admin-focus transition-colors invalid:border-no-500"
-        style={{ background: "var(--bg-inset)" }}
+        mono
       />
-      {hint && <p className="mt-1.5 text-[11px] text-text-subtle">{hint}</p>}
-    </div>
+    </KitField>
   );
 }

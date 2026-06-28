@@ -8,7 +8,7 @@
  *  - Tax line shown to user but actual deduction at confirmation
  */
 import { audit } from "./audit";
-import { sendEmailToUser, depositConfirmedHtml, withdrawalSentHtml, withdrawalUnderReviewHtml } from "./email";
+import { sendEmailToUser, depositConfirmedHtml, withdrawalSentHtml, withdrawalUnderReviewHtml, amlRejectRefundHtml } from "./email";
 import { db, type StoredTxn } from "./store";
 import { randomId } from "./crypto";
 import { dispatchDeposit, dispatchWithdrawal, computeWithdrawalTax } from "./payments";
@@ -313,8 +313,17 @@ async function settleWithdrawalFailed(txnId: string, reason: string): Promise<bo
     return t;
   });
   if (done) {
+    const refunded = Math.abs(done.amount);
     audit({ category: "WALLET", action: "withdraw.failed", actorId: done.userId, targetType: "Transaction", targetId: txnId, payload: { reason } });
-    notifyWithdraw(done.userId, { status: "FAILED", amount: Math.abs(done.amount), provider: friendlyProvider(done.provider), reason });
+    notifyWithdraw(done.userId, { status: "FAILED", amount: refunded, provider: friendlyProvider(done.provider), reason });
+    // Dual-channel parity with every other money event: the funds came back to
+    // the wallet, so the player gets an email too (purpose-built refund template).
+    sendEmailToUser(done.userId, (email) => ({
+      to: email,
+      subject: `Withdrawal returned · TZS ${Math.round(refunded).toLocaleString("en-US")}`,
+      html: amlRejectRefundHtml({ amount: refunded, reason }),
+      tag: "withdrawal",
+    })).catch(() => {});
   }
   return !!done;
 }

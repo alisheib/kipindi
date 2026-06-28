@@ -11,8 +11,9 @@ import { db } from "@/lib/server/store";
 import { listPositionsForUser, listMarkets } from "@/lib/server/market-service";
 import { PriceChart, VolumeSparkline } from "@/components/markets/price-chart";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Avatar } from "@/components/ui/avatar";
+import { Avatar, TierBadge as KitTierBadge } from "@/components/ui/avatar";
 import { PageRibbon } from "@/components/layout/page-ribbon";
+import { RefreshPoller } from "@/components/ui/refresh-poller";
 
 export const metadata = { title: "Leaderboard · Bingwa" };
 export const dynamic = "force-dynamic";
@@ -130,12 +131,16 @@ async function buildConsensusSeries(): Promise<{ t: string; yes: number }[]> {
 
 export default async function LeaderboardPage() {
   const real = await buildLeaderboard();
-  const isSynthetic = real.length < 6;
+  // Show REAL players from the very first one so a player can always see
+  // themselves ranked. Only fall back to the sample board when there are
+  // genuinely no ranked players yet (brand-new platform), so the page isn't empty.
+  const isSynthetic = real.length === 0;
   const rows = isSynthetic ? syntheticLeaderboard() : real;
   const consensus = await buildConsensusSeries();
 
   return (
     <main className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6 space-y-6">
+      <RefreshPoller intervalMs={30_000} />
       <header>
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">Leaderboard · Bingwa</p>
         <h1 className="font-display text-[28px] font-bold text-text">Top predictors</h1>
@@ -222,15 +227,9 @@ export default async function LeaderboardPage() {
   );
 }
 
+// Uses the canonical <TierBadge> atom (one heraldic look platform-wide), wrapped
+// in the leaderboard's richer tooltip describing each tier's threshold.
 function TierBadge({ tier }: { tier: Tier }) {
-  const cls = {
-    sovereign: "tier-sovereign",
-    diamond:   "tier-diamond",
-    gold:      "bg-gold-500 text-gold-fg",
-    silver:    "bg-slate-300 text-slate-900",
-    bronze:    "bg-gold-700 text-gold-50",
-  }[tier];
-  const letter = { sovereign: "S", diamond: "D", gold: "G", silver: "S", bronze: "B" }[tier];
   const desc = {
     sovereign: "Sovereign · ≥50 resolved · ≥60% ROI · heraldic honour",
     diamond:   "Diamond · ≥20 resolved · ≥30% ROI",
@@ -240,11 +239,8 @@ function TierBadge({ tier }: { tier: Tier }) {
   }[tier];
   return (
     <Tooltip label={desc}>
-      <span
-        className={`inline-flex h-5 w-5 items-center justify-center rounded-pill font-mono text-[10px] font-bold ${cls}`}
-        aria-label={tier}
-      >
-        {letter}
+      <span aria-label={tier}>
+        <KitTierBadge tier={tier} />
       </span>
     </Tooltip>
   );

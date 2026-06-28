@@ -23,7 +23,7 @@ import type { StoredResponsibleGambling, StoredTxn } from "./store";
 import type { ServiceResult } from "./auth-service";
 import { sendEmailToUser, selfExclusionHtml, coolOffHtml } from "./email";
 import { revokeUserSessions } from "./session-registry";
-import { notifySelfExclusion } from "./notification-service";
+import { notifySelfExclusion, notifyCoolOff } from "./notification-service";
 
 /** Human-readable period labels for RG confirmation emails. */
 const PERIOD_LABEL: Record<string, string> = {
@@ -213,6 +213,9 @@ export async function coolOff(userId: string, period: keyof typeof COOLING_OFF_P
     html: coolOffHtml({ duration: PERIOD_LABEL[period] ?? period, endDate: fmtDate(until) }),
     tag: "cool-off",
   }));
+  // In-app mirror — parity with self-exclusion. A phone-only player with no
+  // email still gets confirmation their break is active.
+  notifyCoolOff(userId, { until }).catch(() => {});
   return { ok: true, data: { until } };
 }
 

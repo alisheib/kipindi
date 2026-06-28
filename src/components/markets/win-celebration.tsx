@@ -1,9 +1,10 @@
 "use client";
 
 /**
- * WinCelebration — calm gilt celebration popup, fired when:
- *   • A position resolves WIN (notify-poller listens for matches)
- *   • A cash-out clears with net profit (sell-button fires on success)
+ * WinCelebration — calm gilt celebration popup, fired when a position
+ * resolves WIN (notify-poller listens for matches). Cash-out is an early
+ * exit (stake returned, never a profit), so it deliberately does NOT fire
+ * this — it gets a plain result modal instead.
  *
  * The component is mounted once via <WinCelebrationHost /> in AppShell. Any
  * client component can fire one with `dispatchWinCelebration({...})`. The
@@ -23,8 +24,8 @@ import { useModalLock } from "@/lib/use-modal-lock";
 const EVENT_NAME = "50pick:celebrate";
 
 export type WinCelebrationPayload = {
-  /** Heading row, e.g. "WIN" or "Cashed out". */
-  kind: "WIN" | "CASHOUT";
+  /** Heading row. Only WIN is used — cash-out doesn't celebrate. */
+  kind: "WIN";
   /** Amount in TZS — the headline figure. */
   amount: number;
   /** "Net" delta to display under the amount. Positive numbers get a "+". */
@@ -97,8 +98,8 @@ export function WinCelebrationHost() {
 
   if (typeof document === "undefined" || !open || !payload) return null;
 
-  const heading = payload.kind === "WIN" ? "Won!" : "Cashed out";
-  const sub = payload.kind === "WIN" ? "Umeshinda" : "Umetoa";
+  const heading = "Won!";
+  const sub = "Umeshinda";
 
   return createPortal(
     <div
@@ -165,7 +166,7 @@ export function WinCelebrationHost() {
 
           {/* Eyebrow */}
           <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
-            {payload.kind === "WIN" ? "Position won · Madau yamefanikiwa" : "Cashed out · Umetoa kabla"}
+            Position won · Madau yamefanikiwa
           </p>
 
           {/* Headline */}

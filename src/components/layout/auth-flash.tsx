@@ -20,7 +20,7 @@ export function AuthFlash() {
     if (welcome === "new") {
       toast({
         title: "Welcome to 50pick · Karibu kwenye 50pick",
-        description: "TZS 10,000 starter credit is in your wallet. Verify ID to enable withdrawals. · Kuna bonus ya kuanzia ya TZS 10,000 kwenye pochi yako.",
+        description: "You're in. Verify your ID to start playing and to enable withdrawals. · Umeingia. Thibitisha kitambulisho chako kuanza.",
         variant: "success",
       });
     } else if (welcome === "back") {

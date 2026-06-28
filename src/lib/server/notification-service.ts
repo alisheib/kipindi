@@ -516,6 +516,18 @@ export function notifySelfExclusion(userId: string, opts: { until: string }) {
   });
 }
 
+export function notifyCoolOff(userId: string, opts: { until: string }) {
+  return notify({
+    userId,
+    kind: "RG",
+    titleEn: "Cool-off break active",
+    titleSw: "Mapumziko yameanza",
+    bodyEn: `Betting and deposits are paused until ${opts.until.slice(0, 10)}.`,
+    bodySw: `Kuweka dau na amana kumesimamishwa hadi ${opts.until.slice(0, 10)}.`,
+    href: "/profile/responsible-gambling",
+  });
+}
+
 /**
  * Alert every compliance/admin officer (in-app bell + email) that a transaction
  * has hit AML review — so officers act on the queue instead of polling it.

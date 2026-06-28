@@ -7,7 +7,6 @@ import { Field } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { CountdownPill } from "@/components/ui/countdown-pill";
 import { RateLimitBanner } from "@/components/auth/rate-limit-banner";
 import { startLoginAction } from "./actions";
 import { SUPPORT_EMAIL, HELPLINE } from "@/lib/support-config";
@@ -20,9 +19,9 @@ export default async function LoginPage({
   searchParams: Promise<{ phone?: string; error?: string; retry?: string; next?: string; closed?: string; excluded?: string; cooled?: string; reset?: string }>;
 }) {
   // Note: the "bounce authed users away from this page" check lives in
-  // src/app/auth/(public)/layout.tsx so the redirect happens before the
-  // page renders. Avoiding redirect() inside the page itself sidesteps a
-  // Next.js 16 dev-mode hook-count mismatch on hot reload.
+  // src/app/auth/layout.tsx so the redirect happens before the page renders.
+  // Avoiding redirect() inside the page itself sidesteps a Next.js 16 dev-mode
+  // hook-count mismatch on hot reload.
   const sp = await searchParams;
   // Detect session-revoked flash (another device signed in)
   const jar = await cookies();

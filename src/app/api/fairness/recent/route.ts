@@ -37,7 +37,15 @@ export async function GET() {
   // settled markets past the 50-row cutoff and players miss their
   // win-celebration popup — same root cause as the original
   // refresh-required bug, just from the other side of the window.
-  const resolved = (await listMarkets({ status: "RESOLVED" }))
+  // Include VOIDED as well as RESOLVED: a voided/cancelled market is a terminal
+  // resolution the player is watching, and the NotifyPoller needs to see it to
+  // fire the "market resolved · VOID" toast, refund-aware, and prune it from the
+  // watch list. Without this, a watched market that gets voided would be polled
+  // forever and the player would never get the in-page resolution signal.
+  const resolved = [
+    ...(await listMarkets({ status: "RESOLVED" })),
+    ...(await listMarkets({ status: "VOIDED" })),
+  ]
     .sort((a, b) => (b.resolutionStage2At ?? "").localeCompare(a.resolutionStage2At ?? ""))
     .slice(0, 50);
   return NextResponse.json({

@@ -5,6 +5,8 @@ import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { Input, Field as KitField } from "@/components/ui/input";
+import { Chip } from "@/components/ui/chip";
 import { submitSourceOfFundsAction } from "./actions";
 import { formatDate } from "@/lib/utils";
 
@@ -42,6 +44,11 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
     existing?.reviewStatus === "ACCEPTED" ? "yes"
     : existing?.reviewStatus === "REJECTED" ? "no"
     : "warning";
+  // Humanize the raw enums before showing them to the player.
+  const STATUS_LABEL: Record<string, string> = { PENDING: "Under review", ACCEPTED: "Accepted", REJECTED: "Rejected" };
+  const statusLabel = existing ? (STATUS_LABEL[existing.reviewStatus] ?? existing.reviewStatus) : "";
+  const sourceLabel = existing ? (SOURCES.find((s) => s.id === existing.declaredSource)?.label ?? existing.declaredSource) : "";
+  const bandLabel = existing ? (BANDS.find((b) => b.id === existing.declaredAnnualIncomeBand)?.label ?? existing.declaredAnnualIncomeBand) : "";
 
   return (
     <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
@@ -118,15 +125,15 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
       {existing && existing.reviewStatus !== "REJECTED" && (
         <section className="rounded-xl border border-yes-700/60 bg-yes-500/[0.06] p-4 space-y-1.5">
           <div className="flex items-center gap-2">
-            <Pill tone={statusTone as "yes" | "no" | "warning"}>{existing.reviewStatus}</Pill>
+            <Pill tone={statusTone as "yes" | "no" | "warning"}>{statusLabel}</Pill>
             <p className="font-mono text-[11px] text-text-subtle tabular-nums">
               Submitted {formatDate(existing.submittedAt)}
             </p>
           </div>
           <p className="text-[12.5px] text-text-muted leading-snug">
-            Source: <span className="font-semibold text-text">{existing.declaredSource}</span> · {existing.declaredOccupation}
+            Source: <span className="font-semibold text-text">{sourceLabel}</span> · {existing.declaredOccupation}
             {existing.declaredEmployer ? ` · ${existing.declaredEmployer}` : ""}
-            <br />Income band: <span className="font-semibold text-text">{existing.declaredAnnualIncomeBand}</span>
+            <br />Income band: <span className="font-semibold text-text">{bandLabel}</span>
           </p>
           {existing.reviewStatus === "PENDING" && (
             <p className="font-mono text-[11px] text-text-subtle">A compliance officer will review within 1 business day.</p>
@@ -243,6 +250,8 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
   );
 }
 
+// Delegates to the kit <Input>/<Field> so this form matches the platform
+// (shared height, --bg-inset, brand focus). Same signature → call sites unchanged.
 function Field({
   name, label, required, minLength, maxLength, defaultValue, placeholder,
 }: {
@@ -255,11 +264,8 @@ function Field({
   placeholder?: string;
 }) {
   return (
-    <label className="block">
-      <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
-        {label}
-      </span>
-      <input
+    <KitField label={label}>
+      <Input
         name={name}
         type="text"
         required={required}
@@ -267,20 +273,13 @@ function Field({
         maxLength={maxLength}
         defaultValue={defaultValue}
         placeholder={placeholder}
-        className="w-full h-10 px-3 rounded-md border border-border bg-bg-overlay text-text text-[16px] focus:outline-none brand-focus transition-colors"
       />
-    </label>
+    </KitField>
   );
 }
 
+// Thin adapter to the canonical <Chip> so status pills match the rest of the app.
 function Pill({ tone, children }: { tone: "yes" | "no" | "warning"; children: React.ReactNode }) {
-  const cls =
-    tone === "yes"     ? "border-yes-700 bg-yes-500/10 text-yes-300"
-    : tone === "no"      ? "border-no-700 bg-no-500/10 text-no-300"
-    :                      "border-warning-border bg-warning-bg/40 text-warning-fg";
-  return (
-    <span className={`inline-flex items-center rounded-pill border px-2.5 py-0.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.06em] ${cls}`}>
-      {children}
-    </span>
-  );
+  const variant = tone === "yes" ? "success" : tone === "no" ? "danger" : "warning";
+  return <Chip variant={variant} size="md">{children}</Chip>;
 }

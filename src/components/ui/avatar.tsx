@@ -48,7 +48,8 @@ export function TierBadge({ tier, className }: { tier: Tier; className?: string 
   // Kit class names — let globals.css drive the actual look so badges
   // automatically match the rest of the heraldic chord.
   const cls = `tier-${tier}`;
-  const letter = { sovereign: "S", diamond: "D", gold: "G", silver: "S", bronze: "B" }[tier];
+  // Sovereign gets a star, not "S" — otherwise it collides with Silver's "S".
+  const letter = { sovereign: "★", diamond: "D", gold: "G", silver: "S", bronze: "B" }[tier];
   return (
     <span title={tier} className={cn("tier-badge", cls, className)}>
       {letter}

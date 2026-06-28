@@ -849,17 +849,6 @@ export function loginNotificationHtml({ name, time, ip }: { name: string; time: 
   `);
 }
 
-export function sessionRevokedHtml(): string {
-  return wrap(`
-    ${eyebrow("Security", "Usalama")}
-    ${heading("Signed out on another device")}
-    ${subtitle("Your account was signed in on another device. For security, your previous session was ended.")}
-    ${subtitleSw("Akaunti yako imeingia kwenye kifaa kingine. Kikao chako kilichopita kimesitishwa.")}
-    ${ctaButton("/auth/login", "Sign in again · Ingia tena")}
-    <p style="margin:16px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">If this wasn't you, change your password immediately.</p>
-  `);
-}
-
 /** Security alert sent whenever the account password changes (self-service
  *  change, reset-link completion, or officer-issued temporary password). */
 export function passwordChangedHtml({ time, method }: { time: string; method: string }): string {
@@ -873,6 +862,37 @@ export function passwordChangedHtml({ time, method }: { time: string; method: st
       { label: "How", value: method },
     ])}
     <p style="margin:16px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">If you did NOT do this, your account may be compromised — reset your password and contact <a href="mailto:${REPLY_TO}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO}</a> immediately.</p>
+  `);
+}
+
+/** Security alert sent to the PREVIOUS address whenever the account email is
+ *  changed — so an account-takeover that swaps the email still notifies the
+ *  real owner on the address they still control. */
+export function emailChangedHtml({ newEmail, time }: { newEmail: string; time: string }): string {
+  return wrap(`
+    ${eyebrow("Security", "Usalama")}
+    ${heading("Your email was changed")}
+    ${subtitle("The email address on your 50pick account was just changed.")}
+    ${subtitleSw("Anwani ya barua pepe ya akaunti yako ya 50pick imebadilishwa.")}
+    ${detailRows([
+      { label: "When", value: time },
+      { label: "New address", value: newEmail },
+    ])}
+    <p style="margin:16px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">If you did NOT do this, your account may be compromised — contact <a href="mailto:${REPLY_TO}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO}</a> immediately.</p>
+  `);
+}
+
+/** Confirmation sent when a player closes their own account. */
+export function accountClosedHtml({ name, time }: { name: string; time: string }): string {
+  return wrap(`
+    ${eyebrow("Account", "Akaunti")}
+    ${heading(`Your account is closed, ${name}`)}
+    ${subtitle("Your 50pick account has been closed as you requested. Deposits, withdrawals and betting are disabled. Any open positions will settle out normally.")}
+    ${subtitleSw("Akaunti yako ya 50pick imefungwa kama ulivyoomba.")}
+    ${detailRows([
+      { label: "Closed", value: time },
+    ])}
+    <p style="margin:16px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">If you did NOT request this, contact <a href="mailto:${REPLY_TO}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO}</a> immediately.</p>
   `);
 }
 

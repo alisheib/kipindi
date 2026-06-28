@@ -10,7 +10,6 @@ import { WalletBalancePill } from "@/components/layout/wallet-balance-pill";
 import { CashEye } from "@/components/ui/cash";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
 
 export type TopAppBarUser = {
   initials: string;

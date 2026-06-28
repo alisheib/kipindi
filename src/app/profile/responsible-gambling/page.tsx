@@ -9,6 +9,7 @@ import { SelfExcludeConfirm } from "@/components/rg/self-exclude-confirm";
 import { CoolOffConfirm } from "@/components/rg/cool-off-confirm";
 import { SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/support-config";
 import { Select } from "@/components/ui/select";
+import { Input, Field as KitField } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { FeedbackSettings } from "@/components/settings/feedback-settings";
 import { formatTzs } from "@/lib/utils";
@@ -192,6 +193,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
   );
 }
 
+// Delegates to the kit <Input>/<Field> so the limit inputs match the platform.
 function Field({
   name, label, defaultValue, placeholder, min = 0, max, step = 1000,
 }: {
@@ -204,11 +206,8 @@ function Field({
   step?: number;
 }) {
   return (
-    <label className="block">
-      <span className="block font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">
-        {label}
-      </span>
-      <input
+    <KitField label={label}>
+      <Input
         name={name}
         type="number"
         min={min}
@@ -216,8 +215,8 @@ function Field({
         step={step}
         defaultValue={defaultValue ?? ""}
         placeholder={placeholder}
-        className="w-full h-11 px-3 rounded-lg border border-border bg-[var(--bg-inset)] font-mono text-[16px] tabular-nums text-text focus:outline-none brand-focus transition-colors"
+        mono
       />
-    </label>
+    </KitField>
   );
 }

@@ -14,7 +14,6 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import { cashOutPositionAction } from "@/app/markets/actions";
-import { dispatchWinCelebration } from "@/components/markets/win-celebration";
 import { SellConfirmModal } from "./sell-confirm-modal";
 import { OperationResultModal } from "./operation-result-modal";
 
@@ -87,12 +86,11 @@ export function SellButton({
   // closes in more than 5 min (prevents last-second exploitation).
   const marketCloseMs = resolutionAt ? Date.parse(resolutionAt) - Date.now() : Infinity;
   const inGrace = graceRemainMs > 0 && marketCloseMs > GRACE_MS;
-  const ratio = stake > 0 ? value / stake : 0;
+  // Cash-out is an EARLY EXIT, never a profit. `value` is the stake returned:
+  // the full stake inside the free-exit window, or stake − fee outside it.
+  // `net` is therefore always ≤ 0 (0 when free, −fee otherwise).
   const net = value - stake;
-  const tone = inGrace ? "yes" :
-    ratio >= 1.05 ? "yes" :
-    ratio >= 1.00 ? "warning" :
-    "no";
+  const fee = Math.max(0, stake - value);
 
   // Grace countdown label: "43:12" remaining
   const graceMin = Math.floor(graceRemainMs / 60_000);
@@ -116,34 +114,26 @@ export function SellButton({
         setResultOpen(true);
         return;
       }
-      const realisedNet = r.data!.value - stake;
+      const realisedValue = r.data!.value;
+      const realisedFee = Math.max(0, stake - realisedValue); // 0 inside the free-exit window
       toast({
-        title: `Sold · TZS ${fmt(r.data!.value)}`,
-        description: realisedNet >= 0 ? `+TZS ${fmt(realisedNet)} profit locked in` : `−TZS ${fmt(Math.abs(realisedNet))} loss`,
-        variant: realisedNet >= 0 ? "success" : "warning",
+        title: `Sold · TZS ${fmt(realisedValue)} returned`,
+        description: realisedFee <= 0
+          ? "Full stake refunded — no fee · Bila gharama"
+          : `TZS ${fmt(realisedFee)} early-exit fee applied · Ada ya kutoka mapema`,
+        variant: "success",
       });
-      setResultData({ variant: "success", value: r.data!.value, net: realisedNet });
+      // net is stored as −fee so the result modal can surface the fee row.
+      setResultData({ variant: "success", value: realisedValue, net: -realisedFee });
       setResultOpen(true);
       window.dispatchEvent(new Event("50pick:refresh"));
-      if (realisedNet > 0) {
-        dispatchWinCelebration({
-          kind: "CASHOUT",
-          amount: r.data!.value,
-          net: realisedNet,
-          label: "Cashed out at profit",
-        });
-      }
       window.dispatchEvent(new Event("50pick:refresh-notifications"));
       router.refresh();
     });
   };
 
-  // Kit btn map: profit at conviction-grade ratio → gold; positive but thin →
-  // primary royal; loss territory → no.
-  const btnVariant =
-    tone === "yes"     ? "btn-gold" :
-    tone === "warning" ? "btn-primary" :
-                         "btn-no";
+  // Cash-out is an early-exit utility, not a win — always the neutral royal CTA.
+  const btnVariant = "btn-primary";
 
   return (
     <>
@@ -179,7 +169,7 @@ export function SellButton({
             TZS {fmt(value)}
             {inGrace
               ? <span className="ml-1.5 opacity-80 text-[11px]">full refund</span>
-              : <span className="ml-1.5 opacity-80 text-[11px]">{net >= 0 ? "+" : "−"}{fmt(Math.abs(net))}</span>
+              : <span className="ml-1.5 opacity-80 text-[11px]">−{fmt(fee)} fee</span>
             }
           </span>
         )}
@@ -205,22 +195,22 @@ export function SellButton({
           subtitle={
             resultData.variant === "success"
               ? (resultData.net >= 0
-                  ? "Profit locked in. Stake left the pool."
-                  : "Loss crystallised. Stake left the pool.")
+                  ? "Full stake returned to your wallet · Pesa imerudi"
+                  : "Stake returned, minus the early-exit fee · Pesa imerudi, ukatwa ada")
               : "Position is unchanged · Position haijabadilika."
           }
           details={resultData.variant === "success" ? [
-            { label: "Sellback", sw: "Pesa sasa", value: `TZS ${fmt(resultData.value)}` },
+            { label: "Returned", sw: "Imerudishwa", value: `TZS ${fmt(resultData.value)}` },
             {
-              label: "Net",
-              sw: "Faida / hasara",
-              value: `${resultData.net >= 0 ? "+" : "−"}TZS ${fmt(Math.abs(resultData.net))}`,
-              tone: resultData.net >= 0 ? "good" : "bad",
+              label: "Early-exit fee",
+              sw: "Ada ya kutoka",
+              value: resultData.net >= 0 ? "None · Hakuna" : `TZS ${fmt(Math.abs(resultData.net))}`,
+              tone: "default",
             },
           ] : undefined}
           primaryLabel={resultData.variant === "success" ? "Done · Sawa" : "Close"}
           onClose={() => setResultOpen(false)}
-          stripTone="gold"
+          stripTone="brand"
         />
       )}
     </>

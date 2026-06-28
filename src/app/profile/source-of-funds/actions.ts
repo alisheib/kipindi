@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
+import { notify } from "@/lib/server/notification-service";
 import type { StoredSourceOfFunds } from "@/lib/server/store";
 
 export async function submitSourceOfFundsAction(formData: FormData) {
@@ -51,6 +52,18 @@ export async function submitSourceOfFundsAction(formData: FormData) {
     targetType: "User",
     targetId: session.userId,
     payload: { declaredSource, declaredAnnualIncomeBand },
+  });
+
+  // Acknowledge receipt in the in-app inbox — parity with the KYC-submitted
+  // signal, so the player knows the declaration landed and is under review.
+  await notify({
+    userId: session.userId,
+    kind: "KYC",
+    titleEn: "Source of funds received",
+    titleSw: "Chanzo cha fedha kimepokelewa",
+    bodyEn: "Thanks — your source-of-funds declaration is under review. We'll let you know once it's cleared.",
+    bodySw: "Asante — taarifa yako inakaguliwa. Tutakujulisha ikikamilika.",
+    href: "/profile/source-of-funds",
   });
 
   revalidatePath("/profile/source-of-funds");

@@ -18,7 +18,8 @@
 import { db } from "./store";
 import { audit } from "./audit";
 import { signSession, verifySession } from "./crypto";
-import { sendEmailToUser, emailVerifyHtml } from "./email";
+import { sendEmail, sendEmailToUser, emailVerifyHtml, emailChangedHtml } from "./email";
+import { notify } from "./notification-service";
 import { displayLabel } from "@/lib/display-label";
 
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000; // 24h
@@ -106,6 +107,34 @@ export async function setUserEmail(
   audit({ category: "COMPLIANCE", action: "user.email.set", actorId: userId, targetType: "User", targetId: userId, payload: { verified: false } });
   const name = (user.displayName?.trim().split(/\s+/)[0]) || displayLabel({ id: userId, displayName: user.displayName ?? null });
   await sendEmailVerification(userId, next, name);
+
+  // Security alert to the PREVIOUS address (if any): an account-takeover that
+  // swaps the email must still reach the real owner on the address they control.
+  // Sent directly (not sendEmailToUser, which now resolves the NEW address) and
+  // mirrored to the in-app inbox. Best-effort — never blocks the change.
+  if (current) {
+    const when = new Date().toLocaleString("en-GB", { timeZone: "Africa/Dar_es_Salaam" });
+    try {
+      await sendEmail({
+        to: current,
+        subject: "Your 50pick email was changed · Usalama",
+        html: emailChangedHtml({ newEmail: next, time: when }),
+        tag: "email-changed",
+        trackLinks: false,
+      });
+    } catch (err) {
+      console.error("[email-change] alert to old address failed:", (err as Error)?.message);
+    }
+    await notify({
+      userId,
+      kind: "SECURITY",
+      titleEn: "Email address changed",
+      titleSw: "Barua pepe imebadilishwa",
+      bodyEn: `Your account email was changed to ${next}. If this wasn't you, contact support immediately.`,
+      bodySw: "Barua pepe ya akaunti yako imebadilishwa. Kama si wewe, wasiliana na usaidizi mara moja.",
+      href: "/profile/account",
+    });
+  }
   return { ok: true, changed: true, verificationSent: true };
 }
 

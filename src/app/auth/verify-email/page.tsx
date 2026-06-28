@@ -84,7 +84,7 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
               className="btn btn-ghost btn-lg w-full"
               style={{ borderRadius: "var(--r-pill)" }}
             >
-              {good ? "Go to account · Akaunti" : "Go to account · Resend link"}
+              {good ? "Go to account · Akaunti" : "Go to account to resend · Akaunti"}
             </Link>
           </div>
 

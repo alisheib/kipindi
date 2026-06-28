@@ -8,6 +8,7 @@ import { SidePicker } from "@/components/markets/side-picker";
 import { ChartToggle } from "@/components/markets/chart-toggle";
 import { SellButton } from "@/components/markets/sell-button";
 import { cashOutValue, getMarket, impliedYesPct, isClosedByTime, listPositionsForUser } from "@/lib/server/market-service";
+import { getEffectiveConfig } from "@/lib/server/market-config";
 import { getProbabilityChart, seedHistory } from "@/lib/server/market-history";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
@@ -75,6 +76,10 @@ export default async function MarketDetail({
   if (!m) notFound();
 
   const yesPct = impliedYesPct(m);
+  // Effective fee for THIS market (incl. any per-market override) so the dial's
+  // inline payout/lean projection matches the rate the server settles at.
+  const feeCfg = await getEffectiveConfig(m.id);
+  const marketFeeRate = Math.min(0.99, Math.max(0, feeCfg.taxRate + feeCfg.commissionRate + feeCfg.reserveRate + feeCfg.aggregatorRate));
   const session = await currentSession();
   const myPositions = session ? (await listPositionsForUser(session.userId)).filter((p) => p.marketId === m.id) : [];
   const isResolved = m.status === "RESOLVED" || m.status === "VOIDED";
@@ -306,6 +311,7 @@ export default async function MarketDetail({
                 resolutionAt={m.resolutionAt}
                 balance={(await db.wallet.findByUserId(session.userId))?.balance ?? 0}
                 initialSide={side === "YES" || side === "NO" ? side : undefined}
+                feeRate={marketFeeRate}
               />
               </>
             ) : (

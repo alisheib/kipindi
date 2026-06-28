@@ -213,7 +213,11 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
   // when a player is under investigation or has been removed.
   const u = await db.user.findById(userId);
   if (!u) return { ok: false, error: "Account not found.", code: "NOT_FOUND" };
-  if (u.status === "SUSPENDED" || u.status === "CLOSED") {
+  // Belt-and-suspenders alongside isLockedOut() above: the RG timer and the
+  // account status are set together, but if they ever diverge (admin clears a
+  // timer, a data migration sets status without the timestamp) we must still
+  // refuse a bet from a self-excluded / cooled-off / suspended / closed player.
+  if (u.status === "SUSPENDED" || u.status === "CLOSED" || u.status === "SELF_EXCLUDED" || u.status === "COOLED_OFF") {
     audit({
       category: "COMPLIANCE",
       action: "bet.account_blocked",
@@ -222,7 +226,12 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
       targetId: userId,
       payload: { status: u.status },
     });
-    return { ok: false, error: u.status === "SUSPENDED" ? "Account suspended. Contact support." : "Account closed.", code: "SUSPENDED" };
+    const blockedMsg =
+      u.status === "SUSPENDED" ? "Account suspended. Contact support." :
+      u.status === "CLOSED" ? "Account closed." :
+      u.status === "SELF_EXCLUDED" ? "You're self-excluded — betting is disabled. · Umejizuia kucheza." :
+      "You're on a cool-off break — betting is paused. · Uko kwenye mapumziko.";
+    return { ok: false, error: blockedMsg, code: "SUSPENDED" };
   }
 
   // Stake bounds come from runtime config — global with optional per-market override.

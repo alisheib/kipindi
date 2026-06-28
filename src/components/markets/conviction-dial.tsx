@@ -5,7 +5,7 @@
  *
  * A weighted squircle dial. One gesture sets BOTH side and stake:
  *   • Position 0..1 along the track — left = YES, right = NO, centre = NEUTRAL
- *   • Distance from centre maps quadratically to a multiplier (1× → 5×)
+ *   • Distance from centre maps quadratically to a multiplier (1× up to 200×)
  *   • Stake = baseStake × multiplier
  *
  * Theme-adaptive (uses --bar-track / --bar-needle / --text), accessible (slider
@@ -102,9 +102,14 @@ type Props = {
    *  is greyed + lock-marked, and a YES/NO segmented toggle lets the player
    *  switch sides deliberately. Undefined → classic bidirectional dial. */
   lockedSide?: "YES" | "NO";
+  /** Total effective fee (tax+commission+reserve+aggregator) for THIS market,
+   *  from getEffectiveConfig(marketId). Threaded from the server so the inline
+   *  payout/lean projection matches the rate the server will actually settle
+   *  at — including any per-market override. Undefined → payout.ts default (9%). */
+  feeRate?: number;
 };
 
-export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, initial = 0.5, marketTitle, resolutionAt, balance, lockedSide }: Props) {
+export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, initial = 0.5, marketTitle, resolutionAt, balance, lockedSide, feeRate }: Props) {
   // The side the dial is locked to (null = free bidirectional). The choice is
   // made on the market card (outside) and is FINAL here — the in-dial YES/NO
   // pills are display-only indicators, NOT switchable. To change sides the
@@ -396,7 +401,13 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
   // position card, and the server settlement engine never disagree.
   const proj = effectiveSide === "NEUTRAL"
     ? { payout: 0, ratio: 0 }
-    : payoutFor({ yesPool, noPool, side: effectiveSide, stake });
+    : payoutFor({
+        yesPool, noPool, side: effectiveSide, stake,
+        // Carry the per-market effective fee (if supplied) so the lean warning
+        // matches the rate the server settles at. Pass it as the sole fee
+        // component; the others are folded into this single total.
+        ...(feeRate != null ? { taxRate: feeRate, commissionRate: 0, reserveRate: 0, aggregatorRate: 0 } : {}),
+      });
   const lean: LeanLevel = effectiveSide === "NEUTRAL" ? "fair" : leanFor(proj.ratio);
   const payoutRolled = useRollingNumber(proj.payout);
   const payoutDisplay = Math.max(0, Math.round(payoutRolled));

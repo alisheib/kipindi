@@ -93,10 +93,23 @@ export function NotificationsPanel() {
   }, []);
 
   useEffect(() => {
+    let id: ReturnType<typeof setInterval> | null = null;
+    // Only poll while the tab is visible — a backgrounded/alt-tabbed tab
+    // doesn't need fresh notifications and shouldn't burn battery/data on
+    // mid-tier Android. We refresh once on (re)focus to catch up instantly.
+    const startPolling = () => {
+      if (id) return;
+      // 5 s — every moment counts in a betting platform. The endpoint is cheap.
+      id = setInterval(refresh, 5_000);
+    };
+    const stopPolling = () => { if (id) { clearInterval(id); id = null; } };
+    const onVisibility = () => {
+      if (document.hidden) { stopPolling(); }
+      else { refresh(); startPolling(); }
+    };
     refresh();
-    // 5 s — every moment counts in a betting platform, the user said.
-    // The endpoint is cheap (in-memory store) so this is safe for demo.
-    const id = setInterval(refresh, 5_000);
+    startPolling();
+    document.addEventListener("visibilitychange", onVisibility);
     // Also refresh on demand — any mutation (bet placed, sell, etc.)
     // can dispatch `50pick:refresh-notifications` and the bell will
     // re-poll within the next event-loop tick. This is the
@@ -104,7 +117,8 @@ export function NotificationsPanel() {
     const onRefresh = () => { refresh(); };
     window.addEventListener("50pick:refresh-notifications", onRefresh);
     return () => {
-      clearInterval(id);
+      stopPolling();
+      document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("50pick:refresh-notifications", onRefresh);
     };
   }, [refresh]);
@@ -204,9 +218,9 @@ export function NotificationsPanel() {
               minWidth: 18,
               height: 18,
               borderRadius: 9,
-              background: "#ef4444",
+              background: "var(--no-500)",
               border: "2px solid var(--bg-base)",
-              boxShadow: "0 0 6px #ef4444",
+              boxShadow: "0 0 6px var(--no-500)",
               zIndex: 20,
               pointerEvents: "none",
               display: "flex",
@@ -214,7 +228,7 @@ export function NotificationsPanel() {
               justifyContent: "center",
               fontSize: 10,
               fontWeight: 700,
-              color: "#fff",
+              color: "var(--text-on-brand)",
               fontFamily: "var(--font-mono)",
               padding: "0 4px",
               lineHeight: 1,
