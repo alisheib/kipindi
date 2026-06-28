@@ -41,7 +41,7 @@ export async function fulfillDsarAction(formData: FormData) {
   const id = String(formData.get("id") || "").trim();
   const exportRef = String(formData.get("exportRef") || "") || null;
   const r = fulfillDsarRequest({ id, officerId: auth.userId, exportRef });
-  if (!r) return { ok: false, error: "DSAR not found" };
+  if (!r.ok) return { ok: false, error: r.error };
   revalidatePath("/admin/privacy");
   return { ok: true };
 }

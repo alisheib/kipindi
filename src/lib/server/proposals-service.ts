@@ -255,26 +255,31 @@ export function timelineStep(v: ProposalView): number {
 // ── Officer actions ─────────────────────────────────────────────────────
 export async function approveAndList(proposalId: string, officerId: string):
   | Promise<{ ok: true; marketId: string } | { ok: false; error: string }> {
-  const p = await db.proposal.findById(proposalId);
-  if (!p) return { ok: false, error: "Proposal not found." };
-  if (p.status === "LISTED" || p.status === "RESOLVED") return { ok: false, error: "Already listed." };
-  if (p.status === "DECLINED") return { ok: false, error: "Proposal was declined." };
+  // Serialize per-proposal and re-check status INSIDE the lock — otherwise two
+  // officers (or a double-click) both pass the status guard and create TWO live
+  // markets from one proposal, leaving an orphaned duplicate. (Audit finding.)
+  return withLock(`proposal:${proposalId}`, async () => {
+    const p = await db.proposal.findById(proposalId);
+    if (!p) return { ok: false as const, error: "Proposal not found." };
+    if (p.status === "LISTED" || p.status === "RESOLVED") return { ok: false as const, error: "Already listed." };
+    if (p.status === "DECLINED") return { ok: false as const, error: "Proposal was declined." };
 
-  // Create the real market through the existing pipeline.
-  const { createMarket } = await import("./market-service");
-  const market = await createMarket({
-    titleEn: p.titleEn,
-    titleSw: p.titleSw ?? p.titleEn,
-    category: toMarketCategory(p.category),
-    sourceUrl: "",
-    resolutionCriterion: p.resolutionCriterion,
-    resolutionAt: new Date(`${p.resolutionDate}T23:59:59.000Z`).toISOString(),
-    proposedBy: p.proposerId,
+    // Create the real market through the existing pipeline.
+    const { createMarket } = await import("./market-service");
+    const market = await createMarket({
+      titleEn: p.titleEn,
+      titleSw: p.titleSw ?? p.titleEn,
+      category: toMarketCategory(p.category),
+      sourceUrl: "",
+      resolutionCriterion: p.resolutionCriterion,
+      resolutionAt: new Date(`${p.resolutionDate}T23:59:59.000Z`).toISOString(),
+      proposedBy: p.proposerId,
+    });
+    await db.proposal.update(proposalId, { status: "LISTED", publishedMarketId: market.id, reviewedBy: officerId, reviewedAt: new Date().toISOString() });
+    audit({ category: "ADMIN", action: "proposal.approved_listed", actorId: officerId, targetType: "Proposal", targetId: proposalId, payload: { marketId: market.id } });
+    notifyProposalListed(p.proposerId, { titleEn: p.titleEn, marketId: market.id });
+    return { ok: true as const, marketId: market.id };
   });
-  await db.proposal.update(proposalId, { status: "LISTED", publishedMarketId: market.id, reviewedBy: officerId, reviewedAt: new Date().toISOString() });
-  audit({ category: "ADMIN", action: "proposal.approved_listed", actorId: officerId, targetType: "Proposal", targetId: proposalId, payload: { marketId: market.id } });
-  notifyProposalListed(p.proposerId, { titleEn: p.titleEn, marketId: market.id });
-  return { ok: true, marketId: market.id };
 }
 
 export async function requestChanges(proposalId: string, officerId: string, note: string): Promise<{ ok: true } | { ok: false; error: string }> {

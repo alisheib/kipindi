@@ -78,10 +78,19 @@ export function fileDsarRequest(opts: { userId: string; type: DsarType; reason?:
   return r;
 }
 
-/** Officer marks a DSAR fulfilled. */
-export function fulfillDsarRequest(opts: { id: string; officerId: string; exportRef?: string | null }): DsarRequest | null {
+/** Officer marks a DSAR fulfilled. Returns a discriminated result so the caller
+ *  can surface why an erasure can't be closed manually. */
+export function fulfillDsarRequest(opts: { id: string; officerId: string; exportRef?: string | null }):
+  { ok: true; request: DsarRequest } | { ok: false; error: string } {
   const r = queue.find((x) => x.id === opts.id);
-  if (!r) return null;
+  if (!r) return { ok: false, error: "DSAR not found." };
+  // ERASURE must NOT be closed by a status flip — that records a FALSE "fulfilled"
+  // while the data stays fully intact. The real anonymization routine (respecting
+  // the 7-year AML retention window) isn't wired yet, so block it and audit.
+  if (r.type === "ERASURE") {
+    audit({ category: "COMPLIANCE", action: "privacy.dsar.erasure_blocked", actorId: opts.officerId, targetType: "DsarRequest", targetId: r.id, payload: { userId: r.userId } });
+    return { ok: false, error: "Erasure can't be completed manually yet — the anonymization/retention routine isn't wired. Escalate to engineering; do not mark fulfilled." };
+  }
   r.status = "FULFILLED";
   r.fulfilledAt = new Date().toISOString();
   r.fulfilledBy = opts.officerId;
@@ -95,7 +104,7 @@ export function fulfillDsarRequest(opts: { id: string; officerId: string; export
     targetId: r.id,
     payload: { type: r.type, userId: r.userId, exportRef: r.exportRef },
   });
-  return r;
+  return { ok: true, request: r };
 }
 
 export function listDsarRequests(filter?: { status?: DsarStatus }): DsarRequest[] {
