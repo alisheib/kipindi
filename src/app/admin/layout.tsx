@@ -105,10 +105,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     return <>{children}</>;
   }
 
-  // TOTP gate — non-demo admins with TOTP enabled must verify before browsing.
-  // The cookie is HMAC-signed with userId + sessionId to prevent forgery.
-  // Set DISABLE_ADMIN_TOTP=true in Railway env vars to bypass the gate entirely.
-  if (process.env.DISABLE_ADMIN_TOTP !== "true" && await hasTotp(session.userId)) {
+  // TOTP gate — the cookie is HMAC-signed with userId + sessionId to prevent
+  // forgery. Set DISABLE_ADMIN_TOTP=true in Railway env vars to bypass entirely.
+  if (process.env.DISABLE_ADMIN_TOTP !== "true") {
+    // B2: force enrollment — an admin with no TOTP secret must set one up before
+    // operating the console (the setup page is TOTP_EXEMPT above, so no loop).
+    // Previously a not-yet-enrolled admin ran password-only.
+    if (!(await hasTotp(session.userId))) {
+      redirect("/admin/2fa/setup");
+    }
     const jar = await cookies();
     const raw = jar.get(TOTP_COOKIE_NAME)?.value;
     const totpData = verifySession<{

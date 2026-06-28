@@ -11,6 +11,7 @@ import { notifyWithdrawalSent } from "@/lib/server/wallet-service";
 import { TWO_PERSON_THRESHOLD_TZS } from "./constants";
 import { formatTzs } from "@/lib/utils";
 import { MONEY_ROLES } from "@/lib/server/roles";
+import { requireAdminTotp } from "@/lib/server/admin-guard";
 
 const ADMIN_ROLES = MONEY_ROLES; // role tier — see @/lib/server/roles
 
@@ -19,6 +20,7 @@ async function requireAdmin() {
   if (!session) redirect("/auth/admin");
   const u = await db.user.findById(session.userId);
   if (!(u && ADMIN_ROLES.has(u.role))) redirect("/auth/admin");
+  await requireAdminTotp(session.userId, session.sessionId); // B3: 2FA at the action layer
   return { session, role: u?.role ?? "ADMIN" };
 }
 

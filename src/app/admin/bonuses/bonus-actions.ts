@@ -9,6 +9,7 @@ import { tzPhone } from "@/lib/server/validators";
 import { setBonusConfig, type BonusConfig } from "@/lib/server/bonus-config";
 import { creditBonus, cancelGrant } from "@/lib/server/bonus-service";
 import { MONEY_ROLES } from "@/lib/server/roles";
+import { requireAdminTotp } from "@/lib/server/admin-guard";
 
 const ADMIN_ROLES = MONEY_ROLES; // role tier — see @/lib/server/roles
 
@@ -17,6 +18,7 @@ async function ensureAdmin() {
   if (!s) redirect("/auth/admin");
   const u = await db.user.findById(s.userId);
   if (!u || !ADMIN_ROLES.has(u.role)) redirect("/auth/admin");
+  await requireAdminTotp(s.userId, s.sessionId); // B3: 2FA at the action layer
   return s;
 }
 

@@ -8,6 +8,7 @@ import { audit } from "@/lib/server/audit";
 import { buildDsarBundle } from "@/lib/server/privacy";
 import { revokeUserSessions } from "@/lib/server/session-registry";
 import { COMPLIANCE_ROLES } from "@/lib/server/roles";
+import { requireAdminTotp } from "@/lib/server/admin-guard";
 
 /**
  * Privileged player-management actions. Each one:
@@ -41,6 +42,7 @@ async function requireAdmin(action: string): Promise<string> {
     });
     throw new Error("Forbidden: admin role required.");
   }
+  await requireAdminTotp(session.userId, session.sessionId); // B3: 2FA at the action layer
   return session.userId;
 }
 

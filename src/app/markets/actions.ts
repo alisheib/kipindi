@@ -9,6 +9,7 @@ import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registr
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { MARKET_OPS_ROLES } from "@/lib/server/roles";
+import { requireAdminTotp } from "@/lib/server/admin-guard";
 
 /** Defense-in-depth: even though the /admin layout gates non-admin
  *  access at render time, the Server Action itself must refuse a
@@ -67,6 +68,7 @@ export async function resolveMarketAction(formData: FormData) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
   await requireAdminOrThrow(session.userId, "resolveMarketAction");
+  await requireAdminTotp(session.userId, session.sessionId); // B3: 2FA at the action layer
   const marketId = String(formData.get("marketId") ?? "");
   const outcome = String(formData.get("outcome") ?? "") as Side | "VOID";
   // Validate at runtime — the `as` cast is erased, so an invalid string would
@@ -123,6 +125,7 @@ export async function emergencyVoidMarketAction(formData: FormData) {
     });
     return { ok: false as const, error: "Forbidden: ADMIN or COMPLIANCE role required.", code: "INVALID" as const };
   }
+  await requireAdminTotp(session.userId, session.sessionId); // B3: 2FA at the action layer
   const marketId = String(formData.get("marketId") ?? "");
   const reason = String(formData.get("reason") ?? "");
   const r = await emergencyVoidMarket({ marketId, officerId: session.userId, reason });

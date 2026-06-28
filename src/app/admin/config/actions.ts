@@ -11,6 +11,7 @@ import {
   type RateConfig,
 } from "@/lib/server/market-config";
 import { CONFIG_ROLES } from "@/lib/server/roles";
+import { requireAdminTotp } from "@/lib/server/admin-guard";
 
 const ADMIN_ROLES = CONFIG_ROLES; // role tier — see @/lib/server/roles
 
@@ -20,6 +21,7 @@ async function ensureAdmin() {
   // Role check here too — Server Actions bypass the admin layout's gate.
   const u = await db.user.findById(s.userId);
   if (!u || !ADMIN_ROLES.has(u.role)) redirect("/auth/admin");
+  await requireAdminTotp(s.userId, s.sessionId); // B3: 2FA at the action layer
   return s;
 }
 
