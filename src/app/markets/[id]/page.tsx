@@ -7,7 +7,7 @@ import { ShareButton } from "@/components/markets/share-button";
 import { SidePicker } from "@/components/markets/side-picker";
 import { ChartToggle } from "@/components/markets/chart-toggle";
 import { SellButton } from "@/components/markets/sell-button";
-import { cashOutValue, getMarket, impliedYesPct, isClosedByTime, listPositionsForUser } from "@/lib/server/market-service";
+import { cashOutValue, getMarket, impliedYesPct, isClosedByTime, isSelectionClosed, listPositionsForUser } from "@/lib/server/market-service";
 import { getEffectiveConfig } from "@/lib/server/market-config";
 import { getProbabilityChart, seedHistory } from "@/lib/server/market-history";
 import { currentSession } from "@/lib/server/auth-service";
@@ -203,10 +203,19 @@ export default async function MarketDetail({
             </div>
           )}
 
-          {/* 3b. Countdown — urgency signal (live only) */}
+          {/* 3b. Countdown — selection close + resolution (live only) */}
           {!isResolved && (
-            <div className="rounded-lg glass-panel p-4">
-              <Countdown to={m.resolutionAt} label="Closes in · Inafungwa baada ya" />
+            <div className="rounded-lg glass-panel p-4 space-y-2.5">
+              {m.selectionClosedAt && !isSelectionClosed(m) && (
+                <Countdown to={m.selectionClosedAt} label="Selection closes in · Uchaguzi unafungwa" />
+              )}
+              {m.selectionClosedAt && isSelectionClosed(m) && m.status === "LIVE" && (
+                <div className="flex items-center gap-2 text-[12.5px] font-semibold" style={{ color: "var(--gold-300)" }}>
+                  <I.hourglassOff s={14} />
+                  Selection closed — waiting for results · Uchaguzi umefungwa — tunasubiri matokeo
+                </div>
+              )}
+              <Countdown to={m.resolutionAt} label={m.selectionClosedAt ? "Results in · Matokeo baada ya" : "Closes in · Inafungwa baada ya"} />
             </div>
           )}
 

@@ -556,7 +556,7 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
 
         {/* Meta line */}
         <p className="mt-1 font-mono text-[10.5px] text-text-subtle">
-          {poll.resolutionAt ? `Resolves ${fmtDate(poll.resolutionAt)}` : "No resolution date"} {"\u00b7"}{" "}
+          {poll.selectionClosedAt ? `Bets close ${fmtDate(poll.selectionClosedAt)} · ` : ""}{poll.resolutionAt ? `Resolves ${fmtDate(poll.resolutionAt)}` : "No resolution date"} {"\u00b7"}{" "}
           {poll.sources.slice(0, 2).map((s, i) => (
             <span key={i}>{s.publisher}{i < Math.min(poll.sources.length, 2) - 1 ? " + " : ""}</span>
           ))}

@@ -193,13 +193,13 @@ export function SentinelCountdown() {
               type="button" onClick={reset} disabled={pending || !status?.enabled}
               className="btn btn-ghost btn-sm rounded-pill flex-1 disabled:opacity-40"
             >
-              <I.rotateCcw s={13} /> Reset
+              <I.timerReset s={13} /> Reset
             </button>
             <button
               type="button" onClick={runNow} disabled={pending || !status?.enabled || status?.sweeping}
               className="btn btn-gold btn-sm rounded-pill flex-1 disabled:opacity-40"
             >
-              <I.bolt s={13} /> Run now
+              <I.stepForward s={13} /> Run now
             </button>
           </div>
 

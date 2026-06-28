@@ -171,6 +171,8 @@ export async function createMarketAction(formData: FormData) {
   if (!VALID_CATEGORIES.has(rawCategory)) {
     return { ok: false as const, error: "Invalid category." };
   }
+  const { computeSelectionClosedAt } = await import("@/lib/server/ai-poll-config");
+  const selectionClosedAtRaw = String(formData.get("selectionClosedAt") ?? "").trim();
   const input: CreateMarketInput = {
     titleEn,
     titleSw,
@@ -178,6 +180,9 @@ export async function createMarketAction(formData: FormData) {
     sourceUrl,
     resolutionCriterion,
     resolutionAt,
+    selectionClosedAt: selectionClosedAtRaw && !Number.isNaN(Date.parse(selectionClosedAtRaw))
+      ? selectionClosedAtRaw
+      : computeSelectionClosedAt(resolutionAt, rawCategory),
     proposedBy: session.userId,
   };
   // Source-trust gate — only enabled, on-registry sources can publish a market.

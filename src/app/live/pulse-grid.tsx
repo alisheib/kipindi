@@ -14,6 +14,7 @@ type Market = {
   volume: number;
   predictors: number;
   timeLeft: string;
+  selectionClosed?: boolean;
   move24h?: number;
   spark?: number[];
   traders?: string[];
@@ -159,6 +160,7 @@ function PulseCard({ market, index }: { market: Market; index: number }) {
         predictors={market.predictors}
         timeLeft={market.timeLeft}
         status="LIVE"
+        selectionClosed={market.selectionClosed}
         move24h={market.move24h}
         spark={market.spark}
         traders={market.traders}

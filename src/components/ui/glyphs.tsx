@@ -217,7 +217,22 @@ export const I = {
  * Use color: var(--text-subtle); center in the empty panel.
  */
 
-  /* markets â€” nothing live in this category */
+  
+// ------------- A3 - controlled-poll glyphs (Claude Design) -------------
+  calendarClock: (p: GlyphProps) => <G {...p}><path d="M21 11V6.5A2.5 2.5 0 0 0 18.5 4H5A2.5 2.5 0 0 0 2.5 6.5v12A2.5 2.5 0 0 0 5 20.5h6" /><path d="M2.5 9.5h18.5" /><path d="M8 2.5v4M16 2.5v4" /><circle cx="16.5" cy="16.5" r="5" /><path d="M16.5 14.3v2.2l1.6 1" /></G>,
+  hourglassHalf: (p: GlyphProps) => <G {...p}><path d="M6 3h12M6 21h12" /><path d="M7.5 3.5v2.2L12 12 7.5 18.3v2.2" /><path d="M16.5 3.5v2.2L12 12l4.5 6.3v2.2" /><path d="M9.4 20.5l2.6-3.5 2.6 3.5z" fill="currentColor" stroke="none" /><path d="M12 12v2.7" /></G>,
+  hourglassOff: (p: GlyphProps) => <G {...p}><path d="M6 3h12M6 21h12" /><path d="M7.5 3.5v2.2L12 12 7.5 18.3v2.2" /><path d="M16.5 3.5v2.2L12 12l4.5 6.3v2.2" /><path d="M3.8 3.8l16.4 16.4" /></G>,
+  target: (p: GlyphProps) => <G {...p}><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5.4" /><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none" /></G>,
+  sliders: (p: GlyphProps) => <G {...p}><path d="M4 7h9M17 7h3" /><circle cx="15" cy="7" r="2.1" /><path d="M4 12h3M11 12h9" /><circle cx="9" cy="12" r="2.1" /><path d="M4 17h11M19 17h1" /><circle cx="17" cy="17" r="2.1" /></G>,
+  calendarRange: (p: GlyphProps) => <G {...p}><rect x="3" y="4.5" width="18" height="16.5" rx="2.5" /><path d="M3 9.5h18" /><path d="M8 2.5v4M16 2.5v4" /><circle cx="8.5" cy="14" r="1.4" fill="currentColor" stroke="none" /><circle cx="15.5" cy="17" r="1.4" fill="currentColor" stroke="none" /><path d="M9.9 14.7l4.2 1.9" /></G>,
+  gauge: (p: GlyphProps) => <G {...p}><path d="M3.5 16a8.5 8.5 0 0 1 17 0" /><circle cx="12" cy="16" r="1.5" fill="currentColor" stroke="none" /><path d="M12 16l5-3.2" /></G>,
+  shuffle: (p: GlyphProps) => <G {...p}><path d="M3 7h3.4a3 3 0 0 1 2.5 1.4l6.2 9.2a3 3 0 0 0 2.5 1.4H21" /><path d="M3 17h3.4a3 3 0 0 0 2.5-1.4l.9-1.4" /><path d="M14.7 9.2l1-1.4a3 3 0 0 1 2.5-1.4H21" /><path d="M18 4l3 3-3 3" /><path d="M18 14l3 3-3 3" /></G>,
+  circleStop: (p: GlyphProps) => <G {...p}><circle cx="12" cy="12" r="9" /><rect x="9" y="9" width="6" height="6" rx="1.2" /></G>,
+  timerReset: (p: GlyphProps) => <G {...p}><path d="M3 12a9 9 0 1 0 2.6-6.3L3 8" /><path d="M3 3.5V8h4.5" /><path d="M12 9v3.2l2.4 1.5" /></G>,
+  listFilter: (p: GlyphProps) => <G {...p}><path d="M3 6h9M3 12h6M3 18h4" /><path d="M14 6h7l-2.8 3.3v3l-1.6 1v-4z" /></G>,
+  stepForward: (p: GlyphProps) => <G {...p}><path d="M6 5.5l9 6.5-9 6.5z" /><path d="M18 5v14" /></G>,
+
+/* markets â€” nothing live in this category */
   emptyMarkets: (p: GlyphProps) => <GL {...p}><path d="M32 6v20" /><path d="M16 11h32" /><path d="M16 11l-6.5 15a6.5 6.5 0 0 0 13 0z" /><path d="M48 11l-6.5 15a6.5 6.5 0 0 0 13 0z" /><path d="M22 52h20" /><path d="M32 26v26" /><circle cx="50" cy="50" r="2" fill="currentColor" stroke="none" /></GL>,
 
   /* positions â€” you haven't staked anything */
@@ -235,6 +250,7 @@ const CATEGORY_GLYPH: Record<string, GlyphKey> = {
   politics: "politics", macro: "economy", economy: "economy", forex: "forex",
   weather: "weather", crypto: "crypto",
   culture: "entertainment", entertainment: "entertainment", tech: "tech",
+  mixed: "shuffle", other: "markets", infrastructure: "landmark",
 };
 export function categoryGlyph(category: string): GlyphKey {
   return CATEGORY_GLYPH[category?.toLowerCase?.() ?? ""] ?? "markets";

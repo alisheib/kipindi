@@ -11,7 +11,7 @@
  * this page.
  */
 import Link from "next/link";
-import { listMarkets, impliedYesPct, isClosedByTime, traderSeedsByMarket } from "@/lib/server/market-service";
+import { listMarkets, impliedYesPct, isClosedByTime, isSelectionClosed, traderSeedsByMarket } from "@/lib/server/market-service";
 
 import { getCardChart } from "@/lib/server/market-history";
 import { TippingBar, PulseRing } from "@/components/brand";
@@ -50,7 +50,8 @@ export default async function LivePage() {
       yesPct: impliedYesPct(m),
       volume: m.yesPool + m.noPool,
       predictors: m.predictorCount,
-      timeLeft: timeLeftStr(m.resolutionAt),
+      timeLeft: isSelectionClosed(m) ? "Waiting for results" : timeLeftStr(m.resolutionAt),
+      selectionClosed: isSelectionClosed(m),
       move24h: cc.move24h,
       spark: cc.spark,
       traders: traderMap.get(m.id),

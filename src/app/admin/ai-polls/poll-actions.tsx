@@ -188,7 +188,7 @@ export function GenerateForm() {
                     : "border-border bg-bg-overlay text-text-muted hover:border-text-subtle"
                 }`}
               >
-                {c.label}
+                {c.id === "mixed" && <I.shuffle s={11} className="inline-block mr-1 -mt-px" />}{c.label}
               </button>
             ))}
           </div>
@@ -206,8 +206,9 @@ export function GenerateForm() {
             onClick={() => setControlled((v) => !v)}
             className="flex items-center gap-2 text-[12px] font-semibold text-text-muted hover:text-text transition-colors"
           >
-            <I.chevronRight s={13} className={`transition-transform duration-150 ${controlled ? "rotate-90" : ""}`} />
+            <I.target s={13} className="shrink-0" />
             Controlled Poll · Kura Iliyodhibitiwa
+            <I.chevronRight s={11} className={`ml-auto transition-transform duration-150 text-text-subtle ${controlled ? "rotate-90" : ""}`} />
           </button>
           {controlled && (
             <div className="space-y-2.5 rounded-lg border border-border bg-bg-overlay p-3.5">
@@ -220,7 +221,7 @@ export function GenerateForm() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                 <div>
-                  <label className="mb-1 block text-[11.5px] font-semibold text-text">Selection Close · Kufunga uchaguzi</label>
+                  <label className="mb-1 flex items-center gap-1.5 text-[11.5px] font-semibold text-text"><I.calendarClock s={12} className="text-text-subtle shrink-0" />Selection Close · Kufunga uchaguzi</label>
                   <input
                     type="datetime-local"
                     value={controlledSelectionClosedAt}
@@ -230,7 +231,7 @@ export function GenerateForm() {
                   <p className="mt-0.5 text-[10px] text-text-subtle">When new bets stop · Wakati wa kufunga</p>
                 </div>
                 <div>
-                  <label className="mb-1 block text-[11.5px] font-semibold text-text">Resolution Date · Tarehe ya matokeo</label>
+                  <label className="mb-1 flex items-center gap-1.5 text-[11.5px] font-semibold text-text"><I.calendarClock s={12} className="text-text-subtle shrink-0" />Resolution Date · Tarehe ya matokeo</label>
                   <input
                     type="datetime-local"
                     value={controlledResolutionAt}
@@ -660,6 +661,7 @@ export function QualityBadges({ indicators, overall }: { indicators: QualityIndi
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-2">
+        <I.gauge s={13} className="text-text-subtle" />
         <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
           Overall quality
         </span>
