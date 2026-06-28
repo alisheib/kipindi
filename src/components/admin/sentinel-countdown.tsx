@@ -6,12 +6,15 @@ import {
   getSentinelStatusAction,
   resetSentinelTimerAction,
   runSentinelNowAction,
+  pauseSentinelAction,
+  resumeSentinelAction,
 } from "@/app/admin/ai-usage/actions";
 
 type Status = {
   enabled: boolean;
   running: boolean;
   sweeping: boolean;
+  paused: boolean;
   intervalMs: number;
   nextSweepAt: number | null;
   lastSweepAt: number | null;
@@ -91,6 +94,16 @@ export function SentinelCountdown() {
     setMsg(`Done · ${parts.join(" · ")} of ${r.total} live.`);
     refresh();
   });
+  const pause = () => start(async () => {
+    setMsg(null);
+    const r = await pauseSentinelAction();
+    if (r.ok) { setMsg("Paused — no sweeps or AI calls will run."); refresh(); } else setMsg(r.error ?? "Couldn't pause.");
+  });
+  const resume = () => start(async () => {
+    setMsg(null);
+    const r = await resumeSentinelAction();
+    if (r.ok) { setMsg("Resumed — timer re-armed."); refresh(); } else setMsg(r.error ?? "Couldn't resume.");
+  });
 
   // Loading / disabled placeholders keep SSR and first client render identical.
   // Drive the countdown off SERVER time (client clock + measured offset).
@@ -101,13 +114,15 @@ export function SentinelCountdown() {
     ? "…"
     : !status.enabled
       ? "off"
-      : status.sweeping
-        ? "running"
-        : remaining == null
-          ? "—"
-          : remaining === 0
-            ? "due"
-            : fmtRemaining(remaining);
+      : status.paused
+        ? "paused"
+        : status.sweeping
+          ? "running"
+          : remaining == null
+            ? "—"
+            : remaining === 0
+              ? "due"
+              : fmtRemaining(remaining);
 
   return (
     <div className="relative" ref={boxRef}>
@@ -120,8 +135,8 @@ export function SentinelCountdown() {
           soon ? "border-gold-700 bg-gold-500/10 text-gold-200" : "border-border bg-bg-elevated text-text hover:border-gold-700/60"
         }`}
       >
-        <span className={`inline-flex ${status?.sweeping ? "animate-spin" : ""} ${soon ? "text-gold-300" : "text-gold"}`}>
-          {status?.sweeping ? <I.rotateCcw s={12} /> : <I.activity s={12} />}
+        <span className={`inline-flex ${status?.sweeping ? "animate-spin" : ""} ${status?.paused ? "text-no-300" : soon ? "text-gold-300" : "text-gold"}`}>
+          {status?.sweeping ? <I.rotateCcw s={12} /> : status?.paused ? <I.pause s={12} /> : <I.activity s={12} />}
         </span>
         <span className="hidden md:inline opacity-70">Sentinel</span>
         <span className="tabular-nums font-semibold">{label}</span>
@@ -138,7 +153,7 @@ export function SentinelCountdown() {
             <div className="min-w-0">
               <p className="font-display text-[13px] font-semibold text-text leading-tight">Market sentinel</p>
               <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-subtle">
-                {status?.enabled ? (status?.sweeping ? "Sweeping now" : "Armed") : "Disabled"}
+                {status?.enabled ? (status?.paused ? "Paused" : status?.sweeping ? "Sweeping now" : "Armed") : "Disabled"}
               </p>
             </div>
           </div>
@@ -152,6 +167,25 @@ export function SentinelCountdown() {
               <Row label="Last result" value={`${status.lastSummary.closed} closed / ${status.lastSummary.total}`} />
             )}
           </div>
+
+          {status?.enabled && (
+            status.paused ? (
+              <button
+                type="button" onClick={resume} disabled={pending}
+                className="btn btn-gold btn-sm rounded-pill w-full mb-2 disabled:opacity-40"
+              >
+                <I.play s={13} /> Resume
+              </button>
+            ) : (
+              <button
+                type="button" onClick={pause} disabled={pending}
+                className="btn btn-no btn-sm rounded-pill w-full mb-2 disabled:opacity-40"
+                title="Stop all sweeps and AI calls until resumed"
+              >
+                <I.pause s={13} /> Pause
+              </button>
+            )
+          )}
 
           <div className="flex items-center gap-2">
             <button
@@ -167,6 +201,12 @@ export function SentinelCountdown() {
               <I.bolt s={13} /> Run now
             </button>
           </div>
+
+          {status?.paused && (
+            <p className="mt-2 text-[10.5px] leading-snug text-no-300">
+              Paused — the sentinel will not sweep or call the AI until you Resume, Reset, or Run now.
+            </p>
+          )}
 
           {msg && <p className="mt-2.5 text-[11px] text-text-muted leading-snug">{msg}</p>}
         </div>

@@ -365,6 +365,12 @@ Search the web for the latest data, work through the steps, then call report_out
  *  Tier 1: Haiku triage (all markets, cheap). Tier 2: Sonnet deep (flagged only). */
 export async function runSentinelSweep(opts?: { force?: boolean }): Promise<SentinelResult[]> {
   const results: SentinelResult[] = [];
+  // Hard budget choke point: EVERY Anthropic call (triage + deep) flows through
+  // this function, so a paused check here guarantees zero paid AI spend while
+  // paused — before a single market is read or a model is touched. The only
+  // caller that runs a sweep on purpose (runSentinelNow) clears `paused` first,
+  // so this never blocks a legitimate manual run.
+  if (paused) return results;
   const now = Date.now();
   const force = opts?.force === true;
 
@@ -508,6 +514,13 @@ export async function runSentinelSweep(opts?: { force?: boolean }): Promise<Sent
 
   // Process in bounded-concurrency batches
   for (let i = 0; i < flagged.length; i += SENTINEL_CONCURRENCY) {
+    // Budget guard: if the operator paused mid-sweep, stop launching new deep
+    // (Sonnet + web-search) checks. In-flight requests already dispatched in the
+    // previous batch will finish, but no further paid calls start.
+    if (paused) {
+      console.warn(`[sentinel] paused mid-sweep — stopping before ${flagged.length - i} remaining deep check(s)`);
+      break;
+    }
     const batch = flagged.slice(i, i + SENTINEL_CONCURRENCY);
     const settled = await Promise.allSettled(batch.map(processOne));
     for (let j = 0; j < settled.length; j++) {
@@ -587,7 +600,7 @@ const SCHEDULE_KEY = "sentinel.schedule";
 // this short grace (not instantly) so a deploy storm doesn't hammer the API.
 const BOOT_GRACE_MS = 90_000;
 
-type SentinelSchedule = { nextSweepAt: number; lastSweepAt: number | null; intervalMs: number };
+type SentinelSchedule = { nextSweepAt: number | null; lastSweepAt: number | null; intervalMs: number; paused?: boolean };
 type SweepSummary = { closed: number; errors: number; total: number; at: number };
 
 let timer: ReturnType<typeof setTimeout> | null = null;
@@ -596,14 +609,20 @@ let currentIntervalMs = ENV_INTERVAL_MS;
 let nextSweepAt: number | null = null;
 let lastSweepAt: number | null = null;
 let lastSummary: SweepSummary | null = null;
+// Operator pause switch. When true the scheduler is disarmed and NO sweep —
+// and therefore NO Anthropic API call — may start. Persisted (below) so a
+// deploy/restart can never silently resume paid AI spend. This is the key
+// budget-safety invariant: paused ⇒ zero model calls until explicitly resumed.
+let paused = false;
 
 function sentinelEnabled(): boolean {
   return !!process.env.ANTHROPIC_API_KEY && process.env.SENTINEL_ENABLED !== "false";
 }
 
 async function persistSchedule(): Promise<void> {
-  if (nextSweepAt == null) return;
-  await saveConfig(SCHEDULE_KEY, { nextSweepAt, lastSweepAt, intervalMs: currentIntervalMs } satisfies SentinelSchedule);
+  // Always persist — including when paused (nextSweepAt is null) — so the paused
+  // flag survives restarts. (Previously this early-returned on a null target.)
+  await saveConfig(SCHEDULE_KEY, { nextSweepAt, lastSweepAt, intervalMs: currentIntervalMs, paused } satisfies SentinelSchedule);
 }
 
 /** Arm the one-shot timer to fire `delayMs` from now and record/persist the
@@ -611,6 +630,9 @@ async function persistSchedule(): Promise<void> {
  *  restart (so the countdown does not reset on deploy). */
 function arm(delayMs: number, targetAt?: number): void {
   if (timer) { clearTimeout(timer); timer = null; }
+  // Paused ⇒ never schedule a sweep. Leave nextSweepAt null and persist so the
+  // paused state (not a stale target) is what survives a restart.
+  if (paused) { nextSweepAt = null; void persistSchedule(); return; }
   nextSweepAt = targetAt ?? (Date.now() + Math.max(0, delayMs));
   const wait = Math.max(0, nextSweepAt - Date.now());
   void persistSchedule();
@@ -618,6 +640,9 @@ function arm(delayMs: number, targetAt?: number): void {
 }
 
 async function fireSweep(): Promise<void> {
+  // Budget guard (defense-in-depth): if paused between arming and firing, do
+  // nothing and do NOT re-arm — no Anthropic call may start while paused.
+  if (paused) { nextSweepAt = null; void persistSchedule(); return; }
   if (sweepRunning) { arm(15_000); return; } // a manual run is in flight — retry shortly
   sweepRunning = true;
   try {
@@ -680,6 +705,14 @@ export function startSentinel(): void {
     currentIntervalMs = cfg.intervalMs;
     const persisted = await loadConfig<SentinelSchedule>(SCHEDULE_KEY);
     if (persisted?.lastSweepAt != null) lastSweepAt = persisted.lastSweepAt;
+    // Honour a persisted pause across restarts — a deploy must never silently
+    // resume paid AI spend the operator had paused.
+    if (persisted?.paused) {
+      paused = true;
+      nextSweepAt = null;
+      console.log("[sentinel] paused (persisted) — scheduler disarmed, no sweeps until resumed");
+      return;
+    }
     const decision = computeBootSchedule(persisted, Date.now(), currentIntervalMs, BOOT_GRACE_MS);
     arm(decision.delayMs, decision.targetAt ?? undefined);
     console.log(`[sentinel] ${decision.kind} — next sweep in ${Math.round(decision.delayMs / 1000)}s (deploy-proof, interval ${currentIntervalMs / 1000}s, triage ${TRIAGE_MODEL}, deep ${cfg.model})`);
@@ -696,6 +729,8 @@ export async function getSentinelStatus(): Promise<{
   nextSweepAt: number | null;
   lastSweepAt: number | null;
   lastSummary: SweepSummary | null;
+  /** Operator pause switch — true ⇒ scheduler disarmed, no AI calls until resumed. */
+  paused: boolean;
   /** Server clock at the moment of this read (epoch-ms). The client diffs this
    *  against its own clock to render an accurate countdown even if the admin's
    *  device clock is wrong/changed — the timer is driven by server time, UTC. */
@@ -706,34 +741,67 @@ export async function getSentinelStatus(): Promise<{
   let next = nextSweepAt;
   let last = lastSweepAt;
   let interval = currentIntervalMs;
+  let isPaused = paused;
   if (next == null) {
     const persisted = await loadConfig<SentinelSchedule>(SCHEDULE_KEY);
-    if (persisted) { next = persisted.nextSweepAt; last = persisted.lastSweepAt; interval = persisted.intervalMs || interval; }
+    if (persisted) {
+      next = persisted.nextSweepAt; last = persisted.lastSweepAt; interval = persisted.intervalMs || interval;
+      // Trust a persisted pause if the in-memory flag hasn't hydrated yet (status
+      // read right after boot, before startSentinel runs).
+      if (persisted.paused) isPaused = true;
+    }
   }
   return {
     enabled: sentinelEnabled(), running: !!timer, sweeping: sweepRunning,
-    intervalMs: interval, nextSweepAt: next, lastSweepAt: last, lastSummary,
+    intervalMs: interval, nextSweepAt: isPaused ? null : next, lastSweepAt: last, lastSummary,
+    paused: isPaused,
     serverNow: Date.now(), timezone: getPlatformTimezone(),
   };
+}
+
+/** Pause the sentinel: disarm the scheduler so NO sweep — and no Anthropic call —
+ *  can start until resumed. Persisted so it survives restarts. Idempotent. */
+export async function pauseSentinel(officerId: string): Promise<{ paused: true }> {
+  paused = true;
+  if (timer) { clearTimeout(timer); timer = null; }
+  nextSweepAt = null;
+  await persistSchedule();
+  audit({ category: "ADMIN", action: "sentinel.paused", actorId: officerId, targetType: "System", targetId: "market-sentinel" });
+  return { paused: true };
+}
+
+/** Resume the sentinel after a pause: clear the flag and re-arm one interval out.
+ *  No-op (stays paused) if the sentinel is disabled (no API key). Idempotent. */
+export async function resumeSentinel(officerId: string): Promise<{ paused: boolean; nextSweepAt: number | null }> {
+  if (!sentinelEnabled()) { return { paused, nextSweepAt }; }
+  paused = false;
+  currentIntervalMs = (await getLiveConfig()).intervalMs;
+  arm(currentIntervalMs);
+  audit({ category: "ADMIN", action: "sentinel.resumed", actorId: officerId, targetType: "System", targetId: "market-sentinel", payload: { nextSweepAt, intervalMs: currentIntervalMs } });
+  return { paused: false, nextSweepAt };
 }
 
 /** Reset the countdown: schedule the next sweep one full interval from now.
  *  No-op (returns current state) when the sentinel is disabled, so the timer is
  *  never armed without an API key / when SENTINEL_ENABLED=false. */
-export async function resetSentinelTimer(): Promise<{ nextSweepAt: number | null; intervalMs: number }> {
+export async function resetSentinelTimer(officerId = "admin"): Promise<{ nextSweepAt: number | null; intervalMs: number }> {
   if (!sentinelEnabled()) return { nextSweepAt, intervalMs: currentIntervalMs };
+  paused = false; // resetting the timer also clears a pause
   currentIntervalMs = (await getLiveConfig()).intervalMs;
   arm(currentIntervalMs);
-  audit({ category: "ADMIN", action: "sentinel.timer_reset", actorId: "admin", targetType: "System", targetId: "market-sentinel", payload: { nextSweepAt, intervalMs: currentIntervalMs } });
+  audit({ category: "ADMIN", action: "sentinel.timer_reset", actorId: officerId, targetType: "System", targetId: "market-sentinel", payload: { nextSweepAt, intervalMs: currentIntervalMs } });
   return { nextSweepAt, intervalMs: currentIntervalMs };
 }
 
 /** Run a sweep NOW (the "finish timer & execute" button), then re-arm the
  *  countdown one interval out. Idempotent against the scheduled tick via the
  *  sweepRunning guard. Returns the sweep summary. */
-export async function runSentinelNow(): Promise<{ ok: boolean; summary?: SweepSummary; reason?: string }> {
+export async function runSentinelNow(officerId = "admin"): Promise<{ ok: boolean; summary?: SweepSummary; reason?: string }> {
   if (!sentinelEnabled()) return { ok: false, reason: "Sentinel is disabled (no API key or SENTINEL_ENABLED=false)." };
   if (sweepRunning) return { ok: false, reason: "A sweep is already running — try again in a moment." };
+  // An explicit manual run is a deliberate operator action — it clears any pause
+  // and resumes normal scheduling afterwards.
+  paused = false;
   if (timer) { clearTimeout(timer); timer = null; }
   sweepRunning = true;
   try {
@@ -741,7 +809,7 @@ export async function runSentinelNow(): Promise<{ ok: boolean; summary?: SweepSu
     const r = await runSentinelSweep({ force: true });
     recordSweepSummary(r);
     await maybeAlertOnSweep(r);
-    audit({ category: "ADMIN", action: "sentinel.manual_run", actorId: "admin", targetType: "System", targetId: "market-sentinel", payload: lastSummary ? { ...lastSummary } : undefined });
+    audit({ category: "ADMIN", action: "sentinel.manual_run", actorId: officerId, targetType: "System", targetId: "market-sentinel", payload: lastSummary ? { ...lastSummary } : undefined });
     return { ok: true, summary: lastSummary ?? undefined };
   } catch (err) {
     return { ok: false, reason: String((err as Error)?.message ?? err) };

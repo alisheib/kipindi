@@ -74,10 +74,10 @@ export async function getSentinelStatusAction() {
 
 /** Reset the countdown — schedule the next sweep one full interval from now. */
 export async function resetSentinelTimerAction(): Promise<{ ok: boolean; nextSweepAt?: number | null; error?: string }> {
-  await ensureAdmin();
+  const s = await ensureAdmin();
   try {
     const { resetSentinelTimer } = await import("@/lib/server/market-sentinel");
-    const r = await resetSentinelTimer();
+    const r = await resetSentinelTimer(s.userId);
     return { ok: true, nextSweepAt: r.nextSweepAt };
   } catch (e) {
     return { ok: false, error: String((e as Error)?.message ?? e) };
@@ -86,13 +86,38 @@ export async function resetSentinelTimerAction(): Promise<{ ok: boolean; nextSwe
 
 /** "Finish timer & execute" — run a sentinel sweep right now, then re-arm. */
 export async function runSentinelNowAction(): Promise<{ ok: boolean; closed?: number; errors?: number; total?: number; error?: string }> {
-  await ensureAdmin();
+  const s = await ensureAdmin();
   try {
     const { runSentinelNow } = await import("@/lib/server/market-sentinel");
-    const r = await runSentinelNow();
+    const r = await runSentinelNow(s.userId);
     revalidatePath("/admin/resolver-queue");
     if (!r.ok) return { ok: false, error: r.reason };
     return { ok: true, closed: r.summary?.closed ?? 0, errors: r.summary?.errors ?? 0, total: r.summary?.total ?? 0 };
+  } catch (e) {
+    return { ok: false, error: String((e as Error)?.message ?? e) };
+  }
+}
+
+/** Pause the sentinel — disarm the scheduler so no sweep (and no paid AI call)
+ *  can start until resumed. Persisted across restarts. */
+export async function pauseSentinelAction(): Promise<{ ok: boolean; error?: string }> {
+  const s = await ensureAdmin();
+  try {
+    const { pauseSentinel } = await import("@/lib/server/market-sentinel");
+    await pauseSentinel(s.userId);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String((e as Error)?.message ?? e) };
+  }
+}
+
+/** Resume the sentinel after a pause — re-arm the countdown one interval out. */
+export async function resumeSentinelAction(): Promise<{ ok: boolean; nextSweepAt?: number | null; error?: string }> {
+  const s = await ensureAdmin();
+  try {
+    const { resumeSentinel } = await import("@/lib/server/market-sentinel");
+    const r = await resumeSentinel(s.userId);
+    return { ok: true, nextSweepAt: r.nextSweepAt };
   } catch (e) {
     return { ok: false, error: String((e as Error)?.message ?? e) };
   }
