@@ -339,7 +339,7 @@ async function validateAndFilter(
    *  throwaway values) must be the ones the date-window / title checks run on.
    *  Without this, a controlled poll was validated against the AI's date and a
    *  bad operator date sailed through unchecked. */
-  overrides?: { resolutionAt?: string; titleEn?: string },
+  overrides?: { resolutionAt?: string; titleEn?: string; excludeId?: string },
 ): Promise<ValidationResult> {
   const reasons: FilterReason[] = [];
   const quality: QualityIndicator[] = [];
@@ -536,6 +536,11 @@ async function validateAndFilter(
     const allPolls = await store.values();
     const dupPoll = allPolls.some(
       (existing) =>
+        // Never match the poll against ITSELF. It's already in the store (state
+        // GENERATING during generation, PENDING_REVIEW/EDITING during an edit)
+        // with its title set, so without this a controlled-title poll or any
+        // re-validated edit would always flag as its own duplicate.
+        existing.id !== overrides?.excludeId &&
         existing.state !== "VALIDATION_FAILED" &&
         existing.state !== "FILTERED" &&
         existing.state !== "REJECTED" &&
@@ -792,6 +797,7 @@ export async function generateAIPoll(opts: {
     validation = await validateAndFilter(response.generation, response.rawResponse ?? null, {
       titleEn: opts.controlledTitle,
       resolutionAt: opts.controlledResolutionAt,
+      excludeId: poll.id,
     });
   } catch (err) {
     poll.state = "VALIDATION_FAILED";
@@ -1038,6 +1044,10 @@ export async function aiPollDailyProgress(): Promise<{
 export async function approveAIPoll(id: string, opts: { officerId: string; note?: string }): Promise<StoredAIPoll | null> {
   const poll = await store.get(id);
   if (!poll || poll.state !== "PENDING_REVIEW") return null;
+  // Defence in depth: never approve a poll that still carries quality/integrity
+  // filter reasons (e.g. a past date). A clean PENDING_REVIEW poll has none;
+  // this blocks any tampered/forged approve on a poll that failed validation.
+  if (poll.filterReasons && poll.filterReasons.length > 0) return null;
 
   poll.state = "APPROVED";
   poll.reviewedBy = opts.officerId;
@@ -1132,19 +1142,24 @@ export async function editAIPoll(id: string, opts: {
     sources: poll.sources,
     confidence: poll.confidence,
     reasoning: poll.reasoning,
-  }, null);
+  }, null, { excludeId: poll.id });
 
   poll.qualityIndicators = revalidation.quality;
   poll.overallQuality = revalidation.overallQuality;
   poll.filterReasons = revalidation.reasons;
-  poll.state = "PENDING_REVIEW";
+  // Respect the re-validation verdict. Previously this ALWAYS set PENDING_REVIEW
+  // — so an edit that introduced a hard fail (e.g. a past resolution date) left
+  // the poll approvable/publishable with quality 0. An edit that fails quality
+  // now lands in FILTERED, exactly like a failed generation, and cannot be
+  // approved (approveAIPoll requires PENDING_REVIEW + no filter reasons).
+  poll.state = revalidation.passes ? "PENDING_REVIEW" : "FILTERED";
   poll.updatedAt = new Date().toISOString();
   await store.set(poll);
 
 
   audit({
     category: "ADMIN",
-    action: "aipoll.edited",
+    action: revalidation.passes ? "aipoll.edited" : "aipoll.edited_filtered",
     actorId: opts.officerId,
     targetType: "AIPoll",
     targetId: poll.id,

@@ -148,6 +148,12 @@ export async function approvePollAction(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const note = String(formData.get("note") ?? "");
 
+  // Precise message for the common block: a poll that failed quality checks.
+  const existing = await getAIPoll(id);
+  if (existing && existing.state === "PENDING_REVIEW" && existing.filterReasons.length > 0) {
+    return { ok: false as const, error: "This poll has unresolved quality issues and cannot be approved. Edit or regenerate it first." };
+  }
+
   const poll = await approveAIPoll(id, { officerId, note: note || undefined });
   if (!poll) return { ok: false as const, error: "Poll not found or not in review state." };
 
@@ -218,6 +224,20 @@ export async function publishPollAction(formData: FormData) {
   if (poll.state !== "APPROVED") return { ok: false as const, error: "Poll must be approved before publishing." };
   if (!poll.titleEn) return { ok: false as const, error: "Poll has no title." };
   if (!poll.resolutionAt) return { ok: false as const, error: "Poll has no resolution date." };
+  // Stale-date guard: a poll approved a while ago may now resolve in the past.
+  // Publishing it would create a dead market (selections already closed). Force
+  // an edit to a fresh future date first.
+  const resMs = Date.parse(poll.resolutionAt);
+  if (!Number.isFinite(resMs) || resMs <= Date.now()) {
+    return { ok: false as const, error: "Resolution date has passed — edit the poll to a future date before publishing." };
+  }
+  // Selection close must be strictly before resolution (defence in depth).
+  if (poll.selectionClosedAt) {
+    const selMs = Date.parse(poll.selectionClosedAt);
+    if (!Number.isFinite(selMs) || selMs >= resMs) {
+      return { ok: false as const, error: "Selection-close time must be before the resolution date — edit the poll first." };
+    }
+  }
 
   // Create a market candidate through the existing pipeline
   const candidate = await ingestCandidate({
