@@ -21,7 +21,7 @@
 import { randomId } from "./crypto";
 import { audit } from "./audit";
 import { getAIProvider, type AIPollGeneration, type AIProviderResponse, type PollIdea } from "./ai-provider";
-import { getAIPollConfig } from "./ai-poll-config";
+import { getAIPollConfig, computeSelectionClosedAt } from "./ai-poll-config";
 import { listMarkets } from "./market-service";
 import { listSources, seedDefaultSources } from "./source-registry";
 import { prisma, hasDatabase } from "./prisma";
@@ -86,6 +86,9 @@ export type StoredAIPoll = {
   category: string;
   resolutionCriterion: string;
   resolutionAt: string;
+  /** When selections (bets) close. Computed from resolutionAt - category lead
+   *  time, or explicitly set in controlled mode. */
+  selectionClosedAt: string | null;
   options: Array<{ label: string; descriptionEn?: string; descriptionSw?: string }>;
   sources: Array<{ url: string; publisher: string }>;
   confidence: number;
@@ -162,6 +165,7 @@ function toStoredAIPoll(r: any): StoredAIPoll {
     category: r.category,
     resolutionCriterion: r.resolutionCriterion,
     resolutionAt: r.resolutionAt instanceof Date ? r.resolutionAt.toISOString() : String(r.resolutionAt ?? ""),
+    selectionClosedAt: r.selectionClosedAt instanceof Date ? r.selectionClosedAt.toISOString() : (r.selectionClosedAt ?? null),
     options: (r.options ?? []) as StoredAIPoll["options"],
     sources: (r.sources ?? []) as StoredAIPoll["sources"],
     confidence: r.confidence,
@@ -199,6 +203,7 @@ function toPrismaData(p: StoredAIPoll): any {
     category: p.category,
     resolutionCriterion: p.resolutionCriterion,
     resolutionAt: p.resolutionAt ? new Date(p.resolutionAt) : new Date(0),
+    selectionClosedAt: p.selectionClosedAt ? new Date(p.selectionClosedAt) : null,
     options: p.options,
     sources: p.sources,
     confidence: p.confidence,
@@ -648,6 +653,11 @@ export async function generateAIPoll(opts: {
   /** Pre-gathered avoid-list (batch path passes one shared list so it isn't
    *  re-queried per poll). Falls back to gathering when omitted. */
   avoidTitles?: string[];
+  /** Controlled mode: explicit selection close + resolution dates from admin. */
+  controlledResolutionAt?: string;
+  controlledSelectionClosedAt?: string;
+  /** Controlled mode: admin-provided title (AI won't generate one). */
+  controlledTitle?: string;
 }): Promise<StoredAIPoll> {
   const now = new Date().toISOString();
   const parentPoll = opts.regenerationOf ? await store.get(opts.regenerationOf) : null;
@@ -667,6 +677,7 @@ export async function generateAIPoll(opts: {
     category: opts.category,
     resolutionCriterion: "",
     resolutionAt: "",
+    selectionClosedAt: null,
     options: [],
     sources: [],
     confidence: 0,
@@ -685,8 +696,14 @@ export async function generateAIPoll(opts: {
     createdAt: now,
     updatedAt: now,
   };
-  await store.set(poll);
 
+  // Controlled mode: pre-set admin-provided dates and title so they take
+  // precedence over whatever the AI generates.
+  if (opts.controlledSelectionClosedAt) poll.selectionClosedAt = opts.controlledSelectionClosedAt;
+  if (opts.controlledResolutionAt) poll.resolutionAt = opts.controlledResolutionAt;
+  if (opts.controlledTitle) poll.titleEn = opts.controlledTitle;
+
+  await store.set(poll);
 
   audit({
     category: "ADMIN",
@@ -694,7 +711,7 @@ export async function generateAIPoll(opts: {
     actorId: opts.actorId,
     targetType: "AIPoll",
     targetId: poll.id,
-    payload: { category: opts.category, prompt: opts.prompt, regenerationOf: opts.regenerationOf },
+    payload: { category: opts.category, prompt: opts.prompt, regenerationOf: opts.regenerationOf, controlled: !!(opts.controlledResolutionAt || opts.controlledSelectionClosedAt || opts.controlledTitle) },
   });
 
   // Call the AI provider — steer away from existing questions so we don't pay
@@ -817,18 +834,28 @@ export async function generateAIPoll(opts: {
 }
 
 function copyGenerationToPoll(poll: StoredAIPoll, gen: AIPollGeneration) {
-  poll.titleEn = gen.titleEn;
+  // In controlled mode, admin may have pre-set title — keep it if AI didn't
+  // provide one, or if the admin explicitly set one (non-empty before gen).
+  if (!poll.titleEn) poll.titleEn = gen.titleEn;
+  else if (gen.titleEn) poll.titleEn = gen.titleEn; // AI can improve on it
   poll.titleSw = gen.titleSw ?? "";
   poll.category = gen.category;
   poll.resolutionCriterion = gen.resolutionCriterion;
-  poll.resolutionAt = gen.resolutionAt;
+  // In controlled mode, admin may have pre-set resolutionAt — keep it.
+  if (!poll.resolutionAt) poll.resolutionAt = gen.resolutionAt;
+  // Compute selectionClosedAt from the category's default lead time, unless
+  // the poll already has one set (controlled mode).
+  const effectiveResAt = poll.resolutionAt || gen.resolutionAt;
+  if (!poll.selectionClosedAt && effectiveResAt) {
+    poll.selectionClosedAt = computeSelectionClosedAt(effectiveResAt, gen.category);
+  }
   poll.options = gen.options;
   poll.sources = gen.sources;
   poll.confidence = gen.confidence;
   poll.reasoning = gen.reasoning;
 }
 
-const BATCH_CATEGORIES = ["sports", "macro", "weather", "crypto", "culture", "infrastructure", "tech"];
+const BATCH_CATEGORIES = ["sports", "macro", "weather", "crypto", "culture", "infrastructure", "tech", "mixed"];
 
 /**
  * Generate a batch of polls in one operator action. Count is clamped to the
@@ -890,7 +917,11 @@ export async function generateAIPollBatch(opts: {
   const cfg = getAIPollConfig();
   const requested = Number.isFinite(opts.count) ? Math.floor(opts.count) : 1;
   const n = Math.max(1, Math.min(cfg.maxBatchPerRun, requested));
-  const cats = opts.categories && opts.categories.length > 0 ? opts.categories : BATCH_CATEGORIES;
+  const rawCats = opts.categories && opts.categories.length > 0 ? opts.categories : BATCH_CATEGORIES;
+  // "mixed" means "all real categories" — expand for ideation, and rotate for top-up.
+  const cats = rawCats.includes("mixed")
+    ? BATCH_CATEGORIES.filter((c) => c !== "mixed")
+    : rawCats;
 
   audit({
     category: "ADMIN",
@@ -1033,6 +1064,7 @@ export async function editAIPoll(id: string, opts: {
   category?: string;
   resolutionCriterion?: string;
   resolutionAt?: string;
+  selectionClosedAt?: string | null;
   options?: Array<{ label: string; descriptionEn?: string; descriptionSw?: string }>;
 }): Promise<StoredAIPoll | null> {
   const poll = await store.get(id);
@@ -1042,7 +1074,14 @@ export async function editAIPoll(id: string, opts: {
   if (opts.titleSw !== undefined) poll.titleSw = sanitise(opts.titleSw);
   if (opts.category !== undefined) poll.category = sanitise(opts.category).toLowerCase();
   if (opts.resolutionCriterion !== undefined) poll.resolutionCriterion = sanitise(opts.resolutionCriterion);
-  if (opts.resolutionAt !== undefined) poll.resolutionAt = opts.resolutionAt;
+  if (opts.resolutionAt !== undefined) {
+    poll.resolutionAt = opts.resolutionAt;
+    // Recompute selectionClosedAt when resolutionAt changes (unless explicitly overridden)
+    if (opts.selectionClosedAt === undefined) {
+      poll.selectionClosedAt = computeSelectionClosedAt(opts.resolutionAt, poll.category);
+    }
+  }
+  if (opts.selectionClosedAt !== undefined) poll.selectionClosedAt = opts.selectionClosedAt;
   if (opts.options !== undefined) {
     poll.options = opts.options.map((o) => ({
       label: sanitise(o.label),
@@ -1304,6 +1343,7 @@ export async function seedAIPollFixtures(): Promise<StoredAIPoll[]> {
       category: f.category ?? "",
       resolutionCriterion: f.resolutionCriterion ?? "",
       resolutionAt: f.resolutionAt ?? "",
+      selectionClosedAt: (f as Record<string, unknown>).selectionClosedAt as string | null ?? null,
       options: f.options ?? [],
       sources: f.sources ?? [],
       confidence: f.confidence ?? 0,

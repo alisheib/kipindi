@@ -164,7 +164,7 @@ WHAT MAKES A GREAT 50pick MARKET (aim for ALL of these):
 HARD RULES:
 1. The question MUST have a clear, binary YES/NO outcome.
 2. The event MUST still be genuinely open right now — it must NOT have already happened or been decided. ${opts.webSearch ? "Use web search to confirm the event is real, still upcoming, and unresolved, and to pin down exact names, dates and figures." : "Be conservative: if you are not certain an event is still in the future, do not use it."}
-3. resolutionAt MUST be between ${earliest} and ${latest} (i.e. ${opts.minLeadHours}h to ${opts.maxLeadDays}d from now). Never a past date.
+3. resolutionAt MUST be between ${earliest} and ${latest} (i.e. ${opts.minLeadHours}h to ${opts.maxLeadDays}d from now). Never a past date. Note: betting closes BEFORE the resolution date (e.g. 1h before for sports, 2h for crypto, 1–2 days for macro). Pick events where this lead time makes sense.
 4. resolutionCriterion MUST name a specific, publicly verifiable source (official body, regulator, data provider, or major news agency) and the exact condition for a YES.
 5. Provide at least one REAL, reachable source URL. ${opts.webSearch ? "Only use URLs you actually found via web search — never invent one." : "Only cite well-known official domains you are confident exist."}
 6. NEVER generate questions about: politics, elections, religion, violence, war, adult content, or the death/health of any individual. These are banned under the GBT license.

@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
-import { listMarkets, impliedYesPct, isClosedByTime, traderSeedsByMarket, type MarketCategory } from "@/lib/server/market-service";
+import { listMarkets, impliedYesPct, isClosedByTime, isSelectionClosed, traderSeedsByMarket, type MarketCategory } from "@/lib/server/market-service";
 import { getCardChart } from "@/lib/server/market-history";
 import { getProposalsConfig } from "@/lib/server/proposals-config";
 
@@ -285,8 +285,9 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
               yesPct={impliedYesPct(m)}
               volume={m.yesPool + m.noPool}
               predictors={m.predictorCount}
-              timeLeft={timeLeftStr(m.resolutionAt)}
+              timeLeft={isSelectionClosed(m) ? "Waiting for results" : timeLeftStr(m.resolutionAt)}
               status="LIVE"
+              selectionClosed={isSelectionClosed(m)}
               sourceUrl={m.sourceUrl}
               spark={cc.spark}
               move24h={cc.move24h}

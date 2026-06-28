@@ -44,7 +44,7 @@ async function clientMeta() {
 
 export type ServiceResult<T = void> =
   | { ok: true; data?: T }
-  | { ok: false; error: string; code?: "RATE_LIMITED" | "INVALID" | "EXPIRED" | "ALREADY_EXISTS" | "NOT_FOUND" | "TOO_MANY_ATTEMPTS" | "SUSPENDED"; retryAfterSec?: number };
+  | { ok: false; error: string; code?: "RATE_LIMITED" | "INVALID" | "EXPIRED" | "ALREADY_EXISTS" | "NOT_FOUND" | "TOO_MANY_ATTEMPTS" | "SUSPENDED" | "SELECTION_CLOSED"; retryAfterSec?: number };
 
 /** Step 1: request OTP for login (existing user). */
 export async function requestLoginOtp(input: z.input<typeof LoginRequestSchema>): Promise<ServiceResult<{ otpId: string }>> {

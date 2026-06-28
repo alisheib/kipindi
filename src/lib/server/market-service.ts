@@ -51,6 +51,9 @@ export type StoredMarket = {
   sourceUrl: string;
   resolutionCriterion: string;
   resolutionAt: string;
+  /** When new bets (selections) stop being accepted. Null = bets close at
+   *  resolutionAt (legacy behavior). Always < resolutionAt when set. */
+  selectionClosedAt: string | null;
   status: MarketStatus;
   yesPool: number;
   noPool: number;
@@ -153,6 +156,15 @@ export function isClosedByTime(m: Pick<StoredMarket, "resolutionAt" | "status">)
   return Date.parse(m.resolutionAt) <= Date.now();
 }
 
+/** True when the selection window has closed (no new bets) but the market is
+ *  still LIVE awaiting its outcome. If selectionClosedAt is null, falls back
+ *  to the resolutionAt time close (legacy behavior). */
+export function isSelectionClosed(m: Pick<StoredMarket, "selectionClosedAt" | "resolutionAt" | "status">): boolean {
+  if (m.status === "RESOLVED" || m.status === "VOIDED" || m.status === "CLOSED") return true;
+  const cutoff = m.selectionClosedAt ? Date.parse(m.selectionClosedAt) : Date.parse(m.resolutionAt);
+  return cutoff <= Date.now();
+}
+
 export type CreateMarketInput = {
   titleEn: string;
   titleSw: string;
@@ -160,6 +172,7 @@ export type CreateMarketInput = {
   sourceUrl: string;
   resolutionCriterion: string;
   resolutionAt: string;
+  selectionClosedAt?: string | null;
   proposedBy: string;
 };
 
@@ -175,6 +188,7 @@ export async function createMarket(input: CreateMarketInput) {
     sourceUrl: input.sourceUrl,
     resolutionCriterion: input.resolutionCriterion,
     resolutionAt: input.resolutionAt,
+    selectionClosedAt: input.selectionClosedAt ?? null,
     status: "LIVE",
     yesPool: 0,
     noPool: 0,
@@ -194,7 +208,7 @@ export async function createMarket(input: CreateMarketInput) {
     actorId: input.proposedBy,
     targetType: "Market",
     targetId: m.id,
-    payload: { titleEn: m.titleEn, category: m.category, sourceUrl: m.sourceUrl, resolutionAt: m.resolutionAt },
+    payload: { titleEn: m.titleEn, category: m.category, sourceUrl: m.sourceUrl, resolutionAt: m.resolutionAt, selectionClosedAt: m.selectionClosedAt },
   });
   return m;
 }
@@ -244,6 +258,7 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
   const market = await marketStore.get(opts.marketId);
   if (!market) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
   if (market.status !== "LIVE") return { ok: false, error: "Market is not accepting predictions.", code: "INVALID" };
+  if (isSelectionClosed(market)) return { ok: false, error: "Selections are closed — waiting for results. · Uchaguzi umefungwa — tunasubiri matokeo.", code: "SELECTION_CLOSED" };
   if (Date.parse(market.resolutionAt) <= Date.now()) return { ok: false, error: "Market has closed.", code: "INVALID" };
 
   let wageringFulfilled: { amountTzs: number }[] = [];

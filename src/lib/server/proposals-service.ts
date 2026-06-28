@@ -277,13 +277,16 @@ export async function approveAndList(proposalId: string, officerId: string, sour
 
     // Create the real market through the existing pipeline.
     const { createMarket } = await import("./market-service");
+    const { computeSelectionClosedAt } = await import("./ai-poll-config");
+    const resolutionAt = new Date(`${p.resolutionDate}T23:59:59.000Z`).toISOString();
     const market = await createMarket({
       titleEn: p.titleEn,
       titleSw: p.titleSw ?? p.titleEn,
       category: toMarketCategory(p.category),
       sourceUrl: url,
       resolutionCriterion: p.resolutionCriterion,
-      resolutionAt: new Date(`${p.resolutionDate}T23:59:59.000Z`).toISOString(),
+      resolutionAt,
+      selectionClosedAt: computeSelectionClosedAt(resolutionAt, toMarketCategory(p.category)),
       proposedBy: p.proposerId,
     });
     await db.proposal.update(proposalId, { status: "LISTED", publishedMarketId: market.id, reviewedBy: officerId, reviewedAt: new Date().toISOString() });

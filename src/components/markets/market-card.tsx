@@ -26,6 +26,9 @@ type Props = {
   move24h?: number;
   /** A few trader seeds (user ids) for the live crest-stack (optional). */
   traders?: string[];
+  /** True when the selection window has closed but the market is still LIVE
+   *  (waiting for outcome). No new bets accepted. */
+  selectionClosed?: boolean;
   className?: string;
 };
 
@@ -146,11 +149,11 @@ function HowItWorks() {
 }
 
 export function MarketCard({
-  id, titleEn, titleSw, category, yesPct, volume, predictors, timeLeft, status, move24h, traders, className,
+  id, titleEn, titleSw, category, yesPct, volume, predictors, timeLeft, status, move24h, traders, selectionClosed, className,
 }: Props) {
   const router = useRouter();
   const signal = getSignalBadge(status, yesPct, volume, predictors, timeLeft);
-  const live = status === "LIVE";
+  const live = status === "LIVE" && !selectionClosed;
   const isResolved = status === "RESOLVED";
   const CatIco = I[categoryGlyph(category)];
   const go = (side: "YES" | "NO") => (e: React.MouseEvent) => {
@@ -175,14 +178,15 @@ export function MarketCard({
         <span
           className={cn(
             "chip",
-            status === "LIVE" && "chip-live",
+            status === "LIVE" && !selectionClosed && "chip-live",
+            selectionClosed && "chip-pending",
             status === "RESOLVED" && "chip-resolved",
-            (status === "CLOSED" || status === "DRAFT") && "chip-pending",
+            (status === "CLOSED" || status === "DRAFT") && !selectionClosed && "chip-pending",
             status === "VOIDED" && "chip-objection",
           )}
         >
           {live && <span className="live-dot" />}
-          {live ? "Live" : isResolved ? "Resolved" : status === "VOIDED" ? "Void" : "Pending"}
+          {selectionClosed ? "Closed" : live ? "Live" : isResolved ? "Resolved" : status === "VOIDED" ? "Void" : "Pending"}
         </span>
         {signal && (
           <span

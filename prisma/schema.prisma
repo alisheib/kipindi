@@ -1082,6 +1082,9 @@ model PredictionMarket {
   sourceUrl           String
   resolutionCriterion String
   resolutionAt        DateTime
+  /** When new bets (selections) stop being accepted. Null = bets close at
+   *  resolutionAt (legacy behavior). Always < resolutionAt when set. */
+  selectionClosedAt   DateTime?
   status              PredictionMarketStatus @default(DRAFT)
   yesPool             Decimal                @default(0) @db.Decimal(18, 2)
   noPool              Decimal                @default(0) @db.Decimal(18, 2)
@@ -1180,6 +1183,7 @@ model AIPoll {
   category             String
   resolutionCriterion  String
   resolutionAt         DateTime
+  selectionClosedAt    DateTime?
   options              Json        @default("[]")
   sources              Json        @default("[]")
   confidence           Int         @default(0)

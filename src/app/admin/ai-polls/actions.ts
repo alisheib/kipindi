@@ -58,12 +58,19 @@ export async function generatePollAction(formData: FormData) {
   const category = String(formData.get("category") ?? "sports");
   const prompt = String(formData.get("prompt") ?? "");
   const regenerationOf = String(formData.get("regenerationOf") ?? "");
+  // Controlled mode fields
+  const controlledTitle = String(formData.get("controlledTitle") ?? "").trim() || undefined;
+  const controlledResolutionAt = String(formData.get("controlledResolutionAt") ?? "").trim() || undefined;
+  const controlledSelectionClosedAt = String(formData.get("controlledSelectionClosedAt") ?? "").trim() || undefined;
 
   const poll = await generateAIPoll({
     category,
     prompt: prompt || undefined,
     actorId: officerId,
     regenerationOf: regenerationOf || undefined,
+    controlledTitle,
+    controlledResolutionAt,
+    controlledSelectionClosedAt,
   });
 
   revalidatePath("/admin/ai-polls");
@@ -102,6 +109,19 @@ export async function updatePollConfigAction(formData: FormData) {
     return Number.isFinite(n) ? n : undefined;
   };
 
+  // Parse per-category selection lead times (e.g. "selectionLead.sports" = "1")
+  const selectionLeadTimeHours: Record<string, number> | undefined = (() => {
+    const entries: [string, number][] = [];
+    for (const [key, val] of formData.entries()) {
+      if (key.startsWith("selectionLead.")) {
+        const cat = key.slice("selectionLead.".length);
+        const n = Number(val);
+        if (cat && Number.isFinite(n)) entries.push([cat, n]);
+      }
+    }
+    return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+  })();
+
   const config = updateAIPollConfig(
     {
       webSearchEnabled: formData.has("webSearchEnabled")
@@ -112,6 +132,7 @@ export async function updatePollConfigAction(formData: FormData) {
       maxLeadTimeDays: num("maxLeadTimeDays"),
       minConfidence: num("minConfidence"),
       maxBatchPerRun: num("maxBatchPerRun"),
+      selectionLeadTimeHours,
     },
     officerId,
   );
@@ -244,6 +265,7 @@ export async function publishPollAction(formData: FormData) {
     sourceUrl: poll.sources[0]?.url ?? "",
     resolutionCriterion: poll.resolutionCriterion,
     resolutionAt: poll.resolutionAt,
+    selectionClosedAt: poll.selectionClosedAt,
     proposedBy: officerId,
   });
 

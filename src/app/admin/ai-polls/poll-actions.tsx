@@ -74,6 +74,7 @@ const CATEGORIES = [
   { id: "culture", label: "Culture" },
   { id: "infrastructure", label: "Infrastructure" },
   { id: "tech", label: "Tech" },
+  { id: "mixed", label: "Mixed / All" },
 ] as const;
 
 type GenPhase = "idle" | "calling" | "validating" | "filtering" | "done";
@@ -103,6 +104,11 @@ export function GenerateForm() {
   const [result, setResult] = useState<GenResult>(null);
   const phaseTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const router = useRouter();
+  // Controlled Poll state
+  const [controlled, setControlled] = useState(false);
+  const [controlledTitle, setControlledTitle] = useState("");
+  const [controlledResolutionAt, setControlledResolutionAt] = useState("");
+  const [controlledSelectionClosedAt, setControlledSelectionClosedAt] = useState("");
 
   const clearTimers = () => {
     phaseTimers.current.forEach(clearTimeout);
@@ -132,6 +138,9 @@ export function GenerateForm() {
       const fd = new FormData();
       fd.set("category", category);
       fd.set("prompt", prompt);
+      if (controlled && controlledTitle) fd.set("controlledTitle", controlledTitle);
+      if (controlled && controlledResolutionAt) fd.set("controlledResolutionAt", new Date(controlledResolutionAt).toISOString());
+      if (controlled && controlledSelectionClosedAt) fd.set("controlledSelectionClosedAt", new Date(controlledSelectionClosedAt).toISOString());
       try {
         const r = await generatePollAction(fd);
         clearTimers();
@@ -190,17 +199,66 @@ export function GenerateForm() {
             className={adminTextarea}
             rows={2}
           />
+
+          {/* ── Controlled Poll — collapsible advanced section ── */}
+          <button
+            type="button"
+            onClick={() => setControlled((v) => !v)}
+            className="flex items-center gap-2 text-[12px] font-semibold text-text-muted hover:text-text transition-colors"
+          >
+            <I.chevronRight s={13} className={`transition-transform duration-150 ${controlled ? "rotate-90" : ""}`} />
+            Controlled Poll · Kura Iliyodhibitiwa
+          </button>
+          {controlled && (
+            <div className="space-y-2.5 rounded-lg border border-border bg-bg-overlay p-3.5">
+              <p className="text-[11px] text-text-subtle leading-snug">
+                Set specific dates and title. The AI will generate the criterion, options, and sources around your constraints.
+              </p>
+              <div>
+                <label className="mb-1 block text-[11.5px] font-semibold text-text">Title (EN) · Optional</label>
+                <Input value={controlledTitle} onChange={(e) => setControlledTitle(e.target.value)} placeholder="e.g. Will Tanzania beat Kenya in the CECAFA Cup final?" size="sm" />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="mb-1 block text-[11.5px] font-semibold text-text">Selection Close · Kufunga uchaguzi</label>
+                  <input
+                    type="datetime-local"
+                    value={controlledSelectionClosedAt}
+                    onChange={(e) => setControlledSelectionClosedAt(e.target.value)}
+                    className="w-full h-9 rounded-md border border-border bg-bg-inset px-2.5 text-[12.5px] font-mono text-text outline-none admin-focus transition-colors"
+                  />
+                  <p className="mt-0.5 text-[10px] text-text-subtle">When new bets stop · Wakati wa kufunga</p>
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11.5px] font-semibold text-text">Resolution Date · Tarehe ya matokeo</label>
+                  <input
+                    type="datetime-local"
+                    value={controlledResolutionAt}
+                    onChange={(e) => setControlledResolutionAt(e.target.value)}
+                    className="w-full h-9 rounded-md border border-border bg-bg-inset px-2.5 text-[12.5px] font-mono text-text outline-none admin-focus transition-colors"
+                  />
+                  <p className="mt-0.5 text-[10px] text-text-subtle">When outcome is known · Wakati matokeo yanajulikana</p>
+                </div>
+              </div>
+              {controlled && controlledSelectionClosedAt && controlledResolutionAt && new Date(controlledSelectionClosedAt) >= new Date(controlledResolutionAt) && (
+                <p className="text-[11px] font-semibold text-[var(--no-400)]">
+                  Selection close must be before resolution date.
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={generate}
-              disabled={pending || active}
+              disabled={pending || active || !!(controlled && controlledSelectionClosedAt && controlledResolutionAt && new Date(controlledSelectionClosedAt) >= new Date(controlledResolutionAt))}
               className="btn btn-gold btn-sm rounded-pill min-w-[160px]"
             >
-              Generate poll
+              {controlled ? "Generate controlled poll" : "Generate poll"}
             </button>
             <span className="text-[11px] text-text-subtle font-mono">
-              Category: {category}
+              Category: {category}{controlled ? " · controlled" : ""}
             </span>
           </div>
         </div>
@@ -473,6 +531,13 @@ export function BatchGenerateForm({ maxBatch, remaining }: { maxBatch: number; r
 
 /* ─── Config panel ─── */
 
+const LEAD_TIME_CATEGORIES = ["sports", "weather", "crypto", "culture", "tech", "macro", "infrastructure", "other"] as const;
+const LEAD_TIME_LABELS: Record<string, string> = {
+  sports: "Sports", weather: "Weather", crypto: "Crypto",
+  culture: "Culture", tech: "Tech", macro: "Macro",
+  infrastructure: "Infrastructure", other: "Other",
+};
+
 export function ConfigPanel({ config }: { config: AIPollConfig }) {
   const [pending, start] = useTransition();
   const [webSearch, setWebSearch] = useState(config.webSearchEnabled);
@@ -481,6 +546,9 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
   const [maxLead, setMaxLead] = useState(String(config.maxLeadTimeDays));
   const [minConf, setMinConf] = useState(String(config.minConfidence));
   const [maxBatch, setMaxBatch] = useState(String(config.maxBatchPerRun));
+  const [leadTimes, setLeadTimes] = useState<Record<string, string>>(
+    Object.fromEntries(LEAD_TIME_CATEGORIES.map((c) => [c, String(config.selectionLeadTimeHours?.[c] ?? 24)])),
+  );
   const router = useRouter();
   const { deferToast } = useDeferredToast(pending);
 
@@ -493,6 +561,9 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
       fd.set("maxLeadTimeDays", maxLead);
       fd.set("minConfidence", minConf);
       fd.set("maxBatchPerRun", maxBatch);
+      for (const [cat, hrs] of Object.entries(leadTimes)) {
+        fd.set(`selectionLead.${cat}`, hrs);
+      }
       const r = await updatePollConfigAction(fd);
       router.refresh();
       if (r.ok) {
@@ -504,6 +575,9 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
         setMaxLead(String(r.config.maxLeadTimeDays));
         setMinConf(String(r.config.minConfidence));
         setMaxBatch(String(r.config.maxBatchPerRun));
+        if (r.config.selectionLeadTimeHours) {
+          setLeadTimes(Object.fromEntries(LEAD_TIME_CATEGORIES.map((c) => [c, String(r.config.selectionLeadTimeHours[c] ?? 24)])));
+        }
         deferToast({ title: "Settings saved", variant: "success" });
       }
     });
@@ -543,6 +617,31 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
         {numField("Max per batch", "Cap on one batch run", maxBatch, setMaxBatch)}
         {numField("Min lead time (h)", "Earliest a poll may resolve", minLead, setMinLead)}
         {numField("Max horizon (d)", "Latest a poll may resolve", maxLead, setMaxLead)}
+      </div>
+
+      {/* ── Selection lead times per category ── */}
+      <div className="rounded-md border border-border bg-bg-overlay p-3">
+        <p className="text-[12px] font-semibold text-text mb-1">Selection lead time per category · Muda wa kufunga uchaguzi</p>
+        <p className="text-[10.5px] text-text-subtle mb-2.5 leading-snug">
+          Hours before resolution date that betting closes for each category. Players see &quot;Selection Closed — Waiting for Results&quot; after this cutoff.
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {LEAD_TIME_CATEGORIES.map((cat) => (
+            <label key={cat} className="block">
+              <span className="text-[10px] text-text-subtle block mb-0.5 font-mono uppercase tracking-[0.1em]">{LEAD_TIME_LABELS[cat]}</span>
+              <div className="flex items-center gap-1">
+                <Input
+                  type="number"
+                  value={leadTimes[cat] ?? "24"}
+                  onChange={(e) => setLeadTimes((prev) => ({ ...prev, [cat]: e.target.value }))}
+                  mono
+                  size="sm"
+                />
+                <span className="text-[10px] text-text-subtle shrink-0">h</span>
+              </div>
+            </label>
+          ))}
+        </div>
       </div>
 
       <button type="button" onClick={() => save()} disabled={pending} className="btn btn-gold btn-sm rounded-pill min-w-[140px]">
