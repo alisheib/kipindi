@@ -425,6 +425,24 @@ export function lossNotificationHtml({ reference, stake, marketTitle, settledAt 
   `);
 }
 
+export function selectionClosedHtml({ marketTitle, closedAt, resolvesAt, marketId }: {
+  marketTitle: string; closedAt?: string; resolvesAt?: string | null; marketId: string;
+}): string {
+  return wrap(`
+    ${eyebrow("Selections closed", "Uchaguzi umefungwa")}
+    ${heading("Waiting for results")}
+    ${subtitle(marketTitle)}
+    ${detailRows([
+      { label: "Status", value: "Betting closed" },
+      ...(closedAt ? [{ label: "Closed", value: fmtDateTime(closedAt) }] : []),
+      ...(resolvesAt ? [{ label: "Results expected", value: fmtDateTime(resolvesAt) }] : []),
+    ])}
+    ${subtitle("Your prediction is locked in. We'll email you the moment the result is settled.")}
+    ${subtitleSw("Utabiri wako umehifadhiwa. Tutakutumia matokeo mara yatakapotolewa.")}
+    ${ctaButton(`/markets/${marketId}`, "View market · Tazama soko")}
+  `);
+}
+
 export function cashOutReceiptHtml({ reference, value, stake, marketTitle, soldAt, gracePeriod }: {
   reference: string; value: number; stake: number; marketTitle: string; soldAt?: string; gracePeriod?: boolean;
 }): string {

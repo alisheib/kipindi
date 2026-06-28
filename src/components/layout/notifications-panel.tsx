@@ -19,6 +19,7 @@ const iconFor = (k: StoredNotification["kind"]) => {
     case "WIN":          return I.trophy;
     case "LOSS":         return I.trendingDown;
     case "BET_PLACED":   return I.ticket;
+    case "SELECTION_CLOSED": return I.calendarClock;
     case "DEPOSIT":      return I.arrowDown;
     case "WITHDRAW":     return I.arrowUp;
     case "KYC":          return I.shieldcheck;
@@ -42,6 +43,8 @@ const tintFor = (k: StoredNotification["kind"]) => {
     case "LOSS":         return "border-border bg-bg-overlay text-text-muted";
     // Bet placed = informational receipt — info tint, never gold.
     case "BET_PLACED":   return "border-info-border bg-info-bg/30 text-info-fg";
+    // Selection closed = informational "waiting for results" — info tint.
+    case "SELECTION_CLOSED": return "border-info-border bg-info-bg/30 text-info-fg";
     case "ROUND_RESULT": return "border-border bg-bg-overlay text-text-muted";
     case "DEPOSIT":      return "border-yes-700 bg-yes-500/10 text-yes-300";
     case "WITHDRAW":     return "border-warning-border bg-warning-bg/30 text-warning-fg";

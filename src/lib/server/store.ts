@@ -233,6 +233,7 @@ export type StoredNotification = {
     | "WIN"
     | "LOSS"
     | "BET_PLACED"
+    | "SELECTION_CLOSED"
     | "ROUND_RESULT"
     | "DEPOSIT"
     | "WITHDRAW"

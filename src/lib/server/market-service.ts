@@ -24,8 +24,8 @@ import { isLockedOut } from "./responsible-gambling";
 import { rateCheck } from "./rate-limit";
 import { getEffectiveConfig, payoutForWhole, settledPayoutWhole } from "./market-config";
 import { recordSnapshot, seedHistory } from "./market-history";
-import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, notifyAdminMarketResolution, notifyMarketCancelled, notifyAdminMarketCancelled, notifyOneSidedRefund } from "./notification-service";
-import { sendEmailToUser, betPlacedHtml, winNotificationHtml, lossNotificationHtml, cashOutReceiptHtml, oneSidedRefundHtml, marketResolutionAdminHtml, marketCancelledRefundHtml, marketCancelledAdminHtml, bonusFulfilledHtml } from "./email";
+import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, notifyAdminMarketResolution, notifyMarketCancelled, notifyAdminMarketCancelled, notifyOneSidedRefund, notifySelectionClosed } from "./notification-service";
+import { sendEmailToUser, betPlacedHtml, winNotificationHtml, lossNotificationHtml, cashOutReceiptHtml, oneSidedRefundHtml, marketResolutionAdminHtml, marketCancelledRefundHtml, marketCancelledAdminHtml, bonusFulfilledHtml, selectionClosedHtml } from "./email";
 import { onRecruitBet } from "./affiliate-service";
 import type { ServiceResult } from "./auth-service";
 import { marketStore, positionStore } from "./market-dal";
@@ -68,6 +68,10 @@ export type StoredMarket = {
    *  their resolution. Set once by the resolution-due sweep so the alert fires
    *  exactly once per market. Null = not yet alerted (or not yet due). */
   resolutionNotifiedAt?: string | null;
+  /** When the market's bettors were notified that selections have closed and it
+   *  is awaiting results. Set once by the selection-closed sweep so the
+   *  "waiting for results" notification fires exactly once per market. */
+  selectionClosedNotifiedAt?: string | null;
   /** AI sentinel recommendation — populated when the sentinel closes this
    *  market. Officers see this in the resolver queue as a pre-filled suggestion
    *  so their job is "verify + confirm" instead of "research + decide". */
@@ -581,6 +585,65 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
  * alerts exactly once. Runs fire-and-forget on /markets hits (self-healing, no
  * cron); the per-market flag + a lock make it idempotent.
  */
+/**
+ * Notify bettors that a market's SELECTION WINDOW has closed — betting has
+ * stopped and the market is now "waiting for results". The selection close is a
+ * computed cutoff (selectionClosedAt, falling back to resolutionAt), not a
+ * status change, so there's no natural event to hang this on — this sweep is the
+ * trigger. It finds LIVE, non-Demo markets whose cutoff has passed but whose
+ * bettors haven't been told yet, sends each distinct bettor (open positions)
+ * BOTH an in-app bell notification AND an email, then stamps
+ * selectionClosedNotifiedAt so each market fires exactly once.
+ *
+ * Idempotent + concurrency-safe via the per-market lock + the stamp (mirrors
+ * notifyDueMarketsForResolution). Demo markets are excluded — they auto-resolve
+ * the instant they expire, so "waiting for results" would be immediately
+ * contradicted by the win/loss receipt.
+ */
+export async function notifySelectionClosedMarkets(): Promise<{ notified: number; bettors: number }> {
+  const now = Date.now();
+  let notified = 0;
+  let bettorsNotified = 0;
+  const due = (await marketStore.values()).filter((m) => {
+    if (m.status !== "LIVE") return false;
+    if (m.titleEn.startsWith("Demo · ")) return false;
+    if (m.selectionClosedNotifiedAt) return false;
+    const cutoff = m.selectionClosedAt ? Date.parse(m.selectionClosedAt) : Date.parse(m.resolutionAt);
+    return Number.isFinite(cutoff) && cutoff <= now;
+  });
+  if (due.length === 0) return { notified: 0, bettors: 0 };
+
+  for (const m of due) {
+    // Stamp inside the lock so two concurrent sweeps can't both notify.
+    const stamped = await withLock(`market:${m.id}`, async () => {
+      const cur = await marketStore.get(m.id);
+      if (!cur || cur.status !== "LIVE" || cur.selectionClosedNotifiedAt) return false;
+      const cutoff = cur.selectionClosedAt ? Date.parse(cur.selectionClosedAt) : Date.parse(cur.resolutionAt);
+      if (!Number.isFinite(cutoff) || cutoff > now) return false;
+      await marketStore.set({ ...cur, selectionClosedNotifiedAt: new Date().toISOString() });
+      return true;
+    });
+    if (!stamped) continue;
+    notified++;
+
+    // One notification per distinct bettor with an OPEN position (someone may
+    // hold both YES and NO — they still get a single "selection closed" note).
+    const open = (await listPositionsForMarket(m.id)).filter((p) => p.status === "OPEN");
+    const bettors = Array.from(new Set(open.map((p) => p.userId)));
+    for (const userId of bettors) {
+      bettorsNotified++;
+      notifySelectionClosed(userId, { marketTitle: m.titleEn, marketId: m.id }).catch(() => {});
+      sendEmailToUser(userId, (email) => ({
+        to: email,
+        subject: `Selections closed — waiting for results · ${m.titleEn.slice(0, 50)}`,
+        html: selectionClosedHtml({ marketTitle: m.titleEn, closedAt: m.selectionClosedAt ?? m.resolutionAt, resolvesAt: m.resolutionAt, marketId: m.id }),
+        tag: "selection-closed",
+      })).catch(() => {});
+    }
+  }
+  return { notified, bettors: bettorsNotified };
+}
+
 export async function notifyDueMarketsForResolution(): Promise<{ notified: number }> {
   const now = Date.now();
   let notified = 0;

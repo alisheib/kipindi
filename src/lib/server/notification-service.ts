@@ -129,6 +129,18 @@ export function notifyLoss(userId: string, opts: { stake: number; marketTitle: s
   });
 }
 
+export function notifySelectionClosed(userId: string, opts: { marketTitle: string; marketId: string }) {
+  return notify({
+    userId,
+    kind: "SELECTION_CLOSED",
+    titleEn: "Selections closed — waiting for results",
+    titleSw: "Uchaguzi umefungwa — tunasubiri matokeo",
+    bodyEn: `${opts.marketTitle.slice(0, 70)} · betting is now closed. We'll notify you with your result as soon as it's settled.`,
+    bodySw: `Kuweka dau kumefungwa. Tutakujulisha matokeo mara yatakapotolewa.`,
+    href: `/markets/${opts.marketId}`,
+  });
+}
+
 export function notifyDeposit(userId: string, amount: number, provider: string) {
   return notify({
     userId,

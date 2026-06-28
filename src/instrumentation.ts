@@ -26,6 +26,16 @@ export async function register() {
     } catch (err) {
       console.error("[instrumentation] Failed to start sentinel:", err);
     }
+    // Lifecycle ticker — drives the CLOCK-based transitions (selection close →
+    // notify bettors, resolution due → alert officers, demo auto-resolve, bonus
+    // expiry). Independent of the AI sentinel above so it runs even with no
+    // ANTHROPIC_API_KEY / while the sentinel is paused.
+    try {
+      const { startLifecycleTicker } = await import("./lib/server/lifecycle");
+      startLifecycleTicker();
+    } catch (err) {
+      console.error("[instrumentation] Failed to start lifecycle ticker:", err);
+    }
   }
 }
 
