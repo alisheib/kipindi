@@ -107,12 +107,76 @@ export function GenerateForm() {
   // Controlled Poll state
   const [controlled, setControlled] = useState(false);
   const [controlledTitle, setControlledTitle] = useState("");
-  const [controlledResolutionAt, setControlledResolutionAt] = useState("");
-  const [controlledSelectionClosedAt, setControlledSelectionClosedAt] = useState("");
+  // Split date (DD/MM/YYYY) and time (HH:MM) for resolution + selection close
+  const [resDate, setResDate] = useState("");       // DD/MM/YYYY
+  const [resTime, setResTime] = useState("");       // HH:MM
+  const [selDate, setSelDate] = useState("");       // DD/MM/YYYY
+  const [selTime, setSelTime] = useState("");       // HH:MM
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const formRef = useRef<HTMLDivElement>(null);
 
   const clearTimers = () => {
     phaseTimers.current.forEach(clearTimeout);
     phaseTimers.current = [];
+  };
+
+  /** Parse DD/MM/YYYY + HH:MM into an ISO string. Returns null if invalid. */
+  const parseDateTimeFields = (date: string, time: string): string | null => {
+    const dm = date.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!dm) return null;
+    const [, d, m, y] = dm;
+    const tm = time.match(/^(\d{1,2}):(\d{2})$/);
+    const h = tm ? tm[1] : "00";
+    const mi = tm ? tm[2] : "00";
+    const dt = new Date(`${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}T${h.padStart(2, "0")}:${mi}:00`);
+    return Number.isNaN(dt.getTime()) ? null : dt.toISOString();
+  };
+
+  /** Validate all controlled poll fields. Returns errors map (empty = valid). */
+  const validateControlled = (): Record<string, string> => {
+    const errs: Record<string, string> = {};
+    if (!controlled) return errs;
+    // Title is optional but if provided must be reasonable
+    if (controlledTitle && controlledTitle.length < 5) errs.title = "Title must be at least 5 characters.";
+    if (controlledTitle && controlledTitle.length > 200) errs.title = "Title must be under 200 characters.";
+    // Resolution date is optional but if provided must be valid + in the future
+    if (resDate) {
+      const resIso = parseDateTimeFields(resDate, resTime);
+      if (!resIso) {
+        errs.resDate = "Invalid date. Use DD/MM/YYYY format.";
+      } else if (new Date(resIso).getTime() <= Date.now() + 3 * 3600_000) {
+        errs.resDate = "Resolution date must be at least 3 hours in the future.";
+      }
+    }
+    if (selDate) {
+      const selIso = parseDateTimeFields(selDate, selTime);
+      if (!selIso) {
+        errs.selDate = "Invalid date. Use DD/MM/YYYY format.";
+      } else if (new Date(selIso).getTime() <= Date.now()) {
+        errs.selDate = "Selection close must be in the future.";
+      }
+    }
+    // Cross-validation: selectionClosedAt < resolutionAt
+    if (selDate && resDate && !errs.selDate && !errs.resDate) {
+      const selIso = parseDateTimeFields(selDate, selTime)!;
+      const resIso = parseDateTimeFields(resDate, resTime)!;
+      if (new Date(selIso).getTime() >= new Date(resIso).getTime()) {
+        errs.selDate = "Selection close must be before resolution date.";
+      }
+    }
+    return errs;
+  };
+
+  /** Scroll to the first error field within the form. */
+  const scrollToFirstError = (errs: Record<string, string>) => {
+    const firstKey = Object.keys(errs)[0];
+    if (!firstKey || !formRef.current) return;
+    const el = formRef.current.querySelector(`[data-field="${firstKey}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      const input = el.querySelector("input");
+      if (input) setTimeout(() => input.focus(), 300);
+    }
   };
 
   // Cleanup timers on unmount (user navigates away mid-generation)
@@ -127,6 +191,14 @@ export function GenerateForm() {
   }, [phase]);
 
   const generate = () => {
+    // Validate controlled fields before starting
+    const errs = validateControlled();
+    setFormErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      scrollToFirstError(errs);
+      return;
+    }
+
     setPhase("calling");
     setResult(null);
     clearTimers();
@@ -139,8 +211,14 @@ export function GenerateForm() {
       fd.set("category", category);
       fd.set("prompt", prompt);
       if (controlled && controlledTitle) fd.set("controlledTitle", controlledTitle);
-      if (controlled && controlledResolutionAt) fd.set("controlledResolutionAt", new Date(controlledResolutionAt).toISOString());
-      if (controlled && controlledSelectionClosedAt) fd.set("controlledSelectionClosedAt", new Date(controlledSelectionClosedAt).toISOString());
+      if (controlled && resDate) {
+        const resIso = parseDateTimeFields(resDate, resTime);
+        if (resIso) fd.set("controlledResolutionAt", resIso);
+      }
+      if (controlled && selDate) {
+        const selIso = parseDateTimeFields(selDate, selTime);
+        if (selIso) fd.set("controlledSelectionClosedAt", selIso);
+      }
       try {
         const r = await generatePollAction(fd);
         clearTimers();
@@ -203,7 +281,7 @@ export function GenerateForm() {
           {/* ── Controlled Poll — collapsible advanced section ── */}
           <button
             type="button"
-            onClick={() => setControlled((v) => !v)}
+            onClick={() => { setControlled((v) => !v); setFormErrors({}); }}
             className="flex items-center gap-2 text-[12px] font-semibold text-text-muted hover:text-text transition-colors"
           >
             <I.target s={13} className="shrink-0" />
@@ -211,41 +289,89 @@ export function GenerateForm() {
             <I.chevronRight s={11} className={`ml-auto transition-transform duration-150 text-text-subtle ${controlled ? "rotate-90" : ""}`} />
           </button>
           {controlled && (
-            <div className="space-y-2.5 rounded-lg border border-border bg-bg-overlay p-3.5">
+            <div ref={formRef} className="space-y-3 rounded-lg border border-border bg-bg-overlay p-3.5">
               <p className="text-[11px] text-text-subtle leading-snug">
                 Set specific dates and title. The AI will generate the criterion, options, and sources around your constraints.
               </p>
-              <div>
-                <label className="mb-1 block text-[11.5px] font-semibold text-text">Title (EN) · Optional</label>
-                <Input value={controlledTitle} onChange={(e) => setControlledTitle(e.target.value)} placeholder="e.g. Will Tanzania beat Kenya in the CECAFA Cup final?" size="sm" />
+
+              {/* Title */}
+              <div data-field="title">
+                <label className="mb-1 flex items-center gap-1.5 text-[11.5px] font-semibold text-text">
+                  <I.edit s={12} className="text-text-subtle shrink-0" /> Title (EN) · Optional
+                </label>
+                <Input
+                  value={controlledTitle}
+                  onChange={(e) => { setControlledTitle(e.target.value); setFormErrors((p) => { const n = { ...p }; delete n.title; return n; }); }}
+                  placeholder="e.g. Will Tanzania beat Kenya in the CECAFA Cup final?"
+                  size="sm"
+                  error={!!formErrors.title}
+                />
+                {formErrors.title && <p className="mt-1 text-[11px] text-no-300">{formErrors.title}</p>}
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                <div>
-                  <label className="mb-1 flex items-center gap-1.5 text-[11.5px] font-semibold text-text"><I.calendarClock s={12} className="text-text-subtle shrink-0" />Selection Close · Kufunga uchaguzi</label>
-                  <input
-                    type="datetime-local"
-                    value={controlledSelectionClosedAt}
-                    onChange={(e) => setControlledSelectionClosedAt(e.target.value)}
-                    className="w-full h-9 rounded-md border border-border bg-bg-inset px-2.5 text-[12.5px] font-mono text-text outline-none admin-focus transition-colors"
+
+              {/* Selection Close: Date + Time */}
+              <div data-field="selDate">
+                <label className="mb-1 flex items-center gap-1.5 text-[11.5px] font-semibold text-text">
+                  <I.calendarClock s={12} className="text-text-subtle shrink-0" /> Selection Close · Kufunga uchaguzi
+                </label>
+                <div className="grid grid-cols-[1fr_auto] gap-2">
+                  <Input
+                    value={selDate}
+                    onChange={(e) => { setSelDate(e.target.value); setFormErrors((p) => { const n = { ...p }; delete n.selDate; return n; }); }}
+                    placeholder="DD/MM/YYYY"
+                    size="sm"
+                    mono
+                    error={!!formErrors.selDate}
+                    prefix="DD/MM"
                   />
-                  <p className="mt-0.5 text-[10px] text-text-subtle">When new bets stop · Wakati wa kufunga</p>
-                </div>
-                <div>
-                  <label className="mb-1 flex items-center gap-1.5 text-[11.5px] font-semibold text-text"><I.calendarClock s={12} className="text-text-subtle shrink-0" />Resolution Date · Tarehe ya matokeo</label>
-                  <input
-                    type="datetime-local"
-                    value={controlledResolutionAt}
-                    onChange={(e) => setControlledResolutionAt(e.target.value)}
-                    className="w-full h-9 rounded-md border border-border bg-bg-inset px-2.5 text-[12.5px] font-mono text-text outline-none admin-focus transition-colors"
+                  <Input
+                    value={selTime}
+                    onChange={(e) => setSelTime(e.target.value)}
+                    placeholder="HH:MM"
+                    size="sm"
+                    mono
+                    error={!!formErrors.selDate}
+                    trailing={<span className="text-[9px]">hrs</span>}
+                    containerClassName="w-[100px]"
                   />
-                  <p className="mt-0.5 text-[10px] text-text-subtle">When outcome is known · Wakati matokeo yanajulikana</p>
                 </div>
+                {formErrors.selDate
+                  ? <p className="mt-1 text-[11px] text-no-300">{formErrors.selDate}</p>
+                  : <p className="mt-0.5 text-[10px] text-text-subtle">When new bets stop · Wakati wa kufunga</p>
+                }
               </div>
-              {controlled && controlledSelectionClosedAt && controlledResolutionAt && new Date(controlledSelectionClosedAt) >= new Date(controlledResolutionAt) && (
-                <p className="text-[11px] font-semibold text-[var(--no-400)]">
-                  Selection close must be before resolution date.
-                </p>
-              )}
+
+              {/* Resolution Date: Date + Time */}
+              <div data-field="resDate">
+                <label className="mb-1 flex items-center gap-1.5 text-[11.5px] font-semibold text-text">
+                  <I.calendarClock s={12} className="text-text-subtle shrink-0" /> Resolution Date · Tarehe ya matokeo
+                </label>
+                <div className="grid grid-cols-[1fr_auto] gap-2">
+                  <Input
+                    value={resDate}
+                    onChange={(e) => { setResDate(e.target.value); setFormErrors((p) => { const n = { ...p }; delete n.resDate; return n; }); }}
+                    placeholder="DD/MM/YYYY"
+                    size="sm"
+                    mono
+                    error={!!formErrors.resDate}
+                    prefix="DD/MM"
+                  />
+                  <Input
+                    value={resTime}
+                    onChange={(e) => setResTime(e.target.value)}
+                    placeholder="HH:MM"
+                    size="sm"
+                    mono
+                    error={!!formErrors.resDate}
+                    trailing={<span className="text-[9px]">hrs</span>}
+                    containerClassName="w-[100px]"
+                  />
+                </div>
+                {formErrors.resDate
+                  ? <p className="mt-1 text-[11px] text-no-300">{formErrors.resDate}</p>
+                  : <p className="mt-0.5 text-[10px] text-text-subtle">When outcome is known · Wakati matokeo yanajulikana</p>
+                }
+              </div>
             </div>
           )}
 
@@ -253,7 +379,7 @@ export function GenerateForm() {
             <button
               type="button"
               onClick={generate}
-              disabled={pending || active || !!(controlled && controlledSelectionClosedAt && controlledResolutionAt && new Date(controlledSelectionClosedAt) >= new Date(controlledResolutionAt))}
+              disabled={pending || active}
               className="btn btn-gold btn-sm rounded-pill min-w-[160px]"
             >
               {controlled ? "Generate controlled poll" : "Generate poll"}
