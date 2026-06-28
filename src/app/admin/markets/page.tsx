@@ -136,7 +136,7 @@ export default async function AdminMarketsPage({
                   <SortTh field="category" label="Cat." current={sort} dir={dir} sp={sp} baseHref="/admin/markets" />
                   <th className="text-left min-w-[140px]">Probability</th>
                   <SortTh field="volume" label="Pool" current={sort} dir={dir} sp={sp} baseHref="/admin/markets" align="right" />
-                  <SortTh field="closes" label="Closes" current={sort} dir={dir} sp={sp} baseHref="/admin/markets" />
+                  <SortTh field="closes" label="Bets close · Resolves" current={sort} dir={dir} sp={sp} baseHref="/admin/markets" />
                   <SortTh field="status" label="Status" current={sort} dir={dir} sp={sp} baseHref="/admin/markets" />
                   <th className="text-left">Source</th>
                   <th className="text-left">Predictors ↗</th>
@@ -162,7 +162,14 @@ export default async function AdminMarketsPage({
                       </td>
                       <td className="text-right font-mono tabular-nums text-text">{formatTzs(m.yesPool + m.noPool)}</td>
                       <td className="font-mono text-[11px] text-text-muted whitespace-nowrap">
-                        {m.status === "LIVE" ? `${timeLeftStr(m.resolutionAt)}` : fmtTime(m.resolutionAt)}
+                        <div>
+                          <span className="text-text-subtle">Bets:</span>{" "}
+                          {fmtTime(m.selectionClosedAt ?? m.resolutionAt)}
+                          {m.status === "LIVE" && <span className="ml-1 text-text-subtle">({timeLeftStr(m.selectionClosedAt ?? m.resolutionAt)})</span>}
+                        </div>
+                        <div className="mt-0.5">
+                          <span className="text-text-subtle">Res:</span> {fmtTime(m.resolutionAt)}
+                        </div>
                       </td>
                       <td>
                         <Chip size="sm" variant={

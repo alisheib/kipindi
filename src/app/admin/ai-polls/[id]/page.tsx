@@ -142,11 +142,19 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
             <p className="text-[13px] text-text leading-relaxed">
               {poll.resolutionCriterion || <span className="italic text-text-subtle">No criterion set</span>}
             </p>
-            <div className="mt-3 pt-3 border-t border-border/60">
-              <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-1">Resolution date</p>
-              <p className="font-mono text-[13px] text-text tabular-nums">
-                {poll.resolutionAt ? fmtDate(poll.resolutionAt) : "\u2014"}
-              </p>
+            <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-2 gap-3">
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-1">Selection closes</p>
+                <p className="font-mono text-[13px] text-text tabular-nums">
+                  {poll.selectionClosedAt ? fmtDate(poll.selectionClosedAt) : "\u2014"}
+                </p>
+              </div>
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-1">Resolution date</p>
+                <p className="font-mono text-[13px] text-text tabular-nums">
+                  {poll.resolutionAt ? fmtDate(poll.resolutionAt) : "\u2014"}
+                </p>
+              </div>
             </div>
           </AdminCard>
 

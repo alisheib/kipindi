@@ -154,7 +154,7 @@ export default async function MarketPredictorsPage({
               <h2 className="font-display text-[17px] font-semibold text-text leading-snug">{m.titleEn}</h2>
               {m.titleSw && <p className="mt-0.5 text-[12px] italic text-text-subtle">{m.titleSw}</p>}
               <p className="mt-1.5 font-mono text-[11px] text-text-subtle">
-                Resolves {formatDateTime(m.resolutionAt)}
+                Bets close {formatDateTime(m.selectionClosedAt ?? m.resolutionAt)} · Resolves {formatDateTime(m.resolutionAt)}
                 {m.resolvedOutcome && (
                   <span className={`ml-3 font-bold ${m.resolvedOutcome === "YES" ? "text-yes-300" : m.resolvedOutcome === "NO" ? "text-no-300" : "text-text-muted"}`}>
                     → {m.resolvedOutcome}
