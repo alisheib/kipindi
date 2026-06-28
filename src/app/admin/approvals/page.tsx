@@ -225,12 +225,12 @@ export default async function AdminApprovalsPage({
           <div className="flex items-start gap-3">
             <I.warning s={18} />
             <div className="text-caption text-text-secondary space-y-1">
-              <p className="text-text font-bold">Production rule</p>
+              <p className="text-text font-bold">Two-person rule</p>
               <p>
-                Two-person approval is mandatory for any single transaction ≥ TZS 5M, all KYC overrides, all wallet
-                freezes, and all forced account closures. The first reviewer enters the action with a reason; the
-                second reviewer must counter-sign within 30 minutes from a different session and IP. Both clicks
-                are recorded in the <code>ADMIN</code> audit category with both reviewers&apos; user-ids.
+                AML-held withdrawals (≥ TZS 1M) require two <em>different</em> officers: a first officer records
+                stage&nbsp;1 with a reason; a second, different officer counter-signs to release. No officer can
+                approve their own transaction. Both clicks are recorded in the <code>ADMIN</code> audit category
+                with each reviewer&apos;s user-id and reason.
               </p>
             </div>
           </div>

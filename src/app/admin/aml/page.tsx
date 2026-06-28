@@ -121,8 +121,8 @@ export default async function AdminAmlPage({
           <div className="flex items-start gap-3">
             <I.warning s={18} />
             <div className="text-caption text-text-secondary">
-              <p className="text-text font-bold">Two-person approval (production)</p>
-              <p>In production, approve / reject for amounts ≥ TZS 5M requires (a) the on-shift compliance officer, plus (b) the AML lead. Both clicks are recorded in the <code>ADMIN</code> audit category with the reviewer&apos;s user-id, IP, and reason. This build records the single approval in audit so the workflow can be lifted directly when the second-officer flow is wired.</p>
+              <p className="text-text font-bold">Two-person approval</p>
+              <p>Approve / reject for amounts ≥ TZS 1M requires two <em>different</em> officers: a first officer records stage&nbsp;1, then a second officer counter-signs to release the funds (the same officer cannot do both, and no officer can review their own transaction). Both clicks are recorded in the <code>ADMIN</code> audit category with each reviewer&apos;s user-id and reason.</p>
             </div>
           </div>
         </AdminCard>

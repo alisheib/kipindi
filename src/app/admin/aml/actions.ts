@@ -4,9 +4,10 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { currentSession } from "@/lib/server/auth-service";
 import { db, type StoredTxn } from "@/lib/server/store";
-import { audit, getAuditPage } from "@/lib/server/audit";
+import { audit } from "@/lib/server/audit";
 import { withLock } from "@/lib/server/locks";
 import { notifyWithdrawalSent } from "@/lib/server/wallet-service";
+import { loadConfig, saveConfig } from "@/lib/server/config-store";
 
 import { TWO_PERSON_THRESHOLD_TZS } from "./constants";
 import { formatTzs } from "@/lib/utils";
@@ -25,20 +26,32 @@ async function requireAdmin() {
 }
 
 /**
- * Find the first-officer co-signature for a transaction, if one exists.
- * Returns the audit entry (so we can extract actorId and timestamp) or null.
+ * First-officer co-signature store. Durable (config-store → DB in prod) so the
+ * two-person link survives restarts, AND mirrored in-process so it's reliable
+ * regardless of how many ADMIN audit events occur between the two clicks. This
+ * replaces the old getAuditPage({limit:200}) scan, which silently lost the
+ * signature on a busy day (audit finding) — downgrading two-officer to one.
  */
-function findFirstSignature(txnId: string): { actorId: string | null; at: string } | null {
-  const entries = getAuditPage({ category: "ADMIN", limit: 200 });
-  const sig = entries.find((e) => e.action === "aml.approve.stage1" && e.targetId === txnId);
-  if (!sig) return null;
-  return { actorId: sig.actorId, at: sig.createdAt };
+type Stage1Sig = { actorId: string; at: string };
+const STAGE1_KEY = (txnId: string) => `aml.stage1:${txnId}`;
+const stage1Mem = new Map<string, Stage1Sig>();
+async function getFirstSignature(txnId: string): Promise<Stage1Sig | null> {
+  const mem = stage1Mem.get(txnId);
+  if (mem) return mem;
+  const persisted = await loadConfig<Stage1Sig>(STAGE1_KEY(txnId));
+  if (persisted) stage1Mem.set(txnId, persisted);
+  return persisted;
+}
+async function setFirstSignature(txnId: string, sig: Stage1Sig): Promise<void> {
+  stage1Mem.set(txnId, sig);
+  await saveConfig(STAGE1_KEY(txnId), sig);
 }
 
 /**
  * Approve a transaction held in AML_REVIEW.
  *
- * Two-person rule (POCA Cap 423 §16 + FATF R.10): for amounts ≥ TZS 5M, two
+ * Two-person rule (POCA Cap 423 §16 + FATF R.10): for amounts ≥ the AML-hold
+ * threshold (TWO_PERSON_THRESHOLD_TZS, = the payments AML trigger), two
  * different officers must approve. The first click records `aml.approve.stage1`
  * — the txn stays in AML_REVIEW. A different officer's second click flips to
  * CONFIRMED and records `aml.approved` linking back to the first officer's id.
@@ -50,6 +63,9 @@ export async function approveAmlAction(formData: FormData) {
   const txnId = String(formData.get("txnId") ?? "");
   const reason = String(formData.get("reason") ?? "").trim().slice(0, 500);
   if (!txnId) return { ok: false as const, error: "Missing transaction id." };
+  // Releasing money is the highest-risk action — a recorded justification is
+  // mandatory (FATF R.10 / EDD), matching the reject path. (Was optional.)
+  if (reason.length < 5) return { ok: false as const, error: "Reason is required (≥ 5 chars) to release funds." };
 
   // Lock the transaction to prevent TOCTOU — two officers clicking
   // approve simultaneously could both read AML_REVIEW status and both
@@ -58,6 +74,14 @@ export async function approveAmlAction(formData: FormData) {
     const all = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[];
     const txn = all.find((t) => t.id === txnId);
     if (!txn) return { ok: false as const, error: "Transaction not in AML_REVIEW." };
+
+    // No self-review: an officer who happens to own this transaction must never
+    // approve their own money movement (separation of duties). KYC/SoF already
+    // block this; the AML queue did not.
+    if (txn.userId === session.userId) {
+      audit({ category: "SECURITY", action: "aml.self_review_blocked", actorId: session.userId, targetType: "Transaction", targetId: txnId, payload: { amount: txn.amount, kind: "approve" } });
+      return { ok: false as const, error: "You cannot approve your own transaction." };
+    }
 
     // Releasing an AML-approved withdrawal must clear this txn's `hold` exactly
     // like withdraw()'s success path. withdraw() moved balance→hold; on approve
@@ -75,8 +99,9 @@ export async function approveAmlAction(formData: FormData) {
 
     const requiresTwo = Math.abs(txn.amount) >= TWO_PERSON_THRESHOLD_TZS;
     if (requiresTwo) {
-      const first = findFirstSignature(txnId);
+      const first = await getFirstSignature(txnId);
       if (!first) {
+        await setFirstSignature(txnId, { actorId: session.userId, at: new Date().toISOString() });
         audit({
           category: "ADMIN",
           action: "aml.approve.stage1",
@@ -154,6 +179,12 @@ export async function rejectAmlAction(formData: FormData) {
     const all = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[];
     const txn = all.find((t) => t.id === txnId);
     if (!txn) return { ok: false as const, error: "Transaction not in AML_REVIEW." };
+
+    // No self-review (separation of duties) — also applies to rejecting.
+    if (txn.userId === session.userId) {
+      audit({ category: "SECURITY", action: "aml.self_review_blocked", actorId: session.userId, targetType: "Transaction", targetId: txnId, payload: { amount: txn.amount, kind: "reject" } });
+      return { ok: false as const, error: "You cannot review your own transaction." };
+    }
 
     // Reverse the held funds back to wallet (if it's a withdrawal that placed a
     // hold) and mark FAILED. The inner wallet lock also guards against a
