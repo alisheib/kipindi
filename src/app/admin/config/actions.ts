@@ -10,8 +10,9 @@ import {
   clearMarketOverride,
   type RateConfig,
 } from "@/lib/server/market-config";
+import { CONFIG_ROLES } from "@/lib/server/roles";
 
-const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+const ADMIN_ROLES = CONFIG_ROLES; // role tier — see @/lib/server/roles
 
 async function ensureAdmin() {
   const s = await currentSession();

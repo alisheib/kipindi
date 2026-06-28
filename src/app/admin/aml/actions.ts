@@ -10,8 +10,9 @@ import { notifyWithdrawalSent } from "@/lib/server/wallet-service";
 
 import { TWO_PERSON_THRESHOLD_TZS } from "./constants";
 import { formatTzs } from "@/lib/utils";
+import { MONEY_ROLES } from "@/lib/server/roles";
 
-const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+const ADMIN_ROLES = MONEY_ROLES; // role tier — see @/lib/server/roles
 
 async function requireAdmin() {
   const session = await currentSession();

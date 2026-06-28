@@ -8,8 +8,9 @@ import { audit } from "@/lib/server/audit";
 import { revalidatePath } from "next/cache";
 import { setSupportConfig } from "@/lib/support-config";
 import { setPlatformConfig } from "@/lib/server/platform-config";
+import { CONFIG_ROLES } from "@/lib/server/roles";
 
-const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+const ADMIN_ROLES = CONFIG_ROLES; // role tier — see @/lib/server/roles
 
 async function requireAdmin() {
   const session = await currentSession();

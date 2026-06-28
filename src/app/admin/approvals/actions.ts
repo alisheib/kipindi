@@ -8,8 +8,9 @@ import { audit } from "@/lib/server/audit";
 import { notifySof } from "@/lib/server/notification-service";
 import { sendEmailToUser, sofDecisionHtml } from "@/lib/server/email";
 import { withLock } from "@/lib/server/locks";
+import { COMPLIANCE_ROLES } from "@/lib/server/roles";
 
-const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+const ADMIN_ROLES = COMPLIANCE_ROLES; // role tier — see @/lib/server/roles
 
 async function requireOfficer() {
   const session = await currentSession();

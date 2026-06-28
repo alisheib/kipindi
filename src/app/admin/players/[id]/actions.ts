@@ -7,6 +7,7 @@ import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { buildDsarBundle } from "@/lib/server/privacy";
 import { revokeUserSessions } from "@/lib/server/session-registry";
+import { COMPLIANCE_ROLES } from "@/lib/server/roles";
 
 /**
  * Privileged player-management actions. Each one:
@@ -23,7 +24,7 @@ import { revokeUserSessions } from "@/lib/server/session-registry";
  * two-officer flow and stay disabled until that's wired separately.
  */
 
-const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+const ADMIN_ROLES = COMPLIANCE_ROLES; // role tier — see @/lib/server/roles
 
 async function requireAdmin(action: string): Promise<string> {
   const session = await currentSession();

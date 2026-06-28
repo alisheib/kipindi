@@ -14,8 +14,9 @@ import {
 } from "@/lib/server/market-candidate";
 import { createMarket } from "@/lib/server/market-service";
 import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
+import { MARKET_OPS_ROLES } from "@/lib/server/roles";
 
-const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+const ADMIN_ROLES = MARKET_OPS_ROLES; // role tier — see @/lib/server/roles
 
 async function requireAdmin(action: string): Promise<string> {
   const session = await currentSession();

@@ -16,8 +16,9 @@ import { NextResponse } from "next/server";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
+import { COMPLIANCE_ROLES } from "@/lib/server/roles";
 
-const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+const ADMIN_ROLES = COMPLIANCE_ROLES; // role tier — see @/lib/server/roles
 const DOC_TYPES = new Set(["NIDA_FRONT", "NIDA_BACK", "SELFIE"]);
 const DATAURL_RE = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/;
 

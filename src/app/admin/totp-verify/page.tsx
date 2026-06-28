@@ -5,11 +5,12 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { hasTotp } from "@/lib/server/totp";
 import { TotpVerifyForm } from "./verify-form";
+import { ADMIN_CONSOLE_ROLES } from "@/lib/server/roles";
 
 export const metadata = { title: "Admin · 2FA verification" };
 export const dynamic = "force-dynamic";
 
-const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+const ADMIN_ROLES = ADMIN_CONSOLE_ROLES; // role tier — see @/lib/server/roles
 
 export default async function AdminTotpVerifyPage({ searchParams }: { searchParams?: Promise<{ next?: string }> }) {
   const session = await currentSession();

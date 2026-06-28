@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { fileDsarRequest, fulfillDsarRequest, buildDsarBundle } from "@/lib/server/privacy";
 import { getSession } from "@/lib/server/session";
 import { db } from "@/lib/server/store";
+import { COMPLIANCE_ROLES } from "@/lib/server/roles";
 
-const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+const ADMIN_ROLES = COMPLIANCE_ROLES; // role tier — see @/lib/server/roles
 
 /**
  * DSAR actions expose other players' PII, so they MUST be officer-only.

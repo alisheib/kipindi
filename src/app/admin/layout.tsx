@@ -6,8 +6,9 @@ import { hasTotp } from "@/lib/server/totp";
 import { verifySession, signSession } from "@/lib/server/crypto";
 import { ConfidentialBand, AdminSidebar, AdminTopBar, type AdminSession } from "@/components/admin/admin-shell";
 import { TOTP_COOKIE_NAME, TOTP_TTL_SEC } from "@/lib/server/totp-cookie";
+import { ADMIN_CONSOLE_ROLES } from "@/lib/server/roles";
 
-const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+const ADMIN_ROLES = ADMIN_CONSOLE_ROLES; // role tier — see @/lib/server/roles
 
 /**
  * Routes inside /admin/* that DON'T require an admin TOTP cookie:

@@ -8,13 +8,14 @@ import { addComment, reportComment, deleteComment, restoreComment, type CommentS
 import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
+import { MARKET_OPS_ROLES } from "@/lib/server/roles";
 
 /** Defense-in-depth: even though the /admin layout gates non-admin
  *  access at render time, the Server Action itself must refuse a
  *  privileged write if the caller is not actually an admin. A leaked
  *  Server-Action ID would otherwise let a regular player resolve a
  *  market. Regulator: GBT / LCCP "least-privilege" + ISO 27001 A.9. */
-const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+const ADMIN_ROLES = MARKET_OPS_ROLES; // role tier — see @/lib/server/roles
 async function requireAdminOrThrow(userId: string, action: string) {
   const user = await db.user.findById(userId);
   if (!user || !ADMIN_ROLES.has(user.role)) {

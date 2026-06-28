@@ -7,8 +7,9 @@ import { db } from "@/lib/server/store";
 import { setCreditLimit, resetCreditCycle } from "@/lib/server/ai-usage";
 import { setAiModel, setSentinelInterval, AVAILABLE_MODELS, INTERVAL_OPTIONS } from "@/lib/server/ai-ops-config";
 import { audit } from "@/lib/server/audit";
+import { CONFIG_ROLES } from "@/lib/server/roles";
 
-const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+const ADMIN_ROLES = CONFIG_ROLES; // role tier — see @/lib/server/roles
 
 async function ensureAdmin() {
   const s = await currentSession();

@@ -5,8 +5,9 @@ import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { setAffiliateConfig, type AffiliateConfig } from "@/lib/server/affiliate-config";
+import { MONEY_ROLES } from "@/lib/server/roles";
 
-const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+const ADMIN_ROLES = MONEY_ROLES; // role tier — see @/lib/server/roles
 
 async function ensureAdmin() {
   const s = await currentSession();

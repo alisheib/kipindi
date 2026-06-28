@@ -5,8 +5,9 @@ import { revalidatePath } from "next/cache";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { provisionTotp, verifyTotp, removeTotp, hasTotp } from "@/lib/server/totp";
+import { ADMIN_CONSOLE_ROLES } from "@/lib/server/roles";
 
-const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+const ADMIN_ROLES = ADMIN_CONSOLE_ROLES; // role tier — see @/lib/server/roles
 
 async function requireAdmin() {
   const session = await currentSession();

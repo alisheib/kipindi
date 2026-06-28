@@ -19,8 +19,9 @@ import { REPORT_CATALOGUE, type ReportId } from "@/lib/server/reports/catalogue"
 import { renderXlsx } from "@/lib/server/reports/xlsx";
 import { renderPdf } from "@/lib/server/reports/pdf";
 import { reportFilename } from "@/lib/server/reports/brand";
+import { CONFIG_ROLES } from "@/lib/server/roles";
 
-const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+const ADMIN_ROLES = CONFIG_ROLES; // role tier — see @/lib/server/roles
 
 export async function GET(
   req: Request,

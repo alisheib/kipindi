@@ -11,8 +11,9 @@ import {
   declineProposal,
   type DeclineReason,
 } from "@/lib/server/proposals-service";
+import { MARKET_OPS_ROLES } from "@/lib/server/roles";
 
-const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+const ADMIN_ROLES = MARKET_OPS_ROLES; // role tier — see @/lib/server/roles
 
 async function ensureAdmin() {
   const s = await currentSession();

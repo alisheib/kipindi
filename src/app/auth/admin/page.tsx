@@ -10,11 +10,12 @@ import { hasTotp } from "@/lib/server/totp";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { startLoginAction } from "@/app/auth/login/actions";
 import { SUPPORT_EMAIL } from "@/lib/support-config";
+import { ADMIN_CONSOLE_ROLES } from "@/lib/server/roles";
 
 export const metadata = { title: "Admin sign in · Kuingia" };
 export const dynamic = "force-dynamic";
 
-const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+const ADMIN_ROLES = ADMIN_CONSOLE_ROLES; // role tier — see @/lib/server/roles
 
 export default async function AdminLoginPage({ searchParams }: { searchParams?: Promise<{ next?: string }> }) {
   const nextRaw = (await searchParams)?.next ?? "";

@@ -8,8 +8,9 @@ import { db } from "@/lib/server/store";
 import { tzPhone } from "@/lib/server/validators";
 import { setBonusConfig, type BonusConfig } from "@/lib/server/bonus-config";
 import { creditBonus, cancelGrant } from "@/lib/server/bonus-service";
+import { MONEY_ROLES } from "@/lib/server/roles";
 
-const ADMIN_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+const ADMIN_ROLES = MONEY_ROLES; // role tier — see @/lib/server/roles
 
 async function ensureAdmin() {
   const s = await currentSession();
