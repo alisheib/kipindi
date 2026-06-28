@@ -600,7 +600,7 @@ const SCHEDULE_KEY = "sentinel.schedule";
 // this short grace (not instantly) so a deploy storm doesn't hammer the API.
 const BOOT_GRACE_MS = 90_000;
 
-type SentinelSchedule = { nextSweepAt: number | null; lastSweepAt: number | null; intervalMs: number; paused?: boolean };
+type SentinelSchedule = { nextSweepAt: number | null; lastSweepAt: number | null; intervalMs: number; paused?: boolean; pausedRemainingMs?: number | null };
 type SweepSummary = { closed: number; errors: number; total: number; at: number };
 
 let timer: ReturnType<typeof setTimeout> | null = null;
@@ -614,6 +614,12 @@ let lastSummary: SweepSummary | null = null;
 // deploy/restart can never silently resume paid AI spend. This is the key
 // budget-safety invariant: paused ⇒ zero model calls until explicitly resumed.
 let paused = false;
+// How many ms were LEFT on the countdown at the moment of pause. Resume re-arms
+// with exactly this (not a fresh interval), so the timer continues from where it
+// stopped. Stored as a DURATION (not a wall-clock target) and persisted, so it is
+// preserved verbatim across restarts and however long the pause lasts — resume a
+// year later and it still has the same time remaining.
+let pausedRemainingMs: number | null = null;
 
 function sentinelEnabled(): boolean {
   return !!process.env.ANTHROPIC_API_KEY && process.env.SENTINEL_ENABLED !== "false";
@@ -621,8 +627,9 @@ function sentinelEnabled(): boolean {
 
 async function persistSchedule(): Promise<void> {
   // Always persist — including when paused (nextSweepAt is null) — so the paused
-  // flag survives restarts. (Previously this early-returned on a null target.)
-  await saveConfig(SCHEDULE_KEY, { nextSweepAt, lastSweepAt, intervalMs: currentIntervalMs, paused } satisfies SentinelSchedule);
+  // flag AND the remembered remaining survive restarts. (Previously this
+  // early-returned on a null target.)
+  await saveConfig(SCHEDULE_KEY, { nextSweepAt, lastSweepAt, intervalMs: currentIntervalMs, paused, pausedRemainingMs } satisfies SentinelSchedule);
 }
 
 /** Arm the one-shot timer to fire `delayMs` from now and record/persist the
@@ -709,8 +716,11 @@ export function startSentinel(): void {
     // resume paid AI spend the operator had paused.
     if (persisted?.paused) {
       paused = true;
+      // Restore the remembered remaining so a resume — even now, after this
+      // restart — continues from exactly where the countdown was paused.
+      pausedRemainingMs = persisted.pausedRemainingMs ?? null;
       nextSweepAt = null;
-      console.log("[sentinel] paused (persisted) — scheduler disarmed, no sweeps until resumed");
+      console.log(`[sentinel] paused (persisted) — scheduler disarmed, no sweeps until resumed${pausedRemainingMs != null ? ` (${Math.round(pausedRemainingMs / 1000)}s remembered)` : ""}`);
       return;
     }
     const decision = computeBootSchedule(persisted, Date.now(), currentIntervalMs, BOOT_GRACE_MS);
@@ -731,6 +741,8 @@ export async function getSentinelStatus(): Promise<{
   lastSummary: SweepSummary | null;
   /** Operator pause switch — true ⇒ scheduler disarmed, no AI calls until resumed. */
   paused: boolean;
+  /** When paused, how long was left on the countdown (ms) — what Resume restores. */
+  pausedRemainingMs: number | null;
   /** Server clock at the moment of this read (epoch-ms). The client diffs this
    *  against its own clock to render an accurate countdown even if the admin's
    *  device clock is wrong/changed — the timer is driven by server time, UTC. */
@@ -742,42 +754,51 @@ export async function getSentinelStatus(): Promise<{
   let last = lastSweepAt;
   let interval = currentIntervalMs;
   let isPaused = paused;
+  let remembered = pausedRemainingMs;
   if (next == null) {
     const persisted = await loadConfig<SentinelSchedule>(SCHEDULE_KEY);
     if (persisted) {
       next = persisted.nextSweepAt; last = persisted.lastSweepAt; interval = persisted.intervalMs || interval;
       // Trust a persisted pause if the in-memory flag hasn't hydrated yet (status
       // read right after boot, before startSentinel runs).
-      if (persisted.paused) isPaused = true;
+      if (persisted.paused) { isPaused = true; remembered = persisted.pausedRemainingMs ?? remembered; }
     }
   }
   return {
     enabled: sentinelEnabled(), running: !!timer, sweeping: sweepRunning,
     intervalMs: interval, nextSweepAt: isPaused ? null : next, lastSweepAt: last, lastSummary,
-    paused: isPaused,
+    paused: isPaused, pausedRemainingMs: isPaused ? remembered : null,
     serverNow: Date.now(), timezone: getPlatformTimezone(),
   };
 }
 
 /** Pause the sentinel: disarm the scheduler so NO sweep — and no Anthropic call —
  *  can start until resumed. Persisted so it survives restarts. Idempotent. */
-export async function pauseSentinel(officerId: string): Promise<{ paused: true }> {
+export async function pauseSentinel(officerId: string): Promise<{ paused: true; remainingMs: number | null }> {
+  // Memorize how long was left so Resume continues from exactly here. A second
+  // pause (when already paused, nextSweepAt null) keeps the originally-captured
+  // value rather than overwriting it.
+  if (nextSweepAt != null) pausedRemainingMs = Math.max(0, nextSweepAt - Date.now());
   paused = true;
   if (timer) { clearTimeout(timer); timer = null; }
   nextSweepAt = null;
   await persistSchedule();
-  audit({ category: "ADMIN", action: "sentinel.paused", actorId: officerId, targetType: "System", targetId: "market-sentinel" });
-  return { paused: true };
+  audit({ category: "ADMIN", action: "sentinel.paused", actorId: officerId, targetType: "System", targetId: "market-sentinel", payload: { remainingMs: pausedRemainingMs } });
+  return { paused: true, remainingMs: pausedRemainingMs };
 }
 
-/** Resume the sentinel after a pause: clear the flag and re-arm one interval out.
- *  No-op (stays paused) if the sentinel is disabled (no API key). Idempotent. */
+/** Resume the sentinel after a pause: clear the flag and re-arm with the EXACT
+ *  time that was left when paused (continues from where it stopped — preserved
+ *  across restarts and any pause duration). Falls back to a full interval only
+ *  if nothing was memorized. No-op (stays paused) if the sentinel is disabled. */
 export async function resumeSentinel(officerId: string): Promise<{ paused: boolean; nextSweepAt: number | null }> {
   if (!sentinelEnabled()) { return { paused, nextSweepAt }; }
   paused = false;
   currentIntervalMs = (await getLiveConfig()).intervalMs;
-  arm(currentIntervalMs);
-  audit({ category: "ADMIN", action: "sentinel.resumed", actorId: officerId, targetType: "System", targetId: "market-sentinel", payload: { nextSweepAt, intervalMs: currentIntervalMs } });
+  const resumeDelayMs = pausedRemainingMs != null ? pausedRemainingMs : currentIntervalMs;
+  pausedRemainingMs = null;
+  arm(resumeDelayMs);
+  audit({ category: "ADMIN", action: "sentinel.resumed", actorId: officerId, targetType: "System", targetId: "market-sentinel", payload: { nextSweepAt, intervalMs: currentIntervalMs, resumedWithRemainingMs: resumeDelayMs } });
   return { paused: false, nextSweepAt };
 }
 
@@ -787,6 +808,7 @@ export async function resumeSentinel(officerId: string): Promise<{ paused: boole
 export async function resetSentinelTimer(officerId = "admin"): Promise<{ nextSweepAt: number | null; intervalMs: number }> {
   if (!sentinelEnabled()) return { nextSweepAt, intervalMs: currentIntervalMs };
   paused = false; // resetting the timer also clears a pause
+  pausedRemainingMs = null; // Reset is a deliberate fresh start (full interval)
   currentIntervalMs = (await getLiveConfig()).intervalMs;
   arm(currentIntervalMs);
   audit({ category: "ADMIN", action: "sentinel.timer_reset", actorId: officerId, targetType: "System", targetId: "market-sentinel", payload: { nextSweepAt, intervalMs: currentIntervalMs } });
@@ -800,8 +822,9 @@ export async function runSentinelNow(officerId = "admin"): Promise<{ ok: boolean
   if (!sentinelEnabled()) return { ok: false, reason: "Sentinel is disabled (no API key or SENTINEL_ENABLED=false)." };
   if (sweepRunning) return { ok: false, reason: "A sweep is already running — try again in a moment." };
   // An explicit manual run is a deliberate operator action — it clears any pause
-  // and resumes normal scheduling afterwards.
+  // (and its memorized remaining) and resumes normal scheduling afterwards.
   paused = false;
+  pausedRemainingMs = null;
   if (timer) { clearTimeout(timer); timer = null; }
   sweepRunning = true;
   try {

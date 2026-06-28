@@ -15,6 +15,7 @@ type Status = {
   running: boolean;
   sweeping: boolean;
   paused: boolean;
+  pausedRemainingMs: number | null;
   intervalMs: number;
   nextSweepAt: number | null;
   lastSweepAt: number | null;
@@ -159,7 +160,7 @@ export function SentinelCountdown() {
           </div>
 
           <div className="space-y-1.5 mb-3 font-mono text-[11px]">
-            <Row label="Next sweep" value={status?.sweeping ? "running…" : remaining != null ? `in ${fmtRemaining(remaining)}` : "—"} accent />
+            <Row label="Next sweep" value={status?.paused ? (status.pausedRemainingMs != null ? `paused · ${fmtRemaining(status.pausedRemainingMs)} left` : "paused") : status?.sweeping ? "running…" : remaining != null ? `in ${fmtRemaining(remaining)}` : "—"} accent />
             <Row label="At" value={fmtClock(status?.nextSweepAt ?? null, status?.timezone)} />
             <Row label="Last sweep" value={fmtClock(status?.lastSweepAt ?? null, status?.timezone)} />
             <Row label="Interval" value={status ? fmtRemaining(status.intervalMs) : "—"} />
@@ -204,7 +205,10 @@ export function SentinelCountdown() {
 
           {status?.paused && (
             <p className="mt-2 text-[10.5px] leading-snug text-no-300">
-              Paused — the sentinel will not sweep or call the AI until you Resume, Reset, or Run now.
+              Paused — no sweeps or AI calls until you Resume, Reset, or Run now.
+              {status.pausedRemainingMs != null && (
+                <> Resume continues with <span className="font-semibold tabular-nums">{fmtRemaining(status.pausedRemainingMs)}</span> left.</>
+              )}
             </p>
           )}
 

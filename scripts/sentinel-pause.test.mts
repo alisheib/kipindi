@@ -78,6 +78,25 @@ try {
   await runSentinelSweep();
   ok("UN-paused sweep proceeds to read markets", valuesCalls === 1, `valuesCalls=${valuesCalls}`);
 
+  // --- 2b. RESUME continues from where it left off (not a fresh interval) ----
+  // Let real time elapse so the countdown is partway through, pause, resume, and
+  // assert the remaining time was preserved (a reset would jump it back up).
+  await new Promise((r) => setTimeout(r, 2500));
+  st = await getSentinelStatus();
+  const remainingBeforePause = (st.nextSweepAt as number) - st.serverNow;
+  await pauseSentinel("officer_2");
+  const stP = await getSentinelStatus();
+  ok("pause memorizes the remaining time", stP.pausedRemainingMs != null && Math.abs((stP.pausedRemainingMs as number) - remainingBeforePause) < 1500,
+    `remembered=${stP.pausedRemainingMs} before=${Math.round(remainingBeforePause)}`);
+  await resumeSentinel("officer_2");
+  const stR = await getSentinelStatus();
+  const remainingAfterResume = (stR.nextSweepAt as number) - stR.serverNow;
+  // If resume had reset to a full interval, remainingAfterResume would jump UP by
+  // ~the 2.5s that elapsed; resuming-from-place keeps it within a small margin.
+  ok("RESUME continues from the same remaining (no restart)", Math.abs(remainingAfterResume - remainingBeforePause) < 1500,
+    `after=${Math.round(remainingAfterResume)} before=${Math.round(remainingBeforePause)}`);
+  ok("resume cleared the memorized remaining", (await getSentinelStatus()).pausedRemainingMs === null);
+
   // --- 3. RESET also clears a pause -----------------------------------------
   await pauseSentinel("officer_2");
   ok("re-paused before reset", (await getSentinelStatus()).paused === true);
