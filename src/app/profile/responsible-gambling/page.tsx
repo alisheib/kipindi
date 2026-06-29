@@ -57,7 +57,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
       )}
       {sp.saved && !sp.error && (
         <div role="status" className="rounded-xl border border-yes-700 bg-yes-500/10 px-4 py-3 text-[13px] text-yes-300">
-          {"Limits saved" /* i18n-todo: add rg.limitsSaved key */}
+          {t.rg.limitsSaved}
         </div>
       )}
 
@@ -78,14 +78,14 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           <div className="flex items-center gap-2 mb-1">
             <I.shieldcheck s={14} />
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-yes-300">
-              {"Player protection" /* i18n-todo: add rg.playerProtection key */}
+              {t.rg.playerProtection}
             </p>
           </div>
           <h1 className="font-display text-[26px] lg:text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
             {t.profile.responsibleGambling}
           </h1>
           <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose">
-            {"Set deposit and time limits, take a break, or self-exclude. We follow the UK Gambling Commission's LCCP standards and the Tanzania Gaming Board's player-protection guidance." /* i18n-todo: add rg.pageDescription key */}
+            {t.rg.pageDescription}
           </p>
         </div>
       </header>
@@ -99,7 +99,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           <h2 className="font-display text-[15px] font-semibold text-text">{t.rg.setLimits}</h2>
         </div>
         <p className="text-[12px] text-text-muted leading-snug">
-          {"Decreases take effect immediately. Increases to your daily deposit limit are deferred 24 hours (LCCP SR 3.4.3). Leave any field blank to remove that limit." /* i18n-todo: add rg.limitsDescription key */}
+          {t.rg.limitsDescription}
         </p>
         {hasPendingIncrease && (
           <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg/30 p-3 text-[12px]">
@@ -134,12 +134,12 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           <h2 className="font-display text-[15px] font-semibold text-text">{t.rg.takeABreak}</h2>
         </div>
         <p className="text-[12px] text-text-muted leading-snug">
-          {"A short, one-way pause. You will be signed out and cannot bet, deposit, or sign in until it ends." /* i18n-todo: add rg.breakDescription key */}
+          {t.rg.breakDescription}
         </p>
         <form action={coolOffAction} className="flex flex-wrap items-end gap-2">
           <div>
             <span className="block font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">
-              {"Break length" /* i18n-todo: add rg.breakLength key */}
+              {t.rg.breakLength}
             </span>
             <Select
               name="period"
@@ -157,16 +157,16 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           <I.lock s={16} />
           <h2 className="font-display text-[15px] font-semibold text-text">{t.rg.selfExclude}</h2>
           <span className="ml-auto inline-flex items-center rounded-pill border border-no-700 bg-no-500/10 px-2.5 py-0.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.1em] text-no-300">
-            {"One-way" /* i18n-todo: add common.oneWay key */}
+            {t.common.oneWay}
           </span>
         </div>
         <p className="text-[12px] text-text-muted leading-snug max-w-prose">
-          {"Self-exclusion cannot be reversed by you until the period ends. Your account is frozen, your wallet is locked, and we will not contact you with marketing. Permanent self-exclusion is final and requires a documented review process to reopen." /* i18n-todo: add rg.selfExcludeDescription key */}
+          {t.rg.selfExcludeDescription}
         </p>
         <form action={selfExcludeAction} className="flex flex-wrap items-end gap-2">
           <div>
             <span className="block font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">
-              {"Exclusion period" /* i18n-todo: add rg.exclusionPeriod key */}
+              {t.rg.exclusionPeriod}
             </span>
             <Select
               name="period"
@@ -178,7 +178,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
         </form>
         <p className="font-mono text-[11px] text-text-subtle pt-1">
           {t.rg.helpline} · <a href={`tel:${SUPPORT_PHONE_TEL()}`} className="text-brand-300 underline-offset-2 hover:underline">{SUPPORT_PHONE()}</a>.
-          {"International support at" /* i18n-todo */}{" "}<a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="text-brand-300 underline-offset-2 hover:underline">begambleaware.org</a>.
+          {"International support at"}{" "}<a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="text-brand-300 underline-offset-2 hover:underline">begambleaware.org</a>.
         </p>
       </section>
     </main>

@@ -85,9 +85,9 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
               ? `${user.phoneE164.slice(0, 4)}*****${user.phoneE164.slice(-2)}`
               : "—"}
           />
-          <Item label={t.profile.tanzania /* i18n-todo: add profile.region key */} value={user?.region ?? "—"} />
+          <Item label={t.profile.region} value={user?.region ?? "—"} />
           <Item
-            label="Status" /* i18n-todo: add profile.status key */
+            label={t.common.status}
             value={
               <Pill tone={statusTone as "yes" | "no" | "warning"}>
                 {user?.status ?? "—"}
@@ -95,11 +95,11 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
             }
           />
           <Item
-            label="Account opened" /* i18n-todo: add profile.accountOpened key */
+            label={t.profile.accountOpened}
             value={formatDateTimeSafe(user?.createdAt)}
           />
           <Item
-            label="Last login" /* i18n-todo: add profile.lastLogin key */
+            label={t.profile.lastLogin}
             value={formatDateTimeSafe(user?.lastLoginAt)}
           />
         </div>
@@ -116,7 +116,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
           <I.activity s={15} />
           <h2 className="font-display text-[15px] font-semibold text-text">{t.profile.myAccountSub.split("·")[0].trim() /* "Activity" */}</h2>
           <span className="ml-auto font-mono text-[11px] text-text-subtle tabular-nums">
-            {activity.length} {"events" /* i18n-todo: add common.events key */}
+            {activity.length} {t.common.events}
           </span>
         </div>
         {activityCategories.length > 1 && (
@@ -146,8 +146,8 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
             <thead>
               <tr className="border-b border-border bg-bg-overlay/50 font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
                 <th className="text-left px-3 py-2 font-semibold">{t.common.when}</th>
-                <th className="text-left px-3 py-2 font-semibold">{"Category" /* i18n-todo: add common.category key */}</th>
-                <th className="text-left px-3 py-2 font-semibold">{"Action" /* i18n-todo: add common.action key */}</th>
+                <th className="text-left px-3 py-2 font-semibold">{t.common.category}</th>
+                <th className="text-left px-3 py-2 font-semibold">{t.common.action}</th>
               </tr>
             </thead>
             <tbody>
@@ -164,10 +164,10 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
                 <tr>
                   <td colSpan={3} className="px-4 py-8 text-center">
                     <p className="font-display text-[13px] font-semibold text-text-muted">
-                      {actFilter === "all" ? "No activity yet" /* i18n-todo: add profile.noActivityYet key */ : `No ${actFilter.toLowerCase()} activity`}
+                      {actFilter === "all" ? t.profile.noActivityYet : `No ${actFilter.toLowerCase()} activity`}
                     </p>
                     <p className="mt-1 text-[12px] text-text-subtle">
-                      {actFilter === "all" ? "Bets, deposits, and account changes appear here." /* i18n-todo */ : "Try a different category filter above." /* i18n-todo */}
+                      {actFilter === "all" ? t.profile.activityHint : "Try a different category filter above."}
                     </p>
                   </td>
                 </tr>
@@ -186,7 +186,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
           </h2>
         </div>
         <p className="text-[12.5px] text-text-muted leading-snug">
-          {"Get a structured copy of every record we hold on you — profile, KYC, wallet, bets, transactions, settings, and audit trail. GDPR Article 15 / Tanzania PDPA right of access." /* i18n-todo: add profile.exportDescription key */}
+          {t.profile.exportDescription}
         </p>
         <div className="pt-1">
           <ExportDataButton />
@@ -198,14 +198,14 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
         <div className="flex items-center gap-2">
           <I.alertOctagon s={15} className="text-no-300" />
           <h2 className="font-display text-[15px] font-semibold text-text">
-            {t.auth.accountClosed.replace("closed", "").trim() || "Close my account"} {/* i18n-todo: add profile.closeAccount key */}
+            {t.profile.closeAccount}
           </h2>
           <span className="ml-auto inline-flex items-center rounded-pill border border-no-700 bg-no-500/10 px-2.5 py-0.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.1em] text-no-300">
-            {"One-way" /* i18n-todo: add common.oneWay key */}
+            {t.common.oneWay}
           </span>
         </div>
         <p className="text-[12.5px] text-text-muted leading-snug">
-          {"Closing your account freezes the wallet, ends marketing communication, and signs you out. Active bets continue to settle so payouts arrive correctly. Financial and KYC records are retained for 7 years per Tanzanian AML law (POCA Cap 423) before erasure." /* i18n-todo: add profile.closeAccountDescription key */}
+          {t.profile.closeAccountDescription}
         </p>
         <CloseAccountForm />
         <p className="font-mono text-[11px] text-text-subtle">

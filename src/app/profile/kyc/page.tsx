@@ -53,21 +53,20 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       )}
       {sp.nida === "verified" && !sp.error && (
         <div role="status" className="rounded-xl border border-yes-700 bg-yes-500/10 px-4 py-3 text-[13px] text-yes-300">
-          {"NIDA verified — now attach your documents below." /* i18n-todo: kycNidaVerifiedAttachDocs */}
+          {t.profile.kycNidaVerified}
         </div>
       )}
       {hasEmail && !emailVerified && nidaDone && (
         <div className="rounded-xl border border-gold-700 bg-gold-500/[0.06] px-4 py-3 flex items-start gap-2.5">
           <I.mail s={16} className="text-gold-300 mt-0.5 shrink-0" />
           <div className="text-[12.5px] text-text-muted leading-snug">
-            <p className="font-display font-semibold text-gold-300">{"Confirm your email" /* i18n-todo: kycConfirmEmail */}</p>
+            <p className="font-display font-semibold text-gold-300">{t.profile.kycConfirmEmail}</p>
             <p className="mt-0.5">
-              {"We sent a confirmation link to " /* i18n-todo: kycConfirmEmailSent */}<span className="font-semibold text-text">{user?.email}</span>.
-              {"Check your inbox and click the link so we can send you verification results, receipts, and password resets. The link expires in 24 hours." /* i18n-todo: kycConfirmEmailBody */}
+              {t.profile.kycConfirmEmailBody} <span className="font-semibold text-text">{user?.email}</span>
             </p>
             <p className="mt-1.5">
               <Link href="/profile/account" className="font-mono text-[11px] text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline">
-                {"Didn\u2019t get it? Resend from your account page \u2192" /* i18n-todo: kycResendEmail */}
+                {t.profile.kycResendEmail}
               </Link>
             </p>
           </div>
@@ -75,7 +74,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       )}
       {sp.submitted && !sp.error && (
         <div role="status" className="rounded-xl border border-yes-700 bg-yes-500/10 px-4 py-3 text-[13px] text-yes-300">
-          {"Submitted for review. We\u2019ll notify you when it\u2019s decided." /* i18n-todo: kycSubmittedForReview */}
+          {t.profile.kycSubmitted}
         </div>
       )}
 
@@ -86,8 +85,8 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               {t.auth.welcomeTo50pick}
             </p>
             <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
-              {"You can " /* i18n-todo: kycWelcomeCanBrowse */}<span className="font-bold text-text">{"browse markets and place bets right away" /* i18n-todo */}</span>.
-              {"Verify your identity later \u2014 withdrawals unlock once KYC is approved." /* i18n-todo: kycWelcomeVerifyLater */}
+              {"You can "}<span className="font-bold text-text">{"browse markets and place bets right away"}</span>.
+              {"Verify your identity later \u2014 withdrawals unlock once KYC is approved."}
             </p>
           </div>
           <Link
@@ -95,7 +94,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             className="btn btn-gold btn-lg whitespace-nowrap"
             style={{ borderRadius: "var(--r-pill)" }}
           >
-            {"Skip for now" /* i18n-todo: kycSkipForNow */}
+            {t.profile.kycSkipForNow}
           </Link>
         </section>
       )}
@@ -117,7 +116,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
           <div className="flex items-center gap-2 mb-1">
             <I.shieldcheck s={14} />
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-info-fg">
-              {"Identity verification" /* i18n-todo: kycIdentityVerification */}
+              {t.profile.kycIdentityVerification}
             </p>
           </div>
           <h1 className="font-display text-[26px] lg:text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
@@ -136,9 +135,9 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             <div className="min-w-0">
               <p className="font-display text-[14px] font-bold text-no-300">{t.profile.rejected}</p>
               <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
-                {kyc?.rejectReason ? <>{"Reason: " /* i18n-todo: kycRejectReasonLabel */}<span className="font-semibold text-text">{humanizeRejectReason(String(kyc.rejectReason))}</span>. </> : null}
+                {kyc?.rejectReason ? <>{t.profile.kycRejectReason}: <span className="font-semibold text-text">{humanizeRejectReason(String(kyc.rejectReason))}</span>. </> : null}
                 {kyc?.rejectNote ? `${kyc.rejectNote} ` : ""}
-                {"Please re-enter your details below and resubmit, or email " /* i18n-todo: kycResubmitOrEmail */}
+                {t.profile.kycResubmitOrEmail}{" "}
                 <a href={`mailto:${SUPPORT_EMAIL()}?subject=KYC%20review`} className="text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a>.
               </p>
             </div>
@@ -151,10 +150,10 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
           <div className="flex items-start gap-2.5">
             <I.alertCircle s={18} />
             <div className="min-w-0">
-              <p className="font-display text-[14px] font-bold text-gold-300">{"More information needed" /* i18n-todo: kycMoreInfoNeeded */}</p>
+              <p className="font-display text-[14px] font-bold text-gold-300">{t.profile.kycMoreInfo}</p>
               <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
-                {kyc?.rejectNote ? <span className="font-semibold text-text">{kyc.rejectNote}</span> : "Our team needs a clearer or additional document." /* i18n-todo: kycNeedsClearerDoc */}
-                {" "}{"Update the document(s) below and submit again \u2014 this isn\u2019t a rejection." /* i18n-todo: kycUpdateAndResubmit */}
+                {kyc?.rejectNote ? <span className="font-semibold text-text">{kyc.rejectNote}</span> : "Our team needs a clearer or additional document."}
+                {" "}{"Update the document(s) below and submit again \u2014 this isn\u2019t a rejection."}
               </p>
             </div>
           </div>
@@ -165,10 +164,10 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-3">
           <div className="flex items-center gap-2">
             <I.shieldcheck s={18} />
-            <h2 className="font-display text-[15px] font-semibold text-text">{"Requested documents" /* i18n-todo: kycRequestedDocs */}</h2>
+            <h2 className="font-display text-[15px] font-semibold text-text">{t.profile.kycRequestedDocs}</h2>
           </div>
           <p className="text-[12.5px] text-text-muted leading-snug">
-            {"Our team asked for the following. Attach each, then submit again below." /* i18n-todo: kycRequestedDocsBody */}
+            {t.profile.kycRequestedDocsBody}
           </p>
           <div className="space-y-2">
             {extraRequests.map((rq: { id: string; description: string; storageKey: string | null }) => (
@@ -180,25 +179,25 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
 
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <Step n={1} title={t.profile.nida}      detail={t.profile.nationalId}  done={nidaDone} active={!nidaDone} />
-        <Step n={2} title={"Documents" /* i18n-todo: kycDocuments */} detail={t.profile.selfieDocs} done={docsCount >= 3} active={nidaDone && docsCount < 3} />
-        <Step n={3} title={"Review" /* i18n-todo: kycReview */}    detail={"Compliance approval" /* i18n-todo: kycComplianceApproval */}  done={kyc?.status === "APPROVED"} active={submitted && kyc?.status !== "APPROVED"} />
+        <Step n={2} title={t.profile.documents} detail={t.profile.selfieDocs} done={docsCount >= 3} active={nidaDone && docsCount < 3} />
+        <Step n={3} title={t.profile.review}    detail={t.profile.complianceApproval}  done={kyc?.status === "APPROVED"} active={submitted && kyc?.status !== "APPROVED"} />
       </section>
 
       {!nidaDone && (
         <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-4">
           <div className="flex items-center gap-2">
             <I.shieldcheck s={18} />
-            <h2 className="font-display text-[15px] font-semibold text-text">{"Step 1" /* i18n-todo: kycStep1 */} · {t.profile.nida}</h2>
+            <h2 className="font-display text-[15px] font-semibold text-text">{t.profile.step1} · {t.profile.nida}</h2>
           </div>
           <form action={submitNidaAction} className="space-y-4">
             <Field
               id="nida"
               label={t.profile.nationalId}
-              hint={"20 digits, exactly as on your card" /* i18n-todo: kycNidaHint */}
+              hint={t.profile.nidaHint}
               type="text"
               required
               pattern="\d{20}"
-              title={"NIDA number must be exactly 20 digits (numbers only)" /* i18n-todo: kycNidaValidation */}
+              title={t.profile.nidaValidation}
               maxLength={20}
               inputMode="numeric"
               placeholder="00000000000000000000"
@@ -206,8 +205,8 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             />
             <Field
               id="fullName"
-              label={"Full name" /* i18n-todo: kycFullName */}
-              hint={"As printed on the NIDA card" /* i18n-todo: kycFullNameHint */}
+              label={t.profile.fullName}
+              hint={t.profile.fullNameHint}
               type="text"
               required
               minLength={3}
@@ -230,11 +229,11 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                   <div className="flex items-center gap-2 rounded-xl border border-border bg-bg-elevated px-3.5 py-2.5">
                     <I.check s={14} className="text-yes-300 shrink-0" />
                     <span className="font-mono text-[13px] text-text">{user.dob.slice(0, 10)}</span>
-                    <span className="ml-auto text-[10.5px] text-text-subtle">{"From sign-up" /* i18n-todo: add profile.fromSignUp key */}</span>
+                    <span className="ml-auto text-[10.5px] text-text-subtle">{t.profile.fromSignUp}</span>
                   </div>
                   <p className="mt-1.5 text-[11px] text-text-subtle">
-                    {"Taken from your account — no need to re-enter. Wrong?" /* i18n-todo: add profile.dobFromSignUp key */}{" "}
-                    <a href={`mailto:${SUPPORT_EMAIL()}`} className="text-brand-300 underline-offset-2 hover:underline hover:text-brand-200">{t.error.contactSupport}</a>{" "}{"before verifying." /* i18n-todo */}
+                    {t.profile.dobFromSignUp}{" "}
+                    <a href={`mailto:${SUPPORT_EMAIL()}`} className="text-brand-300 underline-offset-2 hover:underline hover:text-brand-200">{t.error.contactSupport}</a>
                   </p>
                 </>
               ) : (
@@ -252,8 +251,8 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             </div>
             <Field
               id="email"
-              label={"Email" /* i18n-todo: add common.email key */}
-              hint={"Required — we email you the verification result and receipts here." /* i18n-todo: add profile.emailHint key */}
+              label={t.common.email}
+              hint={t.profile.emailHint}
               type="email"
               required
               maxLength={254}
@@ -265,10 +264,10 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
           </form>
           <details className="border-t border-border pt-3 text-[12.5px] text-text-muted">
             <summary className="font-display font-semibold text-text cursor-pointer">
-              {"Why we ask" /* i18n-todo: add profile.whyWeAsk key */}
+              {t.profile.whyWeAsk}
             </summary>
             <p className="mt-1.5 leading-snug">
-              {"The Gaming Board of Tanzania requires identity verification for every account that wagers real money. Your NIDA is checked against the National Identification Authority. We never share your number with third parties." /* i18n-todo: add profile.whyWeAskBody key */}
+              {t.profile.whyWeAskBody}
             </p>
           </details>
         </section>
@@ -282,20 +281,20 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               {t.profile.idVerified}
             </span>
           </div>
-          <h2 className="font-display text-[15px] font-semibold text-text">{"Step 2" /* i18n-todo */} · {"Upload documents" /* i18n-todo: add profile.uploadDocuments key */}</h2>
+          <h2 className="font-display text-[15px] font-semibold text-text">{t.profile.step2} · {t.profile.uploadDocuments}</h2>
           <p className="text-[12.5px] text-text-muted leading-snug">
-            {"We need a clear photo of the front, the back of your NIDA card, and a selfie holding the card." /* i18n-todo: add profile.uploadDocsBody key */}
+            {t.profile.uploadDocsBody}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <KycDocUploader label={"ID front" /* i18n-todo */}    docType="NIDA_FRONT" attached={hasDoc("NIDA_FRONT")} />
-            <KycDocUploader label={"ID back" /* i18n-todo */}     docType="NIDA_BACK"  attached={hasDoc("NIDA_BACK")} />
-            <KycDocUploader label={"Selfie" /* i18n-todo */} docType="SELFIE"     attached={hasDoc("SELFIE")} />
+            <KycDocUploader label={t.profile.idFront}    docType="NIDA_FRONT" attached={hasDoc("NIDA_FRONT")} />
+            <KycDocUploader label={t.profile.idBack}     docType="NIDA_BACK"  attached={hasDoc("NIDA_BACK")} />
+            <KycDocUploader label={t.profile.selfie} docType="SELFIE"     attached={hasDoc("SELFIE")} />
           </div>
           <p className="text-[10.5px] text-text-subtle">
-            {"Tap each card to attach a photo, then submit for compliance review." /* i18n-todo: add profile.tapToAttach key */}
+            {t.profile.tapToAttach}
           </p>
           <p className="font-mono text-[11px] font-bold tabular-nums text-text-muted">
-            {docsCount}/3 {t.toast.documentAttached.toLowerCase()}{docsCount >= 3 ? ` — ${"ready to submit" /* i18n-todo */}` : ""}
+            {docsCount}/3 {t.toast.documentAttached.toLowerCase()}{docsCount >= 3 ? ` — ${t.profile.readyToSubmit}` : ""}
           </p>
           <form action={submitKycForReviewAction}>
             {docsCount >= 3 ? (
@@ -310,7 +309,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                 >
                   {t.common.confirm}
                 </button>
-                <p className="mt-2 text-[11px] text-text-subtle text-center">{"Attach all three documents to submit." /* i18n-todo: add profile.attachAllThree key */}</p>
+                <p className="mt-2 text-[11px] text-text-subtle text-center">{t.profile.attachAllThree}</p>
               </>
             )}
           </form>
@@ -324,8 +323,8 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
           </p>
           <p className="text-[12.5px] text-text-muted leading-snug">
             {kyc?.status === "APPROVED"
-              ? "You can now deposit and withdraw freely." /* i18n-todo: add profile.kycApprovedBody key */
-              : "Compliance is reviewing. Most reviews finish within 2 hours during business hours." /* i18n-todo: add profile.kycReviewingBody key */}
+              ? t.profile.kycApprovedBody
+              : t.profile.kycReviewingBody}
           </p>
         </section>
       )}
@@ -370,7 +369,6 @@ function Step({ n, title, detail, done, active }: { n: number; title: string; de
   );
 }
 
-/* i18n-todo: move REJECT_LABELS into the dict under profile.rejectLabels.* */
 const REJECT_LABELS: Record<string, string> = {
   NIDA_MISMATCH: "NIDA details don't match our records",
   PHOTO_UNREADABLE: "ID photo is too blurry or dark",

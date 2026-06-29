@@ -14,7 +14,6 @@ import { getServerT } from "@/lib/i18n-server";
 export const metadata = { title: "Source of funds" };
 export const dynamic = "force-dynamic";
 
-/* i18n-todo: source labels should come from the dict */
 const SOURCES = [
   { id: "salary",       label: "Salary" },
   { id: "business",     label: "Business" },
@@ -48,7 +47,6 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
     : existing?.reviewStatus === "REJECTED" ? "no"
     : "warning";
   // Humanize the raw enums before showing them to the player.
-  /* i18n-todo: status labels should come from the dict */
   const STATUS_LABEL: Record<string, string> = { PENDING: "Under review", ACCEPTED: "Accepted", REJECTED: "Rejected" };
   const statusLabel = existing ? (STATUS_LABEL[existing.reviewStatus] ?? existing.reviewStatus) : "";
   const sourceLabel = existing ? (SOURCES.find((s) => s.id === existing.declaredSource)?.label ?? existing.declaredSource) : "";
@@ -71,7 +69,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
       )}
       {sp.saved && !sp.error && (
         <div role="status" className="rounded-xl border border-yes-700 bg-yes-500/10 px-4 py-3 text-[13px] text-yes-300">
-          {"Declaration saved" /* i18n-todo: add profile.declarationSaved key */}
+          {t.profile.declarationSaved}
         </div>
       )}
 
@@ -92,14 +90,14 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
           <div className="flex items-center gap-2 mb-1">
             <I.shieldcheck s={14} />
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-info-fg">
-              {"AML" /* i18n-todo */}
+              {"AML"}
             </p>
           </div>
           <h1 className="font-display text-[26px] lg:text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
             {t.profile.sourceOfFunds}
           </h1>
           <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose">
-            {"Required by the Tanzania Anti-Money-Laundering Act (Cap 423) when cumulative deposits exceed TZS 5,000,000 in 30 days, or any single transaction exceeds TZS 1,000,000." /* i18n-todo: add profile.sofDescription key */}
+            {t.profile.sofDescription}
           </p>
         </div>
       </header>
@@ -123,16 +121,16 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
           <div className="flex items-center gap-2">
             <Pill tone={statusTone as "yes" | "no" | "warning"}>{statusLabel}</Pill>
             <p className="font-mono text-[11px] text-text-subtle tabular-nums">
-              {"Submitted" /* i18n-todo */} {formatDate(existing.submittedAt)}
+              {t.common.submitted} {formatDate(existing.submittedAt)}
             </p>
           </div>
           <p className="text-[12.5px] text-text-muted leading-snug">
             {t.profile.sourceOfFunds}: <span className="font-semibold text-text">{sourceLabel}</span> · {existing.declaredOccupation}
             {existing.declaredEmployer ? ` · ${existing.declaredEmployer}` : ""}
-            <br />{"Income band" /* i18n-todo: sofIncomeBand */}: <span className="font-semibold text-text">{bandLabel}</span>
+            <br />{t.profile.sofIncomeBand}: <span className="font-semibold text-text">{bandLabel}</span>
           </p>
           {existing.reviewStatus === "PENDING" && (
-            <p className="font-mono text-[11px] text-text-subtle">{"A compliance officer will review within 1 business day." /* i18n-todo: add profile.sofPendingNote key */}</p>
+            <p className="font-mono text-[11px] text-text-subtle">{t.profile.sofPendingNote}</p>
           )}
         </section>
       )}
@@ -140,7 +138,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
       <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-5">
         <div className="flex items-center gap-2">
           <I.fileSignature s={16} className="text-info-fg" />
-          <h2 className="font-display text-[15px] font-semibold text-text">{"Declaration" /* i18n-todo: add profile.declaration key */}</h2>
+          <h2 className="font-display text-[15px] font-semibold text-text">{t.profile.declaration}</h2>
         </div>
 
         <form action={submitSourceOfFundsAction} className="space-y-5">
@@ -171,7 +169,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field
               name="declaredOccupation"
-              label={"Occupation" /* i18n-todo: add profile.occupation key */}
+              label={t.profile.occupation}
               required
               minLength={2}
               maxLength={200}
@@ -180,7 +178,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
             />
             <Field
               name="declaredEmployer"
-              label={"Employer (optional)" /* i18n-todo: add profile.employer key */}
+              label={t.profile.employer}
               maxLength={200}
               defaultValue={prevEmp}
               placeholder="Company name"
@@ -189,7 +187,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
 
           <fieldset>
             <legend className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
-              {"Approximate annual income" /* i18n-todo: add profile.annualIncome key */}
+              {t.profile.annualIncome}
             </legend>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {BANDS.map((b, i) => (
@@ -216,7 +214,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
               htmlFor="declaredOther"
               className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2"
             >
-              {"Other details (required if \"Other\" selected)" /* i18n-todo: add profile.otherDetails key */}
+              {t.profile.otherDetails}
             </label>
             <textarea
               id="declaredOther"
@@ -230,9 +228,9 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
           </div>
 
           <div className="rounded-md border border-warning-border bg-warning-bg/30 p-3.5 space-y-1">
-            <p className="font-display text-[12.5px] font-semibold text-text">{"By submitting" /* i18n-todo: add profile.bySubmitting key */}</p>
+            <p className="font-display text-[12.5px] font-semibold text-text">{t.profile.bySubmitting}</p>
             <p className="text-[12px] text-text-muted leading-snug">
-              {"You confirm the declared information is true and complete. Knowingly providing false information is an offence under the Tanzania Anti-Money-Laundering Act, with penalties up to 10 years imprisonment and/or fines up to TZS 100,000,000." /* i18n-todo: add profile.sofDisclaimer key */}
+              {t.profile.sofDisclaimer}
             </p>
           </div>
 

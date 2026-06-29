@@ -82,7 +82,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
         <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-no-700/60 bg-no-500/[0.10] px-4 py-3">
           <I.alertCircle s={16} />
           <div className="text-[12.5px] leading-snug">
-            <p className="font-display font-semibold text-text">{"Deposit didn\u2019t go through" /* i18n-todo: add wallet.depositFailed key */}</p>
+            <p className="font-display font-semibold text-text">{t.wallet.depositFailed}</p>
             <p className="mt-0.5 text-text-muted">{errorMsg}</p>
           </div>
         </div>
@@ -122,7 +122,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
             htmlFor="msisdn"
             className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2"
           >
-            {t.auth.phone} {"(optional)" /* i18n-todo: add common.optional key */}
+            {t.auth.phone} {t.common.optional}
           </label>
           <Input
             id="msisdn"

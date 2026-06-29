@@ -94,7 +94,7 @@ export default async function InvitePage() {
   const s = await getPlayerReferralSummary(session.userId);
   const ringValue = s.recruitCount === 0 ? 0 : Math.min(100, 30 + s.recruitCount * 12);
   const ringLabel = s.earnedTzs > 0 ? compact(s.earnedTzs) : "0";
-  const shareText = "Join me on 50pick — predict and win. Use my link:"; /* i18n-todo: add profile.shareText key */
+  const shareText = t.profile.shareText;
 
   return (
     <div className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-3">
@@ -114,7 +114,7 @@ export default async function InvitePage() {
             {t.profile.inviteEarn}
           </p>
         </div>
-        <Chip variant={s.programEnabled ? "active" : "paused"}>{s.programEnabled ? "Active" /* i18n-todo: add common.active key */ : "Paused" /* i18n-todo: add common.paused key */}</Chip>
+        <Chip variant={s.programEnabled ? "active" : "paused"}>{s.programEnabled ? t.common.active : t.common.paused}</Chip>
       </div>
 
       {/* Hero — gold earnings ring + adaptive promises */}
@@ -171,7 +171,7 @@ export default async function InvitePage() {
         >
           <span className="shrink-0" style={{ color: "oklch(84% 0.15 80)" }}><I.info s={16} /></span>
           <p className="text-[12px] leading-relaxed text-text-muted">
-            {"The program is paused right now. Your link still works — rewards resume when it\u2019s back on." /* i18n-todo: add profile.programPaused key */}
+            {t.profile.programPaused}
           </p>
         </div>
       )}
@@ -190,7 +190,7 @@ export default async function InvitePage() {
       {/* How it works */}
       <section className="rounded-xl glass-panel p-4">
         <p className="font-display text-[15px] font-bold leading-tight">
-          {"How it works" /* i18n-todo: add profile.howItWorks key */}
+          {t.profile.howItWorks}
         </p>
         <div className="mt-3 space-y-3">
           {[
@@ -218,7 +218,7 @@ export default async function InvitePage() {
       </section>
 
       {/* Recruits */}
-      <Cap className="!mt-1">{"Your referrals" /* i18n-todo: add profile.yourReferrals key */}</Cap>
+      <Cap className="!mt-1">{t.profile.yourReferrals}</Cap>
       {s.recruits.length > 0 ? (
         <div className="overflow-hidden rounded-xl glass-panel">
           {s.recruits.map((r, i) => (
@@ -229,7 +229,7 @@ export default async function InvitePage() {
               <Avatar initials={r.maskedName.slice(0, 2)} size="sm" seed={r.maskedName} />
               <div className="min-w-0 flex-1">
                 <p className="font-mono text-[12.5px] font-medium">{r.maskedName}</p>
-                <p className="font-mono text-[10px] text-text-subtle">{"joined" /* i18n-todo */} {fmtDate(r.joinedAt)}</p>
+                <p className="font-mono text-[10px] text-text-subtle">{t.common.joined} {fmtDate(r.joinedAt)}</p>
               </div>
               <Chip variant={r.earnedTzs > 0 ? "resolved" : "pending"}>{r.status}</Chip>
               <div className={`w-[64px] text-right font-mono text-[12.5px] font-semibold ${r.earnedTzs > 0 ? "text-gold-300" : "text-text-subtle"}`}>
@@ -241,8 +241,8 @@ export default async function InvitePage() {
       ) : (
         <EmptyState
           kind="leaderboard"
-          title={"No referrals yet" /* i18n-todo: add profile.noReferralsYet key */}
-          body={"Share your link to invite your first friend." /* i18n-todo: add profile.noReferralsBody key */}
+          title={t.profile.noReferralsYet}
+          body={t.profile.noReferralsBody}
           action={
             <a href="#referral-share">
               <Button variant="gold" size="md" leading={<I.share s={14} />}>
@@ -254,7 +254,7 @@ export default async function InvitePage() {
       )}
 
       <p className="pt-1 text-center text-[10.5px] leading-relaxed text-text-subtle">
-        {"Rewards are credited after a friend\u2019s activity clears. 18+. Terms apply." /* i18n-todo: add profile.rewardsDisclaimer key */}
+        {t.profile.rewardsDisclaimer}
       </p>
     </div>
   );
