@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
+import { useT } from "@/lib/i18n";
 
 /**
  * Global error boundary — Next.js App Router invokes this when a
@@ -28,6 +29,8 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { t } = useT();
+
   useEffect(() => {
     // Client-side telemetry hook — server-side audit already logged.
     // Keep this dumb-simple so the error page itself never throws.
@@ -45,23 +48,18 @@ export default function GlobalError({
         <I.alertCircle s={18} />
       </div>
       <p className="font-mono text-[10px] font-bold uppercase tracking-[0.20em] text-no-300">
-        Something went wrong · Hitilafu imetokea
+        {t.error.somethingWentWrong}
       </p>
       <h1 className="mt-2 font-display text-[26px] font-bold leading-tight tracking-[-0.02em] text-text">
-        That page hit a snag
+        {t.error.pageHitSnag}
       </h1>
-      <p className="mt-2 text-[14px] italic text-text-muted">
-        Ukurasa huu umekumbana na tatizo
-      </p>
       <p className="mt-3 max-w-[440px] text-[13px] leading-relaxed text-text-subtle">
-        We&rsquo;ve recorded what happened and the team will look at it.
-        Your wallet, positions, and bets are unaffected — every state
-        change is captured in our append-only audit log.
+        {t.error.pageHitSnagBody}
       </p>
 
       {error.digest && (
         <p className="mt-3 font-mono text-[11px] tracking-[0.06em] text-text-subtle">
-          Reference: <span className="text-text">{error.digest}</span>
+          {t.error.reference}: <span className="text-text">{error.digest}</span>
         </p>
       )}
 
@@ -72,20 +70,20 @@ export default function GlobalError({
           className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-royal px-4 font-semibold text-onBrand text-[13px] transition-colors hover:bg-royal-hover"
         >
           <I.bolt s={14} />
-          Try again · Jaribu tena
+          {t.error.tryAgain}
         </button>
         <Link
           href="/markets"
           className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-bg-elevated px-4 text-[13px] text-text-secondary transition-colors hover:bg-bg-overlay"
         >
-          Back to markets
+          {t.error.backToMarkets}
           <I.arrowRight s={14} />
         </Link>
         <Link
           href="/help"
           className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-bg-elevated px-4 text-[13px] text-text-secondary transition-colors hover:bg-bg-overlay"
         >
-          Contact support · Msaada
+          {t.error.contactSupport}
         </Link>
       </div>
     </main>

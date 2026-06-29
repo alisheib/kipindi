@@ -88,7 +88,7 @@ import { cookies } from "next/headers";
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const jar = await cookies();
   const cookieLocale = jar.get("kp-locale")?.value;
-  const lang = cookieLocale === "sw" || cookieLocale === "fr" ? cookieLocale : "en";
+  const lang = cookieLocale === "sw" || cookieLocale === "zh" ? cookieLocale : "en";
   return (
     <html lang={lang} suppressHydrationWarning className={`${sora.variable} ${inter.variable} ${jbm.variable}`}>
       <body className="font-sans antialiased">

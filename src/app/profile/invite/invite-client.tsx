@@ -5,6 +5,7 @@ import { I } from "@/components/ui/glyphs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n";
 
 /**
  * Referral link + share controls. Client-only: clipboard + Web Share API.

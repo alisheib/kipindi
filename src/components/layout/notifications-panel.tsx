@@ -8,11 +8,7 @@ import { cn } from "@/lib/utils";
 import { fetchMyNotifications, markNotifReadAction, markAllReadAction, dismissNotifAction, dismissAllAction } from "@/app/_actions/notifications";
 import type { StoredNotification } from "@/lib/server/store";
 import { haptics } from "@/lib/haptics";
-
-// No static fallbacks — players only see notifications that were really
-// emitted to their own userId. Empty inbox shows "No notifications yet."
-// (Fake demo notifications used to live here; they confused players who
-// saw "TZS 2,400 paid out" without ever winning anything.)
+import { useT } from "@/lib/i18n";
 
 const iconFor = (k: StoredNotification["kind"]) => {
   switch (k) {
@@ -36,14 +32,9 @@ const iconFor = (k: StoredNotification["kind"]) => {
 /** Kit-tinted swatch per notification kind (OKLCH-tuned for dark + light). */
 const tintFor = (k: StoredNotification["kind"]) => {
   switch (k) {
-    // Gold is celebratory — reserved for wins only.
     case "WIN":          return "border-gold-700 bg-gold-500/10 text-gold-300";
-    // Loss uses muted neutral tint — kit responsibility-first language
-    // forbids alarming colors for a player's bad outcome.
     case "LOSS":         return "border-border bg-bg-overlay text-text-muted";
-    // Bet placed = informational receipt — info tint, never gold.
     case "BET_PLACED":   return "border-info-border bg-info-bg/30 text-info-fg";
-    // Selection closed = informational "waiting for results" — info tint.
     case "SELECTION_CLOSED": return "border-info-border bg-info-bg/30 text-info-fg";
     case "ROUND_RESULT": return "border-border bg-bg-overlay text-text-muted";
     case "DEPOSIT":      return "border-yes-700 bg-yes-500/10 text-yes-300";
@@ -52,7 +43,6 @@ const tintFor = (k: StoredNotification["kind"]) => {
     case "RG":           return "border-info-border bg-info-bg/30 text-info-fg";
     case "SECURITY":     return "border-no-700 bg-no-500/10 text-no-300";
     case "MATCH_START":  return "border-border bg-bg-overlay text-text-muted";
-    // Affiliate earnings are money received → gold, per the brand guide.
     case "AFFILIATE":    return "border-gold-700 bg-gold-500/10 text-gold-300";
     case "PROPOSAL":     return "border-gold-700 bg-gold-500/10 text-gold-300";
     default:             return "border-border bg-bg-overlay text-text-muted";
@@ -69,25 +59,38 @@ function relTime(iso: string): string {
   return `${Math.floor(h / 24)}d`;
 }
 
+/** Pick the right locale field from a notification, falling back to English. */
+function pickTitle(n: StoredNotification, locale: string): string {
+  if (locale === "sw") return n.titleSw || n.titleEn;
+  if (locale === "zh") return (n as Record<string, string>).titleZh || n.titleEn;
+  return n.titleEn;
+}
+function pickBody(n: StoredNotification, locale: string): string {
+  if (locale === "sw") return n.bodySw || n.bodyEn;
+  if (locale === "zh") return (n as Record<string, string>).bodyZh || n.bodyEn;
+  return n.bodyEn;
+}
+/** Secondary line — show the "other" language for bilingual context. */
+function pickSecondary(n: StoredNotification, locale: string): string {
+  if (locale === "en") return n.titleSw;
+  return n.titleEn;
+}
+
 export function NotificationsPanel() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<StoredNotification[]>([]);
   const ref = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
-  // Close panel on navigation so the portal + scrim don't persist.
+  const { t, locale } = useT();
   useEffect(() => { setOpen(false); }, [pathname]);
 
-  // Derive unread count from items client-side — the server's separate
-  // countUnread query was returning 0 despite items having readAt===null.
-  // Single source of truth: if items are here and readAt is null, it's unread.
   const unread = items.filter((n) => !n.readAt).length;
 
   const prevUnreadRef = useRef(0);
   const refresh = useCallback(async () => {
     const r = await fetchMyNotifications();
     setItems(r.items);
-    // Haptic nudge when new notifications arrive (unread count increased)
     const clientUnread = r.items.filter((n: StoredNotification) => !n.readAt).length;
     if (clientUnread > prevUnreadRef.current && prevUnreadRef.current >= 0) {
       haptics.success();
@@ -97,12 +100,8 @@ export function NotificationsPanel() {
 
   useEffect(() => {
     let id: ReturnType<typeof setInterval> | null = null;
-    // Only poll while the tab is visible — a backgrounded/alt-tabbed tab
-    // doesn't need fresh notifications and shouldn't burn battery/data on
-    // mid-tier Android. We refresh once on (re)focus to catch up instantly.
     const startPolling = () => {
       if (id) return;
-      // 5 s — every moment counts in a betting platform. The endpoint is cheap.
       id = setInterval(refresh, 5_000);
     };
     const stopPolling = () => { if (id) { clearInterval(id); id = null; } };
@@ -113,10 +112,6 @@ export function NotificationsPanel() {
     refresh();
     startPolling();
     document.addEventListener("visibilitychange", onVisibility);
-    // Also refresh on demand — any mutation (bet placed, sell, etc.)
-    // can dispatch `50pick:refresh-notifications` and the bell will
-    // re-poll within the next event-loop tick. This is the
-    // sub-second-feedback path the user asked for.
     const onRefresh = () => { refresh(); };
     window.addEventListener("50pick:refresh-notifications", onRefresh);
     return () => {
@@ -128,10 +123,6 @@ export function NotificationsPanel() {
 
   useEffect(() => {
     if (!open) return;
-    // `click` (not `mousedown`) so that controls inside any child
-    // portal — confirm dialogs, sub-menus — get to complete their own
-    // click cycle before this panel tears down. See the avatar-menu
-    // sign-out fix (Sprint 53.1) for the original repro.
     const onDocClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
       if (!target) return;
@@ -150,25 +141,13 @@ export function NotificationsPanel() {
   }, [open]);
 
   const handleClick = (n: StoredNotification) => {
-    // Navigate IMMEDIATELY — the previous version awaited mark-read
-    // and refresh before window.location.href fired, which made the
-    // tap feel dead for ~500–1000ms (Ali's "click seems weak" report).
-    // Fire-and-forget the mark-read in the background; the destination
-    // page re-fetches notifications anyway and picks up the read state.
     if (!n.readAt) {
       void markNotifReadAction(n.id).then(() => refresh()).catch(() => {});
     }
     if (n.href) {
-      // Use router.push when the href is a same-origin SPA path so we
-      // get instant client-side navigation; fall back to a full reload
-      // for anything external or hash-only.
       const sameOrigin = n.href.startsWith("/") && !n.href.startsWith("//");
       if (sameOrigin) {
         setOpen(false);
-        // Native navigation here instead of router because the panel
-        // is rendered into a portal and we want the destination to be
-        // a fresh fetch (positions/market detail need server-fresh
-        // data, not a cached client transition).
         window.location.href = n.href;
       } else {
         window.location.href = n.href;
@@ -200,7 +179,7 @@ export function NotificationsPanel() {
     <div ref={ref} className="relative z-10">
       <button
         type="button"
-        aria-label={`Notifications${unread > 0 ? ` (${unread} unread)` : ""}`}
+        aria-label={`${t.common.notifications}${unread > 0 ? ` (${unread})` : ""}`}
         aria-expanded={open ? "true" : "false"}
         onClick={() => setOpen((v) => !v)}
         data-unread={unread}
@@ -252,7 +231,7 @@ export function NotificationsPanel() {
           <div
             ref={dialogRef}
             role="dialog"
-            aria-label="Notifications"
+            aria-label={t.notif.title}
             className={cn(
               "fixed left-3 right-3 top-[calc(env(safe-area-inset-top)+72px)] z-[61] rounded-xl border border-border-strong bg-bg-elevated/85 backdrop-blur-xl overflow-hidden shadow-[0_24px_64px_-16px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.06)] flex flex-col",
               "max-h-[calc(100dvh-env(safe-area-inset-top)-72px-env(safe-area-inset-bottom)-72px)]",
@@ -262,7 +241,7 @@ export function NotificationsPanel() {
           >
             <div className="flex items-center justify-between border-b border-border bg-transparent px-3 shrink-0" style={{ height: 44 }}>
               <p className="font-mono text-micro font-bold uppercase tracking-[0.18em] text-text min-w-0 truncate">
-                Notifications
+                {t.notif.title}
               </p>
               <div className="flex items-center shrink-0">
                 {items.length > 0 && (
@@ -272,7 +251,7 @@ export function NotificationsPanel() {
                       onClick={handleMarkAll}
                       className="h-7 px-1.5 rounded-md font-mono text-[9.5px] font-bold uppercase tracking-[0.10em] text-text-subtle hover:text-text hover:bg-bg-overlay transition-colors whitespace-nowrap"
                     >
-                      Read all
+                      {t.common.readAll}
                     </button>
                     <span className="text-border text-[9px] mx-0.5">|</span>
                     <button
@@ -280,13 +259,13 @@ export function NotificationsPanel() {
                       onClick={handleClearAll}
                       className="h-7 px-1.5 rounded-md font-mono text-[9.5px] font-bold uppercase tracking-[0.10em] text-text-subtle hover:text-no-300 hover:bg-bg-overlay transition-colors whitespace-nowrap"
                     >
-                      Clear all
+                      {t.common.clearAll}
                     </button>
                   </>
                 )}
                 <button
                   type="button"
-                  aria-label="Close"
+                  aria-label={t.common.close}
                   onClick={() => setOpen(false)}
                   className="ml-0.5 h-7 w-7 inline-flex items-center justify-center rounded-md text-text-subtle hover:text-text hover:bg-bg-overlay transition-colors"
                 >
@@ -322,17 +301,17 @@ export function NotificationsPanel() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
                         <p className="font-display text-body-sm font-semibold text-text truncate leading-tight">
-                          {n.titleEn}
+                          {pickTitle(n, locale)}
                         </p>
                         {isUnread && (
                           <span aria-hidden className="h-1.5 w-1.5 rounded-pill bg-gold-500 shrink-0 mt-1" />
                         )}
                       </div>
                       <p className="mt-0.5 text-label text-text-muted leading-snug">
-                        {n.bodyEn}
+                        {pickBody(n, locale)}
                       </p>
                       <div className="mt-1 flex items-center justify-between">
-                        <p className="text-[10.5px] italic text-text-subtle">{n.titleSw}</p>
+                        <p className="text-[10.5px] italic text-text-subtle">{pickSecondary(n, locale)}</p>
                         <span className="font-mono text-[10.5px] tabular-nums text-text-subtle">
                           {relTime(n.createdAt)}
                         </span>
@@ -340,7 +319,7 @@ export function NotificationsPanel() {
                     </div>
                     <button
                       type="button"
-                      aria-label="Dismiss notification"
+                      aria-label={t.notif.dismissNotification}
                       onClick={(e) => { e.stopPropagation(); handleDismiss(e, n.id); }}
                       className="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:text-text hover:bg-bg-overlay transition-colors"
                     >
@@ -351,11 +330,6 @@ export function NotificationsPanel() {
               })}
               {items.length === 0 && (
                 <div className="px-4 py-10 text-center">
-                  {/* Inline line-art bell — kit-faithful, royal-indigo
-                      stroke with a gilt accent on the clapper. Matches
-                      the EmptyState atom's illustrative voice without
-                      pulling the whole component (the panel is a tight
-                      surface; a 56 px square would crowd it). */}
                   <svg
                     aria-hidden
                     width="44"
@@ -373,16 +347,10 @@ export function NotificationsPanel() {
                     <circle cx="42" cy="14" r="4" fill="var(--gold-400)" stroke="none" />
                   </svg>
                   <p className="font-display text-body font-semibold text-text">
-                    No notifications yet
-                  </p>
-                  <p className="mt-0.5 text-caption italic text-text-subtle">
-                    Huna taarifa zozote kwa sasa
+                    {t.notif.noNotifications}
                   </p>
                   <p className="mt-2 text-label text-text-muted leading-relaxed">
-                    We&apos;ll buzz here when a bet settles or a market resolves.
-                  </p>
-                  <p className="mt-0.5 text-label italic text-text-subtle leading-relaxed">
-                    Tutakujulisha hapa pale bet itakapomalizika au soko litakapofungwa.
+                    {t.notif.noNotificationsHint}
                   </p>
                 </div>
               )}

@@ -9,6 +9,7 @@ import { useState, useTransition } from "react";
 import { I } from "@/components/ui/glyphs";
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n";
 import { haptics } from "@/lib/haptics";
 import { Avatar } from "@/components/ui/avatar";
 import { postCommentAction, reportCommentAction, deleteCommentAction } from "@/app/markets/actions";

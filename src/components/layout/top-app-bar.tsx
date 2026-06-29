@@ -25,25 +25,23 @@ export type TopAppBarUser = {
 
 export function TopAppBar({ user }: { user: TopAppBarUser }) {
   const pathname = usePathname();
-  const { t, locale } = useT();
+  const { t } = useT();
 
-  const POSITIONS = locale === "sw" ? "Nafasi" : locale === "fr" ? "Historique" : "History";
-  const RESULTS = locale === "sw" ? "Matokeo" : locale === "fr" ? "Résultats" : "Results";
   const NAV_ITEMS = user.isAuthed
     ? ([
-        { href: "/markets",     label: locale === "sw" ? "Masoko" : locale === "fr" ? "Marchés" : "Markets" },
+        { href: "/markets",     label: t.common.markets },
         { href: "/live",        label: t.nav.live },
-        { href: "/results",     label: RESULTS },
-        { href: "/positions",   label: POSITIONS },
+        { href: "/results",     label: t.common.results },
+        { href: "/positions",   label: t.common.history },
         { href: "/wallet",      label: t.nav.wallet },
-        { href: "/proposals",   label: locale === "sw" ? "Kupendekeza" : locale === "fr" ? "Proposer" : "Propose" },
-        { href: "/profile/invite", label: locale === "sw" ? "Alika" : locale === "fr" ? "Inviter" : "Invite" },
+        { href: "/proposals",   label: t.common.propose },
+        { href: "/profile/invite", label: t.common.invite },
         { href: "/leaderboard", label: t.nav.leaderboard },
       ] as const)
     : ([
-        { href: "/markets",     label: locale === "sw" ? "Masoko" : locale === "fr" ? "Marchés" : "Markets" },
+        { href: "/markets",     label: t.common.markets },
         { href: "/live",        label: t.nav.live },
-        { href: "/results",     label: RESULTS },
+        { href: "/results",     label: t.common.results },
         { href: "/leaderboard", label: t.nav.leaderboard },
       ] as const);
 
@@ -52,18 +50,13 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
       className="sticky top-0 z-30 app-topbar"
       style={{
         height: 56,
-        // Near-opaque on mobile (no blur → no per-scroll-frame re-raster GPU
-        // cost on mid-tier Android). The frosted blur is applied only ≥1024px
-        // via the `.app-topbar` rule in globals.css.
         background: "color-mix(in oklab, var(--panel) 92%, transparent)",
         borderBottom: "1px solid var(--border)",
       }}
     >
       <div className="mx-auto max-w-[1280px] flex items-center h-full gap-2 px-3 sm:gap-5 sm:px-5">
         {/* Brand lockup — kit: BrandLockup size={30} */}
-        <Link href="/" aria-label={locale === "sw" ? "ukurasa wa nyumbani wa 50pick" : "50pick home"} className="shrink-0 hover:opacity-90 transition-opacity">
-          {/* Mark-only on phones to leave room for the wallet pill + eye + bell
-              + avatar; full wordmark lockup from sm: up. */}
+        <Link href="/" aria-label={`50pick ${t.common.home}`} className="shrink-0 hover:opacity-90 transition-opacity">
           <span className="inline-flex sm:hidden"><FiftyMark size={26} /></span>
           <span className="hidden sm:inline-flex"><FiftyLockup size={22} /></span>
         </Link>
@@ -99,17 +92,11 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
           })}
         </nav>
 
-        {/* Spacer — shrinks when nav labels are long (e.g. SW locale),
-            never lets the right-side controls compress or wrap. */}
         <div className="flex-1" />
 
-        {/* Right-side controls — shrink-0 prevents SW nav labels from
-            squeezing the wallet pill to 2 lines. */}
         <div className="shrink-0 flex items-center gap-2">
-          {/* Language toggle — kit: inline EN/SW/FR pills */}
           <LanguageToggle />
 
-          {/* Wallet balance pill — kit: bg-inset, gold-tinted border */}
           {user.isAuthed && user.balance !== null && user.balance !== undefined && (
             <>
               <WalletBalancePill balance={user.balance} />
@@ -117,13 +104,10 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
             </>
           )}
 
-          {/* Deposit CTA — gold per kit (money-commit action).
-              Icon-only on phones; label from sm: up. Hidden on the
-              deposit page itself so it doesn't feel redundant. */}
           {user.isAuthed && !pathname.startsWith("/wallet/deposit") && (
             <Link
               href="/wallet/deposit"
-              aria-label={locale === "sw" ? "Weka pesa" : "Deposit"}
+              aria-label={t.common.deposit}
               className="inline-flex items-center justify-center gap-1.5 rounded-pill font-display font-bold text-[12px] tracking-[-0.01em] transition-all duration-150 hover:brightness-110 hover:shadow-[0_0_14px_-2px_var(--gold-400)]"
               style={{
                 height: 34,
@@ -136,15 +120,13 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
             >
               <I.plus s={14} />
               <span className="hidden sm:inline">
-                {locale === "sw" ? "Weka" : "Deposit"}
+                {t.common.deposit}
               </span>
             </Link>
           )}
 
-          {/* Notifications bell */}
           <NotificationsPanel />
 
-          {/* Avatar menu */}
           <AvatarMenu
             initials={user.initials}
             name={user.name}

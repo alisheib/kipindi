@@ -22,9 +22,9 @@ const STORAGE_KEY = "50pick-primer-seen";
 const HIDE_ON = /^\/(auth|admin)(\/|$)/;
 
 type Card = {
-  eyebrow: { en: string; sw: string };
-  title: { en: string; sw: string };
-  body: { en: string; sw: string };
+  eyebrow: { en: string; sw: string; zh: string };
+  title: { en: string; sw: string; zh: string };
+  body: { en: string; sw: string; zh: string };
   visual: React.ReactNode;
 };
 
@@ -143,56 +143,62 @@ function VisualPools() {
 
 const CARDS: Card[] = [
   {
-    eyebrow: { en: "what is 50pick", sw: "50pick ni nini" },
+    eyebrow: { en: "what is 50pick", sw: "50pick ni nini", zh: "什么是50pick" },
     title: {
       en: "Predict events. Not chance.",
       sw: "Tabiri matukio. Si bahati.",
+      zh: "预测事件。不是碰运气。",
     },
     body: {
       en: "Every question is a real-world event with a YES or NO answer — settled against an official public source. No dice, no slots. Just conviction.",
       sw: "Kila swali ni tukio halisi lenye jibu la NDIO au HAPANA — linatatuliwa kupitia chanzo rasmi cha umma. Hakuna kete. Imani tu.",
+      zh: "每个问题都是真实事件，答案为「是」或「否」 — 以官方公开来源为准。没有骰子，没有老虎机。只有信念。",
     },
     visual: <VisualWhatIs />,
   },
   {
-    eyebrow: { en: "how you bet", sw: "jinsi ya kuweka dau" },
+    eyebrow: { en: "how you bet", sw: "jinsi ya kuweka dau", zh: "如何投注" },
     title: {
       en: "Drag the dial. Conviction = stake.",
       sw: "Sogeza dial. Imani = dau.",
+      zh: "拖动刻度盘。信念 = 投注。",
     },
     body: {
       en: "One gesture sets both your side and your stake. Drag toward YES or NO — the further from centre, the higher your conviction multiplier (1x to 5x).",
       sw: "Mguso mmoja huweka upande wako na dau lako. Sogeza kuelekea NDIO au HAPANA — kadri unavyosogea mbali, ndivyo kiwango chako kinaongezeka.",
+      zh: "一个手势设置您的立场和投注额。向「是」或「否」拖动 — 离中心越远，信念倍数越高（1倍到5倍）。",
     },
     visual: <VisualDial />,
   },
   {
-    eyebrow: { en: "how payouts work", sw: "jinsi malipo yanavyofanya kazi" },
+    eyebrow: { en: "how payouts work", sw: "jinsi malipo yanavyofanya kazi", zh: "赔付如何运作" },
     title: {
       en: "Winners share the losers' pool.",
       sw: "Washindi wanagawana bwawa la wapotezao.",
+      zh: "赢家分享输家的奖池。",
     },
     body: {
       en: "No fixed odds. The losing side's pool (minus a small margin) is split among winners by the size of their stake. When one side grows, the other's potential payout grows too.",
       sw: "Hakuna odds. Bwawa la upande uliopoteza linagawanywa kati ya washindi kulingana na dau. Upande mmoja ukikua, malipo ya upande mwingine yanaongezeka.",
+      zh: "没有固定赔率。输方奖池（扣除少量佣金）按投注额比例分配给赢家。一方增长，另一方的潜在赔付也随之增长。",
     },
     visual: <VisualPools />,
   },
 ];
 
-function readLang(): "en" | "sw" {
+function readLang(): "en" | "sw" | "zh" {
   if (typeof document === "undefined") return "en";
   const m = document.cookie.match(/(?:^|; )kp-locale=([^;]*)/);
   if (!m) return "en";
   const v = decodeURIComponent(m[1]);
-  return v === "sw" ? "sw" : "en";
+  return v === "sw" ? "sw" : v === "zh" ? "zh" : "en";
 }
 
 export function FirstVisitPrimer() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
-  const [lang, setLang] = useState<"en" | "sw">("en");
+  const [lang, setLang] = useState<"en" | "sw" | "zh">("en");
   useModalLock(open);
 
   useEffect(() => {
@@ -345,7 +351,7 @@ export function FirstVisitPrimer() {
               className="btn btn-ghost btn-md disabled:opacity-0 disabled:pointer-events-none"
               style={{ borderRadius: 999, minWidth: 88 }}
             >
-              {lang === "sw" ? "Rudi" : "Back"}
+              {lang === "sw" ? "Rudi" : lang === "zh" ? "返回" : "Back"}
             </button>
             <div className="flex items-center gap-1.5">
               {CARDS.map((_, i) => (
@@ -366,8 +372,8 @@ export function FirstVisitPrimer() {
               style={{ borderRadius: 999, minWidth: 88 }}
             >
               {step === CARDS.length - 1
-                ? lang === "sw" ? "Sawa" : "Got it"
-                : lang === "sw" ? "Endelea" : "Next"}
+                ? lang === "sw" ? "Sawa" : lang === "zh" ? "明白了" : "Got it"
+                : lang === "sw" ? "Endelea" : lang === "zh" ? "下一步" : "Next"}
               {step < CARDS.length - 1 && <I.chevronRight s={14} />}
             </button>
           </div>

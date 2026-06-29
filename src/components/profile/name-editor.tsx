@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { Spinner } from "@/components/ui/spinner";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n";
 import { updateProfileBasicsAction } from "@/app/profile/actions";
 
 export function ProfileNameEditor({
@@ -25,6 +26,7 @@ export function ProfileNameEditor({
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const { toast } = useToast();
+  const { t } = useT();
 
   const enter = () => {
     setValue(currentName ?? "");
@@ -35,7 +37,7 @@ export function ProfileNameEditor({
   const save = () => {
     const v = value.trim();
     if (v === "") {
-      toast({ title: "Name can't be empty", variant: "danger" });
+      toast({ title: t.toast.nameEmpty, variant: "danger" });
       return;
     }
     if (v === (currentName ?? "")) {
@@ -47,10 +49,10 @@ export function ProfileNameEditor({
       fd.set("displayName", v);
       const r = await updateProfileBasicsAction(fd);
       if (!r.ok) {
-        toast({ title: "Couldn't save", description: r.error, variant: "danger" });
+        toast({ title: t.toast.nameFailed, description: r.error, variant: "danger" });
         return;
       }
-      toast({ title: "Name updated", variant: "success" });
+      toast({ title: t.toast.nameUpdated, variant: "success" });
       setEditing(false);
       router.refresh();
     });

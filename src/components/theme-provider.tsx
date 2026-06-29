@@ -10,7 +10,7 @@
  */
 
 import { useEffect, type ReactNode } from "react";
-import { I18nProvider, type Locale } from "@/lib/i18n";
+import { I18nProvider, LocaleChangeOverlay, type Locale } from "@/lib/i18n";
 import { ToastProvider } from "@/components/ui/toast";
 import { getPrefs } from "@/lib/haptics";
 
@@ -19,7 +19,7 @@ function readInitialLocale(): Locale {
   const m = document.cookie.match(/(?:^|; )kp-locale=([^;]*)/);
   if (!m) return "en";
   const v = decodeURIComponent(m[1]);
-  return v === "sw" || v === "fr" ? v : "en";
+  return v === "sw" || v === "zh" ? v : "en";
 }
 
 /** Heuristic: mid-tier Android ≤4 cores or ≤4GB RAM or explicit Save-Data. */
@@ -48,6 +48,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   return (
     <I18nProvider initial={readInitialLocale()}>
       <ToastProvider>{children}</ToastProvider>
+      <LocaleChangeOverlay />
     </I18nProvider>
   );
 }

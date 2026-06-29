@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n";
 
 /**
  * Share button — popover with three native channels:
@@ -23,6 +24,7 @@ export function ShareButton({
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
+  const { t } = useT();
 
   const url = (typeof window !== "undefined" ? window.location.origin : "") + `/markets/${marketId}`;
   const shareText = `${title} — predict on 50pick`;
@@ -42,10 +44,10 @@ export function ShareButton({
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
-      toast({ title: "Link copied", description: url, variant: "default" });
+      toast({ title: t.toast.linkCopied, description: url, variant: "default" });
       setTimeout(() => { setCopied(false); setOpen(false); }, 1500);
     } catch {
-      toast({ title: "Couldn't copy", variant: "danger" });
+      toast({ title: t.toast.couldntCopy, variant: "danger" });
       setOpen(false);
     }
   };
@@ -55,12 +57,12 @@ export function ShareButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Share this market"
+        aria-label={t.dialog.shareMarket}
         aria-haspopup="dialog"
         className="inline-flex h-9 items-center gap-1.5 rounded-pill border border-border bg-bg-elevated px-3 text-[12px] font-mono uppercase tracking-[0.14em] text-text-muted hover:border-border-strong hover:text-text transition-colors"
       >
         {copied ? <I.check s={13} /> : <I.share s={13} />}
-        {copied ? "Copied" : "Share"}
+        {copied ? t.common.copied : t.common.share}
       </button>
 
       {open && typeof document !== "undefined" && createPortal(
@@ -77,11 +79,11 @@ export function ShareButton({
             style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <p className="font-display text-[14px] font-semibold text-text">Share market</p>
+              <p className="font-display text-[14px] font-semibold text-text">{t.dialog.shareMarket}</p>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                aria-label="Close"
+                aria-label={t.common.close}
                 className="inline-flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:bg-bg-overlay"
               >
                 <I.x s={14} />
@@ -98,8 +100,8 @@ export function ShareButton({
                     <I.share s={16} />
                   </span>
                   <span>
-                    <span className="block text-[14px] font-semibold text-text">System share</span>
-                    <span className="block text-[12px] text-text-muted">Pick any app</span>
+                    <span className="block text-[14px] font-semibold text-text">{t.dialog.systemShare}</span>
+                    <span className="block text-[12px] text-text-muted">{t.dialog.pickAnyApp}</span>
                   </span>
                 </button>
               )}
@@ -115,7 +117,7 @@ export function ShareButton({
                 </span>
                 <span>
                   <span className="block text-[14px] font-semibold text-text">WhatsApp</span>
-                  <span className="block text-[12px] text-text-muted">Send to chat or group</span>
+                  <span className="block text-[12px] text-text-muted">{t.dialog.sendToChat}</span>
                 </span>
               </a>
               <button
@@ -127,7 +129,7 @@ export function ShareButton({
                   {copied ? <I.check s={16} /> : <LinkMark />}
                 </span>
                 <span>
-                  <span className="block text-[14px] font-semibold text-text">{copied ? "Copied" : "Copy link"}</span>
+                  <span className="block text-[14px] font-semibold text-text">{copied ? t.common.copied : t.common.copyLink}</span>
                   <span className="block font-mono text-[11px] text-text-subtle truncate max-w-full">{url.replace(/^https?:\/\//, "")}</span>
                 </span>
               </button>

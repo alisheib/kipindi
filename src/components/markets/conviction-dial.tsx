@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { InfoHint } from "@/components/ui/info-hint";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n";
 import { buyPositionAction } from "@/app/markets/actions";
 import { HouseLeanWarning } from "./house-lean-warning";
 import { BetConfirmModal } from "./bet-confirm-modal";
@@ -151,6 +152,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
   const trackRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { toast } = useToast();
+  const { t } = useT();
 
   const distFromCenter = Math.abs(pos - 0.5) * 2;
   const conviction = distFromCenter * distFromCenter; // ease-in
@@ -662,8 +664,8 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
         return;
       }
       toast({
-        title: `Bet placed · ${q.side} TZS ${fmt(q.stake)}`,
-        description: "Payout calculated at resolution.",
+        title: `${t.toast.betPlaced} · ${q.side} TZS ${fmt(q.stake)}`,
+        description: t.toast.payoutAtResolution,
         variant: "success",
       });
       setResultData({

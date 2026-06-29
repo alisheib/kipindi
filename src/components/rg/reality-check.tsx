@@ -19,6 +19,7 @@ import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { useModalLock } from "@/lib/use-modal-lock";
 import { SUPPORT_PHONE } from "@/lib/support-config";
+import { useT } from "@/lib/i18n";
 
 const DEFAULT_INTERVAL   = 30; // minutes
 
@@ -91,6 +92,8 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
     return () => window.removeEventListener("keydown", onKey);
   }, [open, dismiss]);
 
+  const { t } = useT();
+
   if (!enabled || !open) return null;
 
   return (
@@ -102,7 +105,7 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
     >
       <button
         type="button"
-        aria-label="Dismiss"
+        aria-label={t.common.dismiss}
         onClick={dismiss}
         className="absolute inset-0 bg-black/60 backdrop-blur-md"
         style={{ animation: "rc-fade 160ms ease-out" }}
@@ -124,19 +127,16 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
                 id="reality-check-title"
                 className="font-display text-[15.5px] font-bold leading-tight text-text"
               >
-                You&apos;ve been playing for{" "}
+                {t.rg.playingFor}{" "}
                 <span className="font-mono text-gold-300">{elapsedMin}</span>{" "}
-                {elapsedMin === 1 ? "minute" : "minutes"}
+                {elapsedMin === 1 ? t.rg.minute : t.rg.minutes}
               </h2>
-              <p className="text-[11.5px] italic text-text-subtle">
-                Umekuwa ukicheza kwa dakika {elapsedMin}
-              </p>
             </div>
           </div>
           <button
             type="button"
             onClick={dismiss}
-            aria-label="Dismiss"
+            aria-label={t.common.dismiss}
             className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors shrink-0"
           >
             <I.x s={16} />
@@ -144,32 +144,31 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
         </div>
 
         <p className="text-[12.5px] text-text-muted leading-snug">
-          Most people play for fun. If it stops feeling fun, take a break.
-          <span className="block italic text-text-subtle mt-0.5">Kama haifurahishi tena, pumzika.</span>
+          {t.rg.mostPlayForFun}
         </p>
 
         <div className="grid grid-cols-1 gap-2 pt-1">
           <button type="button" onClick={dismiss} className="btn btn-gold btn-lg w-full">
-            Continue playing · Endelea
+            {t.rg.continuePlaying}
           </button>
           <Link href="/profile/responsible-gambling" onClick={dismiss} className="btn btn-ghost btn-lg w-full inline-flex">
             <I.clock s={14} />
-            Set limits · Weka mipaka
+            {t.rg.setLimits}
           </Link>
           <div className="grid grid-cols-1 xs:grid-cols-2 gap-2">
             <Link href="/profile/responsible-gambling#break" onClick={dismiss} className="btn btn-ghost btn-md w-full inline-flex whitespace-normal h-auto min-h-[38px]">
               <I.pause s={13} />
-              Take a break
+              {t.rg.takeABreak}
             </Link>
             <Link href="/profile/responsible-gambling#exclude" onClick={dismiss} className="btn btn-claret btn-md w-full inline-flex whitespace-normal h-auto min-h-[38px]">
               <I.lock s={13} />
-              Self-exclude
+              {t.rg.selfExclude}
             </Link>
           </div>
         </div>
 
         <p className="text-center font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle pt-1">
-          Tanzania Helpline · <span className="text-text-muted">{SUPPORT_PHONE()}</span>
+          {t.rg.helpline} · <span className="text-text-muted">{SUPPORT_PHONE()}</span>
         </p>
       </div>
 

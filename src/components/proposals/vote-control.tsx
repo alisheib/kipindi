@@ -10,6 +10,7 @@ import { useState, useTransition } from "react";
 import { I } from "@/components/ui/glyphs";
 import { voteAction } from "@/app/proposals/actions";
 import { useToast } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n";
 import { haptics } from "@/lib/haptics";
 
 type Dir = "up" | "down" | null;

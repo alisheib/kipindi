@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { Spinner } from "@/components/ui/spinner";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n";
 import { updateProfileBasicsAction, resendEmailVerificationAction } from "@/app/profile/actions";
 
 export function EmailEditor({ currentEmail, currentName, verified }: { currentEmail: string | null; currentName: string; verified?: boolean }) {
@@ -20,6 +21,7 @@ export function EmailEditor({ currentEmail, currentName, verified }: { currentEm
   const [pending, start] = useTransition();
   const router = useRouter();
   const { toast } = useToast();
+  const { t } = useT();
 
   const save = () => {
     const v = value.trim().toLowerCase();
@@ -29,10 +31,10 @@ export function EmailEditor({ currentEmail, currentName, verified }: { currentEm
       fd.set("displayName", currentName || "Player"); // basics action requires a name
       fd.set("email", v); // "" clears it
       const r = await updateProfileBasicsAction(fd);
-      if (!r.ok) { toast({ title: "Couldn't save email", description: r.error, variant: "danger" }); return; }
+      if (!r.ok) { toast({ title: t.toast.emailFailed, description: r.error, variant: "danger" }); return; }
       toast({
-        title: v ? "Email saved" : "Email removed",
-        description: v ? (r.emailVerificationSent ? "Check your inbox — we sent a link to confirm it." : "Receipts will be sent here.") : undefined,
+        title: v ? t.toast.emailSaved : "Email removed",
+        description: v ? (r.emailVerificationSent ? t.toast.checkInbox : "Receipts will be sent here.") : undefined,
         variant: "success",
       });
       setEditing(false);
@@ -44,8 +46,8 @@ export function EmailEditor({ currentEmail, currentName, verified }: { currentEm
     if (!currentEmail) return;
     start(async () => {
       const r = await resendEmailVerificationAction();
-      if (!r.ok) { toast({ title: "Couldn't resend", description: r.error, variant: "danger" }); return; }
-      toast({ title: "Confirmation sent", description: "Check your inbox for the confirmation link.", variant: "success" });
+      if (!r.ok) { toast({ title: t.toast.couldntResend, description: r.error, variant: "danger" }); return; }
+      toast({ title: t.toast.confirmationSent, description: t.toast.checkInbox, variant: "success" });
       router.refresh();
     });
   };

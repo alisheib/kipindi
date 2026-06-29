@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { Spinner } from "@/components/ui/spinner";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n";
 import { attachDocumentAction, attachExtraDocumentAction } from "@/app/profile/kyc/actions";
 import { fileToDataUrl, MAX_DOC_BYTES as MAX_BYTES } from "@/lib/client/kyc-image";
 

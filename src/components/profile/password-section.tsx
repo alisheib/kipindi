@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n";
 import { I } from "@/components/ui/glyphs";
 import { PasswordInput } from "@/components/ui/password-input";
 import { changePasswordAction } from "@/app/profile/account/actions";
@@ -15,25 +16,26 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
   const [pending, start] = useTransition();
   const router = useRouter();
   const { toast } = useToast();
+  const { t } = useT();
 
   const submit = () => {
     if (pending) return;
-    if (next.length < 8) { toast({ title: "Password must be at least 8 characters", variant: "warning" }); return; }
-    if (next !== confirm) { toast({ title: "Passwords don't match", variant: "warning" }); return; }
+    if (next.length < 8) { toast({ title: t.toast.passwordMin8, variant: "warning" }); return; }
+    if (next !== confirm) { toast({ title: t.toast.passwordsDontMatch, variant: "warning" }); return; }
     start(async () => {
       const fd = new FormData();
       fd.set("current", current);
       fd.set("new", next);
       const r = await changePasswordAction(fd);
       if (r.ok) {
-        toast({ title: hasPassword ? "Password updated" : "Password set", variant: "success" });
+        toast({ title: hasPassword ? t.toast.passwordUpdated : t.toast.passwordSet, variant: "success" });
         setOpen(false);
         setCurrent("");
         setNext("");
         setConfirm("");
         router.refresh();
       } else {
-        toast({ title: "Failed", description: r.error, variant: "danger" });
+        toast({ title: t.toast.failed, description: r.error, variant: "danger" });
       }
     });
   };

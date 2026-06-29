@@ -2,8 +2,8 @@
 
 import { useT, type Locale } from "@/lib/i18n";
 
-const LANGS: Locale[] = ["en", "sw", "fr"];
-const LABELS: Record<Locale, string> = { en: "EN", sw: "SW", fr: "FR" };
+const LANGS: Locale[] = ["en", "sw", "zh"];
+const LABELS: Record<Locale, string> = { en: "EN", sw: "SW", zh: "中文" };
 
 /**
  * Inline pill language toggle — kit spec (ds-brand-nav.jsx TopNav).

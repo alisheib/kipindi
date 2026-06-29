@@ -7,28 +7,20 @@ import { useT } from "@/lib/i18n";
 
 export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
   const pathname = usePathname();
-  const { t, locale } = useT();
-  const L = {
-    markets: locale === "sw" ? "Masoko" : locale === "fr" ? "Marchés" : "Markets",
-    live: t.nav.live,
-    wallet: locale === "sw" ? "Pochi" : locale === "fr" ? "Portefeuille" : "Wallet",
-    invite: locale === "sw" ? "Alika" : locale === "fr" ? "Inviter" : "Invite",
-    profile: locale === "sw" ? "Wasifu" : locale === "fr" ? "Profil" : "Profile",
-    signIn: t.common.signIn,
-  };
+  const { t } = useT();
 
   const items = isAuthed
     ? [
-        { href: "/markets",        glyph: "markets" as const,    label: L.markets },
-        { href: "/live",           glyph: "bolt" as const,       label: L.live },
-        { href: "/wallet",         glyph: "wallet" as const,     label: L.wallet },
-        { href: "/profile/invite", glyph: "gift" as const,       label: L.invite },
-        { href: "/profile",        glyph: "profile" as const,    label: L.profile },
+        { href: "/markets",        glyph: "markets" as const,    label: t.common.markets },
+        { href: "/live",           glyph: "bolt" as const,       label: t.nav.live },
+        { href: "/wallet",         glyph: "wallet" as const,     label: t.nav.wallet },
+        { href: "/profile/invite", glyph: "gift" as const,       label: t.common.invite },
+        { href: "/profile",        glyph: "profile" as const,    label: t.common.profile },
       ]
     : [
-        { href: "/markets",     glyph: "markets" as const,    label: L.markets },
-        { href: "/live",        glyph: "bolt" as const,       label: L.live },
-        { href: "/auth/login",  glyph: "logIn" as const,      label: L.signIn },
+        { href: "/markets",     glyph: "markets" as const,    label: t.common.markets },
+        { href: "/live",        glyph: "bolt" as const,       label: t.nav.live },
+        { href: "/auth/login",  glyph: "logIn" as const,      label: t.common.signIn },
       ];
 
   const isActive = (href: string) => {
@@ -41,24 +33,18 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
   };
 
   return (
-    // Floating, rounded "pill" bar (Instagram-style shape) — inset from the
-    // screen edges, lifted above the home indicator, with the active item held
-    // in a rounded capsule. Our colours, icons, labels and routing — only the
-    // shape is borrowed.
     <nav
       aria-label="Primary"
       className="xl:hidden fixed left-2.5 right-2.5 z-40 rounded-[26px] border border-border-strong"
       style={{
         bottom: "calc(9px + env(safe-area-inset-bottom))",
-        // v2 kit "Dark Glass": translucent fill + GPU backdrop blur/saturate, a
-        // top gloss light-edge and a faint inner sheen, over the float shadow.
         background: "color-mix(in oklab, var(--bg-elevated) 78%, transparent)",
         backdropFilter: "blur(16px) saturate(1.2)",
         WebkitBackdropFilter: "blur(16px) saturate(1.2)",
         boxShadow:
-          "0 14px 36px -10px oklch(8% 0.09 264 / 0.8), " +   // float drop shadow
-          "inset 0 1px 0 oklch(100% 0 0 / 0.12), " +          // top gloss highlight
-          "inset 0 -1px 0 oklch(0% 0 0 / 0.20)",              // bottom inner shade
+          "0 14px 36px -10px oklch(8% 0.09 264 / 0.8), " +
+          "inset 0 1px 0 oklch(100% 0 0 / 0.12), " +
+          "inset 0 -1px 0 oklch(0% 0 0 / 0.20)",
       }}
     >
       <ul
@@ -80,7 +66,6 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
                   textDecoration: "none",
                 }}
               >
-                {/* Active capsule — the lighter rounded highlight behind the icon. */}
                 <span
                   className="flex items-center justify-center rounded-full transition-all duration-200"
                   style={{

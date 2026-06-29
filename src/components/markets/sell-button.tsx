@@ -13,6 +13,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n";
 import { cashOutPositionAction } from "@/app/markets/actions";
 import { SellConfirmModal } from "./sell-confirm-modal";
 import { OperationResultModal } from "./operation-result-modal";
@@ -81,6 +82,7 @@ export function SellButton({
   const [resultData, setResultData] = useState<{ variant: "success" | "danger"; value: number; net: number; error?: string } | null>(null);
   const router = useRouter();
   const { toast } = useToast();
+  const { t } = useT();
 
   // Free exit is only valid if: grace window hasn't expired AND the market
   // closes in more than 5 min (prevents last-second exploitation).
@@ -109,7 +111,7 @@ export function SellButton({
       const r = await cashOutPositionAction(fd);
       setConfirmOpen(false);
       if (!r.ok) {
-        toast({ title: "Couldn't cash out", description: r.error, variant: "danger" });
+        toast({ title: t.toast.couldntCashOut, description: r.error, variant: "danger" });
         setResultData({ variant: "danger", value: value, net, error: r.error });
         setResultOpen(true);
         return;
@@ -117,10 +119,10 @@ export function SellButton({
       const realisedValue = r.data!.value;
       const realisedFee = Math.max(0, stake - realisedValue); // 0 inside the free-exit window
       toast({
-        title: `Sold · TZS ${fmt(realisedValue)} returned`,
+        title: `${t.dialog.sellLabel} · TZS ${fmt(realisedValue)} ${t.toast.soldReturned}`,
         description: realisedFee <= 0
-          ? "Full stake refunded — no fee · Bila gharama"
-          : `TZS ${fmt(realisedFee)} early-exit fee applied · Ada ya kutoka mapema`,
+          ? t.toast.fullStakeRefunded
+          : `TZS ${fmt(realisedFee)} ${t.toast.earlyExitFeeApplied}`,
         variant: "success",
       });
       // net is stored as −fee so the result modal can surface the fee row.

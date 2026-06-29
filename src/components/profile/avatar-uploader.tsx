@@ -16,6 +16,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { I } from "@/components/ui/glyphs";
 import { Avatar } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n";
 import { updateAvatarAction } from "@/app/profile/actions";
 
 const TARGET_PX = 256;
@@ -58,12 +59,13 @@ export function AvatarUploader({
   const [preview, setPreview] = useState<string | null>(currentSrc ?? null);
   const [pending, start] = useTransition();
   const { toast } = useToast();
+  const { t } = useT();
   const router = useRouter();
 
   const onFile = async (f: File | null) => {
     if (!f) return;
     if (!f.type.startsWith("image/")) {
-      toast({ title: "Not an image", description: "Pick a JPG, PNG, or WebP file.", variant: "danger" });
+      toast({ title: t.toast.notAnImage, description: t.toast.pickJpgPng, variant: "danger" });
       return;
     }
     try {
@@ -74,14 +76,14 @@ export function AvatarUploader({
         fd.set("dataUrl", dataUrl);
         const r = await updateAvatarAction(fd);
         if (!r.ok) {
-          toast({ title: "Couldn't save photo", description: r.error, variant: "danger" });
+          toast({ title: t.toast.nameFailed, description: r.error, variant: "danger" });
           return;
         }
-        toast({ title: "Photo updated", description: "Your new avatar is live.", variant: "success" });
+        toast({ title: t.toast.photoUpdated, variant: "success" });
         router.refresh();
       });
     } catch (err) {
-      toast({ title: "Couldn't read image", description: (err as Error).message, variant: "danger" });
+      toast({ title: t.toast.couldntReadImage, description: (err as Error).message, variant: "danger" });
     }
   };
 
@@ -92,10 +94,10 @@ export function AvatarUploader({
       fd.set("dataUrl", "");
       const r = await updateAvatarAction(fd);
       if (!r.ok) {
-        toast({ title: "Couldn't remove photo", description: r.error, variant: "danger" });
+        toast({ title: t.toast.nameFailed, description: r.error, variant: "danger" });
         return;
       }
-      toast({ title: "Photo removed", variant: "default" });
+      toast({ title: t.toast.photoRemoved, variant: "default" });
       router.refresh();
     });
   };

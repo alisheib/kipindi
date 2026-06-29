@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * EmptyState — kit-faithful: 360px (or full-width) boxed, dashed border,
  * line-art SVG illustration in brand-teal stroke with gold accent.
@@ -10,6 +12,7 @@
  */
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 type Kind = "markets" | "positions" | "leaderboard" | "notifications" | "audit" | "sources" | "default";
 
@@ -53,18 +56,19 @@ export function EmptyState({
 
 /** Compact error-state — same chrome, no-rose accent. */
 export function ErrorState({
-  title = "Something didn't work. Try again.",
-  titleSw = "Hitilafu imetokea. Jaribu tena.",
+  title,
   detail,
   action,
   className,
 }: {
   title?: string;
-  titleSw?: string;
   detail?: string;
   action?: ReactNode;
   className?: string;
 }) {
+  const { t } = useT();
+  const resolvedTitle = title ?? t.error.somethingDidntWork;
+
   return (
     <div
       className={cn(
@@ -75,8 +79,7 @@ export function ErrorState({
       <div className="mx-auto mb-4 w-12 h-12 grid place-items-center text-no-300" aria-hidden>
         <ErrorMark />
       </div>
-      <p className="font-display text-[15px] font-semibold text-text">{title}</p>
-      <p className="mt-0.5 text-[12px] italic text-text-subtle">{titleSw}</p>
+      <p className="font-display text-[15px] font-semibold text-text">{resolvedTitle}</p>
       {detail && <p className="mt-2 font-mono text-[11px] text-text-subtle">{detail}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>

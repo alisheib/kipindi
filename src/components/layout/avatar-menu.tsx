@@ -32,22 +32,9 @@ export function AvatarMenu({
   const pathname = usePathname();
   // Close menu on navigation so the portal + scrim don't persist.
   useEffect(() => { setOpen(false); }, [pathname]);
-  // Locale-aware labels — most of the app is bilingual-always, but the
-  // top-bar auth CTAs are chrome the toggle should genuinely flip.
-  const SIGN_UP_LABEL = locale === "sw" ? "Jisajili" : locale === "fr" ? "Inscription" : "Sign up";
-  const ACCOUNT_LABEL = locale === "sw" ? "Akaunti" : locale === "fr" ? "Compte" : "Create account";
 
   useEffect(() => {
     if (!open) return;
-    // Use `click` (not `mousedown`) so that controls inside the menu —
-    // including a ConfirmDialog rendered into its own portal *above*
-    // this menu — get to run their own onClick before we tear the menu
-    // (and any child component state) down. With `mousedown` the menu
-    // unmounted between the user pressing and releasing on the
-    // ConfirmDialog's "Yes, sign out" button, so the navigation never
-    // fired. Also ignore any click whose target sits inside a higher-z
-    // dialog (`role="dialog"` / `role="alertdialog"`) for the same
-    // reason.
     const onDocClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
       if (!target) return;
@@ -66,11 +53,6 @@ export function AvatarMenu({
   }, [open]);
 
   if (!isAuthed) {
-    // Kit-faithful pair: ghost + gold, both `btn btn-sm` so the height
-    // and typography match the kit (the rest of the app uses these
-    // exact classes — see ConvictionDial CTA, ConfirmDialog footer,
-    // SellConfirmModal, etc). Pill radius keeps the rounded shape the
-    // top-bar expected.
     return (
       <div className="ml-1 flex items-center gap-1.5">
         <Link
@@ -85,9 +67,9 @@ export function AvatarMenu({
           href="/auth/register"
           className="btn btn-gold btn-sm"
           style={{ borderRadius: "var(--r-pill)" }}
-          aria-label={ACCOUNT_LABEL}
+          aria-label={t.common.createAccount}
         >
-          {SIGN_UP_LABEL}
+          {t.common.signUp}
         </Link>
       </div>
     );
@@ -97,7 +79,7 @@ export function AvatarMenu({
     <div ref={ref} className="relative ml-1">
       <button
         type="button"
-        aria-label={locale === "sw" ? "Menyu ya akaunti" : "Account menu"}
+        aria-label={t.common.accountMenu}
         aria-expanded={open ? "true" : "false"}
         onClick={() => setOpen((v) => !v)}
         className="rounded-pill focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
@@ -133,36 +115,37 @@ export function AvatarMenu({
               </div>
             </div>
             <ul className="py-1">
-              <Item href="/profile"        icon={I.profile}      label="Profile"      sw="Wasifu" />
-              <Item href="/wallet"         icon={I.wallet}       label="Wallet"       sw="Pochi" />
-              <Item href="/profile/invite" icon={I.gift}         label="Invite & Earn" sw="Alika na upate zawadi" accent />
-              <Item href="/proposals"      icon={I.sparkle}      label="Propose & earn" sw="Pendekeza na upate zawadi" accent />
-              <Item href="/positions"      icon={I.portfolio}    label="Positions"    sw="Nafasi" />
-              <Item href="/results"        icon={I.resolved}     label="Results"      sw="Matokeo" />
-              <Item href="/leaderboard"    icon={I.crown}        label="Leaderboard"  sw="Jedwali la Washindi" />
-              <Item href="/profile/kyc"    icon={I.shieldcheck}  label="Verify ID"    sw="Kuthibitisha kitambulisho" />
+              <Item href="/profile"        icon={I.profile}      en="Profile"        sw="Wasifu"                       zh="个人资料" />
+              <Item href="/wallet"         icon={I.wallet}       en="Wallet"         sw="Pochi"                        zh="钱包" />
+              <Item href="/profile/invite" icon={I.gift}         en="Invite & Earn"  sw="Alika na upate zawadi"        zh="邀请赚钱" accent />
+              <Item href="/proposals"      icon={I.sparkle}      en="Propose & earn" sw="Pendekeza na upate zawadi"    zh="提议赚钱" accent />
+              <Item href="/positions"      icon={I.portfolio}    en="Positions"      sw="Nafasi"                       zh="持仓" />
+              <Item href="/results"        icon={I.resolved}     en="Results"        sw="Matokeo"                      zh="结果" />
+              <Item href="/leaderboard"    icon={I.crown}        en="Leaderboard"    sw="Jedwali la Washindi"          zh="排行榜" />
+              <Item href="/profile/kyc"    icon={I.shieldcheck}  en="Verify ID"      sw="Kuthibitisha kitambulisho"    zh="身份验证" />
             </ul>
             {/* Language toggle — visible only on mobile (desktop has the top-bar toggle) */}
             <div className="border-t border-border px-3.5 py-2.5 sm:hidden">
-              <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">Language</p>
+              <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">{t.common.language}</p>
               <MobileLangPicker locale={locale} />
             </div>
             <div className="border-t border-border">
               <ConfirmDialog
                 tone="claret"
-                title="Sign out · Kutoka kwenye akaunti"
+                title={t.profile.signOutConfirmTitle}
                 body={
                   <>
-                    <p>You will be signed out of this device.</p>
-                    <p className="text-text-subtle italic text-[12.5px] mt-1">
-                      Utatolewa kwenye akaunti yako kwenye kifaa hiki.
-                    </p>
+                    <p>{t.profile.signOutConfirmBody}</p>
+                    {locale !== "en" && (
+                      <p className="text-text-subtle italic text-[12.5px] mt-1">
+                        {t.profile.signOutConfirmBodySw}
+                      </p>
+                    )}
                   </>
                 }
-                confirmLabel="Yes, sign out"
-                cancelLabel="Stay signed in"
+                confirmLabel={t.profile.signOutConfirmYes}
+                cancelLabel={t.profile.signOutConfirmNo}
                 onConfirm={() => {
-                  // POST to prevent CSRF — GET logout is intentionally neutered.
                   const f = document.createElement("form");
                   f.method = "POST";
                   f.action = "/auth/logout";
@@ -175,7 +158,7 @@ export function AvatarMenu({
                     className="w-full flex items-center gap-2.5 px-3.5 py-2.5 font-display text-body-sm font-semibold text-no-300 hover:bg-no-500/10 transition-colors text-left"
                   >
                     <I.logOut s={15} aria-hidden />
-                    Sign out · Kutoka kwenye akaunti
+                    {t.common.signOut}
                   </button>
                 }
               />
@@ -191,8 +174,8 @@ export function AvatarMenu({
   );
 }
 
-const LANG_CODES: Locale[] = ["en", "sw", "fr"];
-const LANG_LABELS: Record<Locale, string> = { en: "EN", sw: "SW", fr: "FR" };
+const LANG_CODES: Locale[] = ["en", "sw", "zh"];
+const LANG_LABELS: Record<Locale, string> = { en: "EN", sw: "SW", zh: "中文" };
 
 function MobileLangPicker({ locale: current }: { locale: string }) {
   const { setLocale } = useT();
@@ -222,7 +205,10 @@ function MobileLangPicker({ locale: current }: { locale: string }) {
   );
 }
 
-function Item({ href, icon: Ico, label, sw, accent }: { href: string; icon: (p: { s?: number; className?: string }) => React.ReactElement; label: string; sw: string; accent?: boolean }) {
+function Item({ href, icon: Ico, en, sw, zh, accent }: { href: string; icon: (p: { s?: number; className?: string }) => React.ReactElement; en: string; sw: string; zh: string; accent?: boolean }) {
+  const { locale } = useT();
+  const primary = locale === "sw" ? sw : locale === "zh" ? zh : en;
+  const secondary = locale === "en" ? sw : locale === "sw" ? en : en;
   return (
     <li>
       <Link
@@ -233,8 +219,8 @@ function Item({ href, icon: Ico, label, sw, accent }: { href: string; icon: (p: 
         )}
       >
         <span className={accent ? "text-gold-300" : "text-text-subtle"}><Ico s={15} /></span>
-        {label}
-        <span className="text-text-subtle italic font-normal text-label">· {sw}</span>
+        {primary}
+        <span className="text-text-subtle italic font-normal text-label">· {secondary}</span>
       </Link>
     </li>
   );
