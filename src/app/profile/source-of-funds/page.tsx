@@ -14,13 +14,14 @@ import { getServerT } from "@/lib/i18n-server";
 export const metadata = { title: "Source of funds" };
 export const dynamic = "force-dynamic";
 
+/* i18n-todo: source labels should come from the dict */
 const SOURCES = [
-  { id: "salary",       label: "Salary",         sw: "Mshahara" },
-  { id: "business",     label: "Business",       sw: "Biashara" },
-  { id: "savings",      label: "Savings",        sw: "Akiba" },
-  { id: "investments",  label: "Investments",    sw: "Uwekezaji" },
-  { id: "inheritance",  label: "Inheritance",    sw: "Urithi" },
-  { id: "other",        label: "Other",          sw: "Nyingine" },
+  { id: "salary",       label: "Salary" },
+  { id: "business",     label: "Business" },
+  { id: "savings",      label: "Savings" },
+  { id: "investments",  label: "Investments" },
+  { id: "inheritance",  label: "Inheritance" },
+  { id: "other",        label: "Other" },
 ];
 
 const BANDS = [
@@ -47,6 +48,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
     : existing?.reviewStatus === "REJECTED" ? "no"
     : "warning";
   // Humanize the raw enums before showing them to the player.
+  /* i18n-todo: status labels should come from the dict */
   const STATUS_LABEL: Record<string, string> = { PENDING: "Under review", ACCEPTED: "Accepted", REJECTED: "Rejected" };
   const statusLabel = existing ? (STATUS_LABEL[existing.reviewStatus] ?? existing.reviewStatus) : "";
   const sourceLabel = existing ? (SOURCES.find((s) => s.id === existing.declaredSource)?.label ?? existing.declaredSource) : "";
@@ -125,9 +127,9 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
             </p>
           </div>
           <p className="text-[12.5px] text-text-muted leading-snug">
-            Source: <span className="font-semibold text-text">{sourceLabel}</span> · {existing.declaredOccupation}
+            {t.profile.sourceOfFunds}: <span className="font-semibold text-text">{sourceLabel}</span> · {existing.declaredOccupation}
             {existing.declaredEmployer ? ` · ${existing.declaredEmployer}` : ""}
-            <br />Income band: <span className="font-semibold text-text">{bandLabel}</span>
+            <br />{"Income band" /* i18n-todo: sofIncomeBand */}: <span className="font-semibold text-text">{bandLabel}</span>
           </p>
           {existing.reviewStatus === "PENDING" && (
             <p className="font-mono text-[11px] text-text-subtle">{"A compliance officer will review within 1 business day." /* i18n-todo: add profile.sofPendingNote key */}</p>
