@@ -9,8 +9,8 @@
  *
  * Visual design matches TimeSelect: same h-9/h-11 height, same rounded-lg
  * border, same bg-bg-inset/bg-bg-elevated chrome, same font-mono. The unit
- * selector sits in a right-hand cell (like TimeSelect's "24h" badge) and
- * cycles through d → h → m on click, or the operator can type directly.
+ * selector sits in a right-hand cell with tiny chevron arrows stacked above
+ * and below to signal it's clickable — each click cycles d → h → m → d.
  *
  * A live "= 2d 6h" echo is shown below the field (like TimeSelect's 12-hour
  * preview) so the operator always sees the human-readable equivalent.
@@ -22,7 +22,7 @@ import { sanitizeNumericInput } from "@/components/ui/input";
 
 type Unit = "d" | "h" | "m";
 
-const UNIT_LABELS: Record<Unit, string> = { d: "days", h: "hrs", m: "min" };
+const UNIT_LABELS: Record<Unit, string> = { d: "day", h: "hr", m: "min" };
 const UNIT_TO_MINUTES: Record<Unit, number> = { d: 1440, h: 60, m: 1 };
 const UNITS: Unit[] = ["d", "h", "m"];
 
@@ -108,26 +108,27 @@ export function DurationInput({
     emit(clean, unit);
   };
 
-  const cycleUnit = () => {
-    const idx = UNITS.indexOf(unit);
-    const next = UNITS[(idx + 1) % UNITS.length];
+  const setUnitAndConvert = (next: Unit) => {
+    const prev = unit;
     setUnit(next);
-    // Convert the current display number to the new unit
-    const currentMinutes = Number(display) * UNIT_TO_MINUTES[unit];
+    const currentMinutes = Number(display) * UNIT_TO_MINUTES[prev];
     if (Number.isFinite(currentMinutes) && currentMinutes > 0) {
       const newVal = currentMinutes / UNIT_TO_MINUTES[next];
-      // Only show clean integers; if it doesn't divide evenly keep the minutes total
-      if (Number.isInteger(newVal)) {
-        setDisplay(String(newVal));
-      } else {
-        // Fall back to total minutes in the new unit
-        const rounded = Math.round(newVal);
-        setDisplay(String(rounded));
-        emit(String(rounded), next);
-        return;
-      }
+      const rounded = Math.round(newVal);
+      setDisplay(String(Number.isInteger(newVal) ? newVal : rounded));
+      emit(String(rounded), next);
+    } else {
+      emit(display, next);
     }
-    emit(display, next);
+  };
+
+  const cycleUp = () => {
+    const idx = UNITS.indexOf(unit);
+    setUnitAndConvert(UNITS[(idx + UNITS.length - 1) % UNITS.length]);
+  };
+  const cycleDown = () => {
+    const idx = UNITS.indexOf(unit);
+    setUnitAndConvert(UNITS[(idx + 1) % UNITS.length]);
   };
 
   const h = size === "sm" ? "h-9" : "h-11";
@@ -136,11 +137,18 @@ export function DurationInput({
   const totalMin = clampMinutes(Math.round(Number(display) * UNIT_TO_MINUTES[unit]), min, max);
   const preview = formatDuration(totalMin);
 
+  /* Tiny chevron SVG — 8×5 arrow, currentColor. */
+  const Chev = ({ up }: { up?: boolean }) => (
+    <svg width="8" height="5" viewBox="0 0 8 5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      {up ? <path d="M1 4l3-3 3 3" /> : <path d="M1 1l3 3 3-3" />}
+    </svg>
+  );
+
   return (
     <div className={cn("inline-flex flex-col", className)}>
       <div
         className={cn(
-          "inline-flex items-stretch rounded-lg border overflow-hidden brand-focus-within transition-colors",
+          "inline-flex items-stretch rounded-lg border overflow-hidden brand-focus-within transition-colors w-full",
           h,
           errored ? "border-no-500" : "border-border",
         )}
@@ -161,10 +169,8 @@ export function DurationInput({
             "flex-1 min-w-0 bg-transparent px-2.5 text-text outline-none font-mono tabular-nums text-right placeholder:text-text-subtle/40",
             fs,
           )}
-          style={{ width: "4.5ch" }}
           onChange={(e) => onValueChange(e.target.value)}
           onBlur={() => {
-            // On blur, re-clamp and normalize
             const n = Number(display);
             if (!Number.isFinite(n) || n < 0) {
               const d = decompose(clampMinutes(min, min, max));
@@ -174,17 +180,25 @@ export function DurationInput({
             }
           }}
         />
+        {/* Unit picker — stacked chevrons + label in a clickable right cell */}
         <button
           type="button"
-          onClick={cycleUnit}
+          onClick={cycleDown}
           tabIndex={-1}
           className={cn(
-            "inline-flex items-center px-2 bg-bg-elevated border-l border-border font-mono uppercase tracking-[0.08em] text-text-subtle shrink-0 select-none cursor-pointer hover:text-text transition-colors",
-            size === "sm" ? "text-[10px]" : "text-[11px]",
+            "inline-flex flex-col items-center justify-center gap-0 px-2 bg-bg-elevated border-l border-border shrink-0 select-none cursor-pointer hover:bg-bg-overlay transition-colors group",
+            size === "sm" ? "min-w-[42px]" : "min-w-[48px]",
           )}
-          aria-label={`Unit: ${UNIT_LABELS[unit]}. Click to cycle.`}
+          aria-label={`Unit: ${UNIT_LABELS[unit]}. Click to change.`}
         >
-          {UNIT_LABELS[unit]}
+          <span className="text-text-subtle/40 group-hover:text-text-subtle transition-colors leading-none"><Chev up /></span>
+          <span className={cn(
+            "font-mono uppercase tracking-[0.06em] text-text-subtle group-hover:text-text transition-colors leading-none",
+            size === "sm" ? "text-[9px]" : "text-[10px]",
+          )}>
+            {UNIT_LABELS[unit]}
+          </span>
+          <span className="text-text-subtle/40 group-hover:text-text-subtle transition-colors leading-none"><Chev /></span>
         </button>
       </div>
       {totalMin > 0 && (
