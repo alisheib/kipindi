@@ -105,33 +105,68 @@ export function useT() {
   return useContext(I18nContext);
 }
 
-/** Full-screen locale-change loader overlay. Mount once in the provider tree. */
+/**
+ * Language-change loader — characters from all 3 scripts orbit and mix.
+ *
+ * Six glyphs (2 per language) orbit a shared centre in a staggered ring.
+ * Each glyph scales up and glows as it passes the "front" position (bottom),
+ * creating a carousel effect where the scripts visually blend.
+ *
+ * Glyphs: Hi / Go (EN), Habari / Sawa (SW), and the Chinese characters
+ * for "language" and "hello".
+ */
+const GLYPHS = [
+  { char: "Hi",  color: "oklch(72% 0.14 264)" },   // brand-purple
+  { char: "\u8BED", color: "oklch(78% 0.13 80)" },  // gold — \u8BED = 语
+  { char: "Ha",  color: "oklch(72% 0.11 195)" },    // teal
+  { char: "\u597D", color: "oklch(78% 0.13 80)" },  // gold — \u597D = 好
+  { char: "Sw",  color: "oklch(72% 0.11 195)" },    // teal
+  { char: "En",  color: "oklch(72% 0.14 264)" },    // brand-purple
+] as const;
+
 export function LocaleChangeOverlay() {
   const { isChangingLocale, t } = useT();
   if (!isChangingLocale) return null;
+  const n = GLYPHS.length;
   return (
     <div
       className="fixed inset-0 z-[9000] flex items-center justify-center"
       style={{
-        background: "color-mix(in oklab, var(--bg-base) 88%, transparent)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
-        animation: "lcl-fade 120ms ease-out",
+        background: "color-mix(in oklab, var(--bg-base) 90%, transparent)",
+        backdropFilter: "blur(16px) saturate(1.2)",
+        WebkitBackdropFilter: "blur(16px) saturate(1.2)",
+        animation: "lcl-fade 180ms ease-out",
       }}
     >
-      <div className="flex flex-col items-center gap-3 animate-pulse">
-        <div className="relative h-10 w-10">
+      <div className="flex flex-col items-center gap-5">
+        {/* Orbiting glyphs */}
+        <div className="relative" style={{ width: 120, height: 120 }}>
+          {GLYPHS.map((g, i) => (
+            <span
+              key={i}
+              className="absolute left-1/2 top-1/2 font-display font-bold select-none pointer-events-none"
+              style={{
+                fontSize: 20,
+                color: g.color,
+                textShadow: `0 0 18px ${g.color}`,
+                animation: `lcl-orbit 2.4s linear infinite`,
+                animationDelay: `${-(i / n) * 2.4}s`,
+                transformOrigin: "center center",
+              }}
+            >
+              {g.char}
+            </span>
+          ))}
+          {/* Centre dot — a soft gold pulse */}
           <span
-            className="absolute inset-0 rounded-full border-2 border-brand-500/60"
-            style={{ animation: "lcl-ring 0.8s ease-in-out infinite" }}
-          />
-          <span
-            className="absolute inset-1.5 rounded-full border-2 border-gold-400/50"
-            style={{ animation: "lcl-ring 0.8s ease-in-out 0.15s infinite" }}
-          />
-          <span
-            className="absolute inset-3 rounded-full border-2 border-brand-300/40"
-            style={{ animation: "lcl-ring 0.8s ease-in-out 0.3s infinite" }}
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+            style={{
+              width: 6,
+              height: 6,
+              background: "var(--gold-400)",
+              boxShadow: "0 0 12px var(--gold-400), 0 0 24px var(--gold-500)",
+              animation: "lcl-pulse 1.2s ease-in-out infinite",
+            }}
           />
         </div>
         <p className="font-display text-[13px] font-semibold text-text-subtle tracking-[-0.01em]">
@@ -139,8 +174,28 @@ export function LocaleChangeOverlay() {
         </p>
       </div>
       <style>{`
-        @keyframes lcl-fade { from { opacity: 0 } to { opacity: 1 } }
-        @keyframes lcl-ring { 0%,100% { transform: scale(1); opacity: 0.6 } 50% { transform: scale(1.1); opacity: 1 } }
+        @keyframes lcl-fade {
+          from { opacity: 0 }
+          to   { opacity: 1 }
+        }
+        @keyframes lcl-orbit {
+          0% {
+            transform: translate(-50%, -50%) rotate(0deg) translateY(-44px) rotate(0deg) scale(0.7);
+            opacity: 0.4;
+          }
+          50% {
+            transform: translate(-50%, -50%) rotate(180deg) translateY(-44px) rotate(-180deg) scale(1.25);
+            opacity: 1;
+          }
+          100% {
+            transform: translate(-50%, -50%) rotate(360deg) translateY(-44px) rotate(-360deg) scale(0.7);
+            opacity: 0.4;
+          }
+        }
+        @keyframes lcl-pulse {
+          0%, 100% { transform: translate(-50%, -50%) scale(1);   opacity: 0.7 }
+          50%      { transform: translate(-50%, -50%) scale(1.5); opacity: 1   }
+        }
       `}</style>
     </div>
   );
