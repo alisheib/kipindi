@@ -32,29 +32,26 @@ async function checkToken(token: string): Promise<TokenState> {
   return "valid";
 }
 
-const ERROR_COPY: Record<Exclude<TokenState, "valid">, { eyebrow: string; title: string; body: string; sw: string }> = {
-  expired: {
-    eyebrow: "Link expired · Kiungo kimeisha",
-    title: "This reset link has expired",
-    body: "Password reset links are valid for 1 hour. Request a new one below.",
-    sw: "Kiungo cha kubadilisha nenosiri kinaisha baada ya saa 1. Omba kipya hapa chini.",
-  },
-  invalid: {
-    eyebrow: "Link invalid · Kiungo si sahihi",
-    title: "This reset link isn't valid",
-    body: "The link may be damaged or was already used. Request a fresh one below.",
-    sw: "Kiungo kinaweza kuwa kimeharibika. Omba kipya hapa chini.",
-  },
-  email_changed: {
-    eyebrow: "Link out of date · Kiungo kimepitwa",
-    title: "Your email changed since this link was sent",
-    body: "For security, changing your email invalidates any outstanding reset links. Request a new one with your current email.",
-    sw: "Kubadilisha barua pepe kunabatilisha viungo vya awali. Omba kipya.",
-  },
-};
-
 export default async function ResetPasswordPage({ searchParams }: { searchParams?: Promise<{ token?: string; error?: string }> }) {
   const { t } = await getServerT();
+
+  const errorCopy: Record<Exclude<TokenState, "valid">, { eyebrow: string; title: string; body: string }> = {
+    expired: {
+      eyebrow: t.common.linkExpiredEyebrow,
+      title: t.common.linkExpiredTitle,
+      body: t.common.linkExpiredBody,
+    },
+    invalid: {
+      eyebrow: t.common.linkInvalidEyebrow,
+      title: t.common.linkInvalidTitle,
+      body: t.common.linkInvalidBody,
+    },
+    email_changed: {
+      eyebrow: t.common.linkEmailChangedEyebrow,
+      title: t.common.linkEmailChangedTitle,
+      body: t.common.linkEmailChangedBody,
+    },
+  };
   const sp = (await searchParams) ?? {};
   const token = sp.token ?? "";
   if (!token) redirect("/auth/forgot-password");
@@ -63,7 +60,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
 
   // Bad token — show error state, NOT the form
   if (state !== "valid") {
-    const c = ERROR_COPY[state];
+    const c = errorCopy[state];
     return (
       <main className="relative min-h-[calc(100vh-44px)] grid place-items-center overflow-hidden px-3 py-8">
         <BrandTopo opacity={0.05} />
@@ -86,21 +83,20 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
               </h1>
               <p className="mt-2 text-[13.5px] text-text-muted leading-relaxed">
                 {c.body}
-                <span className="block italic text-text-subtle text-[12px] mt-1">{c.sw}</span>
               </p>
             </div>
 
             <div className="flex flex-col gap-2.5">
               <Link href="/auth/forgot-password" className="btn btn-gold btn-lg w-full" style={{ borderRadius: "var(--r-pill)" }}>
-                Request a new link · Omba kiungo kipya
+                {t.common.requestNewLink}
               </Link>
               <Link href="/auth/login" className="btn btn-ghost btn-lg w-full" style={{ borderRadius: "var(--r-pill)" }}>
-                Back to sign in · Ingia
+                {t.common.backToSignIn}
               </Link>
             </div>
 
             <p className="border-t border-border pt-3 text-center text-[13px] text-text-muted">
-              Need help? Email{" "}
+              {t.common.needHelpEmail}{" "}
               <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-semibold text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline">
                 {SUPPORT_EMAIL()}
               </a>
@@ -108,7 +104,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
           </section>
 
           <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-text-subtle">
-            18+ · Licensed by GBT · Helpline {HELPLINE()}
+            {t.auth.licensedByGbt} {HELPLINE()}
           </p>
         </div>
       </main>
@@ -135,7 +131,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
 
           <div>
             <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-gold-300">
-              Reset password · Badilisha nenosiri
+              {t.common.resetPassword}
             </p>
             <h1 className="mt-1.5 font-display text-[28px] font-bold leading-tight text-text tracking-[-0.02em]">
               {t.common.setNewPassword}
@@ -145,7 +141,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
             </p>
             <p className="mt-1.5 flex items-center gap-1.5 text-[11.5px] text-gold-300">
               <I.clock s={12} />
-              This link expires 1 hour after it was sent. · Kiungo hiki kinaisha baada ya saa 1.
+              {t.common.thisLinkExpires}
             </p>
           </div>
 
@@ -162,7 +158,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
                 htmlFor="password"
                 className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
               >
-                New password · Nenosiri jipya
+                {t.common.newPassword}
               </label>
               <PasswordInput
                 id="password"
@@ -180,7 +176,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
                 htmlFor="confirm"
                 className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
               >
-                Confirm password · Thibitisha nenosiri
+                {t.common.confirmPassword}
               </label>
               <PasswordInput
                 id="confirm"
@@ -192,7 +188,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
                 size="lg"
               />
             </div>
-            <SubmitButton label="Reset password · Badilisha" pendingLabel={t.common.resetting} />
+            <SubmitButton label={t.common.resetPassword} pendingLabel={t.common.resetting} />
           </form>
 
           <p className="border-t border-border pt-3 text-center text-[13px] text-text-muted">
@@ -207,7 +203,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
         </section>
 
         <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-text-subtle">
-          18+ · Licensed by GBT · Helpline {HELPLINE()}
+          {t.auth.licensedByGbt} {HELPLINE()}
         </p>
       </div>
     </main>

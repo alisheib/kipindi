@@ -35,35 +35,33 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
 
           <div>
             <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-gold-300">
-              Forgot password · Umesahau nenosiri?
+              {t.auth.forgotPassword}
             </p>
             <h1 className="mt-1.5 font-display text-[28px] font-bold leading-tight text-text tracking-[-0.02em]">
-              Recover your account
+              {t.common.recoverAccount}
             </h1>
             <p className="mt-1.5 text-[13.5px] text-text-muted">
-              Enter your phone number. If you have an email on file, we&rsquo;ll send a reset link.{" "}
-              <span className="italic text-text-subtle">Weka nambari ya simu yako.</span>
+              {t.common.recoverBody}
             </p>
           </div>
 
           {sent && (
             <div role="status" className="rounded-md border border-yes-700 bg-yes-500/10 px-3.5 py-3 text-[13px]">
-              <p className="font-display font-semibold text-yes-300">Check your email</p>
+              <p className="font-display font-semibold text-yes-300">{t.common.checkEmail}</p>
               <p className="mt-0.5 text-text-muted">
-                If an account with an email exists for that phone, we sent a reset link. It expires in 1 hour.{" "}
-                <span className="italic text-text-subtle">Angalia barua pepe yako.</span>
+                {t.common.checkEmailBody}
               </p>
             </div>
           )}
 
           {sp.error === "phone_required" && (
             <div role="alert" className="rounded-md border border-no-700 bg-no-500/10 px-3.5 py-3 text-[13px] text-no-300">
-              Enter your phone number. · Weka nambari ya simu yako.
+              {t.common.enterPhone}
             </div>
           )}
           {sp.error === "rate_limited" && (
             <div role="alert" className="rounded-md border border-warning-border bg-warning-bg/20 px-3.5 py-3 text-[13px] text-gold-300">
-              Too many attempts. Wait a moment and try again. · Majaribio mengi sana.
+              {t.common.tooManyAttempts}
             </div>
           )}
 
@@ -74,7 +72,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
                   htmlFor="phone"
                   className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
                 >
-                  Phone · Simu
+                  {t.auth.phone}
                 </label>
                 <PhoneInput
                   id="phone"
@@ -84,7 +82,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
                   size="lg"
                 />
               </div>
-              <SubmitButton label="Send reset link · Tuma kiungo" pendingLabel={t.common.sending} />
+              <SubmitButton label={t.common.sendResetLink} pendingLabel={t.common.sending} />
             </form>
           )}
 
@@ -95,11 +93,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
               <div className="text-[12.5px] text-text-muted leading-relaxed">
                 <p className="font-display font-semibold text-text">{t.common.noEmailContactSupport}</p>
                 <p>
-                  If you don&rsquo;t have an email linked to your account, our team can verify your
-                  identity through KYC and reset your password manually.{" "}
-                  <span className="italic text-text-subtle">
-                    Wasiliana na msaada wetu tukusaidie.
-                  </span>
+                  {t.common.noEmailHelp}
                 </p>
               </div>
             </div>
@@ -111,7 +105,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
                 <I.phone s={14} className="text-gold-300 shrink-0" />
                 <div className="min-w-0">
                   <p className="font-mono text-[11px] font-bold text-text">{HELPLINE()}</p>
-                  <p className="text-[10px] text-text-subtle">8 am – 8 pm</p>
+                  <p className="text-[10px] text-text-subtle">{t.common.businessHours}</p>
                 </div>
               </a>
               <a
@@ -121,7 +115,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
                 <I.mail s={14} className="text-gold-300 shrink-0" />
                 <div className="min-w-0">
                   <p className="font-mono text-[11px] font-bold text-text truncate">{SUPPORT_EMAIL()}</p>
-                  <p className="text-[10px] text-text-subtle">1 business day</p>
+                  <p className="text-[10px] text-text-subtle">{t.common.oneBusinessDay}</p>
                 </div>
               </a>
             </div>
@@ -133,13 +127,13 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
               href="/auth/login"
               className="font-semibold text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline"
             >
-              Sign in · Ingia
+              {t.common.signIn}
             </Link>
           </p>
         </section>
 
         <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-text-subtle">
-          18+ · Licensed by GBT · Helpline {HELPLINE()}
+          {t.auth.licensedByGbt} {HELPLINE()}
         </p>
       </div>
     </main>

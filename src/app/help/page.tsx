@@ -2,6 +2,7 @@ import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/support-config";
+import { getServerT } from "@/lib/i18n-server";
 
 export const metadata = { title: "Help · Msaada" };
 
@@ -40,7 +41,8 @@ const FAQS: { q: string; a: string }[] = [
   },
 ];
 
-export default function HelpPage() {
+export default async function HelpPage() {
+  const { t } = await getServerT();
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-5">
       <header className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated">
@@ -58,12 +60,12 @@ export default function HelpPage() {
         </div>
         <div className="relative z-10 p-5 lg:p-6">
           <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
-            Help · Msaada
+            {t.help.pageTitle}
           </p>
           <h1 className="mt-1 font-display text-[26px] lg:text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
-            How can we help?
+            {t.help.heading}
           </h1>
-          <p className="mt-1 text-[14px] italic text-text-subtle">Tunaweza kukusaidiaje?</p>
+          {t.help.headingSw && <p className="mt-1 text-[14px] italic text-text-subtle">{t.help.headingSw}</p>}
         </div>
       </header>
 
@@ -71,37 +73,37 @@ export default function HelpPage() {
         <ContactCard
           icon={<I.phone s={15} />}
           tone="yes"
-          title="Call us"
-          titleSw="Tupigie"
+          title={t.help.callUs}
+          titleSw={t.help.callUsSw}
           value={SUPPORT_PHONE()}
-          sub="Free helpline · 24/7"
-          subSw="Mstari wa msaada bure · 24/7"
+          sub={t.help.freeHelpline}
+          subSw={t.help.freeHelplineSw}
           href={`tel:${SUPPORT_PHONE_TEL()}`}
         />
         <ContactCard
           icon={<I.mail s={15} />}
           tone="info"
-          title="Email"
-          titleSw="Barua pepe"
+          title={t.help.emailLabel}
+          titleSw={t.help.emailLabelSw}
           value={SUPPORT_EMAIL()}
-          sub="Reply within 4h on business days"
-          subSw="Tunajibu ndani ya saa 4 siku za kazi"
+          sub={t.help.emailReply}
+          subSw={t.help.emailReplySw}
           href={`mailto:${SUPPORT_EMAIL()}`}
         />
         <ContactCard
           icon={<I.comment s={15} />}
           tone="gold"
-          title="Live chat"
-          titleSw="Mazungumzo ya moja kwa moja"
-          value="In-app"
-          sub="Tap the chat bubble"
-          subSw="Bonyeza kiputo cha mazungumzo"
+          title={t.help.liveChat}
+          titleSw={t.help.liveChatSw}
+          value={t.help.inApp}
+          sub={t.help.tapChatBubble}
+          subSw={t.help.tapChatBubbleSw}
         />
       </section>
 
       <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-2">
         <h2 className="font-display text-[15px] font-semibold text-text">
-          Frequently asked <span className="text-text-subtle italic font-normal">· Maswali</span>
+          {t.help.faqTitle}{t.help.faqTitleSw ? <span className="text-text-subtle italic font-normal"> · {t.help.faqTitleSw}</span> : null}
         </h2>
         <div>
           {FAQS.map((f, i) => (
@@ -124,29 +126,29 @@ export default function HelpPage() {
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <QuickLinkCard
           icon={<I.shieldcheck s={15} />}
-          title="Responsible gambling"
-          titleSw="Kucheza kwa busara"
-          sub="Limits · break · self-exclude"
+          title={t.help.responsibleGambling}
+          titleSw={t.help.responsibleGamblingSw}
+          sub={t.help.limitsBreakExclude}
           href="/profile/responsible-gambling"
         />
         <QuickLinkCard
           icon={<I.wallet s={15} />}
-          title="Wallet help"
-          titleSw="Msaada wa pochi"
-          sub="Deposit · withdraw · holds"
+          title={t.help.walletHelp}
+          titleSw={t.help.walletHelpSw}
+          sub={t.help.depositWithdrawHolds}
           href="/wallet"
         />
         <QuickLinkCard
           icon={<I.trophy s={15} />}
-          title="My positions"
-          titleSw="Madau yangu"
-          sub="Open · settled · cash-out"
+          title={t.help.myPositions}
+          titleSw={t.help.myPositionsSw}
+          sub={t.help.openSettledCashOut}
           href="/positions"
         />
       </section>
 
       <p className="pt-2 text-center font-mono text-[11px] tabular-nums text-text-subtle">
-        18+ · Play responsibly · Cheza kwa busara · Mainland Tanzania + Zanzibar only
+        {t.help.disclaimer}
       </p>
     </main>
   );
