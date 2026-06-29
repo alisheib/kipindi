@@ -969,13 +969,13 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
       <div className="grid grid-cols-[1fr_auto] gap-2 sm:gap-3 mt-5 items-center">
         <div className="min-w-0">
           <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mb-1">
-            {effectiveSide === "NEUTRAL" ? "No conviction" : "You are picking"}
+            {effectiveSide === "NEUTRAL" ? t.common.noConviction : t.common.youArePicking}
           </p>
           <p
             className="font-display font-bold text-[15px] sm:text-[22px] leading-[1.05] break-words"
             style={{ color: sideText, letterSpacing: "-0.025em" }}
           >
-            {effectiveSide === "NEUTRAL" ? "Pick side" : `${effectiveSide}`}
+            {effectiveSide === "NEUTRAL" ? t.common.pickSide : `${effectiveSide}`}
           </p>
         </div>
         <div className="text-right min-w-0">
@@ -1222,11 +1222,11 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
           }
           details={resultData.variant === "success" ? [
             { label: "Stake", sw: "Dau", value: `TZS ${fmt(resultData.stake)}` },
-            { label: "Payout", sw: "Lipo", value: "At resolution" },
+            { label: t.dialog.payoutLabel, sw: "Lipo", value: t.market.atResolution },
           ] : undefined}
           footnote={resultData.variant === "success" ? "Bahati njema · Good luck." : undefined}
           primaryLabel={resultData.variant === "success" ? "Done · Sawa" : "Close"}
-          secondaryLabel={resultData.variant === "success" ? "View positions" : undefined}
+          secondaryLabel={resultData.variant === "success" ? t.common.viewPositions : undefined}
           onSecondary={resultData.variant === "success" ? () => router.push("/positions") : undefined}
           onClose={() => setResultOpen(false)}
           // No auto-close on success — let the player read the result

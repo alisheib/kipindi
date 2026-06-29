@@ -57,7 +57,7 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
           onClick={() => setOpen(true)}
           className="h-[30px] px-3 rounded-md border border-border bg-bg-elevated font-mono text-[11px] font-bold text-text-muted hover:border-gold-700 hover:text-gold-300 transition-colors whitespace-nowrap inline-flex items-center"
         >
-          {hasPassword ? "Change" : "Set password"}
+          {hasPassword ? t.common.change : t.common.setPassword}
         </button>
       </div>
     );
@@ -126,7 +126,7 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
           disabled={pending || next.length < 8}
           className="h-9 px-4 rounded-md border border-gold-700 bg-gold-500/10 font-mono text-[11px] font-bold text-gold-300 hover:bg-gold-500/20 disabled:opacity-40 transition-colors"
         >
-          {pending ? "Saving…" : hasPassword ? "Update password" : "Set password"}
+          {pending ? t.common.saving : hasPassword ? t.common.updatePassword : t.common.setPassword}
         </button>
         <button
           type="button"

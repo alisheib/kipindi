@@ -33,7 +33,7 @@ export function EmailEditor({ currentEmail, currentName, verified }: { currentEm
       const r = await updateProfileBasicsAction(fd);
       if (!r.ok) { toast({ title: t.toast.emailFailed, description: r.error, variant: "danger" }); return; }
       toast({
-        title: v ? t.toast.emailSaved : "Email removed",
+        title: v ? t.toast.emailSaved : t.common.emailRemoved,
         description: v ? (r.emailVerificationSent ? t.toast.checkInbox : "Receipts will be sent here.") : undefined,
         variant: "success",
       });
@@ -91,7 +91,7 @@ export function EmailEditor({ currentEmail, currentName, verified }: { currentEm
                   <I.mail s={10} /> Unconfirmed · Haijathibitishwa
                 </span>
                 <button type="button" onClick={resend} disabled={pending} className="font-mono text-[11px] text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline disabled:opacity-60">
-                  {pending ? "Sending…" : "Resend link"}
+                  {pending ? t.common.sending : t.common.resendLink}
                 </button>
               </span>
             )

@@ -72,7 +72,7 @@ export function ProfileNameEditor({
           onBlur={save}
           maxLength={40}
           aria-label="Display name"
-          placeholder="Your name"
+          placeholder={t.common.yourName}
           className="font-display text-[24px] md:text-[28px] font-bold leading-tight tracking-[-0.02em] text-text bg-transparent border-b border-gold-500 focus:outline-none px-0 min-w-0 max-w-full flex-1"
         />
         {pending && <span className="inline-flex text-text-subtle"><Spinner size={16} /></span>}

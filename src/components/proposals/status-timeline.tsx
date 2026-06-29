@@ -1,25 +1,30 @@
+"use client";
+
 /**
  * StatusTimeline — vertical stepper: Submitted → Under review → Listed →
  * Resolved → Paid. Done/current steps use gold; future steps are muted.
  */
 import { I } from "@/components/ui/glyphs";
-
-const STEPS: Array<[string, string]> = [
-  ["Submitted", "Imewasilishwa"],
-  ["Under review", "Inakaguliwa"],
-  ["Listed", "Imeorodheshwa"],
-  ["Resolved", "Imetatuliwa"],
-  ["Paid", "Imelipwa"],
-];
+import { useT } from "@/lib/i18n";
 
 export function StatusTimeline({ current }: { current: number }) {
+  const { t } = useT();
+
+  const steps = [
+    t.common.submitted,
+    t.common.underReview,
+    t.proposals.filterListed,
+    t.market.statusResolved,
+    t.market.paidLabel,
+  ];
+
   return (
     <div className="flex flex-col">
-      {STEPS.map(([en, sw], i) => {
+      {steps.map((label, i) => {
         const done = i < current;
         const now = i === current;
         return (
-          <div key={en} className="flex items-start gap-3">
+          <div key={i} className="flex items-start gap-3">
             <div className="flex flex-col items-center">
               <span
                 className="grid h-[22px] w-[22px] place-items-center rounded-full"
@@ -36,13 +41,12 @@ export function StatusTimeline({ current }: { current: number }) {
                 {done && <I.check s={12} />}
                 {now && <span className="h-[7px] w-[7px] rounded-full" style={{ background: "var(--gold-400)" }} />}
               </span>
-              {i < STEPS.length - 1 && (
+              {i < steps.length - 1 && (
                 <span className="w-[2px] h-[26px]" style={{ background: done ? "var(--gold-600)" : "var(--border)" }} />
               )}
             </div>
             <div className="pt-px pb-3.5">
-              <div className={`text-[13.5px] ${now ? "font-bold" : "font-semibold"} ${done || now ? "text-text" : "text-text-subtle"}`}>{en}</div>
-              <div className="font-display italic text-text-subtle text-[11px]">{sw}</div>
+              <div className={`text-[13.5px] ${now ? "font-bold" : "font-semibold"} ${done || now ? "text-text" : "text-text-subtle"}`}>{label}</div>
             </div>
           </div>
         );

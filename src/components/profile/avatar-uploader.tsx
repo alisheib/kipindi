@@ -117,8 +117,8 @@ export function AvatarUploader({
         type="file"
         accept="image/jpeg,image/png,image/webp"
         className="hidden"
-        aria-label="Profile photo"
-        title="Profile photo"
+        aria-label={t.common.profilePhoto}
+        title={t.common.profilePhoto}
         onChange={(e) => onFile(e.target.files?.[0] ?? null)}
       />
 

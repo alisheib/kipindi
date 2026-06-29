@@ -8,10 +8,12 @@
  */
 
 import { useRef, useState } from "react";
+import { useT } from "@/lib/i18n";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export function WithdrawConfirm() {
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const { t } = useT();
   const [formSummary, setFormSummary] = useState({ amount: "", provider: "" });
 
   const openConfirm = () => {
@@ -55,7 +57,7 @@ export function WithdrawConfirm() {
           </p>
         </>
       }
-      confirmLabel="Send funds"
+      confirmLabel={t.common.sendFunds}
       cancelLabel="Cancel · Ghairi"
       onConfirm={submitForm}
       onOpen={openConfirm}

@@ -8,6 +8,7 @@
  */
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useT } from "@/lib/i18n";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
 
 export function WalletResultModal({
@@ -22,6 +23,7 @@ export function WalletResultModal({
   amount?: string;
 }) {
   const router = useRouter();
+  const { t } = useT();
   const [open, setOpen] = useState(true);
   // Trigger a global refresh so the balance pill and any other live
   // components pick up the new wallet state immediately.
@@ -48,7 +50,7 @@ export function WalletResultModal({
     : (pending ? "Deposit started · Inasubiri" : "Deposit confirmed · Imethibitishwa");
   const title = isWithdraw
     ? (amlHeld ? "Withdrawal under review" : pending ? "Payout in progress" : "Withdrawal on its way")
-    : (pending ? "Awaiting confirmation" : "Funds added");
+    : (pending ? t.common.awaitingConfirmation : t.common.fundsAdded);
   const subtitle = isWithdraw
     ? (amlHeld
         ? "Amounts over TZS 1,000,000 are reviewed by compliance (usually within 2 hours)."

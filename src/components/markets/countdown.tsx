@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useT } from "@/lib/i18n";
 
 function diff(toIso: string) {
   const ms = Math.max(0, Date.parse(toIso) - Date.now());
@@ -21,7 +22,9 @@ function diff(toIso: string) {
 // "regenerated on the client" warning.
 const PLACEHOLDER = { d: 0, h: 0, m: 0, s: 0 };
 
-export function Countdown({ to, label = "Closes in" }: { to: string; label?: string }) {
+export function Countdown({ to, label }: { to: string; label?: string }) {
+  const { t } = useT();
+  const resolvedLabel = label ?? t.common.closesIn;
   const [time, set] = useState(PLACEHOLDER);
   useEffect(() => {
     // First tick fires synchronously so the placeholder is replaced
@@ -33,7 +36,7 @@ export function Countdown({ to, label = "Closes in" }: { to: string; label?: str
 
   return (
     <div>
-      <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-warning-fg mb-2">{label}</div>
+      <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-warning-fg mb-2">{resolvedLabel}</div>
       <div className="flex gap-2">
         <Cell v={time.d} unit="Days" />
         <Cell v={time.h} unit="Hours" />

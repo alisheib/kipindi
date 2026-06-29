@@ -9,9 +9,11 @@
 import { useEffect, useState } from "react";
 import { I } from "@/components/ui/glyphs";
 import { Toggle } from "@/components/ui/toggle";
+import { useT } from "@/lib/i18n";
 import { getPrefs, setPrefs, haptics } from "@/lib/haptics";
 
 export function FeedbackSettings() {
+  const { t } = useT();
   const [hapticsOn, setHapticsOn] = useState(true);
   const [reduceMotion, setReduceMotion] = useState(false);
 
@@ -50,7 +52,7 @@ export function FeedbackSettings() {
       <div className="divide-y divide-border/60">
         <Row
           icon={<I.activity s={16} />}
-          title="Haptic feedback"
+          title={t.common.hapticFeedback}
           sw="Mguso wa mtetemo"
           subtitle="A short buzz on key money &amp; outcome moments (phones only)."
           on={hapticsOn}
@@ -58,7 +60,7 @@ export function FeedbackSettings() {
         />
         <Row
           icon={<I.sparkle s={16} className="text-gold-300" />}
-          title="Reduce motion"
+          title={t.common.reduceMotion}
           sw="Punguza mwendo"
           subtitle="Calms animations across the app. We also honour your device setting."
           on={reduceMotion}

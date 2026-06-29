@@ -164,7 +164,7 @@ export function SellButton({
           {closedNow ? "Market closed · Soko limefungwa"
             : pending ? "Selling…"
             : inGrace ? "Free exit · Toka bila gharama"
-            : "Sell now"}
+            : t.common.sellNow}
         </span>
         {!closedNow && (
           <span className="font-mono tabular-nums">

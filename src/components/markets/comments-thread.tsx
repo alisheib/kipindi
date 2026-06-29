@@ -180,7 +180,7 @@ export function CommentsThread({
                       onClick={() => report(c.id)}
                       disabled={pending || c.reportedByMe}
                       className="inline-flex items-center gap-1 font-mono text-[10.5px] text-text-subtle hover:text-warning-fg transition-colors disabled:opacity-50"
-                      aria-label="Report comment"
+                      aria-label={t.common.reportComment}
                     >
                       <I.flag s={11} />
                       {c.reportedByMe ? "Reported" : "Report"}
@@ -192,7 +192,7 @@ export function CommentsThread({
                       onClick={() => remove(c.id)}
                       disabled={pending}
                       className="inline-flex items-center gap-1 font-mono text-[10.5px] text-text-subtle hover:text-danger-fg transition-colors disabled:opacity-50"
-                      aria-label="Delete comment"
+                      aria-label={t.common.deleteComment}
                     >
                       <I.trash s={11} />
                       Delete

@@ -13,6 +13,7 @@
 
 import * as React from "react";
 import { I } from "@/components/ui/glyphs";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, "type" | "size"> & {
@@ -39,6 +40,7 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, Props>(function 
   },
   forwardedRef,
 ) {
+  const { t } = useT();
   const [reveal, setReveal] = React.useState(false);
   const [val, setVal] = React.useState<string>(() => String(defaultValue ?? value ?? ""));
   React.useEffect(() => { if (value !== undefined) setVal(String(value)); }, [value]);
@@ -82,7 +84,7 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, Props>(function 
         <button
           type="button"
           tabIndex={-1}
-          aria-label={reveal ? "Hide password" : "Show password"}
+          aria-label={reveal ? t.common.hidePassword : t.common.showPassword}
           aria-pressed={reveal}
           onClick={() => setReveal(r => !r)}
           className="inline-flex items-center justify-center px-3 bg-bg-elevated border-l border-border text-text-subtle hover:text-text transition-colors shrink-0"
@@ -101,10 +103,10 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, Props>(function 
  * / danger tones. Heuristic: length + character class diversity.
  */
 function PasswordStrength({ value }: { value: string }) {
+  const { t } = useT();
   const score = scorePassword(value);   // 0 / 1 / 2 / 3
   const tone = score >= 3 ? "yes" : score === 2 ? "gold" : "danger";
-  const labelEn = score >= 3 ? "Strong" : score === 2 ? "OK" : score === 1 ? "Weak" : "Too short";
-  const labelSw = score >= 3 ? "Imara" : score === 2 ? "Sawa" : score === 1 ? "Dhaifu" : "Fupi sana";
+  const label = score >= 3 ? t.common.strong : score === 2 ? t.common.ok : score === 1 ? t.common.weak : t.common.tooShort;
   const fillCls =
     tone === "yes" ? "bg-yes-500"
     : tone === "gold" ? "bg-gold-500"
@@ -122,7 +124,7 @@ function PasswordStrength({ value }: { value: string }) {
         <span className={cn("h-[3px] flex-1 rounded-pill", score >= 3 ? fillCls : "bg-bg-overlay")} />
       </div>
       <p className={cn("mt-1 font-mono text-[12px] sm:text-[10px] uppercase tracking-[0.14em] font-bold", fgCls)}>
-        {labelEn} <span className="opacity-70 font-normal italic normal-case tracking-normal">· {labelSw}</span>
+        {label}
       </p>
     </div>
   );
