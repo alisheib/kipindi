@@ -25,10 +25,10 @@ const iconFor = (k: StoredNotification["kind"]) => {
     case "KYC":          return I.shieldcheck;
     case "ROUND_RESULT": return I.activity;
     case "MATCH_START":  return I.coins;
-    case "RG":           return I.shieldcheck;
-    case "SECURITY":     return I.shieldcheck;
-    case "AFFILIATE":    return I.coins;
-    case "PROPOSAL":     return I.trophy;
+    case "RG":           return I.heartPulse;
+    case "SECURITY":     return I.keyRound;
+    case "AFFILIATE":    return I.megaphone;
+    case "PROPOSAL":     return I.fileCheck;
     default:             return I.coins;
   }
 };

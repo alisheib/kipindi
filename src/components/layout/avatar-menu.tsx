@@ -136,9 +136,9 @@ export function AvatarMenu({
               <Item href="/profile"        icon={I.profile}      label="Profile"      sw="Wasifu" />
               <Item href="/wallet"         icon={I.wallet}       label="Wallet"       sw="Pochi" />
               <Item href="/profile/invite" icon={I.gift}         label="Invite & Earn" sw="Alika na upate zawadi" accent />
-              <Item href="/proposals"      icon={I.trophy}       label="Propose & earn" sw="Pendekeza na upate zawadi" accent />
-              <Item href="/positions"      icon={I.receipt}      label="Positions"    sw="Nafasi" />
-              <Item href="/results"        icon={I.flag}         label="Results"      sw="Matokeo" />
+              <Item href="/proposals"      icon={I.sparkle}      label="Propose & earn" sw="Pendekeza na upate zawadi" accent />
+              <Item href="/positions"      icon={I.portfolio}    label="Positions"    sw="Nafasi" />
+              <Item href="/results"        icon={I.resolved}     label="Results"      sw="Matokeo" />
               <Item href="/leaderboard"    icon={I.crown}        label="Leaderboard"  sw="Jedwali la Washindi" />
               <Item href="/profile/kyc"    icon={I.shieldcheck}  label="Verify ID"    sw="Kuthibitisha kitambulisho" />
             </ul>

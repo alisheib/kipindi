@@ -19,14 +19,14 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
 
   const items = isAuthed
     ? [
-        { href: "/markets",        glyph: "chart" as const,      label: L.markets },
+        { href: "/markets",        glyph: "markets" as const,    label: L.markets },
         { href: "/live",           glyph: "bolt" as const,       label: L.live },
         { href: "/wallet",         glyph: "wallet" as const,     label: L.wallet },
         { href: "/profile/invite", glyph: "gift" as const,       label: L.invite },
         { href: "/profile",        glyph: "profile" as const,    label: L.profile },
       ]
     : [
-        { href: "/markets",     glyph: "chart" as const,      label: L.markets },
+        { href: "/markets",     glyph: "markets" as const,    label: L.markets },
         { href: "/live",        glyph: "bolt" as const,       label: L.live },
         { href: "/auth/login",  glyph: "logIn" as const,      label: L.signIn },
       ];
