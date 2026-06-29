@@ -133,16 +133,7 @@ export function AvatarMenu({
               <ConfirmDialog
                 tone="claret"
                 title={t.profile.signOutConfirmTitle}
-                body={
-                  <>
-                    <p>{t.profile.signOutConfirmBody}</p>
-                    {locale !== "en" && (
-                      <p className="text-text-subtle italic text-[12.5px] mt-1">
-                        {t.profile.signOutConfirmBodySw}
-                      </p>
-                    )}
-                  </>
-                }
+                body={<p>{t.profile.signOutConfirmBody}</p>}
                 confirmLabel={t.profile.signOutConfirmYes}
                 cancelLabel={t.profile.signOutConfirmNo}
                 onConfirm={() => {

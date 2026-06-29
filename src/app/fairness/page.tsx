@@ -11,6 +11,7 @@ import { listMarkets } from "@/lib/server/market-service";
 import { formatDateTimeSafe } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getServerT } from "@/lib/i18n-server";
+import { pickLocalized } from "@/lib/localized";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -21,7 +22,7 @@ export const dynamic = "force-dynamic";
 const fmtTime = (iso: string | null) => formatDateTimeSafe(iso);
 
 export default async function FairnessPage() {
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
   const resolved = (await listMarkets({ status: "RESOLVED" })).slice(0, 30);
 
   return (
@@ -84,8 +85,7 @@ export default async function FairnessPage() {
                 {resolved.map((m) => (
                   <tr key={m.id} className="border-b border-border last:border-b-0 align-top">
                     <td className="p-3 max-w-[420px]">
-                      <Link href={`/markets/${m.id}` as never} className="font-display font-semibold text-text hover:text-teal-300 line-clamp-2">{m.titleEn}</Link>
-                      {m.titleSw && <p className="mt-0.5 text-[12px] italic text-text-subtle line-clamp-1">{m.titleSw}</p>}
+                      <Link href={`/markets/${m.id}` as never} className="font-display font-semibold text-text hover:text-teal-300 line-clamp-2">{pickLocalized(locale, m.titleEn, m.titleSw)}</Link>
                     </td>
                     <td className="p-3">
                       <span className={`inline-flex items-center rounded-pill border px-2.5 py-0.5 text-[12px] font-bold ${

@@ -11,11 +11,12 @@ import { StatusBadge } from "@/components/proposals/status-badge";
 import { StatusTimeline } from "@/components/proposals/status-timeline";
 import { CategoryIcon, categoryLabel } from "@/components/proposals/category-icon";
 import { getServerT } from "@/lib/i18n-server";
+import { pickLocalized } from "@/lib/localized";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProposalDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
   const { id } = await params;
   const session = await currentSession();
   const p = await getProposalDetail(id, session?.userId ?? null);
@@ -34,8 +35,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
           <Chip variant="neutral"><CategoryIcon category={p.category} />{categoryLabel(t, p.category)}</Chip>
           <span className="ml-auto font-mono text-[10.5px] text-text-subtle">{t.common.resolves} {p.resolutionDate}</span>
         </div>
-        <h1 className="font-display text-[19px] font-bold leading-snug tracking-[-0.01em]">{p.titleEn}</h1>
-        {p.titleSw && <p className="mt-0.5 font-display italic text-text-subtle text-[12.5px]">{p.titleSw}</p>}
+        <h1 className="font-display text-[19px] font-bold leading-snug tracking-[-0.01em]">{pickLocalized(locale, p.titleEn, p.titleSw)}</h1>
         {p.description && <p className="mt-2 text-[13px] leading-relaxed text-text-muted">{p.description}</p>}
         <div className="mt-3.5 flex items-center gap-3">
           <VoteControl proposalId={p.id} up={p.up} down={p.down} myVote={p.myVote} horizontal disabled={!cfg.enabled || !open} />

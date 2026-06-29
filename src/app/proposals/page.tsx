@@ -12,6 +12,7 @@ import { VoteControl } from "@/components/proposals/vote-control";
 import { StatusBadge } from "@/components/proposals/status-badge";
 import { CategoryIcon, categoryLabel } from "@/components/proposals/category-icon";
 import { getServerT } from "@/lib/i18n-server";
+import { pickLocalized } from "@/lib/localized";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -20,7 +21,7 @@ export async function generateMetadata() {
 export const dynamic = "force-dynamic";
 
 export default async function ProposalsPage({ searchParams }: { searchParams: Promise<{ f?: string; page?: string }> }) {
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
 
   const FILTERS: Array<{ id: BoardFilter; label: string }> = [
     { id: "hot", label: t.proposals.filterHot },
@@ -123,7 +124,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
         <>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {proposals.map((p) => (
-              <ProposalCard key={p.id} p={p} disabled={!enabled} t={t} ageStr={ageStr} />
+              <ProposalCard key={p.id} p={p} disabled={!enabled} t={t} locale={locale} ageStr={ageStr} />
             ))}
           </div>
           {matchedCount > PLAYER_PER_PAGE && (
@@ -155,7 +156,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
   );
 }
 
-function ProposalCard({ p, disabled, t, ageStr }: { p: ProposalView; disabled?: boolean; t: import("@/lib/i18n-server").Dict; ageStr: (iso: string) => string }) {
+function ProposalCard({ p, disabled, t, locale, ageStr }: { p: ProposalView; disabled?: boolean; t: import("@/lib/i18n-server").Dict; locale: import("@/lib/i18n-server").Locale; ageStr: (iso: string) => string }) {
   return (
     <div className="group flex items-start gap-3 rounded-xl glass-panel p-3.5 transition-all hover:-translate-y-0.5 hover:border-teal-400 hover:shadow-[var(--shadow-4),var(--glow-blue)]">
       <VoteControl proposalId={p.id} up={p.up} down={p.down} myVote={p.myVote} disabled={disabled} />
@@ -165,8 +166,7 @@ function ProposalCard({ p, disabled, t, ageStr }: { p: ProposalView; disabled?: 
           <Chip variant="neutral"><CategoryIcon category={p.category} />{categoryLabel(t, p.category)}</Chip>
           <span className="ml-auto font-mono text-[10.5px] text-text-subtle">{ageStr(p.createdAt)}</span>
         </div>
-        <p className="font-display text-[15.5px] font-semibold leading-snug tracking-[-0.01em] text-text">{p.titleEn}</p>
-        {p.titleSw && <p className="mt-0.5 font-display italic text-text-subtle text-[11.5px]">{p.titleSw}</p>}
+        <p className="font-display text-[15.5px] font-semibold leading-snug tracking-[-0.01em] text-text">{pickLocalized(locale, p.titleEn, p.titleSw)}</p>
         {p.description && <p className="mt-1.5 text-[12.5px] leading-relaxed text-text-muted line-clamp-2">{p.description}</p>}
         <div className="mt-2.5 flex items-center gap-3.5 font-mono text-[11px] text-text-subtle">
           <span>{t.proposals.byProposer} {p.proposerMasked}</span>

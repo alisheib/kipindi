@@ -70,11 +70,6 @@ function pickBody(n: StoredNotification, locale: string): string {
   if (locale === "zh") return (n as Record<string, string>).bodyZh || n.bodyEn;
   return n.bodyEn;
 }
-/** Secondary line — show the "other" language for bilingual context. */
-function pickSecondary(n: StoredNotification, locale: string): string {
-  if (locale === "en") return n.titleSw;
-  return n.titleEn;
-}
 
 export function NotificationsPanel() {
   const [open, setOpen] = useState(false);
@@ -310,8 +305,7 @@ export function NotificationsPanel() {
                       <p className="mt-0.5 text-label text-text-muted leading-snug">
                         {pickBody(n, locale)}
                       </p>
-                      <div className="mt-1 flex items-center justify-between">
-                        <p className="text-[10.5px] italic text-text-subtle">{pickSecondary(n, locale)}</p>
+                      <div className="mt-1 flex items-center justify-end">
                         <span className="font-mono text-[10.5px] tabular-nums text-text-subtle">
                           {relTime(n.createdAt)}
                         </span>

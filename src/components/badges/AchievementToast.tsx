@@ -12,13 +12,13 @@ import { useT } from "@/lib/i18n";
 export function AchievementToast({
   achievement,
   name,       // "First Win"
-  nameSw,     // "Ushindi wa Kwanza"
   onDone,
   durationMs = 4200,
 }: {
   achievement: AchievementId;
   name: string;
-  nameSw: string;
+  /** Accepted for back-compat; no longer rendered (single-language UI). */
+  nameSw?: string;
   onDone?: () => void;
   durationMs?: number;
 }) {
@@ -52,7 +52,6 @@ export function AchievementToast({
       <div style={{ minWidth: 0 }}>
         <p className="gilt-eyebrow">{t.common.achievementUnlocked}</p>
         <p className="font-display" style={{ fontSize: "var(--type-h4)", fontWeight: 600, color: "var(--text)" }}>{name}</p>
-        <p style={{ fontSize: 12, fontStyle: "italic", color: "var(--text-subtle)" }}>{nameSw}</p>
       </div>
     </div>
   );

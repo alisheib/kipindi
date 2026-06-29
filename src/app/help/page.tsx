@@ -35,7 +35,6 @@ export default async function HelpPage() {
           <h1 className="mt-1 font-display text-[26px] lg:text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
             {t.help.heading}
           </h1>
-          {t.help.headingSw && <p className="mt-1 text-[14px] italic text-text-subtle">{t.help.headingSw}</p>}
         </div>
       </header>
 
@@ -44,36 +43,30 @@ export default async function HelpPage() {
           icon={<I.phone s={15} />}
           tone="yes"
           title={t.help.callUs}
-          titleSw={t.help.callUsSw}
           value={SUPPORT_PHONE()}
           sub={t.help.freeHelpline}
-          subSw={t.help.freeHelplineSw}
           href={`tel:${SUPPORT_PHONE_TEL()}`}
         />
         <ContactCard
           icon={<I.mail s={15} />}
           tone="info"
           title={t.help.emailLabel}
-          titleSw={t.help.emailLabelSw}
           value={SUPPORT_EMAIL()}
           sub={t.help.emailReply}
-          subSw={t.help.emailReplySw}
           href={`mailto:${SUPPORT_EMAIL()}`}
         />
         <ContactCard
           icon={<I.comment s={15} />}
           tone="gold"
           title={t.help.liveChat}
-          titleSw={t.help.liveChatSw}
           value={t.help.inApp}
           sub={t.help.tapChatBubble}
-          subSw={t.help.tapChatBubbleSw}
         />
       </section>
 
       <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-2">
         <h2 className="font-display text-[15px] font-semibold text-text">
-          {t.help.faqTitle}{t.help.faqTitleSw ? <span className="text-text-subtle italic font-normal"> · {t.help.faqTitleSw}</span> : null}
+          {t.help.faqTitle}
         </h2>
         <div>
           {FAQ_KEYS.map((key) => (
@@ -100,21 +93,18 @@ export default async function HelpPage() {
         <QuickLinkCard
           icon={<I.shieldcheck s={15} />}
           title={t.help.responsibleGambling}
-          titleSw={t.help.responsibleGamblingSw}
           sub={t.help.limitsBreakExclude}
           href="/profile/responsible-gambling"
         />
         <QuickLinkCard
           icon={<I.wallet s={15} />}
           title={t.help.walletHelp}
-          titleSw={t.help.walletHelpSw}
           sub={t.help.depositWithdrawHolds}
           href="/wallet"
         />
         <QuickLinkCard
           icon={<I.trophy s={15} />}
           title={t.help.myPositions}
-          titleSw={t.help.myPositionsSw}
           sub={t.help.openSettledCashOut}
           href="/positions"
         />
@@ -128,15 +118,13 @@ export default async function HelpPage() {
 }
 
 function ContactCard({
-  icon, tone, title, titleSw, value, sub, subSw, href,
+  icon, tone, title, value, sub, href,
 }: {
   icon: React.ReactNode;
   tone: "yes" | "info" | "gold";
   title: string;
-  titleSw?: string;
   value: string;
   sub: string;
-  subSw?: string;
   href?: string;
 }) {
   const tintCls =
@@ -150,23 +138,21 @@ function ContactCard({
           {icon}
         </span>
         <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-semibold text-text-subtle">
-          {title}{titleSw ? ` · ${titleSw}` : ""}
+          {title}
         </span>
       </div>
       <p className="font-display font-bold text-[15px] text-text break-all">{value}</p>
       <p className="text-[11.5px] text-text-subtle">{sub}</p>
-      {subSw && <p className="text-[11px] italic text-text-subtle">{subSw}</p>}
     </div>
   );
   return href ? <a href={href} className="block">{card}</a> : card;
 }
 
 function QuickLinkCard({
-  icon, title, titleSw, sub, href,
+  icon, title, sub, href,
 }: {
   icon: React.ReactNode;
   title: string;
-  titleSw?: string;
   sub: string;
   href: string;
 }) {
@@ -180,7 +166,6 @@ function QuickLinkCard({
       </span>
       <div className="flex-1 min-w-0">
         <p className="font-display text-[13px] font-semibold text-text truncate">{title}</p>
-        {titleSw && <p className="text-[11px] italic text-text-subtle truncate">{titleSw}</p>}
         <p className="mt-0.5 text-[11px] text-text-subtle">{sub}</p>
       </div>
     </Link>

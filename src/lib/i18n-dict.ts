@@ -754,6 +754,7 @@ export const dict = {
       starterDeposit: "How do I deposit?",
       starterDial: "What's the conviction dial?",
       starterPayout: "When do I get paid?",
+      starterWithdraw: "How do I withdraw?",
       // === i18n coverage pass ===
       closeHelp: "Close 50pick Help", openHelp: "Open 50pick Help",
       unread: "{n} unread",
@@ -1688,6 +1689,7 @@ export const dict = {
       starterDeposit: "Ninawezaje kuweka amana?",
       starterDial: "Dial ya imani ni nini?",
       starterPayout: "Nitapata lini malipo?",
+      starterWithdraw: "Ninawezaje kutoa pesa?",
       // === i18n coverage pass ===
       closeHelp: "Funga Msaada wa 50pick", openHelp: "Fungua Msaada wa 50pick",
       unread: "{n} ambazo hazijasomwa",
@@ -2621,6 +2623,7 @@ export const dict = {
       starterDeposit: "如何充值？",
       starterDial: "什么是信念刻度盘？",
       starterPayout: "什么时候能收到赔付？",
+      starterWithdraw: "我如何提现？",
       // === i18n coverage pass ===
       closeHelp: "关闭 50pick 帮助", openHelp: "打开 50pick 帮助",
       unread: "{n} 条未读",

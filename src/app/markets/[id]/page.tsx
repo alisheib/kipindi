@@ -17,6 +17,7 @@ import { CommentsThread } from "@/components/markets/comments-thread";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { formatDateTime, formatTzsCompact } from "@/lib/utils";
 import { getServerT } from "@/lib/i18n-server";
+import { pickLocalized } from "@/lib/localized";
 
 
 export const dynamic = "force-dynamic";
@@ -71,7 +72,7 @@ export default async function MarketDetail({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ side?: "YES" | "NO" }>;
 }) {
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
   const { id } = await params;
   const { side } = await searchParams;
   const m = await getMarket(id);
@@ -163,8 +164,7 @@ export default async function MarketDetail({
           </a>
           <ShareButton marketId={m.id} title={m.titleEn} />
         </div>
-        <h1 className="font-display text-[26px] md:text-[34px] font-bold leading-tight tracking-[-0.02em] text-text">{m.titleEn}</h1>
-        {m.titleSw && <p className="mt-1.5 text-[14px] italic text-text-subtle">{m.titleSw}</p>}
+        <h1 className="font-display text-[26px] md:text-[34px] font-bold leading-tight tracking-[-0.02em] text-text">{pickLocalized(locale, m.titleEn, m.titleSw)}</h1>
       </header>
 
       {/* ── Main two-column layout ──

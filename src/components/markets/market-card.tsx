@@ -9,6 +9,7 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
+import { pickLocalized } from "@/lib/localized";
 
 type Props = {
   id: string;
@@ -156,7 +157,8 @@ export function MarketCard({
   id, titleEn, titleSw, category, yesPct, volume, predictors, timeLeft, status, move24h, traders, selectionClosed, className,
 }: Props) {
   const router = useRouter();
-  const { t } = useT();
+  const { t, locale } = useT();
+  const title = pickLocalized(locale, titleEn, titleSw);
   const signal = getSignalBadge(status, yesPct, volume, predictors, timeLeft, {
     hot: t.common.hot, soon: t.common.soon, tipping: t.market.tipping,
   });
@@ -211,7 +213,7 @@ export function MarketCard({
 
       <div className="mcardp-head">
         <div className="mcardp-qwrap">
-          <h3 className="mcardp-q">{titleEn}</h3>
+          <h3 className="mcardp-q">{title}</h3>
         </div>
         <div className="mcardp-prob">
           <div className="mcardp-pctcap">{isResolved ? t.market.result : t.common.yes}</div>
@@ -269,7 +271,7 @@ export function MarketCard({
     <article
       className={cn("mcardp group", className)}
       style={{ cursor: "pointer" }}
-      aria-label={titleEn}
+      aria-label={title}
       role="link"
       tabIndex={0}
       onClick={goDetails}

@@ -3,7 +3,7 @@
 /**
  * EmptyState — kit-faithful: 360px (or full-width) boxed, dashed border,
  * line-art SVG illustration in brand-teal stroke with gold accent.
- * Title (display 16/600), body (13, EN + SW), optional ghost CTA.
+ * Title (display 16/600), body (13), optional ghost CTA.
  *
  * The kit explicitly forbids mascots / full-color cartoons.
  *
@@ -20,17 +20,16 @@ export function EmptyState({
   kind = "default",
   illustration,
   title,
-  titleSw,
   body,
-  bodySw,
   action,
   className,
 }: {
   kind?: Kind;
   illustration?: ReactNode;
   title: string;
-  titleSw?: string;
   body?: string;
+  /** Accepted for back-compat; no longer rendered (single-language UI). */
+  titleSw?: string;
   bodySw?: string;
   action?: ReactNode;
   className?: string;
@@ -46,9 +45,7 @@ export function EmptyState({
         {illustration ?? <DefaultIllustration kind={kind} />}
       </div>
       <p className="font-display text-[15.5px] font-semibold text-text">{title}</p>
-      {titleSw && <p className="mt-0.5 text-[12px] italic text-text-subtle">{titleSw}</p>}
       {body && <p className="mt-2 text-[12.5px] leading-relaxed text-text-subtle">{body}</p>}
-      {bodySw && <p className="mt-1 text-[12px] italic text-text-subtle">{bodySw}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );

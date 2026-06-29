@@ -3,11 +3,9 @@
 /**
  * Empty state — first time the bubble is opened in a session.
  *
- * Locale-aware greeting + four starter chips (three in the active
- * locale plus one cross-language chip to signal bilingual support
- * up-front). Each chip sends the same text the player would have
- * typed, which routes through the regular send action so the
- * experience is uniform.
+ * Locale-aware greeting + four starter chips, all in the active locale.
+ * Each chip sends the same text the player would have typed, which routes
+ * through the regular send action so the experience is uniform.
  *
  * Hero displays the chat-companion <HelpMark /> at hero scale (no
  * plate wrapper) so the player sees the brand-mark concierge identity
@@ -18,31 +16,15 @@ import { FiftyMark } from "@/components/brand";
 import { useT } from "@/lib/i18n";
 
 export function EmptyState({ onPick }: { onPick: (text: string) => void }) {
-  const { t, locale } = useT();
+  const { t } = useT();
 
-  /* Three locale starters + one cross-language chip */
-  const starters: Array<{ text: string; alt: boolean }> =
-    locale === "sw"
-      ? [
-          { text: t.chat.starterDeposit, alt: false },
-          { text: t.chat.starterDial, alt: false },
-          { text: t.chat.starterPayout, alt: false },
-          { text: "How do I deposit?", alt: true },
-        ]
-      : locale === "zh"
-        ? [
-            { text: t.chat.starterDeposit, alt: false },
-            { text: t.chat.starterDial, alt: false },
-            { text: t.chat.starterPayout, alt: false },
-            { text: "How do I deposit?", alt: true },
-          ]
-        : /* en */
-          [
-            { text: t.chat.starterDeposit, alt: false },
-            { text: t.chat.starterDial, alt: false },
-            { text: t.chat.starterPayout, alt: false },
-            { text: "Vipi ninaweza kuamua?", alt: true },
-          ];
+  /* Four starter chips, all in the active locale. */
+  const starters: string[] = [
+    t.chat.starterDeposit,
+    t.chat.starterDial,
+    t.chat.starterPayout,
+    t.chat.starterWithdraw,
+  ];
 
   return (
     <div className="cm-empty">
@@ -59,10 +41,10 @@ export function EmptyState({ onPick }: { onPick: (text: string) => void }) {
           <button
             key={i}
             type="button"
-            className={`cm-empty-starter ${s.alt ? "cm-sw-tile" : ""}`}
-            onClick={() => onPick(s.text)}
+            className="cm-empty-starter"
+            onClick={() => onPick(s)}
           >
-            {s.text}
+            {s}
           </button>
         ))}
       </div>
