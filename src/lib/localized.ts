@@ -19,7 +19,9 @@ export function pickLocalized(
   sw?: string | null,
   zh?: string | null,
 ): string {
-  if (locale === "sw") return sw || en;
-  if (locale === "zh") return zh || en;
+  // Treat null / "" / whitespace-only translations as absent so we never render
+  // a blank or whitespace title — always fall back to the canonical English.
+  if (locale === "sw") return sw && sw.trim() ? sw : en;
+  if (locale === "zh") return zh && zh.trim() ? zh : en;
   return en;
 }
