@@ -22,6 +22,7 @@ import { ChatPanel } from "./ChatPanel";
 import type { Message } from "./types";
 import { buildUserMessage, sendMessage } from "@/lib/chat/send-message";
 import { chatWithClaude } from "@/app/_actions/chat";
+import { useT } from "@/lib/i18n";
 
 const HIDE_ON = /^\/(auth|admin)(\/|$)/;
 const MOBILE_BREAKPOINT = 768;
@@ -73,6 +74,7 @@ function saveHistory(messages: Message[]): void {
 
 export function ChatRoot() {
   const pathname = usePathname();
+  const { locale } = useT();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [pending, setPending] = useState(false);
@@ -140,7 +142,7 @@ export function ChatRoot() {
             role: (m.role === "user" ? "user" : "assistant") as "user" | "assistant",
             content: m.role === "user" ? m.text : (m as { text: string }).text,
           }));
-        const liveResult = await chatWithClaude(historyForClaude, text);
+        const liveResult = await chatWithClaude(historyForClaude, text, locale);
         const reply: Message = liveResult
           ? { id: `m_${Date.now().toString(36)}`, role: "ai", kind: "text", lang: user.lang, text: liveResult.text, ts: Date.now() }
           : await sendMessage([...messages, user], text);

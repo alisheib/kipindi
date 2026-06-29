@@ -60,13 +60,21 @@ async function consumeDailyQuota(userId: string): Promise<boolean> {
   return true;
 }
 
-const CAPACITY_MESSAGE =
-  `You've reached this session's question limit. For anything else, our support team is here to help — call ${SUPPORT_PHONE()} (free, 24/7) or email ${SUPPORT_EMAIL()}.\n\n` +
-  `Umefikia kikomo cha maswali kwa kipindi hiki. Kwa msaada zaidi, wasiliana na timu yetu — piga ${SUPPORT_PHONE()} (bure, saa 24) au barua pepe ${SUPPORT_EMAIL()}.`;
+const CAPACITY_MESSAGES: Record<string, string> = {
+  en: `You've reached this session's question limit. For anything else, our support team is here to help — call ${SUPPORT_PHONE()} (free, 24/7) or email ${SUPPORT_EMAIL()}.`,
+  sw: `Umefikia kikomo cha maswali kwa kipindi hiki. Kwa msaada zaidi, wasiliana na timu yetu — piga ${SUPPORT_PHONE()} (bure, saa 24) au barua pepe ${SUPPORT_EMAIL()}.`,
+  zh: `您已达到本次会话的提问上限。如需更多帮助，请联系我们的支持团队 — 致电 ${SUPPORT_PHONE()}（免费，全天候）或发送邮件至 ${SUPPORT_EMAIL()}。`,
+};
 
-const SYSTEM_PROMPT = `You are the 50pick Help assistant — a friendly, concise AI concierge embedded in the 50pick app (chat widget, bottom-right). 50pick is a Tanzania-licensed YES/NO prediction-market platform.
+function buildSystemPrompt(locale: string) {
+  const langLine = locale === "zh"
+    ? "LANGUAGE: The user's interface is set to Chinese (中文). Reply primarily in Mandarin Chinese. You may also use English or Kiswahili if the user writes in those languages. Warm, direct, brief. No emojis unless the user uses them first."
+    : locale === "sw"
+    ? "LANGUAGE: The user's interface is set to Kiswahili. Reply primarily in Kiswahili. You may also use English if the user writes in English. Warm, direct, brief. No emojis unless the user uses them first."
+    : "LANGUAGE: The user's interface is set to English. Reply primarily in English. You may also use Kiswahili if the user writes in Kiswahili. Warm, direct, brief. No emojis unless the user uses them first.";
+  return `You are the 50pick Help assistant — a friendly, concise AI concierge embedded in the 50pick app (chat widget, bottom-right). 50pick is a Tanzania-licensed YES/NO prediction-market platform.
 
-LANGUAGE: Speak English and Kiswahili; match the user's language. Warm, direct, brief. No emojis unless the user uses them first.
+${langLine}
 
 FORMAT — THIS IS IMPORTANT:
 - For "how do I…" or procedural answers, ALWAYS use numbered steps. Lead with a one-line intro, then the steps. Example: "To deposit money:\n\n1. Open **Wallet → Deposit**\n2. Choose M-Pesa, Airtel, or HaloPesa\n3. Enter the amount\n4. Confirm on your phone"
@@ -98,10 +106,12 @@ RULES:
 1. NEVER recommend which side to pick (YES or NO). You may explain HOW a market resolves, never WHICH side to choose.
 2. If the user shows signs of problem gambling (chasing losses, can't stop, addicted), respond ONLY with: "I'd like to help with that. Let me direct you to our responsible gambling tools at Profile > Responsible Gambling, or call ${SUPPORT_PHONE()}."
 3. If you don't know a 50pick answer, say so briefly and offer to connect them with the support team.`;
+}
 
 export async function chatWithClaude(
   history: { role: "user" | "assistant"; content: string }[],
   userText: string,
+  locale: string = "en",
 ): Promise<{ text: string } | null> {
   if (!process.env.ANTHROPIC_API_KEY) return null;
 
@@ -116,7 +126,7 @@ export async function chatWithClaude(
   // Hard daily cap — once reached, return the capacity message and do NOT
   // call the API. This is the real defence against sustained token burn.
   if (!(await consumeDailyQuota(session.userId))) {
-    return { text: CAPACITY_MESSAGE };
+    return { text: CAPACITY_MESSAGES[locale] ?? CAPACITY_MESSAGES.en };
   }
 
   try {
@@ -130,7 +140,7 @@ export async function chatWithClaude(
     const resp = await client.messages.create({
       model,
       max_tokens: 350,
-      system: SYSTEM_PROMPT,
+      system: buildSystemPrompt(locale),
       messages,
     }, { timeout: 15_000 }); // user-facing: don't let a hung API call block the request
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
