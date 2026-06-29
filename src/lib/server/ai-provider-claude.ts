@@ -197,9 +197,13 @@ export class ClaudeProvider implements AIProvider {
     const nowIso = new Date().toISOString();
 
     const guidance = CATEGORY_GUIDANCE[category] ?? CATEGORY_GUIDANCE.other;
-    const userPrompt = req.prompt
+    const fixedTitle = req.controlledTitle?.trim();
+    const fixedClause = fixedTitle
+      ? `\n\nThe English question is FIXED by the operator — you MUST use it EXACTLY as titleEn, word for word, without rewording: "${fixedTitle}". Build the resolution criterion, sources and dates around this exact question, and make titleSw and titleZh faithful translations of THIS exact question — never a different one.`
+      : "";
+    const userPrompt = (req.prompt
       ? `Generate a HOT ${category} prediction market. Steer toward: ${guidance}\n\nAdditional operator guidance (takes priority): ${req.prompt}`
-      : `Generate a fresh, HOT, genuinely-uncertain ${category} prediction-market question, anchored in Tanzania / East Africa (global topics are fine for crypto, weather, and major world sport). It must be about a real event still upcoming as of ${nowIso}.\n\nGood angles for this category: ${guidance}`;
+      : `Generate a fresh, HOT, genuinely-uncertain ${category} prediction-market question, anchored in Tanzania / East Africa (global topics are fine for crypto, weather, and major world sport). It must be about a real event still upcoming as of ${nowIso}.\n\nGood angles for this category: ${guidance}`) + fixedClause;
 
     try {
       const client = new Anthropic({ apiKey: this.apiKey });

@@ -314,7 +314,7 @@ export default async function MarketDetail({
               )}
               <SidePicker
                 marketId={m.id}
-                marketTitle={m.titleEn}
+                marketTitle={pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}
                 yesPool={m.yesPool}
                 noPool={m.noPool}
                 yesPct={yesPct}

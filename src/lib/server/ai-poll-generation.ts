@@ -422,6 +422,18 @@ async function validateAndFilter(
     quality.push({ label: "Title", score: 95, status: "good" });
   }
 
+  // Translated titles share the English length cap. Without this a runaway
+  // model (or a pasted blob) could store a multi-KB Swahili/Chinese title that
+  // breaks layout / is an abuse vector — titleEn was the only field bounded.
+  if (sanitised.titleSw && sanitised.titleSw.length > MAX_TITLE_LENGTH) {
+    reasons.push("title_too_long");
+    quality.push({ label: "Swahili title length", score: 20, status: "bad" });
+  }
+  if (sanitised.titleZh && sanitised.titleZh.length > MAX_TITLE_LENGTH) {
+    reasons.push("title_too_long");
+    quality.push({ label: "Chinese title length", score: 20, status: "bad" });
+  }
+
   // Resolution criterion
   if (!sanitised.resolutionCriterion || sanitised.resolutionCriterion.length < 10) {
     reasons.push("empty_criterion");
@@ -618,7 +630,7 @@ export async function listAIPolls(filter?: AIPollFilter): Promise<StoredAIPoll[]
       if (filter?.dateFrom && p.createdAt < filter.dateFrom) return false;
       if (filter?.dateTo && p.createdAt > filter.dateTo) return false;
       if (q) {
-        const hay = [p.titleEn, p.titleSw, p.category, p.id, p.resolutionCriterion, p.reasoning]
+        const hay = [p.titleEn, p.titleSw, p.titleZh, p.category, p.id, p.resolutionCriterion, p.reasoning]
           .filter(Boolean).join(" ").toLowerCase();
         if (!hay.includes(q)) return false;
       }
@@ -748,7 +760,7 @@ export async function generateAIPoll(opts: {
   const provider = getAIProvider();
   let response: AIProviderResponse;
   try {
-    response = await provider.generate({ category: opts.category, prompt: opts.prompt, avoidTitles });
+    response = await provider.generate({ category: opts.category, prompt: opts.prompt, controlledTitle: opts.controlledTitle, avoidTitles });
   } catch (err) {
     poll.state = "VALIDATION_FAILED";
     poll.filterReasons = ["provider_error"];
@@ -945,7 +957,7 @@ function ideaSteer(idea: PollIdea, operatorPrompt?: string): string {
 Idea: ${idea.titleEn}
 Why it's bettable: ${idea.why}
 Target resolution around: ${idea.resolutionDateGuess}.
-Find the exact publicly-verifiable resolution criterion + real source URLs, set an accurate resolutionAt, and translate to Swahili.${operatorPrompt ? `\nOperator guidance (priority): ${operatorPrompt}` : ""}`;
+Find the exact publicly-verifiable resolution criterion + real source URLs, set an accurate resolutionAt, and translate the title into both Swahili (titleSw) and Simplified Chinese (titleZh).${operatorPrompt ? `\nOperator guidance (priority): ${operatorPrompt}` : ""}`;
 }
 
 export async function generateAIPollBatch(opts: {

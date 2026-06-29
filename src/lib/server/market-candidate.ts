@@ -259,7 +259,7 @@ export async function listCandidates(filter?: CandidateFilter): Promise<Candidat
       if (filter?.dateFrom && c.createdAt < filter.dateFrom) return false;
       if (filter?.dateTo && c.createdAt > filter.dateTo) return false;
       if (q) {
-        const hay = [c.proposedTitleEn, c.proposedTitleSw, c.category, c.id, c.resolutionCriterion]
+        const hay = [c.proposedTitleEn, c.proposedTitleSw, c.proposedTitleZh, c.category, c.id, c.resolutionCriterion]
           .filter(Boolean).join(" ").toLowerCase();
         if (!hay.includes(q)) return false;
       }

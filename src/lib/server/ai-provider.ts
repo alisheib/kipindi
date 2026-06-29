@@ -53,6 +53,11 @@ export type AIProviderResponse = {
 export type GenerateRequest = {
   category: string;
   prompt?: string;          // optional admin freeform guidance
+  /** Controlled mode: the operator has PINNED the English question. The model
+   *  must use it verbatim as titleEn and translate THAT exact question into
+   *  titleSw/titleZh — never invent a different question (which would make the
+   *  translations describe a market other than the one English settles). */
+  controlledTitle?: string;
   locale?: "en" | "sw";
   /** Existing market / in-review poll titles to steer AWAY from, so the model
    *  doesn't re-propose a question we already have (which would be filtered as a

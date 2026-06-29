@@ -257,6 +257,7 @@ export async function publishPollAction(formData: FormData) {
     category: (poll.category === "tech" || poll.category === "other" ? "macro" : poll.category) as "sports" | "macro" | "weather" | "crypto" | "culture" | "infrastructure",
     proposedTitleEn: poll.titleEn,
     proposedTitleSw: poll.titleSw || undefined,
+    proposedTitleZh: poll.titleZh || undefined,
     resolutionCriterion: poll.resolutionCriterion,
     resolutionAt: poll.resolutionAt,
     sources: poll.sources.map((s) => ({

@@ -21,6 +21,7 @@
  */
 import { PrismaClient } from "@prisma/client";
 import Anthropic from "@anthropic-ai/sdk";
+import { randomUUID } from "node:crypto";
 
 const MODEL = "claude-haiku-4-5-20251001";
 const IN_PER_MTOK = 1; // USD — Haiku 4.5 input
@@ -88,9 +89,11 @@ async function main() {
         const costUsd = (inTok / 1e6) * IN_PER_MTOK + (outTok / 1e6) * OUT_PER_MTOK;
         await prisma.predictionMarket.update({ where: { id: r.id }, data: { titleZh: zh } });
         await prisma.aiUsageEvent.create({
-          data: { feature: "polls", model: MODEL, inputTokens: inTok, outputTokens: outTok,
+          // id has no DB default — must be supplied explicitly (matches recordAiUsage).
+          data: { id: `aiu_${randomUUID().replace(/-/g, "").slice(0, 14)}`,
+            feature: "polls", model: MODEL, inputTokens: inTok, outputTokens: outTok,
             webSearches: 0, costUsd, ok: true, detail: `zh-backfill ${r.id}` },
-        }).catch(() => {});
+        }).catch((e) => console.error(`  usage-meter write failed for ${r.id}: ${(e as Error).message}`));
         done++;
       } catch (e) {
         failed++;

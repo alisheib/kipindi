@@ -197,9 +197,9 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
   // "rains april" matches "…long rains begin… before April 15". Substring, not
   // regex — no injection, and partial words ("crypt") still hit.
   const tokens = qRaw.toLowerCase().split(/\s+/).filter(Boolean);
-  const matches = (m: { titleEn: string; titleSw: string; category: string; resolutionCriterion?: string }) => {
+  const matches = (m: { titleEn: string; titleSw: string; titleZh?: string | null; category: string; resolutionCriterion?: string }) => {
     if (!searching) return true;
-    const hay = `${m.titleEn} ${m.titleSw} ${m.category} ${m.resolutionCriterion ?? ""}`.toLowerCase();
+    const hay = `${m.titleEn} ${m.titleSw} ${m.titleZh ?? ""} ${m.category} ${m.resolutionCriterion ?? ""}`.toLowerCase();
     return tokens.every((t) => hay.includes(t));
   };
   const now = Date.now();

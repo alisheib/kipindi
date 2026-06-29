@@ -62,12 +62,12 @@ function relTime(iso: string): string {
 /** Pick the right locale field from a notification, falling back to English. */
 function pickTitle(n: StoredNotification, locale: string): string {
   if (locale === "sw") return n.titleSw || n.titleEn;
-  if (locale === "zh") return (n as Record<string, string>).titleZh || n.titleEn;
+  if (locale === "zh") return n.titleZh || n.titleEn;
   return n.titleEn;
 }
 function pickBody(n: StoredNotification, locale: string): string {
   if (locale === "sw") return n.bodySw || n.bodyEn;
-  if (locale === "zh") return (n as Record<string, string>).bodyZh || n.bodyEn;
+  if (locale === "zh") return n.bodyZh || n.bodyEn;
   return n.bodyEn;
 }
 

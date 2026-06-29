@@ -246,8 +246,10 @@ export type StoredNotification = {
     | "BONUS";
   titleEn: string;
   titleSw: string;
+  titleZh?: string | null;
   bodyEn: string;
   bodySw: string;
+  bodyZh?: string | null;
   href: string | null;
   readAt: string | null;
   dismissedAt: string | null;
