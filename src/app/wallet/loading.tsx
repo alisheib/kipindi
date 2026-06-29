@@ -32,7 +32,7 @@ export default async function WalletLoading() {
 
       {/* Tab skeleton */}
       <nav className="flex items-center gap-1 border-b border-border" aria-hidden>
-        {["Activity", "Methods", "Limits"].map((tab, i) => (
+        {[t.common.activity, t.common.methods, t.common.limits].map((tab, i) => (
           <div key={tab} className={`h-9 px-3.5 ${i === 0 ? "border-b-2 border-gold-500" : ""}`}>
             <span className="font-display text-[13px] text-text-subtle">{tab}</span>
           </div>

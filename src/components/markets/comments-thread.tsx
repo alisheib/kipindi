@@ -20,10 +20,10 @@ import { formatDateShort } from "@/lib/utils";
 // client component doesn't pull the server store chain into the browser bundle.
 const COMMENT_MAX_LEN = 500;
 
-function relTime(iso: string): string {
+function relTime(iso: string, nowLabel: string): string {
   const ms = Date.now() - Date.parse(iso);
   const s = Math.floor(ms / 1000);
-  if (s < 45) return "now";
+  if (s < 45) return nowLabel;
   const m = Math.floor(s / 60);
   if (m < 60) return `${m}m`;
   const h = Math.floor(m / 60);
@@ -149,7 +149,7 @@ export function CommentsThread({
 
       {comments.length === 0 ? (
         <p className="py-6 text-center text-[13px] text-text-subtle">
-          No comments yet — start the conversation. <span className="italic">Hakuna maoni bado.</span>
+          {t.market.noCommentsYet}
         </p>
       ) : (
         <ul className="space-y-3.5">
@@ -161,13 +161,13 @@ export function CommentsThread({
                   <span className="font-display text-[13.5px] font-semibold text-text">{c.authorName}</span>
                   {c.side && (
                     <span className={`rounded-pill px-1.5 py-px font-mono text-[9.5px] font-bold uppercase tracking-wide ${c.side === "YES" ? "text-yes-300 bg-yes-500/12" : "text-no-300 bg-no-500/12"}`}>
-                      holds {c.side}
+                      {t.market.holds} {c.side}
                     </span>
                   )}
-                  <span className="font-mono text-[10.5px] text-text-subtle">{relTime(c.createdAt)}</span>
+                  <span className="font-mono text-[10.5px] text-text-subtle">{relTime(c.createdAt, t.common.now)}</span>
                   {c.hidden && (
                     <span className="rounded-pill border border-warning-border bg-warning-bg/40 px-1.5 py-px font-mono text-[9.5px] text-warning-fg">
-                      hidden · under review
+                      {t.market.commentHidden}
                     </span>
                   )}
                 </div>
@@ -182,7 +182,7 @@ export function CommentsThread({
                       aria-label={t.common.reportComment}
                     >
                       <I.flag s={11} />
-                      {c.reportedByMe ? "Reported" : "Report"}
+                      {c.reportedByMe ? t.toast.reported : t.common.report}
                     </button>
                   )}
                   {c.canDelete && (
@@ -194,7 +194,7 @@ export function CommentsThread({
                       aria-label={t.common.deleteComment}
                     >
                       <I.trash s={11} />
-                      Delete
+                      {t.common.delete}
                     </button>
                   )}
                 </div>

@@ -27,7 +27,7 @@ export function ShareButton({
   const { t } = useT();
 
   const url = (typeof window !== "undefined" ? window.location.origin : "") + `/markets/${marketId}`;
-  const shareText = `${title} — predict on 50pick`;
+  const shareText = t.market.shareText.replace("{title}", title);
   const waLink = `https://wa.me/?text=${encodeURIComponent(`${shareText}\n${url}`)}`;
   const hasWebShare = typeof navigator !== "undefined" && "share" in navigator;
 
@@ -74,7 +74,7 @@ export function ShareButton({
           />
           <div
             role="dialog"
-            aria-label="Share options"
+            aria-label={t.dialog.shareMarket}
             className="fixed left-3 right-3 bottom-3 sm:left-auto sm:right-6 sm:top-20 sm:bottom-auto sm:w-[320px] z-popover rounded-xl border border-border bg-bg-elevated shadow-e5 overflow-hidden kp-slide-up"
             style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
           >

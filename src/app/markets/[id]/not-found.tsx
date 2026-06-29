@@ -37,7 +37,7 @@ export default async function MarketNotFound() {
       <p className="mt-3 max-w-[420px] text-[13px] leading-relaxed text-text-subtle">
         {t.error.notFoundHint}
       </p>
-      <nav aria-label="Recovery links" className="mt-6 grid w-full max-w-[420px] grid-cols-1 gap-2 sm:grid-cols-3">
+      <nav aria-label={t.error.recoveryLinks} className="mt-6 grid w-full max-w-[420px] grid-cols-1 gap-2 sm:grid-cols-3">
         <Link
           href="/markets"
           className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-gold-700 hover:bg-bg-overlay"

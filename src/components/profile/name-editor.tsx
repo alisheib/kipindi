@@ -71,7 +71,7 @@ export function ProfileNameEditor({
           }}
           onBlur={save}
           maxLength={40}
-          aria-label="Display name"
+          aria-label={t.common.yourName}
           placeholder={t.common.yourName}
           className="font-display text-[24px] md:text-[28px] font-bold leading-tight tracking-[-0.02em] text-text bg-transparent border-b border-gold-500 focus:outline-none px-0 min-w-0 max-w-full flex-1"
         />
@@ -85,7 +85,7 @@ export function ProfileNameEditor({
       type="button"
       onClick={enter}
       className="mt-1.5 inline-flex items-center gap-2 group text-left"
-      aria-label="Edit display name"
+      aria-label={t.common.editDisplayName}
     >
       <span className="font-display text-[24px] md:text-[28px] font-bold leading-tight tracking-[-0.02em] text-text">
         {currentName && currentName.trim() !== "" ? currentName : (

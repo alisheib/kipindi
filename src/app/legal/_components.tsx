@@ -12,16 +12,19 @@ export function LegalHeader({
   title,
   subtitle,
   meta,
+  eyebrow = "Legal",
 }: {
   title: string;
   subtitle?: string;
   /** Mono one-liner — version, effective date, etc. */
   meta?: string;
+  /** Localized eyebrow word — "Legal" / "Kisheria" / "法律". */
+  eyebrow?: string;
 }) {
   return (
     <header className="space-y-1.5">
       <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">
-        Legal
+        {eyebrow}
       </p>
       <h1 className="font-display text-[28px] lg:text-[32px] font-bold text-text leading-tight tracking-[-0.02em]">
         {title}

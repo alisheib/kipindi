@@ -13,6 +13,7 @@
  */
 
 import { useFormStatus } from "react-dom";
+import { useT } from "@/lib/i18n";
 import { Spinner } from "./spinner";
 
 type Props = {
@@ -25,12 +26,13 @@ type Props = {
 
 export function SubmitButton({
   label,
-  pendingLabel = "Working…",
+  pendingLabel,
   variant = "gold",
   size = "lg",
   className = "",
 }: Props) {
   const { pending } = useFormStatus();
+  const { t } = useT();
   return (
     <button
       type="submit"
@@ -39,7 +41,7 @@ export function SubmitButton({
       className={`btn btn-${variant} btn-${size} w-full inline-flex items-center justify-center gap-2 ${className}`}
     >
       {pending && <Spinner size={14} />}
-      <span>{pending ? pendingLabel : label}</span>
+      <span>{pending ? (pendingLabel ?? t.common.working) : label}</span>
     </button>
   );
 }

@@ -313,7 +313,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
       {/* Pagination — shared platform pager (live grid) */}
       {totalLivePages > 1 && (
         <div className="mt-6 rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">
-          <Pagination total={totalLiveCount} page={safePage} perPage={PLAYER_PER_PAGE} baseHref={marketsBaseHref} />
+          <Pagination total={totalLiveCount} page={safePage} perPage={PLAYER_PER_PAGE} baseHref={marketsBaseHref} ofLabel={t.common.of} prevLabel={t.common.previousPage} nextLabel={t.common.nextPage} />
         </div>
       )}
 

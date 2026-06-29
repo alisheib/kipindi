@@ -120,7 +120,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
           </span>
         </div>
         {activityCategories.length > 1 && (
-          <nav className="flex flex-wrap items-center gap-1.5" aria-label="Activity category filter">
+          <nav className="flex flex-wrap items-center gap-1.5" aria-label={t.profile.activityFilter}>
             {[{ id: "all", label: t.common.all }, ...activityCategories.map((c) => ({ id: c, label: c }))].map((f) => {
               const on = actFilter === f.id;
               return (
@@ -164,10 +164,10 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
                 <tr>
                   <td colSpan={3} className="px-4 py-8 text-center">
                     <p className="font-display text-[13px] font-semibold text-text-muted">
-                      {actFilter === "all" ? t.profile.noActivityYet : `No ${actFilter.toLowerCase()} activity`}
+                      {actFilter === "all" ? t.profile.noActivityYet : t.profile.noFilteredActivity.replace("{cat}", actFilter.toLowerCase())}
                     </p>
                     <p className="mt-1 text-[12px] text-text-subtle">
-                      {actFilter === "all" ? t.profile.activityHint : "Try a different category filter above."}
+                      {actFilter === "all" ? t.profile.activityHint : t.profile.tryDifferentFilter}
                     </p>
                   </td>
                 </tr>
@@ -209,7 +209,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
         </p>
         <CloseAccountForm />
         <p className="font-mono text-[11px] text-text-subtle">
-          {t.common.help}? Email <span className="text-text-muted">{SUPPORT_EMAIL()}</span>{" "}
+          {t.common.help}? {t.common.email} <span className="text-text-muted">{SUPPORT_EMAIL()}</span>{" "}
           {t.common.or} <span className="text-text-muted">{SUPPORT_PHONE()}</span>.
         </p>
       </section>

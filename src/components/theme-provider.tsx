@@ -32,7 +32,7 @@ function detectLowEnd(): boolean {
   return false;
 }
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
+export function ThemeProvider({ children, initialLocale }: { children: ReactNode; initialLocale?: Locale }) {
   useEffect(() => {
     // Apply the user's in-app "Reduce motion" choice + the mid-tier-Android
     // throttle. "off" → minimal; low-end device → reduced; else full.
@@ -46,7 +46,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <I18nProvider initial={readInitialLocale()}>
+    <I18nProvider initial={initialLocale ?? readInitialLocale()}>
       <ToastProvider>{children}</ToastProvider>
       <LocaleChangeOverlay />
     </I18nProvider>

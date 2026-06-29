@@ -23,8 +23,10 @@ import { getTickerFeed } from "@/lib/server/ticker-feed";
 import { RealityCheckHost } from "@/components/rg/reality-check";
 import { getRgSettings } from "@/lib/server/responsible-gambling";
 import { displayLabel, displayInitials } from "@/lib/display-label";
+import { getServerT } from "@/lib/i18n-server";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
+  const { t } = await getServerT();
   // Admin routes render their own full-screen layout (sidebar, topbar, chrome).
   // Skip the player shell entirely so admin pages don't get a double navbar.
   const h = await headers();
@@ -77,7 +79,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[9999] focus:rounded-md focus:bg-brand-500 focus:px-4 focus:py-2 focus:text-white focus:text-sm focus:font-semibold focus:outline-none focus:shadow-lg"
       >
-        Skip to content / 跳到内容
+        {t.common.skipToContent}
       </a>
       <Suspense fallback={null}><NavProgress /></Suspense>
       <TopAppBar user={topUser} />

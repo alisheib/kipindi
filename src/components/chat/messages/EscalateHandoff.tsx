@@ -31,26 +31,25 @@ export function EscalateHandoff({
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <FiftyMark size={36} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="cm-handoff-title">A specialist will take this from here</div>
+            <div className="cm-handoff-title">{t.chat.specialistTakeOver}</div>
             <div className="cm-handoff-meta">
-              <span>Ticket</span>
+              <span>{t.chat.ticket}</span>
               <Num>#{ticketId}</Num>
               <span style={{ opacity: 0.4 }}>·</span>
-              <span>ETA</span>
-              <Num>~{etaMinutes} min</Num>
+              <span>{t.chat.eta}</span>
+              <Num>{t.chat.etaMin.replace("{n}", String(etaMinutes))}</Num>
             </div>
           </div>
         </div>
         <div className="cm-handoff-body">
-          Your chat history is attached so you won&apos;t have to repeat anything. You&apos;ll get a
-          notification when the support team picks up — usually faster on weekday evenings.
+          {t.chat.handoffBody}
         </div>
         <a
-          href={`mailto:${SUPPORT_EMAIL()}?subject=${encodeURIComponent(`Chat ticket ${ticketId} — support request`)}`}
+          href={`mailto:${SUPPORT_EMAIL()}?subject=${encodeURIComponent(t.chat.ticketSubject.replace("{id}", String(ticketId)))}`}
           className="cm-escalate"
-          aria-label="Connect to the support team now"
+          aria-label={t.chat.connectSupportAria}
         >
-          Connect to the support team
+          {t.chat.connectSupport}
         </a>
       </div>
     </div>

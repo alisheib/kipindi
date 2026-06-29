@@ -17,6 +17,7 @@
 
 import { Tooltip } from "./tooltip";
 import { I } from "@/components/ui/glyphs";
+import { useT } from "@/lib/i18n";
 
 export function InfoHint({
   label,
@@ -27,6 +28,7 @@ export function InfoHint({
   size?: number;
   className?: string;
 }) {
+  const { t } = useT();
   return (
     <Tooltip label={label} className={className}>
       <span
@@ -35,7 +37,7 @@ export function InfoHint({
       >
         <I.info s={size} />
       </span>
-      <span className="sr-only">{typeof label === "string" ? label : "Info"}</span>
+      <span className="sr-only">{typeof label === "string" ? label : t.common.info}</span>
     </Tooltip>
   );
 }

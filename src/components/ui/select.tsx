@@ -11,6 +11,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 type Option = { value: string; label: string };
 
@@ -29,9 +30,10 @@ type Props = {
 };
 
 export function Select({
-  name, value, defaultValue, onChange, options, placeholder = "Select…",
+  name, value, defaultValue, onChange, options, placeholder,
   required, className, size = "md",
 }: Props) {
+  const { t } = useT();
   const controlled = value !== undefined;
   const [internal, setInternal] = useState(defaultValue ?? "");
   const selected = controlled ? value : internal;
@@ -136,7 +138,7 @@ export function Select({
         )}
         style={{ background: "var(--bg-inset)" }}
       >
-        <span className="truncate">{selectedOption?.label ?? placeholder}</span>
+        <span className="truncate">{selectedOption?.label ?? placeholder ?? t.common.selectPlaceholder}</span>
         <svg viewBox="0 0 12 12" width={10} height={10} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="shrink-0 text-text-subtle" aria-hidden>
           <path d="M3 4.5l3 3 3-3" />
         </svg>

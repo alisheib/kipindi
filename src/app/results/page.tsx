@@ -176,7 +176,7 @@ async function ResultsContent({
         <aside className="lg:w-[208px] lg:shrink-0 lg:sticky lg:top-[122px] lg:self-start lg:max-h-[calc(100dvh-134px)] lg:overflow-y-auto lg:overflow-x-hidden kp-thin-scroll lg:pb-3">
           <div className="space-y-2.5 lg:space-y-4">
             {/* Sort */}
-            <nav aria-label="Sort results" className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1 lg:mx-0 lg:px-0 lg:overflow-visible">
+            <nav aria-label={t.results.sortAria} className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1 lg:mx-0 lg:px-0 lg:overflow-visible">
               <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle pr-1 lg:pr-0 lg:mb-1">{t.common.sort}</span>
               {SORT_OPTIONS.map((o) => {
                 const active = o.id === activeSort;
@@ -199,7 +199,7 @@ async function ResultsContent({
             </nav>
 
             {/* Categories */}
-            <nav aria-label="Market categories" className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1 lg:mx-0 lg:px-0 lg:overflow-visible">
+            <nav aria-label={t.results.categoriesAria} className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1 lg:mx-0 lg:px-0 lg:overflow-visible">
               <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle pr-1 lg:pr-0 lg:mb-1">{t.common.topic}</span>
               {CATEGORIES.map((c) => {
                 const active = c.id === activeCat;
@@ -271,7 +271,7 @@ async function ResultsContent({
               {/* Pagination — shared platform pager */}
               {totalPages > 1 && (
                 <div className="mt-6 rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">
-                  <Pagination total={totalCount} page={safePage} perPage={PER_PAGE} baseHref={resultsBaseHref} />
+                  <Pagination total={totalCount} page={safePage} perPage={PER_PAGE} baseHref={resultsBaseHref} ofLabel={t.common.of} prevLabel={t.common.previousPage} nextLabel={t.common.nextPage} />
                 </div>
               )}
             </>

@@ -13,12 +13,16 @@ export function PriceChart({
   height = 220,
   showArea = true,
   className,
+  ariaLabel = "YES probability over time",
 }: {
   data: Point[];
   width?: number;
   height?: number;
   showArea?: boolean;
   className?: string;
+  /** Localized SVG aria-label — sync component used in server trees, so the
+   *  caller passes this from its own `t` (default English). */
+  ariaLabel?: string;
 }) {
   if (data.length < 2) return null;
   const padL = 8, padR = 56, padT = 16, padB = 28;
@@ -40,7 +44,7 @@ export function PriceChart({
   const xTicks = [0, Math.floor(data.length / 3), Math.floor((2 * data.length) / 3), data.length - 1];
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} style={{ display: "block" }} className={className} aria-label="YES probability over time">
+    <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} style={{ display: "block" }} className={className} aria-label={ariaLabel}>
       <defs>
         <linearGradient id="pc-area" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="oklch(58% 0.16 152)" stopOpacity="0.32" />
@@ -107,7 +111,7 @@ export function PriceChart({
 }
 
 /** VolumeSparkline — kit ports for inline density bars. */
-export function VolumeSparkline({ data, width = 220, height = 38, className }: { data: number[]; width?: number; height?: number; className?: string }) {
+export function VolumeSparkline({ data, width = 220, height = 38, className, ariaLabel = "Volume sparkline" }: { data: number[]; width?: number; height?: number; className?: string; ariaLabel?: string }) {
   if (data.length === 0) return null;
   // `, 1` floor keeps an all-zero series from dividing by zero (→ NaN heights /
   // opacities → invisible/broken bars). With max=1 a flat-zero series renders as
@@ -115,7 +119,7 @@ export function VolumeSparkline({ data, width = 220, height = 38, className }: {
   const max = Math.max(...data, 1);
   const barW = (width - data.length * 2) / data.length;
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} width={width} height={height} className={className} aria-label="Volume sparkline">
+    <svg viewBox={`0 0 ${width} ${height}`} width={width} height={height} className={className} aria-label={ariaLabel}>
       {data.map((v, i) => {
         const h = (v / max) * (height - 4);
         return (

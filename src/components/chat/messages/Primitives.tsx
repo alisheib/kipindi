@@ -8,22 +8,25 @@
  */
 
 import type { Citation } from "../types";
+import { useT } from "@/lib/i18n";
 
 export function Num({ children }: { children: React.ReactNode }) {
   return <span className="cm-num">{children}</span>;
 }
 
 export function Cite({ n, href }: { n: number; href: string }) {
+  const { t } = useT();
   return (
-    <a className="cm-cite" href={href} aria-label={`Source ${n}: ${href}`}>
+    <a className="cm-cite" href={href} aria-label={t.chat.sourceN.replace("{n}", String(n)).replace("{href}", href)}>
       {n}
     </a>
   );
 }
 
 export function Sources({ items }: { items: Citation[] }) {
+  const { t } = useT();
   return (
-    <div className="cm-sources" role="list" aria-label="Sources">
+    <div className="cm-sources" role="list" aria-label={t.chat.sources}>
       {items.map((it) => (
         <div className="cm-source-row" role="listitem" key={it.n}>
           <span className="cm-source-n">[{it.n}]</span>

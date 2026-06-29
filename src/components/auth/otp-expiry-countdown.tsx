@@ -8,10 +8,12 @@
  */
 
 import { useEffect, useState } from "react";
+import { useT } from "@/lib/i18n";
 
 const OTP_TTL_SEC = 5 * 60; // 5 minutes
 
 export function OtpExpiryCountdown() {
+  const { t } = useT();
   const [remaining, setRemaining] = useState(OTP_TTL_SEC);
 
   useEffect(() => {
@@ -29,13 +31,11 @@ export function OtpExpiryCountdown() {
   return (
     <p id="otp-hint" aria-live="polite" className={`mt-1.5 text-[11px] tabular-nums ${expired ? "text-no-300 font-semibold" : warning ? "text-warning-fg" : "text-text-subtle"}`}>
       {expired ? (
-        <>Code expired — request a new one. <span className="italic">Msimbo umeisha muda.</span></>
+        t.auth.codeExpired
       ) : (
         <>
-          Code expires in{" "}
+          {t.auth.codeExpiresIn}{" "}
           <span className="font-mono font-semibold">{min}:{sec.toString().padStart(2, "0")}</span>
-          {" · "}
-          <span className="italic">Msimbo unakwisha {min > 0 ? `dakika ${min}` : `sekunde ${sec}`}.</span>
         </>
       )}
     </p>

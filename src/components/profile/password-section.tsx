@@ -133,7 +133,7 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
           onClick={() => { setOpen(false); setCurrent(""); setNext(""); setConfirm(""); }}
           className="h-9 px-4 rounded-md border border-border font-mono text-[11px] text-text-subtle hover:text-text transition-colors"
         >
-          Cancel
+          {t.common.cancel}
         </button>
       </div>
     </div>

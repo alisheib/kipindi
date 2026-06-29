@@ -49,7 +49,7 @@ export function PublicFooter() {
           <FooterLink href="/legal/responsible-gambling">{t.footer.takeABreak} / {t.footer.selfExclude}</FooterLink>
           <li>
             <a href={`tel:${HELPLINE_TEL()}`} className="text-text-muted hover:text-text transition-colors">
-              Helpline · {HELPLINE()}
+              {t.footer.helpline} · {HELPLINE()}
             </a>
           </li>
           <li>

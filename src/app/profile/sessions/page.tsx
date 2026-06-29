@@ -22,7 +22,7 @@ export default async function SessionsPage() {
   const expires = formatDateTime(new Date(session.exp).toISOString());
 
   const ua = userAgent.toLowerCase();
-  const device = /iphone|android|ipad|mobile/.test(ua) ? "Mobile" : "Desktop / Laptop";
+  const device = /iphone|android|ipad|mobile/.test(ua) ? t.profile.deviceMobile : t.profile.deviceDesktop;
   const browser = /chrome\//.test(ua) ? "Chrome"
     : /safari\//.test(ua) && !/chrome/.test(ua) ? "Safari"
     : /firefox\//.test(ua) ? "Firefox"
@@ -92,8 +92,8 @@ export default async function SessionsPage() {
           <Item label={t.profile.ipAddress} value={<span className="font-mono">{ip}</span>} />
           <Item label={t.profile.issued}     value={issued} />
           <Item label={t.profile.expires}    value={expires} />
-          <Item label={"Role"}       value={session.role} />
-          <Item label={"KYC"}        value={session.kycStatus} />
+          <Item label={t.profile.roleLabel}       value={session.role} />
+          <Item label={t.profile.kycLabel}        value={session.kycStatus} />
         </div>
       </section>
 

@@ -11,7 +11,7 @@ const LABELS: Record<Locale, string> = { en: "EN", sw: "SW", zh: "中文" };
  * inactive = transparent + text-subtle. No dropdown, no portal.
  */
 export function LanguageToggle() {
-  const { locale, setLocale } = useT();
+  const { locale, setLocale, t } = useT();
 
   return (
     <div
@@ -30,7 +30,7 @@ export function LanguageToggle() {
           <button
             key={code}
             type="button"
-            aria-label={`Switch to ${code}`}
+            aria-label={t.common.switchTo.replace("{lang}", LABELS[code])}
             aria-pressed={active}
             onClick={() => setLocale(code)}
             style={{

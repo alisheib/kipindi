@@ -16,14 +16,11 @@ import { createPortal } from "react-dom";
 import { I } from "@/components/ui/glyphs";
 import { useModalLock } from "@/lib/use-modal-lock";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import {
   SEGMENTS, parseIso, toIso, daysInMonth, isInRange, deriveIso,
   sanitize, resolveSegment, padOnBlur, stateFromParsed, type SegKey,
 } from "@/components/ui/date-mask";
-
-const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const DAY_LABELS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 
 function startDay(y: number, m: number): number {
   const d = new Date(y, m - 1, 1).getDay();
@@ -47,6 +44,10 @@ type Props = {
 const SEG_WIDTH: Record<SegKey, string> = { dd: "2.6ch", mm: "2.6ch", yyyy: "4.8ch" };
 
 export function DateSelect({ name, id, required, min, max, defaultValue, value, onChange }: Props) {
+  const { t } = useT();
+  const MONTH_NAMES = t.common.monthsLong;
+  const MONTH_SHORT = t.common.monthsShort;
+  const DAY_LABELS = t.common.weekdaysShort;
   const controlled = value !== undefined;
   const [internal, setInternal] = useState(defaultValue ?? "");
   const isoValue = controlled ? (value ?? "") : internal;
@@ -244,20 +245,20 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
           type="button"
           onClick={openCal}
           tabIndex={-1}
-          aria-label="Open calendar"
+          aria-label={t.common.openCalendar}
           className="inline-flex items-center justify-center px-3 bg-bg-elevated border-l border-border text-text-subtle hover:text-text transition-colors shrink-0"
         >
           <I.calendar s={16} />
         </button>
       </div>
 
-      {invalid && <p className="mt-1.5 font-mono text-[11px] text-no-300">Invalid date</p>}
+      {invalid && <p className="mt-1.5 font-mono text-[11px] text-no-300">{t.common.invalidDate}</p>}
       <input type="hidden" name={name} id={id} value={isoValue} required={required} />
 
       {mounted && calOpen && createPortal(
-        <div role="dialog" aria-modal="true" aria-label="Pick a date"
+        <div role="dialog" aria-modal="true" aria-label={t.common.pickDate}
           className="fixed inset-0 z-[120] flex items-center justify-center p-3">
-          <button type="button" aria-label="Close" onClick={() => setCalOpen(false)}
+          <button type="button" aria-label={t.common.close} onClick={() => setCalOpen(false)}
             className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
           <div
             className="relative w-[calc(100%-24px)] max-w-[320px] rounded-xl border border-border-strong bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)] overflow-hidden"
@@ -267,21 +268,21 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
               {calView === "days" ? (<>
                 <button type="button" onClick={prevMonth} disabled={!canPrev}
                   className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors disabled:opacity-30"
-                  aria-label="Previous month"><I.chevronLeft s={16} /></button>
+                  aria-label={t.common.prevMonth}><I.chevronLeft s={16} /></button>
                 <button type="button" onClick={() => setCalView("years")}
                   className="font-display text-[15px] font-semibold text-text hover:text-gold-300 transition-colors"
-                  aria-label="Pick a year">
+                  aria-label={t.common.pickYear}>
                   {MONTH_NAMES[viewMonth - 1]} {viewYear}
                   <svg viewBox="0 0 12 12" width={10} height={10} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="inline-block ml-1.5 -mt-0.5" aria-hidden><path d="M3 4.5l3 3 3-3" /></svg>
                 </button>
                 <button type="button" onClick={nextMonth} disabled={!canNext}
                   className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors disabled:opacity-30"
-                  aria-label="Next month"><I.chevronRight s={16} /></button>
+                  aria-label={t.common.nextMonth}><I.chevronRight s={16} /></button>
               </>) : (<>
-                <span className="font-display text-[15px] font-semibold text-text">Pick a year</span>
+                <span className="font-display text-[15px] font-semibold text-text">{t.common.pickYear}</span>
                 <button type="button" onClick={() => setCalView("days")}
                   className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
-                  aria-label="Back to calendar"><I.x s={16} /></button>
+                  aria-label={t.common.backToCalendar}><I.x s={16} /></button>
               </>)}
             </div>
 
@@ -320,7 +321,7 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
             <div className="border-t border-border px-3 py-2.5 flex items-center justify-between">
               <button type="button" onClick={() => setCalOpen(false)}
                 className="font-mono text-[12px] uppercase tracking-[0.12em] text-text-subtle hover:text-text transition-colors">
-                Cancel
+                {t.common.cancel}
               </button>
               {parsed && (
                 <span className="font-mono text-[12px] text-gold-300 tabular-nums">

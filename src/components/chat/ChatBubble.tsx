@@ -19,6 +19,7 @@
  */
 
 import { HelpMark } from "./HelpMark";
+import { useT } from "@/lib/i18n";
 
 export function ChatBubble({
   isMobile = false,
@@ -31,18 +32,19 @@ export function ChatBubble({
   open?: boolean;
   onClick: () => void;
 }) {
+  const { t } = useT();
   return (
     <button
       type="button"
       className={`cm-bubble ${isMobile ? "cm-bubble-mobile" : ""}`}
-      aria-label={open ? "Close 50pick Help" : "Open 50pick Help"}
+      aria-label={open ? t.chat.closeHelp : t.chat.openHelp}
       aria-haspopup="dialog"
       aria-expanded={open}
       onClick={onClick}
     >
       <HelpMark size={isMobile ? 30 : 34} />
       {unread > 0 && (
-        <span className="cm-bubble-pip" aria-label={`${unread} unread`}>
+        <span className="cm-bubble-pip" aria-label={t.chat.unread.replace("{n}", String(unread))}>
           {unread > 99 ? "99+" : unread}
         </span>
       )}

@@ -223,10 +223,10 @@ export function MarketCard({
 
       {live ? (
         <div className="mcardp-actions">
-          <button type="button" aria-label={`Back YES at ${yesPct}%`} onClick={go("YES")} className="btn btn-yes btn-md">
+          <button type="button" aria-label={t.market.backYesAria.replace("{pct}", String(yesPct))} onClick={go("YES")} className="btn btn-yes btn-md">
             YES <span className="font-mono text-[11.5px] opacity-85">{yesPct}%</span>
           </button>
-          <button type="button" aria-label={`Back NO at ${100 - yesPct}%`} onClick={go("NO")} className="btn btn-no btn-md">
+          <button type="button" aria-label={t.market.backNoAria.replace("{pct}", String(100 - yesPct))} onClick={go("NO")} className="btn btn-no btn-md">
             NO <span className="font-mono text-[11.5px] opacity-85">{100 - yesPct}%</span>
           </button>
         </div>

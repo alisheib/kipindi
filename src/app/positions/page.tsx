@@ -95,7 +95,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
 
       {/* Tab filter — All / Open / Settled (matches markets page filter pattern) */}
       {positions.length > 0 && (
-        <nav className="flex flex-wrap items-center gap-1.5" aria-label="Position filter">
+        <nav className="flex flex-wrap items-center gap-1.5" aria-label={t.positions.filterAria}>
           {([
             { id: "all", label: t.positions.tabAll, count: positions.length },
             { id: "open", label: t.positions.tabOpen, count: open.length },
@@ -244,7 +244,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
             </div>
             {settledTotalPages > 1 && (
               <div className="mt-4 rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">
-                <Pagination total={settled.length} page={settledPage} perPage={PLAYER_PER_PAGE} baseHref={settledBaseHref} />
+                <Pagination total={settled.length} page={settledPage} perPage={PLAYER_PER_PAGE} baseHref={settledBaseHref} ofLabel={t.common.of} prevLabel={t.common.previousPage} nextLabel={t.common.nextPage} />
               </div>
             )}
           </>

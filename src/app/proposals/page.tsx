@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { VoteControl } from "@/components/proposals/vote-control";
 import { StatusBadge } from "@/components/proposals/status-badge";
-import { CategoryIcon, CATEGORY_LABEL } from "@/components/proposals/category-icon";
+import { CategoryIcon, categoryLabel } from "@/components/proposals/category-icon";
 import { getServerT } from "@/lib/i18n-server";
 
 export async function generateMetadata() {
@@ -128,7 +128,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
           </div>
           {matchedCount > PLAYER_PER_PAGE && (
             <div className="rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">
-              <Pagination total={matchedCount} page={page} perPage={PLAYER_PER_PAGE} baseHref={proposalsBaseHref} />
+              <Pagination total={matchedCount} page={page} perPage={PLAYER_PER_PAGE} baseHref={proposalsBaseHref} ofLabel={t.common.of} prevLabel={t.common.previousPage} nextLabel={t.common.nextPage} />
             </div>
           )}
         </>
@@ -162,7 +162,7 @@ function ProposalCard({ p, disabled, t, ageStr }: { p: ProposalView; disabled?: 
       <Link href={`/proposals/${p.id}` as never} className="min-w-0 flex-1">
         <div className="mb-1.5 flex flex-wrap items-center gap-2">
           <StatusBadge status={p.status} isHot={p.isHot} />
-          <Chip variant="neutral"><CategoryIcon category={p.category} />{CATEGORY_LABEL[p.category]}</Chip>
+          <Chip variant="neutral"><CategoryIcon category={p.category} />{categoryLabel(t, p.category)}</Chip>
           <span className="ml-auto font-mono text-[10.5px] text-text-subtle">{ageStr(p.createdAt)}</span>
         </div>
         <p className="font-display text-[15.5px] font-semibold leading-snug tracking-[-0.01em] text-text">{p.titleEn}</p>

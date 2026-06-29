@@ -19,6 +19,9 @@ export function Pagination({
   perPage = PER_PAGE,
   baseHref,
   param = "page",
+  ofLabel = "of",
+  prevLabel = "Previous page",
+  nextLabel = "Next page",
 }: {
   total: number;
   page: number;
@@ -28,6 +31,12 @@ export function Pagination({
   /** Page query-param name. Override (e.g. "txpage") when one page hosts several
    *  independently-paginated lists so each keeps its own page state. */
   param?: string;
+  /** Localized labels. Pagination is a sync component shared by server + client
+   *  trees (so it can't call getServerT/useT itself) — callers pass these from
+   *  their own `t`. Default to English (admin tables, which are English-only). */
+  ofLabel?: string;
+  prevLabel?: string;
+  nextLabel?: string;
 }) {
   const totalPages = Math.max(1, Math.ceil(total / perPage));
   if (totalPages <= 1) return null;
@@ -61,10 +70,10 @@ export function Pagination({
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 border-t border-border">
       <p className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
-        {((safePage - 1) * perPage + 1).toLocaleString()}–{Math.min(safePage * perPage, total).toLocaleString()} of {total.toLocaleString()}
+        {((safePage - 1) * perPage + 1).toLocaleString()}–{Math.min(safePage * perPage, total).toLocaleString()} {ofLabel} {total.toLocaleString()}
       </p>
       <div className="flex flex-wrap items-center justify-end gap-1">
-        <a href={hasPrev ? href(safePage - 1) : undefined} className={`${btnBase} ${hasPrev ? btnInactive : btnDisabled}`} aria-label="Previous page">
+        <a href={hasPrev ? href(safePage - 1) : undefined} className={`${btnBase} ${hasPrev ? btnInactive : btnDisabled}`} aria-label={prevLabel}>
           <I.chevronLeft s={14} />
         </a>
         {pages.map((p, i) =>
@@ -76,7 +85,7 @@ export function Pagination({
             </a>
           ),
         )}
-        <a href={hasNext ? href(safePage + 1) : undefined} className={`${btnBase} ${hasNext ? btnInactive : btnDisabled}`} aria-label="Next page">
+        <a href={hasNext ? href(safePage + 1) : undefined} className={`${btnBase} ${hasNext ? btnInactive : btnDisabled}`} aria-label={nextLabel}>
           <I.chevronRight s={14} />
         </a>
       </div>

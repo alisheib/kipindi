@@ -178,7 +178,7 @@ const LANG_CODES: Locale[] = ["en", "sw", "zh"];
 const LANG_LABELS: Record<Locale, string> = { en: "EN", sw: "SW", zh: "中文" };
 
 function MobileLangPicker({ locale: current }: { locale: string }) {
-  const { setLocale } = useT();
+  const { t, setLocale } = useT();
   return (
     <div className="flex gap-1">
       {LANG_CODES.map((code) => {
@@ -188,7 +188,7 @@ function MobileLangPicker({ locale: current }: { locale: string }) {
             key={code}
             type="button"
             onClick={() => setLocale(code)}
-            aria-label={`Switch to ${code}`}
+            aria-label={t.common.switchTo.replace("{lang}", LANG_LABELS[code])}
             aria-pressed={active}
             className={cn(
               "h-7 px-3 rounded-pill font-mono text-[11.5px] font-semibold transition-colors",

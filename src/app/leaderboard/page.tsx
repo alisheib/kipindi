@@ -118,12 +118,12 @@ function syntheticLeaderboard(): Row[] {
 /** Build a "consensus shift" series — average market YES probability across
  *  all live markets over the last 14 days. Currently we don't snapshot
  *  history, so we synthesize a plausible series from the current pools. */
-async function buildConsensusSeries(): Promise<{ t: string; yes: number }[]> {
+async function buildConsensusSeries(todayLabel: string): Promise<{ t: string; yes: number }[]> {
   const live = await listMarkets({ status: "LIVE" });
   if (live.length === 0) return [];
   // Walk that ends near the current crowd consensus
   const end = live.reduce((s, m) => s + (m.yesPool / Math.max(1, m.yesPool + m.noPool)), 0) / live.length;
-  const days = ["Apr 22", "Apr 24", "Apr 26", "Apr 28", "Apr 30", "May 2", "May 4", "today"];
+  const days = ["Apr 22", "Apr 24", "Apr 26", "Apr 28", "Apr 30", "May 2", "May 4", todayLabel];
   // Smooth walk from 0.40 → end
   const points = days.map((t, i) => {
     const k = i / (days.length - 1);
@@ -141,7 +141,7 @@ export default async function LeaderboardPage() {
   // genuinely no ranked players yet (brand-new platform), so the page isn't empty.
   const isSynthetic = real.length === 0;
   const rows = isSynthetic ? syntheticLeaderboard() : real;
-  const consensus = await buildConsensusSeries();
+  const consensus = await buildConsensusSeries(t.leaderboard.today);
 
   // Tier display name from the dict (first word of the tier description)
   const tierDisplayName = (tier: Tier) => t.leaderboard[`tier${tier.charAt(0).toUpperCase()}${tier.slice(1)}` as keyof typeof t.leaderboard].split(" ")[0];
@@ -176,7 +176,7 @@ export default async function LeaderboardPage() {
               {Math.round(consensus[consensus.length - 1].yes * 100)}% {t.leaderboard.today}
             </p>
           </div>
-          <PriceChart data={consensus} height={180} />
+          <PriceChart data={consensus} height={180} ariaLabel={t.market.probOverTime} />
         </section>
       )}
 
@@ -219,7 +219,7 @@ export default async function LeaderboardPage() {
                   {r.roi >= 0 ? "+" : ""}{r.roi.toFixed(1)}%
                 </td>
                 <td className="p-3 hidden md:table-cell">
-                  <VolumeSparkline data={r.spark} width={140} height={32} />
+                  <VolumeSparkline data={r.spark} width={140} height={32} ariaLabel={t.market.volumeSparkline} />
                 </td>
                 <td className="p-3 text-right hidden md:table-cell font-mono tabular-nums text-text-muted">
                   {r.streak > 0 ? `${r.streak} ${r.streak > 1 ? t.leaderboard.winsLabel : t.leaderboard.winLabel}` : "—"}

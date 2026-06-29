@@ -92,7 +92,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={lang} suppressHydrationWarning className={`${sora.variable} ${inter.variable} ${jbm.variable}`}>
       <body className="font-sans antialiased">
-        <ThemeProvider>
+        <ThemeProvider initialLocale={lang}>
           <AppShell>{children}</AppShell>
           {/* Lazy-loaded overlay components — ChatRoot + FirstVisitPrimer
               are portaled and not needed for FCP. The client wrapper uses

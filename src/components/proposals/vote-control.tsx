@@ -78,7 +78,7 @@ export function VoteControl({
     <button
       type="button"
       onClick={(e) => { e.stopPropagation(); e.preventDefault(); click(dir); }}
-      aria-label={dir === "up" ? "Upvote proposal" : "Downvote proposal"}
+      aria-label={dir === "up" ? t.proposals.upvote : t.proposals.downvote}
       aria-pressed={vote === dir}
       disabled={disabled}
       className="grid place-items-center rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

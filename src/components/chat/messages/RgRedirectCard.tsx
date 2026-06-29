@@ -21,7 +21,7 @@ export function RgRedirectCard({ lang: _lang = "en" }: { lang?: Lang }) {
         className="cm-bubble-ai"
         style={{ padding: 0, background: "transparent", border: "none", maxWidth: "88%" }}
       >
-        <div className="cm-rg-card" role="group" aria-label="Responsible gambling redirect">
+        <div className="cm-rg-card" role="group" aria-label={i18n.chat.rgRedirectAria}>
           <div className="cm-rg-label">{i18n.common.responsibleGambling}</div>
           <div className="cm-rg-title">{i18n.rg.mostPlayForFun}</div>
           <div className="cm-rg-body">{i18n.rg.pageDescription}</div>

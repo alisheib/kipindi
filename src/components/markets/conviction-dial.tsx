@@ -732,7 +732,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
           <p className="mb-2 text-center font-mono text-[9px] uppercase tracking-[0.16em] font-bold text-text-subtle">
             {t.common.yourPick}
           </p>
-          <div className="grid grid-cols-2 gap-2" role="img" aria-label={`You are backing ${lock} — locked`}>
+          <div className="grid grid-cols-2 gap-2" role="img" aria-label={t.market.backingLocked.replace("{side}", lock)}>
             {(["YES", "NO"] as const).map((s) => {
               const active = lock === s;
               const hue = s === "YES" ? "152" : "22";
@@ -755,7 +755,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
                 >
                   {!active && <span aria-hidden style={{ opacity: 0.75 }}><I.lock s={12} /></span>}
                   {s}
-                  <span className="font-mono text-[10px] font-normal opacity-70">{s === "YES" ? "ndio" : "hapana"}</span>
+                  <span className="font-mono text-[10px] font-normal opacity-70">{s === "YES" ? t.market.sideYesWord : t.market.sideNoWord}</span>
                 </div>
               );
             })}
@@ -770,7 +770,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
           >
             YES
           </span>
-          <span style={{ color: "var(--text-subtle)", letterSpacing: "0.18em" }}>· slide to commit ·</span>
+          <span style={{ color: "var(--text-subtle)", letterSpacing: "0.18em" }}>· {t.market.slideToCommit} ·</span>
           <span
             className="transition-colors duration-200"
             style={{ color: effectiveSide === "NO" ? "oklch(75% 0.16 22)" : "var(--text-subtle)", fontWeight: effectiveSide === "NO" ? 700 : 400 }}
@@ -784,11 +784,11 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
         ref={trackRef}
         role="slider"
         tabIndex={closedNow ? -1 : 0}
-        aria-label="Drag to set side and conviction"
+        aria-label={t.market.dragSetSide}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={ariaValue}
-        aria-valuetext={`${effectiveSide === "NEUTRAL" ? "Neutral" : effectiveSide}, ${multiplierTarget.toFixed(2)} times, TZS ${fmt(stake)}`}
+        aria-valuetext={`${effectiveSide === "NEUTRAL" ? t.market.neutral : effectiveSide}, ${multiplierTarget.toFixed(2)} ${t.market.times}, TZS ${fmt(stake)}`}
         aria-disabled={closedNow ? "true" : "false"}
         onPointerDown={closedNow ? undefined : onPointerDown}
         onKeyDown={closedNow ? undefined : onKeyDown}
@@ -1023,7 +1023,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
               if (e.key === "Enter") (e.target as HTMLInputElement).blur();
               if (e.key === "ArrowLeft" || e.key === "ArrowRight") e.stopPropagation();
             }}
-            aria-label={`Stake amount in TZS — type or use the dial (min ${minDial}, max ${maxDial})`}
+            aria-label={t.market.stakeInputAria.replace("{min}", String(minDial)).replace("{max}", String(maxDial))}
             aria-invalid={isOutOfRange}
             // Tabular-nums prevents digit-width jitter across the 5-
             // character span; the inner input flexes to fill whatever's
@@ -1045,7 +1045,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
               for a no-300 chip to make the clamp un-missable. */}
           {isOverMax || isUnderMin ? (
             <span className="mt-1 inline-flex items-center gap-1 rounded-pill border border-no-700 bg-no-500/15 px-1.5 py-0.5 font-mono text-[9.5px] font-bold text-no-300 whitespace-nowrap">
-              {isOverMax ? `Max ${fmt(maxDial)}` : `Min ${fmt(minDial)}`}
+              {isOverMax ? `${t.common.max} ${fmt(maxDial)}` : `${t.common.min} ${fmt(minDial)}`}
             </span>
           ) : (
             <span className="mt-1 inline-flex items-center gap-1 font-mono text-[9.5px] text-text-subtle whitespace-nowrap" data-testid="stake-range-chip">
@@ -1091,7 +1091,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
               if (e.key === "Enter") (e.target as HTMLInputElement).blur();
               if (e.key === "ArrowLeft" || e.key === "ArrowRight") e.stopPropagation();
             }}
-            aria-label={`Conviction multiplier — type ${MULT_MIN.toFixed(2)}× to ${MULT_MAX.toFixed(2)}×`}
+            aria-label={t.market.multInputAria.replace("{min}", String(MULT_MIN.toFixed(2))).replace("{max}", String(MULT_MAX.toFixed(2)))}
             aria-invalid={isMultOutOfRange}
             className="text-right font-bold tabular-nums px-2"
             // Same outer width + 44 px height (WCAG 2.5.5 touch target)
@@ -1100,7 +1100,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
           />
           {isMultOverMax || isMultUnderMin ? (
             <span className="mt-1 inline-flex items-center gap-1 rounded-pill border border-no-700 bg-no-500/15 px-1.5 py-0.5 font-mono text-[9.5px] font-bold text-no-300 whitespace-nowrap">
-              {isMultOverMax ? `Max ${MULT_MAX.toFixed(2)}×` : `Min ${MULT_MIN.toFixed(2)}×`}
+              {isMultOverMax ? `${t.common.max} ${MULT_MAX.toFixed(2)}×` : `${t.common.min} ${MULT_MIN.toFixed(2)}×`}
             </span>
           ) : (
             <span className="mt-1 inline-flex items-center gap-1 font-mono text-[9.5px] text-text-subtle whitespace-nowrap" data-testid="mult-range-chip">
@@ -1123,9 +1123,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
             {t.common.payout2}
           </p>
           <p className="text-[12px] leading-relaxed text-text-muted">
-            Calculated at resolution from the final pool share.
-            <br />
-            <span className="text-text-subtle">Itahesabiwa baada ya tukio kukamilika.</span>
+            {t.dialog.payoutCalcBody}
           </p>
         </div>
       )}
@@ -1147,7 +1145,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
             {t.common.insufficientBalanceHint}
           </p>
           <p className="text-[10px] text-text-subtle mt-0.5">
-            You need TZS {fmt(stake)} but have TZS {fmt(balance)}. Deposit to continue.
+            {t.market.insufficientDetail.replace("{need}", fmt(stake)).replace("{have}", fmt(balance))}
           </p>
         </div>
       )}

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { VoteControl } from "@/components/proposals/vote-control";
 import { StatusBadge } from "@/components/proposals/status-badge";
 import { StatusTimeline } from "@/components/proposals/status-timeline";
-import { CategoryIcon, CATEGORY_LABEL } from "@/components/proposals/category-icon";
+import { CategoryIcon, categoryLabel } from "@/components/proposals/category-icon";
 import { getServerT } from "@/lib/i18n-server";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +31,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
       <section className="rounded-xl glass-panel p-4">
         <div className="mb-2.5 flex flex-wrap items-center gap-2">
           <StatusBadge status={p.status} isHot={p.isHot} />
-          <Chip variant="neutral"><CategoryIcon category={p.category} />{CATEGORY_LABEL[p.category]}</Chip>
+          <Chip variant="neutral"><CategoryIcon category={p.category} />{categoryLabel(t, p.category)}</Chip>
           <span className="ml-auto font-mono text-[10.5px] text-text-subtle">{t.common.resolves} {p.resolutionDate}</span>
         </div>
         <h1 className="font-display text-[19px] font-bold leading-snug tracking-[-0.01em]">{p.titleEn}</h1>
@@ -39,7 +39,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
         {p.description && <p className="mt-2 text-[13px] leading-relaxed text-text-muted">{p.description}</p>}
         <div className="mt-3.5 flex items-center gap-3">
           <VoteControl proposalId={p.id} up={p.up} down={p.down} myVote={p.myVote} horizontal disabled={!cfg.enabled || !open} />
-          <span className="font-mono text-[11.5px] text-text-subtle">by {p.proposerMasked} · {p.up + p.down} votes</span>
+          <span className="font-mono text-[11.5px] text-text-subtle">{t.proposals.byProposer} {p.proposerMasked} · {p.up + p.down} {t.proposals.votesCount}</span>
         </div>
       </section>
 
@@ -53,7 +53,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
       {p.status === "DECLINED" && (
         <section className="rounded-xl border p-4" style={{ borderColor: "color-mix(in oklab, var(--claret-500) 30%, var(--border))", background: "color-mix(in oklab, var(--claret-500) 7%, var(--bg-elevated))" }}>
           <div className="mb-1.5 flex items-center gap-2 text-claret-300"><I.void s={16} /><p className="text-[13px] font-bold">{t.common.declined}</p></div>
-          <p className="text-[12.5px] leading-relaxed text-text-muted">Reason: {p.declineReason}.{p.declineNote ? ` ${p.declineNote}` : ""}</p>
+          <p className="text-[12.5px] leading-relaxed text-text-muted">{`${t.proposals.reason}: `}{p.declineReason}.{p.declineNote ? ` ${p.declineNote}` : ""}</p>
         </section>
       )}
       {p.status === "CHANGES_REQUESTED" && p.changeNote && (

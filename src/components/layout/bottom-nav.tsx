@@ -34,7 +34,7 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
 
   return (
     <nav
-      aria-label="Primary"
+      aria-label={t.nav.primary}
       className="xl:hidden fixed left-2.5 right-2.5 z-40 rounded-[26px] border border-border-strong"
       style={{
         bottom: "calc(9px + env(safe-area-inset-bottom))",

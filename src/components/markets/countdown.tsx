@@ -38,10 +38,10 @@ export function Countdown({ to, label }: { to: string; label?: string }) {
     <div>
       <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-warning-fg mb-2">{resolvedLabel}</div>
       <div className="flex gap-2">
-        <Cell v={time.d} unit="Days" />
-        <Cell v={time.h} unit="Hours" />
-        <Cell v={time.m} unit="Min" />
-        <Cell v={time.s} unit="Sec" />
+        <Cell v={time.d} unit={t.common.days} />
+        <Cell v={time.h} unit={t.common.hours} />
+        <Cell v={time.m} unit={t.common.minsUnit} />
+        <Cell v={time.s} unit={t.common.secsUnit} />
       </div>
     </div>
   );

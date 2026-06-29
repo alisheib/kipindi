@@ -3,6 +3,7 @@
  */
 
 import { FiftyMark } from "@/components/brand";
+import { useT } from "@/lib/i18n";
 
 export function AiMessage({
   children,
@@ -28,8 +29,9 @@ export function UserMessage({ children }: { children: React.ReactNode }) {
 }
 
 export function TypingMessage() {
+  const { t } = useT();
   return (
-    <div className="cm-row cm-row-ai" aria-live="polite" aria-label="50pick Help is typing">
+    <div className="cm-row cm-row-ai" aria-live="polite" aria-label={t.chat.typing}>
       <FiftyMark size={22} />
       <div className="cm-bubble-ai" style={{ padding: 0 }}>
         <div className="cm-typing">

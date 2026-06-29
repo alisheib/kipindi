@@ -74,7 +74,7 @@ function saveHistory(messages: Message[]): void {
 
 export function ChatRoot() {
   const pathname = usePathname();
-  const { locale } = useT();
+  const { t, locale } = useT();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [pending, setPending] = useState(false);
@@ -183,17 +183,14 @@ export function ChatRoot() {
             role: "ai",
             kind: "text",
             lang: user.lang,
-            text:
-              user.lang === "sw"
-                ? "Samahani — kuna tatizo dogo. Jaribu tena baada ya muda kidogo."
-                : "Sorry — something hiccupped on my end. Try again in a moment.",
+            text: t.chat.errorFallback,
           },
         ]);
       } finally {
         setPending(false);
       }
     },
-    [messages],
+    [messages, t],
   );
 
   // When navigating to auth pages (logout/revoke), clear chat history

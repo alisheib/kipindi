@@ -15,6 +15,7 @@ import * as React from "react";
 import { I } from "@/components/ui/glyphs";
 import { cn } from "@/lib/utils";
 import { haptics } from "@/lib/haptics";
+import { useT } from "@/lib/i18n";
 
 type ToastVariant = "default" | "success" | "warning" | "danger" | "gold";
 
@@ -226,10 +227,11 @@ const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; 
 };
 
 function ToastViewport({ toasts, exiting, onDismiss, onPause, onResume }: { toasts: Toast[]; exiting: string[]; onDismiss: (id: string) => void; onPause: (id: string) => void; onResume: (id: string) => void }) {
+  const { t } = useT();
   return (
     <div
       role="region"
-      aria-label="Notifications"
+      aria-label={t.common.notifications}
       className="pointer-events-none fixed inset-x-0 top-0 z-[1800] flex flex-col items-center gap-2 px-3 pt-3 sm:inset-x-auto sm:right-4 sm:top-4 sm:items-end sm:pt-0"
     >
       {toasts.map((t) => (
@@ -252,6 +254,7 @@ const SWIPE_DISMISS_PX = 72; // horizontal
 const SWIPE_UP_PX = 44;      // upward
 
 function ToastItem({ toast, exiting, onDismiss, onPause, onResume }: { toast: Toast; exiting: boolean; onDismiss: () => void; onPause: () => void; onResume: () => void }) {
+  const { t } = useT();
   const v = variantStyles[toast.variant ?? "default"];
   const [enter, setEnter] = React.useState(false);
   const [paused, setPaused] = React.useState(false);
@@ -287,7 +290,7 @@ function ToastItem({ toast, exiting, onDismiss, onPause, onResume }: { toast: To
     // it) was clicked — setPointerCapture redirects pointerup to the
     // container, which prevents the button's onClick from firing.
     const target = e.target as HTMLElement;
-    if (target.closest("button[aria-label='Dismiss']")) return;
+    if (target.closest("button[data-toast-dismiss]")) return;
     dragStart.current = { x: e.clientX, y: e.clientY };
     // Capture so move/up keep targeting this toast even if the finger leaves it.
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
@@ -355,8 +358,9 @@ function ToastItem({ toast, exiting, onDismiss, onPause, onResume }: { toast: To
       <button
         type="button"
         onClick={onDismiss}
+        data-toast-dismiss=""
         className="absolute right-1.5 top-1.5 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
-        aria-label="Dismiss"
+        aria-label={t.common.dismiss}
       >
         <I.x s={14} />
       </button>

@@ -34,7 +34,7 @@ export function EmailEditor({ currentEmail, currentName, verified }: { currentEm
       if (!r.ok) { toast({ title: t.toast.emailFailed, description: r.error, variant: "danger" }); return; }
       toast({
         title: v ? t.toast.emailSaved : t.common.emailRemoved,
-        description: v ? (r.emailVerificationSent ? t.toast.checkInbox : "Receipts will be sent here.") : undefined,
+        description: v ? (r.emailVerificationSent ? t.toast.checkInbox : t.toast.receiptsHere) : undefined,
         variant: "success",
       });
       setEditing(false);
@@ -65,7 +65,7 @@ export function EmailEditor({ currentEmail, currentName, verified }: { currentEm
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); save(); } if (e.key === "Escape") { e.preventDefault(); setEditing(false); setValue(currentEmail ?? ""); } }}
             placeholder="you@example.com"
-            aria-label="Contact email"
+            aria-label={t.common.contactEmail}
             className="flex-1 min-w-0 bg-transparent border-b border-gold-500 focus:outline-none text-[14px] text-text px-0 py-0.5"
           />
           <button type="button" onClick={save} disabled={pending} className="btn btn-gold btn-sm shrink-0">
@@ -74,9 +74,9 @@ export function EmailEditor({ currentEmail, currentName, verified }: { currentEm
         </div>
       ) : (
         <div className="mt-1 space-y-1.5">
-          <button type="button" onClick={() => { setValue(currentEmail ?? ""); setEditing(true); }} className="inline-flex items-center gap-2 text-left group" aria-label="Edit contact email">
+          <button type="button" onClick={() => { setValue(currentEmail ?? ""); setEditing(true); }} className="inline-flex items-center gap-2 text-left group" aria-label={t.common.editContactEmail}>
             <span className={`text-[14px] ${currentEmail ? "text-text" : "text-text-subtle italic"}`}>
-              {currentEmail || "Add your email for receipts"}
+              {currentEmail || t.profile.addEmailForReceipts}
             </span>
             <I.edit s={12} />
           </button>

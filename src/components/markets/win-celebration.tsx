@@ -100,8 +100,8 @@ export function WinCelebrationHost() {
 
   if (typeof document === "undefined" || !open || !payload) return null;
 
-  const heading = "Won!";
-  const sub = "Umeshinda";
+  const heading = t.market.wonHeading;
+  const sub = t.market.wonSub;
 
   return createPortal(
     <div
@@ -192,7 +192,7 @@ export function WinCelebrationHost() {
 
           {typeof payload.net === "number" && (
             <p className="mt-1.5 font-mono text-[13px] tabular-nums text-gold-300">
-              {payload.net >= 0 ? "+" : "\u2212"}TZS {fmt(Math.abs(payload.net))} <span className="text-text-subtle">net</span>
+              {payload.net >= 0 ? "+" : "\u2212"}TZS {fmt(Math.abs(payload.net))} <span className="text-text-subtle">{t.common.net}</span>
             </p>
           )}
 

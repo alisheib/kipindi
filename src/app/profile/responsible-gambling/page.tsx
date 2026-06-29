@@ -18,22 +18,22 @@ import { getServerT } from "@/lib/i18n-server";
 export const metadata = { title: "Responsible gambling" };
 export const dynamic = "force-dynamic";
 
-const SELF_EXCLUSION_OPTIONS = [
-  { id: "24h",  label: "24 hours",  sw: "Saa 24" },
-  { id: "1w",   label: "1 week",    sw: "Wiki 1" },
-  { id: "1m",   label: "1 month",   sw: "Mwezi 1" },
-  { id: "6m",   label: "6 months",  sw: "Miezi 6" },
-  { id: "perm", label: "Permanent", sw: "Daima" },
-];
-
-const COOLING_OFF_OPTIONS = [
-  { id: "1h",  label: "1 hour",   sw: "Saa 1" },
-  { id: "24h", label: "24 hours", sw: "Saa 24" },
-  { id: "1w",  label: "1 week",   sw: "Wiki 1" },
-];
-
 export default async function ResponsibleGamblingPage({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string }> }) {
   const { t } = await getServerT();
+
+  const SELF_EXCLUSION_OPTIONS = [
+    { id: "24h",  label: t.rg.dur24h },
+    { id: "1w",   label: t.rg.dur1week },
+    { id: "1m",   label: t.rg.dur1month },
+    { id: "6m",   label: t.rg.dur6months },
+    { id: "perm", label: t.common.permanent },
+  ];
+
+  const COOLING_OFF_OPTIONS = [
+    { id: "1h",  label: t.rg.dur1hour },
+    { id: "24h", label: t.rg.dur24h },
+    { id: "1w",  label: t.rg.dur1week },
+  ];
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile/responsible-gambling");
   const rg = await getRgSettings(session.userId);
@@ -106,21 +106,21 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
             <I.warning s={14} />
             <div>
               <p className="font-display font-semibold text-text">
-                Pending increase to {await formatTzs(rg.pendingIncreaseTo!)}
+                {t.rg.pendingIncrease}{" "}{await formatTzs(rg.pendingIncreaseTo!)}
               </p>
               <p className="text-text-muted">
-                Effective {new Date(rg.pendingIncreaseEffectiveAt!).toLocaleString("en-GB")} (24h cooling period).
+                {t.rg.effective}{" "}{new Date(rg.pendingIncreaseEffectiveAt!).toLocaleString("en-GB")}{" "}{t.rg.coolingPeriodNote}
               </p>
             </div>
           </div>
         )}
         <form action={setLimitsAction} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field name="dailyDepositLimit"        label="Daily deposit (TZS)"      defaultValue={rg.dailyDepositLimit}        placeholder="e.g. 50000" />
-          <Field name="weeklyDepositLimit"       label="Weekly deposit (TZS)"     defaultValue={rg.weeklyDepositLimit}       placeholder="e.g. 200000" />
-          <Field name="monthlyDepositLimit"      label="Monthly deposit (TZS)"    defaultValue={rg.monthlyDepositLimit}      placeholder="e.g. 500000" />
-          <Field name="dailyLossLimit"           label="Daily loss (TZS)"         defaultValue={rg.dailyLossLimit}           placeholder="e.g. 30000" />
-          <Field name="sessionTimeLimitMin"      label="Session time (minutes)"   defaultValue={rg.sessionTimeLimitMin}      placeholder="e.g. 60" />
-          <Field name="realityCheckIntervalMin"  label="Reality check (min 5, max 120)"  defaultValue={rg.realityCheckIntervalMin}  placeholder="30" min={5} max={120} step={5} />
+          <Field name="dailyDepositLimit"        label={t.rg.dailyDeposit}      defaultValue={rg.dailyDepositLimit}        placeholder={t.rg.egDay} />
+          <Field name="weeklyDepositLimit"       label={t.rg.weeklyDeposit}     defaultValue={rg.weeklyDepositLimit}       placeholder={t.rg.egWeek} />
+          <Field name="monthlyDepositLimit"      label={t.rg.monthlyDeposit}    defaultValue={rg.monthlyDepositLimit}      placeholder={t.rg.egMonth} />
+          <Field name="dailyLossLimit"           label={t.rg.dailyLoss}         defaultValue={rg.dailyLossLimit}           placeholder={t.rg.egLoss} />
+          <Field name="sessionTimeLimitMin"      label={t.rg.sessionTime}   defaultValue={rg.sessionTimeLimitMin}      placeholder={t.rg.egMinutes} />
+          <Field name="realityCheckIntervalMin"  label={t.rg.realityCheck}  defaultValue={rg.realityCheckIntervalMin}  placeholder="30" min={5} max={120} step={5} />
           <div className="sm:col-span-2 pt-2">
             <SubmitButton label={`${t.common.save} ${t.rg.setLimits.toLowerCase()}`} pendingLabel={`${t.common.loading}`} size="md" />
           </div>
@@ -178,7 +178,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
         </form>
         <p className="font-mono text-[11px] text-text-subtle pt-1">
           {t.rg.helpline} · <a href={`tel:${SUPPORT_PHONE_TEL()}`} className="text-brand-300 underline-offset-2 hover:underline">{SUPPORT_PHONE()}</a>.
-          {"International support at"}{" "}<a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="text-brand-300 underline-offset-2 hover:underline">begambleaware.org</a>.
+          {t.rg.intlSupport}{" "}<a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="text-brand-300 underline-offset-2 hover:underline">begambleaware.org</a>.
         </p>
       </section>
     </main>

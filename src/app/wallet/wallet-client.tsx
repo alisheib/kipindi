@@ -163,7 +163,7 @@ function BonusWalletCard({
                     </div>
                     <div className="mt-1 flex items-center justify-between font-mono text-[9.5px] text-gold-200/55">
                       <span>{fmt(g.wageredTzs, currency)} / {fmt(g.wagerRequiredTzs, currency)} {t.common.played}</span>
-                      {g.expiresAt && <span>exp {formatDateTimeSafe(g.expiresAt).split(",")[0]}</span>}
+                      {g.expiresAt && <span>{t.common.exp} {formatDateTimeSafe(g.expiresAt).split(",")[0]}</span>}
                     </div>
                   </div>
                 ))}
@@ -281,9 +281,9 @@ function TxnPager({
   const btnInactive = "border border-border bg-bg-elevated text-text-muted hover:border-border-strong hover:text-text";
   const btnDisabled = "border border-border bg-bg-elevated text-text-subtle/40 pointer-events-none";
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 border-t border-border" aria-label="Activity pages">
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 border-t border-border" aria-label={t.wallet.activityPages}>
       <p className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle tabular-nums">
-        {(page * perPage + 1).toLocaleString()}–{Math.min((page + 1) * perPage, total).toLocaleString()} of {total.toLocaleString()}
+        {(page * perPage + 1).toLocaleString()}–{Math.min((page + 1) * perPage, total).toLocaleString()} {t.common.of} {total.toLocaleString()}
       </p>
       <div className="flex flex-wrap items-center justify-end gap-1">
         <button type="button" onClick={() => onGoto(page - 1)} disabled={page === 0} className={`${btnBase} ${page > 0 ? btnInactive : btnDisabled}`} aria-label={t.common.previousPage}>

@@ -17,6 +17,7 @@ import { createPortal } from "react-dom";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark, TippingBar, GiltCorner } from "@/components/brand";
 import { useModalLock } from "@/lib/use-modal-lock";
+import { useT } from "@/lib/i18n";
 
 const STORAGE_KEY = "50pick-primer-seen";
 const HIDE_ON = /^\/(auth|admin)(\/|$)/;
@@ -199,6 +200,7 @@ export function FirstVisitPrimer() {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [lang, setLang] = useState<"en" | "sw" | "zh">("en");
+  const { t } = useT();
   useModalLock(open);
 
   useEffect(() => {
@@ -254,7 +256,7 @@ export function FirstVisitPrimer() {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="50pick primer"
+      aria-label={t.primer.primerLabel}
       className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center"
     >
       <button
@@ -295,7 +297,7 @@ export function FirstVisitPrimer() {
               key={i}
               type="button"
               onClick={() => setStep(i)}
-              aria-label={`Step ${i + 1}`}
+              aria-label={t.primer.step.replace("{n}", String(i + 1))}
               className="h-[3px] flex-1 rounded-pill transition-all duration-300 hover:opacity-80"
               style={{
                 background:

@@ -13,6 +13,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import {
   TIME_SEGMENTS, resolveTimeSegment, sanitizeDigits, padTimeOnBlur,
   deriveTime, timeStateFromString, to12Hour, type TimeSegKey,
@@ -31,6 +32,7 @@ type Props = {
 const SEG_WIDTH = "2.4ch";
 
 export function TimeSelect({ value, defaultValue, onChange, error, size = "md", className, ...rest }: Props) {
+  const { t } = useT();
   const controlled = value !== undefined;
   const [internal, setInternal] = useState(defaultValue ?? "");
   const strValue = controlled ? (value ?? "") : internal;
@@ -120,7 +122,7 @@ export function TimeSelect({ value, defaultValue, onChange, error, size = "md", 
         )}
         style={{ background: errored ? "oklch(58% 0.2 25 / 0.08)" : "var(--bg-inset)" }}
         role="group"
-        aria-label={rest["aria-label"] ?? "Time, 24-hour"}
+        aria-label={rest["aria-label"] ?? t.common.time24}
       >
         <div className={cn("flex-1 flex items-center justify-center font-mono tabular-nums", fs)}>
           {TIME_SEGMENTS.map((seg, idx) => (

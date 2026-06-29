@@ -11,7 +11,7 @@ export default async function PositionsLoading() {
 
       {/* Tab skeleton */}
       <nav className="flex items-center gap-1 border-b border-border" aria-hidden>
-        {["All", "Open", "Settled"].map((tab, i) => (
+        {[t.positions.tabAll, t.positions.tabOpen, t.positions.tabSettled].map((tab, i) => (
           <div
             key={tab}
             className={`h-9 px-3.5 rounded-t-md ${i === 0 ? "bg-bg-overlay" : ""}`}

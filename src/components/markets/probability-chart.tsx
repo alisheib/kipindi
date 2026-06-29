@@ -10,6 +10,7 @@
  */
 import { useState, useRef, useId, useEffect } from "react";
 import { SignalPip } from "@/components/brand";
+import { useT } from "@/lib/i18n";
 
 export type ProbPoint = { t: string; p: number };
 
@@ -40,6 +41,7 @@ export function ProbabilityChart({
   height?: number;
   ranges?: string[];
 }) {
+  const { t } = useT();
   const uid = useId().replace(/:/g, "");
   const [range, setRange] = useState(defaultRange || ranges[ranges.length - 2] || ranges[0]);
   const [hover, setHover] = useState<number | null>(null);
@@ -125,10 +127,10 @@ export function ProbabilityChart({
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
         <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
           <SignalPip size={7} />
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--text-subtle)" }}>YES probability · over time</span>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--text-subtle)" }}>{t.market.probOverTime}</span>
         </div>
         {ranges.length > 1 && (
-          <div className="pchart-ranges" role="tablist" aria-label="Time range">
+          <div className="pchart-ranges" role="tablist" aria-label={t.market.timeRange}>
             {ranges.map((rg) => (
               <button key={rg} role="tab" aria-selected={rg === range} className={"pchart-range" + (rg === range ? " is-active" : "")} onClick={() => setRange(rg)}>{rg}</button>
             ))}
@@ -137,7 +139,7 @@ export function ProbabilityChart({
       </div>
 
       <div style={{ position: "relative" }}>
-        <svg viewBox={`0 0 ${width} ${height}`} onPointerMove={onMove} onPointerDown={onMove} onPointerLeave={() => setHover(null)} style={{ touchAction: "pan-y" }} role="img" aria-label={`YES probability over time, currently ${last ? last.p : 0} percent`}>
+        <svg viewBox={`0 0 ${width} ${height}`} onPointerMove={onMove} onPointerDown={onMove} onPointerLeave={() => setHover(null)} style={{ touchAction: "pan-y" }} role="img" aria-label={t.market.probChartAria.replace("{pct}", String(last ? last.p : 0))}>
           <defs>
             <clipPath id={`above-${uid}`}><rect x="0" y={padT - 2} width={width} height={baseline - padT + 2} /></clipPath>
             <clipPath id={`below-${uid}`}><rect x="0" y={baseline} width={width} height={padT + H - baseline + 2} /></clipPath>
@@ -164,7 +166,7 @@ export function ProbabilityChart({
           </>)}
 
           <line className="pchart-tip" x1={padL} y1={baseline} x2={padL + W} y2={baseline} />
-          <text className="pchart-tip-cap" x={padL + W} y={baseline - 5} textAnchor="end">TIPPING · 50</text>
+          <text className="pchart-tip-cap" x={padL + W} y={baseline - 5} textAnchor="end">{`${t.market.tipping} · 50`}</text>
 
           {linePath && <path key={range} ref={lineRef} className="pchart-line is-drawn" d={linePath} />}
 
@@ -187,7 +189,7 @@ export function ProbabilityChart({
           <div className="pchart-readout" style={{ left: `${(x(hover!) / width) * 100}%`, transform: edgeShift(hoverFrac) }}>
             <span style={{ color: "var(--text-subtle)" }}>{hv.t}</span>{"  "}
             <b className={hvLeanNo ? "lean-no" : undefined}>{hv.p}%</b>
-            <span style={{ color: "var(--text-subtle)" }}> · {hvLeanNo ? "leans no" : "leans yes"}</span>
+            <span style={{ color: "var(--text-subtle)" }}> · {hvLeanNo ? t.market.leansNo : t.market.leansYes}</span>
           </div>
         )}
         {last && (

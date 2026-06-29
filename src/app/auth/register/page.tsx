@@ -62,7 +62,7 @@ export default async function RegisterPage({
     return {
       tone: "danger" as const,
       title: t.auth.couldNotCreate,
-      body: msg ? decodeURIComponent(msg) : "Check the form fields and try again.",
+      body: msg ? decodeURIComponent(msg) : t.auth.checkFormFields,
       cta: null,
     };
   })();

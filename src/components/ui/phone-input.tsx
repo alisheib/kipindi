@@ -13,6 +13,7 @@
 
 import * as React from "react";
 import { Input } from "./input";
+import { useT } from "@/lib/i18n";
 
 type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, "type" | "onChange" | "size"> & {
   size?: "sm" | "md" | "lg";
@@ -34,6 +35,7 @@ function formatTzPhone(digits: string): string {
 }
 
 export function PhoneInput({ defaultValue, value, onChange, name, ...rest }: Props) {
+  const { t } = useT();
   const [v, setV] = React.useState<string>(() => stripDigits(String(defaultValue ?? "")));
 
   // Keep controlled mode honoured when caller passes `value`.
@@ -82,7 +84,7 @@ export function PhoneInput({ defaultValue, value, onChange, name, ...rest }: Pro
         onChange={handle}
         onPaste={handlePaste}
       />
-      {name && <input type="hidden" name={name} value={v} required pattern="[67]\d{8}" title="9-digit Tanzania mobile number starting with 6 or 7" />}
+      {name && <input type="hidden" name={name} value={v} required pattern="[67]\d{8}" title={t.common.phoneInputTitle} />}
     </>
   );
 }

@@ -57,7 +57,7 @@ export function NotifyPrompt({ marketId, marketTitle }: { marketId: string; mark
   if (!supported) {
     return (
       <div className="rounded-md border border-border bg-bg-overlay px-3 py-2 text-[11px] text-text-subtle">
-        Browser notifications not supported here. Add this market to your home screen for the best alerts.
+        {t.market.notifUnsupported}
       </div>
     );
   }
@@ -82,7 +82,7 @@ export function NotifyPrompt({ marketId, marketTitle }: { marketId: string; mark
         writeWatchlist(next);
         setWatching(true);
         // Confirmation chirp so the user sees it works
-        new Notification("Watching this market", { body: marketTitle.slice(0, 80), tag: `50pick-${marketId}` });
+        new Notification(t.market.watchingTitle, { body: marketTitle.slice(0, 80), tag: `50pick-${marketId}` });
       } else {
         const next = readWatchlist().filter((x) => x !== marketId);
         writeWatchlist(next);
@@ -97,7 +97,7 @@ export function NotifyPrompt({ marketId, marketTitle }: { marketId: string; mark
     return (
       <div className="flex items-center gap-2 rounded-md border border-border bg-bg-overlay px-3 py-2 text-[11px] text-text-subtle">
         <I.bellOff s={14} />
-        <span>Notifications blocked. Enable them in your browser settings to get a ping when this market resolves.</span>
+        <span>{t.market.notifBlocked}</span>
       </div>
     );
   }

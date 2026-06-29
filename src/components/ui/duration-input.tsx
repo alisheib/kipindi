@@ -19,10 +19,10 @@
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { sanitizeNumericInput } from "@/components/ui/input";
+import { useT } from "@/lib/i18n";
 
 type Unit = "d" | "h" | "m";
 
-const UNIT_LABELS: Record<Unit, string> = { d: "day", h: "hr", m: "min" };
 const UNIT_TO_MINUTES: Record<Unit, number> = { d: 1440, h: 60, m: 1 };
 const UNITS: Unit[] = ["d", "h", "m"];
 
@@ -79,6 +79,8 @@ export function DurationInput({
   className,
   ...rest
 }: Props) {
+  const { t } = useT();
+  const unitLabels: Record<Unit, string> = { d: t.common.unitDay, h: t.common.unitHr, m: t.common.unitMin };
   const clamped = clampMinutes(value, min, max);
   const initial = decompose(clamped);
   const [unit, setUnit] = useState<Unit>(initial.unit);
@@ -154,7 +156,7 @@ export function DurationInput({
         )}
         style={{ background: errored ? "oklch(58% 0.2 25 / 0.08)" : "var(--bg-inset)" }}
         role="group"
-        aria-label={rest["aria-label"] ?? "Duration"}
+        aria-label={rest["aria-label"] ?? t.common.duration}
       >
         <input
           type="text"
@@ -164,7 +166,7 @@ export function DurationInput({
           data-lpignore="true"
           value={display}
           placeholder="0"
-          aria-label="Duration value"
+          aria-label={t.common.durationValue}
           className={cn(
             "flex-1 min-w-0 bg-transparent px-2.5 text-text outline-none font-mono tabular-nums text-right placeholder:text-text-subtle/40",
             fs,
@@ -189,14 +191,14 @@ export function DurationInput({
             "inline-flex flex-col items-center justify-center gap-0 px-2 bg-bg-elevated border-l border-border shrink-0 select-none cursor-pointer hover:bg-bg-overlay transition-colors group",
             size === "sm" ? "min-w-[42px]" : "min-w-[48px]",
           )}
-          aria-label={`Unit: ${UNIT_LABELS[unit]}. Click to change.`}
+          aria-label={t.common.unitCycle.replace("{unit}", unitLabels[unit])}
         >
           <span className="text-text-subtle/40 group-hover:text-text-subtle transition-colors leading-none"><Chev up /></span>
           <span className={cn(
             "font-mono uppercase tracking-[0.06em] text-text-subtle group-hover:text-text transition-colors leading-none",
             size === "sm" ? "text-[9px]" : "text-[10px]",
           )}>
-            {UNIT_LABELS[unit]}
+            {unitLabels[unit]}
           </span>
           <span className="text-text-subtle/40 group-hover:text-text-subtle transition-colors leading-none"><Chev /></span>
         </button>

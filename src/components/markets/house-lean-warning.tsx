@@ -14,8 +14,10 @@
  */
 import { I } from "@/components/ui/glyphs";
 import type { LeanLevel } from "@/lib/payout";
+import { useT } from "@/lib/i18n";
 
 export function HouseLeanWarning({ level }: { level: LeanLevel }) {
+  const { t } = useT();
   if (level === "fair") return null;
 
   const neg = level === "negative";
@@ -34,14 +36,7 @@ export function HouseLeanWarning({ level }: { level: LeanLevel }) {
       </span>
       <div className="min-w-0">
         <p className={`text-[12px] font-semibold ${neg ? "text-no-300" : "text-warning-fg"}`}>
-          {neg
-            ? "Heavy lean on this side — a winning share may be below your stake."
-            : "This side is crowded — a winning share may be small."}
-        </p>
-        <p className="mt-1 text-[11px] text-text-subtle italic">
-          {neg
-            ? "Upande huu umejaa — mshindi anaweza kupata chini ya dau lake."
-            : "Upande huu una watu wengi — gawio linaweza kuwa dogo."}
+          {neg ? t.market.heavyLeanWarning : t.market.crowdedWarning}
         </p>
       </div>
     </div>

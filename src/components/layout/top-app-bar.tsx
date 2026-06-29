@@ -62,7 +62,7 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
         </Link>
 
         {/* Nav links — kit: gap 2, marginLeft 10 */}
-        <nav className="ml-2.5 hidden xl:flex items-center gap-0.5" aria-label="Primary">
+        <nav className="ml-2.5 hidden xl:flex items-center gap-0.5" aria-label={t.nav.primary}>
           {NAV_ITEMS.map((it) => {
             const active = it.href === "/markets"
               ? pathname === "/" || pathname.startsWith("/markets")

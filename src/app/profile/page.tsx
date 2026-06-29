@@ -225,7 +225,7 @@ export default async function ProfilePage() {
           {t.profile.account}
         </h2>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-          <SettingRow icon={I.gift}            title={t.profile.inviteEarn}          subtitle={t.profile.inviteEarnSub}         href="/profile/invite" accent badge="New" />
+          <SettingRow icon={I.gift}            title={t.profile.inviteEarn}          subtitle={t.profile.inviteEarnSub}         href="/profile/invite" accent badge={t.common.newBadge} />
           <SettingRow icon={I.user}            title={t.profile.myAccount}           subtitle={t.profile.myAccountSub}            href="/profile/account" />
           <SettingRow icon={I.settings}        title={t.profile.responsibleGambling} subtitle={t.profile.responsibleGamblingSub}              href="/profile/responsible-gambling" />
           <SettingRow icon={I.shieldcheck}     title={t.common.verifyId}             subtitle={t.profile.verifyIdSub}            href="/profile/kyc" />

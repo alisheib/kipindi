@@ -52,7 +52,7 @@ export function SidePicker({
             >
               {side} {side === "YES" ? yesPct : 100 - yesPct}%
             </span>
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Your pick</span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{t.common.yourPick}</span>
           </div>
           <button
             type="button"
@@ -60,7 +60,7 @@ export function SidePicker({
             className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle hover:text-text transition-colors"
           >
             <I.chevronLeft s={10} />
-            Change side
+            {t.market.changeSide}
           </button>
         </div>
         <ConvictionDial
@@ -84,14 +84,14 @@ export function SidePicker({
         {t.common.pickYourSide}
       </p>
       <h3 className="mt-1.5 mb-4 font-display text-[17px] font-bold text-text leading-tight text-center">
-        Which way will it resolve?
+        {t.market.whichWay}
       </h3>
       <div className="grid grid-cols-2 gap-2.5">
         <button
           type="button"
           onClick={() => setSide("YES")}
           className="btn btn-yes btn-lg"
-          aria-label={`Back YES at ${yesPct}%`}
+          aria-label={t.market.backYesAria.replace("{pct}", String(yesPct))}
           style={{ borderRadius: "var(--r-pill)" }}
         >
           YES <span className="font-mono text-[12.5px] opacity-85">{yesPct}%</span>
@@ -100,14 +100,14 @@ export function SidePicker({
           type="button"
           onClick={() => setSide("NO")}
           className="btn btn-no btn-lg"
-          aria-label={`Back NO at ${100 - yesPct}%`}
+          aria-label={t.market.backNoAria.replace("{pct}", String(100 - yesPct))}
           style={{ borderRadius: "var(--r-pill)" }}
         >
           NO <span className="font-mono text-[12.5px] opacity-85">{100 - yesPct}%</span>
         </button>
       </div>
       <p className="mt-3 text-center text-[11px] text-text-subtle leading-snug">
-        Choose a side to set your conviction and place your bet.
+        {t.market.chooseSideHelp}
       </p>
     </div>
   );

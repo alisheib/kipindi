@@ -80,7 +80,7 @@ export function KycDocUploader({
         onClick={() => !locked && !working && inputRef.current?.click()}
         disabled={working || locked}
         aria-busy={working ? "true" : "false"}
-        aria-label={done ? `${label} attached — tap to replace` : `Attach ${label}`}
+        aria-label={done ? t.profile.docAttachedReplace.replace("{label}", label) : t.profile.docAttach.replace("{label}", label)}
         className={`w-full overflow-hidden rounded-md border-2 border-dashed p-3.5 text-center transition-colors ${
           locked ? "border-border bg-bg-overlay/30 cursor-not-allowed opacity-70"
           : working ? "border-gold-700 bg-gold-500/[0.06] cursor-wait"
@@ -104,7 +104,7 @@ export function KycDocUploader({
             shows live motion — the static "Uploading…" alone felt stuck. */}
         <span className="mt-0.5 flex items-center justify-center gap-1.5 font-mono text-[10.5px] text-text-subtle">
           {working && <Spinner size={11} />}
-          <span>{locked ? "Locked" : pending ? "Uploading…" : busy ? "Preparing…" : done ? "Attached · tap to replace" : "Tap to attach"}</span>
+          <span>{locked ? t.profile.docLocked : pending ? t.common.uploading : busy ? t.common.preparing : done ? t.profile.docTapReplace : t.profile.docTapAttach}</span>
         </span>
       </button>
     </div>
@@ -177,7 +177,7 @@ export function KycExtraDocUploader({
         <div className="min-w-0 flex-1">
           <p className="text-[12.5px] text-text leading-snug">{description}</p>
           <p className="mt-0.5 font-mono text-[10.5px] text-text-subtle">
-            {pending ? "Uploading…" : busy ? "Preparing…" : done ? "Attached · tap to replace" : "Tap to attach a photo"}
+            {pending ? t.common.uploading : busy ? t.common.preparing : done ? t.profile.docTapReplace : t.profile.docTapAttachPhoto}
           </p>
         </div>
         {preview && <img src={preview} alt="" className="h-12 w-12 shrink-0 rounded object-cover border border-border" />}
@@ -189,7 +189,7 @@ export function KycExtraDocUploader({
           className={`btn btn-sm shrink-0 ${done ? "btn-ghost" : "btn-gold"}`}
           style={{ borderRadius: 999 }}
         >
-          {done ? "Replace" : "Upload"}
+          {done ? t.common.replace : t.common.upload}
         </button>
       </div>
     </div>

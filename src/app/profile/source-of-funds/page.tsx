@@ -14,24 +14,24 @@ import { getServerT } from "@/lib/i18n-server";
 export const metadata = { title: "Source of funds" };
 export const dynamic = "force-dynamic";
 
-const SOURCES = [
-  { id: "salary",       label: "Salary" },
-  { id: "business",     label: "Business" },
-  { id: "savings",      label: "Savings" },
-  { id: "investments",  label: "Investments" },
-  { id: "inheritance",  label: "Inheritance" },
-  { id: "other",        label: "Other" },
-];
-
-const BANDS = [
-  { id: "under-12m", label: "Under TZS 12M" },
-  { id: "12m-50m",   label: "TZS 12M – 50M" },
-  { id: "50m-200m",  label: "TZS 50M – 200M" },
-  { id: "over-200m", label: "Over TZS 200M" },
-];
-
 export default async function SourceOfFundsPage({ searchParams }: { searchParams?: Promise<{ error?: string; saved?: string; src?: string; occ?: string; band?: string; emp?: string; other?: string }> }) {
   const { t } = await getServerT();
+
+  const SOURCES = [
+    { id: "salary",       label: t.profile.sofSalary },
+    { id: "business",     label: t.profile.sofBusiness },
+    { id: "savings",      label: t.profile.sofSavings },
+    { id: "investments",  label: t.profile.sofInvestments },
+    { id: "inheritance",  label: t.profile.sofInheritance },
+    { id: "other",        label: t.profile.sofOther },
+  ];
+
+  const BANDS = [
+    { id: "under-12m", label: t.profile.sofBand1 },
+    { id: "12m-50m",   label: t.profile.sofBand2 },
+    { id: "50m-200m",  label: t.profile.sofBand3 },
+    { id: "over-200m", label: t.profile.sofBand4 },
+  ];
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile/source-of-funds");
   const existing = await db.sourceOfFunds.get(session.userId);
@@ -47,7 +47,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
     : existing?.reviewStatus === "REJECTED" ? "no"
     : "warning";
   // Humanize the raw enums before showing them to the player.
-  const STATUS_LABEL: Record<string, string> = { PENDING: "Under review", ACCEPTED: "Accepted", REJECTED: "Rejected" };
+  const STATUS_LABEL: Record<string, string> = { PENDING: t.common.underReview, ACCEPTED: t.common.accepted, REJECTED: t.profile.rejected };
   const statusLabel = existing ? (STATUS_LABEL[existing.reviewStatus] ?? existing.reviewStatus) : "";
   const sourceLabel = existing ? (SOURCES.find((s) => s.id === existing.declaredSource)?.label ?? existing.declaredSource) : "";
   const bandLabel = existing ? (BANDS.find((b) => b.id === existing.declaredAnnualIncomeBand)?.label ?? existing.declaredAnnualIncomeBand) : "";
@@ -174,14 +174,14 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
               minLength={2}
               maxLength={200}
               defaultValue={prevOcc}
-              placeholder="e.g. Software engineer"
+              placeholder={t.profile.sofOccPlaceholder}
             />
             <Field
               name="declaredEmployer"
               label={t.profile.employer}
               maxLength={200}
               defaultValue={prevEmp}
-              placeholder="Company name"
+              placeholder={t.profile.sofEmployerPlaceholder}
             />
           </div>
 
@@ -222,7 +222,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
               rows={3}
               maxLength={500}
               defaultValue={prevOther}
-              placeholder="Describe the source of funds in your own words"
+              placeholder={t.profile.sofDetailsPlaceholder}
               className="w-full p-3 rounded-md border border-border bg-bg-overlay text-text text-[16px] focus:outline-none brand-focus transition-colors"
             />
           </div>

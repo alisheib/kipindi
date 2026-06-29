@@ -101,7 +101,7 @@ export default async function LoginPage({
         return {
           tone: "danger" as const,
           title: t.auth.accountUnavailable,
-          body: `Contact ${SUPPORT_EMAIL()} if you believe this is in error.`,
+          body: t.auth.blockedContactSupport.replace("{email}", SUPPORT_EMAIL()),
           cta: null,
         };
       default:

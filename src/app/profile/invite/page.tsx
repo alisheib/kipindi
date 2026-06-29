@@ -183,7 +183,7 @@ export default async function InvitePage() {
 
       {/* Stat tiles */}
       <div className="grid grid-cols-2 gap-2.5">
-        <Kpi label={t.common.invite} value={String(s.recruitCount)} sub={s.recruitCount > 0 ? "all-time" : "—"} />
+        <Kpi label={t.common.invite} value={String(s.recruitCount)} sub={s.recruitCount > 0 ? t.common.allTime : "—"} />
         <Kpi label={t.proposals.earned} value={s.earnedTzs > 0 ? s.earnedTzs.toLocaleString("en-US") : "0"} sub="TZS" gold />
       </div>
 

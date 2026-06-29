@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
+import { getServerT } from "@/lib/i18n-server";
 
 /* ── Inline i18n dict for this server component (cannot use useT) ─────── */
 const t404 = {
@@ -63,6 +64,7 @@ export default async function NotFound() {
   const cookieLocale = jar.get("kp-locale")?.value;
   const lang: Locale = cookieLocale === "sw" || cookieLocale === "zh" ? cookieLocale : "en";
   const d = t404[lang];
+  const { t } = await getServerT();
 
   return (
     <main className="mx-auto flex min-h-[80svh] max-w-[640px] flex-col items-center justify-center px-5 py-10 text-center">
@@ -78,7 +80,7 @@ export default async function NotFound() {
       <p className="mt-3 max-w-[420px] text-[13px] leading-relaxed text-text-subtle">
         {d.notFoundHint}
       </p>
-      <nav aria-label="Recovery links" className="mt-6 grid w-full max-w-[420px] grid-cols-1 gap-2 sm:grid-cols-3">
+      <nav aria-label={t.error.recoveryLinks} className="mt-6 grid w-full max-w-[420px] grid-cols-1 gap-2 sm:grid-cols-3">
         <Link
           href="/"
           className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-gold-700 hover:bg-bg-overlay"

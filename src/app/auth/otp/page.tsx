@@ -64,7 +64,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
             <div id="otp-error" role="alert" className="rounded-md border border-no-700 bg-no-500/10 px-3 py-2.5 text-[13px] text-no-300">
               {errorMsg[error] ?? error}
               {error === "rate_limited" && retrySec > 0 && (
-                <> You can request a new code in <CountdownPill seconds={retrySec} />.</>
+                <> {t.auth.requestCodeIn} <CountdownPill seconds={retrySec} />.</>
               )}
             </div>
           )}

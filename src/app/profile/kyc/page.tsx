@@ -11,7 +11,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { submitNidaAction, submitKycForReviewAction } from "./actions";
 import { KycDocUploader, KycExtraDocUploader } from "@/components/profile/kyc-doc-uploader";
 import { SUPPORT_EMAIL } from "@/lib/support-config";
-import { getServerT } from "@/lib/i18n-server";
+import { getServerT, type Dict } from "@/lib/i18n-server";
 
 export const metadata = { title: "Verify identity" };
 
@@ -85,8 +85,8 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               {t.auth.welcomeTo50pick}
             </p>
             <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
-              {"You can "}<span className="font-bold text-text">{"browse markets and place bets right away"}</span>.
-              {"Verify your identity later \u2014 withdrawals unlock once KYC is approved."}
+              {t.profile.kycWelcomeCan + " "}<span className="font-bold text-text">{t.profile.kycWelcomeBrowse}</span>.
+              {t.profile.kycWelcomeLater}
             </p>
           </div>
           <Link
@@ -135,7 +135,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             <div className="min-w-0">
               <p className="font-display text-[14px] font-bold text-no-300">{t.profile.rejected}</p>
               <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
-                {kyc?.rejectReason ? <>{t.profile.kycRejectReason}: <span className="font-semibold text-text">{humanizeRejectReason(String(kyc.rejectReason))}</span>. </> : null}
+                {kyc?.rejectReason ? <>{t.profile.kycRejectReason}: <span className="font-semibold text-text">{humanizeRejectReason(String(kyc.rejectReason), t)}</span>. </> : null}
                 {kyc?.rejectNote ? `${kyc.rejectNote} ` : ""}
                 {t.profile.kycResubmitOrEmail}{" "}
                 <a href={`mailto:${SUPPORT_EMAIL()}?subject=KYC%20review`} className="text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a>.
@@ -152,8 +152,8 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             <div className="min-w-0">
               <p className="font-display text-[14px] font-bold text-gold-300">{t.profile.kycMoreInfo}</p>
               <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
-                {kyc?.rejectNote ? <span className="font-semibold text-text">{kyc.rejectNote}</span> : "Our team needs a clearer or additional document."}
-                {" "}{"Update the document(s) below and submit again \u2014 this isn\u2019t a rejection."}
+                {kyc?.rejectNote ? <span className="font-semibold text-text">{kyc.rejectNote}</span> : t.profile.kycMoreInfoBody1}
+                {" "}{t.profile.kycMoreInfoBody2}
               </p>
             </div>
           </div>
@@ -369,18 +369,17 @@ function Step({ n, title, detail, done, active }: { n: number; title: string; de
   );
 }
 
-const REJECT_LABELS: Record<string, string> = {
-  NIDA_MISMATCH: "NIDA details don't match our records",
-  PHOTO_UNREADABLE: "ID photo is too blurry or dark",
-  WRONG_DOCUMENT: "Wrong type of document uploaded",
-  SELFIE_MISMATCH: "Selfie doesn't match the ID photo",
-  EXPIRED_DOCUMENT: "The ID document has expired",
-  DUPLICATE_ACCOUNT: "Another account is using this NIDA",
-  UNDERAGE: "Date of birth shows under 18",
-};
-
-function humanizeRejectReason(raw: string): string {
-  return REJECT_LABELS[raw] ?? raw.replace(/_/g, " ").toLowerCase();
+function humanizeRejectReason(raw: string, t: Dict): string {
+  const labels: Record<string, string> = {
+    NIDA_MISMATCH: t.profile.rejectNidaMismatch,
+    PHOTO_UNREADABLE: t.profile.rejectBlurry,
+    WRONG_DOCUMENT: t.profile.rejectWrongType,
+    SELFIE_MISMATCH: t.profile.rejectSelfieMismatch,
+    EXPIRED_DOCUMENT: t.profile.rejectExpired,
+    DUPLICATE_ACCOUNT: t.profile.rejectDuplicate,
+    UNDERAGE: t.profile.rejectUnderage,
+  };
+  return labels[raw] ?? raw.replace(/_/g, " ").toLowerCase();
 }
 
 // Delegates to the kit <Input>/<Field> atoms so this player-facing form matches

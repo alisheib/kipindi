@@ -1,15 +1,29 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
+import { getServerT, type Locale } from "@/lib/i18n-server";
 
-const LEGAL_NAV: Array<{ href: string; en: string; sw: string }> = [
-  { href: "/legal/terms",                en: "Terms",                sw: "Masharti" },
-  { href: "/legal/privacy",              en: "Privacy",              sw: "Faragha" },
-  { href: "/legal/responsible-gambling", en: "Responsible Gambling", sw: "Mchezo salama" },
-  { href: "/legal/aml",                  en: "AML / KYC",            sw: "Kuzuia uoshaji" },
+const LEGAL_NAV: Array<{ href: string; label: Record<Locale, string> }> = [
+  { href: "/legal/terms",                label: { en: "Terms",                sw: "Masharti",        zh: "服务条款" } },
+  { href: "/legal/privacy",              label: { en: "Privacy",              sw: "Faragha",         zh: "隐私" } },
+  { href: "/legal/responsible-gambling", label: { en: "Responsible Gambling", sw: "Mchezo Salama",   zh: "责任博彩" } },
+  { href: "/legal/aml",                  label: { en: "AML / KYC",            sw: "Kuzuia Uoshaji",  zh: "反洗钱 / KYC" } },
 ];
 
-export default function LegalLayout({ children }: { children: React.ReactNode }) {
+const EYEBROW: Record<Locale, string> = {
+  en: "Legal",
+  sw: "Sheria",
+  zh: "法律",
+};
+
+const NAV_ARIA: Record<Locale, string> = {
+  en: "Legal sections",
+  sw: "Sehemu za kisheria",
+  zh: "法律章节",
+};
+
+export default async function LegalLayout({ children }: { children: React.ReactNode }) {
+  const { locale } = await getServerT();
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 lg:py-8 grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6 lg:gap-10">
       <aside className="lg:sticky lg:top-20 self-start space-y-3">
@@ -29,19 +43,18 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
           <div className="relative z-10 flex items-center gap-2">
             <I.scrollText s={14} className="text-gold-300" />
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
-              Legal · Sheria
+              {EYEBROW[locale]}
             </p>
           </div>
         </div>
-        <nav aria-label="Legal sections" className="rounded-xl glass-panel overflow-hidden">
+        <nav aria-label={NAV_ARIA[locale]} className="rounded-xl glass-panel overflow-hidden">
           {LEGAL_NAV.map((n, i) => (
             <Link
               key={n.href}
               href={n.href as never}
               className={`block px-3.5 py-2.5 hover:bg-bg-overlay transition-colors ${i > 0 ? "border-t border-border" : ""}`}
             >
-              <p className="font-display text-[13px] font-semibold text-text leading-tight">{n.en}</p>
-              <p className="mt-0.5 text-[11px] italic text-text-subtle">· {n.sw}</p>
+              <p className="font-display text-[13px] font-semibold text-text leading-tight">{n.label[locale]}</p>
             </Link>
           ))}
         </nav>

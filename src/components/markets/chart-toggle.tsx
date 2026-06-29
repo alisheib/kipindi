@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ProbabilityChart, type ProbPoint } from "./probability-chart";
 import { I } from "@/components/ui/glyphs";
+import { useT } from "@/lib/i18n";
 
 export function ChartToggle({
   series,
@@ -16,6 +17,7 @@ export function ChartToggle({
   height?: number;
 }) {
   const [open, setOpen] = useState(false);
+  const { t } = useT();
 
   return (
     <section className="rounded-lg glass-panel overflow-hidden">
@@ -27,7 +29,7 @@ export function ChartToggle({
       >
         <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
           <I.chart s={11} />
-          Probability over time
+          {t.market.probOverTime}
         </span>
         <I.chevronDown
           s={14}

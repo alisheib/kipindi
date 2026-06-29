@@ -8,7 +8,7 @@ import { DateSelect } from "@/components/ui/date-select";
 import { Button } from "@/components/ui/button";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
 import { useToast } from "@/components/ui/toast";
-import { CategoryIcon, CATEGORY_LABEL } from "@/components/proposals/category-icon";
+import { CategoryIcon, categoryLabel } from "@/components/proposals/category-icon";
 import { createProposalAction } from "../actions";
 import { useT } from "@/lib/i18n";
 import type { ProposalCategory } from "@/lib/server/store";
@@ -67,7 +67,7 @@ export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: 
       </Field>
 
       <Field label={t.common.titleSw}>
-        <Input placeholder="Je, [tukio] litatokea kabla ya [tarehe]?" value={titleSw} onChange={(e) => setTitleSw(e.target.value)} maxLength={120} />
+        <Input placeholder={t.proposals.titleSwPlaceholder} value={titleSw} onChange={(e) => setTitleSw(e.target.value)} maxLength={120} />
       </Field>
 
       <div>
@@ -96,7 +96,7 @@ export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: 
                   ? { borderColor: "color-mix(in oklab, var(--gold-500) 40%, transparent)", background: "color-mix(in oklab, var(--gold-500) 14%, transparent)", color: "var(--gold-200)" }
                   : { borderColor: "var(--border)", color: "var(--text-muted)" }}
               >
-                <CategoryIcon category={c} size={14} />{CATEGORY_LABEL[c]}
+                <CategoryIcon category={c} size={14} />{categoryLabel(t, c)}
               </button>
             );
           })}
