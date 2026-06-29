@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { DateSelect } from "@/components/ui/date-select";
 import { TimeSelect } from "@/components/ui/time-select";
 import { Toggle } from "@/components/ui/toggle";
+import { DurationInput } from "@/components/ui/duration-input";
 import { I } from "@/components/ui/glyphs";
 import {
   generatePollAction,
@@ -668,8 +669,8 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
   const [maxLead, setMaxLead] = useState(String(config.maxLeadTimeDays));
   const [minConf, setMinConf] = useState(String(config.minConfidence));
   const [maxBatch, setMaxBatch] = useState(String(config.maxBatchPerRun));
-  const [leadTimes, setLeadTimes] = useState<Record<string, string>>(
-    Object.fromEntries(LEAD_TIME_CATEGORIES.map((c) => [c, String(config.selectionLeadTimeHours?.[c] ?? 1440)])),
+  const [leadTimes, setLeadTimes] = useState<Record<string, number>>(
+    Object.fromEntries(LEAD_TIME_CATEGORIES.map((c) => [c, config.selectionLeadTimeHours?.[c] ?? 1440])),
   );
   const router = useRouter();
   const { deferToast } = useDeferredToast(pending);
@@ -683,8 +684,8 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
       fd.set("maxLeadTimeDays", maxLead);
       fd.set("minConfidence", minConf);
       fd.set("maxBatchPerRun", maxBatch);
-      for (const [cat, hrs] of Object.entries(leadTimes)) {
-        fd.set(`selectionLead.${cat}`, hrs);
+      for (const [cat, mins] of Object.entries(leadTimes)) {
+        fd.set(`selectionLead.${cat}`, String(mins));
       }
       const r = await updatePollConfigAction(fd);
       router.refresh();
@@ -698,7 +699,7 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
         setMinConf(String(r.config.minConfidence));
         setMaxBatch(String(r.config.maxBatchPerRun));
         if (r.config.selectionLeadTimeHours) {
-          setLeadTimes(Object.fromEntries(LEAD_TIME_CATEGORIES.map((c) => [c, String(r.config.selectionLeadTimeHours[c] ?? 1440)])));
+          setLeadTimes(Object.fromEntries(LEAD_TIME_CATEGORIES.map((c) => [c, r.config.selectionLeadTimeHours[c] ?? 1440])));
         }
         deferToast({ title: "Settings saved", variant: "success" });
       }
@@ -745,29 +746,21 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
       <div className="rounded-md border border-border bg-bg-overlay p-3">
         <p className="text-[12px] font-semibold text-text mb-1">Selection lead time per category · Muda wa kufunga uchaguzi</p>
         <p className="text-[10.5px] text-text-subtle mb-2.5 leading-snug">
-          Minutes before the resolution date that betting closes for each category. Players see &quot;Selection Closed — Waiting for Results&quot; after this cutoff.
+          How long before the resolution date betting closes for each category. Players see &quot;Selection Closed — Waiting for Results&quot; after this cutoff.
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {LEAD_TIME_CATEGORIES.map((cat) => {
-            const val = Number(leadTimes[cat] ?? 1440);
-            const hint = val >= 1440 ? `${Math.round(val / 1440)}d` : val >= 60 ? `${Math.round(val / 60)}h` : "";
-            return (
-            <label key={cat} className="block">
+          {LEAD_TIME_CATEGORIES.map((cat) => (
+            <div key={cat}>
               <span className="text-[10px] text-text-subtle block mb-0.5 font-mono uppercase tracking-[0.1em]">{LEAD_TIME_LABELS[cat]}</span>
-              <div className="flex items-center gap-1">
-                <Input
-                  type="number"
-                  value={leadTimes[cat] ?? "1440"}
-                  onChange={(e) => setLeadTimes((prev) => ({ ...prev, [cat]: e.target.value }))}
-                  mono
-                  size="sm"
-                />
-                <span className="text-[10px] text-text-subtle shrink-0">min</span>
-              </div>
-              {hint && <span className="text-[9px] text-text-subtle font-mono mt-0.5 block">= {hint}</span>}
-            </label>
-            );
-          })}
+              <DurationInput
+                value={leadTimes[cat] ?? 1440}
+                onChange={(mins) => setLeadTimes((prev) => ({ ...prev, [cat]: mins }))}
+                min={0}
+                max={43200}
+                size="sm"
+              />
+            </div>
+          ))}
         </div>
       </div>
 
