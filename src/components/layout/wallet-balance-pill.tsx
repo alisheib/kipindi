@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/lib/i18n";
+
 /**
  * WalletBalancePill — the top-bar TZS balance with rolling counter
  * + delta flash on change.
@@ -26,6 +28,7 @@ function easeOutQuart(t: number): number {
 }
 
 export function WalletBalancePill({ balance }: { balance: number }) {
+  const { t } = useT();
   const [display, setDisplay] = useState(balance);
   const [flashing, setFlashing] = useState(false);
   // The signed change from the previous balance, captured when a flash starts.
@@ -94,7 +97,7 @@ export function WalletBalancePill({ balance }: { balance: number }) {
   return (
     <Link
       href="/wallet"
-      aria-label={hidden ? "Wallet · balance hidden" : `Wallet · TZS ${balance.toLocaleString("en-US")}`}
+      aria-label={hidden ? `${t.common.wallet} · ${t.common.hidePassword}` : `${t.common.wallet} · TZS ${balance.toLocaleString("en-US")}`}
       className={cn(
         "inline-flex items-center rounded-pill font-mono tabular-nums font-bold text-text transition-colors transition-shadow whitespace-nowrap",
         flashing

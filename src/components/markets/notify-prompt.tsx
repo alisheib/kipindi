@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/lib/i18n";
+
 /**
  * NotifyPrompt — small in-card opt-in for browser notifications about a
  * specific market. Saves the marketId in localStorage; the global
@@ -36,6 +38,7 @@ function writeWatchlist(ids: string[]) {
 }
 
 export function NotifyPrompt({ marketId, marketTitle }: { marketId: string; marketTitle: string }) {
+  const { t } = useT();
   const [supported, setSupported] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [watching, setWatching] = useState(false);
@@ -112,7 +115,7 @@ export function NotifyPrompt({ marketId, marketTitle }: { marketId: string; mark
       }`}
     >
       {watching ? <I.bellRing s={14} /> : <I.bell s={14} />}
-      {watching ? "Watching · I'll ping you on resolve" : "Notify me when this resolves"}
+      {watching ? `${t.common.watching} · ${t.common.watchingHint}` : t.common.notifyOnResolve}
     </button>
   );
 }
