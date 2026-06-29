@@ -10,79 +10,74 @@ import { I } from "@/components/ui/glyphs";
 import { listMarkets } from "@/lib/server/market-service";
 import { formatDateTimeSafe } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
+import { getServerT } from "@/lib/i18n-server";
 
-export const metadata = { title: "Resolution attestation · Uthibitisho" };
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.common.resolutionAttestation };
+}
 export const dynamic = "force-dynamic";
 
 const fmtTime = (iso: string | null) => formatDateTimeSafe(iso);
 
 export default async function FairnessPage() {
+  const { t } = await getServerT();
   const resolved = (await listMarkets({ status: "RESOLVED" })).slice(0, 30);
 
   return (
     <div className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 lg:py-8 space-y-6">
       <header className="space-y-2">
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">Resolution attestation · Uthibitisho</p>
-        <h1 className="font-display text-[34px] font-bold text-text">How a market resolves</h1>
-        <p className="text-[15px] italic text-text-subtle">Soko linatatuliwa vipi</p>
+        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.common.resolutionAttestation}</p>
+        <h1 className="font-display text-[34px] font-bold text-text">{t.common.howAMarketResolves}</h1>
         <p className="text-[15px] leading-relaxed text-text-muted max-w-[68ch] mt-3">
-          Every market on 50pick is resolved by two compliance officers against a public source URL.
-          The audit chain captures both signatures, the source, and the recorded outcome. A 24-hour
-          public objection window opens after the second signature. If you spot something wrong, flag
-          the market — the audit trail catches every flag.
+          {t.common.fairnessIntro}
         </p>
       </header>
 
       {/* How it works */}
       <section className="rounded-lg glass-panel p-5 space-y-4">
         <div className="flex items-baseline justify-between flex-wrap gap-2">
-          <h2 className="font-display text-[20px] font-semibold text-text">How it works</h2>
+          <h2 className="font-display text-[20px] font-semibold text-text">{t.common.fairnessHowItWorks}</h2>
           <span className="font-mono text-[11px] tracking-[0.16em] uppercase text-text-subtle">FATF R.10 · POCA Cap 423 §16</span>
         </div>
         <ol className="space-y-3 text-[14px] text-text-muted list-decimal pl-5 marker:text-gold-300 marker:font-bold">
           <li>
-            <strong className="text-text">Created</strong> — A compliance officer publishes the question, the source URL, the
-            written resolution criterion, and the resolution timestamp. The market opens.
+            <strong className="text-text">{t.common.fairnessCreated}</strong> — {t.common.fairnessCreatedBody}
           </li>
           <li>
-            <strong className="text-text">Stake</strong> — Players buy YES or NO at the current pool-implied probability.
-            The pool grows; the probability moves.
+            <strong className="text-text">{t.common.fairnessStake}</strong> — {t.common.fairnessStakeBody}
           </li>
           <li>
-            <strong className="text-text">Stage 1 sign-off</strong> — At <code className="font-mono text-gold-300">resolutionAt</code> a compliance
-            officer reviews the source and posts the outcome. Audit logs the signature.
+            <strong className="text-text">{t.common.fairnessStage1}</strong> — {t.common.fairnessStage1Body}
           </li>
           <li>
-            <strong className="text-text">Stage 2 sign-off</strong> — A <em>different</em> officer confirms. Audit logs the
-            second signature. The 24-hour objection window opens.
+            <strong className="text-text">{t.common.fairnessStage2}</strong> — {t.common.fairnessStage2Body}
           </li>
           <li>
-            <strong className="text-text">Settlement</strong> — Winners receive their money directly in their wallet.
-            Payouts hit wallets the moment the second signature lands.
+            <strong className="text-text">{t.common.fairnessSettlement}</strong> — {t.common.fairnessSettlementBody}
           </li>
         </ol>
       </section>
 
       {/* Resolved markets table */}
       <section>
-        <h2 className="font-display text-[20px] font-semibold text-text mb-3">Recently resolved</h2>
+        <h2 className="font-display text-[20px] font-semibold text-text mb-3">{t.common.recentlyResolved}</h2>
         {resolved.length === 0 ? (
           <EmptyState
             kind="audit"
-            title="No resolved markets yet"
-            titleSw="Bado hakuna soko lililotatuliwa"
-            body="Resolution attestations publish here automatically the moment a market settles."
+            title={t.common.noResolvedMarketsYet}
+            body={t.common.attestationPublishHint}
           />
         ) : (
           <div className="overflow-x-auto rounded-lg glass-panel">
             <table className="admin-tbl">
               <thead className="border-b border-border bg-bg-overlay">
                 <tr className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
-                  <th className="text-left p-3">Market</th>
-                  <th className="text-left p-3">Outcome</th>
-                  <th className="text-left p-3">Officers</th>
-                  <th className="text-left p-3">Resolved</th>
-                  <th className="text-left p-3">Source</th>
+                  <th className="text-left p-3">{t.common.thMarket}</th>
+                  <th className="text-left p-3">{t.common.thOutcome}</th>
+                  <th className="text-left p-3">{t.common.thOfficers}</th>
+                  <th className="text-left p-3">{t.common.thResolved}</th>
+                  <th className="text-left p-3">{t.common.thSource}</th>
                 </tr>
               </thead>
               <tbody>
@@ -104,17 +99,17 @@ export default async function FairnessPage() {
                     <td className="p-3 font-mono text-[11px] text-text-muted">
                       <div className="flex items-center gap-1">
                         <I.users s={11} />
-                        <span>{m.resolutionStage1By?.slice(0, 12) ?? "—"}…</span>
+                        <span>{m.resolutionStage1By?.slice(0, 12) ?? "\u2014"}\u2026</span>
                       </div>
                       <div className="flex items-center gap-1 mt-0.5">
                         <I.shieldcheck s={11} />
-                        <span>{m.resolutionStage2By?.slice(0, 12) ?? "—"}…</span>
+                        <span>{m.resolutionStage2By?.slice(0, 12) ?? "\u2014"}\u2026</span>
                       </div>
                     </td>
                     <td className="p-3 font-mono text-[11px] text-text-muted whitespace-nowrap">{fmtTime(m.resolutionStage2At)}</td>
                     <td className="p-3">
                       <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-teal-300 hover:text-teal-200 underline">
-                        Source
+                        {t.common.thSource}
                         <I.ext s={11} />
                       </a>
                     </td>

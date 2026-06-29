@@ -10,6 +10,7 @@
  * carries the raw integer to the server action.
  */
 import { useState } from "react";
+import { useT } from "@/lib/i18n";
 
 export function DepositAmount({
   max,
@@ -22,6 +23,7 @@ export function DepositAmount({
   adminTest: boolean;
   defaultValue?: string;
 }) {
+  const { t } = useT();
   const [raw, setRaw] = useState<string>(defaultValue && /^\d+$/.test(defaultValue) ? defaultValue : "");
   const num = raw ? Math.min(max, parseInt(raw, 10) || 0) : 0;
   const display = num > 0 ? num.toLocaleString("en-US") : "";
@@ -34,7 +36,7 @@ export function DepositAmount({
   return (
     <div>
       <label htmlFor="amount-display" className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
-        Amount · Kiasi
+        {t.common.depositAmountLabel}
       </label>
 
       {/* Kit field: TZS prefix + plain text input (no number spinners). */}
@@ -79,7 +81,7 @@ export function DepositAmount({
       </div>
 
       <p className="mt-2 text-[11px] text-text-subtle">
-        Min TZS 500 · Max TZS 2,000,000 per deposit. Daily limits may apply.
+        {t.common.depositAmountHint}
       </p>
     </div>
   );

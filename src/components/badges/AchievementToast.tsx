@@ -7,6 +7,7 @@ import * as React from "react";
 import { Badge } from "./Badge";
 import { haptics, motionReduced } from "@/lib/haptics";
 import type { AchievementId } from "./icons";
+import { useT } from "@/lib/i18n";
 
 export function AchievementToast({
   achievement,
@@ -21,6 +22,7 @@ export function AchievementToast({
   onDone?: () => void;
   durationMs?: number;
 }) {
+  const { t } = useT();
   const fired = React.useRef(false);
   React.useEffect(() => {
     if (!fired.current) { haptics.celebrate(); fired.current = true; } // once — survives StrictMode double-invoke
@@ -48,7 +50,7 @@ export function AchievementToast({
       </div>
 
       <div style={{ minWidth: 0 }}>
-        <p className="gilt-eyebrow">Achievement unlocked · Beji imefunguliwa</p>
+        <p className="gilt-eyebrow">{t.common.achievementUnlocked}</p>
         <p className="font-display" style={{ fontSize: "var(--type-h4)", fontWeight: 600, color: "var(--text)" }}>{name}</p>
         <p style={{ fontSize: 12, fontStyle: "italic", color: "var(--text-subtle)" }}>{nameSw}</p>
       </div>

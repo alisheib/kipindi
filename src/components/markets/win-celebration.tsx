@@ -168,7 +168,7 @@ export function WinCelebrationHost() {
 
           {/* Eyebrow */}
           <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
-            Position won · Madau yamefanikiwa
+            {t.common.positionWon}
           </p>
 
           {/* Headline */}
@@ -205,7 +205,7 @@ export function WinCelebrationHost() {
             onClick={() => setOpen(false)}
             className="btn btn-gold btn-md w-full mt-5"
           >
-            Continue · Endelea
+            {t.common.continue}
           </button>
         </div>
       </div>

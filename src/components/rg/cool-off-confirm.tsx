@@ -9,8 +9,10 @@
 import { useRef } from "react";
 import { I } from "@/components/ui/glyphs";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useT } from "@/lib/i18n";
 
 export function CoolOffConfirm() {
+  const { t } = useT();
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const submitForm = () => {
@@ -21,20 +23,13 @@ export function CoolOffConfirm() {
   return (
     <ConfirmDialog
       tone="claret"
-      title="Start a break · Pumzika"
+      title={t.common.startABreak}
       body={
-        <>
-          <p className="mb-2">
-            You will be <strong className="text-text">signed out immediately</strong> and
-            cannot sign in, bet, or deposit until the break ends.
-          </p>
-          <p className="text-text-subtle italic text-[12.5px]">
-            Utatoka mara moja na huwezi kuingia hadi muda uishe.
-          </p>
-        </>
+        <p>
+          {t.rg.breakDescription}
+        </p>
       }
-      confirmLabel="Yes, start break"
-      cancelLabel="Cancel · Ghairi"
+      confirmLabel={t.common.startABreak}
       onConfirm={submitForm}
       trigger={
         <button
@@ -43,7 +38,7 @@ export function CoolOffConfirm() {
           className="btn btn-ghost btn-md inline-flex items-center gap-1.5"
         >
           <I.pause s={13} />
-          Start break
+          {t.common.startABreak}
         </button>
       }
     />

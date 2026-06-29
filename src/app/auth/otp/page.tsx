@@ -9,7 +9,10 @@ import { ResendOtpButton } from "@/components/auth/resend-otp-button";
 import { OtpExpiryCountdown } from "@/components/auth/otp-expiry-countdown";
 import { getServerT } from "@/lib/i18n-server";
 
-export const metadata = { title: "Enter code · Weka msimbo" };
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.common.verification };
+}
 
 export default async function OtpPage({ searchParams }: { searchParams: Promise<{ purpose?: string; phone?: string; error?: string; sent?: string; next?: string; retry?: string }> }) {
   // SMS OTP is not wired yet — the live auth flow is password-based. Until the

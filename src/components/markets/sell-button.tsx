@@ -141,9 +141,9 @@ export function SellButton({
     <>
       {inGrace && !closedNow && (
         <div className="mb-1.5 flex items-center gap-1.5 px-2 py-1 rounded-md bg-brand-500/[0.12] border border-brand-500/30">
-          <span className="font-mono text-[10px] font-bold text-brand-300 uppercase tracking-[0.12em]">Free exit</span>
+          <span className="font-mono text-[10px] font-bold text-brand-300 uppercase tracking-[0.12em]">{t.common.freeExitLabel}</span>
           <span className="font-mono text-[10px] text-brand-300 tabular-nums">{graceLabel}</span>
-          <span className="font-mono text-[10px] text-text-subtle">· no fee · bila gharama</span>
+          <span className="font-mono text-[10px] text-text-subtle">· {t.dialog.noFee}</span>
         </div>
       )}
       <button
@@ -152,26 +152,26 @@ export function SellButton({
         disabled={pending || closedNow}
         aria-label={
           closedNow
-            ? "Market closed — awaiting settlement"
+            ? t.market.closedAwaitingSettlement
             : inGrace
-            ? `Free exit — full refund TZS ${fmt(value)}`
-            : `Cash out for TZS ${fmt(value)}`
+            ? `${t.common.freeExitLabel} — TZS ${fmt(value)}`
+            : `${t.common.cashOut} TZS ${fmt(value)}`
         }
         className={`btn ${closedNow ? "btn-ghost" : btnVariant} btn-md w-full whitespace-normal h-auto`}
         style={{ justifyContent: "space-between", minHeight: 44 }}
       >
         <span>
-          {closedNow ? "Market closed · Soko limefungwa"
-            : pending ? "Selling…"
-            : inGrace ? "Free exit · Toka bila gharama"
+          {closedNow ? t.common.marketClosed
+            : pending ? t.common.selling
+            : inGrace ? t.common.freeExitLabel
             : t.common.sellNow}
         </span>
         {!closedNow && (
           <span className="font-mono tabular-nums">
             TZS {fmt(value)}
             {inGrace
-              ? <span className="ml-1.5 opacity-80 text-[11px]">full refund</span>
-              : <span className="ml-1.5 opacity-80 text-[11px]">−{fmt(fee)} fee</span>
+              ? <span className="ml-1.5 opacity-80 text-[11px]">{t.common.fullRefund}</span>
+              : <span className="ml-1.5 opacity-80 text-[11px]">−{fmt(fee)} {t.common.fee}</span>
             }
           </span>
         )}
@@ -188,29 +188,28 @@ export function SellButton({
         <OperationResultModal
           open={resultOpen}
           variant={resultData.variant}
-          eyebrow={resultData.variant === "success" ? "Position sold · Imeuzwa" : "Cash-out failed · Haikufanikiwa"}
+          eyebrow={resultData.variant === "success" ? t.common.positionSold : t.common.cashOutFailed}
           title={
             resultData.variant === "success"
-              ? `TZS ${fmt(resultData.value)} returned · Imerudishwa`
-              : (resultData.error ?? "Try again · Jaribu tena")
+              ? `TZS ${fmt(resultData.value)} ${t.common.returned}`
+              : (resultData.error ?? t.error.tryAgain)
           }
           subtitle={
             resultData.variant === "success"
               ? (resultData.net >= 0
-                  ? "Full stake returned to your wallet · Pesa imerudi"
-                  : "Stake returned, minus the early-exit fee · Pesa imerudi, ukatwa ada")
-              : "Position is unchanged · Position haijabadilika."
+                  ? t.common.fullStakeReturned
+                  : t.common.stakeReturnedMinusFee)
+              : t.common.positionUnchanged
           }
           details={resultData.variant === "success" ? [
-            { label: "Returned", sw: "Imerudishwa", value: `TZS ${fmt(resultData.value)}` },
+            { label: t.common.returned, value: `TZS ${fmt(resultData.value)}` },
             {
-              label: "Early-exit fee",
-              sw: "Ada ya kutoka",
-              value: resultData.net >= 0 ? "None · Hakuna" : `TZS ${fmt(Math.abs(resultData.net))}`,
+              label: t.common.earlyExitFee,
+              value: resultData.net >= 0 ? t.common.none : `TZS ${fmt(Math.abs(resultData.net))}`,
               tone: "default",
             },
           ] : undefined}
-          primaryLabel={resultData.variant === "success" ? "Done · Sawa" : "Close"}
+          primaryLabel={resultData.variant === "success" ? t.common.doneSawa : t.common.close}
           onClose={() => setResultOpen(false)}
           stripTone="brand"
         />

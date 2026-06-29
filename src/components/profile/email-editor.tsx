@@ -54,7 +54,7 @@ export function EmailEditor({ currentEmail, currentName, verified }: { currentEm
 
   return (
     <div className="rounded-lg border border-border bg-bg-inset/40 px-3.5 py-2.5">
-      <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">Contact email · Barua pepe</p>
+      <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">{t.common.contactEmail}</p>
       {editing ? (
         <div className="mt-1.5 flex items-center gap-2">
           <input
@@ -69,7 +69,7 @@ export function EmailEditor({ currentEmail, currentName, verified }: { currentEm
             className="flex-1 min-w-0 bg-transparent border-b border-gold-500 focus:outline-none text-[14px] text-text px-0 py-0.5"
           />
           <button type="button" onClick={save} disabled={pending} className="btn btn-gold btn-sm shrink-0">
-            {pending ? <Spinner size={14} /> : "Save"}
+            {pending ? <Spinner size={14} /> : t.common.save}
           </button>
         </div>
       ) : (
@@ -83,12 +83,12 @@ export function EmailEditor({ currentEmail, currentName, verified }: { currentEm
           {currentEmail && (
             verified ? (
               <span className="inline-flex items-center gap-1 rounded-pill border border-yes-700 bg-yes-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-yes-300">
-                <I.check s={10} /> Confirmed · Imethibitishwa
+                <I.check s={10} /> {t.common.confirmed}
               </span>
             ) : (
               <span className="inline-flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1 rounded-pill border border-gold-700 bg-gold-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-gold-300">
-                  <I.mail s={10} /> Unconfirmed · Haijathibitishwa
+                  <I.mail s={10} /> {t.common.unconfirmed}
                 </span>
                 <button type="button" onClick={resend} disabled={pending} className="font-mono text-[11px] text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline disabled:opacity-60">
                   {pending ? t.common.sending : t.common.resendLink}

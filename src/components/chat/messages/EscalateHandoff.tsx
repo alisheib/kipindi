@@ -14,6 +14,7 @@
 import { FiftyMark } from "@/components/brand";
 import { Num } from "./Primitives";
 import { SUPPORT_EMAIL } from "@/lib/support-config";
+import { useT } from "@/lib/i18n";
 
 export function EscalateHandoff({
   ticketId,
@@ -22,9 +23,10 @@ export function EscalateHandoff({
   ticketId: string;
   etaMinutes: number;
 }) {
+  const { t } = useT();
   return (
-    <div className="cm-handoff" role="group" aria-label="Escalation to support">
-      <div className="cm-handoff-rule">Handing to support · Tunakukabidhi timu ya msaada</div>
+    <div className="cm-handoff" role="group" aria-label={t.common.handingToSupport}>
+      <div className="cm-handoff-rule">{t.common.handingToSupport}</div>
       <div className="cm-handoff-card">
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <FiftyMark size={36} />

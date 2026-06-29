@@ -18,9 +18,47 @@
  * This is the page that's the difference between a player seeing a
  * branded "we noticed something broke" and a raw stack trace they
  * can't read. Production-grade requirement.
+ *
+ * i18n: Since the root layout (with I18nProvider) never ran, we read
+ * the kp-locale cookie directly and use an inline mini-dict.
  */
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
+
+const MINI_DICT = {
+  en: {
+    criticalError: "Critical error",
+    title: "Something broke too early to recover",
+    body: "Your wallet, positions, and bets are unaffected \u2014 every state change is captured in our append-only audit log. The team has been notified.",
+    tryAgain: "Try again",
+    goHome: "Go home",
+    reference: "Reference",
+  },
+  sw: {
+    criticalError: "Hitilafu kubwa",
+    title: "Kitu kimevunjika kabla hata ya kuanza",
+    body: "Pochi yako, nafasi na madau hayajaathiriwa \u2014 kila mabadiliko yanarekodiwa kwenye kumbukumbu yetu. Timu imetaarifiwa.",
+    tryAgain: "Jaribu tena",
+    goHome: "Nenda nyumbani",
+    reference: "Rejea",
+  },
+  zh: {
+    criticalError: "\u4e25\u91cd\u9519\u8bef",
+    title: "\u7cfb\u7edf\u5728\u542f\u52a8\u524d\u5c31\u51fa\u4e86\u95ee\u9898",
+    body: "\u60a8\u7684\u94b1\u5305\u3001\u6301\u4ed3\u548c\u6295\u6ce8\u4e0d\u53d7\u5f71\u54cd \u2014 \u6bcf\u6b21\u72b6\u6001\u53d8\u66f4\u90fd\u8bb0\u5f55\u5728\u5ba1\u8ba1\u65e5\u5fd7\u4e2d\u3002\u56e2\u961f\u5df2\u6536\u5230\u901a\u77e5\u3002",
+    tryAgain: "\u518d\u8bd5\u4e00\u6b21",
+    goHome: "\u56de\u5230\u9996\u9875",
+    reference: "\u53c2\u8003\u7f16\u53f7",
+  },
+} as const;
+
+function readLocale(): "en" | "sw" | "zh" {
+  if (typeof document === "undefined") return "en";
+  const m = document.cookie.match(/(?:^|; )kp-locale=([^;]*)/);
+  if (!m) return "en";
+  const v = decodeURIComponent(m[1]);
+  return v === "sw" || v === "zh" ? v : "en";
+}
 
 export default function GlobalError({
   error,
@@ -35,6 +73,8 @@ export default function GlobalError({
       console.error("[50pick] root error boundary fired", { digest: error.digest });
     }
   }, [error]);
+
+  const t = useMemo(() => MINI_DICT[readLocale()], []);
 
   // Inline OKLCH so the page is readable even with no stylesheet.
   const BG = "oklch(15% 0.130 268)";
@@ -133,7 +173,7 @@ export default function GlobalError({
               margin: 0,
             }}
           >
-            Critical error · Hitilafu kubwa
+            {t.criticalError}
           </p>
 
           <h1
@@ -146,11 +186,8 @@ export default function GlobalError({
               color: TEXT,
             }}
           >
-            Something broke too early to recover
+            {t.title}
           </h1>
-          <p style={{ margin: 0, fontStyle: "italic", color: TEXT_MUTED, fontSize: 14 }}>
-            Kitu kimevunjika kabla hata ya kuanza
-          </p>
 
           <p
             style={{
@@ -161,9 +198,7 @@ export default function GlobalError({
               margin: 0,
             }}
           >
-            Your wallet, positions, and bets are unaffected — every state
-            change is captured in our append-only audit log. The team has
-            been notified.
+            {t.body}
           </p>
 
           {error.digest && (
@@ -175,7 +210,7 @@ export default function GlobalError({
                 margin: 0,
               }}
             >
-              Reference: <span style={{ color: TEXT }}>{error.digest}</span>
+              {t.reference}: <span style={{ color: TEXT }}>{error.digest}</span>
             </p>
           )}
 
@@ -196,7 +231,7 @@ export default function GlobalError({
                 cursor: "pointer",
               }}
             >
-              Try again · Jaribu tena
+              {t.tryAgain}
             </button>
             <a
               href="/"
@@ -213,7 +248,7 @@ export default function GlobalError({
                 textDecoration: "none",
               }}
             >
-              Go home · Mwanzo
+              {t.goHome}
             </a>
           </div>
         </main>

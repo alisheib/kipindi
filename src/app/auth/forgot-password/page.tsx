@@ -8,7 +8,10 @@ import { SUPPORT_EMAIL, HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
 import { requestResetAction } from "./actions";
 import { getServerT } from "@/lib/i18n-server";
 
-export const metadata = { title: "Forgot password · Umesahau nenosiri?" };
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.auth.forgotPassword };
+}
 
 export default async function ForgotPasswordPage({ searchParams }: { searchParams?: Promise<{ sent?: string; phone?: string; error?: string }> }) {
   const { t } = await getServerT();

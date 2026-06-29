@@ -31,10 +31,7 @@ type Props = {
   variant: "desktop" | "sheet";
 };
 
-const HEADER_COPY: Record<Lang, { name: string; status: string }> = {
-  en: { name: "50pick Help", status: "Online · AI concierge" },
-  sw: { name: "Msaada wa 50pick", status: "Niko mtandaoni · concierge wa AI" },
-};
+// Header copy is now drawn from the i18n dict inside the component.
 
 export function ChatPanel({ lang, messages, pending, onClose, onSend, variant }: Props) {
   const { t: i18n } = useT();
@@ -80,22 +77,20 @@ export function ChatPanel({ lang, messages, pending, onClose, onSend, variant }:
     el.style.height = Math.min(el.scrollHeight, 96) + "px";
   };
 
-  const t = HEADER_COPY[lang];
-
   return (
     <section
       className={`cm-panel ${variant === "sheet" ? "cm-panel-sheet cm-sheet-anim" : "cm-panel-desktop"}`}
       role="dialog"
       aria-modal={variant === "sheet" ? "true" : "false"}
-      aria-label="50pick Help chat"
+      aria-label={i18n.common.helpBotName}
     >
       <div className="cm-header">
         <FiftyMark size={36} />
         <div className="cm-header-titles">
-          <div className="cm-header-name">{t.name}</div>
+          <div className="cm-header-name">{i18n.common.helpBotName}</div>
           <div className="cm-header-sub">
             <span className="cm-status-dot" aria-hidden />
-            <span>{t.status}</span>
+            <span>{i18n.common.helpBotStatus}</span>
           </div>
         </div>
         <button
@@ -129,7 +124,7 @@ export function ChatPanel({ lang, messages, pending, onClose, onSend, variant }:
           <textarea
             ref={composerRef}
             rows={1}
-            placeholder="Ask anything · Uliza chochote"
+            placeholder={i18n.common.askAnything}
             aria-label={i18n.common.message}
             onKeyDown={handleKey}
             onInput={handleInput}

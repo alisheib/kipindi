@@ -4,42 +4,12 @@ import { FiftyMark } from "@/components/brand";
 import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/support-config";
 import { getServerT } from "@/lib/i18n-server";
 
-export const metadata = { title: "Help · Msaada" };
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.common.help };
+}
 
-const FAQS: { q: string; a: string }[] = [
-  {
-    q: "How do price-competition markets work? · Soko la ushindani wa bei linafanyaje?",
-    a: "Stakes from every player on the same market join one pool — YES + NO together. After applying a small operator fee, the net pool is paid out only to whichever side is correct, pro-rata to each correct stake's share of the winning side. The dial probability is implied by the current pool composition and updates with every new bet.",
-  },
-  {
-    q: "Will my odds change after I place? · Bei zinabadilika baada ya kuweka dau?",
-    a: "Your stake and the pool composition at the moment of placement are locked in for your payout calculation, but the implied probability you see on the dial is live and moves with every new bet. The bet-confirm popup locks the price for 5 seconds so you can confirm at the rate you saw.",
-  },
-  {
-    q: "How do I withdraw winnings? · Nitatoa pesa zangu vipi?",
-    a: "Open Wallet → Withdraw. Enter your mobile-money number, the amount, and an OTP code. Withdrawals under TZS 1,000,000 settle within 60 seconds. Larger amounts may be held for AML review for up to 24 hours.",
-  },
-  {
-    q: "Why do I have to verify my identity? · Kwa nini nathibitisha kitambulisho?",
-    a: "The Tanzania Gaming Act + Anti-Money-Laundering Act require us to verify every player's NIDA before any withdrawal. We do this once. After verification you can withdraw freely.",
-  },
-  {
-    q: "I think I have a problem with gambling. What can I do? · Nina shida ya kucheza kupita kiasi.",
-    a: `Open Profile → Responsible gambling. You can set deposit and time limits, take a break, or self-exclude. If you need to talk to someone, call the Tanzania Helpline ${SUPPORT_PHONE()} (free).`,
-  },
-  {
-    q: "Can I cash out before resolution? · Nitatoa dau mapema?",
-    a: "Yes. On every open position on a LIVE market, a Sell-now button shows the current sell-back value (with a small slippage buffer applied). Once accepted, the position flips to CASHED_OUT and funds return to your wallet.",
-  },
-  {
-    q: "What if a market is voided? · Soko likifutwa?",
-    a: "Bets on voided markets have their stakes refunded to your wallet. Settlement corrections by the source authority within 24 hours of resolution are honoured — see Terms §6.",
-  },
-  {
-    q: "Is the platform fair? · Mfumo huu uko sawa?",
-    a: "Every market move is recorded into a HMAC-chained audit trail. Resolutions cite a public source URL. The whole-pool math is published in the Terms of Service; tax + commission rates are visible on every market.",
-  },
-];
+const FAQ_KEYS = ["faq1", "faq2", "faq3", "faq4", "faq5", "faq6", "faq7", "faq8"] as const;
 
 export default async function HelpPage() {
   const { t } = await getServerT();
@@ -106,18 +76,21 @@ export default async function HelpPage() {
           {t.help.faqTitle}{t.help.faqTitleSw ? <span className="text-text-subtle italic font-normal"> · {t.help.faqTitleSw}</span> : null}
         </h2>
         <div>
-          {FAQS.map((f, i) => (
+          {FAQ_KEYS.map((key) => (
             <details
-              key={i}
+              key={key}
               className="group border-t border-border first:border-t-0 py-3"
             >
               <summary className="cursor-pointer list-none flex items-start justify-between gap-3 font-display text-[13.5px] font-semibold text-text">
-                <span>{f.q}</span>
+                <span>{t.help[`${key}q` as keyof typeof t.help]}</span>
                 <span className="mt-1 shrink-0 text-text-subtle transition-transform group-open:rotate-180">
                   <I.chevronDown s={14} />
                 </span>
               </summary>
-              <p className="mt-2 text-[12.5px] text-text-muted leading-relaxed">{f.a}</p>
+              <p className="mt-2 text-[12.5px] text-text-muted leading-relaxed">
+                {t.help[`${key}a` as keyof typeof t.help]}
+                {key === "faq5" && ` ${SUPPORT_PHONE()} (${t.common.free}).`}
+              </p>
             </details>
           ))}
         </div>

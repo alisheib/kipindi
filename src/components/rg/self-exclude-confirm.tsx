@@ -14,8 +14,10 @@
 import { useRef } from "react";
 import { I } from "@/components/ui/glyphs";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useT } from "@/lib/i18n";
 
 export function SelfExcludeConfirm() {
+  const { t } = useT();
   // The form is server-action-bound; we look it up by walking up the DOM
   // from the rendered button. This keeps the page server-rendered.
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -28,21 +30,13 @@ export function SelfExcludeConfirm() {
   return (
     <ConfirmDialog
       tone="claret"
-      title="Self-exclude · Jizuie"
+      title={t.common.selfExclude}
       body={
-        <>
-          <p className="mb-2">
-            You will be locked out of betting and your wallet for the period you
-            selected. <strong className="text-text">This cannot be reversed</strong> until
-            the period ends.
-          </p>
-          <p className="text-text-subtle italic text-[12.5px]">
-            Hii haiwezi kubatilishwa kabla ya muda kuisha.
-          </p>
-        </>
+        <p>
+          {t.rg.selfExcludeDescription}
+        </p>
       }
-      confirmLabel="Yes, self-exclude"
-      cancelLabel="Cancel · Ghairi"
+      confirmLabel={t.common.selfExclude}
       onConfirm={submitForm}
       trigger={
         <button
@@ -51,7 +45,7 @@ export function SelfExcludeConfirm() {
           className="btn btn-claret btn-md inline-flex items-center gap-1.5"
         >
           <I.lock s={13} />
-          Self-exclude · Jizuie
+          {t.common.selfExclude}
         </button>
       }
     />

@@ -22,6 +22,7 @@
 import * as React from "react";
 import { I } from "@/components/ui/glyphs";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 const EVENT = "cash-privacy";
 const STORAGE_KEY = "cashHidden";
@@ -103,10 +104,11 @@ export function CashEye({
   className?: string;
 }) {
   const hidden = useCashHidden();
+  const { t } = useT();
   return (
     <button
       type="button"
-      aria-label={hidden ? "Show balances · Onyesha salio" : "Hide balances · Ficha salio"}
+      aria-label={hidden ? t.common.showBalances : t.common.hideBalances}
       aria-pressed={hidden}
       onClick={() => setCashHidden(!hidden)}
       className={cn(

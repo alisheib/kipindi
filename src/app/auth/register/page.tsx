@@ -14,7 +14,10 @@ import { startRegisterAction } from "./actions";
 import { HELPLINE } from "@/lib/support-config";
 import { getServerT } from "@/lib/i18n-server";
 
-export const metadata = { title: "Create account · Fungua akaunti" };
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.auth.signUpTitle };
+}
 
 export default async function RegisterPage({
   searchParams,

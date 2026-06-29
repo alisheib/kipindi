@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { BrandSpinner } from "@/components/brand";
 import { MarketCard } from "@/components/markets/market-card";
 import { I } from "@/components/ui/glyphs";
+import { useT } from "@/lib/i18n";
 
 type Market = {
   id: string;
@@ -31,6 +32,7 @@ type Market = {
 const BATCH = 24;
 
 export function LivePulseGrid({ markets }: { markets: Market[] }) {
+  const { t } = useT();
   // Search-only (no filter tab): instant client-side filter of the already-loaded
   // live wall by question text (EN/SW) or category. Same kit search primitives as
   // the Markets board so height, sunken bg, focus ring, and iOS font polish match.
@@ -93,8 +95,8 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search live markets · Tafuta soko hai"
-          aria-label="Search live markets"
+          placeholder={t.common.searchLiveMarkets}
+          aria-label={t.common.searchLiveMarkets}
           enterKeyHint="search"
           autoComplete="off"
           className="input input-mono"
@@ -102,7 +104,7 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
         {query && (
           <button
             type="button"
-            aria-label="Clear search"
+            aria-label={t.common.clearSearch}
             className="clear-btn"
             onClick={() => setQuery("")}
           >
@@ -113,7 +115,7 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
 
       {filtered.length === 0 ? (
         <p className="py-10 text-center font-mono text-[12px] uppercase tracking-[0.14em] text-text-subtle">
-          No live markets match “{query.trim()}” · Hakuna soko linalolingana
+          {t.market.noLiveMatch} &ldquo;{query.trim()}&rdquo;
         </p>
       ) : (
         <div className="market-grid">
@@ -132,7 +134,7 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
         >
           <BrandSpinner size={30} />
           <p className="font-mono text-[10.5px] uppercase tracking-[0.16em] text-text-subtle">
-            Loading more · Inapakia zaidi
+            {t.common.loadingMore}
           </p>
         </div>
       )}

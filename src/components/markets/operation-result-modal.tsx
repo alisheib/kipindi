@@ -349,7 +349,7 @@ export function OperationResultModal({
               className={`btn ${effectiveBtn} btn-lg w-full`}
               autoFocus
             >
-              {primaryLabel ?? "Done · Sawa"}
+              {primaryLabel ?? t.common.doneSawa}
             </button>
             {secondaryLabel && (
               <button

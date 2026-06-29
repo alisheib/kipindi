@@ -9,6 +9,7 @@
 
 import { useRouter } from "next/navigation";
 import { CountdownPill } from "@/components/ui/countdown-pill";
+import { useT } from "@/lib/i18n";
 
 export function RateLimitBanner({
   seconds,
@@ -19,16 +20,15 @@ export function RateLimitBanner({
   clearHref: string;
 }) {
   const router = useRouter();
+  const { t } = useT();
 
   return (
     <span>
-      You can try again in{" "}
+      {t.common.tooManyAttempts}{" "}
       <CountdownPill
         seconds={seconds}
-        suffix="· Subiri"
         onExpire={() => router.replace(clearHref as never)}
       />
-      .
     </span>
   );
 }

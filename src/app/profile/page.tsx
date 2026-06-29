@@ -12,7 +12,10 @@ import { BadgeShelf } from "@/components/badges/Badge";
 import { computeAchievementShelf } from "@/lib/server/achievements";
 import { getServerT } from "@/lib/i18n-server";
 
-export const metadata = { title: "Profile · Wasifu" };
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.profile.title };
+}
 export const dynamic = "force-dynamic";
 
 const fmtTzs = (n: number) => `TZS ${n.toLocaleString("en-US")}`;

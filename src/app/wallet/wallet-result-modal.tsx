@@ -46,20 +46,20 @@ export function WalletResultModal({
   const close = () => { setOpen(false); router.replace("/wallet"); };
 
   const eyebrow = isWithdraw
-    ? (amlHeld ? "Under review · Inakaguliwa" : pending ? "Payout started · Inatumwa" : "Withdrawal sent · Imetumwa")
-    : (pending ? "Deposit started · Inasubiri" : "Deposit confirmed · Imethibitishwa");
+    ? (amlHeld ? t.common.underReviewEyebrow : pending ? t.common.payoutStarted : t.common.withdrawalSent)
+    : (pending ? t.common.depositStarted : t.common.depositConfirmed);
   const title = isWithdraw
-    ? (amlHeld ? "Withdrawal under review" : pending ? "Payout in progress" : "Withdrawal on its way")
+    ? (amlHeld ? t.common.withdrawalUnderReview : pending ? t.common.payoutInProgress : t.common.withdrawalOnItsWay)
     : (pending ? t.common.awaitingConfirmation : t.common.fundsAdded);
   const subtitle = isWithdraw
     ? (amlHeld
-        ? "Amounts over TZS 1,000,000 are reviewed by compliance (usually within 2 hours)."
+        ? t.common.amlReviewBody
         : pending
-          ? "Your provider is processing the payout. We'll confirm the moment it settles · Tutathibitisha mara itakapokamilika."
-          : "Your provider should pay out within moments.")
+          ? t.common.payoutProcessingBody
+          : t.common.payoutMomentsBody)
     : (pending
-        ? "Approve the prompt on your phone. We'll add the funds the moment your provider confirms — your history updates automatically · Idhinisha kwenye simu yako."
-        : "Your balance has been topped up.");
+        ? t.common.depositPendingBody
+        : t.common.balanceToppedUp);
 
   return (
     <OperationResultModal
@@ -69,11 +69,11 @@ export function WalletResultModal({
       title={title}
       subtitle={subtitle}
       details={[
-        ...(amt ? [{ label: "Amount", sw: "Kiasi", value: amt }] : []),
-        { label: "Reference", sw: "Kumbukumbu", value: txnId },
+        ...(amt ? [{ label: t.common.amountLabel, value: amt }] : []),
+        { label: t.common.referenceLabel, value: txnId },
       ]}
-      footnote="A receipt is in your wallet history · Risiti ipo kwenye historia."
-      primaryLabel="Done · Sawa"
+      footnote={t.common.receiptInHistory}
+      primaryLabel={t.common.doneSawa}
       onClose={close}
     />
   );

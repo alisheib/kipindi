@@ -8,8 +8,12 @@ import type { StoredTxn } from "@/lib/server/store";
 import { getBonusSummary } from "@/lib/server/bonus-service";
 import { getBonusConfig } from "@/lib/server/bonus-config";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
+import { getServerT } from "@/lib/i18n-server";
 
-export const metadata = { title: "Wallet · Pochi" };
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.wallet.title };
+}
 export const dynamic = "force-dynamic";
 
 function adaptTxn(t: StoredTxn): Transaction {

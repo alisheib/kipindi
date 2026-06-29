@@ -12,7 +12,10 @@ import { startLoginAction } from "./actions";
 import { SUPPORT_EMAIL, HELPLINE } from "@/lib/support-config";
 import { getServerT } from "@/lib/i18n-server";
 
-export const metadata = { title: "Sign in · Ingia" };
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.auth.signInTitle };
+}
 
 export default async function LoginPage({
   searchParams,

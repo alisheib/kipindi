@@ -4,44 +4,46 @@ import { FiftyLockup } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { SUPPORT_EMAIL, HELPLINE } from "@/lib/support-config";
 import { verifyEmailToken } from "@/lib/server/email-verification";
+import { getServerT } from "@/lib/i18n-server";
 
-export const metadata = { title: "Confirm email · Thibitisha barua pepe" };
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.common.confirmEmailTitle };
+}
 export const dynamic = "force-dynamic";
 
-const COPY = {
-  verified: {
-    eyebrow: "Email confirmed · Imethibitishwa",
-    title: "Your email is confirmed",
-    body: "Thank you. We'll send your account, deposit, withdrawal, and verification notices here.",
-    sw: "Asante. Tutatuma taarifa za akaunti yako kwenye barua pepe hii.",
-    tone: "good" as const,
-  },
-  already: {
-    eyebrow: "Already confirmed · Tayari",
-    title: "This email is already confirmed",
-    body: "Nothing more to do — your email was confirmed earlier. You're all set.",
-    sw: "Barua pepe yako tayari imethibitishwa.",
-    tone: "good" as const,
-  },
-  mismatch: {
-    eyebrow: "Link out of date · Kiungo kimepitwa",
-    title: "This link is out of date",
-    body: "Your email address changed after this link was sent, so it no longer applies. Open your profile to send a fresh confirmation link.",
-    sw: "Barua pepe yako ilibadilika. Fungua wasifu wako kupata kiungo kipya.",
-    tone: "bad" as const,
-  },
-  invalid: {
-    eyebrow: "Link invalid or expired · Kiungo si sahihi",
-    title: "We couldn't confirm this link",
-    body: "The confirmation link is invalid or has expired (links last 24 hours). Open your profile to send a fresh one.",
-    sw: "Kiungo si sahihi au kimeisha muda. Fungua wasifu wako kupata kipya.",
-    tone: "bad" as const,
-  },
-};
-
 export default async function VerifyEmailPage({ searchParams }: { searchParams?: Promise<{ token?: string }> }) {
+  const { t } = await getServerT();
   const sp = (await searchParams) ?? {};
   const { status } = await verifyEmailToken(sp.token);
+
+  const COPY = {
+    verified: {
+      eyebrow: t.common.emailConfirmedEyebrow,
+      title: t.common.emailConfirmedTitle,
+      body: t.common.emailConfirmedBody,
+      tone: "good" as const,
+    },
+    already: {
+      eyebrow: t.common.alreadyConfirmed,
+      title: t.common.emailAlreadyConfirmedTitle,
+      body: t.common.emailAlreadyConfirmedBody,
+      tone: "good" as const,
+    },
+    mismatch: {
+      eyebrow: t.common.linkOutOfDate,
+      title: t.common.emailMismatchTitle,
+      body: t.common.emailMismatchBody,
+      tone: "bad" as const,
+    },
+    invalid: {
+      eyebrow: t.common.linkInvalid,
+      title: t.common.emailInvalidTitle,
+      body: t.common.emailInvalidBody,
+      tone: "bad" as const,
+    },
+  };
+
   const c = COPY[status];
   const good = c.tone === "good";
 
@@ -71,25 +73,24 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
             </h1>
             <p className="mt-2 text-[13.5px] text-text-muted leading-relaxed">
               {c.body}
-              <span className="block italic text-text-subtle text-[12px] mt-1">{c.sw}</span>
             </p>
           </div>
 
           <div className="flex flex-col gap-2.5">
             <Link href="/markets" className="btn btn-gold btn-lg w-full" style={{ borderRadius: "var(--r-pill)" }}>
-              Browse markets · Tazama masoko
+              {t.home.heroCta}
             </Link>
             <Link
               href="/profile/account"
               className="btn btn-ghost btn-lg w-full"
               style={{ borderRadius: "var(--r-pill)" }}
             >
-              {good ? "Go to account · Akaunti" : "Go to account to resend · Akaunti"}
+              {t.common.goToAccount}
             </Link>
           </div>
 
           <p className="border-t border-border pt-3 text-center text-[13px] text-text-muted">
-            Need help? Email{" "}
+            {t.common.needHelpEmail}{" "}
             <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-semibold text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline">
               {SUPPORT_EMAIL()}
             </a>
@@ -97,7 +98,7 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
         </section>
 
         <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-text-subtle">
-          18+ · Licensed by GBT · Helpline {HELPLINE()}
+          {t.auth.licensedByGbt} {HELPLINE()}
         </p>
       </div>
     </main>

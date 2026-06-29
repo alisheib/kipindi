@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
 import { exportDataAction } from "./actions";
+import { useT } from "@/lib/i18n";
 
 export function ExportDataButton() {
+  const { t } = useT();
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const click = async () => {
@@ -14,7 +16,7 @@ export function ExportDataButton() {
     try {
       const result = await exportDataAction();
       if (!result.ok) {
-        toast({ title: "Export failed", description: result.error, variant: "danger" });
+        toast({ title: t.common.exportFailed, description: result.error, variant: "danger" });
         return;
       }
       const blob = new Blob([result.payload], { type: "application/json" });
@@ -26,14 +28,14 @@ export function ExportDataButton() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast({ title: "Data exported", description: result.filename, variant: "success" });
+      toast({ title: t.common.dataExported, description: result.filename, variant: "success" });
     } finally {
       setLoading(false);
     }
   };
   return (
     <Button variant="primary" size="lg" leading={<I.download s={14} />} onClick={click} loading={loading}>
-      Download my data (JSON) · Pakua
+      {t.common.downloadData}
     </Button>
   );
 }

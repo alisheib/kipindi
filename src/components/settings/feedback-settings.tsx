@@ -43,26 +43,24 @@ export function FeedbackSettings() {
   return (
     <section className="rounded-xl border border-border bg-bg-elevated p-5">
       <h2 className="mb-1 font-display text-[15px] font-bold text-text">
-        Sound &amp; feedback <span className="font-normal italic text-text-subtle text-[12px]">· Mguso na mwendo</span>
+        {t.common.soundFeedback}
       </h2>
       <p className="mb-4 text-[12.5px] text-text-muted">
-        Control the tactile buzz and on-screen motion. Turn either off any time.
+        {t.common.soundFeedbackHint}
       </p>
 
       <div className="divide-y divide-border/60">
         <Row
           icon={<I.activity s={16} />}
           title={t.common.hapticFeedback}
-          sw="Mguso wa mtetemo"
-          subtitle="A short buzz on key money &amp; outcome moments (phones only)."
+          subtitle={t.common.hapticSubtitle}
           on={hapticsOn}
           onToggle={toggleHaptics}
         />
         <Row
           icon={<I.sparkle s={16} className="text-gold-300" />}
           title={t.common.reduceMotion}
-          sw="Punguza mwendo"
-          subtitle="Calms animations across the app. We also honour your device setting."
+          subtitle={t.common.motionSubtitle}
           on={reduceMotion}
           onToggle={toggleMotion}
         />
@@ -72,9 +70,9 @@ export function FeedbackSettings() {
 }
 
 function Row({
-  icon, title, sw, subtitle, on, onToggle,
+  icon, title, subtitle, on, onToggle,
 }: {
-  icon: React.ReactNode; title: string; sw: string; subtitle: string; on: boolean; onToggle: () => void;
+  icon: React.ReactNode; title: string; subtitle: string; on: boolean; onToggle: () => void;
 }) {
   return (
     <div className="flex items-center gap-3 py-3.5">
@@ -83,7 +81,7 @@ function Row({
       </span>
       <div className="min-w-0 flex-1">
         <p className="font-display text-[13.5px] font-semibold text-text leading-tight">
-          {title} <span className="font-normal italic text-text-subtle text-[11px]">· {sw}</span>
+          {title}
         </p>
         <p className="mt-0.5 text-[12px] text-text-muted leading-snug">{subtitle}</p>
       </div>

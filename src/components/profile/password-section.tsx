@@ -46,9 +46,9 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
         <div className="flex items-center gap-2.5 min-w-0">
           <I.keyRound s={14} className="text-text-subtle shrink-0" />
           <div className="min-w-0">
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">Password</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">{t.common.passwordLabel}</p>
             <p className="text-[13px] text-text-muted">
-              {hasPassword ? "Set · change anytime" : "Not set · add a password for extra security"}
+              {hasPassword ? t.common.passwordSetHint : t.common.passwordNotSetHint}
             </p>
           </div>
         </div>
@@ -68,7 +68,7 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
       <div className="flex items-center gap-2.5">
         <I.keyRound s={14} className="text-gold-300 shrink-0" />
         <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
-          {hasPassword ? "Change password · Badilisha nenosiri" : "Set password · Weka nenosiri"}
+          {hasPassword ? t.common.updatePassword : t.common.setPassword}
         </p>
       </div>
       {hasPassword && (
@@ -77,7 +77,7 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
             htmlFor="pw-current"
             className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
           >
-            Current password · Nenosiri la sasa
+            {t.common.currentPassword}
           </label>
           <PasswordInput
             id="pw-current"
@@ -93,7 +93,7 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
           htmlFor="pw-new"
           className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
         >
-          New password (8+) · Nenosiri jipya
+          {t.common.newPassword8}
         </label>
         <PasswordInput
           id="pw-new"
@@ -109,7 +109,7 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
           htmlFor="pw-confirm"
           className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
         >
-          Confirm · Thibitisha
+          {t.common.confirm}
         </label>
         <PasswordInput
           id="pw-confirm"

@@ -4,8 +4,10 @@ import { useRef, useState } from "react";
 import { I } from "@/components/ui/glyphs";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { closeAccountAction } from "./actions";
+import { useT } from "@/lib/i18n";
 
 export function CloseAccountForm() {
+  const { t } = useT();
   const [confirm, setConfirm] = useState("");
   const canSubmit = confirm.trim() === "CLOSE MY ACCOUNT";
   const formRef = useRef<HTMLFormElement>(null);
@@ -14,19 +16,19 @@ export function CloseAccountForm() {
     <form ref={formRef} action={closeAccountAction} className="space-y-3">
       <label className="block">
         <span className="block font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">
-          Reason (optional) · Sababu
+          {t.common.reasonOptional}
         </span>
         <textarea
           name="reason"
           rows={2}
           maxLength={500}
-          placeholder="Help us improve — what made you leave?"
+          placeholder={t.common.helpUsImprove}
           className="w-full p-3 rounded-md border border-border bg-bg-overlay text-text text-[16px] focus:outline-none brand-focus transition-colors"
         />
       </label>
       <label className="block">
         <span className="block font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">
-          Type <span className="font-mono text-no-300">CLOSE MY ACCOUNT</span> to confirm
+          {t.common.type} <span className="font-mono text-no-300">CLOSE MY ACCOUNT</span> {t.common.typeToConfirm}
         </span>
         <input
           name="confirm"
@@ -38,20 +40,14 @@ export function CloseAccountForm() {
       </label>
       <ConfirmDialog
         tone="claret"
-        title="Close your account permanently"
+        title={t.common.closeAccountPermanently}
         body={
-          <>
-            <p className="mb-2">
-              This is <strong className="text-text">irreversible</strong>. Your wallet, positions,
-              and all account data will be permanently deleted. You will be signed out immediately.
-            </p>
-            <p className="text-text-subtle italic text-[12.5px]">
-              Akaunti yako itafungwa kabisa na huwezi kuirudisha.
-            </p>
-          </>
+          <p>
+            {t.common.closeIrreversibleBody}
+          </p>
         }
-        confirmLabel="Yes, close permanently"
-        cancelLabel="Keep my account"
+        confirmLabel={t.common.yesClosePermanently}
+        cancelLabel={t.common.keepMyAccount}
         onConfirm={() => formRef.current?.requestSubmit()}
         trigger={
           <button
@@ -60,7 +56,7 @@ export function CloseAccountForm() {
             className="btn btn-claret btn-md inline-flex items-center gap-1.5 disabled:opacity-40"
           >
             <I.alertOctagon s={13} />
-            Permanently close my account
+            {t.common.permanentlyCloseAccount}
           </button>
         }
       />

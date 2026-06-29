@@ -10,24 +10,10 @@
 import Link from "next/link";
 import { FiftyMark } from "@/components/brand";
 import type { Lang } from "../types";
+import { useT } from "@/lib/i18n";
 
-export function RgRedirectCard({ lang = "en" }: { lang?: Lang }) {
-  const t =
-    lang === "sw"
-      ? {
-          title: "Tunaweza kupunguza kasi pamoja.",
-          body:
-            "Ukihisi kucheza kunakuathiri, una zana za kuweka kikomo cha amana, kuweka kikomo cha muda wa kipindi, au kujiondoa kwa muda. Hatua yoyote unayoichagua, ni nzuri.",
-          primary: "Fungua mipangilio ya kucheza kwa busara",
-          secondary: "Ongea na msaada",
-        }
-      : {
-          title: "We can slow things down together.",
-          body:
-            "If betting is starting to weigh on you, you can set a deposit limit, a session-time limit, or take a break. Any step you choose is a good one — and a support specialist can walk through it with you if you'd rather not do it alone.",
-          primary: "Open Responsible Gambling settings",
-          secondary: "Speak to support",
-        };
+export function RgRedirectCard({ lang: _lang = "en" }: { lang?: Lang }) {
+  const { t: i18n } = useT();
   return (
     <div className="cm-row cm-row-ai">
       <FiftyMark size={22} />
@@ -36,15 +22,15 @@ export function RgRedirectCard({ lang = "en" }: { lang?: Lang }) {
         style={{ padding: 0, background: "transparent", border: "none", maxWidth: "88%" }}
       >
         <div className="cm-rg-card" role="group" aria-label="Responsible gambling redirect">
-          <div className="cm-rg-label">Responsible gambling · Kucheza kwa busara</div>
-          <div className="cm-rg-title">{t.title}</div>
-          <div className="cm-rg-body">{t.body}</div>
+          <div className="cm-rg-label">{i18n.common.responsibleGambling}</div>
+          <div className="cm-rg-title">{i18n.rg.mostPlayForFun}</div>
+          <div className="cm-rg-body">{i18n.rg.pageDescription}</div>
           <div className="cm-rg-actions">
             <Link href={"/profile/responsible-gambling" as never} className="cm-rg-primary">
-              {t.primary}
+              {i18n.rg.setLimits}
             </Link>
             <Link href={"/help" as never} className="cm-rg-secondary">
-              {t.secondary}
+              {i18n.profile.helpSupport}
             </Link>
           </div>
         </div>

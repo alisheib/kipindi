@@ -14,6 +14,7 @@ import { useState } from "react";
 import { I } from "@/components/ui/glyphs";
 import { ConvictionDial } from "./conviction-dial";
 import { NotifyPrompt } from "./notify-prompt";
+import { useT } from "@/lib/i18n";
 
 type Props = {
   marketId: string;
@@ -33,6 +34,7 @@ type Props = {
 export function SidePicker({
   marketId, marketTitle, yesPool, noPool, yesPct, resolutionAt, balance, initialSide, feeRate,
 }: Props) {
+  const { t } = useT();
   const [side, setSide] = useState<"YES" | "NO" | null>(initialSide ?? null);
 
   if (side) {
@@ -79,7 +81,7 @@ export function SidePicker({
   return (
     <div className="rounded-xl border border-border bg-bg-elevated p-5 lg:p-6">
       <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle text-center">
-        Pick your side · Chagua upande
+        {t.common.pickYourSide}
       </p>
       <h3 className="mt-1.5 mb-4 font-display text-[17px] font-bold text-text leading-tight text-center">
         Which way will it resolve?

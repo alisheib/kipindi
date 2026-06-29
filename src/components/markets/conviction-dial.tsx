@@ -606,29 +606,29 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
     const e = err.toLowerCase();
     if (e.includes("balance") || e.includes("funds") || e.includes("wallet"))
       return {
-        title: "Insufficient balance · Salio halitoshi",
-        body: "Top up your wallet to place this stake. Tap Wallet → Deposit.",
+        title: t.common.insufficientBalance,
+        body: t.common.topUpWallet,
         variant: "danger",
       };
     if (e.includes("closed") || e.includes("resolv") || e.includes("voided"))
       return {
-        title: "Market is closed · Soko limefungwa",
-        body: "This market has stopped accepting predictions.",
+        title: t.common.marketClosed,
+        body: t.common.marketStoppedPredictions,
         variant: "warning",
       };
     if (e.includes("self") && e.includes("exclu"))
       return {
-        title: "Account in self-exclusion",
-        body: "Predictions are paused. Manage in Profile → Responsible gambling.",
+        title: t.common.accountSelfExclusion,
+        body: t.common.predictionsPaused,
         variant: "warning",
       };
     if (e.includes("rate") || e.includes("limit"))
       return {
-        title: "Slow down · Subiri",
-        body: "Too many attempts in a row. Try again in a moment · Jaribu tena baada ya muda kidogo.",
+        title: t.common.slowDown,
+        body: t.common.tooManyAttemptsRow,
         variant: "warning",
       };
-    return { title: "Could not place · Haikuwekwa", body: err, variant: "danger" };
+    return { title: t.common.couldNotPlace, body: err, variant: "danger" };
   };
 
   const submit = () => {
@@ -730,7 +730,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
            player can see exactly which way they're committed. */
         <div className="mb-4">
           <p className="mb-2 text-center font-mono text-[9px] uppercase tracking-[0.16em] font-bold text-text-subtle">
-            Your pick · Uamuzi wako
+            {t.common.yourPick}
           </p>
           <div className="grid grid-cols-2 gap-2" role="img" aria-label={`You are backing ${lock} — locked`}>
             {(["YES", "NO"] as const).map((s) => {
@@ -980,10 +980,10 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
         </div>
         <div className="text-right min-w-0">
           <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mb-1.5">
-            Stake · dau
+            {t.dialog.stakeLabel}
             <InfoHint
               size={10}
-              label="The TZS amount you'd lose if your side doesn't win. Drag the dial further from centre to increase it. · Kiasi cha TZS unachoweza kupoteza."
+              label={t.dialog.poolSharePayout}
             />
           </p>
           {/*
@@ -1064,10 +1064,10 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
           consistency. */}
       <div className="mt-3 grid grid-cols-[1fr_auto] gap-2 sm:gap-3 items-center">
         <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle">
-          Multiplier · Mara
+          {t.common.multiplier}
           <InfoHint
             size={10}
-            label={`How strong your conviction is — 1× is a base bet (TZS ${fmt(baseStake)}), drag further for up to TZS ${fmt(maxDial)}. Higher conviction means higher stake AND higher payout share if you're right. · Imani ya juu, dau kubwa.`}
+            label={t.common.highConvictionHint}
           />
         </p>
         <div className="text-right min-w-0">
@@ -1120,7 +1120,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
       {effectiveSide !== "NEUTRAL" && (
         <div className="mt-3 rounded-md border border-border bg-bg-overlay px-3 py-2.5">
           <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mb-1">
-            Payout · Lipo
+            {t.common.payout2}
           </p>
           <p className="text-[12px] leading-relaxed text-text-muted">
             Calculated at resolution from the final pool share.
@@ -1144,7 +1144,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
       {effectiveSide !== "NEUTRAL" && balance !== undefined && stake > balance && (
         <div className="mt-3 rounded-md border border-no-700 bg-no-500/10 px-3 py-2">
           <p className="text-[11px] font-medium text-no-300">
-            Insufficient balance · Salio halitoshi
+            {t.common.insufficientBalanceHint}
           </p>
           <p className="text-[10px] text-text-subtle mt-0.5">
             You need TZS {fmt(stake)} but have TZS {fmt(balance)}. Deposit to continue.
@@ -1157,21 +1157,21 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
       <div className="mt-4 flex items-center gap-3">
         <p className="flex-1 min-w-0 text-[11px] text-text-subtle leading-snug">
           {closedNow
-            ? "Market closed · Soko limefungwa"
+            ? t.common.marketClosed
             : effectiveSide === "NEUTRAL"
-              ? "Drag the dial · Vuta dial kuanza"
+              ? t.common.dragTheDial
               : balance !== undefined && stake > balance
-                ? "Top up your wallet to place this stake."
-                : "Pool-share payout. Confirm in a popup."}
+                ? t.common.topUpToPlace
+                : t.common.poolShareConfirm}
         </p>
         <button
           type="button"
           onClick={closedNow ? undefined : openConfirm}
           disabled={closedNow || pending || effectiveSide === "NEUTRAL" || (balance !== undefined && stake > balance)}
           aria-label={
-            closedNow ? "Market closed — awaiting settlement"
-            : effectiveSide === "NEUTRAL" ? "Drag the dial to commit"
-            : `Place ${effectiveSide} for TZS ${fmt(stake)}`
+            closedNow ? t.market.closedAwaitingSettlement
+            : effectiveSide === "NEUTRAL" ? t.common.dragTheDial
+            : `${t.common.place} ${effectiveSide} TZS ${fmt(stake)}`
           }
           className={`${closedNow ? "btn btn-ghost btn-md" : (effectiveSide === "NEUTRAL" ? "btn btn-ghost btn-md" : effectiveSide === "YES" ? "btn btn-yes btn-md" : "btn btn-no btn-md")} whitespace-normal`}
           // 44 px min-height meets WCAG 2.5.5 tap-target on mobile;
@@ -1184,7 +1184,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
               ? "—"
               : (
                 <>
-                  <span>Place {effectiveSide}</span>
+                  <span>{t.common.place} {effectiveSide}</span>
                   <span className="font-mono opacity-90">TZS {fmt(stake)}</span>
                 </>
               )}
@@ -1213,19 +1213,19 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
         <OperationResultModal
           open={resultOpen}
           variant={resultData.variant}
-          eyebrow={resultData.variant === "success" ? "Bet placed · Dau lipo" : "Could not place bet · Haikuwekwa"}
-          title={resultData.variant === "success" ? `${resultData.side} · TZS ${fmt(resultData.stake)}` : (resultData.error ?? "Try again · Jaribu tena")}
+          eyebrow={resultData.variant === "success" ? t.common.betPlacedEyebrow : t.common.couldNotPlaceBet}
+          title={resultData.variant === "success" ? `${resultData.side} · TZS ${fmt(resultData.stake)}` : (resultData.error ?? t.error.tryAgain)}
           subtitle={
             resultData.variant === "success"
-              ? (marketTitle ?? "Position open. We'll notify you on resolution.")
-              : "Your stake hasn't moved · Dau lako halijaondoka."
+              ? (marketTitle ?? t.common.positionOpenNotify)
+              : t.common.stakeHasntMoved
           }
           details={resultData.variant === "success" ? [
-            { label: "Stake", sw: "Dau", value: `TZS ${fmt(resultData.stake)}` },
-            { label: t.dialog.payoutLabel, sw: "Lipo", value: t.market.atResolution },
+            { label: t.dialog.stakeLabel, value: `TZS ${fmt(resultData.stake)}` },
+            { label: t.dialog.payoutLabel, value: t.market.atResolution },
           ] : undefined}
-          footnote={resultData.variant === "success" ? "Bahati njema · Good luck." : undefined}
-          primaryLabel={resultData.variant === "success" ? "Done · Sawa" : "Close"}
+          footnote={resultData.variant === "success" ? t.common.goodLuck : undefined}
+          primaryLabel={resultData.variant === "success" ? t.common.doneSawa : t.common.close}
           secondaryLabel={resultData.variant === "success" ? t.common.viewPositions : undefined}
           onSecondary={resultData.variant === "success" ? () => router.push("/positions") : undefined}
           onClose={() => setResultOpen(false)}

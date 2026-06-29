@@ -200,7 +200,7 @@ export function BetConfirmModal({
           <div className="flex items-start justify-between gap-3 mb-4">
             <div className="min-w-0">
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">
-                Confirm prediction · Thibitisha utabiri
+                {t.common.confirmPrediction}
               </p>
               {marketTitle && (
                 <p className="mt-1 font-display text-[15px] font-semibold text-text leading-snug line-clamp-2">
@@ -222,15 +222,15 @@ export function BetConfirmModal({
           <div className="rounded-lg border p-4" style={{ borderColor: sideTone.brd, background: sideTone.bg }}>
             <div className="flex items-baseline justify-between">
               <div>
-                <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle mb-1">You are picking</p>
+                <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle mb-1">{t.common.youArePicking}</p>
                 <p className="font-display font-bold text-[26px] leading-none" style={{ color: sideTone.fg, letterSpacing: "-0.025em" }}>
                   {side}
                 </p>
               </div>
               <div className="text-right">
-                <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle mb-1">Stake · dau</p>
+                <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle mb-1">{t.dialog.stakeLabel}</p>
                 <p className="font-mono font-bold text-[22px] tabular-nums leading-none text-text">TZS {fmt(stake)}</p>
-                <p className="mt-1 font-mono text-[10px] text-text-subtle">{multiplier.toFixed(2)}× conviction</p>
+                <p className="mt-1 font-mono text-[10px] text-text-subtle">{multiplier.toFixed(2)}× {t.dialog.conviction}</p>
               </div>
             </div>
           </div>
@@ -241,12 +241,10 @@ export function BetConfirmModal({
               communicated post-resolution. */}
           <div className="mt-3 rounded-lg border border-border bg-bg-overlay p-3">
             <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle mb-1">
-              Payout · Lipo
+              {t.common.payout2}
             </p>
             <p className="text-[12px] leading-relaxed text-text-muted">
-              Calculated at resolution from the final pool share.
-              <br />
-              <span className="text-text-subtle">Itahesabiwa baada ya tukio kukamilika.</span>
+              {t.dialog.payoutCalcBody}
             </p>
           </div>
 
@@ -254,11 +252,8 @@ export function BetConfirmModal({
           <div className="mt-2 rounded-lg border border-brand-500/30 bg-brand-500/[0.07] px-3 py-2.5 flex items-start gap-2">
             <I.shieldcheck s={13} className="shrink-0 mt-0.5 text-brand-300" />
             <p className="text-[11px] leading-relaxed text-text-muted">
-              <span className="font-semibold text-brand-300">5-min free exit · </span>
-              Sell this position within 5 minutes for a full refund — no fee.
-              After that, a 9% fee applies on early exit.
-              <br />
-              <span className="text-text-subtle">Toka bila gharama ndani ya dakika 5. Baadaye, ada ya 9% itatumika.</span>
+              <span className="font-semibold text-brand-300">{t.dialog.freeExitLabel} · </span>
+              {t.dialog.freeExitBody}
             </p>
           </div>
 
@@ -270,7 +265,7 @@ export function BetConfirmModal({
           <div className="mt-4 flex items-center gap-2 text-[12px] text-text-subtle">
             <I.shieldcheck s={14} />
             <span>
-              Quote held for <strong className="font-mono text-brand-300">{seconds}s</strong> · then re-aim on the dial.
+              {t.dialog.quoteHeldFor} <strong className="font-mono text-brand-300">{seconds}s</strong> · {t.dialog.thenReaim}
             </span>
           </div>
 
@@ -285,7 +280,7 @@ export function BetConfirmModal({
               disabled={pending || remainingMs <= 0}
               className="btn btn-gold btn-lg w-full"
             >
-              {pending ? "Placing…" : `Confirm · TZS ${fmt(stake)}`}
+              {pending ? t.dialog.placing : `${t.common.confirm} · TZS ${fmt(stake)}`}
             </button>
             <button
               type="button"
@@ -293,11 +288,11 @@ export function BetConfirmModal({
               disabled={pending}
               className="btn btn-ghost btn-md w-full"
             >
-              Cancel · Ghairi
+              {t.common.cancel}
             </button>
           </div>
           <p className="mt-2.5 text-center text-[11px] text-text-subtle">
-            Pool-share payout. Outcome may differ from current odds.
+            {t.dialog.poolSharePayout}
           </p>
         </div>
       </div>

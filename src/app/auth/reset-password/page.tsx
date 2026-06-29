@@ -12,7 +12,10 @@ import { passwordFingerprint } from "@/lib/server/password-reset";
 import { resetPasswordAction } from "./actions";
 import { getServerT } from "@/lib/i18n-server";
 
-export const metadata = { title: "Reset password · Badilisha nenosiri" };
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.common.resetPassword };
+}
 export const dynamic = "force-dynamic";
 
 type TokenState = "valid" | "expired" | "invalid" | "email_changed";

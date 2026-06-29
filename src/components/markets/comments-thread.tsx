@@ -109,8 +109,7 @@ export function CommentsThread({
     <section className="mt-8 rounded-lg border border-border bg-bg-elevated p-5 lg:p-6">
       <div className="mb-4 flex items-center gap-2">
         <I.comment s={16} />
-        <h2 className="font-display text-[17px] font-semibold text-text">Discussion</h2>
-        <span className="font-display italic text-text-subtle text-[13px]">· Majadiliano</span>
+        <h2 className="font-display text-[17px] font-semibold text-text">{t.common.discussion}</h2>
         <span className="ml-auto font-mono text-[11px] text-text-subtle tabular-nums">{comments.length}</span>
       </div>
 
@@ -121,7 +120,7 @@ export function CommentsThread({
             onChange={(e) => setBody(e.target.value.slice(0, COMMENT_MAX_LEN))}
             onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit(); }}
             rows={3}
-            placeholder="Share your read on this market · Toa maoni yako"
+            placeholder={t.common.shareYourRead}
             className="w-full resize-y rounded-md border border-border bg-bg-overlay px-3 py-2.5 text-[14px] text-text placeholder:text-text-subtle outline-none transition-colors brand-focus"
           />
           <div className="mt-2 flex items-center justify-between">
@@ -135,7 +134,7 @@ export function CommentsThread({
               className="btn btn-gold btn-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {pending && <Spinner size={12} />}
-              {pending ? "Posting…" : "Post · Tuma"}
+              {pending ? t.common.posting : t.common.post}
             </button>
           </div>
         </div>
@@ -144,7 +143,7 @@ export function CommentsThread({
           href={signInHref}
           className="btn btn-ghost btn-md mb-5 block w-full text-center"
         >
-          Sign in to join the discussion · <span className="italic text-text-subtle">Ingia ili kujadili</span>
+          {t.market.signInToPredict}
         </a>
       )}
 

@@ -10,6 +10,7 @@
  */
 
 import * as React from "react";
+import { useT } from "@/lib/i18n";
 
 export function CountdownPill({
   seconds,
@@ -17,6 +18,7 @@ export function CountdownPill({
   suffix,
   onExpire,
 }: { seconds: number; prefix?: string; suffix?: string; onExpire?: () => void }) {
+  const { t } = useT();
   const [left, setLeft] = React.useState(Math.max(0, Math.floor(seconds)));
   const expiredRef = React.useRef(false);
   React.useEffect(() => {
@@ -33,7 +35,7 @@ export function CountdownPill({
   if (left <= 0) {
     return (
       <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted" aria-live="polite">
-        Ready · Tayari
+        {t.common.ready}
       </span>
     );
   }

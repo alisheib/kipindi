@@ -11,7 +11,10 @@ import { db } from "@/lib/server/store";
 import { withdrawAction } from "./actions";
 import { getServerT } from "@/lib/i18n-server";
 
-export const metadata = { title: "Withdraw · Toa" };
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.wallet.withdrawTitle };
+}
 
 const PROVIDERS = [
   { id: "MPESA",        name: "M-Pesa",        hue: 152 },

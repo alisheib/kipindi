@@ -9,8 +9,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { I } from "@/components/ui/glyphs";
 import { Spinner } from "@/components/ui/spinner";
+import { useT } from "@/lib/i18n";
 
 export function ResultsSearch() {
+  const { t } = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [searching, startTransition] = useTransition();
@@ -46,8 +48,8 @@ export function ResultsSearch() {
         value={q}
         onChange={(e) => setQ(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (debounce.current) clearTimeout(debounce.current); push(q); } }}
-        placeholder="Search results · Tafuta matokeo"
-        aria-label="Search results"
+        placeholder={t.common.searchResults}
+        aria-label={t.common.searchResults}
         enterKeyHint="search"
         autoComplete="off"
         className="input input-mono"
@@ -55,7 +57,7 @@ export function ResultsSearch() {
       {q && (
         <button
           type="button"
-          aria-label="Clear search"
+          aria-label={t.common.clearSearch}
           className="clear-btn"
           onClick={() => { setQ(""); if (debounce.current) clearTimeout(debounce.current); push(""); }}
         >

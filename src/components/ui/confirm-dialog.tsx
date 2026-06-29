@@ -23,6 +23,7 @@ import { createPortal } from "react-dom";
 import { I } from "@/components/ui/glyphs";
 import { haptics } from "@/lib/haptics";
 import { useModalLock } from "@/lib/use-modal-lock";
+import { useT } from "@/lib/i18n";
 
 type Tone = "claret" | "warning" | "gold";
 
@@ -43,12 +44,15 @@ export function ConfirmDialog({
   trigger,
   title,
   body,
-  confirmLabel = "Confirm",
-  cancelLabel = "Cancel · Ghairi",
+  confirmLabel,
+  cancelLabel,
   tone = "claret",
   onConfirm,
   onOpen,
 }: Props) {
+  const { t } = useT();
+  const effectiveConfirmLabel = confirmLabel ?? t.common.confirm;
+  const effectiveCancelLabel = cancelLabel ?? t.common.cancel;
   const [open, setOpen] = React.useState(false);
   useModalLock(open);
   const [mounted, setMounted] = React.useState(false);
@@ -116,7 +120,7 @@ export function ConfirmDialog({
         <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-[100] flex justify-center px-3 py-4 overflow-y-auto overscroll-contain">
           <button
             type="button"
-            aria-label={cancelLabel}
+            aria-label={effectiveCancelLabel}
             onClick={() => setOpen(false)}
             className="fixed inset-0 bg-black/60 backdrop-blur-md"
             style={{ animation: "cd-fade 160ms ease-out" }}
@@ -129,7 +133,7 @@ export function ConfirmDialog({
             <button
               type="button"
               onClick={() => setOpen(false)}
-              aria-label="Close"
+              aria-label={t.common.close}
               className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
             >
               <I.x s={16} />
@@ -139,7 +143,7 @@ export function ConfirmDialog({
               <I.warning s={18} />
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">
-                  Confirm · Thibitisha
+                  {t.common.confirm}
                 </p>
                 <h2 className="mt-0.5 font-display text-[18px] font-bold text-text leading-tight">
                   {title}
@@ -158,14 +162,14 @@ export function ConfirmDialog({
                 onClick={() => { haptics.warning(); setOpen(false); onConfirm(); }}
                 className={confirmClass + " w-full"}
               >
-                {confirmLabel}
+                {effectiveConfirmLabel}
               </button>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 className="btn btn-ghost btn-md w-full"
               >
-                {cancelLabel}
+                {effectiveCancelLabel}
               </button>
             </div>
           </div>

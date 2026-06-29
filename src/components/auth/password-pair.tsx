@@ -12,8 +12,10 @@
 import { useState, useRef, useEffect } from "react";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Field } from "@/components/ui/input";
+import { useT } from "@/lib/i18n";
 
 export function PasswordPair() {
+  const { t } = useT();
   const [pw, setPw] = useState("");
   const [confirm, setConfirm] = useState("");
   const confirmRef = useRef<HTMLInputElement>(null);
@@ -23,13 +25,13 @@ export function PasswordPair() {
   // Sync custom validity so the browser blocks submit on mismatch
   useEffect(() => {
     confirmRef.current?.setCustomValidity(
-      dirty && !match ? "Passwords don't match" : "",
+      dirty && !match ? t.toast.passwordsDontMatch : "",
     );
-  }, [pw, confirm, dirty, match]);
+  }, [pw, confirm, dirty, match, t]);
 
   return (
     <>
-      <Field label="Password · Nenosiri" hint="At least 8 characters.">
+      <Field label={t.auth.password} hint={t.auth.passwordHint}>
         <PasswordInput
           id="password"
           name="password"
@@ -45,12 +47,12 @@ export function PasswordPair() {
       </Field>
 
       <Field
-        label="Confirm password · Thibitisha nenosiri"
+        label={t.common.confirmPassword}
         hint={
           dirty
             ? match
-              ? <span className="text-yes-300">Passwords match · Nenosiri zinazolingana</span>
-              : <span className="text-no-300">Passwords don&apos;t match · Nenosiri hazilingani</span>
+              ? <span className="text-yes-300">{t.common.passwordsMatch}</span>
+              : <span className="text-no-300">{t.toast.passwordsDontMatch}</span>
             : undefined
         }
       >
