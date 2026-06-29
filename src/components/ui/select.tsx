@@ -114,7 +114,7 @@ export function Select({
     return () => window.removeEventListener("mousedown", onClick);
   }, [open]);
 
-  const h = size === "xs" ? "h-9" : size === "sm" ? "h-10" : "h-11";
+  const h = size === "xs" ? "h-9" : size === "sm" ? "h-9" : "h-11";
 
   return (
     <>
@@ -165,7 +165,7 @@ export function Select({
               onClick={() => pick(o.value)}
               onMouseEnter={() => setFocusIdx(i)}
               className={cn(
-                "w-full px-3 py-2.5 text-left font-mono text-[14px] transition-colors",
+                "w-full px-3 py-2.5 text-left font-mono text-[14px] transition-colors truncate",
                 "first:rounded-t-lg last:rounded-b-lg",
                 i === focusIdx ? "bg-bg-overlay text-text" : "text-text-muted",
                 o.value === selected && "text-gold-300 font-semibold",

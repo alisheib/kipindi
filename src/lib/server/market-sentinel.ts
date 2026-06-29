@@ -193,8 +193,11 @@ async function triageMarket(market: MarketInput): Promise<{ score: number; reaso
       errorType: (err as Error).message?.slice(0, 200),
       detail: `triage · ${market.titleEn.slice(0, 80)}`,
     });
-    // On triage error, escalate to deep check (fail-open for safety)
-    return { score: 100, reasoning: `Triage error — escalating: ${(err as Error).message}` };
+    // On triage error, escalate to deep check — but at the THRESHOLD, not 100.
+    // Blasting score 100 on every API glitch would trigger expensive Sonnet + web
+    // calls on EVERY market in the sweep. The threshold is enough to trigger the
+    // deep check for safety without suggesting high certainty.
+    return { score: TRIAGE_THRESHOLD, reasoning: `Triage error — escalating at threshold: ${(err as Error).message}` };
   }
 }
 
@@ -395,6 +398,10 @@ export async function runSentinelSweep(opts?: { force?: boolean }): Promise<Sent
   // cooldown so the operator can re-check immediately; scheduled sweeps still
   // respect it. The <5-min-to-close skip stays in both modes (those resolve via
   // auto-close imminently).
+  // Minimum market age before the sentinel will check it (prevents hallucinated
+  // closures on brand-new markets where no real-world event has had time to occur).
+  const MIN_AGE_MS = 30 * 60_000; // 30 minutes
+
   const due = allMarkets.filter((market) => {
     if (!force) {
       const lastCheck = lastChecked.get(market.id) ?? 0;
@@ -403,6 +410,10 @@ export async function runSentinelSweep(opts?: { force?: boolean }): Promise<Sent
     // Skip markets closing within 5 minutes — auto-close handles those
     const timeToClose = Date.parse(market.resolutionAt) - now;
     if (timeToClose < 5 * 60_000) return false;
+    // Skip very new markets — give them time to exist before checking.
+    // A market published 5 minutes ago cannot have a real-world outcome yet.
+    const age = now - Date.parse(market.createdAt);
+    if (age < MIN_AGE_MS) return false;
     lastChecked.set(market.id, now);
     return true;
   });
@@ -450,6 +461,22 @@ export async function runSentinelSweep(opts?: { force?: boolean }): Promise<Sent
 
     if (!result.determined || result.confidence < SENTINEL_CONFIDENCE_THRESHOLD) {
       result.action = result.determined ? "below_threshold" : "skipped";
+      return result;
+    }
+    // Hard guard: the outcome must be a concrete YES or NO — never close a
+    // market on UNKNOWN. The model SAID determined=true but if it also says
+    // outcome=UNKNOWN that's contradictory and we must not act on it.
+    if (result.outcome !== "YES" && result.outcome !== "NO") {
+      result.action = "skipped";
+      result.error = "determined=true but outcome=UNKNOWN — contradictory, skipping";
+      return result;
+    }
+    // Hard guard: evidence must be non-empty. A "determined" result with no
+    // evidence string is likely a hallucination or a model that skipped the
+    // web search step. Officers need evidence to verify the AI's call.
+    if (!result.evidence || result.evidence.trim().length < 10) {
+      result.action = "below_threshold";
+      result.error = "determined=true but evidence too short — skipping";
       return result;
     }
 

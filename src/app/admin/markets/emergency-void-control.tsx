@@ -104,7 +104,7 @@ function ConfirmVoid({
   if (!mounted || !open) return null;
   const canConfirm = reason.trim().length >= 5 && !pending;
   return createPortal(
-    <div role="alertdialog" aria-modal="true" aria-label="Confirm emergency void" className="fixed inset-0 z-modal flex justify-center px-3 py-4 overflow-y-auto overscroll-contain">
+    <div role="alertdialog" aria-modal="true" aria-label="Confirm emergency void" className="fixed inset-0 z-[100] flex justify-center px-3 py-4 overflow-y-auto overscroll-contain">
       <button type="button" aria-label="Cancel" onClick={onCancel} className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
       <div className="relative my-auto w-full max-w-[480px] rounded-xl border border-border bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)] p-5 lg:p-6">
         <div className="mb-3 flex items-start gap-2.5">

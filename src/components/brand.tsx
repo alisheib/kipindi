@@ -625,7 +625,7 @@ export function SectionLoader({ height = 240 }: { height?: number }) {
 
 export function BrandLoader({ caption }: { caption?: string }) {
   return (
-    <div className="fixed inset-0 z-modal grid place-items-center bg-bg/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] grid place-items-center bg-bg/80 backdrop-blur-sm">
       <div className="flex flex-col items-center gap-4">
         <BrandSpinner size={80} />
         {caption && <p className="font-mono text-[12px] uppercase tracking-[0.18em] text-text-muted">{caption}</p>}

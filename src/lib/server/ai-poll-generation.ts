@@ -1119,6 +1119,10 @@ export async function editAIPoll(id: string, opts: {
     }
   }
   if (opts.selectionClosedAt !== undefined) poll.selectionClosedAt = opts.selectionClosedAt;
+  // If selectionClosedAt was cleared (set to null), auto-compute from category lead time
+  if (!poll.selectionClosedAt && poll.resolutionAt) {
+    poll.selectionClosedAt = computeSelectionClosedAt(poll.resolutionAt, poll.category);
+  }
   // Guard: selectionClosedAt must be before resolutionAt
   if (poll.selectionClosedAt && poll.resolutionAt && Date.parse(poll.selectionClosedAt) >= Date.parse(poll.resolutionAt)) {
     poll.selectionClosedAt = computeSelectionClosedAt(poll.resolutionAt, poll.category);

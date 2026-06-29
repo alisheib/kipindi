@@ -197,6 +197,9 @@ export async function editPollAction(formData: FormData) {
   const category = formData.has("category") ? String(formData.get("category")) : undefined;
   const resolutionCriterion = formData.has("resolutionCriterion") ? String(formData.get("resolutionCriterion")) : undefined;
   const resolutionAt = formData.has("resolutionAt") ? String(formData.get("resolutionAt")) : undefined;
+  const selectionClosedAt = formData.has("selectionClosedAt")
+    ? (formData.get("selectionClosedAt") === "" ? null : String(formData.get("selectionClosedAt")))
+    : undefined;
 
   const poll = await editAIPoll(id, {
     officerId,
@@ -205,6 +208,7 @@ export async function editPollAction(formData: FormData) {
     category,
     resolutionCriterion,
     resolutionAt,
+    selectionClosedAt,
   });
 
   if (!poll) return { ok: false as const, error: "Poll not found or not editable." };
@@ -236,6 +240,13 @@ export async function publishPollAction(formData: FormData) {
     const selMs = Date.parse(poll.selectionClosedAt);
     if (!Number.isFinite(selMs) || selMs >= resMs) {
       return { ok: false as const, error: "Selection-close time must be before the resolution date — edit the poll first." };
+    }
+    // Stale selection-close guard: if the poll sat in APPROVED for days and the
+    // selection close has already passed, recompute it from the category lead
+    // time so the published market has a valid betting window.
+    if (selMs <= Date.now()) {
+      const { computeSelectionClosedAt } = await import("@/lib/server/ai-poll-config");
+      poll.selectionClosedAt = computeSelectionClosedAt(poll.resolutionAt, poll.category);
     }
   }
 

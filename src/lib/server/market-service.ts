@@ -182,7 +182,24 @@ export type CreateMarketInput = {
 
 export async function createMarket(input: CreateMarketInput) {
   const now = new Date().toISOString();
+  const nowMs = Date.now();
   const id = `mkt_${randomId(10)}`;
+
+  // Hard guard: never create a market whose resolution is already in the past.
+  const resMs = Date.parse(input.resolutionAt);
+  if (!Number.isFinite(resMs) || resMs <= nowMs) {
+    throw new Error("Cannot create a market with a past or invalid resolution date.");
+  }
+  // If selectionClosedAt is already past, drop it — the market would be born
+  // with betting immediately closed, which is useless. Null falls back to
+  // resolutionAt (legacy behavior = betting open until resolution).
+  let effectiveSelectionClosedAt = input.selectionClosedAt ?? null;
+  if (effectiveSelectionClosedAt) {
+    const selMs = Date.parse(effectiveSelectionClosedAt);
+    if (!Number.isFinite(selMs) || selMs <= nowMs || selMs >= resMs) {
+      effectiveSelectionClosedAt = null;
+    }
+  }
 
   const m: StoredMarket = {
     id,
@@ -192,7 +209,7 @@ export async function createMarket(input: CreateMarketInput) {
     sourceUrl: input.sourceUrl,
     resolutionCriterion: input.resolutionCriterion,
     resolutionAt: input.resolutionAt,
-    selectionClosedAt: input.selectionClosedAt ?? null,
+    selectionClosedAt: effectiveSelectionClosedAt,
     status: "LIVE",
     yesPool: 0,
     noPool: 0,
@@ -940,6 +957,11 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   if (m.status === "RESOLVED" || m.status === "VOIDED") return { ok: false, error: "Market already resolved.", code: "INVALID" };
 
   if (!m.resolutionStage1By) {
+    // Stage-1: the officer is STAGING the outcome. This transitions LIVE → CLOSED
+    // (no money moves). An officer can stage any LIVE or CLOSED market — this is
+    // the intentional early-close path (the sentinel does the same via its own
+    // CLOSED write). resolutionAt doesn't gate stage-1 so officers can close a
+    // market early when the outcome is already known.
     m.resolutionStage1By = opts.officerId;
     m.resolutionStage1At = new Date().toISOString();
     m.resolvedOutcome = opts.outcome;

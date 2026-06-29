@@ -1252,8 +1252,22 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
   const validInit = initialDt && !Number.isNaN(initialDt.getTime()) ? initialDt : null;
   const [editDate, setEditDate] = useState(validInit ? validInit.toISOString().slice(0, 10) : "");   // YYYY-MM-DD
   const [editTime, setEditTime] = useState(validInit ? validInit.toISOString().slice(11, 16) : "");  // HH:MM
+  const initialSel = poll.selectionClosedAt ? new Date(poll.selectionClosedAt) : null;
+  const validSel = initialSel && !Number.isNaN(initialSel.getTime()) ? initialSel : null;
+  const [selDate, setSelDate] = useState(validSel ? validSel.toISOString().slice(0, 10) : "");
+  const [selTime, setSelTime] = useState(validSel ? validSel.toISOString().slice(11, 16) : "");
   const [dateError, setDateError] = useState("");
+  const [selError, setSelError] = useState("");
   const router = useRouter();
+  const todayIso = new Date().toISOString().slice(0, 10);
+
+  /** Combine an ISO date (YYYY-MM-DD) + 24h time (HH:MM) into a UTC ISO string. */
+  const combineDateTime = (isoDate: string, time: string): string | null => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return null;
+    const t = /^([01]\d|2[0-3]):[0-5]\d$/.test(time) ? time : "00:00";
+    const dt = new Date(`${isoDate}T${t}:00`);
+    return Number.isNaN(dt.getTime()) ? null : dt.toISOString();
+  };
 
   const submit = () => {
     // A resolution date is mandatory on edit — guard the unsafe Date() parse.
@@ -1265,6 +1279,15 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
     const resIso = new Date(`${editDate}T${t}:00`);
     if (Number.isNaN(resIso.getTime())) { setDateError("Pick a valid resolution date."); return; }
     if (resIso.getTime() <= Date.now() + 3 * 3600_000) { setDateError("Resolution must be at least 3 hours from now."); return; }
+    // Selection close validation (optional, but if set must be valid + before resolution)
+    let selIsoStr: string | undefined;
+    if (selDate) {
+      const selIso = combineDateTime(selDate, selTime);
+      if (!selIso) { setSelError("Pick a valid selection-close date."); return; }
+      if (new Date(selIso).getTime() <= Date.now()) { setSelError("Selection close must be in the future."); return; }
+      if (new Date(selIso).getTime() >= resIso.getTime()) { setSelError("Selection close must be before the resolution date."); return; }
+      selIsoStr = selIso;
+    }
     onClose();
     overlay.run("Saving changes…", "Re-validating poll through the quality pipeline.");
     start(async () => {
@@ -1276,6 +1299,7 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
         fd.set("category", category);
         fd.set("resolutionCriterion", criterion);
         fd.set("resolutionAt", resIso.toISOString());
+        fd.set("selectionClosedAt", selIsoStr ?? "");
         const r = await editPollAction(fd);
         router.refresh();
         if (!r.ok) overlay.fail("Edit failed", r.error);
@@ -1308,11 +1332,24 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
         <span className="text-[10px] text-text-subtle">Resolution criterion</span>
         <textarea value={criterion} onChange={(e) => setCriterion(e.target.value)} className={adminTextarea} rows={2} />
       </label>
-      <div className="block">
+      <div>
+        <span className="text-[10px] text-text-subtle">Selection close · Kufunga uchaguzi</span>
+        <div className="flex flex-wrap items-start gap-2 mt-1">
+          <div className="min-w-[130px] flex-1">
+            <DateSelect value={selDate} min={todayIso} onChange={(iso) => { setSelDate(iso); setSelError(""); }} />
+          </div>
+          <TimeSelect value={selTime} size="md" error={!!selError} aria-label="Selection close time, 24-hour" onChange={(t) => { setSelTime(t); setSelError(""); }} />
+        </div>
+        {selError
+          ? <p className="mt-1 text-[11px] text-no-300">{selError}</p>
+          : <p className="mt-0.5 text-[10px] text-text-subtle">When new bets stop. Leave blank to auto-compute from category lead time.</p>
+        }
+      </div>
+      <div>
         <span className="text-[10px] text-text-subtle">Resolves at</span>
         <div className="flex flex-wrap items-start gap-2 mt-1">
-          <div className="min-w-[150px] flex-1">
-            <DateSelect value={editDate} onChange={(iso) => { setEditDate(iso); setDateError(""); }} />
+          <div className="min-w-[130px] flex-1">
+            <DateSelect value={editDate} min={todayIso} onChange={(iso) => { setEditDate(iso); setDateError(""); }} />
           </div>
           <TimeSelect value={editTime} size="md" error={!!dateError} aria-label="Resolution time, 24-hour" onChange={(t) => { setEditTime(t); setDateError(""); }} />
         </div>

@@ -164,7 +164,7 @@ function SettleConfirm({
       role="alertdialog"
       aria-modal="true"
       aria-label="Confirm settlement"
-      className="fixed inset-0 z-modal flex justify-center px-3 py-4 overflow-y-auto overscroll-contain"
+      className="fixed inset-0 z-[100] flex justify-center px-3 py-4 overflow-y-auto overscroll-contain"
     >
       <button
         type="button"

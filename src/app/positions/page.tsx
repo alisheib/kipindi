@@ -183,12 +183,18 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                     status="OPEN"
                     placedAt={p.placedAt}
                   />
-                  {m.selectionClosedAt && (
-                    <p className={`flex items-center gap-1.5 text-[11px] font-mono ${isSelectionClosed(m) ? "text-gold-300" : "text-text-subtle"}`}>
-                      <I.calendarClock s={11} />
-                      {isSelectionClosed(m) ? "Selection closed \u00b7 Uchaguzi umefungwa" : `Selection closes ${new Date(m.selectionClosedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`}
-                    </p>
-                  )}
+                  {(() => {
+                    const cutoffIso = m.selectionClosedAt ?? m.resolutionAt;
+                    const closed = isSelectionClosed(m);
+                    return m.status === "LIVE" ? (
+                      <p className={`flex items-center gap-1.5 text-[11px] font-mono ${closed ? "text-gold-300" : "text-text-subtle"}`}>
+                        <I.calendarClock s={11} />
+                        {closed
+                          ? "Selection closed \u00b7 Uchaguzi umefungwa"
+                          : `Selection closes ${new Date(cutoffIso).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`}
+                      </p>
+                    ) : null;
+                  })()}
                   {liveValue !== null && (
                     <SellButton
                       positionId={p.id}
