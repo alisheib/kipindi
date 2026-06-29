@@ -9,34 +9,21 @@ import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { ResultsSearch } from "./results-search";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { formatTzsCompact } from "@/lib/utils";
+import { getServerT } from "@/lib/i18n-server";
 
-export const metadata = { title: "Results · Matokeo" };
+export const metadata = { title: "Results" };
 export const dynamic = "force-dynamic";
 
 const PER_PAGE = PLAYER_PER_PAGE;
 
-const CATEGORIES: Array<{ id: "all" | MarketCategory; label: string }> = [
-  { id: "all",     label: "All" },
-  { id: "sports",  label: "Sports" },
-  { id: "macro",   label: "Macro" },
-  { id: "weather", label: "Weather" },
-  { id: "crypto",  label: "Crypto" },
-  { id: "culture", label: "Culture" },
-  { id: "tech",    label: "Tech" },
-  { id: "other",   label: "Other" },
-];
-
 type SortField = "resolved" | "volume";
-const SORT_OPTIONS: Array<{ id: SortField; label: string; sw: string }> = [
-  { id: "resolved", label: "Newest resolved", sw: "Mpya zaidi" },
-  { id: "volume",   label: "Highest volume",  sw: "Kiasi kikubwa" },
-];
 
 export default async function ResultsPage({
   searchParams,
 }: {
   searchParams: Promise<{ cat?: string; sort?: string; q?: string; page?: string }>;
 }) {
+  const { t } = await getServerT();
   const sp = await searchParams;
   const activeCat = sp.cat ?? "all";
   const activeSort: SortField = sp.sort === "volume" ? "volume" : "resolved";
@@ -46,7 +33,7 @@ export default async function ResultsPage({
 
   return (
     <main className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6">
-      <h1 className="sr-only">Results · Matokeo</h1>
+      <h1 className="sr-only">{t.results.title}</h1>
       {/* Refresh every 60s — new resolutions should appear without F5 */}
       <RefreshPoller intervalMs={60_000} />
 
@@ -76,6 +63,24 @@ async function ResultsContent({
   searching: boolean;
   pageNum: number;
 }) {
+  const { t } = await getServerT();
+
+  const CATEGORIES: Array<{ id: "all" | MarketCategory; label: string }> = [
+    { id: "all",     label: t.market.catAll },
+    { id: "sports",  label: t.market.catSports },
+    { id: "macro",   label: t.market.catMacro },
+    { id: "weather", label: t.market.catWeather },
+    { id: "crypto",  label: t.market.catCrypto },
+    { id: "culture", label: t.market.catCulture },
+    { id: "tech",    label: t.market.catTech },
+    { id: "other",   label: t.market.catOther },
+  ];
+
+  const SORT_OPTIONS: Array<{ id: SortField; label: string }> = [
+    { id: "resolved", label: t.results.sortNewest },
+    { id: "volume",   label: t.results.sortHighest },
+  ];
+
   const tokens = qRaw.toLowerCase().split(/\s+/).filter(Boolean);
   const matches = (m: { titleEn: string; titleSw: string; category: string; resolutionCriterion?: string }) => {
     if (!searching) return true;
@@ -148,10 +153,10 @@ async function ResultsContent({
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span className="text-gold-300"><I.resolved s={18} /></span>
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">Results · Matokeo</p>
+          <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.results.title}</p>
         </div>
         <p className="font-mono text-[10.5px] text-text-subtle tabular-nums whitespace-nowrap">
-          {totalCount} resolved · {formatTzsCompact(totalVolume)} settled
+          {totalCount} {t.results.resolved} · {formatTzsCompact(totalVolume)} {t.common.settled}
         </p>
       </div>
 
@@ -169,7 +174,7 @@ async function ResultsContent({
           <div className="space-y-2.5 lg:space-y-4">
             {/* Sort */}
             <nav aria-label="Sort results" className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1 lg:mx-0 lg:px-0 lg:overflow-visible">
-              <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle pr-1 lg:pr-0 lg:mb-1">Sort</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle pr-1 lg:pr-0 lg:mb-1">{t.common.sort}</span>
               {SORT_OPTIONS.map((o) => {
                 const active = o.id === activeSort;
                 return (
@@ -185,7 +190,6 @@ async function ResultsContent({
                     style={active ? { background: "oklch(40% 0.12 262 / 0.35)", boxShadow: "0 0 10px oklch(63% 0.18 262 / 0.15)" } : undefined}
                   >
                     {o.label}
-                    <span className="ml-1.5 italic font-normal text-[10.5px] text-text-subtle">· {o.sw}</span>
                   </a>
                 );
               })}
@@ -193,7 +197,7 @@ async function ResultsContent({
 
             {/* Categories */}
             <nav aria-label="Market categories" className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1 lg:mx-0 lg:px-0 lg:overflow-visible">
-              <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle pr-1 lg:pr-0 lg:mb-1">Topic</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle pr-1 lg:pr-0 lg:mb-1">{t.common.topic}</span>
               {CATEGORIES.map((c) => {
                 const active = c.id === activeCat;
                 return (
@@ -218,12 +222,12 @@ async function ResultsContent({
             {totalCount > 0 && (
               <div className="rounded-lg border border-border bg-bg-elevated/60 p-3 space-y-2">
                 <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle">
-                  Outcomes · <span className="italic font-normal">Matokeo</span>
+                  {t.results.outcomes}
                 </p>
                 <div className="space-y-1.5">
-                  <OutcomeStat label="YES" sw="Ndiyo" count={yesWins} total={totalCount} color="var(--yes-400)" />
-                  <OutcomeStat label="NO" sw="Hapana" count={noWins} total={totalCount} color="var(--no-400)" />
-                  {voidCount > 0 && <OutcomeStat label="Void" sw="Batili" count={voidCount} total={totalCount} color="var(--text-subtle)" />}
+                  <OutcomeStat label={t.results.yesOutcome} count={yesWins} total={totalCount} color="var(--yes-400)" />
+                  <OutcomeStat label={t.results.noOutcome} count={noWins} total={totalCount} color="var(--no-400)" />
+                  {voidCount > 0 && <OutcomeStat label={t.results.voidOutcome} count={voidCount} total={totalCount} color="var(--text-subtle)" />}
                 </div>
               </div>
             )}
@@ -235,8 +239,8 @@ async function ResultsContent({
           {searching && (
             <p aria-live="polite" className="mb-3 font-mono text-[11px] text-text-subtle tabular-nums">
               {totalCount === 0
-                ? `No results match "${qRaw}"`
-                : `${totalCount} ${totalCount === 1 ? "result" : "results"} match "${qRaw}"`}
+                ? `${t.results.noResultsMatch} "${qRaw}"`
+                : `${totalCount} ${totalCount === 1 ? t.results.resultMatch : t.results.resultsMatch} "${qRaw}"`}
             </p>
           )}
 
@@ -253,7 +257,7 @@ async function ResultsContent({
                     yesPct={impliedYesPct(m)}
                     volume={m.yesPool + m.noPool}
                     predictors={m.predictorCount}
-                    timeLeft={m.resolvedOutcome === "VOID" ? "Voided" : `Resolved ${m.resolvedOutcome}`}
+                    timeLeft={m.resolvedOutcome === "VOID" ? t.common.voided : `${t.market.resolvedOutcome} ${m.resolvedOutcome}`}
                     status={m.status === "VOIDED" ? "VOIDED" : "RESOLVED"}
                     sourceUrl={m.sourceUrl}
                     spark={(cardCharts.get(m.id) ?? { spark: [] }).spark}
@@ -271,21 +275,16 @@ async function ResultsContent({
           ) : (
             <EmptyState
               kind="markets"
-              title={searching ? `No results match "${qRaw}"` : "No resolved markets yet"}
-              titleSw={searching ? "Hakuna matokeo yanayolingana" : "Bado hakuna soko lililotatuliwa"}
+              title={searching ? `${t.results.noResultsMatch} "${qRaw}"` : t.results.noResolvedYet}
               body={searching
-                ? "Try different keywords or clear the search."
-                : "Resolved markets will appear here once outcomes are confirmed."
-              }
-              bodySw={searching
-                ? "Jaribu maneno mengine au futa utafutaji."
-                : "Masoko yaliyotatuliwa yataonekana hapa matokeo yanapothibitishwa."
+                ? t.results.tryDifferentKeywords
+                : t.results.noResolvedBody
               }
               action={
                 searching ? (
-                  <Link href="/results" className="btn btn-ghost btn-sm">Clear search · Futa</Link>
+                  <Link href="/results" className="btn btn-ghost btn-sm">{t.market.clearSearchLabel}</Link>
                 ) : (
-                  <Link href="/markets" className="btn btn-gold btn-sm">Browse live markets →</Link>
+                  <Link href="/markets" className="btn btn-gold btn-sm">{t.results.browseLive}</Link>
                 )
               }
             />
@@ -297,13 +296,13 @@ async function ResultsContent({
 }
 
 /** Outcome mini-bar in sidebar */
-function OutcomeStat({ label, sw, count, total, color }: { label: string; sw: string; count: number; total: number; color: string }) {
+function OutcomeStat({ label, count, total, color }: { label: string; count: number; total: number; color: string }) {
   const pct = total > 0 ? Math.round((count / total) * 100) : 0;
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
         <span className="font-mono text-[10.5px] text-text-muted">
-          {label} <span className="italic font-normal text-text-subtle">· {sw}</span>
+          {label}
         </span>
         <span className="font-mono text-[10.5px] tabular-nums text-text-subtle">{count} ({pct}%)</span>
       </div>

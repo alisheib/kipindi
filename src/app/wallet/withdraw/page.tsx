@@ -9,6 +9,7 @@ import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { withdrawAction } from "./actions";
+import { getServerT } from "@/lib/i18n-server";
 
 export const metadata = { title: "Withdraw · Toa" };
 
@@ -21,6 +22,7 @@ const PROVIDERS = [
 ] as const;
 
 export default async function WithdrawPage({ searchParams }: { searchParams: Promise<{ error?: string; provider?: string; amount?: string; msisdn?: string }> }) {
+  const { t } = await getServerT();
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/wallet/withdraw");
 
@@ -42,7 +44,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
         className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
       >
         <I.chevronLeft s={14} />
-        Wallet
+        {t.wallet.title}
       </Link>
 
       <header className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated">
@@ -61,21 +63,21 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
         <div className="relative z-10 p-5 lg:p-6 flex items-end justify-between gap-4">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
-              Withdraw · Toa
+              {t.wallet.withdrawTitle}
             </p>
             <h1 className="mt-1 font-display text-[24px] lg:text-[26px] font-bold text-text leading-tight tracking-[-0.02em]">
-              Move funds out
+              {t.wallet.moveFundsOut}
             </h1>
-            <p className="mt-1 text-[13px] italic text-text-subtle">Mobile money or bank · M-pesa au benki</p>
+            <p className="mt-1 text-[13px] italic text-text-subtle">{t.wallet.mobileMoney}</p>
           </div>
           <div className="text-right shrink-0">
-            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Available</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{t.wallet.available}</p>
             <Cash className="font-display font-bold text-[22px] tabular-nums text-text leading-none block">
               {`TZS ${(wallet?.balance ?? 0).toLocaleString()}`}
             </Cash>
             {(wallet?.hold ?? 0) > 0 && (
               <Cash className="mt-1 font-mono text-[10.5px] tabular-nums text-warning-fg block">
-                {`hold ${(wallet?.hold ?? 0).toLocaleString()}`}
+                {`${t.wallet.holdWarning} ${(wallet?.hold ?? 0).toLocaleString()}`}
               </Cash>
             )}
           </div>
@@ -86,7 +88,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
         <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-no-700/60 bg-no-500/[0.10] px-4 py-3">
           <I.alertCircle s={16} />
           <div className="text-[12.5px] leading-snug">
-            <p className="font-display font-semibold text-text">Withdrawal didn&rsquo;t go through</p>
+            <p className="font-display font-semibold text-text">{t.wallet.withdrawFailed}</p>
             <p className="mt-0.5 text-text-muted">{errorMsg}</p>
           </div>
         </div>
@@ -96,15 +98,12 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
         <div className="flex items-start gap-2.5 rounded-xl border border-warning-border bg-warning-bg/30 p-4">
           <I.shieldcheck s={18} />
           <div className="min-w-0">
-            <p className="font-display font-semibold text-text">Verify your identity first</p>
+            <p className="font-display font-semibold text-text">{t.wallet.verifyFirst}</p>
             <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
-              Tanzania Gaming Act requires NIDA verification before any withdrawal.
-              <span className="block italic text-text-subtle text-[11.5px] mt-0.5">
-                Sheria ya Bodi ya Michezo ya Kubahatisha inahitaji NIDA.
-              </span>
+              {t.wallet.verifyFirstBody}
             </p>
             <Link href="/profile/kyc" className="btn btn-gold btn-sm mt-3">
-              Continue KYC →
+              {t.wallet.continueKyc}
             </Link>
           </div>
         </div>
@@ -116,7 +115,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
       >
         <fieldset disabled={!kycApproved}>
           <legend className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
-            Destination · Mahali
+            {t.wallet.destination}
           </legend>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {PROVIDERS.map((p, i) => (
@@ -139,13 +138,8 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
         </fieldset>
 
         <KitField
-          label="Amount · Kiasi"
-          hint={
-            <>
-              Min TZS 1,000 · Max TZS 5,000,000 per withdrawal.
-              Amounts ≥ <span className="font-mono text-text-muted">TZS 1,000,000</span> may require AML review (up to 24 hours).
-            </>
-          }
+          label={t.wallet.amount}
+          hint={t.wallet.amountHint}
         >
           <Input
             id="amount"
@@ -165,7 +159,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
           />
         </KitField>
 
-        <KitField label="Destination phone · Simu">
+        <KitField label={t.wallet.destinationPhone}>
           <Input
             id="msisdn"
             name="msisdn"
@@ -185,11 +179,9 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
         <div className="flex items-start gap-2.5 rounded-md border border-info-border bg-info-bg/30 px-3 py-2.5 text-[12.5px] leading-snug">
           <I.shieldcheck s={14} />
           <div>
-            <p className="font-display font-semibold text-text">Secured by KYC &amp; AML · Imelindwa</p>
+            <p className="font-display font-semibold text-text">{t.wallet.securedByKyc}</p>
             <p className="mt-0.5 text-text-muted">
-              Withdrawals are released only to a NIDA-verified account, and amounts of
-              <span className="font-mono text-text-muted"> TZS 1,000,000</span>+ are held for AML review.
-              SMS step-up confirmation is added once the licensed SMS provider is live.
+              {t.wallet.securedBody}
             </p>
           </div>
         </div>
@@ -197,15 +189,14 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
         <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg/30 px-3 py-2.5 text-[12.5px] leading-snug">
           <I.alertCircle s={14} />
           <div>
-            <p className="font-display font-semibold text-text">Tax notice · Notisi ya kodi</p>
+            <p className="font-display font-semibold text-text">{t.wallet.taxNotice}</p>
             <p className="mt-0.5 text-text-muted">
-              Tanzania withholds tax on declared winnings at withdrawal per the Income Tax Act (Cap 332).
-              The receipt screen shows the net amount.
+              {t.wallet.taxBody}
             </p>
           </div>
         </div>
 
-        {kycApproved ? <WithdrawConfirm /> : <SubmitButton label="Confirm withdrawal · Thibitisha" pendingLabel="Processing withdrawal…" />}
+        {kycApproved ? <WithdrawConfirm /> : <SubmitButton label={t.common.confirm} pendingLabel={t.common.loading} />}
       </form>
     </main>
   );

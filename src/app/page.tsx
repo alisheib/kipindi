@@ -7,27 +7,28 @@ import { listMarkets, impliedYesPct, isClosedByTime, isSelectionClosed, traderSe
 
 import { getCardChart } from "@/lib/server/market-history";
 import { getSession } from "@/lib/server/session";
+import { getServerT } from "@/lib/i18n-server";
 
 export const dynamic = "force-dynamic";
 
-function timeLeftStr(iso: string): string {
-  const ms = Date.parse(iso) - Date.now();
-  if (ms <= 0) return "closed";
-  const d = Math.floor(ms / (24 * 3600_000));
-  if (d > 0) return `${d}d left`;
-  const h = Math.floor(ms / 3600_000);
-  if (h > 0) return `${h}h left`;
-  const m = Math.floor(ms / 60_000);
-  return `${m}m left`;
-}
-
 export default async function LandingPage() {
+  const { t } = await getServerT();
   const live = (await listMarkets({ status: "LIVE" })).filter((m) => !isClosedByTime(m)).slice(0, 6);
   const traderMap = await traderSeedsByMarket();
   const cardCharts = new Map(await Promise.all(live.map(async (m) => [m.id, await getCardChart(m.id)] as const)));
   const session = await getSession();
   const isAuthed = !!session;
 
+  function timeLeftStr(iso: string): string {
+    const ms = Date.parse(iso) - Date.now();
+    if (ms <= 0) return t.market.closed;
+    const d = Math.floor(ms / (24 * 3600_000));
+    if (d > 0) return `${d}${t.market.dLeft}`;
+    const h = Math.floor(ms / 3600_000);
+    if (h > 0) return `${h}${t.market.hLeft}`;
+    const m = Math.floor(ms / 60_000);
+    return `${m}${t.market.mLeft}`;
+  }
 
   return (
     <div className="space-y-8 lg:space-y-10">
@@ -82,7 +83,7 @@ export default async function LandingPage() {
                 style={{ color: "oklch(90% 0.10 80)" }}
               >
                 <span style={{ width: 5, height: 5, borderRadius: 999, background: "oklch(90% 0.10 80)" }} />
-                Tanzania · Dar es Salaam
+                {t.home.heroLocation}
               </span>
             </div>
 
@@ -109,7 +110,7 @@ export default async function LandingPage() {
             <div className="flex items-center gap-3">
               <span style={{ height: 1, width: 80, background: "linear-gradient(90deg, oklch(90% 0.10 80), transparent)" }} />
               <span className="font-mono text-[10.5px] uppercase tracking-[0.16em]" style={{ color: "oklch(90% 0.10 80)" }}>
-                Est. 2026 · Dar es Salaam
+                {t.home.heroEst}
               </span>
             </div>
 
@@ -117,13 +118,7 @@ export default async function LandingPage() {
               className="font-display text-[15px] md:text-[18px] leading-[1.55] max-w-[52ch] m-0"
               style={{ color: "oklch(88% 0.03 268)", textShadow: "0 1px 12px oklch(8% 0.10 268 / 0.6)" }}
             >
-              Pesa kidogo, ukweli mkubwa. Trade questions about Tanzania&apos;s weather, markets, sport and culture — settled by official sources.
-            </p>
-            <p
-              className="font-display text-[13px] md:text-[15px] leading-[1.55] max-w-[52ch] m-0 italic"
-              style={{ color: "oklch(78% 0.04 268)", textShadow: "0 1px 12px oklch(8% 0.10 268 / 0.6)" }}
-            >
-              Shiriki katika utabiri wa hali ya hewa, masoko, michezo na utamaduni wa Tanzania — kila tukio likithibitishwa kwa mujibu wa vyanzo rasmi.
+              {t.home.heroBody}
             </p>
 
             <div className="flex flex-wrap gap-3 items-center">
@@ -133,14 +128,14 @@ export default async function LandingPage() {
                     href={"/markets" as never}
                     className="btn btn-gold btn-xl inline-flex items-center gap-2 rounded-pill"
                   >
-                    Browse markets
+                    {t.home.heroCta}
                     <I.arrowRight s={16} />
                   </Link>
                   <Link
                     href={"/positions" as never}
                     className="btn btn-ghost btn-xl inline-flex items-center rounded-pill"
                   >
-                    My positions
+                    {t.home.myPositions}
                   </Link>
                 </>
               ) : (
@@ -149,21 +144,21 @@ export default async function LandingPage() {
                     href={"/auth/register" as never}
                     className="btn btn-gold btn-xl inline-flex items-center gap-2 rounded-pill"
                   >
-                    Create account
+                    {t.common.createAccount}
                     <I.arrowRight s={16} />
                   </Link>
                   <Link
                     href={"/auth/login" as never}
                     className="btn btn-ghost btn-xl inline-flex items-center rounded-pill"
                   >
-                    Sign in
+                    {t.common.signIn}
                   </Link>
                   <Link
                     href={"/markets" as never}
                     className="font-mono text-[11px] uppercase tracking-[0.14em] hover:underline self-center"
                     style={{ color: "oklch(84% 0.08 200)" }}
                   >
-                    Browse markets first →
+                    {t.home.browsFirst}
                   </Link>
                 </>
               )}
@@ -180,11 +175,11 @@ export default async function LandingPage() {
         <section>
           <div className="mb-4 flex items-baseline justify-between">
             <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold" style={{ color: "var(--live-400)" }}>Live · Hai</p>
-              <h2 className="font-display text-[26px] md:text-[30px] font-bold text-text">Pick a side now</h2>
+              <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold" style={{ color: "var(--live-400)" }}>{t.home.liveSection}</p>
+              <h2 className="font-display text-[26px] md:text-[30px] font-bold text-text">{t.home.pickASideNow}</h2>
             </div>
             <Link href={"/markets" as never} className="font-mono text-[12px] uppercase tracking-[0.16em] text-brand-300 hover:text-brand-200">
-              View all →
+              {t.common.viewAll}
             </Link>
           </div>
           <div className="market-grid">
@@ -200,7 +195,7 @@ export default async function LandingPage() {
                   yesPct={impliedYesPct(m)}
                   volume={m.yesPool + m.noPool}
                   predictors={m.predictorCount}
-                  timeLeft={isSelectionClosed(m) ? "Waiting for results" : timeLeftStr(m.resolutionAt)}
+                  timeLeft={isSelectionClosed(m) ? t.home.waitingForResults : timeLeftStr(m.resolutionAt)}
                   status="LIVE"
                   selectionClosed={isSelectionClosed(m)}
                   sourceUrl={m.sourceUrl}
@@ -230,26 +225,23 @@ export default async function LandingPage() {
           <TrustItem
             icon={<I.chart s={20} />}
             n="01"
-            en="Pick a side, stake TZS"
-            sw="Chagua upande, weka dau kwa TZS"
-            body="Price Competition pool. Min TZS 100. Drag the conviction needle on any market."
+            title={t.home.pickASideStake}
+            body={t.home.priceCompetitionPool}
             tone="yes"
           />
           <TrustItem
             icon={<I.shieldcheck s={20} />}
             n="02"
-            en="Two-officer resolution"
-            sw="Azimio lililoidhinishwa na maafisa wawili"
-            body="Every market resolves against a public source URL with two officer signatures."
+            title={t.home.twoOfficerResolution}
+            body={t.home.twoOfficerBody}
             tone="teal"
             href="/fairness"
           />
           <TrustItem
             icon={<I.phone s={20} />}
             n="03"
-            en="Get paid via M-Pesa"
-            sw="Lipwa kwa M-Pesa"
-            body="Winners receive their money directly in their wallet. Withdrawals in seconds."
+            title={t.home.getPaidViaMpesa}
+            body={t.home.getPaidBody}
             tone="gold"
           />
         </div>
@@ -261,12 +253,11 @@ export default async function LandingPage() {
 }
 
 function TrustItem({
-  icon, n, en, sw, body, tone, href,
+  icon, n, title, body, tone, href,
 }: {
   icon: React.ReactNode;
   n: string;
-  en: string;
-  sw: string;
+  title: string;
   body: string;
   tone: "yes" | "teal" | "gold";
   href?: string;
@@ -289,11 +280,8 @@ function TrustItem({
         {icon}
       </span>
       <div className="min-w-0">
-        <div className="flex items-baseline gap-2 mb-0.5">
-          <p className={`font-mono text-[10px] tracking-[0.16em] font-bold ${accent}`}>{n}</p>
-          <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle italic">{sw}</p>
-        </div>
-        <h3 className="font-display text-[16px] font-semibold leading-tight text-text">{en}</h3>
+        <p className={`font-mono text-[10px] tracking-[0.16em] font-bold ${accent}`}>{n}</p>
+        <h3 className="font-display text-[16px] font-semibold leading-tight text-text">{title}</h3>
         <p className="mt-1 text-[13px] leading-relaxed text-text-muted">{body}</p>
       </div>
     </div>

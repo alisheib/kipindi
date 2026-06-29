@@ -10,6 +10,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { RateLimitBanner } from "@/components/auth/rate-limit-banner";
 import { startLoginAction } from "./actions";
 import { SUPPORT_EMAIL, HELPLINE } from "@/lib/support-config";
+import { getServerT } from "@/lib/i18n-server";
 
 export const metadata = { title: "Sign in · Ingia" };
 
@@ -22,6 +23,7 @@ export default async function LoginPage({
   // src/app/auth/layout.tsx so the redirect happens before the page renders.
   // Avoiding redirect() inside the page itself sidesteps a Next.js 16 dev-mode
   // hook-count mismatch on hot reload.
+  const { t } = await getServerT();
   const sp = await searchParams;
   // Detect session-revoked flash (another device signed in)
   const jar = await cookies();
@@ -40,62 +42,62 @@ export default async function LoginPage({
   const errorPanel = (() => {
     if (sp.reset === "1") return {
       tone: "success" as const,
-      title: "Password reset · Nenosiri limebadilishwa",
-      body: "Your password has been updated. Sign in with your new password.",
+      title: t.auth.passwordReset,
+      body: t.auth.passwordResetBody,
       cta: null,
     };
     if (sp.closed === "1") return {
       tone: "warning" as const,
-      title: "Account closed · Akaunti imefungwa",
-      body: "Your account has been closed. Contact support if you believe this is in error.",
+      title: t.auth.accountClosed,
+      body: t.auth.accountClosedBody,
       cta: null,
     };
     if (sp.excluded === "1") return {
       tone: "danger" as const,
-      title: "Self-exclusion active · Umejitenga",
-      body: "Your self-exclusion is now active. You will not be able to sign in until the period ends.",
+      title: t.auth.selfExclusionActive,
+      body: t.auth.selfExclusionBody,
       cta: null,
     };
     if (sp.cooled === "1") return {
       tone: "warning" as const,
-      title: "Cooling off · Pumzika kidogo",
-      body: "Your cooling-off period is now active. You will not be able to sign in until it ends.",
+      title: t.auth.coolingOff,
+      body: t.auth.coolingOffBody,
       cta: null,
     };
     if (wasRevoked) return {
       tone: "warning" as const,
-      title: "Signed out · Umetolewa",
-      body: "Your account was signed in on another device. Only one session is allowed at a time for your security.",
+      title: t.auth.signedOut,
+      body: t.auth.signedOutBody,
       cta: null,
     };
     switch (sp.error) {
       case "no_account":
         return {
           tone: "warning" as const,
-          title: "No account yet · Bado huna akaunti",
-          body: "We couldn't find an account for that phone. Create one in 30 seconds.",
-          cta: { href: `/auth/register${nextSafe ? `?next=${encodeURIComponent(nextSafe)}` : ""}`, label: "Create account · Fungua akaunti" },
+          title: t.auth.noAccountYet,
+          body: t.auth.noAccountYetBody,
+          cta: { href: `/auth/register${nextSafe ? `?next=${encodeURIComponent(nextSafe)}` : ""}`, label: t.auth.createOne },
         };
       case "wrong_credentials":
         return {
           tone: "danger" as const,
-          title: "Wrong phone or password · Simu au nenosiri si sahihi",
-          body: "Check the digits and try again. After several failed tries we'll slow you down.",
+          title: t.auth.wrongCredentials,
+          body: t.auth.wrongCredentialsBody,
           cta: null,
         };
       case "rate_limited":
         return {
           tone: "warning" as const,
-          title: "Too many tries · Majaribio mengi",
+          title: t.auth.tooManyTries,
           body: Number.isFinite(retrySec) && retrySec > 0
             ? <RateLimitBanner seconds={retrySec} clearHref={`/auth/login${nextSafe ? `?next=${encodeURIComponent(nextSafe)}` : ""}`} />
-            : "Wait a couple of minutes and try the same phone again.",
+            : t.auth.tooManyTriesBody,
           cta: null,
         };
       case "blocked":
         return {
           tone: "danger" as const,
-          title: "Account unavailable · Akaunti haipatikani",
+          title: t.auth.accountUnavailable,
           body: `Contact ${SUPPORT_EMAIL()} if you believe this is in error.`,
           cta: null,
         };
@@ -117,14 +119,13 @@ export default async function LoginPage({
         >
           <div>
             <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-gold-300">
-              Sign in · Ingia
+              {t.auth.signInTitle}
             </p>
             <h1 className="mt-1.5 font-display text-[28px] font-bold leading-tight text-text tracking-[-0.02em]">
-              Continue with your phone
+              {t.auth.continueWithPhone}
             </h1>
             <p className="mt-1.5 text-[13.5px] text-text-muted">
-              Enter your phone and password.{" "}
-              <span className="italic text-text-subtle">Weka simu na nenosiri.</span>
+              {t.auth.enterPhonePassword}
             </p>
           </div>
 
@@ -160,7 +161,7 @@ export default async function LoginPage({
 
           <form action={startLoginAction} className="space-y-4">
             {nextSafe && <input type="hidden" name="next" value={nextSafe} />}
-            <Field label="Phone · Simu" hint="Tanzania mobile, 9 digits after +255.">
+            <Field label={t.auth.phone} hint={t.auth.phonePlaceholder}>
               <PhoneInput
                 id="phone"
                 name="phone"
@@ -170,7 +171,7 @@ export default async function LoginPage({
               />
             </Field>
 
-            <Field label="Password · Nenosiri" hint="At least 8 characters.">
+            <Field label={t.auth.password} hint={t.auth.passwordHint}>
               <PasswordInput
                 id="password"
                 name="password"
@@ -185,7 +186,7 @@ export default async function LoginPage({
               {sp.error === "wrong_credentials" && (
                 <p id="login-error" className="mt-1.5 flex items-center gap-1.5 text-[12px] text-no-300 font-medium">
                   <I.alertCircle s={13} />
-                  Wrong phone or password · Simu au nenosiri si sahihi
+                  {t.auth.wrongCredentials}
                 </p>
               )}
             </Field>
@@ -195,26 +196,26 @@ export default async function LoginPage({
                 href="/auth/forgot-password"
                 className="font-mono text-[11.5px] uppercase tracking-[0.14em] text-text-subtle hover:text-text"
               >
-                Forgot password? · Umesahau?
+                {t.auth.forgotPassword}
               </Link>
             </div>
 
-            <SubmitButton label="Sign in · Ingia" pendingLabel="Signing in…" />
+            <SubmitButton label={t.auth.signInTitle} pendingLabel="Signing in…" />
           </form>
 
           <p className="border-t border-border pt-3 text-center text-[13px] text-text-muted">
-            No account?{" "}
+            {t.auth.noAccount}{" "}
             <Link
               href={`/auth/register${nextSafe ? `?next=${encodeURIComponent(nextSafe)}` : ""}` as never}
               className="font-semibold text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline"
             >
-              Create one · Fungua akaunti
+              {t.auth.createOne}
             </Link>
           </p>
         </section>
 
         <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-text-subtle">
-          18+ · Licensed by GBT · Helpline {HELPLINE()}
+          {t.auth.licensedByGbt} {HELPLINE()}
         </p>
       </div>
     </main>

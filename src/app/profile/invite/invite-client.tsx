@@ -13,16 +13,17 @@ import { useT } from "@/lib/i18n";
  */
 export function ReferralShare({ link, shareText }: { link: string; shareText: string }) {
   const { toast } = useToast();
+  const { t } = useT();
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(link);
       setCopied(true);
-      toast({ title: "Link copied · Imenakiliwa", variant: "success" });
+      toast({ title: t.toast.linkCopied, variant: "success" });
       setTimeout(() => setCopied(false), 1800);
     } catch {
-      toast({ title: "Couldn't copy", description: "Long-press the link to copy it.", variant: "danger" });
+      toast({ title: t.toast.couldntCopy, description: t.toast.longPressCopy, variant: "danger" });
     }
   };
 
@@ -45,7 +46,7 @@ export function ReferralShare({ link, shareText }: { link: string; shareText: st
   return (
     <div>
       <p className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.1em] font-bold text-text-subtle">
-        Your referral link · Kiungo chako
+        {t.profile.yourReferralLink}
       </p>
       <div className="flex items-center gap-2 mb-2.5">
         <div className="flex-1 min-w-0">
@@ -57,11 +58,11 @@ export function ReferralShare({ link, shareText }: { link: string; shareText: st
           className="btn btn-ghost btn-md shrink-0 inline-flex items-center gap-1.5"
         >
           {copied ? <I.check s={14} /> : <I.copy s={14} />}
-          {copied ? "Copied" : "Copy"}
+          {copied ? t.common.copied : t.common.copy}
         </button>
       </div>
       <Button variant="gold" size="lg" fullWidth leading={<I.share s={17} />} onClick={share}>
-        Share with Friends · Shiriki
+        {t.profile.shareWithFriends}
       </Button>
       <div className="mt-2.5 flex gap-2">
         <a href={waHref} target="_blank" rel="noopener noreferrer" className="flex-1">
@@ -75,7 +76,7 @@ export function ReferralShare({ link, shareText }: { link: string; shareText: st
           </Button>
         </a>
         <Button variant="ghost" size="md" fullWidth leading={<I.copy s={14} />} className="flex-1 text-[12px]" onClick={copy}>
-          Copy link
+          {t.common.copyLink}
         </Button>
       </div>
     </div>

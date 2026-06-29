@@ -16,6 +16,7 @@ import { listComments } from "@/lib/server/comments-store";
 import { CommentsThread } from "@/components/markets/comments-thread";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { formatDateTime, formatTzsCompact } from "@/lib/utils";
+import { getServerT } from "@/lib/i18n-server";
 
 
 export const dynamic = "force-dynamic";
@@ -70,6 +71,7 @@ export default async function MarketDetail({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ side?: "YES" | "NO" }>;
 }) {
+  const { t } = await getServerT();
   const { id } = await params;
   const { side } = await searchParams;
   const m = await getMarket(id);
@@ -125,7 +127,7 @@ export default async function MarketDetail({
       {/* ── Back link ── */}
       <a href="/markets" className="inline-flex items-center gap-1 text-[12px] font-mono uppercase tracking-[0.16em] text-text-subtle hover:text-text transition-colors">
         <I.chevronLeft s={11} />
-        Markets
+        {t.common.markets}
       </a>
 
       {/* ── Page header — title, badges, share ── */}
@@ -137,17 +139,17 @@ export default async function MarketDetail({
           {m.status === "LIVE" && (
             <span className="inline-flex items-center gap-1.5 rounded-pill border border-danger-border bg-danger-bg/40 px-3 py-1 text-[12px] font-semibold text-danger-fg">
               <span className="live-dot" style={{ width: 6, height: 6 }} />
-              Live
+              {t.common.live}
             </span>
           )}
           {m.status === "CLOSED" && !isResolved && (
             <span className="inline-flex items-center gap-1.5 rounded-pill border border-warning-border bg-warning-bg/40 px-3 py-1 text-[12px] font-semibold text-warning-fg">
-              Closed · Awaiting settlement
+              {t.market.closedAwaitingSettlement}
             </span>
           )}
           {isResolved && m.resolvedOutcome && (
             <span className="inline-flex items-center rounded-pill border border-gold-subtleHover bg-gold-subtle px-3 py-1 text-[12px] font-bold text-gold-300">
-              Resolved · {m.resolvedOutcome}
+              {t.market.resolvedOutcome} · {m.resolvedOutcome}
             </span>
           )}
           <a
@@ -180,9 +182,9 @@ export default async function MarketDetail({
 
           {/* 2. KPI strip — volume, participation, timing at a glance */}
           <div className="grid grid-cols-3 gap-3">
-            <KPI label="Volume"     value={formatTzsCompact(m.yesPool + m.noPool)} icon={<I.chart s={14} />} />
-            <KPI label="Predictors" value={String(m.predictorCount)}     icon={<I.users s={14} />} />
-            <KPI label="Resolves"   value={fmtTime(m.resolutionAt)} mono />
+            <KPI label={t.market.volume}     value={formatTzsCompact(m.yesPool + m.noPool)} icon={<I.chart s={14} />} />
+            <KPI label={t.market.predictors} value={String(m.predictorCount)}     icon={<I.users s={14} />} />
+            <KPI label={t.market.resolves}   value={fmtTime(m.resolutionAt)} mono />
           </div>
 
           {/* 3a. One-sided disclaimer — shown when all bets are on one side */}
@@ -191,14 +193,10 @@ export default async function MarketDetail({
               <I.warning s={15} className="shrink-0 mt-0.5 text-warning-fg" />
               <div>
                 <p className="font-mono text-[10.5px] font-bold uppercase tracking-[0.14em] text-warning-fg mb-1">
-                  One-sided market · Soko la upande mmoja
+                  {t.market.oneSidedMarket}
                 </p>
                 <p className="text-[12px] leading-relaxed text-text-muted">
-                  All current bets are on the same side. If no opposing bets are placed before resolution,
-                  everyone receives a <strong>full refund at no fee</strong> — there is no opposing pool to pay winnings from.
-                </p>
-                <p className="mt-1 text-[11px] italic text-text-subtle">
-                  Dau zote ziko upande mmoja. Kama hakuna dau upande mwingine, kila mtu atapata pesa yake yote bila gharama.
+                  {t.market.oneSidedBody}
                 </p>
               </div>
             </div>
@@ -208,7 +206,7 @@ export default async function MarketDetail({
           {!isResolved && (
             <div className="rounded-lg glass-panel p-4 space-y-2.5">
               {m.selectionClosedAt && !isSelectionClosed(m) && (
-                <Countdown to={m.selectionClosedAt} label="Selection closes in · Uchaguzi unafungwa" />
+                <Countdown to={m.selectionClosedAt} label={t.market.selectionClosesIn} />
               )}
               {m.selectionClosedAt && isSelectionClosed(m) && m.status === "LIVE" && (
                 <div className="flex items-center gap-2 text-[12.5px] font-semibold" style={{ color: "var(--gold-300)" }}>

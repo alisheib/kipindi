@@ -14,8 +14,9 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { Avatar, TierBadge as KitTierBadge } from "@/components/ui/avatar";
 import { PageRibbon } from "@/components/layout/page-ribbon";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
+import { getServerT, type Dict } from "@/lib/i18n-server";
 
-export const metadata = { title: "Leaderboard · Bingwa" };
+export const metadata = { title: "Leaderboard" };
 export const dynamic = "force-dynamic";
 
 type Tier = "sovereign" | "diamond" | "gold" | "silver" | "bronze";
@@ -130,6 +131,7 @@ async function buildConsensusSeries(): Promise<{ t: string; yes: number }[]> {
 }
 
 export default async function LeaderboardPage() {
+  const { t } = await getServerT();
   const real = await buildLeaderboard();
   // Show REAL players from the very first one so a player can always see
   // themselves ranked. Only fall back to the sample board when there are
@@ -138,20 +140,22 @@ export default async function LeaderboardPage() {
   const rows = isSynthetic ? syntheticLeaderboard() : real;
   const consensus = await buildConsensusSeries();
 
+  // Tier display name from the dict (first word of the tier description)
+  const tierDisplayName = (tier: Tier) => t.leaderboard[`tier${tier.charAt(0).toUpperCase()}${tier.slice(1)}` as keyof typeof t.leaderboard].split(" ")[0];
+
   return (
     <main className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6 space-y-6">
       <RefreshPoller intervalMs={30_000} />
       <header>
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">Leaderboard · Bingwa</p>
-        <h1 className="font-display text-[28px] font-bold text-text">Top predictors</h1>
-        <p className="text-[14px] italic text-text-subtle">Watabiri bora wa mwezi</p>
+        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.leaderboard.title}</p>
+        <h1 className="font-display text-[28px] font-bold text-text">{t.leaderboard.topPredictors}</h1>
       </header>
 
       <PageRibbon
         stats={[
-          { label: "Top tier", sw: "Daraja la juu", value: rows[0]?.tier === "sovereign" ? "Sovereign" : rows[0]?.tier === "diamond" ? "Diamond" : rows[0]?.tier === "gold" ? "Gold" : "Silver", accent: "gold" },
-          { label: "Best ROI", sw: "ROI bora", value: `${rows[0]?.roi.toFixed(1) ?? "0"}%`, accent: "yes" },
-          { label: "Predictors", sw: "Watabiri", value: rows.length.toLocaleString("en-US") },
+          { label: t.leaderboard.topTier, value: tierDisplayName(rows[0]?.tier ?? "bronze"), accent: "gold" },
+          { label: t.leaderboard.bestRoi, value: `${rows[0]?.roi.toFixed(1) ?? "0"}%`, accent: "yes" },
+          { label: t.leaderboard.predictorsCount, value: rows.length.toLocaleString("en-US") },
         ]}
       />
 
@@ -161,12 +165,12 @@ export default async function LeaderboardPage() {
           <div className="flex items-baseline justify-between mb-3">
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">
-                Platform-wide consensus · YES probability
+                {t.leaderboard.consensus}
               </p>
-              <p className="text-[12px] italic text-text-subtle">Wastani wa imani · 14 siku</p>
+              <p className="text-[12px] italic text-text-subtle">{t.leaderboard.avgConviction}</p>
             </div>
             <p className="font-mono text-[11px] text-text-muted">
-              {Math.round(consensus[consensus.length - 1].yes * 100)}% today
+              {Math.round(consensus[consensus.length - 1].yes * 100)}% {t.leaderboard.today}
             </p>
           </div>
           <PriceChart data={consensus} height={180} />
@@ -176,19 +180,19 @@ export default async function LeaderboardPage() {
       <section className="overflow-x-auto rounded-xl glass-panel">
         {isSynthetic && (
           <div className="px-4 py-2.5 border-b border-gold-700/40 bg-gold-500/[0.06] flex items-center gap-2">
-            <span className="inline-flex items-center rounded-pill border border-gold-700 bg-gold-500/10 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.10em] text-gold-300">Demo</span>
-            <p className="text-[11.5px] text-text-muted">Sample data — real rankings appear as players join and predict. <span className="italic text-text-subtle">Takwimu za mfano.</span></p>
+            <span className="inline-flex items-center rounded-pill border border-gold-700 bg-gold-500/10 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.10em] text-gold-300">{t.leaderboard.demo}</span>
+            <p className="text-[11.5px] text-text-muted">{t.leaderboard.sampleData}</p>
           </div>
         )}
         <table className="admin-tbl min-w-[640px]">
           <thead className="border-b border-border bg-bg-overlay">
             <tr className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
               <th className="text-left p-3 w-14">#</th>
-              <th className="text-left p-3">Predictor</th>
-              <th className="text-right p-3">ROI</th>
-              <th className="text-left p-3 hidden md:table-cell">14-day stakes</th>
-              <th className="text-right p-3 hidden md:table-cell">Streak</th>
-              <th className="text-right p-3">Resolved</th>
+              <th className="text-left p-3">{t.leaderboard.tablePredictor}</th>
+              <th className="text-right p-3">{t.leaderboard.tableRoi}</th>
+              <th className="text-left p-3 hidden md:table-cell">{t.leaderboard.tableStakes}</th>
+              <th className="text-right p-3 hidden md:table-cell">{t.leaderboard.tableStreak}</th>
+              <th className="text-right p-3">{t.leaderboard.tableResolved}</th>
             </tr>
           </thead>
           <tbody>
@@ -201,7 +205,7 @@ export default async function LeaderboardPage() {
                   <div className="flex items-center gap-2">
                     <Avatar initials={r.handle.slice(0, 2)} size="sm" seed={r.userId} />
                     <span className="font-medium text-text">{r.handle}</span>
-                    <TierBadge tier={r.tier} />
+                    <TierBadge tier={r.tier} t={t} />
                   </div>
                 </td>
                 <td
@@ -215,7 +219,7 @@ export default async function LeaderboardPage() {
                   <VolumeSparkline data={r.spark} width={140} height={32} />
                 </td>
                 <td className="p-3 text-right hidden md:table-cell font-mono tabular-nums text-text-muted">
-                  {r.streak > 0 ? `${r.streak} win${r.streak > 1 ? "s" : ""}` : "—"}
+                  {r.streak > 0 ? `${r.streak} ${r.streak > 1 ? t.leaderboard.winsLabel : t.leaderboard.winLabel}` : "—"}
                 </td>
                 <td className="p-3 text-right font-mono tabular-nums text-text-muted">{r.resolved}</td>
               </tr>
@@ -229,13 +233,13 @@ export default async function LeaderboardPage() {
 
 // Uses the canonical <TierBadge> atom (one heraldic look platform-wide), wrapped
 // in the leaderboard's richer tooltip describing each tier's threshold.
-function TierBadge({ tier }: { tier: Tier }) {
+function TierBadge({ tier, t }: { tier: Tier; t: Dict }) {
   const desc = {
-    sovereign: "Sovereign · ≥50 resolved · ≥60% ROI · heraldic honour",
-    diamond:   "Diamond · ≥20 resolved · ≥30% ROI",
-    gold:      "Gold · ≥10 resolved · ≥15% ROI",
-    silver:    "Silver · ≥5 resolved · positive ROI",
-    bronze:    "Bronze · entry tier",
+    sovereign: t.leaderboard.tierSovereign,
+    diamond:   t.leaderboard.tierDiamond,
+    gold:      t.leaderboard.tierGold,
+    silver:    t.leaderboard.tierSilver,
+    bronze:    t.leaderboard.tierBronze,
   }[tier];
   return (
     <Tooltip label={desc}>

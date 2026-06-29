@@ -5,67 +5,43 @@ import { MarketCard } from "@/components/markets/market-card";
 import { listMarkets, impliedYesPct, isClosedByTime, isSelectionClosed, traderSeedsByMarket, type MarketCategory } from "@/lib/server/market-service";
 import { getCardChart } from "@/lib/server/market-history";
 import { getProposalsConfig } from "@/lib/server/proposals-config";
+import { getServerT } from "@/lib/i18n-server";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { MarketSearch } from "./market-search";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 
-export const metadata = { title: "Markets · Soko" };
+export const metadata = { title: "Markets" };
 export const dynamic = "force-dynamic";
 
-const CATEGORIES: Array<{ id: "all" | MarketCategory; label: string }> = [
-  { id: "all",     label: "All" },
-  { id: "sports",  label: "Sports" },
-  { id: "macro",   label: "Macro" },
-  { id: "weather", label: "Weather" },
-  { id: "crypto",  label: "Crypto" },
-  { id: "culture", label: "Culture" },
-  { id: "tech",    label: "Tech" },
-  { id: "other",   label: "Other" },
-];
-
-// "When does it close?" filter — kit-faithful pill row above the
-// category tabs. Lets the operator drop the manager straight onto
-// minute-scale demo markets so the bet → resolve → celebrate loop
-// closes inside a single demo session.
 type WhenFilter = "new" | "soon" | "today" | "week" | "all";
-const WHEN_OPTIONS: Array<{ id: WhenFilter; label: string; sw: string; cutoffMs: number | null }> = [
-  { id: "new",   label: "New",          sw: "Mpya",            cutoffMs: null },               // newest-listed first
-  { id: "soon",  label: "Ending soon",  sw: "Karibu kuisha",   cutoffMs: 60 * 60_000 },        // ≤ 1h
-  { id: "today", label: "Today",        sw: "Leo",             cutoffMs: 24 * 3600_000 },      // ≤ 24h
-  { id: "week",  label: "This week",    sw: "Wiki hii",        cutoffMs: 7 * 24 * 3600_000 },  // ≤ 7d
-  { id: "all",   label: "All",          sw: "Vyote",           cutoffMs: null },
-];
-
-function timeLeftStr(iso: string): string {
-  const ms = Date.parse(iso) - Date.now();
-  if (ms <= 0) return "closed";
-  const d = Math.floor(ms / (24 * 3600_000));
-  if (d > 0) return `${d}d left`;
-  const h = Math.floor(ms / 3600_000);
-  if (h > 0) return `${h}h left`;
-  const m = Math.floor(ms / 60_000);
-  return `${m}m left`;
-}
+const WHEN_CUTOFFS: Record<WhenFilter, number | null> = {
+  new:   null,
+  soon:  60 * 60_000,
+  today: 24 * 3600_000,
+  week:  7 * 24 * 3600_000,
+  all:   null,
+};
 
 export default async function MarketsPage({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string; q?: string; page?: string }> }) {
+  const { t } = await getServerT();
   const allLive = (await listMarkets({ status: "LIVE" })).filter((m) => !isClosedByTime(m));
   const totalVolume = allLive.reduce((s, m) => s + m.yesPool + m.noPool, 0);
   return (
     <main className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6">
       {/* Accessible page heading (WCAG 1.3.1 / 2.4.6). Visually hidden — the
           design uses a slim content-first header, not a marketing H1. */}
-      <h1 className="sr-only">Markets · Soko</h1>
+      <h1 className="sr-only">{t.market.title}</h1>
       {/* Auto-refresh every 30s so odds, volumes, and time-left stay
           current without the player needing to F5. Pauses when the tab
           is backgrounded. Also responds to 50pick:refresh events. */}
       <RefreshPoller intervalMs={30_000} />
       {/* Lean, content-first header — the marketing hero lives on the homepage. */}
       <div className="mb-4 flex items-center justify-between gap-3">
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">Markets · Soko</p>
+        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.market.title}</p>
         <p className="font-mono text-[10.5px] text-text-subtle tabular-nums whitespace-nowrap">
-          {allLive.length} live · TZS {(totalVolume / 1000).toFixed(0)}k in play
+          {allLive.length} {t.market.liveCount} · TZS {(totalVolume / 1000).toFixed(0)}k {t.market.tzsInPlay}
         </p>
       </div>
 
@@ -97,7 +73,8 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
 }
 
 /** Gold-accented entry point into Feature 2 (player market proposals). */
-function ProposalEntryCard() {
+async function ProposalEntryCard() {
+  const { t } = await getServerT();
   const cfg = getProposalsConfig();
   if (!cfg.enabled) return null;
   return (
@@ -110,8 +87,8 @@ function ProposalEntryCard() {
         <I.trophy s={22} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="font-display text-[14.5px] font-bold text-text">Propose Markets &amp; Get Paid</p>
-        <p className="font-display italic text-text-subtle text-[11.5px]">Pendekeza soko{cfg.prizeTzs > 0 ? ` · pata TZS ${cfg.prizeTzs.toLocaleString()}` : ""}</p>
+        <p className="font-display text-[14.5px] font-bold text-text">{t.market.proposeAndGetPaid}</p>
+        <p className="font-display italic text-text-subtle text-[11.5px]">{t.common.proposeEarn}{cfg.prizeTzs > 0 ? ` · TZS ${cfg.prizeTzs.toLocaleString()}` : ""}</p>
       </div>
       <I.arrowRight s={18} />
     </Link>
@@ -119,10 +96,31 @@ function ProposalEntryCard() {
 }
 
 async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string; q?: string; page?: string }> }) {
+  const { t } = await getServerT();
   const sp = await searchParams;
   const activeWhen = (sp.when as WhenFilter | undefined) ?? "today";
   const activeCat = sp.cat ?? "all";
   const activeQ = (sp.q ?? "").trim();
+
+  const CATEGORIES: Array<{ id: "all" | MarketCategory; label: string }> = [
+    { id: "all",     label: t.market.catAll },
+    { id: "sports",  label: t.market.catSports },
+    { id: "macro",   label: t.market.catMacro },
+    { id: "weather", label: t.market.catWeather },
+    { id: "crypto",  label: t.market.catCrypto },
+    { id: "culture", label: t.market.catCulture },
+    { id: "tech",    label: t.market.catTech },
+    { id: "other",   label: t.market.catOther },
+  ];
+
+  const WHEN_OPTIONS: Array<{ id: WhenFilter; label: string }> = [
+    { id: "new",   label: t.market.whenNew },
+    { id: "soon",  label: t.market.whenEndingSoon },
+    { id: "today", label: t.market.whenToday },
+    { id: "week",  label: t.market.whenThisWeek },
+    { id: "all",   label: t.market.whenAll },
+  ];
+
   const buildHref = (next: { when?: WhenFilter; cat?: string }) => {
     const params = new URLSearchParams();
     const w = next.when ?? activeWhen;
@@ -135,8 +133,8 @@ async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: strin
   };
   return (
     <div className="space-y-2.5 lg:space-y-4">
-      <nav aria-label="When does it close?" className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1 lg:mx-0 lg:px-0 lg:overflow-visible">
-        <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle pr-1 lg:pr-0 lg:mb-1">When</span>
+      <nav aria-label={t.common.when} className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1 lg:mx-0 lg:px-0 lg:overflow-visible">
+        <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle pr-1 lg:pr-0 lg:mb-1">{t.common.when}</span>
         {WHEN_OPTIONS.map((o) => {
           const active = o.id === activeWhen;
           return (
@@ -152,13 +150,12 @@ async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: strin
               style={active ? { background: "oklch(40% 0.12 262 / 0.35)", boxShadow: "0 0 10px oklch(63% 0.18 262 / 0.15)" } : undefined}
             >
               {o.label}
-              <span className="ml-1.5 italic font-normal text-[10.5px] text-text-subtle">· {o.sw}</span>
             </a>
           );
         })}
       </nav>
-      <nav aria-label="Market categories" className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1 lg:mx-0 lg:px-0 lg:overflow-visible">
-        <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle pr-1 lg:pr-0 lg:mb-1">Topic</span>
+      <nav aria-label={t.common.topic} className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1 lg:mx-0 lg:px-0 lg:overflow-visible">
+        <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle pr-1 lg:pr-0 lg:mb-1">{t.common.topic}</span>
         {CATEGORIES.map((c) => {
           const active = c.id === activeCat;
           return (
@@ -183,10 +180,11 @@ async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: strin
 }
 
 async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string; q?: string; page?: string }> }) {
+  const { t } = await getServerT();
   const sp = await searchParams;
   const cat = (sp.cat as MarketCategory | undefined) ?? undefined;
   const whenId = (sp.when as WhenFilter | undefined) ?? "today";
-  const whenCfg = WHEN_OPTIONS.find(o => o.id === whenId) ?? WHEN_OPTIONS[1];
+  const whenCutoff = WHEN_CUTOFFS[whenId] ?? WHEN_CUTOFFS.today;
   // Cap the query length (defensive — keeps the URL + match work bounded).
   const qRaw = (sp.q ?? "").trim().slice(0, 100);
   const searching = qRaw.length > 0;
@@ -233,9 +231,9 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
     const liveAll = bettable
       .map(m => ({ m, ms: Math.max(0, Date.parse(m.resolutionAt) - now) }))
       .sort((a, b) => a.ms - b.ms);
-    live = (whenCfg.cutoffMs === null
+    live = (whenCutoff === null
       ? liveAll
-      : liveAll.filter(x => x.ms <= whenCfg.cutoffMs!)
+      : liveAll.filter(x => x.ms <= whenCutoff!)
     ).map(x => x.m);
   }
   // Paginate the live grid with the shared player page size so a long board
@@ -254,6 +252,17 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
     return qs ? `/markets?${qs}` : "/markets";
   })();
 
+  function timeLeftStr(iso: string): string {
+    const ms = Date.parse(iso) - Date.now();
+    if (ms <= 0) return t.market.closed;
+    const d = Math.floor(ms / (24 * 3600_000));
+    if (d > 0) return `${d}${t.market.dLeft}`;
+    const h = Math.floor(ms / 3600_000);
+    if (h > 0) return `${h}${t.market.hLeft}`;
+    const m = Math.floor(ms / 60_000);
+    return `${m}${t.market.mLeft}`;
+  }
+
   // Show a small resolved teaser — the full browsable archive lives at /results.
   const resolved = searching
     ? (await listMarkets({ status: "RESOLVED" })).filter(matches).slice(0, 6)
@@ -268,8 +277,8 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
       {searching && (
         <p aria-live="polite" className="mb-3 font-mono text-[11px] text-text-subtle tabular-nums">
           {resultCount === 0
-            ? `No markets match “${qRaw}”`
-            : `${resultCount} ${resultCount === 1 ? "market" : "markets"} match “${qRaw}”`}
+            ? `${t.market.noMarketsMatch} "${qRaw}"`
+            : `${resultCount} ${resultCount === 1 ? t.market.marketMatch : t.market.marketsMatch} "${qRaw}"`}
         </p>
       )}
       <section className="market-grid">
@@ -285,7 +294,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
               yesPct={impliedYesPct(m)}
               volume={m.yesPool + m.noPool}
               predictors={m.predictorCount}
-              timeLeft={isSelectionClosed(m) ? "Waiting for results" : timeLeftStr(m.resolutionAt)}
+              timeLeft={isSelectionClosed(m) ? t.market.waitingForResults : timeLeftStr(m.resolutionAt)}
               status="LIVE"
               selectionClosed={isSelectionClosed(m)}
               sourceUrl={m.sourceUrl}
@@ -309,11 +318,10 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
         <section className="mt-10">
           <div className="mb-3 flex items-baseline justify-between gap-2">
             <h2 className="font-display text-[20px] font-semibold text-text">
-              {searching ? "Matching resolved markets" : "Recently resolved"}
-              {!searching && <span className="ml-2 text-[13px] italic font-normal text-text-subtle">· Matokeo ya hivi karibuni</span>}
+              {searching ? `${t.market.marketsMatch}` : t.market.recentlyResolved}
             </h2>
             <a href="/results" className="font-mono text-[11.5px] font-semibold text-brand-300 hover:text-text transition-colors whitespace-nowrap">
-              All results · Yote →
+              {t.market.allResults}
             </a>
           </div>
           <div className="market-grid">
@@ -327,7 +335,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
                 yesPct={impliedYesPct(m)}
                 volume={m.yesPool + m.noPool}
                 predictors={m.predictorCount}
-                timeLeft={`Resolved ${m.resolvedOutcome}`}
+                timeLeft={`${t.market.resolvedOutcome} ${m.resolvedOutcome}`}
                 status="RESOLVED"
                 sourceUrl={m.sourceUrl}
                 spark={(cardCharts.get(m.id) ?? { spark: [] }).spark}
@@ -340,36 +348,27 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
   );
 }
 
-function LiveEmptyState({ searching, qRaw, hasAnyLive }: { searching: boolean; qRaw: string; hasAnyLive: boolean }) {
+async function LiveEmptyState({ searching, qRaw, hasAnyLive }: { searching: boolean; qRaw: string; hasAnyLive: boolean }) {
+  const { t } = await getServerT();
   const noMarketsAtAll = !hasAnyLive && !searching;
   return (
     <div className="col-span-full">
       <EmptyState
         kind="markets"
         title={
-          searching ? `No live markets match "${qRaw}"`
-          : noMarketsAtAll ? "No markets available"
-          : "No markets in this category"
-        }
-        titleSw={
-          searching ? "Hakuna soko hai linalolingana"
-          : noMarketsAtAll ? "Hakuna masoko kwa sasa"
-          : "Hakuna soko kwenye aina hii"
+          searching ? `${t.market.noLiveMatch} "${qRaw}"`
+          : noMarketsAtAll ? t.market.noMarketsAvailable
+          : t.market.noMarketsInCat
         }
         body={
-          searching ? "Check the spelling, try fewer words, or clear the search to see everything. Resolved markets that match appear below."
-          : noMarketsAtAll ? "Markets will appear here once operators publish them. Check back soon."
-          : "Try a different category, or check back soon — new markets are published regularly."
-        }
-        bodySw={
-          searching ? "Angalia tahajia au futa utafutaji."
-          : noMarketsAtAll ? "Masoko yatatokea hapa opereta watakapoyachapisha. Rudi baadaye."
-          : "Jaribu aina nyingine au rudi baadaye."
+          searching ? t.market.checkSpelling
+          : noMarketsAtAll ? t.market.noMarketsAvailableBody
+          : t.market.noMarketsInCatBody
         }
         action={
           noMarketsAtAll ? undefined : (
             <Link href="/markets" className="btn btn-ghost btn-sm">
-              {searching ? "Clear search · Futa" : "See all categories · Aina zote"}
+              {searching ? t.market.clearSearchLabel : t.market.seeAllCategories}
             </Link>
           )
         }

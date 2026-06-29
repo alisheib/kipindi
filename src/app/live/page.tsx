@@ -19,22 +19,25 @@ import { BrandTopo } from "@/components/brand-topo";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LivePulseGrid } from "./pulse-grid";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
+import { getServerT } from "@/lib/i18n-server";
 
-export const metadata = { title: "Live · Hai" };
+export const metadata = { title: "Live" };
 export const dynamic = "force-dynamic";
 
-function timeLeftStr(iso: string): string {
-  const ms = Date.parse(iso) - Date.now();
-  if (ms <= 0) return "closed";
-  const d = Math.floor(ms / (24 * 3600_000));
-  if (d > 0) return `${d}d`;
-  const h = Math.floor(ms / 3600_000);
-  if (h > 0) return `${h}h`;
-  const m = Math.floor(ms / 60_000);
-  return `${m}m`;
-}
-
 export default async function LivePage() {
+  const { t } = await getServerT();
+
+  function timeLeftStr(iso: string): string {
+    const ms = Date.parse(iso) - Date.now();
+    if (ms <= 0) return t.market.closed;
+    const d = Math.floor(ms / (24 * 3600_000));
+    if (d > 0) return `${d}${t.market.dLeft}`;
+    const h = Math.floor(ms / 3600_000);
+    if (h > 0) return `${h}${t.market.hLeft}`;
+    const m = Math.floor(ms / 60_000);
+    return `${m}${t.market.mLeft}`;
+  }
+
   // Exclude markets whose resolution time has passed — they're closed/awaiting
   // settlement, not live, and must not show a LIVE badge on the board.
   const all = (await listMarkets({ status: "LIVE" })).filter((m) => !isClosedByTime(m));
@@ -50,7 +53,7 @@ export default async function LivePage() {
       yesPct: impliedYesPct(m),
       volume: m.yesPool + m.noPool,
       predictors: m.predictorCount,
-      timeLeft: isSelectionClosed(m) ? "Waiting for results" : timeLeftStr(m.resolutionAt),
+      timeLeft: isSelectionClosed(m) ? t.market.waitingForResults : timeLeftStr(m.resolutionAt),
       selectionClosed: isSelectionClosed(m),
       move24h: cc.move24h,
       spark: cc.spark,
@@ -74,7 +77,7 @@ export default async function LivePage() {
       <div className="relative mx-auto max-w-[1280px] px-3 lg:px-6 py-6 space-y-5">
         {/* Accessible page heading (WCAG 1.3.1 / 2.4.6). Visually hidden — the
             design uses a slim live header, not a marketing H1. */}
-        <h1 className="sr-only">Live markets · Soko hai</h1>
+        <h1 className="sr-only">{t.common.live} {t.common.markets}</h1>
         {/* Slim header — clicking Live lands straight on the questions, not a
             marketing hero (that lives on the homepage). */}
         <div className="flex items-center justify-between gap-3">
@@ -82,22 +85,21 @@ export default async function LivePage() {
             <PulseRing size={18} color="var(--no-400)">
               <span className="block w-2 h-2 rounded-full" style={{ background: "var(--no-400)" }} />
             </PulseRing>
-            <p className="font-mono text-[12px] uppercase tracking-[0.18em] font-bold text-text">Live · Hai</p>
+            <p className="font-mono text-[12px] uppercase tracking-[0.18em] font-bold text-text">{t.home.liveSection}</p>
           </div>
           <p className="font-mono text-[10.5px] text-text-subtle tabular-nums whitespace-nowrap">
-            {markets.length} live{tippingMarkets > 0 ? ` · ${tippingMarkets} tipping` : ""}
+            {markets.length} {t.market.liveCount}{tippingMarkets > 0 ? ` · ${tippingMarkets} ${t.market.tipping}` : ""}
           </p>
         </div>
 
         {markets.length === 0 ? (
           <EmptyState
             kind="markets"
-            title="No markets live right now"
-            titleSw="Hakuna soko hai sasa hivi"
-            body="Live markets appear here the moment they open for trading."
+            title={t.market.noLiveNow}
+            body={t.market.noLiveBody}
             action={
               <Link href={"/markets" as never} className="btn btn-gold btn-md">
-                Browse all markets →
+                {t.common.browseAll}
               </Link>
             }
           />
@@ -109,13 +111,10 @@ export default async function LivePage() {
             {/* Cross-cut callout */}
             <section className="rounded-xl glass-panel p-5 lg:p-6">
               <div className="flex flex-wrap items-baseline gap-2 mb-2">
-                <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-yes-300">Price Competition · pool model</p>
+                <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-yes-300">{t.market.priceCompetition}</p>
               </div>
               <p className="text-[14px] leading-relaxed text-text-muted max-w-[78ch]">
-                Every bar above is the live pool of stakes. Each new prediction <em>tips the bar</em> —
-                the needle leans toward the leading side and shimmers gold the moment a market resolves.
-                When you stake, you join a pool; if you&apos;re right, you share the losing pool minus a
-                small operator margin. The math is in the open. <span className="italic text-text-subtle">Hesabu wazi kabisa.</span>
+                {t.market.liveExplainer}
               </p>
             </section>
 
@@ -123,14 +122,14 @@ export default async function LivePage() {
             {mostContested && (
               <section className="rounded-xl glass-panel p-6 lg:p-10">
                 <div className="flex flex-wrap items-baseline gap-2 mb-3">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-text-subtle">Most contested · Lililo na shaka zaidi</p>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-text-subtle">{t.market.mostContested}</p>
                 </div>
                 <h2 className="font-display text-[20px] lg:text-[26px] font-semibold text-text leading-tight max-w-[60ch] mb-5">
                   {mostContested.titleEn}
                 </h2>
                 <TippingBar yesPct={mostContested.yesPct} height={36} showLabels />
                 <Link href={`/markets/${mostContested.id}` as never} className="btn btn-gold btn-lg mt-5">
-                  Open market →
+                  {t.market.openMarket}
                 </Link>
               </section>
             )}

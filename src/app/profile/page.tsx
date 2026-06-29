@@ -10,6 +10,7 @@ import { listPositionsForUser } from "@/lib/server/market-service";
 import { displayInitials } from "@/lib/display-label";
 import { BadgeShelf } from "@/components/badges/Badge";
 import { computeAchievementShelf } from "@/lib/server/achievements";
+import { getServerT } from "@/lib/i18n-server";
 
 export const metadata = { title: "Profile · Wasifu" };
 export const dynamic = "force-dynamic";
@@ -23,11 +24,8 @@ function maskPhone(phoneE164: string): string {
   return `${phoneE164.slice(0, 4)}*****${phoneE164.slice(-2)}`;
 }
 
-function regionLabel(region: string | null) {
-  return region ?? "Tanzania";
-}
-
 export default async function ProfilePage() {
+  const { t } = await getServerT();
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile");
 
@@ -39,7 +37,7 @@ export default async function ProfilePage() {
   const sof = await db.sourceOfFunds.get(user.id);
   const positions = await listPositionsForUser(user.id, 500);
   const initials = displayInitials(user);
-  const displayName = user.displayName ?? "Set your name";
+  const displayName = user.displayName ?? t.profile.setYourName;
 
   // SoF discoverability: show a banner when the player has a PENDING or
   // REJECTED declaration (they may not know they need to act).
@@ -48,12 +46,12 @@ export default async function ProfilePage() {
   const kycLevel = kyc?.status ?? "NOT_STARTED";
   const kycPill =
     kycLevel === "APPROVED"
-      ? { tone: "yes", label: "ID verified · Imethibitishwa" }
+      ? { tone: "yes", label: t.profile.idVerified }
       : kycLevel === "PENDING_REVIEW" || kycLevel === "IN_PROGRESS"
-        ? { tone: "info", label: "In review · Inakaguliwa" }
+        ? { tone: "info", label: t.profile.inReview }
         : kycLevel === "REJECTED"
-          ? { tone: "no", label: "Rejected · Imekataliwa" }
-          : { tone: "warning", label: "Verify ID · Thibitisha" };
+          ? { tone: "no", label: t.profile.rejected }
+          : { tone: "warning", label: t.common.verifyId };
 
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
@@ -63,7 +61,7 @@ export default async function ProfilePage() {
           hero card below; that's where the eye reads, but a screen
           reader needs a top-level heading too). */}
       <h1 className="sr-only">
-        Profile · {displayName} · Wasifu
+        {t.profile.title} · {displayName}
       </h1>
       {/* ── Hero — kit-faithful: tilted FiftyMark watermark, OKLCH gradient,
             mono-stamped meta, picture uploader badge. No Kipindi tokens. */}
@@ -92,14 +90,14 @@ export default async function ProfilePage() {
           />
           <div className="flex-1 min-w-0 pt-1">
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">
-              Predictor · Mtabiri
+              {t.profile.predictor}
             </p>
             <ProfileNameEditor
               currentName={user.displayName}
               fallbackPlaceholder={displayName}
             />
             <p className="mt-1.5 font-mono text-[12px] text-text-muted tabular-nums">
-              {maskPhone(user.phoneE164)} · {regionLabel(user.region)}
+              {maskPhone(user.phoneE164)} · {user.region ?? t.profile.tanzania}
             </p>
 
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
@@ -117,13 +115,13 @@ export default async function ProfilePage() {
                   }}
                 >
                   <I.shieldcheck s={11} />
-                  {user.role === "ADMIN" ? "ADMIN · Msimamizi"
-                    : user.role === "COMPLIANCE" ? "COMPLIANCE · Ufuatiliaji"
-                    : user.role === "MODERATOR" ? "MODERATOR · Mwangalizi"
+                  {user.role === "ADMIN" ? t.profile.adminRole
+                    : user.role === "COMPLIANCE" ? t.profile.complianceRole
+                    : user.role === "MODERATOR" ? t.profile.moderatorRole
                     : user.role}
                 </span>
               ) : (
-                <Pill tone="neutral">Player · Mtabiri</Pill>
+                <Pill tone="neutral">{t.profile.playerRole}</Pill>
               )}
               <Pill tone={kycPill.tone as "yes" | "no" | "info" | "warning"}>
                 {kycPill.label}
@@ -131,8 +129,8 @@ export default async function ProfilePage() {
               <Pill tone="neutral">{user.locale === "SW" ? "Kiswahili" : "English"}</Pill>
               {user.email && (
                 user.emailVerifiedAt
-                  ? <Pill tone="yes"><I.check s={10} className="inline -mt-px" /> Email confirmed · Imethibitishwa</Pill>
-                  : <Link href="/profile/account" className="no-underline"><Pill tone="warning"><I.mail s={10} className="inline -mt-px" /> Email unconfirmed · Bonyeza hapa</Pill></Link>
+                  ? <Pill tone="yes"><I.check s={10} className="inline -mt-px" /> {t.profile.emailConfirmed}</Pill>
+                  : <Link href="/profile/account" className="no-underline"><Pill tone="warning"><I.mail s={10} className="inline -mt-px" /> {t.profile.emailUnconfirmed}</Pill></Link>
               )}
             </div>
           </div>
@@ -141,20 +139,17 @@ export default async function ProfilePage() {
         {/* Stat strip — wallet + open positions */}
         <div className="relative z-10 grid grid-cols-3 border-t border-border/60 divide-x divide-border/60">
           <Stat
-            label="Balance"
-            sw="Salio"
+            label={t.profile.balance}
             value={wallet ? fmtTzs(wallet.balance) : "—"}
             icon={<I.wallet s={14} />}
           />
           <Stat
-            label="Open"
-            sw="Hai"
+            label={t.profile.openCount}
             value={String(positions.filter((p) => p.status === "OPEN").length)}
             icon={<I.sparkle s={14} className="text-yes-300" />}
           />
           <Stat
-            label="Settled"
-            sw="Imekamilika"
+            label={t.profile.settledCount}
             value={String(positions.filter((p) => p.status !== "OPEN").length)}
             icon={<I.check s={14} />}
           />
@@ -168,21 +163,18 @@ export default async function ProfilePage() {
             <I.shieldcheck s={20} />
             <div className="min-w-0">
               <p className="font-display text-[15px] font-semibold text-text leading-tight">
-                Verify your identity · Thibitisha kitambulisho
+                {t.profile.verifyIdentity}
               </p>
               <p className="mt-1 text-[13px] text-text-muted leading-snug">
-                We verify NIDA before withdrawal. Takes about 2 minutes.
-                <span className="block italic text-text-subtle text-[12px] mt-0.5">
-                  Tunathibitisha NIDA kabla ya kutoa pesa.
-                </span>
+                {t.profile.verifyBody}
               </p>
               <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
-                <Step n={1} title="NIDA"   detail="National ID number" done />
-                <Step n={2} title="Phone"  detail="SMS code"           done />
-                <Step n={3} title="Selfie" detail="Front · back · selfie" active />
+                <Step n={1} title={t.profile.nida}   detail={t.profile.nationalId} done />
+                <Step n={2} title={t.profile.phoneSms}  detail={t.profile.phoneSms}           done />
+                <Step n={3} title={t.profile.selfieDocs} detail={t.profile.selfieDocs} active />
               </div>
               <Link href="/profile/kyc" className="btn btn-gold btn-md mt-4 inline-flex" style={{ borderRadius: "var(--r-pill)" }}>
-                Continue verification · Endelea
+                {t.profile.continueVerification}
               </Link>
             </div>
           </div>
@@ -196,18 +188,15 @@ export default async function ProfilePage() {
             <I.fileSignature s={20} />
             <div className="min-w-0">
               <p className="font-display text-[15px] font-semibold text-text leading-tight">
-                {sof.reviewStatus === "REJECTED" ? "Source of funds — please resubmit" : "Source of funds under review"}
-                <span className="block italic text-text-subtle text-[12px] mt-0.5">
-                  {sof.reviewStatus === "REJECTED" ? "Chanzo cha fedha — tafadhali wasilisha tena" : "Chanzo cha fedha kinakaguliwa"}
-                </span>
+                {sof.reviewStatus === "REJECTED" ? t.profile.sofResubmit : t.profile.sofUnderReview}
               </p>
               <p className="mt-1 text-[13px] text-text-muted leading-snug">
                 {sof.reviewStatus === "REJECTED"
-                  ? "Your source-of-funds declaration was not accepted. Please update and resubmit to unlock higher deposit limits."
-                  : "Your declaration is being reviewed. We'll notify you once it's cleared."}
+                  ? t.profile.sofResubmitBody
+                  : t.profile.sofUnderReviewBody}
               </p>
               <Link href="/profile/source-of-funds" className="btn btn-gold btn-md mt-3 inline-flex" style={{ borderRadius: "var(--r-pill)" }}>
-                {sof.reviewStatus === "REJECTED" ? "Update declaration · Sasisha" : "View status · Tazama hali"}
+                {sof.reviewStatus === "REJECTED" ? t.profile.updateDeclaration : t.profile.viewStatus}
               </Link>
             </div>
           </div>
@@ -217,12 +206,12 @@ export default async function ProfilePage() {
       {/* ── Achievements shelf */}
       <section>
         <h2 className="mb-3 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">
-          Achievements · Beji
+          {t.profile.achievements}
         </h2>
         <div className="rounded-xl glass-panel p-5">
           <BadgeShelf items={await computeAchievementShelf(user.id)} />
           <p className="mt-4 text-center text-[11px] text-text-subtle">
-            More badges unlock as you predict, win, propose and invite. · Beji zaidi zinafunguliwa unapocheza.
+            {t.profile.badgesHint}
           </p>
         </div>
       </section>
@@ -230,16 +219,16 @@ export default async function ProfilePage() {
       {/* ── Settings grid */}
       <section>
         <h2 className="mb-3 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">
-          Account · Akaunti
+          {t.profile.account}
         </h2>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-          <SettingRow icon={I.gift}            title="Invite & Earn"       sw="Alika na upate zawadi"     subtitle="Refer friends · earn rewards"         href="/profile/invite" accent badge="New" />
-          <SettingRow icon={I.user}            title="My account"          sw="Akaunti yangu"   subtitle="Activity · Export · Close"            href="/profile/account" />
-          <SettingRow icon={I.settings}        title="Responsible gambling" sw="Vikomo"          subtitle="Limits · Self-exclusion"              href="/profile/responsible-gambling" />
-          <SettingRow icon={I.shieldcheck}     title="Verify ID"           sw="Kuthibitisha kitambulisho"      subtitle="NIDA · documents · review"            href="/profile/kyc" />
-          <SettingRow icon={I.fileSignature}   title="Source of funds"     sw="Asili ya fedha"  subtitle="AML declaration"                      href="/profile/source-of-funds" />
-          <SettingRow icon={I.device}          title="Active sessions"     sw="Vifaa"           subtitle="Devices · Sign out everywhere"        href="/profile/sessions" />
-          <SettingRow icon={I.heartPulse}      title="Help & support"      sw="Msaada"          subtitle="FAQ · Helpline · Email"               href="/help" />
+          <SettingRow icon={I.gift}            title={t.profile.inviteEarn}          subtitle={t.profile.inviteEarnSub}         href="/profile/invite" accent badge="New" />
+          <SettingRow icon={I.user}            title={t.profile.myAccount}           subtitle={t.profile.myAccountSub}            href="/profile/account" />
+          <SettingRow icon={I.settings}        title={t.profile.responsibleGambling} subtitle={t.profile.responsibleGamblingSub}              href="/profile/responsible-gambling" />
+          <SettingRow icon={I.shieldcheck}     title={t.common.verifyId}             subtitle={t.profile.verifyIdSub}            href="/profile/kyc" />
+          <SettingRow icon={I.fileSignature}   title={t.profile.sourceOfFunds}       subtitle={t.profile.sourceOfFundsSub}                      href="/profile/source-of-funds" />
+          <SettingRow icon={I.device}          title={t.profile.activeSessions}      subtitle={t.profile.activeSessionsSub}        href="/profile/sessions" />
+          <SettingRow icon={I.heartPulse}      title={t.profile.helpSupport}         subtitle={t.profile.helpSupportSub}               href="/help" />
         </div>
       </section>
 
@@ -254,8 +243,8 @@ export default async function ProfilePage() {
               <I.logOut s={16} />
             </span>
             <span className="text-left">
-              <p className="font-display text-[14px] font-semibold text-text leading-tight">Sign out · Toka</p>
-              <p className="mt-0.5 text-[12px] text-text-subtle">See you soon · Tutaonana</p>
+              <p className="font-display text-[14px] font-semibold text-text leading-tight">{t.common.signOut}</p>
+              <p className="mt-0.5 text-[12px] text-text-subtle">{t.profile.seeYouSoon}</p>
             </span>
           </span>
           <I.chevronRight s={16} />
@@ -265,7 +254,7 @@ export default async function ProfilePage() {
   );
 }
 
-function Stat({ label, sw, value, icon }: { label: string; sw: string; value: string; icon: React.ReactNode }) {
+function Stat({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
   return (
     <div className="px-4 py-3.5">
       <div className="flex items-center gap-1.5 text-text-subtle">
@@ -273,7 +262,6 @@ function Stat({ label, sw, value, icon }: { label: string; sw: string; value: st
         <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-semibold">{label}</p>
       </div>
       <p className="mt-1 font-display text-[18px] font-bold leading-tight tabular-nums text-text">{value}</p>
-      <p className="text-[11px] italic text-text-subtle">{sw}</p>
     </div>
   );
 }
@@ -314,7 +302,7 @@ function Step({ n, title, detail, active, done }: { n: number; title: string; de
   );
 }
 
-function SettingRow({ icon: Icon, title, sw, subtitle, href, accent, badge }: { icon: (typeof I)[keyof typeof I]; title: string; sw: string; subtitle: string; href: string; accent?: boolean; badge?: string }) {
+function SettingRow({ icon: Icon, title, subtitle, href, accent, badge }: { icon: (typeof I)[keyof typeof I]; title: string; subtitle: string; href: string; accent?: boolean; badge?: string }) {
   return (
     <Link
       href={href as never}
@@ -332,7 +320,7 @@ function SettingRow({ icon: Icon, title, sw, subtitle, href, accent, badge }: { 
       </span>
       <div className="flex-1 min-w-0">
         <p className="font-display text-[13.5px] font-semibold text-text leading-tight flex items-center gap-2">
-          {title} <span className="text-text-subtle font-normal italic font-display">· {sw}</span>
+          {title}
           {badge && (
             <span className="inline-flex items-center rounded-pill border border-gold-700/50 bg-gold-500/15 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-gold-300">
               {badge}

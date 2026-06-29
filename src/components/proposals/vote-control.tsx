@@ -31,6 +31,7 @@ export function VoteControl({
   disabled?: boolean;
 }) {
   const { toast } = useToast();
+  const { t } = useT();
   const [, start] = useTransition();
   const [vote, setVote] = useState<Dir>(myVote);
   const [tally, setTally] = useState({ up, down });
@@ -68,7 +69,7 @@ export function VoteControl({
         // Roll back to the captured pre-click state.
         setVote(prevVote);
         setTally(prevTally);
-        toast({ title: "Couldn't record vote", description: r.error, variant: "danger" });
+        toast({ title: t.toast.voteFailed, description: r.error, variant: "danger" });
       }
     });
   };

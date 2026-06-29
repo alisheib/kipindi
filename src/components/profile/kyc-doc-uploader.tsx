@@ -35,27 +35,28 @@ export function KycDocUploader({
   const [pending, start] = useTransition();
   const router = useRouter();
   const { toast } = useToast();
+  const { t } = useT();
 
   const working = busy || pending;
 
   const onFile = async (f: File | null) => {
     if (!f) return;
-    if (!f.type.startsWith("image/")) { toast({ title: "Not an image", description: "Pick a JPG, PNG, or WebP photo.", variant: "danger" }); return; }
+    if (!f.type.startsWith("image/")) { toast({ title: t.toast.notAnImage, description: t.toast.pickJpgPng, variant: "danger" }); return; }
     setBusy(true); // spinner on from the instant a file is picked
     let dataUrl: string;
     try { dataUrl = await fileToDataUrl(f); }
-    catch (err) { setBusy(false); toast({ title: "Couldn't read image", description: (err as Error).message, variant: "danger" }); return; }
-    if (dataUrl.length * 0.75 > MAX_BYTES) { setBusy(false); toast({ title: "Image too large", description: "Try a smaller photo.", variant: "danger" }); return; }
+    catch (err) { setBusy(false); toast({ title: t.toast.couldntReadImage, description: (err as Error).message, variant: "danger" }); return; }
+    if (dataUrl.length * 0.75 > MAX_BYTES) { setBusy(false); toast({ title: t.toast.imageTooLarge, description: t.toast.trySmallerPhoto, variant: "danger" }); return; }
     setPreview(dataUrl);
     start(async () => {
       const fd = new FormData();
       fd.set("docType", docType);
       fd.set("image", dataUrl);
       const r = await attachDocumentAction(fd);
-      if (!r.ok) { setPreview(null); setBusy(false); toast({ title: "Upload failed", description: r.error, variant: "danger" }); return; }
+      if (!r.ok) { setPreview(null); setBusy(false); toast({ title: t.toast.uploadFailed, description: r.error, variant: "danger" }); return; }
       setDone(true);
       setBusy(false);
-      toast({ title: `${label.split(" ·")[0]} attached`, variant: "success" });
+      toast({ title: t.toast.documentAttached, variant: "success" });
       router.refresh();
     });
   };
@@ -130,26 +131,27 @@ export function KycExtraDocUploader({
   const [pending, start] = useTransition();
   const router = useRouter();
   const { toast } = useToast();
+  const { t } = useT();
   const working = busy || pending;
 
   const onFile = async (f: File | null) => {
     if (!f) return;
-    if (!f.type.startsWith("image/")) { toast({ title: "Not an image", description: "Pick a JPG, PNG, or WebP photo.", variant: "danger" }); return; }
+    if (!f.type.startsWith("image/")) { toast({ title: t.toast.notAnImage, description: t.toast.pickJpgPng, variant: "danger" }); return; }
     setBusy(true);
     let dataUrl: string;
     try { dataUrl = await fileToDataUrl(f); }
-    catch (err) { setBusy(false); toast({ title: "Couldn't read image", description: (err as Error).message, variant: "danger" }); return; }
-    if (dataUrl.length * 0.75 > MAX_BYTES) { setBusy(false); toast({ title: "Image too large", description: "Try a smaller photo.", variant: "danger" }); return; }
+    catch (err) { setBusy(false); toast({ title: t.toast.couldntReadImage, description: (err as Error).message, variant: "danger" }); return; }
+    if (dataUrl.length * 0.75 > MAX_BYTES) { setBusy(false); toast({ title: t.toast.imageTooLarge, description: t.toast.trySmallerPhoto, variant: "danger" }); return; }
     setPreview(dataUrl);
     start(async () => {
       const fd = new FormData();
       fd.set("requestId", requestId);
       fd.set("image", dataUrl);
       const r = await attachExtraDocumentAction(fd);
-      if (!r.ok) { setPreview(null); setBusy(false); toast({ title: "Upload failed", description: r.error, variant: "danger" }); return; }
+      if (!r.ok) { setPreview(null); setBusy(false); toast({ title: t.toast.uploadFailed, description: r.error, variant: "danger" }); return; }
       setDone(true);
       setBusy(false);
-      toast({ title: "Document attached", variant: "success" });
+      toast({ title: t.toast.documentAttached, variant: "success" });
       router.refresh();
     });
   };

@@ -48,6 +48,7 @@ export function CommentsThread({
   const [body, setBody] = useState("");
   const [pending, startTransition] = useTransition();
   const { toast } = useToast();
+  const { t } = useT();
 
   const submit = () => {
     const text = body.trim();
@@ -62,7 +63,7 @@ export function CommentsThread({
         setBody("");
         haptics.confirm();
       } else {
-        toast({ title: r.ok ? "Posted" : r.error, variant: r.ok ? "success" : "danger" });
+        toast({ title: r.ok ? t.toast.posted : r.error, variant: r.ok ? "success" : "danger" });
       }
     });
   };
@@ -80,7 +81,7 @@ export function CommentsThread({
             ? prev.filter((c) => c.id !== id || c.mine) // hidden for non-authors
             : prev.map((c) => (c.id === id ? { ...c, reportedByMe: true, reports: c.reports + 1 } : c)),
         );
-        toast({ title: ("hidden" in r && r.hidden) ? "Reported — hidden for review · Imefichwa" : "Reported · Imeripotiwa", variant: "warning" });
+        toast({ title: ("hidden" in r && r.hidden) ? t.toast.reportedHidden : t.toast.reported, variant: "warning" });
       } else {
         toast({ title: r.error, variant: "danger" });
       }

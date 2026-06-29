@@ -5,11 +5,13 @@ import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { getSession } from "@/lib/server/session";
 import { formatDateTime } from "@/lib/utils";
+import { getServerT } from "@/lib/i18n-server";
 
-export const metadata = { title: "Active sessions · Vifaa" };
+export const metadata = { title: "Active sessions" };
 export const dynamic = "force-dynamic";
 
 export default async function SessionsPage() {
+  const { t } = await getServerT();
   const session = await getSession();
   if (!session) redirect("/auth/login?next=/profile/sessions");
 
@@ -34,7 +36,7 @@ export default async function SessionsPage() {
         className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
       >
         <I.chevronLeft s={14} />
-        Profile
+        {t.common.profile}
       </Link>
 
       <header className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated">
@@ -54,14 +56,14 @@ export default async function SessionsPage() {
           <div className="flex items-center gap-2 mb-1">
             <I.device s={14} className="text-info-fg" />
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-info-fg">
-              Active sessions
+              {t.profile.activeSessions}
             </p>
           </div>
           <h1 className="font-display text-[26px] lg:text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
-            Devices &amp; sessions <span className="text-text-subtle italic font-normal text-[18px]">· Vifaa</span>
+            {t.profile.activeSessions}
           </h1>
           <p className="mt-1 text-[13px] text-text-muted">
-            Sign out from this device or revoke a session anywhere it&apos;s open.
+            {"Sign out from this device or revoke a session anywhere it's open." /* i18n-todo: add profile.sessionsDescription key */}
           </p>
         </div>
       </header>
@@ -72,7 +74,7 @@ export default async function SessionsPage() {
             <I.device s={16} className="text-info-fg" />
             <p className="font-display text-[14.5px] font-semibold text-text">{device} · {browser}</p>
             <span className="inline-flex items-center rounded-pill border border-yes-700 bg-yes-500/10 px-2.5 py-0.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.1em] text-yes-300">
-              This device
+              {"This device" /* i18n-todo: add profile.thisDevice key */}
             </span>
           </div>
           <form action="/auth/logout" method="POST" className="inline-flex">
@@ -81,27 +83,26 @@ export default async function SessionsPage() {
               className="inline-flex h-9 items-center gap-1.5 rounded-pill border border-no-700 bg-no-500/10 px-4 font-display font-semibold text-[12.5px] text-no-300 hover:bg-no-500/20 transition-colors"
             >
               <I.logOut s={13} />
-              Sign out
+              {t.common.signOut}
             </button>
           </form>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <Item label="Session id" value={<span className="font-mono break-all">{session.sessionId.slice(0, 22)}…</span>} />
-          <Item label="IP address" value={<span className="font-mono">{ip}</span>} />
-          <Item label="Issued"     value={issued} />
-          <Item label="Expires"    value={expires} />
-          <Item label="Role"       value={session.role} />
-          <Item label="KYC"        value={session.kycStatus} />
+          <Item label={"Session id" /* i18n-todo */} value={<span className="font-mono break-all">{session.sessionId.slice(0, 22)}…</span>} />
+          <Item label={"IP address" /* i18n-todo */} value={<span className="font-mono">{ip}</span>} />
+          <Item label={"Issued" /* i18n-todo */}     value={issued} />
+          <Item label={"Expires" /* i18n-todo */}    value={expires} />
+          <Item label={"Role" /* i18n-todo */}       value={session.role} />
+          <Item label={"KYC" /* i18n-todo */}        value={session.kycStatus} />
         </div>
       </section>
 
       <section className="flex items-start gap-2.5 rounded-xl border border-info-border bg-info-bg/[0.10] p-4">
         <I.shieldcheck s={16} />
         <div className="text-[12px] text-text-muted leading-snug space-y-1">
-          <p className="font-display font-semibold text-text">Session security</p>
+          <p className="font-display font-semibold text-text">{"Session security" /* i18n-todo: add profile.sessionSecurity key */}</p>
           <p>
-            Your session is tied to this browser. Sign out above to end it, or use a different
-            device to sign in separately. Each sign-in requires a fresh OTP for your protection.
+            {"Your session is tied to this browser. Sign out above to end it, or use a different device to sign in separately. Each sign-in requires a fresh OTP for your protection." /* i18n-todo: add profile.sessionSecurityBody key */}
           </p>
         </div>
       </section>

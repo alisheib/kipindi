@@ -12,6 +12,7 @@ import { resolveReferralPreview } from "@/lib/server/affiliate-service";
 import { getInvitePreview } from "@/lib/server/invite-service";
 import { startRegisterAction } from "./actions";
 import { HELPLINE } from "@/lib/support-config";
+import { getServerT } from "@/lib/i18n-server";
 
 export const metadata = { title: "Create account · Fungua akaunti" };
 
@@ -23,6 +24,7 @@ export default async function RegisterPage({
   // Bounce-authed-users guard lives in src/app/auth/layout.tsx so the
   // redirect happens before any page hooks run (avoids a Next.js 16
   // dev-mode hook-count mismatch on hot reload).
+  const { t } = await getServerT();
   const sp = await searchParams;
   const phoneDefault = (sp.phone ?? "").replace(/^\+255/, "").replace(/\D+/g, "").slice(0, 9);
   const refCode = (sp.ref ?? "").trim().slice(0, 16);
@@ -40,23 +42,23 @@ export default async function RegisterPage({
     if (sp.error === "exists") {
       return {
         tone: "warning" as const,
-        title: "Account already exists · Akaunti tayari ipo",
-        body: "That phone is already registered. Sign in with your password.",
-        cta: { href: `/auth/login?phone=${encodeURIComponent(phoneDefault)}`, label: "Sign in · Ingia" },
+        title: t.auth.accountExists,
+        body: t.auth.accountExistsBody,
+        cta: { href: `/auth/login?phone=${encodeURIComponent(phoneDefault)}`, label: t.auth.signInTitle },
       };
     }
     if (sp.error === "rate_limited") {
       return {
         tone: "warning" as const,
-        title: "Too many tries · Majaribio mengi",
-        body: "Wait a couple of minutes and try again.",
+        title: t.auth.tooManyTries,
+        body: t.auth.tooManyTriesBody,
         cta: null,
       };
     }
     const msg = (sp as { message?: string }).message;
     return {
       tone: "danger" as const,
-      title: "Could not create account",
+      title: t.auth.couldNotCreate,
       body: msg ? decodeURIComponent(msg) : "Check the form fields and try again.",
       cta: null,
     };
@@ -75,14 +77,13 @@ export default async function RegisterPage({
         >
           <div>
             <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-gold-300">
-              Create account · Fungua akaunti
+              {t.auth.signUpTitle}
             </p>
             <h1 className="mt-1.5 font-display text-[28px] font-bold leading-tight text-text tracking-[-0.02em]">
-              Welcome to 50pick
+              {t.auth.welcomeTo50pick}
             </h1>
             <p className="mt-1.5 text-[13.5px] text-text-muted">
-              Tanzania mobile number, age 18+.{" "}
-              <span className="italic text-text-subtle">Simu ya Tanzania, miaka 18+.</span>
+              {t.auth.tanzaniaMobile18}
             </p>
           </div>
 
@@ -97,14 +98,12 @@ export default async function RegisterPage({
               <div className="flex items-center gap-3 p-3.5">
                 <FiftyMark size={40} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[14px] font-bold text-text">You were invited by {referral.referrerName}</p>
-                  <p className="font-display italic text-text-subtle text-[11px]">Umealikwa na rafiki</p>
+                  <p className="text-[14px] font-bold text-text">{t.auth.invitedBy} {referral.referrerName}</p>
                   {referral.newPlayerBonusTzs > 0 && (
                     <p className="mt-1 text-[12.5px] font-semibold text-gold-300">
                       {referral.bonusTrigger === "SIGNUP"
-                        ? `Sign up & get TZS ${referral.newPlayerBonusTzs.toLocaleString()} to start`
-                        : `Get TZS ${referral.newPlayerBonusTzs.toLocaleString()} on your first deposit`}{" "}
-                      · Pata TZS {referral.newPlayerBonusTzs.toLocaleString()}
+                        ? `${t.auth.signUpAndGet} TZS ${referral.newPlayerBonusTzs.toLocaleString()} ${t.auth.toStart}`
+                        : `${t.auth.getOnFirstDeposit} TZS ${referral.newPlayerBonusTzs.toLocaleString()}`}
                     </p>
                   )}
                 </div>
@@ -125,9 +124,8 @@ export default async function RegisterPage({
                   <I.gift s={20} />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[14px] font-bold text-text">Claim your TZS {invite.bonusAmountTzs.toLocaleString()} welcome bonus</p>
-                  <p className="font-display italic text-text-subtle text-[11px]">Pata bonasi yako ya kukukaribisha</p>
-                  <p className="mt-1 text-[12px] font-semibold text-gold-300">Added to your bonus wallet — play it through to turn it into cash.</p>
+                  <p className="text-[14px] font-bold text-text">{t.auth.claimBonus} TZS {invite.bonusAmountTzs.toLocaleString()}</p>
+                  <p className="mt-1 text-[12px] font-semibold text-gold-300">{t.auth.bonusWalletHint}</p>
                 </div>
               </div>
             </div>
@@ -166,7 +164,7 @@ export default async function RegisterPage({
             {invite && <input type="hidden" name="invite" value={inviteCode} />}
             {nextOk && <input type="hidden" name="next" value={nextOk} />}
             {referral && (
-              <Field label="Referral code · auto-filled">
+              <Field label={t.auth.referralCode}>
                 <Input
                   readOnly
                   value={refCode.toUpperCase()}
@@ -177,7 +175,7 @@ export default async function RegisterPage({
                 />
               </Field>
             )}
-            <Field label="Phone · Simu" hint="9 digits after +255 (e.g. 712 345 678).">
+            <Field label={t.auth.phone} hint={t.auth.phonePlaceholder}>
               <PhoneInput
                 id="phone"
                 name="phone"
@@ -188,7 +186,7 @@ export default async function RegisterPage({
               />
             </Field>
 
-            <Field label="Date of birth · Tarehe ya kuzaliwa" hint="You must be 18 or older. Lazima uwe na miaka 18+.">
+            <Field label={t.auth.dobLabel} hint={t.auth.dobHint}>
               {(() => {
                 const today = new Date();
                 const maxDob = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
@@ -211,35 +209,35 @@ export default async function RegisterPage({
               <Checkbox
                 name="acceptAge"
                 required
-                label={<span className="text-[13px] text-text-muted">I confirm I am 18 or older. <span className="italic text-text-subtle">Ninathibitisha nina miaka 18+.</span></span>}
+                label={<span className="text-[13px] text-text-muted">{t.auth.age18Confirm}</span>}
               />
               <Checkbox
                 name="acceptTerms"
                 required
-                label={<span className="text-[13px] text-text-muted">I accept the{" "}<Link href="/legal/terms" className="text-brand-300 underline-offset-2 hover:underline">Terms</Link>{" "}and{" "}<Link href="/legal/privacy" className="text-brand-300 underline-offset-2 hover:underline">Privacy</Link>. <span className="italic text-text-subtle">Ninakubali Sheria na Faragha.</span></span>}
+                label={<span className="text-[13px] text-text-muted">{t.auth.termsAccept}</span>}
               />
               <Checkbox
                 name="marketingOptIn"
-                label={<span className="text-[13px] text-text-muted">Send me product updates (optional). <span className="italic text-text-subtle">Nipe matangazo (hiari).</span></span>}
+                label={<span className="text-[13px] text-text-muted">{t.auth.optionalUpdates}</span>}
               />
             </fieldset>
 
-            <SubmitButton label="Create account · Fungua akaunti" pendingLabel="Creating account…" />
+            <SubmitButton label={t.auth.signUpTitle} pendingLabel="Creating account…" />
           </form>
 
           <p className="border-t border-border pt-3 text-center text-[13px] text-text-muted">
-            Already have an account?{" "}
+            {t.auth.alreadyHaveAccount}{" "}
             <Link
               href={"/auth/login" as never}
               className="font-semibold text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline"
             >
-              Sign in · Ingia
+              {t.auth.signInTitle}
             </Link>
           </p>
         </section>
 
         <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-text-subtle">
-          18+ · Licensed by GBT · Helpline {HELPLINE()}
+          {t.auth.licensedByGbt} {HELPLINE()}
         </p>
       </div>
     </main>

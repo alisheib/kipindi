@@ -8,13 +8,15 @@ import { currentSession } from "@/lib/server/auth-service";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
+import { getServerT } from "@/lib/i18n-server";
 
-export const metadata = { title: "History · Historia" };
+export const metadata = { title: "History" };
 export const dynamic = "force-dynamic";
 
 const fmtTzs = (n: number) => `TZS ${Math.round(n).toLocaleString("en-US")}`;
 
 export default async function PositionsPage({ searchParams }: { searchParams: Promise<{ tab?: string; page?: string }> }) {
+  const { t } = await getServerT();
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/positions");
   const sp = await searchParams;
@@ -81,27 +83,26 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
         className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
       >
         <I.chevronLeft s={14} />
-        Markets
+        {t.common.markets}
       </Link>
       <header>
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">History · Historia</p>
-        <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">Polls you&rsquo;ve played</h1>
-        <p className="text-[15px] italic text-text-subtle">Kura ulizocheza</p>
+        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.positions.title}</p>
+        <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.positions.pollsPlayed}</h1>
       </header>
 
       {/* Tab filter — All / Open / Settled (matches markets page filter pattern) */}
       {positions.length > 0 && (
         <nav className="flex flex-wrap items-center gap-1.5" aria-label="Position filter">
           {([
-            { id: "all", label: "All", sw: "Zote", count: positions.length },
-            { id: "open", label: "Open", sw: "Hai", count: open.length },
-            { id: "settled", label: "Settled", sw: "Imekamilika", count: settled.length },
-          ] as const).map((t) => {
-            const on = activeTab === t.id;
+            { id: "all", label: t.positions.tabAll, count: positions.length },
+            { id: "open", label: t.positions.tabOpen, count: open.length },
+            { id: "settled", label: t.positions.tabSettled, count: settled.length },
+          ] as const).map((tab) => {
+            const on = activeTab === tab.id;
             return (
               <Link
-                key={t.id}
-                href={`/positions${t.id === "all" ? "" : `?tab=${t.id}`}` as never}
+                key={tab.id}
+                href={`/positions${tab.id === "all" ? "" : `?tab=${tab.id}`}` as never}
                 className={
                   "inline-flex h-8 items-center rounded-md border px-3.5 font-mono text-[12px] font-semibold whitespace-nowrap transition-all " +
                   (on
@@ -111,9 +112,8 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                 style={on ? { background: "oklch(40% 0.12 262 / 0.35)", boxShadow: "0 0 10px oklch(63% 0.18 262 / 0.15)" } : undefined}
                 aria-current={on ? "page" : undefined}
               >
-                {t.label}
-                <span className="ml-1.5 italic font-normal text-[10.5px] text-text-subtle">· {t.sw}</span>
-                <span className="ml-1.5 font-mono text-[10px] tabular-nums opacity-60">{t.count}</span>
+                {tab.label}
+                <span className="ml-1.5 font-mono text-[10px] tabular-nums opacity-60">{tab.count}</span>
               </Link>
             );
           })}
@@ -124,46 +124,45 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
       {positions.length > 0 && (
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <SummaryCell
-            label="At risk"   sw="Hatarini"
+            label={t.positions.atRisk}
             value={fmtTzs(openStake)}
-            sub={`${open.length} open`}
+            sub={`${open.length} ${t.common.open}`}
             icon={<I.clock s={13} />}
           />
           <SummaryCell
-            label="Live value" sw="Thamani sasa"
+            label={t.positions.liveValue}
             value={fmtTzs(openLiveValue)}
             sub={openLiveValue >= openStake
-              ? `+${fmtTzs(openLiveValue - openStake)} unrealised`
-              : `−${fmtTzs(openStake - openLiveValue)} unrealised`}
+              ? `+${fmtTzs(openLiveValue - openStake)} ${t.positions.unrealised}`
+              : `−${fmtTzs(openStake - openLiveValue)} ${t.positions.unrealised}`}
             tone={openLiveValue >= openStake ? "yes" : "no"}
             icon={openLiveValue >= openStake
               ? <I.trendingUp s={13} />
               : <I.trendingDown s={13} />}
           />
           <SummaryCell
-            label="Settled P&L" sw="Faida ya jumla"
+            label={t.positions.settledPnl}
             value={(settledNet >= 0 ? "+" : "−") + fmtTzs(Math.abs(settledNet))}
             sub={`${wins}W · ${losses}L · ${cashOuts}C`}
             tone={settledNet >= 0 ? "gold" : "no"}
             icon={<I.coins s={13} />}
           />
           <SummaryCell
-            label="Win rate" sw="Asilimia ya ushindi"
+            label={t.positions.winRate}
             value={settled.length > 0 ? `${Math.round((wins / settled.length) * 100)}%` : "—"}
-            sub={`${settled.length} settled`}
+            sub={`${settled.length} ${t.common.settled}`}
             icon={<I.trendingUp s={13} />}
           />
         </section>
       )}
 
-      {(activeTab === "all" || activeTab === "open") && <Section title="Open" sw="Hai" count={open.length}>
+      {(activeTab === "all" || activeTab === "open") && <Section title={t.common.open} count={open.length}>
         {open.length === 0 ? (
           <Empty
             kind="positions"
-            title="No open positions yet"
-            titleSw="Bado huna utabiri hai"
-            body="Pick a market and drag the conviction dial to commit your first prediction."
-            bodySw="Chagua soko, geuza dial ya imani, ushiriki utabiri wako wa kwanza."
+            title={t.positions.noOpenYet}
+            body={t.positions.noOpenBody}
+            browseLabel={t.positions.browseMarkets}
           />
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -190,8 +189,8 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                       <p className={`flex items-center gap-1.5 text-[11px] font-mono ${closed ? "text-gold-300" : "text-text-subtle"}`}>
                         <I.calendarClock s={11} />
                         {closed
-                          ? "Selection closed \u00b7 Uchaguzi umefungwa"
-                          : `Selection closes ${new Date(cutoffIso).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`}
+                          ? t.positions.selectionClosed
+                          : `${t.positions.selectionCloses} ${new Date(cutoffIso).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`}
                       </p>
                     ) : null;
                   })()}
@@ -212,14 +211,12 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
         )}
       </Section>}
 
-      {(activeTab === "all" || activeTab === "settled") && <Section title="Settled" sw="Imekamilika" count={settled.length}>
+      {(activeTab === "all" || activeTab === "settled") && <Section title={t.common.settled} count={settled.length}>
         {settled.length === 0 ? (
           <Empty
             kind="default"
-            title="No settled positions yet"
-            titleSw="Bado hakuna utabiri uliokamilika"
-            body="Settled positions appear here once their markets resolve."
-            bodySw="Utabiri uliokamilika utaonekana hapa baada ya soko kutatuliwa."
+            title={t.positions.noSettledYet}
+            body={t.positions.noSettledBody}
           />
         ) : (
           <>
@@ -255,9 +252,9 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
 }
 
 function SummaryCell({
-  label, sw, value, sub, tone = "neutral", icon,
+  label, value, sub, tone = "neutral", icon,
 }: {
-  label: string; sw: string; value: string; sub: string;
+  label: string; value: string; sub: string;
   tone?: "neutral" | "yes" | "no" | "gold";
   icon?: React.ReactNode;
 }) {
@@ -273,18 +270,16 @@ function SummaryCell({
         <p className="font-mono text-[9.5px] uppercase tracking-[0.08em] font-semibold text-text-subtle">{label}</p>
       </div>
       <p className={`mt-1.5 font-mono text-[18px] font-bold tabular-nums leading-tight ${valueClass}`}>{value}</p>
-      <p className="text-[11px] italic text-text-subtle">{sw}</p>
       <p className="mt-1 font-mono text-[10.5px] tabular-nums text-text-muted">{sub}</p>
     </div>
   );
 }
 
-function Section({ title, sw, count, children }: { title: string; sw: string; count: number; children: React.ReactNode }) {
+function Section({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
   return (
     <section>
       <h2 className="mb-3 flex items-baseline gap-2">
         <span className="font-display text-[20px] font-semibold text-text">{title}</span>
-        <span className="text-[13px] italic text-text-subtle">· {sw}</span>
         <span className="ml-auto font-mono text-[12px] text-text-subtle">{count}</span>
       </h2>
       {children}
@@ -292,18 +287,16 @@ function Section({ title, sw, count, children }: { title: string; sw: string; co
   );
 }
 
-function Empty({ kind, title, titleSw, body, bodySw }: { kind: "positions" | "default"; title: string; titleSw: string; body?: string; bodySw?: string }) {
+function Empty({ kind, title, body, browseLabel }: { kind: "positions" | "default"; title: string; body?: string; browseLabel?: string }) {
   return (
     <EmptyState
       kind={kind}
       title={title}
-      titleSw={titleSw}
       body={body}
-      bodySw={bodySw}
       action={
-        kind === "positions" ? (
+        browseLabel ? (
           <Link href={"/markets" as never} className="btn btn-gold btn-sm">
-            Browse markets →
+            {browseLabel}
           </Link>
         ) : null
       }

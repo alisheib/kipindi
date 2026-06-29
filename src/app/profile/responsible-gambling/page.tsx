@@ -13,8 +13,9 @@ import { Input, Field as KitField } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { FeedbackSettings } from "@/components/settings/feedback-settings";
 import { formatTzs } from "@/lib/utils";
+import { getServerT } from "@/lib/i18n-server";
 
-export const metadata = { title: "Responsible gambling · Mchezo salama" };
+export const metadata = { title: "Responsible gambling" };
 export const dynamic = "force-dynamic";
 
 const SELF_EXCLUSION_OPTIONS = [
@@ -32,6 +33,7 @@ const COOLING_OFF_OPTIONS = [
 ];
 
 export default async function ResponsibleGamblingPage({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string }> }) {
+  const { t } = await getServerT();
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile/responsible-gambling");
   const rg = await getRgSettings(session.userId);
@@ -45,7 +47,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
         className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
       >
         <I.chevronLeft s={14} />
-        Profile
+        {t.common.profile}
       </Link>
 
       {sp.error && (
@@ -55,7 +57,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
       )}
       {sp.saved && !sp.error && (
         <div role="status" className="rounded-xl border border-yes-700 bg-yes-500/10 px-4 py-3 text-[13px] text-yes-300">
-          Limits saved. · Mipaka imehifadhiwa.
+          {"Limits saved" /* i18n-todo: add rg.limitsSaved key */}
         </div>
       )}
 
@@ -76,18 +78,14 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           <div className="flex items-center gap-2 mb-1">
             <I.shieldcheck s={14} />
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-yes-300">
-              Player protection
+              {"Player protection" /* i18n-todo: add rg.playerProtection key */}
             </p>
           </div>
           <h1 className="font-display text-[26px] lg:text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
-            Responsible gambling <span className="text-text-subtle italic font-normal text-[18px]">· Mchezo salama</span>
+            {t.profile.responsibleGambling}
           </h1>
           <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose">
-            Set deposit and time limits, take a break, or self-exclude. We follow the UK Gambling
-            Commission&apos;s LCCP standards and the Tanzania Gaming Board&apos;s player-protection guidance.
-            <span className="block italic text-text-subtle text-[12px] mt-1">
-              Weka mipaka ya amana na muda, pumzika, au jizuie kabisa.
-            </span>
+            {"Set deposit and time limits, take a break, or self-exclude. We follow the UK Gambling Commission's LCCP standards and the Tanzania Gaming Board's player-protection guidance." /* i18n-todo: add rg.pageDescription key */}
           </p>
         </div>
       </header>
@@ -98,11 +96,10 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
       <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-4">
         <div className="flex items-center gap-2">
           <I.clock s={16} />
-          <h2 className="font-display text-[15px] font-semibold text-text">Deposit &amp; session limits</h2>
+          <h2 className="font-display text-[15px] font-semibold text-text">{t.rg.setLimits}</h2>
         </div>
         <p className="text-[12px] text-text-muted leading-snug">
-          Decreases take effect immediately. Increases to your daily deposit limit are deferred 24 hours
-          (LCCP SR 3.4.3). Leave any field blank to remove that limit.
+          {"Decreases take effect immediately. Increases to your daily deposit limit are deferred 24 hours (LCCP SR 3.4.3). Leave any field blank to remove that limit." /* i18n-todo: add rg.limitsDescription key */}
         </p>
         {hasPendingIncrease && (
           <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg/30 p-3 text-[12px]">
@@ -125,7 +122,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           <Field name="sessionTimeLimitMin"      label="Session time (minutes)"   defaultValue={rg.sessionTimeLimitMin}      placeholder="e.g. 60" />
           <Field name="realityCheckIntervalMin"  label="Reality check (min 5, max 120)"  defaultValue={rg.realityCheckIntervalMin}  placeholder="30" min={5} max={120} step={5} />
           <div className="sm:col-span-2 pt-2">
-            <SubmitButton label="Save limits · Hifadhi" pendingLabel="Saving…" size="md" />
+            <SubmitButton label={`${t.common.save} ${t.rg.setLimits.toLowerCase()}`} pendingLabel={`${t.common.loading}`} size="md" />
           </div>
         </form>
       </section>
@@ -134,15 +131,15 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
       <section id="break" className="scroll-mt-20 rounded-xl glass-panel p-5 lg:p-6 space-y-3">
         <div className="flex items-center gap-2">
           <I.pause s={16} className="text-info-fg" />
-          <h2 className="font-display text-[15px] font-semibold text-text">Take a break · Pumzika</h2>
+          <h2 className="font-display text-[15px] font-semibold text-text">{t.rg.takeABreak}</h2>
         </div>
         <p className="text-[12px] text-text-muted leading-snug">
-          A short, one-way pause. You will be signed out and cannot bet, deposit, or sign in until it ends.
+          {"A short, one-way pause. You will be signed out and cannot bet, deposit, or sign in until it ends." /* i18n-todo: add rg.breakDescription key */}
         </p>
         <form action={coolOffAction} className="flex flex-wrap items-end gap-2">
           <div>
             <span className="block font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">
-              Break length
+              {"Break length" /* i18n-todo: add rg.breakLength key */}
             </span>
             <Select
               name="period"
