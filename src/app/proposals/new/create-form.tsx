@@ -36,7 +36,7 @@ export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: 
     start(async () => {
       const r = await createProposalAction({ titleEn, titleSw: titleSw || undefined, description: description || undefined, resolutionCriterion: criterion, category, resolutionDate: date });
       if (r.ok) setDone(true);
-      else toast({ title: "Couldn't submit", description: r.error, variant: "danger" });
+      else toast({ title: t.toast.couldntSubmit, description: r.error, variant: "danger" });
     });
   };
 
