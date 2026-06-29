@@ -166,7 +166,7 @@ function ProposalCard({ p, disabled, t, locale, ageStr }: { p: ProposalView; dis
           <Chip variant="neutral"><CategoryIcon category={p.category} />{categoryLabel(t, p.category)}</Chip>
           <span className="ml-auto font-mono text-[10.5px] text-text-subtle">{ageStr(p.createdAt)}</span>
         </div>
-        <p className="font-display text-[15.5px] font-semibold leading-snug tracking-[-0.01em] text-text">{pickLocalized(locale, p.titleEn, p.titleSw)}</p>
+        <p className="font-display text-[15.5px] font-semibold leading-snug tracking-[-0.01em] text-text">{pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh)}</p>
         {p.description && <p className="mt-1.5 text-[12.5px] leading-relaxed text-text-muted line-clamp-2">{p.description}</p>}
         <div className="mt-2.5 flex items-center gap-3.5 font-mono text-[11px] text-text-subtle">
           <span>{t.proposals.byProposer} {p.proposerMasked}</span>

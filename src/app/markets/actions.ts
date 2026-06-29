@@ -147,6 +147,7 @@ export async function createMarketAction(formData: FormData) {
   const VALID_CATEGORIES = new Set(["sports", "macro", "weather", "crypto", "culture", "tech", "other"]);
   const titleEn = String(formData.get("titleEn") ?? "").trim();
   const titleSw = String(formData.get("titleSw") ?? "").trim();
+  const titleZh = String(formData.get("titleZh") ?? "").trim();
   const rawCategory = String(formData.get("category") ?? "other");
   const sourceUrl = String(formData.get("sourceUrl") ?? "").trim();
   const resolutionCriterion = String(formData.get("resolutionCriterion") ?? "").trim();
@@ -176,6 +177,7 @@ export async function createMarketAction(formData: FormData) {
   const input: CreateMarketInput = {
     titleEn,
     titleSw,
+    titleZh: titleZh || null,
     category: rawCategory as CreateMarketInput["category"],
     sourceUrl,
     resolutionCriterion,

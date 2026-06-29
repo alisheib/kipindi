@@ -420,6 +420,9 @@ function CandidateRow({
         {c.proposedTitleSw && (
           <p className="text-[12px] italic text-text-tertiary leading-tight">{c.proposedTitleSw}</p>
         )}
+        {c.proposedTitleZh && (
+          <p className="text-[12px] italic text-text-tertiary leading-tight">{c.proposedTitleZh}</p>
+        )}
         <p className="mt-1 text-[12px] text-text-muted leading-snug line-clamp-2">
           {c.resolutionCriterion}
         </p>

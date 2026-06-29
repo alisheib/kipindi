@@ -79,7 +79,8 @@ const SUBMIT_POLL_TOOL = {
     type: "object" as const,
     properties: {
       titleEn: { type: "string", description: "English question, under 200 chars, clear binary YES/NO outcome." },
-      titleSw: { type: "string", description: "Kiswahili translation of the question." },
+      titleSw: { type: "string", description: "Kiswahili translation of the question — natural and fluent, same meaning as the English." },
+      titleZh: { type: "string", description: "Simplified Chinese (简体中文) translation of the question — natural and fluent, same meaning as the English." },
       category: { type: "string", enum: VALID_CATEGORIES },
       resolutionCriterion: { type: "string", description: "The specific, publicly verifiable condition + named source that decides YES." },
       resolutionAt: { type: "string", description: "ISO 8601 datetime the question resolves. MUST be in the future." },
@@ -91,6 +92,7 @@ const SUBMIT_POLL_TOOL = {
             label: { type: "string" },
             descriptionEn: { type: "string" },
             descriptionSw: { type: "string" },
+            descriptionZh: { type: "string" },
           },
           required: ["label"],
         },
@@ -169,7 +171,7 @@ HARD RULES:
 5. Provide at least one REAL, reachable source URL. ${opts.webSearch ? "Only use URLs you actually found via web search — never invent one." : "Only cite well-known official domains you are confident exist."}
 6. NEVER generate questions about: politics, elections, religion, violence, war, adult content, or the death/health of any individual. These are banned under the GBT license.
 7. Anchor in Tanzania / East Africa wherever possible. Global topics are welcome for crypto, weather, and major world sport.
-8. titleEn under 200 characters. Always include a natural, fluent titleSw (Kiswahili) — translate the meaning, don't transliterate.
+8. titleEn under 200 characters. Always include a natural, fluent titleSw (Kiswahili) AND titleZh (Simplified Chinese, 简体中文) — translate the MEANING in each, don't transliterate. Keep proper nouns, brand names, numbers and TZS amounts intact; English remains the official version used to settle the market.
 9. options MUST be exactly two — "YES" and "NO" — each with a short, concrete description of what that outcome means.
 10. Set confidence 0-100 honestly: how clean, unambiguous and well-sourced is the resolution? Lower it if the source or condition is fuzzy.
 

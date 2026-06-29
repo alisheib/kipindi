@@ -85,9 +85,9 @@ async function ResultsContent({
   ];
 
   const tokens = qRaw.toLowerCase().split(/\s+/).filter(Boolean);
-  const matches = (m: { titleEn: string; titleSw: string; category: string; resolutionCriterion?: string }) => {
+  const matches = (m: { titleEn: string; titleSw: string; titleZh?: string | null; category: string; resolutionCriterion?: string }) => {
     if (!searching) return true;
-    const hay = `${m.titleEn} ${m.titleSw} ${m.category} ${m.resolutionCriterion ?? ""}`.toLowerCase();
+    const hay = `${m.titleEn} ${m.titleSw} ${m.titleZh ?? ""} ${m.category} ${m.resolutionCriterion ?? ""}`.toLowerCase();
     return tokens.every((t) => hay.includes(t));
   };
 
@@ -256,6 +256,7 @@ async function ResultsContent({
                     id={m.id}
                     titleEn={m.titleEn}
                     titleSw={m.titleSw}
+                    titleZh={m.titleZh}
                     category={m.category}
                     yesPct={impliedYesPct(m)}
                     volume={m.yesPool + m.noPool}

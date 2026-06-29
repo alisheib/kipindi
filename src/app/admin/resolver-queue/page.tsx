@@ -143,6 +143,7 @@ export default async function ResolverQueuePage({
                       </div>
                       <h3 className="mt-1 font-display text-[15px] font-semibold leading-tight text-text line-clamp-2">{m.titleEn}</h3>
                       <p className="text-[12px] italic text-text-subtle line-clamp-1">{m.titleSw}</p>
+                      {m.titleZh && <p className="text-[12px] italic text-text-subtle line-clamp-1">{m.titleZh}</p>}
                       <p className="mt-1 font-mono text-[11px] text-text-subtle">Bets closed {fmtTime(m.selectionClosedAt ?? m.resolutionAt)} · Resolves {fmtTime(m.resolutionAt)}</p>
                     </div>
                   </div>

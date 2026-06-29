@@ -293,6 +293,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
               id={m.id}
               titleEn={m.titleEn}
               titleSw={m.titleSw}
+              titleZh={m.titleZh}
               category={m.category}
               yesPct={impliedYesPct(m)}
               volume={m.yesPool + m.noPool}
@@ -334,6 +335,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
                 id={m.id}
                 titleEn={m.titleEn}
                 titleSw={m.titleSw}
+                titleZh={m.titleZh}
                 category={m.category}
                 yesPct={impliedYesPct(m)}
                 volume={m.yesPool + m.noPool}

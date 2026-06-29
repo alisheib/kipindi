@@ -153,6 +153,7 @@ export default async function MarketPredictorsPage({
               </div>
               <h2 className="font-display text-[17px] font-semibold text-text leading-snug">{m.titleEn}</h2>
               {m.titleSw && <p className="mt-0.5 text-[12px] italic text-text-subtle">{m.titleSw}</p>}
+              {m.titleZh && <p className="mt-0.5 text-[12px] italic text-text-subtle">{m.titleZh}</p>}
               <p className="mt-1.5 font-mono text-[11px] text-text-subtle">
                 Bets close {formatDateTime(m.selectionClosedAt ?? m.resolutionAt)} · Resolves {formatDateTime(m.resolutionAt)}
                 {m.resolvedOutcome && (

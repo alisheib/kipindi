@@ -191,6 +191,7 @@ export default async function LandingPage() {
                   id={m.id}
                   titleEn={m.titleEn}
                   titleSw={m.titleSw}
+                  titleZh={m.titleZh}
                   category={m.category}
                   yesPct={impliedYesPct(m)}
                   volume={m.yesPool + m.noPool}

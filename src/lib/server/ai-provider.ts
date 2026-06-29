@@ -24,11 +24,13 @@ export type AIPollOption = {
   label: string;
   descriptionEn?: string;
   descriptionSw?: string;
+  descriptionZh?: string;
 };
 
 export type AIPollGeneration = {
   titleEn: string;
   titleSw?: string;
+  titleZh?: string;
   category: string;
   resolutionCriterion: string;
   resolutionAt: string;

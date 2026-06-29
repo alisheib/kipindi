@@ -15,6 +15,7 @@ export function NewMarketWizard() {
   const [step, setStep] = useState(0);
   const [titleEn, setTitleEn] = useState("");
   const [titleSw, setTitleSw] = useState("");
+  const [titleZh, setTitleZh] = useState("");
   const [category, setCategory] = useState<typeof CATEGORIES[number]>("sports");
   const [sourceUrl, setSourceUrl] = useState("");
   const [resolutionAt, setResolutionAt] = useState("");
@@ -35,6 +36,7 @@ export function NewMarketWizard() {
       const fd = new FormData();
       fd.set("titleEn", titleEn);
       fd.set("titleSw", titleSw);
+      fd.set("titleZh", titleZh);
       fd.set("category", category);
       fd.set("sourceUrl", sourceUrl);
       fd.set("resolutionAt", new Date(resolutionAt).toISOString());
@@ -63,6 +65,9 @@ export function NewMarketWizard() {
           </Field>
           <Field label="Title (SW)" hint="Optional Swahili translation.">
             <Input value={titleSw} onChange={(e) => setTitleSw(e.target.value)} disabled={pending} placeholder="Je, TZS itaimarika dhidi ya USD?" />
+          </Field>
+          <Field label="Title (ZH) · Chinese / 中文" hint="Optional Chinese translation.">
+            <Input value={titleZh} onChange={(e) => setTitleZh(e.target.value)} disabled={pending} placeholder="坦桑尼亚先令会在月底前对美元走强吗？" />
           </Field>
           <Field label="Category">
             <Select value={category} onChange={(v) => setCategory(v as typeof CATEGORIES[number])}
@@ -95,6 +100,7 @@ export function NewMarketWizard() {
           <div className="rounded-md border border-border bg-bg-overlay p-4 space-y-2 text-[13px]">
             <Row label="Title (EN)" value={titleEn} />
             <Row label="Title (SW)" value={titleSw || "—"} mono />
+            <Row label="Title (ZH)" value={titleZh || "—"} mono />
             <Row label="Category"   value={category} />
             <Row label="Source URL" value={sourceUrl} mono />
             <Row label="Resolves at" value={resolutionAt} mono />

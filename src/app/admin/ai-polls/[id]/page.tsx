@@ -109,6 +109,9 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
               {poll.titleSw && (
                 <p className="text-[13px] italic text-text-tertiary leading-tight mt-0.5">{poll.titleSw}</p>
               )}
+              {poll.titleZh && (
+                <p className="text-[13px] italic text-text-tertiary leading-tight mt-0.5">{poll.titleZh}</p>
+              )}
             </div>
 
             {/* Actions */}

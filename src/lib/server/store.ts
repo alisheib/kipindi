@@ -322,6 +322,7 @@ export type StoredProposal = {
   proposerId: string;
   titleEn: string;
   titleSw: string | null;
+  titleZh: string | null;
   description: string | null;
   resolutionCriterion: string;
   category: ProposalCategory;

@@ -83,13 +83,14 @@ export type StoredAIPoll = {
   // Admin-editable fields (initially copied from generation)
   titleEn: string;
   titleSw: string;
+  titleZh: string;
   category: string;
   resolutionCriterion: string;
   resolutionAt: string;
   /** When selections (bets) close. Computed from resolutionAt - category lead
    *  time, or explicitly set in controlled mode. */
   selectionClosedAt: string | null;
-  options: Array<{ label: string; descriptionEn?: string; descriptionSw?: string }>;
+  options: Array<{ label: string; descriptionEn?: string; descriptionSw?: string; descriptionZh?: string }>;
   sources: Array<{ url: string; publisher: string }>;
   confidence: number;
   reasoning: string;
@@ -162,6 +163,7 @@ function toStoredAIPoll(r: any): StoredAIPoll {
     overallQuality: r.overallQuality,
     titleEn: r.titleEn,
     titleSw: r.titleSw,
+    titleZh: r.titleZh ?? "",
     category: r.category,
     resolutionCriterion: r.resolutionCriterion,
     resolutionAt: r.resolutionAt instanceof Date ? r.resolutionAt.toISOString() : String(r.resolutionAt ?? ""),
@@ -200,6 +202,7 @@ function toPrismaData(p: StoredAIPoll): any {
     overallQuality: p.overallQuality,
     titleEn: p.titleEn,
     titleSw: p.titleSw,
+    titleZh: p.titleZh || null,
     category: p.category,
     resolutionCriterion: p.resolutionCriterion,
     resolutionAt: p.resolutionAt ? new Date(p.resolutionAt) : new Date(0),
@@ -352,17 +355,19 @@ async function validateAndFilter(
   const sanitised: AIPollGeneration = {
     titleEn: sanitise(gen.titleEn ?? ""),
     titleSw: gen.titleSw ? sanitise(gen.titleSw) : undefined,
+    titleZh: gen.titleZh ? sanitise(gen.titleZh) : undefined,
     category: sanitise(gen.category ?? "").toLowerCase(),
     resolutionCriterion: sanitise(gen.resolutionCriterion ?? ""),
     resolutionAt: typeof gen.resolutionAt === "string" ? gen.resolutionAt : "",
     // Array fields may arrive as non-arrays, or hold strings/null instead of
     // objects — coerce defensively so a malformed shape filters, never throws.
     options: (Array.isArray(gen.options) ? gen.options : []).map((o) => {
-      const opt = (o ?? {}) as { label?: unknown; descriptionEn?: unknown; descriptionSw?: unknown };
+      const opt = (o ?? {}) as { label?: unknown; descriptionEn?: unknown; descriptionSw?: unknown; descriptionZh?: unknown };
       return {
         label: sanitise(typeof o === "string" ? o : opt.label),
         descriptionEn: opt.descriptionEn != null ? sanitise(opt.descriptionEn) : undefined,
         descriptionSw: opt.descriptionSw != null ? sanitise(opt.descriptionSw) : undefined,
+        descriptionZh: opt.descriptionZh != null ? sanitise(opt.descriptionZh) : undefined,
       };
     }),
     sources: (Array.isArray(gen.sources) ? gen.sources : []).map((s) => {
@@ -696,6 +701,7 @@ export async function generateAIPoll(opts: {
     overallQuality: 0,
     titleEn: "",
     titleSw: "",
+    titleZh: "",
     category: opts.category,
     resolutionCriterion: "",
     resolutionAt: "",
@@ -865,6 +871,7 @@ function copyGenerationToPoll(poll: StoredAIPoll, gen: AIPollGeneration) {
   // Only borrow the AI's title when the operator left it blank.
   if (!poll.titleEn) poll.titleEn = gen.titleEn;
   poll.titleSw = gen.titleSw ?? "";
+  poll.titleZh = gen.titleZh ?? "";
   poll.category = gen.category;
   poll.resolutionCriterion = gen.resolutionCriterion;
   // In controlled mode, admin may have pre-set resolutionAt — keep it.
@@ -1098,17 +1105,19 @@ export async function editAIPoll(id: string, opts: {
   officerId: string;
   titleEn?: string;
   titleSw?: string;
+  titleZh?: string;
   category?: string;
   resolutionCriterion?: string;
   resolutionAt?: string;
   selectionClosedAt?: string | null;
-  options?: Array<{ label: string; descriptionEn?: string; descriptionSw?: string }>;
+  options?: Array<{ label: string; descriptionEn?: string; descriptionSw?: string; descriptionZh?: string }>;
 }): Promise<StoredAIPoll | null> {
   const poll = await store.get(id);
   if (!poll || (poll.state !== "PENDING_REVIEW" && poll.state !== "EDITING")) return null;
 
   if (opts.titleEn !== undefined) poll.titleEn = sanitise(opts.titleEn);
   if (opts.titleSw !== undefined) poll.titleSw = sanitise(opts.titleSw);
+  if (opts.titleZh !== undefined) poll.titleZh = sanitise(opts.titleZh);
   if (opts.category !== undefined) poll.category = sanitise(opts.category).toLowerCase();
   if (opts.resolutionCriterion !== undefined) poll.resolutionCriterion = sanitise(opts.resolutionCriterion);
   if (opts.resolutionAt !== undefined) {
@@ -1132,6 +1141,7 @@ export async function editAIPoll(id: string, opts: {
       label: sanitise(o.label),
       descriptionEn: o.descriptionEn ? sanitise(o.descriptionEn) : undefined,
       descriptionSw: o.descriptionSw ? sanitise(o.descriptionSw) : undefined,
+      descriptionZh: o.descriptionZh ? sanitise(o.descriptionZh) : undefined,
     }));
   }
 
@@ -1139,6 +1149,7 @@ export async function editAIPoll(id: string, opts: {
   const revalidation = await validateAndFilter({
     titleEn: poll.titleEn,
     titleSw: poll.titleSw || undefined,
+    titleZh: poll.titleZh || undefined,
     category: poll.category,
     resolutionCriterion: poll.resolutionCriterion,
     resolutionAt: poll.resolutionAt,
@@ -1390,6 +1401,7 @@ export async function seedAIPollFixtures(): Promise<StoredAIPoll[]> {
       overallQuality: f.overallQuality ?? 0,
       titleEn: f.titleEn ?? "",
       titleSw: f.titleSw ?? "",
+      titleZh: f.titleZh ?? "",
       category: f.category ?? "",
       resolutionCriterion: f.resolutionCriterion ?? "",
       resolutionAt: f.resolutionAt ?? "",

@@ -15,6 +15,7 @@ type Props = {
   id: string;
   titleEn: string;
   titleSw: string;
+  titleZh?: string | null;
   category: string;
   yesPct: number;
   volume: number;
@@ -154,11 +155,11 @@ function HowItWorks() {
 }
 
 export function MarketCard({
-  id, titleEn, titleSw, category, yesPct, volume, predictors, timeLeft, status, move24h, traders, selectionClosed, className,
+  id, titleEn, titleSw, titleZh, category, yesPct, volume, predictors, timeLeft, status, move24h, traders, selectionClosed, className,
 }: Props) {
   const router = useRouter();
   const { t, locale } = useT();
-  const title = pickLocalized(locale, titleEn, titleSw);
+  const title = pickLocalized(locale, titleEn, titleSw, titleZh);
   const signal = getSignalBadge(status, yesPct, volume, predictors, timeLeft, {
     hot: t.common.hot, soon: t.common.soon, tipping: t.market.tipping,
   });

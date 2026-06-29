@@ -33,10 +33,13 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   // Calling notFound() during metadata generation gets us a real 404
   // because metadata runs before the streaming response starts.
   if (!m) notFound();
+  const { locale } = await getServerT();
   const yes = impliedYesPct(m);
   const desc = `YES ${yes}% · NO ${100 - yes}%. Predict on 50pick.`;
   return {
-    title: m.titleEn,
+    // Browser-tab title follows the viewer's language; OG/Twitter cards stay
+    // English (canonical — crawlers/share previews carry no locale cookie).
+    title: pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh),
     description: desc,
     openGraph: {
       title: m.titleEn,
@@ -164,7 +167,7 @@ export default async function MarketDetail({
           </a>
           <ShareButton marketId={m.id} title={m.titleEn} />
         </div>
-        <h1 className="font-display text-[26px] md:text-[34px] font-bold leading-tight tracking-[-0.02em] text-text">{pickLocalized(locale, m.titleEn, m.titleSw)}</h1>
+        <h1 className="font-display text-[26px] md:text-[34px] font-bold leading-tight tracking-[-0.02em] text-text">{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</h1>
       </header>
 
       {/* ── Main two-column layout ──

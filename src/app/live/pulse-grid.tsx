@@ -10,6 +10,7 @@ type Market = {
   id: string;
   titleEn: string;
   titleSw: string;
+  titleZh?: string | null;
   category: string;
   yesPct: number;
   volume: number;
@@ -44,6 +45,7 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
       (m) =>
         m.titleEn.toLowerCase().includes(q) ||
         (m.titleSw ?? "").toLowerCase().includes(q) ||
+        (m.titleZh ?? "").toLowerCase().includes(q) ||
         m.category.toLowerCase().includes(q),
     );
   }, [markets, query]);
@@ -156,6 +158,7 @@ function PulseCard({ market, index }: { market: Market; index: number }) {
         id={market.id}
         titleEn={market.titleEn}
         titleSw={market.titleSw}
+        titleZh={market.titleZh}
         category={market.category}
         yesPct={market.yesPct}
         volume={market.volume}

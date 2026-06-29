@@ -52,6 +52,7 @@ export type Candidate = {
   category: CandidateCategory;
   proposedTitleEn: string;
   proposedTitleSw?: string;
+  proposedTitleZh?: string;
   resolutionCriterion: string;
   resolutionAt: string;
   sources: Source[];               // primary + cross-verification sources
@@ -105,6 +106,7 @@ function toCandidate(r: any): Candidate {
     category: r.category as CandidateCategory,
     proposedTitleEn: r.proposedTitleEn,
     proposedTitleSw: r.proposedTitleSw ?? undefined,
+    proposedTitleZh: r.proposedTitleZh ?? undefined,
     resolutionCriterion: r.resolutionCriterion,
     resolutionAt: iso(r.resolutionAt)!,
     sources: (r.sources ?? []) as Source[],
@@ -171,6 +173,7 @@ const prismaCandidates: CandidateStore = {
         category: c.category,
         proposedTitleEn: c.proposedTitleEn,
         proposedTitleSw: c.proposedTitleSw ?? null,
+        proposedTitleZh: c.proposedTitleZh ?? null,
         resolutionCriterion: c.resolutionCriterion,
         resolutionAt: new Date(c.resolutionAt),
         sources: c.sources as unknown as import("@prisma/client").Prisma.JsonArray,
@@ -191,6 +194,7 @@ const prismaCandidates: CandidateStore = {
         category: c.category,
         proposedTitleEn: c.proposedTitleEn,
         proposedTitleSw: c.proposedTitleSw ?? null,
+        proposedTitleZh: c.proposedTitleZh ?? null,
         resolutionCriterion: c.resolutionCriterion,
         resolutionAt: new Date(c.resolutionAt),
         sources: c.sources as unknown as import("@prisma/client").Prisma.JsonArray,
@@ -301,6 +305,7 @@ export async function ingestCandidate(input: {
   category: CandidateCategory;
   proposedTitleEn: string;
   proposedTitleSw?: string;
+  proposedTitleZh?: string;
   resolutionCriterion: string;
   resolutionAt: string;
   sources: Source[];
@@ -315,6 +320,7 @@ export async function ingestCandidate(input: {
     category: input.category,
     proposedTitleEn: input.proposedTitleEn,
     proposedTitleSw: input.proposedTitleSw,
+    proposedTitleZh: input.proposedTitleZh,
     resolutionCriterion: input.resolutionCriterion,
     resolutionAt: input.resolutionAt,
     sources: input.sources,

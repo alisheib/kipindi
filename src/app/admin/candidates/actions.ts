@@ -72,6 +72,7 @@ export async function publishCandidateAction(formData: FormData) {
   const market = await createMarket({
     titleEn: c.proposedTitleEn,
     titleSw: c.proposedTitleSw ?? c.proposedTitleEn,
+    titleZh: c.proposedTitleZh ?? null,
     category: c.category === "infrastructure" ? "macro" : c.category,
     sourceUrl: primary.url,
     resolutionCriterion: c.resolutionCriterion,

@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { getServerT } from "@/lib/i18n-server";
+import { pickLocalized } from "@/lib/localized";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -19,7 +20,7 @@ export const dynamic = "force-dynamic";
 const fmtTzs = (n: number) => `TZS ${Math.round(n).toLocaleString("en-US")}`;
 
 export default async function PositionsPage({ searchParams }: { searchParams: Promise<{ tab?: string; page?: string }> }) {
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/positions");
   const sp = await searchParams;
@@ -177,7 +178,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                 <div key={p.id} className="space-y-2">
                   <PositionCard
                     marketId={p.marketId}
-                    marketTitle={m.titleEn}
+                    marketTitle={pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}
                     side={p.side}
                     stake={p.stake}
                     current={liveValue ?? p.potentialPayout}
@@ -231,7 +232,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                   <PositionCard
                     key={p.id}
                     marketId={p.marketId}
-                    marketTitle={m.titleEn}
+                    marketTitle={pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}
                     side={p.side}
                     stake={p.stake}
                     current={p.finalPayout ?? 0}

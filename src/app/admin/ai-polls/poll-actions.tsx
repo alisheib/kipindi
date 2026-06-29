@@ -1244,6 +1244,7 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
   const [pending, start] = useTransition();
   const [titleEn, setTitleEn] = useState(poll.titleEn);
   const [titleSw, setTitleSw] = useState(poll.titleSw);
+  const [titleZh, setTitleZh] = useState(poll.titleZh ?? "");
   const [category, setCategory] = useState(poll.category);
   const [criterion, setCriterion] = useState(poll.resolutionCriterion);
   const initialDt = poll.resolutionAt ? new Date(poll.resolutionAt) : null;
@@ -1294,6 +1295,7 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
         fd.set("id", poll.id);
         fd.set("titleEn", titleEn);
         fd.set("titleSw", titleSw);
+        fd.set("titleZh", titleZh);
         fd.set("category", category);
         fd.set("resolutionCriterion", criterion);
         fd.set("resolutionAt", resIso.toISOString());
@@ -1320,6 +1322,10 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
       <label className="block">
         <span className="text-[10px] text-text-subtle">Title (SW)</span>
         <Input value={titleSw} onChange={(e) => setTitleSw(e.target.value)} size="sm" />
+      </label>
+      <label className="block">
+        <span className="text-[10px] text-text-subtle">Title (ZH) · Chinese</span>
+        <Input value={titleZh} onChange={(e) => setTitleZh(e.target.value)} size="sm" />
       </label>
       <div>
         <span className="text-[10px] text-text-subtle block mb-1">Category</span>

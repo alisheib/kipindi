@@ -37,6 +37,7 @@ enum UserStatus {
 enum Locale {
   EN
   SW
+  ZH
 }
 
 enum KycStatus {
@@ -818,8 +819,10 @@ model Notification {
   href          String?
   titleEn       String?
   titleSw       String?
+  titleZh       String?
   bodyEn        String
   bodySw        String
+  bodyZh        String?
   payload       Json?
   sentAt        DateTime?
   readAt        DateTime?
@@ -1035,6 +1038,7 @@ model Proposal {
   proposer            User           @relation(fields: [proposerId], references: [id])
   titleEn             String
   titleSw             String?
+  titleZh             String?
   description         String?
   resolutionCriterion String
   category            String // sports, macro, weather, crypto, culture, infrastructure
@@ -1078,6 +1082,7 @@ model PredictionMarket {
   id                  String                 @id @default(cuid())
   titleEn             String
   titleSw             String
+  titleZh             String?
   category            String // sports, macro, weather, crypto, culture, tech, other
   sourceUrl           String
   resolutionCriterion String
@@ -1153,6 +1158,7 @@ model MarketCandidate {
   category            String
   proposedTitleEn     String
   proposedTitleSw     String?
+  proposedTitleZh     String?
   resolutionCriterion String
   resolutionAt        DateTime
   sources             Json // Array<{ url, publisher, publishedAt?, retrievedAt }>
@@ -1184,6 +1190,7 @@ model AIPoll {
   overallQuality       Int         @default(0)
   titleEn              String
   titleSw              String
+  titleZh              String?
   category             String
   resolutionCriterion  String
   resolutionAt         DateTime

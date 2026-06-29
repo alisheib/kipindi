@@ -40,6 +40,7 @@ function toStoredMarket(r: any): StoredMarket {
     id: r.id,
     titleEn: r.titleEn,
     titleSw: r.titleSw,
+    titleZh: r.titleZh ?? null,
     category: r.category as MarketCategory,
     sourceUrl: r.sourceUrl,
     resolutionCriterion: r.resolutionCriterion,
@@ -153,7 +154,7 @@ const prismaMarkets: MarketStore = {
       where: { id: m.id },
       create: {
         id: m.id,
-        titleEn: m.titleEn, titleSw: m.titleSw,
+        titleEn: m.titleEn, titleSw: m.titleSw, titleZh: m.titleZh,
         category: m.category, sourceUrl: m.sourceUrl,
         resolutionCriterion: m.resolutionCriterion,
         resolutionAt: new Date(m.resolutionAt),
@@ -178,7 +179,7 @@ const prismaMarkets: MarketStore = {
         createdAt: new Date(m.createdAt),
       },
       update: {
-        titleEn: m.titleEn, titleSw: m.titleSw,
+        titleEn: m.titleEn, titleSw: m.titleSw, titleZh: m.titleZh,
         category: m.category, sourceUrl: m.sourceUrl,
         resolutionCriterion: m.resolutionCriterion,
         resolutionAt: new Date(m.resolutionAt),

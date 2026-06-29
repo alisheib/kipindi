@@ -20,6 +20,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { LivePulseGrid } from "./pulse-grid";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { getServerT } from "@/lib/i18n-server";
+import { pickLocalized } from "@/lib/localized";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -28,7 +29,7 @@ export async function generateMetadata() {
 export const dynamic = "force-dynamic";
 
 export default async function LivePage() {
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
 
   function timeLeftStr(iso: string): string {
     const ms = Date.parse(iso) - Date.now();
@@ -52,6 +53,7 @@ export default async function LivePage() {
       id: m.id,
       titleEn: m.titleEn,
       titleSw: m.titleSw,
+      titleZh: m.titleZh,
       category: m.category,
       yesPct: impliedYesPct(m),
       volume: m.yesPool + m.noPool,
@@ -128,7 +130,7 @@ export default async function LivePage() {
                   <p className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-text-subtle">{t.market.mostContested}</p>
                 </div>
                 <h2 className="font-display text-[20px] lg:text-[26px] font-semibold text-text leading-tight max-w-[60ch] mb-5">
-                  {mostContested.titleEn}
+                  {pickLocalized(locale, mostContested.titleEn, mostContested.titleSw, mostContested.titleZh)}
                 </h2>
                 <TippingBar yesPct={mostContested.yesPct} height={36} showLabels />
                 <Link href={`/markets/${mostContested.id}` as never} className="btn btn-gold btn-lg mt-5">

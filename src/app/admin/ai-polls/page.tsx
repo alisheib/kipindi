@@ -536,6 +536,9 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
         {poll.titleSw && (
           <p className="text-[12px] italic text-text-tertiary leading-tight">{poll.titleSw}</p>
         )}
+        {poll.titleZh && (
+          <p className="text-[12px] italic text-text-tertiary leading-tight">{poll.titleZh}</p>
+        )}
 
         {/* Resolution criterion */}
         <p className="mt-1 text-[12px] text-text-muted leading-snug line-clamp-2">

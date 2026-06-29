@@ -47,6 +47,7 @@ export type StoredMarket = {
   id: string;
   titleEn: string;
   titleSw: string;
+  titleZh: string | null;
   category: MarketCategory;
   sourceUrl: string;
   resolutionCriterion: string;
@@ -172,6 +173,7 @@ export function isSelectionClosed(m: Pick<StoredMarket, "selectionClosedAt" | "r
 export type CreateMarketInput = {
   titleEn: string;
   titleSw: string;
+  titleZh?: string | null;
   category: MarketCategory;
   sourceUrl: string;
   resolutionCriterion: string;
@@ -205,6 +207,7 @@ export async function createMarket(input: CreateMarketInput) {
     id,
     titleEn: input.titleEn,
     titleSw: input.titleSw,
+    titleZh: input.titleZh ?? null,
     category: input.category,
     sourceUrl: input.sourceUrl,
     resolutionCriterion: input.resolutionCriterion,

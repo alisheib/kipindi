@@ -194,6 +194,7 @@ export async function editPollAction(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const titleEn = formData.has("titleEn") ? String(formData.get("titleEn")) : undefined;
   const titleSw = formData.has("titleSw") ? String(formData.get("titleSw")) : undefined;
+  const titleZh = formData.has("titleZh") ? String(formData.get("titleZh")) : undefined;
   const category = formData.has("category") ? String(formData.get("category")) : undefined;
   const resolutionCriterion = formData.has("resolutionCriterion") ? String(formData.get("resolutionCriterion")) : undefined;
   const resolutionAt = formData.has("resolutionAt") ? String(formData.get("resolutionAt")) : undefined;
@@ -205,6 +206,7 @@ export async function editPollAction(formData: FormData) {
     officerId,
     titleEn,
     titleSw,
+    titleZh,
     category,
     resolutionCriterion,
     resolutionAt,
@@ -292,6 +294,7 @@ export async function publishPollAction(formData: FormData) {
   const market = await createMarket({
     titleEn: poll.titleEn,
     titleSw: poll.titleSw || poll.titleEn,
+    titleZh: poll.titleZh || null,
     category: marketCategory as "sports" | "macro" | "weather" | "crypto" | "culture" | "tech" | "other",
     sourceUrl: poll.sources[0]?.url ?? "",
     resolutionCriterion: poll.resolutionCriterion,

@@ -156,10 +156,17 @@
   --info-500:    oklch(64% 0.17 268);
   --warning-500: oklch(78% 0.13 86);
 
-  /* ---------- Typography ---------- */
-  --font-display: 'Sora', system-ui, sans-serif;
-  --font-body:    'Inter', system-ui, sans-serif;
-  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+  /* ---------- Typography ----------
+     The Latin display/body/mono faces (Sora/Inter/JetBrains Mono) carry no
+     Chinese glyphs, so every stack ends with a CJK system-font fallback. The
+     browser substitutes per-glyph: Latin stays on the brand face, Chinese
+     renders in the platform's native CJK font (PingFang on Apple, YaHei on
+     Windows, Noto on Android/Linux). Zero network cost — no multi-MB CJK
+     webfont download, which matters on Tanzanian mobile data. */
+  --font-cjk:     'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', 'Source Han Sans SC';
+  --font-display: 'Sora', system-ui, var(--font-cjk), sans-serif;
+  --font-body:    'Inter', system-ui, var(--font-cjk), sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, var(--font-cjk), monospace;
   --font-sans:    var(--font-body);
 
   --type-hero:      72px;

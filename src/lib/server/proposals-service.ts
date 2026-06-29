@@ -53,6 +53,7 @@ function toMarketCategory(c: ProposalCategory): "sports" | "macro" | "weather" |
 export type CreateProposalInput = {
   titleEn: string;
   titleSw?: string;
+  titleZh?: string;
   description?: string;
   resolutionCriterion: string;
   category: ProposalCategory;
@@ -87,6 +88,7 @@ export async function createProposal(userId: string, input: CreateProposalInput)
     proposerId: userId,
     titleEn,
     titleSw: input.titleSw?.trim() || null,
+    titleZh: input.titleZh?.trim() || null,
     description: input.description?.trim() || null,
     resolutionCriterion: criterion,
     category: input.category,
@@ -163,6 +165,7 @@ export type ProposalView = {
   id: string;
   titleEn: string;
   titleSw: string | null;
+  titleZh: string | null;
   description: string | null;
   category: ProposalCategory;
   resolutionCriterion: string;
@@ -191,6 +194,7 @@ async function toView(p: StoredProposal, viewerId: string | null) {
     id: p.id,
     titleEn: p.titleEn,
     titleSw: p.titleSw,
+    titleZh: p.titleZh ?? null,
     description: p.description,
     category: p.category,
     resolutionCriterion: p.resolutionCriterion,
@@ -282,6 +286,7 @@ export async function approveAndList(proposalId: string, officerId: string, sour
     const market = await createMarket({
       titleEn: p.titleEn,
       titleSw: p.titleSw ?? p.titleEn,
+      titleZh: p.titleZh ?? null,
       category: toMarketCategory(p.category),
       sourceUrl: url,
       resolutionCriterion: p.resolutionCriterion,

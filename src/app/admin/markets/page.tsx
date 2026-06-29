@@ -151,6 +151,7 @@ export default async function AdminMarketsPage({
                       <td className="max-w-[360px]">
                         <Link href={`/markets/${m.id}` as never} className="font-display font-semibold text-text hover:text-teal-300 line-clamp-2">{m.titleEn}</Link>
                         {m.titleSw && <p className="mt-0.5 text-[12px] italic text-text-subtle line-clamp-1">{m.titleSw}</p>}
+                        {m.titleZh && <p className="mt-0.5 text-[12px] italic text-text-subtle line-clamp-1">{m.titleZh}</p>}
                         <Link href={`/admin/markets/${m.id}` as never} className="mt-1 inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.12em] text-brand-400 hover:text-brand-300 transition-colors">
                           <I.users size={10} /> View predictors
                         </Link>
