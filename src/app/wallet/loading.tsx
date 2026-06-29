@@ -1,11 +1,13 @@
-export default function WalletLoading() {
+import { getServerT } from "@/lib/i18n-server";
+
+export default async function WalletLoading() {
+  const { t } = await getServerT();
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
       <header className="flex items-end justify-between gap-3">
         <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">Wallet · Pochi</p>
-          <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">Your funds</h1>
-          <p className="text-[15px] italic text-text-subtle">Pesa zako</p>
+          <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.wallet.title}</p>
+          <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.common.yourFunds}</h1>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <div className="h-10 w-24 rounded-pill bg-bg-overlay kp-shimmer-track" />
@@ -30,9 +32,9 @@ export default function WalletLoading() {
 
       {/* Tab skeleton */}
       <nav className="flex items-center gap-1 border-b border-border" aria-hidden>
-        {["Activity", "Methods", "Limits"].map((t, i) => (
-          <div key={t} className={`h-9 px-3.5 ${i === 0 ? "border-b-2 border-gold-500" : ""}`}>
-            <span className="font-display text-[13px] text-text-subtle">{t}</span>
+        {["Activity", "Methods", "Limits"].map((tab, i) => (
+          <div key={tab} className={`h-9 px-3.5 ${i === 0 ? "border-b-2 border-gold-500" : ""}`}>
+            <span className="font-display text-[13px] text-text-subtle">{tab}</span>
           </div>
         ))}
       </nav>

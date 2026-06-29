@@ -1,13 +1,15 @@
 import { BrandSpinner } from "@/components/brand";
+import { getServerT } from "@/lib/i18n-server";
 
-export default function LiveLoading() {
+export default async function LiveLoading() {
+  const { t } = await getServerT();
   return (
     <main className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6 space-y-5">
       {/* Slim header — matches the live page so the questions-first layout
           doesn't jump when the real content swaps in. */}
       <div className="flex items-center justify-between gap-3">
-        <p className="font-mono text-[12px] uppercase tracking-[0.18em] font-bold text-text">Live · Hai</p>
-        <p className="font-mono text-[10.5px] text-text-subtle">Loading · Inapakia</p>
+        <p className="font-mono text-[12px] uppercase tracking-[0.18em] font-bold text-text">{t.common.live}</p>
+        <p className="font-mono text-[10.5px] text-text-subtle">{t.common.loading}</p>
       </div>
 
       <div className="market-grid" aria-hidden>

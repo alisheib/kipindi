@@ -1,4 +1,4 @@
 import { PageLoader } from "@/components/ui/page-loader";
 export default function Loading() {
-  return <PageLoader width={1080} label="Loading help" labelSw="Inapakia msaada" />;
+  return <PageLoader width={1080} />;
 }

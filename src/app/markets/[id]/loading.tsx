@@ -1,12 +1,14 @@
 import { BrandSpinner } from "@/components/brand";
+import { getServerT } from "@/lib/i18n-server";
 
-export default function MarketDetailLoading() {
+export default async function MarketDetailLoading() {
+  const { t } = await getServerT();
   return (
     <main className="mx-auto max-w-[1100px] px-3 lg:px-6 py-6 space-y-5">
       <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-1 min-w-0">
           <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">
-            Loading market · Inapakia soko
+            {t.common.loading}
           </p>
           <div
             className="kp-shimmer-track rounded-md"

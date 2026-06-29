@@ -1,21 +1,22 @@
 import { BrandSpinner } from "@/components/brand";
+import { getServerT } from "@/lib/i18n-server";
 
-export default function LeaderboardLoading() {
+export default async function LeaderboardLoading() {
+  const { t } = await getServerT();
   return (
     <main className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6 space-y-6">
       <header>
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">
-          Leaderboard · Bingwa
+          {t.leaderboard.title}
         </p>
-        <h1 className="font-display text-[28px] font-bold text-text">Top predictors</h1>
-        <p className="text-[14px] italic text-text-subtle">Watabiri bora wa mwezi</p>
+        <h1 className="font-display text-[28px] font-bold text-text">{t.leaderboard.topPredictors}</h1>
       </header>
 
       <section className="rounded-xl border border-border bg-bg-elevated p-8 grid place-items-center">
         <div className="flex flex-col items-center gap-3">
           <BrandSpinner size={48} />
           <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-muted">
-            Loading leaderboard · Inapakia
+            {t.common.loading}
           </p>
         </div>
       </section>

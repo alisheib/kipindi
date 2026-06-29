@@ -1,21 +1,23 @@
-export default function PositionsLoading() {
+import { getServerT } from "@/lib/i18n-server";
+
+export default async function PositionsLoading() {
+  const { t } = await getServerT();
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
       <header>
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">History · Historia</p>
-        <h1 className="font-display text-[28px] font-bold text-text">Polls you&rsquo;ve played</h1>
-        <p className="text-[15px] italic text-text-subtle">Kura ulizocheza</p>
+        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.positions.title}</p>
+        <h1 className="font-display text-[28px] font-bold text-text">{t.positions.pollsPlayed}</h1>
       </header>
 
       {/* Tab skeleton */}
       <nav className="flex items-center gap-1 border-b border-border" aria-hidden>
-        {["All", "Open", "Settled"].map((t, i) => (
+        {["All", "Open", "Settled"].map((tab, i) => (
           <div
-            key={t}
+            key={tab}
             className={`h-9 px-3.5 rounded-t-md ${i === 0 ? "bg-bg-overlay" : ""}`}
             style={{ width: 70 }}
           >
-            <span className="font-display text-[13px] text-text-subtle">{t}</span>
+            <span className="font-display text-[13px] text-text-subtle">{tab}</span>
           </div>
         ))}
       </nav>
