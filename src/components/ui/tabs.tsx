@@ -36,7 +36,7 @@ export function Tabs({
       <div
         role="tablist"
         className={cn(
-          "inline-flex items-center gap-0.5 rounded-lg bg-bg-inset p-[3px] border border-border",
+          "inline-flex items-center gap-0.5 rounded-lg bg-bg-inset p-1 border border-border",
           className,
         )}
       >

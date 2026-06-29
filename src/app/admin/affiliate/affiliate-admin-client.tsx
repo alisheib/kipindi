@@ -44,7 +44,7 @@ function Field({
 
 function Seg<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: Array<{ v: T; l: string }> }) {
   return (
-    <div className="inline-flex gap-[3px] rounded-md border border-border bg-bg-overlay p-[3px]">
+    <div className="inline-flex gap-1 rounded-md border border-border bg-bg-overlay p-1">
       {options.map((o) => {
         const active = value === o.v;
         return (

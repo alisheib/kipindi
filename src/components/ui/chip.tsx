@@ -73,7 +73,7 @@ export function Chip({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-[5px] rounded-pill font-bold whitespace-nowrap border uppercase",
+        "inline-flex items-center gap-1 rounded-pill font-bold whitespace-nowrap border uppercase",
         selected && "ring-1 ring-[var(--brand-400)] ring-offset-1 ring-offset-bg-elevated",
         className,
       )}
