@@ -28,10 +28,10 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
   const nextSafe = /^\/(?![/\\])/.test(nextRaw) && !nextRaw.startsWith("/auth/") ? nextRaw : "";
   const masked = phone ? phone.slice(0, 4) + "*****" + phone.slice(-2) : "+255*****";
   const errorMsg: Record<string, string> = {
-    wrong_code: "Wrong code — try again. · Msimbo si sahihi.",
-    expired: "Code expired — request a new one. · Msimbo umeisha muda.",
-    too_many: "Too many attempts — wait a moment. · Majaribio mengi sana.",
-    rate_limited: "Rate limited — try again shortly. · Subiri kidogo.",
+    wrong_code: t.auth.wrongCode,
+    expired: t.auth.codeExpired,
+    too_many: t.auth.tooManyOtp,
+    rate_limited: t.auth.otpRateLimited,
   };
 
   return (
@@ -47,14 +47,13 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
         >
           <div>
             <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-gold-300">
-              Verification · Uthibitisho
+              {t.common.verification}
             </p>
             <h1 className="mt-1.5 font-display text-[28px] font-bold leading-tight text-text tracking-[-0.02em]">
-              Enter the 6-digit code
+              {t.common.enterCode}
             </h1>
             <p className="mt-1.5 text-[13.5px] text-text-muted">
-              Sent to <span className="font-mono text-text font-semibold">{masked}</span>.{" "}
-              <span className="italic text-text-subtle">Imetumwa.</span>
+              {t.common.codeSent} <span className="font-mono text-text font-semibold">{masked}</span>.
             </p>
           </div>
 
@@ -62,14 +61,14 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
             <div id="otp-error" role="alert" className="rounded-md border border-no-700 bg-no-500/10 px-3 py-2.5 text-[13px] text-no-300">
               {errorMsg[error] ?? error}
               {error === "rate_limited" && retrySec > 0 && (
-                <> You can request a new code in <CountdownPill seconds={retrySec} suffix="· Subiri" />.</>
+                <> You can request a new code in <CountdownPill seconds={retrySec} />.</>
               )}
             </div>
           )}
 
           {sent && !error && (
             <div role="status" className="rounded-md border border-yes-700 bg-yes-500/10 px-3 py-2.5 text-[13px] text-yes-300">
-              New code sent. · Msimbo mpya umetumwa.
+              {t.common.newCodeSent}
             </div>
           )}
 
@@ -79,7 +78,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
             {nextSafe && <input type="hidden" name="next" value={nextSafe} />}
             <label className="block">
               <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5">
-                Code · Msimbo
+                {t.common.codeLabel}
               </span>
               <input
                 id="code"
@@ -97,7 +96,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
               />
               <OtpExpiryCountdown />
             </label>
-            <SubmitButton label="Verify · Thibitisha" pendingLabel={t.common.verifying} />
+            <SubmitButton label={t.common.confirm} pendingLabel={t.common.verifying} />
           </form>
 
           <div className="flex items-center justify-between border-t border-border pt-3">
@@ -127,7 +126,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
         </section>
 
         <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-text-subtle">
-          5 wrong attempts triggers a cool-down · Majaribio 5 mabaya — lazima subiri
+          {t.common.wrongAttemptsHint}
         </p>
       </div>
     </main>

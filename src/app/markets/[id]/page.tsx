@@ -53,15 +53,15 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 const fmtTzs = (n: number) => `TZS ${n.toLocaleString("en-US")}`;
 const fmtTime = formatDateTime;
-function timeLeftStr(iso: string): string {
+function timeLeftStr(iso: string, t: { closed: string; dLeft: string; hLeft: string; mLeft: string }): string {
   const ms = Date.parse(iso) - Date.now();
-  if (ms <= 0) return "closed";
+  if (ms <= 0) return t.closed;
   const d = Math.floor(ms / (24 * 3600_000));
-  if (d > 0) return `${d}d left`;
+  if (d > 0) return `${d}${t.dLeft}`;
   const h = Math.floor(ms / 3600_000);
-  if (h > 0) return `${h}h left`;
+  if (h > 0) return `${h}${t.hLeft}`;
   const m = Math.floor(ms / 60_000);
-  return `${m}m left`;
+  return `${m}${t.mLeft}`;
 }
 
 export default async function MarketDetail({
@@ -158,7 +158,7 @@ export default async function MarketDetail({
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 ml-auto text-[12px] font-mono text-text-muted hover:text-text"
           >
-            Source
+            {t.common.source}
             <I.ext s={12} />
           </a>
           <ShareButton marketId={m.id} title={m.titleEn} />
