@@ -211,10 +211,10 @@ export default async function MarketDetail({
               {m.selectionClosedAt && isSelectionClosed(m) && m.status === "LIVE" && (
                 <div className="flex items-center gap-2 text-[12.5px] font-semibold" style={{ color: "var(--gold-300)" }}>
                   <I.hourglassOff s={14} />
-                  Selection closed — waiting for results · Uchaguzi umefungwa — tunasubiri matokeo
+                  {t.market.selectionClosedWaiting}
                 </div>
               )}
-              <Countdown to={m.resolutionAt} label={m.selectionClosedAt ? "Results in · Matokeo baada ya" : "Closes in · Inafungwa baada ya"} />
+              <Countdown to={m.resolutionAt} label={m.selectionClosedAt ? t.market.resultsIn : t.market.closesIn} />
             </div>
           )}
 
@@ -223,12 +223,11 @@ export default async function MarketDetail({
             <section className="rounded-xl border border-border bg-bg-elevated p-5 space-y-3">
               <h2 className="font-display text-[15px] font-semibold text-text flex items-center gap-2">
                 <I.portfolio s={15} />
-                Your positions
+                {t.market.yourPositions}
               </h2>
               {myPositions.length === 0 && (
                 <p className="text-[12.5px] text-text-subtle italic">
-                  You haven&rsquo;t bet on this market yet. Use the dial to get started.
-                  <span className="block text-[11.5px] mt-0.5">Bado hujaweka dau kwenye soko hili.</span>
+                  {t.market.noBetYet}
                 </p>
               )}
               {myPositions.map((p) => {
@@ -237,15 +236,15 @@ export default async function MarketDetail({
                   <div key={p.id} className="rounded-md border border-border bg-bg-overlay/40 p-3 space-y-2">
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[12px]">
                       <span className={p.side === "YES" ? "text-yes-300 font-bold" : "text-no-300 font-bold"}>{p.side}</span>
-                      <span className="text-text-muted">stake {fmtTzs(p.stake)}</span>
+                      <span className="text-text-muted">{t.common.stake} {fmtTzs(p.stake)}</span>
                       {p.status !== "OPEN" && (
-                        <span className="text-gold-300">paid {fmtTzs(p.finalPayout ?? 0)}</span>
+                        <span className="text-gold-300">{t.market.paidLabel} {fmtTzs(p.finalPayout ?? 0)}</span>
                       )}
                       <span className="text-text-subtle ml-auto">[{p.status === "CASHED_OUT" ? "CASHED" : p.status}]</span>
                     </div>
                     <p className="flex items-center gap-1 font-mono text-[10px] tracking-[0.04em] text-text-faint tabular-nums">
                       <I.clock s={10} className="opacity-70 shrink-0" />
-                      Opened {fmtTime(p.placedAt)}
+                      {t.market.opened} {fmtTime(p.placedAt)}
                     </p>
                     {liveValue !== null && (
                       <SellButton
@@ -267,7 +266,7 @@ export default async function MarketDetail({
           <section className="rounded-lg glass-panel p-5">
             <h2 className="font-display text-[16px] font-semibold text-text mb-2 flex items-center gap-2">
               <I.fileCheck s={15} className="text-text-subtle" />
-              Resolution criterion
+              {t.market.resolutionCriterion}
             </h2>
             <p className="text-[14px] leading-relaxed text-text-muted whitespace-pre-line">{m.resolutionCriterion}</p>
             <p className="mt-3 pt-3 border-t border-border/50 font-mono text-[11px] text-text-subtle flex items-center gap-1.5">
@@ -299,14 +298,14 @@ export default async function MarketDetail({
               {openPositions.length > 0 && (
                 <div className="rounded-lg border border-warning-border bg-warning-bg/30 px-3.5 py-2.5">
                   <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-warning-fg">
-                    You already hold {heldLabel} here
+                    {t.market.youAlreadyHold} {heldLabel} {t.market.here}
                   </p>
                   <p className="mt-1 text-[12px] leading-snug text-text-muted">
                     {hedgeBoth
-                      ? "You're backing both sides — the 9% margin applies to each, so hedging here locks in a loss."
+                      ? t.market.hedgeBothBody
                       : hedgeOpposite
-                        ? `Backing the other side now hedges against your ${heldLabel} — you'd pay the 9% margin on both and only one can win.`
-                        : `Placing again adds to your ${heldLabel} stake on this market.`}
+                        ? t.market.hedgeOppositeBody
+                        : t.market.hedgeAddBody}
                   </p>
                 </div>
               )}
@@ -333,16 +332,13 @@ export default async function MarketDetail({
                 }}
               >
                 <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
-                  Sign in to predict
+                  {t.market.signInToPredict}
                 </p>
                 <h3 className="mt-1.5 font-display text-[18px] font-bold text-text leading-tight">
-                  Place your stake on this market
+                  {t.market.placeYourStake}
                 </h3>
                 <p className="mt-1.5 text-[12.5px] text-text-muted leading-snug">
-                  Browse for free, but a verified phone is required before any bet can be placed.
-                  <span className="block italic text-text-subtle text-[11.5px] mt-0.5">
-                    Andika namba ya simu ili kuweka dau.
-                  </span>
+                  {t.market.browseForFree}
                 </p>
                 {(() => {
                   const betNext = "/markets/" + m.id + (side === "YES" || side === "NO" ? `?side=${side}` : "");
@@ -350,10 +346,10 @@ export default async function MarketDetail({
                   return (
                     <div className="mt-4 grid grid-cols-1 xs:grid-cols-2 gap-2">
                       <a href={`/auth/register${q}`} className="btn btn-gold btn-md" style={{ borderRadius: "var(--r-pill)" }}>
-                        Sign up
+                        {t.common.signUp}
                       </a>
                       <a href={`/auth/login${q}`} className="btn btn-ghost btn-md" style={{ borderRadius: "var(--r-pill)" }}>
-                        Sign in
+                        {t.common.signIn}
                       </a>
                     </div>
                   );
@@ -366,30 +362,28 @@ export default async function MarketDetail({
                 <I.hourglassOff s={18} className="text-gold-300" />
               </div>
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
-                Selection closed · Uchaguzi umefungwa
+                {t.market.selectionClosedBadge}
               </p>
-              <h3 className="mt-1.5 font-display text-[16px] font-bold text-text">Waiting for results</h3>
-              <p className="mt-1 text-[13px] italic text-text-subtle">Tunasubiri matokeo.</p>
+              <h3 className="mt-1.5 font-display text-[16px] font-bold text-text">{t.market.waitingForResultsAside}</h3>
               <p className="mt-3 text-[12px] text-text-muted leading-snug">
-                New predictions are no longer accepted. The market is waiting for the outcome to be determined.
-                {m.resolutionAt && ` Results expected by ${new Date(m.resolutionAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}.`}
+                {t.market.newPredictionsNotAccepted}
+                {m.resolutionAt && ` ${t.market.resultsExpectedBy} ${new Date(m.resolutionAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}.`}
               </p>
             </div>
           ) : closedByTime ? (
             <div className="rounded-xl border border-warning-border bg-warning-bg/30 p-6 text-center">
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-warning-fg">
-                Closed · Awaiting settlement
+                {t.market.closedAwaitingSettlement}
               </p>
-              <h3 className="mt-1.5 font-display text-[16px] font-bold text-text">No more bets</h3>
-              <p className="mt-1 text-[13px] italic text-text-subtle">Soko limefungwa · subiri matokeo.</p>
+              <h3 className="mt-1.5 font-display text-[16px] font-bold text-text">{t.market.noMoreBets}</h3>
+              <p className="mt-1 text-[13px] italic text-text-subtle">{t.market.closedWaitSubtitle}</p>
               <p className="mt-3 text-[12px] text-text-muted leading-snug">
-                The countdown ended. The market is closed for predictions while the outcome is being recorded — refresh in a moment to see your result.
+                {t.market.countdownEndedBody}
               </p>
             </div>
           ) : (
             <div className="rounded-lg border border-border bg-bg-elevated p-6 text-center">
-              <p className="font-display text-[16px] font-semibold text-text">Market closed for predictions</p>
-              <p className="mt-1 text-[13px] italic text-text-subtle">Soko limefungwa kwa utabiri.</p>
+              <p className="font-display text-[16px] font-semibold text-text">{t.market.marketClosedForPredictions}</p>
             </div>
           )}
         </aside>

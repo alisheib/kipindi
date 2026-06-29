@@ -9,8 +9,9 @@ import { Input, Field as KitField } from "@/components/ui/input";
 import { Chip } from "@/components/ui/chip";
 import { submitSourceOfFundsAction } from "./actions";
 import { formatDate } from "@/lib/utils";
+import { getServerT } from "@/lib/i18n-server";
 
-export const metadata = { title: "Source of funds · Asili ya pesa" };
+export const metadata = { title: "Source of funds" };
 export const dynamic = "force-dynamic";
 
 const SOURCES = [
@@ -30,6 +31,7 @@ const BANDS = [
 ];
 
 export default async function SourceOfFundsPage({ searchParams }: { searchParams?: Promise<{ error?: string; saved?: string; src?: string; occ?: string; band?: string; emp?: string; other?: string }> }) {
+  const { t } = await getServerT();
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile/source-of-funds");
   const existing = await db.sourceOfFunds.get(session.userId);
@@ -57,7 +59,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
         className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
       >
         <I.chevronLeft s={14} />
-        Profile
+        {t.common.profile}
       </Link>
 
       {sp.error && (
@@ -67,7 +69,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
       )}
       {sp.saved && !sp.error && (
         <div role="status" className="rounded-xl border border-yes-700 bg-yes-500/10 px-4 py-3 text-[13px] text-yes-300">
-          Declaration saved. · Taarifa imehifadhiwa.
+          {"Declaration saved" /* i18n-todo: add profile.declarationSaved key */}
         </div>
       )}
 
@@ -88,18 +90,14 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
           <div className="flex items-center gap-2 mb-1">
             <I.shieldcheck s={14} />
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-info-fg">
-              AML · Enhanced due diligence
+              {"AML" /* i18n-todo */}
             </p>
           </div>
           <h1 className="font-display text-[26px] lg:text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
-            Source of funds <span className="text-text-subtle italic font-normal text-[18px]">· Asili ya pesa</span>
+            {t.profile.sourceOfFunds}
           </h1>
           <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose">
-            Required by the Tanzania Anti-Money-Laundering Act (Cap 423) when cumulative deposits exceed
-            TZS 5,000,000 in 30 days, or any single transaction exceeds TZS 1,000,000.
-            <span className="block italic text-text-subtle text-[12px] mt-1">
-              Tunahitaji kujua chanzo cha pesa zako kwa mujibu wa sheria ya kuzuia uoshaji wa fedha.
-            </span>
+            {"Required by the Tanzania Anti-Money-Laundering Act (Cap 423) when cumulative deposits exceed TZS 5,000,000 in 30 days, or any single transaction exceeds TZS 1,000,000." /* i18n-todo: add profile.sofDescription key */}
           </p>
         </div>
       </header>
@@ -109,13 +107,9 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
           <div className="flex items-start gap-2.5">
             <I.alertCircle s={18} />
             <div className="min-w-0">
-              <p className="font-display text-[14px] font-bold text-no-300">Declaration rejected · Tamko limekataliwa</p>
+              <p className="font-display text-[14px] font-bold text-no-300">{t.profile.sofResubmit}</p>
               <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
-                Our compliance team could not accept your declaration as submitted.
-                Please update the form below and re-submit with accurate information.
-                <span className="block italic text-text-subtle text-[11.5px] mt-0.5">
-                  Tafadhali rekebisha na uwasilishe tena.
-                </span>
+                {t.profile.sofResubmitBody}
               </p>
             </div>
           </div>
@@ -127,7 +121,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
           <div className="flex items-center gap-2">
             <Pill tone={statusTone as "yes" | "no" | "warning"}>{statusLabel}</Pill>
             <p className="font-mono text-[11px] text-text-subtle tabular-nums">
-              Submitted {formatDate(existing.submittedAt)}
+              {"Submitted" /* i18n-todo */} {formatDate(existing.submittedAt)}
             </p>
           </div>
           <p className="text-[12.5px] text-text-muted leading-snug">
@@ -136,7 +130,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
             <br />Income band: <span className="font-semibold text-text">{bandLabel}</span>
           </p>
           {existing.reviewStatus === "PENDING" && (
-            <p className="font-mono text-[11px] text-text-subtle">A compliance officer will review within 1 business day.</p>
+            <p className="font-mono text-[11px] text-text-subtle">{"A compliance officer will review within 1 business day." /* i18n-todo: add profile.sofPendingNote key */}</p>
           )}
         </section>
       )}
@@ -144,13 +138,13 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
       <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-5">
         <div className="flex items-center gap-2">
           <I.fileSignature s={16} className="text-info-fg" />
-          <h2 className="font-display text-[15px] font-semibold text-text">Declaration · Tamko</h2>
+          <h2 className="font-display text-[15px] font-semibold text-text">{"Declaration" /* i18n-todo: add profile.declaration key */}</h2>
         </div>
 
         <form action={submitSourceOfFundsAction} className="space-y-5">
           <fieldset>
             <legend className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
-              Primary source of funds · Chanzo kikuu
+              {t.profile.sourceOfFunds}
             </legend>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {SOURCES.map((s, i) => (
@@ -167,7 +161,6 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
                     className="sr-only peer"
                   />
                   <span className="font-display text-[12.5px] font-bold text-text">{s.label}</span>
-                  <span className="font-mono text-[10.5px] italic text-text-subtle">{s.sw}</span>
                 </label>
               ))}
             </div>
@@ -176,7 +169,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field
               name="declaredOccupation"
-              label="Occupation · Kazi"
+              label={"Occupation" /* i18n-todo: add profile.occupation key */}
               required
               minLength={2}
               maxLength={200}
@@ -185,7 +178,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
             />
             <Field
               name="declaredEmployer"
-              label="Employer (optional) · Mwajiri"
+              label={"Employer (optional)" /* i18n-todo: add profile.employer key */}
               maxLength={200}
               defaultValue={prevEmp}
               placeholder="Company name"
@@ -194,7 +187,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
 
           <fieldset>
             <legend className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
-              Approximate annual income · Mapato ya mwaka
+              {"Approximate annual income" /* i18n-todo: add profile.annualIncome key */}
             </legend>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {BANDS.map((b, i) => (
@@ -221,7 +214,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
               htmlFor="declaredOther"
               className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2"
             >
-              Other details (required if &quot;Other&quot; selected) · Maelezo zaidi
+              {"Other details (required if \"Other\" selected)" /* i18n-todo: add profile.otherDetails key */}
             </label>
             <textarea
               id="declaredOther"
@@ -235,15 +228,13 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
           </div>
 
           <div className="rounded-md border border-warning-border bg-warning-bg/30 p-3.5 space-y-1">
-            <p className="font-display text-[12.5px] font-semibold text-text">By submitting</p>
+            <p className="font-display text-[12.5px] font-semibold text-text">{"By submitting" /* i18n-todo: add profile.bySubmitting key */}</p>
             <p className="text-[12px] text-text-muted leading-snug">
-              You confirm the declared information is true and complete. Knowingly providing false
-              information is an offence under the Tanzania Anti-Money-Laundering Act, with penalties
-              up to 10 years imprisonment and/or fines up to TZS 100,000,000.
+              {"You confirm the declared information is true and complete. Knowingly providing false information is an offence under the Tanzania Anti-Money-Laundering Act, with penalties up to 10 years imprisonment and/or fines up to TZS 100,000,000." /* i18n-todo: add profile.sofDisclaimer key */}
             </p>
           </div>
 
-          <SubmitButton label="Submit declaration · Wasilisha" pendingLabel="Submitting…" />
+          <SubmitButton label={t.common.confirm} pendingLabel={t.common.loading} />
         </form>
       </section>
     </main>

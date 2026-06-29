@@ -8,10 +8,11 @@ import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { getBonusConfig } from "@/lib/server/bonus-config";
+import { getServerT } from "@/lib/i18n-server";
 import { depositAction } from "./actions";
 import { DepositAmount } from "./deposit-amount";
 
-export const metadata = { title: "Deposit · Amana" };
+export const metadata = { title: "Deposit" };
 
 const ADMIN_TEST_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
 
@@ -28,17 +29,14 @@ const QUICK_AMOUNTS = [1_000, 5_000, 10_000, 25_000, 50_000, 100_000];
 export default async function DepositPage({ searchParams }: { searchParams: Promise<{ error?: string; provider?: string; amount?: string; msisdn?: string }> }) {
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/wallet/deposit");
+  const { t } = await getServerT();
 
   const sp = await searchParams;
   const errorMsg = sp.error ? decodeURIComponent(sp.error) : null;
-  // Restore form values on error redirect so the player doesn't re-enter everything
   const prevProvider = sp.provider ?? "";
   const prevAmount = sp.amount ?? "";
   const prevMsisdn = sp.msisdn ?? "";
 
-  // TEMPORARY admin test-funding: ADMIN-role accounts can deposit uncapped
-  // play-money to test deposits/referrals/proposals. Disable via
-  // ADMIN_TEST_DEPOSITS=false. Mirrors the wallet-service bypass.
   const user = await db.user.findById(session.userId);
   const adminTest = !!user && ADMIN_TEST_ROLES.has(user.role) && process.env.NODE_ENV !== "production" && process.env.ADMIN_TEST_DEPOSITS !== "false";
   const maxAmount = adminTest ? 1_000_000_000 : 2_000_000;
@@ -53,7 +51,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
         className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
       >
         <I.chevronLeft s={14} />
-        Wallet
+        {t.wallet.title}
       </Link>
 
       <header className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated">
@@ -71,12 +69,12 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
         </div>
         <div className="relative z-10 p-5 lg:p-6">
           <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
-            Deposit · Amana
+            {t.common.deposit}
           </p>
           <h1 className="mt-1 font-display text-[26px] font-bold text-text leading-tight tracking-[-0.02em]">
-            Add funds to your wallet
+            {t.common.deposit}
           </h1>
-          <p className="mt-1 text-[14px] italic text-text-subtle">Choose a payment method · Chagua njia ya malipo.</p>
+          <p className="mt-1 text-[14px] italic text-text-subtle">{t.wallet.mobileMoney}</p>
         </div>
       </header>
 
@@ -84,7 +82,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
         <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-no-700/60 bg-no-500/[0.10] px-4 py-3">
           <I.alertCircle s={16} />
           <div className="text-[12.5px] leading-snug">
-            <p className="font-display font-semibold text-text">Deposit didn&rsquo;t go through</p>
+            <p className="font-display font-semibold text-text">{t.wallet.withdrawFailed}</p>
             <p className="mt-0.5 text-text-muted">{errorMsg}</p>
           </div>
         </div>
@@ -93,10 +91,9 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
       {showCashback && <CashbackPromo percent={bonusCfg.cashbackPercentage} compact cta={false} />}
 
       <form action={depositAction} className="rounded-xl glass-panel p-5 lg:p-6 space-y-5">
-        {/* Provider grid */}
         <fieldset>
           <legend className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
-            Method · Njia
+            {t.wallet.mobileMoney}
           </legend>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {PROVIDERS.map((p, i) => (
@@ -118,16 +115,14 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
           </div>
         </fieldset>
 
-        {/* Amount — kit-styled control (no browser number spinner); chips override. */}
         <DepositAmount max={maxAmount} quickAmounts={quickAmounts} adminTest={adminTest} defaultValue={prevAmount} />
 
-        {/* Source phone */}
         <div>
           <label
             htmlFor="msisdn"
             className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2"
           >
-            Source phone · Simu (optional)
+            {t.wallet.destinationPhone}
           </label>
           <Input
             id="msisdn"
@@ -141,15 +136,13 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
             mono
             defaultValue={prevMsisdn}
           />
-          <p className="mt-2 text-[11px] text-text-subtle">Leave blank to use your account number on file.</p>
         </div>
 
-        {/* Submit */}
-        <SubmitButton label="Confirm deposit · Thibitisha" pendingLabel="Processing deposit…" />
+        <SubmitButton label={`${t.common.confirm} · ${t.common.deposit}`} pendingLabel={`${t.common.loading}`} />
       </form>
 
       <p className="px-1 text-center text-[11.5px] text-text-subtle leading-relaxed">
-        Funds usually arrive within a minute — mobile-money confirmation can occasionally take longer. Provider may charge a separate fee.
+        {t.wallet.securedBody}
       </p>
     </main>
   );

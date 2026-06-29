@@ -144,7 +144,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
             <Select
               name="period"
               defaultValue={COOLING_OFF_OPTIONS[0].id}
-              options={COOLING_OFF_OPTIONS.map((o) => ({ value: o.id, label: `${o.label} · ${o.sw}` }))}
+              options={COOLING_OFF_OPTIONS.map((o) => ({ value: o.id, label: o.label }))}
             />
           </div>
           <CoolOffConfirm />
@@ -155,35 +155,30 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
       <section id="exclude" className="scroll-mt-20 rounded-xl border border-no-700/60 bg-no-500/[0.06] p-5 lg:p-6 space-y-3">
         <div className="flex items-center gap-2">
           <I.lock s={16} />
-          <h2 className="font-display text-[15px] font-semibold text-text">Self-exclude · Jizuie</h2>
+          <h2 className="font-display text-[15px] font-semibold text-text">{t.rg.selfExclude}</h2>
           <span className="ml-auto inline-flex items-center rounded-pill border border-no-700 bg-no-500/10 px-2.5 py-0.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.1em] text-no-300">
-            One-way
+            {"One-way" /* i18n-todo: add common.oneWay key */}
           </span>
         </div>
         <p className="text-[12px] text-text-muted leading-snug max-w-prose">
-          Self-exclusion <strong>cannot be reversed by you</strong> until the period ends. Your account
-          is frozen, your wallet is locked, and we will not contact you with marketing. Permanent
-          self-exclusion is final and requires a documented review process to reopen.
-          <span className="block italic text-text-subtle text-[11.5px] mt-1">
-            Hutaweza kufuta hii mwenyewe hadi muda umeisha.
-          </span>
+          {"Self-exclusion cannot be reversed by you until the period ends. Your account is frozen, your wallet is locked, and we will not contact you with marketing. Permanent self-exclusion is final and requires a documented review process to reopen." /* i18n-todo: add rg.selfExcludeDescription key */}
         </p>
         <form action={selfExcludeAction} className="flex flex-wrap items-end gap-2">
           <div>
             <span className="block font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">
-              Exclusion period
+              {"Exclusion period" /* i18n-todo: add rg.exclusionPeriod key */}
             </span>
             <Select
               name="period"
               defaultValue={SELF_EXCLUSION_OPTIONS[0].id}
-              options={SELF_EXCLUSION_OPTIONS.map((o) => ({ value: o.id, label: `${o.label} · ${o.sw}` }))}
+              options={SELF_EXCLUSION_OPTIONS.map((o) => ({ value: o.id, label: o.label }))}
             />
           </div>
           <SelfExcludeConfirm />
         </form>
         <p className="font-mono text-[11px] text-text-subtle pt-1">
-          Need help now? Tanzania Helpline · <a href={`tel:${SUPPORT_PHONE_TEL()}`} className="text-brand-300 underline-offset-2 hover:underline">{SUPPORT_PHONE()}</a>.
-          International support at <a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="text-brand-300 underline-offset-2 hover:underline">begambleaware.org</a>.
+          {t.rg.helpline} · <a href={`tel:${SUPPORT_PHONE_TEL()}`} className="text-brand-300 underline-offset-2 hover:underline">{SUPPORT_PHONE()}</a>.
+          {"International support at" /* i18n-todo */}{" "}<a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="text-brand-300 underline-offset-2 hover:underline">begambleaware.org</a>.
         </p>
       </section>
     </main>

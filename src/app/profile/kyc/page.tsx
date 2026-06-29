@@ -11,10 +11,12 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { submitNidaAction, submitKycForReviewAction } from "./actions";
 import { KycDocUploader, KycExtraDocUploader } from "@/components/profile/kyc-doc-uploader";
 import { SUPPORT_EMAIL } from "@/lib/support-config";
+import { getServerT } from "@/lib/i18n-server";
 
-export const metadata = { title: "Verify identity · Thibitisha" };
+export const metadata = { title: "Verify identity" };
 
 export default async function KycPage({ searchParams }: { searchParams?: Promise<{ welcome?: string; error?: string; nida?: string; submitted?: string; fullName?: string; dob?: string; email?: string }> }) {
+  const { t } = await getServerT();
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile/kyc");
 
@@ -41,7 +43,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
       >
         <I.chevronLeft s={14} />
-        Profile
+        {t.common.profile}
       </Link>
 
       {sp.error && (
@@ -51,23 +53,21 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       )}
       {sp.nida === "verified" && !sp.error && (
         <div role="status" className="rounded-xl border border-yes-700 bg-yes-500/10 px-4 py-3 text-[13px] text-yes-300">
-          NIDA verified. Now attach your documents below. · NIDA imethibitishwa.
+          {"NIDA verified — now attach your documents below." /* i18n-todo: kycNidaVerifiedAttachDocs */}
         </div>
       )}
       {hasEmail && !emailVerified && nidaDone && (
         <div className="rounded-xl border border-gold-700 bg-gold-500/[0.06] px-4 py-3 flex items-start gap-2.5">
           <I.mail s={16} className="text-gold-300 mt-0.5 shrink-0" />
           <div className="text-[12.5px] text-text-muted leading-snug">
-            <p className="font-display font-semibold text-gold-300">Confirm your email · Thibitisha barua pepe</p>
+            <p className="font-display font-semibold text-gold-300">{"Confirm your email" /* i18n-todo: kycConfirmEmail */}</p>
             <p className="mt-0.5">
-              We sent a confirmation link to <span className="font-semibold text-text">{user?.email}</span>.
-              Check your inbox and click the link so we can send you verification results, receipts, and password resets.
-              The link expires in 24 hours.{" "}
-              <span className="italic text-text-subtle">Angalia barua pepe yako. Kiungo kinaisha baada ya saa 24.</span>
+              {"We sent a confirmation link to " /* i18n-todo: kycConfirmEmailSent */}<span className="font-semibold text-text">{user?.email}</span>.
+              {"Check your inbox and click the link so we can send you verification results, receipts, and password resets. The link expires in 24 hours." /* i18n-todo: kycConfirmEmailBody */}
             </p>
             <p className="mt-1.5">
               <Link href="/profile/account" className="font-mono text-[11px] text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline">
-                Didn&rsquo;t get it? Resend from your account page →
+                {"Didn\u2019t get it? Resend from your account page \u2192" /* i18n-todo: kycResendEmail */}
               </Link>
             </p>
           </div>
@@ -75,7 +75,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       )}
       {sp.submitted && !sp.error && (
         <div role="status" className="rounded-xl border border-yes-700 bg-yes-500/10 px-4 py-3 text-[13px] text-yes-300">
-          Submitted for review. We&rsquo;ll notify you when it&rsquo;s decided. · Imewasilishwa.
+          {"Submitted for review. We\u2019ll notify you when it\u2019s decided." /* i18n-todo: kycSubmittedForReview */}
         </div>
       )}
 
@@ -83,14 +83,11 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         <section className="rounded-xl border border-gold-700 bg-gold-500/10 p-4 lg:p-5 flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="flex-1">
             <p className="font-display text-[14px] font-bold text-gold-300">
-              Welcome to 50pick · Karibu
+              {t.auth.welcomeTo50pick}
             </p>
             <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
-              You can <span className="font-bold text-text">browse markets and place bets right away</span>.
-              Verify your identity later — withdrawals unlock once KYC is approved.
-              <span className="block italic text-text-subtle text-[11.5px] mt-0.5">
-                Unaweza kuanza kuweka dau sasa hivi. Thibitisha NIDA kabla ya kutoa pesa.
-              </span>
+              {"You can " /* i18n-todo: kycWelcomeCanBrowse */}<span className="font-bold text-text">{"browse markets and place bets right away" /* i18n-todo */}</span>.
+              {"Verify your identity later \u2014 withdrawals unlock once KYC is approved." /* i18n-todo: kycWelcomeVerifyLater */}
             </p>
           </div>
           <Link
@@ -98,7 +95,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             className="btn btn-gold btn-lg whitespace-nowrap"
             style={{ borderRadius: "var(--r-pill)" }}
           >
-            Skip for now · Browse markets
+            {"Skip for now" /* i18n-todo: kycSkipForNow */}
           </Link>
         </section>
       )}
@@ -120,18 +117,14 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
           <div className="flex items-center gap-2 mb-1">
             <I.shieldcheck s={14} />
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-info-fg">
-              Identity verification
+              {"Identity verification" /* i18n-todo: kycIdentityVerification */}
             </p>
           </div>
           <h1 className="font-display text-[26px] lg:text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
-            Verify your NIDA · Thibitisha NIDA
+            {t.profile.verifyIdentity}
           </h1>
           <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose">
-            We verify against the National Identification Authority before withdrawals.
-            Required by the Tanzania Gaming Act and the Personal Data Protection Act.
-            <span className="block italic text-text-subtle text-[12px] mt-1">
-              Tunathibitisha NIDA kabla ya kutoa pesa.
-            </span>
+            {t.profile.verifyBody}
           </p>
         </div>
       </header>
