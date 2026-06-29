@@ -109,7 +109,7 @@ export async function updatePollConfigAction(formData: FormData) {
     return Number.isFinite(n) ? n : undefined;
   };
 
-  // Parse per-category selection lead times (e.g. "selectionLead.sports" = "1")
+  // Parse per-category selection lead times in MINUTES (e.g. "selectionLead.sports" = "60")
   const selectionLeadTimeHours: Record<string, number> | undefined = (() => {
     const entries: [string, number][] = [];
     for (const [key, val] of formData.entries()) {

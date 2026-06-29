@@ -669,7 +669,7 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
   const [minConf, setMinConf] = useState(String(config.minConfidence));
   const [maxBatch, setMaxBatch] = useState(String(config.maxBatchPerRun));
   const [leadTimes, setLeadTimes] = useState<Record<string, string>>(
-    Object.fromEntries(LEAD_TIME_CATEGORIES.map((c) => [c, String(config.selectionLeadTimeHours?.[c] ?? 24)])),
+    Object.fromEntries(LEAD_TIME_CATEGORIES.map((c) => [c, String(config.selectionLeadTimeHours?.[c] ?? 1440)])),
   );
   const router = useRouter();
   const { deferToast } = useDeferredToast(pending);
@@ -698,7 +698,7 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
         setMinConf(String(r.config.minConfidence));
         setMaxBatch(String(r.config.maxBatchPerRun));
         if (r.config.selectionLeadTimeHours) {
-          setLeadTimes(Object.fromEntries(LEAD_TIME_CATEGORIES.map((c) => [c, String(r.config.selectionLeadTimeHours[c] ?? 24)])));
+          setLeadTimes(Object.fromEntries(LEAD_TIME_CATEGORIES.map((c) => [c, String(r.config.selectionLeadTimeHours[c] ?? 1440)])));
         }
         deferToast({ title: "Settings saved", variant: "success" });
       }
@@ -745,24 +745,29 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
       <div className="rounded-md border border-border bg-bg-overlay p-3">
         <p className="text-[12px] font-semibold text-text mb-1">Selection lead time per category · Muda wa kufunga uchaguzi</p>
         <p className="text-[10.5px] text-text-subtle mb-2.5 leading-snug">
-          Hours before resolution date that betting closes for each category. Players see &quot;Selection Closed — Waiting for Results&quot; after this cutoff.
+          Minutes before the resolution date that betting closes for each category. Players see &quot;Selection Closed — Waiting for Results&quot; after this cutoff.
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {LEAD_TIME_CATEGORIES.map((cat) => (
+          {LEAD_TIME_CATEGORIES.map((cat) => {
+            const val = Number(leadTimes[cat] ?? 1440);
+            const hint = val >= 1440 ? `${Math.round(val / 1440)}d` : val >= 60 ? `${Math.round(val / 60)}h` : "";
+            return (
             <label key={cat} className="block">
               <span className="text-[10px] text-text-subtle block mb-0.5 font-mono uppercase tracking-[0.1em]">{LEAD_TIME_LABELS[cat]}</span>
               <div className="flex items-center gap-1">
                 <Input
                   type="number"
-                  value={leadTimes[cat] ?? "24"}
+                  value={leadTimes[cat] ?? "1440"}
                   onChange={(e) => setLeadTimes((prev) => ({ ...prev, [cat]: e.target.value }))}
                   mono
                   size="sm"
                 />
-                <span className="text-[10px] text-text-subtle shrink-0">h</span>
+                <span className="text-[10px] text-text-subtle shrink-0">min</span>
               </div>
+              {hint && <span className="text-[9px] text-text-subtle font-mono mt-0.5 block">= {hint}</span>}
             </label>
-          ))}
+            );
+          })}
         </div>
       </div>
 

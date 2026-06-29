@@ -14,25 +14,31 @@
 
 import { audit } from "./audit";
 
-/** Per-category selection lead times: how many hours before resolutionAt
+/** Per-category selection lead times: how many MINUTES before resolutionAt
  *  selections (bets) close. All markets get a selectionClosedAt computed as
- *  resolutionAt - selectionLeadTimeHours[category]. */
-export type SelectionLeadTimeHours = Record<string, number>;
+ *  resolutionAt - selectionLeadTimeMinutes[category]. Minutes give the
+ *  operator fine-grained control (e.g. sports: 60 min, crypto: 120 min). */
+export type SelectionLeadTimeMinutes = Record<string, number>;
 
-export const DEFAULT_SELECTION_LEAD_HOURS: SelectionLeadTimeHours = {
-  sports: 1,
-  weather: 3,
-  crypto: 2,
-  culture: 24,
-  tech: 24,
-  macro: 48,
-  infrastructure: 48,
-  other: 24,
+export const DEFAULT_SELECTION_LEAD_MINUTES: SelectionLeadTimeMinutes = {
+  sports: 60,          // 1h
+  weather: 180,        // 3h
+  crypto: 120,         // 2h
+  culture: 1440,       // 24h
+  tech: 1440,          // 24h
+  macro: 2880,         // 48h
+  infrastructure: 2880,// 48h
+  other: 1440,         // 24h
 };
 
-/** Minimum hours of betting window — if computed selectionClosedAt is less
- *  than this many hours from now, clamp to now + MIN_SELECTION_WINDOW_HOURS. */
-export const MIN_SELECTION_WINDOW_HOURS = 2;
+/** @deprecated Use selectionLeadTimeMinutes. Kept for backwards compat during migration. */
+export type SelectionLeadTimeHours = Record<string, number>;
+/** @deprecated */
+export const DEFAULT_SELECTION_LEAD_HOURS = DEFAULT_SELECTION_LEAD_MINUTES;
+
+/** Minimum minutes of betting window — if computed selectionClosedAt is less
+ *  than this many minutes from now, clamp to now + MIN_SELECTION_WINDOW_MINUTES. */
+export const MIN_SELECTION_WINDOW_MINUTES = 120; // 2h
 
 export type AIPollConfig = {
   /** Ground every generation in live web search (real events + real source
@@ -55,10 +61,10 @@ export type AIPollConfig = {
    *  Protects against an accidental 100k-in-one-click token burn / timeout.
    *  Daily target can be larger; you just run multiple batches. */
   maxBatchPerRun: number;
-  /** Per-category selection lead times (hours before resolution that betting
-   *  closes). Admin-editable. Defaults: sports 1h, crypto 2h, weather 3h,
-   *  culture/tech 1d, macro/infrastructure 2d. */
-  selectionLeadTimeHours: SelectionLeadTimeHours;
+  /** Per-category selection lead times (MINUTES before resolution that betting
+   *  closes). Admin-editable. Defaults: sports 60m, crypto 120m, weather 180m,
+   *  culture/tech 1440m (24h), macro/infrastructure 2880m (48h). */
+  selectionLeadTimeHours: SelectionLeadTimeMinutes;
 };
 
 function envInt(name: string, fallback: number, min: number, max: number): number {
@@ -86,7 +92,7 @@ function defaults(): AIPollConfig {
     // The human queue is the real quality bar; this just blocks obvious junk.
     minConfidence: envInt("AI_POLL_MIN_CONFIDENCE", 50, 0, 100),
     maxBatchPerRun: envInt("AI_POLL_MAX_BATCH", 25, 1, 200),
-    selectionLeadTimeHours: { ...DEFAULT_SELECTION_LEAD_HOURS },
+    selectionLeadTimeHours: { ...DEFAULT_SELECTION_LEAD_MINUTES },
   };
 }
 
@@ -123,8 +129,8 @@ export function updateAIPollConfig(
     cur.maxBatchPerRun = clampInt(patch.maxBatchPerRun, 1, 200, cur.maxBatchPerRun);
   if (patch.selectionLeadTimeHours !== undefined) {
     const merged = { ...cur.selectionLeadTimeHours };
-    for (const [cat, hours] of Object.entries(patch.selectionLeadTimeHours)) {
-      merged[cat] = clampInt(hours, 0, 24 * 30, merged[cat] ?? 24);
+    for (const [cat, mins] of Object.entries(patch.selectionLeadTimeHours)) {
+      merged[cat] = clampInt(mins, 0, 24 * 60 * 30, merged[cat] ?? 1440);
     }
     cur.selectionLeadTimeHours = merged;
   }
@@ -147,16 +153,16 @@ function clampInt(v: number, min: number, max: number, fallback: number): number
 }
 
 /** Compute selectionClosedAt from a resolutionAt date and category.
- *  Uses the per-category lead time from config, with a floor of
- *  MIN_SELECTION_WINDOW_HOURS from now so markets are always bettable. */
+ *  Uses the per-category lead time (MINUTES) from config, with a floor of
+ *  MIN_SELECTION_WINDOW_MINUTES from now so markets are always bettable. */
 export function computeSelectionClosedAt(
   resolutionAt: string | Date,
   category: string,
 ): string {
   const cfg = store();
-  const leadHours = cfg.selectionLeadTimeHours[category] ?? cfg.selectionLeadTimeHours.other ?? 24;
+  const leadMinutes = cfg.selectionLeadTimeHours[category] ?? cfg.selectionLeadTimeHours.other ?? 1440;
   const resMs = typeof resolutionAt === "string" ? Date.parse(resolutionAt) : resolutionAt.getTime();
-  const computed = resMs - leadHours * 3600_000;
-  const floor = Date.now() + MIN_SELECTION_WINDOW_HOURS * 3600_000;
+  const computed = resMs - leadMinutes * 60_000;
+  const floor = Date.now() + MIN_SELECTION_WINDOW_MINUTES * 60_000;
   return new Date(Math.max(computed, floor)).toISOString();
 }

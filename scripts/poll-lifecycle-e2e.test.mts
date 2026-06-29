@@ -129,9 +129,10 @@ section("1. Normal poll — generate → approve → publish");
 
   // Category lead time check — sports has 1h lead by default
   const cfg = getAIPollConfig();
-  const expectedLead = cfg.selectionLeadTimeHours.sports ?? 1;
+  const expectedLeadMin = cfg.selectionLeadTimeHours.sports ?? 60;
   const actualLeadMs = resMs - selMs;
-  ok("1.4 lead time matches category config (sports)", actualLeadMs >= expectedLead * HOUR - 60_000, `lead=${actualLeadMs / HOUR}h expected=${expectedLead}h`);
+  const MIN = 60_000;
+  ok("1.4 lead time matches category config (sports)", actualLeadMs >= expectedLeadMin * MIN - 60_000, `lead=${actualLeadMs / MIN}m expected=${expectedLeadMin}m`);
 
   // Approve
   const approved = await approveAIPoll(poll.id, { officerId: actorId });
@@ -417,21 +418,22 @@ section("8. computeSelectionClosedAt — per-category lead times");
   const resAt = future(30);
   const resMs = Date.parse(resAt);
 
-  for (const [cat, expectedHours] of Object.entries(cfg.selectionLeadTimeHours)) {
+  const MINUTE = 60_000;
+  for (const [cat, expectedMin] of Object.entries(cfg.selectionLeadTimeHours)) {
     const computed = computeSelectionClosedAt(resAt, cat);
     const computedMs = Date.parse(computed);
     ok(`8.${cat} sel before res`, computedMs < resMs);
-    // The floor clamp (MIN_SELECTION_WINDOW_HOURS from now) may shift the result,
+    // The floor clamp (MIN_SELECTION_WINDOW_MINUTES from now) may shift the result,
     // but it should never be AFTER resolution.
     const leadMs = resMs - computedMs;
-    ok(`8.${cat} lead >= ${expectedHours}h or floored`, leadMs >= expectedHours * HOUR - 60_000 || computedMs >= Date.now());
+    ok(`8.${cat} lead >= ${expectedMin}min or floored`, leadMs >= expectedMin * MINUTE - 60_000 || computedMs >= Date.now());
   }
 
-  // Unknown category falls back to "other" (24h)
+  // Unknown category falls back to "other" (1440 min = 24h)
   const computed = computeSelectionClosedAt(resAt, "nonexistent_category");
-  const otherHours = cfg.selectionLeadTimeHours.other ?? 24;
+  const otherMin = cfg.selectionLeadTimeHours.other ?? 1440;
   ok("8.fallback unknown category uses 'other' lead time",
-     Math.abs(resMs - Date.parse(computed) - otherHours * HOUR) < 120_000);
+     Math.abs(resMs - Date.parse(computed) - otherMin * MINUTE) < 120_000);
 }
 
 // ═══════════════════════════════════════════════════════════════════
