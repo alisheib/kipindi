@@ -10,12 +10,14 @@ import { OperationResultModal } from "@/components/markets/operation-result-moda
 import { useToast } from "@/components/ui/toast";
 import { CategoryIcon, CATEGORY_LABEL } from "@/components/proposals/category-icon";
 import { createProposalAction } from "../actions";
+import { useT } from "@/lib/i18n";
 import type { ProposalCategory } from "@/lib/server/store";
 
 const CATEGORIES: ProposalCategory[] = ["sports", "macro", "weather", "crypto", "culture", "infrastructure"];
 
 export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: { enabled: boolean; prizeTzs: number; rateLimit: number; openCount: number }) {
   const router = useRouter();
+  const { t } = useT();
   const { toast } = useToast();
   const [pending, start] = useTransition();
   const [titleEn, setTitleEn] = useState("");
@@ -47,41 +49,40 @@ export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: 
       <div className="rounded-xl border p-3.5" style={{ borderColor: "color-mix(in oklab, var(--royal-500) 30%, var(--border))", background: "color-mix(in oklab, var(--royal-500) 8%, var(--bg-elevated))" }}>
         <div className="mb-1.5 flex items-center gap-2">
           <span className="text-royal-200"><I.info s={16} /></span>
-          <p className="text-[13px] font-bold text-royal-200">What makes a good proposal · Mwongozo</p>
+          <p className="text-[13px] font-bold text-royal-200">{t.common.whatMakesGood}</p>
         </div>
         <p className="text-[12px] leading-relaxed text-text-muted">
-          Good proposals are specific, have a clear yes/no answer, and a trustworthy source. Politics and ambiguous outcomes are declined.{" "}
-          <span className="font-display italic text-text-subtle">Maswali ya wazi yenye chanzo cha kuaminika.</span>
+          {t.common.goodProposalHint}
         </p>
         <p className="mt-2.5 flex items-center gap-1.5 text-[11.5px] text-text-muted">
           <I.info s={13} />
-          <span className="font-mono">{openCount} of {rateLimit}</span> open proposals used · <span className="font-display italic text-text-subtle">mapendekezo {openCount} kati ya {rateLimit}</span>
+          <span className="font-mono">{openCount} / {rateLimit}</span> {t.common.openProposalsUsed}
         </p>
       </div>
 
-      <Field label={<>Title (EN) · Kichwa <Req /></>} hint={
+      <Field label={<>{t.common.titleEn} <Req /></>} hint={
         <span className={titleEn.length > 120 ? "text-no-300" : undefined}>{titleEn.length}/120</span>
       }>
-        <Input placeholder="Will [event] happen by [date]?" value={titleEn} onChange={(e) => setTitleEn(e.target.value)} maxLength={120} />
+        <Input placeholder={t.common.titleEnPlaceholder} value={titleEn} onChange={(e) => setTitleEn(e.target.value)} maxLength={120} />
       </Field>
 
-      <Field label="Title (SW, optional) · Kichwa kwa Kiswahili">
+      <Field label={t.common.titleSw}>
         <Input placeholder="Je, [tukio] litatokea kabla ya [tarehe]?" value={titleSw} onChange={(e) => setTitleSw(e.target.value)} maxLength={120} />
       </Field>
 
       <div>
-        <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5">Why it matters · Maelezo</span>
-        <textarea className={ta} placeholder="One or two lines on why people would want to predict this." value={description} onChange={(e) => setDescription(e.target.value)} maxLength={400} />
+        <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5">{t.common.whyItMatters}</span>
+        <textarea className={ta} placeholder={t.common.whyItMattersPlaceholder} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={400} />
       </div>
 
       <div>
-        <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5">Resolution criterion · Vigezo vya utatuzi <Req /></span>
-        <textarea className={ta} placeholder="How will we know the answer? Name the official source." value={criterion} onChange={(e) => setCriterion(e.target.value)} maxLength={500} />
-        <p className="mt-1.5 text-[11px] leading-snug text-text-subtle">Be precise — e.g. &ldquo;Resolves YES if TMA records ≥35°C at the Dar station before 15 June.&rdquo;</p>
+        <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5">{t.common.resolutionCriterion} <Req /></span>
+        <textarea className={ta} placeholder={t.common.resolutionPlaceholder} value={criterion} onChange={(e) => setCriterion(e.target.value)} maxLength={500} />
+        <p className="mt-1.5 text-[11px] leading-snug text-text-subtle">{t.common.resolutionHint}</p>
       </div>
 
       <div>
-        <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-2">Category · Aina</span>
+        <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-2">{t.common.category}</span>
         <div className="flex flex-wrap gap-2">
           {CATEGORIES.map((c) => {
             const active = c === category;
@@ -103,7 +104,7 @@ export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: 
       </div>
 
       <div>
-        <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5">Resolution date · Tarehe ya utatuzi <Req /></span>
+        <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5">{t.common.resolutionDate} <Req /></span>
         <DateSelect
           value={date}
           onChange={setDate}
@@ -113,20 +114,20 @@ export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: 
       </div>
 
       <Button variant="gold" size="lg" fullWidth disabled={!valid} loading={pending} onClick={submit}>
-        Submit proposal · Wasilisha
+        {t.common.submitProposal}
       </Button>
       <p className="text-center text-[11px] leading-relaxed text-text-subtle">
-        Submitting doesn&rsquo;t guarantee listing — an officer makes the final call.
+        {t.common.submittingNoGuarantee}
       </p>
 
       <OperationResultModal
         open={done}
         variant="success"
-        eyebrow="Submitted · Imewasilishwa"
-        title="Proposal received"
-        subtitle={`An officer will review it shortly. If it's listed and resolved, you earn TZS ${prizeTzs.toLocaleString()}.`}
-        footnote="Tutakujulisha kupitia arifa."
-        primaryLabel="Done · Sawa"
+        eyebrow={t.common.submitted}
+        title={t.common.proposalReceived}
+        subtitle={t.common.officerWillReview}
+        footnote={t.common.weWillNotify}
+        primaryLabel={t.common.gotIt}
         onPrimary={() => router.push("/proposals?f=mine" as never)}
         onClose={() => { setDone(false); router.push("/proposals?f=mine" as never); }}
       />

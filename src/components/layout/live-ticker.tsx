@@ -6,6 +6,7 @@
  */
 
 import { useState } from "react";
+import { useT } from "@/lib/i18n";
 
 export type TickerEvent = {
   id: string;
@@ -23,19 +24,19 @@ function fmtAmt(n: number) {
 }
 
 
-function Items({ events, prefix }: { events: TickerEvent[]; prefix: string }) {
+function Items({ events, prefix, verbs }: { events: TickerEvent[]; prefix: string; verbs: { predicted: string; wonOn: string; settled: string; on: string } }) {
   return (
     <>
       {events.map((ev) => {
         const amt = ev.amount && ev.amount > 0 ? `TZS ${fmtAmt(ev.amount)} ` : "";
-        const verb = ev.kind === "bet" ? "predicted" : ev.kind === "win" ? "won on" : ev.kind === "resolve" ? "settled" : "";
+        const verb = ev.kind === "bet" ? verbs.predicted : ev.kind === "win" ? verbs.wonOn : ev.kind === "resolve" ? verbs.settled : "";
         return (
           <span key={`${prefix}-${ev.id}`} className="inline-flex items-center gap-1.5 shrink-0 font-mono text-[12px] pr-8 whitespace-nowrap">
             <span className="text-text-muted">{amt}{verb} </span>
             {ev.side && (
               <span className={`font-bold ${ev.side === "YES" ? "text-yes-400" : "text-no-400"}`}>{ev.side}</span>
             )}
-            <span className="text-text-muted"> on {ev.marketTitle}</span>
+            <span className="text-text-muted"> {verbs.on} {ev.marketTitle}</span>
             <span className="inline-block w-[2.5px] h-[2.5px] rounded-full bg-gold-300 opacity-35 shrink-0 ml-2" />
           </span>
         );
@@ -46,6 +47,13 @@ function Items({ events, prefix }: { events: TickerEvent[]; prefix: string }) {
 
 export function LiveTicker({ events }: { events: TickerEvent[] }) {
   const [paused, setPaused] = useState(false);
+  const { t } = useT();
+  const verbs = {
+    predicted: t.market.tickerPredicted,
+    wonOn: t.market.tickerWonOn,
+    settled: t.market.tickerSettled,
+    on: t.market.tickerOn,
+  };
 
   if (events.length === 0) return null;
 
@@ -71,7 +79,7 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <span className="live-dot" style={{ width: 6, height: 6 }} />
           <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[var(--live-400)]">
-            LIVE
+            {t.common.live}
           </span>
         </span>
       </div>
@@ -84,8 +92,8 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
 
       {/* Horizontal marquee */}
       <div className="ticker-track" style={{ paddingLeft: 80, animationPlayState: paused ? "paused" : "running" }}>
-        <Items events={events} prefix="a" />
-        <Items events={events} prefix="b" />
+        <Items events={events} prefix="a" verbs={verbs} />
+        <Items events={events} prefix="b" verbs={verbs} />
       </div>
     </div>
   );

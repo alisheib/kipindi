@@ -331,29 +331,42 @@ export function WalletPageClient({
   cashbackPercent?: number;
   isAuthed: boolean;
 }) {
-  const [tab, setTab] = useState<typeof TABS[number]["v"]>("activity");
+  const { t } = useT();
+  const [tab, setTab] = useState<TabValue>("activity");
   const [page, setPage] = useState(0);
   const pageCount = Math.max(1, Math.ceil(transactions.length / TXNS_PER_PAGE));
   const safePage = Math.min(page, pageCount - 1);
   const pagedTxns = transactions.slice(safePage * TXNS_PER_PAGE, safePage * TXNS_PER_PAGE + TXNS_PER_PAGE);
 
+  const tabs: { v: TabValue; label: string }[] = [
+    { v: "activity", label: t.common.activity },
+    { v: "methods",  label: t.common.methods },
+    { v: "limits",   label: t.common.limits },
+  ];
+
+  const txnCaps = [
+    { label: t.common.perDeposit,    value: "TZS 500 – 2,000,000" },
+    { label: t.common.perWithdrawal, value: "TZS 1,000 – 5,000,000" },
+  ];
+
+  const selfExclusionOptions = ["24h", "7d", "30d", "6m", t.common.permanent];
+
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
       <header className="flex items-end justify-between gap-3">
         <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">Wallet · Pochi</p>
-          <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">Your funds</h1>
-          <p className="text-[15px] italic text-text-subtle">Pesa zako</p>
+          <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.common.walletLabel}</p>
+          <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.common.yourFunds}</h1>
         </div>
         {isAuthed && (
           <div className="flex items-center gap-2 shrink-0">
             <Link href="/wallet/deposit" className="btn btn-gold btn-md inline-flex" style={{ borderRadius: "var(--r-pill)" }}>
               <I.arrowDown s={14} />
-              Deposit
+              {t.common.deposit}
             </Link>
             <Link href="/wallet/withdraw" className="btn btn-ghost btn-md inline-flex" style={{ borderRadius: "var(--r-pill)" }}>
               <I.arrowUp s={14} />
-              Withdraw
+              {t.common.withdraw}
             </Link>
           </div>
         )}
@@ -365,28 +378,27 @@ export function WalletPageClient({
         <BonusWalletCard bonusBalance={bonusBalance} activeCount={bonusActiveCount} grants={bonusGrants} currency={currency} />
       </div>
       {bonusWagerRemaining > 0 && (
-        <p className="sr-only">Bonus play-through remaining: {fmt(bonusWagerRemaining, currency)}</p>
+        <p className="sr-only">{t.common.bonus}: {fmt(bonusWagerRemaining, currency)}</p>
       )}
 
       {cashbackPercent > 0 && <CashbackPromo percent={cashbackPercent} />}
 
       {/* Kit tabs — line variant rebuilt inline so we don't pull the legacy Tabs component. */}
-      <nav role="tablist" aria-label="Wallet sections" className="flex items-center gap-1 border-b border-border">
-        {TABS.map((t) => {
-          const active = tab === t.v;
+      <nav role="tablist" aria-label={t.common.walletLabel} className="flex items-center gap-1 border-b border-border">
+        {tabs.map((tb) => {
+          const active = tab === tb.v;
           return (
             <button
-              key={t.v}
+              key={tb.v}
               type="button"
               role="tab"
               aria-selected={active ? "true" : "false"}
-              onClick={() => setTab(t.v)}
+              onClick={() => setTab(tb.v)}
               className={`relative h-9 px-3.5 font-display text-[13px] font-semibold transition-colors ${
                 active ? "text-text" : "text-text-subtle hover:text-text-muted"
               }`}
             >
-              {t.en}
-              <span className="ml-1.5 text-[11px] italic font-normal text-text-subtle">· {t.sw}</span>
+              {tb.label}
               {active && (
                 <span aria-hidden className="absolute left-2 right-2 -bottom-px h-[2px] rounded-pill bg-gold-500" />
               )}
@@ -399,7 +411,7 @@ export function WalletPageClient({
         transactions.length > 0 ? (
           <section className="space-y-3">
             <div className="rounded-xl glass-panel overflow-hidden">
-              {pagedTxns.map((t) => <TxnRow key={t.id} tx={t} />)}
+              {pagedTxns.map((tx) => <TxnRow key={tx.id} tx={tx} />)}
               {pageCount > 1 && (
                 <TxnPager
                   page={safePage}
@@ -414,13 +426,12 @@ export function WalletPageClient({
         ) : (
           <EmptyState
             kind="audit"
-            title="No activity yet"
-            titleSw="Hakuna shughuli bado"
-            body="Make your first deposit to start predicting."
+            title={t.common.noActivityYet}
+            body={t.common.firstDepositHint}
             action={
               isAuthed ? (
                 <Link href="/wallet/deposit" className="btn btn-gold btn-md">
-                  Deposit · Weka pesa
+                  {t.common.depositCta}
                 </Link>
               ) : undefined
             }
@@ -431,8 +442,7 @@ export function WalletPageClient({
       {tab === "methods" && (
         <section className="space-y-3">
           <p className="text-[12.5px] text-text-muted leading-snug">
-            Supported payment channels. Choose one and enter your number when you deposit or withdraw.
-            <span className="block italic text-text-subtle text-[11.5px] mt-0.5">Chagua njia na uweke namba yako wakati wa kuweka au kutoa pesa.</span>
+            {t.common.supportedChannels}
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {METHODS.map((m) => (
@@ -448,7 +458,7 @@ export function WalletPageClient({
                 </span>
                 <div className="min-w-0">
                   <p className="font-display text-[13.5px] font-semibold text-text leading-tight truncate">{m.name}</p>
-                  <p className="mt-0.5 font-mono text-[11px] text-text-subtle">{m.kind}</p>
+                  <p className="mt-0.5 font-mono text-[11px] text-text-subtle">{t.common.mobileMoneyShort}</p>
                 </div>
               </div>
             ))}
@@ -459,18 +469,14 @@ export function WalletPageClient({
       {tab === "limits" && (
         <section className="space-y-3">
           <p className="text-[12.5px] text-text-muted leading-snug">
-            Platform transaction caps. To set your own daily/weekly deposit and loss limits, use Responsible Gambling.
-            <span className="block italic text-text-subtle text-[11.5px] mt-0.5">Kuweka vikomo vyako, tumia ukurasa wa Uchezaji wa Busara.</span>
+            {t.common.platformLimits}
           </p>
-          {TXN_CAPS.map((l) => (
+          {txnCaps.map((l) => (
             <div
               key={l.label}
               className="flex items-center justify-between gap-3 rounded-xl border border-border bg-bg-elevated px-4 py-3.5"
             >
-              <div>
-                <p className="font-display text-[13.5px] font-semibold text-text leading-tight">{l.label}</p>
-                <p className="mt-0.5 text-[11.5px] italic text-text-subtle">{l.sw}</p>
-              </div>
+              <p className="font-display text-[13.5px] font-semibold text-text leading-tight">{l.label}</p>
               <span className="font-mono font-bold text-[14px] tabular-nums text-text">{l.value}</span>
             </div>
           ))}
@@ -479,23 +485,20 @@ export function WalletPageClient({
             className="flex items-center justify-between gap-3 rounded-xl border border-border bg-bg-overlay px-4 py-3.5 hover:border-border-strong transition-colors"
           >
             <div>
-              <p className="font-display text-[13.5px] font-semibold text-text leading-tight">Set personal limits · Vikomo vyako</p>
-              <p className="mt-0.5 text-[11.5px] italic text-text-subtle">Daily, weekly & loss limits</p>
+              <p className="font-display text-[13.5px] font-semibold text-text leading-tight">{t.common.setPersonalLimits}</p>
+              <p className="mt-0.5 text-[11.5px] text-text-subtle">{t.common.dailyWeeklyLimits}</p>
             </div>
             <I.chevronRight s={16} className="text-text-subtle" />
           </Link>
           <div className="rounded-xl glass-panel p-4 space-y-2">
             <p className="font-display text-[13.5px] font-semibold text-text">
-              Self-exclusion <span className="text-text-subtle italic font-normal">· Kujitenga</span>
+              {t.common.selfExclusion}
             </p>
             <p className="text-[12.5px] text-text-muted leading-snug">
-              Take a break — we&apos;ll lock your account for the period you choose.
-              <span className="block italic text-text-subtle text-[11.5px] mt-0.5">
-                Pumzika. Tutafunga akaunti kwa muda uliochagua.
-              </span>
+              {t.common.selfExclusionHint}
             </p>
             <div className="flex flex-wrap gap-1.5 pt-1">
-              {["24h", "7d", "30d", "6m", "Permanent"].map((o) => (
+              {selfExclusionOptions.map((o) => (
                 <Link
                   key={o}
                   href="/profile/responsible-gambling"

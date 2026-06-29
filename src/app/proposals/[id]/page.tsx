@@ -72,7 +72,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">{t.common.yourProposalResolved}</p>
             <p className="mt-1 font-display text-[20px] font-bold">{t.common.earnedAPrize}</p>
             <p className="my-1 font-mono text-[28px] font-bold text-gold-300">+TZS {p.prizePaidTzs.toLocaleString()}</p>
-            <p className="text-[12.5px] text-text-muted">Imelipwa · Paid to your wallet</p>
+            <p className="text-[12.5px] text-text-muted">{t.common.paidToWallet}</p>
           </div>
         </section>
       )}
@@ -80,20 +80,20 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
       {/* Timeline / market link */}
       {p.status !== "DECLINED" && (
         <section className="rounded-xl glass-panel p-4">
-          <p className="mb-3 font-mono text-[9.5px] uppercase tracking-[0.12em] font-bold text-text-subtle">Status · Hali</p>
+          <p className="mb-3 font-mono text-[9.5px] uppercase tracking-[0.12em] font-bold text-text-subtle">{t.common.statusLabel}</p>
           <StatusTimeline current={timelineStep(p)} />
-          {open && <p className="mt-1 text-[12px] text-text-subtle">An officer reviews next · Subiri ukaguzi.</p>}
+          {open && <p className="mt-1 text-[12px] text-text-subtle">{t.common.officerReviewsNext}</p>}
           {p.publishedMarketId && (
             <Link href={`/markets/${p.publishedMarketId}` as never}>
               <Button variant={p.status === "RESOLVED" ? "gold" : "ghost"} size="md" fullWidth className="mt-3" trailing={<I.arrowRight s={15} />}>
-                {p.status === "RESOLVED" ? "View the resolved market" : "View the live market"}
+                {p.status === "RESOLVED" ? t.common.viewResolvedMarket : t.common.viewLiveMarket}
               </Button>
             </Link>
           )}
         </section>
       )}
 
-      <Link href={"/proposals" as never} className="block text-center text-[12px] text-text-subtle hover:text-text-muted">← Back to proposals · Rudi</Link>
+      <Link href={"/proposals" as never} className="block text-center text-[12px] text-text-subtle hover:text-text-muted">{`\u2190 ${t.common.backToProposals}`}</Link>
     </main>
   );
 }

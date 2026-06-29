@@ -11,6 +11,7 @@
  */
 import { useEffect } from "react";
 import { useToast } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n";
 import { dispatchWinCelebration } from "@/components/markets/win-celebration";
 
 const WATCH_KEY = "50pick-notify-markets";
@@ -84,6 +85,7 @@ const IDLE_POLL_MS = 60_000;
 
 export function NotifyPoller() {
   const { toast } = useToast();
+  const { t } = useT();
 
   useEffect(() => {
     let cancelled = false;
@@ -109,7 +111,7 @@ export function NotifyPoller() {
         );
         for (const a of newly) {
           seen.add(a.marketId);
-          const title = `Market resolved · ${a.resolvedOutcome ?? "VOID"}`;
+          const title = `${t.market.marketResolvedToast} · ${a.resolvedOutcome ?? "VOID"}`;
           const body = a.titleEn?.slice(0, 120) ?? "";
           if (typeof Notification !== "undefined" && Notification.permission === "granted") {
             try {
@@ -184,7 +186,7 @@ export function NotifyPoller() {
       document.removeEventListener("visibilitychange", onWake);
       window.removeEventListener("focus", onWake);
     };
-  }, [toast]);
+  }, [toast, t]);
 
   return null;
 }

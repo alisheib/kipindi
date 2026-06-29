@@ -1,8 +1,11 @@
+"use client";
+
 import Link from "next/link";
 import { cn, formatDateTime } from "@/lib/utils";
 import { Cash } from "@/components/ui/cash";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
+import { useT } from "@/lib/i18n";
 
 type Props = {
   marketId: string;
@@ -20,12 +23,13 @@ type Props = {
 const fmt = (n: number) => n.toLocaleString("en-US");
 
 export function PositionCard({ marketId, marketTitle, side, stake, current, payout, status, placedAt, className }: Props) {
+  const { t } = useT();
   const statusLabel = {
-    OPEN: "Pending",
-    WIN: "Resolved · Win",
-    LOSS: "Resolved · Loss",
-    VOID: "Voided",
-    CASHED_OUT: "Cashed out",
+    OPEN: t.common.pending,
+    WIN: t.market.resolvedWin,
+    LOSS: t.market.resolvedLoss,
+    VOID: t.common.voided,
+    CASHED_OUT: t.common.cashedOut,
   }[status];
   return (
     <Link
@@ -49,7 +53,7 @@ export function PositionCard({ marketId, marketTitle, side, stake, current, payo
         {placedAt && (
           <p className="mt-1.5 flex items-center gap-1 font-mono text-[10px] tracking-[0.04em] text-text-faint tabular-nums">
             <I.clock s={11} className="opacity-70 shrink-0" />
-            Opened {formatDateTime(placedAt)}
+            {t.market.opened} {formatDateTime(placedAt)}
           </p>
         )}
       </div>
@@ -58,14 +62,14 @@ export function PositionCard({ marketId, marketTitle, side, stake, current, payo
           Settled positions show the actual final payout. */}
       {status === "OPEN" ? (
         <div className="grid grid-cols-2 gap-3">
-          <Stat label="Stake" value={`TZS ${fmt(stake)}`} money />
-          <Stat label="Payout" value="At resolution" />
+          <Stat label={t.common.stake} value={`TZS ${fmt(stake)}`} money />
+          <Stat label={t.dialog.payoutLabel} value={t.market.atResolution} />
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-3">
-          <Stat label="Stake" value={`TZS ${fmt(stake)}`} money />
-          <Stat label="Final" value={`TZS ${fmt(current)}`} money />
-          <Stat label="Payout" value={`TZS ${fmt(payout)}`} tone={status === "WIN" ? "gold" : "default"} money />
+          <Stat label={t.common.stake} value={`TZS ${fmt(stake)}`} money />
+          <Stat label={t.market.finalLabel} value={`TZS ${fmt(current)}`} money />
+          <Stat label={t.dialog.payoutLabel} value={`TZS ${fmt(payout)}`} tone={status === "WIN" ? "gold" : "default"} money />
         </div>
       )}
     </Link>
