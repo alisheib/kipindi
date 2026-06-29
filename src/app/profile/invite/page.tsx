@@ -10,8 +10,9 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ReferralShare } from "./invite-client";
 import { formatDateShort as fmtDate } from "@/lib/utils";
+import { getServerT } from "@/lib/i18n-server";
 
-export const metadata = { title: "Invite & Earn · Alika na upate zawadi" };
+export const metadata = { title: "Invite & Earn" };
 export const dynamic = "force-dynamic";
 
 /** Compact TZS for the ring center: 31000 → "31K", 1_284_000 → "1.3M". */
@@ -89,6 +90,7 @@ export default async function InvitePage() {
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile/invite");
 
+  const { t } = await getServerT();
   const s = await getPlayerReferralSummary(session.userId);
   const ringValue = s.recruitCount === 0 ? 0 : Math.min(100, 30 + s.recruitCount * 12);
   const ringLabel = s.earnedTzs > 0 ? compact(s.earnedTzs) : "0";
@@ -101,15 +103,15 @@ export default async function InvitePage() {
         className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
       >
         <I.chevronLeft s={14} />
-        Profile
+        {t.common.profile}
       </Link>
-      <h1 className="sr-only">Invite &amp; Earn · Alika na upate zawadi</h1>
+      <h1 className="sr-only">{t.profile.inviteEarn}</h1>
 
       {/* Title row */}
       <div className="flex items-center justify-between">
         <div>
           <p className="font-display text-[19px] font-bold leading-none">
-            Invite &amp; Earn <span className="font-normal italic text-text-subtle text-[14px]">· Alika na upate zawadi</span>
+            {t.profile.inviteEarn}
           </p>
         </div>
         <Chip variant={s.programEnabled ? "active" : "paused"}>{s.programEnabled ? "Active" : "Paused"}</Chip>
@@ -128,9 +130,8 @@ export default async function InvitePage() {
         <div className="relative flex items-center gap-4">
           <EarningsRing value={ringValue} label={ringLabel} />
           <div className="min-w-0 flex-1">
-            <Cap className="mb-1.5 !text-gold-300">Refer &amp; earn</Cap>
-            <p className="font-display text-[19px] font-bold leading-tight">Invite friends. Earn together.</p>
-            <p className="mt-0.5 font-display italic text-text-subtle text-[13px]">Alika marafiki. Pateni pamoja.</p>
+            <Cap className="mb-1.5 !text-gold-300">{t.profile.inviteEarn}</Cap>
+            <p className="font-display text-[19px] font-bold leading-tight">{t.profile.inviteEarnSub}</p>
           </div>
         </div>
 
@@ -171,8 +172,8 @@ export default async function InvitePage() {
         >
           <span className="shrink-0" style={{ color: "oklch(84% 0.15 80)" }}><I.info s={16} /></span>
           <p className="text-[12px] leading-relaxed text-text-muted">
-            The program is paused right now. Your link still works — rewards resume when it&rsquo;s back on.{" "}
-            <span className="font-display italic text-text-subtle">Mpango umesimama kwa sasa.</span>
+            {/* i18n-todo: paused program message */}
+            The program is paused right now. Your link still works — rewards resume when it&rsquo;s back on.
           </p>
         </div>
       )}
@@ -184,21 +185,22 @@ export default async function InvitePage() {
 
       {/* Stat tiles */}
       <div className="grid grid-cols-2 gap-2.5">
-        <Kpi label="Referrals" value={String(s.recruitCount)} sub={s.recruitCount > 0 ? "all-time" : "none yet"} />
-        <Kpi label="Earned" value={s.earnedTzs > 0 ? s.earnedTzs.toLocaleString("en-US") : "0"} sub="TZS · all-time" gold />
+        <Kpi label={t.common.invite} value={String(s.recruitCount)} sub={s.recruitCount > 0 ? "all-time" : "—"} />
+        <Kpi label={t.proposals.earned} value={s.earnedTzs > 0 ? s.earnedTzs.toLocaleString("en-US") : "0"} sub="TZS" gold />
       </div>
 
       {/* How it works */}
       <section className="rounded-xl glass-panel p-4">
         <p className="font-display text-[15px] font-bold leading-tight">
-          How it works <span className="font-normal italic text-text-subtle text-[12px]">· Inavyofanya kazi</span>
+          {/* i18n-todo: how it works heading */}
+          How it works
         </p>
         <div className="mt-3 space-y-3">
           {[
-            ["Share your link", "Shiriki kiungo chako"],
-            ["They sign up & play", "Wanajisajili na kucheza"],
-            ["You earn", "Wewe unapata"],
-          ].map(([en, sw], i) => (
+            t.common.share + " " + t.profile.yourReferralLink.toLowerCase(),
+            t.common.signUp + " & " + t.common.placeBet.toLowerCase(),
+            t.proposals.earned,
+          ].map((label, i) => (
             <div key={i} className="flex items-center gap-3">
               <span
                 className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full font-mono text-[14px] font-bold"
@@ -211,8 +213,7 @@ export default async function InvitePage() {
                 {i + 1}
               </span>
               <div className="flex-1">
-                <p className="text-[13.5px] font-semibold">{en}</p>
-                <p className="font-display italic text-text-subtle text-[11px]">{sw}</p>
+                <p className="text-[13.5px] font-semibold">{label}</p>
               </div>
             </div>
           ))}
@@ -220,7 +221,7 @@ export default async function InvitePage() {
       </section>
 
       {/* Recruits */}
-      <Cap className="!mt-1">Your referrals · Marafiki wako</Cap>
+      <Cap className="!mt-1">{t.profile.yourReferralLink}</Cap>
       {s.recruits.length > 0 ? (
         <div className="overflow-hidden rounded-xl glass-panel">
           {s.recruits.map((r, i) => (
@@ -243,13 +244,12 @@ export default async function InvitePage() {
       ) : (
         <EmptyState
           kind="leaderboard"
-          title="No referrals yet"
-          titleSw="Bado hakuna marafiki"
-          body="Share your link to invite your first friend. They'll appear here once they join."
+          title={/* i18n-todo */ "No referrals yet"}
+          body={/* i18n-todo */ "Share your link to invite your first friend."}
           action={
             <a href="#referral-share">
               <Button variant="gold" size="md" leading={<I.share s={14} />}>
-                Share your link
+                {t.profile.shareWithFriends}
               </Button>
             </a>
           }
@@ -257,6 +257,7 @@ export default async function InvitePage() {
       )}
 
       <p className="pt-1 text-center text-[10.5px] leading-relaxed text-text-subtle">
+        {/* i18n-todo: rewards disclaimer */}
         Rewards are credited after a friend&rsquo;s activity clears. 18+. Terms apply.
       </p>
     </div>
