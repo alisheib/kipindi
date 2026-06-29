@@ -5,6 +5,12 @@ Chinese (`zh`) display title alongside the existing English + Swahili. Players
 see the title in the language they picked; English remains the canonical text
 used to settle markets.
 
+> **Existing markets are TRANSLATED, never deleted.** Markets created before
+> this feature have `titleZh = NULL` and a Chinese player sees the English title
+> (safe fallback). The fix is the backfill below — it adds the Chinese title.
+> Do NOT "delete markets missing a Chinese title": until the backfill runs that
+> set is *every* market, and they carry live player positions, pools and money.
+
 ## Core decisions
 
 1. **English is canonical for settlement.** The resolver (Market Sentinel) and
@@ -64,9 +70,11 @@ to every font stack, so Chinese glyphs render in the platform's native CJK font
 - **Share-sheet text** — goes to external recipients; English canonical.
 - **Live ticker** (`ticker-feed.ts`) — static demo/marketing strings, not real
   market data; left English.
-- **Notifications** — `titleZh`/`bodyZh` columns exist and the panel already
-  reads them (falls back to English), but the notification *generators* don't yet
-  produce Chinese. Follow-up: add `zh` templates to the `notify*` functions.
+- **Notifications** — fully wired end-to-end (`StoredNotification.titleZh`/`bodyZh`,
+  Prisma read + create, panel reads typed fields). The only remaining piece is the
+  *generators*: the `notify*` helpers don't emit Chinese strings yet, so zh users
+  see the English notification (graceful). Follow-up: add `zh` templates to the
+  `notify*` functions — no schema/DAL change needed.
 
 ## Cost
 
@@ -89,3 +97,38 @@ railway run npm run backfill:zh                  # do the rest
 
 Uses Haiku, no web search (~$0.0008/market). Idempotent — only `titleZh IS NULL`
 is selected, so re-running retries failures. See `scripts/backfill-zh-titles.mts`.
+
+## Hardening (post-review)
+
+A four-lane adversarial review (generation/insert · data+migration · viewing ·
+resolution+admin) ran after the first cut. Fixes applied:
+
+- **Controlled-mode title integrity:** when an operator pins the English question,
+  the pinned title is forwarded to the generator and SW/ZH are translations of
+  *that exact* title — not of a different question the model drafted. (Also fixed
+  the pre-existing Swahili case.)
+- **Length cap:** `titleSw`/`titleZh` now share the English `MAX_TITLE_LENGTH`
+  bound (were unbounded).
+- **Bet-confirm modal** title is localized (was English at the moment of betting).
+- **Main-board search** matches Chinese titles; admin poll/candidate search and the
+  ideation steer include Chinese too.
+- **`pickLocalized` is whitespace-safe:** `null` / `""` / whitespace-only all fall
+  back to English — a title can never render blank.
+- **Backfill meter:** `AiUsageEvent` rows now get an explicit `id` (no DB default);
+  failures are logged, not swallowed.
+
+## Validation gate
+
+`npm run test:trilingual` (`scripts/trilingual-titles.test.mts`, wired into
+`predeploy`) proves the runtime behavior: `pickLocalized` across every locale ×
+data-shape, repeated/mixed language switching (pure + idempotent), the
+`createMarket → getMarket` round-trip rendered in all three languages, legacy
+(no-zh) fallback, and controlled-mode title pinning — 36 assertions. The AI
+resolver was confirmed unaffected (it never reads `titleZh`).
+
+## Operations checklist (each deploy that adds markets)
+
+1. After deploy, confirm the migration applied: `railway logs` → look for
+   `20260629120000_trilingual_poll_titles`.
+2. Translate existing markets: `railway run npm run backfill:zh -- --dry-run`,
+   then run it for real. **Never delete "untranslated" markets** — backfill them.
