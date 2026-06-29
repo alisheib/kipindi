@@ -18,6 +18,7 @@ const fmt = (n: number, currency = "TZS") => `${currency} ${n.toLocaleString("en
 function BalanceCard({
   balance, pending, hold, currency,
 }: { balance: number; pending: number; hold: number; currency: string }) {
+  const { t } = useT();
   return (
     <section className="relative overflow-hidden rounded-xl"
       style={{
@@ -32,7 +33,7 @@ function BalanceCard({
       <div className="relative z-10 p-5 lg:p-6">
         <div className="flex items-center gap-1.5 text-gold-300">
           <I.wallet s={13} />
-          <p className="font-mono text-[10.5px] uppercase tracking-[0.16em] font-bold">Available · Salio</p>
+          <p className="font-mono text-[10.5px] uppercase tracking-[0.16em] font-bold">{t.common.available2}</p>
         </div>
         <p
           data-testid="wallet-balance"
@@ -47,12 +48,12 @@ function BalanceCard({
             className="mt-3 inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200 transition-colors"
           >
             <I.plus s={12} />
-            Add funds to start predicting · Weka pesa
+            {t.common.addFunds}
           </Link>
         )}
         <div className="mt-5 grid grid-cols-2 gap-3">
-          <SubStat label="Pending" sw="Inasubiri" value={fmt(pending, currency)} />
-          <SubStat label="On hold"  sw="Imezuiwa"  value={fmt(hold, currency)} hint={hold > 0 ? "Pending withdrawals or AML review" : undefined} />
+          <SubStat label={t.common.pending} value={fmt(pending, currency)} />
+          <SubStat label={t.common.onHold}  value={fmt(hold, currency)} hint={hold > 0 ? t.common.pendingHoldHint : undefined} />
         </div>
       </div>
     </section>
@@ -86,6 +87,7 @@ const BONUS_SOURCE_LABEL: Record<string, string> = {
 function BonusWalletCard({
   bonusBalance, activeCount, grants, currency,
 }: { bonusBalance: number; activeCount: number; grants: BonusGrantView[]; currency: string }) {
+  const { t } = useT();
   const totalReq = grants.reduce((s, g) => s + g.wagerRequiredTzs, 0);
   const totalWagered = grants.reduce((s, g) => s + Math.min(g.wageredTzs, g.wagerRequiredTzs), 0);
   const totalRemainingWager = grants.reduce((s, g) => s + g.remainingWagerTzs, 0);
@@ -111,9 +113,9 @@ function BonusWalletCard({
       <div className="relative z-10 p-5 lg:p-6">
         <div className="flex items-center gap-1.5 text-gold-300">
           <I.gift s={13} />
-          <p className="font-mono text-[10.5px] uppercase tracking-[0.16em] font-bold">Bonus · Bonasi</p>
+          <p className="font-mono text-[10.5px] uppercase tracking-[0.16em] font-bold">{t.common.bonus}</p>
           <span className="ml-auto inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] font-bold bg-gold-500/15 text-gold-200">
-            Play to unlock
+            {t.common.playToUnlock}
           </span>
         </div>
 
@@ -130,7 +132,7 @@ function BonusWalletCard({
             <div className="mt-4">
               <div className="flex items-center justify-between gap-2 mb-1.5">
                 <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-gold-200/80">
-                  Unlock progress · Maendeleo
+                  {t.common.unlockProgress}
                 </p>
                 <p className="font-mono text-[12px] font-bold text-text tabular-nums">{overallPct}%</p>
               </div>
@@ -140,10 +142,8 @@ function BonusWalletCard({
               </div>
               {totalRemainingWager > 0 && (
                 <p className="mt-2 text-[12px] text-gold-100/90">
-                  Play <span className="font-mono font-bold text-text"><Cash>{fmt(totalRemainingWager, currency)}</Cash></span> more to turn this into withdrawable cash.
-                  <span className="block italic text-[10.5px] mt-0.5 text-gold-200/60">
-                    Cheza zaidi ili kuibadilisha kuwa pesa unayoweza kutoa.
-                  </span>
+                  <span className="font-mono font-bold text-text"><Cash>{fmt(totalRemainingWager, currency)}</Cash></span>
+                  {" — "}{t.common.playMoreToUnlock}
                 </p>
               )}
             </div>
@@ -162,13 +162,13 @@ function BonusWalletCard({
                       <div className={`h-full rounded-pill ${g.progressPct > 0 && g.progressPct < 100 ? "prog-sweep" : ""}`} style={{ width: `${g.progressPct}%`, background: "var(--gold-400)" }} />
                     </div>
                     <div className="mt-1 flex items-center justify-between font-mono text-[9.5px] text-gold-200/55">
-                      <span>{fmt(g.wageredTzs, currency)} / {fmt(g.wagerRequiredTzs, currency)} played</span>
+                      <span>{fmt(g.wageredTzs, currency)} / {fmt(g.wagerRequiredTzs, currency)} {t.common.played}</span>
                       {g.expiresAt && <span>exp {formatDateTimeSafe(g.expiresAt).split(",")[0]}</span>}
                     </div>
                   </div>
                 ))}
                 {grants.length > 3 && (
-                  <p className="text-center font-mono text-[10px] text-gold-200/60">+{grants.length - 3} more bonus{grants.length - 3 > 1 ? "es" : ""}</p>
+                  <p className="text-center font-mono text-[10px] text-gold-200/60">+{grants.length - 3} {grants.length - 3 > 1 ? t.common.moreBonuses : t.common.moreBonus}</p>
                 )}
               </div>
             )}
@@ -176,14 +176,11 @@ function BonusWalletCard({
         ) : (
           <div className="mt-4">
             <p className="text-[13px] text-text/90 leading-snug">
-              No bonuses yet — earn them by inviting friends and winning proposals.
-              <span className="block italic text-[11px] mt-0.5 text-gold-200/60">
-                Bado hujapata bonasi — zipate kwa kualika marafiki.
-              </span>
+              {t.common.noBonus}
             </p>
             <Link href="/profile/invite" className="btn btn-gold btn-sm rounded-pill mt-3 inline-flex">
               <I.gift s={12} />
-              Invite &amp; earn · Alika upate
+              {t.profile.inviteEarn}
             </Link>
           </div>
         )}
@@ -192,18 +189,18 @@ function BonusWalletCard({
   );
 }
 
-function SubStat({ label, sw, value, hint }: { label: string; sw: string; value: string; hint?: string }) {
+function SubStat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-3 py-2.5 backdrop-blur-md">
       <p className="font-mono text-[9.5px] uppercase tracking-[0.10em] text-text-faint">{label}</p>
       <p className="font-mono font-bold text-[14px] tabular-nums text-text leading-tight"><Cash>{value}</Cash></p>
-      <p className="text-[10px] italic text-text-subtle">{sw}</p>
       {hint && <p className="mt-0.5 text-[9.5px] text-text-faint">{hint}</p>}
     </div>
   );
 }
 
 function TxnRow({ tx }: { tx: Transaction }) {
+  const { t } = useT();
   const [expanded, setExpanded] = useState(false);
   const isCredit = tx.amount > 0;
   const statusTone =
@@ -244,15 +241,15 @@ function TxnRow({ tx }: { tx: Transaction }) {
       {expanded && (
         <div className="px-3 pb-3 pt-0 grid grid-cols-2 gap-2 text-[11px]">
           <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5">
-            <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">Type</p>
+            <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.common.txnType}</p>
             <p className="font-semibold text-text">{tx.type}</p>
           </div>
           <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5">
-            <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">Amount</p>
+            <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.wallet.amount}</p>
             <p className="font-mono font-bold tabular-nums text-text">{fmt(Math.abs(tx.amount))}</p>
           </div>
           <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5">
-            <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">Reference</p>
+            <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.error.reference}</p>
             <p className="font-mono text-text-muted truncate">{tx.id.slice(0, 16)}</p>
           </div>
         </div>
@@ -309,27 +306,16 @@ function TxnPager({
   );
 }
 
-const TABS = [
-  { v: "activity", en: "Activity",  sw: "Shughuli" },
-  { v: "methods",  en: "Methods",   sw: "Njia" },
-  { v: "limits",   en: "Limits",    sw: "Vikomo" },
-] as const;
+type TabValue = "activity" | "methods" | "limits";
 
 // Supported payment channels (not per-user saved accounts — saved methods aren't
 // a feature yet). The player picks one and enters their number at deposit/withdrawal.
-type Method = { id: string; name: string; kind: string; hue: number };
+type Method = { id: string; name: string; hue: number };
 const METHODS: Method[] = [
-  { id: "MPESA",        name: "M-Pesa",       kind: "Mobile money", hue: 152 },
-  { id: "AIRTEL_MONEY", name: "Airtel Money", kind: "Mobile money", hue: 22 },
-  { id: "HALO_PESA",    name: "HaloPesa",     kind: "Mobile money", hue: 80 },
-  { id: "MIXX",         name: "Mixx by Yas",  kind: "Mobile money", hue: 280 },
-];
-
-// Real platform transaction caps (validators.ts). Personal responsible-gambling
-// limits live on the RG page; we point there rather than inventing per-user numbers.
-const TXN_CAPS = [
-  { label: "Per deposit",    sw: "Kila amana",   value: "TZS 500 – 2,000,000" },
-  { label: "Per withdrawal", sw: "Kila kutoa",   value: "TZS 1,000 – 5,000,000" },
+  { id: "MPESA",        name: "M-Pesa",       hue: 152 },
+  { id: "AIRTEL_MONEY", name: "Airtel Money", hue: 22 },
+  { id: "HALO_PESA",    name: "HaloPesa",     hue: 80 },
+  { id: "MIXX",         name: "Mixx by Yas",  hue: 280 },
 ];
 
 export function WalletPageClient({

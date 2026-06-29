@@ -35,11 +35,12 @@ type Props = {
 
 function getSignalBadge(
   status: Props["status"], yesPct: number, volume: number, predictors: number, timeLeft: string,
+  labels: { hot: string; soon: string; tipping: string },
 ): { kind: "hot" | "soon" | "tipping"; label: string } | null {
   if (status !== "LIVE") return null;
-  if (volume >= 30_000 || predictors >= 40) return { kind: "hot", label: "Hot" };
-  if (/^\d+m left$/.test(timeLeft) || /^\d+s left$/.test(timeLeft)) return { kind: "soon", label: "Soon" };
-  if (Math.abs(yesPct - 50) <= 3) return { kind: "tipping", label: "Tipping" };
+  if (volume >= 30_000 || predictors >= 40) return { kind: "hot", label: labels.hot };
+  if (/^\d+m left$/.test(timeLeft) || /^\d+s left$/.test(timeLeft)) return { kind: "soon", label: labels.soon };
+  if (Math.abs(yesPct - 50) <= 3) return { kind: "tipping", label: labels.tipping };
   return null;
 }
 
@@ -130,7 +131,7 @@ function HowItWorks() {
           >
             <button
               type="button"
-              aria-label="Close"
+              aria-label={t.common.close}
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); }}
               className="absolute right-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-sm text-text-subtle hover:text-text transition-colors"
             >
@@ -155,7 +156,10 @@ export function MarketCard({
   id, titleEn, titleSw, category, yesPct, volume, predictors, timeLeft, status, move24h, traders, selectionClosed, className,
 }: Props) {
   const router = useRouter();
-  const signal = getSignalBadge(status, yesPct, volume, predictors, timeLeft);
+  const { t } = useT();
+  const signal = getSignalBadge(status, yesPct, volume, predictors, timeLeft, {
+    hot: t.common.hot, soon: t.common.soon, tipping: t.market.tipping,
+  });
   const live = status === "LIVE" && !selectionClosed;
   const isResolved = status === "RESOLVED";
   const CatIco = I[categoryGlyph(category)];
@@ -189,7 +193,7 @@ export function MarketCard({
           )}
         >
           {live && <span className="live-dot" />}
-          {selectionClosed ? "Closed" : live ? "Live" : isResolved ? "Resolved" : status === "VOIDED" ? "Void" : "Pending"}
+          {selectionClosed ? t.market.statusClosed : live ? t.market.statusLive : isResolved ? t.market.statusResolved : status === "VOIDED" ? t.market.statusVoid : t.market.statusPending}
         </span>
         {signal && (
           <span
@@ -210,8 +214,8 @@ export function MarketCard({
           <h3 className="mcardp-q">{titleEn}</h3>
         </div>
         <div className="mcardp-prob">
-          <div className="mcardp-pctcap">{isResolved ? "Result" : "YES"}</div>
-          <div className="mcardp-pct">{isResolved ? (yesPct >= 50 ? "YES" : "NO") : <>{yesPct}<span className="u">%</span></>}</div>
+          <div className="mcardp-pctcap">{isResolved ? t.market.result : t.common.yes}</div>
+          <div className="mcardp-pct">{isResolved ? (yesPct >= 50 ? t.common.yes : t.common.no) : <>{yesPct}<span className="u">%</span></>}</div>
         </div>
       </div>
 
@@ -228,12 +232,12 @@ export function MarketCard({
         </div>
       ) : (
         <div className="btn btn-ghost btn-md justify-center pointer-events-none opacity-85">
-          <I.resolved s={15} /> {isResolved ? `Resolved ${yesPct >= 50 ? "YES" : "NO"}` : "Closed"}
+          <I.resolved s={15} /> {isResolved ? `${t.market.statusResolved} ${yesPct >= 50 ? t.common.yes : t.common.no}` : t.market.statusClosed}
         </div>
       )}
 
       <div className="mcardp-meta">
-        <span>{predictors.toLocaleString()} predictors</span>
+        <span>{predictors.toLocaleString()} {t.market.predictorsCount}</span>
         <span className="dot" />
         <span>{fmtTzs(volume)}</span>
         <span className="mcardp-meta-right">
@@ -250,7 +254,7 @@ export function MarketCard({
           className="mcardp-details"
           style={{ color: "var(--accent-400)" }}
         >
-          Details · Soma zaidi
+          {t.market.details}
           <I.chevronRight s={11} />
         </a>
       )}

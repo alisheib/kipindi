@@ -146,7 +146,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
           <SummaryCell
             label={t.positions.settledPnl}
             value={(settledNet >= 0 ? "+" : "−") + fmtTzs(Math.abs(settledNet))}
-            sub={`${wins}W · ${losses}L · ${cashOuts}C`}
+            sub={`${wins}${t.common.win.charAt(0)} · ${losses}${t.common.lose.charAt(0)} · ${cashOuts}C`}
             tone={settledNet >= 0 ? "gold" : "no"}
             icon={<I.coins s={13} />}
           />

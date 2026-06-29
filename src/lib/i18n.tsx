@@ -116,12 +116,12 @@ export function useT() {
  * for "language" and "hello".
  */
 const GLYPHS = [
-  { char: "Hi",  color: "oklch(72% 0.14 264)" },   // brand-purple
-  { char: "\u8BED", color: "oklch(78% 0.13 80)" },  // gold — \u8BED = 语
-  { char: "Ha",  color: "oklch(72% 0.11 195)" },    // teal
-  { char: "\u597D", color: "oklch(78% 0.13 80)" },  // gold — \u597D = 好
-  { char: "Sw",  color: "oklch(72% 0.11 195)" },    // teal
-  { char: "En",  color: "oklch(72% 0.14 264)" },    // brand-purple
+  { char: "Hi",  color: "oklch(78% 0.16 152)" },    // yes-green
+  { char: "\u8BED", color: "oklch(78% 0.16 22)" },  // no-red — 语
+  { char: "Ha",  color: "oklch(78% 0.16 152)" },    // yes-green
+  { char: "\u597D", color: "oklch(78% 0.16 22)" },  // no-red — 好
+  { char: "Sw",  color: "oklch(78% 0.16 152)" },    // yes-green
+  { char: "En",  color: "oklch(78% 0.16 22)" },     // no-red
 ] as const;
 
 export function LocaleChangeOverlay() {

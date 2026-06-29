@@ -10,10 +10,12 @@ import { VoteControl } from "@/components/proposals/vote-control";
 import { StatusBadge } from "@/components/proposals/status-badge";
 import { StatusTimeline } from "@/components/proposals/status-timeline";
 import { CategoryIcon, CATEGORY_LABEL } from "@/components/proposals/category-icon";
+import { getServerT } from "@/lib/i18n-server";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProposalDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { t } = await getServerT();
   const { id } = await params;
   const session = await currentSession();
   const p = await getProposalDetail(id, session?.userId ?? null);
@@ -30,7 +32,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
         <div className="mb-2.5 flex flex-wrap items-center gap-2">
           <StatusBadge status={p.status} isHot={p.isHot} />
           <Chip variant="neutral"><CategoryIcon category={p.category} />{CATEGORY_LABEL[p.category]}</Chip>
-          <span className="ml-auto font-mono text-[10.5px] text-text-subtle">resolves {p.resolutionDate}</span>
+          <span className="ml-auto font-mono text-[10.5px] text-text-subtle">{t.common.resolves} {p.resolutionDate}</span>
         </div>
         <h1 className="font-display text-[19px] font-bold leading-snug tracking-[-0.01em]">{p.titleEn}</h1>
         {p.titleSw && <p className="mt-0.5 font-display italic text-text-subtle text-[12.5px]">{p.titleSw}</p>}
@@ -43,20 +45,20 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
 
       {/* Resolution criterion */}
       <section className="rounded-xl glass-panel p-4">
-        <p className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.12em] font-bold text-text-subtle">Resolution criterion · Vigezo</p>
+        <p className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.12em] font-bold text-text-subtle">{t.common.resolutionCriterion}</p>
         <p className="text-[13px] leading-relaxed text-text-muted">{p.resolutionCriterion}</p>
       </section>
 
       {/* Declined / changes-requested notice */}
       {p.status === "DECLINED" && (
         <section className="rounded-xl border p-4" style={{ borderColor: "color-mix(in oklab, var(--claret-500) 30%, var(--border))", background: "color-mix(in oklab, var(--claret-500) 7%, var(--bg-elevated))" }}>
-          <div className="mb-1.5 flex items-center gap-2 text-claret-300"><I.void s={16} /><p className="text-[13px] font-bold">Declined · Imekataliwa</p></div>
+          <div className="mb-1.5 flex items-center gap-2 text-claret-300"><I.void s={16} /><p className="text-[13px] font-bold">{t.common.declined}</p></div>
           <p className="text-[12.5px] leading-relaxed text-text-muted">Reason: {p.declineReason}.{p.declineNote ? ` ${p.declineNote}` : ""}</p>
         </section>
       )}
       {p.status === "CHANGES_REQUESTED" && p.changeNote && (
         <section className="rounded-xl border p-4" style={{ borderColor: "color-mix(in oklab, var(--royal-500) 30%, var(--border))", background: "color-mix(in oklab, var(--royal-500) 8%, var(--bg-elevated))" }}>
-          <div className="mb-1.5 flex items-center gap-2 text-royal-200"><I.edit s={16} /><p className="text-[13px] font-bold">Changes requested</p></div>
+          <div className="mb-1.5 flex items-center gap-2 text-royal-200"><I.edit s={16} /><p className="text-[13px] font-bold">{t.common.changesRequested}</p></div>
           <p className="text-[12.5px] leading-relaxed text-text-muted">{p.changeNote}</p>
         </section>
       )}
@@ -67,8 +69,8 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
           <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "linear-gradient(180deg, transparent, color-mix(in oklab, var(--gold-700) 16%, transparent))" }} />
           <div className="relative">
             <span className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full text-gold-fg" style={{ background: "linear-gradient(135deg, var(--gold-400), var(--gold-700))" }}><I.trophy s={24} /></span>
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">Your proposal resolved</p>
-            <p className="mt-1 font-display text-[20px] font-bold">You earned a prize</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">{t.common.yourProposalResolved}</p>
+            <p className="mt-1 font-display text-[20px] font-bold">{t.common.earnedAPrize}</p>
             <p className="my-1 font-mono text-[28px] font-bold text-gold-300">+TZS {p.prizePaidTzs.toLocaleString()}</p>
             <p className="text-[12.5px] text-text-muted">Imelipwa · Paid to your wallet</p>
           </div>
