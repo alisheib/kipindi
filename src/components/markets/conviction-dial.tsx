@@ -1179,7 +1179,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
           style={{ minWidth: 140, minHeight: 44, fontVariantNumeric: "tabular-nums" }}
         >
           {closedNow
-            ? "Closed · awaiting settle"
+            ? t.market.closedAwaitingSettlement
             : effectiveSide === "NEUTRAL"
               ? "—"
               : (

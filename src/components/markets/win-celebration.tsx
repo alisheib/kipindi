@@ -20,6 +20,7 @@ import { createPortal } from "react-dom";
 import { I } from "@/components/ui/glyphs";
 import { haptics } from "@/lib/haptics";
 import { useModalLock } from "@/lib/use-modal-lock";
+import { useT } from "@/lib/i18n";
 
 const EVENT_NAME = "50pick:celebrate";
 
@@ -65,6 +66,7 @@ function RollingAmount({ value }: { value: number }) {
 }
 
 export function WinCelebrationHost() {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   useModalLock(open);
   const [payload, setPayload] = useState<WinCelebrationPayload | null>(null);
@@ -111,7 +113,7 @@ export function WinCelebrationHost() {
       {/* Scrim */}
       <button
         type="button"
-        aria-label="Dismiss"
+        aria-label={t.common.dismiss}
         onClick={() => setOpen(false)}
         className="absolute inset-0 bg-black/60 backdrop-blur-md"
         style={{ animation: "wc-fade 160ms ease-out" }}
@@ -133,7 +135,7 @@ export function WinCelebrationHost() {
         <button
           type="button"
           onClick={() => setOpen(false)}
-          aria-label="Close"
+          aria-label={t.common.close}
           className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
         >
           <I.x s={16} />

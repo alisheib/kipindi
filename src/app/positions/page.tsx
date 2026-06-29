@@ -10,7 +10,10 @@ import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { getServerT } from "@/lib/i18n-server";
 
-export const metadata = { title: "History" };
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.positions.title };
+}
 export const dynamic = "force-dynamic";
 
 const fmtTzs = (n: number) => `TZS ${Math.round(n).toLocaleString("en-US")}`;

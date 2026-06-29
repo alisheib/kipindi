@@ -20,6 +20,7 @@ import { RgRedirectCard } from "./messages/RgRedirectCard";
 import { EscalateHandoff } from "./messages/EscalateHandoff";
 import { Sources, renderBlocks, renderPlainText } from "./messages/Primitives";
 import type { Lang, Message } from "./types";
+import { useT } from "@/lib/i18n";
 
 type Props = {
   lang: Lang;
@@ -36,6 +37,7 @@ const HEADER_COPY: Record<Lang, { name: string; status: string }> = {
 };
 
 export function ChatPanel({ lang, messages, pending, onClose, onSend, variant }: Props) {
+  const { t: i18n } = useT();
   const listRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
 
@@ -99,7 +101,7 @@ export function ChatPanel({ lang, messages, pending, onClose, onSend, variant }:
         <button
           type="button"
           className="cm-close"
-          aria-label="Close"
+          aria-label={i18n.common.close}
           onClick={onClose}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -128,11 +130,11 @@ export function ChatPanel({ lang, messages, pending, onClose, onSend, variant }:
             ref={composerRef}
             rows={1}
             placeholder="Ask anything · Uliza chochote"
-            aria-label="Message"
+            aria-label={i18n.common.message}
             onKeyDown={handleKey}
             onInput={handleInput}
           />
-          <button type="submit" className="cm-send" aria-label="Send message" disabled={pending}>
+          <button type="submit" className="cm-send" aria-label={i18n.common.sendMessage} disabled={pending}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 12 L19 12" />
               <path d="M13 6 L19 12 L13 18" />

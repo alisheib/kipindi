@@ -10,9 +10,11 @@
 
 import { useFormStatus } from "react-dom";
 import { Spinner } from "@/components/ui/spinner";
+import { useT } from "@/lib/i18n";
 
 export function ResendOtpButton() {
   const { pending } = useFormStatus();
+  const { t } = useT();
   return (
     <button
       type="submit"
@@ -20,7 +22,7 @@ export function ResendOtpButton() {
       className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200 transition-colors disabled:opacity-60 disabled:cursor-wait"
     >
       {pending && <Spinner size={11} />}
-      {pending ? "Sending…" : "Resend code"}
+      {pending ? t.common.sending : t.common.resendCode}
     </button>
   );
 }

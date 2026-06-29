@@ -21,6 +21,7 @@ import { I } from "@/components/ui/glyphs";
 import { haptics } from "@/lib/haptics";
 import { useModalLock } from "@/lib/use-modal-lock";
 import { HouseLeanWarning } from "./house-lean-warning";
+import { useT } from "@/lib/i18n";
 import type { LeanLevel } from "@/lib/payout";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
@@ -46,6 +47,7 @@ export function BetConfirmModal({
   open, side, stake, multiplier, payout, ratio, lean, isOneSided, pending, marketTitle, onConfirm, onCancel,
 }: Props) {
   useModalLock(open);
+  const { t } = useT();
   const [mounted, setMounted] = useState(false);
   const [remainingMs, setRemainingMs] = useState(QUOTE_HOLD_MS);
   const startedAtRef = useRef<number>(0);
@@ -153,13 +155,13 @@ export function BetConfirmModal({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Confirm prediction"
+      aria-label={t.dialog.confirmPrediction}
       className="fixed inset-0 z-[100] flex justify-center px-3 py-4 overflow-y-auto overscroll-contain"
     >
       {/* Scrim */}
       <button
         type="button"
-        aria-label="Cancel"
+        aria-label={t.common.cancel}
         onClick={() => { if (!pending) onCancel(); }}
         disabled={pending}
         className="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity disabled:cursor-wait"
@@ -209,7 +211,7 @@ export function BetConfirmModal({
             <button
               type="button"
               onClick={onCancel}
-              aria-label="Cancel"
+              aria-label={t.common.cancel}
               className="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
             >
               <I.x s={16} />

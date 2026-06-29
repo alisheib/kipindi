@@ -8,6 +8,7 @@ import { TippingBar } from "@/components/brand";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 type Props = {
   id: string;
@@ -46,10 +47,11 @@ const fmtTzs = (n: number) => `TZS ${n.toLocaleString("en-US")}`;
 
 /** Line-art 24h move chip. */
 function MoveChip({ move }: { move: number }) {
+  const { t } = useT();
   const dir = move > 0 ? "up" : move < 0 ? "down" : "flat";
   const cls = dir === "up" ? "mcard-move-up" : dir === "down" ? "mcard-move-down" : "mcard-move-flat";
   return (
-    <span className={`mcard-move ${cls}`} title="24h move · Mwenendo wa saa 24">
+    <span className={`mcard-move ${cls}`} title={t.market.twentyFourHourMove}>
       {dir === "flat" ? (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12" /></svg>
       ) : (
@@ -65,6 +67,7 @@ function MoveChip({ move }: { move: number }) {
 /** Small info icon that opens a brief "how betting works" popup.
  *  Portaled to body because the card has overflow:hidden (watermark bleed). */
 function HowItWorks() {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
   const [pos, setPos] = useState({ top: 0, right: 0 });
@@ -91,7 +94,7 @@ function HowItWorks() {
       <button
         ref={btnRef}
         type="button"
-        aria-label="How it works"
+        aria-label={t.common.howItWorks}
         onClick={toggle}
         className="inline-flex items-center justify-center rounded-md transition-all"
         style={{
@@ -133,12 +136,12 @@ function HowItWorks() {
             >
               <I.x s={12} />
             </button>
-            <p className="font-display text-[13px] font-bold text-text" style={{ marginBottom: 6 }}>How it works</p>
+            <p className="font-display text-[13px] font-bold text-text" style={{ marginBottom: 6 }}>{t.common.howItWorks}</p>
             <p className="text-[11.5px] leading-[1.55] text-text-muted">
-              Pick <span className="font-bold text-yes-300">YES</span> or <span className="font-bold text-no-300">NO</span>. Your stake joins the pool. If your side wins, you share the losing pool minus the operator margin.
+              {t.common.howItWorksBody}
             </p>
             <p className="text-[10.5px] leading-[1.5] text-text-subtle italic" style={{ marginTop: 6 }}>
-              Payout depends on the final pool, not the current odds. Only stake what you can afford to lose. 18+.
+              {t.common.howItWorksFine}
             </p>
           </div>
         </>,

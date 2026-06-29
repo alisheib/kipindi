@@ -16,7 +16,10 @@ import { PageRibbon } from "@/components/layout/page-ribbon";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { getServerT, type Dict } from "@/lib/i18n-server";
 
-export const metadata = { title: "Leaderboard" };
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.leaderboard.title };
+}
 export const dynamic = "force-dynamic";
 
 type Tier = "sovereign" | "diamond" | "gold" | "silver" | "bronze";

@@ -29,6 +29,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/ui/glyphs";
 import { useModalLock } from "@/lib/use-modal-lock";
+import { useT } from "@/lib/i18n";
 
 const DEFAULT_AUTO_CLOSE_MS = 5_000;
 
@@ -125,6 +126,7 @@ export function OperationResultModal({
   autoCloseMs, stripTone = "brand",
 }: Props) {
   useModalLock(open);
+  const { t } = useT();
   const [mounted, setMounted] = useState(false);
   const closeRef = useRef(onClose);
   useEffect(() => { closeRef.current = onClose; }, [onClose]);
@@ -233,7 +235,7 @@ export function OperationResultModal({
     >
       <button
         type="button"
-        aria-label="Close"
+        aria-label={t.common.close}
         onClick={onClose}
         className="fixed inset-0 bg-black/60 backdrop-blur-md"
         style={{ animation: "orm-fade 160ms ease-out" }}
@@ -273,7 +275,7 @@ export function OperationResultModal({
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t.common.close}
           className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
         >
           <I.x s={16} />

@@ -7,6 +7,7 @@ import { CountdownPill } from "@/components/ui/countdown-pill";
 import { verifyLoginOtpAction, resendOtpAction } from "../login/actions";
 import { ResendOtpButton } from "@/components/auth/resend-otp-button";
 import { OtpExpiryCountdown } from "@/components/auth/otp-expiry-countdown";
+import { getServerT } from "@/lib/i18n-server";
 
 export const metadata = { title: "Enter code · Weka msimbo" };
 
@@ -16,6 +17,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
   // only confuse a player who lands here via a stale link, so bounce to login.
   if (process.env.OTP_ENABLED !== "1") redirect("/auth/login");
 
+  const { t } = await getServerT();
   const sp = await searchParams;
   const purpose = (sp.purpose ?? "login") as "login" | "register" | "withdraw" | "reauth" | "self_exclusion";
   const phone = sp.phone ?? "";
@@ -95,7 +97,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
               />
               <OtpExpiryCountdown />
             </label>
-            <SubmitButton label="Verify · Thibitisha" pendingLabel="Verifying…" />
+            <SubmitButton label="Verify · Thibitisha" pendingLabel={t.common.verifying} />
           </form>
 
           <div className="flex items-center justify-between border-t border-border pt-3">
@@ -103,7 +105,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
               href={`${purpose === "register" ? "/auth/register" : "/auth/login"}${nextSafe ? `?next=${encodeURIComponent(nextSafe)}` : ""}` as never}
               className="font-mono text-[12px] uppercase tracking-[0.14em] text-text-subtle hover:text-text transition-colors"
             >
-              ← Change number
+              ← {t.common.changeNumber}
             </Link>
             {purpose === "register" ? (
               // A register OTP can't be re-issued without the original sign-up
@@ -112,7 +114,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
                 href={`/auth/register?${new URLSearchParams({ ...(phone ? { phone } : {}), ...(nextSafe ? { next: nextSafe } : {}) }).toString()}` as never}
                 className="font-mono text-[12px] uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200 transition-colors"
               >
-                Start over
+                {t.common.startOver}
               </Link>
             ) : (
               <form action={resendOtpAction}>

@@ -12,7 +12,10 @@ import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { MarketSearch } from "./market-search";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 
-export const metadata = { title: "Markets" };
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.market.title };
+}
 export const dynamic = "force-dynamic";
 
 type WhenFilter = "new" | "soon" | "today" | "week" | "all";

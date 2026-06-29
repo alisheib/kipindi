@@ -9,6 +9,7 @@ import type { Transaction } from "@/lib/ui-stubs";
 import { Cash } from "@/components/ui/cash";
 import { CashbackPromo } from "@/components/ui/cashback-promo";
 import { formatDateTimeSafe } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 const TXNS_PER_PAGE = 12;
 
@@ -266,6 +267,7 @@ function TxnRow({ tx }: { tx: Transaction }) {
 function TxnPager({
   page, pageCount, total, perPage, onGoto,
 }: { page: number; pageCount: number; total: number; perPage: number; onGoto: (p: number) => void }) {
+  const { t } = useT();
   const cur = page + 1; // 1-indexed for display
   const pages: (number | "...")[] = [];
   if (pageCount <= 7) {
@@ -287,7 +289,7 @@ function TxnPager({
         {(page * perPage + 1).toLocaleString()}–{Math.min((page + 1) * perPage, total).toLocaleString()} of {total.toLocaleString()}
       </p>
       <div className="flex flex-wrap items-center justify-end gap-1">
-        <button type="button" onClick={() => onGoto(page - 1)} disabled={page === 0} className={`${btnBase} ${page > 0 ? btnInactive : btnDisabled}`} aria-label="Previous page">
+        <button type="button" onClick={() => onGoto(page - 1)} disabled={page === 0} className={`${btnBase} ${page > 0 ? btnInactive : btnDisabled}`} aria-label={t.common.previousPage}>
           <I.chevronLeft s={14} />
         </button>
         {pages.map((p, i) =>
@@ -299,7 +301,7 @@ function TxnPager({
             </button>
           ),
         )}
-        <button type="button" onClick={() => onGoto(page + 1)} disabled={page >= pageCount - 1} className={`${btnBase} ${page < pageCount - 1 ? btnInactive : btnDisabled}`} aria-label="Next page">
+        <button type="button" onClick={() => onGoto(page + 1)} disabled={page >= pageCount - 1} className={`${btnBase} ${page < pageCount - 1 ? btnInactive : btnDisabled}`} aria-label={t.common.nextPage}>
           <I.chevronRight s={14} />
         </button>
       </div>

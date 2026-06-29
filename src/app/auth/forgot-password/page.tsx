@@ -6,10 +6,12 @@ import { PhoneInput } from "@/components/ui/phone-input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { SUPPORT_EMAIL, HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
 import { requestResetAction } from "./actions";
+import { getServerT } from "@/lib/i18n-server";
 
 export const metadata = { title: "Forgot password · Umesahau nenosiri?" };
 
 export default async function ForgotPasswordPage({ searchParams }: { searchParams?: Promise<{ sent?: string; phone?: string; error?: string }> }) {
+  const { t } = await getServerT();
   const sp = (await searchParams) ?? {};
   const sent = sp.sent === "1";
   const phoneDefault = (sp.phone ?? "").replace(/^\+255/, "").replace(/\D+/g, "").slice(0, 9);
@@ -28,7 +30,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
             className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
           >
             <I.chevronLeft s={14} />
-            Back to sign in
+            {t.common.backToSignIn}
           </Link>
 
           <div>
@@ -82,7 +84,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
                   size="lg"
                 />
               </div>
-              <SubmitButton label="Send reset link · Tuma kiungo" pendingLabel="Sending…" />
+              <SubmitButton label="Send reset link · Tuma kiungo" pendingLabel={t.common.sending} />
             </form>
           )}
 
@@ -91,7 +93,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
             <div className="flex items-start gap-2.5">
               <I.shieldQuestion s={16} className="mt-0.5 shrink-0 text-text-subtle" />
               <div className="text-[12.5px] text-text-muted leading-relaxed">
-                <p className="font-display font-semibold text-text">No email? Contact support</p>
+                <p className="font-display font-semibold text-text">{t.common.noEmailContactSupport}</p>
                 <p>
                   If you don&rsquo;t have an email linked to your account, our team can verify your
                   identity through KYC and reset your password manually.{" "}
@@ -126,7 +128,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
           </div>
 
           <p className="border-t border-border pt-3 text-center text-[13px] text-text-muted">
-            Remembered it?{" "}
+            {t.common.rememberedIt}{" "}
             <Link
               href="/auth/login"
               className="font-semibold text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline"

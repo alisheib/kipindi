@@ -259,7 +259,7 @@ export function FirstVisitPrimer() {
     >
       <button
         type="button"
-        aria-label="Skip primer"
+        aria-label={lang === "sw" ? "Ruka utangulizi" : lang === "zh" ? "跳过引导" : "Skip primer"}
         onClick={dismiss}
         className="absolute inset-0 bg-black/60 backdrop-blur-md"
         style={{ animation: "fvp-fade 200ms ease-out" }}
@@ -311,7 +311,7 @@ export function FirstVisitPrimer() {
           <button
             type="button"
             onClick={dismiss}
-            aria-label="Skip"
+            aria-label={lang === "sw" ? "Ruka utangulizi" : lang === "zh" ? "跳过引导" : "Skip primer"}
             className="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
           >
             <I.x s={14} />

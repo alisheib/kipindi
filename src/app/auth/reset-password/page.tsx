@@ -10,6 +10,7 @@ import { verifySession } from "@/lib/server/crypto";
 import { db } from "@/lib/server/store";
 import { passwordFingerprint } from "@/lib/server/password-reset";
 import { resetPasswordAction } from "./actions";
+import { getServerT } from "@/lib/i18n-server";
 
 export const metadata = { title: "Reset password · Badilisha nenosiri" };
 export const dynamic = "force-dynamic";
@@ -53,6 +54,7 @@ const ERROR_COPY: Record<Exclude<TokenState, "valid">, { eyebrow: string; title:
 };
 
 export default async function ResetPasswordPage({ searchParams }: { searchParams?: Promise<{ token?: string; error?: string }> }) {
+  const { t } = await getServerT();
   const sp = (await searchParams) ?? {};
   const token = sp.token ?? "";
   if (!token) redirect("/auth/forgot-password");
@@ -128,7 +130,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
             className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
           >
             <I.chevronLeft s={14} />
-            Back to sign in
+            {t.common.backToSignIn}
           </Link>
 
           <div>
@@ -136,11 +138,10 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
               Reset password · Badilisha nenosiri
             </p>
             <h1 className="mt-1.5 font-display text-[28px] font-bold leading-tight text-text tracking-[-0.02em]">
-              Set a new password
+              {t.common.setNewPassword}
             </h1>
             <p className="mt-1.5 text-[13.5px] text-text-muted">
-              Choose a strong password (8+ characters).{" "}
-              <span className="italic text-text-subtle">Chagua nenosiri imara.</span>
+              {t.common.strongPassword}
             </p>
             <p className="mt-1.5 flex items-center gap-1.5 text-[11.5px] text-gold-300">
               <I.clock s={12} />
@@ -191,16 +192,16 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
                 size="lg"
               />
             </div>
-            <SubmitButton label="Reset password · Badilisha" pendingLabel="Resetting…" />
+            <SubmitButton label="Reset password · Badilisha" pendingLabel={t.common.resetting} />
           </form>
 
           <p className="border-t border-border pt-3 text-center text-[13px] text-text-muted">
-            Link expired?{" "}
+            {t.common.linkExpired}{" "}
             <Link
               href="/auth/forgot-password"
               className="font-semibold text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline"
             >
-              Request a new one
+              {t.common.requestNewOne}
             </Link>
           </p>
         </section>

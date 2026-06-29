@@ -11,7 +11,10 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { formatTzsCompact } from "@/lib/utils";
 import { getServerT } from "@/lib/i18n-server";
 
-export const metadata = { title: "Results" };
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.results.title };
+}
 export const dynamic = "force-dynamic";
 
 const PER_PAGE = PLAYER_PER_PAGE;

@@ -222,7 +222,7 @@ export default async function RegisterPage({
               />
             </fieldset>
 
-            <SubmitButton label={t.auth.signUpTitle} pendingLabel="Creating account…" />
+            <SubmitButton label={t.auth.signUpTitle} pendingLabel={t.common.creatingAccount} />
           </form>
 
           <p className="border-t border-border pt-3 text-center text-[13px] text-text-muted">

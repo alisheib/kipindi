@@ -200,7 +200,7 @@ export default async function LoginPage({
               </Link>
             </div>
 
-            <SubmitButton label={t.auth.signInTitle} pendingLabel="Signing in…" />
+            <SubmitButton label={t.auth.signInTitle} pendingLabel={t.common.signingIn} />
           </form>
 
           <p className="border-t border-border pt-3 text-center text-[13px] text-text-muted">
