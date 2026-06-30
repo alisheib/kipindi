@@ -36,8 +36,10 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
   const prevAmount = sp.amount ?? "";
   const prevMsisdn = sp.msisdn ?? "";
 
-  const wallet = await db.wallet.findByUserId(session.userId);
-  const kyc = await db.kyc.findByUserId(session.userId);
+  let wallet: Awaited<ReturnType<typeof db.wallet.findByUserId>> | null = null;
+  let kyc: Awaited<ReturnType<typeof db.kyc.findByUserId>> | null = null;
+  try { wallet = await db.wallet.findByUserId(session.userId); } catch { /* graceful */ }
+  try { kyc = await db.kyc.findByUserId(session.userId); } catch { /* graceful */ }
   const kycApproved = kyc?.status === "APPROVED";
 
   return (

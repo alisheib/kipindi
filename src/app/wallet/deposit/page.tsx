@@ -37,7 +37,8 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
   const prevAmount = sp.amount ?? "";
   const prevMsisdn = sp.msisdn ?? "";
 
-  const user = await db.user.findById(session.userId);
+  let user: Awaited<ReturnType<typeof db.user.findById>> | null = null;
+  try { user = await db.user.findById(session.userId); } catch { /* graceful — default limits */ }
   const adminTest = !!user && ADMIN_TEST_ROLES.has(user.role) && process.env.NODE_ENV !== "production" && process.env.ADMIN_TEST_DEPOSITS !== "false";
   const maxAmount = adminTest ? 1_000_000_000 : 2_000_000;
   const quickAmounts = adminTest ? [100_000, 1_000_000, 5_000_000, 20_000_000, 100_000_000] : QUICK_AMOUNTS;

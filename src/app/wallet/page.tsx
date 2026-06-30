@@ -40,18 +40,17 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
   if (!session) redirect("/auth/login?next=/wallet");
 
   const sp = await searchParams;
-  const w = await db.wallet.findByUserId(session.userId);
+  let w: Awaited<ReturnType<typeof db.wallet.findByUserId>> | null = null;
+  try { w = await db.wallet.findByUserId(session.userId); } catch { /* graceful */ }
   const balance = w?.balance ?? 0;
   const pending = w?.pending ?? 0;
   const hold = w?.hold ?? 0;
   const currency = w?.currency ?? "TZS";
-  // Fetch a deep history (was 50) so the paginated activity list can page back
-  // through real history instead of silently hiding everything past 50.
-  const txns: Transaction[] = ((await db.txn.findByUser(session.userId, 1000)) as StoredTxn[]).map(adaptTxn);
+  let txns: Transaction[] = [];
+  try { txns = ((await db.txn.findByUser(session.userId, 1000)) as StoredTxn[]).map(adaptTxn); } catch { /* graceful */ }
 
-  // Bonus wallet — second balance shown alongside the main wallet. Only the
-  // active grants drive the play-through card; map to a lean serializable shape.
-  const bonus = await getBonusSummary(session.userId);
+  let bonus: Awaited<ReturnType<typeof getBonusSummary>> = { bonusBalance: 0, activeCount: 0, activeWagerRemainingTzs: 0, grants: [] };
+  try { bonus = await getBonusSummary(session.userId); } catch { /* graceful */ }
   const bonusCfg = getBonusConfig();
   const cashbackPercent = bonusCfg.enabled && bonusCfg.cashbackEnabled ? bonusCfg.cashbackPercentage : 0;
   const bonusGrants = bonus.grants

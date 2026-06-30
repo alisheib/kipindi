@@ -32,13 +32,18 @@ export default async function ProfilePage() {
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile");
 
-  const user = await db.user.findById(session.userId);
+  let user: Awaited<ReturnType<typeof db.user.findById>> | null = null;
+  try { user = await db.user.findById(session.userId); } catch { /* graceful */ }
   if (!user) redirect("/auth/login?next=/profile");
 
-  const wallet = await db.wallet.findByUserId(user.id);
-  const kyc = await db.kyc.findByUserId(user.id);
-  const sof = await db.sourceOfFunds.get(user.id);
-  const positions = await listPositionsForUser(user.id, 500);
+  let wallet: Awaited<ReturnType<typeof db.wallet.findByUserId>> | null = null;
+  let kyc: Awaited<ReturnType<typeof db.kyc.findByUserId>> | null = null;
+  let sof: Awaited<ReturnType<typeof db.sourceOfFunds.get>> | null = null;
+  let positions: Awaited<ReturnType<typeof listPositionsForUser>> = [];
+  try { wallet = await db.wallet.findByUserId(user.id); } catch { /* graceful */ }
+  try { kyc = await db.kyc.findByUserId(user.id); } catch { /* graceful */ }
+  try { sof = await db.sourceOfFunds.get(user.id); } catch { /* graceful */ }
+  try { positions = await listPositionsForUser(user.id, 500); } catch { /* graceful */ }
   const initials = displayInitials(user);
   const displayName = user.displayName ?? t.profile.setYourName;
 
