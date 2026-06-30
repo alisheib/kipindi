@@ -560,6 +560,7 @@ const memoryDb = {
   },
   responsible: {
     get: (userId: string) => store.responsible.get(userId) ?? null,
+    listAll: () => Array.from(store.responsible.values()),
     upsert: (r: StoredResponsibleGambling) => { store.responsible.set(r.userId, r); return r; },
   },
   bet: {

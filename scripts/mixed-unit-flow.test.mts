@@ -65,6 +65,7 @@ class TestProvider implements AIProvider {
     const gen: AIPollGeneration = {
       titleEn: `Mixed-unit test ${this.cat} #${++uniq}`,
       titleSw: `Test SW ${uniq}`,
+      titleZh: `测试 ${uniq}`,
       category: this.cat,
       resolutionCriterion: "Official result announced.",
       resolutionAt: future(14),

@@ -50,6 +50,7 @@ function makeGeneration(category: string, confidence: number, overrides: Partial
   return {
     titleEn: `Test poll #${genCounter}: ${category} question about something specific`,
     titleSw: `Kura ya jaribio #${genCounter}: swali la ${category}`,
+    titleZh: `测试投票 #${genCounter}: ${category}相关问题`,
     category,
     resolutionCriterion: `Official announcement from the ${category} authority.`,
     resolutionAt: days(30 + Math.floor(Math.random() * 180)),

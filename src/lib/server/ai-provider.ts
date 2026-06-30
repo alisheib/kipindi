@@ -110,6 +110,7 @@ const MOCK_POLLS: Record<string, AIPollGeneration[]> = {
     {
       titleEn: "Will Simba SC win the Tanzanian Premier League 2026?",
       titleSw: "Je, Simba SC itashinda Ligi Kuu ya Tanzania 2026?",
+      titleZh: "Simba SC能否赢得2026年坦桑尼亚超级联赛？",
       category: "sports",
       resolutionCriterion: "Official TFF announcement of 2026 TPL champion. Simba SC must be declared winner.",
       resolutionAt: new Date(Date.now() + 30 * 86400_000).toISOString(),
@@ -127,6 +128,7 @@ const MOCK_POLLS: Record<string, AIPollGeneration[]> = {
     {
       titleEn: "Will Young Africans SC qualify for CAF Champions League group stage?",
       titleSw: "Je, Young Africans SC itafuzu hatua ya makundi ya CAF Champions League?",
+      titleZh: "Young Africans SC能否晋级非洲冠军联赛小组赛？",
       category: "sports",
       resolutionCriterion: "CAF official confirmation that Young Africans SC has qualified for the 2026 Champions League group stage.",
       resolutionAt: new Date(Date.now() + 45 * 86400_000).toISOString(),
@@ -145,6 +147,7 @@ const MOCK_POLLS: Record<string, AIPollGeneration[]> = {
     {
       titleEn: "Will Tanzania GDP growth exceed 6% in Q3 2026?",
       titleSw: "Je, ukuaji wa GDP wa Tanzania utazidi 6% katika Q3 2026?",
+      titleZh: "坦桑尼亚2026年第三季度GDP增长能否超过6%？",
       category: "macro",
       resolutionCriterion: "National Bureau of Statistics (NBS) Tanzania quarterly GDP report showing Q3 2026 growth rate.",
       resolutionAt: new Date(Date.now() + 120 * 86400_000).toISOString(),
@@ -164,6 +167,7 @@ const MOCK_POLLS: Record<string, AIPollGeneration[]> = {
     {
       titleEn: "Will Dar es Salaam receive over 200mm rainfall in July 2026?",
       titleSw: "Je, Dar es Salaam itapokea mvua zaidi ya 200mm Julai 2026?",
+      titleZh: "达累斯萨拉姆2026年7月降雨量能否超过200毫米？",
       category: "weather",
       resolutionCriterion: "Tanzania Meteorological Authority (TMA) official monthly rainfall report for Dar es Salaam, July 2026.",
       resolutionAt: new Date(Date.now() + 60 * 86400_000).toISOString(),
@@ -182,6 +186,7 @@ const MOCK_POLLS: Record<string, AIPollGeneration[]> = {
     {
       titleEn: "Will Bitcoin price exceed $150,000 USD by end of August 2026?",
       titleSw: "Je, bei ya Bitcoin itazidi $150,000 USD ifikapo mwisho wa Agosti 2026?",
+      titleZh: "比特币价格能否在2026年8月底前超过15万美元？",
       category: "crypto",
       resolutionCriterion: "CoinGecko BTC/USD price at 23:59 UTC on August 31, 2026. Must show price above $150,000.",
       resolutionAt: new Date(Date.now() + 90 * 86400_000).toISOString(),
@@ -200,6 +205,7 @@ const MOCK_POLLS: Record<string, AIPollGeneration[]> = {
     {
       titleEn: "Will Diamond Platnumz release a new album before October 2026?",
       titleSw: "Je, Diamond Platnumz atatoa albamu mpya kabla ya Oktoba 2026?",
+      titleZh: "Diamond Platnumz能否在2026年10月前发行新专辑？",
       category: "culture",
       resolutionCriterion: "Official release on major streaming platforms (Spotify, Apple Music, Boomplay) of a new studio album by Diamond Platnumz before October 1, 2026.",
       resolutionAt: new Date(Date.now() + 120 * 86400_000).toISOString(),
@@ -218,6 +224,7 @@ const MOCK_POLLS: Record<string, AIPollGeneration[]> = {
     {
       titleEn: "Will the SGR Dodoma-Singida section begin operations before December 2026?",
       titleSw: "Je, sehemu ya SGR Dodoma-Singida itaanza huduma kabla ya Desemba 2026?",
+      titleZh: "SGR多多马-辛吉达段能否在2026年12月前投入运营？",
       category: "infrastructure",
       resolutionCriterion: "Official announcement by RAHCO or Tanzania Railways Corporation of commercial operations beginning on the Dodoma-Singida SGR section.",
       resolutionAt: new Date(Date.now() + 180 * 86400_000).toISOString(),

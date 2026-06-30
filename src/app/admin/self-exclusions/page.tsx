@@ -21,8 +21,10 @@ type RosterRow = {
 async function buildRoster() {
   const now = Date.now();
   const out: RosterRow[] = [];
-  for (const u of await db.user.list()) {
-    const r = await db.responsible.get(u.id);
+  const [users, allRg] = await Promise.all([db.user.list(), db.responsible.listAll()]);
+  const rgMap = new Map(allRg.map((r) => [r.userId, r]));
+  for (const u of users) {
+    const r = rgMap.get(u.id);
     if (!r) continue;
     const sxAt = r.selfExclusionUntil ? new Date(r.selfExclusionUntil).getTime() : 0;
     const coAt = r.coolingOffUntil    ? new Date(r.coolingOffUntil).getTime() : 0;

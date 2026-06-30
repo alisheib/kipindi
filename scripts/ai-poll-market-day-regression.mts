@@ -46,7 +46,7 @@ const days = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString();
 
 function g(o: Partial<AIPollGeneration>): AIPollGeneration {
   return {
-    titleEn: "Untitled?", titleSw: "Bila kichwa?", category: "sports",
+    titleEn: "Untitled?", titleSw: "Bila kichwa?", titleZh: "无标题？", category: "sports",
     resolutionCriterion: "Official source announcement naming the outcome for a YES result.",
     resolutionAt: days(30),
     options: [{ label: "YES", descriptionEn: "Yes" }, { label: "NO", descriptionEn: "No" }],

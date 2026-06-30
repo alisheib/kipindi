@@ -27,6 +27,7 @@ function validGen(title: string, category: string): AIPollGeneration {
   return {
     titleEn: title,
     titleSw: title + " (sw)",
+    titleZh: title + " (zh)",
     category: cat,
     resolutionCriterion: "Resolves per the official Bank of Tanzania report published on the resolution date.",
     resolutionAt: inWindow(),

@@ -19,9 +19,13 @@ async function requireAdmin() {
 
 export async function provisionTotpAction() {
   const { session, user } = await requireAdmin();
-  const label = user?.displayName ?? user?.phoneE164 ?? session.userId.slice(0, 12);
-  const result = await provisionTotp(session.userId, label);
-  return { ok: true as const, ...result };
+  try {
+    const label = user?.displayName ?? user?.phoneE164 ?? session.userId.slice(0, 12);
+    const result = await provisionTotp(session.userId, label);
+    return { ok: true as const, ...result };
+  } catch (err) {
+    return { ok: false as const, error: (err as Error)?.message ?? "Provisioning failed" };
+  }
 }
 
 export async function verifyTotpAction(formData: FormData) {
@@ -30,20 +34,32 @@ export async function verifyTotpAction(formData: FormData) {
   if (!/^\d{6}$/.test(code)) {
     return { ok: false as const, error: "Enter the 6-digit code from your authenticator app." };
   }
-  const ok = await verifyTotp(session.userId, code);
-  if (!ok) return { ok: false as const, error: "Code didn't match. Try again — codes refresh every 30 seconds." };
-  revalidatePath("/admin/2fa/setup");
-  return { ok: true as const };
+  try {
+    const ok = await verifyTotp(session.userId, code);
+    if (!ok) return { ok: false as const, error: "Code didn't match. Try again — codes refresh every 30 seconds." };
+    revalidatePath("/admin/2fa/setup");
+    return { ok: true as const };
+  } catch (err) {
+    return { ok: false as const, error: (err as Error)?.message ?? "Verification failed" };
+  }
 }
 
 export async function removeTotpAction() {
   const { session } = await requireAdmin();
-  await removeTotp(session.userId);
-  revalidatePath("/admin/2fa/setup");
-  return { ok: true as const };
+  try {
+    await removeTotp(session.userId);
+    revalidatePath("/admin/2fa/setup");
+    return { ok: true as const };
+  } catch (err) {
+    return { ok: false as const, error: (err as Error)?.message ?? "Removal failed" };
+  }
 }
 
 export async function checkTotpAction(): Promise<{ enabled: boolean }> {
   const { session } = await requireAdmin();
-  return { enabled: await hasTotp(session.userId) };
+  try {
+    return { enabled: await hasTotp(session.userId) };
+  } catch {
+    return { enabled: false };
+  }
 }

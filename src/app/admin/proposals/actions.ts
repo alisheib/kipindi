@@ -25,31 +25,47 @@ async function ensureAdmin() {
 
 export async function saveProposalsConfigAction(config: ProposalsConfig) {
   const s = await ensureAdmin();
-  const r = setProposalsConfig(config, s.userId);
-  revalidatePath("/admin/proposals");
-  revalidatePath("/proposals");
-  return r;
+  try {
+    const r = setProposalsConfig(config, s.userId);
+    revalidatePath("/admin/proposals");
+    revalidatePath("/proposals");
+    return r;
+  } catch (err) {
+    return { ok: false as const, error: (err as Error)?.message ?? "Config save failed" };
+  }
 }
 
 export async function approveProposalAction(proposalId: string, sourceUrl: string) {
   const s = await ensureAdmin();
-  const r = await approveAndList(proposalId, s.userId, sourceUrl);
-  revalidatePath("/admin/proposals");
-  revalidatePath("/proposals");
-  return r;
+  try {
+    const r = await approveAndList(proposalId, s.userId, sourceUrl);
+    revalidatePath("/admin/proposals");
+    revalidatePath("/proposals");
+    return r;
+  } catch (err) {
+    return { ok: false as const, error: (err as Error)?.message ?? "Approve failed" };
+  }
 }
 
 export async function requestChangesAction(proposalId: string, note: string) {
   const s = await ensureAdmin();
-  const r = await requestChanges(proposalId, s.userId, note);
-  revalidatePath("/admin/proposals");
-  return r;
+  try {
+    const r = await requestChanges(proposalId, s.userId, note);
+    revalidatePath("/admin/proposals");
+    return r;
+  } catch (err) {
+    return { ok: false as const, error: (err as Error)?.message ?? "Request changes failed" };
+  }
 }
 
 export async function declineProposalAction(proposalId: string, reason: DeclineReason, note: string) {
   const s = await ensureAdmin();
-  const r = await declineProposal(proposalId, s.userId, reason, note);
-  revalidatePath("/admin/proposals");
-  revalidatePath("/proposals");
-  return r;
+  try {
+    const r = await declineProposal(proposalId, s.userId, reason, note);
+    revalidatePath("/admin/proposals");
+    revalidatePath("/proposals");
+    return r;
+  } catch (err) {
+    return { ok: false as const, error: (err as Error)?.message ?? "Decline failed" };
+  }
 }

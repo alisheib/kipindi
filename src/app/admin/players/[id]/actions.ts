@@ -55,21 +55,25 @@ export async function exportPlayerDataAction(userId: string): Promise<
 > {
   const officerId = await requireAdmin("exportPlayerDataAction");
   if (!userId) return { ok: false, error: "Missing user id." };
-  const bundle = await buildDsarBundle(userId);
-  if (!bundle) return { ok: false, error: "Player not found." };
-  audit({
-    category: "COMPLIANCE",
-    action: "player.data_exported",
-    actorId: officerId,
-    targetType: "User",
-    targetId: userId,
-    payload: { article: "GDPR Art 15" },
-  });
-  return {
-    ok: true,
-    payload: JSON.stringify(bundle, null, 2),
-    filename: `player-${userId}-dsar.json`,
-  };
+  try {
+    const bundle = await buildDsarBundle(userId);
+    if (!bundle) return { ok: false, error: "Player not found." };
+    audit({
+      category: "COMPLIANCE",
+      action: "player.data_exported",
+      actorId: officerId,
+      targetType: "User",
+      targetId: userId,
+      payload: { article: "GDPR Art 15" },
+    });
+    return {
+      ok: true,
+      payload: JSON.stringify(bundle, null, 2),
+      filename: `player-${userId}-dsar.json`,
+    };
+  } catch (err) {
+    return { ok: false, error: (err as Error)?.message ?? "Export failed" };
+  }
 }
 
 export async function suspendPlayerAction(formData: FormData) {
@@ -84,20 +88,24 @@ export async function suspendPlayerAction(formData: FormData) {
   if (target.status === "SUSPENDED") return { ok: false as const, error: "Player is already suspended." };
   if (target.status === "CLOSED") return { ok: false as const, error: "Player account is closed." };
 
-  const prevStatus = target.status;
-  await db.user.update(userId, { status: "SUSPENDED" });
-  await revokeUserSessions(userId); // suspended players are signed out immediately
-  audit({
-    category: "ADMIN",
-    action: "player.suspended",
-    actorId: officerId,
-    targetType: "User",
-    targetId: userId,
-    payload: { reason, prevStatus },
-  });
-  revalidatePath(`/admin/players/${userId}`);
-  revalidatePath("/admin/players");
-  return { ok: true as const };
+  try {
+    const prevStatus = target.status;
+    await db.user.update(userId, { status: "SUSPENDED" });
+    await revokeUserSessions(userId); // suspended players are signed out immediately
+    audit({
+      category: "ADMIN",
+      action: "player.suspended",
+      actorId: officerId,
+      targetType: "User",
+      targetId: userId,
+      payload: { reason, prevStatus },
+    });
+    revalidatePath(`/admin/players/${userId}`);
+    revalidatePath("/admin/players");
+    return { ok: true as const };
+  } catch (err) {
+    return { ok: false as const, error: (err as Error)?.message ?? "Suspend failed" };
+  }
 }
 
 export async function restorePlayerAction(formData: FormData) {
@@ -113,18 +121,22 @@ export async function restorePlayerAction(formData: FormData) {
     return { ok: false as const, error: `Cannot restore — current status is ${target.status}.` };
   }
 
-  await db.user.update(userId, { status: "ACTIVE" });
-  audit({
-    category: "ADMIN",
-    action: "player.restored",
-    actorId: officerId,
-    targetType: "User",
-    targetId: userId,
-    payload: { reason },
-  });
-  revalidatePath(`/admin/players/${userId}`);
-  revalidatePath("/admin/players");
-  return { ok: true as const };
+  try {
+    await db.user.update(userId, { status: "ACTIVE" });
+    audit({
+      category: "ADMIN",
+      action: "player.restored",
+      actorId: officerId,
+      targetType: "User",
+      targetId: userId,
+      payload: { reason },
+    });
+    revalidatePath(`/admin/players/${userId}`);
+    revalidatePath("/admin/players");
+    return { ok: true as const };
+  } catch (err) {
+    return { ok: false as const, error: (err as Error)?.message ?? "Restore failed" };
+  }
 }
 
 // ─── Player password reset (admin support) ───────────────────────────────────
@@ -172,26 +184,34 @@ export async function setPlayerEmailAction(formData: FormData) {
 export async function approveKycAction(formData: FormData) {
   const officerId = await requireAdmin("approveKycAction");
   const userId = String(formData.get("userId") ?? "");
-  const { reviewKyc } = await import("@/lib/server/kyc-service");
-  const r = await reviewKyc({ officerId, userId, decision: "APPROVE" });
-  if (r.ok) {
-    revalidatePath(`/admin/players/${userId}`);
-    revalidatePath("/admin/approvals");
+  try {
+    const { reviewKyc } = await import("@/lib/server/kyc-service");
+    const r = await reviewKyc({ officerId, userId, decision: "APPROVE" });
+    if (r.ok) {
+      revalidatePath(`/admin/players/${userId}`);
+      revalidatePath("/admin/approvals");
+    }
+    return r.ok ? { ok: true as const } : { ok: false as const, error: r.error };
+  } catch (err) {
+    return { ok: false as const, error: (err as Error)?.message ?? "Approve KYC failed" };
   }
-  return r.ok ? { ok: true as const } : { ok: false as const, error: r.error };
 }
 
 export async function rejectKycAction(formData: FormData) {
   const officerId = await requireAdmin("rejectKycAction");
   const userId = String(formData.get("userId") ?? "");
   const reason = String(formData.get("reason") ?? "").trim().slice(0, 500);
-  const { reviewKyc } = await import("@/lib/server/kyc-service");
-  const r = await reviewKyc({ officerId, userId, decision: "REJECT", reason });
-  if (r.ok) {
-    revalidatePath(`/admin/players/${userId}`);
-    revalidatePath("/admin/approvals");
+  try {
+    const { reviewKyc } = await import("@/lib/server/kyc-service");
+    const r = await reviewKyc({ officerId, userId, decision: "REJECT", reason });
+    if (r.ok) {
+      revalidatePath(`/admin/players/${userId}`);
+      revalidatePath("/admin/approvals");
+    }
+    return r.ok ? { ok: true as const } : { ok: false as const, error: r.error };
+  } catch (err) {
+    return { ok: false as const, error: (err as Error)?.message ?? "Reject KYC failed" };
   }
-  return r.ok ? { ok: true as const } : { ok: false as const, error: r.error };
 }
 
 /** Ask the player for more / clearer documents or extra info. Keeps the

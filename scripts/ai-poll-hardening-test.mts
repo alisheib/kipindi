@@ -32,6 +32,7 @@ function gen(overrides: Partial<AIPollGeneration> = {}): AIPollGeneration {
   return {
     titleEn: "Will Simba SC win the Tanzanian Premier League 2026?",
     titleSw: "Je, Simba SC itashinda Ligi Kuu ya Tanzania 2026?",
+    titleZh: "Simba SC能否赢得2026年坦桑尼亚超级联赛？",
     category: "sports",
     resolutionCriterion: "Official TFF announcement of the 2026 TPL champion naming Simba SC.",
     resolutionAt: days(30),

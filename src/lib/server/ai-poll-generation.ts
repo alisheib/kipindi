@@ -59,7 +59,8 @@ export type FilterReason =
   | "no_sources"
   | "invalid_source_url"
   | "malformed_response"
-  | "provider_error";
+  | "provider_error"
+  | "missing_translation";
 
 export type QualityIndicator = {
   label: string;
@@ -425,13 +426,23 @@ async function validateAndFilter(
   // Translated titles share the English length cap. Without this a runaway
   // model (or a pasted blob) could store a multi-KB Swahili/Chinese title that
   // breaks layout / is an abuse vector — titleEn was the only field bounded.
-  if (sanitised.titleSw && sanitised.titleSw.length > MAX_TITLE_LENGTH) {
+  if (!sanitised.titleSw || sanitised.titleSw.length < 5) {
+    reasons.push("missing_translation");
+    quality.push({ label: "Swahili title", score: 0, status: "bad" });
+  } else if (sanitised.titleSw.length > MAX_TITLE_LENGTH) {
     reasons.push("title_too_long");
     quality.push({ label: "Swahili title length", score: 20, status: "bad" });
+  } else {
+    quality.push({ label: "Swahili title", score: 90, status: "good" });
   }
-  if (sanitised.titleZh && sanitised.titleZh.length > MAX_TITLE_LENGTH) {
+  if (!sanitised.titleZh || sanitised.titleZh.length < 2) {
+    reasons.push("missing_translation");
+    quality.push({ label: "Chinese title", score: 0, status: "bad" });
+  } else if (sanitised.titleZh.length > MAX_TITLE_LENGTH) {
     reasons.push("title_too_long");
     quality.push({ label: "Chinese title length", score: 20, status: "bad" });
+  } else {
+    quality.push({ label: "Chinese title", score: 90, status: "good" });
   }
 
   // Resolution criterion
@@ -596,6 +607,7 @@ async function validateAndFilter(
     "low_confidence",
     "title_too_long",
     "criterion_too_long",
+    "missing_translation",
   ];
   const hardFails = reasons.filter((r) => HARD_FAIL_REASONS.includes(r));
   const overallQuality = hardFails.length > 0
@@ -1295,6 +1307,7 @@ export async function seedAIPollFixtures(): Promise<StoredAIPoll[]> {
       requestCategory: "sports",
       titleEn: "Will Simba SC win the Tanzanian Premier League 2026?",
       titleSw: "Je, Simba SC itashinda Ligi Kuu ya Tanzania 2026?",
+      titleZh: "Simba SC能否赢得2026年坦桑尼亚超级联赛？",
       category: "sports",
       resolutionCriterion: "Official TFF announcement of 2026 TPL champion.",
       resolutionAt: new Date(Date.now() + 30 * 86400_000).toISOString(),
@@ -1318,6 +1331,7 @@ export async function seedAIPollFixtures(): Promise<StoredAIPoll[]> {
       requestCategory: "crypto",
       titleEn: "Will Bitcoin exceed $150,000 by end of August 2026?",
       titleSw: "Je, bei ya Bitcoin itazidi $150,000 Agosti 2026?",
+      titleZh: "比特币能否在2026年8月底前超过15万美元？",
       category: "crypto",
       resolutionCriterion: "CoinGecko BTC/USD price at 23:59 UTC on August 31, 2026.",
       resolutionAt: new Date(Date.now() + 90 * 86400_000).toISOString(),
@@ -1340,6 +1354,7 @@ export async function seedAIPollFixtures(): Promise<StoredAIPoll[]> {
       requestCategory: "weather",
       titleEn: "Will Dar es Salaam receive over 200mm rainfall in July 2026?",
       titleSw: "Je, Dar itapokea mvua zaidi ya 200mm Julai 2026?",
+      titleZh: "达累斯萨拉姆2026年7月降雨量能否超过200毫米？",
       category: "weather",
       resolutionCriterion: "TMA official monthly rainfall report for Dar es Salaam, July 2026.",
       resolutionAt: new Date(Date.now() + 60 * 86400_000).toISOString(),

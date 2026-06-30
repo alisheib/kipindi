@@ -32,46 +32,51 @@ const GrantSchema = z.object({
 
 export type GrantInput = z.input<typeof GrantSchema>;
 
-/**
- * Manually grant a bonus to a player by phone number. Admin-gated inside the
- * action (defence-in-depth). Routes through bonus-service.creditBonus so the
- * grant is wagering-tracked and audited like every other bonus.
- */
 export async function grantBonusToPlayerAction(input: GrantInput):
   Promise<{ ok: true; grantId: string; handle: string } | { ok: false; error: string }> {
   const s = await ensureAdmin();
   const parse = GrantSchema.safeParse(input);
   if (!parse.success) return { ok: false, error: parse.error.errors[0]?.message ?? "Invalid input." };
 
-  const user = await db.user.findByPhone(parse.data.phone);
-  if (!user) return { ok: false, error: `No player found with ${parse.data.phone}.` };
+  try {
+    const user = await db.user.findByPhone(parse.data.phone);
+    if (!user) return { ok: false, error: `No player found with ${parse.data.phone}.` };
 
-  const r = await creditBonus(user.id, {
-    amountTzs: parse.data.amountTzs,
-    source: "ADMIN",
-    wagerMultiplier: parse.data.wagerMultiplier,
-    expiryDays: parse.data.expiryDays,
-    note: parse.data.note ? `Admin grant by ${s.userId}: ${parse.data.note}` : `Admin grant by ${s.userId}`,
-  });
-  if (!r.ok) return { ok: false, error: r.error };
+    const r = await creditBonus(user.id, {
+      amountTzs: parse.data.amountTzs,
+      source: "ADMIN",
+      wagerMultiplier: parse.data.wagerMultiplier,
+      expiryDays: parse.data.expiryDays,
+      note: parse.data.note ? `Admin grant by ${s.userId}: ${parse.data.note}` : `Admin grant by ${s.userId}`,
+    });
+    if (!r.ok) return { ok: false, error: r.error };
 
-  revalidatePath("/admin/bonuses");
-  return { ok: true, grantId: r.grant.id, handle: user.displayName?.trim() || parse.data.phone };
+    revalidatePath("/admin/bonuses");
+    return { ok: true, grantId: r.grant.id, handle: user.displayName?.trim() || parse.data.phone };
+  } catch (err) {
+    return { ok: false, error: (err as Error)?.message ?? "Grant failed" };
+  }
 }
 
-/** Persist the bonus-program config (full object from the client form). */
 export async function saveBonusConfigAction(config: BonusConfig) {
   const s = await ensureAdmin();
-  const r = setBonusConfig(config, s.userId);
-  revalidatePath("/admin/bonuses");
-  return r;
+  try {
+    const r = setBonusConfig(config, s.userId);
+    revalidatePath("/admin/bonuses");
+    return r;
+  } catch (err) {
+    return { ok: false as const, error: (err as Error)?.message ?? "Config save failed" };
+  }
 }
 
-/** Cancel an ACTIVE grant — removes its remaining bonus from the player's wallet. */
 export async function cancelGrantAction(grantId: string):
   Promise<{ ok: true; removedTzs: number } | { ok: false; error: string }> {
   const s = await ensureAdmin();
-  const r = await cancelGrant(grantId, s.userId, "Cancelled from admin bonuses page");
-  revalidatePath("/admin/bonuses");
-  return r;
+  try {
+    const r = await cancelGrant(grantId, s.userId, "Cancelled from admin bonuses page");
+    revalidatePath("/admin/bonuses");
+    return r;
+  } catch (err) {
+    return { ok: false, error: (err as Error)?.message ?? "Cancel failed" };
+  }
 }

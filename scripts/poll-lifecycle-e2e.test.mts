@@ -70,6 +70,7 @@ class GoodProvider implements AIProvider {
     const gen: AIPollGeneration = {
       titleEn: this.title,
       titleSw: this.title + " (sw)",
+      titleZh: this.title + " (zh)",
       category: "sports",
       resolutionCriterion: "Verified by the official tournament committee on the resolution date.",
       resolutionAt: this.resAt,
@@ -577,6 +578,7 @@ section("13. Duplicate detection");
       const gen: AIPollGeneration = {
         titleEn: fixedTitle,
         titleSw: fixedTitle + " (sw)",
+        titleZh: fixedTitle + " (zh)",
         category: "weather",
         resolutionCriterion: "TMA monthly rainfall report.",
         resolutionAt: future(60),

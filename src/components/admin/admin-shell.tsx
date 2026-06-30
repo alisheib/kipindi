@@ -74,7 +74,7 @@ export async function AdminSidebar({ activeKey }: { activeKey: string }) {
       <AdminSidebarNav badges={badges} fallbackKey={activeKey} />
       <div className="mt-auto pt-3 border-t border-dashed border-border-subtle text-caption text-text-tertiary px-2">
         <div>v2.4 · deployed {formatDateISO(new Date().toISOString())}</div>
-        <div className="mt-1">EN · SW · FR</div>
+        <div className="mt-1">EN · SW · ZH</div>
       </div>
     </aside>
   );

@@ -749,6 +749,10 @@ export const prismaDb = {
       const r = await pc().responsibleGambling.findUnique({ where: { userId } });
       return r ? toStoredRG(r) : null;
     },
+    listAll: async (): Promise<StoredResponsibleGambling[]> => {
+      const rows = await pc().responsibleGambling.findMany();
+      return rows.map(toStoredRG);
+    },
     upsert: async (r: StoredResponsibleGambling): Promise<StoredResponsibleGambling> => {
       const data = {
         dailyDepositLimit: r.dailyDepositLimit,

@@ -27,18 +27,26 @@ export async function setCreditLimitAction(fd: FormData): Promise<{ ok: boolean;
   if (!Number.isFinite(amount) || amount <= 0) {
     return { ok: false, error: "Enter a valid limit in USD (e.g. 20)." };
   }
-  await setCreditLimit(amount);
-  revalidatePath("/admin/ai-usage");
-  return { ok: true };
+  try {
+    await setCreditLimit(amount);
+    revalidatePath("/admin/ai-usage");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: (err as Error)?.message ?? "Set limit failed" };
+  }
 }
 
 /** Start a fresh spend cycle (call right after topping up Anthropic credit).
  *  Resets "spent this cycle" to 0 and re-arms the limit alerts. */
 export async function resetCreditCycleAction(): Promise<{ ok: boolean; error?: string }> {
   await ensureAdmin();
-  await resetCreditCycle();
-  revalidatePath("/admin/ai-usage");
-  return { ok: true };
+  try {
+    await resetCreditCycle();
+    revalidatePath("/admin/ai-usage");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: (err as Error)?.message ?? "Reset cycle failed" };
+  }
 }
 
 /** Set the primary Claude model for poll generation + sentinel deep checks. */
@@ -48,29 +56,37 @@ export async function setAiModelAction(fd: FormData): Promise<{ ok: boolean; err
   if (!AVAILABLE_MODELS.some((m) => m.id === model)) {
     return { ok: false, error: "Invalid model selection." };
   }
-  await setAiModel(model);
-  // Notify sentinel so next sweep uses the new model immediately
   try {
-    const { applySentinelConfigChange } = await import("@/lib/server/market-sentinel");
-    await applySentinelConfigChange();
-  } catch { /* sentinel may not be running in dev */ }
-  audit({
-    category: "ADMIN",
-    action: "ai.model_changed",
-    actorId: s.userId,
-    targetType: "System",
-    targetId: "ai-config",
-    payload: { model },
-  });
-  revalidatePath("/admin/ai-usage");
-  return { ok: true };
+    await setAiModel(model);
+    // Notify sentinel so next sweep uses the new model immediately
+    try {
+      const { applySentinelConfigChange } = await import("@/lib/server/market-sentinel");
+      await applySentinelConfigChange();
+    } catch { /* sentinel may not be running in dev */ }
+    audit({
+      category: "ADMIN",
+      action: "ai.model_changed",
+      actorId: s.userId,
+      targetType: "System",
+      targetId: "ai-config",
+      payload: { model },
+    });
+    revalidatePath("/admin/ai-usage");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: (err as Error)?.message ?? "Set model failed" };
+  }
 }
 
 /** Live sentinel status for the countdown widget (next sweep time, interval). */
 export async function getSentinelStatusAction() {
   await ensureAdmin();
-  const { getSentinelStatus } = await import("@/lib/server/market-sentinel");
-  return getSentinelStatus();
+  try {
+    const { getSentinelStatus } = await import("@/lib/server/market-sentinel");
+    return getSentinelStatus();
+  } catch (err) {
+    return { enabled: false, running: false, sweeping: false, paused: true, nextSweepAt: null, lastSweepAt: null, lastSummary: null, intervalMs: 0, pausedRemainingMs: null, serverNow: Date.now(), timezone: "Africa/Dar_es_Salaam", error: (err as Error)?.message ?? "Status check failed" };
+  }
 }
 
 /** Reset the countdown — schedule the next sweep one full interval from now. */
@@ -132,21 +148,25 @@ export async function setSentinelIntervalAction(fd: FormData): Promise<{ ok: boo
   if (!INTERVAL_OPTIONS.some((o) => o.ms === ms)) {
     return { ok: false, error: "Invalid interval selection." };
   }
-  await setSentinelInterval(ms);
-  // Force the running sentinel to immediately pick up the new interval
-  // instead of waiting for the old interval to fire its next tick.
   try {
-    const { applySentinelConfigChange } = await import("@/lib/server/market-sentinel");
-    await applySentinelConfigChange();
-  } catch { /* sentinel may not be running in dev */ }
-  audit({
-    category: "ADMIN",
-    action: "ai.sentinel_interval_changed",
-    actorId: s.userId,
-    targetType: "System",
-    targetId: "market-sentinel",
-    payload: { intervalMs: ms },
-  });
-  revalidatePath("/admin/ai-usage");
-  return { ok: true };
+    await setSentinelInterval(ms);
+    // Force the running sentinel to immediately pick up the new interval
+    // instead of waiting for the old interval to fire its next tick.
+    try {
+      const { applySentinelConfigChange } = await import("@/lib/server/market-sentinel");
+      await applySentinelConfigChange();
+    } catch { /* sentinel may not be running in dev */ }
+    audit({
+      category: "ADMIN",
+      action: "ai.sentinel_interval_changed",
+      actorId: s.userId,
+      targetType: "System",
+      targetId: "market-sentinel",
+      payload: { intervalMs: ms },
+    });
+    revalidatePath("/admin/ai-usage");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: (err as Error)?.message ?? "Set interval failed" };
+  }
 }

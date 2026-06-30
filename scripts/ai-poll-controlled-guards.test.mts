@@ -39,6 +39,7 @@ class GoodProvider implements AIProvider {
     const gen: AIPollGeneration = {
       titleEn: this.title,
       titleSw: this.title + " (sw)",
+      titleZh: this.title + " (zh)",
       category: "macro",
       resolutionCriterion: "Resolves per the official Bank of Tanzania report on the resolution date.",
       resolutionAt: future(30),

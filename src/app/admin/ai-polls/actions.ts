@@ -63,18 +63,22 @@ export async function generatePollAction(formData: FormData) {
   const controlledResolutionAt = String(formData.get("controlledResolutionAt") ?? "").trim() || undefined;
   const controlledSelectionClosedAt = String(formData.get("controlledSelectionClosedAt") ?? "").trim() || undefined;
 
-  const poll = await generateAIPoll({
-    category,
-    prompt: prompt || undefined,
-    actorId: officerId,
-    regenerationOf: regenerationOf || undefined,
-    controlledTitle,
-    controlledResolutionAt,
-    controlledSelectionClosedAt,
-  });
+  try {
+    const poll = await generateAIPoll({
+      category,
+      prompt: prompt || undefined,
+      actorId: officerId,
+      regenerationOf: regenerationOf || undefined,
+      controlledTitle,
+      controlledResolutionAt,
+      controlledSelectionClosedAt,
+    });
 
-  revalidatePath("/admin/ai-polls");
-  return { ok: true as const, poll };
+    revalidatePath("/admin/ai-polls");
+    return { ok: true as const, poll };
+  } catch (err) {
+    return { ok: false as const, error: (err as Error)?.message ?? "Generation failed" };
+  }
 }
 
 /* ─── Generate batch ─── */
@@ -87,15 +91,19 @@ export async function generatePollBatchAction(formData: FormData) {
   const catsRaw = String(formData.get("categories") ?? "");
   const categories = catsRaw ? catsRaw.split(",").map((c) => c.trim()).filter(Boolean) : undefined;
 
-  const { generated, summary } = await generateAIPollBatch({
-    count,
-    categories,
-    prompt: prompt || undefined,
-    actorId: officerId,
-  });
+  try {
+    const { generated, summary } = await generateAIPollBatch({
+      count,
+      categories,
+      prompt: prompt || undefined,
+      actorId: officerId,
+    });
 
-  revalidatePath("/admin/ai-polls");
-  return { ok: true as const, total: generated.length, summary };
+    revalidatePath("/admin/ai-polls");
+    return { ok: true as const, total: generated.length, summary };
+  } catch (err) {
+    return { ok: false as const, error: (err as Error)?.message ?? "Batch generation failed" };
+  }
 }
 
 /* ─── Update config ─── */
@@ -122,23 +130,27 @@ export async function updatePollConfigAction(formData: FormData) {
     return entries.length > 0 ? Object.fromEntries(entries) : undefined;
   })();
 
-  const config = updateAIPollConfig(
-    {
-      webSearchEnabled: formData.has("webSearchEnabled")
-        ? formData.get("webSearchEnabled") === "true"
-        : undefined,
-      dailyTarget: num("dailyTarget"),
-      minLeadTimeHours: num("minLeadTimeHours"),
-      maxLeadTimeDays: num("maxLeadTimeDays"),
-      minConfidence: num("minConfidence"),
-      maxBatchPerRun: num("maxBatchPerRun"),
-      selectionLeadTimeHours,
-    },
-    officerId,
-  );
+  try {
+    const config = updateAIPollConfig(
+      {
+        webSearchEnabled: formData.has("webSearchEnabled")
+          ? formData.get("webSearchEnabled") === "true"
+          : undefined,
+        dailyTarget: num("dailyTarget"),
+        minLeadTimeHours: num("minLeadTimeHours"),
+        maxLeadTimeDays: num("maxLeadTimeDays"),
+        minConfidence: num("minConfidence"),
+        maxBatchPerRun: num("maxBatchPerRun"),
+        selectionLeadTimeHours,
+      },
+      officerId,
+    );
 
-  revalidatePath("/admin/ai-polls");
-  return { ok: true as const, config };
+    revalidatePath("/admin/ai-polls");
+    return { ok: true as const, config };
+  } catch (err) {
+    return { ok: false as const, error: (err as Error)?.message ?? "Config update failed" };
+  }
 }
 
 /* ─── Approve ─── */
@@ -148,17 +160,21 @@ export async function approvePollAction(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const note = String(formData.get("note") ?? "");
 
-  // Precise message for the common block: a poll that failed quality checks.
-  const existing = await getAIPoll(id);
-  if (existing && existing.state === "PENDING_REVIEW" && existing.filterReasons.length > 0) {
-    return { ok: false as const, error: "This poll has unresolved quality issues and cannot be approved. Edit or regenerate it first." };
+  try {
+    // Precise message for the common block: a poll that failed quality checks.
+    const existing = await getAIPoll(id);
+    if (existing && existing.state === "PENDING_REVIEW" && existing.filterReasons.length > 0) {
+      return { ok: false as const, error: "This poll has unresolved quality issues and cannot be approved. Edit or regenerate it first." };
+    }
+
+    const poll = await approveAIPoll(id, { officerId, note: note || undefined });
+    if (!poll) return { ok: false as const, error: "Poll not found or not in review state." };
+
+    revalidatePath("/admin/ai-polls");
+    return { ok: true as const, poll };
+  } catch (err) {
+    return { ok: false as const, error: (err as Error)?.message ?? "Approve failed" };
   }
-
-  const poll = await approveAIPoll(id, { officerId, note: note || undefined });
-  if (!poll) return { ok: false as const, error: "Poll not found or not in review state." };
-
-  revalidatePath("/admin/ai-polls");
-  return { ok: true as const, poll };
 }
 
 /* ─── Reject ─── */
@@ -176,15 +192,20 @@ export async function rejectPollAction(formData: FormData) {
     "banned_category", "low_confidence", "title_too_long",
     "criterion_too_long", "xss_detected", "null_bytes",
     "duplicate_poll", "no_sources", "invalid_source_url", "malformed_response",
+    "missing_translation",
   ]);
   const rawReasons = reasonsStr ? reasonsStr.split(",").filter((r) => VALID_FILTER_REASONS.has(r)) : [];
   const reasons: FilterReason[] = rawReasons.length > 0 ? rawReasons as FilterReason[] : ["malformed_response"];
 
-  const poll = await rejectAIPoll(id, { officerId, reasons, note: note || undefined });
-  if (!poll) return { ok: false as const, error: "Poll not found or not in reviewable state." };
+  try {
+    const poll = await rejectAIPoll(id, { officerId, reasons, note: note || undefined });
+    if (!poll) return { ok: false as const, error: "Poll not found or not in reviewable state." };
 
-  revalidatePath("/admin/ai-polls");
-  return { ok: true as const };
+    revalidatePath("/admin/ai-polls");
+    return { ok: true as const };
+  } catch (err) {
+    return { ok: false as const, error: (err as Error)?.message ?? "Reject failed" };
+  }
 }
 
 /* ─── Edit ─── */
@@ -202,21 +223,25 @@ export async function editPollAction(formData: FormData) {
     ? (formData.get("selectionClosedAt") === "" ? null : String(formData.get("selectionClosedAt")))
     : undefined;
 
-  const poll = await editAIPoll(id, {
-    officerId,
-    titleEn,
-    titleSw,
-    titleZh,
-    category,
-    resolutionCriterion,
-    resolutionAt,
-    selectionClosedAt,
-  });
+  try {
+    const poll = await editAIPoll(id, {
+      officerId,
+      titleEn,
+      titleSw,
+      titleZh,
+      category,
+      resolutionCriterion,
+      resolutionAt,
+      selectionClosedAt,
+    });
 
-  if (!poll) return { ok: false as const, error: "Poll not found or not editable." };
+    if (!poll) return { ok: false as const, error: "Poll not found or not editable." };
 
-  revalidatePath("/admin/ai-polls");
-  return { ok: true as const, poll };
+    revalidatePath("/admin/ai-polls");
+    return { ok: true as const, poll };
+  } catch (err) {
+    return { ok: false as const, error: (err as Error)?.message ?? "Edit failed" };
+  }
 }
 
 /* ─── Publish (create market candidate → approve → create market → publish) ─── */
@@ -252,6 +277,7 @@ export async function publishPollAction(formData: FormData) {
     }
   }
 
+  try {
   // Create a market candidate through the existing pipeline
   const candidate = await ingestCandidate({
     category: (poll.category === "tech" || poll.category === "other" ? "macro" : poll.category) as "sports" | "macro" | "weather" | "crypto" | "culture" | "infrastructure",
@@ -315,6 +341,9 @@ export async function publishPollAction(formData: FormData) {
   revalidatePath("/admin/candidates");
   revalidatePath("/admin/markets");
   return { ok: true as const, marketId: market.id, candidateId: candidate.id };
+  } catch (err) {
+    return { ok: false as const, error: (err as Error)?.message ?? "Publish failed" };
+  }
 }
 
 /* ─── Delete ─── */
@@ -325,25 +354,29 @@ export async function deletePollAction(formData: FormData) {
   const rawReason = String(formData.get("reason") ?? "").trim();
   const voidReason = rawReason.length >= 5 ? rawReason : "Regulatory/administrative decision — market cancelled by administrator";
 
-  // For PUBLISHED polls, void the live market first (full refunds, no deductions).
-  const poll = await getAIPoll(id);
-  if (!poll) return { ok: false as const, error: "Poll not found." };
+  try {
+    // For PUBLISHED polls, void the live market first (full refunds, no deductions).
+    const poll = await getAIPoll(id);
+    if (!poll) return { ok: false as const, error: "Poll not found." };
 
-  let refundedCount = 0;
-  let refundedTzs = 0;
+    let refundedCount = 0;
+    let refundedTzs = 0;
 
-  if (poll.state === "PUBLISHED" && poll.publishedMarketId) {
-    const voidResult = await emergencyVoidMarket({ marketId: poll.publishedMarketId, officerId, reason: voidReason });
-    if (!voidResult.ok) return { ok: false as const, error: `Market void failed: ${voidResult.error}` };
-    refundedCount = voidResult.data?.refundedCount ?? 0;
-    refundedTzs = voidResult.data?.refundedTzs ?? 0;
+    if (poll.state === "PUBLISHED" && poll.publishedMarketId) {
+      const voidResult = await emergencyVoidMarket({ marketId: poll.publishedMarketId, officerId, reason: voidReason });
+      if (!voidResult.ok) return { ok: false as const, error: `Market void failed: ${voidResult.error}` };
+      refundedCount = voidResult.data?.refundedCount ?? 0;
+      refundedTzs = voidResult.data?.refundedTzs ?? 0;
+    }
+
+    const ok = await deleteAIPoll(id, officerId);
+    if (!ok) return { ok: false as const, error: "Poll not found or not in a deletable state." };
+
+    revalidatePath("/admin/ai-polls");
+    return { ok: true as const, refundedCount, refundedTzs };
+  } catch (err) {
+    return { ok: false as const, error: (err as Error)?.message ?? "Delete failed" };
   }
-
-  const ok = await deleteAIPoll(id, officerId);
-  if (!ok) return { ok: false as const, error: "Poll not found or not in a deletable state." };
-
-  revalidatePath("/admin/ai-polls");
-  return { ok: true as const, refundedCount, refundedTzs };
 }
 
 /* ─── Delete all ─── */
@@ -353,51 +386,62 @@ export async function deleteAllPollsAction(formData: FormData) {
   const rawReason = String(formData.get("reason") ?? "").trim();
   const voidReason = rawReason.length >= 5 ? rawReason : "Regulatory/administrative decision — bulk market cancellation by administrator";
 
-  const { deleted, skipped, publishedPolls } = await deleteAllAIPolls(officerId);
+  try {
+    const { deleted, skipped, publishedPolls } = await deleteAllAIPolls(officerId);
 
-  let voidedCount = 0;
-  let totalRefundedCount = 0;
-  let totalRefundedTzs = 0;
-  const voidErrors: string[] = [];
+    let voidedCount = 0;
+    let totalRefundedCount = 0;
+    let totalRefundedTzs = 0;
+    const voidErrors: string[] = [];
 
-  // Void each live market and delete its poll
-  for (const { pollId, marketId } of publishedPolls) {
-    if (!marketId) {
-      // No market ID — delete poll directly
-      await deleteAIPoll(pollId, officerId);
-      voidedCount++;
-      continue;
+    // Void each live market and delete its poll
+    for (const { pollId, marketId } of publishedPolls) {
+      try {
+        if (!marketId) {
+          await deleteAIPoll(pollId, officerId);
+          voidedCount++;
+          continue;
+        }
+        const voidResult = await emergencyVoidMarket({ marketId, officerId, reason: voidReason });
+        if (!voidResult.ok) {
+          voidErrors.push(`Market ${marketId}: ${voidResult.error}`);
+          continue;
+        }
+        totalRefundedCount += voidResult.data?.refundedCount ?? 0;
+        totalRefundedTzs += voidResult.data?.refundedTzs ?? 0;
+        await deleteAIPoll(pollId, officerId);
+        voidedCount++;
+      } catch (loopErr) {
+        voidErrors.push(`Poll ${pollId}: ${(loopErr as Error)?.message ?? "unknown error"}`);
+      }
     }
-    const voidResult = await emergencyVoidMarket({ marketId, officerId, reason: voidReason });
-    if (!voidResult.ok) {
-      voidErrors.push(`Market ${marketId}: ${voidResult.error}`);
-      continue;
-    }
-    totalRefundedCount += voidResult.data?.refundedCount ?? 0;
-    totalRefundedTzs += voidResult.data?.refundedTzs ?? 0;
-    await deleteAIPoll(pollId, officerId);
-    voidedCount++;
+
+    revalidatePath("/admin/ai-polls");
+    revalidatePath("/admin/markets");
+
+    return {
+      ok: true as const,
+      deleted,
+      voided: voidedCount,
+      skipped,
+      refundedCount: totalRefundedCount,
+      refundedTzs: totalRefundedTzs,
+      voidErrors,
+    };
+  } catch (err) {
+    return { ok: false as const, error: (err as Error)?.message ?? "Delete all failed" };
   }
-
-  revalidatePath("/admin/ai-polls");
-  revalidatePath("/admin/markets");
-
-  return {
-    ok: true as const,
-    deleted,
-    voided: voidedCount,
-    skipped,
-    refundedCount: totalRefundedCount,
-    refundedTzs: totalRefundedTzs,
-    voidErrors,
-  };
 }
 
 /* ─── Seed fixtures ─── */
 
 export async function seedFixturesAction() {
   const officerId = await requireAdmin("seedFixturesAction");
-  const seeded = await seedAIPollFixtures();
-  revalidatePath("/admin/ai-polls");
-  return { ok: true as const, count: seeded.length };
+  try {
+    const seeded = await seedAIPollFixtures();
+    revalidatePath("/admin/ai-polls");
+    return { ok: true as const, count: seeded.length };
+  } catch (err) {
+    return { ok: false as const, error: (err as Error)?.message ?? "Seed failed" };
+  }
 }

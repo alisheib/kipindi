@@ -334,7 +334,11 @@ Search the web for the latest data, work through the steps, then call report_out
     // we can't trust it blindly on a real-money system
     const raw = toolUse.input as Record<string, unknown>;
     const determined = !!raw.determined;
-    const outcome = (["YES", "NO", "UNKNOWN"].includes(String(raw.outcome)) ? String(raw.outcome) : "UNKNOWN") as "YES" | "NO" | "UNKNOWN";
+    const rawOutcome = String(raw.outcome ?? "");
+    if (!["YES", "NO", "UNKNOWN"].includes(rawOutcome)) {
+      console.warn(`[sentinel] Model returned non-standard outcome: "${rawOutcome}" for market ${market.id} — defaulting to UNKNOWN`);
+    }
+    const outcome = (["YES", "NO", "UNKNOWN"].includes(rawOutcome) ? rawOutcome : "UNKNOWN") as "YES" | "NO" | "UNKNOWN";
     const confidence = Math.max(0, Math.min(100, Math.round(Number(raw.confidence) || 0)));
     const evidence = String(raw.evidence || "");
     const reasoning = raw.reasoning ? String(raw.reasoning) : undefined;
@@ -475,8 +479,9 @@ export async function runSentinelSweep(opts?: { force?: boolean }): Promise<Sent
     // evidence string is likely a hallucination or a model that skipped the
     // web search step. Officers need evidence to verify the AI's call.
     if (!result.evidence || result.evidence.trim().length < 10) {
-      result.action = "below_threshold";
-      result.error = "determined=true but evidence too short — skipping";
+      console.warn(`[sentinel] Model claimed determined=true for market ${result.marketId} but provided no evidence — possible hallucination`);
+      result.action = "error";
+      result.error = "determined=true but evidence too short — possible hallucination, skipping";
       return result;
     }
 

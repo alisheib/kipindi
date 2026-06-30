@@ -111,7 +111,7 @@ const SUBMIT_POLL_TOOL = {
       confidence: { type: "number", description: "0-100 self-assessment of how clear and resolvable this question is." },
       reasoning: { type: "string", description: "Brief reasoning for why this is a good market." },
     },
-    required: ["titleEn", "category", "resolutionCriterion", "resolutionAt", "options", "sources", "confidence", "reasoning"],
+    required: ["titleEn", "titleSw", "titleZh", "category", "resolutionCriterion", "resolutionAt", "options", "sources", "confidence", "reasoning"],
   },
 };
 
