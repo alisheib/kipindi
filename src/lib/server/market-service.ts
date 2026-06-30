@@ -388,6 +388,7 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
       payoutIfWin,
       marketTitle: market.titleEn,
       marketId: market.id,
+      positionId,
     });
     sendEmailToUser(userId, (email) => ({
       to: email,
@@ -554,7 +555,7 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
           // Tamper-evident chain entry for the credit (the txn row is the ledger;
           // this puts the payout in the HMAC audit chain a regulator walks).
           audit({ category: "WALLET", action: "bet.payout", actorId: p.userId, targetType: "Position", targetId: p.id, payload: { marketId: cur.id, outcome, payout, balanceAfter: newBal, auto: true } });
-          notifyWin(p.userId, payout, cur.titleEn, "/positions");
+          notifyWin(p.userId, payout, `${cur.titleEn} · ${p.id}`, "/positions");
           sendEmailToUser(p.userId, (email) => ({
             to: email,
             subject: `You won · TZS ${Math.round(payout).toLocaleString("en-US")}`,
@@ -564,7 +565,7 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
         } else {
           p.status = "LOSS"; p.finalPayout = 0; p.settledAt = cur.resolutionStage2At!;
           await positionStore.set(p);
-          notifyLoss(p.userId, { stake: p.stake, marketTitle: cur.titleEn, marketId: cur.id });
+          notifyLoss(p.userId, { stake: p.stake, marketTitle: cur.titleEn, marketId: cur.id, positionId: p.id });
           sendEmailToUser(p.userId, (email) => ({
             to: email,
             subject: `Bet lost · TZS ${Math.round(p.stake).toLocaleString("en-US")}`,
@@ -920,7 +921,7 @@ export async function cashOutPosition(
       createdAt: now, updatedAt: now, completedAt: now,
     });
 
-    notifyCashout(userId, { amount: value, marketTitle: m.titleEn, marketId: m.id, inGracePeriod });
+    notifyCashout(userId, { amount: value, marketTitle: m.titleEn, marketId: m.id, inGracePeriod, positionId });
     sendEmailToUser(userId, (email) => ({
       to: email,
       subject: `Position sold · TZS ${Math.round(value).toLocaleString("en-US")}`,
@@ -1045,7 +1046,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
         amlReason: null,
         createdAt: m.resolutionStage2At!, updatedAt: m.resolutionStage2At!, completedAt: m.resolutionStage2At!,
       });
-      notifyOneSidedRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id });
+      notifyOneSidedRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, positionId: p.id });
       sendEmailToUser(p.userId, (email) => ({
         to: email,
         subject: `Full refund · TZS ${Math.round(p.stake).toLocaleString("en-US")} returned`,
@@ -1140,7 +1141,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
         // ledger; this anchors it in the HMAC audit chain too).
         audit({ category: "WALLET", action: "bet.payout", actorId: p.userId, targetType: "Position", targetId: p.id, payload: { marketId: m.id, outcome: opts.outcome, payout, balanceAfter } });
         // Win receipt — opens the position so they can see the payout.
-        notifyWin(p.userId, payout, m.titleEn, "/positions");
+        notifyWin(p.userId, payout, `${m.titleEn} · ${p.id}`, "/positions");
         sendEmailToUser(p.userId, (email) => ({
           to: email,
           subject: `You won · TZS ${Math.round(payout).toLocaleString("en-US")}`,
@@ -1151,7 +1152,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
         p.status = "LOSS"; p.finalPayout = 0; p.settledAt = m.resolutionStage2At!;
         await positionStore.set(p);
         // Loss receipt — kit copy reframes loss as "pool grew".
-        notifyLoss(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id });
+        notifyLoss(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, positionId: p.id });
         sendEmailToUser(p.userId, (email) => ({
           to: email,
           subject: `Bet lost · TZS ${Math.round(p.stake).toLocaleString("en-US")}`,
