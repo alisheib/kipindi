@@ -274,7 +274,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
   const traderMap = await traderSeedsByMarket();
   const allForCharts = [...pagedLive, ...resolved];
   const cardCharts = new Map(await Promise.all(allForCharts.map(async (m) => [m.id, await getCardChart(m.id)] as const)));
-  const commentCounts = new Map(await Promise.all(allForCharts.map(async (m) => [m.id, await countComments(m.id)] as const)));
+  const commentCounts = new Map(await Promise.all(allForCharts.map(async (m) => [m.id, await countComments(m.id).catch(() => 0)] as const)));
 
   const resultCount = live.length + resolved.length;
   return (

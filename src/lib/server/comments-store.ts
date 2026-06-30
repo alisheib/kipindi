@@ -152,7 +152,8 @@ async function isMod(userId: string): Promise<boolean> {
 
 async function toView(c: StoredComment, viewerId: string | null): Promise<CommentView> {
   const viewerIsMod = viewerId ? await isMod(viewerId) : false;
-  const author = await db.user.findById(c.userId);
+  let author: Awaited<ReturnType<typeof db.user.findById>> | null = null;
+  try { author = await db.user.findById(c.userId); } catch { /* graceful — default to PLAYER */ }
   return {
     id: c.id,
     authorId: c.userId,

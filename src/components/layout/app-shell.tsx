@@ -47,13 +47,17 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   } = { initials: guestUser.initials, name: guestUser.name, phone: guestUser.phone, isAuthed: false, balance: null };
   let realityCheckMin = 30;
   if (session) {
-    // Batch all three queries in parallel — eliminates the N+1 sequential
-    // waterfall that added ~100ms latency to every page navigation.
-    const [u, wallet, rg] = await Promise.all([
+    // Batch all three queries in parallel — eliminates the sequential
+    // waterfall. Promise.allSettled so one failing query can't crash
+    // the entire shell (graceful degradation: show what we have).
+    const [uResult, walletResult, rgResult] = await Promise.allSettled([
       db.user.findById(session.userId),
       db.wallet.findByUserId(session.userId),
       getRgSettings(session.userId),
     ]);
+    const u = uResult.status === "fulfilled" ? uResult.value : null;
+    const wallet = walletResult.status === "fulfilled" ? walletResult.value : null;
+    const rg = rgResult.status === "fulfilled" ? rgResult.value : null;
     const userRef = u ?? { id: session.userId, displayName: null };
     const display = displayLabel(userRef);
     const initials = displayInitials(userRef);
@@ -69,7 +73,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       seed: session.userId,
       balance: wallet?.balance ?? null,
     };
-    realityCheckMin = rg.realityCheckIntervalMin || 30;
+    realityCheckMin = rg?.realityCheckIntervalMin || 30;
   }
   return (
     <div className="min-h-screen bg-bg-base text-text">

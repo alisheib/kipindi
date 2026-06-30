@@ -90,7 +90,7 @@ export default async function MarketDetail({
   const marketFeeRate = Math.min(0.99, Math.max(0, feeCfg.taxRate + feeCfg.commissionRate + feeCfg.reserveRate + feeCfg.aggregatorRate));
   const session = await currentSession();
   const myPositions = session ? (await listPositionsForUser(session.userId)).filter((p) => p.marketId === m.id) : [];
-  const myRefCode = session ? (await ensureAffiliateAccount(session.userId)).code : undefined;
+  const myRefCode = session ? await ensureAffiliateAccount(session.userId).then((a) => a.code).catch(() => undefined) : undefined;
   const isResolved = m.status === "RESOLVED" || m.status === "VOIDED";
   // One-sided: all bets are on the same side — winners would win their own money.
   // Platform rule: full refund at 0% fee at resolution. Surface a disclaimer so
