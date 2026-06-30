@@ -1,5 +1,6 @@
 "use server";
 
+import { safeError } from "@/lib/server/safe-error";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
@@ -29,7 +30,7 @@ export async function createCampaignAction(input: CreateCampaignInput):
     revalidatePath("/admin/invites");
     return { ok: true, campaignId: r.campaign.id };
   } catch (err) {
-    return { ok: false, error: (err as Error)?.message ?? "Create campaign failed" };
+    return { ok: false, error: safeError(err, "Create campaign failed") };
   }
 }
 
@@ -41,7 +42,7 @@ export async function addContactsAction(campaignId: string, text: string):
     revalidatePath(`/admin/invites/${campaignId}`);
     return r;
   } catch (err) {
-    return { ok: false, error: (err as Error)?.message ?? "Add contacts failed" };
+    return { ok: false, error: safeError(err, "Add contacts failed") };
   }
 }
 
@@ -53,7 +54,7 @@ export async function addContactsStructuredAction(campaignId: string, rows: Cont
     revalidatePath(`/admin/invites/${campaignId}`);
     return r;
   } catch (err) {
-    return { ok: false, error: (err as Error)?.message ?? "Add structured contacts failed" };
+    return { ok: false, error: safeError(err, "Add structured contacts failed") };
   }
 }
 
@@ -66,7 +67,7 @@ export async function sendCampaignAction(campaignId: string):
     revalidatePath("/admin/invites");
     return r;
   } catch (err) {
-    return { ok: false, error: (err as Error)?.message ?? "Send campaign failed" };
+    return { ok: false, error: safeError(err, "Send campaign failed") };
   }
 }
 
@@ -79,6 +80,6 @@ export async function cancelCampaignAction(campaignId: string):
     revalidatePath("/admin/invites");
     return r;
   } catch (err) {
-    return { ok: false, error: (err as Error)?.message ?? "Cancel campaign failed" };
+    return { ok: false, error: safeError(err, "Cancel campaign failed") };
   }
 }

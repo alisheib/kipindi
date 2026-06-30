@@ -1123,6 +1123,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
         <div className="mt-3 rounded-md border border-border bg-bg-overlay px-3 py-2.5">
           <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mb-1">
             {t.common.payout2}
+            <InfoHint size={10} label={t.dialog.payoutHowItWorks} />
           </p>
           <p className="text-[12px] leading-relaxed text-text-muted">
             {t.dialog.payoutCalcBody}

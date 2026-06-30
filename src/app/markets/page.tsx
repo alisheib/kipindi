@@ -4,6 +4,7 @@ import { I } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
 import { listMarkets, impliedYesPct, isClosedByTime, isSelectionClosed, traderSeedsByMarket, type MarketCategory } from "@/lib/server/market-service";
 import { getCardChart } from "@/lib/server/market-history";
+import { countComments } from "@/lib/server/comments-store";
 import { getProposalsConfig } from "@/lib/server/proposals-config";
 import { getServerT } from "@/lib/i18n-server";
 
@@ -273,6 +274,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
   const traderMap = await traderSeedsByMarket();
   const allForCharts = [...pagedLive, ...resolved];
   const cardCharts = new Map(await Promise.all(allForCharts.map(async (m) => [m.id, await getCardChart(m.id)] as const)));
+  const commentCounts = new Map(await Promise.all(allForCharts.map(async (m) => [m.id, await countComments(m.id)] as const)));
 
   const resultCount = live.length + resolved.length;
   return (
@@ -305,6 +307,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
               spark={cc.spark}
               move24h={cc.move24h}
               traders={traderMap.get(m.id)}
+              comments={commentCounts.get(m.id) ?? 0}
             />
           );
         })}
@@ -344,6 +347,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
                 status="RESOLVED"
                 sourceUrl={m.sourceUrl}
                 spark={(cardCharts.get(m.id) ?? { spark: [] }).spark}
+                comments={commentCounts.get(m.id) ?? 0}
               />
             ))}
           </div>

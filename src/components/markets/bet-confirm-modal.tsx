@@ -155,6 +155,7 @@ export function BetConfirmModal({
     <div
       role="dialog"
       aria-modal="true"
+      aria-busy={pending}
       aria-label={t.dialog.confirmPrediction}
       className="fixed inset-0 z-[100] flex justify-center px-3 py-4 overflow-y-auto overscroll-contain"
     >

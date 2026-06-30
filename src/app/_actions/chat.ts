@@ -164,6 +164,6 @@ export async function chatWithClaude(
       const { recordAiUsage } = await import("@/lib/server/ai-usage");
       await recordAiUsage({ feature: "chat", model: "claude-haiku-4-5-20251001", ok: false });
     } catch { /* best-effort */ }
-    return null;
+    return { text: "I'm having trouble right now. Please try again in a moment, or reach out to support." };
   }
 }

@@ -1,5 +1,6 @@
 "use server";
 
+import { safeError } from "@/lib/server/safe-error";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { currentSession } from "@/lib/server/auth-service";
@@ -24,7 +25,7 @@ export async function provisionTotpAction() {
     const result = await provisionTotp(session.userId, label);
     return { ok: true as const, ...result };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Provisioning failed" };
+    return { ok: false as const, error: safeError(err, "Provisioning failed") };
   }
 }
 
@@ -40,7 +41,7 @@ export async function verifyTotpAction(formData: FormData) {
     revalidatePath("/admin/2fa/setup");
     return { ok: true as const };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Verification failed" };
+    return { ok: false as const, error: safeError(err, "Verification failed") };
   }
 }
 
@@ -51,7 +52,7 @@ export async function removeTotpAction() {
     revalidatePath("/admin/2fa/setup");
     return { ok: true as const };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Removal failed" };
+    return { ok: false as const, error: safeError(err, "Removal failed") };
   }
 }
 

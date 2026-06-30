@@ -49,12 +49,12 @@ export default async function ProfilePage() {
   const kycLevel = kyc?.status ?? "NOT_STARTED";
   const kycPill =
     kycLevel === "APPROVED"
-      ? { tone: "yes", label: t.profile.idVerified }
+      ? { tone: "yes", label: t.profile.idVerified, glyph: I.shieldcheck }
       : kycLevel === "PENDING_REVIEW" || kycLevel === "IN_PROGRESS"
-        ? { tone: "info", label: t.profile.inReview }
+        ? { tone: "info", label: t.profile.inReview, glyph: I.clock }
         : kycLevel === "REJECTED"
-          ? { tone: "no", label: t.profile.rejected }
-          : { tone: "warning", label: t.common.verifyId };
+          ? { tone: "no", label: t.profile.rejected, glyph: I.alertCircle }
+          : { tone: "warning", label: t.common.verifyId, glyph: I.shieldQuestion };
 
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
@@ -127,7 +127,7 @@ export default async function ProfilePage() {
                 <Pill tone="neutral">{t.profile.playerRole}</Pill>
               )}
               <Pill tone={kycPill.tone as "yes" | "no" | "info" | "warning"}>
-                {kycPill.label}
+                <kycPill.glyph s={10} className="inline -mt-px" /> {kycPill.label}
               </Pill>
               <Pill tone="neutral">{user.locale === "SW" ? "Kiswahili" : "English"}</Pill>
               {user.email && (
@@ -208,7 +208,8 @@ export default async function ProfilePage() {
 
       {/* ── Achievements shelf */}
       <section>
-        <h2 className="mb-3 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">
+        <h2 className="mb-3 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">
+          <I.trophy s={13} />
           {t.profile.achievements}
         </h2>
         <div className="rounded-xl glass-panel p-5">
@@ -221,7 +222,8 @@ export default async function ProfilePage() {
 
       {/* ── Settings grid */}
       <section>
-        <h2 className="mb-3 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">
+        <h2 className="mb-3 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">
+          <I.settings s={13} />
           {t.profile.account}
         </h2>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">

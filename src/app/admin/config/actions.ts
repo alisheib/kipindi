@@ -1,5 +1,6 @@
 "use server";
 
+import { safeError } from "@/lib/server/safe-error";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
@@ -74,7 +75,7 @@ export async function updateGlobalConfigAction(formData: FormData) {
     revalidatePath("/admin/config");
     return r;
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Config update failed" };
+    return { ok: false as const, error: safeError(err, "Config update failed") };
   }
 }
 
@@ -99,7 +100,7 @@ export async function setMarketOverrideAction(formData: FormData) {
     revalidatePath("/admin/config");
     return r;
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Override failed" };
+    return { ok: false as const, error: safeError(err, "Override failed") };
   }
 }
 
@@ -112,6 +113,6 @@ export async function clearMarketOverrideAction(formData: FormData) {
     revalidatePath("/admin/config");
     return { ok: true as const };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Clear override failed" };
+    return { ok: false as const, error: safeError(err, "Clear override failed") };
   }
 }

@@ -1,5 +1,6 @@
 "use server";
 
+import { safeError } from "@/lib/server/safe-error";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
@@ -34,7 +35,7 @@ export async function verifyChainAction() {
     });
     return result;
   } catch (err) {
-    return { valid: false as const, firstBreakAt: null, index: -1, error: (err as Error)?.message ?? "Verification failed" };
+    return { valid: false as const, firstBreakAt: null, index: -1, error: safeError(err, "Verification failed") };
   }
 }
 
@@ -51,7 +52,7 @@ export async function updateSupportConfigAction(formData: FormData) {
     revalidatePath("/admin/system");
     return { ok: true as const };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Config update failed" };
+    return { ok: false as const, error: safeError(err, "Config update failed") };
   }
 }
 
@@ -64,6 +65,6 @@ export async function updatePlatformTimezoneAction(formData: FormData) {
     revalidatePath("/admin/system");
     return r;
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Timezone update failed" };
+    return { ok: false as const, error: safeError(err, "Timezone update failed") };
   }
 }

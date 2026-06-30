@@ -91,7 +91,7 @@ export function KycDocUploader({
         {showThumb ? (
           // Dim the preview while the resize/upload is in flight so the spinner
           // below reads as "working on this photo", not "done".
-          <img src={showThumb} alt="" className={`mx-auto mb-1.5 h-16 w-auto rounded object-contain transition-opacity ${working ? "opacity-40" : ""}`} />
+          <img src={showThumb} alt={label} className={`mx-auto mb-1.5 h-16 w-auto rounded object-contain transition-opacity ${working ? "opacity-40" : ""}`} />
         ) : (
           <span className={`mx-auto mb-1.5 h-8 w-8 inline-flex items-center justify-center rounded-full ${
             done ? "bg-yes-500 text-yes-950" : "bg-bg-overlay text-text-subtle border border-border"
@@ -180,7 +180,7 @@ export function KycExtraDocUploader({
             {pending ? t.common.uploading : busy ? t.common.preparing : done ? t.profile.docTapReplace : t.profile.docTapAttachPhoto}
           </p>
         </div>
-        {preview && <img src={preview} alt="" className="h-12 w-12 shrink-0 rounded object-cover border border-border" />}
+        {preview && <img src={preview} alt={description} className="h-12 w-12 shrink-0 rounded object-cover border border-border" />}
         <button
           type="button"
           onClick={() => !working && inputRef.current?.click()}

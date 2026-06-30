@@ -4,6 +4,7 @@ import { Sora, Inter, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppShell } from "@/components/layout/app-shell";
 import { LazyOverlays } from "@/components/layout/lazy-overlays";
+import { ScrollRestore } from "@/components/ui/scroll-restore";
 import "./globals.css";
 
 const sora = Sora({
@@ -93,6 +94,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang={lang} suppressHydrationWarning className={`${sora.variable} ${inter.variable} ${jbm.variable}`}>
       <body className="font-sans antialiased">
         <ThemeProvider initialLocale={lang}>
+          <ScrollRestore />
           <AppShell>{children}</AppShell>
           {/* Lazy-loaded overlay components — ChatRoot + FirstVisitPrimer
               are portaled and not needed for FCP. The client wrapper uses

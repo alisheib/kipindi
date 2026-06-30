@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { BackLink } from "@/components/ui/back-link";
 import { TippingBar } from "@/components/brand";
 import { Countdown } from "@/components/markets/countdown";
 import { ShareButton } from "@/components/markets/share-button";
@@ -12,6 +13,7 @@ import { getEffectiveConfig } from "@/lib/server/market-config";
 import { getProbabilityChart, seedHistory } from "@/lib/server/market-history";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
+import { ensureAffiliateAccount } from "@/lib/server/affiliate-service";
 import { listComments } from "@/lib/server/comments-store";
 import { CommentsThread } from "@/components/markets/comments-thread";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
@@ -88,6 +90,7 @@ export default async function MarketDetail({
   const marketFeeRate = Math.min(0.99, Math.max(0, feeCfg.taxRate + feeCfg.commissionRate + feeCfg.reserveRate + feeCfg.aggregatorRate));
   const session = await currentSession();
   const myPositions = session ? (await listPositionsForUser(session.userId)).filter((p) => p.marketId === m.id) : [];
+  const myRefCode = session ? (await ensureAffiliateAccount(session.userId)).code : undefined;
   const isResolved = m.status === "RESOLVED" || m.status === "VOIDED";
   // One-sided: all bets are on the same side — winners would win their own money.
   // Platform rule: full refund at 0% fee at resolution. Surface a disclaimer so
@@ -129,10 +132,7 @@ export default async function MarketDetail({
           the freshest possible odds/pool/status. */}
       <RefreshPoller intervalMs={15_000} />
       {/* ── Back link ── */}
-      <a href="/markets" className="inline-flex items-center gap-1 text-[12px] font-mono uppercase tracking-[0.16em] text-text-subtle hover:text-text transition-colors">
-        <I.chevronLeft s={11} />
-        {t.common.markets}
-      </a>
+      <BackLink fallbackHref="/markets" label={t.common.markets} />
 
       {/* ── Page header — title, badges, share ── */}
       <header className="mt-3 mb-5">
@@ -165,7 +165,7 @@ export default async function MarketDetail({
             {t.common.source}
             <I.ext s={12} />
           </a>
-          <ShareButton marketId={m.id} title={m.titleEn} />
+          <ShareButton marketId={m.id} title={m.titleEn} refCode={myRefCode} />
         </div>
         <h1 className="font-display text-[26px] md:text-[34px] font-bold leading-tight tracking-[-0.02em] text-text">{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</h1>
       </header>

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
+import { useT } from "@/lib/i18n";
 
 /**
  * Admin-scoped error boundary. Without this, a throw in any /admin page or
@@ -22,6 +23,7 @@ export default function AdminError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { t } = useT();
   useEffect(() => {
     if (typeof window !== "undefined") {
       console.warn("[50pick/admin] error boundary fired", { digest: error.digest });
@@ -34,15 +36,13 @@ export default function AdminError({
         <I.alertCircle s={20} />
       </div>
       <p className="font-mono text-[10px] font-bold uppercase tracking-[0.20em] text-no-300">
-        Admin error · Hitilafu
+        {t.error.adminError}
       </p>
       <h1 className="mt-2 font-display text-[22px] font-bold leading-tight tracking-[-0.02em] text-text">
-        This console page hit a snag
+        {t.error.consolePageSnag}
       </h1>
       <p className="mt-3 max-w-[420px] text-[13px] leading-relaxed text-text-subtle">
-        The error was recorded server-side. Nothing was mutated by the failed
-        render — every state change goes through the append-only audit log.
-        Retry, or head back to the dashboard.
+        {t.error.errorRecordedServer}
       </p>
 
       {error.digest && (
@@ -58,13 +58,13 @@ export default function AdminError({
           className="btn btn-primary btn-md inline-flex items-center justify-center gap-2"
         >
           <I.bolt s={14} />
-          Try again · Jaribu tena
+          {t.error.tryAgain}
         </button>
         <Link
           href="/admin"
           className="btn btn-ghost btn-md inline-flex items-center justify-center gap-2"
         >
-          Back to dashboard
+          {t.error.backToDashboard}
           <I.arrowRight s={14} />
         </Link>
       </div>

@@ -1,5 +1,6 @@
 "use server";
 
+import { safeError } from "@/lib/server/safe-error";
 import { revalidatePath } from "next/cache";
 import { fileDsarRequest, fulfillDsarRequest, buildDsarBundle } from "@/lib/server/privacy";
 import { getSession } from "@/lib/server/session";
@@ -29,7 +30,7 @@ export async function fileDsarAction(formData: FormData) {
     revalidatePath("/admin/privacy");
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: (err as Error)?.message ?? "DSAR filing failed" };
+    return { ok: false, error: safeError(err, "DSAR filing failed") };
   }
 }
 
@@ -44,7 +45,7 @@ export async function fulfillDsarAction(formData: FormData) {
     revalidatePath("/admin/privacy");
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: (err as Error)?.message ?? "Fulfillment failed" };
+    return { ok: false, error: safeError(err, "Fulfillment failed") };
   }
 }
 
@@ -58,6 +59,6 @@ export async function buildDsarBundleAction(formData: FormData) {
     audit({ category: "COMPLIANCE", action: "privacy.dsar.exported", actorId: auth.userId, targetType: "User", targetId: userId });
     return { ok: true as const, bundle };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Bundle export failed" };
+    return { ok: false as const, error: safeError(err, "Bundle export failed") };
   }
 }

@@ -3,14 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
-import { useT, type Locale } from "@/lib/i18n";
-
-const NEXT_LOCALE: Record<Locale, Locale> = { en: "sw", sw: "zh", zh: "en" };
-const LOCALE_LABEL: Record<Locale, string> = { en: "EN", sw: "SW", zh: "中文" };
+import { useT } from "@/lib/i18n";
 
 export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
   const pathname = usePathname();
-  const { t, locale, setLocale } = useT();
+  const { t } = useT();
 
   const items = isAuthed
     ? [
@@ -84,26 +81,6 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
             </li>
           );
         })}
-        {/* Language switcher — always visible in the bottom nav so mobile
-            users (logged in or out) can change language without opening the
-            profile menu. Tapping cycles EN → SW → 中文 → EN. */}
-        <li className="flex">
-          <button
-            type="button"
-            aria-label={t.common.switchTo.replace("{lang}", LOCALE_LABEL[NEXT_LOCALE[locale]])}
-            onClick={() => setLocale(NEXT_LOCALE[locale])}
-            className="flex flex-1 flex-col items-center justify-center gap-1 rounded-[18px] transition-colors"
-            style={{ color: "var(--text-subtle)", background: "none", border: "none", cursor: "pointer" }}
-          >
-            <span
-              className="flex items-center justify-center rounded-full"
-              style={{ width: 50, height: 30 }}
-            >
-              <I.globe s={22} />
-            </span>
-            <span className="font-mono text-[9.5px] font-bold leading-none">{LOCALE_LABEL[locale]}</span>
-          </button>
-        </li>
       </ul>
     </nav>
   );

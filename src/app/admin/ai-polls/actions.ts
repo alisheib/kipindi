@@ -30,6 +30,7 @@ import {
 import { createMarket, emergencyVoidMarket } from "@/lib/server/market-service";
 import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
 import { MARKET_OPS_ROLES } from "@/lib/server/roles";
+import { safeError } from "@/lib/server/safe-error";
 
 const ADMIN_ROLES = MARKET_OPS_ROLES; // role tier — see @/lib/server/roles
 
@@ -77,7 +78,7 @@ export async function generatePollAction(formData: FormData) {
     revalidatePath("/admin/ai-polls");
     return { ok: true as const, poll };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Generation failed" };
+    return { ok: false as const, error: safeError(err, "Generation failed") };
   }
 }
 
@@ -102,7 +103,7 @@ export async function generatePollBatchAction(formData: FormData) {
     revalidatePath("/admin/ai-polls");
     return { ok: true as const, total: generated.length, summary };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Batch generation failed" };
+    return { ok: false as const, error: safeError(err, "Batch generation failed") };
   }
 }
 
@@ -149,7 +150,7 @@ export async function updatePollConfigAction(formData: FormData) {
     revalidatePath("/admin/ai-polls");
     return { ok: true as const, config };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Config update failed" };
+    return { ok: false as const, error: safeError(err, "Config update failed") };
   }
 }
 
@@ -173,7 +174,7 @@ export async function approvePollAction(formData: FormData) {
     revalidatePath("/admin/ai-polls");
     return { ok: true as const, poll };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Approve failed" };
+    return { ok: false as const, error: safeError(err, "Approve failed") };
   }
 }
 
@@ -204,7 +205,7 @@ export async function rejectPollAction(formData: FormData) {
     revalidatePath("/admin/ai-polls");
     return { ok: true as const };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Reject failed" };
+    return { ok: false as const, error: safeError(err, "Reject failed") };
   }
 }
 
@@ -240,7 +241,7 @@ export async function editPollAction(formData: FormData) {
     revalidatePath("/admin/ai-polls");
     return { ok: true as const, poll };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Edit failed" };
+    return { ok: false as const, error: safeError(err, "Edit failed") };
   }
 }
 
@@ -342,7 +343,7 @@ export async function publishPollAction(formData: FormData) {
   revalidatePath("/admin/markets");
   return { ok: true as const, marketId: market.id, candidateId: candidate.id };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Publish failed" };
+    return { ok: false as const, error: safeError(err, "Publish failed") };
   }
 }
 
@@ -375,7 +376,7 @@ export async function deletePollAction(formData: FormData) {
     revalidatePath("/admin/ai-polls");
     return { ok: true as const, refundedCount, refundedTzs };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Delete failed" };
+    return { ok: false as const, error: safeError(err, "Delete failed") };
   }
 }
 
@@ -429,7 +430,7 @@ export async function deleteAllPollsAction(formData: FormData) {
       voidErrors,
     };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Delete all failed" };
+    return { ok: false as const, error: safeError(err, "Delete all failed") };
   }
 }
 
@@ -442,6 +443,6 @@ export async function seedFixturesAction() {
     revalidatePath("/admin/ai-polls");
     return { ok: true as const, count: seeded.length };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Seed failed" };
+    return { ok: false as const, error: safeError(err, "Seed failed") };
   }
 }

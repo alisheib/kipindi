@@ -77,7 +77,7 @@ export default async function HelpPage() {
               <summary className="cursor-pointer list-none flex items-start justify-between gap-3 font-display text-[13.5px] font-semibold text-text">
                 <span>{t.help[`${key}q` as keyof typeof t.help]}</span>
                 <span className="mt-1 shrink-0 text-text-subtle transition-transform group-open:rotate-180">
-                  <I.chevronDown s={14} />
+                  <I.chevronDown s={13} />
                 </span>
               </summary>
               <p className="mt-2 text-[12.5px] text-text-muted leading-relaxed">

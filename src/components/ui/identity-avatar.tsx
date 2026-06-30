@@ -216,7 +216,7 @@ export function IdentityAvatar({
     <span className={"crest-holder" + (className ? " " + className : "")} style={{ width: size, height: size }}>
       <span style={{ width: size, height: size, borderRadius: "50%", overflow: "hidden", display: "inline-grid", placeItems: "center", flexShrink: 0, ...ringStyle }}>
         {src
-          ? <img src={src} alt={name || ""} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          ? <img src={src} alt={name || "User avatar"} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
           : <Crest seed={seed} size={size} initials={ini} />}
       </span>
     </span>

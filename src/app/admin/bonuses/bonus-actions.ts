@@ -1,5 +1,6 @@
 "use server";
 
+import { safeError } from "@/lib/server/safe-error";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -54,7 +55,7 @@ export async function grantBonusToPlayerAction(input: GrantInput):
     revalidatePath("/admin/bonuses");
     return { ok: true, grantId: r.grant.id, handle: user.displayName?.trim() || parse.data.phone };
   } catch (err) {
-    return { ok: false, error: (err as Error)?.message ?? "Grant failed" };
+    return { ok: false, error: safeError(err, "Grant failed") };
   }
 }
 
@@ -65,7 +66,7 @@ export async function saveBonusConfigAction(config: BonusConfig) {
     revalidatePath("/admin/bonuses");
     return r;
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Config save failed" };
+    return { ok: false as const, error: safeError(err, "Config save failed") };
   }
 }
 
@@ -77,6 +78,6 @@ export async function cancelGrantAction(grantId: string):
     revalidatePath("/admin/bonuses");
     return r;
   } catch (err) {
-    return { ok: false, error: (err as Error)?.message ?? "Cancel failed" };
+    return { ok: false, error: safeError(err, "Cancel failed") };
   }
 }

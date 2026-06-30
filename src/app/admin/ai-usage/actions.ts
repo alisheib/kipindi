@@ -1,5 +1,6 @@
 "use server";
 
+import { safeError } from "@/lib/server/safe-error";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
@@ -32,7 +33,7 @@ export async function setCreditLimitAction(fd: FormData): Promise<{ ok: boolean;
     revalidatePath("/admin/ai-usage");
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: (err as Error)?.message ?? "Set limit failed" };
+    return { ok: false, error: safeError(err, "Set limit failed") };
   }
 }
 
@@ -45,7 +46,7 @@ export async function resetCreditCycleAction(): Promise<{ ok: boolean; error?: s
     revalidatePath("/admin/ai-usage");
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: (err as Error)?.message ?? "Reset cycle failed" };
+    return { ok: false, error: safeError(err, "Reset cycle failed") };
   }
 }
 
@@ -74,7 +75,7 @@ export async function setAiModelAction(fd: FormData): Promise<{ ok: boolean; err
     revalidatePath("/admin/ai-usage");
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: (err as Error)?.message ?? "Set model failed" };
+    return { ok: false, error: safeError(err, "Set model failed") };
   }
 }
 
@@ -85,7 +86,7 @@ export async function getSentinelStatusAction() {
     const { getSentinelStatus } = await import("@/lib/server/market-sentinel");
     return getSentinelStatus();
   } catch (err) {
-    return { enabled: false, running: false, sweeping: false, paused: true, nextSweepAt: null, lastSweepAt: null, lastSummary: null, intervalMs: 0, pausedRemainingMs: null, serverNow: Date.now(), timezone: "Africa/Dar_es_Salaam", error: (err as Error)?.message ?? "Status check failed" };
+    return { enabled: false, running: false, sweeping: false, paused: true, nextSweepAt: null, lastSweepAt: null, lastSummary: null, intervalMs: 0, pausedRemainingMs: null, serverNow: Date.now(), timezone: "Africa/Dar_es_Salaam", error: safeError(err, "Status check failed") };
   }
 }
 
@@ -167,6 +168,6 @@ export async function setSentinelIntervalAction(fd: FormData): Promise<{ ok: boo
     revalidatePath("/admin/ai-usage");
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: (err as Error)?.message ?? "Set interval failed" };
+    return { ok: false, error: safeError(err, "Set interval failed") };
   }
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { BackLink } from "@/components/ui/back-link";
 import { PositionCard } from "@/components/markets/position-card";
 import { SellButton } from "@/components/markets/sell-button";
 import { listPositionsForUser, getMarket, cashOutValue, isSelectionClosed } from "@/lib/server/market-service";
@@ -82,13 +83,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
       <RefreshPoller intervalMs={20_000} />
-      <Link
-        href="/markets"
-        className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
-      >
-        <I.chevronLeft s={14} />
-        {t.common.markets}
-      </Link>
+      <BackLink fallbackHref="/markets" label={t.common.markets} />
       <header>
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.positions.title}</p>
         <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.positions.pollsPlayed}</h1>
@@ -219,9 +214,10 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
       {(activeTab === "all" || activeTab === "settled") && <Section title={t.common.settled} count={settled.length}>
         {settled.length === 0 ? (
           <Empty
-            kind="default"
+            kind="positions"
             title={t.positions.noSettledYet}
             body={t.positions.noSettledBody}
+            browseLabel={t.positions.browseMarkets}
           />
         ) : (
           <>

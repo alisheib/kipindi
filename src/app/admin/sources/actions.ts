@@ -1,5 +1,6 @@
 "use server";
 
+import { safeError } from "@/lib/server/safe-error";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
@@ -37,7 +38,7 @@ export async function addSourceAction(formData: FormData) {
     revalidatePath("/admin/sources");
     return { ok: true as const };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Add source failed" };
+    return { ok: false as const, error: safeError(err, "Add source failed") };
   }
 }
 
@@ -50,7 +51,7 @@ export async function toggleSourceAction(formData: FormData) {
     revalidatePath("/admin/sources");
     return { ok: true as const };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Toggle failed" };
+    return { ok: false as const, error: safeError(err, "Toggle failed") };
   }
 }
 
@@ -62,7 +63,7 @@ export async function removeSourceAction(formData: FormData) {
     revalidatePath("/admin/sources");
     return { ok: true as const };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Remove failed" };
+    return { ok: false as const, error: safeError(err, "Remove failed") };
   }
 }
 
@@ -75,6 +76,6 @@ export async function toggleCategoryAction(formData: FormData) {
     revalidatePath("/admin/sources");
     return { ok: true as const };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Toggle category failed" };
+    return { ok: false as const, error: safeError(err, "Toggle category failed") };
   }
 }

@@ -1,5 +1,6 @@
 "use server";
 
+import { safeError } from "@/lib/server/safe-error";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
@@ -43,7 +44,7 @@ export async function approveCandidateAction(formData: FormData) {
     revalidatePath("/admin/candidates");
     return { ok: true as const, candidate: c };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Approve failed" };
+    return { ok: false as const, error: safeError(err, "Approve failed") };
   }
 }
 
@@ -58,7 +59,7 @@ export async function rejectCandidateAction(formData: FormData) {
     revalidatePath("/admin/candidates");
     return { ok: true as const };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Reject failed" };
+    return { ok: false as const, error: safeError(err, "Reject failed") };
   }
 }
 
@@ -93,6 +94,6 @@ export async function publishCandidateAction(formData: FormData) {
     revalidatePath("/admin/markets");
     return { ok: true as const, marketId: market.id };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Publish failed" };
+    return { ok: false as const, error: safeError(err, "Publish failed") };
   }
 }

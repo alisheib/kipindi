@@ -150,11 +150,11 @@ export function smsHealthSnapshot() {
   };
 }
 
-/** Templated OTP message — keeps it ≤ 160 GSM-7 chars. EN + SW + FR. */
-export function otpMessage(code: string, locale: "EN" | "SW" | "FR" = "SW"): string {
+/** Templated OTP message — keeps it ≤ 160 GSM-7 chars. EN + SW + ZH. */
+export function otpMessage(code: string, locale: "EN" | "SW" | "ZH" = "SW"): string {
   switch (locale) {
     case "SW": return `Msimbo 50pick: ${code}. Dakika 5. Usishirikishe.`;
-    case "FR": return `Code 50pick : ${code}. Valide 5 min. Ne partagez pas.`;
+    case "ZH": return `50pick\u9A8C\u8BC1\u7801\uFF1A${code}\u3002\u6709\u6548\u671F5\u5206\u949F\u3002\u8BF7\u52FF\u5206\u4EAB\u3002`;
     case "EN":
     default:   return `50pick code: ${code}. Valid 5 min. Don't share.`;
   }

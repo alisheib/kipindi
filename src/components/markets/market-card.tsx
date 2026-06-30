@@ -32,6 +32,8 @@ type Props = {
   /** True when the selection window has closed but the market is still LIVE
    *  (waiting for outcome). No new bets accepted. */
   selectionClosed?: boolean;
+  /** Visible comment count (optional — shown in the meta row when > 0). */
+  comments?: number;
   className?: string;
 };
 
@@ -155,7 +157,7 @@ function HowItWorks() {
 }
 
 export function MarketCard({
-  id, titleEn, titleSw, titleZh, category, yesPct, volume, predictors, timeLeft, status, move24h, traders, selectionClosed, className,
+  id, titleEn, titleSw, titleZh, category, yesPct, volume, predictors, timeLeft, status, move24h, traders, selectionClosed, comments, className,
 }: Props) {
   const router = useRouter();
   const { t, locale } = useT();
@@ -243,6 +245,12 @@ export function MarketCard({
         <span>{predictors.toLocaleString()} {t.market.predictorsCount}</span>
         <span className="dot" />
         <span>{fmtTzs(volume)}</span>
+        {comments != null && comments > 0 && (
+          <>
+            <span className="dot" />
+            <span className="inline-flex items-center gap-1"><I.comment s={10} />{comments}</span>
+          </>
+        )}
         <span className="mcardp-meta-right">
           <span className={live ? "live" : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
             {timeLeft}

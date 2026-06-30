@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { getServerT } from "@/lib/i18n-server";
@@ -40,10 +40,27 @@ const t404 = {
 
 type Locale = keyof typeof t404;
 
-export async function generateMetadata() {
+/** Resolve locale: cookie → Accept-Language header → "en". */
+async function resolveLocale(): Promise<Locale> {
   const jar = await cookies();
   const cookieLocale = jar.get("kp-locale")?.value;
-  const lang: Locale = cookieLocale === "sw" || cookieLocale === "zh" ? cookieLocale : "en";
+  if (cookieLocale === "sw" || cookieLocale === "zh") return cookieLocale;
+
+  // Fall back to Accept-Language header
+  const h = await headers();
+  const accept = h.get("accept-language") ?? "";
+  // Parse primary language tags (e.g. "sw,en;q=0.9,zh;q=0.8")
+  for (const part of accept.split(",")) {
+    const tag = part.split(";")[0].trim().toLowerCase();
+    if (tag.startsWith("sw")) return "sw";
+    if (tag.startsWith("zh")) return "zh";
+    if (tag.startsWith("en")) return "en";
+  }
+  return "en";
+}
+
+export async function generateMetadata() {
+  const lang = await resolveLocale();
   const d = t404[lang];
   return { title: `${d.notFound} · ${d.notFoundCode}` };
 }
@@ -60,9 +77,7 @@ export async function generateMetadata() {
  * so the page is safe to log + cache.
  */
 export default async function NotFound() {
-  const jar = await cookies();
-  const cookieLocale = jar.get("kp-locale")?.value;
-  const lang: Locale = cookieLocale === "sw" || cookieLocale === "zh" ? cookieLocale : "en";
+  const lang = await resolveLocale();
   const d = t404[lang];
   const { t } = await getServerT();
 

@@ -268,7 +268,7 @@ export function NotificationsPanel() {
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto overscroll-contain bg-transparent">
+            <div className="flex-1 overflow-y-auto overscroll-contain bg-transparent" aria-live="polite" aria-relevant="additions">
               {items.map((n) => {
                 const Icon = iconFor(n.kind);
                 const isUnread = !n.readAt;

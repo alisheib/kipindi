@@ -1,5 +1,6 @@
 "use server";
 
+import { safeError } from "@/lib/server/safe-error";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
@@ -31,7 +32,7 @@ export async function saveProposalsConfigAction(config: ProposalsConfig) {
     revalidatePath("/proposals");
     return r;
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Config save failed" };
+    return { ok: false as const, error: safeError(err, "Config save failed") };
   }
 }
 
@@ -43,7 +44,7 @@ export async function approveProposalAction(proposalId: string, sourceUrl: strin
     revalidatePath("/proposals");
     return r;
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Approve failed" };
+    return { ok: false as const, error: safeError(err, "Approve failed") };
   }
 }
 
@@ -54,7 +55,7 @@ export async function requestChangesAction(proposalId: string, note: string) {
     revalidatePath("/admin/proposals");
     return r;
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Request changes failed" };
+    return { ok: false as const, error: safeError(err, "Request changes failed") };
   }
 }
 
@@ -66,6 +67,6 @@ export async function declineProposalAction(proposalId: string, reason: DeclineR
     revalidatePath("/proposals");
     return r;
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Decline failed" };
+    return { ok: false as const, error: safeError(err, "Decline failed") };
   }
 }

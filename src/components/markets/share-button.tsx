@@ -17,16 +17,20 @@ import { useT } from "@/lib/i18n";
 export function ShareButton({
   marketId,
   title,
+  refCode,
 }: {
   marketId: string;
   title: string;
+  /** Player's referral code — appended as ?ref= so shares track referrals. */
+  refCode?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
   const { t } = useT();
 
-  const url = (typeof window !== "undefined" ? window.location.origin : "") + `/markets/${marketId}`;
+  const base = (typeof window !== "undefined" ? window.location.origin : "") + `/markets/${marketId}`;
+  const url = refCode ? `${base}?ref=${encodeURIComponent(refCode)}` : base;
   const shareText = t.market.shareText.replace("{title}", title);
   const waLink = `https://wa.me/?text=${encodeURIComponent(`${shareText}\n${url}`)}`;
   const hasWebShare = typeof navigator !== "undefined" && "share" in navigator;

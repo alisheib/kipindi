@@ -44,7 +44,9 @@ export function CommentsThread({
   canPost: boolean;
   signInHref: string;
 }) {
+  const INITIAL_SHOW = 15;
   const [comments, setComments] = useState<CommentView[]>(initialComments);
+  const [showAll, setShowAll] = useState(initialComments.length <= INITIAL_SHOW);
   const [body, setBody] = useState("");
   const [pending, startTransition] = useTransition();
   const { toast } = useToast();
@@ -153,12 +155,17 @@ export function CommentsThread({
         </p>
       ) : (
         <ul className="space-y-3.5">
-          {comments.map((c) => (
+          {(showAll ? comments : comments.slice(0, INITIAL_SHOW)).map((c) => (
             <li key={c.id} className={`flex gap-3 ${c.hidden ? "opacity-60" : ""}`}>
               <Avatar initials={c.authorName.slice(0, 2).toUpperCase()} seed={c.authorId} size="sm" className="mt-0.5" />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="font-display text-[13.5px] font-semibold text-text">{c.authorName}</span>
+                  {c.authorRole && c.authorRole !== "PLAYER" && c.authorRole !== "AGENT" && (
+                    <span className="rounded-pill border border-gold-700/50 bg-gold-500/15 px-1.5 py-px font-mono text-[8.5px] font-bold uppercase tracking-[0.08em] text-gold-300">
+                      {c.authorRole === "ADMIN" ? t.profile.adminRole : c.authorRole === "MODERATOR" ? t.profile.moderatorRole : t.profile.complianceRole}
+                    </span>
+                  )}
                   {c.side && (
                     <span className={`rounded-pill px-1.5 py-px font-mono text-[9.5px] font-bold uppercase tracking-wide ${c.side === "YES" ? "text-yes-300 bg-yes-500/12" : "text-no-300 bg-no-500/12"}`}>
                       {t.market.holds} {c.side}
@@ -202,6 +209,15 @@ export function CommentsThread({
             </li>
           ))}
         </ul>
+      )}
+      {!showAll && comments.length > INITIAL_SHOW && (
+        <button
+          type="button"
+          onClick={() => setShowAll(true)}
+          className="mt-3 w-full rounded-md border border-border bg-bg-overlay px-3 py-2 font-mono text-[11px] uppercase tracking-[0.12em] text-text-subtle hover:text-text hover:border-gold-700 transition-colors"
+        >
+          {t.common.showAll} ({comments.length - INITIAL_SHOW} {t.common.more})
+        </button>
       )}
     </section>
   );

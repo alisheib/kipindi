@@ -9,9 +9,11 @@
 
 import { useEffect, useState } from "react";
 import { I } from "@/components/ui/glyphs";
+import { useT } from "@/lib/i18n";
 
 export function OfflineBanner() {
   const [offline, setOffline] = useState(false);
+  const { t } = useT();
 
   useEffect(() => {
     const goOffline = () => setOffline(true);
@@ -39,10 +41,7 @@ export function OfflineBanner() {
       }}
     >
       <I.alertCircle s={14} />
-      You&rsquo;re offline &middot; Some features may not work
-      <span className="italic text-[11px] opacity-70">
-        &middot; Huna mtandao
-      </span>
+      {t.common.offline} &middot; {t.common.offlineHint}
     </div>
   );
 }

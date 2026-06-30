@@ -1,5 +1,6 @@
 "use server";
 
+import { safeError } from "@/lib/server/safe-error";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
@@ -72,7 +73,7 @@ export async function exportPlayerDataAction(userId: string): Promise<
       filename: `player-${userId}-dsar.json`,
     };
   } catch (err) {
-    return { ok: false, error: (err as Error)?.message ?? "Export failed" };
+    return { ok: false, error: safeError(err, "Export failed") };
   }
 }
 
@@ -104,7 +105,7 @@ export async function suspendPlayerAction(formData: FormData) {
     revalidatePath("/admin/players");
     return { ok: true as const };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Suspend failed" };
+    return { ok: false as const, error: safeError(err, "Suspend failed") };
   }
 }
 
@@ -135,7 +136,7 @@ export async function restorePlayerAction(formData: FormData) {
     revalidatePath("/admin/players");
     return { ok: true as const };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Restore failed" };
+    return { ok: false as const, error: safeError(err, "Restore failed") };
   }
 }
 
@@ -193,7 +194,7 @@ export async function approveKycAction(formData: FormData) {
     }
     return r.ok ? { ok: true as const } : { ok: false as const, error: r.error };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Approve KYC failed" };
+    return { ok: false as const, error: safeError(err, "Approve KYC failed") };
   }
 }
 
@@ -210,7 +211,7 @@ export async function rejectKycAction(formData: FormData) {
     }
     return r.ok ? { ok: true as const } : { ok: false as const, error: r.error };
   } catch (err) {
-    return { ok: false as const, error: (err as Error)?.message ?? "Reject KYC failed" };
+    return { ok: false as const, error: safeError(err, "Reject KYC failed") };
   }
 }
 

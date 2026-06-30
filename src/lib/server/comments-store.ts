@@ -31,6 +31,8 @@ export type CommentView = {
   id: string;
   authorId: string;
   authorName: string;
+  /** Author's platform role — used to render admin/mod badges. */
+  authorRole: "PLAYER" | "ADMIN" | "MODERATOR" | "COMPLIANCE" | "AGENT";
   body: string;
   side: CommentSide;
   createdAt: string;
@@ -56,15 +58,16 @@ interface CommentStore {
   get(id: string): Promise<StoredComment | null>;
   set(c: StoredComment): Promise<void>;
   values(): Promise<StoredComment[]>;
-  listForMarket(marketId: string): Promise<StoredComment[]>;
+  listForMarket(marketId: string, limit?: number): Promise<StoredComment[]>;
 }
 
 const memoryStore: CommentStore = {
   async get(id) { return comments.get(id) ?? null; },
   async set(c) { comments.set(c.id, c); },
   async values() { return Array.from(comments.values()); },
-  async listForMarket(marketId) {
-    return Array.from(comments.values()).filter((c) => c.marketId === marketId);
+  async listForMarket(marketId, limit) {
+    const all = Array.from(comments.values()).filter((c) => c.marketId === marketId);
+    return limit ? all.slice(0, limit) : all;
   },
 };
 
@@ -118,10 +121,11 @@ const prismaStore: CommentStore = {
     const rows = await pc().comment.findMany();
     return rows.map(toStored);
   },
-  async listForMarket(marketId) {
+  async listForMarket(marketId, limit) {
     const rows = await pc().comment.findMany({
       where: { marketId },
       orderBy: { createdAt: "desc" },
+      ...(limit ? { take: limit } : {}),
     });
     return rows.map(toStored);
   },
@@ -148,10 +152,12 @@ async function isMod(userId: string): Promise<boolean> {
 
 async function toView(c: StoredComment, viewerId: string | null): Promise<CommentView> {
   const viewerIsMod = viewerId ? await isMod(viewerId) : false;
+  const author = await db.user.findById(c.userId);
   return {
     id: c.id,
     authorId: c.userId,
     authorName: c.authorName,
+    authorRole: (author?.role ?? "PLAYER") as CommentView["authorRole"],
     body: c.body,
     side: c.side,
     createdAt: c.createdAt,
