@@ -43,7 +43,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
   const marketIds = [...new Set([...open, ...pagedSettled].map((p) => p.marketId))];
   const marketMap = new Map<string, Awaited<ReturnType<typeof getMarket>>>();
   for (const mid of marketIds) {
-    marketMap.set(mid, await getMarket(mid));
+    try { marketMap.set(mid, await getMarket(mid)); } catch { /* skip unavailable market */ }
   }
 
   // P&L summary — open at-risk + live cash-out value, settled net.
@@ -52,10 +52,12 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
   for (const p of open) {
     const m = marketMap.get(p.marketId);
     if (m && m.status === "LIVE") {
-      openLiveValue += (await cashOutValue(
-        { side: p.side, stake: p.stake, placedAt: p.placedAt },
-        { id: m.id, yesPool: m.yesPool, noPool: m.noPool, resolutionAt: m.resolutionAt },
-      )).value;
+      try {
+        openLiveValue += (await cashOutValue(
+          { side: p.side, stake: p.stake, placedAt: p.placedAt },
+          { id: m.id, yesPool: m.yesPool, noPool: m.noPool, resolutionAt: m.resolutionAt },
+        )).value;
+      } catch { openLiveValue += p.potentialPayout; }
     } else {
       openLiveValue += p.potentialPayout;
     }
@@ -65,7 +67,9 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
   for (const p of open) {
     const m = marketMap.get(p.marketId);
     if (m && m.status === "LIVE") {
-      openCashOutValues.set(p.id, (await cashOutValue({ side: p.side, stake: p.stake, placedAt: p.placedAt }, { id: m.id, yesPool: m.yesPool, noPool: m.noPool, resolutionAt: m.resolutionAt })).value);
+      try {
+        openCashOutValues.set(p.id, (await cashOutValue({ side: p.side, stake: p.stake, placedAt: p.placedAt }, { id: m.id, yesPool: m.yesPool, noPool: m.noPool, resolutionAt: m.resolutionAt })).value);
+      } catch { openCashOutValues.set(p.id, null); }
     } else {
       openCashOutValues.set(p.id, null);
     }

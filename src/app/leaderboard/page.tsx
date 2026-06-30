@@ -61,8 +61,11 @@ function seededWalk(seed: string, length: number, max = 100_000): number[] {
 
 async function buildLeaderboard() {
   const out: Row[] = [];
-  for (const u of await db.user.list()) {
-    const positions = (await listPositionsForUser(u.id, 5_000)).filter((p) => p.status !== "OPEN");
+  let users: Awaited<ReturnType<typeof db.user.list>> = [];
+  try { users = await db.user.list(); } catch { return out; }
+  for (const u of users) {
+    let positions: Awaited<ReturnType<typeof listPositionsForUser>> = [];
+    try { positions = (await listPositionsForUser(u.id, 5_000)).filter((p) => p.status !== "OPEN"); } catch { continue; }
     if (positions.length === 0) continue;
     const staked = positions.reduce((s, p) => s + p.stake, 0);
     const paidOut = positions.reduce((s, p) => s + (p.finalPayout ?? 0), 0);

@@ -273,7 +273,7 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
     : (await listMarkets({ status: "RESOLVED" })).slice(0, 3);
   const traderMap = await traderSeedsByMarket();
   const allForCharts = [...pagedLive, ...resolved];
-  const cardCharts = new Map(await Promise.all(allForCharts.map(async (m) => [m.id, await getCardChart(m.id)] as const)));
+  const cardCharts = new Map(await Promise.all(allForCharts.map(async (m) => [m.id, await getCardChart(m.id).catch(() => ({ spark: [] as number[], move24h: undefined }))] as const)));
   const commentCounts = new Map(await Promise.all(allForCharts.map(async (m) => [m.id, await countComments(m.id).catch(() => 0)] as const)));
 
   const resultCount = live.length + resolved.length;

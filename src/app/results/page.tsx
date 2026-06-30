@@ -123,7 +123,7 @@ async function ResultsContent({
 
   // Build chart data for visible page only
   const cardCharts = new Map(
-    await Promise.all(paged.map(async (m) => [m.id, await getCardChart(m.id)] as const)),
+    await Promise.all(paged.map(async (m) => [m.id, await getCardChart(m.id).catch(() => ({ spark: [] }))] as const)),
   );
 
   // Helpers
