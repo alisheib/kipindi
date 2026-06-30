@@ -93,10 +93,10 @@ export function KycDocUploader({
           // below reads as "working on this photo", not "done".
           <img src={showThumb} alt="" className={`mx-auto mb-1.5 h-16 w-auto rounded object-contain transition-opacity ${working ? "opacity-40" : ""}`} />
         ) : (
-          <span className={`mx-auto mb-1.5 h-6 w-6 inline-flex items-center justify-center rounded-pill ${
+          <span className={`mx-auto mb-1.5 h-8 w-8 inline-flex items-center justify-center rounded-full ${
             done ? "bg-yes-500 text-yes-950" : "bg-bg-overlay text-text-subtle border border-border"
           }`}>
-            {working ? <Spinner size={12} /> : done ? <I.check s={11} /> : "+"}
+            {working ? <Spinner size={14} /> : done ? <I.check s={14} /> : <I.camera s={14} />}
           </span>
         )}
         <span className="block font-display text-[12px] font-semibold text-text">{label}</span>

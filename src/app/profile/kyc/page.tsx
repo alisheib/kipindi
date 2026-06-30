@@ -130,8 +130,10 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
 
       {rejected && (
         <section role="alert" className="rounded-xl border border-no-700 bg-no-500/[0.08] p-4 lg:p-5">
-          <div className="flex items-start gap-2.5">
-            <I.alertCircle s={18} />
+          <div className="flex items-start gap-3">
+            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-no-500/15 text-no-300">
+              <I.alertCircle s={18} />
+            </span>
             <div className="min-w-0">
               <p className="font-display text-[14px] font-bold text-no-300">{t.profile.rejected}</p>
               <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
@@ -147,8 +149,10 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
 
       {needsInfo && (
         <section role="status" className="rounded-xl border border-gold-700 bg-gold-500/[0.08] p-4 lg:p-5">
-          <div className="flex items-start gap-2.5">
-            <I.alertCircle s={18} />
+          <div className="flex items-start gap-3">
+            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold-500/15 text-gold-300">
+              <I.info s={18} />
+            </span>
             <div className="min-w-0">
               <p className="font-display text-[14px] font-bold text-gold-300">{t.profile.kycMoreInfo}</p>
               <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
@@ -163,7 +167,9 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       {needsInfo && extraRequests.length > 0 && (
         <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-3">
           <div className="flex items-center gap-2">
-            <I.shieldcheck s={18} />
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gold-500/15 text-gold-300">
+              <I.fileSignature s={15} />
+            </span>
             <h2 className="font-display text-[15px] font-semibold text-text">{t.profile.kycRequestedDocs}</h2>
           </div>
           <p className="text-[12.5px] text-text-muted leading-snug">
@@ -178,15 +184,17 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       )}
 
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        <Step n={1} title={t.profile.nida}      detail={t.profile.nationalId}  done={nidaDone} active={!nidaDone} />
-        <Step n={2} title={t.profile.documents} detail={t.profile.selfieDocs} done={docsCount >= 3} active={nidaDone && docsCount < 3} />
-        <Step n={3} title={t.profile.review}    detail={t.profile.complianceApproval}  done={kyc?.status === "APPROVED"} active={submitted && kyc?.status !== "APPROVED"} />
+        <Step n={1} title={t.profile.nida}      detail={t.profile.nationalId}  done={nidaDone} active={!nidaDone} glyph="user" />
+        <Step n={2} title={t.profile.documents} detail={t.profile.selfieDocs} done={docsCount >= 3} active={nidaDone && docsCount < 3} glyph="camera" />
+        <Step n={3} title={t.profile.review}    detail={t.profile.complianceApproval}  done={kyc?.status === "APPROVED"} active={submitted && kyc?.status !== "APPROVED"} glyph="shieldcheck" />
       </section>
 
       {!nidaDone && (
         <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-4">
           <div className="flex items-center gap-2">
-            <I.shieldcheck s={18} />
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-500/15 text-brand-300">
+              <I.user s={15} />
+            </span>
             <h2 className="font-display text-[15px] font-semibold text-text">{t.profile.step1} · {t.profile.nida}</h2>
           </div>
           <form action={submitNidaAction} className="space-y-4">
@@ -263,7 +271,8 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             <SubmitButton label={`${t.profile.continueVerification}`} pendingLabel={t.common.loading} />
           </form>
           <details className="border-t border-border pt-3 text-[12.5px] text-text-muted">
-            <summary className="font-display font-semibold text-text cursor-pointer">
+            <summary className="font-display font-semibold text-text cursor-pointer flex items-center gap-2">
+              <I.shieldQuestion s={14} className="text-text-subtle shrink-0" />
               {t.profile.whyWeAsk}
             </summary>
             <p className="mt-1.5 leading-snug">
@@ -281,7 +290,12 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               {t.profile.idVerified}
             </span>
           </div>
-          <h2 className="font-display text-[15px] font-semibold text-text">{t.profile.step2} · {t.profile.uploadDocuments}</h2>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-500/15 text-brand-300">
+              <I.camera s={15} />
+            </span>
+            <h2 className="font-display text-[15px] font-semibold text-text">{t.profile.step2} · {t.profile.uploadDocuments}</h2>
+          </div>
           <p className="text-[12.5px] text-text-muted leading-snug">
             {t.profile.uploadDocsBody}
           </p>
@@ -317,11 +331,26 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       )}
 
       {submitted && (
-        <section className="rounded-xl border border-gold-700 bg-gold-500/10 p-5 lg:p-6 text-center space-y-2">
-          <p className="font-display text-[16px] font-bold text-gold-300">
+        <section className={`rounded-xl border p-5 lg:p-6 text-center space-y-3 ${
+          kyc?.status === "APPROVED"
+            ? "border-yes-700 bg-yes-500/10"
+            : "border-gold-700 bg-gold-500/10"
+        }`}>
+          <div className={`mx-auto inline-flex h-14 w-14 items-center justify-center rounded-full ${
+            kyc?.status === "APPROVED"
+              ? "bg-yes-500/20 text-yes-300"
+              : "bg-gold-500/20 text-gold-300"
+          }`}>
+            {kyc?.status === "APPROVED"
+              ? <I.shieldcheck s={28} />
+              : <I.clock s={28} />}
+          </div>
+          <p className={`font-display text-[18px] font-bold ${
+            kyc?.status === "APPROVED" ? "text-yes-300" : "text-gold-300"
+          }`}>
             {kyc?.status === "APPROVED" ? t.profile.idVerified : t.profile.inReview}
           </p>
-          <p className="text-[12.5px] text-text-muted leading-snug">
+          <p className="text-[13px] text-text-muted leading-snug max-w-[400px] mx-auto">
             {kyc?.status === "APPROVED"
               ? t.profile.kycApprovedBody
               : t.profile.kycReviewingBody}
@@ -347,24 +376,27 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
   );
 }
 
-function Step({ n, title, detail, done, active }: { n: number; title: string; detail: string; done?: boolean; active?: boolean }) {
+function Step({ n, title, detail, done, active, glyph }: { n: number; title: string; detail: string; done?: boolean; active?: boolean; glyph?: keyof typeof I }) {
   const cls =
     done   ? "border-yes-700 bg-yes-500/10"
     : active ? "border-gold-700 bg-gold-500/10"
     :          "border-border bg-bg-overlay";
-  const numCls =
+  const iconCls =
     done   ? "bg-yes-500 text-yes-950"
     : active ? "bg-gold-500 text-gold-fg"
     :          "bg-bg-overlay text-text-subtle border border-border";
+  const Glyph = glyph ? I[glyph] : null;
   return (
-    <div className={`rounded-md border p-3 ${cls}`}>
-      <div className="flex items-center gap-2">
-        <span className={`h-5 w-5 inline-flex items-center justify-center rounded-pill font-mono text-[10px] font-bold ${numCls}`}>
-          {done ? <I.check s={11} /> : n}
+    <div className={`rounded-xl border p-3.5 ${cls}`}>
+      <div className="flex items-center gap-2.5">
+        <span className={`h-7 w-7 inline-flex items-center justify-center rounded-full font-mono text-[10px] font-bold shrink-0 ${iconCls}`}>
+          {done ? <I.check s={14} /> : Glyph ? <Glyph s={14} /> : n}
         </span>
-        <span className="font-display text-[12px] font-semibold text-text">{title}</span>
+        <div className="min-w-0">
+          <span className="font-display text-[13px] font-semibold text-text leading-tight">{title}</span>
+          <p className="text-[10.5px] text-text-muted leading-snug">{detail}</p>
+        </div>
       </div>
-      <p className="mt-1 text-[11px] text-text-muted">{detail}</p>
     </div>
   );
 }
