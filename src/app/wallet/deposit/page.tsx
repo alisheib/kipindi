@@ -68,10 +68,13 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
           <FiftyMark size={180} />
         </div>
         <div className="relative z-10 p-5 lg:p-6">
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
-            {t.common.deposit}
-          </p>
-          <h1 className="mt-1 font-display text-[26px] font-bold text-text leading-tight tracking-[-0.02em]">
+          <div className="flex items-center gap-2 mb-1">
+            <I.arrowDownToLine s={14} className="text-gold-300" />
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
+              {t.common.addFunds}
+            </p>
+          </div>
+          <h1 className="font-display text-[26px] font-bold text-text leading-tight tracking-[-0.02em]">
             {t.common.deposit}
           </h1>
           <p className="mt-1 text-[14px] italic text-text-subtle">{t.wallet.mobileMoney}</p>

@@ -88,7 +88,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
         </div>
         <div className="relative z-10 p-5 lg:p-6">
           <div className="flex items-center gap-2 mb-1">
-            <I.shieldcheck s={14} />
+            <I.fileSignature s={14} className="text-info-fg" />
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-info-fg">
               {"AML"}
             </p>

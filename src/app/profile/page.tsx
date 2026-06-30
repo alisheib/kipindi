@@ -140,7 +140,7 @@ export default async function ProfilePage() {
         </div>
 
         {/* Stat strip — wallet + open positions */}
-        <div className="relative z-10 grid grid-cols-3 border-t border-border/60 divide-x divide-border/60">
+        <div className="relative z-10 grid grid-cols-3 border-t border-border divide-x divide-border">
           <Stat
             label={t.profile.balance}
             value={wallet ? fmtTzs(wallet.balance) : "—"}

@@ -65,10 +65,13 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
         </div>
         <div className="relative z-10 p-5 lg:p-6 flex items-end justify-between gap-4">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
-              {t.wallet.withdrawTitle}
-            </p>
-            <h1 className="mt-1 font-display text-[24px] lg:text-[26px] font-bold text-text leading-tight tracking-[-0.02em]">
+            <div className="flex items-center gap-2 mb-1">
+              <I.arrowUpFromLine s={14} className="text-gold-300" />
+              <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
+                {t.wallet.withdrawTitle}
+              </p>
+            </div>
+            <h1 className="font-display text-[24px] lg:text-[26px] font-bold text-text leading-tight tracking-[-0.02em]">
               {t.wallet.moveFundsOut}
             </h1>
             <p className="mt-1 text-[13px] italic text-text-subtle">{t.wallet.mobileMoney}</p>
