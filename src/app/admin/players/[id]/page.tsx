@@ -279,6 +279,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                 <table className="admin-tbl min-w-[600px]">
                   <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
                     <tr>
+                      <th className="py-2 pr-3 text-left">Ref</th>
                       <SortTh field="when" label="When" current={bet.sort} dir={bet.dir} sp={sp} baseHref={playerHref} prefix="bet" className="py-2 pr-3" />
                       <SortTh field="match" label="Match · window" current={bet.sort} dir={bet.dir} sp={sp} baseHref={playerHref} prefix="bet" className="py-2 pr-3" />
                       <SortTh field="outcome" label="Outcome" current={bet.sort} dir={bet.dir} sp={sp} baseHref={playerHref} prefix="bet" className="py-2 pr-3" />
@@ -290,6 +291,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                   <tbody>
                     {betRows.map((b) => (
                       <tr key={b.id} className="border-b border-border-subtle/50 last:border-b-0">
+                        <td className="py-2 pr-3 font-mono text-[10px] tracking-[0.04em] text-text-muted tabular-nums whitespace-nowrap">{b.id}</td>
                         <td className="py-2 pr-3 font-mono whitespace-nowrap">{formatDateTime(b.placedAt)}</td>
                         <td className="py-2 pr-3">{b.matchLabel} <span className="text-text-tertiary">· {b.windowLabel}</span></td>
                         <td className="py-2 pr-3">{b.outcomeLabel}</td>
@@ -298,7 +300,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                         <td className={["py-2 pl-3 font-mono tabular text-right", b.status === "WON" ? "text-gold" : "text-text-tertiary"].join(" ")}>{b.returnAmount ? formatTzs(b.returnAmount) : "—"}</td>
                       </tr>
                     ))}
-                    {bets.length === 0 && <tr><td colSpan={6} className="py-6 text-center text-text-tertiary">No bets placed.</td></tr>}
+                    {bets.length === 0 && <tr><td colSpan={7} className="py-6 text-center text-text-tertiary">No bets placed.</td></tr>}
                   </tbody>
                 </table>
               </div>

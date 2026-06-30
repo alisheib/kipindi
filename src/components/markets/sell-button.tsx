@@ -181,6 +181,7 @@ export function SellButton({
         pending={pending}
         stake={stake}
         value={value}
+        positionId={positionId}
         onConfirm={submit}
         onCancel={() => { if (!pending) setConfirmOpen(false); }}
       />
@@ -202,6 +203,7 @@ export function SellButton({
               : t.common.positionUnchanged
           }
           details={resultData.variant === "success" ? [
+            { label: t.common.ticket, value: positionId },
             { label: t.common.returned, value: `TZS ${fmt(resultData.value)}` },
             {
               label: t.common.earlyExitFee,

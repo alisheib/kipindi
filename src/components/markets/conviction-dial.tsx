@@ -146,6 +146,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
     side: "YES" | "NO";
     stake: number;
     payoutIfWin: number;
+    positionId?: string;
     error?: string;
   } | null>(null);
   const [pending, startTransition] = useTransition();
@@ -673,6 +674,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
         side: q.side,
         stake: q.stake,
         payoutIfWin: r.data!.payoutIfWin,
+        positionId: r.data!.positionId,
       });
       setResultOpen(true);
       // Trigger an immediate page + balance refresh so the player sees
@@ -1219,6 +1221,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
               : t.common.stakeHasntMoved
           }
           details={resultData.variant === "success" ? [
+            ...(resultData.positionId ? [{ label: t.common.ticket, value: resultData.positionId }] : []),
             { label: t.dialog.stakeLabel, value: `TZS ${fmt(resultData.stake)}` },
             { label: t.dialog.payoutLabel, value: t.market.atResolution },
           ] : undefined}

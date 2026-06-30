@@ -24,18 +24,14 @@ export function HouseLeanWarning({ level }: { level: LeanLevel }) {
 
   return (
     <div
-      role={neg ? "alert" : "status"}
-      className={`mt-3 flex items-start gap-2.5 rounded-xl border px-3 py-2.5 text-[12px] leading-snug ${
-        neg
-          ? "border-no-700/55 bg-no-500/[0.10]"
-          : "border-warning-border bg-warning-bg/30"
-      }`}
+      role="status"
+      className="mt-3 flex items-start gap-2.5 rounded-xl border border-warning-border bg-warning-bg/30 px-3 py-2.5 text-[12px] leading-snug"
     >
-      <span className={`shrink-0 mt-0.5 ${neg ? "text-no-300" : "text-warning-fg"}`}>
+      <span className="shrink-0 mt-0.5 text-warning-fg">
         <I.warning s={15} />
       </span>
       <div className="min-w-0">
-        <p className={`text-[12px] font-semibold ${neg ? "text-no-300" : "text-warning-fg"}`}>
+        <p className="text-[12px] font-semibold text-warning-fg">
           {neg ? t.market.heavyLeanWarning : t.market.crowdedWarning}
         </p>
         {neg && (

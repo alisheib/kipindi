@@ -236,6 +236,7 @@ export default async function MarketPredictorsPage({
             <table className="admin-tbl">
               <thead>
                 <tr>
+                  <th className="text-left">Ref</th>
                   <th className="text-left">Predictor</th>
                   <th className="text-left">Phone</th>
                   <SortTh field="side"   label="Side"    current={sort} dir={dir} sp={sp} baseHref={`/admin/markets/${id}`} />
@@ -257,6 +258,7 @@ export default async function MarketPredictorsPage({
                     : (p.finalPayout ?? null);
                   return (
                     <tr key={p.id}>
+                      <td className="font-mono text-[10px] tracking-[0.04em] text-text-muted tabular-nums whitespace-nowrap">{p.id}</td>
                       <td>
                         <a href={`/admin/players/${p.userId}`} className="flex items-center gap-2.5 min-w-0 hover:text-royal">
                           <Avatar initials={initials} size="sm" seed={p.userId} />

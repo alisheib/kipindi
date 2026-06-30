@@ -24,11 +24,13 @@ type Props = {
   pending: boolean;
   stake: number;
   value: number;
+  /** Position reference (pos_*) — shown as ticket number for traceability. */
+  positionId?: string;
   onConfirm: () => void;
   onCancel: () => void;
 };
 
-export function SellConfirmModal({ open, pending, stake, value, onConfirm, onCancel }: Props) {
+export function SellConfirmModal({ open, pending, stake, value, positionId, onConfirm, onCancel }: Props) {
   useModalLock(open);
   const { t } = useT();
   const [mounted, setMounted] = useState(false);
@@ -101,6 +103,13 @@ export function SellConfirmModal({ open, pending, stake, value, onConfirm, onCan
               <I.x s={16} />
             </button>
           </div>
+
+          {positionId && (
+            <p className="mb-3 font-mono text-[10px] tracking-[0.06em] text-text-muted tabular-nums">
+              <I.ticket s={10} className="inline -mt-px mr-1 opacity-60" />
+              {positionId}
+            </p>
+          )}
 
           <div
             className="rounded-lg border p-4"
