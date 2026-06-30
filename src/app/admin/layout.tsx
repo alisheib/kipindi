@@ -1,5 +1,10 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { headers, cookies } from "next/headers";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { hasTotp } from "@/lib/server/totp";

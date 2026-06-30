@@ -215,6 +215,12 @@ export function WinCelebrationHost() {
         @keyframes wc-rise { from { transform: translateY(8px) scale(.96); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
         @keyframes wc-pop  { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.06); opacity: 1; } 100% { transform: scale(1); } }
         @keyframes wc-glow { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
+        @media (prefers-reduced-motion: reduce) {
+          @keyframes wc-fade { from, to { opacity: 1; } }
+          @keyframes wc-rise { from, to { opacity: 1; transform: none; } }
+          @keyframes wc-pop  { from, to { opacity: 1; transform: none; } }
+          @keyframes wc-glow { from, to { opacity: 1; transform: none; } }
+        }
       `}</style>
     </div>,
     document.body,
