@@ -185,6 +185,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                     payout={p.potentialPayout}
                     status="OPEN"
                     placedAt={p.placedAt}
+                    positionId={p.id}
                   />
                   {(() => {
                     const cutoffIso = m.selectionClosedAt ?? m.resolutionAt;
@@ -239,6 +240,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                     payout={p.finalPayout ?? 0}
                     status={p.status as "WIN" | "LOSS" | "VOID" | "CASHED_OUT"}
                     placedAt={p.placedAt}
+                    positionId={p.id}
                   />
                 );
               })}

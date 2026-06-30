@@ -38,6 +38,11 @@ export function HouseLeanWarning({ level }: { level: LeanLevel }) {
         <p className={`text-[12px] font-semibold ${neg ? "text-no-300" : "text-warning-fg"}`}>
           {neg ? t.market.heavyLeanWarning : t.market.crowdedWarning}
         </p>
+        {neg && (
+          <p className="mt-1 text-[11px] leading-snug text-text-muted">
+            {t.market.refundRiskNote}
+          </p>
+        )}
       </div>
     </div>
   );

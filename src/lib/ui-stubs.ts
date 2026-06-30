@@ -13,6 +13,8 @@ export type Transaction = {
   status: string;
   createdAt: string;
   description?: string | null;
+  /** Position reference (pos_*) for bet-related transactions — the ticket number. */
+  betId?: string | null;
 };
 
 /** Logged-out shell identity (isAuthed:false) — never an authenticated user. */

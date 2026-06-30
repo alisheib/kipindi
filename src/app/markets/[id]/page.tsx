@@ -237,18 +237,31 @@ export default async function MarketDetail({
                 const liveValue = positionCashOutValues.get(p.id) ?? null;
                 return (
                   <div key={p.id} className="rounded-md border border-border bg-bg-overlay/40 p-3 space-y-2">
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[12px]">
-                      <span className={p.side === "YES" ? "text-yes-300 font-bold" : "text-no-300 font-bold"}>{p.side}</span>
-                      <span className="text-text-muted">{t.common.stake} {fmtTzs(p.stake)}</span>
-                      {p.status !== "OPEN" && (
-                        <span className="text-gold-300">{t.market.paidLabel} {fmtTzs(p.finalPayout ?? 0)}</span>
-                      )}
-                      <span className="text-text-subtle ml-auto">[{p.status === "CASHED_OUT" ? "CASHED" : p.status}]</span>
+                    <div className="flex items-center justify-between gap-2 font-mono text-[12px]">
+                      <div className="flex items-center gap-2">
+                        <span className={`font-bold ${p.side === "YES" ? "text-yes-300" : "text-no-300"}`}>{p.side}</span>
+                        <span className={`text-[10px] uppercase tracking-[0.10em] font-semibold ${
+                          p.status === "OPEN" ? "text-info-fg" : p.status === "WIN" ? "text-gold-300" : p.status === "LOSS" ? "text-no-300" : "text-text-subtle"
+                        }`}>{p.status === "CASHED_OUT" ? "CASHED" : p.status}</span>
+                      </div>
+                      <span className="font-bold tabular-nums text-text">{fmtTzs(p.stake)}</span>
                     </div>
-                    <p className="flex items-center gap-1 font-mono text-[10px] tracking-[0.04em] text-text-faint tabular-nums">
-                      <I.clock s={10} className="opacity-70 shrink-0" />
-                      {t.market.opened} {fmtTime(p.placedAt)}
-                    </p>
+                    {p.status !== "OPEN" && (
+                      <div className="flex items-center justify-between font-mono text-[11px]">
+                        <span className="text-text-muted">{t.market.paidLabel}</span>
+                        <span className="font-bold tabular-nums text-gold-300">{fmtTzs(p.finalPayout ?? 0)}</span>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                      <p className="font-mono text-[10px] tracking-[0.06em] text-text-muted tabular-nums">
+                        <I.ticket s={10} className="inline -mt-px mr-0.5 opacity-60" />
+                        {p.id}
+                      </p>
+                      <p className="flex items-center gap-1 font-mono text-[10px] tracking-[0.04em] text-text-faint tabular-nums">
+                        <I.clock s={10} className="opacity-70 shrink-0" />
+                        {t.market.opened} {fmtTime(p.placedAt)}
+                      </p>
+                    </div>
                     {liveValue !== null && (
                       <SellButton
                         positionId={p.id}
