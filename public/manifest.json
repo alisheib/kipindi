@@ -31,5 +31,21 @@
       "sizes": "512x512",
       "purpose": "maskable"
     }
+  ],
+  "screenshots": [
+    {
+      "src": "/og/og-1200x630.png",
+      "type": "image/png",
+      "sizes": "1200x630",
+      "form_factor": "wide",
+      "label": "50pick — Markets overview"
+    },
+    {
+      "src": "/og/twitter-1200x600.png",
+      "type": "image/png",
+      "sizes": "1200x600",
+      "form_factor": "narrow",
+      "label": "50pick — Predict events"
+    }
   ]
 }

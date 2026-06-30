@@ -125,8 +125,21 @@ export default async function MarketDetail({
   const hedgeOpposite = (side === "YES" && heldSides.has("NO")) || (side === "NO" && heldSides.has("YES"));
   const heldLabel = [...heldSides].join(" + ");
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: m.titleEn,
+    description: `YES ${yesPct}% · NO ${100 - yesPct}%. Prediction market on 50pick.`,
+    startDate: m.createdAt,
+    endDate: m.resolutionAt,
+    eventStatus: isResolved ? "https://schema.org/EventCompleted" : "https://schema.org/EventScheduled",
+    organizer: { "@type": "Organization", name: "50pick", url: process.env.NEXT_PUBLIC_APP_URL ?? "https://www.50pick.tz" },
+    location: { "@type": "VirtualLocation", url: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://www.50pick.tz"}/markets/${id}` },
+  };
+
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       {/* Auto-refresh every 15s on the detail page — tighter than the
           grid because a player on this page is about to bet and needs
           the freshest possible odds/pool/status. */}

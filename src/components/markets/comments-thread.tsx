@@ -172,11 +172,15 @@ export function CommentsThread({
                     </span>
                   )}
                   <span className="font-mono text-[10.5px] text-text-subtle">{relTime(c.createdAt, t.common.now)}</span>
-                  {c.hidden && (
+                  {c.hidden ? (
                     <span className="rounded-pill border border-warning-border bg-warning-bg/40 px-1.5 py-px font-mono text-[9.5px] text-warning-fg">
                       {t.market.commentHidden}
                     </span>
-                  )}
+                  ) : c.reports > 0 && !c.mine ? (
+                    <span className="rounded-pill border border-border bg-bg-overlay px-1.5 py-px font-mono text-[9.5px] text-text-subtle">
+                      {t.common.underReview}
+                    </span>
+                  ) : null}
                 </div>
                 <p className="mt-0.5 whitespace-pre-line break-words text-[14px] leading-relaxed text-text-muted">{c.body}</p>
                 <div className="mt-1 flex items-center gap-3">

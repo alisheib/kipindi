@@ -78,7 +78,9 @@ export function WinCelebrationHost() {
       if (!detail) return;
       setPayload(detail);
       setOpen(true);
-      haptics.celebrate();
+      if (!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+        haptics.celebrate();
+      }
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => setOpen(false), 4_500);
     };
