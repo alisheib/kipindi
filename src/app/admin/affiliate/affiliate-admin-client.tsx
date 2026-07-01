@@ -212,6 +212,16 @@ export function AffiliateAdminClient({ config }: { config: AffiliateConfig }) {
           <Field label="Deposit threshold" prefix="TZS" width={180} value={c.prize.depositThresholdTzs} onChange={(n) => patchPrize({ depositThresholdTzs: n })} />
         )}
         <Field label="Fixed prize" prefix="TZS" width={150} value={c.prize.amountTzs} onChange={(n) => patchPrize({ amountTzs: n })} />
+        {c.prize.milestone === "FIRST_BET" && (
+          <Field label="Min bet amount" hint="Recruit's bet must be ≥ this (§4.2c)" prefix="TZS" width={180} value={c.prize.minBetAmountTzs ?? 0} onChange={(n) => patchPrize({ minBetAmountTzs: n })} />
+        )}
+        <div className="flex items-center gap-2.5">
+          <Toggle on={c.prize.requireDeposit ?? true} onClick={() => patchPrize({ requireDeposit: !(c.prize.requireDeposit ?? true) })} aria-label="Require deposit" />
+          <div>
+            <div className="text-[12px] font-semibold">Require deposit (§4.2b)</div>
+            <div className="text-[10.5px] text-text-muted">Recruit must have deposited before prize fires</div>
+          </div>
+        </div>
         <Field label="Cap per referrer" hint="Max prizes (0 = none)" suffix="prizes" width={180} value={c.prize.capPerReferrer} onChange={(n) => patchPrize({ capPerReferrer: n })} />
       </RewardCard>
     </div>

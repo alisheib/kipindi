@@ -218,6 +218,22 @@ export default async function InvitePage() {
         </div>
       </section>
 
+      {/* Requirements banner — Management Bonus Rules §4 + §5 */}
+      <section className="rounded-xl border border-border bg-bg-elevated/60 p-4 space-y-2">
+        <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle flex items-center gap-1.5">
+          <I.shieldcheck s={11} />
+          {t.profile.bonusRequirements}
+        </p>
+        <ul className="space-y-1.5 text-[12px] text-text-muted leading-snug list-disc pl-4">
+          <li>{t.profile.inviteReqRegister}</li>
+          <li>{t.profile.inviteReqDeposit}</li>
+          <li>{t.profile.inviteReqBet}</li>
+          <li>{t.profile.inviteReqWager}</li>
+          <li>{t.profile.inviteReqExpiry}</li>
+          <li>{t.profile.inviteReqSequential}</li>
+        </ul>
+      </section>
+
       {/* Recruits */}
       <Cap className="!mt-1">{t.profile.yourReferrals}</Cap>
       {s.recruits.length > 0 ? (

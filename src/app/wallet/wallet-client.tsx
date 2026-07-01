@@ -86,7 +86,7 @@ const BONUS_SOURCE_LABEL: Record<string, string> = {
  */
 function BonusWalletCard({
   bonusBalance, activeCount, grants, currency,
-}: { bonusBalance: number; activeCount: number; grants: BonusGrantView[]; currency: string }) {
+}: { bonusBalance: number; activeCount: number; grants: (BonusGrantView & { status?: "ACTIVE" | "QUEUED" })[]; currency: string }) {
   const { t } = useT();
   const totalReq = grants.reduce((s, g) => s + g.wagerRequiredTzs, 0);
   const totalWagered = grants.reduce((s, g) => s + Math.min(g.wageredTzs, g.wagerRequiredTzs), 0);
@@ -150,23 +150,39 @@ function BonusWalletCard({
 
             {grants.length > 0 && (
               <div className="mt-4 space-y-2">
-                {grants.slice(0, 3).map((g) => (
-                  <div key={g.id} className="rounded-md px-3 py-2 bg-gold-500/[0.06] border border-gold-700/25">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-gold-200/80">
-                        {BONUS_SOURCE_LABEL[g.source] ?? g.source}
-                      </span>
-                      <span className="font-mono text-[12px] font-bold text-text tabular-nums"><Cash>{fmt(g.remainingTzs, currency)}</Cash></span>
+                {grants.slice(0, 5).map((g) => {
+                  const isQueued = g.status === "QUEUED";
+                  return (
+                    <div key={g.id} className={`rounded-md px-3 py-2 border ${isQueued ? "bg-bg-overlay/40 border-border/40 opacity-70" : "bg-gold-500/[0.06] border-gold-700/25"}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-gold-200/80 flex items-center gap-1.5">
+                          {BONUS_SOURCE_LABEL[g.source] ?? g.source}
+                          {isQueued && (
+                            <span className="inline-flex items-center rounded-pill px-1.5 py-px text-[8px] font-bold bg-warning-bg/40 border border-warning-border text-warning-fg">
+                              {t.common.queued}
+                            </span>
+                          )}
+                        </span>
+                        <span className="font-mono text-[12px] font-bold text-text tabular-nums"><Cash>{fmt(g.remainingTzs, currency)}</Cash></span>
+                      </div>
+                      {isQueued ? (
+                        <p className="mt-1.5 text-[9.5px] text-text-muted italic">
+                          {t.common.queuedHint}
+                        </p>
+                      ) : (
+                        <>
+                          <div className="mt-1.5 h-1.5 w-full rounded-pill overflow-hidden bg-bg-sunken/70">
+                            <div className={`h-full rounded-pill ${g.progressPct > 0 && g.progressPct < 100 ? "prog-sweep" : ""}`} style={{ width: `${g.progressPct}%`, background: "var(--gold-400)" }} />
+                          </div>
+                          <div className="mt-1 flex items-center justify-between font-mono text-[9.5px] text-gold-200/55">
+                            <span>{fmt(g.wageredTzs, currency)} / {fmt(g.wagerRequiredTzs, currency)} {t.common.played}</span>
+                            {g.expiresAt && <span>{t.common.exp} {formatDateTimeSafe(g.expiresAt).split(",")[0]}</span>}
+                          </div>
+                        </>
+                      )}
                     </div>
-                    <div className="mt-1.5 h-1.5 w-full rounded-pill overflow-hidden bg-bg-sunken/70">
-                      <div className={`h-full rounded-pill ${g.progressPct > 0 && g.progressPct < 100 ? "prog-sweep" : ""}`} style={{ width: `${g.progressPct}%`, background: "var(--gold-400)" }} />
-                    </div>
-                    <div className="mt-1 flex items-center justify-between font-mono text-[9.5px] text-gold-200/55">
-                      <span>{fmt(g.wageredTzs, currency)} / {fmt(g.wagerRequiredTzs, currency)} {t.common.played}</span>
-                      {g.expiresAt && <span>{t.common.exp} {formatDateTimeSafe(g.expiresAt).split(",")[0]}</span>}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {grants.length > 3 && (
                   <p className="text-center font-mono text-[10px] text-gold-200/60">+{grants.length - 3} {grants.length - 3 > 1 ? t.common.moreBonuses : t.common.moreBonus}</p>
                 )}
@@ -332,12 +348,14 @@ export function WalletPageClient({
   transactions,
   bonusBalance, bonusActiveCount, bonusWagerRemaining, bonusGrants,
   cashbackPercent = 0,
+  cashbackMode = "REQUEST",
   isAuthed,
 }: {
   balance: number; pending: number; hold: number; currency: string;
   transactions: Transaction[];
-  bonusBalance: number; bonusActiveCount: number; bonusWagerRemaining: number; bonusGrants: BonusGrantView[];
+  bonusBalance: number; bonusActiveCount: number; bonusWagerRemaining: number; bonusGrants: (BonusGrantView & { status?: "ACTIVE" | "QUEUED" })[];
   cashbackPercent?: number;
+  cashbackMode?: "REQUEST" | "AUTO";
   isAuthed: boolean;
 }) {
   const { t } = useT();
@@ -390,7 +408,7 @@ export function WalletPageClient({
         <p className="sr-only">{t.common.bonus}: {fmt(bonusWagerRemaining, currency)}</p>
       )}
 
-      {cashbackPercent > 0 && <CashbackPromo percent={cashbackPercent} />}
+      {cashbackPercent > 0 && <CashbackPromo percent={cashbackPercent} mode={cashbackMode} />}
 
       {/* Kit tabs — line variant rebuilt inline so we don't pull the legacy Tabs component. */}
       <nav role="tablist" aria-label={t.common.walletLabel} className="flex items-center gap-1 border-b border-border">

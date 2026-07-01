@@ -53,8 +53,9 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
   try { bonus = await getBonusSummary(session.userId); } catch { /* graceful */ }
   const bonusCfg = getBonusConfig();
   const cashbackPercent = bonusCfg.enabled && bonusCfg.cashbackEnabled ? bonusCfg.cashbackPercentage : 0;
+  const cashbackMode = bonusCfg.cashbackMode ?? "REQUEST";
   const bonusGrants = bonus.grants
-    .filter((g) => g.status === "ACTIVE")
+    .filter((g) => g.status === "ACTIVE" || g.status === "QUEUED")
     .map((g) => ({
       id: g.id,
       amountTzs: g.amountTzs,
@@ -65,6 +66,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
       wagerRequiredTzs: g.wagerRequiredTzs,
       remainingWagerTzs: g.remainingWagerTzs,
       expiresAt: g.expiresAt,
+      status: g.status as "ACTIVE" | "QUEUED",
     }));
 
   return (
@@ -82,6 +84,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
         bonusWagerRemaining={bonus.activeWagerRemainingTzs}
         bonusGrants={bonusGrants}
         cashbackPercent={cashbackPercent}
+        cashbackMode={cashbackMode}
         isAuthed={true}
       />
     </>

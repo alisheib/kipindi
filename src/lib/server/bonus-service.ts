@@ -417,12 +417,13 @@ export async function expireActiveGrants(): Promise<{ expired: number; removedTz
   for (const g of due) {
     const outcome = await withLock(`wallet:${g.userId}`, async (): Promise<{ removed: number; amountTzs: number } | null> => {
       const fresh = await db.bonusGrant.findById(g.id);
-      if (!fresh || fresh.status !== "ACTIVE") return null;
+      if (!fresh || (fresh.status !== "ACTIVE" && fresh.status !== "QUEUED")) return null;
       const rem = fresh.remainingTzs;
-      if (rem > 0) await db.wallet.adjust(fresh.walletId, { bonusBalance: -rem });
+      // Only deduct from bonusBalance if the grant was ACTIVE (QUEUED grants haven't touched bonusBalance).
+      if (rem > 0 && fresh.status === "ACTIVE") await db.wallet.adjust(fresh.walletId, { bonusBalance: -rem });
       await db.bonusGrant.update(fresh.id, { status: "EXPIRED", remainingTzs: 0 });
-      audit({ category: "WALLET", action: "bonus.expired", actorId: null, targetType: "BonusGrant", targetId: fresh.id, payload: { userId: fresh.userId, removedTzs: rem, amountTzs: fresh.amountTzs } });
-      return { removed: rem, amountTzs: fresh.amountTzs };
+      audit({ category: "WALLET", action: "bonus.expired", actorId: null, targetType: "BonusGrant", targetId: fresh.id, payload: { userId: fresh.userId, removedTzs: fresh.status === "ACTIVE" ? rem : 0, amountTzs: fresh.amountTzs, wasQueued: fresh.status === "QUEUED" } });
+      return { removed: fresh.status === "ACTIVE" ? rem : 0, amountTzs: fresh.amountTzs };
     });
     if (outcome) {
       expired++;
