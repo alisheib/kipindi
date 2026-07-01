@@ -21,15 +21,16 @@ const CATEGORY_VARIANT: Record<AuditCategory, "gold" | "royal" | "danger" | "suc
 };
 
 export default async function AdminOverviewPage() {
-  const active24h = await activePlayers("today");
-  const ggr = await grossGamingRevenue("today");
-  const ngr = await netGamingRevenue("today");
-  const amlPending = (await db.txn.listByStatus("AML_REVIEW")).length;
-  const kyc = await kycFunnel();
-  const provs = (await providerSummary("28d")).slice(0, 5);
-  const rg = await rgRosterCounts();
+  const active24h = await activePlayers("today").catch(() => 0);
+  const ggr = await grossGamingRevenue("today").catch(() => 0);
+  const ngr = await netGamingRevenue("today").catch(() => 0);
+  let amlPending = 0;
+  try { amlPending = (await db.txn.listByStatus("AML_REVIEW")).length; } catch { /* graceful */ }
+  const kyc = await kycFunnel().catch(() => ({ registered: 0, started: 0, pending: 0, approved: 0 }));
+  const provs = await providerSummary("28d").then((l) => l.slice(0, 5)).catch(() => []);
+  const rg = await rgRosterCounts().catch(() => ({ selfExcluded: 0, cooledOff: 0, expiringThisWeek: 0 }));
   const recent = getAuditPage({ limit: 12 });
-  const flow = await moneyFlowSeries("today", 24);
+  const flow = await moneyFlowSeries("today", 24).catch(() => []);
 
   // Provider mix flex shares — total deposits across the top 5 providers
   const provTotal = provs.reduce((s, p) => s + p.deposits, 0) || 1;

@@ -41,7 +41,7 @@ export default async function AdminMarketsPage({
     ? (sp.category as MarketCategory)
     : "";
 
-  const all = await listMarkets();
+  const all = await listMarkets().catch(() => []);
   const filtered = all.filter((m) => {
     if (statusFilter && m.status !== statusFilter) return false;
     if (categoryFilter && m.category !== categoryFilter) return false;

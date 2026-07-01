@@ -29,7 +29,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
 
   // Fetch the full history (no silent 100-cap), then paginate the settled
   // archive with the shared player page size so older positions stay reachable.
-  const positions = await listPositionsForUser(session.userId, 5_000);
+  const positions = await listPositionsForUser(session.userId, 5_000).catch(() => []);
   const open = positions.filter((p) => p.status === "OPEN");
   const settled = positions.filter((p) => p.status !== "OPEN");
 

@@ -36,9 +36,9 @@ export default async function RegisterPage({
   // but can still bet with the starter balance, so we honor their intent.
   const nextRaw = (sp.next ?? "").trim();
   const nextOk = /^\/(?![/\\])/.test(nextRaw) ? nextRaw : "";
-  const referral = refCode ? await resolveReferralPreview(refCode) : null;
+  const referral = refCode ? await resolveReferralPreview(refCode).catch(() => null) : null;
   const inviteCode = (sp.invite ?? "").trim().slice(0, 24);
-  const invite = inviteCode ? await getInvitePreview(inviteCode) : null;
+  const invite = inviteCode ? await getInvitePreview(inviteCode).catch(() => null) : null;
 
   const errorPanel = (() => {
     if (!sp.error) return null;

@@ -98,7 +98,20 @@ export async function POST(req: Request) {
   if (!ref || !status) {
     return NextResponse.json({ ok: true, ignored: true, reason: !ref ? "no-reference" : "non-terminal-status" });
   }
-  const settled = await settlePaymentWebhook({ providerRef: ref, status });
+  let settled: Awaited<ReturnType<typeof settlePaymentWebhook>>;
+  try {
+    settled = await settlePaymentWebhook({ providerRef: ref, status });
+  } catch (err) {
+    audit({
+      category: "WALLET",
+      action: "webhook.payment.settle_error",
+      actorId: null,
+      targetType: "Webhook",
+      targetId: ref,
+      payload: { provider, error: String(err) },
+    });
+    return NextResponse.json({ ok: false, error: "settle-failed" }, { status: 500 });
+  }
   audit({
     category: "WALLET",
     action: "webhook.payment.settled",

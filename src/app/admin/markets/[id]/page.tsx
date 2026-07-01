@@ -17,7 +17,8 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const m = await getMarket(id);
+  let m: Awaited<ReturnType<typeof getMarket>> | null = null;
+  try { m = await getMarket(id); } catch { /* graceful */ }
   if (!m) return { title: "Market not found" };
   return { title: `Admin · Predictors — ${m.titleEn.slice(0, 50)}` };
 }
@@ -58,7 +59,8 @@ export default async function MarketPredictorsPage({
   searchParams: Promise<{ q?: string; side?: string; status?: string; sort?: string; dir?: string; page?: string }>;
 }) {
   const { id } = await params;
-  const m = await getMarket(id);
+  let m: Awaited<ReturnType<typeof getMarket>> | null = null;
+  try { m = await getMarket(id); } catch { /* graceful */ }
   if (!m) notFound();
 
   const sp = await searchParams;
@@ -66,14 +68,16 @@ export default async function MarketPredictorsPage({
   const sideFilter = ["YES", "NO"].includes(sp.side ?? "") ? sp.side! : "";
   const statusFilter = ["OPEN", "WIN", "LOSS", "VOID", "CASHED_OUT"].includes(sp.status ?? "") ? sp.status! : "";
 
-  const allPositions = await listPositionsForMarket(id);
+  const allPositions = await listPositionsForMarket(id).catch(() => []);
 
   // Enrich with user data — batched to avoid N+1 on large markets
   const userIds = [...new Set(allPositions.map((p) => p.userId))];
   const userMap = new Map<string, { displayName: string | null; phoneE164: string; id: string }>();
   for (const uid of userIds) {
-    const u = await db.user.findById(uid);
-    if (u) userMap.set(uid, { displayName: u.displayName, phoneE164: u.phoneE164, id: u.id });
+    try {
+      const u = await db.user.findById(uid);
+      if (u) userMap.set(uid, { displayName: u.displayName, phoneE164: u.phoneE164, id: u.id });
+    } catch { /* graceful */ }
   }
 
   // Filter

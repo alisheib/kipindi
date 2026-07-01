@@ -41,7 +41,9 @@ export default async function AdminBonusesPage({
 }) {
   const sp = await searchParams;
   const config = getBonusConfig();
-  const stats = await getAdminBonusStats();
+  const stats = await getAdminBonusStats().catch(() => ({
+    outstandingTzs: 0, activeGrants: 0, totalGrantedTzs: 0, totalFulfilledTzs: 0, ledger: [],
+  }));
 
   const gPage = parsePage(sp.gpage, stats.ledger.length);
   const ledgerPage = stats.ledger.slice((gPage - 1) * PER_PAGE, gPage * PER_PAGE);

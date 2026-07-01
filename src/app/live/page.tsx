@@ -44,8 +44,8 @@ export default async function LivePage() {
 
   // Exclude markets whose resolution time has passed — they're closed/awaiting
   // settlement, not live, and must not show a LIVE badge on the board.
-  const all = (await listMarkets({ status: "LIVE" })).filter((m) => !isClosedByTime(m));
-  const traderMap = await traderSeedsByMarket();
+  const all = await listMarkets({ status: "LIVE" }).then((l) => l.filter((m) => !isClosedByTime(m))).catch(() => []);
+  const traderMap = await traderSeedsByMarket().catch(() => new Map());
   // Build a serialisable snapshot for the client component
   const markets = await Promise.all(all.map(async (m) => {
     const cc = await getCardChart(m.id).catch(() => ({ spark: [] as number[], move24h: undefined }));

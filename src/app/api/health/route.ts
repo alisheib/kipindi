@@ -16,37 +16,45 @@ export const runtime = "nodejs";
 const BOOT_AT = Date.now();
 
 export async function GET() {
-  const uptimeSec = Math.floor((Date.now() - BOOT_AT) / 1000);
-  const userCount = (await db.user.list()).length;
-  const auditCount = auditRingSize();
-  const smsHealth = smsHealthSnapshot();
-  const liveMarkets = (await listMarkets({ status: "LIVE" })).length;
-  const resolvedMarkets = (await listMarkets({ status: "RESOLVED" })).length;
+  try {
+    const uptimeSec = Math.floor((Date.now() - BOOT_AT) / 1000);
+    let userCount = -1;
+    try { userCount = db.user.list().length; } catch { /* graceful */ }
+    const auditCount = auditRingSize();
+    const smsHealth = smsHealthSnapshot();
+    const liveMarkets = await listMarkets({ status: "LIVE" }).then((l) => l.length).catch(() => -1);
+    const resolvedMarkets = await listMarkets({ status: "RESOLVED" }).then((l) => l.length).catch(() => -1);
 
-  return NextResponse.json(
-    {
-      ok: true,
-      uptimeSec,
-      timestamp: new Date().toISOString(),
-      version: process.env.NEXT_PUBLIC_APP_VERSION ?? "1.0.0",
-      store: {
-        users: userCount,
-        auditEntries: auditCount,
-        marketsLive: liveMarkets,
-        marketsResolved: resolvedMarkets,
+    return NextResponse.json(
+      {
+        ok: true,
+        uptimeSec,
+        timestamp: new Date().toISOString(),
+        version: process.env.NEXT_PUBLIC_APP_VERSION ?? "1.0.0",
+        store: {
+          users: userCount,
+          auditEntries: auditCount,
+          marketsLive: liveMarkets,
+          marketsResolved: resolvedMarkets,
+        },
+        sms: {
+          provider: sms.name,
+          successRate: smsHealth.successRate,
+        },
       },
-      sms: {
-        provider: sms.name,
-        successRate: smsHealth.successRate,
+      {
+        headers: {
+          "cache-control": "no-store, max-age=0",
+          "x-health": "ok",
+        },
       },
-    },
-    {
-      headers: {
-        "cache-control": "no-store, max-age=0",
-        "x-health": "ok",
-      },
-    },
-  );
+    );
+  } catch (err) {
+    return NextResponse.json(
+      { ok: false, error: "health-check-failed", message: String(err) },
+      { status: 500, headers: { "cache-control": "no-store", "x-health": "error" } },
+    );
+  }
 }
 
 export async function HEAD() {

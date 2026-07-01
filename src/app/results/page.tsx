@@ -93,8 +93,8 @@ async function ResultsContent({
 
   // Fetch all resolved + voided
   const effectiveCat = searching ? undefined : (activeCat === "all" ? undefined : activeCat as MarketCategory);
-  const resolved = (await listMarkets({ status: "RESOLVED", category: effectiveCat })).filter(matches);
-  const voided = (await listMarkets({ status: "VOIDED", category: effectiveCat })).filter(matches);
+  const resolved = await listMarkets({ status: "RESOLVED", category: effectiveCat }).then((l) => l.filter(matches)).catch(() => []);
+  const voided = await listMarkets({ status: "VOIDED", category: effectiveCat }).then((l) => l.filter(matches)).catch(() => []);
   const all = [...resolved, ...voided];
 
   // Sort

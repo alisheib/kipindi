@@ -29,7 +29,7 @@ export type StoredUser = {
   lockedUntil: string | null;
   role: "PLAYER" | "AGENT" | "MODERATOR" | "ADMIN" | "COMPLIANCE" | "SUPPORT";
   status: "ACTIVE" | "PENDING_KYC" | "SUSPENDED" | "SELF_EXCLUDED" | "COOLED_OFF" | "CLOSED";
-  locale: "EN" | "SW";
+  locale: "EN" | "SW" | "ZH";
   displayName: string | null;
   dob: string | null;
   region: string | null;

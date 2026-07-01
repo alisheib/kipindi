@@ -43,8 +43,8 @@ export async function GET() {
   // watch list. Without this, a watched market that gets voided would be polled
   // forever and the player would never get the in-page resolution signal.
   const resolved = [
-    ...(await listMarkets({ status: "RESOLVED" })),
-    ...(await listMarkets({ status: "VOIDED" })),
+    ...(await listMarkets({ status: "RESOLVED" }).catch(() => [])),
+    ...(await listMarkets({ status: "VOIDED" }).catch(() => [])),
   ]
     .sort((a, b) => (b.resolutionStage2At ?? "").localeCompare(a.resolutionStage2At ?? ""))
     .slice(0, 50);

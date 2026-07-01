@@ -22,7 +22,8 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const user = await db.user.findById(id);
+  let user: ReturnType<typeof db.user.findById> = null;
+  try { user = db.user.findById(id); } catch { /* graceful */ }
   const label = user ? displayLabel(user) : id.slice(0, 8);
   return { title: `Admin · Player — ${label}` };
 }
@@ -60,23 +61,29 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   const tab = sp.tab ?? "activity";
   const playerHref = `/admin/players/${id}`;
 
-  const user = await db.user.findById(id);
+  let user: ReturnType<typeof db.user.findById> = null;
+  try { user = db.user.findById(id); } catch { /* graceful */ }
   if (!user) notFound();
   // Access audit — record which officer opened this player's full PII record
   // (KYC doc views + exports were audited; opening the record itself was not).
-  const viewer = await currentSession();
+  let viewer: Awaited<ReturnType<typeof currentSession>> | null = null;
+  try { viewer = await currentSession(); } catch { /* graceful */ }
   if (viewer) {
     recordAudit({ category: "COMPLIANCE", action: "player.record_viewed", actorId: viewer.userId, targetType: "User", targetId: id });
   }
-  const wallet = await db.wallet.findByUserId(id);
-  const kyc = await db.kyc.findByUserId(id);
-  const rg = await db.responsible.get(id);
-  const data = await exportUserData(id);
+  let wallet: ReturnType<typeof db.wallet.findByUserId> = null;
+  try { wallet = db.wallet.findByUserId(id); } catch { /* graceful */ }
+  let kyc: ReturnType<typeof db.kyc.findByUserId> = null;
+  try { kyc = db.kyc.findByUserId(id); } catch { /* graceful */ }
+  let rg: ReturnType<typeof db.responsible.get> = null;
+  try { rg = db.responsible.get(id); } catch { /* graceful */ }
+  let data: Awaited<ReturnType<typeof exportUserData>> = { user, transactions: [], bets: [] } as never;
+  try { data = await exportUserData(id); } catch { /* graceful */ }
   const txns = data.transactions as StoredTxn[];
   const bets = data.bets as StoredBet[];
   // Merge the player's OWN actions with admin actions taken AGAINST them, so an
   // officer can see who suspended / reset / emailed / approved this account.
-  const audit = [...getAuditForActor(id, 200), ...getAuditForTarget("User", id, 200)]
+  const audit = [...(getAuditForActor(id, 200) ?? []), ...(getAuditForTarget("User", id, 200) ?? [])]
     .filter((e, i, arr) => arr.findIndex((x) => x.id === e.id) === i)
     .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
     .slice(0, 200);
