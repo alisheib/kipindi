@@ -35,7 +35,7 @@ import { notifyBonusCredited, notifyBonusFulfilled, notifyBonusExpired } from ".
 import { sendEmailToUser, bonusCreditedHtml, bonusFulfilledHtml } from "./email";
 
 const BONUS_SOURCE_EMAIL_LABEL: Record<string, string> = {
-  CASHBACK: "10% deposit cashback",
+  CASHBACK: "Cash back bonus",
   INVITE: "Invite bonus",
   REFERRAL: "Referral bonus",
   PROPOSAL: "Proposal prize",

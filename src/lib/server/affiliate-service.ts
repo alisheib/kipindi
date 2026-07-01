@@ -419,7 +419,6 @@ export async function onRecruitBet(recruitUserId: string, opts: { stake: number;
         tag: "referral",
       })).catch(() => {});
     }
-    if (acct) { /* totals updated inside recordReward */ }
   }
 }
 
