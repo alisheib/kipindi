@@ -72,6 +72,14 @@ export async function onRequestError(
     const path = request?.path ?? context?.routePath ?? "(unknown path)";
     const method = request?.method ?? "(unknown method)";
 
+    // Store last errors in globalThis for /api/diagnostic/last-error
+    const entry = { digest: digest ?? "n/a", path, method, route: context?.routePath ?? "?",
+      error: `${e?.name ?? "Error"}: ${msg}`, stack: (e?.stack ?? "").slice(0, 1500), ts: new Date().toISOString() };
+    const g = globalThis as unknown as { __50PICK_LAST_ERRORS?: typeof entry[] };
+    if (!g.__50PICK_LAST_ERRORS) g.__50PICK_LAST_ERRORS = [];
+    g.__50PICK_LAST_ERRORS.unshift(entry);
+    if (g.__50PICK_LAST_ERRORS.length > 20) g.__50PICK_LAST_ERRORS.length = 20;
+
     // Single block, easy to spot and copy out of Railway's log stream.
     console.error(
       [
