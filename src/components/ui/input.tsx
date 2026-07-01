@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Input atom — kit-faithful (kit/atoms.jsx → Input).
  * - prefix slot (e.g. "TZS", "+255") locked in a sub-cell with a divider
