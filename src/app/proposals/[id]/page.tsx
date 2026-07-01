@@ -19,7 +19,8 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
   const { t, locale } = await getServerT();
   const { id } = await params;
   const session = await currentSession();
-  const p = await getProposalDetail(id, session?.userId ?? null);
+  let p: Awaited<ReturnType<typeof getProposalDetail>> | null = null;
+  try { p = await getProposalDetail(id, session?.userId ?? null); } catch { /* graceful */ }
   if (!p) notFound();
 
   const cfg = getProposalsConfig();

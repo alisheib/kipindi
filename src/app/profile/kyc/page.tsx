@@ -20,9 +20,11 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile/kyc");
 
-  await startKyc(session.userId);
-  const kyc = await getKycStatus(session.userId);
-  const user = await db.user.findById(session.userId);
+  try { await startKyc(session.userId); } catch { /* graceful */ }
+  let kyc: Awaited<ReturnType<typeof getKycStatus>> | null = null;
+  try { kyc = await getKycStatus(session.userId); } catch { /* graceful */ }
+  let user: Awaited<ReturnType<typeof db.user.findById>> | null = null;
+  try { user = await db.user.findById(session.userId); } catch { /* graceful */ }
 
   const sp = (await searchParams) ?? {};
   const isWelcome = sp.welcome === "new";

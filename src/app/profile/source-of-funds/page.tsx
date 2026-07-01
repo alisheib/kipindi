@@ -34,7 +34,8 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
   ];
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile/source-of-funds");
-  const existing = await db.sourceOfFunds.get(session.userId);
+  let existing: Awaited<ReturnType<typeof db.sourceOfFunds.get>> | null = null;
+  try { existing = await db.sourceOfFunds.get(session.userId); } catch { /* graceful */ }
   const sp = (await searchParams) ?? {};
   // Restore form values from error redirect (takes precedence over existing record for the current attempt)
   const prevSource = sp.src ?? existing?.declaredSource ?? "";

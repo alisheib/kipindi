@@ -40,10 +40,12 @@ export default async function ProfilePage() {
   let kyc: Awaited<ReturnType<typeof db.kyc.findByUserId>> | null = null;
   let sof: Awaited<ReturnType<typeof db.sourceOfFunds.get>> | null = null;
   let positions: Awaited<ReturnType<typeof listPositionsForUser>> = [];
+  let badges: Awaited<ReturnType<typeof computeAchievementShelf>> = [];
   try { wallet = await db.wallet.findByUserId(user.id); } catch { /* graceful */ }
   try { kyc = await db.kyc.findByUserId(user.id); } catch { /* graceful */ }
   try { sof = await db.sourceOfFunds.get(user.id); } catch { /* graceful */ }
   try { positions = await listPositionsForUser(user.id, 500); } catch { /* graceful */ }
+  try { badges = await computeAchievementShelf(user.id); } catch { /* graceful */ }
   const initials = displayInitials(user);
   const displayName = user.displayName ?? t.profile.setYourName;
 
@@ -218,7 +220,7 @@ export default async function ProfilePage() {
           {t.profile.achievements}
         </h2>
         <div className="rounded-xl glass-panel p-5">
-          <BadgeShelf items={await computeAchievementShelf(user.id)} />
+          <BadgeShelf items={badges} />
           <p className="mt-4 text-center text-[11px] text-text-subtle">
             {t.profile.badgesHint}
           </p>

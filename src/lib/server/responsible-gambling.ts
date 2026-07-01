@@ -87,7 +87,7 @@ async function effectivize(r: StoredResponsibleGambling) {
         pendingIncreaseTo: null,
         pendingIncreaseEffectiveAt: null,
       };
-      await db.responsible.upsert(updated);
+      try { await db.responsible.upsert(updated); } catch { /* best-effort persist */ }
       return updated;
     }
   }

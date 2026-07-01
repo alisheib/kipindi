@@ -91,7 +91,8 @@ export default async function InvitePage() {
   if (!session) redirect("/auth/login?next=/profile/invite");
 
   const { t, locale } = await getServerT();
-  const s = await getPlayerReferralSummary(session.userId);
+  let s: Awaited<ReturnType<typeof getPlayerReferralSummary>>;
+  try { s = await getPlayerReferralSummary(session.userId); } catch { s = { code: "", link: "", recruitCount: 0, earnedTzs: 0, recruits: [], programEnabled: false, promises: [] }; }
   const ringValue = s.recruitCount === 0 ? 0 : Math.min(100, 30 + s.recruitCount * 12);
   const ringLabel = s.earnedTzs > 0 ? compact(s.earnedTzs) : "0";
   const shareText = t.profile.shareText;

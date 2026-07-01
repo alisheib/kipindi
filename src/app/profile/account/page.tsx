@@ -21,8 +21,10 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile/account");
 
-  const user = await db.user.findById(session.userId);
-  const allActivity = getOwnActivity(session.userId, 50);
+  let user: Awaited<ReturnType<typeof db.user.findById>> | null = null;
+  try { user = await db.user.findById(session.userId); } catch { /* graceful */ }
+  let allActivity: ReturnType<typeof getOwnActivity> = [];
+  try { allActivity = getOwnActivity(session.userId, 50); } catch { /* graceful */ }
   const sp = (await searchParams) ?? {};
   const actFilter = sp.act ?? "all";
   const activityCategories = [...new Set(allActivity.map((e) => e.category))].sort();

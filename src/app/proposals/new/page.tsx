@@ -19,7 +19,8 @@ export default async function NewProposalPage() {
   if (!session) redirect("/auth/login?next=/proposals/new");
 
   const cfg = getProposalsConfig();
-  const proposals = await db.proposal.listByProposer(session.userId);
+  let proposals: Awaited<ReturnType<typeof db.proposal.listByProposer>> = [];
+  try { proposals = await db.proposal.listByProposer(session.userId); } catch { /* graceful */ }
   const openCount = proposals.filter((p) => p.status === "REVIEW" || p.status === "CHANGES_REQUESTED").length;
 
   return (

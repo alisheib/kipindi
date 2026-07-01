@@ -26,14 +26,8 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  const m = await getMarket(id);
-  // Throwing notFound() here too — not just inside the page render —
-  // because the `/markets` segment has a loading.tsx, which means the
-  // page renders inside a Suspense boundary. When notFound() fires
-  // mid-stream the rendered UI swaps to not-found.tsx but the HTTP
-  // status header has already been sent as 200 and can't be changed.
-  // Calling notFound() during metadata generation gets us a real 404
-  // because metadata runs before the streaming response starts.
+  let m: Awaited<ReturnType<typeof getMarket>> | null = null;
+  try { m = await getMarket(id); } catch { /* graceful */ }
   if (!m) notFound();
   const { locale } = await getServerT();
   const yes = impliedYesPct(m);
@@ -80,16 +74,19 @@ export default async function MarketDetail({
   const { t, locale } = await getServerT();
   const { id } = await params;
   const { side } = await searchParams;
-  const m = await getMarket(id);
+  let m: Awaited<ReturnType<typeof getMarket>> | null = null;
+  try { m = await getMarket(id); } catch { /* graceful */ }
   if (!m) notFound();
 
   const yesPct = impliedYesPct(m);
   // Effective fee for THIS market (incl. any per-market override) so the dial's
   // inline payout/lean projection matches the rate the server settles at.
-  const feeCfg = await getEffectiveConfig(m.id);
+  let feeCfg: Awaited<ReturnType<typeof getEffectiveConfig>>;
+  try { feeCfg = await getEffectiveConfig(m.id); } catch { feeCfg = { taxRate: 0, commissionRate: 0.03, reserveRate: 0.01, aggregatorRate: 0, starterBalanceTzs: 0 } as Awaited<ReturnType<typeof getEffectiveConfig>>; }
   const marketFeeRate = Math.min(0.99, Math.max(0, feeCfg.taxRate + feeCfg.commissionRate + feeCfg.reserveRate + feeCfg.aggregatorRate));
   const session = await currentSession();
-  const myPositions = session ? (await listPositionsForUser(session.userId)).filter((p) => p.marketId === m.id) : [];
+  let myPositions: Awaited<ReturnType<typeof listPositionsForUser>> = [];
+  try { myPositions = session ? (await listPositionsForUser(session.userId)).filter((p) => p.marketId === m!.id) : []; } catch { /* graceful */ }
   const myRefCode = session ? await ensureAffiliateAccount(session.userId).then((a) => a.code).catch(() => undefined) : undefined;
   const isResolved = m.status === "RESOLVED" || m.status === "VOIDED";
   // One-sided: all bets are on the same side — winners would win their own money.
@@ -116,9 +113,15 @@ export default async function MarketDetail({
 
   // History — seed if empty (legacy demo markets), then build the signature
   // ProbabilityChart's range-keyed series from real snapshots.
-  await seedHistory(m.id, m.yesPool, m.noPool);
-  const probChart = await getProbabilityChart(m.id);
-  const comments = await listComments(m.id, session?.userId ?? null);
+  try { await seedHistory(m.id, m.yesPool, m.noPool); } catch { /* graceful */ }
+  let probChart: Awaited<ReturnType<typeof getProbabilityChart>> = { series: {}, ranges: [] };
+  try { probChart = await getProbabilityChart(m.id); } catch { /* graceful */ }
+  let comments: Awaited<ReturnType<typeof listComments>> = [];
+  try { comments = await listComments(m.id, session?.userId ?? null); } catch { /* graceful */ }
+
+  // Pre-fetch wallet balance so we don't have an unguarded await in JSX
+  let myBalance = 0;
+  if (session) { try { myBalance = (await db.wallet.findByUserId(session.userId))?.balance ?? 0; } catch { /* graceful */ } }
 
   // Pre-compute hedge-warning for the aside
   const openPositions = myPositions.filter((p) => p.status === "OPEN");
@@ -347,7 +350,7 @@ export default async function MarketDetail({
                 noPool={m.noPool}
                 yesPct={yesPct}
                 resolutionAt={m.resolutionAt}
-                balance={(await db.wallet.findByUserId(session.userId))?.balance ?? 0}
+                balance={myBalance}
                 initialSide={side === "YES" || side === "NO" ? side : undefined}
                 feeRate={marketFeeRate}
               />
