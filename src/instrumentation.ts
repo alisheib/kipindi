@@ -72,36 +72,16 @@ export async function onRequestError(
     const path = request?.path ?? context?.routePath ?? "(unknown path)";
     const method = request?.method ?? "(unknown method)";
 
-    const entry = {
-      digest: digest ?? "n/a",
-      path,
-      method,
-      route: context?.routePath ?? "?",
-      kind: context?.routerKind ?? "?",
-      type: context?.routeType ?? "?",
-      source: context?.renderSource ?? "?",
-      render: context?.renderType ?? "?",
-      error: `${e?.name ?? "Error"}: ${msg}`,
-      stack: (e?.stack ?? "(none)").slice(0, 1500),
-      ts: new Date().toISOString(),
-    };
-
-    // Store in globalThis so /api/diagnostic/last-error can read it
-    const g = globalThis as unknown as { __50PICK_LAST_ERRORS?: typeof entry[] };
-    if (!g.__50PICK_LAST_ERRORS) g.__50PICK_LAST_ERRORS = [];
-    g.__50PICK_LAST_ERRORS.unshift(entry);
-    if (g.__50PICK_LAST_ERRORS.length > 20) g.__50PICK_LAST_ERRORS.length = 20;
-
     // Single block, easy to spot and copy out of Railway's log stream.
     console.error(
       [
         "",
         "──────────────────────────────────────────────────────────",
-        `[snag] SERVER RENDER ERROR  digest=${entry.digest}`,
+        `[snag] SERVER RENDER ERROR  digest=${digest ?? "n/a"}`,
         `  when:   ${method} ${path}`,
-        `  route:  ${entry.route}  kind=${entry.kind}  type=${entry.type}`,
-        `  source: ${entry.source}  render=${entry.render}`,
-        `  error:  ${entry.error}`,
+        `  route:  ${context?.routePath ?? "?"}  kind=${context?.routerKind ?? "?"}  type=${context?.routeType ?? "?"}`,
+        `  source: ${context?.renderSource ?? "?"}  render=${context?.renderType ?? "?"}  revalidate=${context?.revalidateReason ?? "-"}`,
+        `  error:  ${e?.name ?? "Error"}: ${msg}`,
         e?.stack ? `  stack:\n${e.stack}` : "  stack: (none)",
         "──────────────────────────────────────────────────────────",
       ].join("\n"),
