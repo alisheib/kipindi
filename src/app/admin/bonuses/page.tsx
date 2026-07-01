@@ -11,8 +11,9 @@ import { BonusAdminClient, GrantBonusForm, CancelGrantButton } from "./bonus-adm
 export const metadata = { title: "Bonuses · Admin" };
 export const dynamic = "force-dynamic";
 
-const STATUS_CHIP: Record<string, "active" | "resolved" | "paused" | "objection"> = {
+const STATUS_CHIP: Record<string, "active" | "resolved" | "paused" | "pending" | "objection"> = {
   ACTIVE: "active",
+  QUEUED: "pending",
   FULFILLED: "resolved",
   EXPIRED: "paused",
   CANCELLED: "paused",

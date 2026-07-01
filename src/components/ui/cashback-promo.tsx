@@ -61,7 +61,7 @@ export function CashbackPromo({
         </p>
 
         <p className={cn("text-text/85 leading-snug", compact ? "mt-1.5 text-[12px]" : "mt-2 text-[13px]")}>
-          {isRequest ? t.common.cashbackRequestSubtitle : t.common.cashbackSubtitle}
+          {(isRequest ? t.common.cashbackRequestSubtitle : t.common.cashbackSubtitle).replace("{pct}", String(percent))}
         </p>
 
         {cta && !isRequest && (
