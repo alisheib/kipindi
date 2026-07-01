@@ -118,11 +118,14 @@ const PROD_HEADERS: Record<string, string> = {
 };
 
 // CSP: 'unsafe-inline' is required for Next.js hydration scripts and
-// Tailwind's runtime style injection. 'unsafe-eval' is NOT needed and
-// has been removed — it was the main vector for XSS payload execution.
+// Tailwind's runtime style injection. 'unsafe-eval' is required by
+// Next.js 16 / Turbopack's client runtime for RSC payload processing —
+// without it the browser blocks eval() and every page navigation crashes
+// with "Server Components render error" (digest 793074517). TODO: migrate
+// to nonce-based CSP when Next.js supports it for Turbopack builds.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com data:",
   "img-src 'self' data: blob:",
