@@ -152,6 +152,41 @@ export function BonusAdminClient({ config }: { config: BonusConfig }) {
         </div>
       </div>
 
+      {/* Rules — Management Bonus Rules §2 (cashback) and §6 (sequential) */}
+      <div className="rounded-lg border border-border bg-bg-elevated p-4 space-y-3">
+        <p className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-subtle">Bonus rules · Management policy · Sheria</p>
+
+        <div className="flex items-center gap-3 rounded-md border border-border bg-bg-overlay/40 px-3.5 py-3">
+          <div className="flex-1 min-w-0">
+            <div className="text-[13px] font-semibold">Sequential bonuses · Bonasi moja kwa moja</div>
+            <div className="mt-0.5 text-[11px] text-text-muted">
+              {c.sequentialBonuses
+                ? "ON — one bonus at a time. New bonuses are queued until the current one completes (§6)."
+                : "OFF — multiple bonuses can be active simultaneously (legacy mode)."}
+            </div>
+          </div>
+          <Toggle on={c.sequentialBonuses} onClick={() => setC((p) => ({ ...p, sequentialBonuses: !p.sequentialBonuses }))} aria-label="Sequential bonuses" />
+        </div>
+
+        <div className="flex items-center gap-3 rounded-md border border-border bg-bg-overlay/40 px-3.5 py-3">
+          <div className="flex-1 min-w-0">
+            <div className="text-[13px] font-semibold">Cashback mode · Aina ya marejesho</div>
+            <div className="mt-0.5 text-[11px] text-text-muted">
+              {c.cashbackMode === "REQUEST"
+                ? "REQUEST — player loses deposit, submits request, management approves (§2)."
+                : "AUTO — cashback credited automatically on every confirmed deposit (legacy)."}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setC((p) => ({ ...p, cashbackMode: p.cashbackMode === "REQUEST" ? "AUTO" : "REQUEST" }))}
+            className="shrink-0 inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-bg-elevated px-3 font-mono text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted hover:text-text transition-colors"
+          >
+            {c.cashbackMode === "REQUEST" ? <><I.shieldcheck s={12} /> Request</> : <><I.bolt s={12} /> Auto</>}
+          </button>
+        </div>
+      </div>
+
       {/* Routing */}
       <p className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-subtle">Reward routing · send earnings to the bonus wallet · Mwelekeo</p>
       <RouteCard icon={I.percent} title="Affiliate rewards" sw="Tume za marafiki"

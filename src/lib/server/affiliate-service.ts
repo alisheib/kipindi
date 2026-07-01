@@ -358,9 +358,20 @@ export async function onRecruitBet(recruitUserId: string, opts: { stake: number;
   const cfg = getAffiliateConfig();
   if (!cfg.enabled) return;
 
-  // First-bet milestone prize.
+  // First-bet milestone prize (Management Bonus Rules §4).
+  // Fires only when: the bet meets the minimum amount AND the recruit has deposited.
   if (cfg.prize.enabled && cfg.prize.milestone === "FIRST_BET") {
-    await payPrize({ referrerUserId, recruitUserId, milestoneLabel: "first bet" });
+    const meetsMinBet = opts.stake >= (cfg.prize.minBetAmountTzs ?? 0);
+    let hasDeposited = true;
+    if (cfg.prize.requireDeposit) {
+      try {
+        const txns = await db.txn.findByUser(recruitUserId, 1000);
+        hasDeposited = txns.some((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED");
+      } catch { /* if we can't check, allow it — never block a valid reward */ }
+    }
+    if (meetsMinBet && hasDeposited) {
+      await payPrize({ referrerUserId, recruitUserId, milestoneLabel: "first bet" });
+    }
   }
 
   // Commission accrual.
@@ -480,10 +491,17 @@ export async function getPlayerReferralSummary(userId: string) {
     });
   }
   if (cfg.prize.enabled && cfg.prize.amountTzs > 0) {
+    const minBet = cfg.prize.minBetAmountTzs ?? 0;
+    const minBetLabel = minBet > 0 ? ` (min TZS ${minBet.toLocaleString()})` : "";
+    const minBetLabelSw = minBet > 0 ? ` (angalau TZS ${minBet.toLocaleString()})` : "";
     promises.push({
       icon: "ticket",
-      en: `Get TZS ${cfg.prize.amountTzs.toLocaleString()} when a friend ${cfg.prize.milestone === "FIRST_BET" ? "places their first bet" : "deposits"}`,
-      sw: `Pata TZS ${cfg.prize.amountTzs.toLocaleString()} rafiki ${cfg.prize.milestone === "FIRST_BET" ? "anapoweka dau la kwanza" : "anapoweka amana"}`,
+      en: cfg.prize.milestone === "FIRST_BET"
+        ? `Get TZS ${cfg.prize.amountTzs.toLocaleString()} when a friend deposits & places their first bet${minBetLabel}`
+        : `Get TZS ${cfg.prize.amountTzs.toLocaleString()} when a friend deposits`,
+      sw: cfg.prize.milestone === "FIRST_BET"
+        ? `Pata TZS ${cfg.prize.amountTzs.toLocaleString()} rafiki anapoweka amana na dau la kwanza${minBetLabelSw}`
+        : `Pata TZS ${cfg.prize.amountTzs.toLocaleString()} rafiki anapoweka amana`,
     });
   }
   if (cfg.bonus.enabled && (cfg.bonus.recipient === "REFERRER" || cfg.bonus.recipient === "BOTH") && cfg.bonus.referrerAmountTzs > 0) {

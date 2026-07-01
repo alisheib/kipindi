@@ -475,6 +475,7 @@ enum BonusSource {
 
 enum BonusGrantStatus {
   ACTIVE      // wagering in progress; remainingTzs sits in bonusBalance
+  QUEUED      // sequential mode §6: waiting for the current bonus to finish before activating
   FULFILLED   // wagering met; remainingTzs converted to real balance
   EXPIRED     // expiresAt passed before fulfilment; remainder removed
   CANCELLED   // admin/player cancelled; remainder removed

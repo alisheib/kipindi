@@ -17,16 +17,20 @@ import { useT } from "@/lib/i18n";
 
 export function CashbackPromo({
   percent = 10,
+  mode = "REQUEST",
   cta = true,
   compact = false,
   className,
 }: {
   percent?: number;
+  /** "REQUEST" = loss-based cashback (Management Rules §2), "AUTO" = legacy every-deposit */
+  mode?: "REQUEST" | "AUTO";
   cta?: boolean;
   compact?: boolean;
   className?: string;
 }) {
   const { t } = useT();
+  const isRequest = mode === "REQUEST";
   return (
     <section
       className={cn("relative overflow-hidden rounded-xl", className)}
@@ -48,7 +52,7 @@ export function CashbackPromo({
           <I.coins s={13} />
           <p className="font-mono text-[10.5px] uppercase tracking-[0.16em] font-bold">{t.common.cashback}</p>
           <span className="ml-auto inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] font-bold bg-gold-500/15 text-gold-200">
-            {t.common.everyDeposit}
+            {isRequest ? t.common.onRequest : t.common.everyDeposit}
           </span>
         </div>
 
@@ -57,10 +61,10 @@ export function CashbackPromo({
         </p>
 
         <p className={cn("text-text/85 leading-snug", compact ? "mt-1.5 text-[12px]" : "mt-2 text-[13px]")}>
-          {t.common.cashbackSubtitle}
+          {isRequest ? t.common.cashbackRequestSubtitle : t.common.cashbackSubtitle}
         </p>
 
-        {cta && (
+        {cta && !isRequest && (
           <Link href="/wallet/deposit" className="btn btn-gold btn-sm rounded-pill mt-4 inline-flex">
             <I.coins s={13} />
             {t.common.depositNow}

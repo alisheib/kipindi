@@ -95,6 +95,13 @@ export async function creditBonus(userId: string, input: CreditBonusInput): Prom
     const now = new Date();
     const nowIso = now.toISOString();
     const expiresAt = expiryDays > 0 ? new Date(now.getTime() + expiryDays * 86_400_000).toISOString() : null;
+
+    // Sequential enforcement (Management Bonus Rules §6): if enabled, check whether
+    // the player already has an ACTIVE grant. If so, the new grant enters QUEUED
+    // status — it activates automatically when the current one fulfills/expires.
+    const activeGrants = (await db.bonusGrant.listByUser(userId)).filter((g) => g.status === "ACTIVE");
+    const shouldQueue = cfg.sequentialBonuses && activeGrants.length > 0;
+
     const grant: StoredBonusGrant = {
       id: `bg_${randomId(12)}`,
       userId,
@@ -106,7 +113,7 @@ export async function creditBonus(userId: string, input: CreditBonusInput): Prom
       wageredTzs: 0,
       source: input.source,
       sourceRef: input.sourceRef ?? null,
-      status: "ACTIVE",
+      status: shouldQueue ? "QUEUED" : "ACTIVE",
       expiresAt,
       fulfilledAt: null,
       note: input.note ?? null,
@@ -124,28 +131,37 @@ export async function creditBonus(userId: string, input: CreditBonusInput): Prom
       }
       return { ok: false, error: "Could not create bonus grant.", code: "INVALID" };
     }
-    await db.wallet.adjust(wallet.id, { bonusBalance: amount });
+    // Only add to bonusBalance when ACTIVE — QUEUED grants don't touch the wallet
+    // until they activate. This keeps the invariant: bonusBalance == Σ ACTIVE remainingTzs.
+    if (!shouldQueue) {
+      await db.wallet.adjust(wallet.id, { bonusBalance: amount });
+    }
     audit({
       category: "WALLET",
-      action: "bonus.credited",
+      action: shouldQueue ? "bonus.queued" : "bonus.credited",
       actorId: userId,
       targetType: "BonusGrant",
       targetId: grant.id,
-      payload: { amountTzs: amount, source: input.source, sourceRef: input.sourceRef ?? null, wagerMultiplier: multiplier, wagerRequiredTzs: grant.wagerRequiredTzs, expiresAt },
+      payload: { amountTzs: amount, source: input.source, sourceRef: input.sourceRef ?? null, wagerMultiplier: multiplier, wagerRequiredTzs: grant.wagerRequiredTzs, expiresAt, queued: shouldQueue },
     });
     return { ok: true, grant, deduped: false };
   });
 
   if (result.ok && !result.deduped) {
     const g = result.grant;
-    notifyBonusCredited(userId, { amountTzs: g.amountTzs, wagerRequiredTzs: g.wagerRequiredTzs }).catch(() => {});
-    // Dual-channel: money events email the player too (matches deposits/wins).
-    sendEmailToUser(userId, (email) => ({
-      to: email,
-      subject: `Bonus added · TZS ${Math.round(g.amountTzs).toLocaleString("en-US")}`,
-      html: bonusCreditedHtml({ amountTzs: g.amountTzs, wagerRequiredTzs: g.wagerRequiredTzs, sourceLabel: BONUS_SOURCE_EMAIL_LABEL[g.source] }),
-      tag: "bonus",
-    })).catch(() => {});
+    if (g.status === "QUEUED") {
+      // Notify player their bonus is queued (sequential mode §6)
+      notifyBonusCredited(userId, { amountTzs: g.amountTzs, wagerRequiredTzs: g.wagerRequiredTzs, queued: true }).catch(() => {});
+    } else {
+      notifyBonusCredited(userId, { amountTzs: g.amountTzs, wagerRequiredTzs: g.wagerRequiredTzs }).catch(() => {});
+      // Dual-channel: money events email the player too (matches deposits/wins).
+      sendEmailToUser(userId, (email) => ({
+        to: email,
+        subject: `Bonus added · TZS ${Math.round(g.amountTzs).toLocaleString("en-US")}`,
+        html: bonusCreditedHtml({ amountTzs: g.amountTzs, wagerRequiredTzs: g.wagerRequiredTzs, sourceLabel: BONUS_SOURCE_EMAIL_LABEL[g.source] }),
+        tag: "bonus",
+      })).catch(() => {});
+    }
   }
   return result;
 }
@@ -239,6 +255,8 @@ async function recordWageringCore(userId: string, amount: number): Promise<Wager
         targetId: g.id,
         payload: { amountTzs: g.amountTzs, movedToRealTzs: moved, wageredTzs: newWagered, wagerRequiredTzs: g.wagerRequiredTzs },
       });
+      // Sequential: activate the next queued grant now that this one is done.
+      await activateNextQueued(userId);
     } else if (applied > 0) {
       await db.bonusGrant.update(g.id, { wageredTzs: newWagered });
     }
@@ -410,6 +428,8 @@ export async function expireActiveGrants(): Promise<{ expired: number; removedTz
       expired++;
       removedTzs += outcome.removed;
       notifyBonusExpired(g.userId, { amountTzs: outcome.amountTzs }).catch(() => {});
+      // Sequential: activate next queued grant for this user.
+      try { await withLock(`wallet:${g.userId}`, () => activateNextQueued(g.userId)); } catch { /* best-effort */ }
     }
   }
   return { expired, removedTzs };
@@ -432,9 +452,56 @@ export async function cancelGrant(grantId: string, actorId: string, reason?: str
       if (rem > 0) await db.wallet.adjust(fresh.walletId, { bonusBalance: -rem });
       await db.bonusGrant.update(fresh.id, { status: "CANCELLED", remainingTzs: 0, note: reason ?? fresh.note });
       audit({ category: "ADMIN", action: "bonus.cancelled", actorId, targetType: "BonusGrant", targetId: fresh.id, payload: { userId: fresh.userId, removedTzs: rem, reason: reason ?? null } });
+      // Sequential: activate next queued grant now that this one is cancelled.
+      await activateNextQueued(fresh.userId);
       return { ok: true as const, removedTzs: rem };
     });
   });
+}
+
+/**
+ * Sequential bonus queue: after a grant finishes (fulfilled/expired/cancelled),
+ * activate the next QUEUED grant for that user (oldest first). Adds its amount
+ * to bonusBalance and marks it ACTIVE. Called automatically from the fulfillment,
+ * expiry, and cancellation paths. No-op when sequential mode is off or no grants
+ * are queued. Must run INSIDE the wallet lock for the user.
+ */
+async function activateNextQueued(userId: string): Promise<void> {
+  const cfg = getBonusConfig();
+  if (!cfg.sequentialBonuses) return;
+
+  // Check if there's still an active grant — don't promote if one is running.
+  const all = await db.bonusGrant.listByUser(userId);
+  const hasActive = all.some((g) => g.status === "ACTIVE");
+  if (hasActive) return;
+
+  const nextQueued = all
+    .filter((g) => g.status === "QUEUED")
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0];
+  if (!nextQueued) return;
+
+  const wallet = await db.wallet.findByUserId(userId);
+  if (!wallet || wallet.status !== "ACTIVE") return;
+
+  await db.bonusGrant.update(nextQueued.id, { status: "ACTIVE" });
+  await db.wallet.adjust(wallet.id, { bonusBalance: nextQueued.remainingTzs });
+  audit({
+    category: "WALLET",
+    action: "bonus.activated_from_queue",
+    actorId: userId,
+    targetType: "BonusGrant",
+    targetId: nextQueued.id,
+    payload: { amountTzs: nextQueued.amountTzs, source: nextQueued.source },
+  });
+
+  // Notify + email player that their queued bonus is now active.
+  notifyBonusCredited(userId, { amountTzs: nextQueued.amountTzs, wagerRequiredTzs: nextQueued.wagerRequiredTzs }).catch(() => {});
+  sendEmailToUser(userId, (email) => ({
+    to: email,
+    subject: `Bonus activated · TZS ${Math.round(nextQueued.amountTzs).toLocaleString("en-US")}`,
+    html: bonusCreditedHtml({ amountTzs: nextQueued.amountTzs, wagerRequiredTzs: nextQueued.wagerRequiredTzs, sourceLabel: BONUS_SOURCE_EMAIL_LABEL[nextQueued.source] ?? "Bonus" }),
+    tag: "bonus",
+  })).catch(() => {});
 }
 
 export type BonusGrantView = StoredBonusGrant & {

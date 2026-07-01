@@ -214,32 +214,27 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string): Prom
       await onRecruitDeposit(t.userId, { cumulativeDepositsTzs });
     } catch { /* affiliate accrual must never break a deposit */ }
 
-    // Deposit cashback — credit `cashbackPercentage`% of the deposit into the
-    // bonus wallet (non-withdrawable, plays through like any bonus). Runs only on
-    // the call that actually credited (so a webhook retry, which finds the txn
-    // already CONFIRMED, never re-fires) and is doubly idempotent via the grant's
-    // unique sourceRef. creditBonus takes the wallet lock itself, so it MUST run
-    // here — outside settleDepositConfirmed's own lock (locks.ts is not
-    // re-entrant). Best-effort: cashback must never break a confirmed deposit.
+    // Deposit cashback — AUTO mode only (Management Bonus Rules §2).
+    // In REQUEST mode (default), cashback is not automatic: the player must lose
+    // the deposited amount, submit a request, and management approves (10% of the
+    // qualifying deposit). In AUTO (legacy) mode, every confirmed deposit credits
+    // cashbackPercentage% into the bonus wallet automatically.
     try {
       const { getBonusConfig } = await import("./bonus-config");
       const cfg = getBonusConfig();
-      if (cfg.enabled && cfg.cashbackEnabled && cfg.cashbackPercentage > 0) {
+      if (cfg.enabled && cfg.cashbackEnabled && cfg.cashbackMode === "AUTO" && cfg.cashbackPercentage > 0) {
         const cashbackTzs = Math.floor((t.amount * cfg.cashbackPercentage) / 100);
         if (cashbackTzs > 0) {
           const { creditBonus } = await import("./bonus-service");
           await creditBonus(t.userId, {
             amountTzs: cashbackTzs,
             source: "CASHBACK",
-            sourceRef: `deposit:${t.id}`, // exactly-once per deposit
+            sourceRef: `deposit:${t.id}`,
             note: `${cfg.cashbackPercentage}% cashback on deposit ${t.id}`,
           });
         }
       }
     } catch (err) {
-      // Cashback must never break a confirmed deposit — but record the miss so an
-      // owed-but-undelivered cashback is reconcilable (it's idempotent by
-      // sourceRef, so a manual retry is safe).
       audit({ category: "WALLET", action: "cashback.failed", actorId: t.userId, targetType: "Transaction", targetId: t.id, payload: { error: String((err as Error)?.message ?? err) } });
     }
   }

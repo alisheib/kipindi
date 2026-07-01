@@ -256,9 +256,20 @@ export function notifyReferralReward(userId: string, opts: { type: "COMMISSION" 
 /* ---- Bonus-wallet emitters ---- */
 
 /** A bonus was credited to the player's bonus wallet. */
-export function notifyBonusCredited(userId: string, opts: { amountTzs: number; wagerRequiredTzs: number }) {
+export function notifyBonusCredited(userId: string, opts: { amountTzs: number; wagerRequiredTzs: number; queued?: boolean }) {
   const amount = Math.round(opts.amountTzs).toLocaleString();
   const target = Math.round(opts.wagerRequiredTzs).toLocaleString();
+  if (opts.queued) {
+    return notify({
+      userId,
+      kind: "BONUS",
+      titleEn: `Bonus queued · TZS ${amount}`,
+      titleSw: `Bonasi imepangwa · TZS ${amount}`,
+      bodyEn: `Your current bonus must be completed first. This TZS ${amount} bonus will activate automatically when ready.`,
+      bodySw: `Bonasi yako ya sasa lazima ikamilishwe kwanza. Bonasi ya TZS ${amount} itaamilishwa moja kwa moja.`,
+      href: "/wallet",
+    });
+  }
   return notify({
     userId,
     kind: "BONUS",

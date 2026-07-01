@@ -92,7 +92,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
         </div>
       )}
 
-      {showCashback && <CashbackPromo percent={bonusCfg.cashbackPercentage} compact cta={false} />}
+      {showCashback && <CashbackPromo percent={bonusCfg.cashbackPercentage} mode={bonusCfg.cashbackMode} compact cta={false} />}
 
       <form action={depositAction} className="rounded-xl glass-panel p-5 lg:p-6 space-y-5">
         <fieldset>
