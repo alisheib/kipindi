@@ -34,9 +34,11 @@ const bal = (uid: string) => db.wallet.findByUserId(uid)?.balance ?? -1;
 const bonus = (uid: string) => db.wallet.findByUserId(uid)?.bonusBalance ?? -1;
 const ref = (txnId: string) => db.txn.findById(txnId)?.providerRef ?? "";
 
-// Ensure default config (10% cashback on, program enabled).
-setBonusConfig({ enabled: true, cashbackEnabled: true, cashbackPercentage: 10 }, "test");
-ok("cashback config defaults", getBonusConfig().cashbackPercentage === 10 && getBonusConfig().cashbackEnabled);
+// Ensure config: 10% cashback in AUTO mode (the deposit-auto-credit path).
+// Default is REQUEST mode (player requests after loss); AUTO is the legacy path
+// tested here — it auto-credits on every confirmed deposit.
+setBonusConfig({ enabled: true, cashbackEnabled: true, cashbackPercentage: 10, cashbackMode: "AUTO" }, "test");
+ok("cashback config ready (AUTO mode, 10%)", getBonusConfig().cashbackPercentage === 10 && getBonusConfig().cashbackEnabled && getBonusConfig().cashbackMode === "AUTO");
 
 // ── ASYNC deposit → webhook confirms → 10% cashback to bonus wallet ─────────
 process.env.PAYMENTS_DEMO_ASYNC = "true";

@@ -104,39 +104,41 @@ async function invariantHolds(uid: string): Promise<boolean> {
   ok("invariant holds", await invariantHolds("usr_b_fulfil"));
 }
 
-// ── recordWagering: FIFO across two grants + overflow cascade ─────────────────
+// ── recordWagering: sequential enforcement — second grant QUEUED, activates on fulfilment ──
 {
   await fundedUser("usr_b_fifo");
-  const g1 = await creditBonus("usr_b_fifo", { amountTzs: 10_000, source: "ADMIN" }); // req 50,000 (oldest)
-  const g2 = await creditBonus("usr_b_fifo", { amountTzs: 4_000, source: "PROPOSAL" }); // req 20,000
-  ok("two grants, bonusBalance 14,000", (await bonus("usr_b_fifo")) === 14_000, `bonus=${await bonus("usr_b_fifo")}`);
-  // 60,000 turnover: clears g1 (needs 50k), 10k overflows into g2 (needs 20k)
+  const g1 = await creditBonus("usr_b_fifo", { amountTzs: 10_000, source: "ADMIN" }); // req 50,000 — ACTIVE
+  const g2 = await creditBonus("usr_b_fifo", { amountTzs: 4_000, source: "PROPOSAL" }); // req 20,000 — QUEUED (sequential)
+  // Sequential enforcement: only g1 is ACTIVE, so bonusBalance = 10,000 (not 14,000)
+  ok("bonusBalance == 10,000 (only active grant)", (await bonus("usr_b_fifo")) === 10_000, `bonus=${await bonus("usr_b_fifo")}`);
+  const g2pre = g2.ok ? await db.bonusGrant.findById(g2.grant.id) : null;
+  ok("g2 is QUEUED", g2pre?.status === "QUEUED", `status=${g2pre?.status}`);
+  // 60,000 turnover: clears g1 (needs 50k), g1 fulfils → activateNextQueued promotes g2
   const w = await recordWagering("usr_b_fifo", 60_000);
-  ok("g1 fulfilled, g2 not", w.fulfilled.length === 1 && (g1.ok && w.fulfilled[0].id === g1.grant.id));
+  ok("g1 fulfilled", w.fulfilled.length === 1 && (g1.ok && w.fulfilled[0].id === g1.grant.id));
   ok("10,000 moved to real (g1 remainder)", (await real("usr_b_fifo")) === 10_000, `real=${await real("usr_b_fifo")}`);
   const g2row = g2.ok ? await db.bonusGrant.findById(g2.grant.id) : null;
-  ok("g2 wagered == 10,000 (overflow)", g2row?.wageredTzs === 10_000, `wagered=${g2row?.wageredTzs}`);
-  ok("g2 still ACTIVE", g2row?.status === "ACTIVE");
-  ok("bonusBalance == 4,000 (only g2 left)", (await bonus("usr_b_fifo")) === 4_000, `bonus=${await bonus("usr_b_fifo")}`);
+  ok("g2 now ACTIVE (promoted from QUEUED)", g2row?.status === "ACTIVE", `status=${g2row?.status}`);
+  ok("bonusBalance == 4,000 (g2 now active)", (await bonus("usr_b_fifo")) === 4_000, `bonus=${await bonus("usr_b_fifo")}`);
   ok("invariant holds", await invariantHolds("usr_b_fifo"));
 }
 
-// ── spendBonus: FIFO deduct + allocations + cap at available ──────────────────
+// ── spendBonus: sequential — only active grant is spendable, cap at remaining ──
 {
   await fundedUser("usr_b_spend");
+  // Sequential: g1 ACTIVE, g2 QUEUED — spend can only touch g1
   const g1 = await creditBonus("usr_b_spend", { amountTzs: 6_000, source: "ADMIN" });
   const g2 = await creditBonus("usr_b_spend", { amountTzs: 4_000, source: "ADMIN" });
-  const s = await spendBonus("usr_b_spend", 8_000); // drains g1 (6k) + 2k of g2
-  ok("spent 8,000", s.spent === 8_000, `spent=${s.spent}`);
-  ok("two allocations (FIFO)", s.allocations.length === 2 && s.allocations[0].amount === 6_000 && s.allocations[1].amount === 2_000);
-  ok("bonusBalance == 2,000", (await bonus("usr_b_spend")) === 2_000, `bonus=${await bonus("usr_b_spend")}`);
-  const g1row = g1.ok ? await db.bonusGrant.findById(g1.grant.id) : null;
-  const g2row = g2.ok ? await db.bonusGrant.findById(g2.grant.id) : null;
-  ok("g1 remaining 0, g2 remaining 2,000", g1row?.remainingTzs === 0 && g2row?.remainingTzs === 2_000);
-  // spend more than available → capped
+  ok("g2 is QUEUED (sequential)", (g2.ok ? (await db.bonusGrant.findById(g2.grant.id))?.status : null) === "QUEUED");
+  // Spend 4,000 from g1 (the only ACTIVE grant)
+  const s = await spendBonus("usr_b_spend", 4_000);
+  ok("spent 4,000 from active grant", s.spent === 4_000, `spent=${s.spent}`);
+  ok("one allocation (single active grant)", s.allocations.length === 1 && s.allocations[0].amount === 4_000);
+  ok("bonusBalance == 2,000 (g1 remainder)", (await bonus("usr_b_spend")) === 2_000, `bonus=${await bonus("usr_b_spend")}`);
+  // spend more than g1's remaining → capped at 2,000
   const s2 = await spendBonus("usr_b_spend", 999_999);
   ok("over-spend capped at remaining 2,000", s2.spent === 2_000, `spent=${s2.spent}`);
-  ok("bonusBalance == 0", (await bonus("usr_b_spend")) === 0);
+  ok("bonusBalance == 0 after full spend", (await bonus("usr_b_spend")) === 0);
   ok("invariant holds", await invariantHolds("usr_b_spend"));
 }
 
