@@ -12,11 +12,14 @@ import { getServerT } from "@/lib/i18n-server";
 export const dynamic = "force-dynamic";
 
 export default async function LandingPage() {
-  const { t } = await getServerT();
-  const live = await listMarkets({ status: "LIVE" }).then((l) => l.filter((m) => !isClosedByTime(m)).slice(0, 6)).catch(() => []);
-  const traderMap = await traderSeedsByMarket().catch(() => new Map());
+  const [{ t }, liveRaw, traderMap, session] = await Promise.all([
+    getServerT(),
+    listMarkets({ status: "LIVE" }).catch(() => [] as Awaited<ReturnType<typeof listMarkets>>),
+    traderSeedsByMarket().catch(() => new Map() as Awaited<ReturnType<typeof traderSeedsByMarket>>),
+    getSession(),
+  ]);
+  const live = liveRaw.filter((m) => !isClosedByTime(m)).slice(0, 6);
   const cardCharts = new Map(await Promise.all(live.map(async (m) => [m.id, await getCardChart(m.id).catch(() => ({ spark: [] as number[], move24h: undefined }))] as const)));
-  const session = await getSession();
   const isAuthed = !!session;
 
   function timeLeftStr(iso: string): string {

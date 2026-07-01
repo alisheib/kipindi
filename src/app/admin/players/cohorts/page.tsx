@@ -6,8 +6,7 @@ import { Chip } from "@/components/ui/chip";
 export const metadata = { title: "Admin · Player cohorts" };
 export const dynamic = "force-dynamic";
 
-async function bucketByMonth() {
-  const all = await db.user.list();
+function bucketByMonth(all: ReturnType<typeof db.user.list>) {
   const map = new Map<string, number>();
   for (const u of all) {
     const m = u.createdAt.slice(0, 7); // YYYY-MM
@@ -18,8 +17,7 @@ async function bucketByMonth() {
     .map(([month, count]) => ({ month, count }));
 }
 
-async function bucketByRegion() {
-  const all = await db.user.list();
+function bucketByRegion(all: ReturnType<typeof db.user.list>) {
   const map = new Map<string, number>();
   for (const u of all) {
     const r = u.region ?? "Unknown";
@@ -28,9 +26,8 @@ async function bucketByRegion() {
   return Array.from(map.entries()).sort((a, b) => b[1] - a[1]).map(([region, count]) => ({ region, count }));
 }
 
-async function bucketByAge() {
+function bucketByAge(all: ReturnType<typeof db.user.list>) {
   const now = new Date();
-  const all = await db.user.list();
   const buckets: Record<string, number> = { "18-24": 0, "25-34": 0, "35-44": 0, "45+": 0, unknown: 0 };
   for (const u of all) {
     if (!u.dob) { buckets.unknown++; continue; }
@@ -44,9 +41,10 @@ async function bucketByAge() {
 }
 
 export default async function AdminCohortsPage() {
-  const months = await bucketByMonth();
-  const regions = await bucketByRegion();
-  const ageBuckets = await bucketByAge();
+  const allUsers = db.user.list();
+  const months = bucketByMonth(allUsers);
+  const regions = bucketByRegion(allUsers);
+  const ageBuckets = bucketByAge(allUsers);
   const status = await userStatusCounts();
   const total = Object.values(status).reduce((s, c) => s + c, 0);
   const kyc = await kycFunnel();

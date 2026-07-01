@@ -29,7 +29,11 @@ export async function generateMetadata() {
 export const dynamic = "force-dynamic";
 
 export default async function LivePage() {
-  const { t, locale } = await getServerT();
+  const [{ t, locale }, liveRaw, traderMap] = await Promise.all([
+    getServerT(),
+    listMarkets({ status: "LIVE" }).catch(() => [] as Awaited<ReturnType<typeof listMarkets>>),
+    traderSeedsByMarket().catch(() => new Map() as Awaited<ReturnType<typeof traderSeedsByMarket>>),
+  ]);
 
   function timeLeftStr(iso: string): string {
     const ms = Date.parse(iso) - Date.now();
@@ -44,8 +48,7 @@ export default async function LivePage() {
 
   // Exclude markets whose resolution time has passed — they're closed/awaiting
   // settlement, not live, and must not show a LIVE badge on the board.
-  const all = await listMarkets({ status: "LIVE" }).then((l) => l.filter((m) => !isClosedByTime(m))).catch(() => []);
-  const traderMap = await traderSeedsByMarket().catch(() => new Map());
+  const all = liveRaw.filter((m) => !isClosedByTime(m));
   // Build a serialisable snapshot for the client component
   const markets = await Promise.all(all.map(async (m) => {
     const cc = await getCardChart(m.id).catch(() => ({ spark: [] as number[], move24h: undefined }));
