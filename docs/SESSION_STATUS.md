@@ -5,6 +5,73 @@ Latest commit on `main`: see `git log -1`. Live at https://kipindi-production.up
 
 ---
 
+## 🚨 Login outage + prod-only bug sweep (2026-07-02 → 07-03)
+
+**Incident (P0): all logins 500'd** with a generic "Server Components render"
+error after the day's `elevation` commits landed. Root cause was in the new
+Postgres **advisory-lock** helper (`src/lib/server/locks.ts`), which `withLock()`
+wraps around **login, register, betting, deposit, withdraw, and settlement** — so
+one broken statement took all of them down. Two stacked bugs, each reproducible
+ONLY against real Postgres (dev uses an in-memory Promise-chain mutex, so tests +
+`next dev` looked healthy — that's why it shipped):
+
+1. **`c3f2a31`** — `pg_advisory_xact_lock(${NS}, ${lockId})` failed with SQLSTATE
+   `42883` "function does not exist". Prisma binds JS number params as **bigint**,
+   and Postgres has no `(bigint, bigint)` overload — only `(int, int)` and
+   `(bigint)`. Fix: cast both args `::int`.
+2. **`62a1075`** — with the cast, the function resolved but returns `void`, which
+   `$queryRaw` cannot deserialize ("Failed to deserialize column of type 'void'").
+   Fix: use **`$executeRaw`** (runs the statement, returns a row count, doesn't
+   deserialize columns). This is the idiomatic Prisma way to call `void`-returning
+   functions.
+
+**How it was diagnosed:** the prod 500 shows only a digest; `railway logs` prints
+the real Prisma error + stack. Always go there first for digest-only 500s.
+
+**Comprehensive prod-only bug sweep** (Ali: "find all such issues, 0 doubt") — the
+whole class of code that behaves differently on real Postgres than the in-memory
+DAL. Ran 3 parallel audits (wallet CHECK constraints · all Prisma create/update ·
+in-memory↔Prisma divergence). Findings:
+- **Clean:** only 2 raw-SQL sites total (the fixed lock + a `SELECT 1` health
+  check); every no-`@default`-`id` create supplies its id; no renamed/dropped
+  column refs (`betId→positionId`, dropped sports models, `StoreSnapshot`); all
+  enums/dates/`Decimal`/unique-`where` valid; `wallet.update` never writes balances
+  (all balance math goes through the guarded `adjust`).
+- **Hardened (`4c52ad9`)** — all no-ops when invariants hold (so suites still
+  validate the normal path); they only change behavior under drift/DB-error:
+  - **bonus-service** (fulfill/expire/cancel): guard every `bonusBalance` debit
+    with `requireBonusBalanceGte`. The sharp one was fulfill — under invariant
+    drift the old code hit the new `bonusBalance>=0` CHECK, got `null`, and still
+    credited real withdrawable balance (minting cash). Now aborts + audits.
+  - **market-dal `positionStore.set`**: widened the Prisma upsert `update` branch
+    to the full mutable field set (was only status/finalPayout/settledAt), matching
+    the in-memory full-replace so a future field change can't silently no-op in prod.
+  - **prisma-dal `kyc.upsert`**: wrapped document delete+createMany in one
+    `$transaction` so a mid-sync crash can't leave a submission with zero docs.
+- **qa:live gauntlet**: fixed 2 stale assertions (dual-language "New/Mpya" → single
+  locale after this session's dual-language removal; old `msaada@50pick.co.tz` →
+  current `support@50pick.tz`).
+
+**State: STABLE.** Verified: typecheck ✅, `next build` ✅, full 33-suite unit
+gauntlet ✅ (2000+ asserts), local browser gauntlet **121/1** (the 1 = "a live
+bettable market exists", fails only because a fresh in-memory boot has no *open*
+market — a seed artifact, not a regression; passes where markets exist).
+`stress-money` proved money conservation on current code (1000 users / 2000 ops,
+drift 0, no negative balances). Login fixes are live on prod; `railway logs` clean
+of the old errors. Commits: `c3f2a31`, `62a1075`, `4c52ad9` (+ docs/gauntlet).
+
+**Open / not blocking:** (1) final confirmation of a *real* prod login is pending
+Ali (I'm barred from writing a throwaway user to the prod DB, and the DB isn't
+reachable from the dev machine). (2) `railway run npm run backfill:zh` for Chinese
+poll-title backfill still to run. (3) Elevation roadmap items 3–13 (double-entry
+ledger, payment integration, Sentry, R2 KYC storage) remain future work — see
+`docs/elevation-tracker.md`; none are half-built.
+
+**Lesson for next session:** raw SQL via Prisma is the prod-only landmine — dev is
+in-memory and never runs it. See memory `reference_kipindi_raw_sql_bigint`.
+
+---
+
 ## 🆕 Pre-launch QA hardening (2026-06-15, session 2)
 
 A strict 3-track audit (auth/tokens · KYC · architecture/payment) ran ahead of the

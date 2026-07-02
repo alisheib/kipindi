@@ -192,8 +192,10 @@ console.log("\n[E] Tester changes — demos hidden, New tab, footer email");
   await page.goto(BASE + "/markets?when=new", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(400);
   const body = await page.locator("body").innerText();
   ok(`no demo polls on /markets`, !body.includes("Demo ·"));
-  ok(`New tab present`, body.includes("New") && body.includes("Mpya"));
-  ok(`footer support email`, body.includes("msaada@50pick.co.tz"));
+  // Single-language display (dual-language labels were removed): only the
+  // active locale's word renders, so accept either "New" (en) or "Mpya" (sw).
+  ok(`New tab present`, body.includes("New") || body.includes("Mpya"));
+  ok(`footer support email`, body.includes("support@50pick.tz"));
   await ctx.close();
 }
 

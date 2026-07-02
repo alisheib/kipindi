@@ -17,7 +17,7 @@
 
 | # | Item | Status | Commit |
 |---|------|--------|--------|
-| 1 | Postgres advisory locks | [x] | 4c869f4 |
+| 1 | Postgres advisory locks | [x] | 4c869f4 → hotfix c3f2a31, 62a1075 (shipped broken: `::int` + `$executeRaw`) |
 | 2 | Client idempotency keys | [x] | 4c869f4 |
 | 3 | Double-entry ledger (dual-write → prove → flip) | [ ] | |
 | 4 | Transactional outbox + pg-boss jobs | [ ] | |
@@ -83,3 +83,5 @@ Everything else. Pick based on user feedback and regulator requests.
 |------|-------|---------|
 | 2026-07-02 | Advisory locks, idempotency, icon redesign, tracker setup | 4c869f4, 33ca139 |
 | 2026-07-02 | Phase 0: betId→positionId, drop 9 sports tables, CHECK constraints, drop StoreSnapshot | 5824f22 |
+| 2026-07-02 | **HOTFIX P0** — advisory lock broke ALL logins/bets: `pg_advisory_xact_lock` needed `::int` casts (42883) then `$executeRaw` (void deserialize). Item #1 was shipped broken. | c3f2a31, 62a1075 |
+| 2026-07-03 | Prod-only bug sweep (3 audits) + hardening: bonus `requireBonusBalanceGte` guards, positionStore.set full-field update, kyc.upsert atomic. qa:live stale-assert fixes. Verified stable (33 suites, build, 121/1 gauntlet). | 4c52ad9 |
