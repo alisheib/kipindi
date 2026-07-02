@@ -2,8 +2,8 @@ Project: Kipindi (50pick) — C:\kipindi-main, deployed on Railway, repo alishei
 
 ## ELEVATION PHASE — Active (started 2 July 2026)
 
-The platform is being elevated from v2.5 (commit 0499a42) to production-grade
-using a 142-recommendation spec from professional reviewers.
+Platform elevated from v2.5 using a 142-item spec + external review (Claude Fable).
+The external review is at `50PICK/Claude Fable final recommendation/PLATFORM-REVIEW-FINAL.md`.
 
 ### Before you do ANYTHING
 
@@ -20,58 +20,56 @@ docs/elevation-tracker.md
 
 Find the next `[ ]` item in the current phase. Work top-to-bottom, phase-by-phase.
 
+### Phase order (STRICT)
+
+- **Phase 0** (items 0a-0g): Schema cleanup — BEFORE the ledger. betId split, CHECK constraints, dead code removal.
+- **Phase 1A** (items 1-7): Pure correctness — ledger, outbox, webhooks, withdrawals
+- **Phase 1B** (items 8-16): Infrastructure — Redis, observability, perf budgets
+- **Phase 2** (items 17-55): Trusted & loved — withdrawal SLA first, then trust/UX
+- **Phase 3** (items 56-70): Without peer — USSD, Vikundi, multi-outcome (frozen until ledger stable)
+
+### Ali Decision Memo
+
+Items marked A1-A6 in the tracker NEED ALI'S INPUT before engineering proceeds.
+If the next item is blocked on an Ali decision, skip to the next unblocked item.
+
 ### After finishing each item
 
 1. Run `npx next build` — must pass clean
 2. Run relevant test suites if touching money paths
 3. Update `docs/elevation-tracker.md`:
    - Mark the item `[x]`
-   - Add the commit hash in the Commit column
-   - Add a row to the Session Log table at the bottom
-4. Commit with message: `elevation #{N}: short description`
-5. Push — Railway auto-redeploys, Ali reviews live
+   - Add the commit hash
+   - Add a row to the Session Log
+4. Commit with message: `elevation #N: short description`
+5. Push — Railway auto-redeploys
 
-### Phase order (STRICT — never jump ahead)
+### Key references
 
-- **Phase 1A** (items 1-7): Pure correctness — locks, ledger, idempotency, outbox
-- **Phase 1B** (items 8-16): Infrastructure — Redis, observability, indexes, jobs
-- **Phase 2** (items 17-56): Trusted & loved — trust, UX, design elevation
-- **Phase 3** (items 57-71): Without peer — USSD, Vikundi, multi-outcome, social
-
-### The spec
-
-Full spec with detailed requirements for every item:
-`NEW PHASE DESIGN/50pick Elevation Spec.dc.html`
-
-Refer to it when implementing — it has the exact technical approach for each item.
+- Elevation Spec: `NEW PHASE DESIGN/50pick Elevation Spec.dc.html`
+- Fable Review: `50PICK/Claude Fable final recommendation/PLATFORM-REVIEW-FINAL.md`
+- Platform onboarding: `CLAUDE.md`
+- Schema: `prisma/schema.prisma`
 
 ### Rules (always enforced)
 
-- **Always commit AND push** — Ali reviews on live Railway deploy, not local
-- **Run `npx next build` before pushing** — tsc --noEmit misses typedRoutes + proxy conflicts
-- **No boot-time API calls** — never call external APIs on deploy/startup, only on intervals
+- **Always commit AND push** — Ali reviews on live Railway deploy
+- **Run `npx next build` before pushing** — catches typedRoutes + proxy conflicts
+- **No boot-time API calls** — only on intervals
 - **Middleware is `src/proxy.ts`** not middleware.ts (Next.js 16)
 - **3-locale i18n** (EN/SW/ZH) for every user-facing string
-- **pos_* ticket IDs** everywhere a bet is referenced
-- **Money paths are sacred** — test after every change to wallet/bet/resolve/withdraw
-- **Migrations must be reversible** — always write a rollback plan for schema changes
-- **P0 before P1 before P2** — never jump ahead in priority
-- **Never break the theme kit** / UI kit / CSS kit / logo system
-- **All rates/amounts/thresholds** must be admin-configurable (no hardcoded values)
-- **Sequential bonuses** enforced (one active at a time, others QUEUED)
-- **Cashback is REQUEST-based** by default (not auto-deposit)
+- **Money paths are sacred** — test after every change
+- **Migrations must be reversible** — always verify prod data compatibility
+- **P0 before P1 before P2** — never jump ahead
+- **Phase 0 before ledger** — schema cleanup is prerequisite
 
-### What to tell Ali at end of session
-
-"I completed elevation items #X-#Y. Tracker updated. Next session: item #Z."
-
-### Quick start for a new session
+### Quick start
 
 User says: "Elevation session — continue"
 You do:
 1. `git pull`
 2. Read `docs/elevation-tracker.md`
-3. Find next `[ ]` item
+3. Find next `[ ]` item (skip Ali-blocked items)
 4. Implement it
 5. Update tracker, commit, push
 6. Repeat

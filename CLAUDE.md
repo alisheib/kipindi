@@ -531,17 +531,20 @@ Every session working on elevation:
 
 ### Phase order (strict)
 
-- **Phase 1A** (items 1-7): Pure correctness — locks, ledger, idempotency, outbox. DO FIRST.
-- **Phase 1B** (items 8-16): Infrastructure — Redis, observability, indexes, jobs.
-- **Phase 2** (items 17-56): Trusted & loved — trust features, UX, design elevation.
-- **Phase 3** (items 57-71): Without peer — USSD, Vikundi, multi-outcome, social.
+- **Phase 0** (items 0a-0g): Schema cleanup — BEFORE the ledger. betId split,
+  CHECK constraints, dead code. External review: "schema debt sabotages item #2."
+- **Phase 1A** (items 1-7): Pure correctness — ledger, outbox, webhooks, withdrawals.
+- **Phase 1B** (items 8-16): Infrastructure — Redis, observability, perf budgets (moved up).
+- **Phase 2** (items 17-55): Trusted & loved — withdrawal SLA first (trust moat).
+- **Phase 3** (items 56-70): Without peer — multi-outcome FROZEN until ledger stable.
 
 ### Key elevation rules
 
+- **Phase 0 before ledger** — schema cleanup is a prerequisite
 - **P0 before P1 before P2** — never jump ahead
-- **Money paths are sacred** — double-entry ledger, advisory locks, idempotency
-  are correctness, not nice-to-have
-- **Test after every money-path change** — run the relevant test suites
-- **Migrations must be reversible** — always write a rollback plan for schema changes
-- **The spec lives at** `NEW PHASE DESIGN/50pick Elevation Spec.dc.html` — refer to it
-  for detailed requirements on any item
+- **Money paths are sacred** — test after every change
+- **Migrations must be reversible** — verify prod data compatibility first
+- **Ali Decision Memo** (items A1-A6 in tracker) blocks some items — skip to next
+- **Evidence table** in tracker — 10/10 requires proof, not just features
+- **The spec** lives at `NEW PHASE DESIGN/50pick Elevation Spec.dc.html`
+- **External review** at `50PICK/Claude Fable final recommendation/PLATFORM-REVIEW-FINAL.md`
