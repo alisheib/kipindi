@@ -1,138 +1,79 @@
 # Elevation Tracker — 50pick v3.0
 
-> Baseline: v2.5 / commit 0499a42 | Started: 2 July 2026
 > Status: `[ ]` pending | `[x]` done
 
 ---
 
 ## Phase 0 — Schema Cleanup (before ledger)
 
-| # | Item | Status | Commit | Notes |
-|---|------|--------|--------|-------|
-| 0a | Split `betId` → `positionId` FK + classify rows | [ ] | | Polymorphic ref blocks ledger |
-| 0b | Drop legacy sports models (Bet/Window/Pool/Match/Sport/League/Team) | [ ] | | Ali: kill permanently |
-| 0c | CHECK constraints: balance>=0, hold>=0, bonusBalance>=0 | [ ] | | Verify prod data first |
-| 0d | Drop StoreSnapshot model | [ ] | | Dead code |
-| 0e | Fix costUsd Float → Decimal(10,6) | [ ] | | Never Float for money |
-| 0f | Wire market-config to SystemConfig table | [ ] | | Memory-only loses on restart |
+| # | Item | Status | Commit |
+|---|------|--------|--------|
+| 0a | Split `betId` → `positionId` FK + classify rows | [ ] | |
+| 0b | Drop legacy sports models (Bet/Window/Pool/Match/Sport/League/Team) | [ ] | |
+| 0c | CHECK constraints: balance>=0, hold>=0, bonusBalance>=0 | [ ] | |
+| 0d | Drop StoreSnapshot model | [ ] | |
 
-## Phase 1A — Money-Path Correctness
+## Phase 1 — Ledger
 
-| # | Item | Status | Commit | Notes |
-|---|------|--------|--------|-------|
-| 1 | Postgres advisory locks | [x] | 4c869f4 | pg_advisory_xact_lock, 31 call sites |
-| 2 | Double-entry ledger (dual-write → prove → flip) | [ ] | | After Phase 0. No history replay, opening-balance entries |
-| 3 | Client idempotency keys | [x] | 4c869f4 | UUID per intent on bet/deposit/withdraw |
-| 4 | Transactional outbox + pg-boss jobs | [ ] | | Outbox for SSE/email + jobs for auto-close/expiry |
-| 5 | Webhook idempotency + signature verification | [ ] | | Provider txn ID unique key + HMAC |
-| 6 | Closed-loop withdrawal rule | [ ] | | Withdraw only to depositing number |
-| 7 | Marketing suppression choke point | [ ] | | No promos to excluded/cooled/at-limit |
+| # | Item | Status | Commit |
+|---|------|--------|--------|
+| 1 | Postgres advisory locks | [x] | 4c869f4 |
+| 2 | Client idempotency keys | [x] | 4c869f4 |
+| 3 | Double-entry ledger (dual-write → prove → flip) | [ ] | |
+| 4 | Transactional outbox + pg-boss jobs | [ ] | |
 
-## Phase 1B — Infrastructure
+## Phase 2 — Payment Integration
 
-| # | Item | Status | Commit | Notes |
-|---|------|--------|--------|-------|
-| 8 | Redis: sessions + rate-limit + SSE fan-out | [ ] | | Session registry as user→session set |
-| 9 | Sentry + structured logs | [ ] | | |
-| 10 | Golden alerts (webhook fail, p99, ledger breach) | [ ] | | Ledger breach → money-paths read-only |
-| 11 | Database indexes | [ ] | | positions, markets, txns, audit |
-| 12 | PITR + restore drill | [ ] | | |
-| 13 | Performance budget CI | [ ] | | LCP < 2.5s, JS < 150KB — before features land |
-| 14 | Admin date/format unification | [ ] | | Single formatDate, officers use this 8h/day |
+Do these together when M-Pesa/Airtel aggregator is signed.
 
-## Phase 2 — Launch Essentials
+| # | Item | Status | Commit |
+|---|------|--------|--------|
+| 5 | Webhook signatures + idempotency (provider HMAC) | [ ] | |
+| 6 | Closed-loop withdrawals (only to depositing number) | [ ] | |
+| 7 | Step-up re-auth on withdrawal (OTP) | [ ] | |
+| 8 | Tax line on payout receipts (taxWithheld already computed) | [ ] | |
+| 9 | E2E money-path test (register → deposit → bet → resolve → withdraw) | [ ] | |
 
-Only what's needed before real money flows.
+## Phase 3 — Production Readiness
 
-| # | Item | Status | Commit | Notes |
-|---|------|--------|--------|-------|
-| 15 | Withdrawal SLA + status timeline | [ ] | | The actual trust moat — "median 14 min" |
-| 16 | Dispute/objection flow (UI + evidence + rulings) | [ ] | | 24h window exists, needs UI |
-| 17 | Payout-math transparency (live itemized breakdown) | [ ] | | Show tax/commission/share before confirm |
-| 18 | Cash-out transparency (fee + exit price shown) | [ ] | | Simple: 9% fee, exit amount |
-| 19 | WhatsApp notifications (win/deposit/withdraw) | [ ] | | WhatsApp Business API, opt-in |
-| 20 | Data-saver mode | [ ] | | Honor Save-Data header, locale-split bundles |
-| 21 | Markers-of-harm engine v1 | [ ] | | Nightly risk score, tiered response |
-| 22 | Session hardening (step-up re-auth on withdraw) | [ ] | | OTP on withdrawal + payout-number change |
-| 23 | Market-integrity monitoring | [ ] | | Late-swing detection, officer-conflict hard-block |
-| 24 | Incident runbooks (top 8 failure modes) | [ ] | | |
-| 25 | Playwright E2E money path + k6 load test | [ ] | | Full register→deposit→bet→resolve→withdraw |
-| 26 | Tax transparency (TRA withholding on receipts) | [ ] | | taxWithheld field exists — show it |
-| 27 | Compliance automation (8 report templates) | [ ] | | GBT monthly, TRA, FIU SAR scheduled |
-| 28 | Icon redesign | [x] | 33ca139 | 17 glyphs + 11 badges + 7 empty states |
+| # | Item | Status | Commit |
+|---|------|--------|--------|
+| 10 | Sentry + structured logs + golden alerts | [ ] | |
+| 11 | Verify Railway PITR backups are on | [ ] | |
+| 12 | Officer-conflict hard-block (can't resolve market you hold position in) | [ ] | |
+| 13 | KYC storage on Cloudflare R2 (encrypted, access-logged) | [ ] | |
+| 14 | Icon redesign | [x] | 33ca139 |
 
-## Post-Launch — Build When Needed
+## Post-Launch
 
-Not tracked per-session. Pick from this list after launch based on user feedback.
+Everything else. Pick based on user feedback and regulator requests.
 
-- Practice mode (TZS 10k practice shillings)
-- Watchlist + price alerts
-- Calibration engine + Pick Score (needs scoring spec: shrinkage, min-n, closing-price)
-- Share cards (WhatsApp status sized)
-- Resolution ceremony animation
-- Glare mode (sunlight-readable)
-- Swahili voice pass (native copy review)
-- Tanzania leo shelf (local market curation)
-- Support console (player-context view)
-- Status page (status.50pick.co.tz)
-- Signature motion (needle tilt, seal-press, detents)
-- Data-visualization system (probability river, pool depth)
-- Admin design parity (DataTable, cmd-K)
-- Search upgrade (pg_trgm, typo-tolerant)
-- PostHog analytics
-- Anchored proofs (OpenTimestamps)
-- USSD companion
-- Vikundi (private prediction circles)
-- Multi-outcome markets (FROZEN until ledger stable months)
-- Agent (wakala) cash-in
-- Seasons + heraldic tiers
-- Pool-solvency proof
-- Regulator read-only mode
-- Passkeys (WebAuthn)
-
----
-
-## Data Protection — PDPA 2022
-
-Regulator asks about this before they ask about SSE.
-
-| # | Item | Status |
-|---|------|--------|
-| P1 | Retention schedule per data class | [ ] |
-| P2 | Deletion/anonymization pipeline | [ ] |
-| P3 | KYC storage on Cloudflare R2 (encrypted, access-logged) | [ ] |
-
----
-
-## Definition of Done (with evidence)
-
-| # | Check | Status |
-|---|-------|--------|
-| D1 | Real deposit via all providers, incl. forced duplicate webhook | [ ] |
-| D2 | Ledger sums to zero after k6 500-concurrent-bet run | [ ] |
-| D3 | Two instances, no lock/SSE anomalies for 72h | [ ] |
-| D4 | Restore drill inside RTO, documented | [ ] |
-| D5 | Median withdrawal < 60 min over 2-week pilot | [ ] |
-| D6 | "Log out all sessions" kills a live token | [ ] |
-| D7 | Self-excluded account receives zero messages | [ ] |
-| D8 | Full bet flow keyboard-only + TalkBack | [ ] |
-| D9 | First visit < 150KB JS; LCP < 2.5s on 3G | [ ] |
-| D10 | Pen-test findings >= high closed | [ ] |
-| D11 | GBT license live; reports scheduled | [ ] |
-| D12 | Officer cannot resolve market they hold position in | [ ] |
+- PDPA (retention schedule, deletion pipeline) — before regulator audit
+- Compliance automation (8 report templates) — before first GBT filing
+- Marketing suppression choke point — before any promotional campaigns
+- Markers-of-harm v1 — before public launch
+- Dispute/objection flow — when volume justifies it
+- Withdrawal SLA + public stats — when withdrawal volume is meaningful
+- WhatsApp notifications — when Business API contract signed
+- Data-saver mode, practice mode, watchlist, calibration engine
+- Redis (sessions/SSE fan-out) — when scaling to 2+ instances
+- Database indexes — when query perf becomes an issue
+- Performance budget CI — when bundle size drifts
+- Admin date/format unification
+- Everything from the original 142-item spec that's not above
 
 ---
 
 ## Ali Decisions (2 July 2026)
 
-| # | Decision |
-|---|----------|
-| A1 | Kill legacy sports models permanently |
-| A2 | Lopsided pools: math handles it, lean warning covers UX |
-| A3 | Cash-out: simple 9% fee exit, no counterparty model |
-| A4 | On-call human: yes, Ali will arrange |
-| A5 | Segregated player funds: yes |
-| A6 | KYC storage: Cloudflare R2 |
+| Decision |
+|----------|
+| Kill legacy sports models permanently |
+| Lopsided pools: math handles it, lean warning covers UX |
+| Cash-out: simple 9% fee exit |
+| On-call human: yes |
+| Segregated player funds: yes |
+| KYC storage: Cloudflare R2 |
 
 ---
 
@@ -140,4 +81,4 @@ Regulator asks about this before they ask about SSE.
 
 | Date | Items | Commits |
 |------|-------|---------|
-| 2026-07-02 | Items 1, 3, 28 + tracker setup | 4c869f4, 33ca139 |
+| 2026-07-02 | Advisory locks, idempotency, icon redesign, tracker setup | 4c869f4, 33ca139 |
