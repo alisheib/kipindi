@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { TippingBar } from "@/components/brand";
-import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
@@ -229,20 +228,6 @@ export function MarketCard({
       </div>
 
       <TippingBar yesPct={yesPct} height={7} resolved={isResolved} showLabels={false} recastOnHover={false} />
-
-      {/* Social proof — trader crest-stack when available */}
-      {live && traders && traders.length > 0 && (
-        <div className="mcardp-traders">
-          <span className="av-stack">
-            {traders.slice(0, 4).map((seed, i) => (
-              <IdentityAvatar key={seed} seed={seed} size={20} />
-            ))}
-          </span>
-          <span className="t-txt">
-            <b>{predictors}</b> {t.market.predictorsCount}
-          </span>
-        </div>
-      )}
 
       {live ? (
         <div className="mcardp-actions">
