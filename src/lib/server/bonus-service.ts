@@ -220,7 +220,17 @@ async function recordWageringCore(userId: string, amount: number): Promise<Wager
       // Fulfilled — convert the unspent remainder to real, withdrawable balance.
       const moved = g.remainingTzs;
       if (moved > 0) {
-        const updatedWallet = await db.wallet.adjust(g.walletId, { bonusBalance: -moved, balance: moved });
+        // Guarded (defense-in-depth): never remove more bonus than exists. Without
+        // the guard, if the bonus invariant ever drifts so bonusBalance < moved, the
+        // Postgres bonusBalance>=0 CHECK rejects the (atomic) adjust and returns null
+        // — and the old code proceeded anyway, crediting real withdrawable balance
+        // while the bonus was NOT debited (minting cash). On a guard miss, abort this
+        // grant and leave it ACTIVE for a later reconcile.
+        const updatedWallet = await db.wallet.adjust(g.walletId, { bonusBalance: -moved, balance: moved }, { requireBonusBalanceGte: moved });
+        if (!updatedWallet) {
+          audit({ category: "WALLET", action: "bonus.fulfill_aborted_guard", actorId: userId, targetType: "BonusGrant", targetId: g.id, payload: { moved, reason: "bonusBalance<remainder" } });
+          continue;
+        }
         const now = new Date().toISOString();
         await db.txn.create({
           id: `txn_${randomId(12)}`,
@@ -420,7 +430,11 @@ export async function expireActiveGrants(): Promise<{ expired: number; removedTz
       if (!fresh || (fresh.status !== "ACTIVE" && fresh.status !== "QUEUED")) return null;
       const rem = fresh.remainingTzs;
       // Only deduct from bonusBalance if the grant was ACTIVE (QUEUED grants haven't touched bonusBalance).
-      if (rem > 0 && fresh.status === "ACTIVE") await db.wallet.adjust(fresh.walletId, { bonusBalance: -rem });
+      // Guarded so a drifted invariant can't drive bonusBalance below 0 (CHECK 23514) — log a miss instead of throwing.
+      if (rem > 0 && fresh.status === "ACTIVE") {
+        const ok = await db.wallet.adjust(fresh.walletId, { bonusBalance: -rem }, { requireBonusBalanceGte: rem });
+        if (!ok) audit({ category: "WALLET", action: "bonus.expire_guard_miss", actorId: null, targetType: "BonusGrant", targetId: fresh.id, payload: { rem, userId: fresh.userId } });
+      }
       await db.bonusGrant.update(fresh.id, { status: "EXPIRED", remainingTzs: 0 });
       audit({ category: "WALLET", action: "bonus.expired", actorId: null, targetType: "BonusGrant", targetId: fresh.id, payload: { userId: fresh.userId, removedTzs: fresh.status === "ACTIVE" ? rem : 0, amountTzs: fresh.amountTzs, wasQueued: fresh.status === "QUEUED" } });
       return { removed: fresh.status === "ACTIVE" ? rem : 0, amountTzs: fresh.amountTzs };
@@ -450,7 +464,11 @@ export async function cancelGrant(grantId: string, actorId: string, reason?: str
       const fresh = await db.bonusGrant.findById(grantId);
       if (!fresh || fresh.status !== "ACTIVE") return { ok: false as const, error: "Grant is no longer active." };
       const rem = fresh.remainingTzs;
-      if (rem > 0) await db.wallet.adjust(fresh.walletId, { bonusBalance: -rem });
+      // Guarded so a drifted invariant can't drive bonusBalance below 0 (CHECK 23514).
+      if (rem > 0) {
+        const ok = await db.wallet.adjust(fresh.walletId, { bonusBalance: -rem }, { requireBonusBalanceGte: rem });
+        if (!ok) audit({ category: "ADMIN", action: "bonus.cancel_guard_miss", actorId, targetType: "BonusGrant", targetId: fresh.id, payload: { rem, userId: fresh.userId } });
+      }
       await db.bonusGrant.update(fresh.id, { status: "CANCELLED", remainingTzs: 0, note: reason ?? fresh.note });
       audit({ category: "ADMIN", action: "bonus.cancelled", actorId, targetType: "BonusGrant", targetId: fresh.id, payload: { userId: fresh.userId, removedTzs: rem, reason: reason ?? null } });
       // Sequential: activate next queued grant now that this one is cancelled.

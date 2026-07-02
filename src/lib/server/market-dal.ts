@@ -239,9 +239,18 @@ const prismaPositions: PositionStore = {
         settledAt: p.settledAt ? new Date(p.settledAt) : null,
         idempotencyKey: p.idempotencyKey ?? null,
       },
+      // Mirror the full mutable field set so this DAL matches the in-memory
+      // store's full-replace semantics (positions.set(p.id, p)). Previously only
+      // status/finalPayout/settledAt were written, so a future mutation of any
+      // other field would persist in tests but silently no-op in production.
       update: {
+        userId: p.userId, marketId: p.marketId,
+        side: p.side, stake: p.stake, bonusStakeTzs: p.bonusStakeTzs ?? 0,
+        potentialPayout: p.potentialPayout,
         status: p.status, finalPayout: p.finalPayout,
+        placedAt: new Date(p.placedAt),
         settledAt: p.settledAt ? new Date(p.settledAt) : null,
+        idempotencyKey: p.idempotencyKey ?? null,
       },
     });
   },

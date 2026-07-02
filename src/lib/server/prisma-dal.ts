@@ -470,25 +470,28 @@ export const prismaDb = {
         update: data,
         include: { documents: true },
       });
-      // Sync documents: delete existing, re-create from StoredKyc
+      // Sync documents: delete existing, re-create from StoredKyc.
       if (k.documents.length > 0) {
-        await pc().kycDocument.deleteMany({ where: { submissionId: k.id } });
-        await pc().kycDocument.createMany({
-          data: k.documents.map((d) => {
-            // storageKey holds a base64 image data URL — record its real mime +
-            // byte size for the document record (cosmetic; serving reads the URL).
-            const m = /^data:(image\/[a-z]+);base64,(.*)$/.exec(d.storageKey ?? "");
-            const sizeBytes = m ? Math.floor((m[2].length * 3) / 4) : 0;
-            return {
-              submissionId: k.id,
-              docType: d.docType as "NIDA" | "NIDA_FRONT" | "NIDA_BACK" | "PASSPORT" | "DRIVER_LICENSE" | "VOTER_CARD" | "SELFIE",
-              storageKey: d.storageKey,
-              mimeType: m?.[1] ?? "application/octet-stream",
-              sizeBytes,
-              uploadedAt: new Date(d.uploadedAt),
-            };
-          }),
+        const docsData = k.documents.map((d) => {
+          // storageKey holds a base64 image data URL — record its real mime +
+          // byte size for the document record (cosmetic; serving reads the URL).
+          const m = /^data:(image\/[a-z]+);base64,(.*)$/.exec(d.storageKey ?? "");
+          const sizeBytes = m ? Math.floor((m[2].length * 3) / 4) : 0;
+          return {
+            submissionId: k.id,
+            docType: d.docType as "NIDA" | "NIDA_FRONT" | "NIDA_BACK" | "PASSPORT" | "DRIVER_LICENSE" | "VOTER_CARD" | "SELFIE",
+            storageKey: d.storageKey,
+            mimeType: m?.[1] ?? "application/octet-stream",
+            sizeBytes,
+            uploadedAt: new Date(d.uploadedAt),
+          };
         });
+        // Atomic delete + re-create so a mid-sync failure can't leave the
+        // submission with zero documents (the in-memory store is atomic here).
+        await pc().$transaction([
+          pc().kycDocument.deleteMany({ where: { submissionId: k.id } }),
+          pc().kycDocument.createMany({ data: docsData }),
+        ]);
       }
       // Re-fetch with documents
       const full = await pc().kycSubmission.findUnique({
