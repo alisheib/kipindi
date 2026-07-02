@@ -59,7 +59,11 @@ async function withAdvisoryLock<T>(key: string, fn: () => Promise<T>): Promise<T
   // fn() runs its own queries on OTHER pool connections — the advisory lock is
   // a coordination semaphore, not a data-consistency wrapper.
   return db.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(${NS}, ${lockId})`;
+    // Cast both args to int4: Prisma binds JS number params as bigint (int8),
+    // and Postgres has no pg_advisory_xact_lock(bigint, bigint) — only
+    // (int, int) and (bigint). Without the casts this raises SQLSTATE 42883
+    // ("function does not exist"), which took down login/register/betting.
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(${NS}::int, ${lockId}::int)`;
     return await fn();
   }, {
     timeout: 30000,  // 30s — covers worst-case resolution payouts
