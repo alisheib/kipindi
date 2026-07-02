@@ -22,7 +22,6 @@ import type {
   StoredWallet,
   StoredTxn,
   StoredResponsibleGambling,
-  StoredBet,
   StoredNotification,
   StoredSourceOfFunds,
   StoredAffiliateAccount,
@@ -199,7 +198,7 @@ function toStoredTxn(t: any): StoredTxn {
     providerRef: t.providerRef,
     msisdn: t.msisdn,
     description: t.description,
-    betId: t.betId,
+    positionId: t.positionId,
     amlReason: t.amlReason,
     createdAt: iso(t.createdAt)!,
     updatedAt: iso(t.updatedAt)!,
@@ -222,32 +221,6 @@ function toStoredRG(r: any): StoredResponsibleGambling {
     coolingOffUntil: iso(r.coolingOffUntil),
     pendingIncreaseTo: numOrNull(r.pendingIncreaseTo),
     pendingIncreaseEffectiveAt: iso(r.pendingIncreaseEffectiveAt),
-  };
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function toStoredBet(b: any): StoredBet {
-  // Legacy sports bets: reconstruct denormalised fields from window → match join
-  const win = b.window;
-  const match = win?.match;
-  const outcomeMap: Record<string, string> = { HOME_WIN: "home", AWAY_WIN: "away", DRAW: "draw" };
-  return {
-    id: b.id,
-    userId: b.userId,
-    matchId: match?.id ?? "",
-    matchLabel: match ? `Match ${match.id.slice(0, 6)}` : "",
-    league: "",
-    windowKind: win?.kind ?? "W_FT",
-    windowLabel: win?.kind ?? "",
-    outcome: (outcomeMap[b.outcome] ?? "home") as StoredBet["outcome"],
-    outcomeLabel: b.outcome,
-    stake: num(b.stake),
-    payRateAtPlacement: numOrNull(b.poolShareAtPlacement) ?? 0,
-    potentialReturn: num(b.potentialReturn),
-    status: b.status,
-    returnAmount: numOrNull(b.returnAmount),
-    placedAt: iso(b.placedAt)!,
-    settledAt: iso(b.settledAt),
   };
 }
 
@@ -692,7 +665,7 @@ export const prismaDb = {
           providerRef: t.providerRef,
           msisdn: t.msisdn,
           description: t.description,
-          betId: t.betId,
+          positionId: t.positionId,
           amlReason: t.amlReason,
           createdAt: new Date(t.createdAt),
           completedAt: t.completedAt ? new Date(t.completedAt) : null,
@@ -778,86 +751,6 @@ export const prismaDb = {
         update: data,
       });
       return toStoredRG(row);
-    },
-  },
-
-  // ── BET (legacy sports bets) ──────────────────────────────────────────────
-  bet: {
-    create: async (b: StoredBet): Promise<StoredBet> => {
-      // Legacy: resolve windowId from matchId + windowKind.
-      // If window doesn't exist, this is a legacy snapshot — store with minimal data.
-      const outcomeMap: Record<string, string> = { home: "HOME_WIN", away: "AWAY_WIN", draw: "DRAW" };
-      const window = await pc().window.findFirst({
-        where: {
-          match: { id: b.matchId },
-          kind: b.windowKind as "W_0_15" | "W_15_30" | "W_30_45" | "W_45_60" | "W_FT",
-        },
-        select: { id: true },
-      });
-      if (!window) throw new Error(`No window for match ${b.matchId} / ${b.windowKind}`);
-      const row = await pc().bet.create({
-        data: {
-          id: b.id,
-          userId: b.userId,
-          windowId: window.id,
-          outcome: (outcomeMap[b.outcome] ?? "HOME_WIN") as "HOME_WIN" | "AWAY_WIN" | "DRAW",
-          stake: b.stake,
-          potentialReturn: b.potentialReturn,
-          poolShareAtPlacement: b.payRateAtPlacement,
-          status: b.status,
-          returnAmount: b.returnAmount,
-          placedAt: new Date(b.placedAt),
-          settledAt: b.settledAt ? new Date(b.settledAt) : null,
-        },
-        include: { window: { include: { match: true } } },
-      });
-      return toStoredBet(row);
-    },
-    findById: async (id: string): Promise<StoredBet | null> => {
-      const row = await pc().bet.findUnique({
-        where: { id },
-        include: { window: { include: { match: true } } },
-      });
-      return row ? toStoredBet(row) : null;
-    },
-    findByUser: async (userId: string, limit = 100): Promise<StoredBet[]> => {
-      const rows = await pc().bet.findMany({
-        where: { userId },
-        include: { window: { include: { match: true } } },
-        orderBy: { placedAt: "desc" },
-        take: limit,
-      });
-      return rows.map(toStoredBet);
-    },
-    findByMatchAndWindow: async (matchId: string, windowKind: StoredBet["windowKind"]): Promise<StoredBet[]> => {
-      const rows = await pc().bet.findMany({
-        where: {
-          status: "PLACED",
-          window: {
-            kind: windowKind as "W_0_15" | "W_15_30" | "W_30_45" | "W_45_60" | "W_FT",
-            match: { id: matchId },
-          },
-        },
-        include: { window: { include: { match: true } } },
-      });
-      return rows.map(toStoredBet);
-    },
-    update: async (id: string, patch: Partial<StoredBet>): Promise<StoredBet | null> => {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const data: Record<string, any> = {};
-        if (patch.status) data.status = patch.status;
-        if (patch.returnAmount !== undefined) data.returnAmount = patch.returnAmount;
-        if (patch.settledAt) data.settledAt = new Date(patch.settledAt);
-        const row = await pc().bet.update({
-          where: { id },
-          data,
-          include: { window: { include: { match: true } } },
-        });
-        return toStoredBet(row);
-      } catch {
-        return null;
-      }
     },
   },
 

@@ -809,12 +809,12 @@ export async function buildMatchIntegrity(generatorId: string): Promise<Report> 
     predictors: m.predictorCount,
   }));
 
-  // Refunds grouped by market (a refund txn carries betId; group by description/betId tail).
+  // Refunds grouped by market (a refund txn carries positionId; group by description/positionId tail).
   const refundRows: Row[] = refunds.slice(0, 200).map((t) => ({
     when: t.createdAt.slice(0, 10),
     player: maskUserId(t.userId),
     amount: Math.abs(t.amount),
-    ref: t.providerRef ?? t.betId ?? t.id,
+    ref: t.providerRef ?? t.positionId ?? t.id,
   }));
 
   return {

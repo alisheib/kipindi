@@ -186,7 +186,7 @@ export type StoredTxn = {
   providerRef: string | null;
   msisdn: string | null;
   description: string | null;
-  betId: string | null;
+  positionId: string | null;
   amlReason: string | null;
   createdAt: string;
   updatedAt: string;
@@ -207,25 +207,6 @@ export type StoredResponsibleGambling = {
   coolingOffUntil: string | null;
   pendingIncreaseTo: number | null;
   pendingIncreaseEffectiveAt: string | null;
-};
-
-export type StoredBet = {
-  id: string;
-  userId: string;
-  matchId: string;
-  matchLabel: string;          // "Simba vs Yanga" snapshot
-  league: string;
-  windowKind: "W_0_15" | "W_15_30" | "W_30_45" | "W_45_60" | "W_FT";
-  windowLabel: string;
-  outcome: "home" | "away" | "draw";
-  outcomeLabel: string;        // "Simba win" snapshot
-  stake: number;
-  payRateAtPlacement: number;
-  potentialReturn: number;
-  status: "PENDING_CONFIRMATION" | "PLACED" | "WON" | "LOST" | "VOIDED" | "CASHED_OUT" | "PARTIALLY_SETTLED";
-  returnAmount: number | null;
-  placedAt: string;
-  settledAt: string | null;
 };
 
 export type StoredNotification = {
@@ -364,7 +345,6 @@ declare global {
     walletsByUser: Map<string, string>;
     txns: Map<string, StoredTxn>;
     responsible: Map<string, StoredResponsibleGambling>;
-    bets: Map<string, StoredBet>;
     notifications: Map<string, StoredNotification>;
     sourceOfFunds: Map<string, StoredSourceOfFunds>;
     affiliates: Map<string, StoredAffiliateAccount>;
@@ -386,7 +366,6 @@ const store = globalThis.__50PICK_STORE ?? (globalThis.__50PICK_STORE = {
   walletsByUser: new Map(),
   txns: new Map(),
   responsible: new Map(),
-  bets: new Map(),
   notifications: new Map(),
   sourceOfFunds: new Map(),
   affiliates: new Map(),
@@ -403,7 +382,6 @@ const store = globalThis.__50PICK_STORE ?? (globalThis.__50PICK_STORE = {
 // "Cannot read properties of undefined" because the cached global is stale.
 if (!store.usersByPhone)  store.usersByPhone = new Map();
 if (!store.walletsByUser) store.walletsByUser = new Map();
-if (!store.bets)          store.bets = new Map();
 if (!store.notifications) store.notifications = new Map();
 if (!store.sourceOfFunds) store.sourceOfFunds = new Map();
 if (!store.affiliates)      store.affiliates = new Map();
@@ -568,20 +546,6 @@ const memoryDb = {
     get: (userId: string) => store.responsible.get(userId) ?? null,
     listAll: () => Array.from(store.responsible.values()),
     upsert: (r: StoredResponsibleGambling) => { store.responsible.set(r.userId, r); return r; },
-  },
-  bet: {
-    create: (b: StoredBet) => { store.bets.set(b.id, b); return b; },
-    findById: (id: string) => store.bets.get(id) ?? null,
-    findByUser: (userId: string, limit = 100) => Array.from(store.bets.values()).filter((b) => b.userId === userId).sort((a, b) => b.placedAt.localeCompare(a.placedAt)).slice(0, limit),
-    findByMatchAndWindow: (matchId: string, windowKind: StoredBet["windowKind"]) =>
-      Array.from(store.bets.values()).filter((b) => b.matchId === matchId && b.windowKind === windowKind && b.status === "PLACED"),
-    update: (id: string, patch: Partial<StoredBet>) => {
-      const b = store.bets.get(id);
-      if (!b) return null;
-      const next = { ...b, ...patch };
-      store.bets.set(id, next);
-      return next;
-    },
   },
   notification: {
     create: (n: StoredNotification) => { store.notifications.set(n.id, n); return n; },

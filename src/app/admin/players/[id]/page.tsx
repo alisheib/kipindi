@@ -5,7 +5,7 @@ import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/component
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Avatar } from "@/components/ui/avatar";
 import { Chip } from "@/components/ui/chip";
-import { db, type StoredTxn, type StoredBet } from "@/lib/server/store";
+import { db, type StoredTxn } from "@/lib/server/store";
 import { getAuditForActor, getAuditForTarget, audit as recordAudit, type AuditCategory } from "@/lib/server/audit";
 import { currentSession } from "@/lib/server/auth-service";
 import { exportUserData } from "@/lib/server/user-service";
@@ -53,7 +53,6 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   searchParams: Promise<{
     tab?: string;
     txpage?: string; txsort?: string; txdir?: string;
-    betpage?: string; betsort?: string; betdir?: string;
   }>;
 }) {
   const { id } = await params;
@@ -77,10 +76,9 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   try { kyc = db.kyc.findByUserId(id); } catch { /* graceful */ }
   let rg: ReturnType<typeof db.responsible.get> = null;
   try { rg = db.responsible.get(id); } catch { /* graceful */ }
-  let data: Awaited<ReturnType<typeof exportUserData>> = { user, transactions: [], bets: [] } as never;
+  let data: Awaited<ReturnType<typeof exportUserData>> = { user, transactions: [] } as never;
   try { data = await exportUserData(id); } catch { /* graceful */ }
   const txns = data.transactions as StoredTxn[];
-  const bets = data.bets as StoredBet[];
   // Merge the player's OWN actions with admin actions taken AGAINST them, so an
   // officer can see who suspended / reset / emailed / approved this account.
   const audit = [...(getAuditForActor(id, 200) ?? []), ...(getAuditForTarget("User", id, 200) ?? [])]
@@ -93,9 +91,6 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   const lifetimeDeposits = txns.filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED").reduce((s, t) => s + t.amount, 0);
   const lifetimeWithdrawals = txns.filter((t) => t.type === "WITHDRAWAL" && t.status === "CONFIRMED").reduce((s, t) => s + Math.abs(t.amount), 0);
   const ngr = lifetimeStakes - lifetimePayouts;
-  const betsCount = bets.length;
-  const lastBet = bets.sort((a, b) => b.placedAt.localeCompare(a.placedAt))[0]?.placedAt;
-
   // Transactions table (prefix "tx") — newest first by default.
   const tx = parseSort(sp, ["time", "type", "provider", "status", "amount"] as const, "time", "desc", "tx");
   const txSorted = applySort(txns, tx.sort, tx.dir, {
@@ -109,20 +104,6 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   const txRows = txSorted.slice((txPage - 1) * PER_PAGE, txPage * PER_PAGE);
   const txBase = buildBaseHref(playerHref, sp, "txpage");
 
-  // Bets table (prefix "bet") — newest first by default.
-  const bet = parseSort(sp, ["when", "match", "outcome", "stake", "status", "return"] as const, "when", "desc", "bet");
-  const betSorted = applySort(bets, bet.sort, bet.dir, {
-    when: (b) => b.placedAt,
-    match: (b) => b.matchLabel,
-    outcome: (b) => b.outcomeLabel,
-    stake: (b) => b.stake,
-    status: (b) => b.status,
-    return: (b) => b.returnAmount ?? 0,
-  });
-  const betPage = parsePage(sp.betpage, betSorted.length);
-  const betRows = betSorted.slice((betPage - 1) * PER_PAGE, betPage * PER_PAGE);
-  const betBase = buildBaseHref(playerHref, sp, "betpage");
-
   // Risk score — simple proxy: deposit cycling rate, AML hits, late-night sessions, declined cards
   const riskScore = computeRiskScore(txns.length, lifetimeWithdrawals, kyc?.status === "APPROVED");
   const riskBand = riskScore >= 70 ? "high" : riskScore >= 40 ? "medium" : "low";
@@ -133,7 +114,6 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
 
   const TABS: { id: string; label: string; count?: number; icon: React.ReactNode }[] = [
     { id: "activity",     label: "Activity",       count: audit.length, icon: <I.activity s={12} /> },
-    { id: "bets",         label: "Bets",           count: betsCount,    icon: <I.ticket s={12} /> },
     { id: "transactions", label: "Transactions",   count: txns.length,  icon: <I.wallet s={12} /> },
     { id: "kyc",          label: "KYC",            count: undefined,    icon: <I.shieldcheck s={12} /> },
     { id: "limits",       label: "Limits",         count: undefined,    icon: <I.lock s={12} /> },
@@ -220,8 +200,8 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <AdminKpi label="Lifetime deposit"    sw="Jumla ya amana"        value={`TZS ${formatTzsCompact(lifetimeDeposits).replace("TZS ", "")}`} gold delta={wallet ? `wallet ${formatTzs(wallet.balance)}` : "—"} />
           <AdminKpi label="Lifetime withdrawal" sw="Jumla ya utoaji"       value={`TZS ${formatTzsCompact(lifetimeWithdrawals).replace("TZS ", "")}`} delta={`${txns.filter((t) => t.type === "WITHDRAWAL").length} txns`} />
-          <AdminKpi label="NGR contribution"    sw="Mchango wa mapato"     value={`TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`} gold delta={`bets ${betsCount}`} />
-          <AdminKpi label="Last bet"            sw="Dau la mwisho"         value={lastBet ? new Date(lastBet).toLocaleDateString("en-GB") : "never"} delta={lastBet ? `${bets.length} bets` : "—"} />
+          <AdminKpi label="NGR contribution"    sw="Mchango wa mapato"     value={`TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`} gold delta={`${txns.filter((t) => t.type === "BET_PLACED").length} positions`} />
+          <AdminKpi label="Last position"      sw="Nafasi ya mwisho"      value={(() => { const lb = txns.filter((t) => t.type === "BET_PLACED").sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]; return lb ? new Date(lb.createdAt).toLocaleDateString("en-GB") : "never"; })()} delta={`${txns.filter((t) => t.type === "BET_PLACED").length} positions`} />
         </div>
 
         {/* §C — Tabs */}
@@ -279,40 +259,6 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                 ))}
                 {audit.length === 0 && <p className="text-caption text-text-tertiary py-6 text-center">No recorded activity yet.</p>}
               </div>
-            )}
-            {tab === "bets" && (
-              <>
-              <div className="overflow-x-auto">
-                <table className="admin-tbl min-w-[600px]">
-                  <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
-                    <tr>
-                      <th className="py-2 pr-3 text-left">Ref</th>
-                      <SortTh field="when" label="When" current={bet.sort} dir={bet.dir} sp={sp} baseHref={playerHref} prefix="bet" className="py-2 pr-3" />
-                      <SortTh field="match" label="Match · window" current={bet.sort} dir={bet.dir} sp={sp} baseHref={playerHref} prefix="bet" className="py-2 pr-3" />
-                      <SortTh field="outcome" label="Outcome" current={bet.sort} dir={bet.dir} sp={sp} baseHref={playerHref} prefix="bet" className="py-2 pr-3" />
-                      <SortTh field="stake" label="Stake" current={bet.sort} dir={bet.dir} sp={sp} baseHref={playerHref} prefix="bet" align="right" className="py-2 pr-3" />
-                      <SortTh field="status" label="Status" current={bet.sort} dir={bet.dir} sp={sp} baseHref={playerHref} prefix="bet" align="right" className="py-2 pr-3" />
-                      <SortTh field="return" label="Return" current={bet.sort} dir={bet.dir} sp={sp} baseHref={playerHref} prefix="bet" align="right" className="py-2 pl-3" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {betRows.map((b) => (
-                      <tr key={b.id} className="border-b border-border-subtle/50 last:border-b-0">
-                        <td className="py-2 pr-3 font-mono text-[10px] tracking-[0.04em] text-text-muted tabular-nums whitespace-nowrap">{b.id}</td>
-                        <td className="py-2 pr-3 font-mono whitespace-nowrap">{formatDateTime(b.placedAt)}</td>
-                        <td className="py-2 pr-3">{b.matchLabel} <span className="text-text-tertiary">· {b.windowLabel}</span></td>
-                        <td className="py-2 pr-3">{b.outcomeLabel}</td>
-                        <td className="py-2 pr-3 font-mono tabular text-right">{formatTzs(b.stake)}</td>
-                        <td className="py-2 pr-3 text-right"><span className="font-mono text-micro tracking-wider uppercase">{b.status}</span></td>
-                        <td className={["py-2 pl-3 font-mono tabular text-right", b.status === "WON" ? "text-gold" : "text-text-tertiary"].join(" ")}>{b.returnAmount ? formatTzs(b.returnAmount) : "—"}</td>
-                      </tr>
-                    ))}
-                    {bets.length === 0 && <tr><td colSpan={7} className="py-6 text-center text-text-tertiary">No bets placed.</td></tr>}
-                  </tbody>
-                </table>
-              </div>
-              <AdminPagination total={betSorted.length} page={betPage} baseHref={betBase} param="betpage" />
-              </>
             )}
             {tab === "transactions" && (
               <>

@@ -237,7 +237,7 @@ async function recordWageringCore(userId: string, amount: number): Promise<Wager
           providerRef: null,
           msisdn: null,
           description: "Bonus unlocked — wagering completed",
-          betId: null,
+          positionId: null,
           amlReason: null,
           createdAt: now,
           updatedAt: now,

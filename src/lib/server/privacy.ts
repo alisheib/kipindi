@@ -127,7 +127,6 @@ export async function buildDsarBundle(userId: string) {
   if (!user) return null;
   const wallet = await db.wallet.findByUserId(userId);
   const txns = await db.txn.findByUser(userId, 10_000);
-  const bets = await db.bet.findByUser(userId, 10_000);
   const kyc = await db.kyc.findByUserId(userId);
   const responsible = await db.responsible.get(userId);
   const notifications = await db.notification.findByUser(userId, 1000);
@@ -155,7 +154,6 @@ export async function buildDsarBundle(userId: string) {
     },
     wallet,
     transactions: txns,
-    matchBets: bets,
     kyc,
     responsibleGambling: responsible,
     notificationsCount: notifications.length,

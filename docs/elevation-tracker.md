@@ -8,10 +8,10 @@
 
 | # | Item | Status | Commit |
 |---|------|--------|--------|
-| 0a | Split `betId` → `positionId` FK + classify rows | [ ] | |
-| 0b | Drop legacy sports models (Bet/Window/Pool/Match/Sport/League/Team) | [ ] | |
-| 0c | CHECK constraints: balance>=0, hold>=0, bonusBalance>=0 | [ ] | |
-| 0d | Drop StoreSnapshot model | [ ] | |
+| 0a | Rename `betId` → `positionId` across schema + codebase | [x] | pending |
+| 0b | Drop legacy sports models (9 tables, 5 enums, all dead code) | [x] | pending |
+| 0c | CHECK constraints: balance>=0, hold>=0, bonusBalance>=0 | [x] | pending |
+| 0d | Drop StoreSnapshot model + update health check | [x] | pending |
 
 ## Phase 1 — Ledger
 

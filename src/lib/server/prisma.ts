@@ -37,7 +37,7 @@ export function prisma(): PrismaClient | null {
 
 /**
  * Active connectivity check — runs SELECT 1 to verify the database is
- * actually reachable, then attempts a StoreSnapshot.findFirst() to
+ * actually reachable, then attempts a SystemConfig table probe to
  * verify the schema migration has been applied. Returns a structured
  * verdict with latency so the operator can spot a slow/dropped link
  * without waiting for the next mutation.
@@ -79,7 +79,7 @@ export async function pingDatabase(): Promise<{
     // 2. table probe — proves the migration has been applied
     let tableExists = false;
     try {
-      await client.storeSnapshot.findFirst({ select: { id: true } });
+      await client.systemConfig.findFirst({ select: { key: true } });
       tableExists = true;
     } catch (tableErr) {
       // Connection is up but the table is missing — the most common
@@ -87,7 +87,7 @@ export async function pingDatabase(): Promise<{
       // hasn't run yet. Surface this cleanly.
       return {
         envSet, reachable: true, tableExists: false, latencyMs,
-        error: `StoreSnapshot table not found — run \`prisma migrate deploy\`. (${String((tableErr as Error)?.message ?? tableErr).slice(0, 200)})`,
+        error: `Schema tables not found — run \`prisma migrate deploy\`. (${String((tableErr as Error)?.message ?? tableErr).slice(0, 200)})`,
         hostHint,
       };
     }

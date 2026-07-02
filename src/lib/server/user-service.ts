@@ -25,7 +25,6 @@ export type UserDataExport = {
   kyc: ReturnType<typeof db.kyc.findByUserId>;
   wallet: ReturnType<typeof db.wallet.findByUserId>;
   responsibleGambling: ReturnType<typeof db.responsible.get>;
-  bets: ReturnType<typeof db.bet.findByUser>;
   transactions: ReturnType<typeof db.txn.findByUser>;
   auditEntries: AuditEntry[];
 };
@@ -38,7 +37,6 @@ export async function exportUserData(userId: string) {
     kyc: await db.kyc.findByUserId(userId),
     wallet: await db.wallet.findByUserId(userId),
     responsibleGambling: await db.responsible.get(userId),
-    bets: await db.bet.findByUser(userId, 1000),
     transactions: await db.txn.findByUser(userId, 1000),
     auditEntries: getAuditForActor(userId, 1000),
   };

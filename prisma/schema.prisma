@@ -110,48 +110,8 @@ enum PaymentProvider {
   INTERNAL
 }
 
-enum MatchStatus {
-  SCHEDULED
-  PRE_MATCH
-  LIVE
-  HALFTIME
-  FINISHED
-  POSTPONED
-  CANCELLED
-  ABANDONED
-}
-
-enum WindowKind {
-  W_0_15
-  W_15_30
-  W_30_45
-  W_45_60
-  W_FT
-}
-
-enum WindowStatus {
-  OPEN
-  CLOSED
-  SETTLING
-  SETTLED
-  VOID
-}
-
-enum BetOutcome {
-  HOME_WIN
-  AWAY_WIN
-  DRAW
-}
-
-enum BetStatus {
-  PENDING_CONFIRMATION
-  PLACED
-  WON
-  LOST
-  VOIDED
-  CASHED_OUT
-  PARTIALLY_SETTLED
-}
+// Legacy sports enums (MatchStatus, WindowKind, WindowStatus, BetOutcome,
+// BetStatus) dropped in Phase 0b — prediction markets are the only wager type.
 
 enum FlagType {
   MULTI_ACCOUNT
@@ -204,22 +164,8 @@ enum AuditCategory {
   SYSTEM
 }
 
-// ============================================================================
-// PERSISTENCE — single-row snapshot of the in-memory runtime store
-// ============================================================================
-//
-// The app is single-instance + in-memory by design (Sprint 0–47). To make
-// player accounts and money survive a Railway container restart, every
-// scheduled backup writes the full HMAC-signed snapshot envelope into
-// this row. On boot, the app reads it back and rehydrates globalThis.
-//
-// Long-term we move every entity to its own first-class Prisma model.
-// This row buys us correctness today without that risk.
-model StoreSnapshot {
-  id        Int      @id @default(1)
-  envelope  String   @db.Text // HMAC-signed JSON envelope; same shape as the disk file
-  updatedAt DateTime @updatedAt
-}
+// StoreSnapshot dropped in Phase 0d — all entities now in dedicated tables.
+// Migration 20260702150000 drops the table.
 
 // ============================================================================
 // IDENTITY & ACCESS
@@ -252,7 +198,6 @@ model User {
 
   wallet                  Wallet?
   kycSubmissions          KycSubmission[]
-  bets                    Bet[]
   transactions            Transaction[]
   sessions                Session[]
   otps                    Otp[]
@@ -384,9 +329,8 @@ model KycDocument {
 // WALLET & TRANSACTIONS
 // ============================================================================
 
-// NOTE: After migration, apply CHECK constraints manually:
-//   ALTER TABLE "Wallet" ADD CONSTRAINT "wallet_balance_non_negative" CHECK (balance >= 0);
-//   ALTER TABLE "Wallet" ADD CONSTRAINT "wallet_hold_non_negative" CHECK (hold >= 0);
+// CHECK constraints applied via migration 20260702140000:
+//   balance >= 0, hold >= 0, bonusBalance >= 0
 model Wallet {
   id        String       @id @default(cuid())
   userId    String       @unique
@@ -428,13 +372,11 @@ model Transaction {
   providerStatus  String?
   msisdn          String? // recipient/sender phone for mobile money
   description     String?
-  // Soft reference to the wager this ledger entry belongs to. Holds EITHER a
-  // legacy sports `Bet.id` OR a prediction-market `Position.id` — the platform
-  // has two wager types and a single column FK to only one of them is wrong.
-  // A hard FK here rejected every prediction-market bet/settlement txn (the
-  // Position id has no matching Bet row), crashing bet placement after the
-  // position was already written. Kept as a plain string; no DB-level FK.
-  betId           String?
+  // Soft reference to the prediction-market Position this ledger entry belongs
+  // to. Null for non-wager transactions (deposits, withdrawals, bonuses).
+  // Kept as a plain string (no DB-level FK) so the append-only ledger is never
+  // blocked by cascade or missing-row errors.
+  positionId      String?
   amlReviewedById String?
   amlReviewedAt   DateTime?
   amlReason       String?
@@ -578,169 +520,9 @@ model InviteEntry {
   @@index([campaignId, status])
 }
 
-// ============================================================================
-// MATCHES, WINDOWS, POOLS, BETS
-// ============================================================================
-
-model Sport {
-  id      String   @id @default(cuid())
-  slug    String   @unique
-  nameEn  String
-  nameSw  String
-  active  Boolean  @default(true)
-  leagues League[]
-}
-
-model League {
-  id         String  @id @default(cuid())
-  sportId    String
-  sport      Sport   @relation(fields: [sportId], references: [id])
-  externalId String?
-  slug       String  @unique
-  nameEn     String
-  nameSw     String
-  country    String?
-  active     Boolean @default(true)
-  matches    Match[]
-}
-
-model Team {
-  id         String  @id @default(cuid())
-  externalId String? @unique
-  slug       String  @unique
-  nameEn     String
-  nameSw     String?
-  shortName  String?
-  badgeUrl   String?
-  country    String?
-
-  homeMatches Match[] @relation("HomeTeam")
-  awayMatches Match[] @relation("AwayTeam")
-}
-
-model Match {
-  id         String      @id @default(cuid())
-  leagueId   String
-  league     League      @relation(fields: [leagueId], references: [id])
-  externalId String?     @unique
-  homeTeamId String
-  homeTeam   Team        @relation("HomeTeam", fields: [homeTeamId], references: [id])
-  awayTeamId String
-  awayTeam   Team        @relation("AwayTeam", fields: [awayTeamId], references: [id])
-  kickoffAt  DateTime
-  status     MatchStatus @default(SCHEDULED)
-  homeScore  Int         @default(0)
-  awayScore  Int         @default(0)
-  minute     Int?
-  venue      String?
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-
-  windows Window[]
-  events  MatchEvent[]
-
-  @@index([status, kickoffAt])
-  @@index([leagueId, kickoffAt])
-}
-
-model MatchEvent {
-  id        String   @id @default(cuid())
-  matchId   String
-  match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  minute    Int
-  type      String // GOAL, YELLOW, RED, SUB, CORNER, etc.
-  team      String? // home / away
-  player    String?
-  meta      Json?
-  createdAt DateTime @default(now())
-
-  @@index([matchId, minute])
-}
-
-model Window {
-  id              String       @id @default(cuid())
-  matchId         String
-  match           Match        @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  kind            WindowKind
-  status          WindowStatus @default(OPEN)
-  closesAt        DateTime
-  settledAt       DateTime?
-  homeScoreStart  Int?
-  awayScoreStart  Int?
-  homeScoreEnd    Int?
-  awayScoreEnd    Int?
-  resolvedOutcome BetOutcome?
-  voidReason      String?
-  minStake        Decimal      @default(100) @db.Decimal(18, 2)
-  maxStake        Decimal      @default(500000) @db.Decimal(18, 2)
-
-  pool Pool?
-  bets Bet[]
-
-  @@unique([matchId, kind])
-  @@index([status, closesAt])
-}
-
-model Pool {
-  id              String   @id @default(cuid())
-  windowId        String   @unique
-  window          Window   @relation(fields: [windowId], references: [id], onDelete: Cascade)
-  totalStake      Decimal  @default(0) @db.Decimal(18, 2)
-  homeStake       Decimal  @default(0) @db.Decimal(18, 2)
-  awayStake       Decimal  @default(0) @db.Decimal(18, 2)
-  drawStake       Decimal  @default(0) @db.Decimal(18, 2)
-  housePct        Decimal  @default(15.00) @db.Decimal(5, 2) // configurable; spec proposes 15-20%
-  payoutPct       Decimal  @default(85.00) @db.Decimal(5, 2)
-  betCount        Int      @default(0)
-  seededAmount    Decimal  @default(0) @db.Decimal(18, 2) // house liquidity seed
-  finalHouseTake  Decimal? @db.Decimal(18, 2)
-  finalPayoutPool Decimal? @db.Decimal(18, 2)
-  updatedAt       DateTime @updatedAt
-  createdAt       DateTime @default(now())
-}
-
-model BetBundle {
-  id              String    @id @default(cuid())
-  userId          String
-  totalStake      Decimal   @db.Decimal(18, 2)
-  potentialReturn Decimal?  @db.Decimal(18, 2)
-  bonusMultiplier Decimal   @default(1.00) @db.Decimal(6, 3)
-  status          BetStatus @default(PENDING_CONFIRMATION)
-  legs            Bet[]
-  placedAt        DateTime  @default(now())
-  settledAt       DateTime?
-
-  @@index([userId, placedAt])
-}
-
-model Bet {
-  id                   String     @id @default(cuid())
-  userId               String
-  user                 User       @relation(fields: [userId], references: [id])
-  windowId             String
-  window               Window     @relation(fields: [windowId], references: [id])
-  bundleId             String?
-  bundle               BetBundle? @relation(fields: [bundleId], references: [id])
-  outcome              BetOutcome
-  stake                Decimal    @db.Decimal(18, 2)
-  potentialReturn      Decimal?   @db.Decimal(18, 2)
-  poolShareAtPlacement Decimal?   @db.Decimal(8, 5)
-  status               BetStatus  @default(PENDING_CONFIRMATION)
-  returnAmount         Decimal?   @db.Decimal(18, 2)
-  cashedOutAt          DateTime?
-  cashedOutValue       Decimal?   @db.Decimal(18, 2)
-  placedAt             DateTime   @default(now())
-  settledAt            DateTime?
-  voidedAt             DateTime?
-  voidReason           String?
-
-  // NOTE: Transaction.betId is a soft reference (no FK) — see Transaction.betId.
-  // No back-relation: the column may point at a Position id instead of a Bet id.
-
-  @@index([userId, placedAt])
-  @@index([windowId, status])
-  @@index([status, settledAt])
-}
+// Legacy sports models (Sport, League, Team, Match, MatchEvent, Window, Pool,
+// BetBundle, Bet) dropped in Phase 0b — prediction markets are the only wager
+// type. Tables dropped via migration 20260702130000.
 
 // ============================================================================
 // ANTI-FRAUD & INTEGRITY

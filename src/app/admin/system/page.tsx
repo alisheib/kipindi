@@ -30,7 +30,7 @@ export default async function AdminSystemPage() {
   const resolvedMarkets = (await listMarkets({ status: "RESOLVED" })).length;
   const dbBackend: "postgres" | "disk-only" = hasDatabase() ? "postgres" : "disk-only";
   const health = { lastOk: null as string | null, lastFail: null as string | null, lastError: null as string | null, consecutiveFails: 0 };
-  // Active reachability ping — runs SELECT 1 + a StoreSnapshot probe
+  // Active reachability ping — runs SELECT 1 + schema table probe
   // on every render of this page so the operator gets a NOW answer,
   // not a "we last saw it 12 hours ago when something wrote" answer.
   const ping = await pingDatabase();
@@ -106,7 +106,7 @@ export default async function AdminSystemPage() {
                   </>
                 ) : !ping.tableExists ? (
                   <>
-                    <strong className="text-warning-fg">Connected, but StoreSnapshot table is missing.</strong>{" "}
+                    <strong className="text-warning-fg">Connected, but schema tables are missing.</strong>{" "}
                     The connection works ({ping.latencyMs}ms to{" "}
                     <span className="font-mono text-text">{ping.hostHint}</span>),
                     but migrations haven't run yet. Force a redeploy so
@@ -119,7 +119,7 @@ export default async function AdminSystemPage() {
                     <strong className="text-success">Postgres connected and ready.</strong>{" "}
                     Reachable in <span className="font-mono text-text">{ping.latencyMs}ms</span>{" "}
                     at <span className="font-mono text-text">{ping.hostHint}</span>.
-                    StoreSnapshot table exists.
+                    Schema tables migrated.
                     {health.lastOk && (
                       <>
                         {" "}Last write{" "}

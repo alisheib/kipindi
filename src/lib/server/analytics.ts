@@ -319,7 +319,7 @@ export async function listProvidersInPeriod(period: Period = "28d") {
 export type SuspiciousFlag = {
   userId: string;
   txnId: string;
-  betId: string | null;
+  positionId: string | null;
   type: "STAKE_SPIKE" | "VELOCITY";
   detectedAt: string;
   detail: string;
@@ -362,7 +362,7 @@ export async function detectSuspiciousBets(opts: { multiple?: number; velocityTh
         flags.push({
           userId,
           txnId: t.id,
-          betId: t.betId ?? null,
+          positionId: t.positionId ?? null,
           type: "STAKE_SPIKE",
           detectedAt: new Date().toISOString(),
           detail: `Stake ${stake.toLocaleString()} is ${ratio.toFixed(1)}× the 30-day median of ${median.toLocaleString()}`,
@@ -378,7 +378,7 @@ export async function detectSuspiciousBets(opts: { multiple?: number; velocityTh
       flags.push({
         userId,
         txnId: last24h[0].id,
-        betId: last24h[0].betId ?? null,
+        positionId: last24h[0].positionId ?? null,
         type: "VELOCITY",
         detectedAt: new Date().toISOString(),
         detail: `${last24h.length} bets in the last 24h (threshold ${velocityThreshold})`,

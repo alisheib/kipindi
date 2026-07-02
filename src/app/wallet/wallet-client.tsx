@@ -268,13 +268,13 @@ function TxnRow({ tx }: { tx: Transaction }) {
             <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.error.reference}</p>
             <p className="font-mono text-text-muted truncate">{tx.id.slice(0, 16)}</p>
           </div>
-          {tx.betId && (
+          {tx.positionId && (
             <Link
               href="/positions"
               className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5 hover:border-gold-700 transition-colors block"
             >
               <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.common.ticket}</p>
-              <p className="font-mono text-[11px] tracking-[0.04em] text-brand-300 tabular-nums underline-offset-2 hover:underline">{tx.betId}</p>
+              <p className="font-mono text-[11px] tracking-[0.04em] text-brand-300 tabular-nums underline-offset-2 hover:underline">{tx.positionId}</p>
             </Link>
           )}
         </div>

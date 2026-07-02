@@ -384,7 +384,7 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
       description: bonusPart > 0
         ? `${opts.side} on "${market.titleEn.slice(0, 50)}" (incl. TZS ${bonusPart.toLocaleString()} bonus)`
         : `${opts.side} on "${market.titleEn.slice(0, 60)}"`,
-      betId: positionId,
+      positionId: positionId,
       amlReason: null,
       createdAt: placedAt, updatedAt: placedAt, completedAt: placedAt,
     });
@@ -563,7 +563,7 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
             balanceAfter: newBal, currency: "TZS",
             provider: "INTERNAL", providerRef: null, msisdn: null,
             description: `${outcome} won · "${cur.titleEn.slice(0, 60)}" (auto)`,
-            betId: p.id,
+            positionId: p.id,
             amlReason: null,
             createdAt: cur.resolutionStage2At!, updatedAt: cur.resolutionStage2At!, completedAt: cur.resolutionStage2At!,
           });
@@ -776,7 +776,7 @@ export async function repairOrphanedPositions(): Promise<{ repaired: number; ref
       balanceAfter: newBal, currency: "TZS",
       provider: "INTERNAL", providerRef: null, msisdn: null,
       description: `Refund · orphaned position (market record missing)`,
-      betId: p.id,
+      positionId: p.id,
       amlReason: null,
       createdAt: p.settledAt, updatedAt: p.settledAt, completedAt: p.settledAt,
     });
@@ -934,7 +934,7 @@ export async function cashOutPosition(
       balanceAfter: newBalance, currency: "TZS",
       provider: "INTERNAL", providerRef: null, msisdn: null,
       description: `Cashed out · "${m.titleEn.slice(0, 60)}"`,
-      betId: p.id,
+      positionId: p.id,
       amlReason: null,
       createdAt: now, updatedAt: now, completedAt: now,
     });
@@ -1062,7 +1062,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
         balanceAfter, currency: "TZS",
         provider: "INTERNAL", providerRef: null, msisdn: null,
         description: `One-sided refund · "${m.titleEn.slice(0, 60)}"`,
-        betId: p.id,
+        positionId: p.id,
         amlReason: null,
         createdAt: m.resolutionStage2At!, updatedAt: m.resolutionStage2At!, completedAt: m.resolutionStage2At!,
       });
@@ -1122,7 +1122,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
         balanceAfter, currency: "TZS",
         provider: "INTERNAL", providerRef: null, msisdn: null,
         description: `Refund · "${m.titleEn.slice(0, 60)}" voided`,
-        betId: p.id,
+        positionId: p.id,
         amlReason: null,
         createdAt: m.resolutionStage2At!, updatedAt: m.resolutionStage2At!, completedAt: m.resolutionStage2At!,
       });
@@ -1152,7 +1152,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
           balanceAfter, currency: "TZS",
           provider: "INTERNAL", providerRef: null, msisdn: null,
           description: `${opts.outcome} won · "${m.titleEn.slice(0, 60)}"`,
-          betId: p.id,
+          positionId: p.id,
           amlReason: null,
           createdAt: m.resolutionStage2At!, updatedAt: m.resolutionStage2At!, completedAt: m.resolutionStage2At!,
         });
@@ -1335,7 +1335,7 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
         balanceAfter, currency: "TZS",
         provider: "INTERNAL", providerRef: null, msisdn: null,
         description: `Emergency refund · "${m.titleEn.slice(0, 60)}" cancelled`,
-        betId: p.id,
+        positionId: p.id,
         amlReason: null,
         createdAt: now, updatedAt: now, completedAt: now,
       });

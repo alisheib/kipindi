@@ -250,7 +250,7 @@ async function migrateTransactions(txns: AnyMap) {
           providerRef: t.providerRef ?? null,
           msisdn: t.msisdn ?? null,
           description: t.description ?? "",
-          betId: null, // betId references positions (pos_*) that aren't in the Bet table — skip FK
+          positionId: null, // positions — no FK to Position table (soft reference)
           amlReason: t.amlReason ?? null,
           createdAt: dtRequired(t.createdAt),
           updatedAt: dtRequired(t.updatedAt),
@@ -607,7 +607,11 @@ async function main() {
 
   // 1. Read snapshot
   console.log("\n[1] Reading StoreSnapshot from Postgres...");
-  const row = await prisma.storeSnapshot.findUnique({ where: { id: 1 } });
+  // StoreSnapshot model dropped from schema (Phase 0d) — use raw SQL.
+  const rows = await prisma.$queryRawUnsafe<{ envelope: string }[]>(
+    `SELECT envelope FROM "StoreSnapshot" WHERE id = 1 LIMIT 1`
+  );
+  const row = rows[0] ?? null;
   if (!row) {
     console.log("  No snapshot found (id=1). Nothing to migrate.");
     await prisma.$disconnect();

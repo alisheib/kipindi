@@ -31,7 +31,7 @@ function adaptTxn(t: StoredTxn): Transaction {
     status: statusMap[t.status],
     description: t.description ?? "",
     createdAt: t.createdAt,
-    betId: t.betId ?? null,
+    positionId: t.positionId ?? null,
   };
 }
 
