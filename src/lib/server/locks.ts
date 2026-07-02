@@ -59,11 +59,17 @@ async function withAdvisoryLock<T>(key: string, fn: () => Promise<T>): Promise<T
   // fn() runs its own queries on OTHER pool connections — the advisory lock is
   // a coordination semaphore, not a data-consistency wrapper.
   return db.$transaction(async (tx) => {
-    // Cast both args to int4: Prisma binds JS number params as bigint (int8),
-    // and Postgres has no pg_advisory_xact_lock(bigint, bigint) — only
-    // (int, int) and (bigint). Without the casts this raises SQLSTATE 42883
-    // ("function does not exist"), which took down login/register/betting.
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(${NS}::int, ${lockId}::int)`;
+    // Two Postgres gotchas, both of which only surface against real PG
+    // (dev uses the in-memory mutex, so neither is caught by local tests):
+    //  1. Cast both args to int4 — Prisma binds JS number params as bigint
+    //     (int8), and PG has no pg_advisory_xact_lock(bigint, bigint), only
+    //     (int, int) and (bigint). Missing casts → SQLSTATE 42883.
+    //  2. Use $executeRaw, NOT $queryRaw — pg_advisory_xact_lock returns
+    //     `void`, which $queryRaw cannot deserialize ("Failed to deserialize
+    //     column of type 'void'"). $executeRaw runs the statement and returns
+    //     an affected-row count without reading result columns.
+    // Together these took down login/register/betting/deposit/withdraw.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${NS}::int, ${lockId}::int)`;
     return await fn();
   }, {
     timeout: 30000,  // 30s — covers worst-case resolution payouts
