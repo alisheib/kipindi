@@ -84,75 +84,96 @@ export function ErrorState({
   );
 }
 
-/** Line-art illustrations — brand-teal stroke + gold accent; no fills. */
+/** Line-art illustrations — gilt-line etching on dark glass; one gold accent per scene. */
 function DefaultIllustration({ kind }: { kind: Kind }) {
   const s = { fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  const g = "oklch(78% 0.14 86)";
   switch (kind) {
     case "markets":
       return (
         <svg viewBox="0 0 56 56" {...s} width="56" height="56">
-          {/* Scales of justice — markets/proposals */}
-          <line x1="28" y1="8" x2="28" y2="44" />
-          <line x1="14" y1="16" x2="42" y2="16" />
-          <path d="M14 16 L10 28 a8 4 0 0 0 8 0 Z" />
-          <path d="M42 16 L38 28 a8 4 0 0 0 8 0 Z" stroke="var(--gold-400)" />
-          <line x1="20" y1="44" x2="36" y2="44" />
+          {/* Tilted scales — the tipping metaphor; gilt pivot diamond. */}
+          <line x1="28" y1="47" x2="28" y2="17" />
+          <path d="M23 49 L25 45 H31 L33 49" />
+          <line x1="19" y1="49" x2="37" y2="49" />
+          <line x1="11" y1="23" x2="45" y2="15" />
+          <line x1="13" y1="23.5" x2="9" y2="31" />
+          <line x1="13" y1="23.5" x2="17" y2="31" />
+          <path d="M8 31 A6.5 6.5 0 0 0 18 31" />
+          <line x1="43" y1="15.5" x2="39" y2="23" />
+          <line x1="43" y1="15.5" x2="47" y2="23" />
+          <path d="M38 23 A6.5 6.5 0 0 0 48 23" />
+          <path d="M28 15.8 L31 19 L28 22.2 L25 19 Z" fill={g} stroke="none" />
         </svg>
       );
     case "positions":
       return (
         <svg viewBox="0 0 56 56" {...s} width="56" height="56">
-          <rect x="10" y="10" width="36" height="36" rx="6" />
-          <line x1="10" y1="22" x2="46" y2="22" />
-          <line x1="22" y1="22" x2="22" y2="46" />
-          <circle cx="38" cy="34" r="4" stroke="var(--gold-400)" />
+          {/* Closed briefcase, gilt latch. */}
+          <rect x="10" y="21" width="36" height="25" rx="3" />
+          <path d="M22 21 V17.5 Q22 15 24.5 15 H31.5 Q34 15 34 17.5 V21" />
+          <line x1="10" y1="31" x2="23" y2="31" />
+          <line x1="33" y1="31" x2="46" y2="31" />
+          <rect x="26" y="29" width="4" height="4" rx="1" fill={g} stroke="none" />
         </svg>
       );
     case "leaderboard":
       return (
         <svg viewBox="0 0 56 56" {...s} width="56" height="56">
-          <rect x="22" y="22" width="12" height="22" rx="2" />
-          <rect x="6" y="32" width="12" height="12" rx="2" />
-          <rect x="38" y="28" width="12" height="16" rx="2" />
-          <path d="M22 14 L28 8 L34 14 Z" stroke="var(--gold-400)" />
+          {/* Empty podium, gilt spark above first place. */}
+          <rect x="21" y="26" width="14" height="20" />
+          <rect x="7" y="33" width="14" height="13" />
+          <rect x="35" y="37" width="14" height="9" />
+          <line x1="28" y1="31" x2="28" y2="37" />
+          <path d="M28 12 Q29 16.5 33 17.5 Q29 18.5 28 23 Q27 18.5 23 17.5 Q27 16.5 28 12 Z" fill={g} stroke="none" />
         </svg>
       );
     case "notifications":
       return (
         <svg viewBox="0 0 56 56" {...s} width="56" height="56">
-          <path d="M14 38 V24 a14 14 0 0 1 28 0 V38 l4 4 H10 Z" />
-          <path d="M22 44 a6 6 0 0 0 12 0" />
-          <circle cx="42" cy="14" r="4" fill="var(--gold-400)" stroke="none" />
+          {/* Bell at rest — gilt clapper; ground line. */}
+          <path d="M19 36 V27 A9 9 0 0 1 37 27 V36 L40.5 41 H15.5 L19 36 Z" />
+          <path d="M26 16 a2 2 0 0 1 4 0" />
+          <circle cx="28" cy="45.5" r="2" fill={g} stroke="none" />
+          <line x1="20" y1="50" x2="36" y2="50" />
         </svg>
       );
     case "audit":
       return (
         <svg viewBox="0 0 56 56" {...s} width="56" height="56">
-          <rect x="12" y="8" width="32" height="40" rx="3" />
-          <line x1="18" y1="18" x2="38" y2="18" />
-          <line x1="18" y1="26" x2="38" y2="26" />
-          <line x1="18" y1="34" x2="30" y2="34" />
-          <circle cx="38" cy="40" r="5" stroke="var(--gold-400)" />
-          <line x1="42" y1="44" x2="46" y2="48" stroke="var(--gold-400)" />
+          {/* Document under a lens, gilt glint. */}
+          <path d="M14 8 H32 L38 14 V38 H14 Z" />
+          <path d="M32 8 V14 H38" />
+          <line x1="19" y1="20" x2="31" y2="20" />
+          <line x1="19" y1="26" x2="27" y2="26" />
+          <circle cx="34" cy="36" r="7.5" />
+          <line x1="39.5" y1="41.5" x2="46" y2="48" />
+          <path d="M30 33 A4.5 4.5 0 0 1 34 31" stroke={g} />
         </svg>
       );
     case "sources":
       return (
         <svg viewBox="0 0 56 56" {...s} width="56" height="56">
-          <circle cx="28" cy="28" r="18" />
-          <path d="M10 28 H 46" />
-          <path d="M28 10 a26 18 0 0 1 0 36" />
-          <path d="M28 10 a26 18 0 0 0 0 36" />
-          <circle cx="28" cy="28" r="3" fill="var(--gold-400)" stroke="none" />
+          {/* Globe with meridians — gilt dot on Tanzania. */}
+          <circle cx="28" cy="28" r="17" />
+          <ellipse cx="28" cy="28" rx="7.5" ry="17" />
+          <line x1="11" y1="28" x2="45" y2="28" />
+          <path d="M13.5 19.5 Q28 14 42.5 19.5" />
+          <path d="M13.5 36.5 Q28 42 42.5 36.5" />
+          <circle cx="34" cy="34" r="2.2" fill={g} stroke="none" />
         </svg>
       );
     default:
       return (
         <svg viewBox="0 0 56 56" {...s} width="56" height="56">
-          <circle cx="28" cy="28" r="20" />
-          <path d="M22 24 q6 -8 12 0" />
-          <line x1="22" y1="34" x2="34" y2="34" />
-          <circle cx="38" cy="20" r="2" fill="var(--gold-400)" stroke="none" />
+          {/* Compass rose, gilt north point. */}
+          <circle cx="28" cy="28" r="19" />
+          <path d="M28 9 L31 25 L47 28 L31 31 L28 47 L25 31 L9 28 L25 25 Z" />
+          <line x1="37" y1="19" x2="40" y2="16" />
+          <line x1="37" y1="37" x2="40" y2="40" />
+          <line x1="19" y1="37" x2="16" y2="40" />
+          <line x1="19" y1="19" x2="16" y2="16" />
+          <path d="M28 9 L30.6 24.6 L28 28 L25.4 24.6 Z" fill={g} stroke="none" />
         </svg>
       );
   }

@@ -10,9 +10,9 @@
 
 | # | Item | Spec | Status | Commit | Notes |
 |---|------|------|--------|--------|-------|
-| 1 | Postgres advisory locks (replace in-memory `withLock()`) | S01,S07 | [x] | pending | pg_advisory_xact_lock in $transaction, 31 call sites, all tests green |
+| 1 | Postgres advisory locks (replace in-memory `withLock()`) | S01,S07 | [x] | 4c869f4 | pg_advisory_xact_lock in $transaction, 31 call sites, all tests green |
 | 2 | Double-entry ledger schema + migration | S01,S07 | [ ] | | |
-| 3 | Client idempotency keys (bet/deposit/withdraw) | S01,S07 | [x] | pending | UUID per intent, Position+Transaction schema, 9 suites green |
+| 3 | Client idempotency keys (bet/deposit/withdraw) | S01,S07 | [x] | 4c869f4 | UUID per intent, Position+Transaction schema, 9 suites green |
 | 4 | Transactional outbox (SSE/email/notifications) | S01,S07 | [ ] | | |
 | 5 | Webhook idempotency + signature verification | S01,S07 | [ ] | | |
 | 6 | Closed-loop withdrawal rule | S08 | [ ] | | |
@@ -126,4 +126,4 @@
 
 | Date | Session | Items Worked | Commits | Notes |
 |------|---------|-------------|---------|-------|
-| 2026-07-02 | #1 | Setup tracker + Items 1,3 (locks + idempotency) | pending | Advisory locks + idempotency keys. 201 tests green across 9 suites |
+| 2026-07-02 | #1 | Setup tracker + Items 1,3 (locks + idempotency) | 4c869f4 | Advisory locks + idempotency keys. 201 tests green across 9 suites |
