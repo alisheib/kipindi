@@ -179,12 +179,12 @@ export function AdminKpi({
   spark?: boolean;
 }) {
   return (
-    <div className="rounded-lg glass-panel p-3.5 flex flex-col gap-1 min-h-[110px]">
+    <div className="rounded-lg glass-panel p-3.5 flex flex-col gap-1.5 min-h-[110px] transition-all hover:shadow-[var(--shadow-3)]">
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono uppercase text-text-tertiary truncate" style={{ fontSize: 9.5, letterSpacing: "0.08em", lineHeight: 1.3 }}>{label}</span>
         {pulse && (
           <span className="inline-flex items-center gap-1 text-micro text-gold font-mono uppercase tracking-wider">
-            <span className="h-1.5 w-1.5 rounded-pill bg-gold inline-block" />
+            <span className="h-1.5 w-1.5 rounded-pill bg-gold inline-block gold-dot" />
             live
           </span>
         )}
@@ -194,7 +194,7 @@ export function AdminKpi({
           "font-mono font-bold tabular-nums leading-none",
           gold ? "text-gold" : "text-text",
         ].join(" ")}
-        style={{ fontSize: 20 }}
+        style={{ fontSize: 22, letterSpacing: "-0.02em" }}
       >
         {value}
       </div>
@@ -306,8 +306,8 @@ export function FeedRow({
     neutral: "bg-bg-sunken text-text-tertiary",
   }[variant];
   return (
-    <div className="flex items-center gap-2.5 py-2 border-b border-dashed border-border-subtle text-caption last:border-b-0">
-      <span className="font-mono text-micro text-text-tertiary w-[60px] shrink-0">{ts}</span>
+    <div className="flex items-center gap-2.5 py-2 border-b border-dashed border-border-subtle text-caption last:border-b-0 hover:bg-bg-overlay/30 transition-colors rounded-sm -mx-1 px-1">
+      <span className="font-mono text-micro text-text-tertiary w-[60px] shrink-0 tabular-nums">{ts}</span>
       <span
         className={[
           "font-mono text-micro px-1.5 py-0.5 rounded-sm tracking-[0.10em] shrink-0",

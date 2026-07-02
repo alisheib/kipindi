@@ -156,6 +156,7 @@ export function Select({
             left: pos.left,
             width: pos.width,
             maxHeight: 240,
+            animation: "np-rise 120ms cubic-bezier(0.2, 0.8, 0.2, 1)",
           }}
         >
           {options.map((o, i) => (
@@ -167,13 +168,16 @@ export function Select({
               onClick={() => pick(o.value)}
               onMouseEnter={() => setFocusIdx(i)}
               className={cn(
-                "w-full px-3 py-2.5 text-left font-mono text-[14px] transition-colors truncate",
+                "w-full px-3 py-2.5 text-left font-mono text-[14px] transition-colors truncate flex items-center justify-between gap-2",
                 "first:rounded-t-lg last:rounded-b-lg",
                 i === focusIdx ? "bg-bg-overlay text-text" : "text-text-muted",
                 o.value === selected && "text-gold-300 font-semibold",
               )}
             >
-              {o.label}
+              <span className="truncate">{o.label}</span>
+              {o.value === selected && (
+                <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M20 6 9 17l-5-5" /></svg>
+              )}
             </button>
           ))}
         </div>,

@@ -95,23 +95,32 @@ export default async function NotFound() {
       <p className="mt-3 max-w-[420px] text-[13px] leading-relaxed text-text-subtle">
         {d.notFoundHint}
       </p>
-      <nav aria-label={t.error.recoveryLinks} className="mt-6 grid w-full max-w-[420px] grid-cols-1 gap-2 sm:grid-cols-3">
+      <nav aria-label={t.error.recoveryLinks} className="mt-6 grid w-full max-w-[420px] grid-cols-1 gap-2.5 sm:grid-cols-3">
         <Link
           href="/"
-          className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-gold-700 hover:bg-bg-overlay"
+          className="group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-gold-700 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]"
         >
+          <span className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-bg-inset text-text-subtle group-hover:text-gold-300 transition-colors">
+            <I.arrowRight s={13} style={{ transform: "rotate(180deg)" }} />
+          </span>
           <p className="font-display text-[13px] font-semibold text-text">{d.home}</p>
         </Link>
         <Link
           href="/markets"
-          className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-gold-700 hover:bg-bg-overlay"
+          className="group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-gold-700 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]"
         >
+          <span className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-bg-inset text-text-subtle group-hover:text-gold-300 transition-colors">
+            <I.chart s={13} />
+          </span>
           <p className="font-display text-[13px] font-semibold text-text">{d.markets}</p>
         </Link>
         <Link
           href="/help"
-          className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-gold-700 hover:bg-bg-overlay"
+          className="group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-gold-700 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]"
         >
+          <span className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-bg-inset text-text-subtle group-hover:text-gold-300 transition-colors">
+            <I.info s={13} />
+          </span>
           <p className="font-display text-[13px] font-semibold text-text">{d.help}</p>
         </Link>
       </nav>

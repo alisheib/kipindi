@@ -98,9 +98,9 @@ function FooterLink({ href, children }: { href: string; children: React.ReactNod
     <li>
       <Link
         href={href as never}
-        className="text-text-muted hover:text-text transition-colors"
+        className="text-text-muted hover:text-text transition-colors inline-flex items-center gap-1 group"
       >
-        {children}
+        <span className="border-b border-transparent group-hover:border-text-subtle transition-colors">{children}</span>
       </Link>
     </li>
   );

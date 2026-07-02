@@ -60,18 +60,20 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
                 href={it.href as never}
                 aria-label={it.label}
                 aria-current={on ? "page" : undefined}
-                className="flex flex-1 flex-col items-center justify-center gap-1 rounded-[18px] transition-colors"
+                className="flex flex-1 flex-col items-center justify-center gap-1 rounded-[18px] transition-colors active:scale-95"
                 style={{
                   color: on ? "var(--accent-400)" : "var(--text-subtle)",
                   textDecoration: "none",
+                  transition: "color 150ms ease-out, transform 100ms ease-out",
                 }}
               >
                 <span
                   className="flex items-center justify-center rounded-full transition-all duration-200"
                   style={{
-                    width: 50,
-                    height: 30,
+                    width: 52,
+                    height: 32,
                     background: on ? "oklch(72% 0.11 195 / 0.18)" : "transparent",
+                    boxShadow: on ? "0 0 12px oklch(72% 0.11 195 / 0.12)" : "none",
                   }}
                 >
                   <Ico s={22} />

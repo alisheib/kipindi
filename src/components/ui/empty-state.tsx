@@ -41,7 +41,8 @@ export function EmptyState({
         className,
       )}
     >
-      <div className="mx-auto mb-4 inline-flex h-[46px] w-[46px] items-center justify-center rounded-full border border-border bg-bg-inset text-text-faint" aria-hidden>
+      <div className="mx-auto mb-4 inline-flex h-[52px] w-[52px] items-center justify-center rounded-full border border-border bg-bg-inset text-text-faint" aria-hidden
+        style={{ boxShadow: "0 0 0 6px color-mix(in oklab, var(--border) 25%, transparent)" }}>
         {illustration ?? <DefaultIllustration kind={kind} />}
       </div>
       <p className="font-display text-[15.5px] font-semibold text-text">{title}</p>

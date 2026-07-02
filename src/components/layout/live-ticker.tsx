@@ -37,7 +37,7 @@ function Items({ events, prefix, verbs }: { events: TickerEvent[]; prefix: strin
               <span className={`font-bold ${ev.side === "YES" ? "text-yes-400" : "text-no-400"}`}>{ev.side}</span>
             )}
             <span className="text-text-muted"> {verbs.on} {ev.marketTitle}</span>
-            <span className="inline-block w-[2.5px] h-[2.5px] rounded-full bg-gold-300 opacity-35 shrink-0 ml-2" />
+            <span className="inline-block w-[3px] h-[3px] rounded-full bg-gold-400 opacity-40 shrink-0 ml-2" />
           </span>
         );
       })}

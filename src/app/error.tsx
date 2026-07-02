@@ -44,8 +44,9 @@ export default function GlobalError({
       <div className="mb-5">
         <FiftyMark size={64} />
       </div>
-      <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-no-700 bg-no-500/10 text-no-300">
-        <I.alertCircle s={18} />
+      <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full border border-no-700 bg-no-500/10 text-no-300"
+        style={{ boxShadow: "0 0 0 8px color-mix(in oklab, var(--no-500) 8%, transparent)" }}>
+        <I.alertCircle s={20} />
       </div>
       <p className="font-mono text-[10px] font-bold uppercase tracking-[0.20em] text-no-300">
         {t.error.somethingWentWrong}
@@ -63,25 +64,25 @@ export default function GlobalError({
         </p>
       )}
 
-      <div className="mt-6 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+      <div className="mt-6 flex flex-col items-stretch gap-2.5 sm:flex-row sm:items-center">
         <button
           type="button"
           onClick={() => reset()}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-royal px-4 font-semibold text-onBrand text-[13px] transition-colors hover:bg-royal-hover"
+          className="btn btn-primary btn-md"
         >
           <I.bolt s={14} />
           {t.error.tryAgain}
         </button>
         <Link
           href="/markets"
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-bg-elevated px-4 text-[13px] text-text-secondary transition-colors hover:bg-bg-overlay"
+          className="btn btn-ghost btn-md"
         >
           {t.error.backToMarkets}
           <I.arrowRight s={14} />
         </Link>
         <Link
           href="/help"
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-bg-elevated px-4 text-[13px] text-text-secondary transition-colors hover:bg-bg-overlay"
+          className="btn btn-ghost btn-md"
         >
           {t.error.contactSupport}
         </Link>

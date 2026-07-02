@@ -139,8 +139,19 @@ export function ConfirmDialog({
               <I.x s={16} />
             </button>
 
-            <div className="mb-3 flex items-start gap-2.5">
-              <I.warning s={18} />
+            <div className="mb-3 flex items-start gap-3">
+              <span
+                className="mt-0.5 shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-full"
+                style={{
+                  background: tone === "gold"
+                    ? "color-mix(in oklab, var(--gold-500) 15%, transparent)"
+                    : "color-mix(in oklab, var(--claret-500) 15%, transparent)",
+                  color: tone === "gold" ? "var(--gold-300)" : "var(--claret-300)",
+                  border: `1px solid ${tone === "gold" ? "color-mix(in oklab, var(--gold-500) 30%, transparent)" : "color-mix(in oklab, var(--claret-500) 30%, transparent)"}`,
+                }}
+              >
+                <I.warning s={18} />
+              </span>
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">
                   {t.common.confirm}
@@ -151,7 +162,7 @@ export function ConfirmDialog({
               </div>
             </div>
 
-            <div className="text-[13.5px] text-text-muted leading-relaxed mb-4">
+            <div className="text-[13.5px] text-text-muted leading-relaxed mb-5">
               {body}
             </div>
 

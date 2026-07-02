@@ -25,7 +25,7 @@ export async function PageLoader({
   const locale: Locale = raw === "sw" || raw === "zh" ? raw : "en";
   const t = dict[locale];
   return (
-    <main className="mx-auto px-3 lg:px-6 py-6" style={{ maxWidth: width }}>
+    <main className="mx-auto px-3 lg:px-6 py-6 content-fade-in" style={{ maxWidth: width }}>
       <div className="rounded-xl border border-border bg-bg-elevated p-10 grid place-items-center">
         <div className="flex flex-col items-center gap-3">
           <BrandSpinner size={48} />

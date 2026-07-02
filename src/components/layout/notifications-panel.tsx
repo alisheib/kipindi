@@ -190,14 +190,14 @@ export function NotificationsPanel() {
             className="notif-badge-pulse"
             style={{
               position: "absolute",
-              top: 15,
-              right: 6,
+              top: 14,
+              right: 5,
               minWidth: 18,
               height: 18,
               borderRadius: 9,
-              background: "var(--no-500)",
+              background: "linear-gradient(180deg, var(--no-400), var(--no-600))",
               border: "2px solid var(--bg-base)",
-              boxShadow: "0 0 6px var(--no-500)",
+              boxShadow: "0 0 8px var(--no-500), 0 2px 4px oklch(10% 0.05 264 / 0.4)",
               zIndex: 20,
               pointerEvents: "none",
               display: "flex",
@@ -205,7 +205,7 @@ export function NotificationsPanel() {
               justifyContent: "center",
               fontSize: 10,
               fontWeight: 700,
-              color: "var(--text-on-brand)",
+              color: "#fff",
               fontFamily: "var(--font-mono)",
               padding: "0 4px",
               lineHeight: 1,
@@ -283,12 +283,9 @@ export function NotificationsPanel() {
                     )}
                   >
                     <span
-                      className="shrink-0 inline-flex items-center justify-center border"
+                      className={cn("shrink-0 inline-flex items-center justify-center rounded-lg border", tintFor(n.kind))}
                       style={{
-                        width: 30, height: 30,
-                        borderRadius: "var(--r-sm)",
-                        background: "var(--bg-inset)",
-                        borderColor: "var(--border)",
+                        width: 32, height: 32,
                       }}
                     >
                       <Icon s={16} />
@@ -323,11 +320,11 @@ export function NotificationsPanel() {
                 );
               })}
               {items.length === 0 && (
-                <div className="px-4 py-10 text-center">
+                <div className="px-4 py-12 text-center">
                   <svg
                     aria-hidden
-                    width="44"
-                    height="44"
+                    width="48"
+                    height="48"
                     viewBox="0 0 56 56"
                     className="mx-auto mb-3 text-teal-300"
                     fill="none"

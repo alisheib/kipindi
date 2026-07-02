@@ -343,7 +343,7 @@ function ToastItem({ toast, exiting, onDismiss, onPause, onResume }: { toast: To
       <div className={cn("absolute left-0 top-0 bottom-0 w-[3px]", v.rail)} aria-hidden />
 
       <div className="flex items-start gap-3 py-3 pl-4 pr-8">
-        <div className="mt-0.5 shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-pill"
+        <div className="mt-0.5 shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-pill border border-border/40"
              style={{ background: "var(--bg-inset)" }}>
           {v.icon}
         </div>

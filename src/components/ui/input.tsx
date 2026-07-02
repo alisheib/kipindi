@@ -93,9 +93,9 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
   return (
     <span
       className={cn(
-        "flex items-stretch rounded-lg border overflow-hidden brand-focus-within transition-colors",
+        "flex items-stretch rounded-lg border overflow-hidden brand-focus-within transition-all duration-150",
         heightCls[size],
-        errored ? "border-no-500" : "border-border",
+        errored ? "border-no-500" : "border-border hover:border-border-strong",
         containerClassName,
       )}
       style={errored ? { background: "oklch(58% 0.2 25 / 0.08)" } : { background: "var(--bg-inset)" }}

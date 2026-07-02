@@ -109,7 +109,7 @@ export function Tabs({
             type="button"
             onClick={() => onChange(t.value)}
             className={cn(
-              "relative h-10 px-4 text-[13px] font-display font-semibold transition-colors duration-100 whitespace-nowrap",
+              "relative h-10 px-4 text-[13px] font-display font-semibold transition-colors duration-150 whitespace-nowrap",
               active ? "text-text" : "text-text-muted hover:text-text",
             )}
           >
@@ -119,10 +119,13 @@ export function Tabs({
             )}
             <span
               aria-hidden
-              className={cn(
-                "absolute left-2 right-2 -bottom-px h-[2px] rounded-pill transition-opacity duration-100",
-                active ? "bg-[var(--brand-500)] opacity-100" : "opacity-0",
-              )}
+              className="absolute left-2 right-2 -bottom-px h-[2px] rounded-pill"
+              style={{
+                background: active ? "var(--brand-500)" : "transparent",
+                boxShadow: active ? "0 0 8px color-mix(in oklab, var(--brand-500) 50%, transparent)" : "none",
+                transform: active ? "scaleX(1)" : "scaleX(0)",
+                transition: "transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1), background 150ms ease-out, box-shadow 200ms ease-out",
+              }}
             />
           </button>
         );

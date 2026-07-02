@@ -62,9 +62,9 @@ export function Pagination({
     pages.push(totalPages);
   }
 
-  const btnBase = "inline-flex items-center justify-center h-8 min-w-[32px] px-2 rounded-md font-mono text-[11px] tracking-[0.10em] transition-colors";
-  const btnActive = "border border-brand-500 bg-brand-500/15 text-brand-300 font-bold";
-  const btnInactive = "border border-border bg-bg-elevated text-text-muted hover:border-border-strong hover:text-text";
+  const btnBase = "inline-flex items-center justify-center h-8 min-w-[32px] px-2 rounded-md font-mono text-[11px] tracking-[0.10em] transition-all duration-150";
+  const btnActive = "border border-brand-500 bg-brand-500/15 text-brand-300 font-bold shadow-[0_0_8px_oklch(63%_0.18_262_/_0.15)]";
+  const btnInactive = "border border-border bg-bg-elevated text-text-muted hover:border-border-strong hover:text-text hover:bg-bg-overlay/30";
   const btnDisabled = "border border-border bg-bg-elevated text-text-subtle/40 pointer-events-none";
 
   return (

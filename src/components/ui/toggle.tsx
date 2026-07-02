@@ -28,11 +28,15 @@ export function Toggle({
       aria-label={ariaLabel}
       disabled={disabled}
       onClick={onClick}
-      className="relative shrink-0 rounded-pill focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-500)] focus-visible:ring-offset-2 focus-visible:ring-offset-bg-elevated"
+      className="relative shrink-0 rounded-pill focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-500)] focus-visible:ring-offset-2 focus-visible:ring-offset-bg-elevated active:scale-95"
       style={{
         width: 44,
         height: 26,
-        border: "none",
+        border: on
+          ? gold
+            ? "1px solid color-mix(in oklab, var(--gold-300) 40%, transparent)"
+            : "1px solid color-mix(in oklab, var(--brand-400) 40%, transparent)"
+          : "1px solid var(--border)",
         cursor: disabled ? "not-allowed" : "pointer",
         opacity: disabled ? 0.5 : 1,
         background: on
@@ -40,7 +44,7 @@ export function Toggle({
             ? "linear-gradient(180deg, var(--gold-400), var(--gold-600))"
             : "var(--brand-500)"
           : "var(--bg-inset)",
-        transition: "background .18s cubic-bezier(0.2, 0.8, 0.2, 1)",
+        transition: "background .18s cubic-bezier(0.2, 0.8, 0.2, 1), border-color .18s ease-out, transform .1s ease-out",
       }}
     >
       <span
