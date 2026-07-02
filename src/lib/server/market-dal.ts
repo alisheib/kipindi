@@ -84,6 +84,7 @@ function toStoredPosition(r: any): StoredPosition {
     finalPayout: r.finalPayout != null ? num(r.finalPayout) : null,
     placedAt: iso(r.placedAt)!,
     settledAt: iso(r.settledAt),
+    idempotencyKey: r.idempotencyKey ?? null,
   };
 }
 
@@ -105,6 +106,7 @@ export interface PositionStore {
   values(): Promise<StoredPosition[]>;
   listForUser(userId: string, limit?: number): Promise<StoredPosition[]>;
   listForMarket(marketId: string): Promise<StoredPosition[]>;
+  findByIdempotencyKey(key: string): Promise<StoredPosition | null>;
 }
 
 // ---------------------------------------------------------------------------
@@ -131,6 +133,10 @@ const memoryPositions: PositionStore = {
   },
   async listForMarket(marketId) {
     return Array.from(positions.values()).filter((p) => p.marketId === marketId);
+  },
+  async findByIdempotencyKey(key) {
+    for (const p of positions.values()) if (p.idempotencyKey === key) return p;
+    return null;
   },
 };
 
@@ -231,6 +237,7 @@ const prismaPositions: PositionStore = {
         status: p.status, finalPayout: p.finalPayout,
         placedAt: new Date(p.placedAt),
         settledAt: p.settledAt ? new Date(p.settledAt) : null,
+        idempotencyKey: p.idempotencyKey ?? null,
       },
       update: {
         status: p.status, finalPayout: p.finalPayout,
@@ -253,6 +260,10 @@ const prismaPositions: PositionStore = {
   async listForMarket(marketId) {
     const rows = await pc().position.findMany({ where: { marketId } });
     return rows.map(toStoredPosition);
+  },
+  async findByIdempotencyKey(key) {
+    const r = await pc().position.findUnique({ where: { idempotencyKey: key } });
+    return r ? toStoredPosition(r) : null;
   },
 };
 

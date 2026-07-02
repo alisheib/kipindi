@@ -441,6 +441,9 @@ model Transaction {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   completedAt     DateTime?
+  // Client-generated UUID — prevents double-submit on 2G (same key = same intent).
+  // Nullable: internal txns (settlement, refund) don't carry one.
+  idempotencyKey  String?          @unique
 
   // Prevent duplicate deposits/withdrawals from the same payment provider
   // transaction. A retried webhook with the same providerRef must not
@@ -1144,6 +1147,9 @@ model Position {
   finalPayout     Decimal?         @db.Decimal(18, 2)
   placedAt        DateTime         @default(now())
   settledAt       DateTime?
+  // Client-generated UUID — prevents double-submit on 2G (same key = same intent).
+  // Nullable: positions created by internal flows (settlement adjustments) don't carry one.
+  idempotencyKey  String?          @unique
 
   @@index([userId, marketId])
   @@index([marketId, status])

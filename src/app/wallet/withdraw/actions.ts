@@ -22,11 +22,12 @@ export async function withdrawAction(formData: FormData) {
   const carryParams = `&provider=${encodeURIComponent(provider)}&amount=${amount}${msisdn ? `&msisdn=${encodeURIComponent(msisdn)}` : ""}`;
 
   if (!Number.isFinite(amount) || amount < 1000 || amount > 5_000_000) redirect(("/wallet/withdraw?error=" + encodeURIComponent("Amount must be between TZS 1,000 and TZS 5,000,000.") + carryParams) as never);
+  const idempotencyKey = formData.get("idempotencyKey") ? String(formData.get("idempotencyKey")) : undefined;
   const result = await withdraw(session.userId, {
     provider,
     amount,
     msisdn,
-  });
+  }, idempotencyKey);
   revalidatePath("/wallet");
   if (!result.ok) redirect(("/wallet/withdraw?error=" + encodeURIComponent(result.error) + carryParams) as never);
   redirect(`/wallet?withdrawal=${result.data!.txnId}&status=${result.data!.status}&amount=${amount}` as never);

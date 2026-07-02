@@ -592,10 +592,13 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
     side: "YES" | "NO";
     multiplier: number;
   } | null>(null);
+  // Fresh UUID per confirm-modal open — reused on double-tap (same intent).
+  const betIdempotencyKey = useRef("");
 
   const openConfirm = () => {
     if (effectiveSide === "NEUTRAL" || pending) return;
     setLockedQuote({ stake, side: effectiveSide, multiplier: multiplierTarget });
+    betIdempotencyKey.current = crypto.randomUUID();
     setConfirmOpen(true);
   };
 
@@ -643,6 +646,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
       fd.set("marketId", marketId);
       fd.set("side", q.side);
       fd.set("stake", String(q.stake));
+      fd.set("idempotencyKey", betIdempotencyKey.current);
       const r = await buyPositionAction(fd);
       // Whether success or failure, the modal MUST close — leaving it
       // open with the same locked quote was racing into double-place.

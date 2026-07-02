@@ -121,6 +121,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
         action={withdrawAction}
         className={`rounded-xl glass-panel p-5 lg:p-6 space-y-5 ${kycApproved ? "" : "opacity-60"}`}
       >
+        <input type="hidden" name="idempotencyKey" value={crypto.randomUUID()} />
         <fieldset disabled={!kycApproved}>
           <legend className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
             {t.wallet.destination}

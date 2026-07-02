@@ -115,6 +115,13 @@ All wallet mutations are protected by `withLock("wallet:{userId}")` —
 `resolveMarket`, and AML reject refund. Zero unprotected balance
 read-modify-write sequences remain.
 
+**Lock implementation** (`src/lib/server/locks.ts`):
+- **Production** (DATABASE_URL set): Postgres `pg_advisory_xact_lock(namespace, hash)`
+  inside a `$transaction` — safe across multiple Railway instances. 30s timeout.
+- **Dev** (no DATABASE_URL): in-memory Promise-chain mutex (single-process only).
+- 31 call sites across 11 files, all using the same `withLock(key, fn)` API.
+- Lock ordering: wallet before market (prevents deadlocks).
+
 ## Deploy workflow
 
 ```
@@ -382,6 +389,9 @@ Modernization is complete — all tokens, components, and focus rings updated.
   `verifyWebhookSignature` returns `missing-secret`.
 - **AML race conditions**: `approveAmlAction` wrapped in `withLock("aml-txn:{id}")`.
   `rejectAmlAction` wallet refund wrapped in `withLock("wallet:{userId}")`.
+- **Distributed locks**: `withLock()` uses Postgres advisory locks in production
+  (`pg_advisory_xact_lock`) — safe across multiple instances. In-memory fallback
+  for dev without DATABASE_URL.
 - **Database constraints**: `@@unique([provider, providerRef])` on Transaction.
   CHECK constraint comments for wallet balance >= 0 (apply after migration).
 - **Single active session**: server-side registry prevents concurrent logins.
@@ -496,14 +506,42 @@ git push
 **Never leave commits unpushed.** Railway auto-redeploys on push.
 Ali checks the live site, not local — unpushed work is invisible to him.
 
-## Memory
+## Elevation Phase (July 2026 →)
 
-`C:\Users\Ali\.claude\projects\C--Users-Ali\memory\MEMORY.md` indexes
-project + feedback + reference memories that future Claude sessions
-will pick up. Notable for this repo:
+The platform is being elevated from "functionally complete" to "category-defining"
+based on a 142-recommendation spec from professional reviewers.
 
-- `project_betting_platform.md` — high-level project state.
-- `feedback_kipindi_kit_first.md` — the lesson above about consulting
-  the kit before color changes.
-- `feedback_50pick_screenshots.md` — don't dump per-sprint screenshots
-  by default.
+### Tracker
+
+**`docs/elevation-tracker.md`** is the single source of truth for progress.
+Every item has a status, commit hash when done, and notes. Update it after
+every completed item — this file travels with `git pull/push` across PCs.
+
+### Session protocol
+
+Every session working on elevation:
+
+1. **Pull first**: `cd C:\kipindi-main && git pull`
+2. **Read the tracker**: `docs/elevation-tracker.md` — find the next `[ ]` item
+3. **Work the item**: implement, test, build
+4. **Update the tracker**: mark `[x]`, add commit hash + date to the session log
+5. **Build before push**: `npx next build` (catches typedRoutes + proxy issues)
+6. **Commit AND push**: Railway auto-redeploys, Ali reviews live
+7. **Never skip the tracker update** — it's how sessions stay coordinated
+
+### Phase order (strict)
+
+- **Phase 1A** (items 1-7): Pure correctness — locks, ledger, idempotency, outbox. DO FIRST.
+- **Phase 1B** (items 8-16): Infrastructure — Redis, observability, indexes, jobs.
+- **Phase 2** (items 17-56): Trusted & loved — trust features, UX, design elevation.
+- **Phase 3** (items 57-71): Without peer — USSD, Vikundi, multi-outcome, social.
+
+### Key elevation rules
+
+- **P0 before P1 before P2** — never jump ahead
+- **Money paths are sacred** — double-entry ledger, advisory locks, idempotency
+  are correctness, not nice-to-have
+- **Test after every money-path change** — run the relevant test suites
+- **Migrations must be reversible** — always write a rollback plan for schema changes
+- **The spec lives at** `NEW PHASE DESIGN/50pick Elevation Spec.dc.html` — refer to it
+  for detailed requirements on any item

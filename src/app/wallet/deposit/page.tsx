@@ -95,6 +95,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
       {showCashback && <CashbackPromo percent={bonusCfg.cashbackPercentage} mode={bonusCfg.cashbackMode} compact cta={false} />}
 
       <form action={depositAction} className="rounded-xl glass-panel p-5 lg:p-6 space-y-5">
+        <input type="hidden" name="idempotencyKey" value={crypto.randomUUID()} />
         <fieldset>
           <legend className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
             {t.wallet.mobileMoney}

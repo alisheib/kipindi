@@ -1,30 +1,77 @@
 /**
  * Per-key serialization mutex.
- * In-memory dev: prevents race conditions on the same wallet / round / user.
- * Production: this becomes a Postgres `SELECT FOR UPDATE` row lock or Redis Redlock.
+ *
+ * Production (DATABASE_URL set): Postgres advisory locks via pg_advisory_xact_lock.
+ * The lock is held for the duration of fn() inside a $transaction that pins to a
+ * single DB connection. Auto-released on commit/rollback — no leak on crash.
+ * Safe across multiple Railway instances — prevents double-spend and double-settlement.
+ *
+ * Dev (no DATABASE_URL): In-memory Promise-chain mutex (single-process only).
  *
  * Compliance:
  *  - Without this, two concurrent bets debit the same balance twice (double-spend).
  *  - Without this, two concurrent round settlements pay winners twice.
  */
 
-const locks = new Map<string, Promise<unknown>>();
+import { prisma, hasDatabase } from "./prisma";
 
-export async function withLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
-  const prev = locks.get(key) ?? Promise.resolve();
+/**
+ * Hash a string key to a 32-bit signed integer for pg_advisory_xact_lock.
+ * Uses Java's String.hashCode algorithm — fast, decent distribution.
+ */
+function hashKey(key: string): number {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) {
+    h = ((h << 5) - h + key.charCodeAt(i)) | 0;
+  }
+  return h;
+}
+
+/** Fixed namespace so 50pick locks don't collide with other advisory lock users. */
+const NS = 50;
+
+/* ── In-memory fallback (dev without Postgres) ──────────────────────── */
+
+const memLocks = new Map<string, Promise<unknown>>();
+
+async function withMemoryLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const prev = memLocks.get(key) ?? Promise.resolve();
   let release!: () => void;
   const next = new Promise<void>((resolve) => { release = resolve; });
-  // chain: when prev finishes, our turn begins; we release `next` when done.
   const tail = prev.then(() => next);
-  locks.set(key, tail);
+  memLocks.set(key, tail);
   await prev;
   try {
     return await fn();
   } finally {
     release();
-    // garbage-collect: only delete if our `tail` is still the latest entry.
-    // (Previous code called `.then()` again, creating a new Promise that
-    // could never === the stored one — locks were never cleaned up.)
-    if (locks.get(key) === tail) locks.delete(key);
+    if (memLocks.get(key) === tail) memLocks.delete(key);
   }
+}
+
+/* ── Postgres advisory lock (production) ────────────────────────────── */
+
+async function withAdvisoryLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const db = prisma()!;
+  const lockId = hashKey(key);
+  // $transaction pins to one connection. pg_advisory_xact_lock blocks until
+  // the lock is free, then holds it until the transaction ends (commit/rollback).
+  // fn() runs its own queries on OTHER pool connections — the advisory lock is
+  // a coordination semaphore, not a data-consistency wrapper.
+  return db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(${NS}, ${lockId})`;
+    return await fn();
+  }, {
+    timeout: 30000,  // 30s — covers worst-case resolution payouts
+    maxWait: 10000,  // 10s — queue time waiting for a pool connection
+  });
+}
+
+/* ── Public API (unchanged signature) ───────────────────────────────── */
+
+export async function withLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  if (hasDatabase()) {
+    return withAdvisoryLock(key, fn);
+  }
+  return withMemoryLock(key, fn);
 }

@@ -41,7 +41,8 @@ export async function buyPositionAction(formData: FormData) {
   const side = sideRaw as Side;
   const stake = parseInt(String(formData.get("stake") ?? "0"), 10);
   if (!marketId || !Number.isFinite(stake) || stake <= 0) return { ok: false as const, error: "Invalid bet parameters." };
-  const r = await buyPosition(session.userId, { marketId, side, stake });
+  const idempotencyKey = formData.get("idempotencyKey") ? String(formData.get("idempotencyKey")) : undefined;
+  const r = await buyPosition(session.userId, { marketId, side, stake, idempotencyKey });
   if (r.ok) {
     revalidatePath("/markets");
     revalidatePath(`/markets/${marketId}`);

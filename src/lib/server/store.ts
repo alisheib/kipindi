@@ -191,6 +191,8 @@ export type StoredTxn = {
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
+  /** Client-generated UUID — prevents double-submit on 2G. Null for internal txns. */
+  idempotencyKey?: string | null;
 };
 
 export type StoredResponsibleGambling = {
@@ -557,6 +559,10 @@ const memoryDb = {
     listByStatus: (status: StoredTxn["status"]) => Array.from(store.txns.values()).filter((t) => t.status === status),
     /** All transactions — analytics only. Avoids the user-by-user N+1 walk. */
     listAll: (): StoredTxn[] => Array.from(store.txns.values()),
+    findByIdempotencyKey: (key: string): StoredTxn | null => {
+      for (const t of store.txns.values()) if (t.idempotencyKey === key) return t;
+      return null;
+    },
   },
   responsible: {
     get: (userId: string) => store.responsible.get(userId) ?? null,

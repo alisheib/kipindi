@@ -102,6 +102,8 @@ export type StoredPosition = {
   finalPayout: number | null;
   placedAt: string;
   settledAt: string | null;
+  /** Client-generated UUID — prevents double-submit on 2G. Null for internal positions. */
+  idempotencyKey?: string | null;
 };
 
 
@@ -239,7 +241,7 @@ export async function createMarket(input: CreateMarketInput) {
 }
 
 /** Player buys a position on a market. */
-export async function buyPosition(userId: string, opts: { marketId: string; side: Side; stake: number }): Promise<ServiceResult<{ positionId: string; balance: number; payoutIfWin: number }>> {
+export async function buyPosition(userId: string, opts: { marketId: string; side: Side; stake: number; idempotencyKey?: string }): Promise<ServiceResult<{ positionId: string; balance: number; payoutIfWin: number }>> {
   const rl = rateCheck(userId, "bet.place");
   if (!rl.allowed) return { ok: false, error: "Slow down.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
 
@@ -288,6 +290,16 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
 
   let wageringFulfilled: { amountTzs: number }[] = [];
   const result = await withLock(`wallet:${userId}`, async () => {
+    // Idempotency: if this key was already used, return the existing position.
+    // This prevents double-submit on 2G (same key = same intent, two taps).
+    if (opts.idempotencyKey) {
+      const existing = await positionStore.findByIdempotencyKey(opts.idempotencyKey);
+      if (existing) {
+        const w = await db.wallet.findByUserId(userId);
+        return { ok: true as const, data: { positionId: existing.id, balance: w?.balance ?? 0, payoutIfWin: existing.potentialPayout } };
+      }
+    }
+
     const wallet = await db.wallet.findByUserId(userId);
     if (!wallet || wallet.status !== "ACTIVE") return { ok: false as const, error: "Wallet unavailable.", code: "NOT_FOUND" as const };
 
@@ -332,6 +344,7 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
       finalPayout: null,
       placedAt,
       settledAt: null,
+      idempotencyKey: opts.idempotencyKey ?? null,
     };
     await positionStore.set(position);
 

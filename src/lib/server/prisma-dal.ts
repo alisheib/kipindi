@@ -204,6 +204,7 @@ function toStoredTxn(t: any): StoredTxn {
     createdAt: iso(t.createdAt)!,
     updatedAt: iso(t.updatedAt)!,
     completedAt: iso(t.completedAt),
+    idempotencyKey: t.idempotencyKey ?? null,
   };
 }
 
@@ -695,6 +696,7 @@ export const prismaDb = {
           amlReason: t.amlReason,
           createdAt: new Date(t.createdAt),
           completedAt: t.completedAt ? new Date(t.completedAt) : null,
+          idempotencyKey: t.idempotencyKey ?? null,
         },
       });
       return toStoredTxn(row);
@@ -740,6 +742,10 @@ export const prismaDb = {
     listAll: async (): Promise<StoredTxn[]> => {
       const rows = await pc().transaction.findMany();
       return rows.map(toStoredTxn);
+    },
+    findByIdempotencyKey: async (key: string): Promise<StoredTxn | null> => {
+      const row = await pc().transaction.findUnique({ where: { idempotencyKey: key } });
+      return row ? toStoredTxn(row) : null;
     },
   },
 

@@ -22,11 +22,12 @@ export async function depositAction(formData: FormData) {
   // Canonical bounds — must match the depositAmount schema (validators.ts) and
   // the "Min TZS 500" helper text on the form. Single source of truth: 500–2,000,000.
   if (!Number.isFinite(amount) || amount < 500 || amount > 2_000_000) redirect(("/wallet/deposit?error=" + encodeURIComponent("Enter an amount between TZS 500 and TZS 2,000,000.") + carryParams) as never);
+  const idempotencyKey = formData.get("idempotencyKey") ? String(formData.get("idempotencyKey")) : undefined;
   const result = await deposit(session.userId, {
     provider,
     amount,
     msisdn,
-  });
+  }, idempotencyKey);
   revalidatePath("/wallet");
   // Surface failures instead of swallowing them — bounce back with the error.
   if (!result.ok) redirect(("/wallet/deposit?error=" + encodeURIComponent(result.error) + carryParams) as never);

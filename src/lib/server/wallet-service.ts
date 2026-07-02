@@ -22,9 +22,18 @@ import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
 
 /** Deposit — debits external (mobile money), credits wallet on success. */
-export async function deposit(userId: string, input: z.input<typeof DepositSchema>): Promise<ServiceResult<{ txnId: string; status: StoredTxn["status"]; balance: number }>> {
+export async function deposit(userId: string, input: z.input<typeof DepositSchema>, idempotencyKey?: string): Promise<ServiceResult<{ txnId: string; status: StoredTxn["status"]; balance: number }>> {
   const rl = rateCheck(userId, "wallet.deposit");
   if (!rl.allowed) return { ok: false, error: "Too many deposit attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
+
+  // Idempotency: if this key was already used, return the existing txn result.
+  if (idempotencyKey) {
+    const existing = await db.txn.findByIdempotencyKey(idempotencyKey);
+    if (existing) {
+      const w = await db.wallet.findByUserId(userId);
+      return { ok: true, data: { txnId: existing.id, status: existing.status, balance: w?.balance ?? 0 } };
+    }
+  }
 
   // ── TEMPORARY admin test-funding bypass ────────────────────────────────
   // For ADMIN-role accounts (and while ADMIN_TEST_DEPOSITS isn't "false"),
@@ -135,6 +144,7 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     completedAt: null,
+    idempotencyKey: idempotencyKey ?? null,
   });
   audit({ category: "WALLET", action: "deposit.initiated", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { provider: parse.data.provider, amount: parse.data.amount } });
 
@@ -372,9 +382,18 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
 }
 
 /** Withdrawal — debits wallet immediately, dispatches to provider, settles. */
-export async function withdraw(userId: string, input: z.input<typeof WithdrawSchema>): Promise<ServiceResult<{ txnId: string; status: StoredTxn["status"]; tax: number; net: number }>> {
+export async function withdraw(userId: string, input: z.input<typeof WithdrawSchema>, idempotencyKey?: string): Promise<ServiceResult<{ txnId: string; status: StoredTxn["status"]; tax: number; net: number }>> {
   const rl = rateCheck(userId, "wallet.withdraw");
   if (!rl.allowed) return { ok: false, error: "Too many withdrawal attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
+
+  // Idempotency: if this key was already used, return the existing txn result.
+  if (idempotencyKey) {
+    const existing = await db.txn.findByIdempotencyKey(idempotencyKey);
+    if (existing) {
+      const tax = computeWithdrawalTax(Math.abs(existing.amount), Math.abs(existing.amount));
+      return { ok: true, data: { txnId: existing.id, status: existing.status, tax, net: Math.abs(existing.amount) - tax } };
+    }
+  }
 
   const parse = WithdrawSchema.safeParse(input);
   if (!parse.success) return { ok: false, error: parse.error.errors[0]?.message ?? "Invalid input", code: "INVALID" };
@@ -430,6 +449,7 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       completedAt: null,
+      idempotencyKey: idempotencyKey ?? null,
     });
     audit({ category: "WALLET", action: "withdraw.initiated", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { provider: parse.data.provider, amount, tax } });
     emit("wallet:balance", { userId, balance: balanceAfter });
