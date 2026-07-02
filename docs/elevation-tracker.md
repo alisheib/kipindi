@@ -8,10 +8,10 @@
 
 | # | Item | Status | Commit |
 |---|------|--------|--------|
-| 0a | Rename `betId` → `positionId` across schema + codebase | [x] | pending |
-| 0b | Drop legacy sports models (9 tables, 5 enums, all dead code) | [x] | pending |
-| 0c | CHECK constraints: balance>=0, hold>=0, bonusBalance>=0 | [x] | pending |
-| 0d | Drop StoreSnapshot model + update health check | [x] | pending |
+| 0a | Rename `betId` → `positionId` across schema + codebase | [x] | 5824f22 |
+| 0b | Drop legacy sports models (9 tables, 5 enums, all dead code) | [x] | 5824f22 |
+| 0c | CHECK constraints: balance>=0, hold>=0, bonusBalance>=0 | [x] | 5824f22 |
+| 0d | Drop StoreSnapshot model + update health check | [x] | 5824f22 |
 
 ## Phase 1 — Ledger
 
@@ -82,3 +82,4 @@ Everything else. Pick based on user feedback and regulator requests.
 | Date | Items | Commits |
 |------|-------|---------|
 | 2026-07-02 | Advisory locks, idempotency, icon redesign, tracker setup | 4c869f4, 33ca139 |
+| 2026-07-02 | Phase 0: betId→positionId, drop 9 sports tables, CHECK constraints, drop StoreSnapshot | 5824f22 |
