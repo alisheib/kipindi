@@ -10,6 +10,7 @@
 import { audit } from "./audit";
 import { db } from "./store";
 import { randomId } from "./crypto";
+import { emit } from "./event-bus";
 import type { StoredNotification } from "./store";
 
 export type NotifyInput = Omit<StoredNotification, "id" | "userId" | "readAt" | "dismissedAt" | "createdAt"> & {
@@ -46,6 +47,11 @@ export async function notify(input: NotifyInput): Promise<StoredNotification | n
       targetType: "Notification",
       targetId: n.id,
       payload: { userId: n.userId, kind: n.kind },
+    });
+    // SSE: push to connected client so the bell updates instantly
+    emit("notification:new", {
+      userId: n.userId,
+      notification: { id: n.id, title: n.titleEn, body: n.bodyEn },
     });
     return n;
   } catch (err) {

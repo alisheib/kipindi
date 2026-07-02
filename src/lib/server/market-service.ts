@@ -18,6 +18,7 @@ import { audit } from "./audit";
 import { db } from "./store";
 import { randomId } from "./crypto";
 import { withLock } from "./locks";
+import { emit } from "./event-bus";
 import { spendBonusLocked, recordWageringLocked, reverseWagering, refundBonusToActive, expireActiveGrants } from "./bonus-service";
 import { notifyBonusFulfilled } from "./notification-service";
 import { isLockedOut } from "./responsible-gambling";
@@ -352,6 +353,8 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
       await marketStore.set(fresh);
       // Snapshot the new pool for the per-market history chart.
       recordSnapshot(fresh.id, fresh.yesPool, fresh.noPool);
+      // SSE: push live odds to all connected clients
+      emit("market:odds", { marketId: fresh.id, yesPct: impliedYesPct(fresh) });
     });
 
     // The real-wallet ledger records only the REAL cash that left `balance`
@@ -897,6 +900,8 @@ export async function cashOutPosition(
     m.updatedAt = now;
     await marketStore.set(m);
     recordSnapshot(m.id, m.yesPool, m.noPool);
+    // SSE: push updated odds after cash-out changes the pool
+    emit("market:odds", { marketId: m.id, yesPct: impliedYesPct(m) });
 
     // Mark the position closed.
     p.status = "CASHED_OUT";
@@ -1000,6 +1005,8 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   await marketStore.set(m);
   // Snapshot at the moment of resolution — final point on the chart.
   recordSnapshot(m.id, m.yesPool, m.noPool);
+  // SSE: broadcast resolution to all connected clients
+  emit("market:resolve", { marketId: m.id, outcome: opts.outcome });
 
   let winnersPaid = 0;
   const settleCfg = await getEffectiveConfig(m.id);

@@ -29,14 +29,27 @@ function easeOutQuart(t: number): number {
 
 export function WalletBalancePill({ balance }: { balance: number }) {
   const { t } = useT();
-  const [display, setDisplay] = useState(balance);
+  // SSE-driven live balance — updates in real-time when wallet:balance
+  // events arrive, without waiting for a page refresh. Falls back to the
+  // server-rendered `balance` prop when no SSE event has fired yet.
+  const [liveBalance, setLiveBalance] = useState(balance);
+  // Sync with server-rendered prop when it changes (navigation, refresh)
+  useEffect(() => { setLiveBalance(balance); }, [balance]);
+  // Listen for SSE wallet:balance events
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (typeof detail?.balance === "number") setLiveBalance(detail.balance);
+    };
+    window.addEventListener("50pick:sse:wallet-balance", handler);
+    return () => window.removeEventListener("50pick:sse:wallet-balance", handler);
+  }, []);
+
+  const effectiveBalance = liveBalance;
+  const [display, setDisplay] = useState(effectiveBalance);
   const [flashing, setFlashing] = useState(false);
-  // The signed change from the previous balance, captured when a flash starts.
-  // Held in state (not derived at render) because previousRef is advanced to the
-  // new balance inside the effect, so a render-time `balance - previousRef` is
-  // always 0 by the time the flash paints.
   const [delta, setDelta] = useState(0);
-  const previousRef = useRef(balance);
+  const previousRef = useRef(effectiveBalance);
   const rafRef = useRef<number | null>(null);
   const hidden = useCashHidden();
 
@@ -50,7 +63,7 @@ export function WalletBalancePill({ balance }: { balance: number }) {
 
   useEffect(() => {
     const from = previousRef.current;
-    const to = balance;
+    const to = effectiveBalance;
     if (from === to) return;
     previousRef.current = to;
     setDelta(to - from);
@@ -84,7 +97,7 @@ export function WalletBalancePill({ balance }: { balance: number }) {
     };
     rafRef.current = requestAnimationFrame(tick);
     return () => window.clearTimeout(flashTimer);
-  }, [balance]);
+  }, [effectiveBalance]);
 
   // Cleanup any in-flight RAF on unmount.
   useEffect(
@@ -97,7 +110,7 @@ export function WalletBalancePill({ balance }: { balance: number }) {
   return (
     <Link
       href="/wallet"
-      aria-label={hidden ? `${t.common.wallet} · ${t.common.hidePassword}` : `${t.common.wallet} · TZS ${balance.toLocaleString("en-US")}`}
+      aria-label={hidden ? `${t.common.wallet} · ${t.common.hidePassword}` : `${t.common.wallet} · TZS ${effectiveBalance.toLocaleString("en-US")}`}
       className={cn(
         "inline-flex items-center rounded-pill font-mono tabular-nums font-bold text-text transition-colors transition-shadow whitespace-nowrap",
         flashing

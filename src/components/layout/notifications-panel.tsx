@@ -109,10 +109,13 @@ export function NotificationsPanel() {
     document.addEventListener("visibilitychange", onVisibility);
     const onRefresh = () => { refresh(); };
     window.addEventListener("50pick:refresh-notifications", onRefresh);
+    // SSE: instant refresh when a new notification arrives via the event stream
+    window.addEventListener("50pick:sse:notification", onRefresh);
     return () => {
       stopPolling();
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("50pick:refresh-notifications", onRefresh);
+      window.removeEventListener("50pick:sse:notification", onRefresh);
     };
   }, [refresh]);
 
