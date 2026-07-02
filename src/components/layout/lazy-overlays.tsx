@@ -6,9 +6,12 @@
  * and aren't needed for First Contentful Paint, so deferring them from
  * the initial JS bundle reduces Time to Interactive.
  *
+ * Also registers the service worker on mount for offline + push support.
+ *
  * Must be a client component because dynamic({ ssr: false }) requires a
  * client boundary — Server Components can't use it directly.
  */
+import { useEffect } from "react";
 import dynamic from "next/dynamic";
 
 const ChatRoot = dynamic(
@@ -21,6 +24,13 @@ const FirstVisitPrimer = dynamic(
 );
 
 export function LazyOverlays() {
+  // Register service worker once on mount (non-blocking)
+  useEffect(() => {
+    import("@/lib/register-sw").then(({ registerServiceWorker }) => {
+      registerServiceWorker();
+    });
+  }, []);
+
   return (
     <>
       <ChatRoot />

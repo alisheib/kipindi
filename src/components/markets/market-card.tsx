@@ -170,8 +170,12 @@ export function MarketCard({
   const CatIco = I[categoryGlyph(category)];
   const go = (side: "YES" | "NO") => (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
+    // Micro-interaction: brief press-pop on the button before navigating
+    const btn = e.currentTarget as HTMLElement;
+    btn.classList.add("press-pop");
     window.dispatchEvent(new Event("50pick:navigating"));
-    router.push(`/markets/${id}?side=${side}`);
+    // Small delay lets the press animation land visually before the route change
+    setTimeout(() => router.push(`/markets/${id}?side=${side}`), 80);
   };
   // Clicking the card body anywhere (not the YES/NO buttons, the info popover,
   // or the Details link — all of which stopPropagation) opens the market WITHOUT
@@ -225,6 +229,20 @@ export function MarketCard({
       </div>
 
       <TippingBar yesPct={yesPct} height={7} resolved={isResolved} showLabels={false} recastOnHover={false} />
+
+      {/* Social proof — trader crest-stack when available */}
+      {live && traders && traders.length > 0 && (
+        <div className="mcardp-traders">
+          <span className="av-stack">
+            {traders.slice(0, 4).map((seed, i) => (
+              <IdentityAvatar key={seed} seed={seed} size={20} />
+            ))}
+          </span>
+          <span className="t-txt">
+            <b>{predictors}</b> {t.market.predictorsCount}
+          </span>
+        </div>
+      )}
 
       {live ? (
         <div className="mcardp-actions">

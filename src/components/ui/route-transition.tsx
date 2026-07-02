@@ -4,9 +4,16 @@ import { usePathname } from "next/navigation";
 import { useRef, useEffect, useState } from "react";
 
 /**
- * Wraps page content with a gentle route-enter animation keyed to pathname.
- * Uses the existing `.route-enter` class from globals.css (reveal-up, dur-quick).
+ * Wraps page content with a route-enter animation keyed to pathname.
+ *
+ * When the View Transitions API is available (Chrome 111+, Edge 111+),
+ * uses `document.startViewTransition()` for a native cross-fade that the
+ * browser can hardware-accelerate. Falls back to the existing `.route-enter`
+ * CSS animation (reveal-up, dur-quick) on Firefox / Safari / older browsers.
+ *
  * Mount-guarded: only fires once per pathname change, never on filter/search updates.
+ * Respects prefers-reduced-motion (View Transitions API handles this natively;
+ * the CSS fallback is governed by the global reduced-motion clamp in globals.css).
  */
 export function RouteTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -15,7 +22,18 @@ export function RouteTransition({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (pathname !== key) {
-      setKey(pathname);
+      const doc = document as Document & {
+        startViewTransition?: (cb: () => void) => { finished: Promise<void> };
+      };
+
+      if (doc.startViewTransition) {
+        // Use the View Transitions API — the browser handles the cross-fade
+        doc.startViewTransition(() => {
+          setKey(pathname);
+        });
+      } else {
+        setKey(pathname);
+      }
     }
   }, [pathname, key]);
 

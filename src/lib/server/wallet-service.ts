@@ -17,6 +17,7 @@ import { DepositSchema, AdminDepositSchema, WithdrawSchema } from "./validators"
 import { checkDepositLimit, isLockedOut } from "./responsible-gambling";
 import { notifyDeposit, notifyWithdraw, notifyAdminsAmlReview } from "./notification-service";
 import { withLock } from "./locks";
+import { emit } from "./event-bus";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
 
@@ -198,6 +199,7 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string): Prom
   if (outcome.credited && outcome.txn) {
     const t = outcome.txn;
     audit({ category: "WALLET", action: "deposit.confirmed", actorId: t.userId, targetType: "Transaction", targetId: t.id, payload: { providerRef: providerRef ?? t.providerRef, balanceAfter: outcome.balance } });
+    emit("wallet:balance", { userId: t.userId, balance: outcome.balance });
     notifyDeposit(t.userId, t.amount, friendlyProvider(t.provider));
     sendEmailToUser(t.userId, (email) => ({
       to: email,
@@ -309,6 +311,9 @@ async function settleWithdrawalFailed(txnId: string, reason: string): Promise<bo
   });
   if (done) {
     const refunded = Math.abs(done.amount);
+    // Read live balance for SSE push (funds were returned to spendable).
+    const liveWallet = await db.wallet.findByUserId(done.userId);
+    if (liveWallet) emit("wallet:balance", { userId: done.userId, balance: liveWallet.balance });
     audit({ category: "WALLET", action: "withdraw.failed", actorId: done.userId, targetType: "Transaction", targetId: txnId, payload: { reason } });
     notifyWithdraw(done.userId, { status: "FAILED", amount: refunded, provider: friendlyProvider(done.provider), reason });
     // Dual-channel parity with every other money event: the funds came back to
@@ -427,6 +432,7 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
       completedAt: null,
     });
     audit({ category: "WALLET", action: "withdraw.initiated", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { provider: parse.data.provider, amount, tax } });
+    emit("wallet:balance", { userId, balance: balanceAfter });
     return { ok: true as const };
   });
   if (!hold.ok) return hold;
@@ -536,6 +542,7 @@ export async function creditInternal(
       targetId: wallet.id,
       payload: { userId, txnId, type: txnType, amount, balanceAfter: newBalance, description: opts.description },
     });
+    emit("wallet:balance", { userId, balance: newBalance });
     return newBalance;
   });
 }

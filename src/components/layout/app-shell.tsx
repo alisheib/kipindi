@@ -13,6 +13,7 @@ import { BottomNav } from "./bottom-nav";
 import { PublicFooter } from "./public-footer";
 import { AuthFlash } from "./auth-flash";
 import { NotifyPoller } from "@/components/markets/notify-poller";
+import { EventStreamProvider } from "./event-stream-provider";
 import { WinCelebrationHost } from "@/components/markets/win-celebration";
 import { NavProgress } from "@/components/ui/nav-progress";
 import { RouteTransition } from "@/components/ui/route-transition";
@@ -96,6 +97,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <BottomNav isAuthed={!!session} />
       <RealityCheckHost enabled={!!session} intervalMin={realityCheckMin} userId={session?.userId ?? null} />
       <NotifyPoller />
+      {session && <EventStreamProvider />}
       <WinCelebrationHost />
       <Suspense fallback={null}>
         <AuthFlash />

@@ -88,9 +88,17 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
       <RefreshPoller intervalMs={20_000} />
       <BackLink fallbackHref="/markets" label={t.common.markets} />
-      <header>
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.positions.title}</p>
-        <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.positions.pollsPlayed}</h1>
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.positions.title}</p>
+          <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.positions.pollsPlayed}</h1>
+        </div>
+        {positions.length > 0 && (
+          <Link href={"/positions/performance" as never} className="btn btn-ghost btn-sm inline-flex items-center gap-1.5 shrink-0 mt-1">
+            <I.chart s={13} />
+            {t.performance.viewPerformance}
+          </Link>
+        )}
       </header>
 
       {/* Tab filter — All / Open / Settled (matches markets page filter pattern) */}
