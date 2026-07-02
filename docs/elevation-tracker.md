@@ -14,7 +14,7 @@ Items marked [BLOCKER] are prerequisites for the ledger migration.
 | # | Item | Source | Status | Commit | Notes |
 |---|------|--------|--------|--------|-------|
 | 0a | Split `betId` → `positionId` FK + classify existing rows | Fable 1.1 [BLOCKER] | [ ] | | Polymorphic soft ref makes ledger backfill impossible |
-| 0b | Quarantine legacy sports models (Bet/Window/Pool/Match etc.) | Fable 1.2 [BLOCKER] | [ ] | | NEEDS ALI DECISION: kill or mark `// LEGACY` |
+| 0b | Drop legacy sports models (Bet/Window/Pool/Match/MatchEvent/BetBundle/Sport/League/Team) | Fable 1.2 [BLOCKER] | [ ] | | Ali: KILL. Remove permanently. Archive SQL in migration comment. |
 | 0c | CHECK constraints: balance>=0, hold>=0, bonusBalance>=0, pending>=0 | Fable 1.3 [BLOCKER] | [ ] | | Currently comments only — verify prod data first |
 | 0d | Plan HousePoolLedger retirement into double-entry | Fable 1.4 [BLOCKER] | [ ] | | Must fold into chart of accounts, not stay parallel |
 | 0e | Drop StoreSnapshot model | Fable 1.5 | [ ] | | Dead code from pre-DAL era |
@@ -115,18 +115,16 @@ Reordered per Fable §4: withdrawal SLA first, WhatsApp before USSD.
 
 ---
 
-## Ali Decision Memo (needs answers before engineering proceeds)
+## Ali Decision Memo — RESOLVED (2 July 2026)
 
-These are OPERATOR calls — engineering cannot decide them in code.
-
-| # | Question | Context | Blocks |
-|---|----------|---------|--------|
-| A1 | Kill or quarantine the sports-windows models? (Bet/Window/Pool/Match/MatchEvent/BetBundle/Sport/League/Team) | Dead code from early prototype. Carrying into ledger doubles complexity. | Phase 0b, Item #2 |
-| A2 | Lopsided pool policy? | 95% on YES, YES wins → payout ~1.0x minus fees. Define: min pool thresholds, house-seed strategy, void-if-one-sided rules, payout floor. | Item #25, #43 |
-| A3 | Cash-out counterparty model? | Pari-mutuel has no natural exit counterparty. If platform quotes exit price, house takes the position = house risk. Needs pricing model + exposure limits. | Item #43 |
-| A4 | Named human on-call before real deposits? | Platform whose only incident response is "operator opens Claude Code" is not production-grade. Need contracted engineer with runbook + secrets access. | Launch readiness |
-| A5 | Segregated player funds arrangement? | Player balances in a segregated bank account, distinct from operator funds. First question from regulator or serious player. Needs aggregator/bank agreement. | Launch blocker, Item #64 |
-| A6 | KYC document storage provider? | R2/S3? Encryption at rest? Access logging for officer views? Avatars move with same work. | Items #39, Fable 3.2 |
+| # | Decision | Engineering Impact |
+|---|----------|-------------------|
+| A1 | **KILL legacy sports models.** Remove permanently. | Drop Bet/Window/Pool/Match/MatchEvent/BetBundle/Sport/League/Team in Phase 0b |
+| A2 | **Math handles lopsided pools.** Winners get proportional share minus 9%. Lean warning covers UX. No void-if-one-sided. | Ensure lean warning visible at all thresholds. No new code. |
+| A3 | **Simple cash-out exit.** Player exits pool, pays 9% fee, money returned. No complex counterparty model for MVP. | Current cashOut logic correct. Document the model. |
+| A4 | **Yes, on-call human.** Ali will arrange. | Document who + ensure runbook + secrets access before real deposits. |
+| A5 | **Yes, segregated funds.** Separate bank account from operator. | Document arrangement with aggregator/bank. GBT prerequisite. |
+| A6 | **Cloudflare R2.** S3-compatible, cheapest, encrypted at rest by default. | Set up R2 bucket + access logging. Move avatars + KYC docs together. |
 
 ---
 
