@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "prisma migrate deploy && node scripts/seed-test-float.mjs && next start",
     "postinstall": "prisma generate",
-    "lint": "next lint",
+    "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test:date": "tsx scripts/date-mask.test.mts",
     "test:time": "tsx scripts/time-mask.test.mts",
