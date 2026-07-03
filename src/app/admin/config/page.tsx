@@ -1,6 +1,6 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { I } from "@/components/ui/glyphs";
-import { getGlobalConfig, listMarketOverrides } from "@/lib/server/market-config";
+import { getGlobalConfig, listMarketOverrides, DEFAULT_GLOBAL_CONFIG } from "@/lib/server/market-config";
 import { getMarket } from "@/lib/server/market-service";
 import { getAuditPage } from "@/lib/server/audit";
 import { Chip } from "@/components/ui/chip";
@@ -15,7 +15,7 @@ export const metadata = { title: "Admin · Market config" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminConfigPage() {
-  const config = await getGlobalConfig().catch(() => ({ taxRate: 0, commissionRate: 0.09, reserveRate: 0, aggregatorRate: 0, traTaxOnCommissionRate: 0.10, gbtLevyOnCommissionRate: 0.05 } as Awaited<ReturnType<typeof getGlobalConfig>>));
+  const config = await getGlobalConfig().catch(() => DEFAULT_GLOBAL_CONFIG);
   const overrides = await listMarketOverrides().catch(() => []);
   const overrideMarketNames = new Map<string, string>();
   for (const { marketId } of overrides) {

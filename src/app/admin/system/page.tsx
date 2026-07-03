@@ -31,7 +31,7 @@ export default async function AdminSystemPage() {
   const resolvedMarkets = await listMarkets({ status: "RESOLVED" }).then(l => l.length).catch(() => 0);
   const dbBackend: "postgres" | "disk-only" = hasDatabase() ? "postgres" : "disk-only";
   const health = { lastOk: null as string | null, lastFail: null as string | null, lastError: null as string | null, consecutiveFails: 0 };
-  const ping = await pingDatabase().catch(() => ({ reachable: false, tableExists: false, latencyMs: 0 } as Awaited<ReturnType<typeof pingDatabase>>));
+  const ping = await pingDatabase().catch(() => ({ envSet: false, reachable: false, tableExists: false, latencyMs: null, error: "ping failed", hostHint: null }));
   // Combined verdict for the green/grey/red badge
   const dbConnected = ping.reachable && ping.tableExists;
   const dbWaiting = dbBackend === "postgres" && ping.reachable && !ping.tableExists;
