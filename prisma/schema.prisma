@@ -1118,3 +1118,55 @@ model AiUsageEvent {
   @@index([feature, createdAt])
   @@index([ok, createdAt])
 }
+
+// ============================================================================
+// DOUBLE-ENTRY LEDGER — every money movement as balanced debit/credit pairs.
+// The existing Transaction table (gross flows) is untouched. This table runs
+// alongside it (dual-write) to provide regulator-grade accounting: every TZS
+// that enters, leaves, or moves within the platform is accounted for across
+// virtual accounts. Invariant: SUM(amount) across all entries in a group = 0.
+// ============================================================================
+
+model LedgerEntry {
+  id        String        @id @default(cuid())
+  groupId   String        // groups balanced entries (e.g. txn_xxx or settle_xxx)
+  account   String        // virtual account: PLAYER:{userId}, HOUSE:TAX, HOUSE:COMMISSION, etc.
+  entryType LedgerEntryType
+  amount    Decimal       @db.Decimal(18, 2) // positive = credit to account, negative = debit
+  currency  String        @default("TZS")
+  memo      String?       // human-readable context
+  txnId     String?       // soft ref to Transaction.id (nullable for non-txn entries)
+  marketId  String?       // soft ref to market (for settlement entries)
+  userId    String?       // soft ref to user (for player-account entries)
+  createdAt DateTime      @default(now())
+
+  @@index([groupId])
+  @@index([account, createdAt])
+  @@index([txnId])
+  @@index([marketId])
+  @@index([entryType, createdAt])
+}
+
+enum LedgerEntryType {
+  DEPOSIT                // External money in → player account
+  WITHDRAWAL             // Player account → external money out
+  WITHDRAWAL_TAX         // Player account → TRA (withholding tax on withdrawal)
+  STAKE_DEBIT            // Player account → market pool (bet placed)
+  PAYOUT_CREDIT          // Market pool → player account (bet won)
+  SETTLEMENT_TAX         // Market pool → TRA (pari-mutuel tax)
+  SETTLEMENT_COMMISSION  // Market pool → operator revenue
+  SETTLEMENT_RESERVE     // Market pool → operator reserve
+  SETTLEMENT_AGGREGATOR  // Market pool → payment processor
+  SETTLEMENT_TRA_LEVY    // Operator commission → TRA (tax on commission)
+  SETTLEMENT_GBT_LEVY    // Operator commission → GBT (gaming board levy)
+  REFUND                 // Market pool → player account (void/refund)
+  BONUS_CREDIT           // Bonus → real balance (wagering met)
+  BONUS_GRANT            // System → bonus account (promotional credit)
+  BONUS_SPEND            // Bonus account → market pool (bet with bonus)
+  BONUS_EXPIRE           // Bonus account → void (expired grant)
+  BONUS_REFUND           // Market pool → bonus account (void refund to bonus)
+  CASHOUT                // Market pool → player account (early exit)
+  CASHOUT_FEE            // Cashout fee retained in pool (stays with remaining bettors)
+  ADJUSTMENT             // Admin adjustment (credit or debit)
+  INTERNAL_CREDIT        // Internal credit (affiliate reward, proposal prize)
+}

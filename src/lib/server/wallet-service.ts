@@ -18,6 +18,7 @@ import { checkDepositLimit, isLockedOut } from "./responsible-gambling";
 import { notifyDeposit, notifyWithdraw, notifyAdminsAmlReview } from "./notification-service";
 import { withLock } from "./locks";
 import { emit } from "./event-bus";
+import { postLedgerEntries, depositEntries, withdrawalEntries, internalCreditEntries } from "./ledger";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
 
@@ -208,6 +209,8 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string): Prom
 
   if (outcome.credited && outcome.txn) {
     const t = outcome.txn;
+    // Dual-write: post deposit to double-entry ledger (fire-and-forget).
+    postLedgerEntries(`dep_${t.id}`, depositEntries({ txnId: t.id, userId: t.userId, amount: t.amount, provider: t.provider ?? "INTERNAL" })).catch(() => {});
     audit({ category: "WALLET", action: "deposit.confirmed", actorId: t.userId, targetType: "Transaction", targetId: t.id, payload: { providerRef: providerRef ?? t.providerRef, balanceAfter: outcome.balance } });
     emit("wallet:balance", { userId: t.userId, balance: outcome.balance });
     notifyDeposit(t.userId, t.amount, friendlyProvider(t.provider));
@@ -280,7 +283,10 @@ async function settleWithdrawalConfirmed(txnId: string): Promise<boolean> {
     return t;
   });
   if (done) {
-    const net = Math.abs(done.amount) - done.taxWithheld;
+    const gross = Math.abs(done.amount);
+    const net = gross - done.taxWithheld;
+    // Dual-write: post withdrawal to double-entry ledger (fire-and-forget).
+    postLedgerEntries(`wdr_${done.id}`, withdrawalEntries({ txnId: done.id, userId: done.userId, grossAmount: gross, taxWithheld: done.taxWithheld, provider: done.provider ?? "INTERNAL" })).catch(() => {});
     audit({ category: "WALLET", action: "withdraw.confirmed", actorId: done.userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: done.providerRef, net } });
     notifyWithdrawalSent(done);
   }
@@ -554,6 +560,8 @@ export async function creditInternal(
       updatedAt: now,
       completedAt: now,
     });
+    // Dual-write: post internal credit to double-entry ledger (fire-and-forget).
+    postLedgerEntries(`int_${txnId}`, internalCreditEntries({ txnId, userId, amount, description: opts.description })).catch(() => {});
     audit({
       category: "WALLET",
       action: "wallet.credit_internal",

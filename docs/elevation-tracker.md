@@ -19,7 +19,7 @@
 |---|------|--------|--------|
 | 1 | Postgres advisory locks | [x] | 4c869f4 → hotfix c3f2a31, 62a1075 (shipped broken: `::int` + `$executeRaw`) |
 | 2 | Client idempotency keys | [x] | 4c869f4 |
-| 3 | Double-entry ledger (dual-write → prove → flip) | [ ] | |
+| 3 | Double-entry ledger (dual-write → prove → flip) | [x] | (this commit) — dual-write phase shipped |
 | 4 | Transactional outbox + pg-boss jobs | [ ] | |
 
 ## Phase 2 — Payment Integration
@@ -85,3 +85,4 @@ Everything else. Pick based on user feedback and regulator requests.
 | 2026-07-02 | Phase 0: betId→positionId, drop 9 sports tables, CHECK constraints, drop StoreSnapshot | 5824f22 |
 | 2026-07-02 | **HOTFIX P0** — advisory lock broke ALL logins/bets: `pg_advisory_xact_lock` needed `::int` casts (42883) then `$executeRaw` (void deserialize). Item #1 was shipped broken. | c3f2a31, 62a1075 |
 | 2026-07-03 | Prod-only bug sweep (3 audits) + hardening: bonus `requireBonusBalanceGte` guards, positionStore.set full-field update, kyc.upsert atomic. qa:live stale-assert fixes. Verified stable (33 suites, build, 121/1 gauntlet). | 4c52ad9 |
+| 2026-07-03 | **Phase 1 #3: Double-entry ledger (dual-write)**. New `LedgerEntry` table + enum (migration `20260703100000`). `ledger.ts` service: balanced entry groups, 11 money-path helpers, reconciliation queries. Wired into ALL money paths: deposit, withdrawal (incl. AML approve), bet placement, settlement (win+loss), void/one-sided/emergency refund, cashout, bonus grant/fulfill/expire/cancel, internal credit. 69-assertion test suite (`test:ledger`). Purely additive — zero changes to existing tables. 34 suites green + build clean. | (this commit) |

@@ -13,6 +13,7 @@ import { TWO_PERSON_THRESHOLD_TZS } from "./constants";
 import { formatTzs } from "@/lib/utils";
 import { MONEY_ROLES } from "@/lib/server/roles";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
+import { postLedgerEntries, withdrawalEntries } from "@/lib/server/ledger";
 
 const ADMIN_ROLES = MONEY_ROLES; // role tier — see @/lib/server/roles
 
@@ -139,7 +140,11 @@ export async function approveAmlAction(formData: FormData) {
       });
       // Tell the player their (now AML-cleared) withdrawal is on its way — same
       // receipt as an ordinary withdrawal. Previously this path was silent.
-      if (txn.type === "WITHDRAWAL") notifyWithdrawalSent(txn);
+      if (txn.type === "WITHDRAWAL") {
+        const gross = Math.abs(txn.amount);
+        postLedgerEntries(`wdr_${txn.id}`, withdrawalEntries({ txnId: txn.id, userId: txn.userId, grossAmount: gross, taxWithheld: txn.taxWithheld, provider: txn.provider ?? "INTERNAL" })).catch(() => {});
+        notifyWithdrawalSent(txn);
+      }
       revalidatePath("/admin/aml");
       return { ok: true as const, stage: "complete" as const };
     }
@@ -151,6 +156,11 @@ export async function approveAmlAction(formData: FormData) {
       completedAt: new Date().toISOString(),
       amlReason: reason || txn.amlReason,
     });
+    // Dual-write: withdrawal confirmed via AML → double-entry ledger.
+    if (txn.type === "WITHDRAWAL") {
+      const gross = Math.abs(txn.amount);
+      postLedgerEntries(`wdr_${txn.id}`, withdrawalEntries({ txnId: txn.id, userId: txn.userId, grossAmount: gross, taxWithheld: txn.taxWithheld, provider: txn.provider ?? "INTERNAL" })).catch(() => {});
+    }
     audit({
       category: "ADMIN",
       action: "aml.approved",

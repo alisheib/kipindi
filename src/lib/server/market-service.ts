@@ -28,6 +28,7 @@ import { recordSnapshot, seedHistory } from "./market-history";
 import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, notifyAdminMarketResolution, notifyMarketCancelled, notifyAdminMarketCancelled, notifyOneSidedRefund, notifySelectionClosed } from "./notification-service";
 import { sendEmailToUser, betPlacedHtml, winNotificationHtml, lossNotificationHtml, cashOutReceiptHtml, oneSidedRefundHtml, marketResolutionAdminHtml, marketCancelledRefundHtml, marketCancelledAdminHtml, bonusFulfilledHtml, selectionClosedHtml } from "./email";
 import { onRecruitBet } from "./affiliate-service";
+import { postLedgerEntries, stakeEntries, settlementPayoutEntries, refundEntries, cashoutEntries } from "./ledger";
 import type { ServiceResult } from "./auth-service";
 import { marketStore, positionStore } from "./market-dal";
 
@@ -374,8 +375,9 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
     // (-realPart). The bonus-funded portion moves on the bonus wallet and is
     // tracked via BonusGrant + bonus audit entries, not here, so balanceAfter
     // stays reconcilable with the running real-balance sum.
+    const betTxnId = `txn_${randomId(12)}`;
     await db.txn.create({
-      id: `txn_${randomId(12)}`,
+      id: betTxnId,
       walletId: wallet.id, userId,
       type: "BET_PLACED", status: "CONFIRMED",
       amount: -realPart, fee: 0, taxWithheld: 0,
@@ -388,6 +390,8 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
       amlReason: null,
       createdAt: placedAt, updatedAt: placedAt, completedAt: placedAt,
     });
+    // Dual-write: post stake to double-entry ledger (fire-and-forget).
+    postLedgerEntries(`stake_${betTxnId}`, stakeEntries({ txnId: betTxnId, userId, marketId: opts.marketId, realPart, bonusPart })).catch(() => {});
 
     audit({
       category: "BET",
@@ -555,8 +559,9 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
           const newBal = updated?.balance ?? w.balance + payout;
           p.status = "WIN"; p.finalPayout = payout; p.settledAt = cur.resolutionStage2At!;
           await positionStore.set(p);
+          const demoPayoutTxnId = `txn_${randomId(12)}`;
           await db.txn.create({
-            id: `txn_${randomId(12)}`,
+            id: demoPayoutTxnId,
             walletId: w.id, userId: p.userId,
             type: "BET_PAYOUT", status: "CONFIRMED",
             amount: payout, fee: 0, taxWithheld: 0,
@@ -567,6 +572,13 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
             amlReason: null,
             createdAt: cur.resolutionStage2At!, updatedAt: cur.resolutionStage2At!, completedAt: cur.resolutionStage2At!,
           });
+          // Dual-write: settlement payout to double-entry ledger (fire-and-forget).
+          const grossPool = cur.yesPool + cur.noPool;
+          postLedgerEntries(`settle_${demoPayoutTxnId}`, settlementPayoutEntries({
+            groupId: `settle_${demoPayoutTxnId}`, userId: p.userId, marketId: cur.id,
+            payout, stake: p.stake, grossPool, winningPool,
+            rates: { taxRate: settleCfg.taxRate, commissionRate: settleCfg.commissionRate, reserveRate: settleCfg.reserveRate, aggregatorRate: settleCfg.aggregatorRate, traTaxOnCommissionRate: settleCfg.traTaxOnCommissionRate, gbtLevyOnCommissionRate: settleCfg.gbtLevyOnCommissionRate },
+          })).catch(() => {});
           winnersPaid += payout;
           // Tamper-evident chain entry for the credit (the txn row is the ledger;
           // this puts the payout in the HMAC audit chain a regulator walks).
@@ -925,8 +937,9 @@ export async function cashOutPosition(
     // Credit wallet + record the txn (atomic +delta on the live row).
     const credited = await db.wallet.adjust(wallet.id, { balance: value });
     const newBalance = credited?.balance ?? wallet.balance + value;
+    const cashoutTxnId = `txn_${randomId(12)}`;
     await db.txn.create({
-      id: `txn_${randomId(12)}`,
+      id: cashoutTxnId,
       walletId: wallet.id, userId,
       type: "CASHOUT",
       status: "CONFIRMED",
@@ -938,6 +951,8 @@ export async function cashOutPosition(
       amlReason: null,
       createdAt: now, updatedAt: now, completedAt: now,
     });
+    // Dual-write: cashout to double-entry ledger (fire-and-forget).
+    postLedgerEntries(`cashout_${cashoutTxnId}`, cashoutEntries({ txnId: cashoutTxnId, userId, marketId: m.id, value, fee: cashOutFee })).catch(() => {});
 
     notifyCashout(userId, { amount: value, marketTitle: m.titleEn, marketId: m.id, inGracePeriod, positionId });
     sendEmailToUser(userId, (email) => ({
@@ -1054,18 +1069,23 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
       await positionStore.set(p);
       pendingWagerReversals.push({ userId: p.userId, stake: p.stake });
       if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
-      if (realPart > 0) await db.txn.create({
-        id: `txn_${randomId(12)}`,
-        walletId: w.id, userId: p.userId,
-        type: "BET_REFUND", status: "CONFIRMED",
-        amount: realPart, fee: 0, taxWithheld: 0,
-        balanceAfter, currency: "TZS",
-        provider: "INTERNAL", providerRef: null, msisdn: null,
-        description: `One-sided refund · "${m.titleEn.slice(0, 60)}"`,
-        positionId: p.id,
-        amlReason: null,
-        createdAt: m.resolutionStage2At!, updatedAt: m.resolutionStage2At!, completedAt: m.resolutionStage2At!,
-      });
+      if (realPart > 0 || bonusPart > 0) {
+        const oneSidedTxnId = `txn_${randomId(12)}`;
+        if (realPart > 0) await db.txn.create({
+          id: oneSidedTxnId,
+          walletId: w.id, userId: p.userId,
+          type: "BET_REFUND", status: "CONFIRMED",
+          amount: realPart, fee: 0, taxWithheld: 0,
+          balanceAfter, currency: "TZS",
+          provider: "INTERNAL", providerRef: null, msisdn: null,
+          description: `One-sided refund · "${m.titleEn.slice(0, 60)}"`,
+          positionId: p.id,
+          amlReason: null,
+          createdAt: m.resolutionStage2At!, updatedAt: m.resolutionStage2At!, completedAt: m.resolutionStage2At!,
+        });
+        // Dual-write: one-sided refund to double-entry ledger (fire-and-forget).
+        postLedgerEntries(`refund_${oneSidedTxnId}`, refundEntries({ txnId: oneSidedTxnId, userId: p.userId, marketId: m.id, realPart, bonusPart })).catch(() => {});
+      }
       notifyOneSidedRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, positionId: p.id });
       sendEmailToUser(p.userId, (email) => ({
         to: email,
@@ -1114,18 +1134,23 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
       await positionStore.set(p);
       pendingWagerReversals.push({ userId: p.userId, stake: p.stake });
       if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
-      if (realPart > 0) await db.txn.create({
-        id: `txn_${randomId(12)}`,
-        walletId: w.id, userId: p.userId,
-        type: "BET_REFUND", status: "CONFIRMED",
-        amount: realPart, fee: 0, taxWithheld: 0,
-        balanceAfter, currency: "TZS",
-        provider: "INTERNAL", providerRef: null, msisdn: null,
-        description: `Refund · "${m.titleEn.slice(0, 60)}" voided`,
-        positionId: p.id,
-        amlReason: null,
-        createdAt: m.resolutionStage2At!, updatedAt: m.resolutionStage2At!, completedAt: m.resolutionStage2At!,
-      });
+      if (realPart > 0 || bonusPart > 0) {
+        const refundTxnId = `txn_${randomId(12)}`;
+        if (realPart > 0) await db.txn.create({
+          id: refundTxnId,
+          walletId: w.id, userId: p.userId,
+          type: "BET_REFUND", status: "CONFIRMED",
+          amount: realPart, fee: 0, taxWithheld: 0,
+          balanceAfter, currency: "TZS",
+          provider: "INTERNAL", providerRef: null, msisdn: null,
+          description: `Refund · "${m.titleEn.slice(0, 60)}" voided`,
+          positionId: p.id,
+          amlReason: null,
+          createdAt: m.resolutionStage2At!, updatedAt: m.resolutionStage2At!, completedAt: m.resolutionStage2At!,
+        });
+        // Dual-write: refund to double-entry ledger (fire-and-forget).
+        postLedgerEntries(`refund_${refundTxnId}`, refundEntries({ txnId: refundTxnId, userId: p.userId, marketId: m.id, realPart, bonusPart })).catch(() => {});
+      }
       notifyRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id });
     }
   } else {
@@ -1144,8 +1169,9 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
         const balanceAfter = updated?.balance ?? w.balance + payout;
         p.status = "WIN"; p.finalPayout = payout; p.settledAt = m.resolutionStage2At!;
         await positionStore.set(p);
+        const payoutTxnId = `txn_${randomId(12)}`;
         await db.txn.create({
-          id: `txn_${randomId(12)}`,
+          id: payoutTxnId,
           walletId: w.id, userId: p.userId,
           type: "BET_PAYOUT", status: "CONFIRMED",
           amount: payout, fee: 0, taxWithheld: 0,
@@ -1156,6 +1182,12 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
           amlReason: null,
           createdAt: m.resolutionStage2At!, updatedAt: m.resolutionStage2At!, completedAt: m.resolutionStage2At!,
         });
+        // Dual-write: settlement payout to double-entry ledger (fire-and-forget).
+        postLedgerEntries(`settle_${payoutTxnId}`, settlementPayoutEntries({
+          groupId: `settle_${payoutTxnId}`, userId: p.userId, marketId: m.id,
+          payout, stake: p.stake, grossPool: m.yesPool + m.noPool, winningPool,
+          rates: { taxRate: settleCfg.taxRate, commissionRate: settleCfg.commissionRate, reserveRate: settleCfg.reserveRate, aggregatorRate: settleCfg.aggregatorRate, traTaxOnCommissionRate: settleCfg.traTaxOnCommissionRate, gbtLevyOnCommissionRate: settleCfg.gbtLevyOnCommissionRate },
+        })).catch(() => {});
         winnersPaid += payout;
         // Tamper-evident chain entry for the payout credit (txn row is the
         // ledger; this anchors it in the HMAC audit chain too).
@@ -1327,18 +1359,23 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
       await positionStore.set(p);
       pendingWagerReversals.push({ userId: p.userId, stake: p.stake });
       if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
-      if (realPart > 0) await db.txn.create({
-        id: `txn_${randomId(12)}`,
-        walletId: w.id, userId: p.userId,
-        type: "BET_REFUND", status: "CONFIRMED",
-        amount: realPart, fee: 0, taxWithheld: 0,
-        balanceAfter, currency: "TZS",
-        provider: "INTERNAL", providerRef: null, msisdn: null,
-        description: `Emergency refund · "${m.titleEn.slice(0, 60)}" cancelled`,
-        positionId: p.id,
-        amlReason: null,
-        createdAt: now, updatedAt: now, completedAt: now,
-      });
+      if (realPart > 0 || bonusPart > 0) {
+        const emergTxnId = `txn_${randomId(12)}`;
+        if (realPart > 0) await db.txn.create({
+          id: emergTxnId,
+          walletId: w.id, userId: p.userId,
+          type: "BET_REFUND", status: "CONFIRMED",
+          amount: realPart, fee: 0, taxWithheld: 0,
+          balanceAfter, currency: "TZS",
+          provider: "INTERNAL", providerRef: null, msisdn: null,
+          description: `Emergency refund · "${m.titleEn.slice(0, 60)}" cancelled`,
+          positionId: p.id,
+          amlReason: null,
+          createdAt: now, updatedAt: now, completedAt: now,
+        });
+        // Dual-write: emergency refund to double-entry ledger (fire-and-forget).
+        postLedgerEntries(`refund_${emergTxnId}`, refundEntries({ txnId: emergTxnId, userId: p.userId, marketId: m.id, realPart, bonusPart })).catch(() => {});
+      }
       // Player notice — BOTH channels, and both carry the admin's reason so the
       // player knows WHY their market was pulled and that they were made whole.
       notifyMarketCancelled(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, reason });

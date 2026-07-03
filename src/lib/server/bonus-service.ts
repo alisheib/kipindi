@@ -33,6 +33,7 @@ import { audit } from "./audit";
 import { getBonusConfig } from "./bonus-config";
 import { notifyBonusCredited, notifyBonusFulfilled, notifyBonusExpired } from "./notification-service";
 import { sendEmailToUser, bonusCreditedHtml, bonusFulfilledHtml } from "./email";
+import { postLedgerEntries, bonusGrantEntries, bonusCreditEntries, bonusExpireEntries } from "./ledger";
 
 const BONUS_SOURCE_EMAIL_LABEL: Record<string, string> = {
   CASHBACK: "Cash back bonus",
@@ -135,6 +136,8 @@ export async function creditBonus(userId: string, input: CreditBonusInput): Prom
     // until they activate. This keeps the invariant: bonusBalance == Σ ACTIVE remainingTzs.
     if (!shouldQueue) {
       await db.wallet.adjust(wallet.id, { bonusBalance: amount });
+      // Dual-write: bonus grant to double-entry ledger (fire-and-forget).
+      postLedgerEntries(`bonus_${grant.id}`, bonusGrantEntries({ groupId: `bonus_${grant.id}`, userId, amount })).catch(() => {});
     }
     audit({
       category: "WALLET",
@@ -232,8 +235,9 @@ async function recordWageringCore(userId: string, amount: number): Promise<Wager
           continue;
         }
         const now = new Date().toISOString();
+        const bonusTxnId = `txn_${randomId(12)}`;
         await db.txn.create({
-          id: `txn_${randomId(12)}`,
+          id: bonusTxnId,
           walletId: g.walletId,
           userId,
           type: "BONUS_CREDIT",
@@ -253,6 +257,8 @@ async function recordWageringCore(userId: string, amount: number): Promise<Wager
           updatedAt: now,
           completedAt: now,
         });
+        // Dual-write: bonus unlock to double-entry ledger (fire-and-forget).
+        postLedgerEntries(`bfulfill_${bonusTxnId}`, bonusCreditEntries({ txnId: bonusTxnId, userId, amount: moved })).catch(() => {});
         creditedToReal += moved;
       }
       const done = await db.bonusGrant.update(g.id, { wageredTzs: newWagered, remainingTzs: 0, status: "FULFILLED", fulfilledAt: new Date().toISOString() });
@@ -434,6 +440,7 @@ export async function expireActiveGrants(): Promise<{ expired: number; removedTz
       if (rem > 0 && fresh.status === "ACTIVE") {
         const ok = await db.wallet.adjust(fresh.walletId, { bonusBalance: -rem }, { requireBonusBalanceGte: rem });
         if (!ok) audit({ category: "WALLET", action: "bonus.expire_guard_miss", actorId: null, targetType: "BonusGrant", targetId: fresh.id, payload: { rem, userId: fresh.userId } });
+        else postLedgerEntries(`bexpire_${fresh.id}`, bonusExpireEntries({ userId: fresh.userId, amount: rem })).catch(() => {});
       }
       await db.bonusGrant.update(fresh.id, { status: "EXPIRED", remainingTzs: 0 });
       audit({ category: "WALLET", action: "bonus.expired", actorId: null, targetType: "BonusGrant", targetId: fresh.id, payload: { userId: fresh.userId, removedTzs: fresh.status === "ACTIVE" ? rem : 0, amountTzs: fresh.amountTzs, wasQueued: fresh.status === "QUEUED" } });
@@ -468,6 +475,7 @@ export async function cancelGrant(grantId: string, actorId: string, reason?: str
       if (rem > 0) {
         const ok = await db.wallet.adjust(fresh.walletId, { bonusBalance: -rem }, { requireBonusBalanceGte: rem });
         if (!ok) audit({ category: "ADMIN", action: "bonus.cancel_guard_miss", actorId, targetType: "BonusGrant", targetId: fresh.id, payload: { rem, userId: fresh.userId } });
+        else postLedgerEntries(`bcancel_${fresh.id}`, bonusExpireEntries({ userId: fresh.userId, amount: rem })).catch(() => {});
       }
       await db.bonusGrant.update(fresh.id, { status: "CANCELLED", remainingTzs: 0, note: reason ?? fresh.note });
       audit({ category: "ADMIN", action: "bonus.cancelled", actorId, targetType: "BonusGrant", targetId: fresh.id, payload: { userId: fresh.userId, removedTzs: rem, reason: reason ?? null } });
@@ -504,6 +512,8 @@ async function activateNextQueued(userId: string): Promise<void> {
 
   await db.bonusGrant.update(nextQueued.id, { status: "ACTIVE" });
   await db.wallet.adjust(wallet.id, { bonusBalance: nextQueued.remainingTzs });
+  // Dual-write: queued bonus activation to double-entry ledger (fire-and-forget).
+  postLedgerEntries(`bonus_${nextQueued.id}`, bonusGrantEntries({ groupId: `bonus_${nextQueued.id}`, userId, amount: nextQueued.remainingTzs })).catch(() => {});
   audit({
     category: "WALLET",
     action: "bonus.activated_from_queue",
