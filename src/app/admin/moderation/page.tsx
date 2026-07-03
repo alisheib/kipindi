@@ -6,7 +6,7 @@ export const metadata = { title: "Admin · Comment moderation" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminModerationPage() {
-  const items = await listForModeration();
+  const items = await listForModeration().catch(() => []);
   const reported = items.filter((i) => !i.hidden).length;
   const hidden = items.filter((i) => i.hidden).length;
   return (

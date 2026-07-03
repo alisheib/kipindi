@@ -29,19 +29,19 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
   // The PeriodPicker round-trips via ?range= — honour it (default 7d).
   const period: Period = VALID_PERIODS.includes(sp.range as Period) ? (sp.range as Period) : "7d";
 
-  const dep = await depositsTotal(period);
-  const wd  = await withdrawalsTotal(period);
-  const ggr = await grossGamingRevenue(period);
-  const ngr = await netGamingRevenue(period);
-  const margin = await operatorMarginPct(period);
-  const liability = await walletLiabilityTotal();
-  const provs = await providerSummary(period);
-  const top = await topNgrContributors(10);
-  const activePeriod = await activePlayers(period);
-  const flow = await moneyFlowSeries(period, 28);
-  const margins = await marginSeries(period, 28);
-  const provBars = await providerStackedSeries(period, 14);
-  const providers = await listProvidersInPeriod(period);
+  const dep = await depositsTotal(period).catch(() => ({ amount: 0, count: 0 }));
+  const wd  = await withdrawalsTotal(period).catch(() => ({ amount: 0, count: 0 }));
+  const ggr = await grossGamingRevenue(period).catch(() => 0);
+  const ngr = await netGamingRevenue(period).catch(() => 0);
+  const margin = await operatorMarginPct(period).catch(() => 0);
+  const liability = await walletLiabilityTotal().catch(() => 0);
+  const provs = await providerSummary(period).catch(() => []);
+  const top = await topNgrContributors(10).catch(() => []);
+  const activePeriod = await activePlayers(period).catch(() => 0);
+  const flow = await moneyFlowSeries(period, 28).catch(() => []);
+  const margins = await marginSeries(period, 28).catch(() => []);
+  const provBars = await providerStackedSeries(period, 14).catch(() => []);
+  const providers = await listProvidersInPeriod(period).catch(() => []);
 
   // Tax accrued — placeholder formula (5% of GGR for the QTD example), real
   // calculation will come from TRA filing module.

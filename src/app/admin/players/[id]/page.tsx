@@ -22,8 +22,8 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  let user: ReturnType<typeof db.user.findById> = null;
-  try { user = db.user.findById(id); } catch { /* graceful */ }
+  let user: Awaited<ReturnType<typeof db.user.findById>> = null;
+  try { user = await db.user.findById(id); } catch { /* graceful */ }
   const label = user ? displayLabel(user) : id.slice(0, 8);
   return { title: `Admin · Player — ${label}` };
 }
@@ -60,8 +60,8 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   const tab = sp.tab ?? "activity";
   const playerHref = `/admin/players/${id}`;
 
-  let user: ReturnType<typeof db.user.findById> = null;
-  try { user = db.user.findById(id); } catch { /* graceful */ }
+  let user: Awaited<ReturnType<typeof db.user.findById>> = null;
+  try { user = await db.user.findById(id); } catch { /* graceful */ }
   if (!user) notFound();
   // Access audit — record which officer opened this player's full PII record
   // (KYC doc views + exports were audited; opening the record itself was not).
@@ -70,12 +70,12 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   if (viewer) {
     recordAudit({ category: "COMPLIANCE", action: "player.record_viewed", actorId: viewer.userId, targetType: "User", targetId: id });
   }
-  let wallet: ReturnType<typeof db.wallet.findByUserId> = null;
-  try { wallet = db.wallet.findByUserId(id); } catch { /* graceful */ }
-  let kyc: ReturnType<typeof db.kyc.findByUserId> = null;
-  try { kyc = db.kyc.findByUserId(id); } catch { /* graceful */ }
-  let rg: ReturnType<typeof db.responsible.get> = null;
-  try { rg = db.responsible.get(id); } catch { /* graceful */ }
+  let wallet: Awaited<ReturnType<typeof db.wallet.findByUserId>> = null;
+  try { wallet = await db.wallet.findByUserId(id); } catch { /* graceful */ }
+  let kyc: Awaited<ReturnType<typeof db.kyc.findByUserId>> = null;
+  try { kyc = await db.kyc.findByUserId(id); } catch { /* graceful */ }
+  let rg: Awaited<ReturnType<typeof db.responsible.get>> = null;
+  try { rg = await db.responsible.get(id); } catch { /* graceful */ }
   let data: Awaited<ReturnType<typeof exportUserData>> = { user, transactions: [] } as never;
   try { data = await exportUserData(id); } catch { /* graceful */ }
   const txns = data.transactions as StoredTxn[];

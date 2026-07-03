@@ -22,9 +22,11 @@ export default async function AdminApprovalsPage({
   }>;
 }) {
   const sp = await searchParams;
-  const amlAll = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[];
-  const sofAll = (await db.sourceOfFunds.listPending()) as StoredSourceOfFunds[];
-  const kycPendingAll = await listPendingKyc();
+  let amlAll: StoredTxn[] = [];
+  try { amlAll = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[]; } catch { /* graceful */ }
+  let sofAll: StoredSourceOfFunds[] = [];
+  try { sofAll = (await db.sourceOfFunds.listPending()) as StoredSourceOfFunds[]; } catch { /* graceful */ }
+  const kycPendingAll = await listPendingKyc().catch(() => []);
   const recent = getAuditPage({ category: "ADMIN", limit: 60 });
 
   // KYC queue (prefix "kyc") — newest submission first by default.

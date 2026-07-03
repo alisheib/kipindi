@@ -47,7 +47,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
 
   const cfg = getProposalsConfig();
   const pageNum = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
-  const { proposals, matchedCount, totalProposals, totalVotes, enabled, page } = await listBoard(session?.userId ?? null, filter, pageNum, PLAYER_PER_PAGE);
+  const { proposals, matchedCount, totalProposals, totalVotes, enabled, page } = await listBoard(session?.userId ?? null, filter, pageNum, PLAYER_PER_PAGE).catch(() => ({ proposals: [] as ProposalView[], matchedCount: 0, totalProposals: 0, totalVotes: 0, enabled: false, page: 1 }));
   const proposalsBaseHref = `/proposals?f=${filter}`;
 
   return (

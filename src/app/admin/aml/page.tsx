@@ -19,8 +19,9 @@ export default async function AdminAmlPage({
   searchParams: Promise<{ rpage?: string; rsort?: string; rdir?: string; spage?: string; ssort?: string; sdir?: string }>;
 }) {
   const sp = await searchParams;
-  const inReviewAll = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[];
-  const flagsAll = await detectSuspiciousBets();
+  let inReviewAll: StoredTxn[] = [];
+  try { inReviewAll = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[]; } catch { /* graceful */ }
+  const flagsAll = await detectSuspiciousBets().catch(() => []);
   // Track which txns already have a stage-1 signature (waiting on second officer)
   const stage1 = new Map<string, { actorId: string | null; at: string }>();
   for (const e of getAuditPage({ category: "ADMIN", limit: 200 })) {

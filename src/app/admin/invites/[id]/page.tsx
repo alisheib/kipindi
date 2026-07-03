@@ -22,7 +22,8 @@ const STATUS_CHIP: Record<string, "active" | "resolved" | "paused" | "pending"> 
 
 export default async function AdminCampaignDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const detail = await getCampaignDetail(id);
+  let detail: Awaited<ReturnType<typeof getCampaignDetail>> = null;
+  try { detail = await getCampaignDetail(id); } catch { /* graceful */ }
   if (!detail) notFound();
   const { campaign, entries, counts } = detail;
   const queued = counts.QUEUED ?? 0;

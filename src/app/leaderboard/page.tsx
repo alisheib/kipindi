@@ -128,7 +128,7 @@ function syntheticLeaderboard(): Row[] {
  *  all live markets over the last 14 days. Currently we don't snapshot
  *  history, so we synthesize a plausible series from the current pools. */
 async function buildConsensusSeries(todayLabel: string): Promise<{ t: string; yes: number }[]> {
-  const live = await listMarkets({ status: "LIVE" });
+  const live = await listMarkets({ status: "LIVE" }).catch(() => []);
   if (live.length === 0) return [];
   // Walk that ends near the current crowd consensus
   const end = live.reduce((s, m) => s + (m.yesPool / Math.max(1, m.yesPool + m.noPool)), 0) / live.length;
@@ -150,7 +150,7 @@ export default async function LeaderboardPage() {
   // genuinely no ranked players yet (brand-new platform), so the page isn't empty.
   const isSynthetic = real.length === 0;
   const rows = isSynthetic ? syntheticLeaderboard() : real;
-  const consensus = await buildConsensusSeries(t.leaderboard.today);
+  const consensus = await buildConsensusSeries(t.leaderboard.today).catch(() => []);
 
   // Tier display name from the dict (first word of the tier description)
   const tierDisplayName = (tier: Tier) => t.leaderboard[`tier${tier.charAt(0).toUpperCase()}${tier.slice(1)}` as keyof typeof t.leaderboard].split(" ")[0];

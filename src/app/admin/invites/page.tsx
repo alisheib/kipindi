@@ -15,7 +15,7 @@ const STATUS_CHIP: Record<string, "active" | "resolved" | "paused" | "pending"> 
 };
 
 export default async function AdminInvitesPage() {
-  const [campaigns, stats] = await Promise.all([listCampaigns(), getInviteStats()]);
+  const [campaigns, stats] = await Promise.all([listCampaigns().catch(() => []), getInviteStats().catch(() => ({ campaigns: 0, totalInvites: 0, totalRegistered: 0, conversionPct: 0 }))]);
 
   return (
     <>

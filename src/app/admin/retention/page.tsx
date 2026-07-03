@@ -36,7 +36,7 @@ const SCHEDULE: Row[] = [
 ];
 
 export default async function AdminRetentionPage() {
-  const allUsers = db.user.list();
+  const allUsers = await db.user.list();
   const userCount = allUsers.length;
   const closed = allUsers.filter((u) => u.status === "CLOSED").length;
   const auditEntries = (globalThis as { __50PICK_AUDIT_RING?: unknown[] }).__50PICK_AUDIT_RING?.length ?? 0;

@@ -23,7 +23,7 @@ const fmtTime = (iso: string | null) => formatDateTimeSafe(iso);
 
 export default async function FairnessPage() {
   const { t, locale } = await getServerT();
-  const resolved = (await listMarkets({ status: "RESOLVED" })).slice(0, 30);
+  const resolved = (await listMarkets({ status: "RESOLVED" }).catch(() => [])).slice(0, 30);
 
   return (
     <div className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 lg:py-8 space-y-6">

@@ -25,7 +25,8 @@ export default async function AdminPrivacyPage({
   const requests = listDsarRequests();
   const pending = requests.filter((r) => r.status === "PENDING");
   const fulfilled = requests.filter((r) => r.status === "FULFILLED");
-  const recentUsers = (await db.user.list()).slice(0, 8);
+  let recentUsers: Awaited<ReturnType<typeof db.user.list>> = [];
+  try { recentUsers = (await db.user.list()).slice(0, 8); } catch { /* graceful */ }
 
   // Sort (URL-driven), then paginate — newest request first by default.
   const { sort, dir } = parseSort(sp, ["filed", "user", "type", "status"] as const, "filed", "desc");

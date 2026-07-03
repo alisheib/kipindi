@@ -28,7 +28,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
   const sortDir = sp.dir === "asc" ? "asc" : "desc";
 
   let all: Awaited<ReturnType<typeof db.user.list>> = [];
-  try { all = db.user.list(); } catch { /* graceful */ }
+  try { all = await db.user.list(); } catch { /* graceful */ }
   const filtered = all.filter((u) => {
     if (statusFilter && u.status !== statusFilter) return false;
     if (!query) return true;
@@ -46,7 +46,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
   if (sortField === "balance") {
     // Batch-load all wallets in one query instead of N+1 per-user lookups.
     let allWallets: ReturnType<typeof db.wallet.listAll> = [];
-    try { allWallets = db.wallet.listAll(); } catch { /* graceful */ }
+    try { allWallets = await db.wallet.listAll(); } catch { /* graceful */ }
     const balanceMap = new Map<string, number>();
     for (const w of allWallets) balanceMap.set(w.userId, w.balance);
     filtered.sort((a, b) => {

@@ -24,9 +24,9 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminLivePage() {
   const liveMatches = (matches as MatchStub[]).filter((m) => m.status === "live");
-  const ggr = await grossGamingRevenue("today");
-  const active = await activePlayers("today");
-  const flow = await moneyFlowSeries("today", 24);
+  const ggr = await grossGamingRevenue("today").catch(() => 0);
+  const active = await activePlayers("today").catch(() => 0);
+  const flow = await moneyFlowSeries("today", 24).catch(() => []);
 
   // Recent BET events
   const betEvents = getAuditPage({ category: "BET", limit: 30 });

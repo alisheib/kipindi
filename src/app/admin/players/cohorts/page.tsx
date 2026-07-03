@@ -41,13 +41,13 @@ function bucketByAge(all: ReturnType<typeof db.user.list>) {
 }
 
 export default async function AdminCohortsPage() {
-  const allUsers = db.user.list();
+  const allUsers = await db.user.list();
   const months = bucketByMonth(allUsers);
   const regions = bucketByRegion(allUsers);
   const ageBuckets = bucketByAge(allUsers);
-  const status = await userStatusCounts();
+  const status = await userStatusCounts().catch(() => ({} as Record<string, number>));
   const total = Object.values(status).reduce((s, c) => s + c, 0);
-  const kyc = await kycFunnel();
+  const kyc = await kycFunnel().catch(() => ({ registered: 0, started: 0, pending: 0, approved: 0 }));
 
   return (
     <>

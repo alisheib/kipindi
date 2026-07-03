@@ -15,11 +15,11 @@ export const metadata = { title: "Admin · Market config" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminConfigPage() {
-  const config = await getGlobalConfig();
-  const overrides = await listMarketOverrides();
+  const config = await getGlobalConfig().catch(() => ({ taxRate: 0, commissionRate: 0.09, reserveRate: 0, aggregatorRate: 0, traTaxOnCommissionRate: 0.10, gbtLevyOnCommissionRate: 0.05 } as Awaited<ReturnType<typeof getGlobalConfig>>));
+  const overrides = await listMarketOverrides().catch(() => []);
   const overrideMarketNames = new Map<string, string>();
   for (const { marketId } of overrides) {
-    const m = await getMarket(marketId);
+    const m = await getMarket(marketId).catch(() => null);
     if (m) overrideMarketNames.set(marketId, m.titleEn);
   }
   const recent = getAuditPage({ category: "ADMIN", limit: 50 }).filter(

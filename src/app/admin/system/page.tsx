@@ -20,20 +20,18 @@ function bootstrapPhones(): string[] {
 }
 
 export default async function AdminSystemPage() {
-  const platform = await getPlatformConfig();
+  const platform = await getPlatformConfig().catch(() => ({ timezone: "Africa/Dar_es_Salaam" } as Awaited<ReturnType<typeof getPlatformConfig>>));
   const chain = verifyChain();
   const auditCount = getAuditPage({ limit: 100_000 }).length;
   const smsHealth = smsHealthSnapshot();
-  const totalUsers = (await db.user.list()).length;
+  let totalUsers = 0;
+  try { totalUsers = (await db.user.list()).length; } catch { /* graceful */ }
   const buckets = rateLimitSnapshot();
-  const liveMarkets = (await listMarkets({ status: "LIVE" })).length;
-  const resolvedMarkets = (await listMarkets({ status: "RESOLVED" })).length;
+  const liveMarkets = await listMarkets({ status: "LIVE" }).then(l => l.length).catch(() => 0);
+  const resolvedMarkets = await listMarkets({ status: "RESOLVED" }).then(l => l.length).catch(() => 0);
   const dbBackend: "postgres" | "disk-only" = hasDatabase() ? "postgres" : "disk-only";
   const health = { lastOk: null as string | null, lastFail: null as string | null, lastError: null as string | null, consecutiveFails: 0 };
-  // Active reachability ping — runs SELECT 1 + schema table probe
-  // on every render of this page so the operator gets a NOW answer,
-  // not a "we last saw it 12 hours ago when something wrote" answer.
-  const ping = await pingDatabase();
+  const ping = await pingDatabase().catch(() => ({ reachable: false, tableExists: false, latencyMs: 0 } as Awaited<ReturnType<typeof pingDatabase>>));
   // Combined verdict for the green/grey/red badge
   const dbConnected = ping.reachable && ping.tableExists;
   const dbWaiting = dbBackend === "postgres" && ping.reachable && !ping.tableExists;

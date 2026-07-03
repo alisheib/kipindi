@@ -30,7 +30,7 @@ const WHEN_CUTOFFS: Record<WhenFilter, number | null> = {
 
 export default async function MarketsPage({ searchParams }: { searchParams: Promise<{ cat?: string; when?: string; q?: string; page?: string }> }) {
   const { t } = await getServerT();
-  const allLive = (await listMarkets({ status: "LIVE" })).filter((m) => !isClosedByTime(m));
+  const allLive = (await listMarkets({ status: "LIVE" }).catch(() => [])).filter((m) => !isClosedByTime(m));
   const totalVolume = allLive.reduce((s, m) => s + m.yesPool + m.noPool, 0);
   return (
     <main className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6">
@@ -210,12 +210,12 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
   // Total live count (unfiltered) — used to distinguish "platform has zero
   // markets" from "no markets match the active filter".
   const totalLive = effectiveCat
-    ? (await listMarkets({ status: "LIVE" })).filter(m => !isClosedByTime(m)).length
+    ? (await listMarkets({ status: "LIVE" }).catch(() => [])).filter(m => !isClosedByTime(m)).length
     : 0; // no category filter means bettable IS total
   // Sort by closest-to-resolution first so the demo-friendly minute-scale
   // markets float to the top. Past-resolution markets sink (they're in the
   // resolver queue, not the live grid).
-  const bettable = (await listMarkets({ status: "LIVE", category: effectiveCat }))
+  const bettable = (await listMarkets({ status: "LIVE", category: effectiveCat }).catch(() => []))
     // Filter out markets whose clock has already passed but the
     // resolver hasn't yet acted — they're closed-by-time, not bettable,
     // and showing them in the LIVE grid produces a confused UX where
@@ -269,9 +269,9 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
 
   // Show a small resolved teaser — the full browsable archive lives at /results.
   const resolved = searching
-    ? (await listMarkets({ status: "RESOLVED" })).filter(matches).slice(0, 6)
-    : (await listMarkets({ status: "RESOLVED" })).slice(0, 3);
-  const traderMap = await traderSeedsByMarket();
+    ? (await listMarkets({ status: "RESOLVED" }).catch(() => [])).filter(matches).slice(0, 6)
+    : (await listMarkets({ status: "RESOLVED" }).catch(() => [])).slice(0, 3);
+  const traderMap = await traderSeedsByMarket().catch(() => new Map());
   const allForCharts = [...pagedLive, ...resolved];
   const cardCharts = new Map(await Promise.all(allForCharts.map(async (m) => [m.id, await getCardChart(m.id).catch(() => ({ spark: [] as number[], move24h: undefined }))] as const)));
   const commentCounts = new Map(await Promise.all(allForCharts.map(async (m) => [m.id, await countComments(m.id).catch(() => 0)] as const)));

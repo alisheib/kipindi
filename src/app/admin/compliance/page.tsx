@@ -30,9 +30,10 @@ export default async function AdminCompliancePage({
 }) {
   const sp = await searchParams;
   const chain = verifyChain();
-  const kyc = await kycFunnel();
-  const rg = await rgRosterCounts();
-  const aml = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[];
+  const kyc = await kycFunnel().catch(() => ({ registered: 0, started: 0, pending: 0, approved: 0 }));
+  const rg = await rgRosterCounts().catch(() => ({ selfExcluded: 0, cooledOff: 0, expiringThisWeek: 0, pendingLimitIncrease: 0 }));
+  let aml: StoredTxn[] = [];
+  try { aml = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[]; } catch { /* graceful */ }
   const recentAml = aml.slice(0, 5);
   const recentApprovals = getAuditPage({ category: "ADMIN", limit: 50 }).filter((e) => e.action.startsWith("aml.")).slice(0, 8);
   const integrityAlerts = getAuditPage({ category: "BET", limit: 50 }).filter((e) => e.action.startsWith("integrity.alert.")).slice(0, 3);
@@ -262,7 +263,7 @@ export default async function AdminCompliancePage({
 }
 
 async function PlayerSafetyPanel({ sp }: { sp: { page?: string; sort?: string; dir?: string } }) {
-  const flags = await detectHarmMarkersForAllUsers();
+  const flags = await detectHarmMarkersForAllUsers().catch(() => []);
   const byMarker: Record<string, number> = {};
   for (const f of flags) byMarker[f.marker] = (byMarker[f.marker] ?? 0) + 1;
 

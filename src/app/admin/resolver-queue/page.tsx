@@ -51,7 +51,7 @@ export default async function ResolverQueuePage({
     : windowFilter === "all" ? Infinity
     : 24 * 3600_000;
 
-  const pending = (await listMarkets()).filter((m) => {
+  const pending = (await listMarkets().catch(() => [])).filter((m) => {
     const due = Date.parse(m.resolutionAt);
     if (m.status === "CLOSED") return true;
     if (m.status === "LIVE") return windowMs === Infinity || due - now < windowMs;
