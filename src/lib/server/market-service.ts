@@ -980,6 +980,24 @@ export async function cashOutPosition(
 }
 
 export async function resolveMarket(opts: { marketId: string; outcome: Side | "VOID"; officerId: string }): Promise<ServiceResult<{ stage: "stage1" | "complete"; winnersPaid?: number }>> {
+  // Officer-conflict hard-block (Elevation #12): an officer who holds a position
+  // in this market MUST NOT resolve it — they have a financial interest in the
+  // outcome. This is a POCA §16 / GBT licensing requirement. Checked before
+  // the lock so a conflicted officer gets a fast, clear rejection.
+  const officerPositions = (await listPositionsForMarket(opts.marketId))
+    .filter((p) => p.userId === opts.officerId && (p.status === "OPEN" || p.status === "WIN" || p.status === "LOSS"));
+  if (officerPositions.length > 0) {
+    audit({
+      category: "COMPLIANCE",
+      action: "market.resolve.conflict_blocked",
+      actorId: opts.officerId,
+      targetType: "Market",
+      targetId: opts.marketId,
+      payload: { positionCount: officerPositions.length, positionIds: officerPositions.map((p) => p.id) },
+    });
+    return { ok: false, error: "You hold a position in this market and cannot resolve it — assign a different officer.", code: "CONFLICT" };
+  }
+
   // Bonus portions of refunded bets are returned to the bonus wallet AFTER the
   // market lock releases — refundBonusToActive takes the wallet lock, and taking
   // it while holding the market lock would invert buyPosition's wallet→market
@@ -1323,6 +1341,21 @@ export async function adminReopenMarket(marketId: string, officerId: string): Pr
 export async function emergencyVoidMarket(opts: { marketId: string; officerId: string; reason: string }): Promise<ServiceResult<{ refundedCount: number; refundedTzs: number }>> {
   const reason = (opts.reason ?? "").trim();
   if (reason.length < 5) return { ok: false, error: "A reason (≥ 5 characters) is required for an emergency void.", code: "INVALID" };
+
+  // Officer-conflict hard-block (Elevation #12): same rule as resolveMarket.
+  const officerPositions = (await listPositionsForMarket(opts.marketId))
+    .filter((p) => p.userId === opts.officerId && (p.status === "OPEN" || p.status === "WIN" || p.status === "LOSS"));
+  if (officerPositions.length > 0) {
+    audit({
+      category: "COMPLIANCE",
+      action: "market.emergency_void.conflict_blocked",
+      actorId: opts.officerId,
+      targetType: "Market",
+      targetId: opts.marketId,
+      payload: { positionCount: officerPositions.length, positionIds: officerPositions.map((p) => p.id) },
+    });
+    return { ok: false, error: "You hold a position in this market and cannot void it — assign a different officer.", code: "CONFLICT" };
+  }
 
   const pendingBonusRefunds: Array<{ userId: string; amount: number }> = [];
   const pendingWagerReversals: Array<{ userId: string; stake: number }> = [];

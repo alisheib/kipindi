@@ -40,7 +40,7 @@ Do these together when M-Pesa/Airtel aggregator is signed.
 |---|------|--------|--------|
 | 10 | Sentry + structured logs + golden alerts | [ ] | |
 | 11 | Verify Railway PITR backups are on | [ ] | |
-| 12 | Officer-conflict hard-block (can't resolve market you hold position in) | [ ] | |
+| 12 | Officer-conflict hard-block (can't resolve market you hold position in) | [x] | (this commit) |
 | 13 | KYC storage on Cloudflare R2 (encrypted, access-logged) | [ ] | |
 | 14 | Icon redesign | [x] | 33ca139 |
 
@@ -85,4 +85,5 @@ Everything else. Pick based on user feedback and regulator requests.
 | 2026-07-02 | Phase 0: betId→positionId, drop 9 sports tables, CHECK constraints, drop StoreSnapshot | 5824f22 |
 | 2026-07-02 | **HOTFIX P0** — advisory lock broke ALL logins/bets: `pg_advisory_xact_lock` needed `::int` casts (42883) then `$executeRaw` (void deserialize). Item #1 was shipped broken. | c3f2a31, 62a1075 |
 | 2026-07-03 | Prod-only bug sweep (3 audits) + hardening: bonus `requireBonusBalanceGte` guards, positionStore.set full-field update, kyc.upsert atomic. qa:live stale-assert fixes. Verified stable (33 suites, build, 121/1 gauntlet). | 4c52ad9 |
-| 2026-07-03 | **Phase 1 #3: Double-entry ledger (dual-write)**. New `LedgerEntry` table + enum (migration `20260703100000`). `ledger.ts` service: balanced entry groups, 11 money-path helpers, reconciliation queries. Wired into ALL money paths: deposit, withdrawal (incl. AML approve), bet placement, settlement (win+loss), void/one-sided/emergency refund, cashout, bonus grant/fulfill/expire/cancel, internal credit. 69-assertion test suite (`test:ledger`). Purely additive — zero changes to existing tables. 34 suites green + build clean. | (this commit) |
+| 2026-07-03 | **Phase 1 #3: Double-entry ledger (dual-write)**. New `LedgerEntry` table + enum (migration `20260703100000`). `ledger.ts` service: balanced entry groups, 11 money-path helpers, reconciliation queries. Wired into ALL money paths: deposit, withdrawal (incl. AML approve), bet placement, settlement (win+loss), void/one-sided/emergency refund, cashout, bonus grant/fulfill/expire/cancel, internal credit. 69-assertion test suite (`test:ledger`). Purely additive — zero changes to existing tables. 34 suites green + build clean. | df8f6eb |
+| 2026-07-03 | **Phase 3 #12: Officer-conflict hard-block**. Officers holding a position in a market are blocked from resolving or emergency-voiding it (POCA §16 compliance). Guards on both `resolveMarket` (stage-1 + stage-2) and `emergencyVoidMarket`. Audit trail on blocked attempts. 17-assertion test suite. | (this commit) |
