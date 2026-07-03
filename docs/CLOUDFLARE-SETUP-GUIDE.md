@@ -18,6 +18,16 @@
 
 ## Browser Steps (Ali)
 
+### ~~Step 0: Create Cloudflare Account + Add Domain~~ DONE (2026-07-03)
+
+Ali created Cloudflare account, entered `50pick.tz`, configured:
+- Search bots: Allow
+- Agent bots: Allow
+- Training crawlers: Block on pages with ads
+- Block training in robots.txt: ON
+- Import DNS records: Automatic
+- Hit Continue — resume from plan selection screen next session
+
 ### Step 1: Clean Up Duplicate Redis (Railway Dashboard)
 
 1. Go to railway.com -> 50pick project
