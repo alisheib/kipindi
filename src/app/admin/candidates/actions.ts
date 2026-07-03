@@ -16,6 +16,7 @@ import {
 import { createMarket } from "@/lib/server/market-service";
 import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
 import { MARKET_OPS_ROLES } from "@/lib/server/roles";
+import { requireAdminTotp } from "@/lib/server/admin-guard";
 
 const ADMIN_ROLES = MARKET_OPS_ROLES; // role tier — see @/lib/server/roles
 
@@ -31,6 +32,7 @@ async function requireAdmin(action: string): Promise<string> {
     });
     throw new Error("Forbidden: admin role required.");
   }
+  await requireAdminTotp(session.userId, session.sessionId);
   return session.userId;
 }
 

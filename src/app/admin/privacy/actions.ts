@@ -7,6 +7,7 @@ import { getSession } from "@/lib/server/session";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { COMPLIANCE_ROLES } from "@/lib/server/roles";
+import { requireAdminTotp } from "@/lib/server/admin-guard";
 
 const ADMIN_ROLES = COMPLIANCE_ROLES; // role tier — see @/lib/server/roles
 
@@ -15,6 +16,7 @@ async function requireOfficer(): Promise<{ ok: true; userId: string } | { ok: fa
   if (!session) return { ok: false, error: "Sign in." };
   const u = await db.user.findById(session.userId);
   if (!u || !ADMIN_ROLES.has(u.role)) return { ok: false, error: "Not authorised." };
+  await requireAdminTotp(session.userId, session.sessionId);
   return { ok: true, userId: session.userId };
 }
 

@@ -9,6 +9,7 @@ import { notifySof } from "@/lib/server/notification-service";
 import { sendEmailToUser, sofDecisionHtml } from "@/lib/server/email";
 import { withLock } from "@/lib/server/locks";
 import { COMPLIANCE_ROLES } from "@/lib/server/roles";
+import { requireAdminTotp } from "@/lib/server/admin-guard";
 
 const ADMIN_ROLES = COMPLIANCE_ROLES; // role tier — see @/lib/server/roles
 
@@ -32,6 +33,7 @@ async function requireOfficer() {
  */
 export async function reviewSofAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string }> {
   const session = await requireOfficer();
+  await requireAdminTotp(session.userId, session.sessionId);
   const userId = String(formData.get("userId") ?? "");
   const decision = String(formData.get("decision") ?? "");
   const reason = String(formData.get("reason") ?? "").trim().slice(0, 500);

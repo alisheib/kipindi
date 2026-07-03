@@ -31,10 +31,11 @@ import { createMarket, emergencyVoidMarket } from "@/lib/server/market-service";
 import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
 import { MARKET_OPS_ROLES } from "@/lib/server/roles";
 import { safeError } from "@/lib/server/safe-error";
+import { requireAdminTotp } from "@/lib/server/admin-guard";
 
 const ADMIN_ROLES = MARKET_OPS_ROLES; // role tier — see @/lib/server/roles
 
-async function requireAdmin(action: string): Promise<string> {
+async function requireAdmin(action: string): Promise<{ userId: string; sessionId: string }> {
   const session = await currentSession();
   if (!session) redirect("/auth/admin");
   const u = await db.user.findById(session.userId);
@@ -49,13 +50,14 @@ async function requireAdmin(action: string): Promise<string> {
     });
     throw new Error("Forbidden: admin role required.");
   }
-  return session.userId;
+  await requireAdminTotp(session.userId, session.sessionId);
+  return { userId: session.userId, sessionId: session.sessionId };
 }
 
 /* ─── Generate ─── */
 
 export async function generatePollAction(formData: FormData) {
-  const officerId = await requireAdmin("generatePollAction");
+  const { userId: officerId } = await requireAdmin("generatePollAction");
   const category = String(formData.get("category") ?? "sports");
   const prompt = String(formData.get("prompt") ?? "");
   const regenerationOf = String(formData.get("regenerationOf") ?? "");
@@ -85,7 +87,7 @@ export async function generatePollAction(formData: FormData) {
 /* ─── Generate batch ─── */
 
 export async function generatePollBatchAction(formData: FormData) {
-  const officerId = await requireAdmin("generatePollBatchAction");
+  const { userId: officerId } = await requireAdmin("generatePollBatchAction");
   const countRaw = Number(formData.get("count") ?? "3");
   const count = Number.isFinite(countRaw) ? Math.max(1, Math.min(200, Math.floor(countRaw))) : 3;
   const prompt = String(formData.get("prompt") ?? "");
@@ -110,7 +112,7 @@ export async function generatePollBatchAction(formData: FormData) {
 /* ─── Update config ─── */
 
 export async function updatePollConfigAction(formData: FormData) {
-  const officerId = await requireAdmin("updatePollConfigAction");
+  const { userId: officerId } = await requireAdmin("updatePollConfigAction");
 
   const num = (k: string): number | undefined => {
     if (!formData.has(k)) return undefined;
@@ -157,7 +159,7 @@ export async function updatePollConfigAction(formData: FormData) {
 /* ─── Approve ─── */
 
 export async function approvePollAction(formData: FormData) {
-  const officerId = await requireAdmin("approvePollAction");
+  const { userId: officerId } = await requireAdmin("approvePollAction");
   const id = String(formData.get("id") ?? "");
   const note = String(formData.get("note") ?? "");
 
@@ -181,7 +183,7 @@ export async function approvePollAction(formData: FormData) {
 /* ─── Reject ─── */
 
 export async function rejectPollAction(formData: FormData) {
-  const officerId = await requireAdmin("rejectPollAction");
+  const { userId: officerId } = await requireAdmin("rejectPollAction");
   const id = String(formData.get("id") ?? "");
   const reasonsStr = String(formData.get("reasons") ?? "");
   const note = String(formData.get("note") ?? "");
@@ -212,7 +214,7 @@ export async function rejectPollAction(formData: FormData) {
 /* ─── Edit ─── */
 
 export async function editPollAction(formData: FormData) {
-  const officerId = await requireAdmin("editPollAction");
+  const { userId: officerId } = await requireAdmin("editPollAction");
   const id = String(formData.get("id") ?? "");
   const titleEn = formData.has("titleEn") ? String(formData.get("titleEn")) : undefined;
   const titleSw = formData.has("titleSw") ? String(formData.get("titleSw")) : undefined;
@@ -248,7 +250,7 @@ export async function editPollAction(formData: FormData) {
 /* ─── Publish (create market candidate → approve → create market → publish) ─── */
 
 export async function publishPollAction(formData: FormData) {
-  const officerId = await requireAdmin("publishPollAction");
+  const { userId: officerId } = await requireAdmin("publishPollAction");
   const id = String(formData.get("id") ?? "");
 
   const poll = await getAIPoll(id);
@@ -350,7 +352,7 @@ export async function publishPollAction(formData: FormData) {
 /* ─── Delete ─── */
 
 export async function deletePollAction(formData: FormData) {
-  const officerId = await requireAdmin("deletePollAction");
+  const { userId: officerId } = await requireAdmin("deletePollAction");
   const id = String(formData.get("id") ?? "");
   const rawReason = String(formData.get("reason") ?? "").trim();
   const voidReason = rawReason.length >= 5 ? rawReason : "Regulatory/administrative decision — market cancelled by administrator";
@@ -383,7 +385,7 @@ export async function deletePollAction(formData: FormData) {
 /* ─── Delete all ─── */
 
 export async function deleteAllPollsAction(formData: FormData) {
-  const officerId = await requireAdmin("deleteAllPollsAction");
+  const { userId: officerId } = await requireAdmin("deleteAllPollsAction");
   const rawReason = String(formData.get("reason") ?? "").trim();
   const voidReason = rawReason.length >= 5 ? rawReason : "Regulatory/administrative decision — bulk market cancellation by administrator";
 
@@ -437,7 +439,7 @@ export async function deleteAllPollsAction(formData: FormData) {
 /* ─── Seed fixtures ─── */
 
 export async function seedFixturesAction() {
-  const officerId = await requireAdmin("seedFixturesAction");
+  const { userId: officerId } = await requireAdmin("seedFixturesAction");
   try {
     const seeded = await seedAIPollFixtures();
     revalidatePath("/admin/ai-polls");

@@ -10,6 +10,7 @@ import { revalidatePath } from "next/cache";
 import { setSupportConfig } from "@/lib/support-config";
 import { setPlatformConfig } from "@/lib/server/platform-config";
 import { CONFIG_ROLES } from "@/lib/server/roles";
+import { requireAdminTotp } from "@/lib/server/admin-guard";
 
 const ADMIN_ROLES = CONFIG_ROLES; // role tier — see @/lib/server/roles
 
@@ -18,6 +19,7 @@ async function requireAdmin() {
   if (!session) redirect("/auth/admin");
   const u = await db.user.findById(session.userId);
   if (!(u && ADMIN_ROLES.has(u.role))) redirect("/auth/admin");
+  await requireAdminTotp(session.userId, session.sessionId);
   return session;
 }
 

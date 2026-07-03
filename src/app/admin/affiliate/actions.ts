@@ -6,6 +6,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { setAffiliateConfig, type AffiliateConfig } from "@/lib/server/affiliate-config";
 import { MONEY_ROLES } from "@/lib/server/roles";
+import { requireAdminTotp } from "@/lib/server/admin-guard";
 
 const ADMIN_ROLES = MONEY_ROLES; // role tier — see @/lib/server/roles
 
@@ -17,14 +18,9 @@ async function ensureAdmin() {
   return s;
 }
 
-/**
- * Persist the affiliate program config. The client sends the full config
- * object from its form state; the service re-validates every field and
- * HMAC-audits the change. Defence-in-depth: admin gate runs inside the
- * action, not just the layout.
- */
 export async function saveAffiliateConfigAction(config: AffiliateConfig) {
   const s = await ensureAdmin();
+  await requireAdminTotp(s.userId, s.sessionId);
   const r = setAffiliateConfig(config, s.userId);
   revalidatePath("/admin/affiliate");
   revalidatePath("/profile/invite");

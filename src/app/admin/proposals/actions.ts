@@ -13,6 +13,7 @@ import {
   type DeclineReason,
 } from "@/lib/server/proposals-service";
 import { MARKET_OPS_ROLES } from "@/lib/server/roles";
+import { requireAdminTotp } from "@/lib/server/admin-guard";
 
 const ADMIN_ROLES = MARKET_OPS_ROLES; // role tier — see @/lib/server/roles
 
@@ -21,6 +22,7 @@ async function ensureAdmin() {
   if (!s) redirect("/auth/admin");
   const u = await db.user.findById(s.userId);
   if (!u || !ADMIN_ROLES.has(u.role)) redirect("/auth/admin");
+  await requireAdminTotp(s.userId, s.sessionId);
   return s;
 }
 
