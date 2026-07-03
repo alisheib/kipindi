@@ -475,7 +475,10 @@ export async function detectHarmMarkers(
   opts: { sessionStartedAt?: string } = {},
 ) {
   const now = Date.now();
-  const txns = await db.txn.findByUser(userId, 1_000) as StoredTxn[];
+  // No row cap — harm markers need the full transaction history for the
+  // analysis windows (7d and 30d). A cap would cause high-frequency users
+  // to undercount deposits, masking RAPID_DEPOSIT_ESCALATION flags.
+  const txns = await db.txn.findByUser(userId, 10_000) as StoredTxn[];
   const ctx: DetectorContext = {
     userId,
     now,

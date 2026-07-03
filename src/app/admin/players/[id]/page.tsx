@@ -10,7 +10,7 @@ import { getAuditForActor, getAuditForTarget, audit as recordAudit, type AuditCa
 import { currentSession } from "@/lib/server/auth-service";
 import { exportUserData } from "@/lib/server/user-service";
 import { I } from "@/components/ui/glyphs";
-import { formatTzs, formatTzsCompact, formatDateTime } from "@/lib/utils";
+import { formatTzs, formatTzsCompact, formatDateTime, formatDateShort } from "@/lib/utils";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { KycReviewControls } from "@/components/admin/kyc-review-controls";
 import { SuspendControls } from "./suspend-controls";
@@ -201,7 +201,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
           <AdminKpi label="Lifetime deposit"    sw="Jumla ya amana"        value={`TZS ${formatTzsCompact(lifetimeDeposits).replace("TZS ", "")}`} gold delta={wallet ? `wallet ${formatTzs(wallet.balance)}` : "—"} />
           <AdminKpi label="Lifetime withdrawal" sw="Jumla ya utoaji"       value={`TZS ${formatTzsCompact(lifetimeWithdrawals).replace("TZS ", "")}`} delta={`${txns.filter((t) => t.type === "WITHDRAWAL").length} txns`} />
           <AdminKpi label="NGR contribution"    sw="Mchango wa mapato"     value={`TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`} gold delta={`${txns.filter((t) => t.type === "BET_PLACED").length} positions`} />
-          <AdminKpi label="Last position"      sw="Nafasi ya mwisho"      value={(() => { const lb = txns.filter((t) => t.type === "BET_PLACED").sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]; return lb ? new Date(lb.createdAt).toLocaleDateString("en-GB") : "never"; })()} delta={`${txns.filter((t) => t.type === "BET_PLACED").length} positions`} />
+          <AdminKpi label="Last position"      sw="Nafasi ya mwisho"      value={(() => { const lb = txns.filter((t) => t.type === "BET_PLACED").sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]; return lb ? formatDateShort(lb.createdAt) : "never"; })()} delta={`${txns.filter((t) => t.type === "BET_PLACED").length} positions`} />
         </div>
 
         {/* §C — Tabs */}

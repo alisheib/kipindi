@@ -78,7 +78,7 @@ export default async function AdminCompliancePage({
                   {chain.valid ? "Chain valid" : `Chain broken at index ${chain.index}`}
                 </p>
                 <p className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
-                  HMAC-SHA256 · last verify {new Date().toLocaleTimeString("en-GB")}
+                  HMAC-SHA256 · last verify {formatClock(new Date().toISOString())}
                 </p>
               </div>
               <a
