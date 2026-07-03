@@ -37,8 +37,8 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile/responsible-gambling");
   let rg: Awaited<ReturnType<typeof getRgSettings>>;
-  try { rg = await getRgSettings(session.userId); } catch { rg = { userId: session.userId, dailyDepositLimit: null, weeklyDepositLimit: null, monthlyDepositLimit: null, dailyLossLimit: null, sessionTimeLimitMin: null, realityCheckIntervalMin: 30, selfExclusionUntil: null, coolingOffUntil: null, pendingIncreaseTo: null, pendingIncreaseEffectiveAt: null }; }
-  const hasPendingIncrease = rg.pendingIncreaseTo !== null && rg.pendingIncreaseEffectiveAt !== null;
+  try { rg = await getRgSettings(session.userId); } catch { rg = { userId: session.userId, dailyDepositLimit: null, weeklyDepositLimit: null, monthlyDepositLimit: null, dailyLossLimit: null, sessionTimeLimitMin: null, realityCheckIntervalMin: 30, selfExclusionUntil: null, coolingOffUntil: null, pendingIncreaseTo: null, pendingIncreaseEffectiveAt: null, pendingWeeklyIncreaseTo: null, pendingWeeklyIncreaseEffectiveAt: null, pendingMonthlyIncreaseTo: null, pendingMonthlyIncreaseEffectiveAt: null }; }
+  const hasPendingIncrease = (rg.pendingIncreaseTo !== null && rg.pendingIncreaseEffectiveAt !== null) || (rg.pendingWeeklyIncreaseTo !== null && rg.pendingWeeklyIncreaseEffectiveAt !== null) || (rg.pendingMonthlyIncreaseTo !== null && rg.pendingMonthlyIncreaseEffectiveAt !== null);
   const sp = await searchParams;
 
   return (

@@ -207,6 +207,10 @@ export type StoredResponsibleGambling = {
   coolingOffUntil: string | null;
   pendingIncreaseTo: number | null;
   pendingIncreaseEffectiveAt: string | null;
+  pendingWeeklyIncreaseTo: number | null;
+  pendingWeeklyIncreaseEffectiveAt: string | null;
+  pendingMonthlyIncreaseTo: number | null;
+  pendingMonthlyIncreaseEffectiveAt: string | null;
 };
 
 export type StoredNotification = {
@@ -540,6 +544,17 @@ const memoryDb = {
     findByIdempotencyKey: (key: string): StoredTxn | null => {
       for (const t of store.txns.values()) if (t.idempotencyKey === key) return t;
       return null;
+    },
+    /** Sum of confirmed deposits for a user since a cutoff timestamp.
+     *  No row-count cap — walks all transactions for correctness. */
+    sumDepositsSince: (userId: string, sinceMs: number): number => {
+      let sum = 0;
+      for (const t of store.txns.values()) {
+        if (t.userId === userId && t.type === "DEPOSIT" && t.status === "CONFIRMED" && Date.parse(t.createdAt) >= sinceMs) {
+          sum += t.amount;
+        }
+      }
+      return sum;
     },
   },
   responsible: {

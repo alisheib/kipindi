@@ -221,6 +221,10 @@ function toStoredRG(r: any): StoredResponsibleGambling {
     coolingOffUntil: iso(r.coolingOffUntil),
     pendingIncreaseTo: numOrNull(r.pendingIncreaseTo),
     pendingIncreaseEffectiveAt: iso(r.pendingIncreaseEffectiveAt),
+    pendingWeeklyIncreaseTo: numOrNull(r.pendingWeeklyIncreaseTo),
+    pendingWeeklyIncreaseEffectiveAt: iso(r.pendingWeeklyIncreaseEffectiveAt),
+    pendingMonthlyIncreaseTo: numOrNull(r.pendingMonthlyIncreaseTo),
+    pendingMonthlyIncreaseEffectiveAt: iso(r.pendingMonthlyIncreaseEffectiveAt),
   };
 }
 
@@ -723,6 +727,18 @@ export const prismaDb = {
       const row = await pc().transaction.findUnique({ where: { idempotencyKey: key } });
       return row ? toStoredTxn(row) : null;
     },
+    sumDepositsSince: async (userId: string, sinceMs: number): Promise<number> => {
+      const result = await pc().transaction.aggregate({
+        where: {
+          userId,
+          type: "DEPOSIT",
+          status: "CONFIRMED",
+          createdAt: { gte: new Date(sinceMs) },
+        },
+        _sum: { amount: true },
+      });
+      return Number(result._sum.amount ?? 0);
+    },
   },
 
   // ── RESPONSIBLE GAMBLING ──────────────────────────────────────────────────
@@ -747,6 +763,10 @@ export const prismaDb = {
         coolingOffUntil: r.coolingOffUntil ? new Date(r.coolingOffUntil) : null,
         pendingIncreaseTo: r.pendingIncreaseTo,
         pendingIncreaseEffectiveAt: r.pendingIncreaseEffectiveAt ? new Date(r.pendingIncreaseEffectiveAt) : null,
+        pendingWeeklyIncreaseTo: r.pendingWeeklyIncreaseTo,
+        pendingWeeklyIncreaseEffectiveAt: r.pendingWeeklyIncreaseEffectiveAt ? new Date(r.pendingWeeklyIncreaseEffectiveAt) : null,
+        pendingMonthlyIncreaseTo: r.pendingMonthlyIncreaseTo,
+        pendingMonthlyIncreaseEffectiveAt: r.pendingMonthlyIncreaseEffectiveAt ? new Date(r.pendingMonthlyIncreaseEffectiveAt) : null,
       };
       const row = await pc().responsibleGambling.upsert({
         where: { userId: r.userId },

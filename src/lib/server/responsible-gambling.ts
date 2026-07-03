@@ -69,27 +69,42 @@ export async function getRgSettings(userId: string) {
     coolingOffUntil: null,
     pendingIncreaseTo: null,
     pendingIncreaseEffectiveAt: null,
+    pendingWeeklyIncreaseTo: null,
+    pendingWeeklyIncreaseEffectiveAt: null,
+    pendingMonthlyIncreaseTo: null,
+    pendingMonthlyIncreaseEffectiveAt: null,
   };
   await db.responsible.upsert(fresh);
   return fresh;
 }
 
 /**
- * Apply pending-increase if its effective time has passed.
- * Mutates the stored record in-place.
+ * Apply any pending increases whose effective time has passed.
+ * Covers daily, weekly, and monthly deposit limits (LCCP SR 3.4.3).
  */
 async function effectivize(r: StoredResponsibleGambling) {
-  if (r.pendingIncreaseTo !== null && r.pendingIncreaseEffectiveAt) {
-    if (Date.now() >= new Date(r.pendingIncreaseEffectiveAt).getTime()) {
-      const updated = {
-        ...r,
-        dailyDepositLimit: r.pendingIncreaseTo,
-        pendingIncreaseTo: null,
-        pendingIncreaseEffectiveAt: null,
-      };
-      try { await db.responsible.upsert(updated); } catch { /* best-effort persist */ }
-      return updated;
-    }
+  let changed = false;
+  const now = Date.now();
+  if (r.pendingIncreaseTo !== null && r.pendingIncreaseEffectiveAt && now >= new Date(r.pendingIncreaseEffectiveAt).getTime()) {
+    r.dailyDepositLimit = r.pendingIncreaseTo;
+    r.pendingIncreaseTo = null;
+    r.pendingIncreaseEffectiveAt = null;
+    changed = true;
+  }
+  if (r.pendingWeeklyIncreaseTo !== null && r.pendingWeeklyIncreaseEffectiveAt && now >= new Date(r.pendingWeeklyIncreaseEffectiveAt).getTime()) {
+    r.weeklyDepositLimit = r.pendingWeeklyIncreaseTo;
+    r.pendingWeeklyIncreaseTo = null;
+    r.pendingWeeklyIncreaseEffectiveAt = null;
+    changed = true;
+  }
+  if (r.pendingMonthlyIncreaseTo !== null && r.pendingMonthlyIncreaseEffectiveAt && now >= new Date(r.pendingMonthlyIncreaseEffectiveAt).getTime()) {
+    r.monthlyDepositLimit = r.pendingMonthlyIncreaseTo;
+    r.pendingMonthlyIncreaseTo = null;
+    r.pendingMonthlyIncreaseEffectiveAt = null;
+    changed = true;
+  }
+  if (changed) {
+    try { await db.responsible.upsert(r); } catch { /* best-effort persist */ }
   }
   return r;
 }
@@ -136,8 +151,36 @@ export async function setLimits(userId: string, input: SetLimitInput) {
       next.pendingIncreaseEffectiveAt = null;
     }
   }
-  if ("weeklyDepositLimit" in input)   next.weeklyDepositLimit = input.weeklyDepositLimit ?? null;
-  if ("monthlyDepositLimit" in input)  next.monthlyDepositLimit = input.monthlyDepositLimit ?? null;
+  // Weekly deposit limit: same 24h deferral for increases (LCCP SR 3.4.3)
+  if ("weeklyDepositLimit" in input) {
+    const newVal = input.weeklyDepositLimit ?? null;
+    const oldVal = cur.weeklyDepositLimit;
+    const isIncrease = newVal !== null && (oldVal === null || newVal > oldVal);
+    if (isIncrease) {
+      next.pendingWeeklyIncreaseTo = newVal;
+      next.pendingWeeklyIncreaseEffectiveAt = new Date(Date.now() + LIMIT_INCREASE_DEFERRAL_SEC * 1000).toISOString();
+      deferredIncrease = true;
+    } else {
+      next.weeklyDepositLimit = newVal;
+      next.pendingWeeklyIncreaseTo = null;
+      next.pendingWeeklyIncreaseEffectiveAt = null;
+    }
+  }
+  // Monthly deposit limit: same 24h deferral for increases (LCCP SR 3.4.3)
+  if ("monthlyDepositLimit" in input) {
+    const newVal = input.monthlyDepositLimit ?? null;
+    const oldVal = cur.monthlyDepositLimit;
+    const isIncrease = newVal !== null && (oldVal === null || newVal > oldVal);
+    if (isIncrease) {
+      next.pendingMonthlyIncreaseTo = newVal;
+      next.pendingMonthlyIncreaseEffectiveAt = new Date(Date.now() + LIMIT_INCREASE_DEFERRAL_SEC * 1000).toISOString();
+      deferredIncrease = true;
+    } else {
+      next.monthlyDepositLimit = newVal;
+      next.pendingMonthlyIncreaseTo = null;
+      next.pendingMonthlyIncreaseEffectiveAt = null;
+    }
+  }
   if ("dailyLossLimit" in input)       next.dailyLossLimit = input.dailyLossLimit ?? null;
   if ("sessionTimeLimitMin" in input)  next.sessionTimeLimitMin = input.sessionTimeLimitMin ?? null;
   if ("realityCheckIntervalMin" in input && input.realityCheckIntervalMin !== undefined) {
@@ -250,21 +293,14 @@ export async function checkDepositLimit(userId: string, amount: number) {
   const cutoffWeek = now - 7 * 86_400 * 1000;
   const cutoffDay = now - 86_400 * 1000;
 
-  let dailySum = 0, weeklySum = 0, monthlySum = 0;
-  // Explicit type annotation on the local — db.txn.findByUser returns
-  // `unknown` in the current type chain (a pre-existing store-shape
-  // issue) so we narrow once here for the loop.
-  const allTxns: StoredTxn[] = await db.txn.findByUser(userId, 500) as StoredTxn[];
-  for (const t of allTxns) {
-    if (t.type !== "DEPOSIT" || t.status !== "CONFIRMED") continue;
-    const at = new Date(t.createdAt).getTime();
-    if (at < cutoffMonth) continue;        // older than 30d — irrelevant to any window
-    monthlySum += t.amount;
-    if (at < cutoffWeek) continue;
-    weeklySum += t.amount;
-    if (at < cutoffDay) continue;
-    dailySum += t.amount;
-  }
+  // Use time-bounded SUM queries — no row-count cap. A high-frequency user
+  // who has made >500 transactions in 30 days would previously undercount
+  // deposits and slip under the gate (bug #312 in SESSION_STATUS).
+  const [monthlySum, weeklySum, dailySum] = await Promise.all([
+    db.txn.sumDepositsSince(userId, cutoffMonth),
+    db.txn.sumDepositsSince(userId, cutoffWeek),
+    db.txn.sumDepositsSince(userId, cutoffDay),
+  ]);
 
   if (r.dailyDepositLimit !== null && dailySum + amount > r.dailyDepositLimit) {
     return { allowed: false, reason: `Daily deposit limit of TZS ${r.dailyDepositLimit.toLocaleString()} would be exceeded.` };

@@ -87,10 +87,8 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
   const SOF_SINGLE_TXN_TZS = 1_000_000;
   const SOF_ROLLING_30D_TZS = 5_000_000;
   const thirtyDaysAgo = Date.now() - 30 * 24 * 3600_000;
-  const recentDeposits = (await db.txn
-    .findByUser(userId, 500))
-    .filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED" && Date.parse(t.createdAt) >= thirtyDaysAgo)
-    .reduce((s, t) => s + t.amount, 0);
+  // Time-bounded SUM — no row-count cap (fixes the 500-txn ceiling bug).
+  const recentDeposits = await db.txn.sumDepositsSince(userId, thirtyDaysAgo);
   const cumulativeAfter = recentDeposits + parse.data.amount;
   const triggersSof =
     !adminTest && (parse.data.amount >= SOF_SINGLE_TXN_TZS || cumulativeAfter >= SOF_ROLLING_30D_TZS);
