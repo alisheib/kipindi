@@ -1,0 +1,35 @@
+#,Category,Item,GLI Section,Severity,Status,What Needs To Be Done,Cost,Notes
+1,CLOUDFLARE,Cloudflare Pro Plan (DNS + CDN + WAF),GLI-19 S6 / S4,BLOCKER,NOT STARTED,Subscribe to Cloudflare Pro - point 50pick.tz nameservers - enable WAF OWASP rulesets,$20/month,Covers DNS + CDN + DDoS + WAF + SSL. Annual = $240
+2,CLOUDFLARE,Cloudflare R2 Storage (KYC Documents),GLI-19 S3.6,HIGH,NOT STARTED,Create R2 bucket 'kipindi-kyc' - enable encryption at rest - set CORS,$0.15/month,"Storage ~9GB @ $0.015/GB + ops ~$0.05. Essentially free at your scale"
+3,CLOUDFLARE,Cloudflare SSL Full Strict,GLI-19 S4,BLOCKER,NOT STARTED,Set SSL mode to Full Strict in Cloudflare dashboard,Included in Pro,Part of Pro plan
+4,INFRASTRUCTURE,Railway PITR Backups,GLI-19 S6.2,BLOCKER,NOT STARTED,Enable Point-in-Time Recovery on Railway Postgres tile - test restore procedure,Included in Railway plan,Already paying Railway. Just enable the toggle + test restore
+5,INFRASTRUCTURE,Redis Add-on (Rate Limiting),GLI-19 S4.3,HIGH,NOT STARTED,Add Railway Redis service - swap in-memory rate limiter to Redis-backed,$5/month,Railway Redis starter. Survives redeploys
+6,INFRASTRUCTURE,Off-Site Backup Archive,GLI-19 S6.2.3,MEDIUM,NOT STARTED,Weekly encrypted DB export to R2 bucket in different region,Included in R2,Uses same R2 account. Negligible additional storage cost
+7,CODE,GitHub Actions CI Pipeline,GLI-19 S7.1,BLOCKER,NOT STARTED,Add .github/workflows/ci.yml - run predeploy on every push - block Railway deploy on failure,ALI CODE,2-4 hours dev work
+8,CODE,Sentry Error Tracking + Alerts,GLI-19 S6.4,BLOCKER,NOT STARTED,Create Sentry project - wire Next.js SDK - configure alert rules (error rate / latency / DB down),$0 (free tier) or $26/month (Team),Free tier: 5K errors/month. Team: 50K errors/month + performance monitoring
+9,CODE,Formal DR Runbook,GLI-19 S6.3,BLOCKER,NOT STARTED,Write disaster recovery document: failover / restore / rollback / RTO < 1h / RPO < 5min / GBT escalation,ALI CODE,1 day documentation + 1 day drill
+10,CODE,Fix Withdrawal Tax Model,GLI-33 S5.4,HIGH,NOT STARTED,Integrate double-entry ledger to compute actual net winnings per player instead of assuming 100% taxable,ALI CODE,1-2 days dev work
+11,CODE,Audit Log INSERT-Only DB Role,GLI-33 S4.2,HIGH,NOT STARTED,Create 'audit_writer' Postgres role with INSERT-only permission on AuditLog table,ALI CODE,2-3 hours dev work
+12,CODE,KYC Documents to R2 Migration,GLI-19 S3.6,HIGH,NOT STARTED,Move base64 KYC images from Postgres to R2 - store only object keys in DB - signed URLs for admin access,ALI CODE,2-3 days dev work. Requires item #2 (R2 bucket)
+13,CODE,CSP Compensating Controls Documentation,GLI-19 S4.5,HIGH,NOT STARTED,Document why unsafe-inline is required (Next.js 16 Turbopack) and list compensating controls (HttpOnly cookies / HMAC sessions / input validation),ALI CODE,2 hours documentation
+14,CODE,TOTP Replay Protection,GLI-19 S4.2,MEDIUM,NOT STARTED,Track last-used TOTP counter per user - reject codes at or below it,ALI CODE,1-2 hours dev work
+15,CODE,Restructure Admin Manual for GLI Format,GLI-19 S7.3,MEDIUM,NOT STARTED,Reformat existing admin/player/operator PDFs to follow GLI documentation template with screenshots,ALI CODE,1-2 days documentation
+16,CODE,Penetration Test Report,GLI-19 S4.8,MEDIUM,NOT STARTED,Ali runs pentest internally - write formal report (scope / methodology / findings / remediation evidence) in GLI-accepted format,ALI CODE,Ali is a pentester. No external cost
+17,EXTERNAL,GLI Lab Certification Fee,GLI-33 / GLI-19,REQUIRED,NOT STARTED,Submit platform to GLI lab for testing - pay certification fee,$15000-40000 one-time,"Price depends on scope + complexity. Contact GLI directly for quote. Typically 6-12 weeks"
+18,EXTERNAL,Tanzania GBT License Application,Tanzania Gaming Act,REQUIRED,NOT STARTED,File application with Gaming Board of Tanzania - pay license fee,Varies (GBT sets fee),Contact GBT for current fee schedule. Requires GLI cert first
+,,,,,,,,
+,,MONTHLY RECURRING COSTS,,,,,,
+,,Cloudflare Pro,,,,,,$20/month,
+,,Cloudflare R2,,,,,,$0.15/month,
+,,Railway Redis,,,,,,$5/month,
+,,Sentry (if Team plan),,,,,,$26/month (optional),Free tier may suffice initially
+,,TOTAL MONTHLY,,,,,,$25.15 - $51.15/month,
+,,,,,,,,
+,,ONE-TIME COSTS,,,,,,
+,,GLI Lab Certification,,,,,,$15000-40000,
+,,GBT License Application,,,,,,Varies (contact GBT),
+,,Penetration Test,,,,,,$0 (Ali does it),
+,,TOTAL ONE-TIME,,,,,,$15000-40000,
+,,,,,,,,
+,,CODE WORK (ALI CODE),,,,,,
+,,Items 7-16: Total dev effort,,,,,,~2 weeks,All implementable by current team
