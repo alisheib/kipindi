@@ -59,14 +59,14 @@ export async function GET() {
     }, { status: 401 });
   }
 
-  let user: ReturnType<typeof db.user.findById> = null;
-  try { user = db.user.findById(session.userId); } catch { /* graceful */ }
+  let user: Awaited<ReturnType<typeof db.user.findById>> = null;
+  try { user = await db.user.findById(session.userId); } catch { /* graceful */ }
   const bootstrap = bootstrapPhones();
   const isInBootstrapList = !!user && bootstrap.includes(user.phoneE164);
   const chain = verifyChain();
 
   let userCount = -1;
-  try { userCount = db.user.list().length; } catch { /* graceful */ }
+  try { userCount = (await db.user.list()).length; } catch { /* graceful */ }
   // Active DB ping — proves reachability + table existence WITHOUT
   // having to perform a mutation. Cheap (5–50ms on a healthy link).
   let ping: Awaited<ReturnType<typeof pingDatabase>> = { envSet: false, reachable: false, tableExists: false, latencyMs: null, hostHint: null, error: "not-attempted" };

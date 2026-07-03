@@ -789,6 +789,10 @@ if (!usePrisma && process.env.NODE_ENV === "production" && process.env.NEXT_PHAS
 // local dev that run WITHOUT a DATABASE_URL (the test suites create fixed-id
 // records and rely on a wipe-on-run store, so they can't share a persistent DB).
 // They never execute in production — the guard above guarantees it.
-export const db: typeof memoryDb = usePrisma
-  ? (prismaDb as unknown as typeof memoryDb)
-  : memoryDb;
+// Type as the ASYNC Prisma DAL so TypeScript enforces `await` on every call.
+// In dev (no DATABASE_URL) the sync in-memory store is cast to match — `await`
+// on a sync value is a harmless no-op, but a MISSING `await` on an async
+// Prisma call is a production crash. This way tsc catches it at compile time.
+export const db: typeof prismaDb = usePrisma
+  ? prismaDb
+  : (memoryDb as unknown as typeof prismaDb);

@@ -45,7 +45,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
   // Sort
   if (sortField === "balance") {
     // Batch-load all wallets in one query instead of N+1 per-user lookups.
-    let allWallets: ReturnType<typeof db.wallet.listAll> = [];
+    let allWallets: Awaited<ReturnType<typeof db.wallet.listAll>> = [];
     try { allWallets = await db.wallet.listAll(); } catch { /* graceful */ }
     const balanceMap = new Map<string, number>();
     for (const w of allWallets) balanceMap.set(w.userId, w.balance);

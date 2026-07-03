@@ -496,11 +496,17 @@ export async function detectHarmMarkers(
 
 /**
  * Detect markers across ALL users — feeds /admin/compliance Player Safety panel.
+ * Runs detections in parallel batches of 10 to avoid sequential N+1 Prisma
+ * queries (100 users × 10K txns each = 100 serial queries → timeout).
  */
 export async function detectHarmMarkersForAllUsers() {
+  const users = await db.user.list();
+  const BATCH = 10;
   const out: HarmFlag[] = [];
-  for (const u of await db.user.list()) {
-    out.push(...await detectHarmMarkers(u.id));
+  for (let i = 0; i < users.length; i += BATCH) {
+    const batch = users.slice(i, i + BATCH);
+    const results = await Promise.all(batch.map((u) => detectHarmMarkers(u.id).catch(() => [])));
+    for (const flags of results) out.push(...flags);
   }
   return out;
 }

@@ -331,7 +331,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   );
 }
 
-function KycTab({ kyc, userEmail, userId }: { kyc: ReturnType<typeof db.kyc.findByUserId>; userEmail?: string | null; userId: string }) {
+function KycTab({ kyc, userEmail, userId }: { kyc: Awaited<ReturnType<typeof db.kyc.findByUserId>>; userEmail?: string | null; userId: string }) {
   if (!kyc) return <p className="text-caption text-text-tertiary py-4 text-center">No KYC record yet.</p>;
   const decided = kyc.status === "APPROVED" || kyc.status === "REJECTED";
   return (
@@ -476,7 +476,7 @@ function KycTab({ kyc, userEmail, userId }: { kyc: ReturnType<typeof db.kyc.find
   );
 }
 
-function LimitsTab({ rg }: { rg: ReturnType<typeof db.responsible.get> }) {
+function LimitsTab({ rg }: { rg: Awaited<ReturnType<typeof db.responsible.get>> }) {
   if (!rg) return <p className="text-caption text-text-tertiary py-4 text-center">No limits configured.</p>;
   return (
     <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-caption">
@@ -497,7 +497,7 @@ function LimitsTab({ rg }: { rg: ReturnType<typeof db.responsible.get> }) {
   );
 }
 
-function ExclusionTab({ rg }: { rg: ReturnType<typeof db.responsible.get> }) {
+function ExclusionTab({ rg }: { rg: Awaited<ReturnType<typeof db.responsible.get>> }) {
   if (!rg) return <p className="text-caption text-text-tertiary py-4 text-center">No self-exclusion or cooling-off active.</p>;
   return (
     <div className="space-y-3">

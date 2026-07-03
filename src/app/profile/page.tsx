@@ -198,15 +198,15 @@ export default async function ProfilePage() {
             <I.fileSignature s={20} />
             <div className="min-w-0">
               <p className="font-display text-[15px] font-semibold text-text leading-tight">
-                {sof.reviewStatus === "REJECTED" ? t.profile.sofResubmit : t.profile.sofUnderReview}
+                {sof!.reviewStatus === "REJECTED" ? t.profile.sofResubmit : t.profile.sofUnderReview}
               </p>
               <p className="mt-1 text-[13px] text-text-muted leading-snug">
-                {sof.reviewStatus === "REJECTED"
+                {sof!.reviewStatus === "REJECTED"
                   ? t.profile.sofResubmitBody
                   : t.profile.sofUnderReviewBody}
               </p>
               <Link href="/profile/source-of-funds" className="btn btn-gold btn-md mt-3 inline-flex" style={{ borderRadius: "var(--r-pill)" }}>
-                {sof.reviewStatus === "REJECTED" ? t.profile.updateDeclaration : t.profile.viewStatus}
+                {sof!.reviewStatus === "REJECTED" ? t.profile.updateDeclaration : t.profile.viewStatus}
               </Link>
             </div>
           </div>

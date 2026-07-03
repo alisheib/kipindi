@@ -6,7 +6,7 @@ import { Chip } from "@/components/ui/chip";
 export const metadata = { title: "Admin · Player cohorts" };
 export const dynamic = "force-dynamic";
 
-function bucketByMonth(all: ReturnType<typeof db.user.list>) {
+function bucketByMonth(all: Awaited<ReturnType<typeof db.user.list>>) {
   const map = new Map<string, number>();
   for (const u of all) {
     const m = u.createdAt.slice(0, 7); // YYYY-MM
@@ -17,7 +17,7 @@ function bucketByMonth(all: ReturnType<typeof db.user.list>) {
     .map(([month, count]) => ({ month, count }));
 }
 
-function bucketByRegion(all: ReturnType<typeof db.user.list>) {
+function bucketByRegion(all: Awaited<ReturnType<typeof db.user.list>>) {
   const map = new Map<string, number>();
   for (const u of all) {
     const r = u.region ?? "Unknown";
@@ -26,7 +26,7 @@ function bucketByRegion(all: ReturnType<typeof db.user.list>) {
   return Array.from(map.entries()).sort((a, b) => b[1] - a[1]).map(([region, count]) => ({ region, count }));
 }
 
-function bucketByAge(all: ReturnType<typeof db.user.list>) {
+function bucketByAge(all: Awaited<ReturnType<typeof db.user.list>>) {
   const now = new Date();
   const buckets: Record<string, number> = { "18-24": 0, "25-34": 0, "35-44": 0, "45+": 0, unknown: 0 };
   for (const u of all) {
