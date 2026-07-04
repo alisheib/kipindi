@@ -60,7 +60,7 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
                 href={it.href as never}
                 aria-label={it.label}
                 aria-current={on ? "page" : undefined}
-                className="flex flex-1 flex-col items-center justify-center gap-1 rounded-[18px] transition-colors active:scale-95"
+                className="flex flex-1 flex-col items-center justify-center gap-1 rounded-xl transition-colors active:scale-95"
                 style={{
                   color: on ? "var(--accent-400)" : "var(--text-subtle)",
                   textDecoration: "none",

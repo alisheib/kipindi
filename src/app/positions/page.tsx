@@ -102,7 +102,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
 
       {/* Tab filter — All / Open / Settled (matches markets page filter pattern) */}
       {positions.length > 0 && (
-        <nav className="flex flex-wrap items-center gap-1.5" aria-label={t.positions.filterAria}>
+        <nav className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto" aria-label={t.positions.filterAria}>
           {([
             { id: "all", label: t.positions.tabAll, count: positions.length },
             { id: "open", label: t.positions.tabOpen, count: open.length },
@@ -119,7 +119,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                     ? "border-brand-500 text-text"
                     : "border-border bg-bg-elevated/60 text-text-muted hover:border-brand-400 hover:text-text")
                 }
-                style={on ? { background: "oklch(40% 0.12 262 / 0.35)", boxShadow: "0 0 10px oklch(63% 0.18 262 / 0.15)" } : undefined}
+                style={on ? { background: "oklch(40% 0.12 262 / 0.35)" } : undefined}
                 aria-current={on ? "page" : undefined}
               >
                 {tab.label}

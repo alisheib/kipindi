@@ -105,12 +105,13 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
               <Link
                 key={f.id}
                 href={`/proposals?f=${f.id}` as never}
-                className="inline-flex h-[30px] items-center rounded-pill border px-3.5 text-[12.5px] font-semibold transition-colors"
-                style={
-                  active
-                    ? { borderColor: "color-mix(in oklab, var(--gold-500) 40%, transparent)", background: "color-mix(in oklab, var(--gold-500) 14%, transparent)", color: "var(--gold-200)" }
-                    : { borderColor: "var(--border)", color: "var(--text-muted)" }
+                className={
+                  "inline-flex h-8 items-center rounded-md border px-3.5 font-mono text-[12px] font-semibold whitespace-nowrap transition-all " +
+                  (active
+                    ? "border-brand-500 text-text"
+                    : "border-border bg-bg-elevated/60 text-text-muted hover:border-brand-400 hover:text-text")
                 }
+                style={active ? { background: "oklch(40% 0.12 262 / 0.35)" } : undefined}
               >
                 {f.label}
               </Link>
@@ -158,7 +159,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
 
 function ProposalCard({ p, disabled, t, locale, ageStr }: { p: ProposalView; disabled?: boolean; t: import("@/lib/i18n-server").Dict; locale: import("@/lib/i18n-server").Locale; ageStr: (iso: string) => string }) {
   return (
-    <div className="group flex items-start gap-3 rounded-xl glass-panel p-3.5 transition-all hover:-translate-y-0.5 hover:border-teal-400 hover:shadow-[var(--shadow-4),var(--glow-blue)]">
+    <div className="group flex items-start gap-3 rounded-xl glass-panel p-3.5 transition-all hover:-translate-y-0.5 hover:border-[var(--brand-500)] hover:shadow-[var(--shadow-4)]">
       <VoteControl proposalId={p.id} up={p.up} down={p.down} myVote={p.myVote} disabled={disabled} />
       <Link href={`/proposals/${p.id}` as never} className="min-w-0 flex-1">
         <div className="mb-1.5 flex flex-wrap items-center gap-2">

@@ -1791,7 +1791,7 @@ html.kp-reduce-motion *::after {
    fonts/icons/chips so the premium elements (gilt frame, category sigil,
    sparkline, trader crest-stack) fit authentically. Title-left / YES%-right
    head keeps it landscape; fixed title reserve keeps bars aligned across cards. */
-.mcardp { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 14px 15px 13px; border-radius: var(--r-md); background: var(--bg-elevated);
+.mcardp { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 14px 15px 13px; border-radius: var(--r-lg); background: var(--bg-elevated);
   border: 1px solid var(--border); box-shadow: 0 1px 2px oklch(8% 0.07 264 / 0.35); overflow: hidden; isolation: isolate;
   height: 100%; /* fill the stretched grid cell so every card is the same height */
   transition: transform .2s ease-out, border-color .2s ease-out, box-shadow .2s ease-out; cursor: pointer; }

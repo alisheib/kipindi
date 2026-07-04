@@ -47,7 +47,7 @@ export function ResolutionPanel({
   const provisional = objectionsClosedAt != null && serverNow < Date.parse(objectionsClosedAt);
 
   return (
-    <section className="rounded-xl border border-border bg-bg-elevated p-5 space-y-4">
+    <section className="glass-panel p-5 space-y-4">
       {/* Header — title + outcome chip */}
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-display text-[16px] font-semibold text-text flex items-center gap-2">

@@ -156,7 +156,7 @@ export default async function LeaderboardPage() {
   const tierDisplayName = (tier: Tier) => t.leaderboard[`tier${tier.charAt(0).toUpperCase()}${tier.slice(1)}` as keyof typeof t.leaderboard].split(" ")[0];
 
   return (
-    <main className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6 space-y-6">
+    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
       <RefreshPoller intervalMs={30_000} />
       <header>
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.leaderboard.title}</p>
@@ -211,7 +211,7 @@ export default async function LeaderboardPage() {
             {rows.map((r, i) => (
               <tr key={r.userId} className="border-b border-border last:border-b-0 hover:bg-bg-overlay/40 transition-colors">
                 <td className="p-3 font-mono font-bold tabular-nums">
-                  <span className={i < 3 ? "text-gold-300" : "text-text-subtle"}>{i + 1}</span>
+                  <span className={i < 3 ? "text-brand-300" : "text-text-subtle"}>{i + 1}</span>
                 </td>
                 <td className="p-3">
                   <div className="flex items-center gap-2">
@@ -222,7 +222,7 @@ export default async function LeaderboardPage() {
                 </td>
                 <td
                   className={`p-3 text-right font-mono tabular-nums font-bold ${
-                    r.roi >= 0 ? "text-gold-300" : "text-no-300"
+                    r.roi >= 0 ? "text-yes-300" : "text-no-300"
                   }`}
                 >
                   {r.roi >= 0 ? "+" : ""}{r.roi.toFixed(1)}%
