@@ -87,7 +87,13 @@ Net: no safe high-value deletions. Bucket B closed.
 - [E-3] Card signal badge (hot/soon/tipping) — thresholds/colors/copy. *(market-card.tsx:39-48)*
 - [E-4] Card 24h MoveChip (`+Npt`). *(market-card.tsx:53-68)*
 - [E-5] Leaderboard consensus PriceChart + per-row sparkline (real-vs-synthetic data labeling). *(leaderboard/page.tsx:174-190)*
-- [E-6] Positions P&L summary strip + performance sub-page (unrealised P&L framing). *(positions/page.tsx:135-168)*
+- [x] **E-6 Positions P&L / performance — SHIPPED 2026-07-04 (first Claude Design commission).**
+  Designed by Claude Design from our bundle (tokens + specimens + rules), implemented on
+  real data: "Your standing" ledger strip on /positions (`pnl-summary-strip.tsx`, with the
+  gilt NeedleDial signature) + redesigned /positions/performance (net-P&L ledger, raw-TZS
+  `PnlChart` with gilt break-even line, KPI cards, recent-settled ledger). Unrealised value
+  labelled "if settled now"; gold only on earned profit; losses in rose with calm final copy;
+  no emojis. i18n en/sw/zh. Verified desktop+mobile with a seeded real portfolio.
 - [E-7] "Propose & get paid" gold board card. *(markets/page.tsx:89-108)*
 - [E-8] Form atoms Toggle / Checkbox / Select / Tabs (cite the missing `ds-forms.jsx`). *(ui/)*
 

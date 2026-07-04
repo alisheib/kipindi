@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
 import { PositionCard } from "@/components/markets/position-card";
+import { PnlSummaryStrip } from "@/components/positions/pnl-summary-strip";
 import { SellButton } from "@/components/markets/sell-button";
 import { listPositionsForUser, getMarket, cashOutValue, isSelectionClosed } from "@/lib/server/market-service";
 import { currentSession } from "@/lib/server/auth-service";
@@ -17,8 +18,6 @@ export async function generateMetadata() {
   return { title: t.positions.title };
 }
 export const dynamic = "force-dynamic";
-
-const fmtTzs = (n: number) => `TZS ${Math.round(n).toLocaleString("en-US")}`;
 
 export default async function PositionsPage({ searchParams }: { searchParams: Promise<{ tab?: string; page?: string }> }) {
   const { t, locale } = await getServerT();
@@ -131,40 +130,29 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
         </nav>
       )}
 
-      {/* P&L summary strip — only render when the user has any positions */}
+      {/* "Your standing" ledger strip — only when the user has any positions */}
       {positions.length > 0 && (
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <SummaryCell
-            label={t.positions.atRisk}
-            value={fmtTzs(openStake)}
-            sub={`${open.length} ${t.common.open}`}
-            icon={<I.clock s={13} />}
-          />
-          <SummaryCell
-            label={t.positions.liveValue}
-            value={fmtTzs(openLiveValue)}
-            sub={openLiveValue >= openStake
-              ? `+${fmtTzs(openLiveValue - openStake)} ${t.positions.unrealised}`
-              : `−${fmtTzs(openStake - openLiveValue)} ${t.positions.unrealised}`}
-            tone={openLiveValue >= openStake ? "yes" : "no"}
-            icon={openLiveValue >= openStake
-              ? <I.trendingUp s={13} />
-              : <I.trendingDown s={13} />}
-          />
-          <SummaryCell
-            label={t.positions.settledPnl}
-            value={(settledNet >= 0 ? "+" : "−") + fmtTzs(Math.abs(settledNet))}
-            sub={`${wins}${t.common.win.charAt(0)} · ${losses}${t.common.lose.charAt(0)} · ${cashOuts}C`}
-            tone={settledNet >= 0 ? "gold" : "no"}
-            icon={<I.coins s={13} />}
-          />
-          <SummaryCell
-            label={t.positions.winRate}
-            value={settled.length > 0 ? `${Math.round((wins / settled.length) * 100)}%` : "—"}
-            sub={`${settled.length} ${t.common.settled}`}
-            icon={<I.trendingUp s={13} />}
-          />
-        </section>
+        <PnlSummaryStrip
+          openCount={open.length}
+          openStake={openStake}
+          openLiveValue={openLiveValue}
+          settledNet={settledNet}
+          wins={wins}
+          losses={losses}
+          cashOuts={cashOuts}
+          settledCount={settled.length}
+          t={{
+            yourStanding: t.positions.yourStanding,
+            live: t.common.live,
+            atRisk: t.positions.atRisk,
+            open: t.common.open,
+            liveValueIfSettled: t.positions.liveValueIfSettled,
+            unrealised: t.positions.unrealised,
+            settledPnl: t.positions.settledPnl,
+            winRate: t.positions.winRate,
+            ofSettled: `${settled.length} ${t.common.settled}`,
+          }}
+        />
       )}
 
       {(activeTab === "all" || activeTab === "open") && <Section title={t.common.open} count={open.length}>
@@ -262,30 +250,6 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
         )}
       </Section>}
     </main>
-  );
-}
-
-function SummaryCell({
-  label, value, sub, tone = "neutral", icon,
-}: {
-  label: string; value: string; sub: string;
-  tone?: "neutral" | "yes" | "no" | "gold";
-  icon?: React.ReactNode;
-}) {
-  const valueClass =
-    tone === "yes"  ? "text-yes-300"
-    : tone === "no"   ? "text-no-300"
-    : tone === "gold" ? "text-gold-300"
-    : "text-text";
-  return (
-    <div className="rounded-xl border border-border bg-bg-elevated px-4 py-3.5">
-      <div className="flex items-center gap-1.5">
-        {icon && <span className="text-text-subtle">{icon}</span>}
-        <p className="font-mono text-[9.5px] uppercase tracking-[0.08em] font-semibold text-text-subtle">{label}</p>
-      </div>
-      <p className={`mt-1.5 font-mono text-[18px] font-bold tabular-nums leading-tight ${valueClass}`}>{value}</p>
-      <p className="mt-1 font-mono text-[10.5px] tabular-nums text-text-muted">{sub}</p>
-    </div>
   );
 }
 

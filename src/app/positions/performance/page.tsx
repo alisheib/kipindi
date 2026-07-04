@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
 import { EmptyState } from "@/components/ui/empty-state";
-import { PriceChart } from "@/components/markets/price-chart";
+import { PnlChart } from "@/components/positions/pnl-chart";
 import { listPositionsForUser, getMarket } from "@/lib/server/market-service";
 import { currentSession } from "@/lib/server/auth-service";
 import { getServerT } from "@/lib/i18n-server";
@@ -15,7 +14,8 @@ export async function generateMetadata() {
 }
 export const dynamic = "force-dynamic";
 
-const fmtTzs = (n: number) => `TZS ${Math.round(n).toLocaleString("en-US")}`;
+const fmtTzs = (n: number) => `TZS ${Math.round(Math.abs(n)).toLocaleString("en-US")}`;
+const signedTzs = (n: number) => `${n >= 0 ? "+" : "−"}${fmtTzs(n)}`;
 
 export default async function PerformancePage() {
   const { t, locale } = await getServerT();
@@ -25,7 +25,7 @@ export default async function PerformancePage() {
   const positions = await listPositionsForUser(session.userId, 5_000).catch(() => []);
   const settled = positions.filter((p) => p.status !== "OPEN");
 
-  // ── Core stats ──────────────────────────────────────────────────────
+  // ── Core stats (unchanged real aggregation) ─────────────────────────
   const totalBets = settled.length;
   const totalStaked = settled.reduce((s, p) => s + p.stake, 0);
   const totalPaidOut = settled.reduce((s, p) => s + (p.finalPayout ?? 0), 0);
@@ -44,86 +44,70 @@ export default async function PerformancePage() {
     }
   }
 
-  // Streaks — settled positions sorted newest first (store order)
+  // Streaks — settled positions newest first
   const sortedSettled = [...settled].sort(
     (a, b) => new Date(b.settledAt ?? b.placedAt).getTime() - new Date(a.settledAt ?? a.placedAt).getTime(),
   );
-
   let currentStreak = 0;
   for (const p of sortedSettled) {
     if (p.status === "WIN" || p.status === "CASHED_OUT") currentStreak++;
     else break;
   }
-
   let longestStreak = 0;
   let run = 0;
   for (const p of sortedSettled) {
-    if (p.status === "WIN" || p.status === "CASHED_OUT") {
-      run++;
-      if (run > longestStreak) longestStreak = run;
-    } else {
-      run = 0;
-    }
+    if (p.status === "WIN" || p.status === "CASHED_OUT") { run++; if (run > longestStreak) longestStreak = run; }
+    else run = 0;
   }
 
-  // ── P&L over time (cumulative) ─────────────────────────────────────
+  // ── Cumulative realised P&L series — RAW TZS (chronological) ─────────
   const chronological = [...settled].sort(
     (a, b) => new Date(a.settledAt ?? a.placedAt).getTime() - new Date(b.settledAt ?? b.placedAt).getTime(),
   );
-
+  const pnlOf = (p: (typeof settled)[number]) =>
+    p.status === "WIN" || p.status === "CASHED_OUT" ? (p.finalPayout ?? 0) - p.stake
+    : p.status === "LOSS" ? -p.stake
+    : 0; // VOID
   let cumulative = 0;
-  const pnlSeries: { t: string; yes: number }[] = [];
-
-  // We need to normalize values to 0-1 range for PriceChart.
-  // First compute the raw cumulative P&L series.
-  const rawPnl: { label: string; value: number }[] = [];
+  const pnlSeries: { label: string; value: number }[] = [];
   for (const p of chronological) {
-    const pnl = p.status === "WIN" || p.status === "CASHED_OUT"
-      ? (p.finalPayout ?? 0) - p.stake
-      : p.status === "LOSS"
-        ? -p.stake
-        : 0; // VOID
-    cumulative += pnl;
+    cumulative += pnlOf(p);
     const d = new Date(p.settledAt ?? p.placedAt);
-    rawPnl.push({
-      label: `${d.getDate()}/${d.getMonth() + 1}`,
-      value: cumulative,
-    });
+    pnlSeries.push({ label: `${d.getDate()}/${d.getMonth() + 1}`, value: cumulative });
   }
 
-  // Normalize to 0-1 for the chart
-  if (rawPnl.length > 0) {
-    const minVal = Math.min(...rawPnl.map((d) => d.value));
-    const maxVal = Math.max(...rawPnl.map((d) => d.value));
-    const range = maxVal - minVal || 1;
-    for (const d of rawPnl) {
-      pnlSeries.push({ t: d.label, yes: (d.value - minVal) / range });
-    }
-  }
-
-  // ── Best win market title ──────────────────────────────────────────
-  let bestMarketTitle = "";
+  // Best win title
+  let bestTitle = "";
   if (bestMarket) {
-    try {
-      const m = await getMarket(bestMarket.marketId);
-      if (m) bestMarketTitle = pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh);
-    } catch { /* skip */ }
+    try { const m = await getMarket(bestMarket.marketId); if (m) bestTitle = pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh); } catch { /* skip */ }
   }
 
-  // ── Recent settled (last 5) ────────────────────────────────────────
-  const recentSettled = sortedSettled.slice(0, 5);
-  const recentMarketIds = [...new Set(recentSettled.map((p) => p.marketId))];
+  // Recent settled (last 5) + their market titles
+  const recent = sortedSettled.slice(0, 5);
   const recentMarketMap = new Map<string, Awaited<ReturnType<typeof getMarket>>>();
-  for (const mid of recentMarketIds) {
+  for (const mid of [...new Set(recent.map((p) => p.marketId))]) {
     try { recentMarketMap.set(mid, await getMarket(mid)); } catch { /* skip */ }
   }
+  const statusLabel = (s: string) =>
+    s === "WIN" ? t.common.win : s === "LOSS" ? t.common.lose : s === "CASHED_OUT" ? t.common.cashedOut : t.common.voided;
+  const recentSettled = recent.map((p) => {
+    const m = recentMarketMap.get(p.marketId);
+    const d = new Date(p.settledAt ?? p.placedAt);
+    return {
+      id: p.id, marketId: p.marketId,
+      title: m ? pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh) : p.marketId.slice(0, 8),
+      side: p.side, stake: p.stake,
+      date: d.toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
+      pnl: pnlOf(p), statusLabel: statusLabel(p.status),
+    };
+  });
 
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
       <BackLink fallbackHref="/positions" label={t.positions.title} />
       <header>
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.performance.title}</p>
-        <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.positions.pollsPlayed}</h1>
+        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.positions.title}</p>
+        <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.performance.title}</h1>
       </header>
 
       {totalBets === 0 ? (
@@ -131,134 +115,76 @@ export default async function PerformancePage() {
           kind="positions"
           title={t.performance.noPerformance}
           body={t.performance.noPerformanceBody}
-          action={
-            <Link href={"/markets" as never} className="btn btn-gold btn-sm">
-              {t.positions.browseMarkets}
-            </Link>
-          }
+          action={<Link href={"/markets" as never} className="btn btn-gold btn-sm">{t.positions.browseMarkets}</Link>}
         />
       ) : (
         <>
-          {/* ── Hero stat card ─────────────────────────────────────── */}
-          <section className="rounded-xl border border-border bg-bg-elevated px-5 py-5">
-            <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
-              {/* Net P&L hero */}
-              <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle flex items-center gap-1.5">
-                  <I.coins s={11} />
-                  {t.performance.netPnl}
+          {/* ── Net P&L ledger panel ──────────────────────────────── */}
+          <section aria-label={t.performance.netPnl} className="glass-panel px-5 pt-[18px] pb-5">
+            <div className="flex items-center justify-between gap-3">
+              <span className="gilt-eyebrow">{t.performance.netPnl} · {t.common.settled}</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-subtle">{t.performance.allFiguresFinal}</span>
+            </div>
+            <div className="gilt-rule" style={{ margin: "10px 0 14px" }} />
+            <div className="flex flex-wrap items-end gap-x-10 gap-y-4">
+              <div className="min-w-[220px]">
+                <p
+                  className={`font-mono text-[34px] font-bold tabular-nums leading-none tracking-[-0.02em] ${netPnl >= 0 ? "text-[var(--gilt)]" : "text-no-300"}`}
+                  style={netPnl >= 0 ? { textShadow: "0 0 24px color-mix(in oklab, var(--gilt) 30%, transparent)" } : undefined}
+                >
+                  {signedTzs(netPnl)}
                 </p>
-                <p className={`mt-1 font-mono text-[32px] font-bold tabular-nums leading-tight ${netPnl >= 0 ? "text-gold-300" : "text-no-300"}`}>
-                  {netPnl >= 0 ? "+" : "\u2212"}{fmtTzs(Math.abs(netPnl))}
-                </p>
-              </div>
-              {/* Win rate */}
-              <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle flex items-center gap-1.5">
-                  <I.trendingUp s={11} />
-                  {t.performance.winRate}
-                </p>
-                <p className="mt-1 font-mono text-[22px] font-bold tabular-nums leading-tight text-text">
-                  {winRate}%
+                <p className="mt-2 text-[12.5px] leading-normal text-text-muted">
+                  {netPnl >= 0 ? t.performance.netProfitCaption : t.performance.netLossCaption}
                 </p>
               </div>
-              {/* Total predictions */}
-              <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle flex items-center gap-1.5">
-                  <I.activity s={11} />
-                  {t.performance.totalPredictions}
-                </p>
-                <p className="mt-1 font-mono text-[22px] font-bold tabular-nums leading-tight text-text">
-                  {totalBets.toLocaleString("en-US")}
-                </p>
+              <div className="flex flex-wrap gap-8">
+                <Kpi label={t.performance.winRate} value={`${winRate}%`} />
+                <Kpi label={t.performance.marketsSettled} value={String(totalBets)} />
+                <Kpi label={t.performance.roi} value={`${roi >= 0 ? "+" : "−"}${Math.abs(roi).toFixed(1)}%`} />
               </div>
             </div>
           </section>
 
-          {/* ── 2-col stat grid ────────────────────────────────────── */}
-          <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <StatCard
-              label={t.performance.avgStake}
-              value={fmtTzs(avgStake)}
-              icon={<I.coins s={13} />}
-            />
-            <StatCard
-              label={t.performance.bestWin}
-              value={bestMarket ? fmtTzs(bestMarket.payout) : "\u2014"}
-              sub={bestMarketTitle ? bestMarketTitle.slice(0, 40) : undefined}
-              tone="gold"
-              icon={<I.trophy s={13} />}
-            />
-            <StatCard
-              label={t.performance.currentStreak}
-              value={currentStreak > 0 ? `${currentStreak}` : "\u2014"}
-              icon={<I.flame2 s={13} />}
-            />
-            <StatCard
-              label={t.performance.roi}
-              value={`${roi >= 0 ? "+" : ""}${roi.toFixed(1)}%`}
-              tone={roi >= 0 ? "gold" : "no"}
-              icon={<I.trendingUp s={13} />}
-            />
-          </section>
-
-          {/* ── Longest streak ─────────────────────────────────────── */}
-          <div className="flex items-center gap-3 text-[12px] font-mono text-text-muted">
-            <I.trophy s={13} className="text-gold-300" />
-            <span>{t.performance.longestStreak}: <strong className="text-text">{longestStreak}</strong></span>
-          </div>
-
-          {/* ── P&L chart ──────────────────────────────────────────── */}
+          {/* ── P&L over time ─────────────────────────────────────── */}
           {pnlSeries.length > 1 && (
-            <section className="rounded-xl glass-panel p-4 lg:p-5">
-              <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-3">
-                {t.performance.pnlOverTime}
-              </p>
-              <PriceChart data={pnlSeries} height={200} ariaLabel={t.performance.pnlOverTime} />
+            <section aria-label={t.performance.pnlOverTime} className="glass-panel px-5 pt-4 pb-3.5">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <span className="gilt-eyebrow">{t.performance.pnlOverTime}</span>
+                <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-subtle">{t.performance.cumulativePerSettlement}</span>
+              </div>
+              <PnlChart data={pnlSeries} ariaLabel={t.performance.pnlOverTime} />
             </section>
           )}
 
-          {/* ── Recent settled list ────────────────────────────────── */}
+          {/* ── KPI cards ─────────────────────────────────────────── */}
+          <section className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(158px, 1fr))" }}>
+            <Stat label={t.performance.avgStake} value={fmtTzs(avgStake)} />
+            <Stat label={t.performance.bestWin} value={bestMarket ? fmtTzs(bestMarket.payout) : "—"} sub={bestTitle || undefined} gold />
+            <Stat label={t.performance.currentStreak} value={currentStreak > 0 ? String(currentStreak) : "—"} sub={`${t.performance.longestStreak} ${longestStreak}`} />
+            <Stat label={t.performance.totalStaked} value={fmtTzs(totalStaked)} />
+          </section>
+
+          {/* ── Recent settled ledger ─────────────────────────────── */}
           {recentSettled.length > 0 && (
             <section>
               <h2 className="mb-3 flex items-baseline gap-2">
                 <span className="font-display text-[20px] font-semibold text-text">{t.performance.recentSettled}</span>
                 <span className="ml-auto font-mono text-[12px] text-text-subtle">{recentSettled.length}</span>
               </h2>
-              <div className="rounded-xl border border-border bg-bg-elevated divide-y divide-border">
-                {recentSettled.map((p) => {
-                  const m = recentMarketMap.get(p.marketId);
-                  const pnl = p.status === "WIN" || p.status === "CASHED_OUT"
-                    ? (p.finalPayout ?? 0) - p.stake
-                    : p.status === "LOSS"
-                      ? -p.stake
-                      : 0;
-                  const pnlPositive = pnl >= 0;
-                  return (
-                    <Link
-                      key={p.id}
-                      href={`/markets/${p.marketId}` as never}
-                      className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-bg-overlay/40 transition-colors"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[13px] font-medium text-text truncate">
-                          {m ? pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh) : p.marketId.slice(0, 8)}
-                        </p>
-                        <p className="mt-0.5 font-mono text-[10px] text-text-muted">
-                          {p.side} &middot; {fmtTzs(p.stake)}
-                        </p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className={`font-mono text-[13px] font-bold tabular-nums ${pnlPositive ? "text-gold-300" : "text-no-300"}`}>
-                          {pnlPositive ? "+" : "\u2212"}{fmtTzs(Math.abs(pnl))}
-                        </p>
-                        <p className="font-mono text-[9px] uppercase tracking-[0.08em] text-text-muted">
-                          {p.status === "WIN" ? t.common.win : p.status === "LOSS" ? t.common.lose : p.status === "CASHED_OUT" ? t.common.cashedOut : t.common.voided}
-                        </p>
-                      </div>
-                    </Link>
-                  );
-                })}
+              <div className="rounded-xl border border-border bg-bg-elevated overflow-hidden divide-y divide-border/50">
+                {recentSettled.map((r) => (
+                  <Link key={r.id} href={`/markets/${r.marketId}` as never} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-bg-overlay/40 transition-colors">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] font-medium text-text">{r.title}</p>
+                      <p className="mt-0.5 font-mono text-[10px] text-text-muted">{r.side} &middot; {fmtTzs(r.stake)} &middot; {r.date}</p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className={`font-mono text-[13px] font-bold tabular-nums ${r.pnl >= 0 ? "text-[var(--gilt)]" : "text-no-300"}`}>{signedTzs(r.pnl)}</p>
+                      <p className="font-mono text-[9px] uppercase tracking-[0.08em] text-text-muted">{r.statusLabel}</p>
+                    </div>
+                  </Link>
+                ))}
               </div>
             </section>
           )}
@@ -268,25 +194,21 @@ export default async function PerformancePage() {
   );
 }
 
-function StatCard({
-  label, value, sub, tone = "neutral", icon,
-}: {
-  label: string; value: string; sub?: string;
-  tone?: "neutral" | "gold" | "no";
-  icon?: React.ReactNode;
-}) {
-  const valueClass =
-    tone === "gold" ? "text-gold-300"
-    : tone === "no" ? "text-no-300"
-    : "text-text";
+function Kpi({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.10em] text-text-subtle">{label}</p>
+      <p className="mt-1.5 font-mono text-[21px] font-bold tabular-nums leading-none text-text">{value}</p>
+    </div>
+  );
+}
+
+function Stat({ label, value, sub, gold }: { label: string; value: string; sub?: string; gold?: boolean }) {
   return (
     <div className="rounded-xl border border-border bg-bg-elevated px-4 py-3.5">
-      <div className="flex items-center gap-1.5">
-        {icon && <span className="text-text-subtle">{icon}</span>}
-        <p className="font-mono text-[9.5px] uppercase tracking-[0.08em] font-semibold text-text-subtle">{label}</p>
-      </div>
-      <p className={`mt-1.5 font-mono text-[18px] font-bold tabular-nums leading-tight ${valueClass}`}>{value}</p>
-      {sub && <p className="mt-1 font-mono text-[10.5px] tabular-nums text-text-muted truncate">{sub}</p>}
+      <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.10em] text-text-subtle">{label}</p>
+      <p className={`mt-2 font-mono text-[18px] font-bold tabular-nums leading-[1.1] ${gold ? "text-[var(--gilt)]" : "text-text"}`}>{value}</p>
+      {sub && <p className="mt-1.5 truncate font-mono text-[10.5px] text-text-muted">{sub}</p>}
     </div>
   );
 }

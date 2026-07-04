@@ -39,6 +39,14 @@ library to claude.ai/design for visual iteration.
       Verify existing value-change flash mechanism first. *(market-card.tsx, refresh-poller)*
 
 ### Session log (append-only)
+- 2026-07-04: **Positions P&L / performance (E-6) shipped — first Claude Design commission.**
+  Bundle (tokens+specimens+rules) → Claude Design → implemented on real data. New:
+  `src/components/positions/pnl-summary-strip.tsx` (+ gilt NeedleDial), `pnl-chart.tsx`
+  (raw-TZS cumulative, gilt break-even line). Rewrote /positions strip + /positions/performance.
+  8 new i18n keys ×3. Honesty preserved (unrealised = "if settled now", gold=earned only,
+  losses calm/rose, no emojis). Typecheck/i18n(1181×3)/build all green. Verified desktop+mobile
+  with a seeded real portfolio (open + WIN/LOSS) — math correct, no glitches.
+  Handoff files kept at `50PICK/New Designs/handoff/` (untracked reference).
 - 2026-07-04: **ResolutionPanel (D-1) shipped** — built from kit, real data only,
   two-officer attestation gated to genuine distinct officers, exact pools + fee rate,
   provisional→final window with a concrete date (no infinite states), i18n en/sw/zh.
