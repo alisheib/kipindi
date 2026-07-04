@@ -1795,7 +1795,10 @@ html.kp-reduce-motion *::after {
   height: 100%; /* fill the stretched grid cell so every card is the same height */
   transition: transform .2s ease-out, border-color .2s ease-out, box-shadow .2s ease-out; cursor: pointer; }
 @media (hover: hover) {
-  .mcardp:hover { transform: translateY(-3px); border-color: var(--brand-500); box-shadow: 0 0 0 1px var(--brand-500), 0 14px 34px oklch(8% 0.08 264 / 0.6), 0 0 30px oklch(63% 0.18 262 / 0.24); }
+  /* Restraint: lift + a crisp border ring + depth shadow. The ambient brand
+     GLOW is deliberately withheld here so it can mean "look at me" where it's
+     reserved — the featured market and live pulses. */
+  .mcardp:hover { transform: translateY(-3px); border-color: var(--brand-500); box-shadow: 0 0 0 1px var(--brand-500), 0 14px 34px oklch(8% 0.08 264 / 0.6); }
 }
 /* Category glyph watermark — bottom-right bleed, brightens on hover. */
 .mcardp-watermark { position: absolute; bottom: -18px; right: -14px; color: var(--border-strong); opacity: 0.055; pointer-events: none; z-index: 0;

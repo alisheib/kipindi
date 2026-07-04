@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
+import { SignalPip } from "@/components/brand";
 import { MarketCard } from "@/components/markets/market-card";
 import { listMarkets, impliedYesPct, isClosedByTime, isSelectionClosed, traderSeedsByMarket, type MarketCategory } from "@/lib/server/market-service";
 import { getCardChart } from "@/lib/server/market-history";
@@ -44,8 +45,16 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
       {/* Lean, content-first header — the marketing hero lives on the homepage. */}
       <div className="mb-4 flex items-center justify-between gap-3">
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.market.title}</p>
-        <p className="font-mono text-[10.5px] text-text-subtle tabular-nums whitespace-nowrap">
-          {allLive.length} {t.market.liveCount} · TZS {(totalVolume / 1000).toFixed(0)}k {t.market.tzsInPlay}
+        {/* The board's heartbeat. Aqua live-pip + the two figures at full ink,
+            their labels kept quiet — a confident pulse, not a shout. Aqua (not
+            gilt) by design: gold is reserved for earned-money moments. */}
+        <p className="flex items-center gap-1.5 font-mono text-[12.5px] tabular-nums whitespace-nowrap">
+          <SignalPip size={7} className="mr-0.5" />
+          <span className="font-semibold text-text">{allLive.length}</span>
+          <span className="text-text-subtle">{t.market.liveCount}</span>
+          <span className="text-border-strong">·</span>
+          <span className="font-semibold text-text">TZS {(totalVolume / 1000).toFixed(0)}k</span>
+          <span className="text-text-subtle">{t.market.tzsInPlay}</span>
         </p>
       </div>
 
@@ -151,7 +160,7 @@ async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: strin
                   ? "border-brand-500 text-text"
                   : "border-border bg-bg-elevated/60 text-text-muted hover:border-brand-400 hover:text-text")
               }
-              style={active ? { background: "oklch(40% 0.12 262 / 0.35)", boxShadow: "0 0 10px oklch(63% 0.18 262 / 0.15)" } : undefined}
+              style={active ? { background: "oklch(40% 0.12 262 / 0.35)" } : undefined}
             >
               {o.label}
             </a>
@@ -172,7 +181,7 @@ async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: strin
                   ? "border-brand-500 text-text"
                   : "border-border bg-bg-elevated/60 text-text-muted hover:border-brand-400 hover:text-text")
               }
-              style={active ? { background: "oklch(40% 0.12 262 / 0.35)", boxShadow: "0 0 10px oklch(63% 0.18 262 / 0.15)" } : undefined}
+              style={active ? { background: "oklch(40% 0.12 262 / 0.35)" } : undefined}
             >
               {c.label}
             </a>
