@@ -19,13 +19,16 @@ library to claude.ai/design for visual iteration.
 
 ## Surface 1 — Markets board (audited 2026-07-04)
 
-- [ ] **1. Featured/marquee card** — kill the flat uniform grid. Hottest live market
-      spans 2 cols: larger %, taller TippingBar, trader crest-stack visible. One hero.
-      *(market-card.tsx, globals.css `.market-grid` / `.mcardp`)*
-- [ ] **2. Wire dark-but-designed features** — sparkline (`spark` prop not even
-      destructured) + trader crest-stack (`traders` destructured, unused). CSS already
-      exists (`.mcardp-spark`, `.mcardp-traders`, `.av-stack`); page already fetches both.
-      *(market-card.tsx)*
+- [ ] **1. Featured live markets — KIT-FAITHFUL.** The kit (`kit/extras.jsx:396`) specs
+      "FEATURED LIVE MARKETS · 3-card carousel · mobile swipeable · desktop static" —
+      a 3-card row of NORMAL cards, NOT one giant hero. (The big hero-with-featured-
+      preview is a LANDING-page element, not the board.) A first invented attempt
+      (full-width marquee) was reverted 2026-07-04 for diverging from the kit.
+- [ ] **2. Volume sparkline — KIT-FAITHFUL.** Use the kit's `VolumeSparkline`
+      (`kit/microstructure.jsx:93`): aqua VOLUME BAR histogram, not a YES% line.
+      NOTE: needs a 24h volume series; page currently fetches `spark` as a YES% series.
+      Data-source check required before wiring.
+      NOT IN KIT: trader crest-stack on cards → do not add without a Claude Design spec.
 - [x] **3. Restrain the glow** — card hover now lift + border ring only (ambient
       `0 0 30px` brand glow removed); active filter chips no longer glow. Glow now
       reserved for marquee + live pulse. *(globals.css:1798, markets/page.tsx)*
@@ -39,3 +42,7 @@ library to claude.ai/design for visual iteration.
 - 2026-07-04: Surface 1 audited. 5 items logged. Sprint doc created.
 - 2026-07-04: Push A shipped — items 3 (restrain glow) + 4 (heartbeat figure).
   (Also ran `prisma generate` — pulled-in ledger.ts needed the regenerated client.)
+- 2026-07-04: Push B (invented full-width marquee + line sparkline + crest-stack)
+  REVERTED before commit. Rule reaffirmed: build only from `kit/`; if the kit is
+  short, commission Claude Design (sharing our kit) rather than inventing.
+  Items 1+2 rewritten to the kit's actual spec.
