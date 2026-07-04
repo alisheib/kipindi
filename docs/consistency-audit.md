@@ -9,6 +9,28 @@ The fix is to extract a few shared atoms and adopt them everywhere.
 
 Legend: 🟢 safe class/token swap · 🟡 shared-atom extraction · ⚪ intentional/document-only.
 
+## STATUS
+- **TIER 1 — DONE (aa8d552), verified desktop+mobile.** All user-visible inconsistencies
+  fixed: filter pills unified (proposals de-golded, active-glow removed on results/positions,
+  positions mobile scroll), leaderboard gold-budget fixed + width→1080, market card radius
+  →16px, position/proposal card hover unified, ResolutionPanel→glass-panel, empty-state &
+  bottom-nav radii.
+- **TIER 2 — PENDING (next focused pass, per-file verified).** These are shared-atom
+  refactors / nuanced normalizations, NOT user-visible bugs — do carefully, not rushed:
+  - L2 BackLink sweep — 9 player pages (profile/account,sessions,kyc,source-of-funds,
+    responsible-gambling,invite; wallet/deposit,withdraw; proposals/new) each swap the raw
+    `<Link>` (glyph s=14) for `<BackLink fallbackHref label>` (glyph s=11, history-aware).
+    Labels: profile→t.common.profile, wallet→t.wallet.title, proposals→t.proposals.title.
+  - L1 page-header eyebrow → normalize to `text-[11px]` ONLY on true page-header eyebrows
+    (help, wallet/deposit, wallet/withdraw, profile/account, profile/sessions, legal header,
+    profile hero). DO NOT touch the many `text-[10px]` FIELD/SECTION labels — those are
+    correct as-is.
+  - F5/L7 extract `<FilterPill>` + `<StatTile>`; L1/L4 extract `<PageHeader>`/`<SectionHeading>`;
+    then adopt across pages (prevents future drift — the audit's root cause).
+  - T4/T5/T6 token dedup — hero gradient → `--panel-hero`; chip.tsx inline palette → `.chip-*`
+    classes; `#fff`→`--pearl-50` (checkbox,toggle,language-toggle,notifications-panel);
+    add a `--focus-ring` token. (Maintainability; user-invisible.)
+
 ---
 
 ## TIER 1 — Safe, high-visibility swaps (no logic change)
