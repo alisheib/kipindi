@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { I } from "@/components/ui/glyphs";
+import { BackLink } from "@/components/ui/back-link";
 import { FiftyMark } from "@/components/brand";
 import { getSession } from "@/lib/server/session";
 import { formatDateTime } from "@/lib/utils";
@@ -31,13 +32,7 @@ export default async function SessionsPage() {
 
   return (
     <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
-      <Link
-        href="/profile"
-        className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
-      >
-        <I.chevronLeft s={14} />
-        {t.common.profile}
-      </Link>
+      <BackLink fallbackHref="/profile" label={t.common.profile} />
 
       <header className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated">
         <div

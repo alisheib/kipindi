@@ -268,7 +268,7 @@ export function FirstVisitPrimer() {
       />
 
       <div
-        className="relative w-full sm:max-w-[460px] rounded-t-xl sm:rounded-xl border border-border bg-bg-elevated overflow-hidden shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65)]"
+        className="relative w-full sm:max-w-[460px] rounded-t-xl sm:rounded-xl border border-border-strong bg-bg-elevated overflow-hidden shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65)]"
         style={{ animation: "fvp-rise 360ms var(--ease-arrive)" }}
       >
         {/* Gilt corners — heraldic framing from the brand kit */}

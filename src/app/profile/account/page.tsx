@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { BackLink } from "@/components/ui/back-link";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
@@ -42,13 +43,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
           {sp.error}
         </div>
       )}
-      <Link
-        href="/profile"
-        className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
-      >
-        <I.chevronLeft s={14} />
-        {t.common.profile}
-      </Link>
+      <BackLink fallbackHref="/profile" label={t.common.profile} />
 
       <header className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated">
         <div

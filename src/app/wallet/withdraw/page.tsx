@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { BackLink } from "@/components/ui/back-link";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input, Field as KitField } from "@/components/ui/input";
 import { Cash } from "@/components/ui/cash";
@@ -44,13 +45,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
 
   return (
     <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
-      <Link
-        href="/wallet"
-        className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
-      >
-        <I.chevronLeft s={14} />
-        {t.wallet.title}
-      </Link>
+      <BackLink fallbackHref="/wallet" label={t.wallet.title} />
 
       <header className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated">
         <div

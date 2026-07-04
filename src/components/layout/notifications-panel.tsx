@@ -223,7 +223,7 @@ export function NotificationsPanel() {
         <>
           <div
             aria-hidden
-            className="fixed inset-0 z-[60] bg-black/45 backdrop-blur-md"
+            className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-md"
             onClick={() => setOpen(false)}
           />
           <div

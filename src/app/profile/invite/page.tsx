@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { BackLink } from "@/components/ui/back-link";
 import { currentSession } from "@/lib/server/auth-service";
 import { getPlayerReferralSummary } from "@/lib/server/affiliate-service";
 import { FiftyMark } from "@/components/brand";
@@ -99,13 +100,7 @@ export default async function InvitePage() {
 
   return (
     <div className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-3">
-      <Link
-        href="/profile"
-        className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
-      >
-        <I.chevronLeft s={14} />
-        {t.common.profile}
-      </Link>
+      <BackLink fallbackHref="/profile" label={t.common.profile} />
       <h1 className="sr-only">{t.profile.inviteEarn}</h1>
 
       {/* Title row */}

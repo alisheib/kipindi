@@ -9,6 +9,38 @@ The fix is to extract a few shared atoms and adopt them everywhere.
 
 Legend: 🟢 safe class/token swap · 🟡 shared-atom extraction · ⚪ intentional/document-only.
 
+## ROUND 2 — deep scan (forms/buttons · modals/tables · type/spacing/icons) 2026-07-04
+Ali's instinct confirmed: more inconsistencies exist. ROOT CAUSE (recurring): pages hand-roll
+instead of using the shared atoms (Chip, Field, BackLink, PageHeader) and hardcode sizes.
+
+**SHIPPED this round (safe):**
+- **BackLink sweep** — 9 player pages (profile/account,sessions,kyc,source-of-funds,
+  responsible-gambling,invite; wallet/deposit,withdraw; proposals/new) now use `<BackLink>`
+  (was hand-rolled `<Link>` with a bigger s=14 chevron). Fixes X2 for those pages. (Still raw:
+  proposals/[id]:97 + auth/otp:106 use a bare `←` — fold in later.)
+- F7 proposals textarea used `admin-focus` on a player form → `brand-focus`.
+- M3 notifications scrim `bg-black/45` → `/60` (matches all other modals).
+- M4 first-visit-primer `border-border` → `border-border-strong` (matches modal family).
+
+**BACKLOG — atom-adoption refactor (do in verified batches; this is the real "full consistency"):**
+Forms/buttons: F1 deposit-amount rebuild on Input atom (mirror of withdraw); F2 field-label
+eyebrow color/tracking split (text-subtle vs text-muted, 0.14 vs 0.16 — extract FieldLegend);
+F3 auth pages hand-roll label vs Field atom; F4 OTP bespoke input; F5 inline pill-radius override
+on reset/kyc CTAs; F8 close-account raw h-10 input (<44px); F9 wallet phone bare Input vs PhoneInput;
++ add a Textarea atom.
+Modals/tables: M1 leaderboard + profile/account tables override `.admin-tbl` thead inline;
+M2 list-frame recipe drift; M5 modal enter timing/curve (sell-confirm raw cubic-bezier, confirm-dialog
+200ms); M6 inner-card radius md vs lg; M7 modal max-width ladder (5 values → 2 tokens).
+Type/spacing/icons: X1 page-H1 size (5 sizes → one 28px); X4 page-eyebrow 10 vs 11px (header-only,
+not field labels); X3 container space-y (6/5/4/3.5/3 → two tiers); X5 status pills hand-rolled vs
+`<Chip>` atom (adopt Chip everywhere); X6 section-heading size (20 vs 15 vs 16); X7 icon sizes;
+X8 card padding tiers (→ p-5/p-4/p-3). Plus entrance reconciliation (M1 motion) + FilterPill/StatTile/
+PageHeader extraction from Tier 2.
+
+RECOMMENDED next: a dedicated "adopt the atoms" pass — Chip everywhere (X5), one PageHeader
+(X1+X4+X6), FieldLegend (F2), Textarea atom (F7), padding/space tiers (X3+X8) — each batch
+build+visually verified. This converts the whole backlog at the root instead of one-off whack-a-mole.
+
 ## STATUS
 - **TIER 1 — DONE (aa8d552), verified desktop+mobile.** All user-visible inconsistencies
   fixed: filter pills unified (proposals de-golded, active-glow removed on results/positions,

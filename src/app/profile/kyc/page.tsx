@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { BackLink } from "@/components/ui/back-link";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
@@ -40,13 +41,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
 
   return (
     <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
-      <Link
-        href="/profile"
-        className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
-      >
-        <I.chevronLeft s={14} />
-        {t.common.profile}
-      </Link>
+      <BackLink fallbackHref="/profile" label={t.common.profile} />
 
       {sp.error && (
         <div role="alert" className="rounded-xl border border-no-700 bg-no-500/10 px-4 py-3 text-[13px] text-no-300">

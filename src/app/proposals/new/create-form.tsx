@@ -40,7 +40,7 @@ export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: 
     });
   };
 
-  const ta = "w-full min-h-[76px] rounded-md border border-border bg-bg-elevated px-3.5 py-2.5 text-[14px] leading-relaxed text-text outline-none admin-focus transition-colors resize-none placeholder:text-text-subtle";
+  const ta = "w-full min-h-[76px] rounded-md border border-border bg-bg-elevated px-3.5 py-2.5 text-[14px] leading-relaxed text-text outline-none brand-focus transition-colors resize-none placeholder:text-text-subtle";
   const Req = () => <span className="text-claret-300">*</span>;
 
   return (
