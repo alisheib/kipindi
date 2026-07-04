@@ -109,7 +109,7 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
             <Link
               href="/wallet/deposit"
               aria-label={t.common.deposit}
-              className="inline-flex items-center justify-center gap-1.5 rounded-pill font-display font-bold text-[12px] tracking-[-0.01em] transition-all duration-150 hover:brightness-110 hover:shadow-[0_0_18px_-2px_var(--gold-400)] active:scale-95"
+              className="inline-flex items-center justify-center gap-1.5 rounded-pill font-display font-bold text-[12px] tracking-[-0.01em] transition-all duration-150 hover:brightness-110 hover:shadow-[0_0_18px_-2px_var(--gold-400)] active:scale-[0.97]"
               style={{
                 height: 34,
                 padding: "0 12px",

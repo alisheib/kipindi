@@ -33,6 +33,31 @@ Legend: 🟢 safe class/token swap · 🟡 shared-atom extraction · ⚪ intenti
 
 ---
 
+## RE-SCAN 2026-07-04 (filters/cards/motion) — results
+Filters & cards re-scanned: **Tier 1 held cleanly** (player filter bars uniform hue 262,
+no glow, mobile-scroll; card radii/hover/panels consistent). Motion & gestures scanned fresh.
+
+**Motion/cards batch SHIPPED this pass (safe, verified):**
+- Cards: market-detail closed box 12→16px; removed redundant `rounded-lg` on 2 glass panels.
+- Motion durations unified: `kp-rise` 460→420ms (one card-rise cadence); shimmer 1.5→1.4s (one).
+- Hover-lift unified to 3px (Card 6px, proposal card 2px, → 3px like market/position cards).
+- Press feedback unified: `active:scale-95` → `active:scale-[0.97]` (bottom-nav, deposit pill, toggle).
+- Reduced-motion (mid Android `reduced` tier): added `.notif-badge-pulse` + `.csrf-rest-ring`
+  to the loop-silencing allowlist.
+
+**Motion — DEFERRED (needs care / design decision, documented for next pass):**
+- **M1 entrance inconsistency** — boards (markets/results/home/live) rise via `.market-grid`
+  kp-rise; positions/proposals card lists have NO entrance. Fix requires reconciling the TWO
+  entrance systems (`.market-grid > *` kp-rise vs the unused `.stagger-item` reveal-up) into
+  one, then applying it — a design decision, not a swap.
+- M4 two switch implementations (`.kp-switch` CSS vs React `Toggle`) — consolidate to one.
+- M5 ad-hoc easing/`transition-all` → `--ease-*` tokens (broad sweep; scope transitions).
+- M7 modals hand-roll 160/200ms (mutually consistent) instead of the `.dialog-anim` tokens.
+- M8 progress-fill durations vary (300/500/700ms) — standardize on `--ease-stage`.
+- Reduced-motion: inline `pr-pulse`/`aqua-pulse` (brand.tsx) + `lcl-*` (i18n loader) lack a
+  class for the `reduced` tier (covered by universal clamps for a11y; mid-tier perf only).
+- F1 `tabs.tsx` segmented hue 264 (latent — unused by player filters).
+
 ## TIER 1 — Safe, high-visibility swaps (no logic change)
 - 🟢 **[F1] Proposals filter pills are gold/rounded-pill** — every other filter is brand-blue
   `h-8 rounded-md font-mono`. Rewrite proposals filter to the baseline. *(proposals/page.tsx:108-113)*

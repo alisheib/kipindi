@@ -28,7 +28,7 @@ export function Toggle({
       aria-label={ariaLabel}
       disabled={disabled}
       onClick={onClick}
-      className="relative shrink-0 rounded-pill focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-500)] focus-visible:ring-offset-2 focus-visible:ring-offset-bg-elevated active:scale-95"
+      className="relative shrink-0 rounded-pill focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-500)] focus-visible:ring-offset-2 focus-visible:ring-offset-bg-elevated active:scale-[0.97]"
       style={{
         width: 44,
         height: 26,

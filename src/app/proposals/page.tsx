@@ -159,7 +159,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
 
 function ProposalCard({ p, disabled, t, locale, ageStr }: { p: ProposalView; disabled?: boolean; t: import("@/lib/i18n-server").Dict; locale: import("@/lib/i18n-server").Locale; ageStr: (iso: string) => string }) {
   return (
-    <div className="group flex items-start gap-3 rounded-xl glass-panel p-3.5 transition-all hover:-translate-y-0.5 hover:border-[var(--brand-500)] hover:shadow-[var(--shadow-4)]">
+    <div className="group flex items-start gap-3 rounded-xl glass-panel p-3.5 transition-all hover:-translate-y-[3px] hover:border-[var(--brand-500)] hover:shadow-[var(--shadow-4)]">
       <VoteControl proposalId={p.id} up={p.up} down={p.down} myVote={p.myVote} disabled={disabled} />
       <Link href={`/proposals/${p.id}` as never} className="min-w-0 flex-1">
         <div className="mb-1.5 flex flex-wrap items-center gap-2">

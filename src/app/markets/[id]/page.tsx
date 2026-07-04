@@ -245,7 +245,7 @@ export default async function MarketDetail({
 
           {/* 3b. Countdown — selection close + resolution (live only) */}
           {!isResolved && (
-            <div className="rounded-lg glass-panel p-4 space-y-2.5">
+            <div className="glass-panel p-4 space-y-2.5">
               {m.selectionClosedAt && !isSelectionClosed(m) && (
                 <Countdown to={m.selectionClosedAt} label={t.market.selectionClosesIn} />
               )}
@@ -317,7 +317,7 @@ export default async function MarketDetail({
           )}
 
           {/* 5. Resolution criterion — the rules of the bet */}
-          <section className="rounded-lg glass-panel p-5">
+          <section className="glass-panel p-5">
             <h2 className="font-display text-[16px] font-semibold text-text mb-2 flex items-center gap-2">
               <I.fileCheck s={15} className="text-text-subtle" />
               {t.market.resolutionCriterion}
@@ -436,7 +436,7 @@ export default async function MarketDetail({
               </p>
             </div>
           ) : (
-            <div className="rounded-lg border border-border bg-bg-elevated p-6 text-center">
+            <div className="rounded-xl border border-border bg-bg-elevated p-6 text-center">
               <p className="font-display text-[16px] font-semibold text-text">{t.market.marketClosedForPredictions}</p>
             </div>
           )}
