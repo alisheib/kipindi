@@ -28,20 +28,27 @@ spec, so treat them as "spec-less locally" (re-brief if we change them materiall
 - [A-3] MarketCard action labels — kit `YES @ 62%`; live dropped the `@`. *(market-card.tsx:234-239)*
 - [A-4] LeaderboardRow fidelity — restore 🔥 streak chip (live shows text "4 wins"),
   `@handle`, and the "{n} markets resolved" subline. *(leaderboard/page.tsx:199-240 vs markets.jsx:246-281)*
-- [A-5] VolumeSparkline on market detail — kit specimen pairs it under the chart;
-  live only uses it on leaderboard rows. *(microstructure-specimens.jsx:13-14)*
+- [A-5] VolumeSparkline on market detail — **BLOCKED (data).** Kit specimen pairs it
+  under the chart, but there is no real per-market 24h volume series (leaderboard uses
+  synthetic `seededWalk`). Won't fabricate volume on a money page — needs a real series
+  first. *(microstructure-specimens.jsx:13-14)*
 - [A-6] EmptyState chrome — kit box 360px, illustration bare; live 300px w/ a 52px
   ring badge the kit doesn't have. Widen + drop ring (keep illustration set). *(empty-state.tsx:40-46)*
 
-## Bucket B — Dead-code cleanup (hygiene, not design; safe)
-- [B-1] Orphaned market-terminal CSS `.mterm` / `.pool` / `.ticket-*` — no TSX uses it. *(globals.css:1860-1923)*
-- [B-2] `.pbar-*` split-fill CSS unused (live uses TippingBar). *(globals.css:657-702)*
-- [B-3] `.toast` CSS classes bypassed by the React toast component. *(globals.css:876-903 vs toast.tsx)*
-- [B-4] `.avatar` CSS dead — superseded by IdentityAvatar. *(globals.css:821-834)*
-- [B-5] `spark` / `traders` dead prop plumbing on MarketCard (threaded, never rendered). *(market-card.tsx)*
-- [B-6] `MarketStats` component imported nowhere. *(market-stats.tsx)*
-- [B-7] `GiltCorner` unused + wrong provenance comment (claims kit/banners.jsx; not there). *(brand.tsx:187-219)*
-- [B-8] `--hero-grad` / `--hero-grad-warm` tokens defined, consumed nowhere. *(globals.css:318,324)*
+## Bucket B — Dead-code cleanup — VERIFIED 2026-07-04: mostly FALSE alarms, closed
+Grep verification before deleting anything showed the codebase is cleaner than the
+agents assumed. **Two flags were wrong and would have broken the app if deleted:**
+- [B-6] `MarketStats` — **ACTUALLY USED** (admin/audit/page.tsx:81). Do not remove.
+- [B-7] `GiltCorner` — **ACTUALLY USED** (first-visit-primer.tsx:276). Do not remove.
+Other flags are live or not worth touching:
+- [B-1] `.mterm`/`.pool`/`.ticket-*` — genuinely unused, BUT interleaved with `.tpanel`
+  (which IS used on market detail), and it's kit-faithful BuyTray/pool reference code.
+  Kept intentionally.
+- [B-2] `.pbar` still referenced in brand.tsx — kept.
+- [B-3]/[B-4] `.toast`/`.avatar` classes — low value, left as-is.
+- [B-5] `spark`/`traders` plumbing threaded through 5 live pages — harmless; left.
+- [B-8] `--hero-grad*` tokens unused but document the kit hero; left.
+Net: no safe high-value deletions. Bucket B closed.
 
 ## Bucket C — Intentional divergences (RATIFY; do NOT "fix" toward the kit)
 - Royal-indigo re-hue system-wide (kit was teal-seeded). *(buttons/chips/tiers)*
@@ -61,8 +68,11 @@ spec, so treat them as "spec-less locally" (re-brief if we change them materiall
   objection-window bar, pool-payout breakdown table, "flag this resolution" button. Live
   shows only a "Resolved · {outcome}" pill. *(markets.jsx:175-244)* — needs product decision
   on flag-for-review + objection flow before build.
-- [D-2] **OrderBook — MISSING (high).** Kit specs pool-as-depth per-price liquidity table. *(microstructure.jsx:114-188)* — product decision: does a pari-mutuel pool warrant a depth view?
-- [D-3] **DepthChart — MISSING (high).** Mirrored cumulative YES/NO depth from mid. *(microstructure.jsx:191-224)* — same product question as D-2.
+- [D-2] **OrderBook — MISSING (high). ROADMAP (Ali: want eventually).** Kit specs
+  pool-as-depth per-price liquidity table. *(microstructure.jsx:114-188)* — revisit after
+  safer work; prep a Claude Design brief then.
+- [D-3] **DepthChart — MISSING (high). ROADMAP (Ali: want eventually).** Mirrored
+  cumulative YES/NO depth from mid. *(microstructure.jsx:191-224)* — pairs with D-2.
 - [D-4] **Hero featured-market preview block — MISSING (high).** Kit puts a live market card
   inside the hero. *(extras.jsx:377-386)* — conflicts with the photo-hero direction; design call.
 - [D-5] Homepage leaderboard-top5 + recent-resolutions teasers — MISSING (med). *(extras.jsx:446-474)*

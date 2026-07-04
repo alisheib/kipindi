@@ -83,7 +83,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
 function Spinner({ size }: { size: Size }) {
   const dim = size === "xl" ? 16 : size === "lg" ? 14 : size === "md" ? 13 : 12;
   return (
-    <svg width={dim} height={dim} viewBox="0 0 24 24" className="animate-spin" aria-hidden>
+    <svg width={dim} height={dim} viewBox="0 0 24 24" className="animate-spin" style={{ animationDuration: "0.7s" }} aria-hidden>
       <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />
       <path d="M21 12a9 9 0 0 0-9-9" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
     </svg>

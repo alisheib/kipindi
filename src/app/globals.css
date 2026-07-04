@@ -433,7 +433,7 @@ body {
   font-family: var(--font-body);
   font-weight: 600;
   border: 1px solid transparent;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -449,10 +449,11 @@ body {
 .btn:focus-visible { outline: 2px solid var(--brand-500); outline-offset: 2px; box-shadow: 0 0 0 4px oklch(63% 0.18 262 / 0.25); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
-.btn-sm { height: 30px; padding: 0 18px; font-size: 13px; }
-.btn-md { height: 38px; padding: 0 18px; font-size: 14px; }
-.btn-lg { height: 46px; padding: 0 18px; font-size: 15px; }
-.btn-xl { height: 56px; padding: 0 24px; font-size: 16.5px; }
+/* Kit per-size horizontal padding (kit/tokens.css) — sm12/md16/lg20/xl24; xl gets --r-lg. */
+.btn-sm { height: 30px; padding: 0 12px; font-size: 13px; }
+.btn-md { height: 38px; padding: 0 16px; font-size: 14px; }
+.btn-lg { height: 46px; padding: 0 20px; font-size: 15px; }
+.btn-xl { height: 56px; padding: 0 24px; font-size: 16.5px; border-radius: var(--r-lg); }
 
 .btn-primary {
   background: linear-gradient(180deg, oklch(60% 0.20 268) 0%, oklch(48% 0.20 268) 100%);

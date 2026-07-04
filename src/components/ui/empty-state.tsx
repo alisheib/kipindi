@@ -37,12 +37,12 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "rounded-lg border border-dashed border-border-strong bg-bg-elevated px-6 py-6 text-center max-w-[300px] mx-auto",
+        "rounded-lg border border-dashed border-border-strong bg-bg-elevated px-8 py-8 text-center max-w-[360px] mx-auto",
         className,
       )}
     >
-      <div className="mx-auto mb-4 inline-flex h-[52px] w-[52px] items-center justify-center rounded-full border border-border bg-bg-inset text-text-faint" aria-hidden
-        style={{ boxShadow: "0 0 0 6px color-mix(in oklab, var(--border) 25%, transparent)" }}>
+      {/* Kit shows the line-art illustration bare and centered (no ring badge). */}
+      <div className="mx-auto mb-4 inline-flex items-center justify-center text-text-faint" aria-hidden>
         {illustration ?? <DefaultIllustration kind={kind} />}
       </div>
       <p className="font-display text-[15.5px] font-semibold text-text">{title}</p>

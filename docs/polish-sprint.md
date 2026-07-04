@@ -46,3 +46,11 @@ library to claude.ai/design for visual iteration.
   REVERTED before commit. Rule reaffirmed: build only from `kit/`; if the kit is
   short, commission Claude Design (sharing our kit) rather than inventing.
   Items 1+2 rewritten to the kit's actual spec.
+- 2026-07-04: Full kit-vs-live gap audit (6 lanes) → `docs/kit-gap-audit.md`.
+  Bucket B verified mostly false alarms (MarketStats + GiltCorner are actually USED).
+- 2026-07-04: Bucket A shipped (kit-faithful): button per-size padding + radius,
+  spinner 0.7s, card "YES @ %"/"NO @ %" labels, leaderboard @handle, empty-state
+  widened + bare illustration. A-5 (detail VolumeSparkline) BLOCKED on real 24h-volume
+  data. VISUALLY VERIFIED on desktop + mobile (board card buttons, empty state,
+  leaderboard, auth buttons) before push — no glitches. New standing rules: motion
+  must be perfect; every UI change must be visually verified before push.

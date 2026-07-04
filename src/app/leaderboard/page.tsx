@@ -216,7 +216,7 @@ export default async function LeaderboardPage() {
                 <td className="p-3">
                   <div className="flex items-center gap-2">
                     <Avatar initials={r.handle.slice(0, 2)} size="sm" seed={r.userId} />
-                    <span className="font-medium text-text">{r.handle}</span>
+                    <span className="font-medium text-text">@{r.handle}</span>
                     <TierBadge tier={r.tier} t={t} />
                   </div>
                 </td>
