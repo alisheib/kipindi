@@ -64,10 +64,14 @@ Net: no safe high-value deletions. Bucket B closed.
 - `中文` replaces the kit's placeholder `FR` as 3rd locale.
 
 ## Bucket D — Missing kit-specced elements (kit HAS a spec; buildable, but large / need Ali's product OK)
-- [D-1] **ResolutionPanel — MISSING (high).** Kit specs resolver identity (2-officer note),
-  objection-window bar, pool-payout breakdown table, "flag this resolution" button. Live
-  shows only a "Resolved · {outcome}" pill. *(markets.jsx:175-244)* — needs product decision
-  on flag-for-review + objection flow before build.
+- [x] **D-1 ResolutionPanel — SHIPPED 2026-07-04.** Built from kit (`markets.jsx:175-244`),
+  ported to royal/gilt, real data only: outcome + status chip, two-officer attestation
+  (shown ONLY for genuinely distinct human officers — never demo/auto), objection-window
+  provisional→final status (concrete date, never infinite), exact pool breakdown
+  (final/YES/NO pools + real fee rate), honest footnotes (payout→Your positions,
+  disputes→support). No fake "flag" control (no player objection-submit flow exists).
+  i18n en/sw/zh. Component: `src/components/markets/resolution-panel.tsx`; wired into
+  `/markets/[id]` for resolved/voided markets. Visually verified desktop+mobile.
 - [D-2] **OrderBook — MISSING (high). ROADMAP (Ali: want eventually).** Kit specs
   pool-as-depth per-price liquidity table. *(microstructure.jsx:114-188)* — revisit after
   safer work; prep a Claude Design brief then.

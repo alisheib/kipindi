@@ -38,6 +38,19 @@ library to claude.ai/design for visual iteration.
 - [ ] **5. Odds tick on refresh** — flash changed % (gilt) + nudge needle on 30s poll.
       Verify existing value-change flash mechanism first. *(market-card.tsx, refresh-poller)*
 
+### Session log (append-only)
+- 2026-07-04: **ResolutionPanel (D-1) shipped** — built from kit, real data only,
+  two-officer attestation gated to genuine distinct officers, exact pools + fee rate,
+  provisional→final window with a concrete date (no infinite states), i18n en/sw/zh.
+  Verified desktop+mobile on a seeded resolved market.
+- 2026-07-04: **Card-size parity fix** — resolved MarketCards were shorter than live
+  (no footer row, unwrapped action). Made resolved cards match live: action pill wrapped
+  in `.mcardp-actions` (same rhythm) + a "Details ›" footer row. Kit uses one card design;
+  live is the correct baseline. Verified on /results.
+- 2026-07-04: NOTE — in dev, the /markets live grid can look empty because seeded demo
+  markets resolve far in the future and the default "Today" window (24h) hides them;
+  /live and prod are unaffected. Not a regression (grid/filter logic untouched this sprint).
+
 ### Session log
 - 2026-07-04: Surface 1 audited. 5 items logged. Sprint doc created.
 - 2026-07-04: Push A shipped — items 3 (restrain glow) + 4 (heartbeat figure).

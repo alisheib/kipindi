@@ -8,6 +8,7 @@ import { ShareButton } from "@/components/markets/share-button";
 import { SidePicker } from "@/components/markets/side-picker";
 import { ChartToggle } from "@/components/markets/chart-toggle";
 import { SellButton } from "@/components/markets/sell-button";
+import { ResolutionPanel } from "@/components/markets/resolution-panel";
 import { cashOutValue, getMarket, impliedYesPct, isClosedByTime, isSelectionClosed, listPositionsForUser } from "@/lib/server/market-service";
 import { getEffectiveConfig } from "@/lib/server/market-config";
 import { getProbabilityChart, seedHistory } from "@/lib/server/market-history";
@@ -89,6 +90,10 @@ export default async function MarketDetail({
   try { myPositions = session ? (await listPositionsForUser(session.userId)).filter((p) => p.marketId === m!.id) : []; } catch { /* graceful */ }
   const myRefCode = session ? await ensureAffiliateAccount(session.userId).then((a) => a.code).catch(() => undefined) : undefined;
   const isResolved = m.status === "RESOLVED" || m.status === "VOIDED";
+  // Two-officer attestation is claimed ONLY for genuinely distinct human officers
+  // — never synthetic/auto (demo, sentinel) resolution whose ids are "system_*".
+  const _s1 = m.resolutionStage1By, _s2 = m.resolutionStage2By;
+  const twoOfficer = !!(_s1 && _s2 && _s1 !== _s2 && !_s1.startsWith("system") && !_s2.startsWith("system"));
   // One-sided: all bets are on the same side — winners would win their own money.
   // Platform rule: full refund at 0% fee at resolution. Surface a disclaimer so
   // players know before they place or hold a bet.
@@ -207,6 +212,21 @@ export default async function MarketDetail({
             <KPI label={t.market.predictors} value={String(m.predictorCount)}     icon={<I.users s={14} />} />
             <KPI label={t.market.resolves}   value={fmtTime(m.resolutionAt)} mono />
           </div>
+
+          {/* 2b. Resolution panel — outcome, attestation, pool + fee (resolved only) */}
+          {isResolved && m.resolvedOutcome && (
+            <ResolutionPanel
+              outcome={m.resolvedOutcome}
+              resolvedAt={m.resolutionStage2At ?? m.updatedAt}
+              twoOfficer={twoOfficer}
+              sourceUrl={m.sourceUrl}
+              objectionsClosedAt={m.objectionsClosedAt}
+              serverNow={Date.now()}
+              yesPool={m.yesPool}
+              noPool={m.noPool}
+              feeRate={marketFeeRate}
+            />
+          )}
 
           {/* 3a. One-sided disclaimer — shown when all bets are on one side */}
           {isOneSided && (

@@ -239,8 +239,12 @@ export function MarketCard({
           </button>
         </div>
       ) : (
-        <div className="btn btn-ghost btn-md justify-center pointer-events-none opacity-85">
-          <I.resolved s={15} /> {isResolved ? `${t.market.statusResolved} ${yesPct >= 50 ? t.common.yes : t.common.no}` : t.market.statusClosed}
+        // Single-column actions wrapper so the resolved status pill occupies the
+        // exact same vertical rhythm as the live YES/NO row (card-height parity).
+        <div className="mcardp-actions" style={{ gridTemplateColumns: "1fr" }}>
+          <div className="btn btn-ghost btn-md justify-center pointer-events-none opacity-85">
+            <I.resolved s={15} /> {isResolved ? `${t.market.statusResolved} ${yesPct >= 50 ? t.common.yes : t.common.no}` : t.market.statusClosed}
+          </div>
         </div>
       )}
 
@@ -261,7 +265,10 @@ export function MarketCard({
           </span>
         </span>
       </div>
-      {live && (
+      {/* Footer row on every card (card-height parity live vs resolved). Live is a
+          real link (card body uses onClick nav); the resolved card is already a
+          full <Link>, so its footer is a decorative span to avoid a nested anchor. */}
+      {live ? (
         <a
           href={`/markets/${id}`}
           onClick={(e) => e.stopPropagation()}
@@ -271,6 +278,11 @@ export function MarketCard({
           {t.market.details}
           <I.chevronRight s={11} />
         </a>
+      ) : (
+        <span className="mcardp-details" style={{ color: "var(--accent-400)" }} aria-hidden>
+          {t.market.details}
+          <I.chevronRight s={11} />
+        </span>
       )}
     </>
   );
