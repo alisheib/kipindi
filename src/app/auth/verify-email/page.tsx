@@ -77,13 +77,12 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
           </div>
 
           <div className="flex flex-col gap-2.5">
-            <Link href="/markets" className="btn btn-gold btn-lg w-full" style={{ borderRadius: "var(--r-pill)" }}>
+            <Link href="/markets" className="btn btn-gold btn-lg btn-pill w-full">
               {t.home.heroCta}
             </Link>
             <Link
               href="/profile/account"
-              className="btn btn-ghost btn-lg w-full"
-              style={{ borderRadius: "var(--r-pill)" }}
+              className="btn btn-ghost btn-lg btn-pill w-full"
             >
               {t.common.goToAccount}
             </Link>

@@ -82,6 +82,21 @@ Working the remaining backlog in order, each as its own build+i18n+visual+push b
 - Verified: deposit/account/source-of-funds/create-form render clean & cohesive (textareas now
   match inputs). tsc 0, i18n 1181×3, next build 0.
 
+**BATCH 5 — .btn-pill utility + wallet pager unification (SHIPPED, verified):**
+- New `.btn-pill { border-radius: var(--r-pill) }` utility (globals.css). Migrated the ~14
+  inline `style={{ borderRadius: "var(--r-pill)" }}` overrides on `.btn` CTAs to it:
+  auth reset/verify (4), markets/[id] sign-in (2), profile kyc/sof CTAs (2), profile page
+  kyc/sof steps (2), wallet deposit/withdraw (2), avatar-menu sign-in/up (2), kyc skip/confirm.
+  (language-toggle keeps its inline pill — it's a segmented control with a full style object,
+  not a btn CTA.)
+- Wallet activity pager: deleted the bespoke `TxnPager` and adopted the shared `<Pagination>`.
+  Added an optional `onNavigate` callback mode to Pagination (renders buttons instead of
+  ?page= links) so the client-rendered wallet tab reuses the one pager without switching to
+  URL navigation. URL mode unchanged for all server usages.
+- Verified: btn-pill CTAs render as full pills (wallet, reset); wallet pager paginates in
+  client mode (seeded 30 txns via a temp endpoint, page-2 nav works, then removed the endpoint).
+  tsc 0, i18n 1181×3, next build 0.
+
 ## ROUND 3 — final consult (buttons/banners/colors) + pagination 2026-07-05
 **SHIPPED (safe, high-value):**
 - **X1 (LOAD-BEARING BUG FIX):** `brand` was missing from `tailwind.config.ts`, so every

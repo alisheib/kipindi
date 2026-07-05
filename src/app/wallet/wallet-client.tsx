@@ -5,6 +5,7 @@ import { useState } from "react";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Pagination } from "@/components/ui/pagination";
 import type { Transaction } from "@/lib/ui-stubs";
 import { Cash } from "@/components/ui/cash";
 import { CashbackPromo } from "@/components/ui/cashback-promo";
@@ -283,53 +284,6 @@ function TxnRow({ tx }: { tx: Transaction }) {
   );
 }
 
-/** Client pager — visually identical to the shared <Pagination> (numbered
- *  buttons + "X–Y of Z" count) but driven by client state, since the wallet
- *  activity list is client-rendered inside tabs. `page` is 0-indexed. */
-function TxnPager({
-  page, pageCount, total, perPage, onGoto,
-}: { page: number; pageCount: number; total: number; perPage: number; onGoto: (p: number) => void }) {
-  const { t } = useT();
-  const cur = page + 1; // 1-indexed for display
-  const pages: (number | "...")[] = [];
-  if (pageCount <= 7) {
-    for (let i = 1; i <= pageCount; i++) pages.push(i);
-  } else {
-    pages.push(1);
-    if (cur > 3) pages.push("...");
-    for (let i = Math.max(2, cur - 1); i <= Math.min(pageCount - 1, cur + 1); i++) pages.push(i);
-    if (cur < pageCount - 2) pages.push("...");
-    pages.push(pageCount);
-  }
-  const btnBase = "inline-flex items-center justify-center h-8 min-w-[32px] px-2 rounded-md font-mono text-[11px] tracking-[0.10em] transition-colors";
-  const btnActive = "border border-brand-500 bg-brand-500/15 text-brand-300 font-bold";
-  const btnInactive = "border border-border bg-bg-elevated text-text-muted hover:border-border-strong hover:text-text";
-  const btnDisabled = "border border-border bg-bg-elevated text-text-subtle/40 pointer-events-none";
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 border-t border-border" aria-label={t.wallet.activityPages}>
-      <p className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle tabular-nums">
-        {(page * perPage + 1).toLocaleString()}–{Math.min((page + 1) * perPage, total).toLocaleString()} {t.common.of} {total.toLocaleString()}
-      </p>
-      <div className="flex flex-wrap items-center justify-end gap-1">
-        <button type="button" onClick={() => onGoto(page - 1)} disabled={page === 0} className={`${btnBase} ${page > 0 ? btnInactive : btnDisabled}`} aria-label={t.common.previousPage}>
-          <I.chevronLeft s={14} />
-        </button>
-        {pages.map((p, i) =>
-          p === "..." ? (
-            <span key={`d${i}`} className="px-1 text-text-subtle">…</span>
-          ) : (
-            <button type="button" key={p} onClick={() => onGoto(p - 1)} className={`${btnBase} ${p === cur ? btnActive : btnInactive}`}>
-              {p}
-            </button>
-          ),
-        )}
-        <button type="button" onClick={() => onGoto(page + 1)} disabled={page >= pageCount - 1} className={`${btnBase} ${page < pageCount - 1 ? btnInactive : btnDisabled}`} aria-label={t.common.nextPage}>
-          <I.chevronRight s={14} />
-        </button>
-      </div>
-    </div>
-  );
-}
 
 type TabValue = "activity" | "methods" | "limits";
 
@@ -387,11 +341,11 @@ export function WalletPageClient({
         </div>
         {isAuthed && (
           <div className="flex items-center gap-2 shrink-0">
-            <Link href="/wallet/deposit" className="btn btn-gold btn-md inline-flex" style={{ borderRadius: "var(--r-pill)" }}>
+            <Link href="/wallet/deposit" className="btn btn-gold btn-md btn-pill inline-flex">
               <I.arrowDown s={14} />
               {t.common.deposit}
             </Link>
-            <Link href="/wallet/withdraw" className="btn btn-ghost btn-md inline-flex" style={{ borderRadius: "var(--r-pill)" }}>
+            <Link href="/wallet/withdraw" className="btn btn-ghost btn-md btn-pill inline-flex">
               <I.arrowUp s={14} />
               {t.common.withdraw}
             </Link>
@@ -439,15 +393,15 @@ export function WalletPageClient({
           <section className="space-y-3">
             <div className="rounded-xl glass-panel overflow-hidden">
               {pagedTxns.map((tx) => <TxnRow key={tx.id} tx={tx} />)}
-              {pageCount > 1 && (
-                <TxnPager
-                  page={safePage}
-                  pageCount={pageCount}
-                  total={transactions.length}
-                  perPage={TXNS_PER_PAGE}
-                  onGoto={(p) => setPage(Math.min(Math.max(0, p), pageCount - 1))}
-                />
-              )}
+              <Pagination
+                total={transactions.length}
+                page={safePage + 1}
+                perPage={TXNS_PER_PAGE}
+                onNavigate={(p) => setPage(Math.min(Math.max(0, p - 1), pageCount - 1))}
+                ofLabel={t.common.of}
+                prevLabel={t.common.previousPage}
+                nextLabel={t.common.nextPage}
+              />
             </div>
           </section>
         ) : (

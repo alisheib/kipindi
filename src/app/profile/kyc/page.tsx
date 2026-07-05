@@ -90,8 +90,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
           </div>
           <Link
             href="/markets"
-            className="btn btn-gold btn-lg whitespace-nowrap"
-            style={{ borderRadius: "var(--r-pill)" }}
+            className="btn btn-gold btn-lg btn-pill whitespace-nowrap"
           >
             {t.profile.kycSkipForNow}
           </Link>
@@ -300,8 +299,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                 <button
                   type="submit"
                   disabled
-                  className="btn btn-ghost btn-lg w-full"
-                  style={{ borderRadius: "var(--r-pill)" }}
+                  className="btn btn-ghost btn-lg btn-pill w-full"
                 >
                   {t.common.confirm}
                 </button>

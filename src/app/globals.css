@@ -460,6 +460,10 @@ body {
 .btn-lg { height: 46px; padding: 0 20px; font-size: 15px; }
 .btn-xl { height: 56px; padding: 0 24px; font-size: 16.5px; border-radius: var(--r-lg); }
 
+/* Fully-rounded button — replaces the inline `style={{ borderRadius: var(--r-pill) }}`
+   override repeated across ~14 CTAs (auth, kyc, wallet, profile, market sign-in). */
+.btn-pill { border-radius: var(--r-pill); }
+
 .btn-primary {
   background: linear-gradient(180deg, oklch(60% 0.20 268) 0%, oklch(48% 0.20 268) 100%);
   color: var(--pearl-50);

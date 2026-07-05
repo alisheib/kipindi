@@ -5,6 +5,7 @@
  * PLAYER_PER_PAGE (12). `admin/admin-pagination` re-exports this so existing
  * admin imports keep working.
  */
+import type { ReactNode } from "react";
 import { I } from "@/components/ui/glyphs";
 
 /** Admin table page size. */
@@ -19,6 +20,7 @@ export function Pagination({
   perPage = PER_PAGE,
   baseHref,
   param = "page",
+  onNavigate,
   ofLabel = "of",
   prevLabel = "Previous page",
   nextLabel = "Next page",
@@ -26,11 +28,16 @@ export function Pagination({
   total: number;
   page: number;
   perPage?: number;
-  /** Base URL including existing query params (e.g. "/results?tab=resolved"). The page param is appended. */
-  baseHref: string;
+  /** Base URL including existing query params (e.g. "/results?tab=resolved"). The
+   *  page param is appended. Optional when `onNavigate` drives client-side paging. */
+  baseHref?: string;
   /** Page query-param name. Override (e.g. "txpage") when one page hosts several
    *  independently-paginated lists so each keeps its own page state. */
   param?: string;
+  /** Client-side mode: when provided, page controls render as buttons that call
+   *  this with the target 1-indexed page instead of navigating via ?page= links.
+   *  Used by the wallet activity list (client-rendered inside tabs). */
+  onNavigate?: (page: number) => void;
   /** Localized labels. Pagination is a sync component shared by server + client
    *  trees (so it can't call getServerT/useT itself) — callers pass these from
    *  their own `t`. Default to English (admin tables, which are English-only). */
@@ -46,8 +53,9 @@ export function Pagination({
   const hasNext = safePage < totalPages;
 
   const href = (p: number) => {
-    const sep = baseHref.includes("?") ? "&" : "?";
-    return `${baseHref}${sep}${param}=${p}`;
+    const base = baseHref ?? "";
+    const sep = base.includes("?") ? "&" : "?";
+    return `${base}${sep}${param}=${p}`;
   };
 
   // Show at most 7 page buttons around the current page.
@@ -67,27 +75,42 @@ export function Pagination({
   const btnInactive = "border border-border bg-bg-elevated text-text-muted hover:border-border-strong hover:text-text hover:bg-bg-overlay/30";
   const btnDisabled = "border border-border bg-bg-elevated text-text-subtle/40 pointer-events-none";
 
+  // One control renderer for both modes: a <button onClick> in client mode
+  // (onNavigate), else an <a href="?page="> for the URL-driven default.
+  const Control = ({ to, disabled, cls, aria, children }: {
+    to: number; disabled?: boolean; cls: string; aria?: string; children: ReactNode;
+  }) =>
+    onNavigate ? (
+      <button type="button" onClick={() => onNavigate(to)} disabled={disabled} className={cls} aria-label={aria}>
+        {children}
+      </button>
+    ) : (
+      <a href={disabled ? undefined : href(to)} className={cls} aria-label={aria}>
+        {children}
+      </a>
+    );
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 border-t border-border">
       <p className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
         {((safePage - 1) * perPage + 1).toLocaleString()}–{Math.min(safePage * perPage, total).toLocaleString()} {ofLabel} {total.toLocaleString()}
       </p>
       <div className="flex flex-wrap items-center justify-end gap-1">
-        <a href={hasPrev ? href(safePage - 1) : undefined} className={`${btnBase} ${hasPrev ? btnInactive : btnDisabled}`} aria-label={prevLabel}>
+        <Control to={safePage - 1} disabled={!hasPrev} cls={`${btnBase} ${hasPrev ? btnInactive : btnDisabled}`} aria={prevLabel}>
           <I.chevronLeft s={14} />
-        </a>
+        </Control>
         {pages.map((p, i) =>
           p === "..." ? (
             <span key={`dots-${i}`} className="px-1 text-text-subtle">…</span>
           ) : (
-            <a key={p} href={href(p)} className={`${btnBase} ${p === safePage ? btnActive : btnInactive}`}>
+            <Control key={p} to={p} cls={`${btnBase} ${p === safePage ? btnActive : btnInactive}`}>
               {p}
-            </a>
+            </Control>
           ),
         )}
-        <a href={hasNext ? href(safePage + 1) : undefined} className={`${btnBase} ${hasNext ? btnInactive : btnDisabled}`} aria-label={nextLabel}>
+        <Control to={safePage + 1} disabled={!hasNext} cls={`${btnBase} ${hasNext ? btnInactive : btnDisabled}`} aria={nextLabel}>
           <I.chevronRight s={14} />
-        </a>
+        </Control>
       </div>
     </div>
   );

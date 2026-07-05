@@ -90,10 +90,10 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
             </div>
 
             <div className="flex flex-col gap-2.5">
-              <Link href="/auth/forgot-password" className="btn btn-gold btn-lg w-full" style={{ borderRadius: "var(--r-pill)" }}>
+              <Link href="/auth/forgot-password" className="btn btn-gold btn-lg btn-pill w-full">
                 {t.common.requestNewLink}
               </Link>
-              <Link href="/auth/login" className="btn btn-ghost btn-lg w-full" style={{ borderRadius: "var(--r-pill)" }}>
+              <Link href="/auth/login" className="btn btn-ghost btn-lg btn-pill w-full">
                 {t.common.backToSignIn}
               </Link>
             </div>

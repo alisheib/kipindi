@@ -57,16 +57,14 @@ export function AvatarMenu({
       <div className="ml-1 flex items-center gap-1.5">
         <Link
           href="/auth/login"
-          className="btn btn-ghost btn-sm hidden sm:inline-flex"
-          style={{ borderRadius: "var(--r-pill)" }}
+          className="btn btn-ghost btn-sm btn-pill hidden sm:inline-flex"
           aria-label={t.common.signIn}
         >
           {t.common.signIn}
         </Link>
         <Link
           href="/auth/register"
-          className="btn btn-gold btn-sm"
-          style={{ borderRadius: "var(--r-pill)" }}
+          className="btn btn-gold btn-sm btn-pill"
           aria-label={t.common.createAccount}
         >
           {t.common.signUp}

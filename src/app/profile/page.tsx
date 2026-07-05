@@ -184,7 +184,7 @@ export default async function ProfilePage() {
                 <Step n={2} title={t.profile.phoneSms}  detail={t.profile.phoneSms}           done />
                 <Step n={3} title={t.profile.selfieDocs} detail={t.profile.selfieDocs} active />
               </div>
-              <Link href="/profile/kyc" className="btn btn-gold btn-md mt-4 inline-flex" style={{ borderRadius: "var(--r-pill)" }}>
+              <Link href="/profile/kyc" className="btn btn-gold btn-md btn-pill mt-4 inline-flex">
                 {t.profile.continueVerification}
               </Link>
             </div>
@@ -206,7 +206,7 @@ export default async function ProfilePage() {
                   ? t.profile.sofResubmitBody
                   : t.profile.sofUnderReviewBody}
               </p>
-              <Link href="/profile/source-of-funds" className="btn btn-gold btn-md mt-3 inline-flex" style={{ borderRadius: "var(--r-pill)" }}>
+              <Link href="/profile/source-of-funds" className="btn btn-gold btn-md btn-pill mt-3 inline-flex">
                 {sof!.reviewStatus === "REJECTED" ? t.profile.updateDeclaration : t.profile.viewStatus}
               </Link>
             </div>
