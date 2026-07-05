@@ -85,7 +85,7 @@ export default async function ProfilePage() {
             background:
               "radial-gradient(1200px 360px at 0% 0%, oklch(40% 0.10 152 / 0.30), transparent 60%), " +
               "radial-gradient(900px 320px at 100% 100%, oklch(45% 0.13 22 / 0.25), transparent 60%), " +
-              "linear-gradient(135deg, oklch(22% 0.140 268) 0%, oklch(30% 0.165 268) 100%)",
+              "var(--hero-panel-grad)",
           }}
         />
         <div className="absolute -right-6 -top-6 opacity-[0.06]" aria-hidden>

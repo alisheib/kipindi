@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { PageHeader } from "@/components/ui/page-header";
-import { FiftyMark } from "@/components/brand";
+import { PageHero } from "@/components/ui/page-hero";
 import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/support-config";
 import { getServerT } from "@/lib/i18n-server";
 
@@ -16,23 +16,9 @@ export default async function HelpPage() {
   const { t } = await getServerT();
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-5">
-      <header className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated">
-        <div
-          className="absolute inset-0"
-          aria-hidden
-          style={{
-            background:
-              "radial-gradient(900px 360px at 100% 0%, oklch(58% 0.13 80 / 0.18), transparent 60%), " +
-              "linear-gradient(135deg, oklch(22% 0.140 268) 0%, oklch(30% 0.165 268) 100%)",
-          }}
-        />
-        <div className="absolute -right-6 -top-6 opacity-[0.06]" aria-hidden>
-          <FiftyMark size={180} />
-        </div>
-        <div className="relative z-10 p-5 lg:p-6">
-          <PageHeader tone="gold" eyebrow={t.help.pageTitle} title={t.help.heading} />
-        </div>
-      </header>
+      <PageHero glow="gold">
+        <PageHeader tone="gold" eyebrow={t.help.pageTitle} title={t.help.heading} />
+      </PageHero>
 
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <ContactCard

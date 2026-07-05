@@ -374,7 +374,7 @@ export default async function MarketDetail({
                 style={{
                   background:
                     "radial-gradient(420px 160px at 50% 0%, oklch(45% 0.10 240 / 0.20), transparent 60%), " +
-                    "linear-gradient(135deg, oklch(22% 0.140 268) 0%, oklch(28% 0.165 268) 100%)",
+                    "var(--hero-panel-grad)",
                 }}
               >
                 <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">

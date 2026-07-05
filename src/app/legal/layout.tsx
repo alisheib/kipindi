@@ -37,7 +37,7 @@ export default async function LegalLayout({ children }: { children: React.ReactN
             style={{
               background:
                 "radial-gradient(400px 240px at 100% 0%, oklch(58% 0.13 80 / 0.16), transparent 60%), " +
-                "linear-gradient(135deg, oklch(22% 0.140 268) 0%, oklch(30% 0.165 268) 100%)",
+                "var(--hero-panel-grad)",
             }}
           />
           <div className="absolute -right-4 -bottom-4 opacity-[0.06]" aria-hidden>

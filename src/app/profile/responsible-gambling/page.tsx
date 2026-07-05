@@ -4,7 +4,7 @@ import { I } from "@/components/ui/glyphs";
 import { Chip } from "@/components/ui/chip";
 import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
-import { FiftyMark } from "@/components/brand";
+import { PageHero } from "@/components/ui/page-hero";
 import { currentSession } from "@/lib/server/auth-service";
 import { getRgSettings } from "@/lib/server/responsible-gambling";
 import { setLimitsAction, selfExcludeAction, coolOffAction } from "./actions";
@@ -59,31 +59,17 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
         </div>
       )}
 
-      <header className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated">
-        <div
-          className="absolute inset-0"
-          aria-hidden
-          style={{
-            background:
-              "radial-gradient(800px 320px at 100% 0%, oklch(45% 0.10 152 / 0.18), transparent 60%), " +
-              "linear-gradient(135deg, oklch(22% 0.140 268) 0%, oklch(30% 0.165 268) 100%)",
-          }}
+      <PageHero glow="yes">
+        <PageHeader
+          tone="yes"
+          icon={<I.shieldcheck s={14} />}
+          eyebrow={t.rg.playerProtection}
+          title={t.profile.responsibleGambling}
         />
-        <div className="absolute -right-6 -top-6 opacity-[0.06]" aria-hidden>
-          <FiftyMark size={180} />
-        </div>
-        <div className="relative z-10 p-5 lg:p-6">
-          <PageHeader
-            tone="yes"
-            icon={<I.shieldcheck s={14} />}
-            eyebrow={t.rg.playerProtection}
-            title={t.profile.responsibleGambling}
-          />
-          <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose">
-            {t.rg.pageDescription}
-          </p>
-        </div>
-      </header>
+        <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose">
+          {t.rg.pageDescription}
+        </p>
+      </PageHero>
 
       <FeedbackSettings />
 

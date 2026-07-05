@@ -3,11 +3,11 @@ import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
+import { PageHero } from "@/components/ui/page-hero";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input, Field as KitField } from "@/components/ui/input";
 import { Cash } from "@/components/ui/cash";
 import { WithdrawConfirm } from "./withdraw-confirm";
-import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { withdrawAction } from "./actions";
@@ -48,20 +48,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
     <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
       <BackLink fallbackHref="/wallet" label={t.wallet.title} />
 
-      <header className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated">
-        <div
-          className="absolute inset-0"
-          aria-hidden
-          style={{
-            background:
-              "radial-gradient(800px 320px at 0% 100%, oklch(45% 0.13 22 / 0.18), transparent 60%), " +
-              "linear-gradient(135deg, oklch(22% 0.140 268) 0%, oklch(30% 0.165 268) 100%)",
-          }}
-        />
-        <div className="absolute -right-6 -top-6 opacity-[0.06]" aria-hidden>
-          <FiftyMark size={180} />
-        </div>
-        <div className="relative z-10 p-5 lg:p-6 flex items-end justify-between gap-4">
+      <PageHero glow="rose" contentClassName="relative z-10 p-5 lg:p-6 flex items-end justify-between gap-4">
           <PageHeader
             tone="gold"
             icon={<I.arrowUpFromLine s={14} className="text-gold-300" />}
@@ -80,8 +67,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
               </Cash>
             )}
           </div>
-        </div>
-      </header>
+      </PageHero>
 
       {errorMsg && (
         <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-no-700/60 bg-no-500/[0.10] px-4 py-3">

@@ -1,15 +1,14 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { I } from "@/components/ui/glyphs";
 import { SignalPip } from "@/components/brand";
 import { MarketCard } from "@/components/markets/market-card";
 import { listMarkets, impliedYesPct, isClosedByTime, isSelectionClosed, traderSeedsByMarket, type MarketCategory } from "@/lib/server/market-service";
 import { getCardChart } from "@/lib/server/market-history";
 import { countComments } from "@/lib/server/comments-store";
-import { getProposalsConfig } from "@/lib/server/proposals-config";
 import { getServerT } from "@/lib/i18n-server";
 
 import { EmptyState } from "@/components/ui/empty-state";
+import { ProposePromo } from "@/components/ui/propose-promo";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { MarketSearch } from "./market-search";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
@@ -58,7 +57,7 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
         </p>
       </div>
 
-      <ProposalEntryCard />
+      <ProposePromo href="/proposals" />
 
       {/* Search — the primary "find a market by name" affordance. Sticks just
           under the 56px app bar so it stays reachable while scrolling a long
@@ -82,29 +81,6 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
         </div>
       </div>
     </main>
-  );
-}
-
-/** Gold-accented entry point into Feature 2 (player market proposals). */
-async function ProposalEntryCard() {
-  const { t } = await getServerT();
-  const cfg = getProposalsConfig();
-  if (!cfg.enabled) return null;
-  return (
-    <Link
-      href={"/proposals" as never}
-      className="group flex items-center gap-3.5 rounded-xl border p-4 transition-colors hover:border-gold-500"
-      style={{ borderColor: "color-mix(in oklab, var(--gold-500) 30%, var(--border))", background: "color-mix(in oklab, var(--gold-500) 6%, var(--bg-elevated))" }}
-    >
-      <span className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-[11px] text-gold-fg" style={{ background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))" }}>
-        <I.trophy s={22} />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="font-display text-[14.5px] font-bold text-text">{t.market.proposeAndGetPaid}</p>
-        <p className="font-display italic text-text-subtle text-[11.5px]">{t.common.proposeEarn}{cfg.prizeTzs > 0 ? ` · TZS ${cfg.prizeTzs.toLocaleString()}` : ""}</p>
-      </div>
-      <I.arrowRight s={18} />
-    </Link>
   );
 }
 

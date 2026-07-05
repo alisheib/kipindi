@@ -28,6 +28,27 @@ Working the remaining backlog in order, each as its own build+i18n+visual+push b
 - Verified: deposit/withdraw/help/account/rg/profile headers render clean; withdraw right-side
   "available" aside preserved. tsc 0, i18n 1181×3, next build 0.
 
+**BATCH 2 — PageHero component + hero-gradient token + promo merge (SHIPPED, verified):**
+- New `<PageHero glow watermark contentClassName>` (`src/components/ui/page-hero.tsx`): one
+  glow radial (fixed 800×320 at 100% 0% /0.18, `glow`=gold|info|yes|rose) + shared
+  `--hero-panel-grad` + corner FiftyMark (180). Adopted on all 8 form-hero pages (deposit,
+  withdraw, help, account, sessions, kyc, source-of-funds, responsible-gambling).
+  Fixes the drift: withdraw glow corner (was bottom-left → top-right), help radial size
+  (was 900×360 → 800×320). Removed 8 inline FiftyMark imports.
+- New `--hero-panel-grad` token (globals.css) = the deep royal `linear-gradient(135deg,
+  oklch(22% .140 268), oklch(30% .165 268))`. Deduped the ~12 inline copies: PageHero uses it;
+  profile hero, profile/loading, legal header, markets/[id] sign-in CTA now reference the token
+  (markets/[id] was 28%→now 30% via token — negligible, now unified).
+- Merged the two "propose & get paid" promos → one `<ProposePromo href>` (`src/components/ui/
+  propose-promo.tsx`, the polished gold entry-card look). markets board → /proposals, proposals
+  board → /proposals/new. Removed the old proposals reward-strip + markets ProposalEntryCard.
+- Watermark: form-hero unified at 180 (PageHero default). Profile-identity + wallet-balance
+  heros keep 220 as the deliberate "large hero" size (structurally distinct; not form-heros).
+- Verified: deposit/withdraw/help/kyc/rg/sof heros + profile + legal render clean; both boards
+  show the identical promo. tsc 0, i18n 1181×3, next build 0.
+  NOTE: don't run `next build` while `npm run dev` is live on the same .next — it clobbers the
+  dev server (hit this mid-batch; restart dev after any build).
+
 ## ROUND 3 — final consult (buttons/banners/colors) + pagination 2026-07-05
 **SHIPPED (safe, high-value):**
 - **X1 (LOAD-BEARING BUG FIX):** `brand` was missing from `tailwind.config.ts`, so every

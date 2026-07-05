@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
-import { FiftyMark } from "@/components/brand";
+import { PageHero } from "@/components/ui/page-hero";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { getKycStatus, startKyc } from "@/lib/server/kyc-service";
@@ -97,31 +97,17 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         </section>
       )}
 
-      <header className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated">
-        <div
-          className="absolute inset-0"
-          aria-hidden
-          style={{
-            background:
-              "radial-gradient(800px 320px at 100% 0%, oklch(45% 0.10 240 / 0.18), transparent 60%), " +
-              "linear-gradient(135deg, oklch(22% 0.140 268) 0%, oklch(30% 0.165 268) 100%)",
-          }}
+      <PageHero glow="info">
+        <PageHeader
+          tone="info"
+          icon={<I.shieldcheck s={14} />}
+          eyebrow={t.profile.kycIdentityVerification}
+          title={t.profile.verifyIdentity}
         />
-        <div className="absolute -right-6 -top-6 opacity-[0.06]" aria-hidden>
-          <FiftyMark size={180} />
-        </div>
-        <div className="relative z-10 p-5 lg:p-6">
-          <PageHeader
-            tone="info"
-            icon={<I.shieldcheck s={14} />}
-            eyebrow={t.profile.kycIdentityVerification}
-            title={t.profile.verifyIdentity}
-          />
-          <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose">
-            {t.profile.verifyBody}
-          </p>
-        </div>
-      </header>
+        <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose">
+          {t.profile.verifyBody}
+        </p>
+      </PageHero>
 
       {rejected && (
         <section role="alert" className="rounded-xl border border-no-700 bg-no-500/[0.08] p-4 lg:p-5">

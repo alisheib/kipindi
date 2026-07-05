@@ -3,10 +3,10 @@ import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
+import { PageHero } from "@/components/ui/page-hero";
 import { Input } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { CashbackPromo } from "@/components/ui/cashback-promo";
-import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { getBonusConfig } from "@/lib/server/bonus-config";
@@ -51,29 +51,15 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
     <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
       <BackLink fallbackHref="/wallet" label={t.wallet.title} />
 
-      <header className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated">
-        <div
-          className="absolute inset-0"
-          aria-hidden
-          style={{
-            background:
-              "radial-gradient(800px 320px at 100% 0%, oklch(58% 0.13 80 / 0.18), transparent 60%), " +
-              "linear-gradient(135deg, oklch(22% 0.140 268) 0%, oklch(30% 0.165 268) 100%)",
-          }}
+      <PageHero glow="gold">
+        <PageHeader
+          tone="gold"
+          icon={<I.arrowDownToLine s={14} className="text-gold-300" />}
+          eyebrow={t.common.addFunds}
+          title={t.common.deposit}
+          subtitle={t.wallet.mobileMoney}
         />
-        <div className="absolute -right-6 -top-6 opacity-[0.06]" aria-hidden>
-          <FiftyMark size={180} />
-        </div>
-        <div className="relative z-10 p-5 lg:p-6">
-          <PageHeader
-            tone="gold"
-            icon={<I.arrowDownToLine s={14} className="text-gold-300" />}
-            eyebrow={t.common.addFunds}
-            title={t.common.deposit}
-            subtitle={t.wallet.mobileMoney}
-          />
-        </div>
-      </header>
+      </PageHero>
 
       {errorMsg && (
         <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-no-700/60 bg-no-500/[0.10] px-4 py-3">

@@ -9,7 +9,7 @@ export default async function ProfileLoading() {
       {/* Hero card skeleton */}
       <section
         className="rounded-xl border border-border overflow-hidden kp-shimmer-track"
-        style={{ background: "linear-gradient(135deg, oklch(22% 0.140 268), oklch(30% 0.165 268))" }}
+        style={{ background: "var(--hero-panel-grad)" }}
         aria-hidden
       >
         <div className="p-5 lg:p-6 flex items-start gap-4 lg:gap-5">

@@ -7,6 +7,7 @@ import { getProposalsConfig } from "@/lib/server/proposals-config";
 import { Chip } from "@/components/ui/chip";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ProposePromo } from "@/components/ui/propose-promo";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { VoteControl } from "@/components/proposals/vote-control";
 import { StatusBadge } from "@/components/proposals/status-badge";
@@ -66,27 +67,8 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
         <h2 className="mt-1 font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.proposals.voteForMarkets}</h2>
       </div>
 
-      {/* Reward banner — compact info strip + mobile CTA */}
-      <section
-        className="relative overflow-hidden rounded-xl border border-border p-3.5"
-        style={{ background: "linear-gradient(150deg, var(--bg-elevated), var(--royal-950))" }}
-      >
-        <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(120% 90% at 100% 0%, color-mix(in oklab, var(--gold-500) 12%, transparent), transparent 60%)" }} />
-        <div className="relative flex items-center gap-3">
-          <span className="text-gold-300"><I.sparkle s={18} /></span>
-          <p className="text-[13px] flex-1 min-w-0">
-            <span className="font-bold text-text">{t.proposals.rewardBanner}</span>
-            {cfg.prizeTzs > 0 && (
-              <span className="block sm:inline sm:ml-2 text-[12px] font-semibold text-gold-300">TZS {cfg.prizeTzs.toLocaleString()} {t.proposals.perListedMarket}</span>
-            )}
-          </p>
-        </div>
-        {enabled && (
-          <Link href={"/proposals/new" as never} className="sm:hidden">
-            <Button variant="gold" size="md" fullWidth leading={<I.plus s={15} />} className="mt-3">{t.proposals.createProposal}</Button>
-          </Link>
-        )}
-      </section>
+      {/* Reward promo — shared gold "propose & get paid" card (→ create). */}
+      <ProposePromo href="/proposals/new" />
 
       {!enabled && (
         <div className="flex gap-2.5 rounded-xl border p-3" style={{ background: "color-mix(in oklab, var(--warning-500) 12%, transparent)", borderColor: "color-mix(in oklab, var(--warning-500) 30%, transparent)" }}>

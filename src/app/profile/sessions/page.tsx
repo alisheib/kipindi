@@ -5,7 +5,7 @@ import { I } from "@/components/ui/glyphs";
 import { Chip } from "@/components/ui/chip";
 import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
-import { FiftyMark } from "@/components/brand";
+import { PageHero } from "@/components/ui/page-hero";
 import { getSession } from "@/lib/server/session";
 import { formatDateTime } from "@/lib/utils";
 import { getServerT } from "@/lib/i18n-server";
@@ -36,31 +36,17 @@ export default async function SessionsPage() {
     <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
       <BackLink fallbackHref="/profile" label={t.common.profile} />
 
-      <header className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated">
-        <div
-          className="absolute inset-0"
-          aria-hidden
-          style={{
-            background:
-              "radial-gradient(800px 320px at 100% 0%, oklch(45% 0.10 240 / 0.18), transparent 60%), " +
-              "linear-gradient(135deg, oklch(22% 0.140 268) 0%, oklch(30% 0.165 268) 100%)",
-          }}
+      <PageHero glow="info">
+        <PageHeader
+          tone="info"
+          icon={<I.device s={14} className="text-info-fg" />}
+          eyebrow={t.profile.activeSessions}
+          title={t.profile.activeSessions}
         />
-        <div className="absolute -right-6 -top-6 opacity-[0.06]" aria-hidden>
-          <FiftyMark size={180} />
-        </div>
-        <div className="relative z-10 p-5 lg:p-6">
-          <PageHeader
-            tone="info"
-            icon={<I.device s={14} className="text-info-fg" />}
-            eyebrow={t.profile.activeSessions}
-            title={t.profile.activeSessions}
-          />
-          <p className="mt-1 text-[13px] text-text-muted">
-            {t.profile.sessionsDescription}
-          </p>
-        </div>
-      </header>
+        <p className="mt-1 text-[13px] text-text-muted">
+          {t.profile.sessionsDescription}
+        </p>
+      </PageHero>
 
       <section className="rounded-xl border border-info-border bg-info-bg/[0.10] p-5 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">

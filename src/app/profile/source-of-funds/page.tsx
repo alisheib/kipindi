@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
-import { FiftyMark } from "@/components/brand";
+import { PageHero } from "@/components/ui/page-hero";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -70,31 +70,17 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
         </div>
       )}
 
-      <header className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated">
-        <div
-          className="absolute inset-0"
-          aria-hidden
-          style={{
-            background:
-              "radial-gradient(800px 320px at 100% 0%, oklch(45% 0.10 240 / 0.18), transparent 60%), " +
-              "linear-gradient(135deg, oklch(22% 0.140 268) 0%, oklch(30% 0.165 268) 100%)",
-          }}
+      <PageHero glow="info">
+        <PageHeader
+          tone="info"
+          icon={<I.fileSignature s={14} className="text-info-fg" />}
+          eyebrow="AML"
+          title={t.profile.sourceOfFunds}
         />
-        <div className="absolute -right-6 -top-6 opacity-[0.06]" aria-hidden>
-          <FiftyMark size={180} />
-        </div>
-        <div className="relative z-10 p-5 lg:p-6">
-          <PageHeader
-            tone="info"
-            icon={<I.fileSignature s={14} className="text-info-fg" />}
-            eyebrow="AML"
-            title={t.profile.sourceOfFunds}
-          />
-          <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose">
-            {t.profile.sofDescription}
-          </p>
-        </div>
-      </header>
+        <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose">
+          {t.profile.sofDescription}
+        </p>
+      </PageHero>
 
       {existing?.reviewStatus === "REJECTED" && (
         <section role="alert" className="rounded-xl border border-no-700 bg-no-500/[0.08] p-4">

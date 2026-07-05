@@ -318,6 +318,9 @@
 
   /* Hero gradient — sapphire royal + gilt + emerald + rose finishing pass */
   --hero-grad:        linear-gradient(135deg, oklch(28% 0.16 268) 0%, oklch(40% 0.20 268) 100%);
+  /* Hero PANEL gradient — the deeper royal used behind form-page heros
+     (deposit/withdraw/help/profile/*). One source for the ~12 inlined copies. */
+  --hero-panel-grad:  linear-gradient(135deg, oklch(22% 0.140 268) 0%, oklch(30% 0.165 268) 100%);
   /* Hero "warm" — kit-faithful deep royal radial. Spec: kit/banners.jsx
      BannerHero (1600×540) uses a radial ellipse 90% 70% at 75% 30% from
      oklch(24% .15 268) → oklch(20% .135 268) → oklch(15% .13 268). Same
