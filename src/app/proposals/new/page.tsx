@@ -26,7 +26,7 @@ export default async function NewProposalPage() {
   const openCount = proposals.filter((p) => p.status === "REVIEW" || p.status === "CHANGES_REQUESTED").length;
 
   return (
-    <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-4">
+    <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
       <BackLink fallbackHref="/proposals" label={t.proposals.title} />
       <PageHeader eyebrow={t.common.submitProposal} title={t.common.suggestMarket} />
       <CreateProposalForm enabled={cfg.enabled} prizeTzs={cfg.prizeTzs} rateLimit={cfg.rateLimit} openCount={openCount} />

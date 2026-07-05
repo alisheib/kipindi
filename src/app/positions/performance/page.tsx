@@ -120,7 +120,7 @@ export default async function PerformancePage() {
       ) : (
         <>
           {/* ── Net P&L ledger panel ──────────────────────────────── */}
-          <section aria-label={t.performance.netPnl} className="glass-panel px-5 pt-[18px] pb-5">
+          <section aria-label={t.performance.netPnl} className="glass-panel p-5">
             <div className="flex items-center justify-between gap-3">
               <span className="gilt-eyebrow">{t.performance.netPnl} · {t.common.settled}</span>
               <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-subtle">{t.performance.allFiguresFinal}</span>
@@ -148,7 +148,7 @@ export default async function PerformancePage() {
 
           {/* ── P&L over time ─────────────────────────────────────── */}
           {pnlSeries.length > 1 && (
-            <section aria-label={t.performance.pnlOverTime} className="glass-panel px-5 pt-4 pb-3.5">
+            <section aria-label={t.performance.pnlOverTime} className="glass-panel p-5">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <span className="gilt-eyebrow">{t.performance.pnlOverTime}</span>
                 <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-subtle">{t.performance.cumulativePerSettlement}</span>

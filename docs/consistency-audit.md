@@ -49,6 +49,18 @@ Working the remaining backlog in order, each as its own build+i18n+visual+push b
   NOTE: don't run `next build` while `npm run dev` is live on the same .next — it clobbers the
   dev server (hit this mid-batch; restart dev after any build).
 
+**BATCH 3 — padding/spacing tiers (SHIPPED, verified):**
+- Removed asymmetric card one-offs → symmetric `p-5`: performance Net-P&L panel
+  (`px-5 pt-[18px] pb-5`), performance chart panel (`px-5 pt-4 pb-3.5`), invite hero (`p-[18px]`).
+- Container space-y snapped to the two tiers (6 = list/dashboard boards, 5 = forms/detail):
+  proposals board 3.5→6 (matches positions/live); invite 3→5, proposals/new 4→5,
+  proposals/[id] 3.5→5. Existing 5s/6s already on-tier — left untouched.
+- NOTE: `p-3.5` (14px) list-row padding is symmetric and used consistently (invite/kyc/profile
+  menu rows/proposal cards) — kept as the compact list-row tier, NOT churned (it isn't the flagged
+  asymmetric drift). Card tiers now: p-5 default panel · p-4 dense · p-3.5 list-row · p-3 compact.
+- Verified: invite + proposals board + proposals/new render clean & consistent. tsc 0, i18n 1181×3,
+  next build 0 (needed `rm -rf .next` once — transient Turbopack panic after stopping dev).
+
 ## ROUND 3 — final consult (buttons/banners/colors) + pagination 2026-07-05
 **SHIPPED (safe, high-value):**
 - **X1 (LOAD-BEARING BUG FIX):** `brand` was missing from `tailwind.config.ts`, so every

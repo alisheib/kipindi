@@ -52,7 +52,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
   const proposalsBaseHref = `/proposals?f=${filter}`;
 
   return (
-    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-3.5">
+    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
       <h1 className="sr-only">{t.proposals.title}</h1>
 
       <div>

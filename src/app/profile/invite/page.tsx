@@ -99,7 +99,7 @@ export default async function InvitePage() {
   const shareText = t.profile.shareText;
 
   return (
-    <div className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-3">
+    <div className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
       <BackLink fallbackHref="/profile" label={t.common.profile} />
       <h1 className="sr-only">{t.profile.inviteEarn}</h1>
 
@@ -115,7 +115,7 @@ export default async function InvitePage() {
 
       {/* Hero — gold earnings ring + adaptive promises */}
       <section
-        className="relative overflow-hidden rounded-xl border border-border-strong p-[18px]"
+        className="relative overflow-hidden rounded-xl border border-border-strong p-5"
         style={{ background: "linear-gradient(150deg, var(--bg-elevated), var(--royal-950))" }}
       >
         <div
