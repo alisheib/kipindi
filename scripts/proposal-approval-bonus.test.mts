@@ -175,5 +175,48 @@ const officer = await mkUser("ADMIN");
   setProposalsConfig({ prizeTzs: 20_000 } as never, "test");
 }
 
+// ── race: concurrent approve + decline — never both apply, never DECLINED-with-bonus ──
+{
+  const P = await mkUser();
+  const c = await createProposal(P, { titleEn: "Race between approve and decline here", resolutionCriterion: "Resolves from an official source.", category: "crypto", resolutionDate: futureDate(), sourceUrl: SRC });
+  if (!c.ok) throw new Error("setup create failed");
+  const [a, dec] = await Promise.all([
+    approveProposal(c.proposal.id, officer),
+    declineProposal(c.proposal.id, officer, "Politics"),
+  ]);
+  const d = (await getProposalDetail(c.proposal.id, null))!;
+  const bonus = await bonusBal(P);
+  ok("approve/decline race: exactly one succeeded", a.ok !== dec.ok, `approve=${a.ok} decline=${dec.ok}`);
+  ok("approve/decline race: never DECLINED with bonus paid", !(d.status === "DECLINED" && bonus > 0), `status=${d.status} bonus=${bonus}`);
+  ok("approve/decline race: money matches status", (d.status === "APPROVED" && bonus === 20_000) || (d.status === "DECLINED" && bonus === 0), `status=${d.status} bonus=${bonus}`);
+}
+
+// ── race: concurrent double-approve grants exactly once ──────────────────────
+{
+  const P = await mkUser();
+  const c = await createProposal(P, { titleEn: "Race between two approvals here now", resolutionCriterion: "Resolves from an official source.", category: "crypto", resolutionDate: futureDate(), sourceUrl: SRC });
+  if (!c.ok) throw new Error("setup create failed");
+  const [a1, a2] = await Promise.all([
+    approveProposal(c.proposal.id, officer),
+    approveProposal(c.proposal.id, officer),
+  ]);
+  ok("double-approve race: exactly one succeeded", a1.ok !== a2.ok, `a1=${a1.ok} a2=${a2.ok}`);
+  ok("double-approve race: bonus granted once (20,000)", (await bonusBal(P)) === 20_000, `bonus=${await bonusBal(P)}`);
+  const grants = (await db.bonusGrant.listByUser(P)).filter((g) => g.source === "PROPOSAL");
+  ok("double-approve race: single proposal grant", grants.length === 1, `count=${grants.length}`);
+}
+
+// ── rate limit holds under a concurrent submit burst ─────────────────────────
+{
+  setProposalsConfig({ rateLimit: 3 } as never, "test");
+  const P = await mkUser();
+  const results = await Promise.all(Array.from({ length: 8 }, (_, i) =>
+    createProposal(P, { titleEn: `Concurrent burst proposal number ${i}`, resolutionCriterion: "Resolves from an official source.", category: "macro", resolutionDate: futureDate(), sourceUrl: SRC })));
+  const okCount = results.filter((r) => r.ok).length;
+  const openNow = (await db.proposal.listByProposer(P)).filter((p) => p.status === "REVIEW" || p.status === "CHANGES_REQUESTED").length;
+  ok("rate limit caps concurrent creates at 3", okCount === 3, `created=${okCount}`);
+  ok("no more than 3 open proposals exist after burst", openNow === 3, `open=${openNow}`);
+}
+
 console.log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILED`} — ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

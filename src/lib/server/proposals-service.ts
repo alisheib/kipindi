@@ -127,39 +127,44 @@ export async function createProposal(userId: string, input: CreateProposalInput)
   const src = validateSourceUrl(input.sourceUrl);
   if (!src.ok) return { ok: false, error: src.error, code: "INVALID" };
 
-  // Rate limit — max simultaneously-open proposals per player.
-  const open = (await db.proposal.listByProposer(userId)).filter((p) => OPEN_STATES.includes(p.status)).length;
-  if (open >= cfg.rateLimit) {
+  // Rate limit — max simultaneously-open proposals per player. Serialize the
+  // count-then-create per user so a burst of concurrent submits can't each read
+  // the same under-limit count and all slip through (TOCTOU anti-spam guard).
+  const now = new Date().toISOString();
+  const created = await withLock(`proposal:create:${userId}`, async () => {
+    const open = (await db.proposal.listByProposer(userId)).filter((p) => OPEN_STATES.includes(p.status)).length;
+    if (open >= cfg.rateLimit) return "RATE_LIMITED" as const;
+    return db.proposal.create({
+      id: `prp_${randomId(12)}`,
+      proposerId: userId,
+      titleEn,
+      titleSw: input.titleSw?.trim() || null,
+      titleZh: input.titleZh?.trim() || null,
+      description: input.description?.trim() || null,
+      resolutionCriterion: criterion,
+      category: input.category,
+      resolutionDate: date,
+      sourceUrl: src.url,
+      status: "REVIEW",
+      up: 0,
+      down: 0,
+      publishedMarketId: null,
+      bonusGrantedTzs: 0,
+      bonusGrantId: null,
+      approvedAt: null,
+      declineReason: null,
+      declineNote: null,
+      changeNote: null,
+      reviewedBy: null,
+      reviewedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+  });
+  if (created === "RATE_LIMITED") {
     return { ok: false, error: `You can have at most ${cfg.rateLimit} open proposals at a time.`, code: "RATE_LIMITED" };
   }
-
-  const now = new Date().toISOString();
-  const proposal = await db.proposal.create({
-    id: `prp_${randomId(12)}`,
-    proposerId: userId,
-    titleEn,
-    titleSw: input.titleSw?.trim() || null,
-    titleZh: input.titleZh?.trim() || null,
-    description: input.description?.trim() || null,
-    resolutionCriterion: criterion,
-    category: input.category,
-    resolutionDate: date,
-    sourceUrl: src.url,
-    status: "REVIEW",
-    up: 0,
-    down: 0,
-    publishedMarketId: null,
-    bonusGrantedTzs: 0,
-    bonusGrantId: null,
-    approvedAt: null,
-    declineReason: null,
-    declineNote: null,
-    changeNote: null,
-    reviewedBy: null,
-    reviewedAt: null,
-    createdAt: now,
-    updatedAt: now,
-  });
+  const proposal = created;
   audit({ category: "ADMIN", action: "proposal.created", actorId: userId, targetType: "Proposal", targetId: proposal.id, payload: { category: proposal.category } });
 
   // ── Submission notifications (all best-effort; never block the submission) ──
@@ -422,7 +427,7 @@ export async function approveProposal(proposalId: string, officerId: string): Pr
       }
     }
 
-    await db.proposal.update(proposalId, {
+    const updated = await db.proposal.update(proposalId, {
       status: "APPROVED",
       bonusGrantedTzs: grantedTzs,
       bonusGrantId: grantId,
@@ -430,6 +435,14 @@ export async function approveProposal(proposalId: string, officerId: string): Pr
       reviewedBy: officerId,
       reviewedAt: now,
     });
+    if (!updated) {
+      // The reward committed but the status write failed. Do NOT claim success —
+      // ask the officer to retry. A retry is money-safe: creditBonus dedupes on
+      // sourceRef (no second grant) and re-attempts the status flip. Audit so ops
+      // can see the transient split even if no one retries.
+      audit({ category: "WALLET", action: "proposal.approve_status_write_failed", actorId: officerId, targetType: "Proposal", targetId: proposalId, payload: { proposerId: p.proposerId, grantedTzs, grantId } });
+      return { ok: false, error: "Reward credited, but saving the approval failed — click Approve again to finish (it won't double-pay)." };
+    }
     audit({ category: "ADMIN", action: "proposal.approved", actorId: officerId, targetType: "Proposal", targetId: proposalId, payload: { proposerId: p.proposerId, grantedTzs, grantId } });
 
     notifyProposalApproved(p.proposerId, { titleEn: p.titleEn, amountTzs: grantedTzs, queued }).catch(() => {});
@@ -481,7 +494,16 @@ export async function goLiveProposal(proposalId: string, officerId: string, sour
       selectionClosedAt: computeSelectionClosedAt(resolutionAt, toMarketCategory(p.category)),
       proposedBy: p.proposerId,
     });
-    await db.proposal.update(proposalId, { status: "LISTED", publishedMarketId: market.id, sourceUrl: src.url, reviewedBy: officerId, reviewedAt: new Date().toISOString() });
+    const linked = await db.proposal.update(proposalId, { status: "LISTED", publishedMarketId: market.id, sourceUrl: src.url, reviewedBy: officerId, reviewedAt: new Date().toISOString() });
+    if (!linked) {
+      // The market was created but the proposal→market link write failed. Surface
+      // the marketId loudly for manual reconciliation and refuse (rather than
+      // returning ok with an unlinked market). A blind retry would create a
+      // DUPLICATE market — the audit + error tell the officer to check /admin/markets
+      // first. (Same non-atomic boundary the original approve&list carried.)
+      audit({ category: "ADMIN", action: "proposal.publish_link_failed", actorId: officerId, targetType: "Proposal", targetId: proposalId, payload: { marketId: market.id, warning: "market created but not linked — reconcile before retrying" } });
+      return { ok: false as const, error: `Market ${market.id} was created but couldn't be linked to the proposal. Check /admin/markets before retrying to avoid a duplicate.` };
+    }
     audit({ category: "ADMIN", action: "proposal.published_live", actorId: officerId, targetType: "Proposal", targetId: proposalId, payload: { marketId: market.id } });
 
     notifyProposalListed(p.proposerId, { titleEn: p.titleEn, marketId: market.id }).catch(() => {});
@@ -496,11 +518,20 @@ export async function goLiveProposal(proposalId: string, officerId: string, sour
 }
 
 export async function requestChanges(proposalId: string, officerId: string, note: string): Promise<{ ok: true } | { ok: false; error: string }> {
-  const p = await db.proposal.findById(proposalId);
-  if (!p) return { ok: false, error: "Proposal not found." };
-  if (!OPEN_STATES.includes(p.status)) return { ok: false, error: "Only open proposals can be sent back." };
   const trimmed = note?.trim() || null;
-  await db.proposal.update(proposalId, { status: "CHANGES_REQUESTED", changeNote: trimmed, reviewedBy: officerId, reviewedAt: new Date().toISOString() });
+  // Serialize against approve/go-live/decline on the SAME proposal and re-check
+  // status INSIDE the lock — otherwise a concurrent approve (which pays the bonus)
+  // could interleave and this write would clobber an APPROVED proposal back to
+  // CHANGES_REQUESTED while the reward is already out.
+  const res = await withLock(`proposal:${proposalId}`, async (): Promise<{ ok: false; error: string } | { ok: true; proposal: StoredProposal }> => {
+    const cur = await db.proposal.findById(proposalId);
+    if (!cur) return { ok: false, error: "Proposal not found." };
+    if (!OPEN_STATES.includes(cur.status)) return { ok: false, error: "Only open proposals can be sent back." };
+    await db.proposal.update(proposalId, { status: "CHANGES_REQUESTED", changeNote: trimmed, reviewedBy: officerId, reviewedAt: new Date().toISOString() });
+    return { ok: true, proposal: cur };
+  });
+  if (!res.ok) return res;
+  const p = res.proposal;
   audit({ category: "ADMIN", action: "proposal.changes_requested", actorId: officerId, targetType: "Proposal", targetId: proposalId, payload: { note: trimmed } });
   notifyProposalChanges(p.proposerId, { titleEn: p.titleEn, note: trimmed }).catch(() => {});
   sendEmailToUser(p.proposerId, (email) => ({
@@ -513,13 +544,19 @@ export async function requestChanges(proposalId: string, officerId: string, note
 }
 
 export async function declineProposal(proposalId: string, officerId: string, reason: DeclineReason, note?: string): Promise<{ ok: true } | { ok: false; error: string }> {
-  const p = await db.proposal.findById(proposalId);
-  if (!p) return { ok: false, error: "Proposal not found." };
-  // Can't decline once approved (reward already paid) or once live/resolved.
-  if (!OPEN_STATES.includes(p.status)) return { ok: false, error: `A ${p.status.toLowerCase().replace("_", " ")} proposal can't be declined.` };
   if (!DECLINE_REASONS.includes(reason)) return { ok: false, error: "Pick a valid decline reason." };
   const trimmed = note?.trim() || null;
-  await db.proposal.update(proposalId, { status: "DECLINED", declineReason: reason, declineNote: trimmed, reviewedBy: officerId, reviewedAt: new Date().toISOString() });
+  // Locked + inside-lock re-check so a decline can NEVER land on a proposal that
+  // was just approved (bonus paid) — the guard blocks any non-open state.
+  const res = await withLock(`proposal:${proposalId}`, async (): Promise<{ ok: false; error: string } | { ok: true; proposal: StoredProposal }> => {
+    const cur = await db.proposal.findById(proposalId);
+    if (!cur) return { ok: false, error: "Proposal not found." };
+    if (!OPEN_STATES.includes(cur.status)) return { ok: false, error: `A ${cur.status.toLowerCase().replace("_", " ")} proposal can't be declined.` };
+    await db.proposal.update(proposalId, { status: "DECLINED", declineReason: reason, declineNote: trimmed, reviewedBy: officerId, reviewedAt: new Date().toISOString() });
+    return { ok: true, proposal: cur };
+  });
+  if (!res.ok) return res;
+  const p = res.proposal;
   audit({ category: "ADMIN", action: "proposal.declined", actorId: officerId, targetType: "Proposal", targetId: proposalId, payload: { reason, note: trimmed } });
   notifyProposalDeclined(p.proposerId, { titleEn: p.titleEn, reason }).catch(() => {});
   sendEmailToUser(p.proposerId, (email) => ({
