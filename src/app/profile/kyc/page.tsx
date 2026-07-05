@@ -116,7 +116,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               {t.profile.kycIdentityVerification}
             </p>
           </div>
-          <h1 className="font-display text-[26px] lg:text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
+          <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
             {t.profile.verifyIdentity}
           </h1>
           <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose">

@@ -70,7 +70,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
               {t.common.addFunds}
             </p>
           </div>
-          <h1 className="font-display text-[26px] font-bold text-text leading-tight tracking-[-0.02em]">
+          <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
             {t.common.deposit}
           </h1>
           <p className="mt-1 text-[14px] italic text-text-subtle">{t.wallet.mobileMoney}</p>

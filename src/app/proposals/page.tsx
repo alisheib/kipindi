@@ -63,7 +63,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
             </Link>
           )}
         </div>
-        <h2 className="mt-1 font-display text-[22px] font-bold leading-tight">{t.proposals.voteForMarkets}</h2>
+        <h2 className="mt-1 font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.proposals.voteForMarkets}</h2>
       </div>
 
       {/* Reward banner — compact info strip + mobile CTA */}

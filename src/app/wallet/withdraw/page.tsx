@@ -68,7 +68,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
                 {t.wallet.withdrawTitle}
               </p>
             </div>
-            <h1 className="font-display text-[24px] lg:text-[26px] font-bold text-text leading-tight tracking-[-0.02em]">
+            <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
               {t.wallet.moveFundsOut}
             </h1>
             <p className="mt-1 text-[13px] italic text-text-subtle">{t.wallet.mobileMoney}</p>

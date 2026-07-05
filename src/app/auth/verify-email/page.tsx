@@ -68,7 +68,7 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
             <p className={`font-mono text-[11px] uppercase tracking-[0.16em] font-bold ${good ? "text-yes-300" : "text-no-300"}`}>
               {c.eyebrow}
             </p>
-            <h1 className="mt-1.5 font-display text-[26px] font-bold leading-tight text-text tracking-[-0.02em]">
+            <h1 className="mt-1.5 font-display text-[28px] font-bold leading-tight text-text tracking-[-0.02em]">
               {c.title}
             </h1>
             <p className="mt-2 text-[13.5px] text-text-muted leading-relaxed">

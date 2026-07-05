@@ -29,7 +29,7 @@ export default async function NewProposalPage() {
       <BackLink fallbackHref="/proposals" label={t.proposals.title} />
       <div>
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.common.submitProposal}</p>
-        <h1 className="mt-1 font-display text-[22px] font-bold leading-tight">{t.common.suggestMarket}</h1>
+        <h1 className="mt-1 font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.common.suggestMarket}</h1>
       </div>
       <CreateProposalForm enabled={cfg.enabled} prizeTzs={cfg.prizeTzs} rateLimit={cfg.rateLimit} openCount={openCount} />
     </main>

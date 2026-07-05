@@ -32,7 +32,7 @@ export default async function HelpPage() {
           <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
             {t.help.pageTitle}
           </p>
-          <h1 className="mt-1 font-display text-[26px] lg:text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
+          <h1 className="mt-1 font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
             {t.help.heading}
           </h1>
         </div>
