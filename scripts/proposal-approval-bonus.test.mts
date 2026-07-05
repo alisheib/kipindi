@@ -23,7 +23,7 @@ import {
   onMarketResolved,
   getProposalDetail,
 } from "../src/lib/server/proposals-service.ts";
-import { getBonusSummary } from "../src/lib/server/bonus-service.ts";
+import { getBonusSummary, creditBonus } from "../src/lib/server/bonus-service.ts";
 import { setProposalsConfig } from "../src/lib/server/proposals-config.ts";
 import { setBonusConfig } from "../src/lib/server/bonus-config.ts";
 
@@ -95,6 +95,12 @@ const officer = await mkUser("ADMIN");
   const grants = (await db.bonusGrant.listByUser(P)).filter((g) => g.source === "PROPOSAL");
   ok("exactly one proposal bonus grant", grants.length === 1, `count=${grants.length}`);
 
+  // No double-notify: the generic "bonus added" (kind BONUS) message is suppressed;
+  // the single contextual proposal-approved message (kind PROPOSAL) is sent instead.
+  const notifs = await db.notification.findByUser(P, 50);
+  ok("no generic BONUS notification on approval", notifs.filter((n) => n.kind === "BONUS").length === 0, `bonus=${notifs.filter((n) => n.kind === "BONUS").length}`);
+  ok("exactly one proposal-approved notification", notifs.filter((n) => n.kind === "PROPOSAL" && /approved/i.test(n.titleEn)).length === 1);
+
   // go-live → market created, NO extra bonus
   const beforeLive = await bonusBal(P);
   const live = await goLiveProposal(pid, officer, TRUSTED_MACRO);
@@ -112,6 +118,26 @@ const officer = await mkUser("ADMIN");
     ok("resolution grants no bonus", (await bonusBal(P)) === beforeResolve, `bonus=${await bonusBal(P)}`);
     ok("approval bonus preserved after resolve", dr.bonusGrantedTzs === 20_000);
   }
+}
+
+// ── queued: approving when the proposer already has an ACTIVE bonus ──────────
+{
+  const P = await mkUser();
+  await creditBonus(P, { amountTzs: 5_000, source: "ADMIN", note: "pre-existing active bonus", notifyPlayer: false });
+  const activeBonus = await bonusBal(P);
+  ok("pre-existing active bonus present", activeBonus === 5_000, `bonus=${activeBonus}`);
+  const c = await createProposal(P, { titleEn: "A proposal approved while a bonus is active", resolutionCriterion: "Resolves from an official source.", category: "weather", resolutionDate: futureDate(), sourceUrl: SRC });
+  if (!c.ok) throw new Error("setup create failed");
+  const a = await approveProposal(c.proposal.id, officer);
+  ok("approve succeeds (queued reward)", a.ok === true && a.grantedTzs === 20_000);
+  ok("bonusBalance unchanged — reward queued, not active yet", (await bonusBal(P)) === activeBonus, `bonus=${await bonusBal(P)}`);
+  const pg = (await db.bonusGrant.listByUser(P)).find((g) => g.source === "PROPOSAL");
+  ok("proposal grant is QUEUED", pg?.status === "QUEUED", `status=${pg?.status}`);
+  const d = (await getProposalDetail(c.proposal.id, null))!;
+  ok("proposal records bonusGrantedTzs + APPROVED", d.status === "APPROVED" && d.bonusGrantedTzs === 20_000);
+  const notifs = await db.notification.findByUser(P, 50);
+  ok("queued approval notification says reserved", notifs.some((n) => n.kind === "PROPOSAL" && /reserved/i.test(n.titleEn)));
+  ok("no generic BONUS notification even when queued", notifs.filter((n) => n.kind === "BONUS").length === 0);
 }
 
 // ── decline / changes grant no bonus ─────────────────────────────────────────

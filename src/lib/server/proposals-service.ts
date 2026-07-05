@@ -396,14 +396,18 @@ export async function approveProposal(proposalId: string, officerId: string): Pr
     let grantId: string | null = null;
     let grantedTzs = 0;
     let wagerRequiredTzs = 0;
+    let queued = false;
 
     if (prize > 0) {
       // Prefer the bonus wallet (must be played through). Idempotent by sourceRef.
-      const r = await creditBonus(p.proposerId, { amountTzs: prize, source: "PROPOSAL", sourceRef, note });
+      // notifyPlayer:false — we send the single, contextual "proposal approved"
+      // notice below instead of the generic "bonus added" one (no double-notify).
+      const r = await creditBonus(p.proposerId, { amountTzs: prize, source: "PROPOSAL", sourceRef, note, notifyPlayer: false });
       if (r.ok) {
         grantId = r.grant.id;
         grantedTzs = r.grant.amountTzs;
         wagerRequiredTzs = r.grant.wagerRequiredTzs;
+        queued = r.grant.status === "QUEUED";
       } else {
         // Bonus program off / wallet not bonus-eligible — never lose the promised
         // reward. Fall back to a real credit and audit. Exactly-once still holds:
@@ -428,11 +432,11 @@ export async function approveProposal(proposalId: string, officerId: string): Pr
     });
     audit({ category: "ADMIN", action: "proposal.approved", actorId: officerId, targetType: "Proposal", targetId: proposalId, payload: { proposerId: p.proposerId, grantedTzs, grantId } });
 
-    notifyProposalApproved(p.proposerId, { titleEn: p.titleEn, amountTzs: grantedTzs }).catch(() => {});
+    notifyProposalApproved(p.proposerId, { titleEn: p.titleEn, amountTzs: grantedTzs, queued }).catch(() => {});
     sendEmailToUser(p.proposerId, (email) => ({
       to: email,
       subject: grantedTzs > 0 ? `Proposal approved · bonus TZS ${grantedTzs.toLocaleString("en-US")} credited` : "Proposal approved",
-      html: proposalApprovedHtml({ titleEn: p.titleEn, amountTzs: grantedTzs, wagerRequiredTzs }),
+      html: proposalApprovedHtml({ titleEn: p.titleEn, amountTzs: grantedTzs, wagerRequiredTzs, queued }),
       tag: "proposal-approved",
     }));
 

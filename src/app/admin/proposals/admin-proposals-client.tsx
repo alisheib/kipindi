@@ -167,7 +167,10 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
   };
 
   const refresh = () => router.refresh();
-  const resetReview = () => { setDeclining(false); setReason(null); setNote(""); setSourceUrl(""); };
+  // Note: sourceUrl is owned by the selection effect (pre-filled from the
+  // proposal), NOT cleared here — so it survives an approve→go-live transition
+  // on the same proposal (the row stays selected after refresh).
+  const resetReview = () => { setDeclining(false); setReason(null); setNote(""); };
 
   const saveConfig = () => start(async () => {
     const r = await saveProposalsConfigAction(c);

@@ -341,10 +341,21 @@ export function notifyAdminProposalReview(adminUserId: string, opts: { proposerL
   });
 }
 
-/** Proposer notice: their proposal was approved and the reward bonus was credited. */
-export function notifyProposalApproved(userId: string, opts: { titleEn: string; amountTzs: number }) {
+/** Proposer notice: their proposal was approved and the reward bonus was credited
+ *  (or queued behind an active bonus in sequential mode). */
+export function notifyProposalApproved(userId: string, opts: { titleEn: string; amountTzs: number; queued?: boolean }) {
   if (opts.amountTzs > 0) {
     const amount = Math.round(opts.amountTzs).toLocaleString("en-US");
+    if (opts.queued) {
+      return notify({
+        userId, kind: "PROPOSAL",
+        titleEn: `Proposal approved · bonus TZS ${amount} reserved`,
+        titleSw: `Pendekezo limekubaliwa · bonasi TZS ${amount} imehifadhiwa`,
+        bodyEn: `"${opts.titleEn.slice(0, 55)}" was approved. Your TZS ${amount} bonus activates automatically once your current bonus completes.`,
+        bodySw: `Pendekezo lako limekubaliwa. Bonasi ya TZS ${amount} itaanza mara bonasi yako ya sasa itakapokamilika.`,
+        href: "/wallet",
+      });
+    }
     return notify({
       userId, kind: "PROPOSAL",
       titleEn: `Proposal approved · bonus TZS ${amount} credited`,

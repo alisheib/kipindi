@@ -60,6 +60,11 @@ export type CreditBonusInput = {
   /** Override the config default validity window. 0 = never expires. */
   expiryDays?: number;
   note?: string | null;
+  /** When false, skip the generic "Bonus added" in-app notification + email —
+   *  for callers that send their own, more contextual player message (e.g. the
+   *  proposal-approved notice) and would otherwise double-notify. Default true.
+   *  Note: a QUEUED grant that later activates still notifies from activateNextQueued. */
+  notifyPlayer?: boolean;
 };
 
 export type CreditBonusResult =
@@ -150,7 +155,7 @@ export async function creditBonus(userId: string, input: CreditBonusInput): Prom
     return { ok: true, grant, deduped: false };
   });
 
-  if (result.ok && !result.deduped) {
+  if (result.ok && !result.deduped && input.notifyPlayer !== false) {
     const g = result.grant;
     if (g.status === "QUEUED") {
       // Notify player their bonus is queued (sequential mode §6)

@@ -800,18 +800,23 @@ export function proposalSubmittedAdminHtml({ reference, proposer, titleEn, title
   `);
 }
 
-/** Player: proposal approved — reward bonus credited. */
-export function proposalApprovedHtml({ titleEn, amountTzs, wagerRequiredTzs }: {
-  titleEn: string; amountTzs: number; wagerRequiredTzs: number;
+/** Player: proposal approved — reward bonus credited (or queued behind an
+ *  active bonus in sequential mode). */
+export function proposalApprovedHtml({ titleEn, amountTzs, wagerRequiredTzs, queued }: {
+  titleEn: string; amountTzs: number; wagerRequiredTzs: number; queued?: boolean;
 }): string {
   if (amountTzs > 0) {
     return wrap(`
       ${eyebrow("Proposal approved", "Pendekezo limekubaliwa")}
-      ${heading(`Approved · bonus ${fmtTzs(amountTzs)} credited`, GILT)}
-      ${subtitle(`Great news — "${titleEn}" was approved and your reward has landed in your bonus wallet.`)}
-      ${subtitleSw("Habari njema — pendekezo lako limekubaliwa na zawadi yako ipo kwenye pochi yako ya bonasi.")}
+      ${heading(queued ? `Approved · bonus ${fmtTzs(amountTzs)} reserved` : `Approved · bonus ${fmtTzs(amountTzs)} credited`, GILT)}
+      ${subtitle(queued
+        ? `Great news — "${titleEn}" was approved. Your ${fmtTzs(amountTzs)} bonus is reserved and activates automatically once your current bonus completes.`
+        : `Great news — "${titleEn}" was approved and your reward has landed in your bonus wallet.`)}
+      ${subtitleSw(queued
+        ? "Habari njema — pendekezo lako limekubaliwa. Bonasi yako itaanza mara bonasi yako ya sasa itakapokamilika."
+        : "Habari njema — pendekezo lako limekubaliwa na zawadi yako ipo kwenye pochi yako ya bonasi.")}
       ${detailRows([
-        { label: "Bonus credited", value: fmtTzs(amountTzs), tone: "good" },
+        { label: queued ? "Bonus reserved" : "Bonus credited", value: fmtTzs(amountTzs), tone: "good" },
         ...(wagerRequiredTzs > 0 ? [{ label: "Play-through", value: fmtTzs(wagerRequiredTzs) }] : []),
         { label: "Wallet", value: "Bonus wallet" },
       ])}
