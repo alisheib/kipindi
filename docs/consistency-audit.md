@@ -82,11 +82,13 @@ Large mechanical refactors (each 10-30 files; do as focused verified batches):
 - Forms: FieldLegend + Textarea atoms; rebuild deposit-amount on the Input atom.
 - .btn-pill utility + migrate ~12 inline pill-radius overrides; wallet pager → shared Pagination.
 - Hero-gradient → --hero-panel-grad token dedup (X7); gold-hue drift → --gilt/--gold (X6).
-Design DECISIONS needed from Ali (don't guess on money/UX):
-- Sell-confirm CTA royal vs gold (bet-confirm is gold) — "confirm=gold" or "exit=royal"?
-- Side buttons: card (md, r-md) vs side-picker (lg, pill) — unify shape/size?
-- Sign-out: profile menu-row vs sessions red-pill — one treatment?
-- /live pagination: keep as real-time overview (current) or paginate like /markets?
+Design DECISIONS — RESOLVED 2026-07-05 (Ali: "pick the best & finalize"):
+- Sell-confirm CTA → **gold** (matches bet-confirm; gold-budget = money commit + sell/settlement). DONE.
+- Side buttons → **unify shape to kit r-md** (dropped side-picker pill override; kept lg size;
+  added "@ %" labels to match cards). DONE.
+- Sign-out → **neutral ghost** (sessions red-pill → btn-ghost; sign-out isn't destructive). DONE.
+  (Profile menu-row keeps its subtle rose "exit" icon — a menu item, not an alarm.)
+- /live → **keep as real-time overview** (no pagination; it's a live dashboard, not an archive). FINAL.
 
 ## STATUS
 - **TIER 1 — DONE (aa8d552), verified desktop+mobile.** All user-visible inconsistencies

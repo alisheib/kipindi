@@ -159,7 +159,7 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
               type="button"
               onClick={() => { haptics.confirm(); onConfirm(); }}
               disabled={pending}
-              className="btn btn-primary btn-lg w-full"
+              className="btn btn-gold btn-lg w-full"
             >
               {pending ? t.dialog.selling : `${t.dialog.sellLabel} · TZS ${fmt(value)}`}
             </button>
