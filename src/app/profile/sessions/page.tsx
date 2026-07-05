@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { I } from "@/components/ui/glyphs";
+import { Chip } from "@/components/ui/chip";
 import { BackLink } from "@/components/ui/back-link";
 import { FiftyMark } from "@/components/brand";
 import { getSession } from "@/lib/server/session";
@@ -68,9 +69,7 @@ export default async function SessionsPage() {
           <div className="flex items-center gap-2">
             <I.device s={16} className="text-info-fg" />
             <p className="font-display text-[14.5px] font-semibold text-text">{device} · {browser}</p>
-            <span className="inline-flex items-center rounded-pill border border-yes-700 bg-yes-500/10 px-2.5 py-0.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.1em] text-yes-300">
-              {t.profile.thisDevice}
-            </span>
+            <Chip variant="yes" size="sm">{t.profile.thisDevice}</Chip>
           </div>
           <form action="/auth/logout" method="POST" className="inline-flex">
             <button

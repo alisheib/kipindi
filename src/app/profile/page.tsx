@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { Chip } from "@/components/ui/chip";
 import { FiftyMark } from "@/components/brand";
 import { AvatarUploader } from "@/components/profile/avatar-uploader";
 import { ProfileNameEditor } from "@/components/profile/name-editor";
@@ -279,16 +280,10 @@ function Stat({ label, value, icon }: { label: string; value: string; icon: Reac
 }
 
 function Pill({ tone, children }: { tone: "yes" | "no" | "info" | "warning" | "neutral"; children: React.ReactNode }) {
-  const cls =
-    tone === "yes"     ? "border-yes-700 bg-yes-500/10 text-yes-300"
-    : tone === "no"      ? "border-no-700 bg-no-500/10 text-no-300"
-    : tone === "info"    ? "border-info-border bg-info-bg/40 text-info-fg"
-    : tone === "warning" ? "border-warning-border bg-warning-bg/40 text-warning-fg"
-    :                      "border-border bg-bg-overlay text-text-muted";
   return (
-    <span className={`inline-flex items-center rounded-pill border px-2.5 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-[0.04em] ${cls}`}>
+    <Chip variant={tone} size="md">
       {children}
-    </span>
+    </Chip>
   );
 }
 

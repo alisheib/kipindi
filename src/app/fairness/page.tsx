@@ -7,6 +7,7 @@
  */
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
+import { Chip } from "@/components/ui/chip";
 import { listMarkets } from "@/lib/server/market-service";
 import { formatDateTimeSafe } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -93,13 +94,9 @@ export default async function FairnessPage() {
                       <Link href={`/markets/${m.id}` as never} className="font-display font-semibold text-text hover:text-teal-300 line-clamp-2">{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</Link>
                     </td>
                     <td className="p-3">
-                      <span className={`inline-flex items-center rounded-pill border px-2.5 py-0.5 text-[12px] font-bold ${
-                        m.resolvedOutcome === "YES" ? "border-yes-700 bg-yes-500/15 text-yes-300"
-                        : m.resolvedOutcome === "NO" ? "border-no-700 bg-no-500/15 text-no-300"
-                        : "border-border bg-bg-overlay text-text-muted"
-                      }`}>
+                      <Chip variant={m.resolvedOutcome === "YES" ? "yes" : m.resolvedOutcome === "NO" ? "no" : "neutral"} size="md">
                         {m.resolvedOutcome ?? "VOID"}
-                      </span>
+                      </Chip>
                     </td>
                     <td className="p-3 font-mono text-[11px] text-text-muted">
                       <div className="flex items-center gap-1">

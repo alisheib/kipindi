@@ -9,6 +9,7 @@ import { SidePicker } from "@/components/markets/side-picker";
 import { ChartToggle } from "@/components/markets/chart-toggle";
 import { SellButton } from "@/components/markets/sell-button";
 import { ResolutionPanel } from "@/components/markets/resolution-panel";
+import { Chip } from "@/components/ui/chip";
 import { cashOutValue, getMarket, impliedYesPct, isClosedByTime, isSelectionClosed, listPositionsForUser } from "@/lib/server/market-service";
 import { getEffectiveConfig } from "@/lib/server/market-config";
 import { getProbabilityChart, seedHistory } from "@/lib/server/market-history";
@@ -160,24 +161,15 @@ export default async function MarketDetail({
       {/* ── Page header — title, badges, share ── */}
       <header className="mt-3 mb-5">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center rounded-pill border border-border bg-bg-elevated px-3 py-1 font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
-            {m.category}
-          </span>
+          <Chip variant="cat" size="lg">{m.category}</Chip>
           {m.status === "LIVE" && (
-            <span className="inline-flex items-center gap-1.5 rounded-pill border border-danger-border bg-danger-bg/40 px-3 py-1 text-[12px] font-semibold text-danger-fg">
-              <span className="live-dot" style={{ width: 6, height: 6 }} />
-              {t.common.live}
-            </span>
+            <Chip variant="live" size="lg" dot>{t.common.live}</Chip>
           )}
           {m.status === "CLOSED" && !isResolved && (
-            <span className="inline-flex items-center gap-1.5 rounded-pill border border-warning-border bg-warning-bg/40 px-3 py-1 text-[12px] font-semibold text-warning-fg">
-              {t.market.closedAwaitingSettlement}
-            </span>
+            <Chip variant="warning" size="lg">{t.market.closedAwaitingSettlement}</Chip>
           )}
           {isResolved && m.resolvedOutcome && (
-            <span className="inline-flex items-center rounded-pill border border-gold-subtleHover bg-gold-subtle px-3 py-1 text-[12px] font-bold text-gold-300">
-              {t.market.resolvedOutcome} · {m.resolvedOutcome}
-            </span>
+            <Chip variant="resolved" size="lg">{t.market.resolvedOutcome} · {m.resolvedOutcome}</Chip>
           )}
           <a
             href={m.sourceUrl}

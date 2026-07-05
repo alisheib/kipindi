@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { Chip } from "@/components/ui/chip";
 import { BackLink } from "@/components/ui/back-link";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
@@ -152,9 +153,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
         <div className="flex items-center gap-2">
           <I.lock s={16} />
           <h2 className="font-display text-[15px] font-semibold text-text">{t.rg.selfExclude}</h2>
-          <span className="ml-auto inline-flex items-center rounded-pill border border-no-700 bg-no-500/10 px-2.5 py-0.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.1em] text-no-300">
-            {t.common.oneWay}
-          </span>
+          <Chip variant="no" size="sm" className="ml-auto">{t.common.oneWay}</Chip>
         </div>
         <p className="text-[12px] text-text-muted leading-snug max-w-prose">
           {t.rg.selfExcludeDescription}
