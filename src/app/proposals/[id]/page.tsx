@@ -25,7 +25,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
 
   const cfg = getProposalsConfig();
   const open = p.status === "REVIEW" || p.status === "CHANGES_REQUESTED";
-  const showPrize = p.status === "RESOLVED" && p.prizePaidTzs > 0 && p.isMine;
+  const showBonus = (p.status === "APPROVED" || p.status === "LISTED" || p.status === "RESOLVED") && p.bonusGrantedTzs > 0 && p.isMine;
 
   return (
     <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
@@ -44,10 +44,16 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
         </div>
       </section>
 
-      {/* Resolution criterion */}
+      {/* Resolution criterion + source */}
       <section className="rounded-xl glass-panel p-4">
         <p className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.12em] font-bold text-text-subtle">{t.common.resolutionCriterion}</p>
         <p className="text-[13px] leading-relaxed text-text-muted">{p.resolutionCriterion}</p>
+        {p.sourceUrl && (
+          <p className="mt-3 flex items-center gap-1.5 text-[12px]">
+            <I.link s={13} className="shrink-0 text-text-subtle" />
+            <a href={p.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" className="truncate text-royal-200 hover:underline">{t.proposals.viewSource}</a>
+          </p>
+        )}
       </section>
 
       {/* Declined / changes-requested notice */}
@@ -64,16 +70,16 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
         </section>
       )}
 
-      {/* Resolved celebration for the proposer */}
-      {showPrize && (
+      {/* Approval bonus celebration for the proposer */}
+      {showBonus && (
         <section className="relative overflow-hidden rounded-xl border p-5 text-center" style={{ borderColor: "var(--gold-700)", background: "linear-gradient(160deg, var(--bg-elevated), var(--royal-950))" }}>
           <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "linear-gradient(180deg, transparent, color-mix(in oklab, var(--gold-700) 16%, transparent))" }} />
           <div className="relative">
             <span className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full text-gold-fg" style={{ background: "linear-gradient(135deg, var(--gold-400), var(--gold-700))" }}><I.trophy s={24} /></span>
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">{t.common.yourProposalResolved}</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">{t.common.yourProposalApproved}</p>
             <p className="mt-1 font-display text-[20px] font-bold">{t.common.earnedAPrize}</p>
-            <p className="my-1 font-mono text-[28px] font-bold text-gold-300">+TZS {p.prizePaidTzs.toLocaleString()}</p>
-            <p className="text-[12.5px] text-text-muted">{t.common.paidToWallet}</p>
+            <p className="my-1 font-mono text-[28px] font-bold text-gold-300">+TZS {p.bonusGrantedTzs.toLocaleString()}</p>
+            <p className="text-[12.5px] text-text-muted">{t.common.creditedToBonusWallet}</p>
           </div>
         </section>
       )}

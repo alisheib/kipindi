@@ -24,8 +24,10 @@ export function StatusBadge({ status, isHot }: { status: ProposalStatus; isHot?:
     variant = "pending"; icon = "clock"; label = t.common.underReview;
   } else if (status === "CHANGES_REQUESTED") {
     variant = "pending"; icon = "edit"; label = t.common.changesRequested;
+  } else if (status === "APPROVED") {
+    variant = "resolved"; icon = "checkCircle"; label = t.common.approved;
   } else if (status === "LISTED") {
-    variant = "active"; icon = "check"; label = t.proposals.filterListed;
+    variant = "active"; icon = "check"; label = t.common.live;
   } else if (status === "RESOLVED") {
     variant = "resolved"; icon = "trophy"; label = t.market.statusResolved;
   } else if (status === "DECLINED") {

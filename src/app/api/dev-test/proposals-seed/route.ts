@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
 
   for (const f of FIXTURES) {
     const proposer = await mkUser();
-    const r = await createProposal(proposer.id, { titleEn: f.title, titleSw: f.title, resolutionCriterion: "Resolves from the official source at the resolution date.", category: f.cat, resolutionDate: futureDate() });
+    const r = await createProposal(proposer.id, { titleEn: f.title, titleSw: f.title, resolutionCriterion: "Resolves from the official source at the resolution date.", category: f.cat, resolutionDate: futureDate(), sourceUrl: "https://www.bbc.com/sport" });
     if (!r.ok) continue;
     created++;
     // Apply up-votes from distinct voters (cap to keep it quick) so Hot threshold can be crossed.
@@ -51,12 +51,12 @@ export async function POST(req: NextRequest) {
   }
 
   // A declined fixture so the player/admin "declined" state is exercised.
-  const dp = await createProposal((await mkUser()).id, { titleEn: "Will a specific candidate win a local seat?", resolutionCriterion: "Resolves from official results.", category: "culture", resolutionDate: futureDate() });
+  const dp = await createProposal((await mkUser()).id, { titleEn: "Will a specific candidate win a local seat?", resolutionCriterion: "Resolves from official results.", category: "culture", resolutionDate: futureDate(), sourceUrl: "https://www.bbc.com/news" });
   if (dp.ok) { await declineProposal(dp.proposal.id, "system_seed", "Politics", "Outside jurisdiction."); created++; }
 
   // Optionally attribute a couple to a real signed-in player so "Mine" populates.
   if (mineFor && await db.user.findById(mineFor)) {
-    const a = await createProposal(mineFor, { titleEn: "My own proposal under review please", resolutionCriterion: "Resolves from an official source.", category: "macro", resolutionDate: futureDate() });
+    const a = await createProposal(mineFor, { titleEn: "My own proposal under review please", resolutionCriterion: "Resolves from an official source.", category: "macro", resolutionDate: futureDate(), sourceUrl: "https://www.bbc.com/news" });
     if (a.ok) { await castVote((await mkUser()).id, a.proposal.id, "up"); created++; }
   }
 

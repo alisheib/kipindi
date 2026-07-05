@@ -29,6 +29,7 @@ export async function POST(req: Request) {
       resolutionCriterion: "Resolves from the official source on the resolution date.",
       category: "sports",
       resolutionDate: new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10),
+      sourceUrl: "https://www.bbc.com/sport",
     });
     if (!r.ok) return NextResponse.json({ ok: false, error: "could not create proposal", detail: r.error });
     const pid = r.proposal.id;

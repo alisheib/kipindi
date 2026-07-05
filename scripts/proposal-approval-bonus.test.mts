@@ -1,0 +1,153 @@
+/**
+ * Proposal → approval-bonus tests (in-memory store; no DATABASE_URL).
+ *
+ * The 2026-07-05 reward model: ONE reward path — a non-withdrawable bonus-wallet
+ * grant (amount = proposals config prizeTzs) paid the INSTANT an officer approves.
+ * Publishing the market and resolving it move NO money.
+ *
+ * Money-safety this guards:
+ *   - source URL is required + validated at create
+ *   - APPROVE grants the bonus exactly once (re-approve blocked, no double-credit)
+ *   - DECLINE / CHANGES grant no bonus
+ *   - GO-LIVE creates the market but grants no extra bonus
+ *   - market resolution (onMarketResolved) grants no bonus, only flips status
+ *   - prizeTzs = 0 approves cleanly with no grant
+ */
+import { db, type StoredWallet } from "../src/lib/server/store.ts";
+import {
+  createProposal,
+  approveProposal,
+  goLiveProposal,
+  declineProposal,
+  requestChanges,
+  onMarketResolved,
+  getProposalDetail,
+} from "../src/lib/server/proposals-service.ts";
+import { getBonusSummary } from "../src/lib/server/bonus-service.ts";
+import { setProposalsConfig } from "../src/lib/server/proposals-config.ts";
+import { setBonusConfig } from "../src/lib/server/bonus-config.ts";
+
+let pass = 0, fail = 0;
+function ok(label: string, cond: boolean, extra?: string) {
+  if (cond) { pass++; } else { fail++; console.log(`FAIL ${label}${extra ? ` — ${extra}` : ""}`); }
+}
+const now = () => new Date().toISOString();
+let seq = 0;
+const SRC = "https://www.bbc.com/test-source"; // format-valid (trust is checked only at go-live)
+const TRUSTED_MACRO = "https://www.bot.go.tz/exchange-rates"; // bot.go.tz — trusted for macro
+const futureDate = () => new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+
+async function mkUser(role: "PLAYER" | "ADMIN" = "PLAYER"): Promise<string> {
+  const id = `usr_${role}_${++seq}`;
+  await db.user.create({
+    id, phoneE164: `+25573${String(seq).padStart(7, "0")}`, passwordHash: null, passwordSalt: null,
+    failedLoginCount: 0, lockedUntil: null, role, status: "ACTIVE", locale: "EN",
+    displayName: null, dob: null, region: null, acceptedTermsVersion: null, acceptedTermsAt: null,
+    marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null,
+    createdAt: now(), updatedAt: now(), lastLoginAt: null, closedAt: null,
+  } as never);
+  await db.wallet.create({
+    id: `wal_${id}`, userId: id, balance: 0, pending: 0, hold: 0, bonusBalance: 0,
+    currency: "TZS", status: "ACTIVE", createdAt: now(), updatedAt: now(),
+  } as StoredWallet);
+  return id;
+}
+const bonusBal = async (uid: string) => (await getBonusSummary(uid)).bonusBalance;
+
+setBonusConfig({ enabled: true, defaultWagerMultiplier: 5, defaultExpiryDays: 30, proposalToBonus: true } as never, "test");
+setProposalsConfig({ enabled: true, prizeTzs: 20_000, hotThreshold: 200, rateLimit: 3 } as never, "test");
+
+const officer = await mkUser("ADMIN");
+
+// ── create: source URL required + validated ──────────────────────────────────
+{
+  const P = await mkUser();
+  const base = { titleEn: "Will Simba SC win the league title?", resolutionCriterion: "Resolves from official TPL standings.", category: "sports" as const, resolutionDate: futureDate() };
+  ok("create rejects missing source URL", (await createProposal(P, { ...base, sourceUrl: "" })).ok === false);
+  ok("create rejects non-http source URL", (await createProposal(P, { ...base, sourceUrl: "ftp://x" })).ok === false);
+  const c = await createProposal(P, { ...base, sourceUrl: SRC });
+  ok("create succeeds with valid source", c.ok === true);
+  ok("proposal starts REVIEW with source persisted", c.ok === true && c.proposal.status === "REVIEW" && c.proposal.sourceUrl === SRC);
+}
+
+// ── approve grants the bonus exactly once ────────────────────────────────────
+{
+  const P = await mkUser();
+  const c = await createProposal(P, { titleEn: "Will the shilling strengthen this quarter?", resolutionCriterion: "Resolves from BoT published rate.", category: "macro", resolutionDate: futureDate(), sourceUrl: SRC });
+  if (!c.ok) throw new Error("setup create failed");
+  const pid = c.proposal.id;
+
+  const before = await bonusBal(P);
+  const a = await approveProposal(pid, officer);
+  ok("approve succeeds", a.ok === true);
+  ok("approve reports grantedTzs = 20,000", a.ok === true && a.grantedTzs === 20_000);
+  ok("bonus wallet credited +20,000", (await bonusBal(P)) - before === 20_000, `Δ=${(await bonusBal(P)) - before}`);
+  const d = (await getProposalDetail(pid, null))!;
+  ok("proposal now APPROVED, not live", d.status === "APPROVED" && d.publishedMarketId === null);
+  ok("bonusGrantedTzs recorded on proposal", d.bonusGrantedTzs === 20_000);
+
+  const afterFirst = await bonusBal(P);
+  const re = await approveProposal(pid, officer);
+  ok("re-approve blocked", re.ok === false);
+  ok("re-approve does not double-credit", (await bonusBal(P)) === afterFirst, `bonus=${await bonusBal(P)}`);
+
+  // Only one PROPOSAL grant exists for this user
+  const grants = (await db.bonusGrant.listByUser(P)).filter((g) => g.source === "PROPOSAL");
+  ok("exactly one proposal bonus grant", grants.length === 1, `count=${grants.length}`);
+
+  // go-live → market created, NO extra bonus
+  const beforeLive = await bonusBal(P);
+  const live = await goLiveProposal(pid, officer, TRUSTED_MACRO);
+  ok("go-live creates a market", live.ok === true && !!(live as { marketId?: string }).marketId, live.ok ? "" : (live as { error: string }).error);
+  ok("go-live grants no extra bonus", (await bonusBal(P)) === beforeLive, `bonus=${await bonusBal(P)}`);
+  const dl = (await getProposalDetail(pid, null))!;
+  ok("proposal now LISTED", dl.status === "LISTED" && !!dl.publishedMarketId);
+
+  // resolution → status only, no bonus
+  if (live.ok && (live as { marketId: string }).marketId) {
+    const beforeResolve = await bonusBal(P);
+    await onMarketResolved((live as { marketId: string }).marketId, { voided: false });
+    const dr = (await getProposalDetail(pid, null))!;
+    ok("resolution flips LISTED→RESOLVED", dr.status === "RESOLVED");
+    ok("resolution grants no bonus", (await bonusBal(P)) === beforeResolve, `bonus=${await bonusBal(P)}`);
+    ok("approval bonus preserved after resolve", dr.bonusGrantedTzs === 20_000);
+  }
+}
+
+// ── decline / changes grant no bonus ─────────────────────────────────────────
+{
+  const P = await mkUser();
+  const c = await createProposal(P, { titleEn: "A proposal that will be declined here", resolutionCriterion: "Resolves from an official source.", category: "culture", resolutionDate: futureDate(), sourceUrl: SRC });
+  if (!c.ok) throw new Error("setup create failed");
+  const dec = await declineProposal(c.proposal.id, officer, "Politics", "Out of scope");
+  ok("decline succeeds", dec.ok === true);
+  ok("declined proposal grants no bonus", (await bonusBal(P)) === 0, `bonus=${await bonusBal(P)}`);
+  ok("approve of a declined proposal blocked", (await approveProposal(c.proposal.id, officer)).ok === false);
+
+  const P2 = await mkUser();
+  const c2 = await createProposal(P2, { titleEn: "A proposal needing minor changes here", resolutionCriterion: "Resolves from an official source.", category: "macro", resolutionDate: futureDate(), sourceUrl: SRC });
+  if (!c2.ok) throw new Error("setup create failed");
+  const rc = await requestChanges(c2.proposal.id, officer, "Tighten the criterion.");
+  ok("request changes succeeds", rc.ok === true);
+  ok("changes-requested grants no bonus", (await bonusBal(P2)) === 0);
+  // still approvable from CHANGES_REQUESTED
+  const a2 = await approveProposal(c2.proposal.id, officer);
+  ok("approve works from CHANGES_REQUESTED", a2.ok === true && (await bonusBal(P2)) === 20_000);
+}
+
+// ── prizeTzs = 0 approves cleanly with no grant ──────────────────────────────
+{
+  setProposalsConfig({ prizeTzs: 0 } as never, "test");
+  const P = await mkUser();
+  const c = await createProposal(P, { titleEn: "A zero-prize proposal to approve here", resolutionCriterion: "Resolves from an official source.", category: "crypto", resolutionDate: futureDate(), sourceUrl: SRC });
+  if (!c.ok) throw new Error("setup create failed");
+  const a = await approveProposal(c.proposal.id, officer);
+  ok("approve succeeds with zero prize", a.ok === true && a.grantedTzs === 0);
+  ok("zero-prize grants no bonus", (await bonusBal(P)) === 0);
+  const d = (await getProposalDetail(c.proposal.id, null))!;
+  ok("zero-prize proposal still APPROVED", d.status === "APPROVED");
+  setProposalsConfig({ prizeTzs: 20_000 } as never, "test");
+}
+
+console.log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILED`} — ${pass} passed, ${fail} failed`);
+process.exit(fail === 0 ? 0 : 1);

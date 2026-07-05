@@ -31,9 +31,9 @@ export default async function AdminProposalsPage() {
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Proposals pending"      sw="Yanasubiri"   value={fmt(stats.pending)} delta="awaiting review" deltaDir="flat" />
-          <AdminKpi label="Listed from proposals"  sw="Yaliyoorodheshwa" value={fmt(stats.listedFromProposals)} delta="all-time" deltaDir="flat" />
-          <AdminKpi label="Prizes paid"            sw="Tuzo zilizolipwa" value={`TZS ${fmt(stats.prizesPaidTzs)}`} gold delta="all-time" />
+          <AdminKpi label="Pending review"         sw="Yanasubiri"   value={fmt(stats.pending)} delta="awaiting review" deltaDir="flat" />
+          <AdminKpi label="Approved · to publish"  sw="Yamekubaliwa" value={fmt(stats.approvedAwaitingLive)} delta="ready to go live" deltaDir="flat" />
+          <AdminKpi label="Bonuses granted"        sw="Bonasi zilizolipwa" value={`TZS ${fmt(stats.bonusesGrantedTzs)}`} gold delta="all-time" />
           <AdminKpi label="Top proposer"           sw="Bingwa"       value={stats.topProposer?.handle ?? "—"} gold delta={stats.topProposer ? `${stats.topProposer.listed} listed` : "none yet"} deltaDir="flat" />
         </div>
 

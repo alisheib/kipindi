@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * StatusTimeline — vertical stepper: Submitted → Under review → Listed →
- * Resolved → Paid. Done/current steps use gold; future steps are muted.
+ * StatusTimeline — vertical stepper: Submitted → Under review → Approved →
+ * Live → Resolved. Done/current steps use gold; future steps are muted.
  */
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
@@ -13,9 +13,9 @@ export function StatusTimeline({ current }: { current: number }) {
   const steps = [
     t.common.submitted,
     t.common.underReview,
-    t.proposals.filterListed,
+    t.common.approved,
+    t.common.live,
     t.market.statusResolved,
-    t.market.paidLabel,
   ];
 
   return (

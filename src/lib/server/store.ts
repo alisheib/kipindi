@@ -303,7 +303,7 @@ export type StoredReferralReward = {
  * RESOLVED. Vote tallies are denormalised onto up/down and kept in sync by
  * the proposals service; individual votes live in `proposalVotes`.
  */
-export type ProposalStatus = "REVIEW" | "CHANGES_REQUESTED" | "LISTED" | "RESOLVED" | "DECLINED";
+export type ProposalStatus = "REVIEW" | "CHANGES_REQUESTED" | "APPROVED" | "LISTED" | "RESOLVED" | "DECLINED";
 export type ProposalCategory = "sports" | "macro" | "weather" | "crypto" | "culture" | "infrastructure";
 
 export type StoredProposal = {
@@ -316,11 +316,14 @@ export type StoredProposal = {
   resolutionCriterion: string;
   category: ProposalCategory;
   resolutionDate: string;            // ISO date (YYYY-MM-DD)
+  sourceUrl: string | null;          // player-supplied trusted source (required at app layer)
   status: ProposalStatus;
   up: number;
   down: number;
-  publishedMarketId: string | null;  // set when an officer approves & lists
-  prizePaidTzs: number;              // 0 until listed + resolved + paid
+  publishedMarketId: string | null;  // set when an officer publishes it live (go-live)
+  bonusGrantedTzs: number;           // bonus (TZS) granted to the proposer at APPROVAL (0 until approved)
+  bonusGrantId: string | null;       // the BonusGrant credited at approval (idempotency/audit)
+  approvedAt: string | null;         // when the officer approved (bonus granted)
   declineReason: string | null;
   declineNote: string | null;
   changeNote: string | null;         // officer "request changes" note

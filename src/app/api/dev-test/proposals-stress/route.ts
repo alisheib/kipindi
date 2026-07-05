@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     for (let i = 0; i < PROPOSERS; i++) {
       const proposer = await mkUser();
       for (let j = 0; j < RATE + 1; j++) {
-        const r = await createProposal(proposer.id, { titleEn: `Stress proposal ${i}-${j} long enough`, resolutionCriterion: "Resolves from an official source at the date.", category: "sports", resolutionDate: futureDate() });
+        const r = await createProposal(proposer.id, { titleEn: `Stress proposal ${i}-${j} long enough`, resolutionCriterion: "Resolves from an official source at the date.", category: "sports", resolutionDate: futureDate(), sourceUrl: "https://www.bbc.com/sport" });
         ops++;
         if (r.ok) proposalIds.push(r.proposal.id);
         else rateBlocks++;
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
 
     // CONCURRENCY: many distinct voters upvote ONE fresh proposal at once.
     const cProposer = await mkUser();
-    const cRes = await createProposal(cProposer.id, { titleEn: "Concurrency target proposal long enough", resolutionCriterion: "Resolves from an official source at the date.", category: "macro", resolutionDate: futureDate() });
+    const cRes = await createProposal(cProposer.id, { titleEn: "Concurrency target proposal long enough", resolutionCriterion: "Resolves from an official source at the date.", category: "macro", resolutionDate: futureDate(), sourceUrl: "https://www.bbc.com/news" });
     const cPid = (cRes as { proposal: { id: string } }).proposal.id;
     const cVoters = await Promise.all(Array.from({ length: 150 }, () => mkUser()));
     await Promise.all(cVoters.map((v) => Promise.resolve().then(() => castVote(v.id, cPid, "up"))));

@@ -755,6 +755,117 @@ export function referralEarningHtml({ type, amountTzs }: {
   `);
 }
 
+// ─── Player market-proposal emails ──────────────────────────────────────
+
+/** Player: proposal received, under review. Sent on submit. */
+export function proposalSubmittedHtml({ titleEn, reference, submittedAt }: {
+  titleEn: string; reference: string; submittedAt: string;
+}): string {
+  return wrap(`
+    ${eyebrow("Proposal received", "Pendekezo limepokelewa")}
+    ${heading("The 50pick team is reviewing your proposal")}
+    ${subtitle(`Thanks for suggesting a market. Our team is reviewing "${titleEn}" and we'll notify you as soon as there's a decision.`)}
+    ${subtitleSw("Asante kwa kupendekeza soko. Timu yetu inalikagua na tutakujulisha haraka iwezekanavyo.")}
+    ${detailRows([
+      { label: "Proposal", value: titleEn },
+      { label: "Reference", value: reference },
+      { label: "Submitted", value: fmtDateTime(submittedAt) },
+      { label: "Status", value: "Under review" },
+    ])}
+    ${ctaButton("/proposals?f=mine", "View your proposals · Tazama")}
+  `);
+}
+
+/** Officers: a new proposal is awaiting review. Carries source link + proposer. */
+export function proposalSubmittedAdminHtml({ reference, proposer, titleEn, titleSw, category, sourceUrl, reviewUrl }: {
+  reference: string; proposer: string; titleEn: string; titleSw: string | null; category: string; sourceUrl: string; reviewUrl: string;
+}): string {
+  const srcIsLink = /^https?:\/\//.test(sourceUrl);
+  const srcHtml = srcIsLink
+    ? `<a href="${esc(sourceUrl)}" style="color:${BRAND_LINK};text-decoration:none;word-break:break-all">${esc(sourceUrl)}</a>`
+    : esc(sourceUrl);
+  return wrap(`
+    ${eyebrow("Proposal · awaiting review")}
+    ${heading("New market proposal to review")}
+    ${subtitle(`${proposer} submitted a market proposal. Approve it to pay the proposer's bonus, or send it back / decline.`)}
+    ${detailRows([
+      { label: "Reference", value: reference },
+      { label: "Proposer", value: proposer },
+      { label: "Title (EN)", value: titleEn },
+      ...(titleSw ? [{ label: "Title (SW)", value: titleSw }] : []),
+      { label: "Category", value: category },
+    ])}
+    <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${TEXT_MUTED};line-height:1.55"><span style="font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.14em;color:${TEXT_FAINT}">Source</span><br>${srcHtml}</p>
+    ${ctaButton(reviewUrl, "Review proposal")}
+  `);
+}
+
+/** Player: proposal approved — reward bonus credited. */
+export function proposalApprovedHtml({ titleEn, amountTzs, wagerRequiredTzs }: {
+  titleEn: string; amountTzs: number; wagerRequiredTzs: number;
+}): string {
+  if (amountTzs > 0) {
+    return wrap(`
+      ${eyebrow("Proposal approved", "Pendekezo limekubaliwa")}
+      ${heading(`Approved · bonus ${fmtTzs(amountTzs)} credited`, GILT)}
+      ${subtitle(`Great news — "${titleEn}" was approved and your reward has landed in your bonus wallet.`)}
+      ${subtitleSw("Habari njema — pendekezo lako limekubaliwa na zawadi yako ipo kwenye pochi yako ya bonasi.")}
+      ${detailRows([
+        { label: "Bonus credited", value: fmtTzs(amountTzs), tone: "good" },
+        ...(wagerRequiredTzs > 0 ? [{ label: "Play-through", value: fmtTzs(wagerRequiredTzs) }] : []),
+        { label: "Wallet", value: "Bonus wallet" },
+      ])}
+      ${wagerRequiredTzs > 0 ? subtitle(`Play through ${fmtTzs(wagerRequiredTzs)} in bets and it becomes withdrawable cash.`) : ""}
+      ${ctaButton("/wallet", "View bonus wallet · Pochi ya bonasi")}
+    `);
+  }
+  return wrap(`
+    ${eyebrow("Proposal approved", "Pendekezo limekubaliwa")}
+    ${heading("Your proposal was approved")}
+    ${subtitle(`"${titleEn}" was approved by the 50pick team. Thanks for helping shape the markets.`)}
+    ${subtitleSw("Pendekezo lako limekubaliwa na timu ya 50pick. Asante.")}
+    ${ctaButton("/proposals?f=mine", "View your proposals · Tazama")}
+  `);
+}
+
+/** Player: proposal is now a live market. */
+export function proposalListedHtml({ titleEn, marketId }: { titleEn: string; marketId: string }): string {
+  return wrap(`
+    ${eyebrow("Proposal is live", "Pendekezo ni soko sasa")}
+    ${heading("Your proposal is now a live market")}
+    ${subtitle(`"${titleEn}" is open for predictions. Share it and watch the pool build.`)}
+    ${subtitleSw("Soko lako sasa liko wazi kwa utabiri. Lishiriki.")}
+    ${ctaButton(`/markets/${marketId}`, "View market · Tazama soko")}
+  `);
+}
+
+/** Player: changes requested before the proposal can be approved. */
+export function proposalChangesHtml({ titleEn, note }: { titleEn: string; note: string | null }): string {
+  return wrap(`
+    ${eyebrow("Changes requested", "Marekebisho yanahitajika")}
+    ${heading("A tweak is needed on your proposal")}
+    ${subtitle(note ? `On "${titleEn}", our team noted: ${note}` : `"${titleEn}" needs a small change before it can be approved.`)}
+    ${subtitleSw("Pendekezo lako linahitaji marekebisho madogo kabla ya kukubaliwa.")}
+    ${ctaButton("/proposals?f=mine", "View your proposals · Tazama")}
+  `);
+}
+
+/** Player: proposal declined, with reason. No bonus. */
+export function proposalDeclinedHtml({ titleEn, reason, note }: { titleEn: string; reason: string; note: string | null }): string {
+  return wrap(`
+    ${eyebrow("Proposal update", "Taarifa ya pendekezo")}
+    ${heading("We couldn't list this proposal")}
+    ${subtitle(`Thanks for suggesting "${titleEn}". After review it wasn't a fit this time.`)}
+    ${detailRows([
+      { label: "Reason", value: reason },
+      ...(note ? [{ label: "Note", value: note }] : []),
+    ])}
+    ${subtitle("Don't let this stop you — propose another market anytime.")}
+    ${subtitleSw("Usikate tamaa — pendekeza soko lingine wakati wowote.")}
+    ${ctaButton("/proposals/new", "Propose another · Pendekeza")}
+  `);
+}
+
 /** Admin alert — Market Sentinel sweep failing. Kit-styled (was bespoke HTML). */
 export function sentinelDownAdminHtml({ reason, errorCount, sampleError }: {
   reason: string; errorCount: number; sampleError: string;

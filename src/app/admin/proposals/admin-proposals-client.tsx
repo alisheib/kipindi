@@ -13,7 +13,7 @@ import { StatusBadge } from "@/components/proposals/status-badge";
 import { CategoryIcon, CATEGORY_LABEL } from "@/components/proposals/category-icon";
 import type { ProposalsConfig } from "@/lib/server/proposals-config";
 import type { AdminQueueRow, DeclineReason } from "@/lib/server/proposals-service";
-import { saveProposalsConfigAction, approveProposalAction, declineProposalAction, requestChangesAction } from "./actions";
+import { saveProposalsConfigAction, approveProposalAction, goLiveProposalAction, declineProposalAction, requestChangesAction } from "./actions";
 
 const DECLINE_REASONS: DeclineReason[] = ["Politics", "Ambiguous outcome", "No official source", "Duplicate", "Past resolution", "Outside jurisdiction", "Officer decision"];
 
@@ -38,7 +38,7 @@ function CField({ label, hint, prefix, suffix, value, onChange, width }: { label
   );
 }
 
-type QFilter = "all" | "review" | "flagged";
+type QFilter = "all" | "review" | "approved" | "flagged";
 
 const PER_PAGE = 20;
 type QSort = "score" | "age" | "status" | "title";
@@ -126,7 +126,11 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
 
   // Filter → sort → only the current page is ever materialised in the DOM.
   const filteredQueue = useMemo(
-    () => queue.filter((q) => qFilter === "all" ? true : qFilter === "review" ? (q.status === "REVIEW" || q.status === "CHANGES_REQUESTED") : (q.score < 0 || (q.down > 0 && q.down >= q.up))),
+    () => queue.filter((q) =>
+      qFilter === "all" ? true
+      : qFilter === "review" ? (q.status === "REVIEW" || q.status === "CHANGES_REQUESTED")
+      : qFilter === "approved" ? q.status === "APPROVED"
+      : (q.score < 0 || (q.down > 0 && q.down >= q.up))),
     [queue, qFilter],
   );
   const sortedQueue = useMemo(() => {
@@ -153,6 +157,10 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
 
   const sel = queue.find((q) => q.id === selId) ?? shownQueue[0] ?? null;
 
+  // Pre-fill the go-live source field with the proposer's submitted source URL
+  // whenever the selected proposal changes (officer can edit before publishing).
+  useEffect(() => { setSourceUrl(sel?.sourceUrl ?? ""); }, [sel?.id, sel?.sourceUrl]);
+
   const onSort = (f: QSort) => {
     if (f === sort) setDir((d) => (d === "desc" ? "asc" : "desc"));
     else { setSort(f); setDir("desc"); }
@@ -168,14 +176,25 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
   });
 
   const approve = () => { if (!sel) return;
-    if (!sourceUrl.trim()) { toast({ title: "Source URL required", description: "Enter the trusted source URL before approving.", variant: "danger" }); return; }
-    overlay.run("Approving & listing…", "Creating a live market from this proposal.");
+    overlay.run("Approving & paying bonus…", "Crediting the proposer's bonus wallet.");
     start(async () => {
       try {
-        const r = await approveProposalAction(sel.id, sourceUrl.trim());
-        if (r.ok) { overlay.succeed("Approved & listed", `Market ${r.marketId} created.`); resetReview(); refresh(); }
+        const r = await approveProposalAction(sel.id);
+        if (r.ok) { overlay.succeed("Approved · bonus paid", r.grantedTzs > 0 ? `TZS ${r.grantedTzs.toLocaleString()} credited to the proposer's bonus wallet.` : "Proposer notified. Publish it live when ready."); resetReview(); refresh(); }
         else overlay.fail("Couldn't approve", r.error);
       } catch { overlay.fail("Couldn't approve", "Server error — please try again."); }
+    });
+  };
+
+  const goLive = () => { if (!sel) return;
+    if (!sourceUrl.trim()) { toast({ title: "Source URL required", description: "Confirm the trusted source URL before publishing.", variant: "danger" }); return; }
+    overlay.run("Publishing live…", "Creating a live market from this proposal.");
+    start(async () => {
+      try {
+        const r = await goLiveProposalAction(sel.id, sourceUrl.trim());
+        if (r.ok) { overlay.succeed("Published live", `Market ${r.marketId} created.`); resetReview(); refresh(); }
+        else overlay.fail("Couldn't publish", r.error);
+      } catch { overlay.fail("Couldn't publish", "Server error — please try again."); }
     });
   };
 
@@ -202,6 +221,7 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
   };
 
   const open = sel && (sel.status === "REVIEW" || sel.status === "CHANGES_REQUESTED");
+  const approved = sel && sel.status === "APPROVED";
 
   return (
     <div className="space-y-4">
@@ -211,7 +231,7 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
           <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
             <div className="text-[14px] font-bold">Queue · sorted by votes</div>
             <div className="flex gap-1.5">
-              {(["all", "review", "flagged"] as QFilter[]).map((f) => (
+              {(["all", "review", "approved", "flagged"] as QFilter[]).map((f) => (
                 <button key={f} onClick={() => setQFilter(f)} className="rounded-pill border px-2.5 py-0.5 text-[11px] font-semibold capitalize transition-colors"
                   style={qFilter === f ? { borderColor: "color-mix(in oklab, var(--gold-500) 40%, transparent)", background: "color-mix(in oklab, var(--gold-500) 14%, transparent)", color: "var(--gold-200)" } : { borderColor: "var(--border)", color: "var(--text-muted)" }}>{f}</button>
               ))}
@@ -263,6 +283,15 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
               <Cap>Resolution criterion</Cap>
               <p className="mt-1 text-[12.5px] leading-relaxed text-text-muted">{sel.resolutionCriterion}</p>
               <p className="mt-1 font-mono text-[10.5px] text-text-subtle">resolves {sel.resolutionDate}</p>
+              {sel.sourceUrl && (
+                <p className="mt-1.5 flex items-center gap-1.5 text-[11.5px]">
+                  <I.link s={12} className="shrink-0 text-text-subtle" />
+                  <a href={sel.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" className="truncate text-royal-200 hover:underline" title={sel.sourceUrl}>{sel.sourceUrl}</a>
+                </p>
+              )}
+              {sel.bonusGrantedTzs > 0 && (
+                <p className="mt-1.5 flex items-center gap-1.5 font-mono text-[10.5px] text-gold-300"><I.coins s={12} />bonus paid · TZS {sel.bonusGrantedTzs.toLocaleString()}</p>
+              )}
             </div>
 
             {/* Vote stats — rank only */}
@@ -281,20 +310,28 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
 
             <div className="h-px bg-border" />
 
-            {!open ? (
-              <p className="text-[12.5px] text-text-muted">This proposal is <strong>{sel.status.toLowerCase().replace("_", " ")}</strong> — no further action.</p>
-            ) : !declining ? (
+            {approved ? (
               <div className="space-y-2.5">
+                <div className="rounded-md border p-2.5" style={{ borderColor: "color-mix(in oklab, var(--gold-500) 30%, var(--border))", background: "color-mix(in oklab, var(--gold-500) 7%, transparent)" }}>
+                  <p className="flex items-center gap-1.5 text-[11.5px] text-gold-200"><I.checkCircle s={13} />Approved &amp; bonus paid. Publish it live to open the market — no further reward is granted.</p>
+                </div>
                 <div>
                   <div className="mb-1.5 text-[12px] font-semibold text-text">Source URL · Chanzo</div>
                   <Input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://... (trusted source for resolution)" mono size="sm" />
-                  <p className="mt-1 text-[10.5px] text-text-subtle">Required — must be on the approved source registry.</p>
+                  <p className="mt-1 text-[10.5px] text-text-subtle">Pre-filled from the proposal · must be on the approved source registry.</p>
                 </div>
+                <Button variant="gold" size="md" fullWidth loading={pending} leading={<I.arrowRight size={15} />} onClick={goLive}>Publish live · Orodhesha</Button>
+              </div>
+            ) : !open ? (
+              <p className="text-[12.5px] text-text-muted">This proposal is <strong>{sel.status.toLowerCase().replace("_", " ")}</strong> — no further action.</p>
+            ) : !declining ? (
+              <div className="space-y-2.5">
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="gold" size="md" loading={pending} leading={<I.checkCircle size={15} />} onClick={approve}>Approve &amp; list · Orodhesha</Button>
+                  <Button variant="gold" size="md" loading={pending} leading={<I.checkCircle size={15} />} onClick={approve}>Approve &amp; pay bonus · Kubali</Button>
                   <Button variant="ghost" size="md" loading={pending} leading={<I.edit s={15} />} onClick={sendBack}>Request changes</Button>
                   <Button variant="ghost" size="md" leading={<I.xCircle size={15} />} onClick={() => setDeclining(true)} className="!text-claret-300">Decline</Button>
                 </div>
+                <p className="text-[10.5px] text-text-subtle">Approving instantly credits the proposer&apos;s bonus wallet. Publishing the market is a separate step afterwards.</p>
               </div>
             ) : (
               <div>
@@ -333,7 +370,7 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
           <Button variant="gold" size="sm" leading={<I.check s={14} />} loading={pending} onClick={saveConfig}>Save</Button>
         </div>
         <div className="flex flex-wrap gap-5 p-4">
-          <CField label="Listing + resolution prize" hint="Paid when listed AND resolved" prefix="TZS" width={200} value={c.prizeTzs} onChange={(n) => setC((p) => ({ ...p, prizeTzs: n }))} />
+          <CField label="Approval bonus" hint="Bonus paid to the proposer on approval" prefix="TZS" width={200} value={c.prizeTzs} onChange={(n) => setC((p) => ({ ...p, prizeTzs: n }))} />
           <CField label="“Hot” vote threshold" hint="Net votes to flag as Hot" suffix="votes" width={180} value={c.hotThreshold} onChange={(n) => setC((p) => ({ ...p, hotThreshold: n }))} />
           <CField label="Rate limit" hint="Max open proposals per player" suffix="open" width={180} value={c.rateLimit} onChange={(n) => setC((p) => ({ ...p, rateLimit: n }))} />
         </div>

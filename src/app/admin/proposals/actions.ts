@@ -7,7 +7,8 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { setProposalsConfig, type ProposalsConfig } from "@/lib/server/proposals-config";
 import {
-  approveAndList,
+  approveProposal,
+  goLiveProposal,
   requestChanges,
   declineProposal,
   type DeclineReason,
@@ -38,15 +39,30 @@ export async function saveProposalsConfigAction(config: ProposalsConfig) {
   }
 }
 
-export async function approveProposalAction(proposalId: string, sourceUrl: string) {
+/** Approve a proposal and grant the proposer's bonus INSTANTLY (exactly-once).
+ *  Does NOT publish a market — that's a separate step (goLiveProposalAction). */
+export async function approveProposalAction(proposalId: string) {
   const s = await ensureAdmin();
   try {
-    const r = await approveAndList(proposalId, s.userId, sourceUrl);
+    const r = await approveProposal(proposalId, s.userId);
     revalidatePath("/admin/proposals");
     revalidatePath("/proposals");
     return r;
   } catch (err) {
     return { ok: false as const, error: safeError(err, "Approve failed") };
+  }
+}
+
+/** Publish an APPROVED proposal live — creates the real market. No bonus here. */
+export async function goLiveProposalAction(proposalId: string, sourceUrl: string) {
+  const s = await ensureAdmin();
+  try {
+    const r = await goLiveProposal(proposalId, s.userId, sourceUrl);
+    revalidatePath("/admin/proposals");
+    revalidatePath("/proposals");
+    return r;
+  } catch (err) {
+    return { ok: false as const, error: safeError(err, "Go live failed") };
   }
 }
 

@@ -303,11 +303,14 @@ function toStoredProposal(p: any): StoredProposal {
     resolutionCriterion: p.resolutionCriterion,
     category: p.category as StoredProposal["category"],
     resolutionDate: p.resolutionDate,
+    sourceUrl: p.sourceUrl ?? null,
     status: p.status,
     up: p.up,
     down: p.down,
     publishedMarketId: p.publishedMarketId,
-    prizePaidTzs: num(p.prizePaidTzs),
+    bonusGrantedTzs: num(p.bonusGrantedTzs),
+    bonusGrantId: p.bonusGrantId ?? null,
+    approvedAt: iso(p.approvedAt),
     declineReason: p.declineReason,
     declineNote: p.declineNote,
     changeNote: p.changeNote,
@@ -998,11 +1001,14 @@ export const prismaDb = {
           resolutionCriterion: p.resolutionCriterion,
           category: p.category,
           resolutionDate: p.resolutionDate,
+          sourceUrl: p.sourceUrl,
           status: p.status,
           up: p.up,
           down: p.down,
           publishedMarketId: p.publishedMarketId,
-          prizePaidTzs: p.prizePaidTzs,
+          bonusGrantedTzs: p.bonusGrantedTzs,
+          bonusGrantId: p.bonusGrantId,
+          approvedAt: p.approvedAt ? new Date(p.approvedAt) : null,
           declineReason: p.declineReason,
           declineNote: p.declineNote,
           changeNote: p.changeNote,
@@ -1029,7 +1035,7 @@ export const prismaDb = {
         const data: Record<string, any> = {};
         for (const [k, v] of Object.entries(patch)) {
           if (k === "createdAt" || k === "updatedAt") continue;
-          if (k === "reviewedAt") {
+          if (k === "reviewedAt" || k === "approvedAt") {
             data[k] = v ? new Date(v as string) : null;
           } else {
             data[k] = v;

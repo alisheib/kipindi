@@ -718,6 +718,7 @@ enum PositionStatus {
 enum ProposalStatus {
   REVIEW
   CHANGES_REQUESTED
+  APPROVED
   LISTED
   RESOLVED
   DECLINED
@@ -833,11 +834,17 @@ model Proposal {
   resolutionCriterion String
   category            String // sports, macro, weather, crypto, culture, infrastructure
   resolutionDate      String // ISO date YYYY-MM-DD
+  sourceUrl           String? // player-supplied trusted source for resolution (required at app layer)
   status              ProposalStatus @default(REVIEW)
   up                  Int            @default(0)
   down                Int            @default(0)
   publishedMarketId   String?
-  prizePaidTzs        Decimal        @default(0) @db.Decimal(18, 2)
+  // Bonus (TZS) granted to the proposer's bonus wallet at APPROVAL. Column kept
+  // as prizePaidTzs (@map) to avoid a data migration when the reward model moved
+  // from pay-on-resolve to instant-on-approval.
+  bonusGrantedTzs     Decimal        @default(0) @db.Decimal(18, 2) @map("prizePaidTzs")
+  bonusGrantId        String? // the BonusGrant credited at approval (idempotency/audit trail)
+  approvedAt          DateTime?
   declineReason       String?
   declineNote         String?
   changeNote          String?

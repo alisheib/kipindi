@@ -322,8 +322,44 @@ export function notifyProposalUnderReview(userId: string, opts: { titleEn: strin
     userId, kind: "PROPOSAL",
     titleEn: "Your proposal is under review",
     titleSw: "Pendekezo lako linakaguliwa",
-    bodyEn: `"${opts.titleEn.slice(0, 60)}" — an officer will review it shortly.`,
-    bodySw: "Afisa atalikagua hivi karibuni.",
+    bodyEn: `"${opts.titleEn.slice(0, 60)}" — the 50pick team is reviewing it. We'll notify you ASAP.`,
+    bodySw: "Timu ya 50pick inalikagua. Tutakujulisha haraka iwezekanavyo.",
+    href: "/proposals",
+  });
+}
+
+/** In-app alert to an officer that a NEW proposal is awaiting review. Lands in
+ *  the main admin bell and deep-links to the proposals review console. */
+export function notifyAdminProposalReview(adminUserId: string, opts: { proposerLabel: string; titleEn: string; proposalId: string }) {
+  return notify({
+    userId: adminUserId, kind: "PROPOSAL",
+    titleEn: "New proposal to review",
+    titleSw: "Pendekezo jipya la kukagua",
+    bodyEn: `${opts.proposerLabel} proposed "${opts.titleEn.slice(0, 60)}" — tap to review.`,
+    bodySw: `${opts.proposerLabel} amependekeza soko jipya — bonyeza kukagua.`,
+    href: "/admin/proposals",
+  });
+}
+
+/** Proposer notice: their proposal was approved and the reward bonus was credited. */
+export function notifyProposalApproved(userId: string, opts: { titleEn: string; amountTzs: number }) {
+  if (opts.amountTzs > 0) {
+    const amount = Math.round(opts.amountTzs).toLocaleString("en-US");
+    return notify({
+      userId, kind: "PROPOSAL",
+      titleEn: `Proposal approved · bonus TZS ${amount} credited`,
+      titleSw: `Pendekezo limekubaliwa · bonasi TZS ${amount}`,
+      bodyEn: `"${opts.titleEn.slice(0, 55)}" was approved. TZS ${amount} is in your bonus wallet.`,
+      bodySw: `Pendekezo lako limekubaliwa. TZS ${amount} ipo kwenye pochi yako ya bonasi.`,
+      href: "/wallet",
+    });
+  }
+  return notify({
+    userId, kind: "PROPOSAL",
+    titleEn: "Your proposal was approved",
+    titleSw: "Pendekezo lako limekubaliwa",
+    bodyEn: `"${opts.titleEn.slice(0, 60)}" was approved by the 50pick team.`,
+    bodySw: "Pendekezo lako limekubaliwa na timu ya 50pick.",
     href: "/proposals",
   });
 }
@@ -357,17 +393,6 @@ export function notifyProposalDeclined(userId: string, opts: { titleEn: string; 
     titleSw: "Pendekezo limekataliwa",
     bodyEn: `"${opts.titleEn.slice(0, 50)}" — reason: ${opts.reason}.`,
     bodySw: `Sababu: ${opts.reason}.`,
-    href: "/proposals",
-  });
-}
-
-export function notifyProposalResolvedPaid(userId: string, opts: { titleEn: string; amountTzs: number }) {
-  return notify({
-    userId, kind: "PROPOSAL",
-    titleEn: `Your proposal resolved — you earned TZS ${opts.amountTzs.toLocaleString()}`,
-    titleSw: `Pendekezo limetatuliwa — umepata TZS ${opts.amountTzs.toLocaleString()}`,
-    bodyEn: "Listed & resolved. Paid to your wallet. Tap to view.",
-    bodySw: "Imeorodheshwa na kutatuliwa. Imelipwa kwenye pochi yako.",
     href: "/proposals",
   });
 }

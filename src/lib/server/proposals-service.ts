@@ -1,16 +1,25 @@
 /**
  * Player market-proposals service (Feature 2).
  *
- *  - createProposal: validated submission, per-player open-proposal rate limit
- *  - castVote: one up/down vote per user, togg*able, ranking only (never decides)
+ *  - createProposal: validated submission (source URL REQUIRED), per-player
+ *    open-proposal rate limit; on submit → notify + email BOTH the proposer
+ *    ("we're reviewing") and every market-ops officer ("new proposal to review").
+ *  - castVote: one up/down vote per user, toggl*able, ranking only (never decides)
  *  - board / detail read models with the requesting user's vote + derived "Hot"
- *  - officer actions: approve & list (→ real Market via market-service),
- *    request changes, decline (reason required) — an officer ALWAYS decides
- *  - onMarketResolved: pays the proposer the fixed prize once their market is
- *    listed AND resolved (real outcome, not VOID), idempotently
+ *  - officer actions:
+ *      · approveProposal — grants the proposer's bonus INSTANTLY (exactly-once)
+ *        and marks the proposal APPROVED. Does NOT publish a market.
+ *      · goLiveProposal  — separate publish step: creates the real Market from an
+ *        APPROVED proposal (no bonus logic here — already granted at approval).
+ *      · requestChanges / declineProposal — an officer ALWAYS decides; no bonus.
+ *  - onMarketResolved: status reflection only (LISTED → RESOLVED). The reward is
+ *    granted at approval, so resolution moves NO money.
  *  - admin stats for the review console
  *
- * Money rule: whole TZS. Prizes go through wallet-service.creditInternal.
+ * Reward model (2026-07-05 rebuild): ONE reward path — a non-withdrawable
+ * bonus-wallet grant (amount = proposals config prizeTzs) paid the instant an
+ * officer approves. Exactly-once via the proposal status guard + the bonus grant's
+ * sourceRef idempotency key. There is NO pay-on-listing/resolution logic anymore.
  */
 import {
   db,
@@ -20,20 +29,35 @@ import {
   type ProposalStatus,
 } from "./store";
 import { getProposalsConfig } from "./proposals-config";
+import { getBonusConfig } from "./bonus-config";
 import { audit } from "./audit";
 import { randomId } from "./crypto";
 import { withLock } from "./locks";
 import { maskName } from "./affiliate-service";
-import { creditInternal } from "./wallet-service";
 import { creditBonus } from "./bonus-service";
-import { getBonusConfig } from "./bonus-config";
+import { creditInternal } from "./wallet-service";
+import { displayLabel } from "@/lib/display-label";
+import { resolvePhoneEmail } from "./email-map";
 import {
   notifyProposalUnderReview,
+  notifyAdminProposalReview,
+  notifyProposalApproved,
   notifyProposalListed,
   notifyProposalDeclined,
   notifyProposalChanges,
-  notifyProposalResolvedPaid,
 } from "./notification-service";
+import {
+  sendEmail,
+  sendEmailToUser,
+  proposalSubmittedHtml,
+  proposalSubmittedAdminHtml,
+  proposalApprovedHtml,
+  proposalDeclinedHtml,
+  proposalChangesHtml,
+  proposalListedHtml,
+} from "./email";
+
+const BASE_URL = () => process.env.NEXT_PUBLIC_APP_URL || "https://kipindi-production.up.railway.app";
 
 export const PROPOSAL_CATEGORIES: ProposalCategory[] = ["sports", "macro", "weather", "crypto", "culture", "infrastructure"];
 export const DECLINE_REASONS = [
@@ -42,11 +66,34 @@ export const DECLINE_REASONS = [
 ] as const;
 export type DeclineReason = (typeof DECLINE_REASONS)[number];
 
+/** States where a proposal is still open for officer triage / player counts. */
 const OPEN_STATES: ProposalStatus[] = ["REVIEW", "CHANGES_REQUESTED"];
 
 /** Proposal category → market category (markets have no "infrastructure"). */
 function toMarketCategory(c: ProposalCategory): "sports" | "macro" | "weather" | "crypto" | "culture" | "tech" {
   return c === "infrastructure" ? "tech" : c;
+}
+
+/**
+ * Validate a player-supplied source URL. Must be a well-formed http(s) URL,
+ * bounded in length. Returns the normalised (trimmed) URL on success. Kept in
+ * one place so create-form (client) and createProposal (server) agree.
+ */
+export const MAX_SOURCE_URL_LEN = 500;
+export function validateSourceUrl(raw: string | null | undefined): { ok: true; url: string } | { ok: false; error: string } {
+  const url = (raw ?? "").trim();
+  if (!url) return { ok: false, error: "A source link is required so the outcome can be verified." };
+  if (url.length > MAX_SOURCE_URL_LEN) return { ok: false, error: `Source link must be under ${MAX_SOURCE_URL_LEN} characters.` };
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return { ok: false, error: "Enter a valid link, e.g. https://example.com/results." };
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return { ok: false, error: "Source link must start with http:// or https://." };
+  }
+  return { ok: true, url };
 }
 
 // ── Create ─────────────────────────────────────────────────────────────
@@ -58,6 +105,7 @@ export type CreateProposalInput = {
   resolutionCriterion: string;
   category: ProposalCategory;
   resolutionDate: string; // YYYY-MM-DD
+  sourceUrl: string;      // REQUIRED — trusted source for resolution
 };
 
 export async function createProposal(userId: string, input: CreateProposalInput):
@@ -75,6 +123,9 @@ export async function createProposal(userId: string, input: CreateProposalInput)
   if (!Number.isFinite(ts)) return { ok: false, error: "Invalid resolution date.", code: "INVALID" };
   if (ts <= Date.now()) return { ok: false, error: "Resolution date must be in the future.", code: "INVALID" };
   if (!PROPOSAL_CATEGORIES.includes(input.category)) return { ok: false, error: "Pick a valid category.", code: "INVALID" };
+  // Source link is required and must be a valid http(s) URL (server-side gate).
+  const src = validateSourceUrl(input.sourceUrl);
+  if (!src.ok) return { ok: false, error: src.error, code: "INVALID" };
 
   // Rate limit — max simultaneously-open proposals per player.
   const open = (await db.proposal.listByProposer(userId)).filter((p) => OPEN_STATES.includes(p.status)).length;
@@ -93,11 +144,14 @@ export async function createProposal(userId: string, input: CreateProposalInput)
     resolutionCriterion: criterion,
     category: input.category,
     resolutionDate: date,
+    sourceUrl: src.url,
     status: "REVIEW",
     up: 0,
     down: 0,
     publishedMarketId: null,
-    prizePaidTzs: 0,
+    bonusGrantedTzs: 0,
+    bonusGrantId: null,
+    approvedAt: null,
     declineReason: null,
     declineNote: null,
     changeNote: null,
@@ -107,8 +161,55 @@ export async function createProposal(userId: string, input: CreateProposalInput)
     updatedAt: now,
   });
   audit({ category: "ADMIN", action: "proposal.created", actorId: userId, targetType: "Proposal", targetId: proposal.id, payload: { category: proposal.category } });
-  notifyProposalUnderReview(userId, { titleEn });
+
+  // ── Submission notifications (all best-effort; never block the submission) ──
+  // Player: confirmation ("we're reviewing").
+  notifyProposalUnderReview(userId, { titleEn }).catch(() => {});
+  sendEmailToUser(userId, (email) => ({
+    to: email,
+    subject: "Proposal received · under review",
+    html: proposalSubmittedHtml({ titleEn, reference: proposal.id, submittedAt: now }),
+    tag: "proposal-submitted",
+  }));
+
+  // Officers: in-app bell + email ("new proposal to review", with source + link).
+  void notifyOfficersOfNewProposal(proposal).catch(() => {});
+
   return { ok: true, proposal };
+}
+
+/**
+ * Alert every market-ops officer that a new proposal is awaiting review — in-app
+ * bell (deep-links to /admin/proposals) + best-effort email carrying the source
+ * link, proposer, and titles. Mirrors the KYC "new submission" admin fan-out.
+ */
+async function notifyOfficersOfNewProposal(proposal: StoredProposal): Promise<void> {
+  const proposer = await db.user.findById(proposal.proposerId);
+  const proposerLabel = displayLabel(proposer ?? { id: proposal.proposerId, displayName: null });
+  const officers = (await db.user.list()).filter((u) => ["ADMIN", "COMPLIANCE", "MODERATOR"].includes(u.role));
+
+  for (const o of officers) {
+    notifyAdminProposalReview(o.id, { proposerLabel, titleEn: proposal.titleEn, proposalId: proposal.id }).catch(() => {});
+  }
+
+  const reviewUrl = `${BASE_URL()}/admin/proposals`;
+  const html = proposalSubmittedAdminHtml({
+    reference: proposal.id,
+    proposer: proposerLabel,
+    titleEn: proposal.titleEn,
+    titleSw: proposal.titleSw,
+    category: proposal.category,
+    sourceUrl: proposal.sourceUrl ?? "—",
+    reviewUrl,
+  });
+  const recipients = [...new Set(
+    officers
+      .map((o) => (o.email || resolvePhoneEmail(o.phoneE164) || "").trim().toLowerCase())
+      .filter((e) => e && !e.endsWith("@stub") && !e.endsWith("@none")),
+  )];
+  for (const to of recipients) {
+    sendEmail({ to, subject: "New market proposal to review · " + proposal.id, html, tag: "proposal-admin", trackLinks: false }).catch(() => {});
+  }
 }
 
 // ── Vote (ranking only) ────────────────────────────────────────────────
@@ -128,9 +229,7 @@ export async function castVote(userId: string, proposalId: string, dir: "up" | "
 
     // O(1) incremental tally — back out this voter's previous effect and apply
     // the new one. Correct by construction because the per-proposal lock above
-    // serialises every read-modify-write, so counts can't drift or race. (The
-    // old "recompute from a full scan" approach was O(votes) per vote → O(N²)
-    // on a hot poll; this keeps a 100k-click poll O(N) total.)
+    // serialises every read-modify-write, so counts can't drift or race.
     const existing = await db.proposalVote.get(proposalId, userId); // O(1) keyed lookup
     let up = p.up;
     let down = p.down;
@@ -170,6 +269,7 @@ export type ProposalView = {
   category: ProposalCategory;
   resolutionCriterion: string;
   resolutionDate: string;
+  sourceUrl: string | null;
   status: ProposalStatus;
   isHot: boolean;
   up: number;
@@ -179,14 +279,15 @@ export type ProposalView = {
   isMine: boolean;
   myVote: "up" | "down" | null;
   publishedMarketId: string | null;
-  prizePaidTzs: number;
+  bonusGrantedTzs: number;
+  approvedAt: string | null;
   declineReason: string | null;
   declineNote: string | null;
   changeNote: string | null;
   createdAt: string;
 };
 
-async function toView(p: StoredProposal, viewerId: string | null) {
+async function toView(p: StoredProposal, viewerId: string | null): Promise<ProposalView> {
   const cfg = getProposalsConfig();
   const score = p.up - p.down;
   const proposer = await db.user.findById(p.proposerId);
@@ -199,6 +300,7 @@ async function toView(p: StoredProposal, viewerId: string | null) {
     category: p.category,
     resolutionCriterion: p.resolutionCriterion,
     resolutionDate: p.resolutionDate,
+    sourceUrl: p.sourceUrl,
     status: p.status,
     isHot: OPEN_STATES.includes(p.status) && score >= cfg.hotThreshold,
     up: p.up,
@@ -208,7 +310,8 @@ async function toView(p: StoredProposal, viewerId: string | null) {
     isMine: !!viewerId && p.proposerId === viewerId,
     myVote: viewerId ? ((await db.proposalVote.get(p.id, viewerId))?.dir ?? null) : null,
     publishedMarketId: p.publishedMarketId,
-    prizePaidTzs: p.prizePaidTzs,
+    bonusGrantedTzs: p.bonusGrantedTzs,
+    approvedAt: p.approvedAt,
     declineReason: p.declineReason,
     declineNote: p.declineNote,
     changeNote: p.changeNote,
@@ -228,8 +331,6 @@ export async function listBoard(viewerId: string | null, filter: BoardFilter = "
   else if (filter === "listed") views = views.filter((v) => v.status === "LISTED" || v.status === "RESOLVED");
   else if (filter === "mine") views = views.filter((v) => v.isMine);
   // "new" keeps the recency order from db.proposal.list
-  // Paginate the filtered set so every proposal is reachable (no silent cap),
-  // consistent with the rest of the player lists. `matchedCount` drives the pager.
   const matchedCount = views.length;
   const totalPages = Math.max(1, Math.ceil(matchedCount / perPage));
   const safePage = Math.min(Math.max(1, page), totalPages);
@@ -249,37 +350,119 @@ export async function getProposalDetail(id: string, viewerId: string | null) {
   return p ? toView(p, viewerId) : null;
 }
 
-/** Timeline step index for the detail stepper (Submitted→…→Paid). */
+/** Timeline step index for the detail stepper: Submitted → Under review →
+ *  Approved → Live → Resolved. DECLINED is handled separately in the UI. */
 export function timelineStep(v: ProposalView): number {
-  if (v.status === "RESOLVED") return v.prizePaidTzs > 0 ? 4 : 3;
-  if (v.status === "LISTED") return 2;
-  return 1; // REVIEW / CHANGES_REQUESTED (DECLINED handled separately in UI)
+  if (v.status === "RESOLVED") return 4;
+  if (v.status === "LISTED") return 3;
+  if (v.status === "APPROVED") return 2;
+  return 1; // REVIEW / CHANGES_REQUESTED
 }
 
 // ── Officer actions ─────────────────────────────────────────────────────
-export async function approveAndList(proposalId: string, officerId: string, sourceUrl: string):
-  | Promise<{ ok: true; marketId: string } | { ok: false; error: string }> {
-  // Source-trust gate — officer must supply a valid source URL at approval time.
-  // Proposals bypass the direct createMarketAction path which has its own gate,
-  // so we enforce here to prevent markets going live with no source of truth.
-  const url = (sourceUrl ?? "").trim();
-  if (!url) return { ok: false as const, error: "A source URL is required to list a proposal." };
+export type ApproveResult =
+  | { ok: true; grantedTzs: number }
+  | { ok: false; error: string };
+
+/**
+ * Approve a proposal and grant the proposer's reward INSTANTLY.
+ *
+ * Money-safety (exactly-once):
+ *  - The whole grant + status flip runs under `withLock("proposal:<id>")`.
+ *  - Only a proposal in REVIEW / CHANGES_REQUESTED can be approved — once it is
+ *    APPROVED the status guard makes a re-approve a no-op, so the reward is paid
+ *    at most once even on double-click / retry / re-review.
+ *  - The bonus grant is additionally idempotent by its sourceRef `proposal:<id>`,
+ *    so a partial failure (grant landed, status write lost) can't double-credit.
+ *
+ * Reward = a non-withdrawable bonus-wallet grant of `prizeTzs`. If the bonus
+ * program is off (or the wallet can't take a bonus), we fall back to a real
+ * credit and audit it — the promised reward is never silently lost. Approval
+ * does NOT publish a market; publishing is a separate step (goLiveProposal).
+ */
+export async function approveProposal(proposalId: string, officerId: string): Promise<ApproveResult> {
+  return withLock(`proposal:${proposalId}`, async (): Promise<ApproveResult> => {
+    const p = await db.proposal.findById(proposalId);
+    if (!p) return { ok: false, error: "Proposal not found." };
+    if (!OPEN_STATES.includes(p.status)) {
+      return { ok: false, error: `Only a proposal under review can be approved (this one is ${p.status.toLowerCase().replace("_", " ")}).` };
+    }
+
+    const prize = Math.round(getProposalsConfig().prizeTzs);
+    const now = new Date().toISOString();
+    const note = `Proposal approved · "${p.titleEn.slice(0, 50)}"`;
+    const sourceRef = `proposal:${p.id}`;
+
+    let grantId: string | null = null;
+    let grantedTzs = 0;
+    let wagerRequiredTzs = 0;
+
+    if (prize > 0) {
+      // Prefer the bonus wallet (must be played through). Idempotent by sourceRef.
+      const r = await creditBonus(p.proposerId, { amountTzs: prize, source: "PROPOSAL", sourceRef, note });
+      if (r.ok) {
+        grantId = r.grant.id;
+        grantedTzs = r.grant.amountTzs;
+        wagerRequiredTzs = r.grant.wagerRequiredTzs;
+      } else {
+        // Bonus program off / wallet not bonus-eligible — never lose the promised
+        // reward. Fall back to a real credit and audit. Exactly-once still holds:
+        // the status guard above stops a re-approve from re-entering this branch.
+        const credited = await creditInternal(p.proposerId, prize, { description: note });
+        if (credited === null) {
+          audit({ category: "WALLET", action: "proposal.approve_grant_failed", actorId: officerId, targetType: "Proposal", targetId: p.id, payload: { proposerId: p.proposerId, prize, reason: r.error } });
+          return { ok: false, error: `Couldn't credit the proposer's reward (${r.error}). Check the bonus/wallet setup and retry.` };
+        }
+        grantedTzs = prize;
+        audit({ category: "WALLET", action: "proposal.approve_real_fallback", actorId: officerId, targetType: "Proposal", targetId: p.id, payload: { proposerId: p.proposerId, prize, reason: r.error } });
+      }
+    }
+
+    await db.proposal.update(proposalId, {
+      status: "APPROVED",
+      bonusGrantedTzs: grantedTzs,
+      bonusGrantId: grantId,
+      approvedAt: now,
+      reviewedBy: officerId,
+      reviewedAt: now,
+    });
+    audit({ category: "ADMIN", action: "proposal.approved", actorId: officerId, targetType: "Proposal", targetId: proposalId, payload: { proposerId: p.proposerId, grantedTzs, grantId } });
+
+    notifyProposalApproved(p.proposerId, { titleEn: p.titleEn, amountTzs: grantedTzs }).catch(() => {});
+    sendEmailToUser(p.proposerId, (email) => ({
+      to: email,
+      subject: grantedTzs > 0 ? `Proposal approved · bonus TZS ${grantedTzs.toLocaleString("en-US")} credited` : "Proposal approved",
+      html: proposalApprovedHtml({ titleEn: p.titleEn, amountTzs: grantedTzs, wagerRequiredTzs }),
+      tag: "proposal-approved",
+    }));
+
+    return { ok: true, grantedTzs };
+  });
+}
+
+/**
+ * Publish an APPROVED proposal live — creates the real Market via market-service.
+ * SEPARATE from approval: the bonus was already granted at approval, so this moves
+ * NO money. Serialized + status-guarded so a double-click can't create two markets.
+ * The source URL (pre-filled from the proposal, officer-editable) is trust-checked
+ * against the approved source registry, same gate as a direct market create.
+ */
+export async function goLiveProposal(proposalId: string, officerId: string, sourceUrl: string):
+  Promise<{ ok: true; marketId: string } | { ok: false; error: string }> {
+  const src = validateSourceUrl(sourceUrl);
+  if (!src.ok) return { ok: false, error: src.error };
   const { isSourceTrusted, seedDefaultSources } = await import("./source-registry");
   await seedDefaultSources();
 
-  // Serialize per-proposal and re-check status INSIDE the lock — otherwise two
-  // officers (or a double-click) both pass the status guard and create TWO live
-  // markets from one proposal, leaving an orphaned duplicate. (Audit finding.)
   return withLock(`proposal:${proposalId}`, async () => {
     const p = await db.proposal.findById(proposalId);
     if (!p) return { ok: false as const, error: "Proposal not found." };
-    if (p.status === "LISTED" || p.status === "RESOLVED") return { ok: false as const, error: "Already listed." };
-    if (p.status === "DECLINED") return { ok: false as const, error: "Proposal was declined." };
+    if (p.status === "LISTED" || p.status === "RESOLVED") return { ok: false as const, error: "This proposal is already live." };
+    if (p.status !== "APPROVED") return { ok: false as const, error: "Approve the proposal (and pay its bonus) before publishing it live." };
 
-    const trust = await isSourceTrusted(url, toMarketCategory(p.category));
+    const trust = await isSourceTrusted(src.url, toMarketCategory(p.category));
     if (!trust.ok) return { ok: false as const, error: `Source not approved: ${trust.reason}. Add or enable it at /admin/sources.` };
 
-    // Create the real market through the existing pipeline.
     const { createMarket } = await import("./market-service");
     const { computeSelectionClosedAt } = await import("./ai-poll-config");
     const resolutionAt = new Date(`${p.resolutionDate}T23:59:59.000Z`).toISOString();
@@ -288,15 +471,22 @@ export async function approveAndList(proposalId: string, officerId: string, sour
       titleSw: p.titleSw ?? p.titleEn,
       titleZh: p.titleZh ?? null,
       category: toMarketCategory(p.category),
-      sourceUrl: url,
+      sourceUrl: src.url,
       resolutionCriterion: p.resolutionCriterion,
       resolutionAt,
       selectionClosedAt: computeSelectionClosedAt(resolutionAt, toMarketCategory(p.category)),
       proposedBy: p.proposerId,
     });
-    await db.proposal.update(proposalId, { status: "LISTED", publishedMarketId: market.id, reviewedBy: officerId, reviewedAt: new Date().toISOString() });
-    audit({ category: "ADMIN", action: "proposal.approved_listed", actorId: officerId, targetType: "Proposal", targetId: proposalId, payload: { marketId: market.id } });
-    notifyProposalListed(p.proposerId, { titleEn: p.titleEn, marketId: market.id });
+    await db.proposal.update(proposalId, { status: "LISTED", publishedMarketId: market.id, sourceUrl: src.url, reviewedBy: officerId, reviewedAt: new Date().toISOString() });
+    audit({ category: "ADMIN", action: "proposal.published_live", actorId: officerId, targetType: "Proposal", targetId: proposalId, payload: { marketId: market.id } });
+
+    notifyProposalListed(p.proposerId, { titleEn: p.titleEn, marketId: market.id }).catch(() => {});
+    sendEmailToUser(p.proposerId, (email) => ({
+      to: email,
+      subject: "Your proposal is now a live market",
+      html: proposalListedHtml({ titleEn: p.titleEn, marketId: market.id }),
+      tag: "proposal-listed",
+    }));
     return { ok: true as const, marketId: market.id };
   });
 }
@@ -305,74 +495,59 @@ export async function requestChanges(proposalId: string, officerId: string, note
   const p = await db.proposal.findById(proposalId);
   if (!p) return { ok: false, error: "Proposal not found." };
   if (!OPEN_STATES.includes(p.status)) return { ok: false, error: "Only open proposals can be sent back." };
-  await db.proposal.update(proposalId, { status: "CHANGES_REQUESTED", changeNote: note?.trim() || null, reviewedBy: officerId, reviewedAt: new Date().toISOString() });
-  audit({ category: "ADMIN", action: "proposal.changes_requested", actorId: officerId, targetType: "Proposal", targetId: proposalId, payload: { note } });
-  notifyProposalChanges(p.proposerId, { titleEn: p.titleEn, note: note?.trim() || null });
+  const trimmed = note?.trim() || null;
+  await db.proposal.update(proposalId, { status: "CHANGES_REQUESTED", changeNote: trimmed, reviewedBy: officerId, reviewedAt: new Date().toISOString() });
+  audit({ category: "ADMIN", action: "proposal.changes_requested", actorId: officerId, targetType: "Proposal", targetId: proposalId, payload: { note: trimmed } });
+  notifyProposalChanges(p.proposerId, { titleEn: p.titleEn, note: trimmed }).catch(() => {});
+  sendEmailToUser(p.proposerId, (email) => ({
+    to: email,
+    subject: "Changes requested on your proposal",
+    html: proposalChangesHtml({ titleEn: p.titleEn, note: trimmed }),
+    tag: "proposal-changes",
+  }));
   return { ok: true };
 }
 
 export async function declineProposal(proposalId: string, officerId: string, reason: DeclineReason, note?: string): Promise<{ ok: true } | { ok: false; error: string }> {
   const p = await db.proposal.findById(proposalId);
   if (!p) return { ok: false, error: "Proposal not found." };
-  if (p.status === "LISTED" || p.status === "RESOLVED") return { ok: false, error: "Listed proposals can't be declined." };
+  // Can't decline once approved (reward already paid) or once live/resolved.
+  if (!OPEN_STATES.includes(p.status)) return { ok: false, error: `A ${p.status.toLowerCase().replace("_", " ")} proposal can't be declined.` };
   if (!DECLINE_REASONS.includes(reason)) return { ok: false, error: "Pick a valid decline reason." };
-  await db.proposal.update(proposalId, { status: "DECLINED", declineReason: reason, declineNote: note?.trim() || null, reviewedBy: officerId, reviewedAt: new Date().toISOString() });
-  audit({ category: "ADMIN", action: "proposal.declined", actorId: officerId, targetType: "Proposal", targetId: proposalId, payload: { reason, note } });
-  notifyProposalDeclined(p.proposerId, { titleEn: p.titleEn, reason });
+  const trimmed = note?.trim() || null;
+  await db.proposal.update(proposalId, { status: "DECLINED", declineReason: reason, declineNote: trimmed, reviewedBy: officerId, reviewedAt: new Date().toISOString() });
+  audit({ category: "ADMIN", action: "proposal.declined", actorId: officerId, targetType: "Proposal", targetId: proposalId, payload: { reason, note: trimmed } });
+  notifyProposalDeclined(p.proposerId, { titleEn: p.titleEn, reason }).catch(() => {});
+  sendEmailToUser(p.proposerId, (email) => ({
+    to: email,
+    subject: "Update on your market proposal",
+    html: proposalDeclinedHtml({ titleEn: p.titleEn, reason, note: trimmed }),
+    tag: "proposal-declined",
+  }));
   return { ok: true };
 }
 
 /**
- * Called from market resolution: if the resolved market originated from a
- * player proposal, pay the proposer the fixed prize (listed AND resolved).
- * Idempotent; skips VOID outcomes and zero-prize config.
+ * Called from market resolution: if the resolved market originated from a player
+ * proposal, reflect that in the proposal status (LISTED → RESOLVED). The reward
+ * was granted at APPROVAL, so this moves NO money — status reflection only.
+ * Idempotent (only flips a LISTED proposal).
  */
 export async function onMarketResolved(marketId: string, opts: { voided: boolean }): Promise<void> {
+  void opts; // outcome doesn't affect the reward anymore (paid at approval)
   const p = await db.proposal.findByMarketId(marketId);
   if (!p) return;
-  if (p.status === "RESOLVED" || p.prizePaidTzs > 0) return; // already settled
-  if (p.status !== "LISTED") return;
-  // Mark resolved regardless; pay only on a real outcome with a positive prize.
-  const cfg = getProposalsConfig();
-  if (opts.voided) {
-    await db.proposal.update(p.id, { status: "RESOLVED" });
-    return;
-  }
-  const prize = cfg.prizeTzs;
-  if (prize > 0) {
-    // Only record the prize as paid if the credit actually landed. Otherwise we
-    // mark the proposal RESOLVED with prizePaidTzs 0 and audit the failure so an
-    // officer can settle manually — never claim a payout that didn't move.
-    // Route to the BONUS wallet when bonus + proposal→bonus routing are on
-    // (Ali's default — prizes must be played through); else credit real. Falls
-    // back to real if a bonus credit can't be made so the prize is never lost.
-    const prizeDesc = `Proposal prize · "${p.titleEn.slice(0, 50)}"`;
-    const bcfg = getBonusConfig();
-    let credited: boolean;
-    if (bcfg.enabled && bcfg.proposalToBonus) {
-      const r = await creditBonus(p.proposerId, { amountTzs: prize, source: "PROPOSAL", sourceRef: `proposal:${p.id}`, note: prizeDesc });
-      credited = r.ok ? true : (await creditInternal(p.proposerId, prize, { description: prizeDesc })) !== null;
-    } else {
-      credited = (await creditInternal(p.proposerId, prize, { description: prizeDesc })) !== null;
-    }
-    if (credited) {
-      await db.proposal.update(p.id, { status: "RESOLVED", prizePaidTzs: prize });
-      audit({ category: "WALLET", action: "proposal.prize_paid", actorId: null, targetType: "Proposal", targetId: p.id, payload: { proposerId: p.proposerId, prize, marketId } });
-      notifyProposalResolvedPaid(p.proposerId, { titleEn: p.titleEn, amountTzs: prize });
-    } else {
-      await db.proposal.update(p.id, { status: "RESOLVED" });
-      audit({ category: "WALLET", action: "proposal.prize_failed", actorId: null, targetType: "Proposal", targetId: p.id, payload: { proposerId: p.proposerId, prize, marketId, reason: "wallet credit failed" } });
-    }
-  } else {
-    await db.proposal.update(p.id, { status: "RESOLVED" });
-  }
+  if (p.status !== "LISTED") return; // already RESOLVED or never live
+  await db.proposal.update(p.id, { status: "RESOLVED" });
+  audit({ category: "ADMIN", action: "proposal.market_resolved", actorId: null, targetType: "Proposal", targetId: p.id, payload: { marketId } });
 }
 
 // ── Admin stats ─────────────────────────────────────────────────────────
 export type AdminProposalStats = {
   pending: number;
+  approvedAwaitingLive: number;
   listedFromProposals: number;
-  prizesPaidTzs: number;
+  bonusesGrantedTzs: number;
   topProposer: { handle: string; listed: number } | null;
 };
 
@@ -383,38 +558,42 @@ async function handleFor(userId: string) {
   return "@" + u.phoneE164.replace(/\D/g, "").slice(-6);
 }
 
-export async function getAdminProposalStats() {
+export async function getAdminProposalStats(): Promise<AdminProposalStats> {
   const all = await db.proposal.list(5000);
   const pending = all.filter((p) => OPEN_STATES.includes(p.status)).length;
+  const approvedAwaitingLive = all.filter((p) => p.status === "APPROVED").length;
   const listed = all.filter((p) => p.status === "LISTED" || p.status === "RESOLVED");
-  const prizesPaidTzs = all.reduce((s, p) => s + p.prizePaidTzs, 0);
+  const bonusesGrantedTzs = all.reduce((s, p) => s + p.bonusGrantedTzs, 0);
   const byProposer = new Map<string, number>();
   for (const p of listed) byProposer.set(p.proposerId, (byProposer.get(p.proposerId) ?? 0) + 1);
   let top: { handle: string; listed: number } | null = null;
   for (const [uid, n] of byProposer) {
     if (!top || n > top.listed) top = { handle: await handleFor(uid), listed: n };
   }
-  return { pending, listedFromProposals: listed.length, prizesPaidTzs, topProposer: top };
+  return { pending, approvedAwaitingLive, listedFromProposals: listed.length, bonusesGrantedTzs, topProposer: top };
 }
 
 export type AdminQueueRow = {
   id: string; title: string; titleSw: string | null; description: string | null;
   resolutionCriterion: string; resolutionDate: string; category: ProposalCategory;
+  sourceUrl: string | null; bonusGrantedTzs: number;
   proposerMasked: string; up: number; down: number; score: number;
   ageIso: string; status: ProposalStatus;
 };
 
-export async function getAdminQueue(filter: "all" | "review" | "flagged" = "all") {
+export async function getAdminQueue(filter: "all" | "review" | "approved" | "flagged" = "all") {
   let rows: AdminQueueRow[] = await Promise.all((await db.proposal.list(2000)).map(async (p) => {
     const proposer = await db.user.findById(p.proposerId);
     return {
       id: p.id, title: p.titleEn, titleSw: p.titleSw, description: p.description,
       resolutionCriterion: p.resolutionCriterion, resolutionDate: p.resolutionDate, category: p.category,
+      sourceUrl: p.sourceUrl, bonusGrantedTzs: p.bonusGrantedTzs,
       proposerMasked: maskName(proposer?.displayName ?? null, proposer?.phoneE164 ?? ""),
       up: p.up, down: p.down, score: p.up - p.down, ageIso: p.createdAt, status: p.status,
     };
   }));
   if (filter === "review") rows = rows.filter((r) => r.status === "REVIEW" || r.status === "CHANGES_REQUESTED");
+  else if (filter === "approved") rows = rows.filter((r) => r.status === "APPROVED");
   else if (filter === "flagged") rows = rows.filter((r) => r.score < 0 || (r.down > 0 && r.down >= r.up));
   // sort by net votes desc (ranking only), cap the rendered queue
   return rows.sort((a, b) => b.score - a.score).slice(0, 100);

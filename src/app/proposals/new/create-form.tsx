@@ -17,6 +17,18 @@ import type { ProposalCategory } from "@/lib/server/store";
 
 const CATEGORIES: ProposalCategory[] = ["sports", "macro", "weather", "crypto", "culture", "infrastructure"];
 
+/** Client-side mirror of the server's source-URL gate (http/https only). */
+function isValidHttpUrl(raw: string): boolean {
+  const s = raw.trim();
+  if (!s || s.length > 500) return false;
+  try {
+    const u = new URL(s);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: { enabled: boolean; prizeTzs: number; rateLimit: number; openCount: number }) {
   const router = useRouter();
   const { t } = useT();
@@ -28,15 +40,17 @@ export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: 
   const [criterion, setCriterion] = useState("");
   const [category, setCategory] = useState<ProposalCategory>("sports");
   const [date, setDate] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
   const [done, setDone] = useState(false);
 
   const atLimit = openCount >= rateLimit;
   const dateValid = /^\d{4}-\d{2}-\d{2}$/.test(date) && Date.parse(`${date}T23:59:59Z`) > Date.now();
-  const valid = enabled && !atLimit && titleEn.trim().length >= 8 && titleEn.trim().length <= 120 && criterion.trim().length >= 12 && dateValid;
+  const sourceValid = isValidHttpUrl(sourceUrl);
+  const valid = enabled && !atLimit && titleEn.trim().length >= 8 && titleEn.trim().length <= 120 && criterion.trim().length >= 12 && dateValid && sourceValid;
 
   const submit = () => {
     start(async () => {
-      const r = await createProposalAction({ titleEn, titleSw: titleSw || undefined, description: description || undefined, resolutionCriterion: criterion, category, resolutionDate: date });
+      const r = await createProposalAction({ titleEn, titleSw: titleSw || undefined, description: description || undefined, resolutionCriterion: criterion, category, resolutionDate: date, sourceUrl: sourceUrl.trim() });
       if (r.ok) setDone(true);
       else toast({ title: t.toast.couldntSubmit, description: r.error, variant: "danger" });
     });
@@ -80,6 +94,15 @@ export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: 
         <FieldLegend className="block mb-1.5">{t.common.resolutionCriterion} <Req /></FieldLegend>
         <Textarea placeholder={t.common.resolutionPlaceholder} value={criterion} onChange={(e) => setCriterion(e.target.value)} maxLength={500} />
         <p className="mt-1.5 text-[11px] leading-snug text-text-subtle">{t.common.resolutionHint}</p>
+      </div>
+
+      <div>
+        <FieldLegend className="block mb-1.5">{t.common.sourceLink} <Req /></FieldLegend>
+        <Input type="url" inputMode="url" placeholder={t.proposals.sourceLinkPlaceholder} value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} maxLength={500} />
+        <p className="mt-1.5 text-[11px] leading-snug text-text-subtle">{t.proposals.sourceLinkHint}</p>
+        {sourceUrl.trim().length > 0 && !sourceValid && (
+          <p className="mt-1 text-[11px] leading-snug text-no-300">{t.proposals.sourceLinkInvalid}</p>
+        )}
       </div>
 
       <div>
