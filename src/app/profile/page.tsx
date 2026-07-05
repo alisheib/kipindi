@@ -116,21 +116,13 @@ export default async function ProfilePage() {
                   see at a glance whether his ADMIN_BOOTSTRAP_PHONES env wired
                   up correctly on this account. Plain "Player" otherwise. */}
               {user.role !== "PLAYER" && user.role !== "AGENT" ? (
-                <span
-                  className="inline-flex items-center gap-1.5 rounded-pill border px-2.5 py-1 font-mono text-[10.5px] font-bold uppercase tracking-[0.14em]"
-                  style={{
-                    background: "linear-gradient(135deg, oklch(82% 0.13 86), oklch(72% 0.12 76))",
-                    borderColor: "oklch(58% 0.12 76)",
-                    color: "oklch(20% 0.06 86)",
-                    boxShadow: "0 0 0 3px oklch(60% 0.13 86 / 0.18)",
-                  }}
-                >
+                <Chip variant="gold" size="lg" className="gap-1.5">
                   <I.shieldcheck s={11} />
                   {user.role === "ADMIN" ? t.profile.adminRole
                     : user.role === "COMPLIANCE" ? t.profile.complianceRole
                     : user.role === "MODERATOR" ? t.profile.moderatorRole
                     : user.role}
-                </span>
+                </Chip>
               ) : (
                 <Pill tone="neutral">{t.profile.playerRole}</Pill>
               )}

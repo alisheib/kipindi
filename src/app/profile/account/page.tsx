@@ -4,6 +4,7 @@ import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
+import { Chip } from "@/components/ui/chip";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { getOwnActivity } from "@/lib/server/user-service";
@@ -70,9 +71,9 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
           <Item
             label={t.common.status}
             value={
-              <Pill tone={statusTone as "yes" | "no" | "warning"}>
+              <Chip variant={statusTone as "yes" | "no" | "warning"}>
                 {user?.status ?? "—"}
-              </Pill>
+              </Chip>
             }
           />
           <Item
@@ -181,9 +182,9 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
           <h2 className="font-display text-[15px] font-semibold text-text">
             {t.profile.closeAccount}
           </h2>
-          <span className="ml-auto inline-flex items-center rounded-pill border border-no-700 bg-no-500/10 px-2.5 py-0.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.1em] text-no-300">
+          <Chip variant="no" className="ml-auto">
             {t.common.oneWay}
-          </span>
+          </Chip>
         </div>
         <p className="text-[12.5px] text-text-muted leading-snug">
           {t.profile.closeAccountDescription}
@@ -209,14 +210,3 @@ function Item({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function Pill({ tone, children }: { tone: "yes" | "no" | "warning"; children: React.ReactNode }) {
-  const cls =
-    tone === "yes"     ? "border-yes-700 bg-yes-500/10 text-yes-300"
-    : tone === "no"      ? "border-no-700 bg-no-500/10 text-no-300"
-    :                      "border-warning-border bg-warning-bg/40 text-warning-fg";
-  return (
-    <span className={`inline-flex items-center rounded-pill border px-2.5 py-0.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.06em] ${cls}`}>
-      {children}
-    </span>
-  );
-}

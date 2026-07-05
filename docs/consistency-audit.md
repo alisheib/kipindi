@@ -97,6 +97,24 @@ Working the remaining backlog in order, each as its own build+i18n+visual+push b
   client mode (seeded 30 txns via a temp endpoint, page-2 nav works, then removed the endpoint).
   tsc 0, i18n 1181×3, next build 0.
 
+**BATCH 6 — cleanup tail (SHIPPED, verified):**
+- Chip consolidation: profile role-badge (hand-rolled gold-gradient span) → `<Chip variant="gold">`;
+  account STATUS pill + "one-way" badge → `<Chip>`; deleted account's duplicate local `Pill`
+  component. (profile's local `Pill` already delegates to `<Chip>` — left as a thin alias.)
+- Hero-gradient dedup: already completed in Batch 2 (`--hero-panel-grad`); re-scan confirms no
+  inline royal-panel-gradient copies remain outside globals.css.
+- DEFERRED — gold-hue → `--gilt`/`--gold-*` sweep: the remaining inline gold oklch values are
+  bespoke DECORATIVE gradients/glows on the most polished surfaces (FiftyMark brand marks, home
+  hero, wallet jackpot/bonus card, error page) and none exactly match a token — a blanket swap
+  would shift carefully-tuned hues and risk regressions on the crown-jewel surfaces. This needs
+  its own careful per-surface pass with Ali reviewing, not a mechanical find/replace. (X6 open.)
+- Verified: account (STATUS = yes-Chip, one-way = no-Chip) + profile badges render clean.
+  tsc 0, i18n 1181×3, next build 0.
+  DEV NOTE: TaskStop doesn't always kill the child `next dev` node process on Windows — zombie
+  dev servers linger on old ports (3001/3002) and serve stale code / 500 on /auth/demo. Always
+  confirm the target port from the CURRENT dev log before screenshotting, and kill zombies via
+  `Get-NetTCPConnection -LocalPort N | Stop-Process`.
+
 ## ROUND 3 — final consult (buttons/banners/colors) + pagination 2026-07-05
 **SHIPPED (safe, high-value):**
 - **X1 (LOAD-BEARING BUG FIX):** `brand` was missing from `tailwind.config.ts`, so every
