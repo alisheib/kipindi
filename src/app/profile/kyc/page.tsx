@@ -4,6 +4,7 @@ import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
+import { FieldLegend } from "@/components/ui/field-legend";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { getKycStatus, startKyc } from "@/lib/server/kyc-service";
@@ -203,9 +204,9 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               defaultValue={(sp as Record<string, string | undefined>).fullName ?? ""}
             />
             <div>
-              <label htmlFor="dob" className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
+              <FieldLegend as="label" htmlFor="dob" className="block mb-2">
                 {t.auth.dobLabel}
-              </label>
+              </FieldLegend>
               {user?.dob ? (
                 // Already collected (and 18+ gated) at sign-up — don't make the
                 // user type it again. Show it read-only for confirmation and

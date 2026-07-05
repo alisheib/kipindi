@@ -4,6 +4,7 @@ import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
+import { FieldLegend } from "@/components/ui/field-legend";
 import { Input } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { CashbackPromo } from "@/components/ui/cashback-promo";
@@ -76,9 +77,9 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
       <form action={depositAction} className="rounded-xl glass-panel p-5 lg:p-6 space-y-5">
         <input type="hidden" name="idempotencyKey" value={crypto.randomUUID()} />
         <fieldset>
-          <legend className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
+          <FieldLegend as="legend" className="mb-2">
             {t.wallet.mobileMoney}
-          </legend>
+          </FieldLegend>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {PROVIDERS.map((p, i) => (
               <label
@@ -102,12 +103,9 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
         <DepositAmount max={maxAmount} quickAmounts={quickAmounts} adminTest={adminTest} defaultValue={prevAmount} />
 
         <div>
-          <label
-            htmlFor="msisdn"
-            className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2"
-          >
+          <FieldLegend as="label" htmlFor="msisdn" className="block mb-2">
             {t.auth.phone} {t.common.optional}
-          </label>
+          </FieldLegend>
           <Input
             id="msisdn"
             name="msisdn"

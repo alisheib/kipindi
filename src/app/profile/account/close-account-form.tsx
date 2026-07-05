@@ -2,6 +2,8 @@
 
 import { useRef, useState } from "react";
 import { I } from "@/components/ui/glyphs";
+import { Textarea } from "@/components/ui/textarea";
+import { FieldLegend } from "@/components/ui/field-legend";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { closeAccountAction } from "./actions";
 import { useT } from "@/lib/i18n";
@@ -15,21 +17,18 @@ export function CloseAccountForm() {
   return (
     <form ref={formRef} action={closeAccountAction} className="space-y-3">
       <label className="block">
-        <span className="block font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">
-          {t.common.reasonOptional}
-        </span>
-        <textarea
+        <FieldLegend className="block mb-1.5">{t.common.reasonOptional}</FieldLegend>
+        <Textarea
           name="reason"
           rows={2}
           maxLength={500}
           placeholder={t.common.helpUsImprove}
-          className="w-full p-3 rounded-md border border-border bg-bg-overlay text-text text-[16px] focus:outline-none brand-focus transition-colors"
         />
       </label>
       <label className="block">
-        <span className="block font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">
+        <FieldLegend className="block mb-1.5">
           {t.common.type} <span className="font-mono text-no-300">CLOSE MY ACCOUNT</span> {t.common.typeToConfirm}
-        </span>
+        </FieldLegend>
         <input
           name="confirm"
           value={confirm}

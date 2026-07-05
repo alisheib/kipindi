@@ -8,6 +8,8 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input, Field as KitField } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { FieldLegend } from "@/components/ui/field-legend";
 import { Chip } from "@/components/ui/chip";
 import { submitSourceOfFundsAction } from "./actions";
 import { formatDate } from "@/lib/utils";
@@ -123,9 +125,9 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
 
         <form action={submitSourceOfFundsAction} className="space-y-5">
           <fieldset>
-            <legend className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
+            <FieldLegend as="legend" className="mb-2">
               {t.profile.sourceOfFunds}
-            </legend>
+            </FieldLegend>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {SOURCES.map((s, i) => (
                 <label
@@ -166,9 +168,9 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
           </div>
 
           <fieldset>
-            <legend className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
+            <FieldLegend as="legend" className="mb-2">
               {t.profile.annualIncome}
-            </legend>
+            </FieldLegend>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {BANDS.map((b, i) => (
                 <label
@@ -190,20 +192,16 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
           </fieldset>
 
           <div>
-            <label
-              htmlFor="declaredOther"
-              className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2"
-            >
+            <FieldLegend as="label" htmlFor="declaredOther" className="block mb-2">
               {t.profile.otherDetails}
-            </label>
-            <textarea
+            </FieldLegend>
+            <Textarea
               id="declaredOther"
               name="declaredOther"
               rows={3}
               maxLength={500}
               defaultValue={prevOther}
               placeholder={t.profile.sofDetailsPlaceholder}
-              className="w-full p-3 rounded-md border border-border bg-bg-overlay text-text text-[16px] focus:outline-none brand-focus transition-colors"
             />
           </div>
 

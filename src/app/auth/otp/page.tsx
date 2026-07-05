@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { FiftyLockup } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { OtpInput } from "@/components/ui/otp-input";
+import { FieldLegend } from "@/components/ui/field-legend";
 import { CountdownPill } from "@/components/ui/countdown-pill";
 import { verifyLoginOtpAction, resendOtpAction } from "../login/actions";
 import { ResendOtpButton } from "@/components/auth/resend-otp-button";
@@ -80,22 +82,14 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
             <input type="hidden" name="purpose" value={purpose} />
             {nextSafe && <input type="hidden" name="next" value={nextSafe} />}
             <label className="block">
-              <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5">
-                {t.common.codeLabel}
-              </span>
-              <input
+              <FieldLegend className="block mb-1.5">{t.common.codeLabel}</FieldLegend>
+              <OtpInput
                 id="code"
                 name="code"
-                type="text"
                 required
-                inputMode="numeric"
-                pattern="\d{6}"
-                maxLength={6}
-                autoComplete="one-time-code"
                 placeholder="• • • • • •"
                 aria-invalid={error ? "true" : undefined}
                 aria-describedby={error ? "otp-error" : "otp-hint"}
-                className="w-full h-[52px] text-center font-mono font-semibold text-[20px] tracking-[0.3em] rounded-md bg-bg-inset border border-border text-text outline-none transition-colors brand-focus"
               />
               <OtpExpiryCountdown />
             </label>

@@ -61,6 +61,27 @@ Working the remaining backlog in order, each as its own build+i18n+visual+push b
 - Verified: invite + proposals board + proposals/new render clean & consistent. tsc 0, i18n 1181×3,
   next build 0 (needed `rm -rf .next` once — transient Turbopack panic after stopping dev).
 
+**BATCH 4 — form atoms (SHIPPED, verified):**
+- New `<FieldLegend as className>` (`field-legend.tsx`) — one source for the mono field-label
+  eyebrow (text-text-muted + tracking-[0.16em], matching the Field atom). Adopted on
+  deposit (legend+phone), withdraw (destination), kyc (dob), source-of-funds (2 legends+other),
+  close-account (2 labels), create-form (2 labels), auth/otp. Fixes the text-subtle vs
+  text-muted split.
+- New `<Textarea>` atom (`textarea.tsx`) — matches the Input shell (rounded-lg, --bg-inset,
+  brand focus, 16px). Replaced 3 hand-rolled textareas (close-account, source-of-funds,
+  create-form ×2) that drifted on bg/padding/font-size.
+- New `<OtpInput>` atom (`otp-input.tsx`) — centered 6-digit code field on the Input shell;
+  adopted on auth/otp.
+- Rebuilt `deposit-amount` on the Input atom (mirror of withdraw): TZS prefix + mono +
+  strict-numeric + brand focus; quick chips + field DE-GOLDED to brand (gold is earned-money
+  only — matches withdraw and the gold-budget rule). Verified: typing works, chip auto-highlight
+  (num===v) intact, value submits comma-free like withdraw.
+- DEFERRED: wrapping auth login/register/forgot/reset labels in the Field atom — those labels
+  already render text-muted/0.16 (visually on-tier), so the wrap is cosmetic-neutral structural
+  churn on the critical login path; not worth the risk now. (F3 stays open, low priority.)
+- Verified: deposit/account/source-of-funds/create-form render clean & cohesive (textareas now
+  match inputs). tsc 0, i18n 1181×3, next build 0.
+
 ## ROUND 3 — final consult (buttons/banners/colors) + pagination 2026-07-05
 **SHIPPED (safe, high-value):**
 - **X1 (LOAD-BEARING BUG FIX):** `brand` was missing from `tailwind.config.ts`, so every

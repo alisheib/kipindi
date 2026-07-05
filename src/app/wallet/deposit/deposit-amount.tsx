@@ -1,61 +1,54 @@
 "use client";
 
 /**
- * DepositAmount — kit-styled amount control for the deposit form.
+ * DepositAmount — amount control for the deposit form, built on the shared
+ * Input atom so it mirrors the withdraw amount field (TZS prefix, mono,
+ * strict-numeric, brand focus). Quick-amount chips override the typed value.
+ * The Input carries `name="amount"` directly to the server action.
  *
- * Replaces the raw <input type="number"> (which showed the browser's own
- * spinner/number UI, off-kit). Uses the kit TZS-prefixed field with
- * comma-formatted display, digits-only entry (no spinners), and quick-amount
- * chips that ALWAYS override whatever is typed. A hidden <input name="amount">
- * carries the raw integer to the server action.
+ * De-golded on purpose: gold is reserved for earned money (winnings), not a
+ * deposit-entry field — matches withdraw and the gold-budget rule.
  */
 import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { FieldLegend } from "@/components/ui/field-legend";
 import { useT } from "@/lib/i18n";
 
 export function DepositAmount({
   max,
   quickAmounts,
-  adminTest,
   defaultValue,
 }: {
   max: number;
   quickAmounts: number[];
-  adminTest: boolean;
+  adminTest?: boolean;
   defaultValue?: string;
 }) {
   const { t } = useT();
-  const [raw, setRaw] = useState<string>(defaultValue && /^\d+$/.test(defaultValue) ? defaultValue : "");
-  const num = raw ? Math.min(max, parseInt(raw, 10) || 0) : 0;
-  const display = num > 0 ? num.toLocaleString("en-US") : "";
-
-  const onType = (s: string) => {
-    const digits = s.replace(/\D/g, "").slice(0, 12);
-    setRaw(digits);
-  };
+  const [amount, setAmount] = useState<string>(
+    defaultValue && /^\d+$/.test(defaultValue) ? defaultValue : "",
+  );
+  const num = amount ? parseInt(amount, 10) || 0 : 0;
 
   return (
     <div>
-      <label htmlFor="amount-display" className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
+      <FieldLegend as="label" htmlFor="amount" className="block mb-2">
         {t.common.depositAmountLabel}
-      </label>
+      </FieldLegend>
 
-      {/* Kit field: TZS prefix + plain text input (no number spinners). */}
-      <span className="flex items-stretch rounded-md border border-border bg-bg-overlay overflow-hidden focus-within:border-gold-500 focus-within:shadow-[0_0_0_3px_var(--gold-subtle)] transition-colors">
-        <span className="inline-flex items-center px-3 bg-bg-elevated border-r border-border font-mono text-[13px] font-bold text-text-subtle shrink-0">
-          TZS
-        </span>
-        <input
-          id="amount-display"
-          inputMode="numeric"
-          autoComplete="off"
-          placeholder="10,000"
-          value={display}
-          onChange={(e) => onType(e.target.value)}
-          className="flex-1 min-w-0 h-12 px-3 bg-transparent font-display font-bold text-[20px] tabular-nums text-text outline-none placeholder:text-text-subtle placeholder:font-normal"
-        />
-      </span>
-      {/* Raw integer for the server action. */}
-      <input type="hidden" name="amount" value={num > 0 ? String(num) : ""} />
+      <Input
+        id="amount"
+        name="amount"
+        inputMode="numeric"
+        autoComplete="off"
+        placeholder="10000"
+        prefix="TZS"
+        mono
+        size="lg"
+        max={max}
+        value={amount}
+        onChange={(e) => setAmount(e.target.value)}
+      />
 
       {/* Quick amounts — tapping one OVERRIDES the current value. */}
       <div className="mt-2 grid grid-cols-3 sm:grid-cols-5 gap-1.5">
@@ -65,13 +58,13 @@ export function DepositAmount({
             <button
               key={v}
               type="button"
-              onClick={() => setRaw(String(v))}
+              onClick={() => setAmount(String(v))}
               aria-pressed={active}
               className={
                 "h-8 rounded-pill border font-mono text-[11.5px] font-bold tabular-nums transition-colors " +
                 (active
-                  ? "border-gold-500 bg-gold-500/15 text-gold-300"
-                  : "border-border bg-bg-overlay text-text-subtle hover:bg-gold-500/10 hover:text-gold-300 hover:border-gold-700")
+                  ? "border-brand-500 bg-brand-500/15 text-brand-300"
+                  : "border-border bg-bg-overlay text-text-subtle hover:bg-brand-500/10 hover:text-brand-300 hover:border-brand-500/60")
               }
             >
               {v >= 1_000_000 ? `${v / 1_000_000}M` : v >= 1_000 ? `${v / 1_000}K` : v}
@@ -80,9 +73,7 @@ export function DepositAmount({
         })}
       </div>
 
-      <p className="mt-2 text-[11px] text-text-subtle">
-        {t.common.depositAmountHint}
-      </p>
+      <p className="mt-2 text-[11px] text-text-subtle">{t.common.depositAmountHint}</p>
     </div>
   );
 }

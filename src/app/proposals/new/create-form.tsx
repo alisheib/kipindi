@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { Input, Field } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { FieldLegend } from "@/components/ui/field-legend";
 import { DateSelect } from "@/components/ui/date-select";
 import { Button } from "@/components/ui/button";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
@@ -40,7 +42,6 @@ export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: 
     });
   };
 
-  const ta = "w-full min-h-[76px] rounded-md border border-border bg-bg-elevated px-3.5 py-2.5 text-[14px] leading-relaxed text-text outline-none brand-focus transition-colors resize-none placeholder:text-text-subtle";
   const Req = () => <span className="text-claret-300">*</span>;
 
   return (
@@ -71,13 +72,13 @@ export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: 
       </Field>
 
       <div>
-        <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5">{t.common.whyItMatters}</span>
-        <textarea className={ta} placeholder={t.common.whyItMattersPlaceholder} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={400} />
+        <FieldLegend className="block mb-1.5">{t.common.whyItMatters}</FieldLegend>
+        <Textarea placeholder={t.common.whyItMattersPlaceholder} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={400} />
       </div>
 
       <div>
-        <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5">{t.common.resolutionCriterion} <Req /></span>
-        <textarea className={ta} placeholder={t.common.resolutionPlaceholder} value={criterion} onChange={(e) => setCriterion(e.target.value)} maxLength={500} />
+        <FieldLegend className="block mb-1.5">{t.common.resolutionCriterion} <Req /></FieldLegend>
+        <Textarea placeholder={t.common.resolutionPlaceholder} value={criterion} onChange={(e) => setCriterion(e.target.value)} maxLength={500} />
         <p className="mt-1.5 text-[11px] leading-snug text-text-subtle">{t.common.resolutionHint}</p>
       </div>
 

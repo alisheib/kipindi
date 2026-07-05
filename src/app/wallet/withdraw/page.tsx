@@ -4,6 +4,7 @@ import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
+import { FieldLegend } from "@/components/ui/field-legend";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input, Field as KitField } from "@/components/ui/input";
 import { Cash } from "@/components/ui/cash";
@@ -100,9 +101,9 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
       >
         <input type="hidden" name="idempotencyKey" value={crypto.randomUUID()} />
         <fieldset disabled={!kycApproved}>
-          <legend className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
+          <FieldLegend as="legend" className="mb-2">
             {t.wallet.destination}
-          </legend>
+          </FieldLegend>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {PROVIDERS.map((p, i) => (
               <label
