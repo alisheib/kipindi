@@ -39,6 +39,10 @@ const config: Config = {
           soft: "var(--accent-soft)",
           300: "var(--accent-300)", 400: "var(--accent-400)", 500: "var(--accent-500)", 600: "var(--accent-600)",
         },
+        brand: {
+          soft: "var(--brand-soft)",
+          200: "var(--brand-200)", 300: "var(--brand-300)", 400: "var(--brand-400)", 500: "var(--brand-500)", 600: "var(--brand-600)",
+        },
         slate: {
           50: "var(--slate-50)", 100: "var(--slate-100)", 200: "var(--slate-200)", 300: "var(--slate-300)", 400: "var(--slate-400)",
           500: "var(--slate-500)", 600: "var(--slate-600)", 700: "var(--slate-700)", 800: "var(--slate-800)", 850: "var(--slate-850)", 900: "var(--slate-900)", 950: "var(--slate-950)",

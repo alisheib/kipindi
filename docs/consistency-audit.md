@@ -9,6 +9,32 @@ The fix is to extract a few shared atoms and adopt them everywhere.
 
 Legend: 🟢 safe class/token swap · 🟡 shared-atom extraction · ⚪ intentional/document-only.
 
+## ROUND 3 — final consult (buttons/banners/colors) + pagination 2026-07-05
+**SHIPPED (safe, high-value):**
+- **X1 (LOAD-BEARING BUG FIX):** `brand` was missing from `tailwind.config.ts`, so every
+  `text-brand-300`/`border-brand-500`/`bg-brand-500` utility in ~30 files rendered DEAD
+  (links/active-pills/pagination fell back to inherited color). Added the `brand` color map
+  + `--brand-200`. Now auth links, filter-pill borders, pagination all render royal-blue.
+  Verified: auth "Create one" link + markets active-pill border now blue. This was the root
+  cause of much of the "subtly off" feeling.
+- **Pagination:** leaderboard now paginates (50 rows) via the shared `<Pagination>` with
+  global rank — consistent with markets/results/positions/proposals.
+
+**BACKLOG (documented; needs verified batches):**
+- Colors: X3 link token split (teal-300 vs brand-300 → pick brand-300); X4 active-pill fill
+  as one `--pill-active` token; X6 gold-hue drift → `--gilt`/`--gold-*`; X7 repeated hero
+  gradient → `--hero-panel-grad`; X8 `#fff`→`--pearl-50`; X5 tabs.tsx teal pill → brand.
+- Buttons: B1 sell-confirm btn-primary vs bet-confirm btn-gold (decide "confirm=gold" vs
+  "exit=royal"); B2 side buttons pill/size drift (card md vs side-picker lg-pill); B3 two
+  ad-hoc Sign-Out buttons; B4 pill-radius via inline style in ~12 spots → one `.btn-pill`;
+  B6 filter rows → shared pill atom; B7 wallet pager → shared `<Pagination>`; B8 icon gaps.
+- Banners: B1 form-hero glow hue/corner drift (gold/rose/blue) → one `<PageHero glowHue>`;
+  B2 deposit glow alpha 0.20→0.18; B3 watermark size 180 vs 220; B4/B5 duplicated royal
+  gradients + two "propose & get paid" promos → shared component/token; B6 promo padding.
+- Pagination: /live (deliberate pulse overview — decide) + fairness recent-30.
+- Prior backlog still open: PageHeader (H1/eyebrow/section), padding/space tiers, forms
+  (FieldLegend/Textarea/deposit-on-Input), remaining Chip sites.
+
 ## ROUND 2 — deep scan (forms/buttons · modals/tables · type/spacing/icons) 2026-07-04
 Ali's instinct confirmed: more inconsistencies exist. ROOT CAUSE (recurring): pages hand-roll
 instead of using the shared atoms (Chip, Field, BackLink, PageHeader) and hardcode sizes.

@@ -13,6 +13,7 @@ import { PriceChart, VolumeSparkline } from "@/components/markets/price-chart";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Avatar, TierBadge as KitTierBadge } from "@/components/ui/avatar";
 import { PageRibbon } from "@/components/layout/page-ribbon";
+import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { getServerT, type Dict } from "@/lib/i18n-server";
 
@@ -142,7 +143,7 @@ async function buildConsensusSeries(todayLabel: string): Promise<{ t: string; ye
   return points;
 }
 
-export default async function LeaderboardPage() {
+export default async function LeaderboardPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const { t } = await getServerT();
   const real = await buildLeaderboard();
   // Show REAL players from the very first one so a player can always see
@@ -150,6 +151,12 @@ export default async function LeaderboardPage() {
   // genuinely no ranked players yet (brand-new platform), so the page isn't empty.
   const isSynthetic = real.length === 0;
   const rows = isSynthetic ? syntheticLeaderboard() : real;
+  // Paginate the ranking the same way every other list on the platform paginates.
+  const sp = await searchParams;
+  const totalPages = Math.max(1, Math.ceil(rows.length / PLAYER_PER_PAGE));
+  const safePage = Math.min(Math.max(1, parseInt(sp.page ?? "1", 10) || 1), totalPages);
+  const offset = (safePage - 1) * PLAYER_PER_PAGE;
+  const pagedRows = rows.slice(offset, offset + PLAYER_PER_PAGE);
   const consensus = await buildConsensusSeries(t.leaderboard.today).catch(() => []);
 
   // Tier display name from the dict (first word of the tier description)
@@ -208,10 +215,10 @@ export default async function LeaderboardPage() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, i) => (
+            {pagedRows.map((r, i) => (
               <tr key={r.userId} className="border-b border-border last:border-b-0 hover:bg-bg-overlay/40 transition-colors">
                 <td className="p-3 font-mono font-bold tabular-nums">
-                  <span className={i < 3 ? "text-brand-300" : "text-text-subtle"}>{i + 1}</span>
+                  <span className={offset + i < 3 ? "text-brand-300" : "text-text-subtle"}>{offset + i + 1}</span>
                 </td>
                 <td className="p-3">
                   <div className="flex items-center gap-2">
@@ -239,6 +246,12 @@ export default async function LeaderboardPage() {
           </tbody>
         </table>
       </section>
+
+      {totalPages > 1 && (
+        <div className="rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">
+          <Pagination total={rows.length} page={safePage} perPage={PLAYER_PER_PAGE} baseHref="/leaderboard" ofLabel={t.common.of} prevLabel={t.common.previousPage} nextLabel={t.common.nextPage} />
+        </div>
+      )}
     </main>
   );
 }
