@@ -67,6 +67,27 @@ RECOMMENDED next: a dedicated "adopt the atoms" pass — Chip everywhere (X5), o
 (X1+X4+X6), FieldLegend (F2), Textarea atom (F7), padding/space tiers (X3+X8) — each batch
 build+visually verified. This converts the whole backlog at the root instead of one-off whack-a-mole.
 
+## SHIPPED across 2026-07-04→05 (verified + pushed)
+Filters unified · cards (radius/hover/panels) · gold-budget · motion (durations/lift/press/
+reduced-motion) · BackLink on all 9 player pages · Chip adoption (market-detail, profile Pill,
+fairness, sessions, RG) · **brand-* tailwind config bug fixed (load-bearing)** · pagination
+added to leaderboard + fairness · color tokens (#fff→pearl, teal→brand links, tabs, --pill-active) ·
+**page H1 normalized to 28px platform-wide** · banner deposit-glow alpha.
+
+## REMAINING — needs a dedicated pass or a design decision (NOT visible bugs)
+Large mechanical refactors (each 10-30 files; do as focused verified batches):
+- PageHeader/PageHero COMPONENT extraction + adoption (eyebrow 10↔11 header-only, section-heading
+  20/15/16 tiers, form-hero glow/gradient/watermark unify).
+- Padding/space tier system (card p-5/p-4/p-3; container space-y-6/5) applied app-wide.
+- Forms: FieldLegend + Textarea atoms; rebuild deposit-amount on the Input atom.
+- .btn-pill utility + migrate ~12 inline pill-radius overrides; wallet pager → shared Pagination.
+- Hero-gradient → --hero-panel-grad token dedup (X7); gold-hue drift → --gilt/--gold (X6).
+Design DECISIONS needed from Ali (don't guess on money/UX):
+- Sell-confirm CTA royal vs gold (bet-confirm is gold) — "confirm=gold" or "exit=royal"?
+- Side buttons: card (md, r-md) vs side-picker (lg, pill) — unify shape/size?
+- Sign-out: profile menu-row vs sessions red-pill — one treatment?
+- /live pagination: keep as real-time overview (current) or paginate like /markets?
+
 ## STATUS
 - **TIER 1 — DONE (aa8d552), verified desktop+mobile.** All user-visible inconsistencies
   fixed: filter pills unified (proposals de-golded, active-glow removed on results/positions,
