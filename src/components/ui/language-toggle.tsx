@@ -39,7 +39,7 @@ export function LanguageToggle() {
               fontSize: 11.5,
               fontWeight: 600,
               cursor: "pointer",
-              color: active ? "#fff" : "var(--text-subtle)",
+              color: active ? "var(--pearl-50)" : "var(--text-subtle)",
               background: active ? "var(--brand-500)" : "transparent",
               border: "none",
               fontFamily: "var(--font-mono)",

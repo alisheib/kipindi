@@ -81,7 +81,7 @@ export function Checkbox({
           marginTop: 1,
         }}
       >
-        {on && <I.check s={13} style={{ color: "#fff", strokeWidth: 3 }} />}
+        {on && <I.check s={13} style={{ color: "var(--pearl-50)", strokeWidth: 3 }} />}
       </span>
       {label && <span style={{ lineHeight: 1.4 }}>{label}</span>}
     </label>

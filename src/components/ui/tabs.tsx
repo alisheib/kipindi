@@ -83,7 +83,7 @@ export function Tabs({
               className={cn(
                 "h-8 px-3.5 rounded-pill text-[12px] font-mono font-semibold uppercase tracking-[0.14em] border transition-colors duration-100",
                 active
-                  ? "border-teal-500 bg-teal-500/15 text-teal-300"
+                  ? "border-brand-500 bg-brand-500/15 text-brand-300"
                   : "border-border bg-bg-elevated text-text-muted hover:border-border-strong hover:text-text",
               )}
             >

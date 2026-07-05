@@ -119,7 +119,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                     ? "border-brand-500 text-text"
                     : "border-border bg-bg-elevated/60 text-text-muted hover:border-brand-400 hover:text-text")
                 }
-                style={on ? { background: "oklch(40% 0.12 262 / 0.35)" } : undefined}
+                style={on ? { background: "var(--pill-active)" } : undefined}
                 aria-current={on ? "page" : undefined}
               >
                 {tab.label}

@@ -56,7 +56,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
           aria-hidden
           style={{
             background:
-              "radial-gradient(800px 320px at 100% 0%, oklch(58% 0.13 80 / 0.20), transparent 60%), " +
+              "radial-gradient(800px 320px at 100% 0%, oklch(58% 0.13 80 / 0.18), transparent 60%), " +
               "linear-gradient(135deg, oklch(22% 0.140 268) 0%, oklch(30% 0.165 268) 100%)",
           }}
         />

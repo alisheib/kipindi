@@ -190,7 +190,7 @@ async function ResultsContent({
                         ? "border-brand-500 text-text"
                         : "border-border bg-bg-elevated/60 text-text-muted hover:border-brand-400 hover:text-text")
                     }
-                    style={active ? { background: "oklch(40% 0.12 262 / 0.35)" } : undefined}
+                    style={active ? { background: "var(--pill-active)" } : undefined}
                   >
                     {o.label}
                   </a>
@@ -213,7 +213,7 @@ async function ResultsContent({
                         ? "border-brand-500 text-text"
                         : "border-border bg-bg-elevated/60 text-text-muted hover:border-brand-400 hover:text-text")
                     }
-                    style={active ? { background: "oklch(40% 0.12 262 / 0.35)" } : undefined}
+                    style={active ? { background: "var(--pill-active)" } : undefined}
                   >
                     {c.label}
                   </a>

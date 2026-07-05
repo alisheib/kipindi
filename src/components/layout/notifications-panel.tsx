@@ -208,7 +208,7 @@ export function NotificationsPanel() {
               justifyContent: "center",
               fontSize: 10,
               fontWeight: 700,
-              color: "#fff",
+              color: "var(--pearl-50)",
               fontFamily: "var(--font-mono)",
               padding: "0 4px",
               lineHeight: 1,
@@ -329,7 +329,7 @@ export function NotificationsPanel() {
                     width="48"
                     height="48"
                     viewBox="0 0 56 56"
-                    className="mx-auto mb-3 text-teal-300"
+                    className="mx-auto mb-3 text-brand-300"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth={1.5}

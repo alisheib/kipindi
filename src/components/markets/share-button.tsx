@@ -100,7 +100,7 @@ export function ShareButton({
                   onClick={onWebShare}
                   className="w-full flex items-center gap-3 px-3 py-3 rounded-md hover:bg-bg-overlay text-left transition-colors"
                 >
-                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-teal-500/15 text-teal-300">
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-brand-500/15 text-brand-300">
                     <I.share s={16} />
                   </span>
                   <span>
