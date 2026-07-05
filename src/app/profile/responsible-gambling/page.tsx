@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { Chip } from "@/components/ui/chip";
 import { BackLink } from "@/components/ui/back-link";
+import { PageHeader } from "@/components/ui/page-header";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
 import { getRgSettings } from "@/lib/server/responsible-gambling";
@@ -72,15 +73,12 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           <FiftyMark size={180} />
         </div>
         <div className="relative z-10 p-5 lg:p-6">
-          <div className="flex items-center gap-2 mb-1">
-            <I.shieldcheck s={14} />
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-yes-300">
-              {t.rg.playerProtection}
-            </p>
-          </div>
-          <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
-            {t.profile.responsibleGambling}
-          </h1>
+          <PageHeader
+            tone="yes"
+            icon={<I.shieldcheck s={14} />}
+            eyebrow={t.rg.playerProtection}
+            title={t.profile.responsibleGambling}
+          />
           <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose">
             {t.rg.pageDescription}
           </p>

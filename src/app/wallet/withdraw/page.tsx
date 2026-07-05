@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
+import { PageHeader } from "@/components/ui/page-header";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input, Field as KitField } from "@/components/ui/input";
 import { Cash } from "@/components/ui/cash";
@@ -61,18 +62,13 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
           <FiftyMark size={180} />
         </div>
         <div className="relative z-10 p-5 lg:p-6 flex items-end justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <I.arrowUpFromLine s={14} className="text-gold-300" />
-              <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
-                {t.wallet.withdrawTitle}
-              </p>
-            </div>
-            <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
-              {t.wallet.moveFundsOut}
-            </h1>
-            <p className="mt-1 text-[13px] italic text-text-subtle">{t.wallet.mobileMoney}</p>
-          </div>
+          <PageHeader
+            tone="gold"
+            icon={<I.arrowUpFromLine s={14} className="text-gold-300" />}
+            eyebrow={t.wallet.withdrawTitle}
+            title={t.wallet.moveFundsOut}
+            subtitle={t.wallet.mobileMoney}
+          />
           <div className="text-right shrink-0">
             <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{t.wallet.available}</p>
             <Cash className="font-display font-bold text-[22px] tabular-nums text-text leading-none block">

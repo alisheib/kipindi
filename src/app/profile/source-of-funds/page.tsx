@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
+import { PageHeader } from "@/components/ui/page-header";
 import { FiftyMark } from "@/components/brand";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
@@ -83,15 +84,12 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
           <FiftyMark size={180} />
         </div>
         <div className="relative z-10 p-5 lg:p-6">
-          <div className="flex items-center gap-2 mb-1">
-            <I.fileSignature s={14} className="text-info-fg" />
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-info-fg">
-              {"AML"}
-            </p>
-          </div>
-          <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
-            {t.profile.sourceOfFunds}
-          </h1>
+          <PageHeader
+            tone="info"
+            icon={<I.fileSignature s={14} className="text-info-fg" />}
+            eyebrow="AML"
+            title={t.profile.sourceOfFunds}
+          />
           <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose">
             {t.profile.sofDescription}
           </p>

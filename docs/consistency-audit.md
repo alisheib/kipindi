@@ -9,6 +9,25 @@ The fix is to extract a few shared atoms and adopt them everywhere.
 
 Legend: 🟢 safe class/token swap · 🟡 shared-atom extraction · ⚪ intentional/document-only.
 
+## BACKLOG EXECUTION — batched atom-adoption pass 2026-07-05
+Working the remaining backlog in order, each as its own build+i18n+visual+push batch.
+
+**BATCH 1 — PageHeader atom (SHIPPED, verified desktop):**
+- New `<PageHeader eyebrow title subtitle icon tone>` atom (`src/components/ui/page-header.tsx`).
+  Normalizes the drifting header bits: eyebrow → `font-mono text-[11px] tracking-[0.16em]`
+  (was `text-[10px]` on ~8 pages), title → `font-display text-[28px] tracking-[-0.02em]`.
+  `tone` = subtle | gold (money) | info (account/security) | yes (protection).
+- Adopted on: help, wallet/deposit, wallet/withdraw, profile/account, profile/sessions,
+  profile/kyc, profile/source-of-funds, profile/responsible-gambling, proposals/new.
+  (Longer descriptive paragraphs stay as siblings; only the short italic tagline uses `subtitle`.)
+- Eyebrow-only 11px bump (no clean h1 pairing): profile hero PREDICTOR, legal header.
+  (markets/results board eyebrows were already 11px — left as-is.)
+- Section-heading two-tier normalize: in-card headings `font-display text-[16px]` → `text-[15px]`
+  on home step-cards + markets/[id] (resolution criterion, aside boxes, closed message).
+  20px stays for page-level section titles; 15px is the in-card tier (matches account page).
+- Verified: deposit/withdraw/help/account/rg/profile headers render clean; withdraw right-side
+  "available" aside preserved. tsc 0, i18n 1181×3, next build 0.
+
 ## ROUND 3 — final consult (buttons/banners/colors) + pagination 2026-07-05
 **SHIPPED (safe, high-value):**
 - **X1 (LOAD-BEARING BUG FIX):** `brand` was missing from `tailwind.config.ts`, so every

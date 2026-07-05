@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { I } from "@/components/ui/glyphs";
 import { Chip } from "@/components/ui/chip";
 import { BackLink } from "@/components/ui/back-link";
+import { PageHeader } from "@/components/ui/page-header";
 import { FiftyMark } from "@/components/brand";
 import { getSession } from "@/lib/server/session";
 import { formatDateTime } from "@/lib/utils";
@@ -49,15 +50,12 @@ export default async function SessionsPage() {
           <FiftyMark size={180} />
         </div>
         <div className="relative z-10 p-5 lg:p-6">
-          <div className="flex items-center gap-2 mb-1">
-            <I.device s={14} className="text-info-fg" />
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-info-fg">
-              {t.profile.activeSessions}
-            </p>
-          </div>
-          <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
-            {t.profile.activeSessions}
-          </h1>
+          <PageHeader
+            tone="info"
+            icon={<I.device s={14} className="text-info-fg" />}
+            eyebrow={t.profile.activeSessions}
+            title={t.profile.activeSessions}
+          />
           <p className="mt-1 text-[13px] text-text-muted">
             {t.profile.sessionsDescription}
           </p>

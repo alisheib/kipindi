@@ -100,7 +100,7 @@ export default async function ProfilePage() {
             size="2xl"
           />
           <div className="flex-1 min-w-0 pt-1">
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">
+            <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">
               {t.profile.predictor}
             </p>
             <ProfileNameEditor

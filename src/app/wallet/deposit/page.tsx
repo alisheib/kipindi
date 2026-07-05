@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
+import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { CashbackPromo } from "@/components/ui/cashback-promo";
@@ -64,16 +65,13 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
           <FiftyMark size={180} />
         </div>
         <div className="relative z-10 p-5 lg:p-6">
-          <div className="flex items-center gap-2 mb-1">
-            <I.arrowDownToLine s={14} className="text-gold-300" />
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
-              {t.common.addFunds}
-            </p>
-          </div>
-          <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
-            {t.common.deposit}
-          </h1>
-          <p className="mt-1 text-[14px] italic text-text-subtle">{t.wallet.mobileMoney}</p>
+          <PageHeader
+            tone="gold"
+            icon={<I.arrowDownToLine s={14} className="text-gold-300" />}
+            eyebrow={t.common.addFunds}
+            title={t.common.deposit}
+            subtitle={t.wallet.mobileMoney}
+          />
         </div>
       </header>
 

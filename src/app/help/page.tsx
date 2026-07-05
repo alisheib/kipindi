@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
+import { PageHeader } from "@/components/ui/page-header";
 import { FiftyMark } from "@/components/brand";
 import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/support-config";
 import { getServerT } from "@/lib/i18n-server";
@@ -29,12 +30,7 @@ export default async function HelpPage() {
           <FiftyMark size={180} />
         </div>
         <div className="relative z-10 p-5 lg:p-6">
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
-            {t.help.pageTitle}
-          </p>
-          <h1 className="mt-1 font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
-            {t.help.heading}
-          </h1>
+          <PageHeader tone="gold" eyebrow={t.help.pageTitle} title={t.help.heading} />
         </div>
       </header>
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
+import { PageHeader } from "@/components/ui/page-header";
 import { currentSession } from "@/lib/server/auth-service";
 import { getProposalsConfig } from "@/lib/server/proposals-config";
 import { db } from "@/lib/server/store";
@@ -27,10 +28,7 @@ export default async function NewProposalPage() {
   return (
     <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-4">
       <BackLink fallbackHref="/proposals" label={t.proposals.title} />
-      <div>
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.common.submitProposal}</p>
-        <h1 className="mt-1 font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.common.suggestMarket}</h1>
-      </div>
+      <PageHeader eyebrow={t.common.submitProposal} title={t.common.suggestMarket} />
       <CreateProposalForm enabled={cfg.enabled} prizeTzs={cfg.prizeTzs} rateLimit={cfg.rateLimit} openCount={openCount} />
     </main>
   );

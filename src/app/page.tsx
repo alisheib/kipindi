@@ -285,7 +285,7 @@ function TrustItem({
       </span>
       <div className="min-w-0">
         <p className={`font-mono text-[10px] tracking-[0.16em] font-bold ${accent}`}>{n}</p>
-        <h3 className="font-display text-[16px] font-semibold leading-tight text-text">{title}</h3>
+        <h3 className="font-display text-[15px] font-semibold leading-tight text-text">{title}</h3>
         <p className="mt-1 text-[13px] leading-relaxed text-text-muted">{body}</p>
       </div>
     </div>

@@ -310,7 +310,7 @@ export default async function MarketDetail({
 
           {/* 5. Resolution criterion — the rules of the bet */}
           <section className="glass-panel p-5">
-            <h2 className="font-display text-[16px] font-semibold text-text mb-2 flex items-center gap-2">
+            <h2 className="font-display text-[15px] font-semibold text-text mb-2 flex items-center gap-2">
               <I.fileCheck s={15} className="text-text-subtle" />
               {t.market.resolutionCriterion}
             </h2>
@@ -410,7 +410,7 @@ export default async function MarketDetail({
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
                 {t.market.selectionClosedBadge}
               </p>
-              <h3 className="mt-1.5 font-display text-[16px] font-bold text-text">{t.market.waitingForResultsAside}</h3>
+              <h3 className="mt-1.5 font-display text-[15px] font-bold text-text">{t.market.waitingForResultsAside}</h3>
               <p className="mt-3 text-[12px] text-text-muted leading-snug">
                 {t.market.newPredictionsNotAccepted}
                 {m.resolutionAt && ` ${t.market.resultsExpectedBy} ${new Date(m.resolutionAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}.`}
@@ -421,7 +421,7 @@ export default async function MarketDetail({
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-warning-fg">
                 {t.market.closedAwaitingSettlement}
               </p>
-              <h3 className="mt-1.5 font-display text-[16px] font-bold text-text">{t.market.noMoreBets}</h3>
+              <h3 className="mt-1.5 font-display text-[15px] font-bold text-text">{t.market.noMoreBets}</h3>
               <p className="mt-1 text-[13px] italic text-text-subtle">{t.market.closedWaitSubtitle}</p>
               <p className="mt-3 text-[12px] text-text-muted leading-snug">
                 {t.market.countdownEndedBody}
@@ -429,7 +429,7 @@ export default async function MarketDetail({
             </div>
           ) : (
             <div className="rounded-xl border border-border bg-bg-elevated p-6 text-center">
-              <p className="font-display text-[16px] font-semibold text-text">{t.market.marketClosedForPredictions}</p>
+              <p className="font-display text-[15px] font-semibold text-text">{t.market.marketClosedForPredictions}</p>
             </div>
           )}
         </aside>
