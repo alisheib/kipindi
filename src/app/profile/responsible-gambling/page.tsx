@@ -5,6 +5,7 @@ import { Chip } from "@/components/ui/chip";
 import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
+import { FieldLegend } from "@/components/ui/field-legend";
 import { currentSession } from "@/lib/server/auth-service";
 import { getRgSettings } from "@/lib/server/responsible-gambling";
 import { setLimitsAction, selfExcludeAction, coolOffAction } from "./actions";
@@ -119,9 +120,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
         </p>
         <form action={coolOffAction} className="flex flex-wrap items-end gap-2">
           <div>
-            <span className="block font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">
-              {t.rg.breakLength}
-            </span>
+            <FieldLegend className="block mb-1.5">{t.rg.breakLength}</FieldLegend>
             <Select
               name="period"
               defaultValue={COOLING_OFF_OPTIONS[0].id}
@@ -144,9 +143,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
         </p>
         <form action={selfExcludeAction} className="flex flex-wrap items-end gap-2">
           <div>
-            <span className="block font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">
-              {t.rg.exclusionPeriod}
-            </span>
+            <FieldLegend className="block mb-1.5">{t.rg.exclusionPeriod}</FieldLegend>
             <Select
               name="period"
               defaultValue={SELF_EXCLUSION_OPTIONS[0].id}

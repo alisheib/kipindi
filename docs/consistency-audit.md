@@ -115,6 +115,19 @@ Working the remaining backlog in order, each as its own build+i18n+visual+push b
   confirm the target port from the CURRENT dev log before screenshotting, and kill zombies via
   `Get-NetTCPConnection -LocalPort N | Stop-Process`.
 
+**POST-BATCH RE-SCAN + FUNCTIONALITY CHECK 2026-07-05 (SHIPPED, verified):**
+- Ran an independent player-facing consistency re-scan against the 6 shipped atoms. Fixed the one
+  genuine remaining form-label drift: responsible-gambling break-length + exclusion-period labels
+  (tracking-0.14em + text-subtle) → `<FieldLegend>`. Now uniform with the rest of the RG form.
+- Reviewed & INTENTIONALLY LEFT (not drift): legal `_components` 17px section heading (dense
+  prose-doc scale, distinct from the app's sparse 20px section tier); proposals/[id] 19px title
+  (user-generated variable-length, not a fixed page-header); markets/[id] 18px "Place your stake"
+  focal CTA + 18px KPI *value* (a data value, not a heading). markets/results board FILTER labels
+  stay tracking-0.14em (filter-bar pattern, explicitly out of FieldLegend's form-field scope).
+- Functionality smoke test (all 17 player routes): every route 200; deposit strict-numeric
+  (`abc123def45`→`12345`) + quick-chip (`1K`→`1000`) work; create-form textareas accept input;
+  ZERO console/page errors platform-wide. tsc 0, i18n 1181×3, next build 0.
+
 ## ROUND 3 — final consult (buttons/banners/colors) + pagination 2026-07-05
 **SHIPPED (safe, high-value):**
 - **X1 (LOAD-BEARING BUG FIX):** `brand` was missing from `tailwind.config.ts`, so every
