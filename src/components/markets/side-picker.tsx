@@ -12,6 +12,7 @@
 
 import { useState } from "react";
 import { I } from "@/components/ui/glyphs";
+import { Chip } from "@/components/ui/chip";
 import { ConvictionDial } from "./conviction-dial";
 import { NotifyPrompt } from "./notify-prompt";
 import { useT } from "@/lib/i18n";
@@ -43,15 +44,9 @@ export function SidePicker({
         {/* Side indicator + switch button */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span
-              className={`inline-flex h-7 items-center px-3 rounded-pill font-mono text-[12px] font-bold uppercase tracking-[0.06em] ${
-                side === "YES"
-                  ? "bg-yes-500/15 text-yes-300 border border-yes-700"
-                  : "bg-no-500/15 text-no-300 border border-no-700"
-              }`}
-            >
+            <Chip variant={side === "YES" ? "yes" : "no"} size="lg">
               {side} {side === "YES" ? yesPct : 100 - yesPct}%
-            </span>
+            </Chip>
             <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{t.common.yourPick}</span>
           </div>
           <button

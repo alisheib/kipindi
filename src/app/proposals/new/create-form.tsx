@@ -114,7 +114,7 @@ export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: 
       </div>
 
       <div>
-        <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-2">{t.common.category}</span>
+        <FieldLegend className="block mb-2">{t.common.category}</FieldLegend>
         <div className="flex flex-wrap gap-2">
           {CATEGORIES.map((c) => {
             const active = c === category;
@@ -136,7 +136,7 @@ export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: 
       </div>
 
       <div>
-        <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5">{t.common.resolutionDate} <Req /></span>
+        <FieldLegend className="block mb-1.5">{t.common.resolutionDate} <Req /></FieldLegend>
         <DateSelect
           value={date}
           onChange={setDate}
@@ -146,7 +146,7 @@ export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: 
       </div>
 
       <div>
-        <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5">{t.common.selectionCloseDate}</span>
+        <FieldLegend className="block mb-1.5">{t.common.selectionCloseDate}</FieldLegend>
         <DateSelect
           value={closeDate}
           onChange={setCloseDate}
