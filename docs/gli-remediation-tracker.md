@@ -152,3 +152,20 @@ Sportradar feed, live AI market generation. Keep interfaces clean; commercial ac
   `refundBonus` now delegates to it), skips position/txn, audits `bet.rejected.closed_in_flight`.
   New `test:late-bet` 14/14. Regression: bonus-betting 24, emergency-void 30, market-resolution 18,
   cashout 15 — all green. Full build green.
+- **2026-07-06 — FULL RE-VALIDATION** of all three commits (`0366caf`, `a4aaf08`, `4517eb2`) against
+  an isolated in-memory dev server (no DATABASE_URL → prod/testers untouched):
+  - Build: green. **All 38 unit suites: 100% pass** (incl. ledger 69, bonus 59, KYC, i18n parity,
+    audit chain, admin-roles, officer-conflict, loss-limit 7, late-bet 14).
+  - **qa:live gauntlet: 120/121** — zero console/page/5xx errors + zero error overlays on every
+    public + authed route; no horizontal overflow @360px; date field unclipped @360/768/1280;
+    35-link dead-link crawl all 200. (The 1 miss = "no bettable market" on a fresh, unseeded store.)
+  - **Security/manipulation**: player + **21/21 admin** route gating; garbage/forged/empty session
+    cookies all rejected; path-traversal → 404; **0× 5xx under 50 parallel requests**.
+  - **Live money path** (`/api/dev-test/stress-money`): 1000 users · 2000 ops · deposit→bet→cashout →
+    **money conserved exactly (drift 0), 0 negative balances, pools non-negative** — proves the
+    late-bet + loss-limit changes hold the money invariant under concurrency in the running server.
+  - Legacy Playwright e2e scripts (money-flow, golden-path, break-it UI tails, theme/a11y/overflow)
+    fail ONLY on `page.goto ... waitUntil:"networkidle"` (never fires under the app's live SSE),
+    missing seed data, or stale brand-kit-v1 selectors (e.g. `.top-bar`/`logo` renamed in kit v2;
+    logo still renders — `aria-label="50pick"` present at all viewports). **None indicate an app
+    defect or a regression.**
