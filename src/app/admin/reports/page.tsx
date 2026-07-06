@@ -1,5 +1,6 @@
-import { AdminPageHead, AdminCard, FeedRow } from "@/components/admin/admin-shell";
+import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
+import { RefreshButton } from "@/components/admin/refresh-button";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
@@ -140,13 +141,13 @@ export default async function AdminReportsPage({
               <div className="flex items-start gap-3">
                 <span
                   className={[
-                    "h-9 w-9 rounded-md inline-flex items-center justify-center font-mono shrink-0",
+                    "h-9 w-9 rounded-md inline-flex items-center justify-center shrink-0",
                     t.severity === "critical" ? "bg-danger/15 text-danger" :
                     t.severity === "high"     ? "bg-gold/15 text-gold" :
                                                 "bg-royal/15 text-royal",
                   ].join(" ")}
                 >
-                  ↓
+                  <I.download s={16} aria-hidden />
                 </span>
                 <div className="flex-1 min-w-0 space-y-2">
                   <div>
@@ -180,7 +181,8 @@ export default async function AdminReportsPage({
         </div>
 
         {/* Generation log */}
-        <AdminCard title="Generation log" sw="Kumbukumbu ya kuzalisha" padding={generated.length > 0 ? "p-0" : "p-4"}>
+        <AdminCard title="Generation log" sw="Kumbukumbu ya kuzalisha" padding={generated.length > 0 ? "p-0" : "p-4"}
+          action={<RefreshButton variant="icon" className="!h-7 !w-7" />}>
           {generated.length === 0 ? (
             <div className="flex items-center gap-3 py-4">
               <I.shieldcheck s={18} />
@@ -220,8 +222,8 @@ export default async function AdminReportsPage({
             <p>
               Each template runs against Postgres aggregations, signs the output with HMAC-chained envelopes
               (matching the audit-chain scheme), and uploads to the regulator&apos;s endpoint via SFTP / mTLS.
-              Failed generations alert on-call. Every download is recorded under <code>ADMIN</code> with
-              the reviewer&apos;s user-id, IP, and reason.
+              Failed generations alert on-call. Every download is recorded under{" "}
+              <code>ADMIN</code>{" "}with the reviewer&apos;s user-id, IP, and reason.
             </p>
           </div>
         </AdminCard>
