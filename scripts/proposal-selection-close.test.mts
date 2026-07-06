@@ -138,5 +138,55 @@ const officer = await mkUser("ADMIN");
   ok("9: edit rejected once LISTED", !e2.ok);
 }
 
+// 10. officer edit can CLEAR an existing close date (set → null)
+{
+  const P = await mkUser();
+  const c = await createProposal(P, base({ resolutionDate: futureDate(40), selectionCloseDate: futureDate(15) }));
+  const e = c.ok ? await editProposal(c.proposal.id, officer, { selectionCloseDate: null }) : { ok: false };
+  ok("10: edit clear close date ok", e.ok);
+  const d = c.ok ? await getProposalDetail(c.proposal.id, null) : null;
+  ok("10: close date cleared to null", d?.selectionCloseDate === null, `got=${d?.selectionCloseDate}`);
+}
+
+// 11. officer edit can change the category
+{
+  const P = await mkUser();
+  const c = await createProposal(P, base({ resolutionDate: futureDate(40) }));
+  const e = c.ok ? await editProposal(c.proposal.id, officer, { category: "sports" }) : { ok: false };
+  ok("11: edit category ok", e.ok);
+  const d = c.ok ? await getProposalDetail(c.proposal.id, null) : null;
+  ok("11: category updated to sports", d?.category === "sports", `got=${d?.category}`);
+}
+
+// 12. officer edit can move the resolution date later
+{
+  const P = await mkUser();
+  const c = await createProposal(P, base({ resolutionDate: futureDate(30) }));
+  const newRes = futureDate(60);
+  const e = c.ok ? await editProposal(c.proposal.id, officer, { resolutionDate: newRes }) : { ok: false };
+  ok("12: edit resolution date ok", e.ok);
+  const d = c.ok ? await getProposalDetail(c.proposal.id, null) : null;
+  ok("12: resolution date updated", d?.resolutionDate === newRes, `got=${d?.resolutionDate}`);
+}
+
+// 13. reconcile guard: moving resolution to/before an existing close date is rejected
+{
+  const P = await mkUser();
+  const c = await createProposal(P, base({ resolutionDate: futureDate(40), selectionCloseDate: futureDate(20) }));
+  const e = c.ok ? await editProposal(c.proposal.id, officer, { resolutionDate: futureDate(10) }) : { ok: true };
+  ok("13: move resolution before existing close rejected", !e.ok);
+}
+
+// 14. strictly-before: close == resolution is rejected (create + edit)
+{
+  const P = await mkUser();
+  const same = futureDate(40);
+  const r = await createProposal(P, base({ resolutionDate: same, selectionCloseDate: same }));
+  ok("14: create with close == resolution rejected", !r.ok);
+  const c = await createProposal(P, base({ resolutionDate: same }));
+  const e = c.ok ? await editProposal(c.proposal.id, officer, { selectionCloseDate: same }) : { ok: true };
+  ok("14: edit close == resolution rejected", !e.ok);
+}
+
 console.log(`\nproposal-selection-close: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

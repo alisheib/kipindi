@@ -22,6 +22,13 @@ const CATEGORIES: ProposalCategory[] = ["sports", "macro", "weather", "crypto", 
 const TODAY = () => new Date().toISOString().slice(0, 10);
 const MAX_DATE = () => `${new Date().getFullYear() + 2}-12-31`;
 
+/** Client mirror of the server source-URL gate (http/https only) — used by the edit panel. */
+function isValidHttpUrl(raw: string): boolean {
+  const s = raw.trim();
+  if (!s || s.length > 500) return false;
+  try { const u = new URL(s); return u.protocol === "http:" || u.protocol === "https:"; } catch { return false; }
+}
+
 function Cap({ children }: { children: React.ReactNode }) {
   return <span className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-subtle">{children}</span>;
 }
@@ -130,6 +137,7 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
   const [editing, setEditing] = useState(false);
   const [eTitle, setETitle] = useState("");
   const [eTitleSw, setETitleSw] = useState("");
+  const [eTitleZh, setETitleZh] = useState("");
   const [eCriterion, setECriterion] = useState("");
   const [eCategory, setECategory] = useState<ProposalCategory>("sports");
   const [eResDate, setEResDate] = useState("");
@@ -187,19 +195,30 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
   const resetReview = () => { setDeclining(false); setReason(null); setNote(""); setEditing(false); };
 
   const openEdit = () => { if (!sel) return;
-    setETitle(sel.title); setETitleSw(sel.titleSw ?? ""); setECriterion(sel.resolutionCriterion);
+    setETitle(sel.title); setETitleSw(sel.titleSw ?? ""); setETitleZh(sel.titleZh ?? ""); setECriterion(sel.resolutionCriterion);
     setECategory(sel.category); setEResDate(sel.resolutionDate); setECloseDate(sel.selectionCloseDate ?? "");
     setESource(sel.sourceUrl ?? ""); setDeclining(false); setEditing(true);
   };
 
-  const saveEdit = () => { if (!sel) return;
+  // Client-side validity gate for the edit panel — mirrors the proposer form so an
+  // officer can't submit an obviously-invalid edit (server re-validates regardless).
+  const editValid = eTitle.trim().length >= 8 && eTitle.trim().length <= 120
+    && eCriterion.trim().length >= 12
+    && /^\d{4}-\d{2}-\d{2}$/.test(eResDate)
+    && (!eCloseDate || (/^\d{4}-\d{2}-\d{2}$/.test(eCloseDate) && eCloseDate < eResDate))
+    && (!eSource.trim() || isValidHttpUrl(eSource));
+
+  const saveEdit = () => { if (!sel || !editValid) return;
     overlay.run("Saving edit…", "Updating the proposal.");
     start(async () => {
       try {
         const r = await editProposalAction(sel.id, {
-          titleEn: eTitle, titleSw: eTitleSw || null, resolutionCriterion: eCriterion,
-          category: eCategory, resolutionDate: eResDate,
-          selectionCloseDate: eCloseDate || null, sourceUrl: eSource || null,
+          titleEn: eTitle, titleSw: eTitleSw.trim() || null, titleZh: eTitleZh.trim() || null,
+          resolutionCriterion: eCriterion, category: eCategory, resolutionDate: eResDate,
+          selectionCloseDate: eCloseDate || null,
+          // Only send source when non-empty — a blank field means "leave unchanged",
+          // never "clear it" (a market's resolution source is required).
+          sourceUrl: eSource.trim() ? eSource.trim() : undefined,
         });
         if (r.ok) { overlay.succeed("Saved", "Proposal updated."); setEditing(false); refresh(); }
         else overlay.fail("Couldn't save", r.error);
@@ -360,6 +379,10 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
                   <Input value={eTitleSw} onChange={(e) => setETitleSw(e.target.value)} size="sm" maxLength={120} />
                 </div>
                 <div>
+                  <div className="mb-1 text-[11px] font-semibold text-text-muted">Title (ZH)</div>
+                  <Input value={eTitleZh} onChange={(e) => setETitleZh(e.target.value)} size="sm" maxLength={120} />
+                </div>
+                <div>
                   <div className="mb-1 text-[11px] font-semibold text-text-muted">Resolution criterion</div>
                   <textarea value={eCriterion} onChange={(e) => setECriterion(e.target.value)} maxLength={500} className="min-h-[56px] w-full resize-none rounded-md border border-border bg-bg-elevated px-3 py-2 text-[13px] text-text outline-none admin-focus transition-colors" />
                 </div>
@@ -388,9 +411,12 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
                   <div className="mb-1 text-[11px] font-semibold text-text-muted">Source URL</div>
                   <Input value={eSource} onChange={(e) => setESource(e.target.value)} placeholder="https://..." mono size="sm" />
                 </div>
+                {!editValid && (
+                  <p className="text-[10.5px] text-no-300">Check the fields: title 8–120 chars, criterion ≥ 12, a resolution date, betting-close before it, and a valid source URL.</p>
+                )}
                 <div className="flex gap-2">
                   <Button variant="ghost" size="md" onClick={() => setEditing(false)}>Cancel</Button>
-                  <Button variant="gold" size="md" fullWidth loading={pending} leading={<I.check size={15} />} onClick={saveEdit}>Save changes</Button>
+                  <Button variant="gold" size="md" fullWidth disabled={!editValid} loading={pending} leading={<I.check size={15} />} onClick={saveEdit}>Save changes</Button>
                 </div>
               </div>
             ) : approved ? (

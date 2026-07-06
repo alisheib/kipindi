@@ -110,7 +110,10 @@ export function parseSelectionCloseDate(raw: string | null | undefined, resoluti
   const ts = Date.parse(`${s}T23:59:59.000Z`);
   if (!Number.isFinite(ts)) return { ok: false, error: "Invalid betting-close date." };
   if (ts <= Date.now()) return { ok: false, error: "Betting-close date must be in the future." };
-  if (s > resolutionDate) return { ok: false, error: "Betting must close on or before the resolution date." };
+  // Strictly before resolution: an equal date resolves to the same 23:59:59 cutoff
+  // and would be dropped at market creation, so require an earlier day to avoid a
+  // silently-discarded value. Leave blank to keep betting open until resolution.
+  if (s >= resolutionDate) return { ok: false, error: "Betting must close before the resolution date." };
   return { ok: true, date: s };
 }
 
@@ -664,10 +667,10 @@ export async function editProposal(proposalId: string, officerId: string, patch:
       const sel = parseSelectionCloseDate(patch.selectionCloseDate, effResolution);
       if (!sel.ok) return { ok: false, error: sel.error };
       next.selectionCloseDate = sel.date;
-    } else if (patch.resolutionDate !== undefined && p.selectionCloseDate && p.selectionCloseDate > effResolution) {
-      // Resolution moved earlier than the existing close date — force the officer
-      // to reconcile rather than silently ship an impossible market.
-      return { ok: false, error: "New resolution date is before the existing betting-close date — set a new betting-close date too." };
+    } else if (patch.resolutionDate !== undefined && p.selectionCloseDate && p.selectionCloseDate >= effResolution) {
+      // Resolution moved to/earlier than the existing close date — force the officer
+      // to reconcile rather than silently ship an impossible/degenerate market.
+      return { ok: false, error: "New resolution date is on/before the existing betting-close date — set a new betting-close date too." };
     }
     if (patch.sourceUrl !== undefined) {
       const s = validateSourceUrl(patch.sourceUrl);
