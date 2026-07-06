@@ -55,7 +55,7 @@ const CONTENT: Record<Locale, React.ReactNode> = {
           All stakes — YES and NO — are pooled. After applying the published platform tax and operator commission,
           the remaining net pool is distributed to the winning side, pro-rata to each correct stake&apos;s share of
           the winning side&apos;s pool. The current rates are displayed on every market, in your placement preview,
-          and on the public <a href="/admin/config" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">market config</a>.
+          and on the public <a href="/fairness" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">market config</a>.
         </p>
         <p>
           The probabilities shown on the dial are <em>implied</em> by the current pool composition and update with
@@ -147,7 +147,7 @@ const CONTENT: Record<Locale, React.ReactNode> = {
           Dau zote — NDIYO na HAPANA — zinakusanywa kwenye bwawa moja. Baada ya kutoza kodi ya jukwaa na komisheni ya
           mwendeshaji iliyotangazwa, salio la bwawa linagawanywa kwa upande ulioshinda, kwa uwiano wa mchango wa kila
           dau sahihi katika bwawa la upande ulioshinda. Viwango vya sasa vinaonyeshwa kwenye kila soko, kwenye onyesho la
-          awali la uwekaji wako wa dau, na kwenye <a href="/admin/config" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">usanidi wa soko</a> wa umma.
+          awali la uwekaji wako wa dau, na kwenye <a href="/fairness" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">usanidi wa soko</a> wa umma.
         </p>
         <p>
           Uwezekano unaoonyeshwa kwenye kipima-dau <em>unadokezwa</em> na muundo wa sasa wa bwawa na hubadilika kila
@@ -235,7 +235,7 @@ const CONTENT: Record<Locale, React.ReactNode> = {
           50pick 采用 <strong className="text-text">全资金池价格竞争（whole-pool Price Competition）</strong> 市场模型。
           所有注金——YES 与 NO——汇入同一资金池。在扣除已公布的平台税与运营方佣金后，剩余的净资金池按各正确注金在获胜方资金池中
           所占份额，按比例分配给获胜方。当前费率显示在每个市场、您的下注预览以及公开的
-          <a href="/admin/config" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">市场配置</a>页面中。
+          <a href="/fairness" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">市场配置</a>页面中。
         </p>
         <p>
           转盘上显示的概率是由当前资金池构成所<em>隐含</em>的，并随每一笔新下注而更新——它们并非保证的赔率。在结算前可进行兑现

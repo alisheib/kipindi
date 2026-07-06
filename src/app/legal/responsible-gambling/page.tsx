@@ -1,5 +1,5 @@
 import { LegalHeader, LegalSection } from "../_components";
-import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/support-config";
+import { SUPPORT_EMAIL, HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
 import { getServerT, type Locale } from "@/lib/i18n-server";
 
 export const metadata = { title: "Responsible Gambling Policy" };
@@ -68,7 +68,7 @@ const CONTENT: Record<Locale, React.ReactNode> = {
 
       <LegalSection n="5" title="Get help">
         <ul className="list-disc pl-5 space-y-1">
-          <li><strong className="text-text">Tanzania</strong>: National Helpline <a href={`tel:${SUPPORT_PHONE_TEL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_PHONE()}</a> (free)</li>
+          <li><strong className="text-text">Tanzania</strong>: National Helpline <a href={`tel:${HELPLINE_TEL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{HELPLINE()}</a> (free)</li>
           <li><strong className="text-text">International</strong>: <a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="font-mono text-brand-300 underline-offset-2 hover:underline">begambleaware.org</a>, <a href="https://www.gamcare.org.uk" target="_blank" rel="noopener noreferrer" className="font-mono text-brand-300 underline-offset-2 hover:underline">gamcare.org.uk</a></li>
           <li><strong className="text-text">Email us</strong>: <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a></li>
         </ul>
@@ -121,7 +121,7 @@ const CONTENT: Record<Locale, React.ReactNode> = {
 
       <LegalSection n="5" title="Pata msaada">
         <ul className="list-disc pl-5 space-y-1">
-          <li><strong className="text-text">Tanzania</strong>: Namba ya Msaada ya Taifa <a href={`tel:${SUPPORT_PHONE_TEL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_PHONE()}</a> (bure)</li>
+          <li><strong className="text-text">Tanzania</strong>: Namba ya Msaada ya Taifa <a href={`tel:${HELPLINE_TEL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{HELPLINE()}</a> (bure)</li>
           <li><strong className="text-text">Kimataifa</strong>: <a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="font-mono text-brand-300 underline-offset-2 hover:underline">begambleaware.org</a>, <a href="https://www.gamcare.org.uk" target="_blank" rel="noopener noreferrer" className="font-mono text-brand-300 underline-offset-2 hover:underline">gamcare.org.uk</a></li>
           <li><strong className="text-text">Tutumie barua pepe</strong>: <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a></li>
         </ul>
@@ -171,7 +171,7 @@ const CONTENT: Record<Locale, React.ReactNode> = {
 
       <LegalSection n="5" title="获取帮助">
         <ul className="list-disc pl-5 space-y-1">
-          <li><strong className="text-text">坦桑尼亚</strong>：全国求助热线 <a href={`tel:${SUPPORT_PHONE_TEL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_PHONE()}</a>（免费）</li>
+          <li><strong className="text-text">坦桑尼亚</strong>：全国求助热线 <a href={`tel:${HELPLINE_TEL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{HELPLINE()}</a>（免费）</li>
           <li><strong className="text-text">国际</strong>：<a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="font-mono text-brand-300 underline-offset-2 hover:underline">begambleaware.org</a>、<a href="https://www.gamcare.org.uk" target="_blank" rel="noopener noreferrer" className="font-mono text-brand-300 underline-offset-2 hover:underline">gamcare.org.uk</a></li>
           <li><strong className="text-text">发送邮件给我们</strong>：<a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a></li>
         </ul>

@@ -1,4 +1,5 @@
 import { LegalHeader, LegalSection } from "../_components";
+import { SUPPORT_EMAIL } from "@/lib/support-config";
 import { getServerT, type Locale } from "@/lib/i18n-server";
 
 export const metadata = { title: "AML / KYC Policy" };
@@ -76,6 +77,13 @@ const CONTENT: Record<Locale, React.ReactNode> = {
           Officer reports directly to the Board. The Board reviews the AML risk register quarterly.
         </p>
       </LegalSection>
+
+      <LegalSection n="7" title="Contact + reporting">
+        <p>
+          To raise an AML/KYC concern or ask about your records, contact our compliance team at{" "}
+          <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a>.
+        </p>
+      </LegalSection>
     </>
   ),
   sw: (
@@ -134,6 +142,13 @@ const CONTENT: Record<Locale, React.ReactNode> = {
           Afisa wa AML huripoti moja kwa moja kwa Bodi. Bodi hukagua rejista ya hatari za AML kila robo mwaka.
         </p>
       </LegalSection>
+
+      <LegalSection n="7" title="Mawasiliano na kuripoti">
+        <p>
+          Kuwasilisha wasiwasi wa AML/KYC au kuuliza kuhusu kumbukumbu zako, wasiliana na timu yetu ya uzingatiaji kupitia{" "}
+          <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a>.
+        </p>
+      </LegalSection>
     </>
   ),
   zh: (
@@ -184,6 +199,13 @@ const CONTENT: Record<Locale, React.ReactNode> = {
         <p>
           全体员工每年完成 AML 培训，并每 6 个月参加一次复训课程。AML 官员直接向董事会汇报。董事会每季度审查一次 AML
           风险登记册。
+        </p>
+      </LegalSection>
+
+      <LegalSection n="7" title="联系与举报">
+        <p>
+          如需提出反洗钱/KYC 相关问题或查询您的记录，请通过{" "}
+          <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a> 联系我们的合规团队。
         </p>
       </LegalSection>
     </>

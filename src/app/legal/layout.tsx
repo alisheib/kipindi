@@ -13,7 +13,7 @@ const LEGAL_NAV: Array<{ href: string; label: Record<Locale, string> }> = [
 
 const EYEBROW: Record<Locale, string> = {
   en: "Legal",
-  sw: "Sheria",
+  sw: "Kisheria",
   zh: "法律",
 };
 

@@ -223,6 +223,14 @@ export default async function RegisterPage({
                 name="marketingOptIn"
                 label={<span className="text-[13px] text-text-muted">{t.auth.optionalUpdates}</span>}
               />
+              {/* The binding documents must be reachable at the consent point. */}
+              <p className="pt-0.5 text-[11.5px] text-text-subtle">
+                <Link href={"/legal/terms" as never} className="text-brand-300 underline-offset-2 hover:underline">{t.footer.terms}</Link>
+                {" · "}
+                <Link href={"/legal/privacy" as never} className="text-brand-300 underline-offset-2 hover:underline">{t.footer.privacy}</Link>
+                {" · "}
+                <Link href={"/legal/responsible-gambling" as never} className="text-brand-300 underline-offset-2 hover:underline">{t.common.responsibleGambling}</Link>
+              </p>
             </fieldset>
 
             <SubmitButton label={t.auth.signUpTitle} pendingLabel={t.common.creatingAccount} />
