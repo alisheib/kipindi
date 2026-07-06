@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
+import { formatTzsAbs, formatTzsSigned } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PnlChart } from "@/components/positions/pnl-chart";
 import { listPositionsForUser, getMarket } from "@/lib/server/market-service";
@@ -14,9 +15,6 @@ export async function generateMetadata() {
   return { title: t.performance.title };
 }
 export const dynamic = "force-dynamic";
-
-const fmtTzs = (n: number) => `TZS ${Math.round(Math.abs(n)).toLocaleString("en-US")}`;
-const signedTzs = (n: number) => `${n >= 0 ? "+" : "−"}${fmtTzs(n)}`;
 
 export default async function PerformancePage() {
   const { t, locale } = await getServerT();
@@ -130,7 +128,7 @@ export default async function PerformancePage() {
                   className={`font-mono text-[34px] font-bold tabular-nums leading-none tracking-[-0.02em] ${netPnl >= 0 ? "text-[var(--gilt)]" : "text-no-300"}`}
                   style={netPnl >= 0 ? { textShadow: "0 0 24px color-mix(in oklab, var(--gilt) 30%, transparent)" } : undefined}
                 >
-                  {signedTzs(netPnl)}
+                  {formatTzsSigned(netPnl)}
                 </p>
                 <p className="mt-2 text-[12.5px] leading-normal text-text-muted">
                   {netPnl >= 0 ? t.performance.netProfitCaption : t.performance.netLossCaption}
@@ -157,10 +155,10 @@ export default async function PerformancePage() {
 
           {/* ── KPI cards ─────────────────────────────────────────── */}
           <section className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(158px, 1fr))" }}>
-            <Stat label={t.performance.avgStake} value={fmtTzs(avgStake)} />
-            <Stat label={t.performance.bestWin} value={bestMarket ? fmtTzs(bestMarket.payout) : "—"} sub={bestTitle || undefined} gold />
+            <Stat label={t.performance.avgStake} value={formatTzsAbs(avgStake)} />
+            <Stat label={t.performance.bestWin} value={bestMarket ? formatTzsAbs(bestMarket.payout) : "—"} sub={bestTitle || undefined} gold />
             <Stat label={t.performance.currentStreak} value={currentStreak > 0 ? String(currentStreak) : "—"} sub={`${t.performance.longestStreak} ${longestStreak}`} />
-            <Stat label={t.performance.totalStaked} value={fmtTzs(totalStaked)} />
+            <Stat label={t.performance.totalStaked} value={formatTzsAbs(totalStaked)} />
           </section>
 
           {/* ── Recent settled ledger ─────────────────────────────── */}
@@ -175,10 +173,10 @@ export default async function PerformancePage() {
                   <Link key={r.id} href={`/markets/${r.marketId}` as never} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-bg-overlay/40 transition-colors">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13px] font-medium text-text">{r.title}</p>
-                      <p className="mt-0.5 font-mono text-[10px] text-text-muted">{r.side} &middot; {fmtTzs(r.stake)} &middot; {r.date}</p>
+                      <p className="mt-0.5 font-mono text-[10px] text-text-muted">{r.side} &middot; {formatTzsAbs(r.stake)} &middot; {r.date}</p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className={`font-mono text-[13px] font-bold tabular-nums ${r.pnl >= 0 ? "text-[var(--gilt)]" : "text-no-300"}`}>{signedTzs(r.pnl)}</p>
+                      <p className={`font-mono text-[13px] font-bold tabular-nums ${r.pnl >= 0 ? "text-[var(--gilt)]" : "text-no-300"}`}>{formatTzsSigned(r.pnl)}</p>
                       <p className="font-mono text-[9px] uppercase tracking-[0.08em] text-text-muted">{r.statusLabel}</p>
                     </div>
                   </Link>

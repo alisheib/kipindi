@@ -8,6 +8,7 @@ import { FieldLegend } from "@/components/ui/field-legend";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input, Field as KitField } from "@/components/ui/input";
 import { Cash } from "@/components/ui/cash";
+import { formatTzs } from "@/lib/utils";
 import { WithdrawConfirm } from "./withdraw-confirm";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
@@ -60,11 +61,11 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
           <div className="text-right shrink-0">
             <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{t.wallet.available}</p>
             <Cash className="font-display font-bold text-[22px] tabular-nums text-text leading-none block">
-              {`TZS ${(wallet?.balance ?? 0).toLocaleString()}`}
+              {formatTzs(wallet?.balance ?? 0)}
             </Cash>
             {(wallet?.hold ?? 0) > 0 && (
               <Cash className="mt-1 font-mono text-[10.5px] tabular-nums text-warning-fg block">
-                {`${t.wallet.holdWarning} ${(wallet?.hold ?? 0).toLocaleString()}`}
+                {`${t.wallet.holdWarning} ${formatTzs(wallet?.hold ?? 0)}`}
               </Cash>
             )}
           </div>

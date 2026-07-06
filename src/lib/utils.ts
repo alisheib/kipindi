@@ -21,6 +21,17 @@ export function formatTzsCompact(value: number): string {
   return `TZS ${sign}${TZ_NUMBER.format(abs)}`;
 }
 
+/** Absolute magnitude, no sign: "TZS 1,234" (rounds). For P&L cells that carry
+ *  their own sign/colour and only need the number. */
+export function formatTzsAbs(value: number): string {
+  return `TZS ${TZ_NUMBER.format(Math.round(Math.abs(value)))}`;
+}
+
+/** Signed P&L: "+TZS 1,234" / "−TZS 1,234" (real minus glyph). */
+export function formatTzsSigned(value: number): string {
+  return `${value >= 0 ? "+" : "−"}${formatTzsAbs(value)}`;
+}
+
 export function formatNumber(value: number): string {
   return TZ_NUMBER.format(value);
 }

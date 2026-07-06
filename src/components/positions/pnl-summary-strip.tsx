@@ -13,8 +13,7 @@
  *    fabricated inside this component.
  */
 
-const fmtTzs = (n: number) => `TZS ${Math.round(Math.abs(n)).toLocaleString("en-US")}`;
-const signedTzs = (n: number) => `${n >= 0 ? "+" : "\u2212"}${fmtTzs(n)}`;
+import { formatTzsAbs, formatTzsSigned } from "@/lib/utils";
 
 type Props = {
   openCount: number;
@@ -62,15 +61,15 @@ export function PnlSummaryStrip({
       </div>
       <div className="gilt-rule" style={{ margin: "10px 0 14px" }} />
       <div className="grid gap-x-0 gap-y-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(158px, 1fr))" }}>
-        <Cell label={t.atRisk} value={fmtTzs(openStake)} sub={`${openCount} ${t.open}`} />
+        <Cell label={t.atRisk} value={formatTzsAbs(openStake)} sub={`${openCount} ${t.open}`} />
         <Cell
           label={t.liveValueIfSettled}
-          value={fmtTzs(openLiveValue)}
-          sub={`${signedTzs(openLiveValue - openStake)} ${t.unrealised}`}
+          value={formatTzsAbs(openLiveValue)}
+          sub={`${formatTzsSigned(openLiveValue - openStake)} ${t.unrealised}`}
         />
         <Cell
           label={t.settledPnl}
-          value={signedTzs(settledNet)}
+          value={formatTzsSigned(settledNet)}
           // Gold = earned money only; losses in rose, stated calmly.
           valueClass={settledNet >= 0 ? "text-[var(--gilt)]" : "text-no-300"}
           sub={`${wins}W \u00b7 ${losses}L \u00b7 ${cashOuts}C`}
