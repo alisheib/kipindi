@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DateSelect } from "@/components/ui/date-select";
 import { useToast } from "@/components/ui/toast";
 import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
+import { RefreshButton } from "@/components/admin/refresh-button";
 import { StatusBadge } from "@/components/proposals/status-badge";
 import { CategoryIcon, CATEGORY_LABEL } from "@/components/proposals/category-icon";
 import type { ProposalsConfig } from "@/lib/server/proposals-config";
@@ -303,11 +304,12 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
         <div className="overflow-hidden rounded-lg glass-panel">
           <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
             <div className="text-[14px] font-bold">Queue · sorted by votes</div>
-            <div className="flex gap-1.5">
+            <div className="flex items-center gap-1.5">
               {(["all", "review", "approved", "flagged"] as QFilter[]).map((f) => (
                 <button key={f} onClick={() => setQFilter(f)} className="rounded-pill border px-2.5 py-0.5 text-[11px] font-semibold capitalize transition-colors"
                   style={qFilter === f ? { borderColor: "color-mix(in oklab, var(--gold-500) 40%, transparent)", background: "color-mix(in oklab, var(--gold-500) 14%, transparent)", color: "var(--gold-200)" } : { borderColor: "var(--border)", color: "var(--text-muted)" }}>{f}</button>
               ))}
+              <RefreshButton variant="icon" className="!h-7 !w-7" />
             </div>
           </div>
           <div className="border-b border-border px-4 py-2.5">

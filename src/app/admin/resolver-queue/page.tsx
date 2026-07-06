@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
+import { RefreshButton } from "@/components/admin/refresh-button";
 import { Chip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { I } from "@/components/ui/glyphs";
@@ -111,6 +112,7 @@ export default async function ResolverQueuePage({
             </div>
             <button type="submit" className="btn btn-primary btn-sm h-9">Filter</button>
             {hasFilter && <a href="/admin/resolver-queue" className="btn btn-ghost btn-sm h-9">Clear</a>}
+            <RefreshButton className="ml-auto" />
           </form>
         </AdminCard>
 
