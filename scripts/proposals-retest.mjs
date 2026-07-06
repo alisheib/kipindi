@@ -8,9 +8,9 @@ import { chromium } from "playwright";
 
 const BASE = process.env.BASE || "http://localhost:3000";
 const LOCALES = [
-  { code: "en", label: "Betting closes" },
-  { code: "sw", label: "Kuweka dau kunafungwa" },
-  { code: "zh", label: "投注截止" },
+  { code: "en", label: "Selection closes" },
+  { code: "sw", label: "Uchaguzi unafungwa" },
+  { code: "zh", label: "选择关闭" },
 ];
 const WIDTHS = [320, 360, 393, 768, 1280];
 

@@ -43,6 +43,7 @@ const IDENTICAL_OK = new Set<string>([
   "footer.eighteenPlus",        // "18+"
   "error.notFoundCode",         // "404"
   "proposals.titleSwPlaceholder", // Swahili-title field example — Swahili in every locale by design
+  "proposals.titleZhPlaceholder", // Chinese-title field example — Chinese in every locale by design
   "profile.kycLabel",             // KYC — acronym
   "profile.sofBand2",             // "TZS 12M – 50M" — currency range
   "profile.sofBand3",             // "TZS 50M – 200M" — currency range

@@ -106,14 +106,14 @@ export function parseSelectionCloseDate(raw: string | null | undefined, resoluti
   { ok: true; date: string | null } | { ok: false; error: string } {
   const s = (raw ?? "").trim();
   if (!s) return { ok: true, date: null };
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return { ok: false, error: "Betting-close date must be YYYY-MM-DD." };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return { ok: false, error: "Selection-close date must be YYYY-MM-DD." };
   const ts = Date.parse(`${s}T23:59:59.000Z`);
-  if (!Number.isFinite(ts)) return { ok: false, error: "Invalid betting-close date." };
-  if (ts <= Date.now()) return { ok: false, error: "Betting-close date must be in the future." };
+  if (!Number.isFinite(ts)) return { ok: false, error: "Invalid selection-close date." };
+  if (ts <= Date.now()) return { ok: false, error: "Selection-close date must be in the future." };
   // Strictly before resolution: an equal date resolves to the same 23:59:59 cutoff
   // and would be dropped at market creation, so require an earlier day to avoid a
-  // silently-discarded value. Leave blank to keep betting open until resolution.
-  if (s >= resolutionDate) return { ok: false, error: "Betting must close before the resolution date." };
+  // silently-discarded value. Leave blank to keep selections open until resolution.
+  if (s >= resolutionDate) return { ok: false, error: "Selections must close before the resolution date." };
   return { ok: true, date: s };
 }
 

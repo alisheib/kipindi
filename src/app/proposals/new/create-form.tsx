@@ -36,6 +36,7 @@ export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: 
   const [pending, start] = useTransition();
   const [titleEn, setTitleEn] = useState("");
   const [titleSw, setTitleSw] = useState("");
+  const [titleZh, setTitleZh] = useState("");
   const [description, setDescription] = useState("");
   const [criterion, setCriterion] = useState("");
   const [category, setCategory] = useState<ProposalCategory>("sports");
@@ -46,14 +47,14 @@ export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: 
 
   const atLimit = openCount >= rateLimit;
   const dateValid = /^\d{4}-\d{2}-\d{2}$/.test(date) && Date.parse(`${date}T23:59:59Z`) > Date.now();
-  // Betting-close is optional; when set it must be a future date strictly before resolution.
+  // Selection-close is optional; when set it must be a future date strictly before resolution.
   const closeValid = !closeDate || (/^\d{4}-\d{2}-\d{2}$/.test(closeDate) && Date.parse(`${closeDate}T23:59:59Z`) > Date.now() && (!dateValid || closeDate < date));
   const sourceValid = isValidHttpUrl(sourceUrl);
   const valid = enabled && !atLimit && titleEn.trim().length >= 8 && titleEn.trim().length <= 120 && criterion.trim().length >= 12 && dateValid && closeValid && sourceValid;
 
   const submit = () => {
     start(async () => {
-      const r = await createProposalAction({ titleEn, titleSw: titleSw || undefined, description: description || undefined, resolutionCriterion: criterion, category, resolutionDate: date, selectionCloseDate: closeDate || undefined, sourceUrl: sourceUrl.trim() });
+      const r = await createProposalAction({ titleEn, titleSw: titleSw || undefined, titleZh: titleZh || undefined, description: description || undefined, resolutionCriterion: criterion, category, resolutionDate: date, selectionCloseDate: closeDate || undefined, sourceUrl: sourceUrl.trim() });
       if (r.ok) setDone(true);
       else toast({ title: t.toast.couldntSubmit, description: r.error, variant: "danger" });
     });
@@ -86,6 +87,10 @@ export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: 
 
       <Field label={t.common.titleSw}>
         <Input placeholder={t.proposals.titleSwPlaceholder} value={titleSw} onChange={(e) => setTitleSw(e.target.value)} maxLength={120} />
+      </Field>
+
+      <Field label={t.common.titleZh}>
+        <Input placeholder={t.proposals.titleZhPlaceholder} value={titleZh} onChange={(e) => setTitleZh(e.target.value)} maxLength={120} />
       </Field>
 
       <div>
@@ -141,16 +146,16 @@ export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: 
       </div>
 
       <div>
-        <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5">{t.common.bettingCloses}</span>
+        <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5">{t.common.selectionCloseDate}</span>
         <DateSelect
           value={closeDate}
           onChange={setCloseDate}
           min={new Date().toISOString().slice(0, 10)}
           max={date || `${new Date().getFullYear() + 2}-12-31`}
         />
-        <p className="mt-1.5 text-[11px] leading-snug text-text-subtle">{t.common.bettingClosesHint}</p>
+        <p className="mt-1.5 text-[11px] leading-snug text-text-subtle">{t.common.selectionCloseHint}</p>
         {closeDate && !closeValid && (
-          <p className="mt-1 text-[11px] leading-snug text-no-300">Betting must close before the resolution date.</p>
+          <p className="mt-1 text-[11px] leading-snug text-no-300">Selections must close before the resolution date.</p>
         )}
       </div>
 

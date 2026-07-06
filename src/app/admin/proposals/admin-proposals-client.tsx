@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { Toggle } from "@/components/ui/toggle";
+import { Textarea } from "@/components/ui/textarea";
 import { DateSelect } from "@/components/ui/date-select";
 import { useToast } from "@/components/ui/toast";
 import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
@@ -144,17 +145,32 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
   const [eCloseDate, setECloseDate] = useState("");
   const [eSource, setESource] = useState("");
 
+  const [search, setSearch] = useState("");
+
   const on = c.enabled;
 
-  // Filter → sort → only the current page is ever materialised in the DOM.
-  const filteredQueue = useMemo(
-    () => queue.filter((q) =>
-      qFilter === "all" ? true
-      : qFilter === "review" ? (q.status === "REVIEW" || q.status === "CHANGES_REQUESTED")
-      : qFilter === "approved" ? q.status === "APPROVED"
-      : (q.score < 0 || (q.down > 0 && q.down >= q.up))),
-    [queue, qFilter],
-  );
+  // Search (live, on every keystroke) → filter → sort → only the current page is
+  // ever materialised in the DOM.
+  const filteredQueue = useMemo(() => {
+    const s = search.trim().toLowerCase();
+    return queue.filter((q) => {
+      const passFilter =
+        qFilter === "all" ? true
+        : qFilter === "review" ? (q.status === "REVIEW" || q.status === "CHANGES_REQUESTED")
+        : qFilter === "approved" ? q.status === "APPROVED"
+        : (q.score < 0 || (q.down > 0 && q.down >= q.up));
+      if (!passFilter) return false;
+      if (!s) return true;
+      return (
+        q.title.toLowerCase().includes(s)
+        || (q.titleSw ?? "").toLowerCase().includes(s)
+        || (q.titleZh ?? "").toLowerCase().includes(s)
+        || q.proposerMasked.toLowerCase().includes(s)
+        || q.category.toLowerCase().includes(s)
+        || q.id.toLowerCase().includes(s)
+      );
+    });
+  }, [queue, qFilter, search]);
   const sortedQueue = useMemo(() => {
     const acc: Record<QSort, (q: AdminQueueRow) => string | number> = {
       score: (q) => q.score,
@@ -174,8 +190,8 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
   const safePage = Math.min(Math.max(1, page), Math.max(1, Math.ceil(totalQueue / PER_PAGE)));
   const shownQueue = useMemo(() => sortedQueue.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE), [sortedQueue, safePage]);
 
-  // Reset to page 1 whenever the filter or sort changes.
-  useEffect(() => { setPage(1); }, [qFilter, sort, dir]);
+  // Reset to page 1 whenever the search, filter, or sort changes.
+  useEffect(() => { setPage(1); }, [qFilter, sort, dir, search]);
 
   const sel = queue.find((q) => q.id === selId) ?? shownQueue[0] ?? null;
 
@@ -294,6 +310,19 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
               ))}
             </div>
           </div>
+          <div className="border-b border-border px-4 py-2.5">
+            <div className="relative">
+              <I.search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle" />
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by title, proposer, category, or ID…"
+                aria-label="Search proposals"
+                className="h-9 w-full rounded-md border border-border bg-bg-overlay pl-9 pr-3 text-[12.5px] text-text outline-none admin-focus transition-colors placeholder:text-text-subtle"
+              />
+            </div>
+          </div>
           <div className="flex items-center gap-4 border-b border-border px-4 py-2">
             <Cap>Sort</Cap>
             <SortBtn field="score" label="Votes" current={sort} dir={dir} onSort={onSort} />
@@ -302,7 +331,7 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
             <SortBtn field="title" label="Title" current={sort} dir={dir} onSort={onSort} />
           </div>
           {totalQueue === 0 ? (
-            <div className="px-4 py-10 text-center text-[12.5px] text-text-subtle">No proposals in this view yet.</div>
+            <div className="px-4 py-10 text-center text-[12.5px] text-text-subtle">{search.trim() ? "No proposals match your search." : "No proposals in this view yet."}</div>
           ) : shownQueue.map((q, i) => {
             const active = q.id === sel?.id;
             return (
@@ -339,7 +368,7 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
             <div>
               <Cap>Resolution criterion</Cap>
               <p className="mt-1 text-[12.5px] leading-relaxed text-text-muted">{sel.resolutionCriterion}</p>
-              <p className="mt-1 font-mono text-[10.5px] text-text-subtle">resolves {sel.resolutionDate} · betting closes {sel.selectionCloseDate ?? "at resolution"}</p>
+              <p className="mt-1 font-mono text-[10.5px] text-text-subtle">resolves {sel.resolutionDate} · selection closes {sel.selectionCloseDate ?? "at resolution"}</p>
               {sel.sourceUrl && (
                 <p className="mt-1.5 flex items-center gap-1.5 text-[11.5px]">
                   <I.link s={12} className="shrink-0 text-text-subtle" />
@@ -371,23 +400,23 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
               <div className="space-y-3">
                 <div className="flex items-center gap-1.5 text-[13px] font-bold"><I.edit s={14} />Edit proposal · full control</div>
                 <div>
-                  <div className="mb-1 text-[11px] font-semibold text-text-muted">Title (EN)</div>
+                  <div className="mb-1.5 text-[12px] font-semibold text-text">Title (EN)</div>
                   <Input value={eTitle} onChange={(e) => setETitle(e.target.value)} size="sm" maxLength={120} />
                 </div>
                 <div>
-                  <div className="mb-1 text-[11px] font-semibold text-text-muted">Title (SW)</div>
+                  <div className="mb-1.5 text-[12px] font-semibold text-text">Title (SW)</div>
                   <Input value={eTitleSw} onChange={(e) => setETitleSw(e.target.value)} size="sm" maxLength={120} />
                 </div>
                 <div>
-                  <div className="mb-1 text-[11px] font-semibold text-text-muted">Title (ZH)</div>
+                  <div className="mb-1.5 text-[12px] font-semibold text-text">Title (ZH)</div>
                   <Input value={eTitleZh} onChange={(e) => setETitleZh(e.target.value)} size="sm" maxLength={120} />
                 </div>
                 <div>
-                  <div className="mb-1 text-[11px] font-semibold text-text-muted">Resolution criterion</div>
-                  <textarea value={eCriterion} onChange={(e) => setECriterion(e.target.value)} maxLength={500} className="min-h-[56px] w-full resize-none rounded-md border border-border bg-bg-elevated px-3 py-2 text-[13px] text-text outline-none admin-focus transition-colors" />
+                  <div className="mb-1.5 text-[12px] font-semibold text-text">Resolution criterion</div>
+                  <Textarea value={eCriterion} onChange={(e) => setECriterion(e.target.value)} maxLength={500} rows={3} />
                 </div>
                 <div>
-                  <div className="mb-1.5 text-[11px] font-semibold text-text-muted">Category</div>
+                  <div className="mb-1.5 text-[12px] font-semibold text-text">Category</div>
                   <div className="flex flex-wrap gap-1.5">
                     {CATEGORIES.map((ct) => (
                       <button key={ct} type="button" onClick={() => setECategory(ct)} className="inline-flex h-[30px] items-center gap-1.5 rounded-pill border px-3 text-[12px] font-semibold transition-colors"
@@ -399,20 +428,20 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
                 </div>
                 <div className="flex flex-wrap gap-4">
                   <div>
-                    <div className="mb-1 text-[11px] font-semibold text-text-muted">Resolution date</div>
+                    <div className="mb-1.5 text-[12px] font-semibold text-text">Resolution date</div>
                     <DateSelect value={eResDate} onChange={setEResDate} min={TODAY()} max={MAX_DATE()} />
                   </div>
                   <div>
-                    <div className="mb-1 text-[11px] font-semibold text-text-muted">Betting closes</div>
+                    <div className="mb-1.5 text-[12px] font-semibold text-text">Selection closes</div>
                     <DateSelect value={eCloseDate} onChange={setECloseDate} min={TODAY()} max={eResDate || MAX_DATE()} />
                   </div>
                 </div>
                 <div>
-                  <div className="mb-1 text-[11px] font-semibold text-text-muted">Source URL</div>
+                  <div className="mb-1.5 text-[12px] font-semibold text-text">Source URL</div>
                   <Input value={eSource} onChange={(e) => setESource(e.target.value)} placeholder="https://..." mono size="sm" />
                 </div>
                 {!editValid && (
-                  <p className="text-[10.5px] text-no-300">Check the fields: title 8–120 chars, criterion ≥ 12, a resolution date, betting-close before it, and a valid source URL.</p>
+                  <p className="text-[10.5px] text-no-300">Check the fields: title 8–120 chars, criterion ≥ 12, a resolution date, selection close before it, and a valid source URL.</p>
                 )}
                 <div className="flex gap-2">
                   <Button variant="ghost" size="md" onClick={() => setEditing(false)}>Cancel</Button>
@@ -456,7 +485,7 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
                       style={reason === r ? { borderColor: "color-mix(in oklab, var(--claret-500) 44%, transparent)", background: "color-mix(in oklab, var(--claret-500) 16%, transparent)", color: "var(--claret-300)" } : { borderColor: "var(--border)", color: "var(--text-muted)" }}>{r}</button>
                   ))}
                 </div>
-                <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional note to the proposer (logged) · Ujumbe" className="mb-3 min-h-[56px] w-full resize-none rounded-md border border-border bg-bg-elevated px-3 py-2 text-[13px] text-text outline-none admin-focus transition-colors" />
+                <div className="mb-3"><Textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional note to the proposer (logged) · Ujumbe" rows={2} /></div>
                 <div className="flex gap-2">
                   <Button variant="ghost" size="md" onClick={resetReview}>Cancel</Button>
                   <Button variant="danger" size="md" fullWidth disabled={!reason} loading={pending} onClick={decline}>Confirm decline{reason ? ` · ${reason}` : ""}</Button>
