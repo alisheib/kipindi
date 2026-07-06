@@ -99,7 +99,7 @@ export default async function ResolverQueuePage({
                 defaultValue={query}
                 placeholder="Search title…"
                 aria-label="Search resolver queue"
-                className="h-9 w-full rounded-md border border-border bg-bg-overlay pl-9 pr-3 text-[12.5px] text-text outline-none admin-focus transition-colors placeholder:text-text-subtle"
+                className="h-8 w-full rounded-md border border-border bg-bg-overlay pl-9 pr-3 text-[12.5px] text-text outline-none admin-focus transition-colors placeholder:text-text-subtle"
               />
             </div>
             <div className="w-full sm:w-[160px]">
@@ -110,8 +110,8 @@ export default async function ResolverQueuePage({
               <Select name="category" defaultValue={categoryFilter} size="xs" placeholder="All categories"
                 options={[{ value: "", label: "All categories" }, ...CATEGORY_OPTIONS.map((c) => ({ value: c, label: c }))]} />
             </div>
-            <button type="submit" className="btn btn-primary btn-sm h-9">Filter</button>
-            {hasFilter && <a href="/admin/resolver-queue" className="btn btn-ghost btn-sm h-9">Clear</a>}
+            <button type="submit" className="btn btn-primary btn-sm h-8">Filter</button>
+            {hasFilter && <a href="/admin/resolver-queue" className="btn btn-ghost btn-sm h-8">Clear</a>}
             <RefreshButton className="ml-auto" />
           </form>
         </AdminCard>
@@ -126,7 +126,7 @@ export default async function ResolverQueuePage({
               : `No markets resolving in the ${windowLabel}.`}
           />
         ) : (
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-2">
             {paged.map((m) => {
               const t = timeUntil(m.resolutionAt);
               const yes = impliedYesPct(m);

@@ -116,7 +116,11 @@ export function Select({
     return () => window.removeEventListener("mousedown", onClick);
   }, [open]);
 
-  const h = size === "xs" ? "h-9" : size === "sm" ? "h-9" : "h-11";
+  // `xs` is the compact admin filter-row size: neat 32px height, 12.5px label and
+  // md radius so it sits flush with the h-8 search inputs + filter buttons.
+  const h = size === "xs" ? "h-8" : size === "sm" ? "h-9" : "h-11";
+  const txt = size === "xs" ? "text-[12.5px]" : "text-[16px]";
+  const radius = size === "xs" ? "rounded-md" : "rounded-lg";
 
   return (
     <>
@@ -129,10 +133,10 @@ export function Select({
         aria-expanded={open}
         aria-haspopup="listbox"
         className={cn(
-          "flex items-center justify-between gap-2 w-full px-3 rounded-lg border border-border text-left",
+          "flex items-center justify-between gap-2 w-full px-3 border border-border text-left",
           "focus:outline-none brand-focus",
-          "transition-colors font-mono text-[16px]",
-          h,
+          "transition-colors font-mono",
+          radius, txt, h,
           selectedOption ? "text-text" : "text-text-subtle",
           className,
         )}

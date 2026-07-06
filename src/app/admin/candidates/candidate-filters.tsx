@@ -74,13 +74,13 @@ export function CandidateFilterToolbar({ totalFiltered, totalAll }: { totalFilte
               if (e.key === "Enter") push({ q: search });
             }}
             placeholder="Search candidates by title, category, or ID..."
-            className="w-full h-9 pl-9 pr-3 rounded-md border border-border bg-bg-overlay text-[12.5px] text-text placeholder:text-text-subtle outline-none admin-focus transition-colors"
+            className="w-full h-8 pl-9 pr-3 rounded-md border border-border bg-bg-overlay text-[12.5px] text-text placeholder:text-text-subtle outline-none admin-focus transition-colors"
           />
         </div>
         <button
           type="button"
           onClick={() => push({ q: search })}
-          className="btn btn-gold btn-sm rounded-pill min-w-[80px]"
+          className="btn btn-gold btn-sm rounded-pill min-w-[80px] h-8"
         >
           Search
         </button>
@@ -91,7 +91,7 @@ export function CandidateFilterToolbar({ totalFiltered, totalAll }: { totalFilte
               setSearch("");
               startTransition(() => router.push("/admin/candidates"));
             }}
-            className="btn btn-ghost btn-sm rounded-pill text-text-subtle hover:text-text"
+            className="btn btn-ghost btn-sm rounded-pill text-text-subtle hover:text-text h-8"
           >
             Clear
           </button>

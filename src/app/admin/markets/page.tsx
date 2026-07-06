@@ -103,7 +103,7 @@ export default async function AdminMarketsPage({
                 defaultValue={query}
                 placeholder="Search title (EN / SW) or mkt_… id"
                 aria-label="Search markets"
-                className="h-9 w-full rounded-md border border-border bg-bg-overlay pl-9 pr-3 text-[12.5px] text-text outline-none admin-focus transition-colors placeholder:text-text-subtle"
+                className="h-8 w-full rounded-md border border-border bg-bg-overlay pl-9 pr-3 text-[12.5px] text-text outline-none admin-focus transition-colors placeholder:text-text-subtle"
               />
             </div>
             <div className="w-full sm:w-[160px]">
@@ -114,11 +114,11 @@ export default async function AdminMarketsPage({
               <Select name="category" defaultValue={categoryFilter} size="xs" placeholder="All categories"
                 options={[{ value: "", label: "All categories" }, ...CATEGORY_OPTIONS.map((c) => ({ value: c, label: c }))]} />
             </div>
-            <button type="submit" className="btn btn-primary btn-sm h-9">
+            <button type="submit" className="btn btn-primary btn-sm h-8">
               Search
             </button>
             {hasFilter && (
-              <a href="/admin/markets" className="btn btn-ghost btn-sm h-9">
+              <a href="/admin/markets" className="btn btn-ghost btn-sm h-8">
                 Clear
               </a>
             )}

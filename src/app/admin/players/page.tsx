@@ -96,13 +96,13 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
         <AdminCard padding="p-3">
           <form className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-0 sm:min-w-[260px]">
-              <I.search size={14} aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+              <I.search size={14} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle" />
               <input
                 name="q"
                 defaultValue={query}
                 placeholder="Phone (+255…), display name, or usr_…"
                 aria-label="Search players"
-                className="w-full h-9 pl-9 pr-3 rounded-md bg-bg-inset border border-border text-text font-mono text-body-sm focus:outline-none admin-focus transition-colors"
+                className="h-8 w-full rounded-md border border-border bg-bg-overlay pl-9 pr-3 text-[12.5px] text-text outline-none admin-focus transition-colors placeholder:text-text-subtle"
               />
             </div>
             <div className="w-full sm:w-[180px]">
@@ -122,11 +122,11 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                 ]}
               />
             </div>
-            <button type="submit" className="btn btn-primary btn-sm">
+            <button type="submit" className="btn btn-primary btn-sm h-8">
               Search
             </button>
             {(query || statusFilter) && (
-              <a href="/admin/players" className="btn btn-ghost btn-sm">
+              <a href="/admin/players" className="btn btn-ghost btn-sm h-8">
                 Clear
               </a>
             )}

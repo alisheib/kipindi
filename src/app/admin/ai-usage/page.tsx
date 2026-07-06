@@ -313,17 +313,17 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
               </div>
               <label className="flex flex-col gap-1">
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">From</span>
-                <input type="date" name="since" defaultValue={sinceDay} className="h-9 rounded-md border border-border bg-bg-inset px-2.5 text-body-sm text-text font-mono admin-focus transition-colors" />
+                <input type="date" name="since" defaultValue={sinceDay} className="h-8 rounded-md border border-border bg-bg-overlay px-2.5 text-[12.5px] text-text admin-focus transition-colors" />
               </label>
               <label className="flex flex-col gap-1">
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">To</span>
-                <input type="date" name="until" defaultValue={untilDay} className="h-9 rounded-md border border-border bg-bg-inset px-2.5 text-body-sm text-text font-mono admin-focus transition-colors" />
+                <input type="date" name="until" defaultValue={untilDay} className="h-8 rounded-md border border-border bg-bg-overlay px-2.5 text-[12.5px] text-text admin-focus transition-colors" />
               </label>
               <label className="flex flex-col gap-1 flex-1 min-w-[180px]">
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Search</span>
                 <div className="relative">
-                  <I.search size={14} aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
-                  <input type="text" name="q" defaultValue={q} placeholder="model, error, detail…" className="w-full h-9 pl-9 pr-3 rounded-md border border-border bg-bg-inset text-body-sm text-text font-mono admin-focus transition-colors" />
+                  <I.search size={14} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle" />
+                  <input type="text" name="q" defaultValue={q} placeholder="model, error, detail…" className="w-full h-8 pl-9 pr-3 rounded-md border border-border bg-bg-overlay text-[12.5px] text-text admin-focus transition-colors placeholder:text-text-subtle" />
                 </div>
               </label>
               <div className="flex items-center gap-2 pt-4">

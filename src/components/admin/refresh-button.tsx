@@ -6,7 +6,7 @@
  * refresh re-runs their server data fetch and streams fresh rows in.
  *
  * Two shapes, one behaviour:
- *  - default (labelled): matches the `.btn btn-ghost btn-sm h-9` filter-row height
+ *  - default (labelled): matches the `.btn btn-ghost btn-sm h-8` filter-row height
  *    so it sits flush beside Search/Clear.
  *  - `icon` : a square 36px control for tight page-head action rows.
  * The glyph spins while the refresh transition is pending.
@@ -42,7 +42,7 @@ export function RefreshButton({
         aria-label={label}
         title={`${label} · ${sw}`}
         className={cn(
-          "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-bg-overlay text-text-muted transition-colors hover:border-border-strong hover:text-text disabled:opacity-60",
+          "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-bg-overlay text-text-muted transition-colors hover:border-border-strong hover:text-text disabled:opacity-60",
           className,
         )}
       >
@@ -57,7 +57,7 @@ export function RefreshButton({
       onClick={onClick}
       disabled={pending}
       title={`${label} · ${sw}`}
-      className={cn("btn btn-ghost btn-sm h-9 inline-flex items-center gap-1.5", className)}
+      className={cn("btn btn-ghost btn-sm h-8 inline-flex items-center gap-1.5", className)}
     >
       <I.rotateCcw s={14} className={pending ? "animate-spin" : undefined} />
       {label}
