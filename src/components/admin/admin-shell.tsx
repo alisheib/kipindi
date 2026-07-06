@@ -9,6 +9,7 @@ import { db } from "@/lib/server/store";
 import { FiftyMark } from "@/components/brand";
 import { AdminMobileNavTrigger } from "./admin-mobile-nav";
 import { AdminSidebarNav } from "./admin-sidebar-nav";
+import { RefreshButton } from "./refresh-button";
 import { NAV_GROUPS } from "./admin-nav-groups";
 import { PeriodPicker } from "./period-picker";
 import { SentinelCountdown } from "./sentinel-countdown";
@@ -105,6 +106,11 @@ export async function AdminTopBar({ crumbs, session, activeKey }: { crumbs: stri
       </nav>
       </div>
       <div className="flex items-center gap-2 shrink-0">
+        {/* Global grid refresh — re-fetches the current server-rendered admin
+            screen in place. Present on every admin page so any grid can be
+            refreshed from one predictable spot (screens with a filter bar also
+            expose a contextual refresh next to their filters). */}
+        <RefreshButton variant="icon" className="!h-7 !w-7" />
         {/* Live market-sentinel countdown (deploy-proof) + reset / run-now. */}
         <SentinelCountdown />
         {/* No notification bell here — the platform's main bell (in AppShell's
