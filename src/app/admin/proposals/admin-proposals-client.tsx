@@ -20,7 +20,7 @@ import type { ProposalCategory } from "@/lib/server/store";
 import { saveProposalsConfigAction, approveProposalAction, goLiveProposalAction, declineProposalAction, requestChangesAction, editProposalAction } from "./actions";
 
 const DECLINE_REASONS: DeclineReason[] = ["Politics", "Ambiguous outcome", "No official source", "Duplicate", "Past resolution", "Outside jurisdiction", "Officer decision"];
-const CATEGORIES: ProposalCategory[] = ["sports", "macro", "weather", "crypto", "culture", "infrastructure"];
+const CATEGORIES: ProposalCategory[] = ["sports", "macro", "weather", "crypto", "culture", "infrastructure", "tech", "mixed"];
 const TODAY = () => new Date().toISOString().slice(0, 10);
 const MAX_DATE = () => `${new Date().getFullYear() + 2}-12-31`;
 

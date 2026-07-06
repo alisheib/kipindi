@@ -525,6 +525,7 @@ export const dict = {
       tickerSettled: "settled", tickerOn: "on",
       // === i18n coverage pass ===
       catInfrastructure: "Infrastructure",
+      catMixed: "Mixed / All",
       probOverTime: "YES probability over time",
       timeRange: "Time range",
       probChartAria: "YES probability over time, currently {pct} percent",
@@ -1530,6 +1531,7 @@ export const dict = {
       tickerSettled: "imekamilika", tickerOn: "kwenye",
       // === i18n coverage pass ===
       catInfrastructure: "Miundombinu",
+      catMixed: "Mchanganyiko / Zote",
       probOverTime: "Uwezekano wa NDIYO kwa muda",
       timeRange: "Kipindi cha muda",
       probChartAria: "Uwezekano wa NDIYO kwa muda, sasa asilimia {pct}",
@@ -2534,6 +2536,7 @@ export const dict = {
       tickerSettled: "已结算", tickerOn: "在",
       // === i18n coverage pass ===
       catInfrastructure: "基础设施",
+      catMixed: "混合 / 全部",
       probOverTime: "YES 概率随时间变化",
       timeRange: "时间范围",
       probChartAria: "YES 概率随时间变化，当前为 {pct}%",

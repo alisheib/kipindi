@@ -15,7 +15,7 @@ import { createProposalAction } from "../actions";
 import { useT } from "@/lib/i18n";
 import type { ProposalCategory } from "@/lib/server/store";
 
-const CATEGORIES: ProposalCategory[] = ["sports", "macro", "weather", "crypto", "culture", "infrastructure"];
+const CATEGORIES: ProposalCategory[] = ["sports", "macro", "weather", "crypto", "culture", "infrastructure", "tech", "mixed"];
 
 /** Client-side mirror of the server's source-URL gate (http/https only). */
 function isValidHttpUrl(raw: string): boolean {

@@ -10,6 +10,8 @@ const MAP: Record<ProposalCategory, GlyphKey> = {
   crypto: "crypto",
   culture: "entertainment",
   infrastructure: "politics", // columned-building glyph
+  tech: "tech",
+  mixed: "shuffle", // matches the ai-poll "Mixed / All" shuffle glyph
 };
 
 export const CATEGORY_LABEL: Record<ProposalCategory, string> = {
@@ -19,6 +21,8 @@ export const CATEGORY_LABEL: Record<ProposalCategory, string> = {
   crypto: "Crypto",
   culture: "Culture",
   infrastructure: "Infrastructure",
+  tech: "Tech",
+  mixed: "Mixed / All",
 };
 
 /** Translation-aware category label. */
@@ -30,6 +34,8 @@ export function categoryLabel(t: Dict, c: ProposalCategory): string {
     case "crypto": return t.market.catCrypto;
     case "culture": return t.market.catCulture;
     case "infrastructure": return t.market.catInfrastructure;
+    case "tech": return t.market.catTech;
+    case "mixed": return t.market.catMixed;
   }
 }
 

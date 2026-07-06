@@ -59,7 +59,7 @@ import {
 
 const BASE_URL = () => process.env.NEXT_PUBLIC_APP_URL || "https://kipindi-production.up.railway.app";
 
-export const PROPOSAL_CATEGORIES: ProposalCategory[] = ["sports", "macro", "weather", "crypto", "culture", "infrastructure"];
+export const PROPOSAL_CATEGORIES: ProposalCategory[] = ["sports", "macro", "weather", "crypto", "culture", "infrastructure", "tech", "mixed"];
 export const DECLINE_REASONS = [
   "Politics", "Ambiguous outcome", "No official source", "Duplicate",
   "Past resolution", "Outside jurisdiction", "Officer decision",
@@ -69,9 +69,15 @@ export type DeclineReason = (typeof DECLINE_REASONS)[number];
 /** States where a proposal is still open for officer triage / player counts. */
 const OPEN_STATES: ProposalStatus[] = ["REVIEW", "CHANGES_REQUESTED"];
 
-/** Proposal category → market category (markets have no "infrastructure"). */
-function toMarketCategory(c: ProposalCategory): "sports" | "macro" | "weather" | "crypto" | "culture" | "tech" {
-  return c === "infrastructure" ? "tech" : c;
+/**
+ * Proposal category → market category. Markets have no "infrastructure" or
+ * "mixed": infrastructure folds into "tech"; "mixed" (a cross-category proposal,
+ * mirroring the ai-poll "Mixed / All" directive) publishes as "other".
+ */
+function toMarketCategory(c: ProposalCategory): "sports" | "macro" | "weather" | "crypto" | "culture" | "tech" | "other" {
+  if (c === "infrastructure") return "tech";
+  if (c === "mixed") return "other";
+  return c;
 }
 
 /**

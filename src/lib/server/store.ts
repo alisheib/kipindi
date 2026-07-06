@@ -304,7 +304,7 @@ export type StoredReferralReward = {
  * the proposals service; individual votes live in `proposalVotes`.
  */
 export type ProposalStatus = "REVIEW" | "CHANGES_REQUESTED" | "APPROVED" | "LISTED" | "RESOLVED" | "DECLINED";
-export type ProposalCategory = "sports" | "macro" | "weather" | "crypto" | "culture" | "infrastructure";
+export type ProposalCategory = "sports" | "macro" | "weather" | "crypto" | "culture" | "infrastructure" | "tech" | "mixed";
 
 export type StoredProposal = {
   id: string;
