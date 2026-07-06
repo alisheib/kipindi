@@ -19,7 +19,7 @@ import { db } from "./store";
 import { randomId } from "./crypto";
 import { withLock } from "./locks";
 import { emit } from "./event-bus";
-import { spendBonusLocked, recordWageringLocked, reverseWagering, refundBonusToActive, expireActiveGrants } from "./bonus-service";
+import { spendBonusLocked, recordWageringLocked, reverseWagering, refundBonusToActive, refundBonusLocked, expireActiveGrants, type BonusAllocation } from "./bonus-service";
 import { notifyBonusFulfilled } from "./notification-service";
 import { isLockedOut, checkLossLimit } from "./responsible-gambling";
 import { rateCheck } from "./rate-limit";
@@ -337,6 +337,7 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
       if (!debited) return { ok: false as const, error: "Not enough balance.", code: "INVALID" as const };
       newBalance = debited.balance;
     }
+    let bonusAllocations: BonusAllocation[] = [];
     if (bonusPart > 0) {
       // Lock-free spend — we already hold wallet:<userId>.
       const spend = await spendBonusLocked(userId, bonusPart);
@@ -344,6 +345,7 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
         if (realPart > 0) await db.wallet.adjust(wallet.id, { balance: realPart }); // roll back real debit
         return { ok: false as const, error: "Not enough balance.", code: "INVALID" as const };
       }
+      bonusAllocations = spend.allocations;
     }
 
     const payoutIfWin = await projectedPayout(market, opts.side, opts.stake);
@@ -363,7 +365,6 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
       settledAt: null,
       idempotencyKey: opts.idempotencyKey ?? null,
     };
-    await positionStore.set(position);
 
     // Pool mutation must be serialized PER-MARKET, not per-wallet: two
     // different users betting the same market hold different `wallet:` locks,
@@ -373,9 +374,19 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
     // the market lock so the += applies to the freshest pool values. Lock
     // order is always wallet→market (here and in cashOut), never the reverse,
     // so this nesting cannot deadlock.
+    //
+    // We ALSO re-check the close state INSIDE this lock (GLI-33 late-bet
+    // defence): a bet that slipped past the pre-lock close checks — placed in
+    // the microseconds before the cutoff, or racing a concurrent admin suspend /
+    // auto-close — must NOT be allowed to add money to a closed market. If the
+    // window closed in-flight we abort the pool write and unwind below.
+    let closedInFlight = false;
     await withLock(`market:${opts.marketId}`, async () => {
       const fresh = await marketStore.get(opts.marketId);
-      if (!fresh) return;
+      if (!fresh || fresh.status !== "LIVE" || isSelectionClosed(fresh) || Date.parse(fresh.resolutionAt) <= Date.now()) {
+        closedInFlight = true;
+        return;
+      }
       if (opts.side === "YES") fresh.yesPool += opts.stake;
       else                     fresh.noPool  += opts.stake;
       fresh.predictorCount += 1;
@@ -386,6 +397,26 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
       // SSE: push live odds to all connected clients
       emit("market:odds", { marketId: fresh.id, yesPct: impliedYesPct(fresh) });
     });
+
+    // Closed in-flight → refund every shilling that was debited (real balance +
+    // the exact bonus allocations, lock-free since we still hold the wallet lock)
+    // and reject. No position, txn, ledger entry, or pool change was committed.
+    if (closedInFlight) {
+      if (realPart > 0) await db.wallet.adjust(wallet.id, { balance: realPart });
+      if (bonusAllocations.length > 0) await refundBonusLocked(userId, bonusAllocations);
+      audit({
+        category: "BET",
+        action: "bet.rejected.closed_in_flight",
+        actorId: userId,
+        targetType: "Market",
+        targetId: opts.marketId,
+        payload: { side: opts.side, stake: opts.stake, refundedReal: realPart, refundedBonus: bonusPart },
+      });
+      return { ok: false as const, error: "Selections closed while placing your bet. · Uchaguzi umefungwa.", code: "SELECTION_CLOSED" as const };
+    }
+
+    // Committed — persist the position now that the stake is safely in the pool.
+    await positionStore.set(position);
 
     // The real-wallet ledger records only the REAL cash that left `balance`
     // (-realPart). The bonus-funded portion moves on the bonus wallet and is

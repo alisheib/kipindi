@@ -40,7 +40,7 @@ Session revocation, RBAC, HSTS/headers is confirmed accurate.
 | 1.1 | **Geo-fence to Tanzania** at bet/deposit/withdraw money actions + audit rejects; allowlist in SystemConfig; block datacenter/VPN ASNs | Blocker | `[ ]` | No geo logic anywhere (`proxy.ts` auth-only). **Needs data-source decision (MaxMind GeoLite2 vs API).** |
 | 1.2a | **`/api/version`** returning `{version,gitSha,buildHash,builtAt}` injected at build | Blocker | `[ ]` | No endpoint; `next.config.ts` injects nothing. Pure code — do now. |
 | 1.2b | **Disable Railway auto-deploy from `main`**; prod from tagged releases; `main`→staging; GitHub Actions CI runs `predeploy` | Blocker | `[ ]` | Needs Railway dashboard + CI. **Changes push-to-main workflow — needs decision.** Also old-doc B4. |
-| 1.3 | **Late-bet race hardening** — re-check `isSelectionClosed(fresh)` + status LIVE + `resolutionAt` INSIDE `withLock(market:{id})` before applying the pool `+=`; unwind (refund + drop position) if closed | High | `[~]` | Pre-lock check exists (`market-service.ts:289-290`) but is NOT re-validated inside the market lock (`:360`); microsecond/concurrent-close race can still commit. |
+| 1.3 | **Late-bet race hardening** — re-check `isSelectionClosed(fresh)` + status LIVE + `resolutionAt` INSIDE `withLock(market:{id})` before applying the pool `+=`; unwind (refund + drop position) if closed | High | `[x]` | Market lock now re-checks status/close/resolutionAt on `fresh`; on in-flight close it aborts the pool write, refunds real + exact bonus allocations (new lock-free `refundBonusLocked`), skips position/txn, audits `bet.rejected.closed_in_flight`. `test:late-bet` 14/14 (incl. real + bonus in-flight). |
 | 1.4a | **Void on `/fairness`** — VOIDED markets (reason + officers) shown on public page | High | `[~]` | `fairness/page.tsx:28` lists RESOLVED only; voids invisible. |
 | 1.4b | **Emergency-void = two-officer** (currently single-officer by design) OR document as a logged break-glass control acceptable to GBT | Med | `[~]` | `resolveMarket("VOID")` is two-officer ✓; `emergencyVoidMarket` stamps one id into both stages. **Needs decision.** |
 | 1.4c | Publish concrete void policy (postponed/ambiguous/created-in-error → full refund) in T&Cs + market rule card, EN/SW/FR | Med | `[~]` | Terms S6 is generic; make it specific + trilingual. |
@@ -146,4 +146,9 @@ Sportradar feed, live AI market generation. Keep interfaces clean; commercial ac
   + `sumGamblingNetSince` in in-memory store & Prisma DAL, gate in `buyPosition`, new
   `test:loss-limit` (7/7). Typecheck + build green.
   Verify still to run (live, self-test §C): item 10 (excluded deposit→reversed; excluded user→no bonus),
-  item 12 (loss limit → bets rejected). Next: session-time-limit enforcement, late-bet race (1.3).
+  item 12 (loss limit → bets rejected).
+- **2026-07-06** — Late-bet race hardening (1.3): market lock re-checks close/status on `fresh`;
+  in-flight close aborts + refunds real + exact bonus allocations (new lock-free `refundBonusLocked`,
+  `refundBonus` now delegates to it), skips position/txn, audits `bet.rejected.closed_in_flight`.
+  New `test:late-bet` 14/14. Regression: bonus-betting 24, emergency-void 30, market-resolution 18,
+  cashout 15 — all green. Full build green.

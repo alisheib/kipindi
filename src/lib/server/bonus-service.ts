@@ -425,23 +425,32 @@ export async function refundBonusToActive(userId: string, amountTzs: number): Pr
  */
 export async function refundBonus(userId: string, allocations: BonusAllocation[]): Promise<number> {
   if (!allocations.length) return 0;
+  return withLock(`wallet:${userId}`, () => refundBonusLocked(userId, allocations));
+}
+
+/**
+ * Lock-free variant of {@link refundBonus} — the caller MUST already hold
+ * `wallet:{userId}`. Used by buyPosition's in-flight abort (a stake spent from
+ * the bonus wallet for a bet that then hit a just-closed market) to return the
+ * exact allocations without re-acquiring the wallet lock (which would deadlock).
+ */
+export async function refundBonusLocked(userId: string, allocations: BonusAllocation[]): Promise<number> {
+  if (!allocations.length) return 0;
+  const wallet = await db.wallet.findByUserId(userId);
+  if (!wallet) return 0;
   let refunded = 0;
-  await withLock(`wallet:${userId}`, async () => {
-    const wallet = await db.wallet.findByUserId(userId);
-    if (!wallet) return;
-    for (const a of allocations) {
-      const amt = tzs(a.amount);
-      if (!(amt > 0)) continue;
-      const g = await db.bonusGrant.findById(a.grantId);
-      if (!g || g.status !== "ACTIVE") continue;
-      await db.bonusGrant.update(g.id, { remainingTzs: g.remainingTzs + amt });
-      await db.wallet.adjust(wallet.id, { bonusBalance: amt });
-      refunded += amt;
-    }
-    if (refunded > 0) {
-      audit({ category: "WALLET", action: "bonus.refunded", actorId: userId, targetType: "Wallet", targetId: wallet.id, payload: { refunded, allocations } });
-    }
-  });
+  for (const a of allocations) {
+    const amt = tzs(a.amount);
+    if (!(amt > 0)) continue;
+    const g = await db.bonusGrant.findById(a.grantId);
+    if (!g || g.status !== "ACTIVE") continue;
+    await db.bonusGrant.update(g.id, { remainingTzs: g.remainingTzs + amt });
+    await db.wallet.adjust(wallet.id, { bonusBalance: amt });
+    refunded += amt;
+  }
+  if (refunded > 0) {
+    audit({ category: "WALLET", action: "bonus.refunded", actorId: userId, targetType: "Wallet", targetId: wallet.id, payload: { refunded, allocations } });
+  }
   return refunded;
 }
 

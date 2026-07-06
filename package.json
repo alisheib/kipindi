@@ -16,6 +16,7 @@
     "test:audit": "tsx scripts/audit-chain.test.mts",
     "test:wallet": "tsx scripts/wallet-atomic.test.mts",
     "test:loss-limit": "tsx scripts/loss-limit.test.mts",
+    "test:late-bet": "tsx scripts/late-bet.test.mts",
     "test:payments": "tsx scripts/payment-webhook.test.mts",
     "test:cashback": "tsx scripts/deposit-cashback.test.mts",
     "test:email-stress": "tsx scripts/email-stress.test.mts",
