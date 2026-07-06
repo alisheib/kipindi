@@ -11,7 +11,9 @@ import {
   goLiveProposal,
   requestChanges,
   declineProposal,
+  editProposal,
   type DeclineReason,
+  type EditProposalInput,
 } from "@/lib/server/proposals-service";
 import { MARKET_OPS_ROLES } from "@/lib/server/roles";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
@@ -63,6 +65,20 @@ export async function goLiveProposalAction(proposalId: string, sourceUrl: string
     return r;
   } catch (err) {
     return { ok: false as const, error: safeError(err, "Go live failed") };
+  }
+}
+
+/** Officer edit of a proposal's content (title, criterion, category, dates,
+ *  betting-close, source). Full control before it goes live. */
+export async function editProposalAction(proposalId: string, patch: EditProposalInput) {
+  const s = await ensureAdmin();
+  try {
+    const r = await editProposal(proposalId, s.userId, patch);
+    revalidatePath("/admin/proposals");
+    revalidatePath("/proposals");
+    return r;
+  } catch (err) {
+    return { ok: false as const, error: safeError(err, "Edit failed") };
   }
 }
 

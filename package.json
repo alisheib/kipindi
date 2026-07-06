@@ -47,6 +47,7 @@
     "test:ledger": "tsx scripts/ledger.test.mts",
     "test:officer-conflict": "tsx scripts/officer-conflict.test.mts",
     "test:proposals": "tsx scripts/proposal-approval-bonus.test.mts",
+    "test:proposal-close": "tsx scripts/proposal-selection-close.test.mts",
     "test:kyc": "tsx scripts/kyc-review.test.mts && tsx scripts/kyc-submit-notify.test.mts && tsx scripts/kyc-flow-stress.test.mts && tsx scripts/kyc-security.test.mts",
     "backfill:zh": "tsx scripts/backfill-zh-titles.mts",
     "qa:live": "node scripts/pre-deploy-live-check.mjs",

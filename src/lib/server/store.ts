@@ -316,6 +316,7 @@ export type StoredProposal = {
   resolutionCriterion: string;
   category: ProposalCategory;
   resolutionDate: string;            // ISO date (YYYY-MM-DD)
+  selectionCloseDate: string | null; // ISO date (YYYY-MM-DD) — when betting closes; null = auto at publish
   sourceUrl: string | null;          // player-supplied trusted source (required at app layer)
   status: ProposalStatus;
   up: number;

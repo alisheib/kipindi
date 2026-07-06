@@ -48,6 +48,9 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
       <section className="rounded-xl glass-panel p-4">
         <p className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.12em] font-bold text-text-subtle">{t.common.resolutionCriterion}</p>
         <p className="text-[13px] leading-relaxed text-text-muted">{p.resolutionCriterion}</p>
+        {p.selectionCloseDate && (
+          <p className="mt-2 font-mono text-[11px] text-text-subtle">{t.common.bettingCloses}: {p.selectionCloseDate}</p>
+        )}
         {p.sourceUrl && (
           <p className="mt-3 flex items-center gap-1.5 text-[12px]">
             <I.link s={13} className="shrink-0 text-text-subtle" />

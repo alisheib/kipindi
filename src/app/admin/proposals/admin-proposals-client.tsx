@@ -7,15 +7,20 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { Toggle } from "@/components/ui/toggle";
+import { DateSelect } from "@/components/ui/date-select";
 import { useToast } from "@/components/ui/toast";
 import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
 import { StatusBadge } from "@/components/proposals/status-badge";
 import { CategoryIcon, CATEGORY_LABEL } from "@/components/proposals/category-icon";
 import type { ProposalsConfig } from "@/lib/server/proposals-config";
 import type { AdminQueueRow, DeclineReason } from "@/lib/server/proposals-service";
-import { saveProposalsConfigAction, approveProposalAction, goLiveProposalAction, declineProposalAction, requestChangesAction } from "./actions";
+import type { ProposalCategory } from "@/lib/server/store";
+import { saveProposalsConfigAction, approveProposalAction, goLiveProposalAction, declineProposalAction, requestChangesAction, editProposalAction } from "./actions";
 
 const DECLINE_REASONS: DeclineReason[] = ["Politics", "Ambiguous outcome", "No official source", "Duplicate", "Past resolution", "Outside jurisdiction", "Officer decision"];
+const CATEGORIES: ProposalCategory[] = ["sports", "macro", "weather", "crypto", "culture", "infrastructure"];
+const TODAY = () => new Date().toISOString().slice(0, 10);
+const MAX_DATE = () => `${new Date().getFullYear() + 2}-12-31`;
 
 function Cap({ children }: { children: React.ReactNode }) {
   return <span className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-subtle">{children}</span>;
@@ -121,6 +126,15 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
   const [reason, setReason] = useState<DeclineReason | null>(null);
   const [note, setNote] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
+  // Officer edit mode — full control over the proposal's content.
+  const [editing, setEditing] = useState(false);
+  const [eTitle, setETitle] = useState("");
+  const [eTitleSw, setETitleSw] = useState("");
+  const [eCriterion, setECriterion] = useState("");
+  const [eCategory, setECategory] = useState<ProposalCategory>("sports");
+  const [eResDate, setEResDate] = useState("");
+  const [eCloseDate, setECloseDate] = useState("");
+  const [eSource, setESource] = useState("");
 
   const on = c.enabled;
 
@@ -170,7 +184,28 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
   // Note: sourceUrl is owned by the selection effect (pre-filled from the
   // proposal), NOT cleared here — so it survives an approve→go-live transition
   // on the same proposal (the row stays selected after refresh).
-  const resetReview = () => { setDeclining(false); setReason(null); setNote(""); };
+  const resetReview = () => { setDeclining(false); setReason(null); setNote(""); setEditing(false); };
+
+  const openEdit = () => { if (!sel) return;
+    setETitle(sel.title); setETitleSw(sel.titleSw ?? ""); setECriterion(sel.resolutionCriterion);
+    setECategory(sel.category); setEResDate(sel.resolutionDate); setECloseDate(sel.selectionCloseDate ?? "");
+    setESource(sel.sourceUrl ?? ""); setDeclining(false); setEditing(true);
+  };
+
+  const saveEdit = () => { if (!sel) return;
+    overlay.run("Saving edit…", "Updating the proposal.");
+    start(async () => {
+      try {
+        const r = await editProposalAction(sel.id, {
+          titleEn: eTitle, titleSw: eTitleSw || null, resolutionCriterion: eCriterion,
+          category: eCategory, resolutionDate: eResDate,
+          selectionCloseDate: eCloseDate || null, sourceUrl: eSource || null,
+        });
+        if (r.ok) { overlay.succeed("Saved", "Proposal updated."); setEditing(false); refresh(); }
+        else overlay.fail("Couldn't save", r.error);
+      } catch { overlay.fail("Couldn't save", "Server error — please try again."); }
+    });
+  };
 
   const saveConfig = () => start(async () => {
     const r = await saveProposalsConfigAction(c);
@@ -285,7 +320,7 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
             <div>
               <Cap>Resolution criterion</Cap>
               <p className="mt-1 text-[12.5px] leading-relaxed text-text-muted">{sel.resolutionCriterion}</p>
-              <p className="mt-1 font-mono text-[10.5px] text-text-subtle">resolves {sel.resolutionDate}</p>
+              <p className="mt-1 font-mono text-[10.5px] text-text-subtle">resolves {sel.resolutionDate} · betting closes {sel.selectionCloseDate ?? "at resolution"}</p>
               {sel.sourceUrl && (
                 <p className="mt-1.5 flex items-center gap-1.5 text-[11.5px]">
                   <I.link s={12} className="shrink-0 text-text-subtle" />
@@ -313,7 +348,52 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
 
             <div className="h-px bg-border" />
 
-            {approved ? (
+            {editing ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-1.5 text-[13px] font-bold"><I.edit s={14} />Edit proposal · full control</div>
+                <div>
+                  <div className="mb-1 text-[11px] font-semibold text-text-muted">Title (EN)</div>
+                  <Input value={eTitle} onChange={(e) => setETitle(e.target.value)} size="sm" maxLength={120} />
+                </div>
+                <div>
+                  <div className="mb-1 text-[11px] font-semibold text-text-muted">Title (SW)</div>
+                  <Input value={eTitleSw} onChange={(e) => setETitleSw(e.target.value)} size="sm" maxLength={120} />
+                </div>
+                <div>
+                  <div className="mb-1 text-[11px] font-semibold text-text-muted">Resolution criterion</div>
+                  <textarea value={eCriterion} onChange={(e) => setECriterion(e.target.value)} maxLength={500} className="min-h-[56px] w-full resize-none rounded-md border border-border bg-bg-elevated px-3 py-2 text-[13px] text-text outline-none admin-focus transition-colors" />
+                </div>
+                <div>
+                  <div className="mb-1.5 text-[11px] font-semibold text-text-muted">Category</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {CATEGORIES.map((ct) => (
+                      <button key={ct} type="button" onClick={() => setECategory(ct)} className="inline-flex h-[30px] items-center gap-1.5 rounded-pill border px-3 text-[12px] font-semibold transition-colors"
+                        style={eCategory === ct ? { borderColor: "color-mix(in oklab, var(--gold-500) 40%, transparent)", background: "color-mix(in oklab, var(--gold-500) 14%, transparent)", color: "var(--gold-200)" } : { borderColor: "var(--border)", color: "var(--text-muted)" }}>
+                        <CategoryIcon category={ct} size={13} />{CATEGORY_LABEL[ct]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-4">
+                  <div>
+                    <div className="mb-1 text-[11px] font-semibold text-text-muted">Resolution date</div>
+                    <DateSelect value={eResDate} onChange={setEResDate} min={TODAY()} max={MAX_DATE()} />
+                  </div>
+                  <div>
+                    <div className="mb-1 text-[11px] font-semibold text-text-muted">Betting closes</div>
+                    <DateSelect value={eCloseDate} onChange={setECloseDate} min={TODAY()} max={eResDate || MAX_DATE()} />
+                  </div>
+                </div>
+                <div>
+                  <div className="mb-1 text-[11px] font-semibold text-text-muted">Source URL</div>
+                  <Input value={eSource} onChange={(e) => setESource(e.target.value)} placeholder="https://..." mono size="sm" />
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="md" onClick={() => setEditing(false)}>Cancel</Button>
+                  <Button variant="gold" size="md" fullWidth loading={pending} leading={<I.check size={15} />} onClick={saveEdit}>Save changes</Button>
+                </div>
+              </div>
+            ) : approved ? (
               <div className="space-y-2.5">
                 <div className="rounded-md border p-2.5" style={{ borderColor: "color-mix(in oklab, var(--gold-500) 30%, var(--border))", background: "color-mix(in oklab, var(--gold-500) 7%, transparent)" }}>
                   <p className="flex items-center gap-1.5 text-[11.5px] text-gold-200"><I.checkCircle s={13} />Approved &amp; bonus paid. Publish it live to open the market — no further reward is granted.</p>
@@ -323,7 +403,11 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
                   <Input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://... (trusted source for resolution)" mono size="sm" />
                   <p className="mt-1 text-[10.5px] text-text-subtle">Pre-filled from the proposal · must be on the approved source registry.</p>
                 </div>
-                <Button variant="gold" size="md" fullWidth loading={pending} leading={<I.arrowRight size={15} />} onClick={goLive}>Publish live · Orodhesha</Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="gold" size="md" loading={pending} leading={<I.arrowRight size={15} />} onClick={goLive}>Publish live · Orodhesha</Button>
+                  <Button variant="ghost" size="md" leading={<I.edit s={15} />} onClick={openEdit}>Edit</Button>
+                </div>
+                <p className="text-[10.5px] text-text-subtle">You decide when it goes to market — publishing is a deliberate step, separate from approval.</p>
               </div>
             ) : !open ? (
               <p className="text-[12.5px] text-text-muted">This proposal is <strong>{sel.status.toLowerCase().replace("_", " ")}</strong> — no further action.</p>
@@ -331,7 +415,8 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
               <div className="space-y-2.5">
                 <div className="flex flex-wrap gap-2">
                   <Button variant="gold" size="md" loading={pending} leading={<I.checkCircle size={15} />} onClick={approve}>Approve &amp; pay bonus · Kubali</Button>
-                  <Button variant="ghost" size="md" loading={pending} leading={<I.edit s={15} />} onClick={sendBack}>Request changes</Button>
+                  <Button variant="ghost" size="md" leading={<I.edit s={15} />} onClick={openEdit}>Edit</Button>
+                  <Button variant="ghost" size="md" loading={pending} leading={<I.fileText s={15} />} onClick={sendBack}>Request changes</Button>
                   <Button variant="ghost" size="md" leading={<I.xCircle size={15} />} onClick={() => setDeclining(true)} className="!text-claret-300">Decline</Button>
                 </div>
                 <p className="text-[10.5px] text-text-subtle">Approving instantly credits the proposer&apos;s bonus wallet. Publishing the market is a separate step afterwards.</p>

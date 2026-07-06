@@ -834,6 +834,9 @@ model Proposal {
   resolutionCriterion String
   category            String // sports, macro, weather, crypto, culture, infrastructure
   resolutionDate      String // ISO date YYYY-MM-DD
+  // When betting (selection) closes — ISO date YYYY-MM-DD. Optional: if unset, the
+  // market's selectionClosedAt is auto-derived at publish. Always <= resolutionDate.
+  selectionCloseDate  String?
   sourceUrl           String? // player-supplied trusted source for resolution (required at app layer)
   status              ProposalStatus @default(REVIEW)
   up                  Int            @default(0)

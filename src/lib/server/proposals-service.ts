@@ -96,6 +96,24 @@ export function validateSourceUrl(raw: string | null | undefined): { ok: true; u
   return { ok: true, url };
 }
 
+/**
+ * Validate an OPTIONAL betting-close (selection) date against a resolution date.
+ * Empty → null (market's selectionClosedAt is auto-derived at publish). If present:
+ * YYYY-MM-DD, in the future, and on/before the resolution date. Shared by
+ * createProposal and editProposal so client + both server paths agree.
+ */
+export function parseSelectionCloseDate(raw: string | null | undefined, resolutionDate: string):
+  { ok: true; date: string | null } | { ok: false; error: string } {
+  const s = (raw ?? "").trim();
+  if (!s) return { ok: true, date: null };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return { ok: false, error: "Betting-close date must be YYYY-MM-DD." };
+  const ts = Date.parse(`${s}T23:59:59.000Z`);
+  if (!Number.isFinite(ts)) return { ok: false, error: "Invalid betting-close date." };
+  if (ts <= Date.now()) return { ok: false, error: "Betting-close date must be in the future." };
+  if (s > resolutionDate) return { ok: false, error: "Betting must close on or before the resolution date." };
+  return { ok: true, date: s };
+}
+
 // ── Create ─────────────────────────────────────────────────────────────
 export type CreateProposalInput = {
   titleEn: string;
@@ -105,6 +123,7 @@ export type CreateProposalInput = {
   resolutionCriterion: string;
   category: ProposalCategory;
   resolutionDate: string; // YYYY-MM-DD
+  selectionCloseDate?: string; // YYYY-MM-DD (optional) — when betting closes; must be <= resolutionDate
   sourceUrl: string;      // REQUIRED — trusted source for resolution
 };
 
@@ -123,6 +142,9 @@ export async function createProposal(userId: string, input: CreateProposalInput)
   if (!Number.isFinite(ts)) return { ok: false, error: "Invalid resolution date.", code: "INVALID" };
   if (ts <= Date.now()) return { ok: false, error: "Resolution date must be in the future.", code: "INVALID" };
   if (!PROPOSAL_CATEGORIES.includes(input.category)) return { ok: false, error: "Pick a valid category.", code: "INVALID" };
+  // Optional betting-close date — validated against the resolution date.
+  const sel = parseSelectionCloseDate(input.selectionCloseDate, date);
+  if (!sel.ok) return { ok: false, error: sel.error, code: "INVALID" };
   // Source link is required and must be a valid http(s) URL (server-side gate).
   const src = validateSourceUrl(input.sourceUrl);
   if (!src.ok) return { ok: false, error: src.error, code: "INVALID" };
@@ -144,6 +166,7 @@ export async function createProposal(userId: string, input: CreateProposalInput)
       resolutionCriterion: criterion,
       category: input.category,
       resolutionDate: date,
+      selectionCloseDate: sel.date,
       sourceUrl: src.url,
       status: "REVIEW",
       up: 0,
@@ -274,6 +297,7 @@ export type ProposalView = {
   category: ProposalCategory;
   resolutionCriterion: string;
   resolutionDate: string;
+  selectionCloseDate: string | null;
   sourceUrl: string | null;
   status: ProposalStatus;
   isHot: boolean;
@@ -305,6 +329,7 @@ async function toView(p: StoredProposal, viewerId: string | null): Promise<Propo
     category: p.category,
     resolutionCriterion: p.resolutionCriterion,
     resolutionDate: p.resolutionDate,
+    selectionCloseDate: p.selectionCloseDate,
     sourceUrl: p.sourceUrl,
     status: p.status,
     isHot: OPEN_STATES.includes(p.status) && score >= cfg.hotThreshold,
@@ -483,6 +508,11 @@ export async function goLiveProposal(proposalId: string, officerId: string, sour
     const { createMarket } = await import("./market-service");
     const { computeSelectionClosedAt } = await import("./ai-poll-config");
     const resolutionAt = new Date(`${p.resolutionDate}T23:59:59.000Z`).toISOString();
+    // Betting-close: use the proposal's explicit selection-close date when set
+    // (proposer- or officer-specified), otherwise fall back to the auto heuristic.
+    const selectionClosedAt = p.selectionCloseDate
+      ? new Date(`${p.selectionCloseDate}T23:59:59.000Z`).toISOString()
+      : computeSelectionClosedAt(resolutionAt, toMarketCategory(p.category));
     const market = await createMarket({
       titleEn: p.titleEn,
       titleSw: p.titleSw ?? p.titleEn,
@@ -491,7 +521,7 @@ export async function goLiveProposal(proposalId: string, officerId: string, sour
       sourceUrl: src.url,
       resolutionCriterion: p.resolutionCriterion,
       resolutionAt,
-      selectionClosedAt: computeSelectionClosedAt(resolutionAt, toMarketCategory(p.category)),
+      selectionClosedAt,
       proposedBy: p.proposerId,
     });
     const linked = await db.proposal.update(proposalId, { status: "LISTED", publishedMarketId: market.id, sourceUrl: src.url, reviewedBy: officerId, reviewedAt: new Date().toISOString() });
@@ -568,6 +598,93 @@ export async function declineProposal(proposalId: string, officerId: string, rea
   return { ok: true };
 }
 
+// ── Officer edit — full control over a proposal's fields ─────────────────────
+export type EditProposalInput = {
+  titleEn?: string;
+  titleSw?: string | null;
+  titleZh?: string | null;
+  description?: string | null;
+  resolutionCriterion?: string;
+  category?: ProposalCategory;
+  resolutionDate?: string;            // YYYY-MM-DD
+  selectionCloseDate?: string | null; // YYYY-MM-DD, or "" / null to clear
+  sourceUrl?: string | null;
+};
+
+/** States in which an officer may edit a proposal's content. A LISTED proposal
+ *  already spawned a live market (edit the market directly); RESOLVED/DECLINED are
+ *  terminal. APPROVED is editable so an officer can fix details before publishing. */
+const EDITABLE_STATES: ProposalStatus[] = ["REVIEW", "CHANGES_REQUESTED", "APPROVED"];
+
+/**
+ * Officer edit of a proposal's content — "change anything in it." Serialized on the
+ * proposal lock and status-guarded so an edit can't race an approve/publish/decline.
+ * Every provided field is validated exactly like createProposal; the betting-close
+ * date is re-checked against the (possibly new) resolution date. Approval/bonus and
+ * status are untouched — editing an APPROVED proposal keeps it APPROVED.
+ */
+export async function editProposal(proposalId: string, officerId: string, patch: EditProposalInput):
+  Promise<{ ok: true } | { ok: false; error: string }> {
+  return withLock(`proposal:${proposalId}`, async (): Promise<{ ok: true } | { ok: false; error: string }> => {
+    const p = await db.proposal.findById(proposalId);
+    if (!p) return { ok: false, error: "Proposal not found." };
+    if (!EDITABLE_STATES.includes(p.status)) {
+      return { ok: false, error: `A ${p.status.toLowerCase().replace("_", " ")} proposal can't be edited — edit the live market directly if it's listed.` };
+    }
+
+    const next: Partial<StoredProposal> = {};
+
+    if (patch.titleEn !== undefined) {
+      const t = patch.titleEn.trim();
+      if (t.length < 8 || t.length > 120) return { ok: false, error: "Title must be 8–120 characters." };
+      next.titleEn = t;
+    }
+    if (patch.titleSw !== undefined) next.titleSw = (patch.titleSw ?? "").trim() || null;
+    if (patch.titleZh !== undefined) next.titleZh = (patch.titleZh ?? "").trim() || null;
+    if (patch.description !== undefined) next.description = (patch.description ?? "").trim() || null;
+    if (patch.resolutionCriterion !== undefined) {
+      const c = patch.resolutionCriterion.trim();
+      if (c.length < 12) return { ok: false, error: "Resolution criterion must be at least 12 characters." };
+      next.resolutionCriterion = c;
+    }
+    if (patch.category !== undefined) {
+      if (!PROPOSAL_CATEGORIES.includes(patch.category)) return { ok: false, error: "Pick a valid category." };
+      next.category = patch.category;
+    }
+    // Effective resolution date for cross-checks (new value if provided, else current).
+    const effResolution = patch.resolutionDate !== undefined ? (patch.resolutionDate ?? "").trim() : p.resolutionDate;
+    if (patch.resolutionDate !== undefined) {
+      const d = (patch.resolutionDate ?? "").trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return { ok: false, error: "Resolution date must be YYYY-MM-DD." };
+      const ts = Date.parse(`${d}T23:59:59.000Z`);
+      if (!Number.isFinite(ts) || ts <= Date.now()) return { ok: false, error: "Resolution date must be a valid future date." };
+      next.resolutionDate = d;
+    }
+    if (patch.selectionCloseDate !== undefined) {
+      const sel = parseSelectionCloseDate(patch.selectionCloseDate, effResolution);
+      if (!sel.ok) return { ok: false, error: sel.error };
+      next.selectionCloseDate = sel.date;
+    } else if (patch.resolutionDate !== undefined && p.selectionCloseDate && p.selectionCloseDate > effResolution) {
+      // Resolution moved earlier than the existing close date — force the officer
+      // to reconcile rather than silently ship an impossible market.
+      return { ok: false, error: "New resolution date is before the existing betting-close date — set a new betting-close date too." };
+    }
+    if (patch.sourceUrl !== undefined) {
+      const s = validateSourceUrl(patch.sourceUrl);
+      if (!s.ok) return { ok: false, error: s.error };
+      next.sourceUrl = s.url;
+    }
+
+    if (Object.keys(next).length === 0) return { ok: true };
+    next.reviewedBy = officerId;
+    next.reviewedAt = new Date().toISOString();
+    const updated = await db.proposal.update(proposalId, next);
+    if (!updated) return { ok: false, error: "Couldn't save the edit — try again." };
+    audit({ category: "ADMIN", action: "proposal.edited", actorId: officerId, targetType: "Proposal", targetId: proposalId, payload: { fields: Object.keys(next) } });
+    return { ok: true };
+  });
+}
+
 /**
  * Called from market resolution: if the resolved market originated from a player
  * proposal, reflect that in the proposal status (LISTED → RESOLVED). The reward
@@ -615,8 +732,8 @@ export async function getAdminProposalStats(): Promise<AdminProposalStats> {
 }
 
 export type AdminQueueRow = {
-  id: string; title: string; titleSw: string | null; description: string | null;
-  resolutionCriterion: string; resolutionDate: string; category: ProposalCategory;
+  id: string; title: string; titleSw: string | null; titleZh: string | null; description: string | null;
+  resolutionCriterion: string; resolutionDate: string; selectionCloseDate: string | null; category: ProposalCategory;
   sourceUrl: string | null; bonusGrantedTzs: number;
   proposerMasked: string; up: number; down: number; score: number;
   ageIso: string; status: ProposalStatus;
@@ -626,8 +743,8 @@ export async function getAdminQueue(filter: "all" | "review" | "approved" | "fla
   let rows: AdminQueueRow[] = await Promise.all((await db.proposal.list(2000)).map(async (p) => {
     const proposer = await db.user.findById(p.proposerId);
     return {
-      id: p.id, title: p.titleEn, titleSw: p.titleSw, description: p.description,
-      resolutionCriterion: p.resolutionCriterion, resolutionDate: p.resolutionDate, category: p.category,
+      id: p.id, title: p.titleEn, titleSw: p.titleSw, titleZh: p.titleZh ?? null, description: p.description,
+      resolutionCriterion: p.resolutionCriterion, resolutionDate: p.resolutionDate, selectionCloseDate: p.selectionCloseDate, category: p.category,
       sourceUrl: p.sourceUrl, bonusGrantedTzs: p.bonusGrantedTzs,
       proposerMasked: maskName(proposer?.displayName ?? null, proposer?.phoneE164 ?? ""),
       up: p.up, down: p.down, score: p.up - p.down, ageIso: p.createdAt, status: p.status,
