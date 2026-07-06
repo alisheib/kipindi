@@ -36,15 +36,15 @@ responsive (no horizontal overflow 320→1440) · **[L]** languages (labels/i18n
 |---|---|---|
 | `/admin/resolver-queue` | Resolver queue | ✅ **DONE** (this session): staged-outcome Stage 2, triage summary, kit search, responsive 320–1280, 15/15 live. |
 | `/admin/proposals` | Player proposals | ✅ Mostly done: live search, kit `Textarea`/labels, edit panel, betting→**selection** terminology, ZH title. Re-check pagination + mobile. |
-| `/admin/markets` | **Curation queue** | ⚠️ **This is the "curation queue" search Ali hit** — verify its search filters (make live-on-type or fix Enter). Full pass. |
-| `/admin/candidates` | AI candidates | Search is **Enter/URL-param only** — decide: make live-on-type for consistency. Full pass. |
-| `/admin/ai-polls` | AI poll generation | Full pass (filters, forms, actions). |
+| `/admin/markets` | **Curation queue** | ✅ **DONE**: canonical search (Enter/URL-param — was never broken, just style-drifted), h-9 aligned buttons, contextual refresh. `markets-retest.mjs` 18/18. |
+| `/admin/candidates` | AI candidates | ✅ **DONE**: canonical search (server-paged → Enter/URL-param kept), refresh. `polls-candidates-retest.mjs`. |
+| `/admin/ai-polls` | AI poll generation | ✅ **DONE**: canonical search, refresh in All-generations toolbar. `polls-candidates-retest.mjs`. |
+| `/admin/reports` | Reports | ✅ **DONE**: kit `<I.download>` icon, generation-log refresh, real Excel/PDF gen verified. `reports-retest.mjs` 18/18. |
 | `/admin/sources` | Sources & categories | Full pass. |
 | `/admin/config` | Rates & fees | Number inputs + save; kit consistency. |
 | `/admin` | Overview | KPIs, links, responsive. |
 | `/admin/live` | Live ops | Real-time tiles; responsive. |
 | `/admin/finance` | Finance | Tables, exports, pagination. |
-| `/admin/reports` | Reports | Report generation (PDF/XLSX) works; buttons. |
 | `/admin/players` | Roster | Search + pagination + row → detail. |
 | `/admin/players/cohorts` | Cohorts | Filters, charts. |
 | `/admin/affiliate` | Affiliate | Config + tables. |
@@ -74,3 +74,8 @@ responsive (no horizontal overflow 320→1440) · **[L]** languages (labels/i18n
   filter rows).
 - **Pagination**: always the shared `Pagination`/`AdminPagination`; reset page on filter/search.
 - **Terminology**: "Selection closes/closed" (not "betting closes") — already unified in proposals.
+- **Refresh** ✅ standardized: shared `<RefreshButton>` (`src/components/admin/refresh-button.tsx`,
+  `router.refresh()` + spinning glyph). A global icon lives in `AdminTopBar` so **every** admin screen
+  can refresh; grids with a filter bar also carry a contextual one next to Search/Clear. Use
+  `variant="icon"` in tight rows, the labelled default in filter rows. `admin-grids-smoke.mjs` asserts
+  the control is present on all 25 routes (125/125).
