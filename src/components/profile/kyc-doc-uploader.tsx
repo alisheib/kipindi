@@ -186,8 +186,7 @@ export function KycExtraDocUploader({
           onClick={() => !working && inputRef.current?.click()}
           disabled={working}
           aria-busy={working ? "true" : "false"}
-          className={`btn btn-sm shrink-0 ${done ? "btn-ghost" : "btn-gold"}`}
-          style={{ borderRadius: 999 }}
+          className={`btn btn-sm btn-pill shrink-0 ${done ? "btn-ghost" : "btn-gold"}`}
         >
           {done ? t.common.replace : t.common.upload}
         </button>

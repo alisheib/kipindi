@@ -182,7 +182,7 @@ function MobileLangPicker({ locale: current }: { locale: string }) {
             className={cn(
               "h-7 px-3 rounded-pill font-mono text-[11.5px] font-semibold transition-colors",
               active
-                ? "bg-brand-500 text-white"
+                ? "bg-brand-500 text-onBrand"
                 : "bg-bg-overlay text-text-subtle border border-border hover:bg-brand-500/10 hover:text-brand-300",
             )}
           >

@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { I } from "@/components/ui/glyphs";
 import { PasswordInput } from "@/components/ui/password-input";
+import { FieldLegend } from "@/components/ui/field-legend";
 import { changePasswordAction } from "@/app/profile/account/actions";
 
 export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
@@ -73,12 +74,9 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
       </div>
       {hasPassword && (
         <div>
-          <label
-            htmlFor="pw-current"
-            className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
-          >
+          <FieldLegend as="label" htmlFor="pw-current" className="block mb-1.5">
             {t.common.currentPassword}
-          </label>
+          </FieldLegend>
           <PasswordInput
             id="pw-current"
             value={current}
@@ -89,12 +87,9 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
         </div>
       )}
       <div>
-        <label
-          htmlFor="pw-new"
-          className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
-        >
+        <FieldLegend as="label" htmlFor="pw-new" className="block mb-1.5">
           {t.common.newPassword8}
-        </label>
+        </FieldLegend>
         <PasswordInput
           id="pw-new"
           value={next}
@@ -105,12 +100,9 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
         />
       </div>
       <div>
-        <label
-          htmlFor="pw-confirm"
-          className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
-        >
+        <FieldLegend as="label" htmlFor="pw-confirm" className="block mb-1.5">
           {t.common.confirm}
-        </label>
+        </FieldLegend>
         <PasswordInput
           id="pw-confirm"
           value={confirm}

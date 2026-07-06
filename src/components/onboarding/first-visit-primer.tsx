@@ -350,8 +350,8 @@ export function FirstVisitPrimer() {
               type="button"
               onClick={back}
               disabled={step === 0}
-              className="btn btn-ghost btn-md disabled:opacity-0 disabled:pointer-events-none"
-              style={{ borderRadius: 999, minWidth: 88 }}
+              className="btn btn-ghost btn-md btn-pill disabled:opacity-0 disabled:pointer-events-none"
+              style={{ minWidth: 88 }}
             >
               {lang === "sw" ? "Rudi" : lang === "zh" ? "返回" : "Back"}
             </button>
@@ -370,8 +370,8 @@ export function FirstVisitPrimer() {
             <button
               type="button"
               onClick={next}
-              className="btn btn-gold btn-md inline-flex items-center gap-1.5"
-              style={{ borderRadius: 999, minWidth: 88 }}
+              className="btn btn-gold btn-md btn-pill inline-flex items-center gap-1.5"
+              style={{ minWidth: 88 }}
             >
               {step === CARDS.length - 1
                 ? lang === "sw" ? "Sawa" : lang === "zh" ? "明白了" : "Got it"

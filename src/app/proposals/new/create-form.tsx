@@ -155,7 +155,7 @@ export function CreateProposalForm({ enabled, prizeTzs, rateLimit, openCount }: 
         />
         <p className="mt-1.5 text-[11px] leading-snug text-text-subtle">{t.common.selectionCloseHint}</p>
         {closeDate && !closeValid && (
-          <p className="mt-1 text-[11px] leading-snug text-no-300">Selections must close before the resolution date.</p>
+          <p className="mt-1 text-[11px] leading-snug text-no-300">{t.common.selectionCloseError}</p>
         )}
       </div>
 
