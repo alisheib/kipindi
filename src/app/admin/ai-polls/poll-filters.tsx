@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 import { I } from "@/components/ui/glyphs";
+import { RefreshButton } from "@/components/admin/refresh-button";
 
 const ALL_STATES = [
   { id: "", label: "All states" },
@@ -74,7 +75,7 @@ export function PollFilterToolbar({ totalFiltered, totalAll }: { totalFiltered: 
               if (e.key === "Enter") push({ q: search });
             }}
             placeholder="Search polls by title, category, ID, or criterion..."
-            className="w-full h-9 pl-9 pr-3 rounded-md border border-border bg-bg-overlay text-[12.5px] text-text font-mono placeholder:text-text-subtle outline-none admin-focus transition-colors"
+            className="w-full h-9 pl-9 pr-3 rounded-md border border-border bg-bg-overlay text-[12.5px] text-text placeholder:text-text-subtle outline-none admin-focus transition-colors"
           />
         </div>
         <button
@@ -96,6 +97,7 @@ export function PollFilterToolbar({ totalFiltered, totalAll }: { totalFiltered: 
             Clear
           </button>
         )}
+        <RefreshButton variant="icon" className="ml-auto" />
       </div>
 
       {/* Filter chips row */}
