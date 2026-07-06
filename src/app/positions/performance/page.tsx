@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BackLink } from "@/components/ui/back-link";
+import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PnlChart } from "@/components/positions/pnl-chart";
 import { listPositionsForUser, getMarket } from "@/lib/server/market-service";
@@ -105,10 +106,7 @@ export default async function PerformancePage() {
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
       <BackLink fallbackHref="/positions" label={t.positions.title} />
-      <header>
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.positions.title}</p>
-        <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.performance.title}</h1>
-      </header>
+      <PageHeader eyebrow={t.positions.title} title={t.performance.title} />
 
       {totalBets === 0 ? (
         <EmptyState

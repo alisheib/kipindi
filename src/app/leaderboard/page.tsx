@@ -11,6 +11,7 @@ import { db } from "@/lib/server/store";
 import { listPositionsForUser, listMarkets } from "@/lib/server/market-service";
 import { PriceChart, VolumeSparkline } from "@/components/markets/price-chart";
 import { Tooltip } from "@/components/ui/tooltip";
+import { PageHeader } from "@/components/ui/page-header";
 import { Avatar, TierBadge as KitTierBadge } from "@/components/ui/avatar";
 import { PageRibbon } from "@/components/layout/page-ribbon";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
@@ -165,10 +166,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
       <RefreshPoller intervalMs={30_000} />
-      <header>
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.leaderboard.title}</p>
-        <h1 className="font-display text-[28px] font-bold text-text">{t.leaderboard.topPredictors}</h1>
-      </header>
+      <PageHeader eyebrow={t.leaderboard.title} title={t.leaderboard.topPredictors} />
 
       <PageRibbon
         stats={[

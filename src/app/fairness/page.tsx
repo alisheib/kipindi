@@ -7,6 +7,7 @@
  */
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
+import { PageHeader } from "@/components/ui/page-header";
 import { Chip } from "@/components/ui/chip";
 import { listMarkets } from "@/lib/server/market-service";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
@@ -34,8 +35,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
   return (
     <div className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 lg:py-8 space-y-6">
       <header className="space-y-2">
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.common.resolutionAttestation}</p>
-        <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.common.howAMarketResolves}</h1>
+        <PageHeader eyebrow={t.common.resolutionAttestation} title={t.common.howAMarketResolves} />
         <p className="text-[15px] leading-relaxed text-text-muted max-w-[68ch] mt-3">
           {t.common.fairnessIntro}
         </p>

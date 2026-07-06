@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { PageHeader } from "@/components/ui/page-header";
 import { BackLink } from "@/components/ui/back-link";
 import { PositionCard } from "@/components/markets/position-card";
 import { PnlSummaryStrip } from "@/components/positions/pnl-summary-strip";
@@ -88,10 +89,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
       <RefreshPoller intervalMs={20_000} />
       <BackLink fallbackHref="/markets" label={t.common.markets} />
       <header className="flex items-start justify-between gap-3">
-        <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.positions.title}</p>
-          <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.positions.pollsPlayed}</h1>
-        </div>
+        <PageHeader eyebrow={t.positions.title} title={t.positions.pollsPlayed} />
         {positions.length > 0 && (
           <Link href={"/positions/performance" as never} className="btn btn-ghost btn-sm inline-flex items-center gap-1.5 shrink-0 mt-1">
             <I.chart s={13} />

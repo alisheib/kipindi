@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { I } from "@/components/ui/glyphs";
+import { PageHeader } from "@/components/ui/page-header";
 import { FiftyMark } from "@/components/brand";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination } from "@/components/ui/pagination";
@@ -335,10 +336,7 @@ export function WalletPageClient({
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
       <header className="flex items-end justify-between gap-3">
-        <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.common.walletLabel}</p>
-          <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.common.yourFunds}</h1>
-        </div>
+        <PageHeader eyebrow={t.common.walletLabel} title={t.common.yourFunds} />
         {isAuthed && (
           <div className="flex items-center gap-2 shrink-0">
             <Link href="/wallet/deposit" className="btn btn-gold btn-md btn-pill inline-flex">
