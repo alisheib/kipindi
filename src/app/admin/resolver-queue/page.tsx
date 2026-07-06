@@ -62,6 +62,11 @@ export default async function ResolverQueuePage({
     return true;
   }).sort((a, b) => Date.parse(a.resolutionAt) - Date.parse(b.resolutionAt));
 
+  // Triage counts for the header summary.
+  const overdueCount = pending.filter((m) => Date.parse(m.resolutionAt) <= now).length;
+  const awaitingStage2 = pending.filter((m) => !!m.resolutionStage1By).length;
+  const windowLabel = (WINDOW_OPTIONS.find((o) => o.value === windowFilter)?.label ?? "").toLowerCase();
+
   // Paginate
   const page = parsePage(sp.page, pending.length);
   const paged = pending.slice((page - 1) * PER_PAGE, page * PER_PAGE);
@@ -74,20 +79,26 @@ export default async function ResolverQueuePage({
         title="Resolver queue"
         sw="Foleni ya utatuzi"
         period={false}
-        actions={<span className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">{pending.length} markets</span>}
+        actions={
+          <div className="flex items-center gap-2.5 font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
+            <span>{pending.length} pending</span>
+            {overdueCount > 0 && <><span className="text-border">·</span><span className="text-claret-300">{overdueCount} overdue</span></>}
+            {awaitingStage2 > 0 && <><span className="text-border">·</span><span className="text-warning-300">{awaitingStage2} awaiting 2nd</span></>}
+          </div>
+        }
       />
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* Filters */}
         <AdminCard padding="p-3">
           <form className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-0 sm:min-w-[200px]">
-              <I.search size={14} aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+              <I.search size={14} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle" />
               <input
                 name="q"
                 defaultValue={query}
                 placeholder="Search title…"
                 aria-label="Search resolver queue"
-                className="w-full h-9 pl-9 pr-3 rounded-md bg-bg-inset border border-border text-text font-mono text-body-sm focus:outline-none admin-focus transition-colors"
+                className="h-9 w-full rounded-md border border-border bg-bg-overlay pl-9 pr-3 text-[12.5px] text-text outline-none admin-focus transition-colors placeholder:text-text-subtle"
               />
             </div>
             <div className="w-full sm:w-[160px]">
@@ -98,17 +109,19 @@ export default async function ResolverQueuePage({
               <Select name="category" defaultValue={categoryFilter} size="xs" placeholder="All categories"
                 options={[{ value: "", label: "All categories" }, ...CATEGORY_OPTIONS.map((c) => ({ value: c, label: c }))]} />
             </div>
-            <button type="submit" className="btn btn-primary btn-sm">Filter</button>
-            {hasFilter && <a href="/admin/resolver-queue" className="btn btn-ghost btn-sm">Clear</a>}
+            <button type="submit" className="btn btn-primary btn-sm h-9">Filter</button>
+            {hasFilter && <a href="/admin/resolver-queue" className="btn btn-ghost btn-sm h-9">Clear</a>}
           </form>
         </AdminCard>
 
         {pending.length === 0 ? (
           <EmptyState
             kind="audit"
-            title="Queue is clear"
-            titleSw="Foleni ni tupu"
-            body="No markets within 24 hours of resolution."
+            title={hasFilter ? "No markets match" : "Queue is clear"}
+            titleSw={hasFilter ? "Hakuna soko" : "Foleni ni tupu"}
+            body={windowFilter === "all"
+              ? "No markets are pending resolution."
+              : `No markets resolving in the ${windowLabel}.`}
           />
         ) : (
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -211,27 +224,36 @@ export default async function ResolverQueuePage({
                       <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-semibold text-text-muted">Two-officer rule</span>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-[12px]">
-                      <div className={`rounded-md border p-2 ${stage1 ? "border-yes-700 bg-yes-500/10" : "border-border bg-bg-overlay"}`}>
+                      <div className={`rounded-md border p-2 ${
+                        stage1
+                          ? (m.resolvedOutcome === "NO" ? "border-no-700 bg-no-500/10" : m.resolvedOutcome === "VOID" ? "border-claret-700 bg-claret-500/10" : "border-yes-700 bg-yes-500/10")
+                          : "border-border bg-bg-overlay"
+                      }`}>
                         <div className="flex items-center gap-1.5">
                           <I.shieldcheck s={12} />
                           <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Stage 1</span>
                         </div>
-                        <p className={`mt-1 font-mono text-[11px] ${stage1 ? "text-yes-300" : "text-text-subtle"}`}>
+                        <p className={`mt-1 font-mono text-[11px] ${stage1 ? "text-text-muted" : "text-text-subtle"}`}>
                           {stage1 ? `${m.resolutionStage1By?.slice(0, 14)}…` : "awaiting"}
                         </p>
+                        {stage1 && m.resolvedOutcome && (
+                          <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle">
+                            staged <span className={`font-bold ${m.resolvedOutcome === "YES" ? "text-yes-300" : m.resolvedOutcome === "NO" ? "text-no-300" : "text-claret-300"}`}>{m.resolvedOutcome}</span>
+                          </p>
+                        )}
                       </div>
                       <div className="rounded-md border border-border bg-bg-overlay p-2">
                         <div className="flex items-center gap-1.5">
                           <I.alertCircle s={12} />
                           <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Stage 2</span>
                         </div>
-                        <p className="mt-1 font-mono text-[11px] text-text-subtle">{stage1 ? "ready for 2nd officer" : "unlocks after stage 1"}</p>
+                        <p className="mt-1 font-mono text-[11px] text-text-subtle">{stage1 ? `confirm ${m.resolvedOutcome}` : "unlocks after stage 1"}</p>
                       </div>
                     </div>
                   </div>
 
                   <div className="p-4">
-                    <ResolveControls marketId={m.id} stage={stage1 ? "stage2" : "stage1"} />
+                    <ResolveControls marketId={m.id} stage={stage1 ? "stage2" : "stage1"} stagedOutcome={m.resolvedOutcome} />
                   </div>
                 </AdminCard>
               );

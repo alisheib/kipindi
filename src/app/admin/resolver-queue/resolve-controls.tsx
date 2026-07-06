@@ -9,7 +9,7 @@ import { resolveMarketAction } from "@/app/markets/actions";
 import { BrandSpinner } from "@/components/brand";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
 
-export function ResolveControls({ marketId, stage }: { marketId: string; stage: "stage1" | "stage2" }) {
+export function ResolveControls({ marketId, stage, stagedOutcome }: { marketId: string; stage: "stage1" | "stage2"; stagedOutcome?: "YES" | "NO" | "VOID" | null }) {
   const [pending, startTransition] = useTransition();
   const [submittedSide, setSubmittedSide] = useState<"YES" | "NO" | "VOID" | null>(null);
   const [pendingOutcome, setPendingOutcome] = useState<"YES" | "NO" | "VOID" | null>(null);
@@ -87,19 +87,38 @@ export function ResolveControls({ marketId, stage }: { marketId: string; stage: 
     );
   }
 
+  const toneClass = (o: "YES" | "NO" | "VOID") => (o === "YES" ? "btn-yes" : o === "NO" ? "btn-no" : "btn-claret");
+  const toneText = (o: "YES" | "NO" | "VOID") => (o === "YES" ? "text-yes-300" : o === "NO" ? "text-no-300" : "text-claret-300");
+
   return (
     <>
-      <div className="grid grid-cols-3 gap-2">
-        <button type="button" onClick={() => submit("YES")} disabled={pending} className="btn btn-yes btn-md w-full">
-          Resolve YES
-        </button>
-        <button type="button" onClick={() => submit("NO")} disabled={pending} className="btn btn-no btn-md w-full">
-          Resolve NO
-        </button>
-        <button type="button" onClick={() => submit("VOID")} disabled={pending} className="btn btn-ghost btn-md w-full">
-          Void
-        </button>
-      </div>
+      {stage === "stage2" && stagedOutcome ? (
+        // Stage 2 must MATCH the Stage-1 decision — so guide the second officer to
+        // confirm exactly that outcome instead of offering all three (which would
+        // error on a mismatch). Changing it means reopening the market.
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 rounded-md border border-border bg-bg-overlay px-3 py-2">
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Stage 1 staged</span>
+            <span className={`font-mono text-[12px] font-bold ${toneText(stagedOutcome)}`}>{stagedOutcome}</span>
+            <span className="ml-auto font-mono text-[10px] text-text-subtle">confirm to settle</span>
+          </div>
+          <button type="button" onClick={() => submit(stagedOutcome)} disabled={pending} className={`btn ${toneClass(stagedOutcome)} btn-md w-full`}>
+            Confirm {stagedOutcome} · settle
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-2">
+          <button type="button" onClick={() => submit("YES")} disabled={pending} className="btn btn-yes btn-md w-full">
+            Resolve YES
+          </button>
+          <button type="button" onClick={() => submit("NO")} disabled={pending} className="btn btn-no btn-md w-full">
+            Resolve NO
+          </button>
+          <button type="button" onClick={() => submit("VOID")} disabled={pending} className="btn btn-ghost btn-md w-full">
+            Void
+          </button>
+        </div>
+      )}
 
       {/* Stage-2 irreversible-action gate — kit-faithful inline portal.
           Self-contained so we can drive it from submit() without
