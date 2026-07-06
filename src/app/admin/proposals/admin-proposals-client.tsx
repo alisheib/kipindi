@@ -370,7 +370,7 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
             <div>
               <Cap>Resolution criterion</Cap>
               <p className="mt-1 text-[12.5px] leading-relaxed text-text-muted">{sel.resolutionCriterion}</p>
-              <p className="mt-1 font-mono text-[10.5px] text-text-subtle">resolves {sel.resolutionDate} · selection closes {sel.selectionCloseDate ?? "at resolution"}</p>
+              <p className="mt-1 font-mono text-[10.5px] text-text-subtle">selection closes {sel.selectionCloseDate ?? "at resolution"} · resolves {sel.resolutionDate}</p>
               {sel.sourceUrl && (
                 <p className="mt-1.5 flex items-center gap-1.5 text-[11.5px]">
                   <I.link s={12} className="shrink-0 text-text-subtle" />
@@ -430,12 +430,12 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
                 </div>
                 <div className="flex flex-wrap gap-4">
                   <div>
-                    <div className="mb-1.5 text-[12px] font-semibold text-text">Resolution date</div>
-                    <DateSelect value={eResDate} onChange={setEResDate} min={TODAY()} max={MAX_DATE()} />
-                  </div>
-                  <div>
                     <div className="mb-1.5 text-[12px] font-semibold text-text">Selection closes</div>
                     <DateSelect value={eCloseDate} onChange={setECloseDate} min={TODAY()} max={eResDate || MAX_DATE()} />
+                  </div>
+                  <div>
+                    <div className="mb-1.5 text-[12px] font-semibold text-text">Resolution date</div>
+                    <DateSelect value={eResDate} onChange={setEResDate} min={TODAY()} max={MAX_DATE()} />
                   </div>
                 </div>
                 <div>
