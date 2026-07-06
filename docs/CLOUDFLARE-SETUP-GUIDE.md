@@ -115,7 +115,7 @@ These are done in code sessions (Claude assists):
 4. Wire Sentry error tracking
 5. Write DR runbook
 
-All tracked in docs/GLI-COST-TRACKER.csv and docs/GLI-CERTIFICATION-GAP-ANALYSIS.md.
+All tracked in docs/gli-remediation-tracker.md and docs/gli-remediation-plan.md.
 
 ---
 

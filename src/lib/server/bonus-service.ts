@@ -34,6 +34,7 @@ import { getBonusConfig } from "./bonus-config";
 import { notifyBonusCredited, notifyBonusFulfilled, notifyBonusExpired } from "./notification-service";
 import { sendEmailToUser, bonusCreditedHtml, bonusFulfilledHtml } from "./email";
 import { postLedgerEntries, bonusGrantEntries, bonusCreditEntries, bonusExpireEntries } from "./ledger";
+import { isLockedOut } from "./responsible-gambling";
 
 const BONUS_SOURCE_EMAIL_LABEL: Record<string, string> = {
   CASHBACK: "Cash back bonus",
@@ -69,7 +70,7 @@ export type CreditBonusInput = {
 
 export type CreditBonusResult =
   | { ok: true; grant: StoredBonusGrant; deduped: boolean }
-  | { ok: false; error: string; code: "DISABLED" | "INVALID" | "NOT_FOUND" };
+  | { ok: false; error: string; code: "DISABLED" | "INVALID" | "NOT_FOUND" | "RG_LOCKED" };
 
 /**
  * Credit a bonus grant to a player's bonus wallet. Idempotent by `sourceRef`.
@@ -88,6 +89,24 @@ export async function creditBonus(userId: string, input: CreditBonusInput): Prom
 
   const expiryDays = input.expiryDays ?? cfg.defaultExpiryDays;
   if (!Number.isInteger(expiryDays) || expiryDays < 0 || expiryDays > 365) return { ok: false, error: "Expiry must be 0–365 days.", code: "INVALID" };
+
+  // Responsible-gambling suppression (GLI-19 / LCCP SR 3.4): never grant a
+  // promotional bonus to a self-excluded or cooling-off player. Every incentive
+  // path (cashback, invite, referral, proposal, promotion, admin) routes through
+  // creditBonus, so this one gate suppresses all bonus marketing for the whole
+  // exclusion. Audited so the block is provable at certification.
+  const rgLock = await isLockedOut(userId);
+  if (rgLock.locked) {
+    audit({
+      category: "COMPLIANCE",
+      action: "bonus.suppressed.rg_lockout",
+      actorId: userId,
+      targetType: "User",
+      targetId: userId,
+      payload: { reason: rgLock.reason, until: rgLock.until, amountTzs: amount, source: input.source, sourceRef: input.sourceRef ?? null },
+    });
+    return { ok: false, error: "Bonuses are unavailable while your account is excluded.", code: "RG_LOCKED" };
+  }
 
   const result = await withLock(`wallet:${userId}`, async (): Promise<CreditBonusResult> => {
     if (input.sourceRef) {

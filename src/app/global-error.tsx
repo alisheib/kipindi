@@ -33,6 +33,10 @@ const MINI_DICT = {
     tryAgain: "Try again",
     goHome: "Go home",
     reference: "Reference",
+    help: "Gambling should stay fun. If it stops, take a break or set limits.",
+    rg: "Responsible gaming",
+    helpline: "Helpline 0800 11 0011",
+    gbt: "18+ \u00b7 Licensed by the Gaming Board of Tanzania",
   },
   sw: {
     criticalError: "Hitilafu kubwa",
@@ -41,6 +45,10 @@ const MINI_DICT = {
     tryAgain: "Jaribu tena",
     goHome: "Nenda nyumbani",
     reference: "Rejea",
+    help: "Kucheza kuwe raha. Kikiacha kuwa raha, pumzika au weka mipaka.",
+    rg: "Uchezaji wa busara",
+    helpline: "Simu ya msaada 0800 11 0011",
+    gbt: "18+ \u00b7 Imepewa leseni na Bodi ya Michezo ya Kubahatisha Tanzania",
   },
   zh: {
     criticalError: "\u4e25\u91cd\u9519\u8bef",
@@ -49,6 +57,10 @@ const MINI_DICT = {
     tryAgain: "\u518d\u8bd5\u4e00\u6b21",
     goHome: "\u56de\u5230\u9996\u9875",
     reference: "\u53c2\u8003\u7f16\u53f7",
+    help: "\u535a\u5f69\u5e94\u4fdd\u6301\u4e50\u8da3\u3002\u5982\u679c\u4e0d\u518d\u5feb\u4e50\uff0c\u8bf7\u4f11\u606f\u6216\u8bbe\u7f6e\u9650\u989d\u3002",
+    rg: "\u8d1f\u8d23\u4efb\u535a\u5f69",
+    helpline: "\u5e2e\u52a9\u70ed\u7ebf 0800 11 0011",
+    gbt: "18+ \u00b7 \u7531\u5766\u6851\u5c3c\u4e9a\u535a\u5f69\u59d4\u5458\u4f1a\u53d1\u7167",
   },
 } as const;
 
@@ -250,6 +262,36 @@ export default function GlobalError({
             >
               {t.goHome}
             </a>
+          </div>
+
+          {/* Responsible-gambling footer — required on EVERY surface incl. this
+              root-error boundary (GLI-19 / LCCP). Helpline + RG link are always
+              reachable even when the whole app failed to boot. */}
+          <div
+            style={{
+              marginTop: 18,
+              paddingTop: 16,
+              borderTop: `1px solid ${BORDER}`,
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+              maxWidth: 420,
+              fontSize: 11,
+              lineHeight: 1.5,
+              color: TEXT_SUBTLE,
+            }}
+          >
+            <span>{t.help}</span>
+            <span>
+              <a href="/legal/responsible-gambling" style={{ color: GOLD, textDecoration: "none", fontWeight: 700 }}>
+                {t.rg}
+              </a>
+              <span style={{ color: BORDER }}>{"   ·   "}</span>
+              <a href="tel:0800110011" style={{ color: TEXT_MUTED, textDecoration: "none" }}>
+                {t.helpline}
+              </a>
+            </span>
+            <span>{t.gbt}</span>
           </div>
         </main>
       </body>

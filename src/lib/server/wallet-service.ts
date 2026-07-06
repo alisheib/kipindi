@@ -188,7 +188,7 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string): Prom
   const pre = await db.txn.findById(txnId);
   if (!pre) return { credited: false, balance: 0 };
 
-  const outcome = await withLock(`wallet:${pre.userId}`, async (): Promise<{ credited: boolean; balance: number; txn?: StoredTxn }> => {
+  const outcome = await withLock(`wallet:${pre.userId}`, async (): Promise<{ credited: boolean; balance: number; txn?: StoredTxn; rgReversed?: boolean }> => {
     const t = await db.txn.findById(txnId);
     if (!t) return { credited: false, balance: 0 };
     if (t.status !== "PROCESSING") {
@@ -198,6 +198,22 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string): Prom
     }
     const fresh = await db.wallet.findByUserId(t.userId);
     if (!fresh) return { credited: false, balance: 0 };
+    // Responsible-gambling gate (GLI-19 / LCCP): if the player self-excluded or
+    // cooled-off AFTER this deposit was initiated (or the provider pushed it late),
+    // we must NOT credit an excluded account. Reverse it instead — mark the deposit
+    // REVERSED and leave the balance untouched. On the stub INTERNAL provider no
+    // money actually moved, so this IS the refund; a real aggregator (Appendix D1)
+    // plugs an outbound reversal in right here.
+    const rgLock = await isLockedOut(t.userId);
+    if (rgLock.locked) {
+      await db.txn.update(txnId, {
+        status: "REVERSED",
+        completedAt: new Date().toISOString(),
+        amlReason: `rg_${rgLock.reason}`,
+        description: `${t.description ?? "Deposit"} · auto-reversed (account excluded)`,
+      });
+      return { credited: false, balance: fresh.balance, txn: t, rgReversed: true };
+    }
     // Atomic +delta on the live row — never writes back a stale absolute balance.
     const updated = await db.wallet.adjust(fresh.id, { balance: t.amount });
     const newBalance = updated?.balance ?? fresh.balance + t.amount;
@@ -250,6 +266,12 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string): Prom
     } catch (err) {
       audit({ category: "WALLET", action: "cashback.failed", actorId: t.userId, targetType: "Transaction", targetId: t.id, payload: { error: String((err as Error)?.message ?? err) } });
     }
+  } else if (outcome.rgReversed && outcome.txn) {
+    // Deposit was auto-reversed because the account is self-excluded / cooling-off.
+    // No credit, no confirmation email — just the compliance trail + a balance ping.
+    const t = outcome.txn;
+    audit({ category: "COMPLIANCE", action: "deposit.auto_reversed.rg_lockout", actorId: t.userId, targetType: "Transaction", targetId: t.id, payload: { amount: t.amount, provider: t.provider ?? "INTERNAL" } });
+    emit("wallet:balance", { userId: t.userId, balance: outcome.balance });
   }
   return { credited: outcome.credited, balance: outcome.balance };
 }
