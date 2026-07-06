@@ -8,6 +8,8 @@
 import { useState, useTransition } from "react";
 import { I } from "@/components/ui/glyphs";
 import { Spinner } from "@/components/ui/spinner";
+import { Textarea } from "@/components/ui/textarea";
+import { Chip } from "@/components/ui/chip";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { haptics } from "@/lib/haptics";
@@ -117,13 +119,13 @@ export function CommentsThread({
 
       {canPost ? (
         <div className="mb-5">
-          <textarea
+          <Textarea
             value={body}
             onChange={(e) => setBody(e.target.value.slice(0, COMMENT_MAX_LEN))}
             onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit(); }}
             rows={3}
+            maxLength={COMMENT_MAX_LEN}
             placeholder={t.common.shareYourRead}
-            className="w-full resize-y rounded-md border border-border bg-bg-overlay px-3 py-2.5 text-[14px] text-text placeholder:text-text-subtle outline-none transition-colors brand-focus"
           />
           <div className="mt-2 flex items-center justify-between">
             <span className={`font-mono text-[10.5px] tabular-nums ${remaining < 40 ? "text-warning-fg" : "text-text-subtle"}`}>
@@ -162,24 +164,20 @@ export function CommentsThread({
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="font-display text-[13.5px] font-semibold text-text">{c.authorName}</span>
                   {c.authorRole && c.authorRole !== "PLAYER" && c.authorRole !== "AGENT" && (
-                    <span className="rounded-pill border border-gold-700/50 bg-gold-500/15 px-1.5 py-px font-mono text-[8.5px] font-bold uppercase tracking-[0.08em] text-gold-300">
+                    <Chip variant="gold" size="sm">
                       {c.authorRole === "ADMIN" ? t.profile.adminRole : c.authorRole === "MODERATOR" ? t.profile.moderatorRole : t.profile.complianceRole}
-                    </span>
+                    </Chip>
                   )}
                   {c.side && (
-                    <span className={`rounded-pill px-1.5 py-px font-mono text-[9.5px] font-bold uppercase tracking-wide ${c.side === "YES" ? "text-yes-300 bg-yes-500/12" : "text-no-300 bg-no-500/12"}`}>
+                    <Chip variant={c.side === "YES" ? "yes" : "no"} size="sm">
                       {t.market.holds} {c.side}
-                    </span>
+                    </Chip>
                   )}
                   <span className="font-mono text-[10.5px] text-text-subtle">{relTime(c.createdAt, t.common.now)}</span>
                   {c.hidden ? (
-                    <span className="rounded-pill border border-warning-border bg-warning-bg/40 px-1.5 py-px font-mono text-[9.5px] text-warning-fg">
-                      {t.market.commentHidden}
-                    </span>
+                    <Chip variant="warning" size="sm">{t.market.commentHidden}</Chip>
                   ) : c.reports > 0 && !c.mine ? (
-                    <span className="rounded-pill border border-border bg-bg-overlay px-1.5 py-px font-mono text-[9.5px] text-text-subtle">
-                      {t.common.underReview}
-                    </span>
+                    <Chip variant="neutral" size="sm">{t.common.underReview}</Chip>
                   ) : null}
                 </div>
                 <p className="mt-0.5 whitespace-pre-line break-words text-[14px] leading-relaxed text-text-muted">{c.body}</p>
