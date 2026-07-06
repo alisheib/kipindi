@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
@@ -14,6 +15,18 @@ import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
 
 export const dynamic = "force-dynamic";
+
+// Shared-proposal links carried the generic "50pick" title before this — now the
+// browser-tab/OG title is the proposal's own title (matches markets/[id]).
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const { locale } = await getServerT();
+  try {
+    const p = await getProposalDetail(id, null);
+    if (p) return { title: pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh) };
+  } catch { /* graceful — fall through to default */ }
+  return { title: "Proposal" };
+}
 
 export default async function ProposalDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { t, locale } = await getServerT();
