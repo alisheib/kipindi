@@ -742,6 +742,18 @@ export const prismaDb = {
       });
       return Number(result._sum.amount ?? 0);
     },
+    sumGamblingNetSince: async (userId: string, sinceMs: number): Promise<number> => {
+      const result = await pc().transaction.aggregate({
+        where: {
+          userId,
+          type: { in: ["BET_PLACED", "BET_PAYOUT", "BET_REFUND", "CASHOUT"] },
+          status: "CONFIRMED",
+          createdAt: { gte: new Date(sinceMs) },
+        },
+        _sum: { amount: true },
+      });
+      return Number(result._sum.amount ?? 0);
+    },
   },
 
   // ── RESPONSIBLE GAMBLING ──────────────────────────────────────────────────

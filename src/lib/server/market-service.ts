@@ -21,7 +21,7 @@ import { withLock } from "./locks";
 import { emit } from "./event-bus";
 import { spendBonusLocked, recordWageringLocked, reverseWagering, refundBonusToActive, expireActiveGrants } from "./bonus-service";
 import { notifyBonusFulfilled } from "./notification-service";
-import { isLockedOut } from "./responsible-gambling";
+import { isLockedOut, checkLossLimit } from "./responsible-gambling";
 import { rateCheck } from "./rate-limit";
 import { getEffectiveConfig, payoutForWhole, settledPayoutWhole } from "./market-config";
 import { recordSnapshot, seedHistory } from "./market-history";
@@ -288,6 +288,22 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
   if (market.status !== "LIVE") return { ok: false, error: "Market is not accepting predictions.", code: "INVALID" };
   if (isSelectionClosed(market)) return { ok: false, error: "Selections are closed — waiting for results. · Uchaguzi umefungwa — tunasubiri matokeo.", code: "SELECTION_CLOSED" };
   if (Date.parse(market.resolutionAt) <= Date.now()) return { ok: false, error: "Market has closed.", code: "INVALID" };
+
+  // Daily loss-limit gate (RG / GLI-19). Refuse a bet that would push the player's
+  // rolling-24h net real-money loss past their configured cap. Checked here, before
+  // any funding/debit, so a rejected bet never moves money.
+  const lossCheck = await checkLossLimit(userId, opts.stake);
+  if (!lossCheck.allowed) {
+    audit({
+      category: "COMPLIANCE",
+      action: "bet.loss_limit_blocked",
+      actorId: userId,
+      targetType: "User",
+      targetId: userId,
+      payload: { stake: opts.stake, reason: lossCheck.reason },
+    });
+    return { ok: false, error: lossCheck.reason ?? "Daily loss limit reached.", code: "INVALID" };
+  }
 
   let wageringFulfilled: { amountTzs: number }[] = [];
   const result = await withLock(`wallet:${userId}`, async () => {

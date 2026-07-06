@@ -315,6 +315,34 @@ export async function checkDepositLimit(userId: string, amount: number) {
 }
 
 /**
+ * Daily loss-limit gate (LCCP SR 3.4 / GLI-19). `dailyLossLimit` caps the net
+ * REAL-money loss a player may sustain in a rolling 24h window. A new bet is
+ * refused if it would push the day's loss past that cap.
+ *
+ * Net loss = −Σ(signed gambling txns in the last 24h), floored at 0, where
+ * BET_PLACED is money out and BET_PAYOUT / BET_REFUND / CASHOUT are money back.
+ *
+ * POLICY NOTE (confirm with Ali/GBT): unresolved (still-OPEN) stakes count as
+ * loss until they pay out — the player-protective reading. If the regulator
+ * prefers realized-only loss, exclude BET_PLACED rows whose position is still
+ * OPEN from the sum. The new stake is treated as fully at-risk.
+ */
+export async function checkLossLimit(userId: string, stakeTzs: number) {
+  const r = await getRgSettings(userId);
+  if (r.dailyLossLimit === null) return { allowed: true as const };
+  const since = Date.now() - 86_400 * 1000;
+  const net = await db.txn.sumGamblingNetSince(userId, since);
+  const lossSoFar = Math.max(0, -net);
+  if (lossSoFar + stakeTzs > r.dailyLossLimit) {
+    return {
+      allowed: false as const,
+      reason: `Daily loss limit of TZS ${r.dailyLossLimit.toLocaleString()} would be exceeded.`,
+    };
+  }
+  return { allowed: true as const };
+}
+
+/**
  * Markers-of-harm detector — LCCP SR Code 3.4.1.
  *
  * Single-marker fires an in-app prompt; multi-marker triggers a Player-Safety

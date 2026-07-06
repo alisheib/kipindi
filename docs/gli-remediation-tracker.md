@@ -67,7 +67,7 @@ Session revocation, RBAC, HSTS/headers is confirmed accurate.
 | 3.1d | Wager receipt: **second-precision timestamp** (already has unique ID) | Med | `[~]` | Stored to the second; displayed minute-precision (`utils.ts` formatter). |
 | 3.2 | Complaints/dispute page w/ GBT escalation; license no. in footer; withholding tax shown on withdrawal receipt | Med | `[~]` | Footer + helpline present; add dispute page + tax line. |
 | 3.3a | **Marketing/bonus suppression hard-gate tied to RG state** — one guard consulted by every marketing email + bonus grant + invite/campaign send | High | `[~]` | **Bonus grants now suppressed** for self-excluded/cooling-off users in `creditBonus` (all incentive sources route through it) + COMPLIANCE audit. Remaining: invite/campaign cold sends + an every-marketing-email choke point. |
-| 3.3b | **Enforce loss-limit** at bet time; **enforce session-time-limit** server-side | High | `[ ]` | Both collected, never enforced. Next slice. |
+| 3.3b | **Enforce loss-limit** at bet time; **enforce session-time-limit** server-side | High | `[~]` | **Loss-limit now enforced** in `buyPosition` via `checkLossLimit` (rolling-24h net real loss = −Σ BET_PLACED/BET_PAYOUT/BET_REFUND/CASHOUT, blocks before any debit, COMPLIANCE audit) + `sumGamblingNetSince` in both DALs + `test:loss-limit` (7/7). Session-time-limit still not enforced. **Policy to confirm w/ Ali: open stakes count as loss.** |
 | 3.3c | **Permanent self-exclusion** as a true irreversible flag (not 100yr timer); no self-service reactivation | Med | `[~]` | 100yr timer; block reactivation confirmed absent (good). |
 | 3.4 | **Deposit-while-excluded auto-refund** (re-check lockout in async deposit confirm; refund even on stub provider) | High | `[x]` | `settleDepositConfirmed` re-checks `isLockedOut` inside the wallet lock → marks txn `REVERSED`, no credit, COMPLIANCE audit. Real reversal for a live aggregator = D1. |
 | 3.5a | **Scheduled audit-chain verification + alerting** (not on-demand only) | High | `[ ]` | `verifyChain*` on-demand only; persisted to PG ✓. |
@@ -139,7 +139,11 @@ Sportradar feed, live AI market generation. Keep interfaces clean; commercial ac
 ## Session log
 
 - **2026-07-06** — Consolidated GLI docs to two files; line-level code audit; decisions resolved
-  (GLI tests live-as-users, no Cloudflare, payout figure stays hidden). Shipped RG-enforcement slice 1:
-  bonus suppression for excluded users (3.3a partial), deposit-while-excluded auto-reversal (3.4),
-  global-error RG footer (3.5c). Typecheck + bonus/wallet suites + build all green.
-  Verify still to run: live self-test items 10 (excluded deposit → reversed; excluded user → no bonus).
+  (GLI tests live-as-users, no Cloudflare, payout figure stays hidden). Shipped RG-enforcement slice 1
+  (commit `0366caf`): bonus suppression for excluded users (3.3a partial), deposit-while-excluded
+  auto-reversal (3.4), global-error RG footer (3.5c). Typecheck + bonus/wallet suites + build green.
+- **2026-07-06** — RG-enforcement slice 2: daily loss-limit enforcement (3.3b) — `checkLossLimit`
+  + `sumGamblingNetSince` in in-memory store & Prisma DAL, gate in `buyPosition`, new
+  `test:loss-limit` (7/7). Typecheck + build green.
+  Verify still to run (live, self-test §C): item 10 (excluded deposit→reversed; excluded user→no bonus),
+  item 12 (loss limit → bets rejected). Next: session-time-limit enforcement, late-bet race (1.3).

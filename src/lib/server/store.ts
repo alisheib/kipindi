@@ -559,6 +559,24 @@ const memoryDb = {
       }
       return sum;
     },
+    /** Net real-money gambling result for a user since a cutoff — Σ of the signed
+     *  amounts of the four gambling txn types (BET_PLACED is negative money-out;
+     *  BET_PAYOUT / BET_REFUND / CASHOUT are positive money-back). A negative
+     *  return = net loss. Powers the daily loss-limit gate. */
+    sumGamblingNetSince: (userId: string, sinceMs: number): number => {
+      let sum = 0;
+      for (const t of store.txns.values()) {
+        if (
+          t.userId === userId &&
+          t.status === "CONFIRMED" &&
+          (t.type === "BET_PLACED" || t.type === "BET_PAYOUT" || t.type === "BET_REFUND" || t.type === "CASHOUT") &&
+          Date.parse(t.createdAt) >= sinceMs
+        ) {
+          sum += t.amount;
+        }
+      }
+      return sum;
+    },
   },
   responsible: {
     get: (userId: string) => store.responsible.get(userId) ?? null,
