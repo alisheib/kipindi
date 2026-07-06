@@ -162,7 +162,11 @@ export function computeSelectionClosedAt(
   const cfg = store();
   const leadMinutes = cfg.selectionLeadTimeHours[category] ?? cfg.selectionLeadTimeHours.other ?? 1440;
   const resMs = typeof resolutionAt === "string" ? Date.parse(resolutionAt) : resolutionAt.getTime();
-  const computed = resMs - leadMinutes * 60_000;
   const floor = Date.now() + MIN_SELECTION_WINDOW_MINUTES * 60_000;
+  // A truthy-but-unparseable resolutionAt (Date.parse → NaN) must never reach
+  // `new Date(NaN).toISOString()`, which throws "Invalid time value". Fall back to
+  // the floor so callers always get a valid, bettable selection-close instant.
+  if (!Number.isFinite(resMs)) return new Date(floor).toISOString();
+  const computed = resMs - leadMinutes * 60_000;
   return new Date(Math.max(computed, floor)).toISOString();
 }
