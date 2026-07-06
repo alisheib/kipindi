@@ -2,7 +2,10 @@ import { LegalHeader, LegalSection } from "../_components";
 import { SUPPORT_EMAIL } from "@/lib/support-config";
 import { getServerT, type Locale } from "@/lib/i18n-server";
 
-export const metadata = { title: "AML / KYC Policy" };
+export async function generateMetadata() {
+  const { locale } = await getServerT();
+  return { title: TITLE[locale] };
+}
 
 const EYEBROW: Record<Locale, string> = { en: "Legal", sw: "Kisheria", zh: "法律" };
 const TITLE: Record<Locale, string> = {
