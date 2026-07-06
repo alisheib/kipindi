@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
-import { FiftyMark } from "@/components/brand";
+import { FiftyMark, FiftyLockup } from "@/components/brand";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { currentSession } from "@/lib/server/auth-service";
@@ -42,6 +42,9 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
     <main className="mx-auto grid min-h-[calc(100vh-44px)] place-items-center px-3 py-6">
       <div className="w-full max-w-lg space-y-4">
         <header className="text-center space-y-1.5">
+          <Link href="/" aria-label="50pick home" className="mb-2 inline-block">
+            <FiftyLockup size={22} />
+          </Link>
           <div className="inline-flex items-center gap-2 px-3 h-7 rounded-pill border border-gold-700 bg-gold-500/10">
             <span className="h-1.5 w-1.5 rounded-pill bg-gold-300" />
             <span className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-gold-300">
