@@ -1,4 +1,4 @@
-# 50pick (Kipindi)
+# 50pick
 
 **The wisdom of YES & NO.** Tanzania-licensed pari-mutuel prediction-markets platform.
 

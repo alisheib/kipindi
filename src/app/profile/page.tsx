@@ -75,7 +75,7 @@ export default async function ProfilePage() {
         {t.profile.title} · {displayName}
       </h1>
       {/* ── Hero — kit-faithful: tilted FiftyMark watermark, OKLCH gradient,
-            mono-stamped meta, picture uploader badge. No Kipindi tokens. */}
+            mono-stamped meta, picture uploader badge. No off-brand tokens. */}
       <section className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated">
         {/* Layered background — emerald → rose tilt + mark watermark */}
         <div

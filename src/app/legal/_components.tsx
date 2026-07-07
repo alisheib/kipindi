@@ -4,7 +4,7 @@
  * Every legal page is mostly numbered prose, so we lift the header strip
  * + numbered Section into one place. Drop-in replacement for the per-page
  * <Breadcrumbs> + <h1> + <Section> triplet that previously lived in each
- * file with Kipindi tokens.
+ * file with 50pick tokens.
  */
 import { type ReactNode } from "react";
 

@@ -3,6 +3,11 @@
  * 1. Admin session sees "Staff console" in the player avatar menu → /admin.
  * 2. Admin console shows "Back to app" → /markets.
  * 3. A plain player session NEVER sees "Staff console".
+ *
+ * NOTE: run against a FRESH store. /auth/demo reuses phone +255700000000, which
+ * is also the phone admin-grids-smoke seeds as ADMIN — so running that smoke
+ * first in the same in-memory store promotes the demo user to admin and the
+ * player-visibility assertion (correctly) fails. Restart the dev server first.
  */
 import { chromium } from "playwright";
 
@@ -14,13 +19,32 @@ const ok = (n, c, e = "") => { if (c) { pass++; console.log(`PASS ${n}`); } else
 const browser = await chromium.launch();
 
 // ---- Admin context ----
+// Warm the routes first so a cold Next dev compile can't race hydration
+// (the account-menu onClick isn't wired until the page hydrates).
+await browser.newContext().then(async (c) => {
+  await c.request.get(`${BASE}/markets`);
+  await c.request.get(`${BASE}/admin`).catch(() => {});
+  await c.close();
+});
+
+// Open the avatar menu and wait until it's actually hydrated + open (the menu
+// dialog appears). Retries so a slow first paint doesn't produce a false fail.
+async function openAvatarMenu(page) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await page.getByRole("button", { name: "Account menu" }).click().catch(() => {});
+    try {
+      await page.getByRole("menu").waitFor({ state: "visible", timeout: 3000 });
+      return;
+    } catch { await page.waitForTimeout(600); }
+  }
+}
+
 const admin = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 await admin.request.post(`${BASE}/api/dev-test/seed-admin`, { data: { phone: "+255700000042" } });
 const ap = await admin.newPage();
 
 await ap.goto(`${BASE}/markets`, { waitUntil: "domcontentloaded" });
-await ap.getByRole("button", { name: "Account menu" }).click();
-await ap.waitForTimeout(400);
+await openAvatarMenu(ap);
 const staffLink = ap.getByRole("menuitem", { name: /Staff console/i });
 ok("admin: Staff console visible in avatar menu", (await staffLink.count()) >= 1, `count=${await staffLink.count()}`);
 await ap.screenshot({ path: `${SHOTS}/switcher-1-admin-menu.png` });
@@ -42,8 +66,7 @@ const player = await browser.newContext({ viewport: { width: 1280, height: 900 }
 await player.request.get(`${BASE}/auth/demo`);
 const pp = await player.newPage();
 await pp.goto(`${BASE}/markets`, { waitUntil: "domcontentloaded" });
-await pp.getByRole("button", { name: "Account menu" }).click();
-await pp.waitForTimeout(400);
+await openAvatarMenu(pp);
 const playerStaff = pp.getByRole("menuitem", { name: /Staff console/i });
 ok("player: Staff console NOT visible", (await playerStaff.count()) === 0, `count=${await playerStaff.count()}`);
 await pp.screenshot({ path: `${SHOTS}/switcher-3-player-menu.png` });

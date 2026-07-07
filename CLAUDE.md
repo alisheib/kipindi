@@ -1,11 +1,16 @@
-# 50pick / Kipindi — Claude Onboarding
+# 50pick — Claude Onboarding
+
+<!-- Note: the git repo/dir is legacy-named `kipindi-main` and prod env may still
+     carry `kipindi-*` deploy hosts / SMS sender — those are infra, not brand.
+     The product is "50pick" everywhere user-facing. -->
+
 
 > Read this first. It tells you what's true about the codebase right now,
 > and where to look before editing anything.
 
 ## What this is
 
-**50pick** (working name **Kipindi**) — Tanzania-licensed pari-mutuel
+**50pick** — Tanzania-licensed pari-mutuel
 prediction-markets platform. Players pick YES or NO on a proposition
 (sports, weather, macro, crypto, culture); winners share the losing
 pool minus an operator margin (default 9%). Mobile-first, bilingual
