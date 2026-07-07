@@ -41,7 +41,9 @@ function bucketByAge(all: Awaited<ReturnType<typeof db.user.list>>) {
 }
 
 export default async function AdminCohortsPage() {
-  const allUsers = await db.user.list();
+  // Guard like every sibling admin page (players/retention/privacy) — a transient
+  // store error should degrade to empty cards, not 500 the whole cohorts screen.
+  const allUsers = await db.user.list().catch(() => []);
   const months = bucketByMonth(allUsers);
   const regions = bucketByRegion(allUsers);
   const ageBuckets = bucketByAge(allUsers);
@@ -77,6 +79,9 @@ export default async function AdminCohortsPage() {
         {/* Status mix + region + age side-by-side */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
           <AdminCard title="By status" sw="Hali">
+            {total === 0 ? (
+              <p className="text-caption text-text-tertiary py-3 text-center">No status data.</p>
+            ) : (
             <div className="space-y-1.5">
               {Object.entries(status).map(([s, c]) => {
                 const pct = total === 0 ? 0 : Math.round((c / total) * 100);
@@ -91,6 +96,7 @@ export default async function AdminCohortsPage() {
                 );
               })}
             </div>
+            )}
           </AdminCard>
 
           <AdminCard title="By region" sw="Mkoa">

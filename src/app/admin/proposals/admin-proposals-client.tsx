@@ -244,9 +244,13 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
   };
 
   const saveConfig = () => start(async () => {
-    const r = await saveProposalsConfigAction(c);
-    if (r.ok) { toast({ title: "Proposals config saved · Imehifadhiwa", variant: "success" }); refresh(); }
-    else toast({ title: "Couldn't save", description: r.error, variant: "danger" });
+    // Wrap like every sibling mutation (saveEdit/approve/decline) — a thrown or
+    // network error here was previously uncaught, leaving the officer with no feedback.
+    try {
+      const r = await saveProposalsConfigAction(c);
+      if (r.ok) { toast({ title: "Proposals config saved · Imehifadhiwa", variant: "success" }); refresh(); }
+      else toast({ title: "Couldn't save", description: r.error, variant: "danger" });
+    } catch { toast({ title: "Couldn't save", description: "Server error — please try again.", variant: "danger" }); }
   });
 
   const approve = () => { if (!sel) return;

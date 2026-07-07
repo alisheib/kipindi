@@ -54,12 +54,18 @@ export default async function AdminCandidatesPage({
   }>;
 }) {
   const sp = await searchParams;
-  const counts = await countByState();
-  const spend = await recordSpend();
-  const totalAll = await countCandidatesTotal();
+  // Guard the loads so a transient store/AI-spend error degrades to zeros/empty
+  // lists instead of 500ing the whole candidates console (matches sibling pages).
+  const ZERO_COUNTS: Record<CandidateState, number> = {
+    EXTRACTED: 0, FILTERED_OUT: 0, VERIFYING: 0, SCORED: 0,
+    PENDING_REVIEW: 0, APPROVED: 0, REJECTED: 0, PUBLISHED: 0,
+  };
+  const counts = await countByState().catch(() => ZERO_COUNTS);
+  const spend = await recordSpend().catch(() => ({ dailyTokens: 0, dailyUsd: 0, runCount: 0 }));
+  const totalAll = await countCandidatesTotal().catch(() => 0);
 
-  const pendingAll = await listCandidates({ state: "PENDING_REVIEW" });
-  const approvedAll = await listCandidates({ state: "APPROVED" });
+  const pendingAll = await listCandidates({ state: "PENDING_REVIEW" }).catch(() => []);
+  const approvedAll = await listCandidates({ state: "APPROVED" }).catch(() => []);
 
   // Pending queue (prefix "p") — newest first by default; also sort by title.
   const p = parseSort(sp, ["date", "title", "confidence"] as const, "date", "desc", "p");
@@ -91,7 +97,7 @@ export default async function AdminCandidatesPage({
     search: sp.q || undefined,
     dateFrom: dateRange.from,
     dateTo: dateRange.to,
-  });
+  }).catch(() => []);
 
   const hasFilters = sp.q || sp.state || sp.category || sp.date;
 

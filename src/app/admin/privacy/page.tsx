@@ -127,6 +127,11 @@ export default async function AdminPrivacyPage({
                 </tr>
               </thead>
               <tbody>
+                {recentUsers.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-6 text-center text-caption text-text-tertiary">No recent players.</td>
+                  </tr>
+                )}
                 {recentUsers.map((u) => (
                   <tr key={u.id} className="border-b border-border-subtle/40 last:border-b-0">
                     <td className="py-2 pr-3">

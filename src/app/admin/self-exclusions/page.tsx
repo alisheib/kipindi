@@ -57,10 +57,12 @@ export default async function AdminSelfExclusionsPage({
   searchParams: Promise<{ page?: string }>;
 }) {
   const sp = await searchParams;
-  const roster = await buildRoster();
+  // Guard both loads (compliance/page.tsx already guards rgRosterCounts) so a
+  // store hiccup degrades to an empty roster instead of 500ing the page.
+  const roster = await buildRoster().catch(() => [] as Awaited<ReturnType<typeof buildRoster>>);
   const page = parsePage(sp.page, roster.length);
   const paged = roster.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-  const counts = await rgRosterCounts();
+  const counts = await rgRosterCounts().catch(() => ({ selfExcluded: 0, cooledOff: 0, expiringThisWeek: 0, pendingLimitIncrease: 0 }));
 
   return (
     <>

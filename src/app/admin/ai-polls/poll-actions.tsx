@@ -702,6 +702,15 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
           setLeadTimes(Object.fromEntries(LEAD_TIME_CATEGORIES.map((c) => [c, r.config.selectionLeadTimeHours[c] ?? 1440])));
         }
         deferToast({ title: "Settings saved", variant: "success" });
+      } else {
+        // Without this branch a rejected save (or a failed web-search toggle,
+        // which routes through here) gave the officer no feedback at all.
+        // The toggle flips optimistically before save() — revert it on failure
+        // so the switch never lies about the persisted setting.
+        if (override && typeof override.webSearchEnabled === "boolean") {
+          setWebSearch(!override.webSearchEnabled);
+        }
+        deferToast({ title: "Couldn't save settings", description: r.error, variant: "danger" });
       }
     });
   };

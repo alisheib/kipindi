@@ -16,12 +16,19 @@ export function TotpSetupClient({ initiallyEnabled }: { initiallyEnabled: boolea
 
   const start = async () => {
     setBusy(true);
-    const r = await provisionTotpAction();
-    if (r.ok) {
-      setProvisioning({ secretBase32: r.secretBase32, otpauthUrl: r.otpauthUrl });
-      toast({ title: "QR ready", description: "Scan it with your authenticator app, then enter the 6-digit code below.", variant: "success" });
+    try {
+      const r = await provisionTotpAction();
+      if (r.ok) {
+        setProvisioning({ secretBase32: r.secretBase32, otpauthUrl: r.otpauthUrl });
+        toast({ title: "QR ready", description: "Scan it with your authenticator app, then enter the 6-digit code below.", variant: "success" });
+      } else {
+        toast({ title: "Couldn't start setup", description: r.error, variant: "danger" });
+      }
+    } catch {
+      toast({ title: "Couldn't start setup", description: "Something went wrong. Try again.", variant: "danger" });
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   };
 
   const verify = async () => {
@@ -30,28 +37,44 @@ export function TotpSetupClient({ initiallyEnabled }: { initiallyEnabled: boolea
       return;
     }
     setBusy(true);
-    const fd = new FormData();
-    fd.set("code", code);
-    const r = await verifyTotpAction(fd);
-    if (r?.ok) {
-      setEnabled(true);
-      setProvisioning(null);
-      setCode("");
-      toast({ title: "2FA enabled", description: "You'll be asked for the code on next admin sign-in.", variant: "success" });
-    } else {
-      toast({ title: "Code didn't match", description: r?.error, variant: "danger" });
+    try {
+      const fd = new FormData();
+      fd.set("code", code);
+      const r = await verifyTotpAction(fd);
+      if (r?.ok) {
+        setEnabled(true);
+        setProvisioning(null);
+        setCode("");
+        toast({ title: "2FA enabled", description: "You'll be asked for the code on next admin sign-in.", variant: "success" });
+      } else {
+        toast({ title: "Code didn't match", description: r?.error, variant: "danger" });
+      }
+    } catch {
+      toast({ title: "Verification failed", description: "Something went wrong. Try again.", variant: "danger" });
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   };
 
   const remove = async () => {
     setBusy(true);
-    await removeTotpAction();
-    setEnabled(false);
-    setProvisioning(null);
-    setCode("");
-    toast({ title: "2FA removed", description: "Re-enable it to keep your admin account safe.", variant: "warning" });
-    setBusy(false);
+    try {
+      // Only flip the UI to "off" once the server confirms removal — otherwise
+      // a rejected call would falsely tell the admin 2FA is gone while it's live.
+      const r = await removeTotpAction();
+      if (r.ok) {
+        setEnabled(false);
+        setProvisioning(null);
+        setCode("");
+        toast({ title: "2FA removed", description: "Re-enable it to keep your admin account safe.", variant: "warning" });
+      } else {
+        toast({ title: "Couldn't remove 2FA", description: r.error, variant: "danger" });
+      }
+    } catch {
+      toast({ title: "Couldn't remove 2FA", description: "Something went wrong — 2FA is still active. Try again.", variant: "danger" });
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (enabled && !provisioning) {
