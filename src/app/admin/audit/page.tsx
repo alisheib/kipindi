@@ -1,9 +1,9 @@
-import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
+import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { GenerateButton } from "../reports/generate-button";
+import Link from "next/link";
 import { getAuditPage, verifyChain, type AuditCategory } from "@/lib/server/audit";
-import { MarketStats, type Stat } from "@/components/markets/market-stats";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Chip } from "@/components/ui/chip";
 import { formatDateTime } from "@/lib/utils";
@@ -62,12 +62,6 @@ export default async function AdminAuditPage({
   for (const e of recent24) byCat[e.category] = (byCat[e.category] ?? 0) + 1;
   const topCat = Object.entries(byCat).sort((a, b) => b[1] - a[1])[0];
 
-  const stats: Stat[] = [
-    { k: "Total entries",   v: allEntries.length.toLocaleString(), tone: "neutral",  delta: "lifetime" },
-    { k: "Last 24h",         v: recent24.length.toLocaleString(),    tone: "yes",       delta: topCat ? `top: ${topCat[0]}` : "no activity" },
-    { k: "Chain integrity", v: chain.valid ? "Valid" : "BROKEN",     tone: chain.valid ? "yes" : "no", delta: chain.valid ? "HMAC-chained" : "tampering detected" },
-  ];
-
   return (
     <>
       <AdminPageHead
@@ -78,13 +72,31 @@ export default async function AdminAuditPage({
       />
 
       <div className="px-4 lg:px-6 py-5 space-y-4">
-        <MarketStats stats={stats} />
+        {/* Summary KPIs — kit AdminKpi grid, consistent with every other admin
+            screen (this page previously used the player-side MarketStats shell). */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <AdminKpi label="Total entries" sw="Jumla" value={allEntries.length.toLocaleString()} delta="lifetime" spark={false} />
+          <AdminKpi label="Last 24h" sw="Saa 24" value={recent24.length.toLocaleString()} delta={topCat ? `top: ${topCat[0]}` : "no activity"} spark={false} />
+          <AdminKpi
+            label="Chain integrity"
+            sw="Uadilifu"
+            value={chain.valid ? "Valid" : "BROKEN"}
+            tone={chain.valid ? "success" : "danger"}
+            delta={chain.valid ? "HMAC-chained" : "tampering detected"}
+            deltaDir={chain.valid ? "up" : "down"}
+            spark={false}
+          />
+        </div>
 
-        {/* Category filters — kit pill row */}
+        {/* Category filters — kit Chip pills wrapped as nav links */}
         <div className="flex flex-wrap items-center gap-1.5">
-          <a href="/admin/audit" className={chipClass(!category)}>All</a>
+          <Link href="/admin/audit" className="transition-opacity hover:opacity-80">
+            <Chip size="lg" variant={!category ? "brand" : "neutral"} selected={!category}>All</Chip>
+          </Link>
           {CATEGORIES.map((c) => (
-            <a key={c} href={`/admin/audit?category=${c}`} className={chipClass(category === c)}>{c}</a>
+            <Link key={c} href={`/admin/audit?category=${c}`} className="transition-opacity hover:opacity-80">
+              <Chip size="lg" variant={category === c ? "brand" : "neutral"} selected={category === c}>{c}</Chip>
+            </Link>
           ))}
           {actorId && (
             <span className="ml-2 font-mono text-[10px] tracking-[0.10em] text-text-subtle">
@@ -154,13 +166,4 @@ export default async function AdminAuditPage({
       </div>
     </>
   );
-}
-
-function chipClass(active: boolean) {
-  return [
-    "inline-flex items-center px-3 h-7 rounded-pill border font-mono text-[10px] tracking-[0.14em] uppercase font-semibold transition-colors",
-    active
-      ? "border-teal-500 bg-teal-500/15 text-teal-300"
-      : "border-border bg-bg-elevated text-text-muted hover:border-border-strong hover:text-text",
-  ].join(" ");
 }

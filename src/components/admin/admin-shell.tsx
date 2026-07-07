@@ -184,6 +184,7 @@ export function AdminKpi({
   delta,
   deltaDir = "up",
   gold,
+  tone,
   pulse,
   spark = true,
 }: {
@@ -193,9 +194,18 @@ export function AdminKpi({
   delta?: string;
   deltaDir?: "up" | "down" | "flat";
   gold?: boolean;
+  /** Colours the value for status KPIs (e.g. chain integrity, budget health).
+   *  `gold` still works and is equivalent to tone="gold". */
+  tone?: "danger" | "success" | "gold";
   pulse?: boolean;
   spark?: boolean;
 }) {
+  const effectiveTone = tone ?? (gold ? "gold" : undefined);
+  const valueToneCls =
+    effectiveTone === "danger" ? "text-danger"
+    : effectiveTone === "success" ? "text-success"
+    : effectiveTone === "gold" ? "text-gold"
+    : "text-text";
   return (
     <div className="rounded-lg glass-panel p-3.5 flex flex-col gap-1.5 min-h-[110px] transition-all hover:shadow-[var(--shadow-3)]">
       <div className="flex items-center justify-between gap-2">
@@ -208,10 +218,7 @@ export function AdminKpi({
         )}
       </div>
       <div
-        className={[
-          "font-mono font-bold tabular-nums leading-none",
-          gold ? "text-gold" : "text-text",
-        ].join(" ")}
+        className={["font-mono font-bold tabular-nums leading-none", valueToneCls].join(" ")}
         style={{ fontSize: 22, letterSpacing: "-0.02em" }}
       >
         {value}

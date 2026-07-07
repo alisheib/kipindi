@@ -1,4 +1,4 @@
-import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
+import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
@@ -52,6 +52,12 @@ export default async function AdminAmlPage({
   const flags = flagsSorted.slice((sPage - 1) * PER_PAGE, sPage * PER_PAGE);
   const sBaseHref = buildBaseHref("/admin/aml", sp, "spage");
 
+  // Summary metrics for the KPI band — gives this high-stakes queue the same
+  // at-a-glance hierarchy its compliance-queue peers (privacy/self-exclusions/
+  // approvals/retention) already lead with, instead of diving straight to a table.
+  const largeCount = inReviewAll.filter((t) => Math.abs(t.amount) >= TWO_PERSON_THRESHOLD_TZS).length;
+  const awaitingSecond = inReviewAll.filter((t) => stage1.has(t.id)).length;
+
   return (
     <>
       <AdminPageHead
@@ -61,6 +67,12 @@ export default async function AdminAmlPage({
         actions={<Chip size="md" variant={inReviewAll.length > 0 ? "warning" : "neutral"}>{inReviewAll.length} pending</Chip>}
       />
       <div className="px-4 lg:px-6 py-5 space-y-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <AdminKpi label="Pending review" sw="Inasubiri" value={inReviewAll.length.toLocaleString()} tone={inReviewAll.length > 0 ? "gold" : undefined} pulse={inReviewAll.length > 0} delta="EDD queue" spark={false} />
+          <AdminKpi label="≥ TZS 1M · 2-officer" sw="Zaidi ya 1M" value={largeCount.toLocaleString()} delta="two-person gate" spark={false} />
+          <AdminKpi label="Awaiting 2nd signature" sw="Inasubiri saini" value={awaitingSecond.toLocaleString()} tone={awaitingSecond > 0 ? "gold" : undefined} delta="stage 1 recorded" spark={false} />
+          <AdminKpi label="Suspicious-bet flags" sw="Bendera za shaka" value={flagsAll.length.toLocaleString()} tone={flagsAll.length > 0 ? "danger" : undefined} delta="stake spike / velocity" spark={false} />
+        </div>
         <AdminCard padding="p-0">
           <div className="overflow-x-auto">
             <table className="admin-tbl">

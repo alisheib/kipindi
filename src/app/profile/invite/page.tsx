@@ -165,7 +165,7 @@ export default async function InvitePage() {
             borderColor: "color-mix(in oklab, var(--warning-500) 30%, transparent)",
           }}
         >
-          <span className="shrink-0" style={{ color: "oklch(84% 0.15 80)" }}><I.info s={16} /></span>
+          <span className="shrink-0" style={{ color: "var(--gold-300)" }}><I.info s={16} /></span>
           <p className="text-[12px] leading-relaxed text-text-muted">
             {t.profile.programPaused}
           </p>
@@ -199,7 +199,7 @@ export default async function InvitePage() {
                 className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full font-mono text-[14px] font-bold"
                 style={
                   i === 2
-                    ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))", color: "oklch(24% 0.06 85)", border: "1px solid var(--gold-700)" }
+                    ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))", color: "var(--gold-950)", border: "1px solid var(--gold-700)" }
                     : { background: "color-mix(in oklab, var(--royal-500) 18%, transparent)", color: "var(--royal-200)", border: "1px solid color-mix(in oklab, var(--royal-500) 36%, transparent)" }
                 }
               >
