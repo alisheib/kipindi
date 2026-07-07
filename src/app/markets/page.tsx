@@ -173,7 +173,12 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
   const sp = await searchParams;
   const cat = (sp.cat as MarketCategory | undefined) ?? undefined;
   const whenId = (sp.when as WhenFilter | undefined) ?? "today";
-  const whenCutoff = WHEN_CUTOFFS[whenId] ?? WHEN_CUTOFFS.today;
+  // NB: `?? WHEN_CUTOFFS.today` would be a bug — WHEN_CUTOFFS.all is *intentionally*
+  // null ("no cutoff"), and `null ?? today` collapses it back to the 24h window,
+  // which silently made the "All" filter behave like "Today" (hiding every market
+  // that settles > 24h out). Only fall back to today for an UNKNOWN when key.
+  const rawCutoff = WHEN_CUTOFFS[whenId];
+  const whenCutoff = rawCutoff === undefined ? WHEN_CUTOFFS.today : rawCutoff;
   // Cap the query length (defensive — keeps the URL + match work bounded).
   const qRaw = (sp.q ?? "").trim().slice(0, 100);
   const searching = qRaw.length > 0;
@@ -296,7 +301,16 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
             />
           );
         })}
-        {live.length === 0 && <LiveEmptyState searching={searching} qRaw={qRaw} hasAnyLive={effectiveCat ? totalLive > 0 : bettable.length > 0} />}
+        {live.length === 0 && (
+          <LiveEmptyState
+            searching={searching}
+            qRaw={qRaw}
+            whenId={whenId}
+            activeCat={cat ?? "all"}
+            categoryLiveCount={bettable.length}
+            anyLiveAnyCat={effectiveCat ? totalLive > 0 : bettable.length > 0}
+          />
+        )}
       </section>
 
       {/* Pagination — shared platform pager (live grid) */}
@@ -342,31 +356,59 @@ async function SearchAwareGrid({ searchParams }: { searchParams: Promise<{ cat?:
   );
 }
 
-async function LiveEmptyState({ searching, qRaw, hasAnyLive }: { searching: boolean; qRaw: string; hasAnyLive: boolean }) {
+async function LiveEmptyState({
+  searching,
+  qRaw,
+  whenId,
+  activeCat,
+  categoryLiveCount,
+  anyLiveAnyCat,
+}: {
+  searching: boolean;
+  qRaw: string;
+  whenId: WhenFilter;
+  activeCat: string;
+  /** Live markets in the ACTIVE category, ignoring the time window. */
+  categoryLiveCount: number;
+  /** Any live market exists (this category, or any category). */
+  anyLiveAnyCat: boolean;
+}) {
   const { t } = await getServerT();
-  const noMarketsAtAll = !hasAnyLive && !searching;
+  // The board defaults to when="today", so on a quiet day a fresh visitor can
+  // land on an empty board even though markets exist — they just settle later.
+  // Distinguish the three real causes so the CTA never loops back to empty:
+  //   1. time window too tight (markets exist in this category, just later)
+  //   2. category has none (but other categories are live)
+  //   3. platform genuinely has no live markets
+  const timeWindowTooTight = !searching && categoryLiveCount > 0 && whenId !== "all";
+  const categoryEmpty = !searching && categoryLiveCount === 0 && activeCat !== "all" && anyLiveAnyCat;
+  const noMarketsAtAll = !searching && !timeWindowTooTight && !categoryEmpty;
+
+  // Widen to when=all — guaranteed non-empty (categoryLiveCount > 0). Keep the
+  // category so the player stays in the topic they picked.
+  const showAllHref = `/markets?when=all${activeCat !== "all" ? `&cat=${activeCat}` : ""}`;
+  // Drop the category too — show every live market when the topic itself is empty.
+  const allCatsHref = "/markets?when=all";
+
+  const title =
+    searching ? `${t.market.noLiveMatch} "${qRaw}"`
+    : timeWindowTooTight ? t.market.noMarketsInWindow
+    : categoryEmpty ? t.market.noMarketsInCat
+    : t.market.noMarketsAvailable;
+  const body =
+    searching ? t.market.checkSpelling
+    : timeWindowTooTight ? t.market.noMarketsInWindowBody
+    : categoryEmpty ? t.market.noMarketsInCatBody
+    : t.market.noMarketsAvailableBody;
+  const action =
+    searching ? <Link href="/markets" className="btn btn-ghost btn-sm">{t.market.clearSearchLabel}</Link>
+    : timeWindowTooTight ? <Link href={showAllHref as never} className="btn btn-gold btn-sm">{t.market.showAllOpen}</Link>
+    : categoryEmpty ? <Link href={allCatsHref as never} className="btn btn-ghost btn-sm">{t.market.seeAllCategories}</Link>
+    : undefined;
+
   return (
     <div className="col-span-full">
-      <EmptyState
-        kind="markets"
-        title={
-          searching ? `${t.market.noLiveMatch} "${qRaw}"`
-          : noMarketsAtAll ? t.market.noMarketsAvailable
-          : t.market.noMarketsInCat
-        }
-        body={
-          searching ? t.market.checkSpelling
-          : noMarketsAtAll ? t.market.noMarketsAvailableBody
-          : t.market.noMarketsInCatBody
-        }
-        action={
-          noMarketsAtAll ? undefined : (
-            <Link href="/markets" className="btn btn-ghost btn-sm">
-              {searching ? t.market.clearSearchLabel : t.market.seeAllCategories}
-            </Link>
-          )
-        }
-      />
+      <EmptyState kind="markets" title={title} body={body} action={action} />
     </div>
   );
 }
