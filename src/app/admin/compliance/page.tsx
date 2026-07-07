@@ -205,7 +205,13 @@ export default async function AdminCompliancePage({
                         <td className="py-2 pr-3 font-mono whitespace-nowrap">{formatDate(a.createdAt)}</td>
                         <td className="py-2 pr-3">{a.targetId ?? "—"}</td>
                         <td className="py-2 pr-3"><span className="font-mono text-micro tracking-wider uppercase">{a.action.replace("integrity.alert.", "")}</span></td>
-                        <td className="py-2 pl-3 font-mono text-micro text-royal">open →</td>
+                        <td className="py-2 pl-3 font-mono text-micro">
+                          {a.targetId ? (
+                            <Link href={`/admin/markets/${a.targetId}`} className="text-royal hover:underline">open →</Link>
+                          ) : (
+                            <span className="text-text-tertiary">—</span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

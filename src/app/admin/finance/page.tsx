@@ -115,7 +115,6 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
         <AdminCard
           title="Provider summary"
           sw="Muhtasari wa watoa huduma"
-          action={<span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">view as chart →</span>}
         >
           <div className="overflow-x-auto -mx-4 px-4">
             <table className="admin-tbl min-w-[640px]">
