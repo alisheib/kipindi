@@ -12,6 +12,12 @@
 > `visual-assets-brief.md` (bitmap assets), `glyph-reference-for-design.md`, `kit-gap-audit.md`,
 > the live theme kit (`design_handoff_prediction_market_kit/`), `palette.txt`, brand marks,
 > current screenshots. Return format: §9.
+>
+> **Nothing is off-limits — this is a full refinement pass, not just gap-filling.** If an item that
+> already exists could be better (a component, a screen, a glyph, a color use, a motion, a layout),
+> **say so and propose the upgrade.** Do not assume "already built" = "final." Challenge the
+> conviction dial, the market card, the empty states, the buttons, the hero, the charts — anything.
+> Candidate existing items to critique are listed in §4g.
 
 ---
 
@@ -124,6 +130,33 @@ FiftyMark) for money peaks; richer `odds-flash` usage; staggered `kp-rise` on gr
 needs a `prefers-reduced-motion` static fallback.**
 
 ---
+
+### 4g. EXISTING items to challenge & refine (nothing is off-limits)
+These are already built and considered "good" — **push them anyway** if you see better. For each,
+either bless it or propose a concrete upgrade (with real data + hex, per §2):
+- **ConvictionDial / TippingBar** (`brand.tsx`, `conviction-dial.tsx`) — the signature bet
+  interaction and live-odds bar. Is the dial's readability, drag affordance, tachymeter, and halo
+  the best it can be on a 360px phone? Trilingual label fit?
+- **MarketCard** (`market-card.tsx`) — the most-repeated component (4 pages). Beyond wiring the dead
+  spark/traders: is the density, hierarchy, YES/NO pricing, chip stack, and watermark optimal?
+- **Empty states** (`empty-state.tsx`, 7 kinds) — good gilt line-art. Are the illustrations, copy,
+  and CTA the strongest version? Any kind that's generic/weak?
+- **Buttons & chips** (`button.tsx`, `chip.tsx`) — solid variants/states. Refine hover/active/focus
+  recipes, gilt CTA weight, and the LIVE/RESOLVED/YES/NO chip legibility.
+- **PageHero / glow variants** (gold/rose/info/yes) — good masthead. Better gradient, framing,
+  watermark? New glow tones needed?
+- **Wallet cards, /profile hero, /invite EarningsRing** — the current "best" surfaces. Can they go
+  further without breaking gold-discipline?
+- **Modals** (`ConfirmDialog`, `OperationResultModal`, `bet-confirm`, `sell-confirm`,
+  `win-celebration`) — the success/reward crests are flagged under-built (§6.5); critique the whole
+  modal system's chrome, rise motion, and scrim.
+- **Admin KPI/tables/charts** (`admin-shell.tsx`, `admin-charts.tsx`) — consistent but static;
+  challenge the KPI tile, table density, and chart legibility.
+- **The 129 glyphs** — audit for stroke/weight/optical consistency; call out any weak ones to redraw.
+- **The hero image, category watermark, BrandTopo, GiltCorner, PulseRing, SignalPip** — all
+  fair game to elevate.
+Deliverable for this section: a short **"refine existing" list** — item → keep or upgrade → the
+specific change. Be candid; we would rather redo a built thing now than ship it merely-fine.
 
 ## 5. PER-PAGE MANIFEST (grounded — from a full read of all ~66 routes)
 

@@ -26,9 +26,16 @@ and `screens/*.png` (current UI, for grade + context).
 5. **Interaction logic** (brief §2e) reflected truthfully — bet flow, board filters, deposit,
    resolve.
 
+**Nothing is off-limits — this is a full refinement pass, not just gap-filling.** If an item that
+already EXISTS could be better (the conviction dial, the market card, empty states, buttons, the
+hero, the charts, any glyph, any layout), **say so and propose the upgrade** — don't assume
+"already built" = "final" (brief §4g lists candidates). We'd rather redo a built thing now than
+ship it merely-fine.
+
 **Cover everything:** per-page mockups for all ~66 routes (brief §5), the atomic layer (glyphs,
 buttons, chips, timers/clocks, inputs, empty states — brief §4), interaction states + effects
-(§4f), and the shared components + assets (§6–§7). **Prioritize the cross-cutting §6 items first**
+(§4f), the refine-existing pass (§4g), and the shared components + assets (§6–§7). **Prioritize the
+cross-cutting §6 items first**
 (MarketCard sparkline, AuthShell side-rail, RouteError, PageHero adoption, reward-burst, MNO
 logos, category-art, admin primitives, invite share-card, wallet sparkline, leaderboard podium).
 
