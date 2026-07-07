@@ -21,6 +21,8 @@ export type TopAppBarUser = {
   /** TZS wallet balance — null = guest. Renders as the kit's mono pearl
    *  balance pill next to the avatar (kit/screens.jsx top-bar pattern). */
   balance?: number | null;
+  /** Staff-tier session — surfaces the admin-console jump in the avatar menu. */
+  isAdmin?: boolean;
 };
 
 export function TopAppBar({ user }: { user: TopAppBarUser }) {
@@ -135,6 +137,7 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
             isAuthed={user.isAuthed}
             avatarSrc={user.avatarSrc ?? null}
             seed={user.seed}
+            isAdmin={user.isAdmin ?? false}
           />
         </div>
       </div>

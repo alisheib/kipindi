@@ -7,6 +7,7 @@
 import Link from "next/link";
 import { db } from "@/lib/server/store";
 import { FiftyMark } from "@/components/brand";
+import { I } from "@/components/ui/glyphs";
 import { AdminMobileNavTrigger } from "./admin-mobile-nav";
 import { AdminSidebarNav } from "./admin-sidebar-nav";
 import { RefreshButton } from "./refresh-button";
@@ -106,6 +107,17 @@ export async function AdminTopBar({ crumbs, session, activeKey }: { crumbs: stri
       </nav>
       </div>
       <div className="flex items-center gap-2 shrink-0">
+        {/* Back to the player app — the console had no clean way out. Understated
+            ghost pill; collapses to icon-only on narrow viewports. Mirrors the
+            player-side "Staff console" jump, closing the admin↔player loop. */}
+        <Link
+          href="/markets"
+          aria-label="Back to app"
+          className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-border bg-bg-inset text-text-secondary hover:text-text hover:border-border-strong hover:bg-bg-elevated transition-colors font-mono text-micro tracking-[0.10em] uppercase"
+        >
+          <I.chevronLeft s={13} aria-hidden />
+          <span className="hidden md:inline">Back to app</span>
+        </Link>
         {/* Global grid refresh — re-fetches the current server-rendered admin
             screen in place. Present on every admin page so any grid can be
             refreshed from one predictable spot (screens with a filter bar also

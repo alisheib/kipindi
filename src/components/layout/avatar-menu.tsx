@@ -17,6 +17,7 @@ export function AvatarMenu({
   isAuthed = false,
   avatarSrc = null,
   seed,
+  isAdmin = false,
 }: {
   initials: string;
   name: string;
@@ -24,6 +25,7 @@ export function AvatarMenu({
   isAuthed?: boolean;
   avatarSrc?: string | null;
   seed?: string;
+  isAdmin?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -122,6 +124,28 @@ export function AvatarMenu({
               <Item href="/leaderboard"    icon={I.crown}        en="Leaderboard"    sw="Jedwali la Washindi"          zh="排行榜" />
               <Item href="/profile/kyc"    icon={I.shieldcheck}  en="Verify ID"      sw="Kuthibitisha kitambulisho"    zh="身份验证" />
             </ul>
+            {/* Staff console jump — admin-tier only. Gilt/gold treatment mirrors
+                the admin confidential band so it reads unmistakably as "staff",
+                clearly set apart from the player menu items above. */}
+            {isAdmin && (
+              <div className="border-t border-border px-2 py-2">
+                <Link
+                  href="/admin"
+                  role="menuitem"
+                  className="group flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 transition-colors hover:bg-gold-500/10"
+                  style={{ border: "1px solid color-mix(in oklab, var(--gold-400) 22%, transparent)", background: "color-mix(in oklab, var(--gold-500) 6%, transparent)" }}
+                >
+                  <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gold-300" style={{ background: "color-mix(in oklab, var(--gold-500) 12%, transparent)" }}>
+                    <I.shieldcheck s={15} aria-hidden />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-display text-body-sm font-semibold text-text leading-tight">{t.common.staffConsole}</span>
+                    <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-gold-300/80 leading-tight mt-0.5">Staff · Internal</span>
+                  </span>
+                  <I.arrowRight s={14} className="text-gold-300/70 transition-transform group-hover:translate-x-0.5" aria-hidden />
+                </Link>
+              </div>
+            )}
             {/* Language toggle — visible only on mobile (desktop has the top-bar toggle) */}
             <div className="border-t border-border px-3.5 py-2.5 sm:hidden">
               <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">{t.common.language}</p>

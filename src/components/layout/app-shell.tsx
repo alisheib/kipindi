@@ -23,6 +23,7 @@ import { guestUser } from "@/lib/ui-stubs";
 import { getTickerFeed } from "@/lib/server/ticker-feed";
 import { RealityCheckHost } from "@/components/rg/reality-check";
 import { getRgSettings } from "@/lib/server/responsible-gambling";
+import { hasRole, ADMIN_CONSOLE_ROLES } from "@/lib/server/roles";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { getServerT } from "@/lib/i18n-server";
 
@@ -45,6 +46,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     avatarSrc?: string | null;
     seed?: string;
     balance?: number | null;
+    isAdmin?: boolean;
   } = { initials: guestUser.initials, name: guestUser.name, phone: guestUser.phone, isAuthed: false, balance: null };
   let realityCheckMin = 30;
   if (session) {
@@ -73,6 +75,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       avatarSrc: u?.avatarDataUrl ?? null,
       seed: session.userId,
       balance: wallet?.balance ?? null,
+      // Staff-tier users get an admin-console jump in the avatar menu.
+      // hasRole is null-safe, so a failed user fetch simply hides it.
+      isAdmin: hasRole(u?.role, ADMIN_CONSOLE_ROLES),
     };
     realityCheckMin = rg?.realityCheckIntervalMin || 30;
   }
