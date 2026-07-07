@@ -29,9 +29,9 @@ export function CandidateActions({ id, mode }: { id: string; mode: "review" | "p
         const fd = new FormData();
         fd.set("id", id);
         const r = await approveCandidateAction(fd);
+        if (!r.ok) { overlay.fail("Could not approve", r.error ?? "Try again."); return; }
         router.refresh();
-        if (!r.ok) overlay.fail("Could not approve", r.error);
-        else overlay.succeed("Candidate approved", "Ready to publish as a live market.");
+        overlay.succeed("Candidate approved", "Ready to publish as a live market.");
       } catch {
         overlay.fail("Could not approve", "Server error — please try again.");
       }
@@ -48,9 +48,9 @@ export function CandidateActions({ id, mode }: { id: string; mode: "review" | "p
         fd.set("reason", reason);
         fd.set("note", note);
         const r = await rejectCandidateAction(fd);
+        if (!r.ok) { overlay.fail("Could not reject", r.error ?? "Try again."); return; }
         router.refresh();
-        if (!r.ok) overlay.fail("Could not reject", r.error);
-        else overlay.succeed("Candidate rejected", "Moved to history.");
+        overlay.succeed("Candidate rejected", "Moved to history.");
       } catch {
         overlay.fail("Could not reject", "Server error — please try again.");
       }
@@ -64,9 +64,9 @@ export function CandidateActions({ id, mode }: { id: string; mode: "review" | "p
         const fd = new FormData();
         fd.set("id", id);
         const r = await publishCandidateAction(fd);
+        if (!r.ok) { overlay.fail("Publish failed", r.error ?? "Try again."); return; }
         router.refresh();
-        if (!r.ok) overlay.fail("Publish failed", r.error);
-        else overlay.succeed("Market is live", `Market ${r.marketId} — players can now place bets.`);
+        overlay.succeed("Market is live", `Market ${r.marketId} — players can now place bets.`);
       } catch {
         overlay.fail("Publish failed", "Server error — please try again.");
       }

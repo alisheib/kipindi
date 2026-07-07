@@ -87,7 +87,7 @@ export function SofReviewRow({ userId }: { userId: string }) {
             aria-label={expanded === "MORE_INFO" ? "More info request" : "Rejection reason"}
             className="flex-1 h-8 px-2 rounded-md border border-border bg-bg-inset text-text-secondary text-caption font-mono focus:outline-none admin-focus transition-colors"
           />
-          <Button size="sm" variant={expanded === "MORE_INFO" ? "ghost" : "danger"} onClick={() => submit(expanded as SofDecision)} loading={busy === expanded}>
+          <Button size="sm" variant={expanded === "MORE_INFO" ? "ghost" : "danger"} onClick={() => submit(expanded as SofDecision)} loading={busy === expanded} disabled={busy !== null}>
             Send
           </Button>
         </div>

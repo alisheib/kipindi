@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BrandSpinner } from "@/components/brand";
 import { MarketCard } from "@/components/markets/market-card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 
@@ -116,9 +117,15 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
       </div>
 
       {filtered.length === 0 ? (
-        <p className="py-10 text-center font-mono text-[12px] uppercase tracking-[0.14em] text-text-subtle">
-          {t.market.noLiveMatch} &ldquo;{query.trim()}&rdquo;
-        </p>
+        <EmptyState
+          kind="markets"
+          title={`${t.market.noLiveMatch} “${query.trim()}”`}
+          action={
+            <button type="button" className="btn btn-ghost btn-sm btn-pill" onClick={() => setQuery("")}>
+              {t.common.clearSearch}
+            </button>
+          }
+        />
       ) : (
         <div className="market-grid">
           {filtered.slice(0, count).map((m, i) => (

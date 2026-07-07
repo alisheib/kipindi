@@ -102,7 +102,7 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
             aria-label="Rejection reason"
             className="flex-1 h-8 px-2 rounded-md border border-border bg-bg-inset text-text-secondary text-caption font-mono focus:outline-none admin-focus transition-colors"
           />
-          <Button size="sm" variant="danger" onClick={() => submit("reject")} loading={busy === "reject"}>
+          <Button size="sm" variant="danger" onClick={() => submit("reject")} loading={busy === "reject"} disabled={busy !== null}>
             Submit
           </Button>
         </div>

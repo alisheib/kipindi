@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { Input, Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { setCreditLimitAction, resetCreditCycleAction } from "./actions";
 
 export function CreditControls({ limitUsd }: { limitUsd: number }) {
@@ -23,7 +24,6 @@ export function CreditControls({ limitUsd }: { limitUsd: number }) {
   };
 
   const onReset = () => {
-    if (!confirm("Start a new spend cycle now? Use this right after you top up Anthropic credit \u2014 it resets \u2018spent this cycle\u2019 to $0 and re-arms the alerts.")) return;
     start(async () => {
       const r = await resetCreditCycleAction();
       if (!r.ok) toast({ title: "Couldn't reset", description: r.error, variant: "danger" });
@@ -39,9 +39,19 @@ export function CreditControls({ limitUsd }: { limitUsd: number }) {
         </Field>
         <Button type="submit" loading={pending}>Set limit</Button>
       </form>
-      <Button type="button" variant="secondary" onClick={onReset} disabled={pending}>
-        Reset cycle (after top-up)
-      </Button>
+      <ConfirmDialog
+        tone="warning"
+        title="Start a new spend cycle?"
+        body={<p>Use this right after you top up Anthropic credit — it resets &lsquo;spent this cycle&rsquo; to $0 and re-arms the alerts.</p>}
+        confirmLabel="Start new cycle"
+        cancelLabel="Cancel"
+        onConfirm={onReset}
+        trigger={
+          <Button type="button" variant="secondary" disabled={pending}>
+            Reset cycle (after top-up)
+          </Button>
+        }
+      />
     </div>
   );
 }
