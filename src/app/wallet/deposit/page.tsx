@@ -14,6 +14,7 @@ import { getBonusConfig } from "@/lib/server/bonus-config";
 import { getServerT } from "@/lib/i18n-server";
 import { depositAction } from "./actions";
 import { DepositAmount } from "./deposit-amount";
+import { ProviderRadioGrid } from "@/components/wallet/provider-radio-grid";
 
 export const metadata = { title: "Deposit" };
 
@@ -80,24 +81,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
           <FieldLegend as="legend" className="mb-2">
             {t.wallet.mobileMoney}
           </FieldLegend>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {PROVIDERS.map((p, i) => (
-              <label
-                key={p.id}
-                className="relative flex flex-col items-center gap-2 px-2 py-3.5 rounded-md border border-border cursor-pointer transition-colors hover:border-gold-700 has-[:checked]:border-gold-500 has-[:checked]:bg-gold-500/10"
-                style={{ background: "var(--bg-inset)" }}
-              >
-                <input type="radio" name="provider" value={p.id} required defaultChecked={prevProvider ? p.id === prevProvider : i === 0} className="sr-only peer" />
-                <span
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-md font-display font-bold text-[12px] text-text"
-                  style={{ background: `linear-gradient(135deg, oklch(45% 0.10 ${p.hue}), oklch(30% 0.08 ${p.hue}))` }}
-                >
-                  {p.name.split(" ").map((s) => s[0]).join("").slice(0, 2)}
-                </span>
-                <span className="font-display text-[12px] font-semibold text-text text-center leading-tight">{p.name}</span>
-              </label>
-            ))}
-          </div>
+          <ProviderRadioGrid providers={PROVIDERS} defaultProvider={prevProvider} />
         </fieldset>
 
         <DepositAmount max={maxAmount} quickAmounts={quickAmounts} adminTest={adminTest} defaultValue={prevAmount} />
