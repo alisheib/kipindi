@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { I } from "@/components/ui/glyphs";
+import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
 import { TippingBar } from "@/components/brand";
 import { Countdown } from "@/components/markets/countdown";
@@ -158,8 +158,18 @@ export default async function MarketDetail({
       {/* ── Back link ── */}
       <BackLink fallbackHref="/markets" label={t.common.markets} />
 
-      {/* ── Page header — title, badges, share ── */}
-      <header className="mt-3 mb-5">
+      {/* ── Page header — title, badges, share ──
+          A7: faint 96px category-glyph watermark behind the question (isolate
+          keeps the -z-10 mark above the header bg but below the content). */}
+      <header className="relative isolate mt-3 mb-5">
+        {(() => {
+          const Cat = I[categoryGlyph(m.category)];
+          return (
+            <span aria-hidden className="pointer-events-none absolute right-1 bottom-0 -z-10 text-text opacity-[0.07]">
+              <Cat s={96} />
+            </span>
+          );
+        })()}
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <Chip variant="cat" size="lg">{m.category}</Chip>
           {m.status === "LIVE" && (

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { I } from "@/components/ui/glyphs";
+import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
 import { FiftyLockup } from "@/components/brand";
 
@@ -21,6 +21,17 @@ export default async function LandingPage() {
   const live = liveRaw.filter((m) => !isClosedByTime(m)).slice(0, 6);
   const cardCharts = new Map(await Promise.all(live.map(async (m) => [m.id, await getCardChart(m.id).catch(() => ({ spark: [] as number[], move24h: undefined }))] as const)));
   const isAuthed = !!session;
+
+  const TOPICS: Array<{ id: string; label: string }> = [
+    { id: "all",     label: t.market.catAll },
+    { id: "sports",  label: t.market.catSports },
+    { id: "macro",   label: t.market.catMacro },
+    { id: "weather", label: t.market.catWeather },
+    { id: "crypto",  label: t.market.catCrypto },
+    { id: "culture", label: t.market.catCulture },
+    { id: "tech",    label: t.market.catTech },
+    { id: "other",   label: t.market.catOther },
+  ];
 
   function timeLeftStr(iso: string): string {
     const ms = Date.parse(iso) - Date.now();
@@ -212,6 +223,31 @@ export default async function LandingPage() {
           </div>
         </section>
       )}
+
+      {/* BROWSE BY TOPIC (A7) — 8 tappable category tiles into the filtered board.
+          Royal-tinted glyphs (active/nav colour), never gold. */}
+      <section>
+        <div className="mb-4">
+          <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-brand-300">{t.common.topic}</p>
+          <h2 className="font-display text-[26px] md:text-[30px] font-bold text-text">{t.common.browseByTopic}</h2>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+          {TOPICS.map((c) => {
+            const Glyph = c.id === "all" ? I.layoutGrid : I[categoryGlyph(c.id)];
+            const href = c.id === "all" ? "/markets" : `/markets?cat=${c.id}`;
+            return (
+              <Link
+                key={c.id}
+                href={href as never}
+                className="group flex flex-col items-center justify-center gap-2 rounded-md border border-border bg-bg-elevated/60 px-2 py-4 text-center transition-all hover:border-brand-400 hover:bg-brand-500/[0.06]"
+              >
+                <span className="text-brand-300 transition-colors group-hover:text-brand-200"><Glyph s={22} /></span>
+                <span className="font-mono text-[11px] font-semibold leading-tight text-text-muted transition-colors group-hover:text-text">{c.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
 
       {/* TRUST STRIP — combined "how + why" in one tight row, no more 6-card scroll.
           v2 Dark Glass: top-lit royal glass panel + faint gilt/aqua corner glow

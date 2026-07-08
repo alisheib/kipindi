@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { SignalPip } from "@/components/brand";
+import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
 import { listMarkets, impliedYesPct, isClosedByTime, isSelectionClosed, traderSeedsByMarket, type MarketCategory } from "@/lib/server/market-service";
 import { getCardChart } from "@/lib/server/market-history";
@@ -147,18 +148,20 @@ async function FilterBar({ searchParams }: { searchParams: Promise<{ cat?: strin
         <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle pr-1 lg:pr-0 lg:mb-1">{t.common.topic}</span>
         {CATEGORIES.map((c) => {
           const active = c.id === activeCat;
+          const Glyph = c.id === "all" ? I.layoutGrid : I[categoryGlyph(c.id)];
           return (
             <a
               key={c.id}
               href={buildHref({ cat: c.id })}
               className={
-                "inline-flex h-8 items-center rounded-md border px-3.5 font-mono text-[12px] font-semibold whitespace-nowrap transition-all lg:w-full lg:justify-start " +
+                "inline-flex h-8 items-center gap-1.5 rounded-md border px-3 font-mono text-[12px] font-semibold whitespace-nowrap transition-all lg:w-full lg:justify-start " +
                 (active
                   ? "border-brand-500 text-text"
                   : "border-border bg-bg-elevated/60 text-text-muted hover:border-brand-400 hover:text-text")
               }
               style={active ? { background: "var(--pill-active)" } : undefined}
             >
+              <Glyph s={14} className={"shrink-0 " + (active ? "text-brand-300" : "opacity-70")} />
               {c.label}
             </a>
           );
