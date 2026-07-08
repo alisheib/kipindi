@@ -8,6 +8,7 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { PageHeader } from "@/components/ui/page-header";
+import { PageHero } from "@/components/ui/page-hero";
 import { Chip } from "@/components/ui/chip";
 import { listMarkets } from "@/lib/server/market-service";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
@@ -34,9 +35,11 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 lg:py-8 space-y-6">
-      <header className="space-y-2">
-        <PageHeader eyebrow={t.common.resolutionAttestation} title={t.common.howAMarketResolves} />
-        <p className="text-[15px] leading-relaxed text-text-muted max-w-[68ch] mt-3">
+      <header className="space-y-3">
+        <PageHero glow="info">
+          <PageHeader eyebrow={t.common.resolutionAttestation} title={t.common.howAMarketResolves} tone="info" icon={<I.shieldcheck s={18} />} />
+        </PageHero>
+        <p className="text-[15px] leading-relaxed text-text-muted max-w-[68ch]">
           {t.common.fairnessIntro}
         </p>
       </header>

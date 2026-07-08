@@ -6,6 +6,8 @@ import { listBoard, type BoardFilter, type ProposalView } from "@/lib/server/pro
 import { getProposalsConfig } from "@/lib/server/proposals-config";
 import { Chip } from "@/components/ui/chip";
 import { Button } from "@/components/ui/button";
+import { PageHero } from "@/components/ui/page-hero";
+import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ProposePromo } from "@/components/ui/propose-promo";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
@@ -55,17 +57,14 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
       <h1 className="sr-only">{t.proposals.title}</h1>
 
-      <div>
-        <div className="flex items-center justify-between gap-3">
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.proposals.title}</p>
-          {enabled && (
-            <Link href={"/proposals/new" as never} className="shrink-0">
-              <Button variant="gold" size="md" leading={<I.plus s={15} />}>{t.proposals.create}</Button>
-            </Link>
-          )}
-        </div>
-        <h2 className="mt-1 font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.proposals.voteForMarkets}</h2>
-      </div>
+      <PageHero glow="gold" contentClassName="relative z-10 p-5 lg:p-6 flex items-start justify-between gap-4">
+        <PageHeader tone="gold" icon={<I.trophy s={18} />} eyebrow={t.proposals.title} title={t.proposals.voteForMarkets} />
+        {enabled && (
+          <Link href={"/proposals/new" as never} className="shrink-0">
+            <Button variant="gold" size="md" leading={<I.plus s={15} />}>{t.proposals.create}</Button>
+          </Link>
+        )}
+      </PageHero>
 
       {/* Reward promo — shared gold "propose & get paid" card (→ create). */}
       <ProposePromo href="/proposals/new" />
