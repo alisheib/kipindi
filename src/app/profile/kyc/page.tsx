@@ -13,6 +13,7 @@ import { Input, Field as KitField } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { submitNidaAction, submitKycForReviewAction } from "./actions";
 import { KycDocUploader, KycExtraDocUploader } from "@/components/profile/kyc-doc-uploader";
+import { RewardBurst } from "@/components/brand/reward-burst";
 import { SUPPORT_EMAIL } from "@/lib/support-config";
 import { getServerT, type Dict } from "@/lib/i18n-server";
 
@@ -310,30 +311,23 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         </section>
       )}
 
-      {submitted && (
-        <section className={`rounded-xl border p-5 lg:p-6 text-center space-y-3 ${
-          kyc?.status === "APPROVED"
-            ? "border-yes-700 bg-yes-500/10"
-            : "border-gold-700 bg-gold-500/10"
-        }`}>
-          <div className={`mx-auto inline-flex h-14 w-14 items-center justify-center rounded-full ${
-            kyc?.status === "APPROVED"
-              ? "bg-yes-500/20 text-yes-300"
-              : "bg-gold-500/20 text-gold-300"
-          }`}>
-            {kyc?.status === "APPROVED"
-              ? <I.shieldcheck s={28} />
-              : <I.clock s={28} />}
-          </div>
-          <p className={`font-display text-[18px] font-bold ${
-            kyc?.status === "APPROVED" ? "text-yes-300" : "text-gold-300"
-          }`}>
-            {kyc?.status === "APPROVED" ? t.profile.idVerified : t.profile.inReview}
+      {submitted && kyc?.status === "APPROVED" && (
+        // A5 reward-burst — KYC verified is an earned-status peak, so gold is legitimate here.
+        <section className="rounded-xl border border-gold-700/60 bg-bg-elevated p-5 lg:p-6 text-center">
+          <RewardBurst glyph="shieldcheck" caption={t.profile.idVerified} />
+          <p className="mt-3 text-[13px] text-text-muted leading-snug max-w-[400px] mx-auto">
+            {t.profile.kycApprovedBody}
           </p>
+        </section>
+      )}
+      {submitted && kyc?.status !== "APPROVED" && (
+        <section className="rounded-xl border border-gold-700 bg-gold-500/10 p-5 lg:p-6 text-center space-y-3">
+          <div className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-full bg-gold-500/20 text-gold-300">
+            <I.clock s={28} />
+          </div>
+          <p className="font-display text-[18px] font-bold text-gold-300">{t.profile.inReview}</p>
           <p className="text-[13px] text-text-muted leading-snug max-w-[400px] mx-auto">
-            {kyc?.status === "APPROVED"
-              ? t.profile.kycApprovedBody
-              : t.profile.kycReviewingBody}
+            {t.profile.kycReviewingBody}
           </p>
         </section>
       )}

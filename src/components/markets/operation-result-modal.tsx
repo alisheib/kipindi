@@ -28,6 +28,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/ui/glyphs";
+import { RewardBurst, type RewardGlyph } from "@/components/brand/reward-burst";
 import { useModalLock } from "@/lib/use-modal-lock";
 import { useT } from "@/lib/i18n";
 
@@ -72,6 +73,16 @@ type Props = {
    *  - "no"    — NO-side bet placed
    *  Defaults to "brand". Ignored for non-success variants. */
   stripTone?: "gold" | "brand" | "yes" | "no";
+  /**
+   * Swap the plain success crest for the A5 reward-burst (gilt rays +
+   * medallion). Reserve for EARNED-money / earned-status peaks only —
+   * payout, proposal-approved, KYC-approved — NEVER deposit or bet-placed
+   * (gold = earned-money only). Ignored for non-success variants, and the
+   * caller must only open the modal AFTER the server confirms the state.
+   */
+  celebrate?: boolean;
+  /** Context glyph for the reward-burst medallion. Defaults to "trophy". */
+  celebrateGlyph?: RewardGlyph;
 };
 
 const TONE: Record<OperationVariant, { fg: string; bg: string; brd: string; shadow: string; primaryBtn: string }> = {
@@ -123,7 +134,7 @@ const STRIP_GRADIENTS: Record<string, string> = {
 export function OperationResultModal({
   open, variant, eyebrow, title, subtitle, details, footnote,
   primaryLabel, secondaryLabel, onPrimary, onSecondary, onClose,
-  autoCloseMs, stripTone = "brand",
+  autoCloseMs, stripTone = "brand", celebrate = false, celebrateGlyph = "trophy",
 }: Props) {
   useModalLock(open);
   const { t } = useT();
@@ -282,19 +293,24 @@ export function OperationResultModal({
         </button>
 
         <div className="p-6 lg:p-7 text-center">
-          {/* Crest — the visual hit. Big circle, big icon, OKLCH glow. */}
-          <div
-            className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full"
-            style={{
-              background: tone.bg,
-              border: `2px solid ${tone.brd}`,
-              boxShadow: tone.shadow,
-              animation: "orm-pop 360ms cubic-bezier(.2,1.4,.4,1)",
-            }}
-            aria-hidden
-          >
-            <CrestIcon variant={variant} color={tone.fg} />
-          </div>
+          {/* Crest — the visual hit. Earned-money success gets the A5 gilt
+              reward-burst; everything else gets the plain OKLCH glow circle. */}
+          {variant === "success" && celebrate ? (
+            <RewardBurst glyph={celebrateGlyph} size={64} className="mx-auto" />
+          ) : (
+            <div
+              className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full"
+              style={{
+                background: tone.bg,
+                border: `2px solid ${tone.brd}`,
+                boxShadow: tone.shadow,
+                animation: "orm-pop 360ms cubic-bezier(.2,1.4,.4,1)",
+              }}
+              aria-hidden
+            >
+              <CrestIcon variant={variant} color={tone.fg} />
+            </div>
+          )}
 
           <p
             className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] font-bold"

@@ -11,6 +11,7 @@ import { VoteControl } from "@/components/proposals/vote-control";
 import { StatusBadge } from "@/components/proposals/status-badge";
 import { StatusTimeline } from "@/components/proposals/status-timeline";
 import { CategoryIcon, categoryLabel } from "@/components/proposals/category-icon";
+import { RewardBurst } from "@/components/brand/reward-burst";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
 
@@ -86,16 +87,18 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
         </section>
       )}
 
-      {/* Approval bonus celebration for the proposer */}
+      {/* Approval bonus celebration for the proposer — A5 reward-burst end-frame */}
       {showBonus && (
         <section className="relative overflow-hidden rounded-xl border p-5 text-center" style={{ borderColor: "var(--gold-700)", background: "linear-gradient(160deg, var(--bg-elevated), var(--royal-950))" }}>
           <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "linear-gradient(180deg, transparent, color-mix(in oklab, var(--gold-700) 16%, transparent))" }} />
-          <div className="relative">
-            <span className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full text-gold-fg" style={{ background: "linear-gradient(135deg, var(--gold-400), var(--gold-700))" }}><I.trophy s={24} /></span>
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">{t.common.yourProposalApproved}</p>
-            <p className="mt-1 font-display text-[20px] font-bold">{t.common.earnedAPrize}</p>
-            <p className="my-1 font-mono text-[28px] font-bold text-gold-300">+TZS {p.bonusGrantedTzs.toLocaleString()}</p>
-            <p className="text-[12.5px] text-text-muted">{t.common.creditedToBonusWallet}</p>
+          <div className="relative flex flex-col items-center">
+            <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">{t.common.yourProposalApproved}</p>
+            <RewardBurst
+              glyph="trophy"
+              amount={`+TZS ${p.bonusGrantedTzs.toLocaleString()}`}
+              caption={t.common.earnedAPrize}
+            />
+            <p className="mt-2 text-[12.5px] text-text-muted">{t.common.creditedToBonusWallet}</p>
           </div>
         </section>
       )}
