@@ -60,15 +60,17 @@ specimens under `specimens/` show the target states.
 - The existing design system in-code (`globals.css`, `brand.tsx`, `glyphs.tsx`, `empty-state.tsx`,
   `chip.tsx`, `button.tsx`, `admin-shell.tsx`) — the kit **merges into** these, never wholesale-replaces.
 
-**NOT needed anymore (served their purpose / superseded — safe to ignore or remove):**
-- `50pick-DESIGN-perfect-truth.zip` (repo root, gitignored) and `docs/design-prompt.md` — the *outbound*
-  ask to Claude Design; the answer is now in-hand.
+**Already removed (spent outbound-ask artifacts — the answer is now in-hand):**
+- `50pick-DESIGN-perfect-truth.zip` (the outbound bundle), `docs/design-prompt.md` (the outbound
+  prompt), and `docs/design-handover.md` (the outbound handover; its §6 questions are answered in the
+  spec's PART D). Recoverable from git history if ever needed.
+
+**Superseded — don't design against these:**
 - `50PICK/design_handoff_prediction_market_kit/` (the v1 theme kit) — superseded as the authoritative
-  reference by the Final Kit's `reference-build.html`. Keep only as history; don't design against it.
+  reference by the Final Kit's `reference-build.html`. Retained as archive only; do not design against it.
 - Assets the kit explicitly replaces: the 3 flagged glyph originals, the weakest `emptyMarkets` scales
   illustration, the current F1 hero image, and the **two orphan hero components** the audit flagged
-  (delete them; the 20 orphan hero slides were already removed).
-- `docs/design-handover.md` — its §6 questions are answered in the spec's PART D; keep for record only.
+  (delete these as you port; the 20 orphan hero slides were already removed).
 
 ## NOT in the kit — must be SOURCED, do not fabricate (flag to Ali)
 - **MNO brand logos** (M-Pesa, Airtel Money, HaloPesa, Mixx by Yas) — trademarked; source official
