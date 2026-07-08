@@ -210,8 +210,10 @@ export function MarketCard({
   const isResolved = status === "RESOLVED";
   // Real YES% history only, ≥4 points (else hide — A-5 no-fabrication rule).
   const showSpark = Array.isArray(spark) && spark.length >= 4;
-  // Live trader crest replaces the bare predictor count when we have seeds.
-  const showCrest = live && Array.isArray(traders) && traders.length > 0;
+  // Trader crest — avatars when we have seeds; the predictor-count row renders
+  // on EVERY card (with or without avatars) so cards stay the same shape in a
+  // grid. The count moves out of the meta row and into this row.
+  const hasTraders = Array.isArray(traders) && traders.length > 0;
   const CatIco = I[categoryGlyph(category)];
   const go = (side: "YES" | "NO") => (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
@@ -272,9 +274,11 @@ export function MarketCard({
         </div>
       </div>
 
-      {move24h !== undefined && live && (
+      {/* Move-line slot — always present on live cards (reserved height) so the
+          bar sits at the same offset whether or not a 24h move exists. */}
+      {live && (
         <div className="mcardp-moveline">
-          <MoveText move={move24h} label={t.market.twentyFourHourMove} />
+          {move24h !== undefined && <MoveText move={move24h} label={t.market.twentyFourHourMove} />}
         </div>
       )}
 
@@ -282,16 +286,18 @@ export function MarketCard({
 
       {showSpark && <Spark data={spark!} />}
 
-      {showCrest && (
-        <div className="mcardp-traders">
+      {/* Trader row — rendered on every card (min-height fixed) so the grid stays
+          even. Avatars only when we have seeds; the count is always shown here. */}
+      <div className="mcardp-traders">
+        {hasTraders && (
           <span className="av-stack">
             {traders!.slice(0, 3).map((uid) => (
               <Avatar key={uid} size="xs" seed={uid} initials={initialsFor(uid)} />
             ))}
           </span>
-          <span className="t-txt"><b>{predictors.toLocaleString()}</b> {t.market.predictorsCount}</span>
-        </div>
-      )}
+        )}
+        <span className="t-txt"><b>{predictors.toLocaleString()}</b> {t.market.predictorsCount}</span>
+      </div>
 
       {live ? (
         <div className="mcardp-actions">
@@ -313,12 +319,6 @@ export function MarketCard({
       )}
 
       <div className="mcardp-meta">
-        {!showCrest && (
-          <>
-            <span>{predictors.toLocaleString()} {t.market.predictorsCount}</span>
-            <span className="dot" />
-          </>
-        )}
         <span>{fmtTzs(volume)}</span>
         {comments != null && comments > 0 && (
           <>

@@ -1827,7 +1827,7 @@ html.kp-reduce-motion *::after {
 .av-stack { display:flex; }
 .av-stack > * { margin-left: -7px; border-radius: 50%; box-shadow: 0 0 0 2px var(--bg-elevated); }
 .av-stack > *:first-child { margin-left: 0; }
-.mcardp-traders { margin-top: -2px; }
+.mcardp-traders { margin-top: -2px; min-height: 24px; }
 .mcardp-traders .t-txt { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
 .mcardp-traders .t-txt b { color: var(--text); font-weight:600; }
 /* A1 · demoted 24h move — mono micro-text, right-aligned just above the bar. */
