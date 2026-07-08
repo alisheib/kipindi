@@ -10,6 +10,7 @@ import { Pagination } from "@/components/ui/pagination";
 import type { Transaction } from "@/lib/ui-stubs";
 import { Cash } from "@/components/ui/cash";
 import { CashbackPromo } from "@/components/ui/cashback-promo";
+import { PaymentLogo } from "@/components/wallet/payment-logo";
 import { formatDateTimeSafe } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 
@@ -429,12 +430,7 @@ export function WalletPageClient({
                 key={m.id}
                 className="flex items-center gap-3 rounded-xl border border-border bg-bg-elevated p-4"
               >
-                <span
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-md font-display font-bold text-[13px] text-text shrink-0"
-                  style={{ background: `linear-gradient(135deg, oklch(45% 0.10 ${m.hue}), oklch(30% 0.08 ${m.hue}))` }}
-                >
-                  {m.name.split(" ").map((s) => s[0]).join("").slice(0, 2)}
-                </span>
+                <PaymentLogo id={m.id} name={m.name} hue={m.hue} size={40} />
                 <div className="min-w-0">
                   <p className="font-display text-[13.5px] font-semibold text-text leading-tight truncate">{m.name}</p>
                   <p className="mt-0.5 font-mono text-[11px] text-text-subtle">{t.common.mobileMoneyShort}</p>

@@ -106,7 +106,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
           <FieldLegend as="legend" className="mb-2">
             {t.wallet.destination}
           </FieldLegend>
-          <ProviderRadioGrid providers={PROVIDERS} defaultProvider={prevProvider} />
+          <ProviderRadioGrid providers={PROVIDERS} defaultProvider={prevProvider} unavailableLabel={t.common.temporarilyUnavailable} />
         </fieldset>
 
         <KitField

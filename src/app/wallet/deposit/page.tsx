@@ -81,7 +81,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
           <FieldLegend as="legend" className="mb-2">
             {t.wallet.mobileMoney}
           </FieldLegend>
-          <ProviderRadioGrid providers={PROVIDERS} defaultProvider={prevProvider} />
+          <ProviderRadioGrid providers={PROVIDERS} defaultProvider={prevProvider} unavailableLabel={t.common.temporarilyUnavailable} />
         </fieldset>
 
         <DepositAmount max={maxAmount} quickAmounts={quickAmounts} adminTest={adminTest} defaultValue={prevAmount} />
@@ -107,9 +107,20 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
         <SubmitButton label={t.common.confirm} pendingLabel={t.common.loading} />
       </form>
 
-      <p className="px-1 text-center text-[11.5px] text-text-subtle leading-relaxed">
-        {t.wallet.securedBody}
-      </p>
+      {/* Trust strip — the regulator seal is a licensed asset (⊘ pending, Ali);
+          this slot is a deliberately-labeled placeholder, never a fabricated mark. */}
+      <div className="flex items-center gap-3 rounded-xl border border-border bg-bg-elevated/60 px-4 py-3">
+        <span
+          aria-hidden
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center border border-dashed border-border text-text-subtle"
+          style={{ borderRadius: "var(--r-md)" }}
+        >
+          <I.shieldcheck s={18} />
+        </span>
+        <p className="text-[11.5px] text-text-subtle leading-relaxed">
+          {t.wallet.securedBody}
+        </p>
+      </div>
     </main>
   );
 }
