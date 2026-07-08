@@ -16,10 +16,10 @@ smoke scripts + `scripts/ui-regression.mjs` at 360/768/1280/1920) passes and is 
 
 | Item | Status | Commit | Live evidence | Notes |
 |---|---|---|---|---|
-| F0 · Merge `glyphs-additions.tsx` into `glyphs.tsx` (spread `...Iplus`; percent/activity redraws win; remove interim controlled-poll block) | [x] | _pending_ | tsc PASS; screens render | +G64 (2.2) wrapper; Ibase+Iplus spread; removed 12 interim controlled-poll glyphs. `bank` added (payment tile); existing `landmark` kept |
-| F1 · Wire `state-tokens.css` + `micro-patterns.css` after `globals.css` | [x] | _pending_ | render OK all 4 widths | copied to `src/app/`, imported in `layout.tsx`; classes available, applied by later A/B items |
-| F2 · `scripts/ui-regression.mjs` (Playwright 360/768/1280/1920; no h-overflow, zero console errors, key interactions, screenshot+read) | [x] | _pending_ | 158/158 pass, 52 shots | domcontentloaded (board polls → never networkidle); ONLY/WIDTHS env filters |
-| F3 · Foundations regression green (tsc + money/i18n + smoke + ui-regression) | [x] | _pending_ | see batch log | all green; switcher-test needs fresh store (documented state-leak) |
+| F0 · Merge `glyphs-additions.tsx` into `glyphs.tsx` (spread `...Iplus`; percent/activity redraws win; remove interim controlled-poll block) | [x] | 279d0a4 | tsc PASS; screens render | +G64 (2.2) wrapper; Ibase+Iplus spread; removed 12 interim controlled-poll glyphs. `bank` added (payment tile); existing `landmark` kept |
+| F1 · Wire `state-tokens.css` + `micro-patterns.css` after `globals.css` | [x] | 279d0a4 | render OK all 4 widths | copied to `src/app/`, imported in `layout.tsx`; classes available, applied by later A/B items |
+| F2 · `scripts/ui-regression.mjs` (Playwright 360/768/1280/1920; no h-overflow, zero console errors, key interactions, screenshot+read) | [x] | 279d0a4 | 158/158 pass, 52 shots | domcontentloaded (board polls → never networkidle); ONLY/WIDTHS env filters |
+| F3 · Foundations regression green (tsc + money/i18n + smoke + ui-regression) | [x] | 279d0a4 | see batch log | all green; switcher-test needs fresh store (documented state-leak) |
 
 ---
 
@@ -27,7 +27,7 @@ smoke scripts + `scripts/ui-regression.mjs` at 360/768/1280/1920) passes and is 
 
 | Item | Status | Commit | Live evidence | Notes |
 |---|---|---|---|---|
-| A1 · MarketCard v2 — spark + trader crests, `@` labels, demote MoveChip | [ ] | | | #1 move; lifts `/` `/markets` `/live` `/results`; real YES% series or hide (<4 pts) |
+| A1 · MarketCard v2 — spark + trader crests, `@` labels, demote MoveChip | [x] | _a1pending_ | /live full grid + /markets EN 1280 + SW 360 (NDIO/HAPANA fit); ui-reg 158/158 | spark = real YES% history, smooth cubic, aqua, draws in (pathLength=1); crest = 3 av-stack + count (falls back to meta count when no traders); YES/NO localized (NDIO/是); move → mono micro-text above bar. All 4 pages (/ /markets /live /results) already plumbed the data. Added `seed-markets` dev endpoint |
 | A2 · `AuthShell` + brand side-rail (6 `/auth/*` routes) | [ ] | | | BrandTopo 0.09, TippingBar, trilingual tagline, no gold |
 | A3 · Shared `RouteError` (root + 6 boundaries) | [ ] | | | FiftyMark+BrandTopo; no claret; not-found = pegged bar |
 | A4 · `PageHero` on 5 bare routes | [ ] | | | proposals×3 gold, fairness info, invite gold |
@@ -45,14 +45,14 @@ smoke scripts + `scripts/ui-regression.mjs` at 360/768/1280/1920) passes and is 
 | Item | Status | Commit | Live evidence | Notes |
 |---|---|---|---|---|
 | B1 · ConvictionDial — thumb grab-pip + focus ring + coach hint; widen NDIO/HAPANA box ~24%; RG detent @10× + deliberate 2nd gesture past 50× | [ ] | | | verify 360px; reduced-motion needle jump |
-| B2 · MarketCard MoveChip → mono micro-text (folds into A1) | [ ] | | | |
+| B2 · MarketCard MoveChip → mono micro-text (folds into A1) | [x] | _a1pending_ | /live grid shows mono move-line | done with A1: removed the chip + old `.mcard-move*` CSS; now right-aligned mono `↗ +Npt` above the bar |
 | B3 · Empty states — redraw `emptyMarkets` (scales+YES/NO pips), widen box 360px, drop 52px ring; add 5 new | [ ] | | | new: proposals, KYC rail, fairness, RG, admin-generic |
 | B4 · Buttons/chips — systematize states (Part D recipe); per-size padding 12/16/20/24, `--r-md`/`--r-lg`; 0.7s spinner; drop leading glyph on SW gold CTA | [ ] | | | |
 | B5 · PageHero — add `glow=aqua` for `/live`; BrandTopo 0.09 | [ ] | | | |
 | B6 · Wallet cards / profile hero / EarningsRing — KEEP; add balance spark (A9) + real Methods/Limits data | [ ] | | | mock data = launch blocker |
 | B7 · Modals — OperationResultModal success → reward-burst end-frame; bet-confirm pool-share sentence (EN/SW/ZH) | [ ] | | | pool-share is a hard invariant |
 | B8 · Admin KPI/tables/charts — upgrade via A8 | [ ] | | | |
-| B9 · Glyphs — redraw 3 (percent/activity/landmark), add 12 controlled-poll (done in F0) | ~ | _pending_ | via F0 | percent+activity redraws + 12 controlled-poll DONE; `landmark` optical redraw still pending (Iplus adds `bank`; existing `landmark` unchanged) |
+| B9 · Glyphs — redraw 3 (percent/activity/landmark), add 12 controlled-poll (done in F0) | ~ | 279d0a4 | via F0 | percent+activity redraws + 12 controlled-poll DONE; `landmark` optical redraw still pending (Iplus adds `bank`; existing `landmark` unchanged) |
 | B10 · Hero image — REPLACE F1 shot; delete 20 orphan slides + 2 orphan hero components | [ ] | ⊘ bitmap | | webp sourced externally; component deletion here |
 | B11 · BrandTopo — 0.05 → 0.09 everywhere | [ ] | | | |
 | B12 · PulseRing / SignalPip / GiltCorner — KEEP as-is | [x] | | | no-op by design |

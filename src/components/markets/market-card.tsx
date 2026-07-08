@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { TippingBar } from "@/components/brand";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
+import { Avatar } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { pickLocalized } from "@/lib/localized";
@@ -49,23 +50,64 @@ function getSignalBadge(
 
 const fmtTzs = (n: number) => `TZS ${n.toLocaleString("en-US")}`;
 
-/** Line-art 24h move chip. */
-function MoveChip({ move }: { move: number }) {
-  const { t } = useT();
+/** Demoted 24h move — mono micro-text, right-aligned above the bar (Part B-2:
+ *  it no longer competes as a chip in the header). Green up / rose down. */
+function MoveText({ move, label }: { move: number; label: string }) {
   const dir = move > 0 ? "up" : move < 0 ? "down" : "flat";
-  const cls = dir === "up" ? "mcard-move-up" : dir === "down" ? "mcard-move-down" : "mcard-move-flat";
+  const color = dir === "up" ? "var(--yes-400)" : dir === "down" ? "var(--no-400)" : "var(--text-subtle)";
   return (
-    <span className={`mcard-move ${cls}`} title={t.market.twentyFourHourMove}>
-      {dir === "flat" ? (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12" /></svg>
-      ) : (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ transform: dir === "up" ? "none" : "rotate(180deg)" }}>
-          <path d="M12 5 L12 19 M6 11 L12 5 L18 11" />
-        </svg>
-      )}
-      {move > 0 ? "+" : ""}{move}<span style={{ opacity: 0.7 }}>pt</span>
+    <span className="mcardp-move" title={label} style={{ color }}>
+      {dir === "up" ? <I.trendingUp s={10} /> : dir === "down" ? <I.trendingDown s={10} /> : <I.arrowRight s={10} />}
+      {move > 0 ? "+" : ""}{move}<span className="u">pt</span>
     </span>
   );
+}
+
+/** Catmull-Rom → cubic-bezier smoothing — a clean sparkline with no kinks. */
+function smoothPath(pts: { x: number; y: number }[]): string {
+  if (pts.length < 2) return "";
+  const f = (v: number) => v.toFixed(1);
+  let d = `M ${f(pts[0].x)} ${f(pts[0].y)}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] ?? pts[i];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2] ?? p2;
+    const c1x = p1.x + (p2.x - p0.x) / 6, c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6, c2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C ${f(c1x)} ${f(c1y)}, ${f(c2x)} ${f(c2y)}, ${f(p2.x)} ${f(p2.y)}`;
+  }
+  return d;
+}
+
+/** 24h YES% history as a full-width sparkline under the bar. Aqua = live
+ *  heartbeat (never gold). The caller hides it when the series has <4 real
+ *  points — this only ever renders the true YES% history, never a synthetic
+ *  walk (honesty rule A-5). Draws in on mount via mcardp-spark-line. */
+function Spark({ data }: { data: number[] }) {
+  const W = 300, H = 28, pad = 4;
+  const n = data.length;
+  const min = Math.min(...data), max = Math.max(...data);
+  const span = max - min || 1;
+  const pts = data.map((v, i) => ({
+    x: n === 1 ? W / 2 : +((i / (n - 1)) * W).toFixed(1),
+    y: +(H - pad - ((v - min) / span) * (H - 2 * pad)).toFixed(1),
+  }));
+  const line = smoothPath(pts);
+  const area = `${line} L ${pts[n - 1].x} ${H} L ${pts[0].x} ${H} Z`;
+  return (
+    <svg className="mcardp-spark" width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden>
+      <path d={area} fill="var(--aqua-400)" fillOpacity={0.06} stroke="none" />
+      <path className="mcardp-spark-line" d={line} pathLength={1} fill="none" stroke="var(--aqua-400)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+/** Deterministic 2-char face for an anonymous trader crest (no name is leaked —
+ *  the crest visual is seeded from the id, the label is just a couple of chars). */
+function initialsFor(seed: string): string {
+  const s = seed.replace(/[^a-zA-Z0-9]/g, "");
+  return (s.slice(-2) || "50").toUpperCase();
 }
 
 /** Small info icon that opens a brief "how betting works" popup.
@@ -156,7 +198,7 @@ function HowItWorks() {
 }
 
 export function MarketCard({
-  id, titleEn, titleSw, titleZh, category, yesPct, volume, predictors, timeLeft, status, move24h, traders, selectionClosed, comments, className,
+  id, titleEn, titleSw, titleZh, category, yesPct, volume, predictors, timeLeft, status, spark, move24h, traders, selectionClosed, comments, className,
 }: Props) {
   const router = useRouter();
   const { t, locale } = useT();
@@ -166,6 +208,10 @@ export function MarketCard({
   });
   const live = status === "LIVE" && !selectionClosed;
   const isResolved = status === "RESOLVED";
+  // Real YES% history only, ≥4 points (else hide — A-5 no-fabrication rule).
+  const showSpark = Array.isArray(spark) && spark.length >= 4;
+  // Live trader crest replaces the bare predictor count when we have seeds.
+  const showCrest = live && Array.isArray(traders) && traders.length > 0;
   const CatIco = I[categoryGlyph(category)];
   const go = (side: "YES" | "NO") => (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
@@ -214,7 +260,6 @@ export function MarketCard({
         )}
         <span className="mcardp-catico" style={{ marginLeft: 2 }}><CatIco /></span>
         <span className="mcardp-cat">{category}</span>
-        {move24h !== undefined && live && <span style={{ marginLeft: "auto" }}><MoveChip move={move24h} /></span>}
       </div>
 
       <div className="mcardp-head">
@@ -227,15 +272,34 @@ export function MarketCard({
         </div>
       </div>
 
+      {move24h !== undefined && live && (
+        <div className="mcardp-moveline">
+          <MoveText move={move24h} label={t.market.twentyFourHourMove} />
+        </div>
+      )}
+
       <TippingBar yesPct={yesPct} height={7} resolved={isResolved} showLabels={false} recastOnHover={false} />
+
+      {showSpark && <Spark data={spark!} />}
+
+      {showCrest && (
+        <div className="mcardp-traders">
+          <span className="av-stack">
+            {traders!.slice(0, 3).map((uid) => (
+              <Avatar key={uid} size="xs" seed={uid} initials={initialsFor(uid)} />
+            ))}
+          </span>
+          <span className="t-txt"><b>{predictors.toLocaleString()}</b> {t.market.predictorsCount}</span>
+        </div>
+      )}
 
       {live ? (
         <div className="mcardp-actions">
           <button type="button" aria-label={t.market.backYesAria.replace("{pct}", String(yesPct))} onClick={go("YES")} className="btn btn-yes btn-md">
-            YES <span className="font-mono text-[11.5px] opacity-85">@ {yesPct}%</span>
+            {t.common.yes} <span className="font-mono text-[11.5px] opacity-85">@ {yesPct}%</span>
           </button>
           <button type="button" aria-label={t.market.backNoAria.replace("{pct}", String(100 - yesPct))} onClick={go("NO")} className="btn btn-no btn-md">
-            NO <span className="font-mono text-[11.5px] opacity-85">@ {100 - yesPct}%</span>
+            {t.common.no} <span className="font-mono text-[11.5px] opacity-85">@ {100 - yesPct}%</span>
           </button>
         </div>
       ) : (
@@ -249,8 +313,12 @@ export function MarketCard({
       )}
 
       <div className="mcardp-meta">
-        <span>{predictors.toLocaleString()} {t.market.predictorsCount}</span>
-        <span className="dot" />
+        {!showCrest && (
+          <>
+            <span>{predictors.toLocaleString()} {t.market.predictorsCount}</span>
+            <span className="dot" />
+          </>
+        )}
         <span>{fmtTzs(volume)}</span>
         {comments != null && comments > 0 && (
           <>
