@@ -81,13 +81,39 @@ specimens under `specimens/` show the target states.
   licensed asset is supplied. Also still open: **SMS sender ID** (`"KIPINDI"`) and the real **deploy
   domain** — env-driven, need Ali's registered values.
 
+## Maintain your OWN rollout tracker + apply the kit step-by-step
+- First thing: create **`docs/ui-rollout-tracker.md`** — one row per item (A1–A10, B1–B12, the PART C
+  per-page items, admin reporting, and each asset). Columns: item · status `[ ] / ~ / [x]` · commit ·
+  live evidence (screenshot/test) · notes. This is the single source of rollout truth. **Update it after
+  every item** and work strictly against it, one step at a time — never batch-blind. If context resets,
+  the tracker tells the next run exactly where to resume.
+- Report progress against the tracker at the end of each batch (done / in-flight / next).
+
+## Clean up as you go — leave no dead UI behind
+- When you port a surface, **remove the old thing it replaces** in the same commit: superseded
+  components (e.g. the 2 orphan hero components, the replaced glyph originals), dead CSS classes,
+  orphaned imports/assets, now-unused exports. Do **not** leave old + new side by side "just in case."
+- After each batch, sweep for rot: `tsc` (catches dead imports), grep for now-unreferenced
+  components/classes/assets, and delete them. Old, unused progress must not accumulate or mislead later.
+
+## Full regression AFTER EACH batch/sprint (automatic — don't skip)
+Before starting the next batch, run the whole suite and only proceed when green:
+- **Correctness:** `npx tsc --noEmit`; all money + i18n suites
+  (`test:markets/proposals/emergency/bonus/ledger/audit/i18n/trilingual/admin-roles`);
+  `admin-grids-smoke`, `markets-retest`, `switcher-test`.
+- **Responsiveness / CSS / UI (add a reusable `scripts/ui-regression.mjs`):** Playwright over the key
+  player + admin routes at **360 / 768 / 1280 / 1920** — assert **no horizontal overflow**
+  (`scrollWidth ≤ clientWidth + 1`), **zero console/page errors**, that primary interactions still fire
+  (open avatar menu, market filter, bet dial focus, a form submit), and **screenshot each changed screen
+  → READ the screenshot** to confirm no visual break, overlap, or contrast regression. Keep this script
+  and grow it as new UI lands, so every later batch re-verifies the earlier ones.
+- Log the regression result in the tracker row. A batch isn't "done" until this passes.
+
 ## Working rules (unchanged from the platform's standards)
-- **Never regress money paths** (deposit/withdraw/bet/resolve/payout). Keep the money suites green:
-  `test:markets/proposals/emergency/bonus/ledger/audit/i18n/trilingual/admin-roles`.
-- Per change: `npx tsc --noEmit` + relevant `test:*` → **live-drive with Playwright** (seed admin +
-  `/auth/demo`, screenshot to gitignored `.50pick-shots/`, then READ the screenshot) → commit + push
-  (Railway auto-deploys). Retest scripts exist (admin-grids-smoke, markets-retest, switcher-test, …).
-- **Trilingual EN/SW/ZH** — show the SW state; nothing may truncate (i18n parity must stay 1202³).
+- **Never regress money paths** (deposit/withdraw/bet/resolve/payout).
+- Per change: `tsc` + relevant `test:*` → **live-drive with Playwright** (seed admin + `/auth/demo`,
+  screenshot to gitignored `.50pick-shots/`, then READ it) → commit + push (Railway auto-deploys).
+- **Trilingual EN/SW/ZH** — show the SW state; nothing may truncate (i18n parity stays 1202³).
 - **`prefers-reduced-motion`** fallback on every motion. **Gold = earned-money only.** Reuse the kit;
   name tokens. Commit per batch/theme with live evidence.
 - Local run (Node 24): `SESSION_SECRET=<32+> OTP_PEPPER=<16+> NODE_ENV=development
@@ -95,5 +121,5 @@ specimens under `specimens/` show the target states.
   player via `GET /auth/demo`; markets via `POST /api/dev-test/stress-money`. Restart the dev server
   between long runs (stress-money bloats the in-memory store).
 
-Start by reading the kit's README + specs and the reference build, then do step 1 (foundations) and
-report before proceeding to A1.
+Start by: (1) create the rollout tracker; (2) read the kit's README + specs + reference build; (3) do
+step 1 (foundations); (4) run the full regression; then report before proceeding to A1.
