@@ -7,6 +7,8 @@
  * naturally distributes them across the full width.
  */
 
+import type { ReactNode } from "react";
+
 export type SeriesPoint = { x: number; y: number };
 
 const CHART_W = 1200;
@@ -261,8 +263,123 @@ export function AdminFunnelChart({
               </div>
             </div>
             {s.conversionFromPrev && (
-              <span className="font-mono text-micro tracking-wider text-gold w-14 text-right shrink-0">{s.conversionFromPrev}</span>
+              <span className="font-mono text-micro tracking-wider text-brand-300 w-14 text-right shrink-0">{s.conversionFromPrev}</span>
             )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ===== AdminSpark — tiny axis-less KPI sparkline (A8) ===== */
+
+export function AdminSpark({
+  series,
+  height = 26,
+  strokeVar = "var(--brand-400)",
+  className,
+}: {
+  series: number[];
+  height?: number;
+  strokeVar?: string;
+  className?: string;
+}) {
+  if (!series || series.length < 2) return null;
+  const w = 100;
+  const h = 30;
+  const pad = 3;
+  const max = Math.max(...series);
+  const min = Math.min(...series);
+  const range = Math.max(max - min, 1);
+  const xs = series.map((_, i) => pad + (i / (series.length - 1)) * (w - 2 * pad));
+  const ys = series.map((v) => pad + (h - 2 * pad) - ((v - min) / range) * (h - 2 * pad));
+  const d = xs.map((x, i) => `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${ys[i].toFixed(1)}`).join(" ");
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className={`block w-full ${className ?? ""}`} style={{ height }} aria-hidden>
+      <path d={d} fill="none" stroke={strokeVar} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+      <circle cx={xs[xs.length - 1]} cy={ys[ys.length - 1]} r="1.7" fill={strokeVar} vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+/* ===== AdminMeter — horizontal value-vs-cap gauge (A8) ===== */
+/* Track #131645 (bg-sunken), fill --brand-500, threshold tick; flips to
+   --no-500 past `thresholdPct` (fee-vs-ceiling, DSAR SLA, credit budget). */
+
+export function AdminMeter({
+  value,
+  cap,
+  label,
+  unit,
+  thresholdPct = 90,
+  format,
+}: {
+  value: number;
+  cap: number;
+  label?: string;
+  unit?: string;
+  thresholdPct?: number;
+  format?: (n: number) => string;
+}) {
+  const pct = cap > 0 ? Math.min(100, (value / cap) * 100) : 0;
+  // threshold 0 (or 100) = no danger band; only flag when a real ceiling is set.
+  const danger = thresholdPct > 0 && thresholdPct < 100 && pct >= thresholdPct;
+  const fmt = format ?? ((n: number) => n.toLocaleString());
+  return (
+    <div className="space-y-1">
+      {label && (
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="font-mono text-micro uppercase tracking-[0.12em] text-text-tertiary">{label}</span>
+          <span className={`font-mono text-caption tabular ${danger ? "text-danger" : "text-text"}`}>
+            {fmt(value)}{unit ? ` ${unit}` : ""} / {fmt(cap)}
+          </span>
+        </div>
+      )}
+      <div className="relative h-2.5 rounded-sm bg-bg-sunken overflow-hidden">
+        <div
+          className="absolute inset-y-0 left-0 rounded-sm admin-bar-grow"
+          style={{ width: `${Math.max(1, pct)}%`, background: danger ? "var(--no-500)" : "var(--brand-500)" }}
+        />
+        {thresholdPct > 0 && thresholdPct < 100 && (
+          <span aria-hidden className="absolute inset-y-0 w-px" style={{ left: `${thresholdPct}%`, background: "var(--text-tertiary)", opacity: 0.6 }} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ===== AdminBarList — label + mono value + proportional bar rows (A8) ===== */
+/* Replaces the hand-rolled distribution divs across admin. Brand fill by
+   default; bars grow-in once on mount via `prog-sweep`. */
+
+export function AdminBarList({
+  rows,
+  colorVar = "var(--brand-500)",
+  format,
+}: {
+  rows: ReadonlyArray<{ label: ReactNode; value: number; title?: string }>;
+  colorVar?: string;
+  format?: (n: number) => string;
+}) {
+  const max = Math.max(...rows.map((r) => r.value), 1);
+  const fmt = format ?? ((n: number) => n.toLocaleString());
+  // Stacked row: label + value on top, full-width bar below — reads cleanly in
+  // narrow (3-up) admin cards where a label/bar/value single line would starve
+  // the bar to a few px.
+  return (
+    <div className="space-y-2.5">
+      {rows.map((r, i) => {
+        const pct = Math.max(2, (r.value / max) * 100);
+        return (
+          <div key={i} title={r.title}>
+            <div className="mb-1 flex items-baseline justify-between gap-2 text-caption">
+              <span className="min-w-0 truncate text-text">{r.label}</span>
+              <span className="shrink-0 font-mono tabular text-text">{fmt(r.value)}</span>
+            </div>
+            <div className="h-2 bg-bg-sunken rounded-sm relative overflow-hidden">
+              <div className="absolute inset-y-0 left-0 rounded-sm admin-bar-grow" style={{ width: `${pct}%`, background: colorVar }} />
+            </div>
           </div>
         );
       })}

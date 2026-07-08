@@ -14,6 +14,7 @@ import { RefreshButton } from "./refresh-button";
 import { NAV_GROUPS } from "./admin-nav-groups";
 import { PeriodPicker } from "./period-picker";
 import { SentinelCountdown } from "./sentinel-countdown";
+import { AdminSpark } from "./admin-charts";
 import { formatDateISO } from "@/lib/utils";
 
 export type AdminSession = {
@@ -187,6 +188,7 @@ export function AdminKpi({
   tone,
   pulse,
   spark = true,
+  series,
 }: {
   label: string;
   sw?: string;
@@ -199,6 +201,8 @@ export function AdminKpi({
   tone?: "danger" | "success" | "gold";
   pulse?: boolean;
   spark?: boolean;
+  /** Mini 24h/7d series — renders the A8 sparkline in the tile's spark slot. */
+  series?: number[];
 }) {
   const effectiveTone = tone ?? (gold ? "gold" : undefined);
   const valueToneCls =
@@ -211,8 +215,9 @@ export function AdminKpi({
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono uppercase text-text-tertiary truncate" style={{ fontSize: 9.5, letterSpacing: "0.08em", lineHeight: 1.3 }}>{label}</span>
         {pulse && (
-          <span className="inline-flex items-center gap-1 text-micro text-gold font-mono uppercase tracking-wider">
-            <span className="h-1.5 w-1.5 rounded-pill bg-gold inline-block gold-dot" />
+          // Aqua = live-feed signal (admin gold-discipline: gold only on the resolved seal).
+          <span className="inline-flex items-center gap-1 text-micro font-mono uppercase tracking-wider" style={{ color: "var(--aqua-400)" }}>
+            <span className="h-1.5 w-1.5 rounded-pill inline-block animate-pulse" style={{ background: "var(--aqua-400)" }} />
             live
           </span>
         )}
@@ -227,16 +232,20 @@ export function AdminKpi({
         <div className="text-text-tertiary italic leading-tight" style={{ fontSize: 10.5 }}>{sw}</div>
       )}
       {(spark || delta) && (
-        <div className="mt-auto flex items-center justify-end gap-2">
+        <div className="mt-auto flex items-end gap-2">
+          {/* A8 spark slot — royal mini-series, aqua reserved for live feeds. */}
+          {series && series.length >= 2 && (
+            <div className="flex-1 min-w-0 self-center">
+              <AdminSpark series={series} height={24} />
+            </div>
+          )}
           {delta && (
             <span
               className={[
-                "font-mono text-micro px-2 py-0.5 rounded-sm whitespace-nowrap",
+                "font-mono text-micro px-2 py-0.5 rounded-sm whitespace-nowrap ml-auto",
                 deltaDir === "up"
-                  ? "bg-gold/15 text-gold"
-                  : deltaDir === "down"
-                    ? "bg-bg-sunken text-text-tertiary"
-                    : "bg-bg-sunken text-text-tertiary",
+                  ? "bg-brand-500/15 text-brand-300"
+                  : "bg-bg-sunken text-text-tertiary",
               ].join(" ")}
             >
               {deltaDir === "up" ? "▲" : deltaDir === "down" ? "▼" : "·"} {delta}

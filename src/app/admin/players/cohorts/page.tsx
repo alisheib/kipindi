@@ -1,4 +1,5 @@
 import { AdminPageHead, AdminCard, AdminKpi, AdminFunnel } from "@/components/admin/admin-shell";
+import { AdminBarList, AdminMeter } from "@/components/admin/admin-charts";
 import { db } from "@/lib/server/store";
 import { kycFunnel, userStatusCounts } from "@/lib/server/analytics";
 import { Chip } from "@/components/ui/chip";
@@ -15,6 +16,13 @@ function bucketByMonth(all: Awaited<ReturnType<typeof db.user.list>>) {
   return Array.from(map.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([month, count]) => ({ month, count }));
+}
+
+/** Cumulative running total of monthly registrations — the growth curve fed
+ *  into the "Total players" KPI spark (A8). */
+function cumulativeSeries(months: Array<{ month: string; count: number }>): number[] {
+  let run = 0;
+  return months.map(({ count }) => (run += count));
 }
 
 function bucketByRegion(all: Awaited<ReturnType<typeof db.user.list>>) {
@@ -43,7 +51,9 @@ function bucketByAge(all: Awaited<ReturnType<typeof db.user.list>>) {
 export default async function AdminCohortsPage() {
   // Guard like every sibling admin page (players/retention/privacy) — a transient
   // store error should degrade to empty cards, not 500 the whole cohorts screen.
-  const allUsers = await db.user.list().catch(() => []);
+  // `db.user.list()` is a Promise in prod (Prisma) but a sync array in the
+  // in-memory dev store — Promise.resolve() normalises both so `.catch` is safe.
+  const allUsers = await Promise.resolve(db.user.list()).catch(() => [] as Awaited<ReturnType<typeof db.user.list>>);
   const months = bucketByMonth(allUsers);
   const regions = bucketByRegion(allUsers);
   const ageBuckets = bucketByAge(allUsers);
@@ -56,13 +66,21 @@ export default async function AdminCohortsPage() {
       <AdminPageHead title="Cohorts" sw="Vikundi" />
 
       <div className="px-4 lg:px-6 py-5 space-y-4">
-        {/* Headline KPIs */}
+        {/* Headline KPIs — cumulative registrations feed the A8 spark. */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Total players" sw="Wachezaji"      value={total.toLocaleString()} />
-          <AdminKpi label="Active"        sw="Hai"             value={(status.ACTIVE ?? 0).toLocaleString()} gold delta={`${total === 0 ? 0 : Math.round(((status.ACTIVE ?? 0) / total) * 100)}%`} />
+          <AdminKpi label="Total players" sw="Wachezaji"      value={total.toLocaleString()} series={cumulativeSeries(months)} />
+          <AdminKpi label="Active"        sw="Hai"             value={(status.ACTIVE ?? 0).toLocaleString()} deltaDir="up" delta={`${total === 0 ? 0 : Math.round(((status.ACTIVE ?? 0) / total) * 100)}%`} />
           <AdminKpi label="Pending KYC"   sw="Inasubiri"       value={(status.PENDING_KYC ?? 0).toLocaleString()} delta="needs follow-up" />
           <AdminKpi label="Self-excluded" sw="Wamejizuia"      value={(status.SELF_EXCLUDED ?? 0).toLocaleString()} delta="active roster" />
         </div>
+
+        {/* Cohort health meters (A8) — value-vs-cap gauges, brand fill. */}
+        <AdminCard title="Cohort health" sw="Afya ya kundi">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+            <AdminMeter label="Active rate" value={status.ACTIVE ?? 0} cap={total} thresholdPct={0} format={(n) => n.toLocaleString()} />
+            <AdminMeter label="KYC approved" value={kyc.approved} cap={Math.max(kyc.registered, 1)} thresholdPct={0} format={(n) => n.toLocaleString()} />
+          </div>
+        </AdminCard>
 
         {/* KYC funnel — repeat from compliance for cohort context */}
         <AdminCard title="KYC funnel" sw="Hatua za uthibitisho">
@@ -76,26 +94,16 @@ export default async function AdminCohortsPage() {
           />
         </AdminCard>
 
-        {/* Status mix + region + age side-by-side */}
+        {/* Status mix + region + age side-by-side — AdminBarList (A8) replaces
+            the hand-rolled distribution divs; brand fill only (no gold). */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
           <AdminCard title="By status" sw="Hali">
             {total === 0 ? (
               <p className="text-caption text-text-tertiary py-3 text-center">No status data.</p>
             ) : (
-            <div className="space-y-1.5">
-              {Object.entries(status).map(([s, c]) => {
-                const pct = total === 0 ? 0 : Math.round((c / total) * 100);
-                return (
-                  <div key={s} className="flex items-center gap-2">
-                    <Chip size="sm" variant={statusVariant(s)}>{s}</Chip>
-                    <div className="flex-1 h-3 bg-bg-sunken rounded-sm relative overflow-hidden">
-                      <div className="absolute inset-y-0 left-0 bg-royal/70" style={{ width: `${Math.max(2, pct)}%` }} />
-                    </div>
-                    <span className="font-mono text-caption tabular w-12 text-right">{c}</span>
-                  </div>
-                );
-              })}
-            </div>
+              <AdminBarList
+                rows={Object.entries(status).map(([s, c]) => ({ label: <Chip size="sm" variant={statusVariant(s)}>{s}</Chip>, value: c }))}
+              />
             )}
           </AdminCard>
 
@@ -103,38 +111,14 @@ export default async function AdminCohortsPage() {
             {regions.length === 0 ? (
               <p className="text-caption text-text-tertiary py-3 text-center">No region data.</p>
             ) : (
-              <div className="space-y-1.5">
-                {regions.slice(0, 8).map(({ region, count }) => {
-                  const pct = total === 0 ? 0 : Math.round((count / total) * 100);
-                  return (
-                    <div key={region} className="flex items-center gap-2 text-caption">
-                      <span className="w-20 sm:w-28 truncate text-text">{region}</span>
-                      <div className="flex-1 h-3 bg-bg-sunken rounded-sm relative overflow-hidden">
-                        <div className="absolute inset-y-0 left-0 bg-gold/70" style={{ width: `${Math.max(2, pct)}%` }} />
-                      </div>
-                      <span className="font-mono tabular w-12 text-right">{count}</span>
-                    </div>
-                  );
-                })}
-              </div>
+              <AdminBarList rows={regions.slice(0, 8).map(({ region, count }) => ({ label: region, value: count }))} />
             )}
           </AdminCard>
 
           <AdminCard title="By age band" sw="Umri">
-            <div className="space-y-1.5">
-              {ageBuckets.map(({ band, count }) => {
-                const pct = total === 0 ? 0 : Math.round((count / total) * 100);
-                return (
-                  <div key={band} className="flex items-center gap-2 text-caption">
-                    <span className="w-12 font-mono text-text">{band}</span>
-                    <div className="flex-1 h-3 bg-bg-sunken rounded-sm relative overflow-hidden">
-                      <div className="absolute inset-y-0 left-0 bg-info/70" style={{ width: `${Math.max(2, pct)}%` }} />
-                    </div>
-                    <span className="font-mono tabular w-12 text-right">{count}</span>
-                  </div>
-                );
-              })}
-            </div>
+            <AdminBarList
+              rows={ageBuckets.map(({ band, count }) => ({ label: <span className="font-mono">{band}</span>, value: count }))}
+            />
           </AdminCard>
         </div>
 
