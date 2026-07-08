@@ -1,0 +1,46 @@
+/* 50pick — unified interaction-state tokens (spec Part D)
+   One recipe for every interactive element. Gold = earned-money only. */
+:root {
+  --state-hover-filter: brightness(1.06) saturate(1.05);
+  --state-focus-ring: 0 0 0 2px var(--bg-canvas, #0A0E33), 0 0 0 4px var(--brand-300, #6CA2FF);
+  --state-active-scale: .98;
+  --state-disabled-opacity: .45;
+  --spin-duration: .7s; /* kit-faithful — fixes gap-audit A-2 */
+}
+.is-interactive { transition: filter 120ms cubic-bezier(.2,.8,.2,1), transform 120ms cubic-bezier(.2,.8,.2,1); }
+.is-interactive:hover:not(:disabled)  { filter: var(--state-hover-filter); }
+.is-interactive:focus-visible         { outline: none; box-shadow: var(--state-focus-ring); }
+.is-interactive:active:not(:disabled) { transform: scale(var(--state-active-scale)); }
+.is-interactive:disabled              { opacity: var(--state-disabled-opacity); cursor: not-allowed; filter: none; }
+
+/* Countdown escalation — calm → urgent → critical (spec Part D.4) */
+.countdown         { color: var(--aqua-400, #36BABA); }
+.countdown--urgent { color: var(--gold-300, #FEC766); animation: cd-pulse 60s steps(1) infinite, live-pulse 1.6s ease-in-out 1; }
+.countdown--critical { color: var(--no-400, #E6424C); animation: cd-pulse 60s steps(1) infinite, live-pulse 1.2s ease-in-out 1; }
+@keyframes cd-pulse { 0% { opacity: 1 } } /* re-triggers the one-shot pulse each minute */
+
+/* Reward burst (spec A5) */
+@keyframes burst-medal-pop { from { transform: scale(.5); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+@keyframes burst-rays-in   { from { transform: scale(.6); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+.reward-burst__medal { animation: burst-medal-pop 280ms cubic-bezier(.2,1.4,.4,1) both; }
+.reward-burst__rays  { animation: burst-rays-in 420ms cubic-bezier(.2,.8,.2,1) .2s both; }
+
+/* Sparkline draw-in (spec A1) */
+.spark-draw { stroke-dasharray: 400; stroke-dashoffset: 400; animation: spark-in 480ms cubic-bezier(.4,0,.2,1) forwards; }
+@keyframes spark-in { to { stroke-dashoffset: 0 } }
+
+/* Button inline spinner */
+.btn-spin { width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid color-mix(in oklab, currentColor 30%, transparent);
+  border-top-color: currentColor; animation: btn-spin var(--spin-duration) linear infinite; }
+@keyframes btn-spin { to { transform: rotate(360deg) } }
+
+/* Every effect above has a static fallback */
+@media (prefers-reduced-motion: reduce) {
+  .is-interactive { transition: none }
+  .countdown--urgent, .countdown--critical { animation: none }
+  .reward-burst__medal, .reward-burst__rays { animation: none }
+  .reward-burst__rays { opacity: .4 }
+  .spark-draw { animation: none; stroke-dasharray: none; stroke-dashoffset: 0 }
+  .btn-spin { animation-duration: 1.4s } /* keep meaning, halve intensity */
+}

@@ -6,6 +6,8 @@ import { AppShell } from "@/components/layout/app-shell";
 import { LazyOverlays } from "@/components/layout/lazy-overlays";
 import { ScrollRestore } from "@/components/ui/scroll-restore";
 import "./globals.css";
+import "./state-tokens.css";
+import "./micro-patterns.css";
 
 const sora = Sora({
   subsets: ["latin", "latin-ext"],
