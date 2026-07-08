@@ -371,6 +371,7 @@ export const dict = {
     },
     auth: {
       signInTitle: "Sign in", signUpTitle: "Create account",
+      railTagline: "Predict events. Not chance.",
       continueWithPhone: "Continue with your phone",
       enterPhonePassword: "Enter your phone and password.",
       welcomeTo50pick: "Welcome to 50pick",
@@ -1385,6 +1386,7 @@ export const dict = {
     },
     auth: {
       signInTitle: "Ingia", signUpTitle: "Fungua akaunti",
+      railTagline: "Tabiri matukio. Si bahati.",
       continueWithPhone: "Endelea na simu yako",
       enterPhonePassword: "Weka simu na nenosiri.",
       welcomeTo50pick: "Karibu kwenye 50pick",
@@ -2398,6 +2400,7 @@ export const dict = {
     },
     auth: {
       signInTitle: "登录", signUpTitle: "创建账户",
+      railTagline: "预测事件，而非运气。",
       continueWithPhone: "使用手机号继续",
       enterPhonePassword: "输入您的手机号和密码。",
       welcomeTo50pick: "欢迎来到50pick",

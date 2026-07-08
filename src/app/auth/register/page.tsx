@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { FiftyLockup, FiftyMark } from "@/components/brand";
-import { BrandTopo } from "@/components/brand-topo";
+import { FiftyMark } from "@/components/brand";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { Field, Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { PasswordPair } from "@/components/auth/password-pair";
@@ -68,12 +68,7 @@ export default async function RegisterPage({
   })();
 
   return (
-    <main className="relative min-h-[calc(100vh-44px)] grid place-items-center overflow-hidden px-3 py-8">
-      <BrandTopo opacity={0.05} />
-      <div className="relative w-full max-w-md">
-        <Link href="/" aria-label="50pick home" className="inline-block mb-6">
-          <FiftyLockup size={22} />
-        </Link>
+    <AuthShell>
 
         <section
           className="rounded-xl glass-panel p-6 space-y-5"
@@ -247,10 +242,6 @@ export default async function RegisterPage({
           </p>
         </section>
 
-        <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-text-subtle">
-          {t.auth.licensedByGbt} {HELPLINE()}
-        </p>
-      </div>
-    </main>
+    </AuthShell>
   );
 }

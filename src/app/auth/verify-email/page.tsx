@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
-import { FiftyLockup } from "@/components/brand";
-import { BrandTopo } from "@/components/brand-topo";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { SUPPORT_EMAIL, HELPLINE } from "@/lib/support-config";
 import { verifyEmailToken } from "@/lib/server/email-verification";
 import { getServerT } from "@/lib/i18n-server";
@@ -48,12 +47,7 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
   const good = c.tone === "good";
 
   return (
-    <main className="relative min-h-[calc(100vh-44px)] grid place-items-center overflow-hidden px-3 py-8">
-      <BrandTopo opacity={0.05} />
-      <div className="relative w-full max-w-md">
-        <Link href="/" aria-label="50pick home" className="inline-block mb-6">
-          <FiftyLockup size={22} />
-        </Link>
+    <AuthShell>
 
         <section className="rounded-xl glass-panel p-6 space-y-5">
           <span
@@ -96,10 +90,6 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
           </p>
         </section>
 
-        <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-text-subtle">
-          {t.auth.licensedByGbt} {HELPLINE()}
-        </p>
-      </div>
-    </main>
+    </AuthShell>
   );
 }

@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
-import { FiftyLockup } from "@/components/brand";
-import { BrandTopo } from "@/components/brand-topo";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { PasswordInput } from "@/components/ui/password-input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { HELPLINE, SUPPORT_EMAIL } from "@/lib/support-config";
@@ -65,12 +64,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
   if (state !== "valid") {
     const c = errorCopy[state];
     return (
-      <main className="relative min-h-[calc(100vh-44px)] grid place-items-center overflow-hidden px-3 py-8">
-        <BrandTopo opacity={0.05} />
-        <div className="relative w-full max-w-md">
-          <Link href="/" aria-label="50pick home" className="inline-block mb-6">
-            <FiftyLockup size={22} />
-          </Link>
+      <AuthShell>
 
           <section className="rounded-xl glass-panel p-6 space-y-5">
             <span className="inline-flex h-12 w-12 items-center justify-center rounded-pill bg-no-500/12 text-no-300">
@@ -106,22 +100,13 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
             </p>
           </section>
 
-          <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-text-subtle">
-            {t.auth.licensedByGbt} {HELPLINE()}
-          </p>
-        </div>
-      </main>
+      </AuthShell>
     );
   }
 
   // Valid token — show the password form
   return (
-    <main className="relative min-h-[calc(100vh-44px)] grid place-items-center overflow-hidden px-3 py-8">
-      <BrandTopo opacity={0.05} />
-      <div className="relative w-full max-w-md">
-        <Link href="/" aria-label="50pick home" className="inline-block mb-6">
-          <FiftyLockup size={22} />
-        </Link>
+    <AuthShell>
 
         <section className="rounded-xl glass-panel p-6 space-y-5">
           <Link
@@ -205,10 +190,6 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
           </p>
         </section>
 
-        <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-text-subtle">
-          {t.auth.licensedByGbt} {HELPLINE()}
-        </p>
-      </div>
-    </main>
+    </AuthShell>
   );
 }

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { FiftyLockup } from "@/components/brand";
-import { BrandTopo } from "@/components/brand-topo";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { OtpInput } from "@/components/ui/otp-input";
 import { FieldLegend } from "@/components/ui/field-legend";
@@ -40,12 +39,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
   };
 
   return (
-    <main className="relative min-h-[calc(100vh-44px)] grid place-items-center overflow-hidden px-3 py-8">
-      <BrandTopo opacity={0.05} />
-      <div className="relative w-full max-w-md">
-        <Link href="/" aria-label="50pick home" className="inline-block mb-6">
-          <FiftyLockup size={22} />
-        </Link>
+    <AuthShell>
 
         <section
           className="rounded-xl glass-panel p-6 space-y-5"
@@ -125,7 +119,6 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
         <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-text-subtle">
           {t.common.wrongAttemptsHint}
         </p>
-      </div>
-    </main>
+    </AuthShell>
   );
 }
