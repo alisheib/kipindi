@@ -1,21 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
-import Link from "next/link";
-import { I } from "@/components/ui/glyphs";
+import { RouteError } from "@/components/ui/route-error";
 import { useT } from "@/lib/i18n";
 
-/**
- * Admin-scoped error boundary. Without this, a throw in any /admin page or
- * server action bubbles to the ROOT error.tsx and replaces the whole app
- * (sidebar + nav included). Scoped here, a crash is contained to the admin
- * content area and the officer gets retry / back paths without losing the
- * console shell.
- *
- * Same production posture as the root boundary: never echo the raw error /
- * stack to the operator surface (PII + "looks broken"); surface a digest the
- * team can correlate with the server log.
- */
 export default function AdminError({
   error,
   reset,
@@ -24,50 +11,15 @@ export default function AdminError({
   reset: () => void;
 }) {
   const { t } = useT();
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      console.warn("[50pick/admin] error boundary fired", { digest: error.digest });
-    }
-  }, [error]);
-
   return (
-    <div className="mx-auto flex min-h-[60svh] max-w-[560px] flex-col items-center justify-center px-5 py-12 text-center">
-      <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-full border border-no-700 bg-no-500/10 text-no-300">
-        <I.alertCircle s={20} />
-      </div>
-      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.20em] text-no-300">
-        {t.error.adminError}
-      </p>
-      <h1 className="mt-2 font-display text-[22px] font-bold leading-tight tracking-[-0.02em] text-text">
-        {t.error.consolePageSnag}
-      </h1>
-      <p className="mt-3 max-w-[420px] text-[13px] leading-relaxed text-text-subtle">
-        {t.error.errorRecordedServer}
-      </p>
-
-      {error.digest && (
-        <p className="mt-3 font-mono text-[11px] tracking-[0.06em] text-text-subtle">
-          Reference: <span className="text-text">{error.digest}</span>
-        </p>
-      )}
-
-      <div className="mt-6 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
-        <button
-          type="button"
-          onClick={() => reset()}
-          className="btn btn-primary btn-md inline-flex items-center justify-center gap-2"
-        >
-          <I.bolt s={14} />
-          {t.error.tryAgain}
-        </button>
-        <Link
-          href="/admin"
-          className="btn btn-ghost btn-md inline-flex items-center justify-center gap-2"
-        >
-          {t.error.backToDashboard}
-          <I.arrowRight s={14} />
-        </Link>
-      </div>
-    </div>
+    <RouteError
+      error={error}
+      reset={reset}
+      logTag="admin"
+      eyebrow={t.error.adminError}
+      headline={t.error.consolePageSnag}
+      body={t.error.errorRecordedServer}
+      back={{ href: "/admin", label: t.error.backToDashboard }}
+    />
   );
 }
