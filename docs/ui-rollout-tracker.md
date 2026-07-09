@@ -109,10 +109,10 @@ smoke scripts + `scripts/ui-regression.mjs` at 360/768/1280/1920) passes and is 
 
 | Item | Status | Commit | Live evidence | Notes |
 |---|---|---|---|---|
-| ADM1 · Reporting console — GGR/NGR defs, daily P&L w/ totals, category breakdown, regulator pack maker-checker chain | [ ] | | | per `50pick-admin-reporting-spec.md` |
-| ADM2 · Two-officer Resolution Ceremony | [ ] | | | |
-| ADM3 · KYC/AML workstation | [ ] | | | |
-| ADM4 · Payments ops — MNO kill-switches, reconciliation, retry queue | [ ] | | | |
+| ADM1 · Reporting console — GGR/NGR defs, daily P&L w/ totals, category breakdown, regulator pack maker-checker chain | [x] (console) · ⊘ (maker-checker) | 76efba1 | /admin/reports console verified with REAL data (resolve-seed): GGR 64,526 = 282,000 stakes − 217,474 payouts, Hold 22.9%, 6-KPI strip + daily P&L totals + GGR-by-category bars; + empty-store (honest zeros + EmptyState). 360/1280, 0 overflow/console errs. tsc·i18n 1217³·wallet 8·ledger 69·ui-reg 158/158 | **DONE:** normative `report-money.ts` (Stakes/Payouts/GGR=S−P/Bonus/Fees/NGR/Hold%, daily P&L EAT, category breakdown via positionId→cat) = single source of truth; console w/ period(Today/7d/30d/MTD)+compare+freshness+printed defs; report library retained. **⊘ DEFERRED — regulator-pack two-officer maker-checker chain:** needs a report-pack signing backend + compliance definition of officer roles → **Ali product/compliance decision** (no fabricated signatures). **⚑ FLAG (Ali):** legacy finance/live/overview + gbt-monthly label turnover as "GGR" (`analytics.grossGamingRevenue`=stakes only); reconcile to report-money for ONE definition — changes displayed money numbers |
+| ADM2 · Two-officer Resolution Ceremony | [ ] | | | Resolver two-officer backend EXISTS (resolver-queue + resolve-seed) → buildable as a UI redesign over it; but seal/publish/objection-window/typed-SEAL confirm need backend bits. **Assess before EMAIL1/AI1** |
+| ADM3 · KYC/AML workstation (`/admin/kyc/[id]` — NEW route) | [ ] | | | ⊘ Needs a document-viewer + decision backend (tri-state checklist, risk meter, reason codes, maker-checker) — **new compliance backend + Ali decision** |
+| ADM4 · Payments ops (`/admin/payments` — NEW route) — MNO kill-switches, reconciliation, retry queue | [ ] | | | ⊘ Needs MNO health telemetry + kill-switch backend + PSP reconciliation + retry-queue backends — **new payments/ops backends + Ali decision** (only-live-data; can't fabricate) |
 
 ---
 
