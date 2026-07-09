@@ -7,6 +7,13 @@ front: **the system is already well-built.** There is **one real structural
 gap** (the tablet breakpoint) and a few **prioritization calls**. Nothing here
 is a launch blocker; items are ranked so we fix the highest-impact first.
 
+> **Status (2026-07-09, commit `05ae462`):** R1, R2, R3, R6 **implemented + verified**
+> (ui-regression 158/158; driven at 768/1024/1280). R4 **resolved** (`/` is a real
+> home landing — brand→home is correct, no change). R5 (leaf-audit of help/legal/
+> offline) remains as a light PART-C ride-along. R2 is a product call — Positions now
+> holds the mobile 5th tab; flip back to Invite in `bottom-nav.tsx` if growth is the
+> priority (Invite is still in the avatar directory + "More" menu either way).
+
 ---
 
 ## 1. What exists today (the current model)
