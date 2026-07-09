@@ -5,6 +5,14 @@ Single source of rollout truth for porting Claude Design's Final UI enhancement 
 against this, one item at a time. Update the row **after every item**. If context
 resets, this file says exactly where to resume.
 
+> **Mindset (Ali, every item):** hold FIVE lenses at once — **integration engineer**
+> (end-to-end connection, i18n/money-path, reuse primitives), **UI/UX engineer**
+> (pixel polish, 360→1920 responsiveness, a11y, motion + reduced-motion; READ the
+> shots), **software architect** (single source of truth, no divergence, delete the
+> superseded), **manager** (scope/risk, ship-vs-defer, flag to Ali), and **player**
+> (clear, trustworthy, fast, RG-safe, correct in EN/SW/ZH). Resolve or record every
+> concern a lens raises — never ship past it silently. Full note in `docs/ui-rollout-next-session.md`.
+
 Status legend: `[ ]` not started · `~` in flight · `[x]` done · `⊘` blocked/sourced-externally
 
 Regression gate: a batch is not "done" until the full suite (tsc + money/i18n tests +

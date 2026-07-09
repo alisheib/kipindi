@@ -9,6 +9,21 @@
 You are continuing the **Final UI enhancement Kit** rollout (Claude Design's finished UI pass) into the
 live 50pick app. This is disciplined, one-item-at-a-time implementation — not redesign.
 
+## Mindset — hold FIVE lenses at once, on EVERY item (non-negotiable, Ali)
+Never work as just a coder. For every tracker item — recon, decision, implementation, and review —
+think **simultaneously** as all five of these, and let the tension between them shape the result:
+1. **Integration engineer** — how does this connect end-to-end? Data flow, server/client boundary,
+   i18n parity, money-path safety, and reuse of the already-built primitives (don't rebuild, don't diverge).
+2. **UI/UX engineer** — pixel polish, responsiveness at 360/768/1280/1920, accessibility (keyboard +
+   `aria` + contrast), motion + reduced-motion, and the card standard. READ the screenshots.
+3. **Software architect** — structure and maintainability: single source of truth, no divergence between
+   two copies of the same thing, clean abstractions, delete what's superseded.
+4. **Manager** — scope discipline and risk: what ships now vs. defers, what's a launch blocker, what to
+   flag to Ali. One item at a time; keep the tracker + memory truthful.
+5. **Player** — the real end-user in Tanzania: is it clear, trustworthy, fast, delightful, RG-safe, and
+   correct in EN/SW/ZH? Would *they* understand and trust this screen?
+If any lens raises a concern, resolve it or record it — don't ship past it silently.
+
 ## Orient first (do this before touching anything)
 1. Read **`docs/ui-rollout-tracker.md`** — the single source of rollout truth. Every item (Foundations,
    PART A A1–A10, PART B B1–B12, PART C, admin reporting, assets) is a row with status / commit / live
