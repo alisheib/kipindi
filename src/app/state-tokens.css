@@ -29,6 +29,14 @@
 .spark-draw { stroke-dasharray: 400; stroke-dashoffset: 400; animation: spark-in 480ms cubic-bezier(.4,0,.2,1) forwards; }
 @keyframes spark-in { to { stroke-dashoffset: 0 } }
 
+/* Leaderboard podium crown (spec A10) — settles with a 6° overshoot rotate */
+@keyframes podium-crown {
+  0%   { transform: translateY(4px) rotate(-6deg); opacity: 0 }
+  60%  { transform: translateY(0) rotate(6deg); opacity: 1 }
+  100% { transform: translateY(0) rotate(0deg); opacity: 1 }
+}
+.podium-crown { display: inline-block; animation: podium-crown 520ms cubic-bezier(.2,.8,.2,1) 180ms both; transform-origin: 50% 90%; }
+
 /* Admin bars (spec A8) — grow in from the left once on mount */
 @keyframes admin-bar-grow { from { transform: scaleX(0) } to { transform: scaleX(1) } }
 .admin-bar-grow { transform-origin: left center; animation: admin-bar-grow 240ms cubic-bezier(.2,.8,.2,1) both; }
@@ -47,5 +55,6 @@
   .reward-burst__rays { opacity: .4 }
   .spark-draw { animation: none; stroke-dasharray: none; stroke-dashoffset: 0 }
   .admin-bar-grow { animation: none }
+  .podium-crown { animation: none }
   .btn-spin { animation-duration: 1.4s } /* keep meaning, halve intensity */
 }

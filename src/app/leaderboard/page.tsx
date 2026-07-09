@@ -8,6 +8,7 @@
  * never empty in demo mode.
  */
 import { db } from "@/lib/server/store";
+import { I } from "@/components/ui/glyphs";
 import { listPositionsForUser, listMarkets } from "@/lib/server/market-service";
 import { PriceChart, VolumeSparkline } from "@/components/markets/price-chart";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -176,6 +177,10 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
         ]}
       />
 
+      {/* A10 podium — top-3, #1 raised in a gilt ring + crown. Real players
+          from row 1; only shown with a genuine top-3. */}
+      {rows.length >= 3 && <Podium top={rows} t={t} />}
+
       {/* Consensus shift chart — the kit's PriceChart applied platform-wide */}
       {consensus.length > 1 && (
         <section className="rounded-xl glass-panel p-4 lg:p-5">
@@ -236,7 +241,9 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
                   <VolumeSparkline data={r.spark} width={140} height={32} ariaLabel={t.market.volumeSparkline} />
                 </td>
                 <td className="p-3 text-right hidden md:table-cell font-mono tabular-nums text-text-muted">
-                  {r.streak > 0 ? `${r.streak} ${r.streak > 1 ? t.leaderboard.winsLabel : t.leaderboard.winLabel}` : "—"}
+                  {r.streak > 0 ? (
+                    <span className="inline-flex items-center gap-1"><HotChip streak={r.streak} t={t} /></span>
+                  ) : "—"}
                 </td>
                 <td className="p-3 text-right font-mono tabular-nums text-text-muted">{r.resolved}</td>
               </tr>
@@ -251,6 +258,78 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
         </div>
       )}
     </main>
+  );
+}
+
+/** Hot-streak chip — flame glyph + win count. Gold is principled on the
+ *  leaderboard (earned standing). */
+function HotChip({ streak, t }: { streak: number; t: Dict }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-pill border border-gold-700/50 bg-gold-500/10 px-2 py-0.5 font-mono text-[10px] font-bold text-gold-300">
+      <I.hot s={11} />
+      {streak} {streak > 1 ? t.leaderboard.winsLabel : t.leaderboard.winLabel}
+    </span>
+  );
+}
+
+/** A10 top-3 podium. Order [#2, #1, #3] so #1 sits center-raised; gilt ring +
+ *  crown on #1, muted-ink rings on #2/#3. Avatars rise in staggered (kp-rise). */
+function Podium({ top, t }: { top: Row[]; t: Dict }) {
+  const slots: { r: Row; rank: 1 | 2 | 3 }[] = [
+    { r: top[1], rank: 2 },
+    { r: top[0], rank: 1 },
+    { r: top[2], rank: 3 },
+  ];
+  return (
+    <section className="rounded-xl glass-panel px-4 pt-6 pb-4">
+      <div className="grid grid-cols-3 items-end gap-2 sm:gap-4">
+        {slots.map(({ r, rank }, i) => {
+          const first = rank === 1;
+          const ring = first ? "var(--gold-400)" : "var(--text-muted)";
+          return (
+            <div
+              key={r.userId}
+              className={`kp-rise flex min-w-0 flex-col items-center text-center ${first ? "-translate-y-3" : ""}`}
+              style={{ animationDelay: `${i * 60}ms` }}
+            >
+              {first ? (
+                <span className="mb-1 text-gold-300 podium-crown" aria-hidden><I.crown s={22} /></span>
+              ) : (
+                <span className="mb-1 block h-[22px]" aria-hidden />
+              )}
+              <div
+                className="relative rounded-full"
+                style={{ padding: 3, background: ring, boxShadow: first ? "0 0 16px color-mix(in oklab, var(--gold-400) 45%, transparent)" : "none" }}
+              >
+                <Avatar initials={r.handle.slice(0, 2)} size={first ? "xl" : "lg"} seed={r.userId} />
+                <span
+                  className="absolute -bottom-1 -right-1 grid place-items-center rounded-full font-mono text-[10px] font-bold"
+                  style={{
+                    width: 18, height: 18,
+                    background: first ? "var(--gold-400)" : "var(--bg-overlay)",
+                    color: first ? "var(--gold-950)" : "var(--text-muted)",
+                    border: "1px solid var(--border-strong)",
+                  }}
+                >
+                  {rank}
+                </span>
+              </div>
+              <div className="mt-2 flex max-w-full items-center gap-1.5">
+                <span className="truncate font-medium text-text">@{r.handle}</span>
+                <TierBadge tier={r.tier} t={t} />
+              </div>
+              <span className={`mt-0.5 font-mono text-[13px] font-bold tabular-nums ${r.roi >= 0 ? "text-yes-300" : "text-no-300"}`}>
+                {r.roi >= 0 ? "+" : ""}{r.roi.toFixed(1)}%
+              </span>
+              {r.streak > 0 && <span className="mt-1"><HotChip streak={r.streak} t={t} /></span>}
+              <span className="mt-1 font-mono text-[10px] text-text-subtle">
+                {r.resolved} {t.leaderboard.tableResolved.toLowerCase()}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
