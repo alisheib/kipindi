@@ -35,7 +35,13 @@ If any lens raises a concern, resolve it or record it — don't ship past it sil
    **port their behavior, don't reinterpret.**
 3. Skim the auto-loaded `ui-kit-rollout` memory — it has the resume point + per-item recon and gotchas.
 
-## Done so far — **PART A (A1–A10) + PART B (B1–B8) COMPLETE** (all committed + pushed to `main`, Railway auto-deploys; each verified with screenshots + 158/158 ui-regression)
+## Done so far — **PART A (A1–A10) + PART B (B1–B12) COMPLETE** (all committed + pushed to `main`, Railway auto-deploys; each verified with screenshots + 158/158 ui-regression)
+
+**PART B tail (2026-07-09) — closes out PART B:**
+- **B9** `0049213` — `landmark` glyph optical redraw: old apex-roof + separate entablature line merged into a blur at the 12–14px it renders at (category chips + market-detail watermark); redrawn to the kit's canonical geometry (shared with `bank`) — one closed pediment + gap-before-columns. (percent/activity + 12 controlled-poll glyphs were already done in F0.)
+- **B10** `5fc3784` (code) / ⊘ bitmap — the two orphan hero components (`hero-constellation.tsx` 655L + `hero-slideshow.tsx` 220L w/ its ~20-slide array) were **already deleted** in `5fc3784`; verified no lingering `components/landing` refs, tsc clean, dir gone. Home hero is a single inline `hero-bg.webp` in `page.tsx`. Only the ⊘ bitmap replacement (F1 shot → new TZ hero) remains, sourced externally by Ali.
+- **B11** `0b0ddc6` — BrandTopo swept to 0.09 everywhere (`route-error` 0.06→0.09 + component default 0.07→0.09; `live`/`auth-shell` were already 0.09). PageHero is a FiftyMark-watermark surface, not BrandTopo → out of scope.
+
 
 **PART B (2026-07-09):**
 - **B1** `c2f305d` — ConvictionDial: grab-pip + `--brand-400` focus ring + one-time coach hint, RG magnetic detents (1×/2×/5×/10×) + 50× single-drag gate, detent-ladder keyboard, side-aware aria-valuetext, localized poles, reduced-motion needle-jump.
@@ -66,19 +72,16 @@ If any lens raises a concern, resolve it or record it — don't ship past it sil
 - **A9** `c592bc7` — invite share-card + QR (`/profile/invite`) and wallet 30-day balance spark (`/wallet`).
 - **A10** `15f600e` — leaderboard top-3 podium (gilt ring + crown on #1) + hot-flame streak chips.
 
-## RESUME HERE → first unchecked row = **B10 · delete orphan hero components**
-Per `50pick-refinement-spec.md` B10:
-- **B10** — the hero background webp is `⊘ bitmap` (sourced externally by Ali), but the **component deletion is
-  in-code and doable now**: find + delete the 2 orphan hero components + ~20 orphan slide references that the
-  kit superseded (grep for the old hero/slideshow imports; confirm they're unused via tsc). Update the F1 hero
-  shot reference. Keep the change surgical — delete superseded code + dead imports, run tsc.
-- Then **B11** (BrandTopo 0.05→0.09 everywhere — a global opacity bump across the BrandTopo call sites;
-  /live already at 0.09 from B5, auth-shell at 0.09; sweep the rest — route-error 0.06, and any others).
-- **B9** `~` — the `landmark` glyph optical redraw is still pending (percent/activity redraws + 12
-  controlled-poll glyphs already done in F0). B2/B12 done/no-op.
-- After PART B → **PART C** (per-page C1–C2m — note C1e now just needs to mount a `PageHero glow=aqua` on /live
-  using the B5 variant; C1b/C1d/C2h consume the B3 kyc/fairness/rg empty-state illustrations) →
-  **admin reporting** (ADM1–4).
+## RESUME HERE → first unchecked row = **PART C (C1a)** — per-page pass begins
+PART A + PART B are done. PART C is the per-page phase: **C1a–C2m** in the tracker (13 items). Work them in
+tracker order, one at a time, full per-item loop each.
+- **C1a** `/markets/[id]` hero — category watermark (A7 already there) + gilt hairline; open/closing/waiting
+  (`hourglassOff`)/resolved states.
+- **Two teed-up quick wins:** **C1e** just needs to mount `<PageHero glow="aqua">` on `/live` (the B5 variant is
+  built) — but note this converts /live's deliberately-slim header into a full hero, so treat it as a real
+  per-page call (check the dense card wall at 4 widths, not a one-liner). **C1b/C1d/C2h** consume the **B3
+  `kyc`/`fairness`/`rg` EmptyState illustrations** — already drawn, don't redraw them.
+- After PART C → **admin reporting** (ADM1–4, per `50pick-admin-reporting-spec.md`).
 
 ## Still-open carry-overs (recorded, pick up anytime)
 - **A8-breadth (gold half DONE in B8 `3597111`).** Remaining = **opportunistic primitive adoption**: wire
@@ -143,6 +146,7 @@ SESSION_SECRET=<32+> OTP_PEPPER=<16+> NODE_ENV=development DISABLE_ADMIN_TOTP=tr
   error (36 false-fails last session; 158/158 again after a restart).
 
 Start by: (1) read the tracker (`docs/ui-rollout-tracker.md`) + the two `spec/` files + `docs/navigation-ia-review.md`;
-(2) implement **B10** (the first unchecked row — delete the orphan hero components); (3) run the per-item loop
+(2) implement **C1a** (the first unchecked row — `/markets/[id]` hero states); (3) run the per-item loop
 (tsc + money/i18n + live-drive + ui-regression 158/158); (4) update tracker + `ui-kit-rollout` memory + commit/push;
-(5) continue to the next unchecked row (B11, then PART C). Hold the five lenses on every item.
+(5) continue to the next unchecked PART C row. Hold the five lenses on every item. **C1a touches a money leaf
+(`/markets/[id]` → the bet flow) — do not regress deposit/withdraw/bet/resolve/payout.**
