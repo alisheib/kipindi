@@ -96,7 +96,9 @@ export function KycDocUploader({
           <span className={`mx-auto mb-1.5 h-8 w-8 inline-flex items-center justify-center rounded-full ${
             done ? "bg-yes-500 text-yes-950" : "bg-bg-overlay text-text-subtle border border-border"
           }`}>
-            {working ? <Spinner size={14} /> : done ? <I.check s={14} /> : <I.camera s={14} />}
+            {/* C1b — per-slot silhouette line-art: ID card for NIDA front/back,
+                person for the selfie slot. */}
+            {working ? <Spinner size={14} /> : done ? <I.check s={14} /> : (docType === "SELFIE" ? <I.user s={14} /> : <I.idCard s={14} />)}
           </span>
         )}
         <span className="block font-display text-[12px] font-semibold text-text">{label}</span>

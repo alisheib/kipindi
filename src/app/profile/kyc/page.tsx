@@ -169,11 +169,17 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         </section>
       )}
 
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        <Step n={1} title={t.profile.nida}      detail={t.profile.nationalId}  done={nidaDone} active={!nidaDone} glyph="user" />
-        <Step n={2} title={t.profile.documents} detail={t.profile.selfieDocs} done={docsCount >= 3} active={nidaDone && docsCount < 3} glyph="camera" />
-        <Step n={3} title={t.profile.review}    detail={t.profile.complianceApproval}  done={kyc?.status === "APPROVED"} active={submitted && kyc?.status !== "APPROVED"} glyph="shieldcheck" />
-      </section>
+      {/* C1b — 4-node verification rail (ID → selfie → review → verified) with a
+          gilt fill up to the current node; done nodes go green (page convention),
+          the live node carries the gilt ring. */}
+      <ProgressRail
+        nodes={[
+          { label: t.profile.nida,       glyph: "idCard",      done: nidaDone },
+          { label: t.profile.selfie,     glyph: "user",        done: docsCount >= 3 },
+          { label: t.profile.review,     glyph: "shieldcheck", done: kyc?.status === "APPROVED" },
+          { label: t.profile.idVerified, glyph: "check",       done: kyc?.status === "APPROVED" },
+        ]}
+      />
 
       {!nidaDone && (
         <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-4">
@@ -360,28 +366,51 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
   );
 }
 
-function Step({ n, title, detail, done, active, glyph }: { n: number; title: string; detail: string; done?: boolean; active?: boolean; glyph?: keyof typeof I }) {
-  const cls =
-    done   ? "border-yes-700 bg-yes-500/10"
-    : active ? "border-gold-700 bg-gold-500/10"
-    :          "border-border bg-bg-overlay";
-  const iconCls =
-    done   ? "bg-yes-500 text-yes-950"
-    : active ? "bg-gold-500 text-gold-fg"
-    :          "bg-bg-overlay text-text-subtle border border-border";
-  const Glyph = glyph ? I[glyph] : null;
+// C1b verification rail — 4 nodes (ID → selfie → review → verified) on a single
+// connected track. The gilt "fill" runs the connectors up to the current node
+// (first not-yet-done step); done nodes read green (the page's done colour), the
+// current node carries the gilt ring, future nodes are muted line-art. Purely
+// presentational — reflects server-derived `done` flags, no motion.
+function ProgressRail({ nodes }: { nodes: { label: string; glyph: keyof typeof I; done: boolean }[] }) {
+  const firstUndone = nodes.findIndex((n) => !n.done);
+  // All done → the last node is the "current"; else the first not-done node.
+  const activeIndex = firstUndone === -1 ? nodes.length - 1 : firstUndone;
   return (
-    <div className={`rounded-xl border p-3.5 ${cls}`}>
-      <div className="flex items-center gap-2.5">
-        <span className={`h-7 w-7 inline-flex items-center justify-center rounded-full font-mono text-[10px] font-bold shrink-0 ${iconCls}`}>
-          {done ? <I.check s={14} /> : Glyph ? <Glyph s={14} /> : n}
-        </span>
-        <div className="min-w-0">
-          <span className="font-display text-[13px] font-semibold text-text leading-tight">{title}</span>
-          <p className="text-[10.5px] text-text-muted leading-snug">{detail}</p>
-        </div>
-      </div>
-    </div>
+    <section aria-label="Verification progress" className="flex items-start px-1 pt-1">
+      {nodes.map((node, i) => {
+        const isActive = i === activeIndex && !node.done;
+        const Glyph = I[node.glyph];
+        const circleCls = node.done
+          ? "bg-yes-500 text-yes-950 border-transparent"
+          : isActive
+            ? "border-2 border-gold-500 bg-gold-500/10 text-gold-300"
+            : "border border-border bg-bg-overlay text-text-subtle";
+        const labelCls = node.done
+          ? "text-text"
+          : isActive
+            ? "text-gold-300"
+            : "text-text-subtle";
+        return (
+          <div key={i} className="contents">
+            <div className="flex w-[64px] shrink-0 flex-col items-center">
+              <span className={`inline-flex h-9 w-9 items-center justify-center rounded-full ${circleCls}`}>
+                {node.done ? <I.check s={16} /> : <Glyph s={16} />}
+              </span>
+              <span className={`mt-2 text-center font-mono text-[9.5px] font-semibold uppercase leading-tight tracking-[0.08em] ${labelCls}`}>
+                {node.label}
+              </span>
+            </div>
+            {i < nodes.length - 1 && (
+              <div
+                aria-hidden
+                className="mt-[17px] h-[2px] flex-1 rounded-full"
+                style={{ background: i < activeIndex ? "color-mix(in oklab, var(--gold-500) 75%, transparent)" : "var(--border)" }}
+              />
+            )}
+          </div>
+        );
+      })}
+    </section>
   );
 }
 
