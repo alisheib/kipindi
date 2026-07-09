@@ -8,11 +8,14 @@
  * Registered from src/lib/register-sw.ts (client-side, lazy).
  */
 
-const CACHE_NAME = "50pick-v1";
-const OFFLINE_URL = "/";
+const CACHE_NAME = "50pick-v2";
+// C2j — dedicated branded offline route (precached below) instead of falling
+// back to the data-heavy home page.
+const OFFLINE_URL = "/offline";
 
 // Static assets worth caching for instant repeat loads
 const PRECACHE = [
+  "/offline",
   "/favicon.svg",
   "/favicon.ico",
   "/brand/mark-color.svg",
