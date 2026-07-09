@@ -104,7 +104,8 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
           />
         </div>
 
-        <SubmitButton label={t.common.confirm} pendingLabel={t.common.loading} />
+        {/* Deposit is money-in → gold is the sanctioned variant (micro-spec §1). */}
+        <SubmitButton label={t.common.confirm} pendingLabel={t.common.loading} variant="gold" />
       </form>
 
       {/* Trust strip — the regulator seal is a licensed asset (⊘ pending, Ali);

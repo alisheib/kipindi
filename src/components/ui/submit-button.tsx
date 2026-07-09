@@ -10,6 +10,11 @@
  *
  * Also disables itself while pending so a double-click cannot fire two
  * register / login / withdraw / deposit submissions.
+ *
+ * Gold-discipline (micro-spec §1): gold is money-in / earned-money ONLY.
+ * The default is therefore **primary** (royal) — auth, KYC, RG, source-of-funds
+ * and other navigation-grade submits are royal. Only genuine money-in surfaces
+ * (deposit) opt into `variant="gold"`.
  */
 
 import { useFormStatus } from "react-dom";
@@ -27,7 +32,7 @@ type Props = {
 export function SubmitButton({
   label,
   pendingLabel,
-  variant = "gold",
+  variant = "primary",
   size = "lg",
   className = "",
 }: Props) {
