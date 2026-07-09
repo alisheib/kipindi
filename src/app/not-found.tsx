@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cookies, headers } from "next/headers";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
+import { BrandTopo } from "@/components/brand-topo";
 import { getServerT } from "@/lib/i18n-server";
 
 /* ── Inline i18n dict for this server component (cannot use useT) ─────── */
@@ -82,56 +83,67 @@ export default async function NotFound() {
   const { t } = await getServerT();
 
   return (
-    <main className="mx-auto flex min-h-[80svh] max-w-[640px] flex-col items-center justify-center px-5 py-10 text-center">
-      <div className="mb-5">
+    // Same kit frame as the shared RouteError (A3): FiftyMark 64 over a faint
+    // BrandTopo, a glyph badge, neutral chrome. A 404 is "not found", not an
+    // error — so the badge is royal/info (not the RouteError rose alert tint),
+    // and there's no gold here (404 isn't earned-money).
+    <main className="relative mx-auto flex min-h-[80svh] max-w-[640px] flex-col items-center justify-center overflow-hidden px-5 py-10 text-center">
+      <BrandTopo id="notfound-topo" opacity={0.09} />
+      <div className="relative flex flex-col items-center">
         <FiftyMark size={64} />
-      </div>
-      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.20em] text-gold-300">
-        {d.notFoundCode} · {d.notFound}
-      </p>
-      <h1 className="mt-2 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-text">
-        {d.notFoundBody}
-      </h1>
-      <p className="mt-3 max-w-[420px] text-[13px] leading-relaxed text-text-subtle">
-        {d.notFoundHint}
-      </p>
-      <nav aria-label={t.error.recoveryLinks} className="mt-6 grid w-full max-w-[420px] grid-cols-1 gap-2.5 sm:grid-cols-3">
-        <Link
-          href="/"
-          className="group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-brand-400 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]"
+        <div
+          className="mb-3 mt-5 inline-flex h-11 w-11 items-center justify-center rounded-full border border-brand-600 bg-brand-500/10 text-brand-300"
+          style={{ boxShadow: "0 0 0 7px color-mix(in oklab, var(--brand-500) 8%, transparent)" }}
         >
-          <span className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-bg-inset text-text-subtle group-hover:text-gold-300 transition-colors">
-            <I.arrowRight s={13} style={{ transform: "rotate(180deg)" }} />
-          </span>
-          <p className="font-display text-[13px] font-semibold text-text">{d.home}</p>
-        </Link>
+          <I.search s={19} />
+        </div>
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.20em] text-text-subtle">
+          {d.notFoundCode} · {d.notFound}
+        </p>
+        <h1 className="mt-2 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-text">
+          {d.notFoundBody}
+        </h1>
+        <p className="mt-3 max-w-[420px] text-[13px] leading-relaxed text-text-subtle">
+          {d.notFoundHint}
+        </p>
+        <nav aria-label={t.error.recoveryLinks} className="mt-6 grid w-full max-w-[420px] grid-cols-1 gap-2.5 sm:grid-cols-3">
+          <Link
+            href="/"
+            className="group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-brand-400 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]"
+          >
+            <span className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-bg-inset text-text-subtle group-hover:text-brand-300 transition-colors">
+              <I.arrowRight s={13} style={{ transform: "rotate(180deg)" }} />
+            </span>
+            <p className="font-display text-[13px] font-semibold text-text">{d.home}</p>
+          </Link>
+          <Link
+            href="/markets"
+            className="group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-brand-400 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]"
+          >
+            <span className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-bg-inset text-text-subtle group-hover:text-brand-300 transition-colors">
+              <I.chart s={13} />
+            </span>
+            <p className="font-display text-[13px] font-semibold text-text">{d.markets}</p>
+          </Link>
+          <Link
+            href="/help"
+            className="group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-brand-400 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]"
+          >
+            <span className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-bg-inset text-text-subtle group-hover:text-brand-300 transition-colors">
+              <I.info s={13} />
+            </span>
+            <p className="font-display text-[13px] font-semibold text-text">{d.help}</p>
+          </Link>
+        </nav>
         <Link
           href="/markets"
-          className="group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-brand-400 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]"
+          className="mt-6 inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200"
         >
-          <span className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-bg-inset text-text-subtle group-hover:text-gold-300 transition-colors">
-            <I.chart s={13} />
-          </span>
-          <p className="font-display text-[13px] font-semibold text-text">{d.markets}</p>
+          <I.globe s={12} />
+          {d.browseOpenMarkets}
+          <I.arrowRight s={12} />
         </Link>
-        <Link
-          href="/help"
-          className="group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-brand-400 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]"
-        >
-          <span className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-bg-inset text-text-subtle group-hover:text-gold-300 transition-colors">
-            <I.info s={13} />
-          </span>
-          <p className="font-display text-[13px] font-semibold text-text">{d.help}</p>
-        </Link>
-      </nav>
-      <Link
-        href="/markets"
-        className="mt-6 inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200"
-      >
-        <I.globe s={12} />
-        {d.browseOpenMarkets}
-        <I.arrowRight s={12} />
-      </Link>
+      </div>
     </main>
   );
 }

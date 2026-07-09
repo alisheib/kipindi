@@ -1565,6 +1565,7 @@ html.kp-reduce-motion *::after {
 [data-motion="reduced"] .pchart-dot-halo,
 [data-motion="reduced"] .notif-badge-pulse,
 [data-motion="reduced"] .csrf-rest-ring,
+[data-motion="reduced"] .skeleton,
 [data-motion="reduced"] .settling-bar::before { animation: none !important; }
 /* live status-dot — KEPT at reduced, opacity-only (no box-shadow GPU cost) */
 @keyframes dot-pulse-soft { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }

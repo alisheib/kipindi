@@ -22,6 +22,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { motionReduced } from "@/lib/haptics";
 
 export function NavProgress() {
   const pathname = usePathname();
@@ -61,14 +62,21 @@ export function NavProgress() {
     setCompleting(false);
     startRef.current = performance.now();
     if (barRef.current) barRef.current.style.transform = "scaleX(0)";
-    const tick = () => {
-      const elapsed = performance.now() - startRef.current;
-      // Fast start, slow crawl — never reaches 100% (waits for route to land)
-      const pct = Math.min(0.85, 1 - Math.exp(-elapsed / 3000));
-      if (barRef.current) barRef.current.style.transform = `scaleX(${pct})`;
-      if (pct < 0.85) rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
+    // Reduced-motion: skip the rAF crawl (this bar drives inline transforms, so
+    // the CSS prefers-reduced-motion clamp can't reach it) — show a static
+    // "in progress" bar instead. Still instant feedback, no animation.
+    if (motionReduced()) {
+      if (barRef.current) barRef.current.style.transform = "scaleX(0.85)";
+    } else {
+      const tick = () => {
+        const elapsed = performance.now() - startRef.current;
+        // Fast start, slow crawl — never reaches 100% (waits for route to land)
+        const pct = Math.min(0.85, 1 - Math.exp(-elapsed / 3000));
+        if (barRef.current) barRef.current.style.transform = `scaleX(${pct})`;
+        if (pct < 0.85) rafRef.current = requestAnimationFrame(tick);
+      };
+      rafRef.current = requestAnimationFrame(tick);
+    }
     // Safety: auto-complete after 8s so the bar never gets stuck permanently
     // (e.g. same-page link click, cancelled navigation, network timeout).
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
