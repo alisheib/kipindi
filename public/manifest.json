@@ -32,20 +32,43 @@
       "purpose": "maskable"
     }
   ],
+  "shortcuts": [
+    {
+      "name": "Markets",
+      "short_name": "Markets",
+      "description": "Browse live prediction markets",
+      "url": "/markets",
+      "icons": [{ "src": "/icons/shortcut-markets.png", "type": "image/png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Wallet",
+      "short_name": "Wallet",
+      "description": "View your balance and activity",
+      "url": "/wallet",
+      "icons": [{ "src": "/icons/shortcut-wallet.png", "type": "image/png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Deposit",
+      "short_name": "Deposit",
+      "description": "Add funds to your wallet",
+      "url": "/wallet/deposit",
+      "icons": [{ "src": "/icons/shortcut-deposit.png", "type": "image/png", "sizes": "96x96" }]
+    }
+  ],
   "screenshots": [
+    {
+      "src": "/screenshots/markets-narrow.png",
+      "type": "image/png",
+      "sizes": "390x844",
+      "form_factor": "narrow",
+      "label": "50pick — Live prediction markets on your phone"
+    },
     {
       "src": "/og/og-1200x630.png",
       "type": "image/png",
       "sizes": "1200x630",
       "form_factor": "wide",
-      "label": "50pick — Markets overview"
-    },
-    {
-      "src": "/og/twitter-1200x600.png",
-      "type": "image/png",
-      "sizes": "1200x600",
-      "form_factor": "narrow",
-      "label": "50pick — Predict events"
+      "label": "50pick — Predict events, not chance"
     }
   ]
 }
