@@ -138,6 +138,9 @@ export function ResolveControls({ marketId, stage, stagedOutcome }: { marketId: 
         }}
       />
 
+      {/* Officer settlement is operational, not an earned-money moment — the
+          gold burst is the PLAYER's (ADM2 §2: "the gold burst is the player's
+          moment, not the officer's"). So the result strip is royal, not gold. */}
       {resultData && (
         <OperationResultModal
           open={resultOpen}
@@ -148,7 +151,7 @@ export function ResolveControls({ marketId, stage, stagedOutcome }: { marketId: 
           details={resultData.detail ? [{ label: "Detail", value: resultData.detail }] : undefined}
           primaryLabel="Done · Sawa"
           onClose={() => setResultOpen(false)}
-          stripTone="gold"
+          stripTone="brand"
         />
       )}
     </>
