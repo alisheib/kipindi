@@ -4,6 +4,7 @@ import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
+import { BrandTopo } from "@/components/brand-topo";
 import { Chip } from "@/components/ui/chip";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
@@ -175,8 +176,11 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
         </div>
       </section>
 
-      {/* CLOSE ACCOUNT — GDPR Art 17 */}
-      <section className="rounded-xl border border-no-700/60 bg-no-500/[0.06] p-5 space-y-3">
+      {/* CLOSE ACCOUNT — GDPR Art 17. C2g: warning-topo backdrop (BrandTopo over
+          the claret danger panel) so the one-way zone reads as weightier. */}
+      <section className="relative isolate overflow-hidden rounded-xl border border-no-700/60 bg-no-500/[0.06] p-5">
+        <BrandTopo opacity={0.08} />
+        <div className="relative z-10 space-y-3">
         <div className="flex items-center gap-2">
           <I.alertOctagon s={15} className="text-no-300" />
           <h2 className="font-display text-[15px] font-semibold text-text">
@@ -194,6 +198,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
           {t.common.help}? {t.common.email} <span className="text-text-muted">{SUPPORT_EMAIL()}</span>{" "}
           {t.common.or} <span className="text-text-muted">{SUPPORT_PHONE()}</span>.
         </p>
+        </div>
       </section>
     </main>
   );

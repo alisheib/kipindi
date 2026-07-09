@@ -21,13 +21,13 @@ export const dynamic = "force-dynamic";
 export default async function SourceOfFundsPage({ searchParams }: { searchParams?: Promise<{ error?: string; saved?: string; src?: string; occ?: string; band?: string; emp?: string; other?: string }> }) {
   const { t } = await getServerT();
 
-  const SOURCES = [
-    { id: "salary",       label: t.profile.sofSalary },
-    { id: "business",     label: t.profile.sofBusiness },
-    { id: "savings",      label: t.profile.sofSavings },
-    { id: "investments",  label: t.profile.sofInvestments },
-    { id: "inheritance",  label: t.profile.sofInheritance },
-    { id: "other",        label: t.profile.sofOther },
+  const SOURCES: { id: string; label: string; glyph: keyof typeof I }[] = [
+    { id: "salary",       label: t.profile.sofSalary,      glyph: "sofSalary" },
+    { id: "business",     label: t.profile.sofBusiness,    glyph: "sofBusiness" },
+    { id: "savings",      label: t.profile.sofSavings,     glyph: "sofSavings" },
+    { id: "investments",  label: t.profile.sofInvestments, glyph: "sofInvestment" },
+    { id: "inheritance",  label: t.profile.sofInheritance, glyph: "sofGift" },
+    { id: "other",        label: t.profile.sofOther,       glyph: "fileText" },
   ];
 
   const BANDS = [
@@ -129,22 +129,27 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
               {t.profile.sourceOfFunds}
             </FieldLegend>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {SOURCES.map((s, i) => (
-                <label
-                  key={s.id}
-                  className="relative flex flex-col items-center gap-1 px-2 py-3 rounded-md border border-border bg-bg-overlay hover:border-brand-400 cursor-pointer transition-colors has-[:checked]:border-gold-500 has-[:checked]:bg-gold-500/10"
-                >
-                  <input
-                    type="radio"
-                    name="declaredSource"
-                    value={s.id}
-                    required
-                    defaultChecked={prevSource ? prevSource === s.id : i === 0}
-                    className="sr-only peer"
-                  />
-                  <span className="font-display text-[12.5px] font-bold text-text">{s.label}</span>
-                </label>
-              ))}
+              {SOURCES.map((s, i) => {
+                const Glyph = I[s.glyph];
+                return (
+                  <label
+                    key={s.id}
+                    className="group relative flex flex-col items-center gap-1.5 px-2 py-3 rounded-md border border-border bg-bg-overlay hover:border-brand-400 cursor-pointer transition-colors has-[:checked]:border-brand-500 has-[:checked]:bg-brand-500/10"
+                  >
+                    <input
+                      type="radio"
+                      name="declaredSource"
+                      value={s.id}
+                      required
+                      defaultChecked={prevSource ? prevSource === s.id : i === 0}
+                      className="sr-only peer"
+                    />
+                    {/* C2g — per-source glyph; SoF is compliance → royal, never gold. */}
+                    <Glyph s={20} className="text-text-subtle transition-colors peer-checked:text-brand-300" />
+                    <span className="font-display text-[12.5px] font-bold text-text text-center leading-tight">{s.label}</span>
+                  </label>
+                );
+              })}
             </div>
           </fieldset>
 
@@ -175,7 +180,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
               {BANDS.map((b, i) => (
                 <label
                   key={b.id}
-                  className="relative flex items-center justify-center gap-1 px-2 py-3 rounded-md border border-border bg-bg-overlay hover:border-brand-400 cursor-pointer transition-colors has-[:checked]:border-gold-500 has-[:checked]:bg-gold-500/10"
+                  className="relative flex items-center justify-center gap-1 px-2 py-3 rounded-md border border-border bg-bg-overlay hover:border-brand-400 cursor-pointer transition-colors has-[:checked]:border-brand-500 has-[:checked]:bg-brand-500/10"
                 >
                   <input
                     type="radio"
@@ -205,11 +210,15 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
             />
           </div>
 
-          <div className="rounded-md border border-warning-border bg-warning-bg/30 p-3.5 space-y-1">
-            <p className="font-display text-[12.5px] font-semibold text-text">{t.profile.bySubmitting}</p>
-            <p className="text-[12px] text-text-muted leading-snug">
-              {t.profile.sofDisclaimer}
-            </p>
+          {/* C2g — declaration with signature line-art. */}
+          <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg/30 p-3.5">
+            <I.fileSignature s={18} className="shrink-0 mt-0.5 text-warning-fg" />
+            <div className="space-y-1">
+              <p className="font-display text-[12.5px] font-semibold text-text">{t.profile.bySubmitting}</p>
+              <p className="text-[12px] text-text-muted leading-snug">
+                {t.profile.sofDisclaimer}
+              </p>
+            </div>
           </div>
 
           <SubmitButton label={t.common.confirm} pendingLabel={t.common.loading} />

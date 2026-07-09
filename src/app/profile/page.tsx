@@ -116,7 +116,7 @@ export default async function ProfilePage() {
                   see at a glance whether his ADMIN_BOOTSTRAP_PHONES env wired
                   up correctly on this account. Plain "Player" otherwise. */}
               {user.role !== "PLAYER" && user.role !== "AGENT" ? (
-                <Chip variant="gold" size="lg" className="gap-1.5">
+                <Chip variant="info" size="lg" className="gap-1.5">
                   <I.shieldcheck s={11} />
                   {user.role === "ADMIN" ? t.profile.adminRole
                     : user.role === "COMPLIANCE" ? t.profile.complianceRole
@@ -282,11 +282,11 @@ function Pill({ tone, children }: { tone: "yes" | "no" | "info" | "warning" | "n
 function Step({ n, title, detail, active, done }: { n: number; title: string; detail: string; active?: boolean; done?: boolean }) {
   const cls =
     done   ? "border-yes-700 bg-yes-500/10"
-    : active ? "border-gold-700 bg-gold-500/10"
+    : active ? "border-brand-700 bg-brand-500/10"
     :          "border-border bg-bg-overlay";
   const numCls =
     done   ? "bg-yes-500 text-yes-950"
-    : active ? "bg-gold-500 text-gold-fg"
+    : active ? "bg-brand-500 text-white"
     :          "bg-bg-overlay text-text-subtle border border-border";
   return (
     <div className={`rounded-md border p-3 ${cls}`}>
@@ -312,7 +312,7 @@ function SettingRow({ icon: Icon, title, subtitle, href, accent, badge }: { icon
         <span aria-hidden className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))" }} />
       )}
       <span
-        className={`inline-flex h-10 w-10 items-center justify-center rounded-md shrink-0 transition-colors ${accent ? "text-gold-fg" : "bg-gold-500/10 text-gold-300 group-hover:bg-gold-500/15"}`}
+        className={`inline-flex h-10 w-10 items-center justify-center rounded-md shrink-0 transition-colors ${accent ? "text-gold-fg" : "bg-brand-500/10 text-brand-300 group-hover:bg-brand-500/15"}`}
         style={accent ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))" } : undefined}
       >
         <Icon s={17} />
