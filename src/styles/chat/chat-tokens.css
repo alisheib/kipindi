@@ -29,12 +29,20 @@
   --pearl:          oklch(86% 0.040 268); /* invariant from brief */
   --pearl-soft:     oklch(86% 0.040 268 / 0.18);
   --pearl-strong:   oklch(92% 0.045 268);
+  /* Pearl edge — the player-bubble border + citation/source underlines.
+     Replaces the former gilt edge (gold-discipline: the chat is support,
+     not earned money — so no gilt anywhere; pearl is the emphasis axis). */
+  --pearl-edge:      color-mix(in oklab, var(--pearl) 42%, transparent);
+  --pearl-edge-hover: color-mix(in oklab, var(--pearl) 62%, transparent);
 
-  /* ---------- Gilt — precious. ONLY player-bubble edge + escalate pill */
-  --gilt:           oklch(86% 0.13 82);   /* invariant from brief */
+  /* ---------- Gilt — RETIRED on the chat surface (gold = earned-money only).
+     Kept defined so any stray reference degrades to a valid colour; nothing
+     on the chat surface should use these now (player edge + citations moved
+     to --pearl-edge; the escalate pill is claret). */
+  --gilt:           oklch(86% 0.13 82);
   --gilt-edge:      color-mix(in oklab, var(--gilt) 55%, transparent);
   --gilt-edge-hover: color-mix(in oklab, var(--gilt) 75%, transparent);
-  --gilt-deep:      oklch(60% 0.12 82);   /* escalate-pill border */
+  --gilt-deep:      oklch(60% 0.12 82);
 
   /* ---------- Claret — escalate-to-human (heraldic, serious) ----------
      Distinct from --no-500 / --danger-500. Hue 12 is a deeper, less rosy

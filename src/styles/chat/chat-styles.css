@@ -47,7 +47,7 @@
   position: absolute;
   inset: -3px;
   border-radius: 50%;
-  border: 1.5px solid oklch(72% 0.11 152 / 0.3);
+  border: 1.5px solid oklch(72% 0.11 195 / 0.3);
   animation: cm-bubble-ring 3s ease-in-out infinite;
   pointer-events: none;
 }
@@ -132,7 +132,7 @@
   position: absolute;
   inset: auto 16px 0 16px;
   height: 1px;
-  background: linear-gradient(90deg, transparent 0%, oklch(72% 0.11 152 / 0.25) 50%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, oklch(72% 0.11 195 / 0.25) 50%, transparent 100%);
 }
 .cm-header-titles {
   flex: 1;
@@ -160,23 +160,27 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: oklch(72% 0.11 152);
+  background: oklch(72% 0.11 195);
   box-shadow:
-    0 0 0 0 oklch(72% 0.11 152 / 0.4),
-    0 0 6px 1px oklch(72% 0.11 152 / 0.3);
+    0 0 0 0 oklch(72% 0.11 195 / 0.4),
+    0 0 6px 1px oklch(72% 0.11 195 / 0.3);
   animation: cm-status-pulse 2.4s ease-in-out infinite;
 }
 @keyframes cm-status-pulse {
   0%, 100% {
     box-shadow:
-      0 0 0 0 oklch(72% 0.11 152 / 0.4),
-      0 0 6px 1px oklch(72% 0.11 152 / 0.3);
+      0 0 0 0 oklch(72% 0.11 195 / 0.4),
+      0 0 6px 1px oklch(72% 0.11 195 / 0.3);
   }
   50% {
     box-shadow:
-      0 0 0 4px oklch(72% 0.11 152 / 0),
-      0 0 10px 2px oklch(72% 0.11 152 / 0.5);
+      0 0 0 4px oklch(72% 0.11 195 / 0),
+      0 0 10px 2px oklch(72% 0.11 195 / 0.5);
   }
+}
+/* Reduced-motion: the "live" dot holds steady (no infinite pulse). */
+@media (prefers-reduced-motion: reduce) {
+  .cm-status-dot { animation: none; }
 }
 .cm-close {
   width: 32px;
@@ -313,11 +317,11 @@
   font-weight: 600;
 }
 
-/* Player bubble — right, indigo overlay, GILT EDGE (the only gilt allowed
-   on this surface besides the escalate pill) */
+/* Player bubble — right, indigo overlay, PEARL EDGE (de-golded: the chat is
+   support chrome, so no gilt — pearl is the surface's emphasis axis) */
 .cm-bubble-user {
   background: var(--chat-overlay);
-  border: 1px solid var(--gilt-edge);
+  border: 1px solid var(--pearl-edge);
   border-radius: 14px 14px 4px 14px;
   padding: 10px 14px;
   max-width: 78%;
@@ -325,7 +329,7 @@
   font-size: 14px;
   line-height: 1.5;
   color: var(--chat-text);
-  box-shadow: 0 0 0 1px oklch(86% 0.13 82 / 0.08) inset;
+  box-shadow: 0 0 0 1px oklch(86% 0.040 268 / 0.10) inset;
 }
 .cm-bubble-user .cm-num {
   font-family: var(--font-mono);
@@ -366,9 +370,9 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: oklch(72% 0.11 152);
+  background: oklch(72% 0.11 195);
   animation: cm-typing-pulse 1.4s ease-in-out infinite;
-  box-shadow: 0 0 4px oklch(72% 0.11 152 / 0.3);
+  box-shadow: 0 0 4px oklch(72% 0.11 195 / 0.3);
 }
 .cm-typing span:nth-child(2) { animation-delay: 0.18s; }
 .cm-typing span:nth-child(3) { animation-delay: 0.36s; }
@@ -392,7 +396,7 @@
   font-weight: 600;
   color: var(--pearl);
   text-decoration: none;
-  border-bottom: 1px dotted var(--gilt-edge);
+  border-bottom: 1px dotted var(--pearl-edge);
   padding: 0 3px;
   margin: 0 1px;
   border-radius: 2px;
@@ -400,7 +404,7 @@
   position: relative;
   top: -1px;
 }
-.cm-cite:hover { color: var(--pearl-strong); border-bottom-color: var(--gilt-edge-hover); }
+.cm-cite:hover { color: var(--pearl-strong); border-bottom-color: var(--pearl-edge-hover); }
 .cm-cite::before { content: "["; opacity: 0.6; }
 .cm-cite::after  { content: "]"; opacity: 0.6; }
 
@@ -428,10 +432,10 @@
 }
 .cm-source-row a {
   color: var(--chat-text-muted);
-  border-bottom: 1px solid var(--gilt-edge);
+  border-bottom: 1px solid var(--pearl-edge);
   text-decoration: none;
 }
-.cm-source-row a:hover { color: var(--chat-text); border-bottom-color: var(--gilt-edge-hover); }
+.cm-source-row a:hover { color: var(--chat-text); border-bottom-color: var(--pearl-edge-hover); }
 
 /* ---------- Composer -------------------------------------------------- */
 
@@ -826,10 +830,9 @@
 }
 
 /* ---------- HelpMark halo pulse (variant="halo" fallback) -----------
-   The ship-it default for HelpMark is "gilt" (headphones), which does
-   not use this class. The halo variant is the no-headphones fallback —
-   defined here so it stays reduced-motion safe if marketing ever
-   switches the FAB to that variant. */
+   The ship-it FAB is a pearl speech bubble (de-golded — gold = earned-money
+   only), which does not use this class. The halo variant is an alternate
+   fallback — kept reduced-motion safe if the FAB ever switches to it. */
 .hm-halo-pulse {
   animation: hm-halo-pulse 3s ease-in-out infinite;
   transform-origin: center;

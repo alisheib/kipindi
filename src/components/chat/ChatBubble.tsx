@@ -7,15 +7,10 @@
  * with a 16-px gap (positioning logic lives in ChatRoot so the bubble
  * stays a presentational component).
  *
- * The FAB wears the chat-companion <HelpMark /> — full-color 50pick
- * coin under a gilt support headset + boom mic. Reads as "AI concierge"
- * at 30–34 px without losing the brand mark.
- *
- * Per product-owner direction this is an INTENTIONAL override of the
- * original "no YES/NO emerald + rose on the chat surface" rule for the
- * FAB only. The chat panel internals (header, message bubbles, chips,
- * etc.) still follow the no-YES/NO rule. Track that as a one-place
- * exception, not a precedent.
+ * The FAB wears the chat-companion <HelpMark /> — a pearl speech bubble
+ * on the FAB's royal-indigo disc. Pearl (not gilt): the launcher is
+ * support chrome, and gold-discipline reserves gold for earned-money /
+ * -status only. Reads as "tap to chat" at 30–34 px.
  */
 
 import { HelpMark } from "./HelpMark";
