@@ -90,7 +90,9 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
             <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
               {t.wallet.verifyFirstBody}
             </p>
-            <Link href="/profile/kyc" className="btn btn-gold btn-sm mt-3">
+            {/* Return the user to Withdraw after verifying (IA review R6);
+                primary not gold — verifying ID isn't a money-in action. */}
+            <Link href="/profile/kyc?next=/wallet/withdraw" className="btn btn-primary btn-sm mt-3">
               {t.wallet.continueKyc}
             </Link>
           </div>

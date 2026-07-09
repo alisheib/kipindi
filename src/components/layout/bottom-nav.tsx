@@ -9,13 +9,16 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
   const pathname = usePathname();
   const { t } = useT();
 
+  // IA review R2: for a bettor, Positions (my bets / did I win?) is a more
+  // frequent return than Invite — so Positions takes the 5th tab. Invite stays
+  // one tap away in the avatar directory + the lg "More" menu.
   const items = isAuthed
     ? [
-        { href: "/markets",        glyph: "markets" as const,    label: t.common.markets },
-        { href: "/live",           glyph: "bolt" as const,       label: t.nav.live },
-        { href: "/wallet",         glyph: "wallet" as const,     label: t.nav.wallet },
-        { href: "/profile/invite", glyph: "gift" as const,       label: t.common.invite },
-        { href: "/profile",        glyph: "profile" as const,    label: t.common.profile },
+        { href: "/markets",   glyph: "markets" as const,   label: t.common.markets },
+        { href: "/live",      glyph: "bolt" as const,      label: t.nav.live },
+        { href: "/positions", glyph: "portfolio" as const, label: t.nav.bets },
+        { href: "/wallet",    glyph: "wallet" as const,    label: t.nav.wallet },
+        { href: "/profile",   glyph: "profile" as const,   label: t.common.profile },
       ]
     : [
         { href: "/markets",     glyph: "markets" as const,    label: t.common.markets },
@@ -26,7 +29,7 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
   const isActive = (href: string) => {
     if (href === "/markets") return pathname === "/" || pathname.startsWith("/markets");
     if (href === "/wallet") return pathname.startsWith("/wallet");
-    if (href === "/profile/invite") return pathname === "/profile/invite";
+    if (href === "/positions") return pathname.startsWith("/positions");
     if (href === "/profile") return pathname.startsWith("/profile") && pathname !== "/profile/invite";
     if (href === "/auth/login") return pathname === "/auth/login";
     return pathname === href;
@@ -35,7 +38,7 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
   return (
     <nav
       aria-label={t.nav.primary}
-      className="xl:hidden fixed left-2.5 right-2.5 z-40 rounded-[26px] border border-border-strong"
+      className="lg:hidden fixed left-2.5 right-2.5 z-40 rounded-[26px] border border-border-strong"
       style={{
         bottom: "calc(9px + env(safe-area-inset-bottom))",
         background: "color-mix(in oklab, var(--bg-elevated) 78%, transparent)",

@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { PageHeader } from "@/components/ui/page-header";
-import { BackLink } from "@/components/ui/back-link";
 import { PositionCard } from "@/components/markets/position-card";
 import { PnlSummaryStrip } from "@/components/positions/pnl-summary-strip";
 import { SellButton } from "@/components/markets/sell-button";
@@ -87,7 +86,8 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
       <RefreshPoller intervalMs={20_000} />
-      <BackLink fallbackHref="/markets" label={t.common.markets} />
+      {/* Positions is a primary destination (bottom-nav + top-nav tab), not a
+          leaf — no Back-to-markets link (IA review R3). */}
       <header className="flex items-start justify-between gap-3">
         <PageHeader eyebrow={t.positions.title} title={t.positions.pollsPlayed} />
         {positions.length > 0 && (

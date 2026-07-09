@@ -19,7 +19,7 @@ import { getServerT, type Dict } from "@/lib/i18n-server";
 
 export const metadata = { title: "Verify identity" };
 
-export default async function KycPage({ searchParams }: { searchParams?: Promise<{ welcome?: string; error?: string; nida?: string; submitted?: string; fullName?: string; dob?: string; email?: string }> }) {
+export default async function KycPage({ searchParams }: { searchParams?: Promise<{ welcome?: string; error?: string; nida?: string; submitted?: string; fullName?: string; dob?: string; email?: string; next?: string }> }) {
   const { t } = await getServerT();
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile/kyc");
@@ -32,6 +32,10 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
 
   const sp = (await searchParams) ?? {};
   const isWelcome = sp.welcome === "new";
+  // Safe internal return target (IA review R6) — a gated action (e.g. Withdraw)
+  // sends `?next=/wallet/withdraw`; on approval we offer a "Continue" CTA back
+  // to it. Reject anything that isn't a same-site absolute path (no open redirect).
+  const nextHref = sp.next && /^\/(?!\/)/.test(sp.next) ? sp.next : null;
   const nidaDone = !!kyc?.nidaVerifiedAt;
   const hasEmail = !!user?.email;
   const emailVerified = !!user?.emailVerifiedAt;
@@ -318,6 +322,12 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
           <p className="mt-3 text-[13px] text-text-muted leading-snug max-w-[400px] mx-auto">
             {t.profile.kycApprovedBody}
           </p>
+          {/* Return to the gated action the user came from (IA review R6). */}
+          {nextHref && (
+            <Link href={nextHref as never} className="btn btn-primary btn-md mt-4 inline-flex">
+              {t.common.continue}
+            </Link>
+          )}
         </section>
       )}
       {submitted && kyc?.status !== "APPROVED" && (

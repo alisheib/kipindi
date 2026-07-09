@@ -6,6 +6,7 @@ import { FiftyLockup, FiftyMark } from "@/components/brand";
 import { LanguageToggle } from "@/components/ui/language-toggle";
 import { NotificationsPanel } from "@/components/layout/notifications-panel";
 import { AvatarMenu } from "@/components/layout/avatar-menu";
+import { NavMore } from "@/components/layout/nav-more";
 import { WalletBalancePill } from "@/components/layout/wallet-balance-pill";
 import { CashEye } from "@/components/ui/cash";
 import { I } from "@/components/ui/glyphs";
@@ -29,16 +30,16 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
   const pathname = usePathname();
   const { t } = useT();
 
-  const NAV_ITEMS = user.isAuthed
+  // Core links render inline from `lg`; overflow links fold into the "More"
+  // menu at lg and render inline only at `xl` (IA review R1 — no primary
+  // destination is hidden on tablets/small laptops).
+  const CORE_ITEMS = user.isAuthed
     ? ([
-        { href: "/markets",     label: t.common.markets },
-        { href: "/live",        label: t.nav.live },
-        { href: "/results",     label: t.common.results },
-        { href: "/positions",   label: t.common.history },
-        { href: "/wallet",      label: t.nav.wallet },
-        { href: "/proposals",   label: t.common.propose },
-        { href: "/profile/invite", label: t.common.invite },
-        { href: "/leaderboard", label: t.nav.leaderboard },
+        { href: "/markets",   label: t.common.markets },
+        { href: "/live",      label: t.nav.live },
+        { href: "/results",   label: t.common.results },
+        { href: "/positions", label: t.common.history },
+        { href: "/wallet",    label: t.nav.wallet },
       ] as const)
     : ([
         { href: "/markets",     label: t.common.markets },
@@ -46,6 +47,13 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
         { href: "/results",     label: t.common.results },
         { href: "/leaderboard", label: t.nav.leaderboard },
       ] as const);
+  const MORE_ITEMS = user.isAuthed
+    ? ([
+        { href: "/proposals",      label: t.common.propose },
+        { href: "/profile/invite", label: t.common.invite },
+        { href: "/leaderboard",    label: t.nav.leaderboard },
+      ] as const)
+    : ([] as const);
 
   return (
     <header
@@ -63,36 +71,23 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
           <span className="hidden sm:inline-flex"><FiftyLockup size={22} /></span>
         </Link>
 
-        {/* Nav links — kit: gap 2, marginLeft 10 */}
-        <nav className="ml-2.5 hidden xl:flex items-center gap-0.5" aria-label={t.nav.primary}>
-          {NAV_ITEMS.map((it) => {
-            const active = it.href === "/markets"
-              ? pathname === "/" || pathname.startsWith("/markets")
-              : it.href === "/proposals"
-              ? pathname.startsWith("/proposals")
-              : it.href === "/results"
-              ? pathname.startsWith("/results")
-              : pathname === it.href;
-            return (
-              <Link
-                key={it.href}
-                href={it.href}
-                aria-current={active ? "page" : undefined}
-                className="whitespace-nowrap"
-                style={{
-                  padding: "7px 12px",
-                  borderRadius: "var(--r-sm)",
-                  fontSize: 13.5,
-                  fontWeight: active ? 600 : 500,
-                  color: active ? "var(--text)" : "var(--text-subtle)",
-                  background: active ? "oklch(40% 0.08 264 / 0.4)" : "transparent",
-                  transition: "color 150ms ease-out, background 150ms ease-out, font-weight 0ms",
-                }}
-              >
-                {it.label}
-              </Link>
-            );
-          })}
+        {/* Nav links — primary nav shows from `lg` (IA review R1). Core links
+            are always inline; overflow links render inline only at `xl` and
+            otherwise live in the "More" menu (rendered lg-only). */}
+        <nav className="ml-2.5 hidden lg:flex items-center gap-0.5" aria-label={t.nav.primary}>
+          {CORE_ITEMS.map((it) => (
+            <NavLink key={it.href} it={it} pathname={pathname} />
+          ))}
+          {/* Overflow links inline at xl only */}
+          {MORE_ITEMS.map((it) => (
+            <span key={it.href} className="hidden xl:inline-flex">
+              <NavLink it={it} pathname={pathname} />
+            </span>
+          ))}
+          {/* "More" menu — visible only at lg (xl shows the items inline above) */}
+          <span className="xl:hidden">
+            <NavMore items={MORE_ITEMS} label={t.common.more} />
+          </span>
         </nav>
 
         <div className="flex-1" />
@@ -142,5 +137,33 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
         </div>
       </div>
     </header>
+  );
+}
+
+/** A single primary-nav link with the shared active-state logic. */
+function NavLink({ it, pathname }: { it: { href: string; label: string }; pathname: string }) {
+  const active =
+    it.href === "/markets" ? pathname === "/" || pathname.startsWith("/markets")
+    : it.href === "/proposals" ? pathname.startsWith("/proposals")
+    : it.href === "/results" ? pathname.startsWith("/results")
+    : it.href === "/positions" ? pathname.startsWith("/positions")
+    : pathname === it.href;
+  return (
+    <Link
+      href={it.href as never}
+      aria-current={active ? "page" : undefined}
+      className="whitespace-nowrap"
+      style={{
+        padding: "7px 12px",
+        borderRadius: "var(--r-sm)",
+        fontSize: 13.5,
+        fontWeight: active ? 600 : 500,
+        color: active ? "var(--text)" : "var(--text-subtle)",
+        background: active ? "oklch(40% 0.08 264 / 0.4)" : "transparent",
+        transition: "color 150ms ease-out, background 150ms ease-out, font-weight 0ms",
+      }}
+    >
+      {it.label}
+    </Link>
   );
 }

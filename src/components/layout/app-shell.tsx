@@ -95,7 +95,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <Suspense fallback={null}><NavProgress /></Suspense>
       <TopAppBar user={topUser} />
       <LiveTicker events={getTickerFeed()} />
-      <main id="main-content" className="pb-[calc(88px+env(safe-area-inset-bottom))] xl:pb-0">
+      <main id="main-content" className="pb-[calc(88px+env(safe-area-inset-bottom))] lg:pb-0">
         <RouteTransition>{children}</RouteTransition>
       </main>
       <PublicFooter />
