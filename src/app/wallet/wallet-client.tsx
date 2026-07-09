@@ -18,6 +18,28 @@ const TXNS_PER_PAGE = 12;
 
 const fmt = (n: number, currency = "TZS") => `${currency} ${n.toLocaleString("en-US")}`;
 
+/** Wallet 30-day balance spark (A9) — aqua line + terminal pip (balance is
+ *  state, not earnings → aqua, never gold). Hidden with fewer than 2 points. */
+function BalanceSpark({ series, label }: { series: number[]; label: string }) {
+  if (!series || series.length < 2) return null;
+  const w = 320, h = 46, pad = 4;
+  const max = Math.max(...series);
+  const min = Math.min(...series);
+  const range = Math.max(max - min, 1);
+  const xs = series.map((_, i) => pad + (i / (series.length - 1)) * (w - 2 * pad));
+  const ys = series.map((v) => pad + (h - 2 * pad) - ((v - min) / range) * (h - 2 * pad));
+  const d = xs.map((x, i) => `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${ys[i].toFixed(1)}`).join(" ");
+  return (
+    <div className="rounded-xl glass-panel p-3">
+      <p className="mb-1.5 font-mono text-[9.5px] uppercase tracking-[0.14em] font-bold text-text-subtle">{label}</p>
+      <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="block w-full" style={{ height: 46 }} aria-hidden>
+        <path d={d} fill="none" stroke="var(--aqua-400)" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        <circle cx={xs[xs.length - 1]} cy={ys[ys.length - 1]} r="2.4" fill="var(--aqua-400)" vectorEffect="non-scaling-stroke" />
+      </svg>
+    </div>
+  );
+}
+
 function BalanceCard({
   balance, pending, hold, currency,
 }: { balance: number; pending: number; hold: number; currency: string }) {
@@ -302,6 +324,7 @@ const METHODS: Method[] = [
 export function WalletPageClient({
   balance, pending, hold, currency,
   transactions,
+  balanceSeries = [],
   bonusBalance, bonusActiveCount, bonusWagerRemaining, bonusGrants,
   cashbackPercent = 0,
   cashbackMode = "REQUEST",
@@ -309,6 +332,8 @@ export function WalletPageClient({
 }: {
   balance: number; pending: number; hold: number; currency: string;
   transactions: Transaction[];
+  /** 30-day end-of-day balance points for the A9 spark; <2 hides it. */
+  balanceSeries?: number[];
   bonusBalance: number; bonusActiveCount: number; bonusWagerRemaining: number; bonusGrants: (BonusGrantView & { status?: "ACTIVE" | "QUEUED" })[];
   cashbackPercent?: number;
   cashbackMode?: "REQUEST" | "AUTO";
@@ -390,6 +415,7 @@ export function WalletPageClient({
       {tab === "activity" && (
         transactions.length > 0 ? (
           <section className="space-y-3">
+            <BalanceSpark series={balanceSeries} label={`${t.common.available2} · ${t.common.days30}`} />
             <div className="rounded-xl glass-panel overflow-hidden">
               {pagedTxns.map((tx) => <TxnRow key={tx.id} tx={tx} />)}
               <Pagination

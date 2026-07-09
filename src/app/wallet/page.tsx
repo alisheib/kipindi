@@ -35,6 +35,24 @@ function adaptTxn(t: StoredTxn): Transaction {
   };
 }
 
+/** 30-day end-of-day balance trajectory for the wallet spark (A9). Reconstructs
+ *  each day's closing balance by subtracting the signed txns that landed after
+ *  it from the current balance. Empty when there's no activity → spark hidden. */
+function balance30d(txns: Transaction[], currentBalance: number): number[] {
+  if (txns.length === 0) return [];
+  const DAY = 86_400_000;
+  const now = Date.now();
+  const amounts = txns.map((t) => ({ at: Date.parse(t.createdAt), amt: t.amount })).filter((x) => Number.isFinite(x.at));
+  if (amounts.length === 0) return [];
+  const points: number[] = [];
+  for (let i = 29; i >= 0; i--) {
+    const dayEnd = now - i * DAY;
+    const after = amounts.reduce((sum, x) => (x.at > dayEnd ? sum + x.amt : sum), 0);
+    points.push(Math.round(currentBalance - after));
+  }
+  return points;
+}
+
 export default async function WalletPage({ searchParams }: { searchParams: Promise<{ deposited?: string; withdrawal?: string; status?: string; amount?: string }> }) {
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/wallet");
@@ -79,6 +97,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
         hold={hold}
         currency={currency}
         transactions={txns}
+        balanceSeries={balance30d(txns, balance)}
         bonusBalance={bonus.bonusBalance}
         bonusActiveCount={bonus.activeCount}
         bonusWagerRemaining={bonus.activeWagerRemainingTzs}

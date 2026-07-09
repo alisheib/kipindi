@@ -4,7 +4,8 @@ import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
 import { currentSession } from "@/lib/server/auth-service";
 import { getPlayerReferralSummary } from "@/lib/server/affiliate-service";
-import { FiftyMark } from "@/components/brand";
+import QRCode from "qrcode";
+import { FiftyMark, GiltCorner } from "@/components/brand";
 import { Chip } from "@/components/ui/chip";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -98,6 +99,15 @@ export default async function InvitePage() {
   const ringLabel = s.earnedTzs > 0 ? compact(s.earnedTzs) : "0";
   const shareText = t.profile.shareText;
 
+  // Share-card QR (A9) — royal modules on white for scannability; sanctioned
+  // raw-hex context. Encodes the referral link; graceful if the lib/link fails.
+  let qrDataUrl = "";
+  if (s.link) {
+    try {
+      qrDataUrl = await QRCode.toDataURL(s.link, { margin: 1, width: 240, color: { dark: "#0A0E4A", light: "#FFFFFF" } });
+    } catch { /* graceful — card renders without the QR */ }
+  }
+
   return (
     <div className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
       <BackLink fallbackHref="/profile" label={t.common.profile} />
@@ -171,6 +181,30 @@ export default async function InvitePage() {
           </p>
         </div>
       )}
+
+      {/* A9 share-card — the visual a referrer sends: FiftyMark, headline, the
+          CODE in a GiltCorner frame, QR bottom-right. Shows the code, never a
+          balance. Gold is principled here (the invite pays the referrer). */}
+      <section className="relative overflow-hidden rounded-xl border p-5" style={{ background: "#060A50", borderColor: "var(--gold-700)" }}>
+        <GiltCorner size={38} rotate={0} style={{ position: "absolute", top: 6, left: 6 }} />
+        <GiltCorner size={38} rotate={180} style={{ position: "absolute", bottom: 6, right: 6 }} />
+        <div className="relative flex items-center gap-4">
+          <div className="min-w-0 flex-1">
+            <FiftyMark size={38} />
+            <p className="mt-3 font-display text-[20px] font-bold leading-tight text-text">{t.common.youveBeenInvited}</p>
+            <p className="mt-3 font-mono text-[9.5px] uppercase tracking-[0.16em] font-bold text-gold-300/70">{t.common.invite}</p>
+            <div className="mt-1 inline-block rounded-md border border-gold-700 px-3 py-1.5" style={{ background: "color-mix(in oklab, var(--gold-500) 10%, transparent)" }}>
+              <span className="font-mono text-[22px] font-bold tracking-[0.1em] text-gold-300">{s.code || "—"}</span>
+            </div>
+          </div>
+          {qrDataUrl && (
+            <div className="shrink-0 rounded-lg bg-white p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={qrDataUrl} alt="" aria-hidden width={104} height={104} className="block" />
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* Referral link + share (client) */}
       <div id="referral-share">
