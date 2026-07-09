@@ -18,6 +18,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/ui/glyphs";
+import { RewardBurst } from "@/components/brand/reward-burst";
 import { haptics } from "@/lib/haptics";
 import { useModalLock } from "@/lib/use-modal-lock";
 import { useT } from "@/lib/i18n";
@@ -144,28 +145,11 @@ export function WinCelebrationHost() {
         </button>
 
         <div className="p-6 lg:p-7 text-center">
-          {/* Trophy crest — radial glow BEHIND, centered via grid */}
-          <div className="relative mx-auto mb-4" style={{ width: 72, height: 72 }}>
-            {/* Static radial glow — calm, no spinning */}
-            <div
-              aria-hidden
-              className="absolute inset-[-16px] rounded-full"
-              style={{
-                background: "radial-gradient(circle, oklch(72% 0.14 78 / 0.25) 0%, oklch(72% 0.14 78 / 0.08) 50%, transparent 70%)",
-                animation: "wc-glow 2s ease-out",
-              }}
-            />
-            <div
-              className="relative inline-flex items-center justify-center w-full h-full rounded-full"
-              style={{
-                background: "oklch(40% 0.10 78 / 0.20)",
-                border: "2px solid oklch(58% 0.12 78)",
-                boxShadow: "0 0 0 6px oklch(58% 0.12 78 / 0.18)",
-                animation: "wc-pop 360ms cubic-bezier(.2,1.4,.4,1)",
-              }}
-            >
-              <span className="text-gold-300"><I.trophy s={30} /></span>
-            </div>
+          {/* Shared A5 reward-burst crest — 12 gilt rays + bracketed trophy
+              medallion — unifies the win with proposal-approved and KYC-verified
+              (B7 completes the A5-deferred win pairing; pure SVG, no bitmap). */}
+          <div className="mb-4 flex justify-center">
+            <RewardBurst glyph="trophy" size={72} />
           </div>
 
           {/* Eyebrow */}
@@ -215,13 +199,9 @@ export function WinCelebrationHost() {
       <style>{`
         @keyframes wc-fade { from { opacity: 0; } to { opacity: 1; } }
         @keyframes wc-rise { from { transform: translateY(8px) scale(.96); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
-        @keyframes wc-pop  { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.06); opacity: 1; } 100% { transform: scale(1); } }
-        @keyframes wc-glow { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
         @media (prefers-reduced-motion: reduce) {
           @keyframes wc-fade { from, to { opacity: 1; } }
           @keyframes wc-rise { from, to { opacity: 1; transform: none; } }
-          @keyframes wc-pop  { from, to { opacity: 1; transform: none; } }
-          @keyframes wc-glow { from, to { opacity: 1; transform: none; } }
         }
       `}</style>
     </div>,

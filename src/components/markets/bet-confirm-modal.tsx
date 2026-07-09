@@ -244,7 +244,16 @@ export function BetConfirmModal({
             <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle mb-1">
               {t.common.payout2}
             </p>
-            <p className="text-[12px] leading-relaxed text-text-muted">
+            {/* Pool-share invariant (micro-spec §10.2) — side-aware, mandatory
+                on the medium confirm: the player must see that a win means
+                sharing the pool, not a fixed odds payout. */}
+            <p className="text-[12.5px] font-semibold leading-relaxed text-text">
+              {t.dialog.poolShareIfWins.replace(
+                "{side}",
+                side === "YES" ? t.market.sideYesWord.toUpperCase() : t.market.sideNoWord.toUpperCase(),
+              )}
+            </p>
+            <p className="mt-1 text-[12px] leading-relaxed text-text-muted">
               {t.dialog.payoutCalcBody}
             </p>
           </div>
