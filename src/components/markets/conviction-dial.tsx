@@ -25,6 +25,7 @@ import { HouseLeanWarning } from "./house-lean-warning";
 import { BetConfirmModal } from "./bet-confirm-modal";
 import { OperationResultModal } from "./operation-result-modal";
 import { payoutFor, leanFor, type LeanLevel } from "@/lib/payout";
+import { haptics, motionReduced } from "@/lib/haptics";
 
 type Side = "YES" | "NO" | "NEUTRAL";
 
@@ -36,6 +37,13 @@ function useRollingNumber(target: number, stiffness = 0.22) {
   const rafRef = useRef<number | null>(null);
   useEffect(() => {
     targetRef.current = target;
+    // Reduced-motion: the needle jumps — no critically-damped spring (kit B1).
+    if (motionReduced()) {
+      if (rafRef.current !== null) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+      valueRef.current = target;
+      setValue(target);
+      return;
+    }
     if (rafRef.current !== null) return;
     const tick = () => {
       const v = valueRef.current;
@@ -80,6 +88,32 @@ function squirclePath(r: number) {
 
 const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 const NEUTRAL_BAND = 0.005;
+
+// ─── Detent + RG geometry (kit micro-interactions §7 + refinement B1) ───────
+// The dial reaches 200× in one gesture — an RG concern the audit flags. The
+// mitigations are pure geometry, independent of baseStake, so they live at
+// module scope (stable across renders, no stale-closure risk in the drag path).
+const MAX_MULTIPLIER = 200;
+// Inverse of the ease-in curve mult = 1 + dist²·(max−1) → dist from centre.
+const distForMult = (m: number) => Math.sqrt(Math.max(0, (m - 1) / (MAX_MULTIPLIER - 1)));
+// Soft magnetic detents at 1×/2×/5×/10× — mirrored on the YES (left) and NO
+// (right) halves. `pos` runs 0..1 with 0.5 = neutral; |pos−0.5| = dist/2.
+const DETENT_POSITIONS = [1, 2, 5, 10].flatMap((m) => {
+  const half = distForMult(m) / 2;
+  return half === 0 ? [0.5] : [0.5 - half, 0.5 + half];
+});
+// A single drag cannot cross past 50× — the player must release and start a
+// deliberate second drag (RG hard rule). This is |pos−0.5| at 50×.
+const RG_HALF_DIST = distForMult(50) / 2;
+// Keyboard steps one detent per arrow along this symmetric ladder; the ends
+// (Home/End) are the two track extremes (200× either way).
+const MULT_LADDER = [1, 2, 5, 10, 20, 50, 100, 200];
+const POS_LADDER = [
+  ...MULT_LADDER.slice().reverse().map((m) => 0.5 - distForMult(m) / 2), // YES 200…2, then 1 → 0.5
+  ...MULT_LADDER.slice(1).map((m) => 0.5 + distForMult(m) / 2),          // NO 2…200
+];
+const nearestLadderIndex = (p: number) =>
+  POS_LADDER.reduce((best, lp, i) => (Math.abs(p - lp) < Math.abs(p - POS_LADDER[best]) ? i : best), 0);
 
 type Props = {
   marketId: string;
@@ -126,6 +160,23 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
   const [pos, setPos] = useState(initial);
   const [dragging, setDragging] = useState(false);
   const [hover, setHover] = useState(false);
+  // One-time coach hint ("drag to set stake") — shown until the player first
+  // touches the dial, then dismissed forever (localStorage). Kit B1 affordance.
+  const [showCoach, setShowCoach] = useState(false);
+  useEffect(() => {
+    try { if (!localStorage.getItem("50pick-dial-coached")) setShowCoach(true); } catch { /* private mode */ }
+  }, []);
+  const dismissCoach = useCallback(() => {
+    setShowCoach((v) => {
+      if (v) { try { localStorage.setItem("50pick-dial-coached", "1"); } catch { /* ignore */ } }
+      return false;
+    });
+  }, []);
+  // Drag-gesture RG state: whether THIS gesture may cross 50× (set true on
+  // pointer-down only if it began beyond 50×), and the last detent snapped to
+  // (edge-trigger the haptic so it ticks once per detent, not every frame).
+  const gestureBeyond50Ref = useRef(false);
+  const lastDetentRef = useRef(-1);
   // closedNow flips the moment the wall clock crosses resolutionAt.
   // Tick every 200ms — tight enough to prevent the player interacting
   // with the dial after the market closes (previous 1s interval left a
@@ -433,6 +484,10 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
     : effectiveSide === "YES" ? "oklch(58% 0.16 152)" : "oklch(60% 0.18 22)";
   const sideAccent = ringColor;
   const sideText = effectiveSide === "YES" ? "var(--yes-300)" : effectiveSide === "NO" ? "var(--no-300)" : "var(--text-subtle)";
+  // Localized side word (NDIO / HAPANA / 是 / 否) — uppercased so it reads as a
+  // pole label; used in aria-valuetext and the free-mode pole header (kit B1).
+  const sideWord = effectiveSide === "YES" ? t.market.sideYesWord.toUpperCase()
+    : effectiveSide === "NO" ? t.market.sideNoWord.toUpperCase() : "";
 
   // RAF-throttled pos update — pointermove can fire > 60 fps on
   // high-rate trackpads, and each setState cascades through the
@@ -450,7 +505,22 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
       pendingClientXRef.current = null;
       if (cx === null || !trackRef.current) return;
       const r = trackRef.current.getBoundingClientRect();
-      const next = Math.max(0, Math.min(1, (cx - r.left) / r.width));
+      let next = Math.max(0, Math.min(1, (cx - r.left) / r.width));
+      // Soft magnetic detents (4px window) at 1×/2×/5×/10× — a gentle pull
+      // with a light haptic on entry (kit §7). Edge-triggered via lastDetentRef
+      // so the tick fires once per detent, not on every coalesced frame.
+      const winPos = 4 / Math.max(r.width, 1);
+      let hit = -1;
+      for (let i = 0; i < DETENT_POSITIONS.length; i++) {
+        if (Math.abs(next - DETENT_POSITIONS[i]) < winPos) { next = DETENT_POSITIONS[i]; hit = i; break; }
+      }
+      if (hit !== -1 && hit !== lastDetentRef.current) haptics.select();
+      lastDetentRef.current = hit;
+      // RG hard rule: a single gesture can't cross past 50×. Clamp to the 50×
+      // boundary unless this gesture began beyond it (refining a high stake).
+      if (!gestureBeyond50Ref.current) {
+        next = Math.min(0.5 + RG_HALF_DIST, Math.max(0.5 - RG_HALF_DIST, next));
+      }
       setPos(clampToLock(next));
     });
   }, [clampToLock]);
@@ -512,6 +582,12 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
     // the drag gesture. Must fire before any state updates.
     e.preventDefault();
     setDragging(true);
+    dismissCoach();
+    // Seed the RG gate for this gesture: exempt from the 50× clamp only if it
+    // started beyond 50× (the player is refining an already-high stake). Reset
+    // the detent edge-tracker so the first detent this drag re-ticks.
+    gestureBeyond50Ref.current = Math.abs(pos - 0.5) >= RG_HALF_DIST - 1e-6;
+    lastDetentRef.current = -1;
     // Always exit any in-flight input edit — clicking the dial is
     // unambiguously a "done with both inputs" intent.
     setEditingStake(false);
@@ -538,16 +614,30 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    const step = e.shiftKey ? 0.10 : 0.02;
-    // Any slider-driven movement clears BOTH typed-exact locks —
-    // the player has shifted back to "slide to a vibe" mode, and
-    // the snap-to-100 should re-apply.
-    const move = (next: number) => { clearBothLocks(); setPos(clampToLock(next)); };
-    if (e.key === "ArrowLeft")  { e.preventDefault(); move(Math.max(0, pos - step)); }
-    if (e.key === "ArrowRight") { e.preventDefault(); move(Math.min(1, pos + step)); }
-    if (e.key === "Home")       { e.preventDefault(); move(0); }
-    if (e.key === "End")        { e.preventDefault(); move(1); }
-    if (e.key === " " || e.key === "Enter") { e.preventDefault(); openConfirm(); }
+    // Any slider-driven movement clears BOTH typed-exact locks (the player has
+    // shifted back to "slide to a vibe" mode) and dismisses the coach hint.
+    // Keyboard steps are deliberate/discrete, so the 50× drag-gate doesn't
+    // apply — Home/End reach the extremes directly per kit §7.
+    const move = (next: number) => { clearBothLocks(); dismissCoach(); setPos(clampToLock(next)); };
+    const i = nearestLadderIndex(pos);
+    if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
+      e.preventDefault(); move(POS_LADDER[Math.max(0, i - 1)]);              // one detent → YES
+    } else if (e.key === "ArrowRight" || e.key === "ArrowUp") {
+      e.preventDefault(); move(POS_LADDER[Math.min(POS_LADDER.length - 1, i + 1)]); // one detent → NO
+    } else if (e.key === "PageUp" || e.key === "PageDown") {
+      // ±10× conviction on the current side (neutral defaults to YES/left).
+      e.preventDefault();
+      const curMult = 1 + Math.pow(Math.abs(pos - 0.5) * 2, 2) * (maxMultiplier - 1);
+      const nextMult = Math.max(1, Math.min(maxMultiplier, curMult * (e.key === "PageUp" ? 10 : 0.1)));
+      const half = distForMult(nextMult) / 2;
+      move(pos > 0.5 ? 0.5 + half : 0.5 - half);
+    } else if (e.key === "Home") {
+      e.preventDefault(); move(0);
+    } else if (e.key === "End") {
+      e.preventDefault(); move(1);
+    } else if (e.key === " " || e.key === "Enter") {
+      e.preventDefault(); openConfirm();
+    }
   };
 
   // Use ResizeObserver to keep the SVG width responsive without re-renders
@@ -769,19 +859,22 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
         </div>
       ) : (
         /* Free mode — the kit's "YES · slide to commit · NO" guidance. */
-        <div className="flex items-baseline justify-between mb-3.5 font-mono text-[10px] tracking-[0.16em] uppercase">
+        <div className="flex items-baseline justify-between gap-2 mb-3.5 font-mono text-[10px] tracking-[0.16em] uppercase">
+          {/* Pole labels localize to NDIO / HAPANA / 是 / 否; the box is widened
+              (~24%) via min-width so the longer SW words never crowd the centre
+              guidance — verified at 360px (kit B1 trilingual fit). */}
           <span
-            className="transition-colors duration-200"
+            className="min-w-[3.5rem] text-left transition-colors duration-200"
             style={{ color: effectiveSide === "YES" ? "oklch(75% 0.13 152)" : "var(--text-subtle)", fontWeight: effectiveSide === "YES" ? 700 : 400 }}
           >
-            YES
+            {t.market.sideYesWord.toUpperCase()}
           </span>
-          <span style={{ color: "var(--text-subtle)", letterSpacing: "0.18em" }}>· {t.market.slideToCommit} ·</span>
+          <span className="shrink text-center" style={{ color: "var(--text-subtle)", letterSpacing: "0.18em" }}>· {t.market.slideToCommit} ·</span>
           <span
-            className="transition-colors duration-200"
+            className="min-w-[3.5rem] text-right transition-colors duration-200"
             style={{ color: effectiveSide === "NO" ? "oklch(75% 0.16 22)" : "var(--text-subtle)", fontWeight: effectiveSide === "NO" ? 700 : 400 }}
           >
-            NO
+            {t.market.sideNoWord.toUpperCase()}
           </span>
         </div>
       )}
@@ -794,15 +887,27 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={ariaValue}
-        aria-valuetext={`${effectiveSide === "NEUTRAL" ? t.market.neutral : effectiveSide}, ${multiplierTarget.toFixed(2)} ${t.market.times}, TZS ${fmt(stake)}`}
+        aria-valuetext={effectiveSide === "NEUTRAL"
+          ? t.market.neutral
+          : `TZS ${fmt(stake)} ${t.market.onSide.replace("{side}", sideWord)}`}
         aria-disabled={closedNow ? "true" : "false"}
         onPointerDown={closedNow ? undefined : onPointerDown}
         onKeyDown={closedNow ? undefined : onKeyDown}
+        onFocus={closedNow ? undefined : dismissCoach}
         onPointerEnter={closedNow ? undefined : () => setHover(true)}
         onPointerLeave={closedNow ? undefined : () => setHover(false)}
-        className={`relative w-full overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-md touch-none transition-opacity ${closedNow ? "opacity-40" : ""}`}
+        // Focus indicator is the brand-400 ring drawn ON the grab-pip (kit B1),
+        // revealed by `.dial-track:focus-visible .dial-focus-ring`, not a rect.
+        className={`dial-track relative w-full overflow-hidden focus-visible:outline-none rounded-md touch-none transition-opacity ${closedNow ? "opacity-40" : ""}`}
         style={{ height, cursor: closedNow ? "not-allowed" : (dragging ? "grabbing" : "grab") }}
       >
+        {/* One-time coach hint — a nudging pill above the knob until first touch. */}
+        {showCoach && !closedNow && (
+          <div className="dial-coach pointer-events-none absolute left-1/2 top-1.5 z-10 flex items-center gap-1.5 rounded-pill border border-brand-500/40 bg-bg-overlay px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-brand-300">
+            <I.dragHandle s={11} />
+            {t.market.dragToSetStake}
+          </div>
+        )}
         <svg viewBox={`0 0 ${width + PAD * 2} ${height}`} width="100%" height={height} className="block overflow-visible">
           <defs>
             {/* YES gradient: bright at LEFT (knob), dim at centre. */}
@@ -937,6 +1042,14 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
                   className="csrf-rest-ring" />
           )}
 
+          {/* Keyboard focus ring — 2px brand-400 squircle on the grab-pip,
+              shown only on :focus-visible (kit B1). Sits outside the knob's
+              scale/rotate so it stays a steady, legible ring. */}
+          <path className="dial-focus-ring" aria-hidden
+                d={squirclePath(knobR + 5)}
+                transform={`translate(${needleX} ${height / 2})`}
+                fill="none" stroke="var(--brand-400)" strokeWidth={2} />
+
           {/* Knob */}
           <g transform={`translate(${needleX} ${height / 2}) rotate(${tilt}) scale(${knobScale})`}
              filter={`url(#csrf-shadow-${marketId})`}>
@@ -947,6 +1060,13 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
             <path d={squirclePath(knobR - 5)}
                   fill="none" stroke="oklch(96% 0.005 268)" strokeWidth="0.5" opacity="0.12" />
             <g transform={`rotate(${-tilt})`}>
+              {/* Grab-pip grip — three dots so the knob reads as a control, not
+                  a readout ("reads as display on first touch" fix, kit B1). */}
+              <g aria-hidden opacity="0.5">
+                {[-4, 0, 4].map((dx) => (
+                  <circle key={dx} cx={dx} cy={-16} r={1.1} fill="oklch(96% 0.005 268)" />
+                ))}
+              </g>
               <text x="0" y="-2" textAnchor="middle"
                     fontFamily="JetBrains Mono, monospace" fontWeight="700"
                     fontSize="15" fill="oklch(96% 0.005 268)" letterSpacing="-0.02em">
@@ -1247,6 +1367,20 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
       <style>{`
         @keyframes csrf-breathe { 0%,100% { opacity: 0.35; } 50% { opacity: 0.7; } }
         .csrf-rest-ring { animation: csrf-breathe 2.4s ease-in-out infinite; }
+        /* Grab-pip focus ring — hidden until the track has keyboard focus. */
+        .dial-focus-ring { opacity: 0; transition: opacity 120ms ease; }
+        .dial-track:focus-visible .dial-focus-ring { opacity: 1; }
+        /* Coach hint — a gentle downward nudge toward the knob. */
+        .dial-coach { transform: translateX(-50%); animation: dial-coach-nudge 2.2s ease-in-out infinite; }
+        @keyframes dial-coach-nudge {
+          0%,100% { transform: translateX(-50%) translateY(0); }
+          50%     { transform: translateX(-50%) translateY(3px); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .csrf-rest-ring { animation: none; opacity: 0.5; }
+          .dial-focus-ring { transition: none; }
+          .dial-coach { animation: none; transform: translateX(-50%); }
+        }
       `}</style>
     </div>
   );
