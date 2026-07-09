@@ -71,7 +71,7 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
           </div>
 
           <div className="flex flex-col gap-2.5">
-            <Link href="/markets" className="btn btn-gold btn-lg btn-pill w-full">
+            <Link href="/markets" className="btn btn-primary btn-lg btn-pill w-full">
               {t.home.heroCta}
             </Link>
             <Link

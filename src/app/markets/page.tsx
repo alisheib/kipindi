@@ -405,7 +405,7 @@ async function LiveEmptyState({
     : t.market.noMarketsAvailableBody;
   const action =
     searching ? <Link href="/markets" className="btn btn-ghost btn-sm">{t.market.clearSearchLabel}</Link>
-    : timeWindowTooTight ? <Link href={showAllHref as never} className="btn btn-gold btn-sm">{t.market.showAllOpen}</Link>
+    : timeWindowTooTight ? <Link href={showAllHref as never} className="btn btn-primary btn-sm">{t.market.showAllOpen}</Link>
     : categoryEmpty ? <Link href={allCatsHref as never} className="btn btn-ghost btn-sm">{t.market.seeAllCategories}</Link>
     : undefined;
 

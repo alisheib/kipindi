@@ -370,7 +370,7 @@ export function FirstVisitPrimer() {
             <button
               type="button"
               onClick={next}
-              className="btn btn-gold btn-md btn-pill inline-flex items-center gap-1.5"
+              className="btn btn-primary btn-md btn-pill inline-flex items-center gap-1.5"
               style={{ minWidth: 88 }}
             >
               {step === CARDS.length - 1

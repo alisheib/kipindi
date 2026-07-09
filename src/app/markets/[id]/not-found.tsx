@@ -40,19 +40,19 @@ export default async function MarketNotFound() {
       <nav aria-label={t.error.recoveryLinks} className="mt-6 grid w-full max-w-[420px] grid-cols-1 gap-2 sm:grid-cols-3">
         <Link
           href="/markets"
-          className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-gold-700 hover:bg-bg-overlay"
+          className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-brand-400 hover:bg-bg-overlay"
         >
           <p className="font-display text-[13px] font-semibold text-text">{t.common.markets}</p>
         </Link>
         <Link
           href="/"
-          className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-gold-700 hover:bg-bg-overlay"
+          className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-brand-400 hover:bg-bg-overlay"
         >
           <p className="font-display text-[13px] font-semibold text-text">{t.common.home}</p>
         </Link>
         <Link
           href="/help"
-          className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-gold-700 hover:bg-bg-overlay"
+          className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-brand-400 hover:bg-bg-overlay"
         >
           <p className="font-display text-[13px] font-semibold text-text">{t.common.help}</p>
         </Link>

@@ -95,7 +95,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
           </div>
           <Link
             href="/markets"
-            className="btn btn-gold btn-lg btn-pill whitespace-nowrap"
+            className="btn btn-primary btn-lg btn-pill whitespace-nowrap"
           >
             {t.profile.kycSkipForNow}
           </Link>

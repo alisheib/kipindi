@@ -135,7 +135,7 @@ export function CommentsThread({
               type="button"
               onClick={submit}
               disabled={pending || body.trim().length === 0}
-              className="btn btn-gold btn-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn btn-primary btn-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {pending && <Spinner size={12} />}
               {pending ? t.common.posting : t.common.post}
@@ -164,7 +164,7 @@ export function CommentsThread({
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="font-display text-[13.5px] font-semibold text-text">{c.authorName}</span>
                   {c.authorRole && c.authorRole !== "PLAYER" && c.authorRole !== "AGENT" && (
-                    <Chip variant="gold" size="sm">
+                    <Chip variant="info" size="sm">
                       {c.authorRole === "ADMIN" ? t.profile.adminRole : c.authorRole === "MODERATOR" ? t.profile.moderatorRole : t.profile.complianceRole}
                     </Chip>
                   )}
@@ -216,7 +216,7 @@ export function CommentsThread({
         <button
           type="button"
           onClick={() => setShowAll(true)}
-          className="mt-3 w-full rounded-md border border-border bg-bg-overlay px-3 py-2 font-mono text-[11px] uppercase tracking-[0.12em] text-text-subtle hover:text-text hover:border-gold-700 transition-colors"
+          className="mt-3 w-full rounded-md border border-border bg-bg-overlay px-3 py-2 font-mono text-[11px] uppercase tracking-[0.12em] text-text-subtle hover:text-text hover:border-brand-400 transition-colors"
         >
           {t.common.showAll} ({comments.length - INITIAL_SHOW} {t.common.more})
         </button>

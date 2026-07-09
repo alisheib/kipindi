@@ -245,7 +245,7 @@ export function MarketCard({
             selectionClosed && "chip-pending",
             status === "RESOLVED" && "chip-resolved",
             (status === "CLOSED" || status === "DRAFT") && !selectionClosed && "chip-pending",
-            status === "VOIDED" && "chip-objection",
+            status === "VOIDED" && "chip-pending",
           )}
         >
           {live && <span className="live-dot" />}

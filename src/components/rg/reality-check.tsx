@@ -148,7 +148,7 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
         </p>
 
         <div className="grid grid-cols-1 gap-2 pt-1">
-          <button type="button" onClick={dismiss} className="btn btn-gold btn-lg w-full">
+          <button type="button" onClick={dismiss} className="btn btn-ghost btn-lg w-full">
             {t.rg.continuePlaying}
           </button>
           <Link href="/profile/responsible-gambling" onClick={dismiss} className="btn btn-ghost btn-lg w-full inline-flex">

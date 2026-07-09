@@ -163,8 +163,8 @@ export function LocaleChangeOverlay() {
             style={{
               width: 6,
               height: 6,
-              background: "var(--gold-400)",
-              boxShadow: "0 0 12px var(--gold-400), 0 0 24px var(--gold-500)",
+              background: "var(--brand-400)",
+              boxShadow: "0 0 12px var(--brand-400), 0 0 24px var(--brand-500)",
               animation: "lcl-pulse 1.2s ease-in-out infinite",
             }}
           />

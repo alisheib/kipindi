@@ -127,7 +127,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
             title={t.common.noResolvedMarketsYet}
             body={t.common.attestationPublishHint}
             action={
-              <Link href={"/markets" as never} className="btn btn-gold btn-sm">
+              <Link href={"/markets" as never} className="btn btn-primary btn-sm">
                 {t.positions.browseMarkets}
               </Link>
             }

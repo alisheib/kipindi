@@ -98,7 +98,7 @@ export default async function NotFound() {
       <nav aria-label={t.error.recoveryLinks} className="mt-6 grid w-full max-w-[420px] grid-cols-1 gap-2.5 sm:grid-cols-3">
         <Link
           href="/"
-          className="group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-gold-700 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]"
+          className="group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-brand-400 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]"
         >
           <span className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-bg-inset text-text-subtle group-hover:text-gold-300 transition-colors">
             <I.arrowRight s={13} style={{ transform: "rotate(180deg)" }} />
@@ -107,7 +107,7 @@ export default async function NotFound() {
         </Link>
         <Link
           href="/markets"
-          className="group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-gold-700 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]"
+          className="group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-brand-400 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]"
         >
           <span className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-bg-inset text-text-subtle group-hover:text-gold-300 transition-colors">
             <I.chart s={13} />
@@ -116,7 +116,7 @@ export default async function NotFound() {
         </Link>
         <Link
           href="/help"
-          className="group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-gold-700 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]"
+          className="group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-brand-400 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]"
         >
           <span className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-bg-inset text-text-subtle group-hover:text-gold-300 transition-colors">
             <I.info s={13} />

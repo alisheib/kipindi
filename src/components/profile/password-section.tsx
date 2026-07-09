@@ -56,7 +56,7 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="h-[30px] px-3 rounded-md border border-border bg-bg-elevated font-mono text-[11px] font-bold text-text-muted hover:border-gold-700 hover:text-gold-300 transition-colors whitespace-nowrap inline-flex items-center"
+          className="h-[30px] px-3 rounded-md border border-border bg-bg-elevated font-mono text-[11px] font-bold text-text-muted hover:border-brand-400 hover:text-gold-300 transition-colors whitespace-nowrap inline-flex items-center"
         >
           {hasPassword ? t.common.change : t.common.setPassword}
         </button>

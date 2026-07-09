@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * NavProgress — a thin gold progress bar at the top of the viewport that
+ * NavProgress — a thin brand progress bar at the top of the viewport that
  * appears during client-side route transitions. Gives instant feedback that
  * the app registered the tap/click, even before the server responds.
  *
@@ -13,7 +13,7 @@
  *   3. The bar animates from 0% → ~85% with an ease-out curve (fast start,
  *      slow crawl), then snaps to 100% + fades when the route lands.
  *
- * Kit-faithful: uses --gold-300 gradient, 3px height, z-[2000] (above
+ * Kit-faithful: uses brand→aqua gradient, 3px height, z-[2000] (above
  * everything except the toast layer at 1800). No layout impact.
  *
  * Safety: auto-completes after 8s so the bar never gets stuck permanently
@@ -113,7 +113,7 @@ export function NavProgress() {
         ref={barRef}
         className="h-full origin-left"
         style={{
-          background: "linear-gradient(90deg, var(--gold-500), var(--gold-300))",
+          background: "linear-gradient(90deg, var(--brand-500), var(--aqua-400))",
           boxShadow: "0 0 8px oklch(72% 0.14 78 / 0.5)",
           transform: "scaleX(0)",
           willChange: "transform",

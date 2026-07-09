@@ -97,7 +97,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <a
                 href={`tel:${HELPLINE_TEL()}`}
-                className="flex items-center gap-2.5 rounded-md border border-border bg-bg-elevated px-3 py-2.5 hover:border-gold-700 transition-colors"
+                className="flex items-center gap-2.5 rounded-md border border-border bg-bg-elevated px-3 py-2.5 hover:border-brand-400 transition-colors"
               >
                 <I.phone s={14} className="text-gold-300 shrink-0" />
                 <div className="min-w-0">
@@ -107,7 +107,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
               </a>
               <a
                 href={`mailto:${SUPPORT_EMAIL()}?subject=Password%20reset%20request`}
-                className="flex items-center gap-2.5 rounded-md border border-border bg-bg-elevated px-3 py-2.5 hover:border-gold-700 transition-colors"
+                className="flex items-center gap-2.5 rounded-md border border-border bg-bg-elevated px-3 py-2.5 hover:border-brand-400 transition-colors"
               >
                 <I.mail s={14} className="text-gold-300 shrink-0" />
                 <div className="min-w-0">

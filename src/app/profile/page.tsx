@@ -176,7 +176,7 @@ export default async function ProfilePage() {
                 <Step n={2} title={t.profile.phoneSms}  detail={t.profile.phoneSms}           done />
                 <Step n={3} title={t.profile.selfieDocs} detail={t.profile.selfieDocs} active />
               </div>
-              <Link href="/profile/kyc" className="btn btn-gold btn-md btn-pill mt-4 inline-flex">
+              <Link href="/profile/kyc" className="btn btn-primary btn-md btn-pill mt-4 inline-flex">
                 {t.profile.continueVerification}
               </Link>
             </div>
@@ -198,7 +198,7 @@ export default async function ProfilePage() {
                   ? t.profile.sofResubmitBody
                   : t.profile.sofUnderReviewBody}
               </p>
-              <Link href="/profile/source-of-funds" className="btn btn-gold btn-md btn-pill mt-3 inline-flex">
+              <Link href="/profile/source-of-funds" className="btn btn-primary btn-md btn-pill mt-3 inline-flex">
                 {sof!.reviewStatus === "REJECTED" ? t.profile.updateDeclaration : t.profile.viewStatus}
               </Link>
             </div>
@@ -305,7 +305,7 @@ function SettingRow({ icon: Icon, title, subtitle, href, accent, badge }: { icon
   return (
     <Link
       href={href as never}
-      className={`group relative flex items-center gap-3 overflow-hidden rounded-xl border bg-bg-elevated p-3.5 transition-colors ${accent ? "border-gold-700/60 hover:border-gold-500" : "border-border hover:border-gold-700"} hover:bg-bg-overlay`}
+      className={`group relative flex items-center gap-3 overflow-hidden rounded-xl border bg-bg-elevated p-3.5 transition-colors ${accent ? "border-gold-700/60 hover:border-gold-500" : "border-border hover:border-brand-400"} hover:bg-bg-overlay`}
       style={accent ? { background: "color-mix(in oklab, var(--gold-500) 7%, var(--bg-elevated))" } : undefined}
     >
       {accent && (

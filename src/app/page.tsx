@@ -154,7 +154,7 @@ export default async function LandingPage() {
                 <>
                   <Link
                     href={"/markets" as never}
-                    className="btn btn-gold btn-xl inline-flex items-center gap-2 rounded-pill"
+                    className="btn btn-primary btn-xl inline-flex items-center gap-2 rounded-pill"
                   >
                     {t.home.heroCta}
                     <I.arrowRight s={16} />
@@ -170,7 +170,7 @@ export default async function LandingPage() {
                 <>
                   <Link
                     href={"/auth/register" as never}
-                    className="btn btn-gold btn-xl inline-flex items-center gap-2 rounded-pill"
+                    className="btn btn-primary btn-xl inline-flex items-center gap-2 rounded-pill"
                   >
                     {t.common.createAccount}
                     <I.arrowRight s={16} />

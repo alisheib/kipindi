@@ -85,7 +85,7 @@ export function KycDocUploader({
           locked ? "border-border bg-bg-overlay/30 cursor-not-allowed opacity-70"
           : working ? "border-gold-700 bg-gold-500/[0.06] cursor-wait"
           : done ? "border-yes-700 bg-yes-500/[0.07] cursor-pointer hover:border-yes-500"
-          : "border-border bg-bg-overlay/40 hover:border-gold-700 hover:bg-gold-500/[0.06] cursor-pointer"
+          : "border-border bg-bg-overlay/40 hover:border-brand-400 hover:bg-gold-500/[0.06] cursor-pointer"
         }`}
       >
         {showThumb ? (
@@ -188,7 +188,7 @@ export function KycExtraDocUploader({
           onClick={() => !working && inputRef.current?.click()}
           disabled={working}
           aria-busy={working ? "true" : "false"}
-          className={`btn btn-sm btn-pill shrink-0 ${done ? "btn-ghost" : "btn-gold"}`}
+          className={`btn btn-sm btn-pill shrink-0 ${done ? "btn-ghost" : "btn-primary"}`}
         >
           {done ? t.common.replace : t.common.upload}
         </button>

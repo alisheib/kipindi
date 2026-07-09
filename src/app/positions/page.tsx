@@ -303,7 +303,7 @@ function Empty({ kind, title, body, browseLabel }: { kind: "positions" | "defaul
       body={body}
       action={
         browseLabel ? (
-          <Link href={"/markets" as never} className="btn btn-gold btn-sm">
+          <Link href={"/markets" as never} className="btn btn-primary btn-sm">
             {browseLabel}
           </Link>
         ) : null

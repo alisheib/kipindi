@@ -68,7 +68,7 @@ export function EmailEditor({ currentEmail, currentName, verified }: { currentEm
             aria-label={t.common.contactEmail}
             className="flex-1 min-w-0 bg-transparent border-b border-gold-500 focus:outline-none text-[14px] text-text px-0 py-0.5"
           />
-          <button type="button" onClick={save} disabled={pending} className="btn btn-gold btn-sm shrink-0">
+          <button type="button" onClick={save} disabled={pending} className="btn btn-primary btn-sm shrink-0">
             {pending ? <Spinner size={14} /> : t.common.save}
           </button>
         </div>

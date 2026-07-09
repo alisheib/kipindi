@@ -175,7 +175,7 @@ export function Select({
                 "w-full px-3 py-2.5 text-left font-mono text-[14px] transition-colors truncate flex items-center justify-between gap-2",
                 "first:rounded-t-lg last:rounded-b-lg",
                 i === focusIdx ? "bg-bg-overlay text-text" : "text-text-muted",
-                o.value === selected && "text-gold-300 font-semibold",
+                o.value === selected && "text-brand-300 font-semibold",
               )}
             >
               <span className="truncate">{o.label}</span>

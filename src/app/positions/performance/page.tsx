@@ -113,7 +113,7 @@ export default async function PerformancePage() {
           kind="positions"
           title={t.performance.noPerformance}
           body={t.performance.noPerformanceBody}
-          action={<Link href={"/markets" as never} className="btn btn-gold btn-sm">{t.positions.browseMarkets}</Link>}
+          action={<Link href={"/markets" as never} className="btn btn-primary btn-sm">{t.positions.browseMarkets}</Link>}
         />
       ) : (
         <>

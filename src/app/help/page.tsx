@@ -114,7 +114,7 @@ function ContactCard({
     : tone === "info"  ? "border-info-border bg-info-bg/30 text-info-fg"
     :                    "border-gold-700 bg-gold-500/10 text-gold-300";
   const card = (
-    <div className="rounded-xl glass-panel p-4 space-y-2 hover:border-gold-700 transition-colors h-full">
+    <div className="rounded-xl glass-panel p-4 space-y-2 hover:border-brand-400 transition-colors h-full">
       <div className="flex items-center gap-2">
         <span className={`inline-flex h-7 w-7 items-center justify-center rounded-md border ${tintCls}`}>
           {icon}
@@ -141,7 +141,7 @@ function QuickLinkCard({
   return (
     <Link
       href={href as never}
-      className="flex items-center gap-3 rounded-xl glass-panel p-4 hover:border-gold-700 transition-colors"
+      className="flex items-center gap-3 rounded-xl glass-panel p-4 hover:border-brand-400 transition-colors"
     >
       <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-gold-500/10 text-gold-300 shrink-0">
         {icon}

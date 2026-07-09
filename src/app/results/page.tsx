@@ -302,7 +302,7 @@ async function ResultsContent({
                 searching ? (
                   <Link href="/results" className="btn btn-ghost btn-sm">{t.market.clearSearchLabel}</Link>
                 ) : (
-                  <Link href="/markets" className="btn btn-gold btn-sm">{t.results.browseLive}</Link>
+                  <Link href="/markets" className="btn btn-primary btn-sm">{t.results.browseLive}</Link>
                 )
               }
             />

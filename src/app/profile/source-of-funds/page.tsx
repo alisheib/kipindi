@@ -132,7 +132,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
               {SOURCES.map((s, i) => (
                 <label
                   key={s.id}
-                  className="relative flex flex-col items-center gap-1 px-2 py-3 rounded-md border border-border bg-bg-overlay hover:border-gold-700 cursor-pointer transition-colors has-[:checked]:border-gold-500 has-[:checked]:bg-gold-500/10"
+                  className="relative flex flex-col items-center gap-1 px-2 py-3 rounded-md border border-border bg-bg-overlay hover:border-brand-400 cursor-pointer transition-colors has-[:checked]:border-gold-500 has-[:checked]:bg-gold-500/10"
                 >
                   <input
                     type="radio"
@@ -175,7 +175,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
               {BANDS.map((b, i) => (
                 <label
                   key={b.id}
-                  className="relative flex items-center justify-center gap-1 px-2 py-3 rounded-md border border-border bg-bg-overlay hover:border-gold-700 cursor-pointer transition-colors has-[:checked]:border-gold-500 has-[:checked]:bg-gold-500/10"
+                  className="relative flex items-center justify-center gap-1 px-2 py-3 rounded-md border border-border bg-bg-overlay hover:border-brand-400 cursor-pointer transition-colors has-[:checked]:border-gold-500 has-[:checked]:bg-gold-500/10"
                 >
                   <input
                     type="radio"

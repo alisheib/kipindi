@@ -270,7 +270,7 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
                   className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors disabled:opacity-30"
                   aria-label={t.common.prevMonth}><I.chevronLeft s={16} /></button>
                 <button type="button" onClick={() => setCalView("years")}
-                  className="font-display text-[15px] font-semibold text-text hover:text-gold-300 transition-colors"
+                  className="font-display text-[15px] font-semibold text-text hover:text-brand-300 transition-colors"
                   aria-label={t.common.pickYear}>
                   {MONTH_NAMES[viewMonth - 1]} {viewYear}
                   <svg viewBox="0 0 12 12" width={10} height={10} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="inline-block ml-1.5 -mt-0.5" aria-hidden><path d="M3 4.5l3 3 3-3" /></svg>
@@ -303,7 +303,7 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
                       className={cn(
                         "h-9 rounded-md font-mono text-[13px] tabular-nums transition-all",
                         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
-                        isSel ? "bg-gold-500 text-gold-fg font-bold shadow-[0_0_12px_oklch(72%_0.14_78_/_0.4)]"
+                        isSel ? "bg-brand-500 text-white font-bold shadow-[0_0_12px_oklch(55%_0.20_264_/_0.45)]"
                           : cell.disabled ? "text-text-subtle/30 cursor-not-allowed"
                           : "text-text hover:bg-bg-overlay",
                         isToday && !isSel && "ring-1 ring-brand-500/50",
@@ -324,7 +324,7 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
                 {t.common.cancel}
               </button>
               {parsed && (
-                <span className="font-mono text-[12px] text-gold-300 tabular-nums">
+                <span className="font-mono text-[12px] text-brand-300 tabular-nums">
                   {parsed.d} {MONTH_SHORT[parsed.m - 1]} {parsed.y}
                 </span>
               )}
@@ -350,8 +350,8 @@ function YearGrid({ years, viewYear, selectedYear, onPick }: {
           className={cn(
             "h-8 rounded-md font-mono text-[13px] tabular-nums transition-all",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
-            y === viewYear ? "bg-gold-500 text-gold-fg font-bold shadow-[0_0_12px_oklch(72%_0.14_78_/_0.4)]"
-              : y === selectedYear ? "ring-1 ring-gold-500/50 text-gold-300"
+            y === viewYear ? "bg-brand-500 text-white font-bold shadow-[0_0_12px_oklch(55%_0.20_264_/_0.45)]"
+              : y === selectedYear ? "ring-1 ring-brand-500/50 text-brand-300"
               : "text-text hover:bg-bg-overlay",
           )}>
           {y}
