@@ -41,6 +41,33 @@
 @keyframes admin-bar-grow { from { transform: scaleX(0) } to { transform: scaleX(1) } }
 .admin-bar-grow { transform-origin: left center; animation: admin-bar-grow 240ms cubic-bezier(.2,.8,.2,1) both; }
 
+/* Market-detail hero (C1a) — a slim gilt hairline "seal of the real": 1px of
+   gold-deep at 40%, edge-faded, framing the market question. Sanctioned gilt
+   exception (§C1a refinement spec): ~2% of surface, frames the real market, not
+   a CTA — so it does not breach the earned-money gold discipline. */
+.gilt-hairline { height: 1px; width: 100%;
+  background: linear-gradient(90deg,
+    transparent,
+    color-mix(in oklab, var(--gold-600) 40%, transparent) 12%,
+    color-mix(in oklab, var(--gold-600) 40%, transparent) 88%,
+    transparent); }
+
+/* Closing-soon pill (C1a, <1h to the next deadline) — pulses aqua→gold to signal
+   urgency. Base (and reduced-motion) state is the gold end of the pulse so the
+   "urgent" meaning survives with the animation off. */
+.closing-pill { color: var(--gold-300);
+  border-color: color-mix(in oklab, var(--gold-500) 55%, transparent);
+  background: color-mix(in oklab, var(--gold-500) 15%, transparent);
+  animation: closing-pulse 2.4s ease-in-out infinite; }
+@keyframes closing-pulse {
+  0%, 100% { color: var(--aqua-300);
+    border-color: color-mix(in oklab, var(--aqua-400) 55%, transparent);
+    background: color-mix(in oklab, var(--aqua-500) 14%, transparent); }
+  50%      { color: var(--gold-300);
+    border-color: color-mix(in oklab, var(--gold-500) 55%, transparent);
+    background: color-mix(in oklab, var(--gold-500) 16%, transparent); }
+}
+
 /* Button inline spinner */
 .btn-spin { width: 14px; height: 14px; border-radius: 50%;
   border: 2px solid color-mix(in oklab, currentColor 30%, transparent);
@@ -56,5 +83,6 @@
   .spark-draw { animation: none; stroke-dasharray: none; stroke-dashoffset: 0 }
   .admin-bar-grow { animation: none }
   .podium-crown { animation: none }
+  .closing-pill { animation: none } /* stays on the gold "urgent" end-state */
   .btn-spin { animation-duration: 1.4s } /* keep meaning, halve intensity */
 }

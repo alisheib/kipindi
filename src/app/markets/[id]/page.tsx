@@ -55,16 +55,6 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 const fmtTzs = (n: number) => `TZS ${n.toLocaleString("en-US")}`;
 const fmtTime = formatDateTime;
-function timeLeftStr(iso: string, t: { closed: string; dLeft: string; hLeft: string; mLeft: string }): string {
-  const ms = Date.parse(iso) - Date.now();
-  if (ms <= 0) return t.closed;
-  const d = Math.floor(ms / (24 * 3600_000));
-  if (d > 0) return `${d}${t.dLeft}`;
-  const h = Math.floor(ms / 3600_000);
-  if (h > 0) return `${h}${t.hLeft}`;
-  const m = Math.floor(ms / 60_000);
-  return `${m}${t.mLeft}`;
-}
 
 export default async function MarketDetail({
   params,
@@ -104,6 +94,22 @@ export default async function MarketDetail({
   // so the page swaps it out for an "awaiting settlement" card.
   const closedByTime = isClosedByTime(m) && !isResolved;
   const selectionClosed = isSelectionClosed(m) && !isResolved;
+
+  // ── C1a hero lifecycle state — open · closing · waiting · resolved ──
+  // Server-computed (page is force-dynamic + RefreshPoller re-fetches every 15s,
+  // so the "<1h closing" window and the minute readout stay fresh).
+  const settling = closedByTime || (m.status === "CLOSED" && !selectionClosed);
+  const nextDeadlineIso = m.selectionClosedAt && !selectionClosed ? m.selectionClosedAt : m.resolutionAt;
+  const msToDeadline = nextDeadlineIso ? Date.parse(nextDeadlineIso) - Date.now() : Number.POSITIVE_INFINITY;
+  const closingSoon = !isResolved && m.status === "LIVE" && !selectionClosed && !closedByTime && msToDeadline > 0 && msToDeadline <= 3600_000;
+  const minsToDeadline = Math.max(1, Math.ceil(msToDeadline / 60_000));
+  const heroState: "open" | "closing" | "waiting" | "resolved" = isResolved
+    ? "resolved"
+    : selectionClosed || closedByTime || m.status === "CLOSED"
+      ? "waiting"
+      : closingSoon
+        ? "closing"
+        : "open";
 
   // Pre-compute cash-out values for positions (cashOutValue is async)
   const positionCashOutValues = new Map<string, number | null>();
@@ -172,11 +178,24 @@ export default async function MarketDetail({
         })()}
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <Chip variant="cat" size="lg">{m.category}</Chip>
-          {m.status === "LIVE" && (
+          {/* C1a hero state — LIVE only while actually accepting predictions
+              (open/closing); waiting & resolved carry their own state chips. */}
+          {(heroState === "open" || heroState === "closing") && m.status === "LIVE" && (
             <Chip variant="live" size="lg" dot>{t.common.live}</Chip>
           )}
-          {m.status === "CLOSED" && !isResolved && (
-            <Chip variant="warning" size="lg">{t.market.closedAwaitingSettlement}</Chip>
+          {heroState === "closing" && (
+            <span className="closing-pill inline-flex items-center gap-1.5 rounded-full border h-[26px] px-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.10em] tabular-nums">
+              <I.hourglassHalf s={13} />
+              {t.market.closingSoon} · {minsToDeadline} {t.common.minsUnit}
+            </span>
+          )}
+          {heroState === "waiting" && (
+            <span className={`inline-flex items-center gap-1.5 rounded-full border h-[26px] px-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.10em] ${
+              settling ? "border-warning-border bg-warning-bg/30 text-warning-fg" : "border-gold-500/40 bg-gold-500/10 text-gold-300"
+            }`}>
+              <I.hourglassOff s={13} />
+              {settling ? t.market.closedAwaitingSettlement : t.market.selectionClosedWaiting}
+            </span>
           )}
           {isResolved && m.resolvedOutcome && (
             <Chip variant="resolved" size="lg">{t.market.resolvedOutcome} · {m.resolvedOutcome}</Chip>
@@ -192,6 +211,8 @@ export default async function MarketDetail({
           </a>
           <ShareButton marketId={m.id} title={m.titleEn} refCode={myRefCode} />
         </div>
+        {/* C1a — slim gilt hairline framing the question ("seal of the real") */}
+        <div aria-hidden className="gilt-hairline mb-3" />
         <h1 className="font-display text-[26px] md:text-[34px] font-bold leading-tight tracking-[-0.02em] text-text">{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</h1>
       </header>
 
