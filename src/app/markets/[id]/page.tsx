@@ -401,7 +401,7 @@ export default async function MarketDetail({
                   const q = `?next=${encodeURIComponent(betNext)}`;
                   return (
                     <div className="mt-4 grid grid-cols-1 xs:grid-cols-2 gap-2">
-                      <a href={`/auth/register${q}`} className="btn btn-gold btn-md btn-pill">
+                      <a href={`/auth/register${q}`} className="btn btn-primary btn-md btn-pill">
                         {t.common.signUp}
                       </a>
                       <a href={`/auth/login${q}`} className="btn btn-ghost btn-md btn-pill">

@@ -66,7 +66,7 @@ export function AvatarMenu({
         </Link>
         <Link
           href="/auth/register"
-          className="btn btn-gold btn-sm btn-pill"
+          className="btn btn-primary btn-sm btn-pill"
           aria-label={t.common.createAccount}
         >
           {t.common.signUp}
