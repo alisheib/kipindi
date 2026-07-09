@@ -1,15 +1,50 @@
-import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
+import Link from "next/link";
+import { AdminPageHead, AdminCard, AdminKpi, PeriodPicker } from "@/components/admin/admin-shell";
+import { AdminBarList } from "@/components/admin/admin-charts";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { RefreshButton } from "@/components/admin/refresh-button";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Chip } from "@/components/ui/chip";
-import { I } from "@/components/ui/glyphs";
+import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { getAuditPage } from "@/lib/server/audit";
 import { GenerateButton } from "./generate-button";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, formatTzs, formatTzsCompact } from "@/lib/utils";
+import { reportSummary, dailyPnl, categoryBreakdown, type ReportPeriod } from "@/lib/server/report-money";
 
 export const metadata = { title: "Admin · Reports" };
 export const dynamic = "force-dynamic";
+
+const REPORT_SEGMENTS = [
+  { id: "today", label: "Today" },
+  { id: "7d", label: "7d" },
+  { id: "30d", label: "30d" },
+  { id: "mtd", label: "MTD" },
+] as const;
+const VALID_REPORT_PERIODS: ReportPeriod[] = ["today", "7d", "30d", "mtd"];
+const CAT_LABEL: Record<string, string> = {
+  sports: "Sports", macro: "Macro", weather: "Weather", crypto: "Crypto",
+  culture: "Culture", tech: "Tech", other: "Other",
+};
+
+// EAT (Africa/Dar_es_Salaam, UTC+3) display helpers — reports are snapshots.
+const eatDay = (ms: number) =>
+  new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Dar_es_Salaam", day: "2-digit", month: "short" }).format(new Date(ms));
+const eatStamp = (ms: number) =>
+  new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Dar_es_Salaam", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: false })
+    .format(new Date(ms)).replace(", ", " · ");
+
+/** Compare-mode delta chip props for AdminKpi. `unit` picks % vs percentage-points. */
+function deltaProps(cur: number, prior: number, compare: boolean, unit: "money" | "pct" | "count") {
+  if (!compare) return {};
+  if (unit === "pct") {
+    const dpp = cur - prior;
+    return { delta: `${dpp >= 0 ? "+" : "−"}${Math.abs(dpp).toFixed(1)}pp vs prior`, deltaDir: (dpp > 0.05 ? "up" : dpp < -0.05 ? "down" : "flat") as "up" | "down" | "flat" };
+  }
+  if (prior === 0) return { delta: cur === 0 ? "no prior data" : "new vs prior", deltaDir: "flat" as const };
+  const p = ((cur - prior) / Math.abs(prior)) * 100;
+  return { delta: `${p >= 0 ? "+" : "−"}${Math.abs(p).toFixed(1)}% vs prior`, deltaDir: (p >= 0 ? "up" : "down") as "up" | "down" };
+}
 
 const TEMPLATES = [
   {
@@ -107,9 +142,31 @@ const TEMPLATES = [
 export default async function AdminReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; sort?: string; dir?: string }>;
+  searchParams: Promise<{ page?: string; sort?: string; dir?: string; range?: string; cmp?: string }>;
 }) {
   const sp = await searchParams;
+
+  // ── Reporting console (Batch 3 §1) — real aggregates on the normative money
+  //    definitions (report-money.ts). "vs prior" is opt-in via ?cmp=1.
+  const period: ReportPeriod = VALID_REPORT_PERIODS.includes(sp.range as ReportPeriod) ? (sp.range as ReportPeriod) : "7d";
+  const compare = sp.cmp === "1";
+  const generatedAt = Date.now();
+  const { current, prior } = await reportSummary(period, generatedAt);
+  const { rows: pnlRows, totals } = await dailyPnl(period, generatedAt);
+  const categories = await categoryBreakdown(period, generatedAt);
+  const activeRows = pnlRows.filter((r) => r.stakes !== 0 || r.payouts !== 0 || r.bonus !== 0 || r.fees !== 0);
+  // KPI sparklines — real daily series (AdminSpark hides <2 pts, e.g. "today").
+  const ggrSpark = pnlRows.map((r) => r.ggr);
+  const ngrSpark = pnlRows.map((r) => r.ngr);
+  const holdSpark = pnlRows.map((r) => r.holdPct);
+  const cmpHref = (() => {
+    const p = new URLSearchParams();
+    if (sp.range) p.set("range", sp.range);
+    if (!compare) p.set("cmp", "1");
+    const qs = p.toString();
+    return qs ? `/admin/reports?${qs}` : "/admin/reports";
+  })();
+
   // Generation log = audit entries from ADMIN with action starting "report."
   // Pull the whole in-memory window (was capped at 30) so pagination owns the slicing.
   const generated = getAuditPage({ category: "ADMIN", limit: 10000 }).filter((e) => e.action.startsWith("report."));
@@ -131,9 +188,124 @@ export default async function AdminReportsPage({
         title="Reports"
         sw="Ripoti"
         period={false}
+        actions={
+          <>
+            <PeriodPicker segments={REPORT_SEGMENTS} defaultId="7d" />
+            <Link
+              href={cmpHref as never}
+              scroll={false}
+              className={[
+                "font-mono text-micro px-2.5 h-8 inline-flex items-center rounded-lg border transition-colors",
+                compare ? "border-brand-500 text-brand-300 bg-brand-500/10" : "border-border-strong text-text-subtle hover:text-text",
+              ].join(" ")}
+            >
+              vs prior
+            </Link>
+            <GenerateButton id="gbt-monthly" />
+          </>
+        }
       />
 
       <div className="px-4 lg:px-6 py-5 space-y-4">
+        {/* Freshness stamp + normative money definitions (one source of truth) */}
+        <div className="flex flex-wrap items-center justify-between gap-2 -mt-1">
+          <p className="font-mono text-[10.5px] text-text-tertiary">generated {eatStamp(generatedAt)} EAT · snapshot</p>
+          <p className="font-mono text-[10px] text-text-tertiary tracking-tight">GGR = Stakes − Payouts · NGR = GGR − Bonus − Fees · Hold % = GGR / Stakes</p>
+        </div>
+
+        {/* KPI strip — 6 tiles, real aggregates, spark-fed (no gold in admin) */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+          <AdminKpi label="GGR" sw="Mapato ya jumla" value={formatTzsCompact(current.ggr)} tone={current.ggr < 0 ? "danger" : undefined} series={ggrSpark} spark {...deltaProps(current.ggr, prior.ggr, compare, "money")} />
+          <AdminKpi label="NGR" sw="Mapato halisi" value={formatTzsCompact(current.ngr)} tone={current.ngr < 0 ? "danger" : undefined} series={ngrSpark} spark {...deltaProps(current.ngr, prior.ngr, compare, "money")} />
+          <AdminKpi label="Deposits" sw="Amana" value={formatTzsCompact(current.deposits)} spark={false} {...deltaProps(current.deposits, prior.deposits, compare, "money")} />
+          <AdminKpi label="Withdrawals" sw="Utoaji" value={formatTzsCompact(current.withdrawals)} spark={false} {...deltaProps(current.withdrawals, prior.withdrawals, compare, "money")} />
+          <AdminKpi label="Hold %" sw="Ushikaji" value={`${current.holdPct.toFixed(1)}%`} series={holdSpark} spark {...deltaProps(current.holdPct, prior.holdPct, compare, "pct")} />
+          <AdminKpi label="Active players" sw="Wachezaji" value={current.activePlayers.toLocaleString()} spark={false} {...deltaProps(current.activePlayers, prior.activePlayers, compare, "count")} />
+        </div>
+
+        {/* Daily P&L + category breakdown. minmax(0,1fr) lets the P&L track
+            shrink so its inner overflow-x-auto scrolls instead of pushing the
+            category card off-canvas (a plain 1fr won't shrink below min-content).
+            With no category data the P&L takes the full width (no empty column). */}
+        <div className={`grid grid-cols-1 gap-3 ${categories.length ? "xl:grid-cols-[minmax(0,1fr)_360px]" : ""}`}>
+          <AdminCard title="Daily P&amp;L" sw="Faida na hasara · kila siku" padding={activeRows.length ? "p-0" : "p-4"}>
+            {activeRows.length === 0 ? (
+              <EmptyState kind="admin" title="No settled activity in this period" body="Stakes, payouts and GGR appear here once markets settle in the selected window." />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="admin-tbl min-w-[680px]">
+                  <thead>
+                    <tr>
+                      <th className="text-left">Date</th>
+                      <th className="text-right">Stakes</th>
+                      <th className="text-right">Payouts</th>
+                      <th className="text-right">GGR</th>
+                      <th className="text-right">Bonus</th>
+                      <th className="text-right">Fees</th>
+                      <th className="text-right">NGR</th>
+                      <th className="text-right">Hold%</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-text-muted">
+                    {activeRows.map((r) => (
+                      <tr key={r.dayMs}>
+                        <td className="font-mono whitespace-nowrap text-text-subtle">{eatDay(r.dayMs)}</td>
+                        <td className="font-mono tabular text-right">{formatTzs(r.stakes)}</td>
+                        <td className="font-mono tabular text-right">{formatTzs(r.payouts)}</td>
+                        <td className={["font-mono tabular text-right font-semibold", r.ggr < 0 ? "text-danger" : "text-text"].join(" ")}>{formatTzs(r.ggr)}</td>
+                        <td className="font-mono tabular text-right text-text-tertiary">{formatTzs(r.bonus)}</td>
+                        <td className="font-mono tabular text-right text-text-tertiary">{formatTzs(r.fees)}</td>
+                        <td className={["font-mono tabular text-right font-semibold", r.ngr < 0 ? "text-danger" : "text-text"].join(" ")}>{formatTzs(r.ngr)}</td>
+                        <td className="font-mono tabular text-right text-text-secondary">{r.holdPct.toFixed(1)}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-border-strong">
+                      <td className="font-mono text-text uppercase text-[10px] tracking-wider font-bold">Total</td>
+                      <td className="font-mono tabular text-right text-text font-bold">{formatTzs(totals.stakes)}</td>
+                      <td className="font-mono tabular text-right text-text font-bold">{formatTzs(totals.payouts)}</td>
+                      <td className={["font-mono tabular text-right font-bold", totals.ggr < 0 ? "text-danger" : "text-text"].join(" ")}>{formatTzs(totals.ggr)}</td>
+                      <td className="font-mono tabular text-right text-text-secondary font-bold">{formatTzs(totals.bonus)}</td>
+                      <td className="font-mono tabular text-right text-text-secondary font-bold">{formatTzs(totals.fees)}</td>
+                      <td className={["font-mono tabular text-right font-bold", totals.ngr < 0 ? "text-danger" : "text-text"].join(" ")}>{formatTzs(totals.ngr)}</td>
+                      <td className="font-mono tabular text-right text-text font-bold">{totals.holdPct.toFixed(1)}%</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+          </AdminCard>
+
+          {categories.length > 0 && (
+            <AdminCard title="GGR by category" sw="Mapato kwa aina · share of GGR">
+              <AdminBarList
+                rows={categories.map((c) => {
+                  const Glyph = I[categoryGlyph(c.category)];
+                  return {
+                    label: (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Glyph s={13} className="text-text-tertiary" />
+                        {CAT_LABEL[c.category] ?? c.category}
+                        <span className="text-text-tertiary font-mono text-[10px]">· {c.holdPct.toFixed(0)}% hold</span>
+                      </span>
+                    ),
+                    value: Math.max(0, c.ggr),
+                    title: `${CAT_LABEL[c.category] ?? c.category} · GGR ${formatTzsCompact(c.ggr)} · ${c.sharePct.toFixed(0)}% share`,
+                  };
+                })}
+                format={(n) => formatTzsCompact(n)}
+              />
+            </AdminCard>
+          )}
+        </div>
+
+        {/* ── Report library — statutory + operational templates ── */}
+        <div className="pt-3 border-t border-dashed border-border-subtle">
+          <p className="font-display font-semibold text-body-sm text-text">Report library</p>
+          <p className="text-caption text-text-tertiary italic">Maktaba ya ripoti · statutory + operational templates</p>
+        </div>
+
         {/* Templates list */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {TEMPLATES.map((t) => (
