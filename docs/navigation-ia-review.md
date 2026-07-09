@@ -13,6 +13,8 @@ is a launch blocker; items are ranked so we fix the highest-impact first.
 > offline) remains as a light PART-C ride-along. R2 is a product call — Positions now
 > holds the mobile 5th tab; flip back to Invite in `bottom-nav.tsx` if growth is the
 > priority (Invite is still in the avatar directory + "More" menu either way).
+> **Ali confirmed (2026-07-09): keep Positions in the mobile bottom nav.** The
+> header sign-up gold → royal shipped in `3556845`.
 
 ---
 

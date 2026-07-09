@@ -124,7 +124,7 @@ smoke scripts + `scripts/ui-regression.mjs` at 360/768/1280/1920) passes and is 
 ---
 
 ## Open items to flag to Ali
-- **Header "Sign up / Jisajili" CTA is gold** (site-wide top-bar) — not earned-money, so it's a gold-discipline exception. Kept as a deliberate acquisition CTA; confirm or switch to royal/primary. (Surfaced in B4.)
+- ~~Header "Sign up / Jisajili" CTA is gold~~ — **RESOLVED (`3556845`)**: Ali confirmed "no one is above the law" → sign-up CTAs (header + market-detail guest) are now royal. Gold remains money-in/earned only.
 - MNO brand logos (M-Pesa, Airtel Money, HaloPesa, Mixx by Yas) — trademarked, source official.
 - Bitmap tier (hero, banners, category art, texture, win-seal) — needs image pipeline.
 - Regulator seal — licensed asset.
