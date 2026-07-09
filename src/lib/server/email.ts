@@ -97,6 +97,9 @@ const BRAND_CARD = "#161845";       // --bg-elevated
 const BRAND_BORDER = "#2b2e63";     // --border
 const BORDER_STRONG = "#3d4189";    // --border-strong
 const BRAND_LINK = "#7060d0";       // --brand-500
+const ROYAL = "#7060d0";            // --brand-500 (royal chrome accent)
+const ROYAL_HI = "#8a7ce0";         // --brand-400 (top highlight)
+const ROYAL_LO = "#5344a8";         // --brand-600 (bottom edge / gradient stop)
 const GILT = "#e8c05a";             // --gold-300
 const GILT_MID = "#c49a2e";         // --gold-500
 const GILT_DARK = "#8a6c1a";        // --gold-700
@@ -110,7 +113,16 @@ const NO_COLOR = "#c04848";         // --no-500
 // Brand mark — hosted PNG from the real logo kit (never recreated)
 const MARK_IMG = `<img src="${BASE_URL}/icons/mark-color-512.png" width="56" height="56" alt="50pick" class="sp-mark" style="display:block;margin:0 auto;border:0;max-width:56px;height:auto">`;
 
-function wrap(body: string): string {
+/** Card chrome. `accent` colours the top bar + footer rule: **gold ONLY on
+ *  earned-money / earned-status / money-in emails** (deposit, win, bonus, KYC-
+ *  approved, …); everything else (security, process, loss, refunds, admin) uses
+ *  royal — the same gold-discipline law the rest of the app follows. */
+function wrap(body: string, opts: { accent?: "gold" | "royal" } = {}): string {
+  const gold = opts.accent === "gold";
+  const topBar = gold
+    ? `linear-gradient(90deg,${GILT_MID},${GILT},${GILT_MID})`
+    : `linear-gradient(90deg,${ROYAL_LO},${ROYAL},${ROYAL_LO})`;
+  const footRule = gold ? GILT : ROYAL;
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -161,8 +173,8 @@ function wrap(body: string): string {
     </div>
   </td></tr>
 
-  <!-- Gold top bar -->
-  <tr><td><div style="height:3px;background:linear-gradient(90deg,${GILT_MID},${GILT},${GILT_MID});border-radius:3px 3px 0 0"></div></td></tr>
+  <!-- Accent top bar (gold = money/earned, royal = everything else) -->
+  <tr><td><div style="height:3px;background:${topBar};border-radius:3px 3px 0 0"></div></td></tr>
 
   <!-- Card body -->
   <tr><td class="sp-card" style="background:${BRAND_CARD};border:1px solid ${BRAND_BORDER};border-top:none;border-radius:0 0 12px 12px;padding:32px 28px 28px">
@@ -171,10 +183,10 @@ function wrap(body: string): string {
 
   <!-- Footer -->
   <tr><td style="padding:28px 0 0;text-align:center">
-    <!-- Gilt rule -->
-    <div style="width:42px;height:2px;background:${GILT};border-radius:2px;margin:0 auto 16px"></div>
-    <p style="margin:0;font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:${GILT_MID}">
-      50pick.tz <span style="color:${NO_COLOR}">·</span> <span style="color:${TEXT_SUBTLE}">Soko la Utabiri</span>
+    <!-- Accent rule -->
+    <div style="width:42px;height:2px;background:${footRule};border-radius:2px;margin:0 auto 16px"></div>
+    <p style="margin:0;font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:${TEXT_SUBTLE}">
+      50pick.tz <span style="color:${TEXT_FAINT}">·</span> <span style="color:${TEXT_SUBTLE}">Soko la Utabiri</span>
     </p>
     <p style="margin:12px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_FAINT};line-height:1.7">
       18+ · Licensed by Gaming Board of Tanzania<br>
@@ -193,9 +205,12 @@ function wrap(body: string): string {
 </html>`;
 }
 
-function eyebrow(en: string, sw?: string): string {
-  let html = `<p style="margin:0 0 6px;font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.16em;font-weight:700;color:${GILT_DARK}">${en}</p>`;
-  if (sw) html += `<p style="margin:0 0 2px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;font-style:italic;color:${TEXT_SUBTLE}">${sw}</p>`;
+/** Eyebrow label. Neutral by default; `gold` only on earned-money/-status
+ *  emails (gold-discipline). Gold = GILT_DARK; neutral = TEXT_SUBTLE. */
+function eyebrow(en: string, sw?: string, gold = false): string {
+  const color = gold ? GILT_DARK : TEXT_SUBTLE;
+  let html = `<p style="margin:0 0 6px;font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.16em;font-weight:700;color:${color}">${en}</p>`;
+  if (sw) html += `<p style="margin:0 0 2px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;font-style:italic;color:${TEXT_FAINT}">${sw}</p>`;
   return html;
 }
 
@@ -235,14 +250,21 @@ function link(pathOrUrl: string): string {
   return /^https?:\/\//.test(pathOrUrl) ? pathOrUrl : `${BASE_URL}${pathOrUrl.startsWith("/") ? "" : "/"}${pathOrUrl}`;
 }
 
-function ctaButton(hrefOrPath: string, label: string): string {
+/** CTA pill. `primary` (royal) is the default — gold is reserved for direct
+ *  money actions inside earned-money emails (claim bonus, view winnings). */
+function ctaButton(hrefOrPath: string, label: string, variant: "gold" | "primary" = "primary"): string {
   const href = link(hrefOrPath);
+  const gold = variant === "gold";
+  const bg = gold ? GILT_MID : ROYAL;
+  const txt = gold ? "#0c0e28" : "#ffffff";
+  const bTop = gold ? GILT : ROYAL_HI;
+  const bBot = gold ? GILT_DARK : ROYAL_LO;
   // Desktop: centered inline pill. Mobile (.sp-cta): full-width block so a long
   // bilingual label can never overflow the card. mso block keeps Outlook happy.
   return `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:24px"><tr><td align="center">
-    <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${href}" style="height:48px;v-text-anchor:middle;width:300px" arcsize="50%" fillcolor="${GILT_MID}"><w:anchorlock/><center style="color:#0c0e28;font-family:Segoe UI,sans-serif;font-size:14px;font-weight:700">${label}</center></v:roundrect><![endif]-->
+    <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${href}" style="height:48px;v-text-anchor:middle;width:300px" arcsize="50%" fillcolor="${bg}"><w:anchorlock/><center style="color:${txt};font-family:Segoe UI,sans-serif;font-size:14px;font-weight:700">${label}</center></v:roundrect><![endif]-->
     <!--[if !mso]><!-->
-    <a href="${href}" class="sp-cta" style="display:inline-block;padding:15px 36px;background:${GILT_MID};color:#0c0e28;font-family:'Sora','Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;border-radius:999px;text-decoration:none;letter-spacing:-0.01em;border-top:1px solid ${GILT};border-bottom:2px solid ${GILT_DARK};text-align:center">${label}</a>
+    <a href="${href}" class="sp-cta" style="display:inline-block;padding:15px 36px;background:${bg};color:${txt};font-family:'Sora','Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;border-radius:999px;text-decoration:none;letter-spacing:-0.01em;border-top:1px solid ${bTop};border-bottom:2px solid ${bBot};text-align:center">${label}</a>
     <!--<![endif]-->
   </td></tr></table>`;
 }
@@ -303,6 +325,11 @@ export async function sendEmailToUser(
   }
 }
 
+/** Card chrome with the GOLD accent — for earned-money / earned-status /
+ *  money-in emails ONLY (deposit, win, bonus, referral, KYC-approved, invite).
+ *  Every other email uses plain `wrap` (royal). */
+const wrapGold = (body: string) => wrap(body, { accent: "gold" });
+
 // ─── Email templates ────────────────────────────────────────────────────
 
 export function welcomeHtml({ name }: { name: string }): string {
@@ -318,8 +345,8 @@ export function welcomeHtml({ name }: { name: string }): string {
 export function depositConfirmedHtml({ amount, method, reference, balance }: {
   amount: number; method: string; reference: string; balance: number;
 }): string {
-  return wrap(`
-    ${eyebrow("Deposit confirmed", "Amana imethibitishwa")}
+  return wrapGold(`
+    ${eyebrow("Deposit confirmed", "Amana imethibitishwa", true)}
     ${heading("Funds added")}
     ${subtitle("Your wallet has been topped up. You can start predicting.")}
     ${detailRows([
@@ -390,8 +417,8 @@ export function winNotificationHtml({ reference, payout, stake, marketTitle, set
   reference: string; payout: number; stake: number; marketTitle: string; settledAt?: string;
 }): string {
   const net = payout - stake;
-  return wrap(`
-    ${eyebrow("Position won", "Umeshinda")}
+  return wrapGold(`
+    ${eyebrow("Position won", "Umeshinda", true)}
     ${heading(`You won ${fmtTzs(payout)}`, GILT)}
     ${subtitle(marketTitle)}
     ${detailRows([
@@ -487,8 +514,8 @@ export function oneSidedRefundHtml({ reference, stake, marketTitle, settledAt }:
 export function inviteHtml({ campaignName, bonusAmountTzs, code, message }: {
   campaignName: string; bonusAmountTzs: number; code: string; message?: string;
 }): string {
-  return wrap(`
-    ${eyebrow("You're invited · Umealikwa")}
+  return wrapGold(`
+    ${eyebrow("You're invited · Umealikwa", undefined, true)}
     ${heading(`Get a TZS ${Math.round(bonusAmountTzs).toLocaleString("en-US")} bonus on 50pick`)}
     ${subtitle(message?.trim() ? message.trim() : "Join 50pick and start predicting. Your welcome bonus is waiting.")}
     ${subtitleSw("Jiunge na 50pick uanze kutabiri. Bonasi yako ya kukukaribisha inakusubiri.")}
@@ -497,7 +524,7 @@ export function inviteHtml({ campaignName, bonusAmountTzs, code, message }: {
       { label: "Invite code", value: code },
       { label: "Campaign", value: campaignName },
     ])}
-    ${ctaButton(`/auth/register?invite=${encodeURIComponent(code)}`, "Claim your bonus · Pata bonasi")}
+    ${ctaButton(`/auth/register?invite=${encodeURIComponent(code)}`, "Claim your bonus · Pata bonasi", "gold")}
   `);
 }
 
@@ -513,8 +540,8 @@ export function passwordResetHtml({ resetLink }: { resetLink: string }): string 
 }
 
 export function kycApprovedHtml({ name, reference }: { name: string; reference?: string }): string {
-  return wrap(`
-    ${eyebrow("Identity verified", "Utambulisho umethibitishwa")}
+  return wrapGold(`
+    ${eyebrow("Identity verified", "Utambulisho umethibitishwa", true)}
     ${heading(`You're fully verified, ${name}`)}
     ${subtitle("Your identity is confirmed — you can now deposit, place bets, and withdraw.")}
     ${subtitleSw("Utambulisho wako umethibitishwa — sasa unaweza kuweka pesa, kuweka dau, na kutoa pesa.")}
@@ -721,8 +748,8 @@ export function amlRejectRefundHtml({ amount, reason }: { amount: number; reason
 export function referralRewardHtml({ amount, referredName, totalEarned }: {
   amount: number; referredName: string; totalEarned: number;
 }): string {
-  return wrap(`
-    ${eyebrow("Referral reward", "Umepata tuzo")}
+  return wrapGold(`
+    ${eyebrow("Referral reward", "Umepata tuzo", true)}
     ${heading(`You earned ${fmtTzs(amount)}`)}
     ${subtitle(`${referredName} joined through your referral link.`)}
     ${subtitleSw("Rafiki uliyemwalika amejiunga — umepata tuzo.")}
@@ -745,8 +772,8 @@ export function referralEarningHtml({ type, amountTzs }: {
   const sw = type === "COMMISSION" ? "Umepata kamisheni ya rafiki"
     : type === "BONUS" ? "Bonasi ya rafiki imeongezwa"
     : "Zawadi ya hatua";
-  return wrap(`
-    ${eyebrow("Referral reward", sw)}
+  return wrapGold(`
+    ${eyebrow("Referral reward", sw, true)}
     ${heading(`${en} · ${fmtTzs(amountTzs)}`)}
     ${subtitle("It's in your wallet. Keep inviting friends to earn more.")}
     ${subtitleSw("Ipo kwenye pochi yako. Endelea kualika marafiki kupata zaidi.")}
@@ -806,8 +833,8 @@ export function proposalApprovedHtml({ titleEn, amountTzs, wagerRequiredTzs, que
   titleEn: string; amountTzs: number; wagerRequiredTzs: number; queued?: boolean;
 }): string {
   if (amountTzs > 0) {
-    return wrap(`
-      ${eyebrow("Proposal approved", "Pendekezo limekubaliwa")}
+    return wrapGold(`
+      ${eyebrow("Proposal approved", "Pendekezo limekubaliwa", true)}
       ${heading(queued ? `Approved · bonus ${fmtTzs(amountTzs)} reserved` : `Approved · bonus ${fmtTzs(amountTzs)} credited`, GILT)}
       ${subtitle(queued
         ? `Great news — "${titleEn}" was approved. Your ${fmtTzs(amountTzs)} bonus is reserved and activates automatically once your current bonus completes.`
@@ -913,8 +940,8 @@ export function aiCreditLimitAdminHtml({ level, spentUsd, limitUsd }: {
 export function bonusCreditedHtml({ amountTzs, wagerRequiredTzs, sourceLabel }: {
   amountTzs: number; wagerRequiredTzs: number; sourceLabel?: string;
 }): string {
-  return wrap(`
-    ${eyebrow("Bonus added", "Bonasi imeongezwa")}
+  return wrapGold(`
+    ${eyebrow("Bonus added", "Bonasi imeongezwa", true)}
     ${heading(`Bonus added · ${fmtTzs(amountTzs)}`)}
     ${subtitle(`${sourceLabel ? sourceLabel + ". " : ""}Play through ${fmtTzs(wagerRequiredTzs)} in bets and it becomes withdrawable cash.`)}
     ${subtitleSw(`Cheza dau ya ${fmtTzs(wagerRequiredTzs)} ili kuibadilisha kuwa pesa unayoweza kutoa.`)}
@@ -927,13 +954,13 @@ export function bonusCreditedHtml({ amountTzs, wagerRequiredTzs, sourceLabel }: 
 }
 
 export function bonusFulfilledHtml({ amountTzs }: { amountTzs: number }): string {
-  return wrap(`
-    ${eyebrow("Bonus unlocked", "Bonasi imefunguliwa")}
+  return wrapGold(`
+    ${eyebrow("Bonus unlocked", "Bonasi imefunguliwa", true)}
     ${heading(`Bonus unlocked · ${fmtTzs(amountTzs)}`)}
     ${subtitle(`You finished the play-through — ${fmtTzs(amountTzs)} is now real, withdrawable balance.`)}
     ${subtitleSw(`Umemaliza masharti — ${fmtTzs(amountTzs)} sasa ni pesa halisi unayoweza kutoa.`)}
     ${detailRows([{ label: "Now withdrawable", value: fmtTzs(amountTzs), tone: "good" }])}
-    ${ctaButton("/wallet", "Withdraw · Toa pesa")}
+    ${ctaButton("/wallet", "Withdraw · Toa pesa", "gold")}
   `);
 }
 
