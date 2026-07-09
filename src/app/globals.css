@@ -1811,7 +1811,9 @@ html.kp-reduce-motion *::after {
 .mcardp-top { display: flex; align-items: center; flex-wrap: nowrap; gap: 5px; min-height: 20px; }
 .mcardp .chip { font-size: 9px; padding: 2px 6px; gap: 3px; letter-spacing: 0.02em; white-space: nowrap; flex-shrink: 0; }
 .mcardp .chip .live-dot { width: 5px; height: 5px; }
-.mcardp-catico { display:inline-flex; align-items:center; justify-content:center; width: 18px; height: 18px; border-radius: var(--r-sm); background: color-mix(in oklab, var(--gilt) 14%, var(--bg-overlay)); color: var(--gilt); border:1px solid var(--border-gold); flex-shrink:0; }
+/* Category glyph badge — neutral (gold = earned-money only, never category
+   chrome). Matches the /live dense card's modern-white category treatment. */
+.mcardp-catico { display:inline-flex; align-items:center; justify-content:center; width: 18px; height: 18px; border-radius: var(--r-sm); background: var(--bg-overlay); color: var(--text-subtle); border:1px solid var(--border); flex-shrink:0; }
 .mcardp-catico svg { width: 11px; height: 11px; }
 .mcardp-cat { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .mcardp-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex: 1 1 auto; }
