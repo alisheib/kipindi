@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
+import { Chip } from "@/components/ui/chip";
+import { TippingBar } from "@/components/brand";
 import { listMarkets, impliedYesPct, type MarketCategory } from "@/lib/server/market-service";
 import { getCardChart } from "@/lib/server/market-history";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -9,6 +11,7 @@ import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { ResultsSearch } from "./results-search";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { formatTzsCompact } from "@/lib/utils";
+import { pickLocalized } from "@/lib/localized";
 import { getServerT } from "@/lib/i18n-server";
 
 export async function generateMetadata() {
@@ -66,7 +69,7 @@ async function ResultsContent({
   searching: boolean;
   pageNum: number;
 }) {
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
 
   const CATEGORIES: Array<{ id: "all" | MarketCategory; label: string }> = [
     { id: "all",     label: t.market.catAll },
@@ -121,6 +124,14 @@ async function ResultsContent({
   const noWins = all.filter((m) => m.resolvedOutcome === "NO").length;
   const voidCount = all.filter((m) => m.resolvedOutcome === "VOID" || m.status === "VOIDED").length;
 
+  // C2b — the single "notable result" featured above the grid = the highest-volume
+  // settled market. Only on page 1 with no active search. Exclude it from the
+  // page-1 grid so it isn't shown twice.
+  const showFeatured = !searching && safePage === 1 && all.length > 0;
+  const notable = showFeatured
+    ? all.reduce((best, m) => (m.yesPool + m.noPool > best.yesPool + best.noPool ? m : best))
+    : null;
+
   // Build chart data for visible page only
   const cardCharts = new Map(
     await Promise.all(paged.map(async (m) => [m.id, await getCardChart(m.id).catch(() => ({ spark: [] }))] as const)),
@@ -152,15 +163,27 @@ async function ResultsContent({
 
   return (
     <>
-      {/* Header */}
+      {/* Header — lean (parity with /markets). C2b adds the aggregate YES/NO
+          donut as data, not a masthead. */}
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span className="text-gold-300"><I.resolved s={18} /></span>
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.results.title}</p>
         </div>
-        <p className="font-mono text-[10.5px] text-text-subtle tabular-nums whitespace-nowrap">
-          {totalCount} {t.results.resolved} · {formatTzsCompact(totalVolume)} {t.common.settled}
-        </p>
+        <div className="flex items-center gap-3">
+          {totalCount > 0 && (
+            <div className="flex items-center gap-2">
+              <OutcomeDonut yes={yesWins} no={noWins} voided={voidCount} size={38} />
+              <div className="flex flex-col leading-tight font-mono text-[10px] font-semibold tabular-nums">
+                <span className="text-yes-300">{t.results.yesOutcome} {yesWins}</span>
+                <span className="text-no-300">{t.results.noOutcome} {noWins}</span>
+              </div>
+            </div>
+          )}
+          <p className="hidden sm:block font-mono text-[10.5px] text-text-subtle tabular-nums whitespace-nowrap">
+            {totalCount} {t.results.resolved} · {formatTzsCompact(totalVolume)} {t.common.settled}
+          </p>
+        </div>
       </div>
 
       {/* Search — sticky below app bar, same as /markets */}
@@ -223,19 +246,7 @@ async function ResultsContent({
               })}
             </nav>
 
-            {/* Outcome summary */}
-            {totalCount > 0 && (
-              <div className="rounded-lg border border-border bg-bg-elevated/60 p-3 space-y-2">
-                <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle">
-                  {t.results.outcomes}
-                </p>
-                <div className="space-y-1.5">
-                  <OutcomeStat label={t.results.yesOutcome} count={yesWins} total={totalCount} color="var(--yes-400)" />
-                  <OutcomeStat label={t.results.noOutcome} count={noWins} total={totalCount} color="var(--no-400)" />
-                  {voidCount > 0 && <OutcomeStat label={t.results.voidOutcome} count={voidCount} total={totalCount} color="var(--text-subtle)" />}
-                </div>
-              </div>
-            )}
+            {/* Outcome breakdown moved to the header donut (C2b) — single source. */}
           </div>
         </aside>
 
@@ -251,8 +262,9 @@ async function ResultsContent({
 
           {paged.length > 0 ? (
             <>
+              {notable && <FeaturedResult m={notable} t={t} locale={locale} />}
               <section className="market-grid">
-                {paged.map((m) => (
+                {paged.filter((m) => m.id !== notable?.id).map((m) => (
                   <MarketCard
                     key={m.id}
                     id={m.id}
@@ -301,21 +313,58 @@ async function ResultsContent({
   );
 }
 
-/** Outcome mini-bar in sidebar */
-function OutcomeStat({ label, count, total, color }: { label: string; count: number; total: number; color: string }) {
-  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+/** C2b — aggregate YES/NO outcome donut (green YES · rose NO · neutral void).
+ *  Pure SVG, presentational. Segments drawn clockwise from 12 o'clock. */
+function OutcomeDonut({ yes, no, voided, size = 38 }: { yes: number; no: number; voided: number; size?: number }) {
+  const total = yes + no + voided || 1;
+  const sw = 5;
+  const r = size / 2 - sw / 2 - 0.5;
+  const c = 2 * Math.PI * r;
+  const seg = (n: number) => (n / total) * c;
+  const yesLen = seg(yes), noLen = seg(no), voidLen = seg(voided);
+  const cx = size / 2;
+  const ring = (len: number, offset: number, stroke: string) => (
+    <circle cx={cx} cy={cx} r={r} fill="none" stroke={stroke} strokeWidth={sw} strokeDasharray={`${len} ${c - len}`} strokeDashoffset={offset} />
+  );
   return (
-    <div>
-      <div className="flex items-center justify-between mb-1">
-        <span className="font-mono text-[10.5px] text-text-muted">
-          {label}
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden style={{ transform: "rotate(-90deg)" }}>
+      <circle cx={cx} cy={cx} r={r} fill="none" stroke="var(--bg-overlay)" strokeWidth={sw} />
+      {voided > 0 && ring(voidLen, -(yesLen + noLen), "var(--text-subtle)")}
+      {ring(noLen, -yesLen, "var(--no-400)")}
+      {ring(yesLen, 0, "var(--yes-400)")}
+    </svg>
+  );
+}
+
+/** C2b — one "notable result" (highest-volume settled market) spotlighted above
+ *  the grid, carrying the resolved gilt seal chip. */
+function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMarkets>>[number]; t: Awaited<ReturnType<typeof getServerT>>["t"]; locale: Awaited<ReturnType<typeof getServerT>>["locale"] }) {
+  const isVoid = m.resolvedOutcome === "VOID" || m.status === "VOIDED";
+  const yesPct = impliedYesPct(m);
+  return (
+    <Link
+      href={`/markets/${m.id}` as never}
+      className="group relative mb-5 block overflow-hidden rounded-xl border border-gold-700/40 bg-bg-elevated p-5 lg:p-6"
+      style={{ background: "radial-gradient(120% 140% at 100% 0%, oklch(40% 0.10 80 / 0.10), transparent 55%), var(--bg-elevated)" }}
+    >
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <Chip variant="cat" size="sm">{m.category}</Chip>
+        {isVoid
+          ? <Chip variant="pending" size="sm">{t.common.voided}</Chip>
+          : <Chip variant="resolved" size="sm">{t.market.resolvedOutcome} · {m.resolvedOutcome}</Chip>}
+        <span className="ml-auto inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
+          <I.crown s={13} /> {t.results.notableResult}
         </span>
-        <span className="font-mono text-[10.5px] tabular-nums text-text-subtle">{count} ({pct}%)</span>
       </div>
-      <div className="h-1.5 w-full rounded-pill bg-bg-overlay overflow-hidden">
-        <div className="h-full rounded-pill transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
+      <h2 className="mb-4 max-w-[70ch] font-display text-[18px] lg:text-[22px] font-semibold leading-tight text-text group-hover:text-gold-100">
+        {pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}
+      </h2>
+      <TippingBar yesPct={yesPct} height={28} showLabels resolved={!isVoid} recastOnHover={false} />
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] tabular-nums text-text-muted">
+        <span>{formatTzsCompact(m.yesPool + m.noPool)} {t.common.settled}</span>
+        <span className="flex items-center gap-1"><I.users s={11} /> {m.predictorCount} {t.market.predictors}</span>
       </div>
-    </div>
+    </Link>
   );
 }
 
