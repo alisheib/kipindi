@@ -80,7 +80,7 @@ export default async function LivePage() {
   return (
     <div className="relative min-h-[calc(100vh-44px)]">
       <RefreshPoller intervalMs={15_000} />
-      <BrandTopo opacity={0.04} />
+      <BrandTopo opacity={0.09} />
 
       <div className="relative mx-auto max-w-[1280px] px-3 lg:px-6 py-6 space-y-5">
         {/* Accessible page heading (WCAG 1.3.1 / 2.4.6). Visually hidden — the

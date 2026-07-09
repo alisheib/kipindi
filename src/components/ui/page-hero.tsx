@@ -11,13 +11,15 @@ import { FiftyMark } from "@/components/brand";
  * `glow` tints the single radial to the page accent; the shape/position/alpha
  * are fixed (800×320 at 100% 0%, /0.18).
  */
-type Glow = "gold" | "info" | "yes" | "rose";
+type Glow = "gold" | "info" | "yes" | "rose" | "aqua";
 
 const GLOW: Record<Glow, string> = {
   gold: "oklch(58% 0.13 80 / 0.18)",
   info: "oklch(45% 0.10 240 / 0.18)",
   yes: "oklch(45% 0.10 152 / 0.18)",
   rose: "oklch(45% 0.13 22 / 0.18)",
+  // aqua — the LIVE accent (matches the live pip / tipping / spark hue 195).
+  aqua: "oklch(52% 0.10 195 / 0.18)",
 };
 
 export function PageHero({
