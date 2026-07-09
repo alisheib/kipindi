@@ -162,8 +162,11 @@ const Ibase = {
   /* Server â€” system / infra */
   server: (p: GlyphProps) => <G {...p}><rect x="3" y="3.5" width="18" height="7" rx="2" /><rect x="3" y="13.5" width="18" height="7" rx="2" /><path d="M6.5 7h.01M6.5 17h.01" /><path d="M10.5 7h6.5M10.5 17h6.5" /></G>,
 
-  /* Landmark â€” bank / treasury */
-  landmark: (p: GlyphProps) => <G {...p}><path d="M12 3l8.5 4.5H3.5z" /><path d="M3.5 7.5h17" /><path d="M6 11v6.5M10 11v6.5M14 11v6.5M18 11v6.5" /><path d="M3 21h18" /></G>,
+  /* Landmark â€” civic building / treasury. B9 optical redraw: the old apex-roof
+     + a separate entablature line ~1px below it merged into a blur at 12/14px.
+     Redrawn to the kit's canonical geometry (same as `bank`): one closed pediment
+     (no redundant entablature) + a breathing gap before the columns start. */
+  landmark: (p: GlyphProps) => <G {...p}><path d="M12 3 3.5 8.5h17z" /><path d="M5.5 12v6.5M10 12v6.5M14 12v6.5M18.5 12v6.5" /><path d="M3.5 21h17" /></G>,
 
   /* FileText â€” report / document */
   fileText: (p: GlyphProps) => <G {...p}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /><path d="M8.5 12.5h7M8.5 16h5" /></G>,
