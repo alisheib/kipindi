@@ -50,7 +50,7 @@ export default async function AdminLivePage() {
         {/* KPI strip */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <AdminKpi label="Active players · live" sw="Wachezaji hai"   value={active.toLocaleString()} pulse />
-          <AdminKpi label="GGR · 24h"             sw="Mapato"           value={`TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`} gold />
+          <AdminKpi label="GGR · 24h"             sw="Mapato"           value={`TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`} />
           <AdminKpi label="Live matches"           sw="Mechi za moja"    value={liveMatches.length} pulse={liveMatches.length > 0} />
         </div>
 
@@ -98,7 +98,7 @@ export default async function AdminLivePage() {
         {/* Live flow + bet feed */}
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-3">
           <AdminCard title="24-hour money flow · TZS net per hour" sw="Mtiririko">
-            <AdminAreaChart series={flow} xLabels={flow.map((p) => p.label)} height={240} fillVar="var(--gold)" strokeVar="var(--gold)" />
+            <AdminAreaChart series={flow} xLabels={flow.map((p) => p.label)} height={240} fillVar="var(--royal)" strokeVar="var(--royal)" />
           </AdminCard>
           <AdminCard title="Live bet feed" sw="Madau ya moja kwa moja" action={<a href="/admin/audit?category=BET" className="font-mono text-micro tracking-[0.10em] uppercase text-royal">all →</a>}>
             <div className="max-h-[300px] overflow-y-auto">

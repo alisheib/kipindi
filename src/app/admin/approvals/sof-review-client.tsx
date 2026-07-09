@@ -68,7 +68,7 @@ export function SofReviewRow({ userId }: { userId: string }) {
           title="Accept source of funds"
           body="This clears the deposit gate for this player. They will be able to deposit normally. Make sure the declared source is plausible and documented."
           confirmLabel="Yes, accept"
-          tone="gold"
+
           onConfirm={() => submit("ACCEPT")}
         />
         <Button size="sm" variant="ghost" onClick={() => setExpanded((v) => v === "MORE_INFO" ? false : "MORE_INFO")} aria-label="Request more info" leading={<I.info s={12} />}>

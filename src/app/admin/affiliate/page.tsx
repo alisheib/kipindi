@@ -55,8 +55,8 @@ export default async function AdminAffiliatePage({
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <AdminKpi label="Total referrals"   sw="Marafiki wote"   value={stats.totalReferrals.toLocaleString()} delta="all-time" deltaDir="flat" />
           <AdminKpi label="Active affiliates"  sw="Wanaolipwa"      value={stats.activeAffiliates.toLocaleString()} delta="earned a reward" deltaDir="flat" />
-          <AdminKpi label="Commission paid"    sw="Tume zilizolipwa" value={formatTzs(stats.commissionPaidTzs)} gold delta="all-time" />
-          <AdminKpi label="Top referrer"       sw="Bingwa"          value={stats.topReferrer?.handle ?? "—"} gold delta={stats.topReferrer ? `${stats.topReferrer.recruits} recruits` : "none yet"} deltaDir="flat" />
+          <AdminKpi label="Commission paid"    sw="Tume zilizolipwa" value={formatTzs(stats.commissionPaidTzs)} delta="all-time" />
+          <AdminKpi label="Top referrer"       sw="Bingwa"          value={stats.topReferrer?.handle ?? "—"} delta={stats.topReferrer ? `${stats.topReferrer.recruits} recruits` : "none yet"} deltaDir="flat" />
         </div>
 
         {/* Interactive config editor */}

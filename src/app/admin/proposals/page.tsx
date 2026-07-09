@@ -33,8 +33,8 @@ export default async function AdminProposalsPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <AdminKpi label="Pending review"         sw="Yanasubiri"   value={fmt(stats.pending)} delta="awaiting review" deltaDir="flat" />
           <AdminKpi label="Approved · to publish"  sw="Yamekubaliwa" value={fmt(stats.approvedAwaitingLive)} delta="ready to go live" deltaDir="flat" />
-          <AdminKpi label="Bonuses granted"        sw="Bonasi zilizolipwa" value={`TZS ${fmt(stats.bonusesGrantedTzs)}`} gold delta="all-time" />
-          <AdminKpi label="Top proposer"           sw="Bingwa"       value={stats.topProposer?.handle ?? "—"} gold delta={stats.topProposer ? `${stats.topProposer.listed} listed` : "none yet"} deltaDir="flat" />
+          <AdminKpi label="Bonuses granted"        sw="Bonasi zilizolipwa" value={`TZS ${fmt(stats.bonusesGrantedTzs)}`} delta="all-time" />
+          <AdminKpi label="Top proposer"           sw="Bingwa"       value={stats.topProposer?.handle ?? "—"} delta={stats.topProposer ? `${stats.topProposer.listed} listed` : "none yet"} deltaDir="flat" />
         </div>
 
         {/* Interactive queue + review + config editor */}

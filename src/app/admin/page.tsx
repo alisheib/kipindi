@@ -46,8 +46,8 @@ export default async function AdminOverviewPage() {
         {/* §A — KPI strip */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           <AdminKpi label="Active players" sw="Wachezaji hai"     value={active24h.toLocaleString()} delta="last 24h" pulse />
-          <AdminKpi label="GGR · 24h"      sw="Mapato ya jumla"   value={`TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`} gold delta="vs yesterday" />
-          <AdminKpi label="NGR · 24h"      sw="Mapato halisi"     value={`TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`} gold delta="net of payouts" />
+          <AdminKpi label="GGR · 24h"      sw="Mapato ya jumla"   value={`TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`} delta="vs yesterday" />
+          <AdminKpi label="NGR · 24h"      sw="Mapato halisi"     value={`TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`} delta="net of payouts" />
           <AdminKpi label="AML pending"    sw="Inasubiri ukaguzi" value={amlPending} delta="needs review" deltaDir={amlPending > 0 ? "up" : "flat"} pulse={amlPending > 0} />
         </div>
 
@@ -62,8 +62,8 @@ export default async function AdminOverviewPage() {
               series={flow}
               xLabels={flow.map((p) => p.label)}
               height={240}
-              fillVar="var(--gold)"
-              strokeVar="var(--gold)"
+              fillVar="var(--royal)"
+              strokeVar="var(--royal)"
               yLabel="Net flow"
             />
           </AdminCard>

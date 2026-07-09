@@ -68,9 +68,9 @@ export default async function AdminAmlPage({
       />
       <div className="px-4 lg:px-6 py-5 space-y-4">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Pending review" sw="Inasubiri" value={inReviewAll.length.toLocaleString()} tone={inReviewAll.length > 0 ? "gold" : undefined} pulse={inReviewAll.length > 0} delta="EDD queue" spark={false} />
+          <AdminKpi label="Pending review" sw="Inasubiri" value={inReviewAll.length.toLocaleString()} pulse={inReviewAll.length > 0} delta="EDD queue" spark={false} />
           <AdminKpi label="≥ TZS 1M · 2-officer" sw="Zaidi ya 1M" value={largeCount.toLocaleString()} delta="two-person gate" spark={false} />
-          <AdminKpi label="Awaiting 2nd signature" sw="Inasubiri saini" value={awaitingSecond.toLocaleString()} tone={awaitingSecond > 0 ? "gold" : undefined} delta="stage 1 recorded" spark={false} />
+          <AdminKpi label="Awaiting 2nd signature" sw="Inasubiri saini" value={awaitingSecond.toLocaleString()} delta="stage 1 recorded" spark={false} />
           <AdminKpi label="Suspicious-bet flags" sw="Bendera za shaka" value={flagsAll.length.toLocaleString()} tone={flagsAll.length > 0 ? "danger" : undefined} delta="stake spike / velocity" spark={false} />
         </div>
         <AdminCard padding="p-0">

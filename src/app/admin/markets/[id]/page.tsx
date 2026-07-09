@@ -202,7 +202,7 @@ export default async function MarketPredictorsPage({
           <AdminKpi label="Predictors"     sw="Watabiri"   value={String(m.predictorCount)} />
           <AdminKpi label="Open positions" sw="Wazi"       value={String(openCount)} />
           <AdminKpi label="YES staked"     sw="Dau la NDIO"  value={formatTzs(yesStaked)} />
-          <AdminKpi label="NO staked"      sw="Dau la HAPANA" value={formatTzs(noStaked)} gold />
+          <AdminKpi label="NO staked"      sw="Dau la HAPANA" value={formatTzs(noStaked)} />
         </div>
 
         {/* Filters */}

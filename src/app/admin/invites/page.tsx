@@ -24,7 +24,7 @@ export default async function AdminInvitesPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <AdminKpi label="Campaigns" sw="Kampeni" value={stats.campaigns.toLocaleString()} delta="all-time" deltaDir="flat" />
           <AdminKpi label="Invites sent" sw="Mialiko" value={stats.totalInvites.toLocaleString()} delta="contacts" deltaDir="flat" />
-          <AdminKpi label="Registered" sw="Waliojiunga" value={stats.totalRegistered.toLocaleString()} gold delta="from invites" deltaDir="flat" />
+          <AdminKpi label="Registered" sw="Waliojiunga" value={stats.totalRegistered.toLocaleString()} delta="from invites" deltaDir="flat" />
           <AdminKpi label="Conversion" sw="Ubadilishaji" value={`${stats.conversionPct}%`} delta="registered/invited" deltaDir="flat" />
         </div>
 

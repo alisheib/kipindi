@@ -65,14 +65,14 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* KPI 8-up */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Deposits in"     sw="Amana"             value={`TZS ${formatTzsCompact(dep.amount).replace("TZS ", "")}`} gold delta={`${dep.count.toLocaleString()} txns`} />
+          <AdminKpi label="Deposits in"     sw="Amana"             value={`TZS ${formatTzsCompact(dep.amount).replace("TZS ", "")}`} delta={`${dep.count.toLocaleString()} txns`} />
           <AdminKpi label="Withdrawals out" sw="Utoaji"            value={`TZS ${formatTzsCompact(wd.amount).replace("TZS ", "")}`}  delta={`${wd.count.toLocaleString()} txns`} />
-          <AdminKpi label="GGR"             sw="Mapato ya jumla"    value={`TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`}        gold delta={`${period}`} />
-          <AdminKpi label="NGR"             sw="Mapato halisi"      value={`TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`}        gold delta="net of payouts" />
+          <AdminKpi label="GGR"             sw="Mapato ya jumla"    value={`TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`}        delta={`${period}`} />
+          <AdminKpi label="NGR"             sw="Mapato halisi"      value={`TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`}        delta="net of payouts" />
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <AdminKpi label="Tax accrued (est.)" sw="Kodi · makisio" value={`TZS ${formatTzsCompact(taxAccrued).replace("TZS ", "")}`} delta="pending TRA module" deltaDir="flat" />
-          <AdminKpi label="Operator margin"  sw="Faida"         value={`${margin.toFixed(1)}%`} gold delta="vs 7-10% band" deltaDir={margin > 7 ? "up" : "flat"} />
+          <AdminKpi label="Operator margin"  sw="Faida"         value={`${margin.toFixed(1)}%`} delta="vs 7-10% band" deltaDir={margin > 7 ? "up" : "flat"} />
           <AdminKpi label="Wallet liability" sw="Madeni"        value={`TZS ${formatTzsCompact(liability).replace("TZS ", "")}`} delta="real-time" />
           <AdminKpi label="Active players"   sw="Wachezaji"     value={activePeriod.toLocaleString()} delta={`${period}`} />
         </div>
@@ -80,7 +80,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
         {/* Charts row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <AdminCard title="Net flow over time" sw="Mtiririko wa pesa · 28-day daily series">
-            <AdminAreaChart series={flow} xLabels={flow.map((p) => p.label)} height={240} fillVar="var(--gold)" strokeVar="var(--gold)" />
+            <AdminAreaChart series={flow} xLabels={flow.map((p) => p.label)} height={240} fillVar="var(--royal)" strokeVar="var(--royal)" />
           </AdminCard>
           <AdminCard title="Operator margin" sw="Faida ya mfumo · 28-day · band 7–10%">
             <AdminAreaChart series={margins} xLabels={margins.map((p) => p.label)} height={240} fillVar="var(--royal)" strokeVar="var(--royal)" />

@@ -198,9 +198,9 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
 
         {/* §B — Quick stats strip */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Lifetime deposit"    sw="Jumla ya amana"        value={`TZS ${formatTzsCompact(lifetimeDeposits).replace("TZS ", "")}`} gold delta={wallet ? `wallet ${formatTzs(wallet.balance)}` : "—"} />
+          <AdminKpi label="Lifetime deposit"    sw="Jumla ya amana"        value={`TZS ${formatTzsCompact(lifetimeDeposits).replace("TZS ", "")}`} delta={wallet ? `wallet ${formatTzs(wallet.balance)}` : "—"} />
           <AdminKpi label="Lifetime withdrawal" sw="Jumla ya utoaji"       value={`TZS ${formatTzsCompact(lifetimeWithdrawals).replace("TZS ", "")}`} delta={`${txns.filter((t) => t.type === "WITHDRAWAL").length} txns`} />
-          <AdminKpi label="NGR contribution"    sw="Mchango wa mapato"     value={`TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`} gold delta={`${txns.filter((t) => t.type === "BET_PLACED").length} positions`} />
+          <AdminKpi label="NGR contribution"    sw="Mchango wa mapato"     value={`TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`} delta={`${txns.filter((t) => t.type === "BET_PLACED").length} positions`} />
           <AdminKpi label="Last position"      sw="Nafasi ya mwisho"      value={(() => { const lb = txns.filter((t) => t.type === "BET_PLACED").sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]; return lb ? formatDateShort(lb.createdAt) : "never"; })()} delta={`${txns.filter((t) => t.type === "BET_PLACED").length} positions`} />
         </div>
 

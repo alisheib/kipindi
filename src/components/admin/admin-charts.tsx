@@ -23,8 +23,8 @@ const PAD_Y_BOTTOM = 26;   // room for x-axis labels
 export function AdminAreaChart({
   series,
   height = CHART_H,
-  fillVar = "var(--gold)",
-  strokeVar = "var(--gold)",
+  fillVar = "var(--royal)",
+  strokeVar = "var(--royal)",
   fillOpacity = 0.18,
   yLabel,
   xLabels,

@@ -44,7 +44,7 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
         </Link>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Bonus per invitee" sw="Bonasi" value={formatTzs(campaign.bonusAmountTzs)} gold delta={`${campaign.wagerMultiplier}× wagering`} deltaDir="flat" />
+          <AdminKpi label="Bonus per invitee" sw="Bonasi" value={formatTzs(campaign.bonusAmountTzs)} delta={`${campaign.wagerMultiplier}× wagering`} deltaDir="flat" />
           <AdminKpi label="Invited" sw="Walioalikwa" value={campaign.totalInvites.toLocaleString()} delta={`${queued} queued`} deltaDir="flat" />
           <AdminKpi label="Registered" sw="Waliojiunga" value={campaign.totalRegistered.toLocaleString()} delta={`${counts.SENT ?? 0} sent`} deltaDir="flat" />
           <AdminKpi label="Expiry" sw="Muda" value={`${campaign.expiresInDays}d`} delta="bonus validity" deltaDir="flat" />

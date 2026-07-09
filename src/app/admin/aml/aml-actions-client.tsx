@@ -78,7 +78,7 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
           title={`Approve ${formatTzs(amount)}`}
           body={<>This records your approval. For amounts over TZS 1M, a second, different officer must counter-sign before funds release. Once both officers approve, <strong>funds are released immediately</strong> and cannot be reversed.</>}
           confirmLabel="Yes, approve"
-          tone="gold"
+
           onConfirm={() => submit("approve")}
         />
         <Button
