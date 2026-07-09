@@ -4,7 +4,9 @@ import { I } from "@/components/ui/glyphs";
 import { PageHeader } from "@/components/ui/page-header";
 import { PositionCard } from "@/components/markets/position-card";
 import { PnlSummaryStrip } from "@/components/positions/pnl-summary-strip";
+import { CountdownRing } from "@/components/positions/countdown-ring";
 import { SellButton } from "@/components/markets/sell-button";
+import { formatTzsCompact } from "@/lib/utils";
 import { listPositionsForUser, getMarket, cashOutValue, isSelectionClosed } from "@/lib/server/market-service";
 import { currentSession } from "@/lib/server/auth-service";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -47,6 +49,10 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
 
   // P&L summary — open at-risk + live cash-out value, settled net.
   const openStake = open.reduce((s, p) => s + p.stake, 0);
+  // C2c — YES/NO exposure split of open stake (green/rose bar).
+  const openYesStake = open.filter((p) => p.side === "YES").reduce((s, p) => s + p.stake, 0);
+  const openNoStake = openStake - openYesStake;
+  const serverNow = Date.now();
   let openLiveValue = 0;
   for (const p of open) {
     const m = marketMap.get(p.marketId);
@@ -162,6 +168,22 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
             browseLabel={t.positions.browseMarkets}
           />
         ) : (
+          <>
+          {/* C2c — YES/NO exposure bar: green/rose split of open stake, with
+              end-labels (a11y §6b — never colour-only). */}
+          {openStake > 0 && (
+            <div className="mb-3 rounded-lg border border-border bg-bg-elevated/60 p-3">
+              <div className="mb-1.5 flex items-center justify-between gap-2 font-mono text-[10px] uppercase tracking-[0.12em] tabular-nums">
+                <span className="font-bold text-yes-300">{t.common.yes} · {formatTzsCompact(openYesStake)}</span>
+                <span className="text-text-subtle">{t.positions.atRisk}</span>
+                <span className="font-bold text-no-300">{t.common.no} · {formatTzsCompact(openNoStake)}</span>
+              </div>
+              <div className="flex h-2.5 w-full overflow-hidden rounded-pill bg-bg-overlay" role="img" aria-label={`${t.common.yes} ${formatTzsCompact(openYesStake)}, ${t.common.no} ${formatTzsCompact(openNoStake)}`}>
+                {openYesStake > 0 && <div style={{ width: `${(openYesStake / openStake) * 100}%`, background: "var(--yes-500)" }} />}
+                {openNoStake > 0 && <div style={{ width: `${(openNoStake / openStake) * 100}%`, background: "var(--no-500)" }} />}
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {open.map((p) => {
               const m = marketMap.get(p.marketId);
@@ -184,12 +206,21 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                     const cutoffIso = m.selectionClosedAt ?? m.resolutionAt;
                     const closed = isSelectionClosed(m);
                     return m.status === "LIVE" ? (
-                      <p className={`flex items-center gap-1.5 text-[11px] font-mono ${closed ? "text-gold-300" : "text-text-subtle"}`}>
-                        <I.calendarClock s={11} />
-                        {closed
-                          ? t.positions.selectionClosed
-                          : `${t.positions.selectionCloses} ${new Date(cutoffIso).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <CountdownRing
+                          deadlineIso={cutoffIso}
+                          startIso={p.placedAt}
+                          serverNow={serverNow}
+                          size={40}
+                          ariaLabel={closed ? t.positions.selectionClosed : t.positions.selectionCloses}
+                        />
+                        <p className={`flex items-center gap-1.5 text-[11px] font-mono ${closed ? "text-gold-300" : "text-text-subtle"}`}>
+                          <I.calendarClock s={11} />
+                          {closed
+                            ? t.positions.selectionClosed
+                            : `${t.positions.selectionCloses} ${new Date(cutoffIso).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`}
+                        </p>
+                      </div>
                     ) : null;
                   })()}
                   {liveValue !== null && (
@@ -206,6 +237,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
               );
             })}
           </div>
+          </>
         )}
       </Section>}
 
