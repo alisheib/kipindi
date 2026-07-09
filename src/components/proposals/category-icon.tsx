@@ -1,18 +1,9 @@
-/** Category → kit glyph, shared across proposal screens. */
-import { I, type GlyphKey } from "@/components/ui/glyphs";
+/** Category → kit glyph. Delegates to the app-wide `categoryGlyph()` so a
+ *  proposal card shows the SAME glyph per category as market/live cards
+ *  (previously this used a divergent map — e.g. sports=trophy vs football). */
+import { I, categoryGlyph } from "@/components/ui/glyphs";
 import type { ProposalCategory } from "@/lib/server/store";
 import type { Dict } from "@/lib/i18n-dict";
-
-const MAP: Record<ProposalCategory, GlyphKey> = {
-  sports: "trophy",
-  macro: "trendingUp",
-  weather: "weather",
-  crypto: "crypto",
-  culture: "entertainment",
-  infrastructure: "politics", // columned-building glyph
-  tech: "tech",
-  mixed: "shuffle", // matches the ai-poll "Mixed / All" shuffle glyph
-};
 
 export const CATEGORY_LABEL: Record<ProposalCategory, string> = {
   sports: "Sports",
@@ -40,6 +31,6 @@ export function categoryLabel(t: Dict, c: ProposalCategory): string {
 }
 
 export function CategoryIcon({ category, size = 12 }: { category: ProposalCategory; size?: number }) {
-  const Glyph = I[MAP[category] ?? "trophy"];
+  const Glyph = I[categoryGlyph(category)];
   return <Glyph s={size} />;
 }
