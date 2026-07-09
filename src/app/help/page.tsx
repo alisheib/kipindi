@@ -10,14 +10,25 @@ export async function generateMetadata() {
   return { title: t.common.help };
 }
 
-const FAQ_KEYS = ["faq1", "faq2", "faq3", "faq4", "faq5", "faq6", "faq7", "faq8"] as const;
+// C2i — per-FAQ topic glyphs (help is support, not earned money → info/neutral,
+// never gold).
+const FAQ_ITEMS = [
+  { key: "faq1", glyph: "percent" },          // how markets work
+  { key: "faq2", glyph: "activity" },         // odds move
+  { key: "faq3", glyph: "arrowUpFromLine" },  // withdraw
+  { key: "faq4", glyph: "idCard" },           // verify identity
+  { key: "faq5", glyph: "pause" },            // gambling problem / take a break
+  { key: "faq6", glyph: "cashOut" },          // cash out
+  { key: "faq7", glyph: "alertCircle" },      // voided
+  { key: "faq8", glyph: "shieldcheck" },      // fairness
+] as const;
 
 export default async function HelpPage() {
   const { t } = await getServerT();
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-5">
-      <PageHero glow="gold">
-        <PageHeader tone="gold" eyebrow={t.help.pageTitle} title={t.help.heading} />
+      <PageHero glow="info">
+        <PageHeader tone="info" eyebrow={t.help.pageTitle} title={t.help.heading} />
       </PageHero>
 
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -39,7 +50,7 @@ export default async function HelpPage() {
         />
         <ContactCard
           icon={<I.comment s={15} />}
-          tone="gold"
+          tone="aqua"
           title={t.help.liveChat}
           value={t.help.inApp}
           sub={t.help.tapChatBubble}
@@ -51,41 +62,50 @@ export default async function HelpPage() {
           {t.help.faqTitle}
         </h2>
         <div>
-          {FAQ_KEYS.map((key) => (
-            <details
-              key={key}
-              className="group border-t border-border first:border-t-0 py-3"
-            >
-              <summary className="cursor-pointer list-none flex items-start justify-between gap-3 font-display text-[13.5px] font-semibold text-text">
-                <span>{t.help[`${key}q` as keyof typeof t.help]}</span>
-                <span className="mt-1 shrink-0 text-text-subtle transition-transform group-open:rotate-180">
-                  <I.chevronDown s={13} />
-                </span>
-              </summary>
-              <p className="mt-2 text-[12.5px] text-text-muted leading-relaxed">
-                {t.help[`${key}a` as keyof typeof t.help]}
-                {key === "faq5" && ` ${SUPPORT_PHONE()} (${t.common.free}).`}
-              </p>
-            </details>
-          ))}
+          {FAQ_ITEMS.map(({ key, glyph }) => {
+            const Glyph = I[glyph];
+            return (
+              <details
+                key={key}
+                className="group border-t border-border first:border-t-0 py-3"
+              >
+                <summary className="cursor-pointer list-none flex items-start justify-between gap-3 font-display text-[13.5px] font-semibold text-text">
+                  <span className="flex items-start gap-2.5 min-w-0">
+                    <span className="mt-0.5 shrink-0 text-brand-300"><Glyph s={15} /></span>
+                    <span>{t.help[`${key}q` as keyof typeof t.help]}</span>
+                  </span>
+                  <span className="mt-1 shrink-0 text-text-subtle transition-transform group-open:rotate-180">
+                    <I.chevronDown s={13} />
+                  </span>
+                </summary>
+                <p className="mt-2 pl-[25px] text-[12.5px] text-text-muted leading-relaxed">
+                  {t.help[`${key}a` as keyof typeof t.help]}
+                  {key === "faq5" && ` ${SUPPORT_PHONE()} (${t.common.free}).`}
+                </p>
+              </details>
+            );
+          })}
         </div>
       </section>
 
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <QuickLinkCard
           icon={<I.shieldcheck s={15} />}
+          tone="yes"
           title={t.help.responsibleGambling}
           sub={t.help.limitsBreakExclude}
           href="/profile/responsible-gambling"
         />
         <QuickLinkCard
           icon={<I.wallet s={15} />}
+          tone="info"
           title={t.help.walletHelp}
           sub={t.help.depositWithdrawHolds}
           href="/wallet"
         />
         <QuickLinkCard
-          icon={<I.trophy s={15} />}
+          icon={<I.portfolio s={15} />}
+          tone="aqua"
           title={t.help.myPositions}
           sub={t.help.openSettledCashOut}
           href="/positions"
@@ -103,7 +123,7 @@ function ContactCard({
   icon, tone, title, value, sub, href,
 }: {
   icon: React.ReactNode;
-  tone: "yes" | "info" | "gold";
+  tone: "yes" | "info" | "aqua";
   title: string;
   value: string;
   sub: string;
@@ -112,7 +132,7 @@ function ContactCard({
   const tintCls =
     tone === "yes"   ? "border-yes-700 bg-yes-500/10 text-yes-300"
     : tone === "info"  ? "border-info-border bg-info-bg/30 text-info-fg"
-    :                    "border-gold-700 bg-gold-500/10 text-gold-300";
+    :                    "border-aqua-500/50 bg-aqua-500/10 text-aqua-300";
   const card = (
     <div className="rounded-xl glass-panel p-4 space-y-2 hover:border-brand-400 transition-colors h-full">
       <div className="flex items-center gap-2">
@@ -131,19 +151,25 @@ function ContactCard({
 }
 
 function QuickLinkCard({
-  icon, title, sub, href,
+  icon, title, sub, href, tone,
 }: {
   icon: React.ReactNode;
   title: string;
   sub: string;
   href: string;
+  tone: "yes" | "info" | "aqua";
 }) {
+  // C2i — tone-coded quick links (never gold; help isn't earned money).
+  const tint =
+    tone === "yes"  ? "bg-yes-500/10 text-yes-300"
+    : tone === "info" ? "bg-info-bg/40 text-info-fg"
+    :                   "bg-aqua-500/10 text-aqua-300";
   return (
     <Link
       href={href as never}
       className="flex items-center gap-3 rounded-xl glass-panel p-4 hover:border-brand-400 transition-colors"
     >
-      <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-gold-500/10 text-gold-300 shrink-0">
+      <span className={`inline-flex h-9 w-9 items-center justify-center rounded-md shrink-0 ${tint}`}>
         {icon}
       </span>
       <div className="flex-1 min-w-0">
