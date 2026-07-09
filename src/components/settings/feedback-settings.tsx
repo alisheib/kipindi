@@ -58,7 +58,7 @@ export function FeedbackSettings() {
           onToggle={toggleHaptics}
         />
         <Row
-          icon={<I.sparkle s={16} className="text-gold-300" />}
+          icon={<I.sparkle s={16} className="text-brand-300" />}
           title={t.common.reduceMotion}
           subtitle={t.common.motionSubtitle}
           on={reduceMotion}
@@ -76,7 +76,7 @@ function Row({
 }) {
   return (
     <div className="flex items-center gap-3 py-3.5">
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md" style={{ background: "color-mix(in oklab, var(--gold-500) 12%, transparent)" }}>
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md" style={{ background: "color-mix(in oklab, var(--brand-500) 12%, transparent)" }}>
         {icon}
       </span>
       <div className="min-w-0 flex-1">
@@ -85,7 +85,7 @@ function Row({
         </p>
         <p className="mt-0.5 text-[12px] text-text-muted leading-snug">{subtitle}</p>
       </div>
-      <Toggle on={on} onClick={onToggle} gold aria-label={title} />
+      <Toggle on={on} onClick={onToggle} aria-label={title} />
     </div>
   );
 }

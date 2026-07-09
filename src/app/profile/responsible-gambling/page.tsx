@@ -5,6 +5,7 @@ import { Chip } from "@/components/ui/chip";
 import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
+import { RgSunriseArt } from "@/components/rg/self-care-art";
 import { FieldLegend } from "@/components/ui/field-legend";
 import { currentSession } from "@/lib/server/auth-service";
 import { getRgSettings } from "@/lib/server/responsible-gambling";
@@ -71,6 +72,19 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           {t.rg.pageDescription}
         </p>
       </PageHero>
+
+      {/* C2h — self-care sunrise line-art + yes-toned support callout, surfaced
+          early so anyone seeking help sees it immediately (no gambling imagery). */}
+      <section className="flex items-start gap-3.5 rounded-xl border border-yes-700/60 bg-yes-500/[0.08] p-4 lg:p-5">
+        <RgSunriseArt size={44} className="shrink-0 text-yes-300" />
+        <div className="min-w-0">
+          <p className="font-display text-[14px] font-semibold text-yes-200">{t.rg.supportAvailable}</p>
+          <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
+            {t.rg.helpline} · <a href={`tel:${SUPPORT_PHONE_TEL()}`} className="font-semibold text-yes-300 underline-offset-2 hover:underline">{SUPPORT_PHONE()}</a>.
+            {" "}{t.rg.intlSupport}{" "}<a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="text-yes-300 underline-offset-2 hover:underline">begambleaware.org</a>.
+          </p>
+        </div>
+      </section>
 
       <FeedbackSettings />
 
@@ -152,10 +166,6 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           </div>
           <SelfExcludeConfirm />
         </form>
-        <p className="font-mono text-[11px] text-text-subtle pt-1">
-          {t.rg.helpline} · <a href={`tel:${SUPPORT_PHONE_TEL()}`} className="text-brand-300 underline-offset-2 hover:underline">{SUPPORT_PHONE()}</a>.
-          {t.rg.intlSupport}{" "}<a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="text-brand-300 underline-offset-2 hover:underline">begambleaware.org</a>.
-        </p>
       </section>
     </main>
   );
