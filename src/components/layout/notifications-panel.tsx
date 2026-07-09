@@ -192,9 +192,12 @@ export function NotificationsPanel() {
             aria-hidden
             className="notif-badge-pulse"
             style={{
+              // The bell button renders 80px with the 20px glyph centred (inset
+              // ~30px), so the badge hugs the bell's top-right edge — not the far
+              // button corner (was top:14/right:5, which floated it away).
               position: "absolute",
-              top: 14,
-              right: 5,
+              top: 24,
+              right: 20,
               minWidth: 18,
               height: 18,
               borderRadius: 9,
