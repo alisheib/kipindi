@@ -328,6 +328,7 @@ export function WalletPageClient({
   bonusBalance, bonusActiveCount, bonusWagerRemaining, bonusGrants,
   cashbackPercent = 0,
   cashbackMode = "REQUEST",
+  limits,
   isAuthed,
 }: {
   balance: number; pending: number; hold: number; currency: string;
@@ -337,6 +338,9 @@ export function WalletPageClient({
   bonusBalance: number; bonusActiveCount: number; bonusWagerRemaining: number; bonusGrants: (BonusGrantView & { status?: "ACTIVE" | "QUEUED" })[];
   cashbackPercent?: number;
   cashbackMode?: "REQUEST" | "AUTO";
+  /** Single-txn money caps, threaded from the server's zod validators (the
+   *  single source of truth) so the Limits tab never drifts from enforcement. */
+  limits: { depositMin: number; depositMax: number; withdrawMin: number; withdrawMax: number };
   isAuthed: boolean;
 }) {
   const { t } = useT();
@@ -352,9 +356,11 @@ export function WalletPageClient({
     { v: "limits",   label: t.common.limits },
   ];
 
+  // Derived from the server validators (via props) — never a hand-typed literal.
+  const capStr = (min: number, max: number) => `TZS ${min.toLocaleString("en-US")} – ${max.toLocaleString("en-US")}`;
   const txnCaps = [
-    { label: t.common.perDeposit,    value: "TZS 500 – 2,000,000" },
-    { label: t.common.perWithdrawal, value: "TZS 1,000 – 5,000,000" },
+    { label: t.common.perDeposit,    value: capStr(limits.depositMin, limits.depositMax) },
+    { label: t.common.perWithdrawal, value: capStr(limits.withdrawMin, limits.withdrawMax) },
   ];
 
   const selfExclusionOptions = ["24h", "7d", "30d", "6m", t.common.permanent];

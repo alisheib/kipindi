@@ -74,17 +74,27 @@ export const stakeAmount = z
   .min(100, "Minimum stake is TZS 100")
   .max(500_000, "Maximum stake is TZS 500,000");
 
+// Single-transaction money caps — the single source of truth. These drive BOTH
+// server enforcement (the schemas below) AND the wallet "Limits" tab display, so
+// the numbers a player sees can never drift from what the server actually
+// enforces (wallet-client reads them via the server page's `limits` prop).
+export const DEPOSIT_MIN_TZS = 500;
+export const DEPOSIT_MAX_TZS = 2_000_000;
+export const WITHDRAW_MIN_TZS = 1_000;
+export const WITHDRAW_MAX_TZS = 5_000_000;
+const tzs = (n: number) => n.toLocaleString("en-US");
+
 export const depositAmount = z
   .number()
   .int()
-  .min(500, "Minimum deposit is TZS 500")
-  .max(2_000_000, "Single deposit cap is TZS 2,000,000");
+  .min(DEPOSIT_MIN_TZS, `Minimum deposit is TZS ${tzs(DEPOSIT_MIN_TZS)}`)
+  .max(DEPOSIT_MAX_TZS, `Single deposit cap is TZS ${tzs(DEPOSIT_MAX_TZS)}`);
 
 export const withdrawAmount = z
   .number()
   .int()
-  .min(1_000, "Minimum withdrawal is TZS 1,000")
-  .max(5_000_000, "Single withdrawal cap is TZS 5,000,000");
+  .min(WITHDRAW_MIN_TZS, `Minimum withdrawal is TZS ${tzs(WITHDRAW_MIN_TZS)}`)
+  .max(WITHDRAW_MAX_TZS, `Single withdrawal cap is TZS ${tzs(WITHDRAW_MAX_TZS)}`);
 
 export const RegisterSchema = z.object({
   phone: tzPhone,

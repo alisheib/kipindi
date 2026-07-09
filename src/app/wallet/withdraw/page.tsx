@@ -10,6 +10,7 @@ import { Input, Field as KitField } from "@/components/ui/input";
 import { Cash } from "@/components/ui/cash";
 import { formatTzs } from "@/lib/utils";
 import { WithdrawConfirm } from "./withdraw-confirm";
+import { WITHDRAW_MIN_TZS, WITHDRAW_MAX_TZS } from "@/lib/server/validators";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { withdrawAction } from "./actions";
@@ -121,8 +122,8 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
             type="number"
             required
             inputMode="numeric"
-            min={1000}
-            max={Math.min(5_000_000, wallet?.balance ?? 0)}
+            min={WITHDRAW_MIN_TZS}
+            max={Math.min(WITHDRAW_MAX_TZS, wallet?.balance ?? 0)}
             step={1}
             placeholder="10000"
             defaultValue={prevAmount || undefined}

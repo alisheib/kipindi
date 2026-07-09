@@ -13,6 +13,7 @@ import { db } from "@/lib/server/store";
 import { getBonusConfig } from "@/lib/server/bonus-config";
 import { getServerT } from "@/lib/i18n-server";
 import { depositAction } from "./actions";
+import { DEPOSIT_MAX_TZS } from "@/lib/server/validators";
 import { DepositAmount } from "./deposit-amount";
 import { ProviderRadioGrid } from "@/components/wallet/provider-radio-grid";
 
@@ -44,7 +45,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
   let user: Awaited<ReturnType<typeof db.user.findById>> | null = null;
   try { user = await db.user.findById(session.userId); } catch { /* graceful — default limits */ }
   const adminTest = !!user && ADMIN_TEST_ROLES.has(user.role) && process.env.NODE_ENV !== "production" && process.env.ADMIN_TEST_DEPOSITS !== "false";
-  const maxAmount = adminTest ? 1_000_000_000 : 2_000_000;
+  const maxAmount = adminTest ? 1_000_000_000 : DEPOSIT_MAX_TZS;
   const quickAmounts = adminTest ? [100_000, 1_000_000, 5_000_000, 20_000_000, 100_000_000] : QUICK_AMOUNTS;
   const bonusCfg = getBonusConfig();
   const showCashback = bonusCfg.enabled && bonusCfg.cashbackEnabled && bonusCfg.cashbackPercentage > 0;

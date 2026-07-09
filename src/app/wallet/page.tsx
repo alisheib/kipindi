@@ -7,6 +7,7 @@ import type { Transaction } from "@/lib/ui-stubs";
 import type { StoredTxn } from "@/lib/server/store";
 import { getBonusSummary } from "@/lib/server/bonus-service";
 import { getBonusConfig } from "@/lib/server/bonus-config";
+import { DEPOSIT_MIN_TZS, DEPOSIT_MAX_TZS, WITHDRAW_MIN_TZS, WITHDRAW_MAX_TZS } from "@/lib/server/validators";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { getServerT } from "@/lib/i18n-server";
 
@@ -104,6 +105,10 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
         bonusGrants={bonusGrants}
         cashbackPercent={cashbackPercent}
         cashbackMode={cashbackMode}
+        limits={{
+          depositMin: DEPOSIT_MIN_TZS, depositMax: DEPOSIT_MAX_TZS,
+          withdrawMin: WITHDRAW_MIN_TZS, withdrawMax: WITHDRAW_MAX_TZS,
+        }}
         isAuthed={true}
       />
     </>
