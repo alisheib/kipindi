@@ -52,7 +52,7 @@ export async function GET(
           height: "100%",
           display: "flex",
           flexDirection: "column",
-          background: "linear-gradient(160deg, #0c1a1f 0%, #16301f 50%, #241417 100%)",
+          background: "linear-gradient(135deg, #0A0E33 0%, #060A50 100%)",
           padding: 60,
           color: C.ink,
           fontFamily: "Sora, sans-serif",

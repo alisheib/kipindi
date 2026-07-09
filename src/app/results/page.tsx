@@ -16,7 +16,13 @@ import { getServerT } from "@/lib/i18n-server";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
-  return { title: t.results.title };
+  const title = t.results.title;
+  const og = `/api/og/page?title=${encodeURIComponent(title)}`;
+  return {
+    title,
+    openGraph: { title, images: [{ url: og, width: 1200, height: 630 }] },
+    twitter: { card: "summary_large_image", title, images: [og] },
+  };
 }
 export const dynamic = "force-dynamic";
 
