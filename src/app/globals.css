@@ -1815,7 +1815,7 @@ html.kp-reduce-motion *::after {
    card's category treatment so the cards read as one system. Never gold. */
 .mcardp-catico { display:inline-flex; align-items:center; justify-content:center; color: var(--text-subtle); flex-shrink:0; }
 .mcardp-catico svg { width: 13px; height: 13px; }
-.mcardp-cat { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.mcardp-cat { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .mcardp-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex: 1 1 auto; }
 .mcardp-qwrap { flex: 1 1 auto; min-width: 0; }
 .mcardp-q { font-family: var(--font-display); font-weight: 600; font-size: 15px; line-height: 1.34; letter-spacing: -0.015em; color: var(--text); text-wrap: balance; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height: calc(2 * 1.34em); }
