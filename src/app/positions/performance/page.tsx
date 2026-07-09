@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
+import { I } from "@/components/ui/glyphs";
+import { GiltCorner } from "@/components/brand";
 import { formatTzsAbs, formatTzsSigned } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PnlChart } from "@/components/positions/pnl-chart";
@@ -153,11 +155,48 @@ export default async function PerformancePage() {
             </section>
           )}
 
+          {/* ── C2d highlights: best-win gilt crest + streak pip-chain ─
+              (earned money / earned standing — gold is legitimate here) ── */}
+          <section className="grid gap-3 md:grid-cols-2">
+            {/* Best-win gilt crest */}
+            <div
+              className="relative overflow-hidden rounded-xl border border-gold-700/50 p-5"
+              style={{ background: "radial-gradient(120% 140% at 100% 0%, oklch(40% 0.11 82 / 0.14), transparent 55%), var(--bg-elevated)" }}
+            >
+              <GiltCorner size={40} rotate={90} className="absolute right-1.5 top-1.5 opacity-60" />
+              <p className="gilt-eyebrow">{t.performance.bestWin}</p>
+              <div className="mt-3 flex items-center gap-3.5">
+                <span
+                  className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-gold-500 text-gold-300"
+                  style={{ background: "radial-gradient(circle at 50% 30%, oklch(45% 0.12 84 / 0.35), oklch(24% 0.06 80 / 0.25))", boxShadow: "0 0 20px -4px color-mix(in oklab, var(--gold-400) 55%, transparent)" }}
+                >
+                  <I.trophy s={22} />
+                </span>
+                <div className="min-w-0">
+                  <p className="font-mono text-[26px] lg:text-[30px] font-bold leading-none tabular-nums text-gold-300" style={{ textShadow: "0 0 20px color-mix(in oklab, var(--gold-400) 30%, transparent)" }}>
+                    {bestMarket ? formatTzsAbs(bestMarket.payout) : "—"}
+                  </p>
+                  {bestTitle && <p className="mt-1.5 truncate text-[12px] text-text-muted">{bestTitle}</p>}
+                </div>
+              </div>
+            </div>
+
+            {/* Streak pip-chain */}
+            <div className="rounded-xl border border-border bg-bg-elevated p-5">
+              <div className="flex items-baseline justify-between gap-2">
+                <p className="gilt-eyebrow" style={{ color: "var(--text-subtle)" }}>{t.performance.currentStreak}</p>
+                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle tabular-nums">{t.performance.longestStreak} {longestStreak}</p>
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                <span className="font-display text-[30px] font-bold leading-none tabular-nums text-text">{currentStreak}</span>
+                <StreakChain current={currentStreak} longest={longestStreak} />
+              </div>
+            </div>
+          </section>
+
           {/* ── KPI cards ─────────────────────────────────────────── */}
           <section className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(158px, 1fr))" }}>
             <Stat label={t.performance.avgStake} value={formatTzsAbs(avgStake)} />
-            <Stat label={t.performance.bestWin} value={bestMarket ? formatTzsAbs(bestMarket.payout) : "—"} sub={bestTitle || undefined} gold />
-            <Stat label={t.performance.currentStreak} value={currentStreak > 0 ? String(currentStreak) : "—"} sub={`${t.performance.longestStreak} ${longestStreak}`} />
             <Stat label={t.performance.totalStaked} value={formatTzsAbs(totalStaked)} />
           </section>
 
@@ -199,12 +238,27 @@ function Kpi({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Stat({ label, value, sub, gold }: { label: string; value: string; sub?: string; gold?: boolean }) {
+function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-border bg-bg-elevated px-4 py-3.5">
       <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.10em] text-text-subtle">{label}</p>
-      <p className={`mt-2 font-mono text-[18px] font-bold tabular-nums leading-[1.1] ${gold ? "text-[var(--gilt)]" : "text-text"}`}>{value}</p>
-      {sub && <p className="mt-1.5 truncate font-mono text-[10.5px] text-text-muted">{sub}</p>}
+      <p className="mt-2 font-mono text-[18px] font-bold tabular-nums leading-[1.1] text-text">{value}</p>
+    </div>
+  );
+}
+
+/** C2d streak pip-chain — filled gilt `hot` flames up to the current streak,
+ *  muted pips out to the longest streak (your run vs your best). */
+function StreakChain({ current, longest }: { current: number; longest: number }) {
+  const len = Math.min(Math.max(longest, current, 5), 12);
+  return (
+    <div className="flex flex-wrap items-center gap-1" role="img" aria-label={`${current} / ${longest}`}>
+      {Array.from({ length: len }).map((_, i) => (
+        <span key={i} className={i < current ? "text-gold-300" : "text-text-subtle/30"}>
+          <I.hot s={15} />
+        </span>
+      ))}
+      {current > 12 && <span className="ml-0.5 font-mono text-[11px] font-bold text-gold-300 tabular-nums">+{current - 12}</span>}
     </div>
   );
 }
