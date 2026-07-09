@@ -34,18 +34,14 @@ export default async function LegalLayout({ children }: { children: React.ReactN
           <div
             className="absolute inset-0"
             aria-hidden
-            style={{
-              background:
-                "radial-gradient(400px 240px at 100% 0%, oklch(58% 0.13 80 / 0.16), transparent 60%), " +
-                "var(--hero-panel-grad)",
-            }}
+            style={{ background: "var(--hero-panel-grad)" }}
           />
           <div className="absolute -right-4 -bottom-4 opacity-[0.06]" aria-hidden>
             <FiftyMark size={120} />
           </div>
           <div className="relative z-10 flex items-center gap-2">
-            <I.scrollText s={14} className="text-gold-300" />
-            <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-gold-300">
+            <I.scrollText s={14} className="text-text-subtle" />
+            <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">
               {EYEBROW[locale]}
             </p>
           </div>

@@ -267,6 +267,7 @@ export default async function PrivacyPage() {
         eyebrow={EYEBROW[locale]}
         title={TITLE[locale]}
         meta={META[locale]}
+        glyph="lock"
       />
       <p className="text-[12.5px] italic text-text-subtle">{BINDING[locale]}</p>
       {CONTENT[locale]}

@@ -300,6 +300,7 @@ export default async function TermsPage() {
         eyebrow={EYEBROW[locale]}
         title={TITLE[locale]}
         meta={META[locale]}
+        glyph="scrollText"
       />
       <p className="text-[12.5px] italic text-text-subtle">{BINDING[locale]}</p>
       {CONTENT[locale]}

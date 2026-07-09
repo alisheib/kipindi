@@ -223,6 +223,7 @@ export default async function AmlPage() {
         eyebrow={EYEBROW[locale]}
         title={TITLE[locale]}
         meta={META[locale]}
+        glyph="shieldcheck"
       />
       <p className="text-[12.5px] italic text-text-subtle">{BINDING[locale]}</p>
       {CONTENT[locale]}
