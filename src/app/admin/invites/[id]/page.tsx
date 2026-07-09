@@ -67,7 +67,7 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
         <AdminCard title="Contacts" sw="Anwani" padding={entries.length > 0 ? "p-0" : "p-4"}>
           {entries.length === 0 ? (
             <EmptyState
-              kind="default"
+              kind="admin"
               title="No contacts yet"
               titleSw="Hakuna anwani bado"
               body="Add email or phone contacts above, then press Send to deliver the invites."

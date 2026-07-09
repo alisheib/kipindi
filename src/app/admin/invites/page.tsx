@@ -35,7 +35,7 @@ export default async function AdminInvitesPage() {
         <AdminCard title="Campaigns" sw="Kampeni zote" padding={campaigns.length > 0 ? "p-0" : "p-4"}>
           {campaigns.length === 0 ? (
             <EmptyState
-              kind="default"
+              kind="admin"
               title="No campaigns yet"
               titleSw="Hakuna kampeni bado"
               body="Create one above to start inviting players and granting sign-up bonuses."

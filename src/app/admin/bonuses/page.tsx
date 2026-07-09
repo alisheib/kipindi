@@ -92,7 +92,7 @@ export default async function AdminBonusesPage({
         <AdminCard title="Grant ledger" sw="Daftari la bonasi" padding={stats.ledger.length > 0 ? "p-0" : "p-4"}>
           {stats.ledger.length === 0 ? (
             <EmptyState
-              kind="default"
+              kind="admin"
               title="No bonuses granted yet"
               titleSw="Hakuna bonasi bado"
               body="Grants from admin, affiliate, proposals, invites and deposit cashback appear here."

@@ -117,7 +117,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
         </>
       ) : totalProposals === 0 ? (
         <EmptyState
-          kind="markets"
+          kind="proposals"
           title={t.proposals.noProposalsYet}
           body={`${t.proposals.noProposalsBody} ${t.proposals.noProposalsReward} TZS ${cfg.prizeTzs.toLocaleString()}.`}
           action={enabled ? (
@@ -126,7 +126,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
         />
       ) : (
         <EmptyState
-          kind="markets"
+          kind="proposals"
           title={t.proposals.noProposalsInFilter}
           body={t.proposals.noProposalsInFilterBody}
           action={enabled ? (

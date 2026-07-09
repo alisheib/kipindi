@@ -113,7 +113,7 @@ export default async function AdminAffiliatePage({
         <AdminCard title="Payout ledger" sw="Daftari la malipo" padding={ledgerSorted.length > 0 ? "p-0" : "p-4"}>
           {ledgerSorted.length === 0 ? (
             <EmptyState
-              kind="default"
+              kind="admin"
               title="No payouts yet"
               titleSw="Hakuna malipo bado"
               body="Rewards appear here as friends sign up and play."

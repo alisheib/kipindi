@@ -257,7 +257,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
                   <tr>
                     <td colSpan={8} className="!p-0">
                       <EmptyState
-                        kind="default"
+                        kind="admin"
                         title="No AI usage recorded yet"
                         titleSw="Bado hakuna matumizi ya AI"
                         body="AI calls will appear here once the chatbot, sentinel, or poll generator runs."

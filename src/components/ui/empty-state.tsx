@@ -14,7 +14,9 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 
-type Kind = "markets" | "positions" | "leaderboard" | "notifications" | "audit" | "sources" | "default";
+type Kind =
+  | "markets" | "positions" | "leaderboard" | "notifications" | "audit" | "sources"
+  | "proposals" | "kyc" | "fairness" | "rg" | "admin" | "default";
 
 export function EmptyState({
   kind = "default",
@@ -92,7 +94,9 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
     case "markets":
       return (
         <svg viewBox="0 0 56 56" {...s} width="56" height="56">
-          {/* Tilted scales — the tipping metaphor; gilt pivot diamond. */}
+          {/* Tilted scales weighing a YES/NO pip pair — the tipping metaphor;
+              gilt pivot diamond. Left pan holds a filled YES pip, right pan a
+              hollow NO ring, so the pair reads without relying on colour. */}
           <line x1="28" y1="47" x2="28" y2="17" />
           <path d="M23 49 L25 45 H31 L33 49" />
           <line x1="19" y1="49" x2="37" y2="49" />
@@ -103,6 +107,9 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
           <line x1="43" y1="15.5" x2="39" y2="23" />
           <line x1="43" y1="15.5" x2="47" y2="23" />
           <path d="M38 23 A6.5 6.5 0 0 0 48 23" />
+          {/* YES pip (filled) in the left pan · NO pip (hollow) in the right pan */}
+          <circle cx="13" cy="28.5" r="2.1" fill="currentColor" stroke="none" />
+          <circle cx="43" cy="20.5" r="2.1" />
           <path d="M28 15.8 L31 19 L28 22.2 L25 19 Z" fill={g} stroke="none" />
         </svg>
       );
@@ -161,6 +168,82 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
           <path d="M13.5 19.5 Q28 14 42.5 19.5" />
           <path d="M13.5 36.5 Q28 42 42.5 36.5" />
           <circle cx="34" cy="34" r="2.2" fill={g} stroke="none" />
+        </svg>
+      );
+    case "proposals":
+      return (
+        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
+          {/* Ballot box receiving a folded paper + quill — "propose & earn";
+              gilt nib. */}
+          <path d="M11 30 L15 24 H41 L45 30" />
+          <rect x="11" y="30" width="34" height="17" rx="3" />
+          <line x1="24" y1="27.5" x2="32" y2="27.5" />
+          <path d="M22 24 V13 H33 L38 18 V24" />
+          <line x1="26" y1="17" x2="34" y2="17" />
+          <line x1="26" y1="20.5" x2="31" y2="20.5" />
+          <line x1="43" y1="9" x2="33" y2="21" />
+          <path d="M33 21 L31.5 25 L35 23.5 Z" fill={g} stroke="none" />
+        </svg>
+      );
+    case "kyc":
+      return (
+        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
+          {/* ID card above a progress rail — two steps done, one live (gilt),
+              one to go. */}
+          <rect x="13" y="13" width="30" height="19" rx="3" />
+          <circle cx="21" cy="21" r="3" />
+          <path d="M17 27.5 a4 4 0 0 1 8 0" />
+          <line x1="30" y1="19" x2="38" y2="19" />
+          <line x1="30" y1="23.5" x2="36" y2="23.5" />
+          <line x1="13" y1="43" x2="43" y2="43" />
+          <circle cx="17" cy="43" r="2.4" fill="currentColor" stroke="none" />
+          <circle cx="27" cy="43" r="2.4" fill="currentColor" stroke="none" />
+          <circle cx="37" cy="43" r="2.6" fill={g} stroke="none" />
+          <circle cx="45" cy="43" r="2.4" />
+        </svg>
+      );
+    case "fairness":
+      return (
+        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
+          {/* Provably-fair chain: commit → reveal → attest (gilt node + check). */}
+          <circle cx="15" cy="30" r="7" />
+          <circle cx="28" cy="30" r="7" />
+          <circle cx="41" cy="30" r="7" />
+          <line x1="22.5" y1="30" x2="21" y2="30" />
+          <line x1="35" y1="30" x2="33.5" y2="30" />
+          <path d="M25 30 l2 2 l4-4.5" />
+          <line x1="28" y1="19" x2="28" y2="15" />
+          <circle cx="41" cy="30" r="2.4" fill={g} stroke="none" />
+        </svg>
+      );
+    case "rg":
+      return (
+        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
+          {/* Calm sunrise over a horizon — self-care, never gambling imagery;
+              gilt sun core. */}
+          <line x1="10" y1="40" x2="46" y2="40" />
+          <path d="M19 40 a9 9 0 0 1 18 0" />
+          <line x1="28" y1="18" x2="28" y2="13" />
+          <line x1="14.5" y1="25.5" x2="11" y2="22" />
+          <line x1="41.5" y1="25.5" x2="45" y2="22" />
+          <line x1="12" y1="40" x2="7" y2="40" />
+          <line x1="44" y1="40" x2="49" y2="40" />
+          <circle cx="28" cy="40" r="2.4" fill={g} stroke="none" />
+        </svg>
+      );
+    case "admin":
+      return (
+        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
+          {/* Clipboard under a lens — a generic admin console at rest;
+              gilt glint. */}
+          <rect x="14" y="12" width="24" height="32" rx="3" />
+          <rect x="22" y="9" width="8" height="6" rx="2" />
+          <line x1="19" y1="22" x2="33" y2="22" />
+          <line x1="19" y1="28" x2="33" y2="28" />
+          <line x1="19" y1="34" x2="27" y2="34" />
+          <circle cx="37" cy="37" r="7" />
+          <line x1="42" y1="42" x2="47" y2="47" />
+          <path d="M33.5 34 A4 4 0 0 1 37 32" stroke={g} />
         </svg>
       );
     default:
