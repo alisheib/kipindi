@@ -1,101 +1,94 @@
-# Next session — continue the Final UI enhancement Kit rollout
+# Fresh-session prompt — 50pick Final UI enhancement Kit rollout (autonomous sprint)
 
-> Paste everything below the line into a fresh Claude Code session opened in `F:\kipindi-main`.
-> The single source of rollout truth is **`docs/ui-rollout-tracker.md`** — the first unchecked
-> row is always the resume point. This handoff just orients you.
+> Paste everything between the rules into a new session. Ali is away — run long, unattended, and do
+> not wait for approval. Keep going until you genuinely cannot proceed.
 
 ---
 
-You are continuing the **Final UI enhancement Kit** rollout (Claude Design's finished UI pass) into the
-live 50pick app. Disciplined, one-item-at-a-time implementation — not redesign.
+You are continuing the **Final UI enhancement Kit rollout** into the live 50pick prediction-market app at
+`F:\kipindi-main` (Next.js App Router, TypeScript, Tailwind, oklch tokens; trilingual EN/SW/ZH). This is a
+long autonomous sprint: **Ali is away and has explicitly authorized you to keep working without asking for
+approval. Do not stop to ask "should I proceed?" — proceed. Continue through as many items as you can,
+one after another, committing and pushing each, and only stop when you truly cannot go further** (see
+"When to stop" at the bottom). Push through as long as you can before you give up.
 
-## Mindset — hold FIVE lenses at once, on EVERY item (non-negotiable, Ali)
-For every tracker item — recon, decision, implementation, review — think **simultaneously** as all five and
-let the tension shape the result: **1. integration engineer** (end-to-end data flow, server/client boundary,
-i18n parity, money-path safety, REUSE the built primitives — don't rebuild/diverge). **2. UI/UX engineer**
-(pixel polish, responsiveness 360/768/1280/1920, a11y kbd+aria+contrast, motion + reduced-motion, the card
-standard — READ the screenshots). **3. software architect** (single source of truth, no divergence, delete the
-superseded). **4. manager** (scope/risk, ship-vs-defer, flag to Ali; keep tracker + memory truthful). **5. player**
-(the Tanzanian end-user: clear, trustworthy, fast, delightful, RG-safe, correct in EN/SW/ZH). If any lens raises
-a concern, resolve it or record it — never ship past it silently.
+## Ground truth (read these first, in order)
+1. **`docs/ui-rollout-tracker.md`** — the single source of truth. Every item is a row. **The first unchecked
+   `[ ]` row is your resume point.** Work strictly top-to-bottom, one item at a time. Update the row (commit
+   hash + evidence + notes) the moment an item is done.
+2. Your persistent memory **`ui-kit-rollout`** — full running history of every item, the gotchas, and the
+   design laws. Recall it. Also recall `five-lens-mindset`, `kipindi-env-setup`, `kipindi-admin-testing`,
+   `kipindi-card-standard`, `50pick-naming`.
 
-## ⚑ Standing directives from Ali (this session — keep obeying)
-1. **Perfection standard — nothing less.** Every detail, every width, every locale.
-2. **Production shows ONLY live data — never seed/test data.** All `dev-test` endpoints are 404 in prod, and the
-   new UI HIDES when its real aggregate is empty (home stats band hidden at 0 settled; results donut/featured only
-   when resolved markets exist). A fresh prod deploy must show *nothing* until genuine markets resolve.
-3. **Responsiveness-test at 360 (mobile) FIRST on every item**, then 768/1280/1920. Lots of users are mobile.
-4. **Gold = earned-money / earned-status only** ("no one is above the law"). Nav/CTA gold → royal.
-5. **Never regress money paths** (deposit/withdraw/bet/resolve/payout). Run `test:wallet` + `test:numeric` on any
-   money-touching item.
+## Where you are now
+Resume at **C2l** (`manifest.json` — add app shortcuts Markets/Wallet/Deposit + a narrow-screenshot label),
+then **C2m** (`legal/*` — LegalHeader GiltCorner + per-doc glyph). Everything through **C2k** is done and
+pushed (latest: OG cards `3a7a593`, tracker `47ce77e`).
 
-## Done — PART A+B COMPLETE · LOGO REPLACED · PART C through C2d (all pushed to `main`)
-Read `docs/ui-rollout-tracker.md` for the full row-by-row log. Highlights this session:
-- **LOGO REPLACED → mark-a** (`fe81145`): the old ringed "50" needle mark is GONE. New mark = a circle split
-  YES-emerald LEFT / NO-rose RIGHT by a diagonal chord + gilt needle + gilt/navy hub (no ring, no numerals — the
-  wordmark carries the name). `FiftyMark` (brand.tsx) rewritten (same API → all in-app chrome auto-updated); all
-  favicons/app-icons/OG/email+report letterhead regenerated via `sharp`. Source SVGs committed under
-  `Final logo design/`. Brand hex: green `#1EA362` · red `#B03A3E` · gold `#E3BC66` · pivot navy `#1A2140`.
-- **Bell badge fix** (`f1a0224`): the unread badge now hugs the bell's top-right (the button renders 80px).
-- **PART C so far:** C1a market-detail hero states (`8ed7b83`) · C1b KYC 4-node rail + ID silhouettes (`5eda4a7`)
-  · C1c sessions device card (`2a15281`) · C1d fairness 5-step chain (`f511647`) · C1e /live aqua hero + dense
-  bar-wall (`bb6e164`) · C2a home animated stats band (`4f021cb`) · C2b results YES/NO donut + featured card
-  (`4dbf8e6`) · C2c positions countdown-ring + exposure bar (`0c42b35`) · C2d performance best-win crest + streak
-  pip-chain (`371eb5a`). i18n parity now **1216³**. ui-regression **158/158**.
+## The queue after C2m (do them in this order unless the tracker says otherwise)
+- **Admin reporting ADM1–ADM4** (tracker rows).
+- **EMAIL1** — full transactional-email redesign for kit consistency (`src/lib/email.ts` + templates). The
+  enhanced kit changed everything; the emails must match. Logo is already mark-a. Redesign the card layout,
+  colour tokens, buttons, footer to the kit. Trilingual.
+- **AI1** — bring the in-app AI/chat assistant (`src/components/chat/*`) to enhanced-kit standard.
+- **Carry-overs (pick up opportunistically):** A8-breadth admin primitives (`AdminMeter`/`AdminBarList`/
+  `AdminSpark` in `components/admin/admin-charts.tsx`) on the ~12 admin screens whose data fits; A3
+  not-found pegged-bar frame; reduced-motion guard on `nav-progress.tsx` rAF + `[data-motion="reduced"]
+  .skeleton{animation:none}`; the audit-tail gold eyebrows on KYC/legal/auth/help.
+- **FINAL CLEANUP (do last, only when the queue is exhausted):** delete the uncommitted dev endpoint
+  `src/app/api/dev-test/resolve-seed-markets/route.ts` and any other `api/dev-test/*` test tooling — prod
+  must ship **only live data**.
 
-## RESUME HERE → first unchecked row = **C2e** (`/wallet/withdraw`) — ⚠ MONEY PATH
-Spec §C2e: KYC-lock line-art (padlock over ID silhouette — reuse B3 `kyc` idiom), merge the three notices into one
-iconized panel, **route the amount through the deposit's kit control and balance through `<Cash>`** (both are open
-audit flags on a money path). Then C2f–C2m in tracker order, then admin reporting ADM1–4.
-- **C2h** consumes the already-drawn B3 `rg` EmptyState illustration — don't redraw it.
+## The per-item loop (every single item, no shortcuts)
+1. Hold **all five lenses** at once: integration engineer · UI/UX engineer · software architect · manager ·
+   player. Perfection standard — nothing less.
+2. Implement against the kit at `F:\kipindi-main\Final UI enhancement Kit\50pick-design-final\`.
+3. **Mobile FIRST**: verify 360px before anything else, then 768/1280/1920. Lots of users are mobile —
+   responsiveness in every detail, no truncation (SW strings are longest), no horizontal page overflow.
+4. `npx tsc --noEmit` clean · run the relevant `npm run test:*` (always `test:i18n` → must stay **1217³**;
+   `test:wallet` / numeric tests on any money-adjacent change).
+5. Live-drive on a **single fresh dev server** and **READ the screenshots** (don't assume — look). Kill
+   stragglers first: `taskkill //F //IM node.exe`, confirm one PID via `netstat -ano | grep :3000`, then
+   start one `next dev`. Use `/auth/demo` + seed-admin for authed/admin screens.
+6. `node scripts/ui-regression.mjs` → must stay **158/158** at 360/768/1280/1920. (An orphaned seeded server
+   causes ~57 false `navigator.vibrate` fails — that's the taskkill gotcha, not a real regression.)
+7. `git commit` + `git push origin main` (Railway auto-deploys) with the trailer:
+   `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`
+8. Update the **tracker row** (hash + evidence) AND the **`ui-kit-rollout` memory** (what/why/gotchas +
+   move the resume pointer). These two are non-negotiable — they're how the next reset recovers.
 
-## Reusable primitives already built — USE these, don't rebuild
-`FiftyMark`/`FiftyLockup`/`FiftyTile` (mark-a, brand.tsx) · `RewardBurst` (brand/reward-burst) · `PaymentLogo`+
-`MNO_LOGOS` (wallet/payment-logo) · `Admin*` charts (admin/admin-charts) · `categoryGlyph()` + `I.*` (ui/glyphs) ·
-`EmptyState` kinds incl. kyc/fairness/rg (ui/empty-state) · `BackLink` · `NavMore` · `PageHero` glow=info/gold/aqua
-(ui/page-hero) · `motionReduced()`+`haptics.*` (lib/haptics). **New this session (PART C):** `CountdownRing`
-(positions/countdown-ring — serverNow-seeded, aqua→gold<1h) · `StatsBand` (home/stats-band — count-up on
-scroll-in) · `OutcomeDonut`+`FeaturedResult` (inline in results/page) · `StreakChain` (inline in performance/page)
-· `FairnessChain` (inline in fairness/page) · `ProgressRail` (inline in kyc/page) · `IpReveal` (profile/ip-reveal)
-· CSS `.gilt-hairline` / `.closing-pill` / `@keyframes closing-pulse` (state-tokens.css, RM-safe).
+## Design laws (never violate)
+- **Gold = earned-money / earned-status / money-in ONLY.** Navigation, selection, chrome, categories → royal/
+  brand/aqua/neutral. No one is above the law. (Sanctioned exceptions already recorded in memory: resolved
+  seal, reward burst, leaderboard #1, best-win crest, positive settled P&L, wallet bonus/deposit, the C1a
+  gilt hairline "seal of the real".)
+- **Only live data in production.** New UI must hide when its aggregates are empty (no hollow bands on a
+  fresh deploy). Dev-test endpoints are 404 in prod. Never fabricate counts, balances, geo, logos, or seals.
+- **Never regress money paths** (deposit / withdraw / bet / resolve / payout). Keep form field names stable.
+- **Trilingual EN/SW/ZH** with i18n parity (1217³ now; bump all three together). **Reduced-motion** fallback
+  on every animation (`motionReduced()` from `@/lib/haptics`).
+- Category glyphs via canonical `categoryGlyph()`; MarketCard `.mcardp-cat` must stay byte-identical to /live.
+- Logo is **mark-a** (green `#1EA362` · red `#B03A3E` · gold `#E3BC66` · pivot navy `#1A2140`); `FiftyMark`
+  in `brand.tsx` propagates it everywhere.
 
-## Per-item working loop
-1. Implement ONE item. Never regress money paths.
-2. `F:/kipindi-main/node_modules/.bin/tsc.cmd --noEmit` + relevant `npm run test:*` (money/i18n). Trilingual
-   EN/SW/ZH; adding keys keeps parity across all three (currently **1216³**).
-3. **Live-drive** on a fresh dev server → screenshot to `.50pick-shots/` → **READ the shots** (mobile 360 FIRST).
-4. `node scripts/ui-regression.mjs` must stay **158/158** — grow ROUTES as new UI lands.
-5. Delete superseded code in the same commit. Commit per item with the co-author trailer + push. Update the
-   **tracker row** AND the `ui-kit-rollout` memory.
+## Environment gotchas (bank these)
+- Shell cwd resets between calls → use absolute paths; write throwaway scripts to `F:/kipindi-main/.50pick-shots/`.
+- Windows `next dev` orphans its node child on :3000 when you kill the wrapper — taskkill the port owner.
+- `db.user.list()` / `db.txn.listAll()` are **sync arrays** in the dev store → wrap in
+  `Promise.resolve(...).catch(...)` before `.catch`.
+- Single-active-session per account (a new login invalidates prior sessions) — reflected in /profile/sessions.
+- ⊘ items that are genuinely blocked on Ali (skip, log, move on): trademarked MNO logos, regulator seal,
+  bitmap hero/tier/category/texture/win-seal, brand fonts inside ImageResponse (dynamic OG text), env
+  (SMS sender ID, deploy domain). Don't fake these; note them in the tracker and continue.
 
-## ⚠ Dev/verification notes (learned this session)
-- **Real resolved-market data:** the dev store has NO resolved markets by default (`listMarkets` filters only
-  `"Demo · "` titles; nothing resolves the rest; `stress-regulator-grade` only does stage-1). There is an
-  **uncommitted** dev endpoint `src/app/api/dev-test/resolve-seed-markets/route.ts` (404 in prod, on disk) that
-  bets on real seed markets, pulls resolutionAt into the past, **two-officer resolves** them (stage-1 officer A +
-  stage-2 officer B → pays winners), AND seeds the demo user (+255700000000) with 4 wins / 1 loss / 5 open. Use it
-  to verify resolved-market + positions UI against REAL data (`POST {count,betsPerMarket}`). **DELETE it at final
-  rollout cleanup** (Ali: only live data ships; it never ships anyway — 404 in prod — but keep the tree clean).
-- **ui-regression gotcha:** ensure ONE clean dev server first. An orphaned prior `next dev` on :3000 (seeded store)
-  makes ui-reg report dozens of FALSE fails (all the benign `navigator.vibrate` "no user gesture" warning).
-  Fix: `taskkill //F //IM node.exe`, confirm `netstat -ano | grep ":3000"` shows a lone PID, then one fresh server.
-- **Windows shells reset cwd** after `cd`; call binaries by absolute path or `cd /f/kipindi-main && <cmd>` in one
-  Bash line. Force a Playwright locale via cookie `{name:"kp-locale",value:"sw",domain:"localhost",path:"/"}`.
+## When to stop
+Keep going item by item. **Only stop when one of these is true**, and when you do, leave the tracker +
+memory current and write a short status of where you stopped and why:
+- Every remaining tracker row is either done or blocked on a ⊘ asset / an explicit product decision only Ali
+  can make (record which, then move to the next non-blocked row — don't halt the whole sprint for one block).
+- A change would risk a money path or ship non-live data and you can't verify it safely.
+- tsc / tests / ui-regression fail in a way you cannot resolve after a genuine debugging effort.
+- You have completed the entire queue including final cleanup.
 
-## Local run + seeding (Node 24, in-memory dev store)
-```
-SESSION_SECRET=<32+> OTP_PEPPER=<16+> NODE_ENV=development DISABLE_ADMIN_TOTP=true npx next dev -p 3000
-```
-Seed player: `GET /auth/demo` (+255700000000). Seed admin cookie: `POST /api/dev-test/seed-admin {"phone":"+255700000000"}`.
-Populate board: `POST /api/dev-test/seed-markets`. Real resolved + demo ledger: `POST /api/dev-test/resolve-seed-markets`.
-
-## The card standard (Ali, non-negotiable)
-MarketCards are the iconic surface — perfect, consistent, responsive or we fail. When a change touches a
-card-like surface, audit the real populated grid at 360/768/1280/1920 and READ the shots: uniform heights,
-columns reflow, aligned buttons, zero h-overflow. (Default **Today** filter often shows 1 card — select All.)
-
-Start by: (1) read `docs/ui-rollout-tracker.md` (first `[ ]` = resume = **C2e**) + spec §C2e in
-`Final UI enhancement Kit/50pick-design-final/spec/50pick-refinement-spec.md` line 135; (2) implement C2e with a
-money-path audit (route amount/balance through kit controls, merge notices, KYC-lock line-art) — run
-`test:wallet`+`test:numeric`; (3) full per-item loop; (4) update tracker + `ui-kit-rollout` memory; (5) continue
-C2f→C2m, then ADM1–4. Hold the five lenses on every item.
+Otherwise: **do not stop, do not ask, do not wait.** Pick the next unchecked row and build it to perfection.
+Naming note: **50pick** is the game/product; "kipindi" is only the repo name — never call the game kipindi.
