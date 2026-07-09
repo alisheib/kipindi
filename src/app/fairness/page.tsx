@@ -23,6 +23,41 @@ export async function generateMetadata() {
 }
 export const dynamic = "force-dynamic";
 
+// C1d provably-fair chain — a horizontal 5-node process diagram in the glyph
+// idiom. Gilt lands only on the attestation seal (the sanctioned earned/verified
+// exception); the other nodes are royal. Static (no motion → reduced-motion safe).
+// Wrapped in overflow-x-auto so the long trilingual labels scroll within the
+// panel on narrow screens instead of forcing page h-overflow.
+function FairnessChain({ steps }: { steps: { glyph: keyof typeof I; label: string; gilt?: boolean }[] }) {
+  return (
+    <div className="overflow-x-auto -mx-1 px-1">
+      <ol className="flex items-start min-w-[540px]">
+        {steps.map((s, i) => {
+          const Glyph = I[s.glyph];
+          const circleCls = s.gilt
+            ? "border-2 border-gold-500 bg-gold-500/10 text-gold-300"
+            : "border border-brand-700 bg-brand-500/10 text-brand-300";
+          return (
+            <li key={i} className="contents">
+              <div className="flex w-[104px] shrink-0 flex-col items-center text-center">
+                <span className={`inline-flex h-11 w-11 items-center justify-center rounded-full ${circleCls}`}>
+                  <Glyph s={19} />
+                </span>
+                <span className={`mt-2 font-mono text-[10px] font-semibold uppercase leading-tight tracking-[0.06em] ${s.gilt ? "text-gold-300" : "text-text-muted"}`}>
+                  {s.label}
+                </span>
+              </div>
+              {i < steps.length - 1 && (
+                <div aria-hidden className="mt-[21px] h-[2px] flex-1 min-w-[16px] rounded-full bg-border" />
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
+
 const fmtTime = (iso: string | null) => formatDateTimeSafe(iso);
 
 export default async function FairnessPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
@@ -50,6 +85,20 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
           <h2 className="font-display text-[20px] font-semibold text-text">{t.common.fairnessHowItWorks}</h2>
           <span className="font-mono text-[11px] tracking-[0.16em] uppercase text-text-subtle">FATF R.10 · POCA Cap 423 §16</span>
         </div>
+        {/* C1d — 5-step provably-fair chain (glyph idiom, gilt only on the
+            two-officer attestation seal). Labels live in HTML, not the SVG.
+            Aligned to this page's existing compliance-reviewed 5-step model
+            (rather than rewriting the regulatory copy to the spec's literal
+            step names) so the chain and the detail list below stay one story. */}
+        <FairnessChain
+          steps={[
+            { glyph: "flag",        label: t.common.fairnessCreated },
+            { glyph: "coins",       label: t.common.fairnessStake },
+            { glyph: "user",        label: t.common.fairnessStage1 },
+            { glyph: "shieldcheck", label: t.common.fairnessStage2, gilt: true },
+            { glyph: "wallet",      label: t.common.fairnessSettlement },
+          ]}
+        />
         <ol className="space-y-3 text-[14px] text-text-muted list-decimal pl-5 marker:text-gold-300 marker:font-bold">
           <li>
             <strong className="text-text">{t.common.fairnessCreated}</strong> — {t.common.fairnessCreatedBody}
