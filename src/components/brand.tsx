@@ -20,22 +20,29 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-const TILT_RAD = (-14 * Math.PI) / 180;
-const SIN = Math.sin(TILT_RAD);
-const COS = Math.cos(TILT_RAD);
-const FIELD_R = 44.6;
-const NEEDLE_REACH = 51.5;
-
-const PAL = {
-  yes: "oklch(58% 0.16 152)",
-  no: "oklch(60% 0.18 22)",
-  ring: "oklch(48% 0.20 268)",
-  gilt: "oklch(78% 0.13 86)",
-  hub: "oklch(85% 0.13 86)",
-  ink: "oklch(98% 0.012 268)",
-  whiteInk: "oklch(99% 0.006 268)",
-  darkInk: "oklch(30% 0.12 268)",
+/* Final mark — "mark-a" (delivered 2026-07-09, `Final logo design/`). A circle
+   split YES-emerald LEFT · NO-rose RIGHT by a diagonal chord, the gilt NEEDLE
+   riding the seam just past the rim, over a gilt hub with a navy pivot. No ring,
+   no numerals — the wordmark carries the name (same object as the TippingBar
+   needle + conviction dial). Delivered brand hex is authoritative.
+   Variants: color (default) · white / dark (single-ink) · simplified (≤ ~20px:
+   heavier needle + hub, drops the pivot). */
+const MARK = {
+  green: "#1EA362",
+  red: "#B03A3E",
+  gold: "#E3BC66",
+  pivot: "#1A2140",
+  whiteInk: "#F7F8FC",
+  darkInk: "#1A2140",
+  greenPath: "M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z",
+  redPath: "M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z",
+  n: { x1: 38.39, y1: 3.43, x2: 61.61, y2: 96.57 },
 };
+
+function hexA(hex: string, a: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
+}
 
 export type FiftyMarkVariant = "color" | "white" | "dark";
 
@@ -49,46 +56,24 @@ export function FiftyMark({
 }: {
   size?: number;
   variant?: FiftyMarkVariant;
-  /** Drops numerals + hub, thickens strokes. Use at or below 20px. */
+  /** Heavier needle + hub, drops the pivot dot. Use at or below ~20px. */
   simplified?: boolean;
   className?: string;
 }) {
   const simple = simplified ?? size < 24;
   const mono = variant !== "color";
-  const ink = variant === "white" ? PAL.whiteInk : PAL.darkInk;
-  const yes = mono ? `${ink.slice(0, -1)} / ${variant === "white" ? "0.30" : "0.26"})` : PAL.yes;
-  const no = mono ? `${ink.slice(0, -1)} / ${variant === "white" ? "0.12" : "0.10"})` : PAL.no;
-  const ring = mono ? ink : PAL.ring;
-  const needle = mono ? ink : PAL.gilt;
-  const id = React.useId().replace(/:/g, "");
-  const top = { x: 50 + SIN * 80, y: 50 - COS * 80 };
-  const bot = { x: 50 - SIN * 80, y: 50 + COS * 80 };
-  const n1 = { x: 50 + SIN * NEEDLE_REACH, y: 50 - COS * NEEDLE_REACH };
-  const n2 = { x: 50 - SIN * NEEDLE_REACH, y: 50 + COS * NEEDLE_REACH };
-  const hub = { x: 50 - SIN * 26, y: 50 + COS * 26 };
+  const ink = variant === "white" ? MARK.whiteInk : MARK.darkInk;
+  const green = mono ? hexA(ink, variant === "white" ? 0.30 : 0.26) : MARK.green;
+  const red = mono ? hexA(ink, variant === "white" ? 0.14 : 0.11) : MARK.red;
+  const needle = mono ? ink : MARK.gold;
+  const hub = mono ? ink : MARK.gold;
   return (
-    <svg viewBox="-3 -3 106 106" width={size} height={size} className={className} style={{ display: "block" }} aria-label="50pick">
-      <defs>
-        <clipPath id={`fm-${id}`}><circle cx="50" cy="50" r={FIELD_R} /></clipPath>
-      </defs>
-      <g clipPath={`url(#fm-${id})`}>
-        <path d={`M ${top.x} ${top.y} A 80 80 0 0 0 ${bot.x} ${bot.y} L ${top.x} ${top.y} Z`} fill={yes} />
-        <path d={`M ${top.x} ${top.y} A 80 80 0 0 1 ${bot.x} ${bot.y} L ${top.x} ${top.y} Z`} fill={no} />
-      </g>
-      <circle cx="50" cy="50" r={FIELD_R} fill="none" stroke={ring} strokeWidth={simple ? 4 : 2.8} />
-      <line x1={n1.x} y1={n1.y} x2={n2.x} y2={n2.y} stroke={needle} strokeWidth={simple ? 5 : 3} strokeLinecap="round" />
-      {!simple && (
-        <>
-          <circle cx={hub.x} cy={hub.y} r="2.5" fill={mono ? ink : PAL.hub} />
-          <text
-            x="50" y="51" textAnchor="middle" dominantBaseline="central"
-            fontFamily="'JetBrains Mono', ui-monospace, monospace" fontWeight={700}
-            fontSize="29" fill={mono ? ink : PAL.ink} style={{ letterSpacing: "-0.04em" }}
-          >
-            50
-          </text>
-        </>
-      )}
+    <svg viewBox="0 0 100 100" width={size} height={size} className={className} style={{ display: "block" }} aria-label="50pick">
+      <path d={MARK.greenPath} fill={green} />
+      <path d={MARK.redPath} fill={red} />
+      <line x1={MARK.n.x1} y1={MARK.n.y1} x2={MARK.n.x2} y2={MARK.n.y2} stroke={needle} strokeWidth={simple ? 5 : 3.5} strokeLinecap="round" />
+      <circle cx="50" cy="50" r={simple ? 6 : 5} fill={hub} />
+      {!simple && !mono && <circle cx="50" cy="50" r="1.7" fill={MARK.pivot} />}
     </svg>
   );
 }

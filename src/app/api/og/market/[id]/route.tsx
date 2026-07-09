@@ -61,16 +61,15 @@ export async function GET(
         {/* Header — brand mark + wordmark + category */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center" }}>
-            {/* FiftyMark (simplified) drawn inline — Satori can't import the React
-                component, so the coin is raw SVG shapes. */}
-            <svg width="48" height="48" viewBox="-3 -3 106 106" style={{ marginRight: 16 }}>
-              <defs><clipPath id="ogfm"><circle cx="50" cy="50" r="44.6" /></clipPath></defs>
-              <g clipPath="url(#ogfm)">
-                <path d="M 30.646 -27.624 A 80 80 0 0 0 69.354 127.624 L 30.646 -27.624 Z" fill={C.yes} />
-                <path d="M 30.646 -27.624 A 80 80 0 0 1 69.354 127.624 L 30.646 -27.624 Z" fill={C.no} />
-              </g>
-              <circle cx="50" cy="50" r="44.6" fill="none" stroke={C.royal} strokeWidth="4" />
-              <line x1="37.541" y1="0.030" x2="62.459" y2="99.970" stroke={C.gilt} strokeWidth="5" strokeLinecap="round" />
+            {/* FiftyMark (mark-a) drawn inline — Satori can't import the React
+                component, so the mark is raw SVG shapes using the delivered
+                brand hex (green/red chord split + gilt needle + gilt/navy hub). */}
+            <svg width="48" height="48" viewBox="0 0 100 100" style={{ marginRight: 16 }}>
+              <path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362" />
+              <path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E" />
+              <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" stroke="#E3BC66" strokeWidth="3.5" strokeLinecap="round" />
+              <circle cx="50" cy="50" r="5" fill="#E3BC66" />
+              <circle cx="50" cy="50" r="1.7" fill="#1A2140" />
             </svg>
             <div style={{ display: "flex", alignItems: "baseline", fontSize: 32, fontWeight: 700, letterSpacing: "-0.03em" }}>
               <span>50pick</span>
