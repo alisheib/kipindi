@@ -4,7 +4,7 @@
  */
 import * as React from "react";
 
-export function BrandTopo({ id = "topo", opacity = 0.07 }: { id?: string; opacity?: number }) {
+export function BrandTopo({ id = "topo", opacity = 0.09 }: { id?: string; opacity?: number }) {
   const pid = `${id}-${React.useId().replace(/:/g, "")}`;
   return (
     <svg width="100%" height="100%" className="absolute inset-0 pointer-events-none" style={{ opacity }} aria-hidden>

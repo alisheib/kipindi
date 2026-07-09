@@ -55,7 +55,7 @@ export function RouteError({
 
   return (
     <div className="relative mx-auto flex min-h-[60svh] w-full max-w-[560px] flex-col items-center justify-center overflow-hidden px-5 py-12 text-center">
-      <BrandTopo id="route-error-topo" opacity={0.06} />
+      <BrandTopo id="route-error-topo" opacity={0.09} />
       <div className="relative flex flex-col items-center">
         <FiftyMark size={64} />
         <div
