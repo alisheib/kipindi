@@ -429,6 +429,7 @@ export const dict = {
     home: {
       heroLocation: "Tanzania · Dar es Salaam",
       heroEst: "Est. 2026 · Dar es Salaam",
+      statsSettled: "Markets settled", statsPaidOut: "Paid out",
       heroBody: "Trade questions about Tanzania's weather, markets, sport and culture — settled by official sources.",
       heroCta: "Browse markets",
       myPositions: "My positions",
@@ -1453,6 +1454,7 @@ export const dict = {
     home: {
       heroLocation: "Tanzania · Dar es Salaam",
       heroEst: "Tangu 2026 · Dar es Salaam",
+      statsSettled: "Masoko yaliyotatuliwa", statsPaidOut: "Zilizolipwa",
       heroBody: "Shiriki katika utabiri wa hali ya hewa, masoko, michezo na utamaduni wa Tanzania — kila tukio likithibitishwa kwa mujibu wa vyanzo rasmi.",
       heroCta: "Tazama masoko",
       myPositions: "Nafasi zangu",
@@ -2475,6 +2477,7 @@ export const dict = {
     home: {
       heroLocation: "坦桑尼亚 · 达累斯萨拉姆",
       heroEst: "创立于2026年 · 达累斯萨拉姆",
+      statsSettled: "已结算市场", statsPaidOut: "已派彩",
       heroBody: "参与坦桑尼亚天气、市场、体育和文化方面的问题竞猜 — 由官方来源验证结算。",
       heroCta: "浏览市场",
       myPositions: "我的持仓",

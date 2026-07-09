@@ -7,18 +7,32 @@ import { listMarkets, impliedYesPct, isClosedByTime, isSelectionClosed, traderSe
 
 import { getCardChart } from "@/lib/server/market-history";
 import { getSession } from "@/lib/server/session";
+import { db } from "@/lib/server/store";
+import { StatsBand } from "@/components/home/stats-band";
 import { getServerT } from "@/lib/i18n-server";
 
 export const dynamic = "force-dynamic";
 
 export default async function LandingPage() {
-  const [{ t }, liveRaw, traderMap, session] = await Promise.all([
+  const [{ t }, liveRaw, traderMap, session, resolvedRaw, allTxns] = await Promise.all([
     getServerT(),
     listMarkets({ status: "LIVE" }).catch(() => [] as Awaited<ReturnType<typeof listMarkets>>),
     traderSeedsByMarket().catch(() => new Map() as Awaited<ReturnType<typeof traderSeedsByMarket>>),
     getSession(),
+    listMarkets({ status: "RESOLVED" }).catch(() => [] as Awaited<ReturnType<typeof listMarkets>>),
+    // db.txn.listAll() is a sync array in the dev store → wrap so .catch is safe.
+    Promise.resolve(db.txn.listAll()).catch(() => [] as Awaited<ReturnType<typeof db.txn.listAll>>),
   ]);
   const live = liveRaw.filter((m) => !isClosedByTime(m)).slice(0, 6);
+
+  // C2a stats band — REAL aggregates, never fabricated. Markets settled = resolved
+  // count; TZS paid out = all confirmed BET_PAYOUT + CASHOUT ledger txns (the same
+  // basis the finance reports use). NOTE: the payout sum is a full txn scan — fine
+  // at current scale, but materialise/cache it before high-traffic launch.
+  const settledCount = resolvedRaw.length;
+  const paidOut = allTxns
+    .filter((tx) => tx.status === "CONFIRMED" && (tx.type === "BET_PAYOUT" || tx.type === "CASHOUT"))
+    .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
   const cardCharts = new Map(await Promise.all(live.map(async (m) => [m.id, await getCardChart(m.id).catch(() => ({ spark: [] as number[], move24h: undefined }))] as const)));
   const isAuthed = !!session;
 
@@ -286,6 +300,19 @@ export default async function LandingPage() {
           />
         </div>
       </section>
+
+      {/* STATS BAND (C2a) — real platform aggregates, count-up on scroll-in.
+          Hidden until at least one market has settled (no empty "0" proof band). */}
+      {settledCount > 0 && (
+        <section>
+          <StatsBand
+            settled={settledCount}
+            paidOut={paidOut}
+            settledLabel={t.home.statsSettled}
+            paidOutLabel={t.home.statsPaidOut}
+          />
+        </section>
+      )}
 
       </div>{/* end centered container */}
     </div>
