@@ -35,7 +35,25 @@ If any lens raises a concern, resolve it or record it — don't ship past it sil
    **port their behavior, don't reinterpret.**
 3. Skim the auto-loaded `ui-kit-rollout` memory — it has the resume point + per-item recon and gotchas.
 
-## Done so far — **PART A (A1–A10) is COMPLETE** (all committed + pushed to `main`, Railway auto-deploys; each verified with screenshots + 158/158 ui-regression)
+## Done so far — **PART A (A1–A10) + PART B (B1–B8) COMPLETE** (all committed + pushed to `main`, Railway auto-deploys; each verified with screenshots + 158/158 ui-regression)
+
+**PART B (2026-07-09):**
+- **B1** `c2f305d` — ConvictionDial: grab-pip + `--brand-400` focus ring + one-time coach hint, RG magnetic detents (1×/2×/5×/10×) + 50× single-drag gate, detent-ladder keyboard, side-aware aria-valuetext, localized poles, reduced-motion needle-jump.
+- **B3** `0f7daf2` — Empty states: redrew `markets` (YES/NO pips), added 5 illustrated kinds (proposals/kyc/fairness/rg/admin) in the component's gold-accent idiom; wired /proposals + admin empties. (kyc/fairness/rg reserved for PART C.)
+- **B4** `227d56d` — Buttons gold-discipline: `SubmitButton` default gold→**primary** (fixed auth/kyc/rg/sof/withdraw at the root); deposit re-opts into gold. (Recipe/padding/spinner were already in place.)
+- **B5** `83e5108` — PageHero `glow=aqua` variant added; /live BrandTopo 0.04→0.09. (/live slim header stays; full aqua hero = C1e.)
+- **B6** `2de92d9` — Wallet money caps are now a **single source of truth**: `validators.ts` consts drive the zod enforcement AND the Limits-tab display + deposit/withdraw bounds. Methods = real MNO list.
+- **B7** `34687b4` — Win-celebration now uses the shared A5 `RewardBurst` crest (completes the A5-deferred win pairing — pure SVG, no bitmap); bet-confirm shows the side-aware §10.2 pool-share invariant (`poolShareIfWins`). Celebrate discipline held: WIN only.
+- **B8** `3597111` — Admin gold purge (the A8-breadth gold half): ~21 admin KPI values gold→neutral + net-flow charts gold→royal across ~13 screens.
+
+**Cross-cutting (this session):**
+- **Navigation IA overhaul** `05ae462` (+ decisions `d8a7095`) — see `docs/navigation-ia-review.md`. R1 (top nav from `lg` + "More ▾" overflow `nav-more.tsx`; bottom nav `lg:hidden`), R2 (mobile 5th tab = Positions/"Bets", **Ali-confirmed keep**), R3 (/positions no Back), R6 (KYC-gate `?next=` round-trip + Continue CTA). R4 resolved (`/` is a real home).
+- **Gold-discipline swept everywhere** `3556845` — sign-up CTAs (header + market-detail) gold→royal. Gold = money-in/earned only, app-wide. (**Ali: "no one is above the law."**)
+- **Logo/brand audit clean** `6a50fb0` — every context uses the right variant + current needle mark; fixed `favicon.svg` oklch→sRGB hex for favicon-context compatibility.
+- **Full regression run**: tsc · functional suite 42/42 · ui-regression 158/158 · i18n **1210³**.
+
+---
+**PART A:**
 - **Foundations** `279d0a4` — glyph kit merge, `state-tokens.css`+`micro-patterns.css` wired, `scripts/ui-regression.mjs`.
 - **A1** `8cfa885` (+ card-fix `edfd073`) — MarketCard v2 (spark, trader crest, localized labels, uniform 356px height).
 - **A2** `91831f7` — `components/auth/auth-shell.tsx` brand side-rail on the 6 `/auth/*` pages.
@@ -48,38 +66,43 @@ If any lens raises a concern, resolve it or record it — don't ship past it sil
 - **A9** `c592bc7` — invite share-card + QR (`/profile/invite`) and wallet 30-day balance spark (`/wallet`).
 - **A10** `15f600e` — leaderboard top-3 podium (gilt ring + crown on #1) + hot-flame streak chips.
 
-## RESUME HERE → **PART B (B1–B12)**, first unchecked row = **B1 · ConvictionDial**
-Per `50pick-refinement-spec.md` B-section + `50pick-micro-interactions-spec.md`:
-- **B1 ConvictionDial** — thumb grab-pip + focus ring + coach hint; widen the NDIO/HAPANA box ~24%; RG
-  detent at 10× stake + a deliberate second gesture past 50×; **verify at 360px**; reduced-motion = needle
-  jump (no animated sweep). Component: `src/components/markets/conviction-dial.tsx`.
-- Then B3 (empty states — redraw `emptyMarkets`, add 5), B4 (button/chip state recipe — **incl. the flagged
-  gold `SubmitButton` CTA leaking onto the auth surface**), B5 (PageHero `glow=aqua` for /live; BrandTopo 0.09),
-  B6 (wallet real Methods/Limits data — mock = launch blocker), B7 (OperationResultModal success → set the A5
-  `celebrate` on payout/earned-money only; bet-confirm pool-share sentence), B8 (admin upgrade via A8), B10
-  (delete orphan hero components — bitmap ⊘), B11 (BrandTopo 0.05→0.09 everywhere). B2 done (folded into A1),
-  B9 `~` (landmark redraw pending), B12 no-op by design.
-- After PART B → **PART C** (per-page C1–C2m) → **admin reporting** (ADM1–4).
+## RESUME HERE → first unchecked row = **B10 · delete orphan hero components**
+Per `50pick-refinement-spec.md` B10:
+- **B10** — the hero background webp is `⊘ bitmap` (sourced externally by Ali), but the **component deletion is
+  in-code and doable now**: find + delete the 2 orphan hero components + ~20 orphan slide references that the
+  kit superseded (grep for the old hero/slideshow imports; confirm they're unused via tsc). Update the F1 hero
+  shot reference. Keep the change surgical — delete superseded code + dead imports, run tsc.
+- Then **B11** (BrandTopo 0.05→0.09 everywhere — a global opacity bump across the BrandTopo call sites;
+  /live already at 0.09 from B5, auth-shell at 0.09; sweep the rest — route-error 0.06, and any others).
+- **B9** `~` — the `landmark` glyph optical redraw is still pending (percent/activity redraws + 12
+  controlled-poll glyphs already done in F0). B2/B12 done/no-op.
+- After PART B → **PART C** (per-page C1–C2m — note C1e now just needs to mount a `PageHero glow=aqua` on /live
+  using the B5 variant; C1b/C1d/C2h consume the B3 kyc/fairness/rg empty-state illustrations) →
+  **admin reporting** (ADM1–4).
 
 ## Still-open carry-overs (recorded, pick up anytime)
-- **A8-breadth:** adopt `AdminMeter`/`AdminBarList`/`AdminSpark` on the other ~12 admin screens (ai-usage,
-  players, moderation, ai-polls, candidates, config, privacy, invites, audit, players/[id], live, finance)
-  **and purge remaining admin gold** (GGR/NGR `gold`/`tone="gold"` KPI values on overview/finance; admin-shell
-  `AdminFunnel` conversion is still gold). Primitives are built + ready. Dev gotcha: `db.user.list()` is a
-  **sync array** in the in-memory dev store → wrap `.catch` calls in `Promise.resolve(...)`.
+- **A8-breadth (gold half DONE in B8 `3597111`).** Remaining = **opportunistic primitive adoption**: wire
+  `AdminMeter`/`AdminBarList`/`AdminSpark` into the ~12 admin screens whose data actually fits a meter/bar-list/
+  spark (players/cohorts already done). Not every screen needs it — adopt where it improves scannability, don't
+  force it. Primitives are built + ready in `components/admin/admin-charts.tsx`. Dev gotcha: `db.user.list()` is
+  a **sync array** in the in-memory dev store → wrap `.catch` calls in `Promise.resolve(...)`.
 - **A5 win-payout variant** + **A9 Satori 1080² share PNG** wait on ⊘ bitmaps (`win-seal.png`, `invite.webp`).
 - **A3 follow-up:** not-found.tsx should get the RouteError frame with a pegged (100/0) TippingBar.
 - **A4 deferred:** /proposals/[id] + /profile/invite mastheads (reward framing comes via A5/A9 — mostly moot now).
 
 ## Reusable hooks already built (use these, don't rebuild)
-`RewardBurst` (`components/brand/reward-burst.tsx`) · `PaymentLogo` + `MNO_LOGOS` map (`components/wallet/payment-logo.tsx`) ·
+`RewardBurst` (`components/brand/reward-burst.tsx`, now also the win crest) · `PaymentLogo` + `MNO_LOGOS` (`components/wallet/payment-logo.tsx`) ·
 `AdminMeter`/`AdminBarList`/`AdminSpark` (`components/admin/admin-charts.tsx`) · `categoryGlyph()` (`components/ui/glyphs.tsx`) ·
-CSS: `reward-burst__*`, `admin-bar-grow`, `podium-crown` (all in `src/app/state-tokens.css`, all reduced-motion-safe).
+`EmptyState` kinds incl. proposals/kyc/fairness/rg/admin (`components/ui/empty-state.tsx`) · `BackLink` leaf-back (`components/ui/back-link.tsx`) ·
+`NavMore` overflow menu (`components/layout/nav-more.tsx`) · `motionReduced()` + `haptics.*` (`lib/haptics.ts`) for RM/haptics ·
+PageHero `glow=aqua` (`components/ui/page-hero.tsx`) · money caps single-sourced from `lib/server/validators.ts` consts.
+CSS: `reward-burst__*`, `admin-bar-grow`, `podium-crown`, `dial-focus-ring`/`dial-coach` (state-tokens/component-local, all reduced-motion-safe).
+**Nav model + logo variants:** see `docs/navigation-ia-review.md` (destination-vs-leaf rule) and `components/brand.tsx` (FiftyMark/Lockup/Wordmark/Tile/Favicon).
 
 ## Per-item working loop (unchanged platform standards)
 1. Implement one tracker item. **Never regress money paths** (deposit/withdraw/bet/resolve/payout).
 2. `npx tsc --noEmit` + relevant `test:*` (money/i18n). Trilingual EN/SW/ZH — show the SW state, nothing
-   truncates (i18n parity currently **1207³**; adding keys must keep parity across all three locales).
+   truncates (i18n parity currently **1210³**; adding keys must keep parity across all three locales).
 3. **Live-drive:** start the dev server, seed, screenshot the changed screens to gitignored
    `.50pick-shots/`, then **READ the screenshots** to confirm no visual break / overflow / contrast regression.
 4. Run `node scripts/ui-regression.mjs` (Playwright 360/768/1280/1920 — no h-overflow, zero console errors,
@@ -119,5 +142,7 @@ SESSION_SECRET=<32+> OTP_PEPPER=<16+> NODE_ENV=development DISABLE_ADMIN_TOTP=tr
   `navigator.vibrate`, whose "blocked without a user gesture" warning ui-regression counts as a console
   error (36 false-fails last session; 158/158 again after a restart).
 
-Start by: (1) read the tracker + kit specs; (2) implement B1 (the first unchecked row); (3) run the full
-regression; (4) update tracker + memory + commit/push; (5) continue to the next unchecked row.
+Start by: (1) read the tracker (`docs/ui-rollout-tracker.md`) + the two `spec/` files + `docs/navigation-ia-review.md`;
+(2) implement **B10** (the first unchecked row — delete the orphan hero components); (3) run the per-item loop
+(tsc + money/i18n + live-drive + ui-regression 158/158); (4) update tracker + `ui-kit-rollout` memory + commit/push;
+(5) continue to the next unchecked row (B11, then PART C). Hold the five lenses on every item.
