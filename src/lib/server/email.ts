@@ -21,6 +21,7 @@ import { ServerClient } from "postmark";
 import { LinkTrackingOptions } from "postmark/dist/client/models/message/SupportingTypes";
 import { resolvePhoneEmail } from "./email-map";
 import { isSuppressed } from "./email-suppression";
+import { appUrl } from "@/lib/app-url";
 
 const FROM = "noreply@50pick.tz";
 const REPLY_TO = "support@50pick.tz";
@@ -163,11 +164,11 @@ function wrap(body: string, opts: { accent?: "gold" | "royal" } = {}): string {
 
   <!-- Header: mark + wordmark -->
   <tr><td align="center" style="padding:0 0 24px">
-    <a href="https://50pick.tz" style="text-decoration:none">
+    <a href="${appUrl()}" style="text-decoration:none">
       ${MARK_IMG}
     </a>
     <div style="margin-top:10px;font-family:'Sora','Segoe UI',Helvetica,Arial,sans-serif;font-size:20px;font-weight:800;letter-spacing:-0.015em">
-      <a href="https://50pick.tz" style="color:${TEXT};text-decoration:none">
+      <a href="${appUrl()}" style="color:${TEXT};text-decoration:none">
         <span style="color:${TEXT}">50pick</span><span style="color:${TEXT_MUTED};font-weight:500;font-size:14px;margin-left:2px">.tz</span>
       </a>
     </div>

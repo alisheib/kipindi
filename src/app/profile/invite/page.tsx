@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
 import { currentSession } from "@/lib/server/auth-service";
@@ -99,12 +100,24 @@ export default async function InvitePage() {
   const ringLabel = s.earnedTzs > 0 ? compact(s.earnedTzs) : "0";
   const shareText = t.profile.shareText;
 
+  // Build the referral link from the ACTUAL request host so it always matches
+  // the URL the player is on (the live deploy) rather than a possibly-stale
+  // NEXT_PUBLIC_APP_URL. On Railway now → railway link; on 50pick.tz when the
+  // domain goes live → 50pick.tz link, automatically. Falls back to the
+  // service-built link when headers are unavailable.
+  const hdrs = await headers();
+  const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host");
+  const proto = hdrs.get("x-forwarded-proto") ?? "https";
+  const shareLink = host && s.code
+    ? `${proto}://${host}/auth/register?ref=${encodeURIComponent(s.code)}`
+    : s.link;
+
   // Share-card QR (A9) — royal modules on white for scannability; sanctioned
   // raw-hex context. Encodes the referral link; graceful if the lib/link fails.
   let qrDataUrl = "";
-  if (s.link) {
+  if (shareLink) {
     try {
-      qrDataUrl = await QRCode.toDataURL(s.link, { margin: 1, width: 240, color: { dark: "#0A0E4A", light: "#FFFFFF" } });
+      qrDataUrl = await QRCode.toDataURL(shareLink, { margin: 1, width: 240, color: { dark: "#0A0E4A", light: "#FFFFFF" } });
     } catch { /* graceful — card renders without the QR */ }
   }
 
@@ -208,7 +221,7 @@ export default async function InvitePage() {
 
       {/* Referral link + share (client) */}
       <div id="referral-share">
-        <ReferralShare link={s.link} shareText={shareText} />
+        <ReferralShare link={shareLink} shareText={shareText} />
       </div>
 
       {/* Stat tiles */}

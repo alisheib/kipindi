@@ -30,10 +30,14 @@ type Props = {
   /** Total effective fee for this market — passed straight to the dial so its
    *  payout/lean projection matches server settlement. */
   feeRate?: number;
+  /** Admin-configured stake bounds (getEffectiveConfig) — threaded to the dial
+   *  so its range reflects the operator's min/max, not a hardcoded 500–100k. */
+  minStake?: number;
+  maxStake?: number;
 };
 
 export function SidePicker({
-  marketId, marketTitle, yesPool, noPool, yesPct, resolutionAt, balance, initialSide, feeRate,
+  marketId, marketTitle, yesPool, noPool, yesPct, resolutionAt, balance, initialSide, feeRate, minStake, maxStake,
 }: Props) {
   const { t } = useT();
   const [side, setSide] = useState<"YES" | "NO" | null>(initialSide ?? null);
@@ -67,6 +71,8 @@ export function SidePicker({
           balance={balance}
           lockedSide={side}
           feeRate={feeRate}
+          baseStake={minStake}
+          maxStake={maxStake}
         />
         <NotifyPrompt marketId={marketId} marketTitle={marketTitle} />
       </div>

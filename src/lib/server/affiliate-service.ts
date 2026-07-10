@@ -25,12 +25,12 @@ import { creditInternal } from "./wallet-service";
 import { creditBonus } from "./bonus-service";
 import { getBonusConfig } from "./bonus-config";
 import { sendEmailToUser, referralRewardHtml, referralEarningHtml } from "./email";
+import { appUrl } from "@/lib/app-url";
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I ambiguity
 
 function appBaseUrl(): string {
-  const raw = process.env.NEXT_PUBLIC_APP_URL || "https://kipindi-production.up.railway.app";
-  return raw.replace(/\/+$/, "");
+  return appUrl();
 }
 
 /**

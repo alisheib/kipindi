@@ -20,6 +20,7 @@ import { listComments } from "@/lib/server/comments-store";
 import { CommentsThread } from "@/components/markets/comments-thread";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { formatDateTime, formatTzsCompact, formatTzs } from "@/lib/utils";
+import { appUrl } from "@/lib/app-url";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
 
@@ -73,7 +74,7 @@ export default async function MarketDetail({
   // Effective fee for THIS market (incl. any per-market override) so the dial's
   // inline payout/lean projection matches the rate the server settles at.
   let feeCfg: Awaited<ReturnType<typeof getEffectiveConfig>>;
-  try { feeCfg = await getEffectiveConfig(m.id); } catch { feeCfg = { taxRate: 0, commissionRate: 0.03, reserveRate: 0.01, aggregatorRate: 0, starterBalanceTzs: 0 } as Awaited<ReturnType<typeof getEffectiveConfig>>; }
+  try { feeCfg = await getEffectiveConfig(m.id); } catch { feeCfg = { taxRate: 0, commissionRate: 0.03, reserveRate: 0.01, aggregatorRate: 0, starterBalanceTzs: 0, minStake: 500, maxStake: 100_000 } as Awaited<ReturnType<typeof getEffectiveConfig>>; }
   const marketFeeRate = Math.min(0.99, Math.max(0, feeCfg.taxRate + feeCfg.commissionRate + feeCfg.reserveRate + feeCfg.aggregatorRate));
   const session = await currentSession();
   let myPositions: Awaited<ReturnType<typeof listPositionsForUser>> = [];
@@ -149,8 +150,8 @@ export default async function MarketDetail({
     startDate: m.createdAt,
     endDate: m.resolutionAt,
     eventStatus: isResolved ? "https://schema.org/EventCompleted" : "https://schema.org/EventScheduled",
-    organizer: { "@type": "Organization", name: "50pick", url: process.env.NEXT_PUBLIC_APP_URL ?? "https://www.50pick.tz" },
-    location: { "@type": "VirtualLocation", url: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://www.50pick.tz"}/markets/${id}` },
+    organizer: { "@type": "Organization", name: "50pick", url: appUrl() },
+    location: { "@type": "VirtualLocation", url: `${appUrl()}/markets/${id}` },
   };
 
   return (
@@ -395,6 +396,8 @@ export default async function MarketDetail({
                 balance={myBalance}
                 initialSide={side === "YES" || side === "NO" ? side : undefined}
                 feeRate={marketFeeRate}
+                minStake={feeCfg.minStake}
+                maxStake={feeCfg.maxStake}
               />
               </>
             ) : (

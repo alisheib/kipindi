@@ -12,6 +12,7 @@
  *  - Rate-limited per phone via `rate-limit.ts` (`otp.send` rule)
  */
 import { audit } from "./audit";
+import { appUrl } from "@/lib/app-url";
 
 export type SmsProvider = {
   name: string;
@@ -160,7 +161,7 @@ export function otpMessage(code: string, locale: "EN" | "SW" | "ZH" = "SW"): str
   }
 }
 
-const SMS_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://www.50pick.tz";
+const SMS_BASE_URL = appUrl();
 
 /** Invite SMS: the campaign's short message + the bonus + a register link with
  *  the campaign code. Kept compact to fit a single SMS segment where possible. */

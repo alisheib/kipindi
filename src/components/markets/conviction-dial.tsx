@@ -119,8 +119,13 @@ type Props = {
   marketId: string;
   yesPool: number;
   noPool: number;
-  /** Baseline stake at 1× multiplier (multiplier reaches 5× at the extremes). */
+  /** Minimum stake = the dial's 1× multiplier floor. Comes from the admin
+   *  market config (minStake) via getEffectiveConfig — NOT a hardcoded 500. */
   baseStake?: number;
+  /** Maximum stake = the dial's ceiling (admin config maxStake). The conviction
+   *  multiplier range is derived as maxStake / baseStake so the dial spans
+   *  exactly the admin-configured [min, max]. Undefined → legacy baseStake×200. */
+  maxStake?: number;
   initial?: number;
   /** Used in the confirm modal headline. */
   marketTitle?: string;
@@ -144,7 +149,7 @@ type Props = {
   feeRate?: number;
 };
 
-export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, initial = 0.5, marketTitle, resolutionAt, balance, lockedSide, feeRate }: Props) {
+export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, maxStake, initial = 0.5, marketTitle, resolutionAt, balance, lockedSide, feeRate }: Props) {
   // The side the dial is locked to (null = free bidirectional). The choice is
   // made on the market card (outside) and is FINAL here — the in-dial YES/NO
   // pills are display-only indicators, NOT switchable. To change sides the
@@ -208,7 +213,13 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
 
   const distFromCenter = Math.abs(pos - 0.5) * 2;
   const conviction = distFromCenter * distFromCenter; // ease-in
-  const maxMultiplier = 200;
+  // Multiplier ceiling = maxStake / baseStake so the dial spans EXACTLY the
+  // admin-configured [minStake, maxStake]. Falls back to the legacy 200× when
+  // no maxStake is threaded (keeps old callers working). Guarded so a bad
+  // config (max ≤ min) can't produce a ≤0 or non-finite range.
+  const maxMultiplier = (typeof maxStake === "number" && maxStake > baseStake)
+    ? maxStake / baseStake
+    : 200;
   const isNeutral = distFromCenter < NEUTRAL_BAND;
   // Per management spec (license review · 2026-05):
   // slide LEFT → YES, slide RIGHT → NO. Inverted from the original
