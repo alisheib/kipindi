@@ -19,7 +19,7 @@ import { ensureAffiliateAccount } from "@/lib/server/affiliate-service";
 import { listComments } from "@/lib/server/comments-store";
 import { CommentsThread } from "@/components/markets/comments-thread";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
-import { formatDateTime, formatTzsCompact } from "@/lib/utils";
+import { formatDateTime, formatTzsCompact, formatTzs } from "@/lib/utils";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
 
@@ -53,7 +53,6 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   };
 }
 
-const fmtTzs = (n: number) => `TZS ${n.toLocaleString("en-US")}`;
 const fmtTime = formatDateTime;
 
 export default async function MarketDetail({
@@ -305,12 +304,12 @@ export default async function MarketDetail({
                           p.status === "OPEN" ? "text-info-fg" : p.status === "WIN" ? "text-gold-300" : p.status === "LOSS" ? "text-no-300" : "text-text-subtle"
                         }`}>{p.status === "CASHED_OUT" ? "CASHED" : p.status}</span>
                       </div>
-                      <span className="font-bold tabular-nums text-text">{fmtTzs(p.stake)}</span>
+                      <span className="font-bold tabular-nums text-text">{formatTzs(p.stake)}</span>
                     </div>
                     {p.status !== "OPEN" && (
                       <div className="flex items-center justify-between font-mono text-[11px]">
                         <span className="text-text-muted">{t.market.paidLabel}</span>
-                        <span className="font-bold tabular-nums text-gold-300">{fmtTzs(p.finalPayout ?? 0)}</span>
+                        <span className="font-bold tabular-nums text-gold-300">{formatTzs(p.finalPayout ?? 0)}</span>
                       </div>
                     )}
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">

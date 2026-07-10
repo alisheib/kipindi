@@ -12,6 +12,7 @@ import { displayInitials } from "@/lib/display-label";
 import { BadgeShelf } from "@/components/badges/Badge";
 import { computeAchievementShelf } from "@/lib/server/achievements";
 import { getServerT } from "@/lib/i18n-server";
+import { formatTzs } from "@/lib/utils";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -19,7 +20,6 @@ export async function generateMetadata() {
 }
 export const dynamic = "force-dynamic";
 
-const fmtTzs = (n: number) => `TZS ${n.toLocaleString("en-US")}`;
 
 /** Mask a Tanzanian E.164 phone for on-screen display per PDPA / GBT
  *  data-minimisation: keep prefix + 2 trailing digits, mask the rest. */
@@ -143,7 +143,7 @@ export default async function ProfilePage() {
         <div className="relative z-10 grid grid-cols-3 border-t border-border divide-x divide-border">
           <Stat
             label={t.profile.balance}
-            value={wallet ? fmtTzs(wallet.balance) : "—"}
+            value={wallet ? formatTzs(wallet.balance) : "—"}
             icon={<I.wallet s={14} />}
           />
           <Stat

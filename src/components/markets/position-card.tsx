@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { cn, formatDateTime } from "@/lib/utils";
+import { cn, formatDateTime, formatTzs } from "@/lib/utils";
 import { Cash } from "@/components/ui/cash";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
@@ -21,8 +21,6 @@ type Props = {
   positionId?: string;
   className?: string;
 };
-
-const fmt = (n: number) => n.toLocaleString("en-US");
 
 export function PositionCard({ marketId, marketTitle, side, stake, current, payout, status, placedAt, positionId, className }: Props) {
   const { t } = useT();
@@ -50,7 +48,7 @@ export function PositionCard({ marketId, marketTitle, side, stake, current, payo
           }>{statusLabel}</Chip>
         </div>
         <span className="font-mono text-[14px] font-bold tabular-nums text-text">
-          <Cash>{`TZS ${fmt(stake)}`}</Cash>
+          <Cash>{formatTzs(stake)}</Cash>
         </span>
       </div>
       <div className="mb-3.5">
@@ -77,8 +75,8 @@ export function PositionCard({ marketId, marketTitle, side, stake, current, payo
           Settled positions show the actual final payout. */}
       {status !== "OPEN" && (
         <div className="grid grid-cols-2 gap-3">
-          <Stat label={t.market.finalLabel} value={`TZS ${fmt(current)}`} money />
-          <Stat label={t.dialog.payoutLabel} value={`TZS ${fmt(payout)}`} tone={status === "WIN" ? "gold" : "default"} money />
+          <Stat label={t.market.finalLabel} value={formatTzs(current)} money />
+          <Stat label={t.dialog.payoutLabel} value={formatTzs(payout)} tone={status === "WIN" ? "gold" : "default"} money />
         </div>
       )}
     </Link>

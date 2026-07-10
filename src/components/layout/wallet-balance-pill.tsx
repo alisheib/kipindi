@@ -17,7 +17,7 @@ import { useT } from "@/lib/i18n";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
+import { cn, formatTzs } from "@/lib/utils";
 import { useCashHidden } from "@/components/ui/cash";
 
 const TWEEN_DURATION = 600;     // ms — full rolling-counter run
@@ -110,7 +110,7 @@ export function WalletBalancePill({ balance }: { balance: number }) {
   return (
     <Link
       href="/wallet"
-      aria-label={hidden ? `${t.common.wallet} · ${t.common.hidePassword}` : `${t.common.wallet} · TZS ${effectiveBalance.toLocaleString("en-US")}`}
+      aria-label={hidden ? `${t.common.wallet} · ${t.common.hidePassword}` : `${t.common.wallet} · ${formatTzs(effectiveBalance)}`}
       className={cn(
         "inline-flex items-center rounded-pill font-mono tabular-nums font-bold text-text transition-colors transition-shadow whitespace-nowrap",
         flashing
@@ -128,7 +128,7 @@ export function WalletBalancePill({ balance }: { balance: number }) {
       }}
       data-testid="wallet-balance-pill"
     >
-      {hidden ? "TZS •••••" : `TZS ${display.toLocaleString("en-US")}`}
+      {hidden ? "TZS •••••" : formatTzs(display)}
       {/* Tiny delta indicator that fades out alongside the flash —
           appears next to the number for ~800 ms with the actual
           +/- amount. Helps the player connect the visual to the

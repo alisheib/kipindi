@@ -16,8 +16,7 @@ import { I } from "@/components/ui/glyphs";
 import { haptics } from "@/lib/haptics";
 import { useModalLock } from "@/lib/use-modal-lock";
 import { useT } from "@/lib/i18n";
-
-const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
+import { formatTzs, formatNumber } from "@/lib/utils";
 
 type Props = {
   open: boolean;
@@ -124,7 +123,7 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
                 <p
                   className="font-mono font-bold text-[24px] tabular-nums leading-none text-text"
                 >
-                  TZS {fmt(value)}
+                  TZS {formatNumber(value)}
                 </p>
               </div>
               <div className="text-right">
@@ -133,9 +132,9 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
                   className="font-mono font-bold text-[18px] tabular-nums leading-none"
                   style={{ color: isFree ? "oklch(78% 0.13 152)" : "var(--text)" }}
                 >
-                  {isFree ? t.dialog.noFee : `−TZS ${fmt(fee)}`}
+                  {isFree ? t.dialog.noFee : `−${formatTzs(fee)}`}
                 </p>
-                <p className="mt-1 font-mono text-[10px] text-text-subtle">{isFree ? t.dialog.freeExitWindow : `${feePct}% · TZS ${fmt(stake)}`}</p>
+                <p className="mt-1 font-mono text-[10px] text-text-subtle">{isFree ? t.dialog.freeExitWindow : `${feePct}% · ${formatTzs(stake)}`}</p>
               </div>
             </div>
           </div>
@@ -161,7 +160,7 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
               disabled={pending}
               className="btn btn-gold btn-lg w-full"
             >
-              {pending ? t.dialog.selling : `${t.dialog.sellLabel} · TZS ${fmt(value)}`}
+              {pending ? t.dialog.selling : `${t.dialog.sellLabel} · ${formatTzs(value)}`}
             </button>
             <button
               type="button"

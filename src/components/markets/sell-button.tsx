@@ -17,8 +17,8 @@ import { useT } from "@/lib/i18n";
 import { cashOutPositionAction } from "@/app/markets/actions";
 import { SellConfirmModal } from "./sell-confirm-modal";
 import { OperationResultModal } from "./operation-result-modal";
+import { formatTzs, formatNumber } from "@/lib/utils";
 
-const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 const GRACE_MS = 5 * 60_000;
 
 export function SellButton({
@@ -119,10 +119,10 @@ export function SellButton({
       const realisedValue = r.data!.value;
       const realisedFee = Math.max(0, stake - realisedValue); // 0 inside the free-exit window
       toast({
-        title: `${t.dialog.sellLabel} · TZS ${fmt(realisedValue)} ${t.toast.soldReturned}`,
+        title: `${t.dialog.sellLabel} · ${formatTzs(realisedValue)} ${t.toast.soldReturned}`,
         description: realisedFee <= 0
           ? t.toast.fullStakeRefunded
-          : `TZS ${fmt(realisedFee)} ${t.toast.earlyExitFeeApplied}`,
+          : `${formatTzs(realisedFee)} ${t.toast.earlyExitFeeApplied}`,
         variant: "success",
       });
       // net is stored as −fee so the result modal can surface the fee row.
@@ -154,8 +154,8 @@ export function SellButton({
           closedNow
             ? t.market.closedAwaitingSettlement
             : inGrace
-            ? `${t.common.freeExitLabel} — TZS ${fmt(value)}`
-            : `${t.common.cashOut} TZS ${fmt(value)}`
+            ? `${t.common.freeExitLabel} — ${formatTzs(value)}`
+            : `${t.common.cashOut} ${formatTzs(value)}`
         }
         className={`btn ${closedNow ? "btn-ghost" : btnVariant} btn-md w-full whitespace-normal h-auto`}
         style={{ justifyContent: "space-between", minHeight: 44 }}
@@ -168,10 +168,10 @@ export function SellButton({
         </span>
         {!closedNow && (
           <span className="font-mono tabular-nums">
-            TZS {fmt(value)}
+            TZS {formatNumber(value)}
             {inGrace
               ? <span className="ml-1.5 opacity-80 text-[11px]">{t.common.fullRefund}</span>
-              : <span className="ml-1.5 opacity-80 text-[11px]">−{fmt(fee)} {t.common.fee}</span>
+              : <span className="ml-1.5 opacity-80 text-[11px]">−{formatNumber(fee)} {t.common.fee}</span>
             }
           </span>
         )}
@@ -192,7 +192,7 @@ export function SellButton({
           eyebrow={resultData.variant === "success" ? t.common.positionSold : t.common.cashOutFailed}
           title={
             resultData.variant === "success"
-              ? `TZS ${fmt(resultData.value)} ${t.common.returned}`
+              ? `${formatTzs(resultData.value)} ${t.common.returned}`
               : (resultData.error ?? t.error.tryAgain)
           }
           subtitle={
@@ -204,10 +204,10 @@ export function SellButton({
           }
           details={resultData.variant === "success" ? [
             { label: t.common.ticket, value: positionId },
-            { label: t.common.returned, value: `TZS ${fmt(resultData.value)}` },
+            { label: t.common.returned, value: formatTzs(resultData.value) },
             {
               label: t.common.earlyExitFee,
-              value: resultData.net >= 0 ? t.common.none : `TZS ${fmt(Math.abs(resultData.net))}`,
+              value: resultData.net >= 0 ? t.common.none : formatTzs(Math.abs(resultData.net)),
               tone: "default",
             },
           ] : undefined}

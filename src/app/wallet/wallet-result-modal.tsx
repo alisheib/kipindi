@@ -10,6 +10,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useT } from "@/lib/i18n";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
+import { formatTzs } from "@/lib/utils";
 
 export function WalletResultModal({
   deposited,
@@ -36,7 +37,7 @@ export function WalletResultModal({
   if (!deposited && !withdrawal) return null;
 
   const txnId = deposited || withdrawal || "";
-  const amt = amount ? `TZS ${Number(amount).toLocaleString("en-US")}` : undefined;
+  const amt = amount ? formatTzs(Number(amount)) : undefined;
   const isWithdraw = !!withdrawal;
   const amlHeld = isWithdraw && status === "AML_REVIEW";
   // Async collection/payout: money hasn't moved yet — it settles on the

@@ -14,7 +14,7 @@
  *    exists; disputes route to support truthfully.
  */
 import { I } from "@/components/ui/glyphs";
-import { cn } from "@/lib/utils";
+import { cn, formatTzs } from "@/lib/utils";
 import { formatDateTime } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 
@@ -32,7 +32,6 @@ type Props = {
   feeRate: number;
 };
 
-const fmtTzs = (n: number) => `TZS ${Math.round(n).toLocaleString("en-US")}`;
 const fmtPct = (r: number) => {
   const v = r * 100;
   return `${Number.isInteger(v) ? v : v.toFixed(1)}%`;
@@ -106,15 +105,15 @@ export function ResolutionPanel({
         <p className="text-[12.5px] leading-relaxed text-text-muted">{t.market.resVoidRefund}</p>
       ) : (
         <div className="rounded-md border border-border/60 bg-bg-overlay/40 font-mono text-[12.5px]">
-          <Row label={t.market.resFinalPool} value={fmtTzs(gross)} strong />
+          <Row label={t.market.resFinalPool} value={formatTzs(gross)} strong />
           <Row
             label={`${t.common.yes} ${t.market.resPoolWord}`}
-            value={fmtTzs(yesPool)}
+            value={formatTzs(yesPool)}
             win={outcome === "YES"}
           />
           <Row
             label={`${t.common.no} ${t.market.resPoolWord}`}
-            value={fmtTzs(noPool)}
+            value={formatTzs(noPool)}
             win={outcome === "NO"}
           />
           <Row label={t.market.resPlatformFee} value={fmtPct(feeRate)} muted />

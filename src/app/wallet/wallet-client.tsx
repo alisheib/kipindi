@@ -11,12 +11,10 @@ import type { Transaction } from "@/lib/ui-stubs";
 import { Cash } from "@/components/ui/cash";
 import { CashbackPromo } from "@/components/ui/cashback-promo";
 import { PaymentLogo } from "@/components/wallet/payment-logo";
-import { formatDateTimeSafe } from "@/lib/utils";
+import { formatDateTimeSafe, formatTzs, formatNumber } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 
 const TXNS_PER_PAGE = 12;
-
-const fmt = (n: number, currency = "TZS") => `${currency} ${n.toLocaleString("en-US")}`;
 
 /** Wallet 30-day balance spark (A9) — aqua line + terminal pip (balance is
  *  state, not earnings → aqua, never gold). Hidden with fewer than 2 points. */
@@ -65,7 +63,7 @@ function BalanceCard({
           data-balance={balance}
           className="mt-1.5 font-mono text-[38px] font-bold tabular-nums text-text leading-none tracking-[-0.02em]"
         >
-          <Cash>{fmt(balance, currency)}</Cash>
+          <Cash>{formatTzs(balance)}</Cash>
         </p>
         {balance === 0 && pending === 0 && hold === 0 && (
           <Link
@@ -77,8 +75,8 @@ function BalanceCard({
           </Link>
         )}
         <div className="mt-5 grid grid-cols-2 gap-3">
-          <SubStat label={t.common.pending} value={fmt(pending, currency)} />
-          <SubStat label={t.common.onHold}  value={fmt(hold, currency)} hint={hold > 0 ? t.common.pendingHoldHint : undefined} />
+          <SubStat label={t.common.pending} value={formatTzs(pending)} />
+          <SubStat label={t.common.onHold}  value={formatTzs(hold)} hint={hold > 0 ? t.common.pendingHoldHint : undefined} />
         </div>
       </div>
     </section>
@@ -149,7 +147,7 @@ function BonusWalletCard({
           data-bonus={bonusBalance}
           className="mt-1.5 font-mono text-[38px] font-bold tabular-nums text-text leading-none tracking-[-0.02em]"
         >
-          <Cash>{fmt(bonusBalance, currency)}</Cash>
+          <Cash>{formatTzs(bonusBalance)}</Cash>
         </p>
 
         {hasBonus ? (
@@ -167,7 +165,7 @@ function BonusWalletCard({
               </div>
               {totalRemainingWager > 0 && (
                 <p className="mt-2 text-[12px] text-gold-100/90">
-                  <span className="font-mono font-bold text-text"><Cash>{fmt(totalRemainingWager, currency)}</Cash></span>
+                  <span className="font-mono font-bold text-text"><Cash>{formatTzs(totalRemainingWager)}</Cash></span>
                   {" — "}{t.common.playMoreToUnlock}
                 </p>
               )}
@@ -188,7 +186,7 @@ function BonusWalletCard({
                             </span>
                           )}
                         </span>
-                        <span className="font-mono text-[12px] font-bold text-text tabular-nums"><Cash>{fmt(g.remainingTzs, currency)}</Cash></span>
+                        <span className="font-mono text-[12px] font-bold text-text tabular-nums"><Cash>{formatTzs(g.remainingTzs)}</Cash></span>
                       </div>
                       {isQueued ? (
                         <p className="mt-1.5 text-[9.5px] text-text-muted italic">
@@ -200,7 +198,7 @@ function BonusWalletCard({
                             <div className={`h-full rounded-pill ${g.progressPct > 0 && g.progressPct < 100 ? "prog-sweep" : ""}`} style={{ width: `${g.progressPct}%`, background: "var(--gold-400)" }} />
                           </div>
                           <div className="mt-1 flex items-center justify-between font-mono text-[9.5px] text-gold-200/55">
-                            <span>{fmt(g.wageredTzs, currency)} / {fmt(g.wagerRequiredTzs, currency)} {t.common.played}</span>
+                            <span>{formatTzs(g.wageredTzs)} / {formatTzs(g.wagerRequiredTzs)} {t.common.played}</span>
                             {g.expiresAt && <span>{t.common.exp} {formatDateTimeSafe(g.expiresAt).split(",")[0]}</span>}
                           </div>
                         </>
@@ -272,7 +270,7 @@ function TxnRow({ tx }: { tx: Transaction }) {
         </div>
         <div className="text-right shrink-0">
           <p className={`font-mono text-[14px] font-bold tabular-nums ${isCredit ? "text-yes-300" : "text-text"}`}>
-            <Cash>{`${isCredit ? "+" : ""}${fmt(Math.abs(tx.amount))}`}</Cash>
+            <Cash>{`${isCredit ? "+" : ""}${formatTzs(Math.abs(tx.amount))}`}</Cash>
           </p>
           <p className={`mt-0.5 font-mono text-[9px] uppercase tracking-[0.14em] font-semibold ${statusTone}`}>
             {tx.status}
@@ -287,7 +285,7 @@ function TxnRow({ tx }: { tx: Transaction }) {
           </div>
           <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5">
             <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.wallet.amount}</p>
-            <p className="font-mono font-bold tabular-nums text-text">{fmt(Math.abs(tx.amount))}</p>
+            <p className="font-mono font-bold tabular-nums text-text">{formatTzs(Math.abs(tx.amount))}</p>
           </div>
           <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5">
             <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.error.reference}</p>
@@ -357,7 +355,7 @@ export function WalletPageClient({
   ];
 
   // Derived from the server validators (via props) — never a hand-typed literal.
-  const capStr = (min: number, max: number) => `TZS ${min.toLocaleString("en-US")} – ${max.toLocaleString("en-US")}`;
+  const capStr = (min: number, max: number) => `${formatTzs(min)} – ${formatNumber(max)}`;
   const txnCaps = [
     { label: t.common.perDeposit,    value: capStr(limits.depositMin, limits.depositMax) },
     { label: t.common.perWithdrawal, value: capStr(limits.withdrawMin, limits.withdrawMax) },
@@ -389,7 +387,7 @@ export function WalletPageClient({
         <BonusWalletCard bonusBalance={bonusBalance} activeCount={bonusActiveCount} grants={bonusGrants} currency={currency} />
       </div>
       {bonusWagerRemaining > 0 && (
-        <p className="sr-only">{t.common.bonus}: {fmt(bonusWagerRemaining, currency)}</p>
+        <p className="sr-only">{t.common.bonus}: {formatTzs(bonusWagerRemaining)}</p>
       )}
 
       {cashbackPercent > 0 && <CashbackPromo percent={cashbackPercent} mode={cashbackMode} />}

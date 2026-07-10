@@ -10,6 +10,7 @@
 import { useRef, useState } from "react";
 import { useT } from "@/lib/i18n";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { formatTzs } from "@/lib/utils";
 
 export function WithdrawConfirm() {
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -23,7 +24,7 @@ export function WithdrawConfirm() {
     const amount = parseInt(String(fd.get("amount") ?? "0"), 10);
     const provider = String(fd.get("provider") ?? "");
     setFormSummary({
-      amount: amount > 0 ? `TZS ${amount.toLocaleString("en-US")}` : "TZS 0",
+      amount: amount > 0 ? formatTzs(amount) : "TZS 0",
       provider: provider.replace(/_/g, " "),
     });
   };

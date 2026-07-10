@@ -23,8 +23,8 @@ import { useModalLock } from "@/lib/use-modal-lock";
 import { HouseLeanWarning } from "./house-lean-warning";
 import { useT } from "@/lib/i18n";
 import type { LeanLevel } from "@/lib/payout";
+import { formatTzs, formatNumber } from "@/lib/utils";
 
-const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 const QUOTE_HOLD_MS = 10_000;
 
 type Props = {
@@ -230,7 +230,7 @@ export function BetConfirmModal({
               </div>
               <div className="text-right">
                 <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle mb-1">{t.dialog.stakeLabel}</p>
-                <p className="font-mono font-bold text-[22px] tabular-nums leading-none text-text">TZS {fmt(stake)}</p>
+                <p className="font-mono font-bold text-[22px] tabular-nums leading-none text-text">TZS {formatNumber(stake)}</p>
                 <p className="mt-1 font-mono text-[10px] text-text-subtle">{multiplier.toFixed(2)}× {t.dialog.conviction}</p>
               </div>
             </div>
@@ -290,7 +290,7 @@ export function BetConfirmModal({
               disabled={pending || remainingMs <= 0}
               className="btn btn-gold btn-lg w-full"
             >
-              {pending ? t.dialog.placing : `${t.common.confirm} · TZS ${fmt(stake)}`}
+              {pending ? t.dialog.placing : `${t.common.confirm} · ${formatTzs(stake)}`}
             </button>
             <button
               type="button"

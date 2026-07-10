@@ -7,7 +7,7 @@ import Link from "next/link";
 import { TippingBar } from "@/components/brand";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { Avatar } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
+import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { pickLocalized } from "@/lib/localized";
 
@@ -47,8 +47,6 @@ function getSignalBadge(
   if (Math.abs(yesPct - 50) <= 3) return { kind: "tipping", label: labels.tipping };
   return null;
 }
-
-const fmtTzs = (n: number) => `TZS ${n.toLocaleString("en-US")}`;
 
 /** Demoted 24h move — mono micro-text, right-aligned above the bar (Part B-2:
  *  it no longer competes as a chip in the header). Green up / rose down. */
@@ -319,7 +317,7 @@ export function MarketCard({
       )}
 
       <div className="mcardp-meta">
-        <span>{fmtTzs(volume)}</span>
+        <span>{formatTzs(volume)}</span>
         {comments != null && comments > 0 && (
           <>
             <span className="dot" />

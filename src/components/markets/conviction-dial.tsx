@@ -26,6 +26,7 @@ import { BetConfirmModal } from "./bet-confirm-modal";
 import { OperationResultModal } from "./operation-result-modal";
 import { payoutFor, leanFor, type LeanLevel } from "@/lib/payout";
 import { haptics, motionReduced } from "@/lib/haptics";
+import { formatTzs, formatNumber } from "@/lib/utils";
 
 type Side = "YES" | "NO" | "NEUTRAL";
 
@@ -86,7 +87,6 @@ function squirclePath(r: number) {
   return `${d}Z`;
 }
 
-const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 const NEUTRAL_BAND = 0.005;
 
 // ─── Detent + RG geometry (kit micro-interactions §7 + refinement B1) ───────
@@ -759,7 +759,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
         return;
       }
       toast({
-        title: `${t.toast.betPlaced} · ${q.side} TZS ${fmt(q.stake)}`,
+        title: `${t.toast.betPlaced} · ${q.side} ${formatTzs(q.stake)}`,
         description: t.toast.payoutAtResolution,
         variant: "success",
       });
@@ -889,7 +889,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
         aria-valuenow={ariaValue}
         aria-valuetext={effectiveSide === "NEUTRAL"
           ? t.market.neutral
-          : `TZS ${fmt(stake)} ${t.market.onSide.replace("{side}", sideWord)}`}
+          : `${formatTzs(stake)} ${t.market.onSide.replace("{side}", sideWord)}`}
         aria-disabled={closedNow ? "true" : "false"}
         onPointerDown={closedNow ? undefined : onPointerDown}
         onKeyDown={closedNow ? undefined : onKeyDown}
@@ -1134,7 +1134,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
             // needs the rest of the outer width to render "25,000" with
             // room to breathe.
             error={isOutOfRange}
-            value={editingStake ? stakeText : fmt(stake)}
+            value={editingStake ? stakeText : formatNumber(stake)}
             inputMode="numeric"
             pattern="[0-9]*"
             onFocus={(e) => {
@@ -1171,13 +1171,13 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
               for a no-300 chip to make the clamp un-missable. */}
           {isOverMax || isUnderMin ? (
             <span className="mt-1 inline-flex items-center gap-1 rounded-pill border border-no-700 bg-no-500/15 px-1.5 py-0.5 font-mono text-[9.5px] font-bold text-no-300 whitespace-nowrap">
-              {isOverMax ? `${t.common.max} ${fmt(maxDial)}` : `${t.common.min} ${fmt(minDial)}`}
+              {isOverMax ? `${t.common.max} ${formatNumber(maxDial)}` : `${t.common.min} ${formatNumber(minDial)}`}
             </span>
           ) : (
             <span className="mt-1 inline-flex items-center gap-1 font-mono text-[9.5px] text-text-subtle whitespace-nowrap" data-testid="stake-range-chip">
-              <span data-testid="stake-range-min" className="tabular-nums font-bold text-text-muted">{fmt(minDial)}</span>
+              <span data-testid="stake-range-min" className="tabular-nums font-bold text-text-muted">{formatNumber(minDial)}</span>
               <span aria-hidden className="inline-block h-[2px] w-5 rounded-pill bg-gradient-to-r from-yes-500 to-gold-500" />
-              <span data-testid="stake-range-max" className="tabular-nums font-bold text-text-muted">{fmt(maxDial)}</span>
+              <span data-testid="stake-range-max" className="tabular-nums font-bold text-text-muted">{formatNumber(maxDial)}</span>
             </span>
           )}
         </div>
@@ -1272,7 +1272,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
             {t.common.insufficientBalanceHint}
           </p>
           <p className="text-[10px] text-text-subtle mt-0.5">
-            {t.market.insufficientDetail.replace("{need}", fmt(stake)).replace("{have}", fmt(balance))}
+            {t.market.insufficientDetail.replace("{need}", formatNumber(stake)).replace("{have}", formatNumber(balance))}
           </p>
         </div>
       )}
@@ -1296,7 +1296,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
           aria-label={
             closedNow ? t.market.closedAwaitingSettlement
             : effectiveSide === "NEUTRAL" ? t.common.dragTheDial
-            : `${t.common.place} ${effectiveSide} TZS ${fmt(stake)}`
+            : `${t.common.place} ${effectiveSide} ${formatTzs(stake)}`
           }
           className={`${closedNow ? "btn btn-ghost btn-md" : (effectiveSide === "NEUTRAL" ? "btn btn-ghost btn-md" : effectiveSide === "YES" ? "btn btn-yes btn-md" : "btn btn-no btn-md")} whitespace-normal`}
           // 44 px min-height meets WCAG 2.5.5 tap-target on mobile;
@@ -1310,7 +1310,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
               : (
                 <>
                   <span>{t.common.place} {effectiveSide}</span>
-                  <span className="font-mono opacity-90">TZS {fmt(stake)}</span>
+                  <span className="font-mono opacity-90">TZS {formatNumber(stake)}</span>
                 </>
               )}
         </button>
@@ -1339,7 +1339,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
           open={resultOpen}
           variant={resultData.variant}
           eyebrow={resultData.variant === "success" ? t.common.betPlacedEyebrow : t.common.couldNotPlaceBet}
-          title={resultData.variant === "success" ? `${resultData.side} · TZS ${fmt(resultData.stake)}` : (resultData.error ?? t.error.tryAgain)}
+          title={resultData.variant === "success" ? `${resultData.side} · ${formatTzs(resultData.stake)}` : (resultData.error ?? t.error.tryAgain)}
           subtitle={
             resultData.variant === "success"
               ? (marketTitle ?? t.common.positionOpenNotify)
@@ -1347,7 +1347,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, ini
           }
           details={resultData.variant === "success" ? [
             ...(resultData.positionId ? [{ label: t.common.ticket, value: resultData.positionId }] : []),
-            { label: t.dialog.stakeLabel, value: `TZS ${fmt(resultData.stake)}` },
+            { label: t.dialog.stakeLabel, value: formatTzs(resultData.stake) },
             { label: t.dialog.payoutLabel, value: t.market.atResolution },
           ] : undefined}
           footnote={resultData.variant === "success" ? t.common.goodLuck : undefined}

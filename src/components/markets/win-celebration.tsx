@@ -22,6 +22,7 @@ import { RewardBurst } from "@/components/brand/reward-burst";
 import { haptics } from "@/lib/haptics";
 import { useModalLock } from "@/lib/use-modal-lock";
 import { useT } from "@/lib/i18n";
+import { formatNumber } from "@/lib/utils";
 
 const EVENT_NAME = "50pick:celebrate";
 
@@ -41,7 +42,6 @@ export function dispatchWinCelebration(p: WinCelebrationPayload) {
   window.dispatchEvent(new CustomEvent<WinCelebrationPayload>(EVENT_NAME, { detail: p }));
 }
 
-const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 
 /** Rolling counter for the payout headline — counts up 0 → value on mount
  *  (~900ms, ease-out-quart). Snaps instantly under prefers-reduced-motion. */
@@ -178,7 +178,7 @@ export function WinCelebrationHost() {
 
           {typeof payload.net === "number" && (
             <p className="mt-1.5 font-mono text-[13px] tabular-nums text-gold-300">
-              {payload.net >= 0 ? "+" : "\u2212"}TZS {fmt(Math.abs(payload.net))} <span className="text-text-subtle">{t.common.net}</span>
+              {payload.net >= 0 ? "+" : "\u2212"}TZS {formatNumber(Math.abs(payload.net))} <span className="text-text-subtle">{t.common.net}</span>
             </p>
           )}
 
