@@ -11,11 +11,21 @@ export type PlatformConfig = {
   /** IANA timezone for all player-facing times, AI prompts, and displays.
    *  Default: Africa/Dar_es_Salaam (EAT, UTC+3). */
   timezone: string;
+  /** Global maintenance switch (§9.3 #1). When true, NEW bets and NEW deposits
+   *  are paused platform-wide. Withdrawals and cash-outs stay OPEN so player
+   *  funds are never trapped (RG-safe, LCCP-friendly). Set from /admin/system;
+   *  takes effect immediately, no redeploy. Optional so old snapshots restore. */
+  maintenanceMode?: boolean;
+  /** Operator note shown to players who hit a paused action while maintenance
+   *  is on. Null → a sensible default message. */
+  maintenanceNote?: string | null;
 };
 
 const CONFIG_KEY = "platform_config";
 const DEFAULT: PlatformConfig = {
   timezone: process.env.PLATFORM_TIMEZONE || "Africa/Dar_es_Salaam",
+  maintenanceMode: false,
+  maintenanceNote: null,
 };
 
 // In-memory cache — survives HMR, hydrated from DB on first read.
@@ -77,4 +87,20 @@ export function getPlatformTimezone(): string {
   return globalThis.__50PICK_PLATFORM_CONFIG?.timezone
     ?? process.env.PLATFORM_TIMEZONE
     ?? "Africa/Dar_es_Salaam";
+}
+
+/** Async, hydration-safe read of the global maintenance switch. Money paths
+ *  (buyPosition, deposit) call this to pause NEW bets / deposits during an
+ *  incident or deploy. Withdrawals + cash-outs deliberately do NOT consult it. */
+export async function isMaintenanceMode(): Promise<boolean> {
+  const cfg = await getPlatformConfig();
+  return cfg.maintenanceMode === true;
+}
+
+/** The player-facing message for a paused action (operator note, or a default). */
+export async function maintenanceMessage(): Promise<string> {
+  const cfg = await getPlatformConfig();
+  const note = (cfg.maintenanceNote ?? "").trim();
+  return note
+    || "50pick is under maintenance right now — new bets and deposits are paused. You can still withdraw. Please check back shortly.";
 }

@@ -25,6 +25,7 @@ import { isLockedOut, checkLossLimit } from "./responsible-gambling";
 import { rateCheck } from "./rate-limit";
 import { getEffectiveConfig, payoutForWhole, settledPayoutWhole } from "./market-config";
 import { getConflictedResolutionAllowed } from "./test-overrides";
+import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
 import { recordSnapshot, seedHistory } from "./market-history";
 import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, notifyAdminMarketResolution, notifyMarketCancelled, notifyAdminMarketCancelled, notifyOneSidedRefund, notifySelectionClosed } from "./notification-service";
 import { sendEmailToUser, betPlacedHtml, winNotificationHtml, lossNotificationHtml, cashOutReceiptHtml, oneSidedRefundHtml, marketResolutionAdminHtml, marketCancelledRefundHtml, marketCancelledAdminHtml, bonusFulfilledHtml, selectionClosedHtml } from "./email";
@@ -246,6 +247,12 @@ export async function createMarket(input: CreateMarketInput) {
 export async function buyPosition(userId: string, opts: { marketId: string; side: Side; stake: number; idempotencyKey?: string }): Promise<ServiceResult<{ positionId: string; balance: number; payoutIfWin: number }>> {
   const rl = rateCheck(userId, "bet.place");
   if (!rl.allowed) return { ok: false, error: "Slow down.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
+
+  // Global maintenance switch (§9.3 #1) — new bets are paused platform-wide.
+  // Withdrawals/cash-outs stay open so funds are never trapped.
+  if (await isMaintenanceMode()) {
+    return { ok: false, error: await maintenanceMessage(), code: "SUSPENDED" };
+  }
 
   const lockout = await isLockedOut(userId);
   if (lockout.locked) return { ok: false, error: `Locked until ${new Date(lockout.until!).toLocaleString("en-GB")}.`, code: "SUSPENDED" };

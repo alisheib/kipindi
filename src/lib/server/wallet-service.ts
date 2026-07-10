@@ -13,6 +13,7 @@ import { db, type StoredTxn } from "./store";
 import { randomId } from "./crypto";
 import { dispatchDeposit, dispatchWithdrawal, computeWithdrawalTax } from "./payments";
 import { isPaymentPaused } from "./payment-ops";
+import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
 import { rateCheck } from "./rate-limit";
 import { DepositSchema, AdminDepositSchema, WithdrawSchema } from "./validators";
 import { checkDepositLimit, isLockedOut } from "./responsible-gambling";
@@ -29,12 +30,19 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
   if (!rl.allowed) return { ok: false, error: "Too many deposit attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
 
   // Idempotency: if this key was already used, return the existing txn result.
+  // (Returned even during maintenance — it's an already-made deposit, not a new one.)
   if (idempotencyKey) {
     const existing = await db.txn.findByIdempotencyKey(idempotencyKey);
     if (existing) {
       const w = await db.wallet.findByUserId(userId);
       return { ok: true, data: { txnId: existing.id, status: existing.status, balance: w?.balance ?? 0 } };
     }
+  }
+
+  // Global maintenance switch (§9.3 #1) — new deposits are paused platform-wide.
+  // Withdrawals + cash-outs deliberately stay open so funds are never trapped.
+  if (await isMaintenanceMode()) {
+    return { ok: false, error: await maintenanceMessage(), code: "SUSPENDED" };
   }
 
   // ── TEMPORARY admin test-funding bypass ────────────────────────────────

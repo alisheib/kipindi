@@ -1,6 +1,6 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { I } from "@/components/ui/glyphs";
-import { SystemActions, SupportConfigForm, TimezoneForm } from "./system-client";
+import { SystemActions, SupportConfigForm, TimezoneForm, MaintenanceModeForm } from "./system-client";
 import { getSupportConfig } from "@/lib/support-config";
 import { db } from "@/lib/server/store";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
@@ -48,6 +48,20 @@ export default async function AdminSystemPage() {
           <AdminKpi label="Markets live"  sw="Soko hai"              value={liveMarkets.toLocaleString()} delta={`${resolvedMarkets} resolved`} />
           <AdminKpi label="SMS provider"  sw="Watoa SMS"            value={smsHealth.sent + smsHealth.failed === 0 ? "Idle" : `${(smsHealth.successRate * 100).toFixed(1)}% ok`} delta={`${smsClient.name} · ${smsHealth.sent} sent`} />
         </div>
+
+        {/* Maintenance mode — global pause of new bets + deposits (§9.3 #1) */}
+        <AdminCard
+          title="Maintenance mode"
+          sw="Hali ya matengenezo"
+          className={platform.maintenanceMode ? "border-claret-edge bg-claret-soft/30" : undefined}
+        >
+          <p className="text-caption text-text-secondary mb-3">
+            A global switch to pause <strong>new bets and new deposits</strong> during a deploy or incident.
+            Withdrawals and cash-outs stay open so players can always reach their money.
+            Takes effect <strong>immediately</strong> — no redeploy — and every flip is written to the audit chain.
+          </p>
+          <MaintenanceModeForm enabled={platform.maintenanceMode ?? false} note={platform.maintenanceNote ?? ""} />
+        </AdminCard>
 
         {/* Platform timezone */}
         <AdminCard title="Platform timezone" sw="Saa za jukwaa">

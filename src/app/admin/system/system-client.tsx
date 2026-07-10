@@ -7,7 +7,7 @@ import { useDeferredToast, useToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
 import { Input, Field } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { verifyChainAction, updateSupportConfigAction, updatePlatformTimezoneAction } from "./actions";
+import { verifyChainAction, updateSupportConfigAction, updatePlatformTimezoneAction, setMaintenanceModeAction } from "./actions";
 import type { SupportConfig } from "@/lib/support-config";
 
 const TIMEZONES = [
@@ -105,6 +105,87 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
         Save · Hifadhi
       </Button>
     </form>
+  );
+}
+
+export function MaintenanceModeForm({ enabled, note }: { enabled: boolean; note: string }) {
+  const [on, setOn] = useState(enabled);
+  const [noteVal, setNoteVal] = useState(note);
+  const [pending, start] = useTransition();
+  const router = useRouter();
+  const { deferToast, toast } = useDeferredToast(pending);
+  const changed = on !== enabled || noteVal.trim() !== note.trim();
+
+  const submit = () => {
+    const fd = new FormData();
+    fd.set("enabled", String(on));
+    fd.set("note", noteVal.trim());
+    start(async () => {
+      const r = await setMaintenanceModeAction(fd);
+      if (!r.ok) {
+        toast({ title: "Couldn't update", description: (r as { error?: string }).error, variant: "danger" });
+      } else {
+        router.refresh();
+        deferToast(
+          on
+            ? { title: "Maintenance ON — new bets & deposits paused", variant: "warning" }
+            : { title: "Maintenance OFF — platform is live", variant: "success" },
+        );
+      }
+    });
+  };
+
+  return (
+    <div className="space-y-3">
+      <div
+        className="flex items-center justify-between gap-3 rounded-lg border px-3.5 py-3 transition-colors"
+        style={on
+          ? { borderColor: "var(--claret-edge)", background: "var(--claret-soft)" }
+          : { borderColor: "var(--border)" }}
+      >
+        <div className="min-w-0">
+          <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle">
+            New bets &amp; deposits
+          </p>
+          <p className={`mt-0.5 font-display text-[15px] font-bold ${on ? "text-claret-200" : "text-text"}`}>
+            {on ? "PAUSED · maintenance" : "LIVE · accepting"}
+          </p>
+          <p className="mt-0.5 text-[11.5px] text-text-subtle leading-snug">
+            {on
+              ? "Withdrawals & cash-outs stay open — funds are never trapped."
+              : "Toggle to pause new bets + deposits during a deploy or incident."}
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={on}
+          aria-label="Maintenance mode"
+          onClick={() => setOn((v) => !v)}
+          className="relative shrink-0 h-7 w-12 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-400)] ring-offset-2 ring-offset-[color:var(--bg-base)]"
+          style={{ background: on ? "var(--claret-500)" : "var(--border-strong)" }}
+        >
+          <span
+            className="absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-[left]"
+            style={{ left: on ? "22px" : "2px" }}
+          />
+        </button>
+      </div>
+      <label className="block">
+        <span className="block font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">
+          Player message (optional)
+        </span>
+        <Input
+          value={noteVal}
+          onChange={(e) => setNoteVal(e.target.value)}
+          maxLength={280}
+          placeholder="e.g. Back at 14:00 EAT after a scheduled upgrade."
+        />
+      </label>
+      <Button onClick={submit} loading={pending} disabled={!changed} variant={on ? "claret" : "primary"}>
+        {on ? "Enable maintenance" : "Save"}
+      </Button>
+    </div>
   );
 }
 

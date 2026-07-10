@@ -70,3 +70,18 @@ export async function updatePlatformTimezoneAction(formData: FormData) {
     return { ok: false as const, error: safeError(err, "Timezone update failed") };
   }
 }
+
+/** §9.3 #1 — global maintenance switch: pause NEW bets + deposits platform-wide
+ *  (withdrawals + cash-outs stay open). Audited via setPlatformConfig. */
+export async function setMaintenanceModeAction(formData: FormData) {
+  const s = await requireAdmin();
+  const enabled = String(formData.get("enabled") ?? "") === "true";
+  const note = String(formData.get("note") ?? "").trim().slice(0, 280) || null;
+  try {
+    const r = await setPlatformConfig({ maintenanceMode: enabled, maintenanceNote: note }, s.userId);
+    revalidatePath("/admin/system");
+    return r;
+  } catch (err) {
+    return { ok: false as const, error: safeError(err, "Maintenance update failed") };
+  }
+}
