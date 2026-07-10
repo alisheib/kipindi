@@ -151,7 +151,7 @@ export default async function AdminCandidatesPage({
 
         <AdminCard>
           <div className="flex items-start gap-3">
-            <I.brain size={18} className="text-royal mt-0.5 shrink-0" />
+            <I.brain size={18} className="text-royal-300 mt-0.5 shrink-0" />
             <div className="flex-1 text-caption text-text-secondary leading-relaxed">
               The pipeline runs in four layers — extract, filter, cross-verify,
               score. Candidates scoring {"\u2265"}&nbsp;75 land here in <strong>Pending

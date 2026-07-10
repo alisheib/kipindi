@@ -169,6 +169,7 @@ export function AnnouncementForm({
           </span>
           <Select
             name="tone"
+            ariaLabel="Announcement tone"
             value={tone}
             onChange={(v) => setTone(v as AnnouncementTone)}
             options={[

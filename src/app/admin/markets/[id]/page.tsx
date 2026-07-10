@@ -264,7 +264,7 @@ export default async function MarketPredictorsPage({
                     <tr key={p.id}>
                       <td className="font-mono text-[10px] tracking-[0.04em] text-text-muted tabular-nums whitespace-nowrap">{p.id}</td>
                       <td>
-                        <a href={`/admin/players/${p.userId}`} className="flex items-center gap-2.5 min-w-0 hover:text-royal">
+                        <a href={`/admin/players/${p.userId}`} className="flex items-center gap-2.5 min-w-0 hover:text-royal-300">
                           <Avatar initials={initials} size="sm" seed={p.userId} />
                           <div className="min-w-0">
                             <p className={`text-body-sm font-medium text-text truncate ${isAutoHandle ? "font-mono" : ""}`}>{label}</p>
@@ -297,7 +297,7 @@ export default async function MarketPredictorsPage({
                         {formatDateTime(p.placedAt)}
                       </td>
                       <td>
-                        <a href={`/admin/players/${p.userId}`} className="text-royal hover:underline font-medium font-mono text-micro tracking-[0.10em] uppercase">
+                        <a href={`/admin/players/${p.userId}`} className="text-royal-300 hover:underline font-medium font-mono text-micro tracking-[0.10em] uppercase">
                           profile →
                         </a>
                       </td>

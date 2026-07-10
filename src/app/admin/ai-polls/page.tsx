@@ -177,7 +177,7 @@ export default async function AdminAIPollsPage({
         {/* Info banner + generate form */}
         <AdminCard>
           <div className="flex items-start gap-3 mb-4">
-            <I.bot size={18} className="text-royal mt-0.5 shrink-0" />
+            <I.bot size={18} className="text-royal-300 mt-0.5 shrink-0" />
             <div className="flex-1 text-caption text-text-secondary leading-relaxed">
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-mono text-micro uppercase tracking-wide font-bold">Provider:</span>
@@ -200,7 +200,7 @@ export default async function AdminAIPollsPage({
         {/* Controls */}
         <AdminCard>
           <div className="flex items-center gap-2 mb-3">
-            <I.bot size={16} className="text-royal shrink-0" />
+            <I.bot size={16} className="text-royal-300 shrink-0" />
             <div>
               <p className="font-display font-semibold text-body-sm text-text">Generation settings</p>
               <p className="text-caption italic text-text-tertiary">

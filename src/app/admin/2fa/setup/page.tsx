@@ -43,7 +43,7 @@ export default async function TotpSetupPage() {
 
         <AdminCard>
           <div className="flex items-center gap-2 mb-3">
-            <I.smartphone size={16} className="text-royal" />
+            <I.smartphone size={16} className="text-royal-300" />
             <h2 className="font-display font-bold text-body-sm text-text">Authenticator app</h2>
           </div>
           <TotpSetupClient initiallyEnabled={enabled} />

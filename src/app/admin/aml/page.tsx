@@ -96,7 +96,7 @@ export default async function AdminAmlPage({
                       <td className="font-mono whitespace-nowrap">{formatDateTime(t.createdAt)}</td>
                       <td className="font-medium text-text">{t.type}</td>
                       <td className="font-mono">
-                        <a href={`/admin/players?q=${encodeURIComponent(t.userId)}`} className="hover:text-royal hover:underline">
+                        <a href={`/admin/players?q=${encodeURIComponent(t.userId)}`} className="hover:text-royal-300 hover:underline">
                           {t.userId.slice(0, 16)}
                         </a>
                       </td>
@@ -165,7 +165,7 @@ export default async function AdminAmlPage({
                 {flags.map((f) => (
                   <tr key={`${f.userId}-${f.txnId}-${f.type}`}>
                     <td className="font-mono">
-                      <a href={`/admin/players?q=${encodeURIComponent(f.userId)}`} className="hover:text-royal hover:underline">
+                      <a href={`/admin/players?q=${encodeURIComponent(f.userId)}`} className="hover:text-royal-300 hover:underline">
                         {f.userId.slice(0, 16)}
                       </a>
                     </td>

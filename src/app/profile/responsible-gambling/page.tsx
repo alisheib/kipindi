@@ -80,8 +80,8 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
         <div className="min-w-0">
           <p className="font-display text-[14px] font-semibold text-yes-200">{t.rg.supportAvailable}</p>
           <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
-            {t.rg.helpline} · <a href={`tel:${SUPPORT_PHONE_TEL()}`} className="font-semibold text-yes-300 underline-offset-2 hover:underline">{SUPPORT_PHONE()}</a>.
-            {" "}{t.rg.intlSupport}{" "}<a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="text-yes-300 underline-offset-2 hover:underline">begambleaware.org</a>.
+            {t.rg.helpline} · <a href={`tel:${SUPPORT_PHONE_TEL()}`} className="font-semibold text-yes-300 underline underline-offset-2">{SUPPORT_PHONE()}</a>.
+            {" "}{t.rg.intlSupport}{" "}<a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="text-yes-300 underline underline-offset-2">begambleaware.org</a>.
           </p>
         </div>
       </section>

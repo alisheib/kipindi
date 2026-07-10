@@ -335,7 +335,7 @@ export function FeedRow({
 }) {
   const variantClass = {
     gold: "bg-gold/15 text-gold",
-    royal: "bg-royal/15 text-royal",
+    royal: "bg-royal/15 text-royal-300",
     danger: "bg-danger/15 text-danger",
     success: "bg-success/15 text-success",
     warning: "bg-warning/15 text-warning",

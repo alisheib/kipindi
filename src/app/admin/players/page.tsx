@@ -159,7 +159,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                   return (
                     <tr key={u.id}>
                       <td>
-                        <a href={`/admin/players/${u.id}`} className="flex items-center gap-2.5 min-w-0 hover:text-royal">
+                        <a href={`/admin/players/${u.id}`} className="flex items-center gap-2.5 min-w-0 hover:text-royal-300">
                           <Avatar initials={initials} size="sm" seed={u.id} />
                           <div className="min-w-0">
                             <p className={`text-body-sm font-medium text-text truncate ${isAutoHandle ? "font-mono" : ""}`}>{label}</p>
@@ -174,7 +174,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                       <td className="font-mono whitespace-nowrap">{formatDate(u.createdAt)}</td>
                       <td className="font-mono whitespace-nowrap">{u.lastLoginAt ? formatDate(u.lastLoginAt) : "—"}</td>
                       <td>
-                        <a href={`/admin/players/${u.id}`} className="text-royal hover:underline font-medium font-mono text-micro tracking-[0.10em] uppercase">profile →</a>
+                        <a href={`/admin/players/${u.id}`} className="text-royal-300 hover:underline font-medium font-mono text-micro tracking-[0.10em] uppercase">profile →</a>
                       </td>
                     </tr>
                   );

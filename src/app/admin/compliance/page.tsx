@@ -84,7 +84,7 @@ export default async function AdminCompliancePage({
               </div>
               <a
                 href="/admin/system"
-                className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center rounded-md border border-border bg-bg-elevated text-royal"
+                className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center rounded-md border border-border bg-bg-elevated text-royal-300"
               >
                 verify now →
               </a>
@@ -101,7 +101,7 @@ export default async function AdminCompliancePage({
               </div>
               <a
                 href="/admin/system"
-                className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center rounded-md border border-border bg-bg-elevated text-royal"
+                className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center rounded-md border border-border bg-bg-elevated text-royal-300"
               >
                 history →
               </a>
@@ -115,7 +115,7 @@ export default async function AdminCompliancePage({
             <AdminFunnelChart steps={kycSteps} />
             <div className="flex items-center justify-between pt-3 mt-2 border-t border-border-subtle text-caption text-text-tertiary">
               <span>End-to-end approval: <span className="font-semibold text-text">{kycConv.toFixed(1)}%</span></span>
-              <a href="/admin/players?status=PENDING_KYC" className="text-royal hover:underline font-medium">View pending →</a>
+              <a href="/admin/players?status=PENDING_KYC" className="text-royal-300 hover:underline font-medium">View pending →</a>
             </div>
           </AdminCard>
           <AdminCard title="AML queue · 7-day" sw="Foleni ya AML">
@@ -207,7 +207,7 @@ export default async function AdminCompliancePage({
                         <td className="py-2 pr-3"><span className="font-mono text-micro tracking-wider uppercase">{a.action.replace("integrity.alert.", "")}</span></td>
                         <td className="py-2 pl-3 font-mono text-micro">
                           {a.targetId ? (
-                            <Link href={`/admin/markets/${a.targetId}`} className="text-royal hover:underline">open →</Link>
+                            <Link href={`/admin/markets/${a.targetId}`} className="text-royal-300 hover:underline">open →</Link>
                           ) : (
                             <span className="text-text-tertiary">—</span>
                           )}
@@ -227,7 +227,7 @@ export default async function AdminCompliancePage({
                   <span className={[
                     "h-7 w-7 rounded-md inline-flex items-center justify-center font-mono text-micro shrink-0",
                     r.tone === "warning" ? "bg-warning/15 text-warning" :
-                    r.tone === "royal"   ? "bg-royal/15 text-royal" :
+                    r.tone === "royal"   ? "bg-royal/15 text-royal-300" :
                     r.tone === "danger"  ? "bg-danger/15 text-danger" :
                                            "bg-bg-sunken text-text-tertiary",
                   ].join(" ")}>↓</span>
@@ -250,9 +250,9 @@ export default async function AdminCompliancePage({
               <p>
                 A regulator inspecting 50pick sees this page first. Every chip and table is read-only —
                 nothing here mutates state. To act on items, drill into{" "}
-                <a href="/admin/aml" className="text-royal hover:underline">AML queue</a> for approvals,
-                <a href="/admin/players" className="text-royal hover:underline ml-1">Players</a> for player drill-down, or
-                <a href="/admin/audit" className="text-royal hover:underline ml-1">Audit log</a> for the chain itself.
+                <a href="/admin/aml" className="text-royal-300 hover:underline">AML queue</a> for approvals,
+                <a href="/admin/players" className="text-royal-300 hover:underline ml-1">Players</a> for player drill-down, or
+                <a href="/admin/audit" className="text-royal-300 hover:underline ml-1">Audit log</a> for the chain itself.
               </p>
             </div>
           </div>
@@ -328,7 +328,7 @@ async function PlayerSafetyPanel({ sp }: { sp: { page?: string; sort?: string; d
             {paged.map((f) => (
               <tr key={`${f.userId}-${f.marker}`} className="border-t border-border-subtle/50">
                 <td className="p-3 font-mono">
-                  <a href={`/admin/players/${f.userId}`} className="hover:text-royal hover:underline">
+                  <a href={`/admin/players/${f.userId}`} className="hover:text-royal-300 hover:underline">
                     {f.userId.slice(0, 16)}…
                   </a>
                 </td>

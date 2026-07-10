@@ -96,7 +96,7 @@ export default async function AdminLivePage() {
                         </td>
                         <td className="py-2 pr-3 font-mono tabular text-right text-text">{formatTzs(totalPool)}</td>
                         <td className="py-2 pl-3 text-right">
-                          <a href={`/markets/${m.id}`} className="font-mono text-micro tracking-[0.10em] uppercase text-royal hover:underline">view →</a>
+                          <a href={`/markets/${m.id}`} className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300 hover:underline">view →</a>
                         </td>
                       </tr>
                     );
@@ -112,7 +112,7 @@ export default async function AdminLivePage() {
           <AdminCard title="24-hour money flow · TZS net per hour" sw="Mtiririko">
             <AdminAreaChart series={flow} xLabels={flow.map((p) => p.label)} height={240} fillVar="var(--royal)" strokeVar="var(--royal)" />
           </AdminCard>
-          <AdminCard title="Live bet feed" sw="Madau ya moja kwa moja" action={<a href="/admin/audit?category=BET" className="font-mono text-micro tracking-[0.10em] uppercase text-royal">all →</a>}>
+          <AdminCard title="Live bet feed" sw="Madau ya moja kwa moja" action={<a href="/admin/audit?category=BET" className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300">all →</a>}>
             <div className="max-h-[300px] overflow-y-auto">
               {betEvents.length === 0 ? (
                 <p className="text-caption text-text-tertiary py-3 text-center">No bet activity.</p>
@@ -130,7 +130,7 @@ export default async function AdminLivePage() {
         </div>
 
         {/* Wallet activity */}
-        <AdminCard title="Wallet activity · last 30" sw="Shughuli za pochi" action={<a href="/admin/audit?category=WALLET" className="font-mono text-micro tracking-[0.10em] uppercase text-royal">all →</a>}>
+        <AdminCard title="Wallet activity · last 30" sw="Shughuli za pochi" action={<a href="/admin/audit?category=WALLET" className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300">all →</a>}>
           <div className="max-h-[300px] overflow-y-auto">
             {walletEvents.length === 0 ? (
               <p className="text-caption text-text-tertiary py-3 text-center">No wallet activity.</p>

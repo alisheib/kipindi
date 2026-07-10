@@ -24,6 +24,10 @@ type Props = {
   placeholder?: string;
   required?: boolean;
   className?: string;
+  /** Accessible name for the combobox. A11y: a role="combobox" does NOT take
+   *  its name from child text (unlike a plain button), so it needs an explicit
+   *  label. Falls back to the placeholder / selected label when omitted. */
+  ariaLabel?: string;
   /** Compact size for admin filter bars. `xs` (h-9) matches the kit's compact
    *  search inputs + btn-sm height so filter rows align flush. */
   size?: "md" | "sm" | "xs";
@@ -31,7 +35,7 @@ type Props = {
 
 export function Select({
   name, value, defaultValue, onChange, options, placeholder,
-  required, className, size = "md",
+  required, className, ariaLabel, size = "md",
 }: Props) {
   const { t } = useT();
   const controlled = value !== undefined;
@@ -130,6 +134,7 @@ export function Select({
         onClick={() => open ? setOpen(false) : openDropdown()}
         onKeyDown={onTriggerKey}
         role="combobox"
+        aria-label={ariaLabel ?? placeholder ?? selectedOption?.label ?? t.common.selectPlaceholder}
         aria-expanded={open}
         aria-haspopup="listbox"
         className={cn(

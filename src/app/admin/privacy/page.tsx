@@ -135,7 +135,7 @@ export default async function AdminPrivacyPage({
                 {recentUsers.map((u) => (
                   <tr key={u.id} className="border-b border-border-subtle/40 last:border-b-0">
                     <td className="py-2 pr-3">
-                      <a href={`/admin/players/${u.id}`} className="font-medium text-text hover:text-royal hover:underline">
+                      <a href={`/admin/players/${u.id}`} className="font-medium text-text hover:text-royal-300 hover:underline">
                         {u.displayName ?? "—"}
                       </a>
                       <span className="block font-mono text-micro text-text-tertiary">{u.id.slice(0, 14)}…</span>

@@ -61,7 +61,7 @@ export function AdminMobileNavTrigger({ groups, badges, activeKey }: { groups: R
                         className={[
                           "flex items-center justify-between rounded-md px-2.5 py-2 text-body-sm transition-colors",
                           active
-                            ? "bg-bg-inset text-royal font-semibold"
+                            ? "bg-bg-inset text-royal-300 font-semibold"
                             : "text-text-secondary hover:bg-bg-overlay hover:text-text",
                         ].join(" ")}
                       >

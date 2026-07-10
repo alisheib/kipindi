@@ -114,10 +114,10 @@ export default async function AdminApprovalsPage({
                   {kycPending.map((k) => (
                     <tr key={k.id} className="border-b border-border-subtle/50 last:border-b-0">
                       <td className="py-2 pr-3 font-mono whitespace-nowrap">{formatDateTime(k.submittedAt ?? k.updatedAt)}</td>
-                      <td className="py-2 pr-3"><a href={`/admin/players/${k.userId}?tab=kyc`} className="font-mono text-royal hover:underline">{k.userId.slice(0, 14)}…</a></td>
+                      <td className="py-2 pr-3"><a href={`/admin/players/${k.userId}?tab=kyc`} className="font-mono text-royal-300 hover:underline">{k.userId.slice(0, 14)}…</a></td>
                       <td className="py-2 pr-3 font-medium text-text">{k.fullName ?? "—"}</td>
                       <td className="py-2 pr-3 font-mono tabular">{k.documents.length}/3</td>
-                      <td className="py-2 pl-3 text-right"><a href={`/admin/kyc/${k.userId}`} className="font-mono text-micro tracking-[0.10em] uppercase text-royal hover:underline">workstation →</a></td>
+                      <td className="py-2 pl-3 text-right"><a href={`/admin/kyc/${k.userId}`} className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300 hover:underline">workstation →</a></td>
                     </tr>
                   ))}
                 </tbody>
@@ -132,7 +132,7 @@ export default async function AdminApprovalsPage({
         <AdminCard
           title="AML queue · awaiting first signature"
           sw="Foleni ya AML"
-          action={<a href="/admin/aml" className="font-mono text-micro tracking-[0.10em] uppercase text-royal">go to AML →</a>}
+          action={<a href="/admin/aml" className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300">go to AML →</a>}
         >
           {amlAll.length === 0 ? (
             <div className="flex items-center gap-3 py-4">
@@ -156,7 +156,7 @@ export default async function AdminApprovalsPage({
                   {aml.map((t) => (
                     <tr key={t.id} className="border-b border-border-subtle/50 last:border-b-0">
                       <td className="py-2 pr-3 font-mono whitespace-nowrap">{formatDateTime(t.createdAt)}</td>
-                      <td className="py-2 pr-3"><a href={`/admin/players/${t.userId}`} className="font-mono text-royal hover:underline">{t.userId.slice(0, 14)}…</a></td>
+                      <td className="py-2 pr-3"><a href={`/admin/players/${t.userId}`} className="font-mono text-royal-300 hover:underline">{t.userId.slice(0, 14)}…</a></td>
                       <td className="py-2 pr-3 font-medium text-text">{t.type}</td>
                       <td className="py-2 pr-3 font-mono tabular text-right">{(Math.abs(t.amount) / 1_000_000).toFixed(2)}M</td>
                       <td className="py-2 pl-3 text-text-secondary">{t.amlReason ?? "review"}</td>
@@ -195,7 +195,7 @@ export default async function AdminApprovalsPage({
                   {sof.map((s) => (
                     <tr key={s.userId} className="border-b border-border-subtle/50 last:border-b-0">
                       <td className="py-2 pr-3 font-mono whitespace-nowrap">{formatDateTime(s.submittedAt)}</td>
-                      <td className="py-2 pr-3"><a href={`/admin/players/${s.userId}`} className="font-mono text-royal hover:underline">{s.userId.slice(0, 14)}…</a></td>
+                      <td className="py-2 pr-3"><a href={`/admin/players/${s.userId}`} className="font-mono text-royal-300 hover:underline">{s.userId.slice(0, 14)}…</a></td>
                       <td className="py-2 pr-3 font-medium text-text">{s.declaredSource}</td>
                       <td className="py-2 pr-3 font-mono">{s.declaredAnnualIncomeBand}</td>
                       <td className="py-2 pr-3"><Chip size="sm" variant="warning">{s.reviewStatus}</Chip></td>

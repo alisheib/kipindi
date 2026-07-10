@@ -39,8 +39,10 @@ export function LanguageToggle() {
               fontSize: 11.5,
               fontWeight: 600,
               cursor: "pointer",
+              // brand-600 (not -500): white text needs the darker shade to
+              // clear WCAG AA 4.5:1 on this small 11.5px pill (axe a11y).
               color: active ? "var(--pearl-50)" : "var(--text-subtle)",
-              background: active ? "var(--brand-500)" : "transparent",
+              background: active ? "var(--brand-600)" : "transparent",
               border: "none",
               fontFamily: "var(--font-mono)",
               lineHeight: 1,

@@ -108,7 +108,7 @@ export default async function AdminSelfExclusionsPage({
                 {paged.map((r) => (
                   <tr key={r.userId}>
                     <td>
-                      <a href={`/admin/players/${r.userId}`} className="font-medium text-text hover:text-royal hover:underline">{r.displayName ?? "—"}</a>
+                      <a href={`/admin/players/${r.userId}`} className="font-medium text-text hover:text-royal-300 hover:underline">{r.displayName ?? "—"}</a>
                       <span className="block font-mono text-micro text-text-tertiary">{r.userId.slice(0, 14)}…</span>
                     </td>
                     <td className="font-mono whitespace-nowrap">{r.phoneE164.length > 6 ? `${r.phoneE164.slice(0, 4)}****${r.phoneE164.slice(-2)}` : r.phoneE164}</td>
@@ -122,7 +122,7 @@ export default async function AdminSelfExclusionsPage({
                     <td className="font-mono whitespace-nowrap">{formatDateTime(r.until)}</td>
                     <td className="font-mono tabular text-right">{r.daysLeft}</td>
                     <td>
-                      <a href={`/admin/players/${r.userId}`} className="font-mono text-micro tracking-[0.10em] uppercase text-royal hover:underline">profile →</a>
+                      <a href={`/admin/players/${r.userId}`} className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300 hover:underline">profile →</a>
                     </td>
                   </tr>
                 ))}

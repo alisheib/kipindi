@@ -72,9 +72,14 @@ export default async function AdminOverviewPage() {
           <AdminCard
             title="Live activity feed"
             sw="Shughuli za moja kwa moja"
-            action={<a href="/admin/audit" className="font-mono text-micro tracking-[0.10em] uppercase text-royal">audit →</a>}
+            action={<a href="/admin/audit" className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300">audit →</a>}
           >
-            <div className="max-h-[360px] overflow-y-auto -mx-1 px-1">
+            <div
+              className="max-h-[360px] overflow-y-auto -mx-1 px-1 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--brand-400)]"
+              tabIndex={0}
+              role="region"
+              aria-label="Live activity feed"
+            >
               {recent.map((e) => (
                 <FeedRow
                   key={e.id}

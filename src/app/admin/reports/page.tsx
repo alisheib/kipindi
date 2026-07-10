@@ -320,7 +320,7 @@ export default async function AdminReportsPage({
                     "h-9 w-9 rounded-md inline-flex items-center justify-center shrink-0",
                     t.severity === "critical" ? "bg-danger/15 text-danger" :
                     t.severity === "high"     ? "bg-warning/15 text-warning" :
-                                                "bg-royal/15 text-royal",
+                                                "bg-royal/15 text-royal-300",
                   ].join(" ")}
                 >
                   <I.download s={16} aria-hidden />

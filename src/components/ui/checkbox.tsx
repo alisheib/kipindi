@@ -54,17 +54,21 @@ export function Checkbox({
         toggle();
       }}
     >
-      {/* Hidden native input for form submission */}
+      {/* Visually-hidden but ACCESSIBLE native input — it is the real control
+          (screen readers announce it as a labelled checkbox; keyboard focuses
+          it). `peer` drives the visible box's focus ring. Never aria-hidden:
+          hiding a focusable control from the a11y tree is a WCAG violation. */}
       <input
         type="checkbox"
         name={name}
         required={required}
         checked={on}
         onChange={() => toggle()}
-        className="sr-only"
-        aria-hidden
+        className="sr-only peer"
       />
       <span
+        aria-hidden
+        className="peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[color:var(--brand-400)]"
         style={{
           width: 19,
           height: 19,

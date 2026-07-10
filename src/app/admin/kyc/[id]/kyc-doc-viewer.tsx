@@ -95,7 +95,7 @@ export function KycDocViewer({ userId, slots }: { userId: string; slots: Slot[] 
         <span>· {present ? `uploaded ${current?.uploadedAt?.slice(0, 19).replace("T", " ")}` : "no file"}</span>
         <span className="text-text-subtle">· liveness/EXIF: not captured at upload</span>
         {present && (
-          <a href={src} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1 text-royal hover:underline">
+          <a href={src} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1 text-royal-300 hover:underline">
             <I.externalLink s={11} /> open full size
           </a>
         )}

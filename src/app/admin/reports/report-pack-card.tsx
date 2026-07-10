@@ -93,7 +93,7 @@ export async function ReportPackCard() {
             href="/api/admin/reports/gbt-monthly?format=pdf"
             target="_blank"
             rel="noopener noreferrer"
-            className="ml-auto inline-flex items-center gap-1 font-mono text-[11px] tracking-[0.08em] uppercase text-royal hover:underline"
+            className="ml-auto inline-flex items-center gap-1 font-mono text-[11px] tracking-[0.08em] uppercase text-royal-300 hover:underline"
           >
             <I.download s={12} /> Download
           </a>
