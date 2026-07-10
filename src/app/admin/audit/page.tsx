@@ -6,6 +6,7 @@ import Link from "next/link";
 import { getAuditPage, verifyChain, type AuditCategory } from "@/lib/server/audit";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Chip } from "@/components/ui/chip";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { formatDateTime } from "@/lib/utils";
 
 export const metadata = { title: "Admin · Audit log" };
@@ -115,7 +116,7 @@ export default async function AdminAuditPage({
         )}
 
         <AdminCard padding="p-0">
-          <div className="overflow-x-auto">
+          <ScrollX label="Audit log">
             <table className="admin-tbl">
               <thead>
                 <tr>
@@ -160,7 +161,7 @@ export default async function AdminAuditPage({
                 )}
               </tbody>
             </table>
-          </div>
+          </ScrollX>
           <AdminPagination total={allFiltered.length} page={page} baseHref={baseHref} />
         </AdminCard>
       </div>

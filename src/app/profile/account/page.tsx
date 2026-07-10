@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
 import { BrandTopo } from "@/components/brand-topo";
 import { Chip } from "@/components/ui/chip";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { getOwnActivity } from "@/lib/server/user-service";
@@ -124,7 +125,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
             })}
           </nav>
         )}
-        <div className="overflow-x-auto rounded-md border border-border">
+        <ScrollX label="Account activity" className="rounded-md border border-border">
           <table className="admin-tbl">
             <thead>
               <tr className="border-b border-border bg-bg-overlay/50 font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
@@ -157,7 +158,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
               )}
             </tbody>
           </table>
-        </div>
+        </ScrollX>
       </section>
 
       {/* DATA EXPORT — GDPR Art 15 / PDPA */}

@@ -9,6 +9,7 @@ import { verifyChain, getAuditPage } from "@/lib/server/audit";
 import { kycFunnel, rgRosterCounts } from "@/lib/server/analytics";
 import { detectHarmMarkersForAllUsers } from "@/lib/server/responsible-gambling";
 import { Chip } from "@/components/ui/chip";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { formatClock, formatDate, formatDateTime } from "@/lib/utils";
 
 export const metadata = { title: "Admin · Compliance" };
@@ -189,7 +190,7 @@ export default async function AdminCompliancePage({
                 <p className="text-caption text-text-secondary">No integrity alerts in the last 30 days. Sportradar feed: stub adapter.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto -mx-4 px-4">
+              <ScrollX label="Integrity alerts" className="-mx-4 px-4">
                 <table className="admin-tbl min-w-[480px]">
                   <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
                     <tr>
@@ -216,7 +217,7 @@ export default async function AdminCompliancePage({
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </ScrollX>
             )}
           </AdminCard>
 
@@ -313,7 +314,7 @@ async function PlayerSafetyPanel({ sp }: { sp: { page?: string; sort?: string; d
           {byMarker["LIMIT_BREACH_HISTORY"] ?? 0} limit-breach
         </Chip>
       </div>
-      <div className="overflow-x-auto">
+      <ScrollX label="Harm markers">
         <table className="admin-tbl">
           <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
             <tr>
@@ -347,7 +348,7 @@ async function PlayerSafetyPanel({ sp }: { sp: { page?: string; sort?: string; d
             )}
           </tbody>
         </table>
-      </div>
+      </ScrollX>
       <AdminPagination total={sorted.length} page={page} baseHref={baseHref} />
     </AdminCard>
   );

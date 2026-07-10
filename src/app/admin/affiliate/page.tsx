@@ -5,6 +5,7 @@ import { Chip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { I } from "@/components/ui/glyphs";
 import { Avatar } from "@/components/ui/avatar";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { getAffiliateConfig } from "@/lib/server/affiliate-config";
 import { getAdminAffiliateStats } from "@/lib/server/affiliate-service";
 import { AffiliateAdminClient } from "./affiliate-admin-client";
@@ -84,7 +85,7 @@ export default async function AdminAffiliatePage({
               body="Top referrers appear here as their friends sign up and play."
             />
           ) : (
-            <div className="overflow-x-auto">
+            <ScrollX label="Affiliate leaderboard">
               <table className="admin-tbl min-w-[480px]">
                 <thead>
                   <tr><th className="text-left">#</th><th className="text-left">Affiliate</th><th className="text-right">Recruits</th><th className="text-right">Earned (TZS)</th></tr>
@@ -105,7 +106,7 @@ export default async function AdminAffiliatePage({
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollX>
           )}
         </AdminCard>
 
@@ -120,7 +121,7 @@ export default async function AdminAffiliatePage({
             />
           ) : (
             <>
-              <div className="overflow-x-auto">
+              <ScrollX label="Payout ledger">
                 <table className="admin-tbl min-w-[640px]">
                   <thead>
                     <tr>
@@ -145,7 +146,7 @@ export default async function AdminAffiliatePage({
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </ScrollX>
               <AdminPagination total={ledgerSorted.length} page={lPage} baseHref={lBase} param="lpage" />
             </>
           )}

@@ -4,6 +4,7 @@ import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/component
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { db, type StoredTxn, type StoredSourceOfFunds } from "@/lib/server/store";
 import { getAuditPage } from "@/lib/server/audit";
 import { listPendingKyc } from "@/lib/server/kyc-service";
@@ -100,7 +101,7 @@ export default async function AdminApprovalsPage({
             </div>
           ) : (
             <>
-            <div className="overflow-x-auto -mx-4 px-4">
+            <ScrollX label="KYC queue" className="-mx-4 px-4">
               <table className="admin-tbl min-w-[600px]">
                 <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
                   <tr>
@@ -123,7 +124,7 @@ export default async function AdminApprovalsPage({
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollX>
             <AdminPagination total={kycSorted.length} page={kycPage} baseHref={kycBase} param="kycpage" />
             </>
           )}
@@ -142,7 +143,7 @@ export default async function AdminApprovalsPage({
             </div>
           ) : (
             <>
-            <div className="overflow-x-auto -mx-4 px-4">
+            <ScrollX label="AML queue" className="-mx-4 px-4">
               <table className="admin-tbl min-w-[640px]">
                 <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
                   <tr>
@@ -165,7 +166,7 @@ export default async function AdminApprovalsPage({
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollX>
             <AdminPagination total={amlSorted.length} page={amlPage} baseHref={amlBase} param="amlpage" />
             </>
           )}
@@ -180,7 +181,7 @@ export default async function AdminApprovalsPage({
             </div>
           ) : (
             <>
-            <div className="overflow-x-auto -mx-4 px-4">
+            <ScrollX label="Source of funds" className="-mx-4 px-4">
               <table className="admin-tbl min-w-[600px]">
                 <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
                   <tr>
@@ -205,7 +206,7 @@ export default async function AdminApprovalsPage({
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollX>
             <AdminPagination total={sofSorted.length} page={sofPage} baseHref={sofBase} param="sofpage" />
             </>
           )}

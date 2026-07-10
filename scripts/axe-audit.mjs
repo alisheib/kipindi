@@ -46,6 +46,23 @@ const ROUTES = [
   { path: "/admin/reports", ctx: "admin" },
   { path: "/admin/system", ctx: "admin" },
   { path: "/admin/aml", ctx: "admin" },
+  { path: "/admin/audit", ctx: "admin" },
+  { path: "/admin/compliance", ctx: "admin" },
+  { path: "/admin/affiliate", ctx: "admin" },
+  { path: "/admin/config", ctx: "admin" },
+  { path: "/admin/candidates", ctx: "admin" },
+  { path: "/admin/bonuses", ctx: "admin" },
+  { path: "/admin/invites", ctx: "admin" },
+  { path: "/admin/markets", ctx: "admin" },
+  { path: "/admin/retention", ctx: "admin" },
+  { path: "/admin/privacy", ctx: "admin" },
+  { path: "/admin/self-exclusions", ctx: "admin" },
+  { path: "/admin/sources", ctx: "admin" },
+  { path: "/admin/live", ctx: "admin" },
+  { path: "/admin/approvals", ctx: "admin" },
+  { path: "/admin/ai-usage", ctx: "admin" },
+  { path: "/admin/ai-polls", ctx: "admin" },
+  { path: "/admin/payments", ctx: "admin" },
 ];
 
 const browser = await chromium.launch();

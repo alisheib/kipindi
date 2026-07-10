@@ -6,6 +6,7 @@ import { Chip } from "@/components/ui/chip";
 import { db, type StoredTxn } from "@/lib/server/store";
 import { formatTzs, formatDateTime } from "@/lib/utils";
 import { I } from "@/components/ui/glyphs";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { AmlActionRow } from "./aml-actions-client";
 import { detectSuspiciousBets } from "@/lib/server/analytics";
 import { TWO_PERSON_THRESHOLD_TZS } from "./constants";
@@ -75,7 +76,7 @@ export default async function AdminAmlPage({
           <AdminKpi label="Suspicious-bet flags" sw="Bendera za shaka" value={flagsAll.length.toLocaleString()} tone={flagsAll.length > 0 ? "danger" : undefined} delta="stake spike / velocity" spark={false} />
         </div>
         <AdminCard padding="p-0">
-          <div className="overflow-x-auto">
+          <ScrollX label="AML review queue">
             <table className="admin-tbl">
               <thead>
                 <tr>
@@ -127,7 +128,7 @@ export default async function AdminAmlPage({
                 )}
               </tbody>
             </table>
-          </div>
+          </ScrollX>
           <AdminPagination total={inReviewSorted.length} page={rPage} baseHref={rBaseHref} param="rpage" />
         </AdminCard>
 
@@ -150,7 +151,7 @@ export default async function AdminAmlPage({
             </div>
             <Chip size="md" variant={flagsAll.length > 0 ? "warning" : "neutral"}>{flagsAll.length} flags</Chip>
           </div>
-          <div className="overflow-x-auto">
+          <ScrollX label="Suspicious bets">
             <table className="admin-tbl">
               <thead>
                 <tr>
@@ -186,7 +187,7 @@ export default async function AdminAmlPage({
                 )}
               </tbody>
             </table>
-          </div>
+          </ScrollX>
           <AdminPagination total={flagsSorted.length} page={sPage} baseHref={sBaseHref} param="spage" />
         </AdminCard>
       </div>

@@ -10,6 +10,7 @@ import { I } from "@/components/ui/glyphs";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
 import { Chip } from "@/components/ui/chip";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { listMarkets } from "@/lib/server/market-service";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { formatDateTimeSafe } from "@/lib/utils";
@@ -138,7 +139,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
             }
           />
         ) : (
-          <div className="overflow-x-auto rounded-lg glass-panel">
+          <ScrollX label="Resolved markets" className="rounded-lg glass-panel">
             <table className="admin-tbl">
               <thead className="border-b border-border bg-bg-overlay">
                 <tr className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
@@ -181,7 +182,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollX>
         )}
         {totalPages > 1 && (
           <div className="mt-4 rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">

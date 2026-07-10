@@ -18,6 +18,7 @@ import { Avatar, TierBadge as KitTierBadge } from "@/components/ui/avatar";
 import { PageRibbon } from "@/components/layout/page-ribbon";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { getServerT, type Dict } from "@/lib/i18n-server";
 
 export async function generateMetadata() {
@@ -183,7 +184,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
           from row 1; only shown with a genuine top-3. */}
       {rows.length >= 3 && <Podium top={rows} t={t} />}
 
-      <section className="overflow-x-auto rounded-xl glass-panel">
+      <ScrollX label="Leaderboard" className="rounded-xl glass-panel">
         {isSynthetic && (
           <div className="px-4 py-2.5 border-b border-border bg-bg-overlay/40 flex items-center gap-2">
             <span className="inline-flex items-center rounded-pill border border-border bg-bg-overlay px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.10em] text-text-subtle">{t.leaderboard.demo}</span>
@@ -236,7 +237,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
             ))}
           </tbody>
         </table>
-      </section>
+      </ScrollX>
 
       {totalPages > 1 && (
         <div className="rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">

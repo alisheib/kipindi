@@ -6,6 +6,7 @@ import { Select } from "@/components/ui/select";
 import { db } from "@/lib/server/store";
 import { formatTzs, formatDate } from "@/lib/utils";
 import { I } from "@/components/ui/glyphs";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 
 export const metadata = { title: "Admin · Players" };
@@ -137,7 +138,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
         </AdminCard>
 
         <AdminCard padding="p-0">
-          <div className="overflow-x-auto max-h-[calc(100vh-280px)] overflow-y-auto">
+          <ScrollX label="Players" className="max-h-[calc(100vh-280px)] overflow-y-auto">
             <table className="admin-tbl">
               <thead className="sticky top-0 z-10">
                 <tr>
@@ -184,7 +185,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                 )}
               </tbody>
             </table>
-          </div>
+          </ScrollX>
           <AdminPagination total={filtered.length} page={page} baseHref={baseHref} />
         </AdminCard>
 

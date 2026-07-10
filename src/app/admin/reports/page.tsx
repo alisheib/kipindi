@@ -5,6 +5,7 @@ import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/component
 import { RefreshButton } from "@/components/admin/refresh-button";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { Chip } from "@/components/ui/chip";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { getAuditPage } from "@/lib/server/audit";
@@ -245,7 +246,7 @@ export default async function AdminReportsPage({
             {activeRows.length === 0 ? (
               <EmptyState kind="admin" title="No settled activity in this period" body="Stakes, payouts and GGR appear here once markets settle in the selected window." />
             ) : (
-              <div className="overflow-x-auto focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--brand-400)]" tabIndex={0} role="region" aria-label="Daily P&L">
+              <ScrollX label="Daily P&L">
                 <table className="admin-tbl min-w-[680px]">
                   <thead>
                     <tr>
@@ -286,7 +287,7 @@ export default async function AdminReportsPage({
                     </tr>
                   </tfoot>
                 </table>
-              </div>
+              </ScrollX>
             )}
           </AdminCard>
 
@@ -380,7 +381,7 @@ export default async function AdminReportsPage({
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--brand-400)]" tabIndex={0} role="region" aria-label="Report library">
+            <ScrollX label="Report library">
               <table className="admin-tbl">
                 <thead>
                   <tr>
@@ -400,7 +401,7 @@ export default async function AdminReportsPage({
                 </tbody>
               </table>
               <AdminPagination total={sorted.length} page={page} baseHref={baseHref} />
-            </div>
+            </ScrollX>
           )}
         </AdminCard>
 

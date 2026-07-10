@@ -9,6 +9,7 @@ import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-she
 import { Chip } from "@/components/ui/chip";
 import { db } from "@/lib/server/store";
 import { I } from "@/components/ui/glyphs";
+import { ScrollX } from "@/components/ui/scroll-x";
 
 export const metadata = { title: "Admin · Data retention" };
 export const dynamic = "force-dynamic";
@@ -62,7 +63,7 @@ export default async function AdminRetentionPage() {
           sw="Ratiba"
           padding="p-0"
         >
-          <div className="overflow-x-auto">
+          <ScrollX label="Retention schedule">
             <table className="admin-tbl min-w-[720px]">
               <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                 <tr>
@@ -92,7 +93,7 @@ export default async function AdminRetentionPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollX>
         </AdminCard>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">

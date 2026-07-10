@@ -3,6 +3,7 @@ import type { Route } from "next";
 import { AdminPageHead, AdminKpi, AdminCard } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { listCampaigns, getInviteStats } from "@/lib/server/invite-service";
 import { formatTzs, formatDateShort } from "@/lib/utils";
 import { CreateCampaignForm } from "./invite-admin-client";
@@ -42,7 +43,7 @@ export default async function AdminInvitesPage() {
               bodySw="Tengeneza moja juu kuanza kualika wachezaji."
             />
           ) : (
-            <div className="overflow-x-auto">
+            <ScrollX label="Invite campaigns">
               <table className="admin-tbl min-w-[720px]">
                 <thead>
                   <tr>
@@ -69,7 +70,7 @@ export default async function AdminInvitesPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollX>
           )}
         </AdminCard>
       </div>

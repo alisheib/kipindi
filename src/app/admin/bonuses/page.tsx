@@ -3,6 +3,7 @@ import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/component
 import { Chip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { I } from "@/components/ui/glyphs";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { getBonusConfig } from "@/lib/server/bonus-config";
 import { getAdminBonusStats } from "@/lib/server/bonus-service";
 import { formatTzs, formatDateShort } from "@/lib/utils";
@@ -100,7 +101,7 @@ export default async function AdminBonusesPage({
             />
           ) : (
             <>
-              <div className="overflow-x-auto">
+              <ScrollX label="Bonus ledger">
                 <table className="admin-tbl min-w-[760px]">
                   <thead>
                     <tr>
@@ -137,7 +138,7 @@ export default async function AdminBonusesPage({
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </ScrollX>
               <AdminPagination total={stats.ledger.length} page={gPage} baseHref={gBase} param="gpage" />
             </>
           )}

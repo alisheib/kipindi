@@ -45,7 +45,7 @@ export function CreateCampaignForm() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="w-full">
           <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">Campaign name</div>
-          <Input size="sm" placeholder="June Launch Push" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input aria-label="Campaign name" size="sm" placeholder="June Launch Push" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <NumField label="Bonus per invitee" prefix="TZS" value={bonus} onChange={setBonus} />
         <NumField label="Multiplier" hint="Blank = default" suffix="×"
@@ -56,11 +56,11 @@ export function CreateCampaignForm() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="w-full">
           <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">Message (English)</div>
-          <Input size="sm" value={messageEn} onChange={(e) => setMessageEn(e.target.value)} />
+          <Input aria-label="Message (English)" size="sm" value={messageEn} onChange={(e) => setMessageEn(e.target.value)} />
         </div>
         <div className="w-full">
           <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">Message (Swahili)</div>
-          <Input size="sm" value={messageSw} onChange={(e) => setMessageSw(e.target.value)} />
+          <Input aria-label="Message (Swahili)" size="sm" value={messageSw} onChange={(e) => setMessageSw(e.target.value)} />
         </div>
       </div>
       <Button variant="primary" size="sm" leading={<I.plus s={14} />} loading={pending} onClick={create}>Create campaign</Button>
@@ -232,7 +232,7 @@ function NumField({
   return (
     <div style={{ width: width ?? "100%" }}>
       <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">{label}</div>
-      <Input prefix={prefix || undefined} trailing={suffix ? <span className="text-[11px]">{suffix}</span> : undefined}
+      <Input aria-label={label} prefix={prefix || undefined} trailing={suffix ? <span className="text-[11px]">{suffix}</span> : undefined}
         mono size="sm" inputMode="numeric" value={value}
         onChange={(e) => { const n = Number(e.target.value.replace(/[^\d.]/g, "")); onChange(Number.isFinite(n) ? n : 0); }} />
       {hint && <div className="mt-1.5 text-[10.5px] text-text-subtle">{hint}</div>}

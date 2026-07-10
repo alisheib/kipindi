@@ -6,6 +6,7 @@ import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { I } from "@/components/ui/glyphs";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { DateSelect } from "@/components/ui/date-select";
@@ -236,7 +237,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
 
         {/* Per-feature breakdown */}
         <AdminCard title="By feature (stored window)" sw="Kwa kipengele" padding="p-0">
-          <div className="overflow-x-auto">
+          <ScrollX label="AI usage by feature">
             <table className="admin-tbl min-w-[860px]">
               <thead className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle bg-bg-overlay border-b border-border">
                 <tr>
@@ -282,7 +283,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
                 )}
               </tbody>
             </table>
-          </div>
+          </ScrollX>
         </AdminCard>
 
         {/* Per-call ledger — sortable, filterable, paginated */}
@@ -354,7 +355,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
             </form>
           </div>
 
-          <div className="overflow-x-auto">
+          <ScrollX label="AI call ledger">
             <table className="admin-tbl min-w-[860px]">
               <thead className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle bg-bg-overlay border-b border-border">
                 <tr>
@@ -406,7 +407,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollX>
 
           <AdminPagination total={total} page={page} baseHref={baseHref} />
 

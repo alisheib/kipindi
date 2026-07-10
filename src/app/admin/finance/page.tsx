@@ -16,6 +16,7 @@ import {
   listProvidersInPeriod,
 } from "@/lib/server/analytics";
 import { formatTzs, formatTzsCompact } from "@/lib/utils";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { GenerateButton } from "../reports/generate-button";
 import type { Period } from "@/lib/server/analytics";
 import { currentSession } from "@/lib/server/auth-service";
@@ -146,7 +147,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
           title="Provider summary"
           sw="Muhtasari wa watoa huduma"
         >
-          <div className="overflow-x-auto -mx-4 px-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--brand-400)]" tabIndex={0} role="region" aria-label="Top players by deposits">
+          <ScrollX label="Provider summary" className="-mx-4 px-4">
             <table className="admin-tbl min-w-[640px]">
               <thead>
                 <tr>
@@ -176,7 +177,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
                 )}
               </tbody>
             </table>
-          </div>
+          </ScrollX>
         </AdminCard>
       </div>
     </>

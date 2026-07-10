@@ -5,6 +5,7 @@ import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/component
 import { parseSort, applySort, type SortDir } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { formatDateTimeSafe, formatUsd } from "@/lib/utils";
 import {
   listCandidates,
@@ -260,7 +261,7 @@ export default async function AdminCandidatesPage({
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              <ScrollX label="Market candidates">
                 <table className="admin-tbl">
                   <thead className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle bg-bg-overlay border-b border-border">
                     <tr>
@@ -289,7 +290,7 @@ export default async function AdminCandidatesPage({
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </ScrollX>
               <AdminPagination
                 total={filtered.length}
                 page={page}

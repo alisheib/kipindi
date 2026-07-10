@@ -3,6 +3,7 @@ import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/component
 import { RefreshButton } from "@/components/admin/refresh-button";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { I } from "@/components/ui/glyphs";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { Select } from "@/components/ui/select";
 import Link from "next/link";
 import { listMarkets, impliedYesPct, type MarketCategory } from "@/lib/server/market-service";
@@ -131,7 +132,7 @@ export default async function AdminMarketsPage({
         </AdminCard>
 
         <AdminCard title="All markets" sw="Soko zote" padding="p-0">
-          <div className="overflow-x-auto">
+          <ScrollX label="All markets">
             <table className="admin-tbl">
               <thead>
                 <tr>
@@ -209,7 +210,7 @@ export default async function AdminMarketsPage({
                 )}
               </tbody>
             </table>
-          </div>
+          </ScrollX>
           <AdminPagination total={filtered.length} page={page} baseHref={baseHref} />
         </AdminCard>
       </div>

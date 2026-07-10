@@ -4,6 +4,7 @@ import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { AdminMeter } from "@/components/admin/admin-charts";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { PaymentLogo } from "@/components/wallet/payment-logo";
 import { allMnoHealth, getKillSwitches, reconcile, retryQueue } from "@/lib/server/payment-ops";
 import { formatTzs, formatTzsCompact, formatDateTime } from "@/lib/utils";
@@ -126,7 +127,7 @@ export default async function PaymentsOpsPage() {
               <I.checkCircle s={16} className="text-yes-300" /> No failed transactions — the rails are clear.
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <ScrollX label="Retry queue">
               <table className="admin-tbl min-w-[640px]">
                 <thead>
                   <tr>
@@ -153,7 +154,7 @@ export default async function PaymentsOpsPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollX>
           )}
         </AdminCard>
 

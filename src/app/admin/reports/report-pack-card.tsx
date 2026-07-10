@@ -1,6 +1,7 @@
 import { AdminCard } from "@/components/admin/admin-shell";
 import { CEREMONY } from "@/lib/admin-status-lexicon";
 import { Chip } from "@/components/ui/chip";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { I } from "@/components/ui/glyphs";
 import { formatDateTime } from "@/lib/utils";
 import { getReportPack, PACK_STEPS, currentPackPeriod, type ReportPack } from "@/lib/server/report-pack";
@@ -34,7 +35,7 @@ export async function ReportPackCard() {
       }
     >
       {/* State chain — Draft → Prepared → Approved → Submitted → Acknowledged. */}
-      <div className="overflow-x-auto -mx-1 px-1">
+      <ScrollX label="Report pack signing chain" className="-mx-1 px-1">
         <ol className="flex min-w-[520px] items-center">
           {PACK_STEPS.map((step, i) => {
             const done = i <= stateIndex;
@@ -73,7 +74,7 @@ export async function ReportPackCard() {
             );
           })}
         </ol>
-      </div>
+      </ScrollX>
 
       {/* Maker-checker signatures — real actors, no fabrication. */}
       <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">

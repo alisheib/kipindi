@@ -26,6 +26,7 @@ function Field({
     <div style={{ width: width ?? "100%" }}>
       <div className="mb-1.5 text-[12px] font-semibold text-text">{label}</div>
       <Input
+        aria-label={label}
         prefix={prefix || undefined}
         trailing={suffix ? <span className="text-[11px]">{suffix}</span> : undefined}
         mono

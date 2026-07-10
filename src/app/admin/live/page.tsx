@@ -1,6 +1,7 @@
 import { AdminPageHead, AdminKpi, AdminCard, FeedRow } from "@/components/admin/admin-shell";
 import { AdminAreaChart } from "@/components/admin/admin-charts";
 import { Chip } from "@/components/ui/chip";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { db } from "@/lib/server/store";
 import { getAuditPage } from "@/lib/server/audit";
 import { matches } from "@/lib/ui-stubs";
@@ -63,7 +64,7 @@ export default async function AdminLivePage() {
           {liveMatches.length === 0 ? (
             <p className="text-caption text-text-tertiary py-4 text-center">No live matches at the moment.</p>
           ) : (
-            <div className="overflow-x-auto -mx-4 px-4">
+            <ScrollX label="Live matches" className="-mx-4 px-4">
               <table className="admin-tbl min-w-[600px]">
                 <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
                   <tr>
@@ -103,7 +104,7 @@ export default async function AdminLivePage() {
                   })}
                 </tbody>
               </table>
-            </div>
+            </ScrollX>
           )}
         </AdminCard>
 

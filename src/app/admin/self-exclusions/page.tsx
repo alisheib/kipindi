@@ -2,6 +2,7 @@ import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-she
 import { AdminPagination, PER_PAGE, parsePage } from "@/components/admin/admin-pagination";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { db } from "@/lib/server/store";
 import { rgRosterCounts } from "@/lib/server/analytics";
 import { formatDateTime } from "@/lib/utils";
@@ -92,7 +93,7 @@ export default async function AdminSelfExclusionsPage({
           sw="Orodha"
           action={<span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">{roster.length} active</span>}
         >
-          <div className="overflow-x-auto">
+          <ScrollX label="Self-exclusion roster">
             <table className="admin-tbl min-w-[640px]">
               <thead>
                 <tr>
@@ -131,7 +132,7 @@ export default async function AdminSelfExclusionsPage({
                 )}
               </tbody>
             </table>
-          </div>
+          </ScrollX>
           <AdminPagination total={roster.length} page={page} baseHref="/admin/self-exclusions" />
         </AdminCard>
 

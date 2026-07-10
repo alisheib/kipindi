@@ -5,6 +5,7 @@ import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/component
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Avatar } from "@/components/ui/avatar";
 import { Chip } from "@/components/ui/chip";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { db, type StoredTxn } from "@/lib/server/store";
 import { getAuditForActor, getAuditForTarget, audit as recordAudit, type AuditCategory } from "@/lib/server/audit";
 import { currentSession } from "@/lib/server/auth-service";
@@ -263,7 +264,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
             )}
             {tab === "transactions" && (
               <>
-              <div className="overflow-x-auto">
+              <ScrollX label="Transactions">
                 <table className="admin-tbl min-w-[600px]">
                   <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
                     <tr>
@@ -287,7 +288,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                     {txns.length === 0 && <tr><td colSpan={5} className="py-6 text-center text-text-tertiary">No transactions.</td></tr>}
                   </tbody>
                 </table>
-              </div>
+              </ScrollX>
               <AdminPagination total={txSorted.length} page={txPage} baseHref={txBase} param="txpage" />
               </>
             )}

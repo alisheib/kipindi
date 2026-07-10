@@ -5,6 +5,7 @@ import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/component
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Avatar } from "@/components/ui/avatar";
 import { Chip } from "@/components/ui/chip";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { Select } from "@/components/ui/select";
 import { I } from "@/components/ui/glyphs";
 import { ProbabilityBar } from "@/components/markets/probability-bar";
@@ -229,7 +230,7 @@ export default async function MarketPredictorsPage({
 
         {/* Table */}
         <AdminCard padding="p-0">
-          <div className="overflow-x-auto">
+          <ScrollX label="Market positions">
             <table className="admin-tbl">
               <thead>
                 <tr>
@@ -306,7 +307,7 @@ export default async function MarketPredictorsPage({
                 )}
               </tbody>
             </table>
-          </div>
+          </ScrollX>
           <AdminPagination total={filtered.length} page={page} baseHref={baseHref} />
         </AdminCard>
       </div>

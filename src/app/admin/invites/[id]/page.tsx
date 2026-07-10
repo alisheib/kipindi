@@ -5,6 +5,7 @@ import { AdminPageHead, AdminKpi, AdminCard } from "@/components/admin/admin-she
 import { Chip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { I } from "@/components/ui/glyphs";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { getCampaignDetail } from "@/lib/server/invite-service";
 import { smsConfigured } from "@/lib/server/sms";
 import { formatTzs, formatDateShort } from "@/lib/utils";
@@ -74,7 +75,7 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
               bodySw="Ongeza barua pepe au simu juu, kisha bonyeza Tuma."
             />
           ) : (
-            <div className="overflow-x-auto">
+            <ScrollX label="Invite contacts">
               <table className="admin-tbl min-w-[560px]">
                 <thead>
                   <tr>
@@ -97,7 +98,7 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollX>
           )}
         </AdminCard>
       </div>

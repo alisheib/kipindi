@@ -1,5 +1,6 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { I } from "@/components/ui/glyphs";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { SystemActions, SupportConfigForm, TimezoneForm, MaintenanceModeForm, AnnouncementForm } from "./system-client";
 import { getSupportConfig } from "@/lib/support-config";
 import { db } from "@/lib/server/store";
@@ -217,7 +218,7 @@ export default async function AdminSystemPage() {
           {buckets.length === 0 ? (
             <p className="text-caption text-text-tertiary py-4 text-center">No active rate-limit buckets — system is idle.</p>
           ) : (
-            <div className="overflow-x-auto -mx-4 px-4">
+            <ScrollX label="Rate limiter buckets" className="-mx-4 px-4">
               <table className="admin-tbl min-w-[480px]">
                 <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
                   <tr>
@@ -238,7 +239,7 @@ export default async function AdminSystemPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollX>
           )}
         </AdminCard>
 

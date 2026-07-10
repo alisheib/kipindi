@@ -1,5 +1,6 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { I } from "@/components/ui/glyphs";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { getGlobalConfig, listMarketOverrides, DEFAULT_GLOBAL_CONFIG } from "@/lib/server/market-config";
 import { getMarket } from "@/lib/server/market-service";
 import { getAuditPage } from "@/lib/server/audit";
@@ -114,7 +115,7 @@ export default async function AdminConfigPage() {
                 No active overrides — every market uses the global config.
               </p>
             ) : (
-              <div className="overflow-x-auto rounded-md border border-border">
+              <ScrollX label="Market overrides" className="rounded-md border border-border">
                 <table className="admin-tbl">
                   <thead className="border-b border-border bg-bg-overlay">
                     <tr className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
@@ -157,7 +158,7 @@ export default async function AdminConfigPage() {
                     })}
                   </tbody>
                 </table>
-              </div>
+              </ScrollX>
             )}
           </div>
         </AdminCard>
@@ -174,7 +175,7 @@ export default async function AdminConfigPage() {
               No config changes yet.
             </p>
           ) : (
-            <div className="overflow-x-auto">
+            <ScrollX label="Config changes">
               <table className="admin-tbl">
                 <thead className="border-b border-border bg-bg-overlay">
                   <tr className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
@@ -199,7 +200,7 @@ export default async function AdminConfigPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollX>
           )}
         </AdminCard>
 

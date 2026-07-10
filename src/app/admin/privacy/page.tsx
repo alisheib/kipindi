@@ -7,6 +7,7 @@ import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-she
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { db } from "@/lib/server/store";
 import { listDsarRequests } from "@/lib/server/privacy";
 import { ExportDsarBundleButton, FulfillDsarButton } from "./dsar-controls";
@@ -62,7 +63,7 @@ export default async function AdminPrivacyPage({
           sw="Maombi yaliyofunguliwa"
           padding="p-0"
         >
-          <div className="overflow-x-auto">
+          <ScrollX label="DSAR requests">
             <table className="admin-tbl">
               <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                 <tr>
@@ -103,7 +104,7 @@ export default async function AdminPrivacyPage({
                 )}
               </tbody>
             </table>
-          </div>
+          </ScrollX>
           <AdminPagination total={sorted.length} page={page} baseHref={baseHref} />
         </AdminCard>
 
@@ -116,7 +117,7 @@ export default async function AdminPrivacyPage({
             For walk-in or phone-in DSAR requests where the player has authenticated by phone OTP at the front-desk and the
             officer needs to hand them a copy of their data right now. Generates a JSON bundle with everything we hold.
           </p>
-          <div className="overflow-x-auto -mx-4 px-4">
+          <ScrollX label="On-behalf export" className="-mx-4 px-4">
             <table className="admin-tbl min-w-[640px]">
               <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
                 <tr>
@@ -153,7 +154,7 @@ export default async function AdminPrivacyPage({
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollX>
         </AdminCard>
 
         <AdminCard className="border-info-border bg-info-bg/15">

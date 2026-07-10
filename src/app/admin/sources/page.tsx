@@ -1,5 +1,6 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { I } from "@/components/ui/glyphs";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { listSources, listDisabledCategories, seedDefaultSources } from "@/lib/server/source-registry";
 import type { MarketCategory } from "@/lib/server/market-service";
 import { ToggleSource, RemoveSource, ToggleCategory, AddSourceForm } from "./source-controls";
@@ -64,7 +65,7 @@ export default async function AdminSourcesPage() {
             padding="p-0"
             className={catEnabled ? "" : "opacity-60"}
           >
-            <div className="overflow-x-auto">
+            <ScrollX label="Sources">
               <table className="admin-tbl">
                 <thead className="border-b border-border-subtle bg-bg-sunken/50">
                   <tr className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">
@@ -111,7 +112,7 @@ export default async function AdminSourcesPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollX>
           </AdminCard>
         ))}
 
