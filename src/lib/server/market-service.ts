@@ -24,6 +24,7 @@ import { notifyBonusFulfilled } from "./notification-service";
 import { isLockedOut, checkLossLimit } from "./responsible-gambling";
 import { rateCheck } from "./rate-limit";
 import { getEffectiveConfig, payoutForWhole, settledPayoutWhole } from "./market-config";
+import { getConflictedResolutionAllowed } from "./test-overrides";
 import { recordSnapshot, seedHistory } from "./market-history";
 import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, notifyAdminMarketResolution, notifyMarketCancelled, notifyAdminMarketCancelled, notifyOneSidedRefund, notifySelectionClosed } from "./notification-service";
 import { sendEmailToUser, betPlacedHtml, winNotificationHtml, lossNotificationHtml, cashOutReceiptHtml, oneSidedRefundHtml, marketResolutionAdminHtml, marketCancelledRefundHtml, marketCancelledAdminHtml, bonusFulfilledHtml, selectionClosedHtml } from "./email";
@@ -1038,15 +1039,30 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   const officerPositions = (await listPositionsForMarket(opts.marketId))
     .filter((p) => p.userId === opts.officerId && (p.status === "OPEN" || p.status === "WIN" || p.status === "LOSS"));
   if (officerPositions.length > 0) {
+    // TESTING override (default OFF): when an admin has enabled it, a
+    // conflicted officer may resolve — their own position then settles in the
+    // normal loop below, exactly like any other player's. The bypass is always
+    // recorded to the COMPLIANCE trail so it can never happen silently.
+    const conflictAllowed = await getConflictedResolutionAllowed();
+    if (!conflictAllowed) {
+      audit({
+        category: "COMPLIANCE",
+        action: "market.resolve.conflict_blocked",
+        actorId: opts.officerId,
+        targetType: "Market",
+        targetId: opts.marketId,
+        payload: { positionCount: officerPositions.length, positionIds: officerPositions.map((p) => p.id) },
+      });
+      return { ok: false, error: "You hold a position in this market and cannot resolve it — assign a different officer.", code: "CONFLICT" };
+    }
     audit({
       category: "COMPLIANCE",
-      action: "market.resolve.conflict_blocked",
+      action: "market.resolve.conflict_overridden",
       actorId: opts.officerId,
       targetType: "Market",
       targetId: opts.marketId,
-      payload: { positionCount: officerPositions.length, positionIds: officerPositions.map((p) => p.id) },
+      payload: { positionCount: officerPositions.length, positionIds: officerPositions.map((p) => p.id), note: "TESTING override active — conflicted officer allowed to resolve; their positions settle normally." },
     });
-    return { ok: false, error: "You hold a position in this market and cannot resolve it — assign a different officer.", code: "CONFLICT" };
   }
 
   // Bonus portions of refunded bets are returned to the bonus wallet AFTER the
