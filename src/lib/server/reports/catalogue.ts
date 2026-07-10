@@ -161,8 +161,8 @@ export async function buildGbtMonthly(generatorId: string): Promise<Report> {
       },
     ],
     notes: [
-      "GGR = total stakes − total payouts before tax and withholding.",
-      "NGR = GGR − withholding tax remitted to TRA − operator commission.",
+      "GGR = total stakes − total payouts (voids/refunds excluded from both sides).",
+      "NGR = GGR − bonus cost − payment-processing fees (pre-tax operator bottom line).",
       "All amounts in Tanzanian Shillings (TZS). Rounded to the nearest shilling.",
       "Generated from the live append-only audit log; row counts match the audit chain.",
     ],

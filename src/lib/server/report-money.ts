@@ -14,10 +14,12 @@
  *   NGR     = GGR − Bonus − Fees                       — bottom line before tax
  *   Hold %  = GGR / Stakes × 100                       — near-constant; drift = alarm
  *
- * NOTE: the legacy `analytics.grossGamingRevenue()` returns Stakes only
- * (turnover) and is mislabelled "GGR" on /admin/finance, /admin/live and the
- * overview. This module is the corrected definition; reconciling those legacy
- * surfaces is queued for Ali (it changes displayed numbers on a money surface).
+ * SINGLE SOURCE OF TRUTH: `analytics.grossGamingRevenue()` / `netGamingRevenue()`
+ * now delegate to `moneyForWindow()` below, so /admin/finance, /admin/live, the
+ * admin overview and the GBT-monthly statutory report all read GGR = Stakes −
+ * Payouts and NGR = GGR − Bonus − Fees from this one module. (Historically the
+ * legacy analytics functions returned Stakes/turnover mislabelled "GGR"; that is
+ * reconciled — see the batch log entry that flags the changed displayed numbers.)
  */
 import { db } from "./store";
 import type { StoredTxn } from "./store";
@@ -102,6 +104,16 @@ function summarise(txns: StoredTxn[]): MoneySummary {
     // Active = anyone with any txn in the window (bet, deposit, …).
     activePlayers: new Set(txns.map((t) => t.userId)).size,
   };
+}
+
+/** Core money summary for an explicit [start, end) window. This is the single
+ *  primitive the whole admin surface shares: the reports console (via
+ *  `reportSummary`) and the legacy finance/live/overview + GBT-monthly report
+ *  (via `analytics.grossGamingRevenue`/`netGamingRevenue`, which now delegate
+ *  here). One definition of GGR/NGR everywhere. */
+export async function moneyForWindow(start: number, end: number): Promise<MoneySummary> {
+  const all = await db.txn.listAll();
+  return summarise(all.filter((t) => within(t, start, end)));
 }
 
 /** Period summary + the equal-length prior window (for the compare toggle). */

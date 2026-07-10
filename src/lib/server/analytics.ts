@@ -10,6 +10,7 @@
  */
 import { db } from "./store";
 import type { StoredTxn, StoredUser } from "./store";
+import { moneyForWindow } from "./report-money";
 
 export type Period = "today" | "7d" | "28d" | "qtd";
 
@@ -29,23 +30,25 @@ async function txnsInPeriod(period: Period) {
 }
 
 /**
- * GGR = sum of stakes placed (BET_PLACED). Excludes payouts. Standard regulator
- * definition: gross gaming revenue is everything wagered, before any winnings.
+ * GGR = Stakes − Payouts (the operator's commission from the pool). This is the
+ * normative definition shared with the reports console — delegates to
+ * `report-money.moneyForWindow` so every admin surface shows ONE GGR figure.
+ * (Previously this returned Stakes/turnover only, mislabelled "GGR"; reconciled.)
  */
 export async function grossGamingRevenue(period: Period = "today") {
-  return (await txnsInPeriod(period))
-    .filter((t) => t.type === "BET_PLACED" && t.status === "CONFIRMED")
-    .reduce((s, t) => s + Math.abs(t.amount), 0);
+  const end = Date.now();
+  return (await moneyForWindow(end - periodToMs(period), end)).ggr;
 }
 
 /**
- * NGR = GGR − payouts − cash-outs. The bottom-line operator income before tax + opex.
+ * NGR = GGR − bonus cost − payment-processing fees — the pre-tax operator bottom
+ * line. Delegates to the same `report-money` core as GGR so the definitions can
+ * never drift. (Previously this returned Stakes − Payouts, i.e. the value that is
+ * actually GGR; reconciled to the normative NGR.)
  */
 export async function netGamingRevenue(period: Period = "today") {
-  const ts = await txnsInPeriod(period);
-  const stakes = ts.filter((t) => t.type === "BET_PLACED" && t.status === "CONFIRMED").reduce((s, t) => s + Math.abs(t.amount), 0);
-  const payouts = ts.filter((t) => (t.type === "BET_PAYOUT" || t.type === "CASHOUT") && t.status === "CONFIRMED").reduce((s, t) => s + Math.abs(t.amount), 0);
-  return stakes - payouts;
+  const end = Date.now();
+  return (await moneyForWindow(end - periodToMs(period), end)).ngr;
 }
 
 export async function depositsTotal(period: Period = "today") {
