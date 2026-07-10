@@ -41,6 +41,10 @@
 @keyframes admin-bar-grow { from { transform: scaleX(0) } to { transform: scaleX(1) } }
 .admin-bar-grow { transform-origin: left center; animation: admin-bar-grow 240ms cubic-bezier(.2,.8,.2,1) both; }
 
+/* /live featured-contest swap — a subtle fade-in as the carousel changes market. */
+@keyframes contest-fade { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: none } }
+.contest-fade { animation: contest-fade 220ms cubic-bezier(.2,.8,.2,1) both; }
+
 /* Market-detail hero (C1a) — a slim gilt hairline "seal of the real": 1px of
    gold-deep at 40%, edge-faded, framing the market question. Sanctioned gilt
    exception (§C1a refinement spec): ~2% of surface, frames the real market, not
@@ -84,5 +88,6 @@
   .admin-bar-grow { animation: none }
   .podium-crown { animation: none }
   .closing-pill { animation: none } /* stays on the gold "urgent" end-state */
+  .contest-fade { animation: none }
   .btn-spin { animation-duration: 1.4s } /* keep meaning, halve intensity */
 }

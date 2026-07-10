@@ -12,11 +12,12 @@
  */
 import Link from "next/link";
 import { listMarkets, impliedYesPct, isClosedByTime, isSelectionClosed, traderSeedsByMarket } from "@/lib/server/market-service";
-import { TippingBar, PulseRing } from "@/components/brand";
+import { PulseRing } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { PageHero } from "@/components/ui/page-hero";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LivePulseGrid } from "./pulse-grid";
+import { FeaturedContest } from "./featured-contest";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
@@ -66,12 +67,14 @@ export default async function LivePage() {
   }));
 
   const tippingMarkets = markets.filter((m) => Math.abs(m.yesPct - 50) < 8).length;
-  // The genuinely most-contested market = the one whose odds sit closest to 50/50,
-  // NOT markets[0] (which is just the soonest-closing, since listMarkets sorts by
-  // resolutionAt). This is what the "Most contested" hero below should feature.
-  const mostContested = markets.length
-    ? markets.reduce((best, m) => (Math.abs(m.yesPct - 50) < Math.abs(best.yesPct - 50) ? m : best))
-    : null;
+  // The most-contested markets = odds closest to 50/50 (NOT markets[0], which is
+  // just the soonest-closing since listMarkets sorts by resolutionAt). The aqua
+  // hero features the top few as a swipeable carousel (title pre-localized here
+  // so the client component stays i18n-free).
+  const topContested = [...markets]
+    .sort((a, b) => Math.abs(a.yesPct - 50) - Math.abs(b.yesPct - 50))
+    .slice(0, 6)
+    .map((m) => ({ id: m.id, title: pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh), yesPct: m.yesPct }));
 
   return (
     <div className="relative min-h-[calc(100vh-44px)]">
@@ -97,20 +100,7 @@ export default async function LivePage() {
               {markets.length} {t.market.liveCount}{tippingMarkets > 0 ? ` · ${tippingMarkets} ${t.market.tipping}` : ""}
             </p>
           </div>
-          {mostContested && (
-            <div className="mt-4 max-w-[64ch]">
-              <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-aqua-300">{t.market.mostContested}</p>
-              <Link href={`/markets/${mostContested.id}` as never} className="group block">
-                <h2 className="mb-4 font-display text-[19px] lg:text-[24px] font-semibold leading-tight text-text group-hover:text-aqua-100">
-                  {pickLocalized(locale, mostContested.titleEn, mostContested.titleSw, mostContested.titleZh)}
-                </h2>
-              </Link>
-              <TippingBar yesPct={mostContested.yesPct} height={32} showLabels />
-              <Link href={`/markets/${mostContested.id}` as never} className="btn btn-primary btn-md mt-4 inline-flex">
-                {t.market.openMarket}
-              </Link>
-            </div>
-          )}
+          <FeaturedContest markets={topContested} eyebrow={t.market.mostContested} openLabel={t.market.openMarket} />
         </PageHero>
 
         {markets.length === 0 ? (
