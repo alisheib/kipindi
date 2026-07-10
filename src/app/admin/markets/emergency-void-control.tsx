@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import { createPortal } from "react-dom";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
 import { emergencyVoidMarketAction } from "@/app/markets/actions";
+import { Modal } from "@/components/ui/modal";
 
 /**
  * Emergency "kill switch" for one market — voids it and refunds every open
@@ -93,62 +93,59 @@ function ConfirmVoid({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !pending) { e.preventDefault(); onCancel(); } };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, pending, onCancel]);
-  if (!mounted || !open) return null;
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const canConfirm = reason.trim().length >= 5 && !pending;
-  return createPortal(
-    <div role="alertdialog" aria-modal="true" aria-label="Confirm emergency void" className="fixed inset-0 z-[100] flex justify-center px-3 py-4 overflow-y-auto overscroll-contain">
-      <button type="button" aria-label="Cancel" onClick={onCancel} className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
-      <div className="relative my-auto w-full max-w-[480px] rounded-xl border border-border bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)] p-5 lg:p-6">
-        <div className="mb-3 flex items-start gap-2.5">
-          <I.warning s={20} />
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-claret-300">
-              Irreversible · Hatua ya dharura
-            </p>
-            <h2 className="mt-0.5 font-display text-[18px] font-bold text-text leading-tight">
-              Cancel this market & refund everyone?
-            </h2>
-          </div>
-        </div>
-        <p className="text-[13px] text-text-muted leading-relaxed mb-1.5 line-clamp-2">
-          <span className="text-text-subtle">Market:</span> {title}
-        </p>
-        <div className="text-[13px] text-text-muted leading-relaxed mb-3">
-          <p><strong>This is final.</strong> Every open stake is refunded in full, the live pool closes, and an immutable compliance entry is recorded. No payouts, no fees.</p>
-        </div>
-        <label className="block mb-4">
-          <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-1.5">
-            Reason (required) · Sababu
-          </span>
-          <textarea
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            rows={2}
-            maxLength={500}
-            autoFocus
-            placeholder="e.g. Suspended by directive of the Gaming Board"
-            className="w-full rounded-md border border-border bg-bg-inset px-3 py-2 text-[16px] text-text outline-none admin-focus"
-          />
-          <span className="mt-1 block font-mono text-[10px] text-text-subtle">{reason.trim().length}/500 — minimum 5 characters</span>
-        </label>
-        <div className="flex flex-col gap-2">
-          <button type="button" onClick={onConfirm} disabled={!canConfirm} className="btn btn-claret btn-lg w-full disabled:opacity-50 disabled:cursor-not-allowed">
-            {pending ? "Voiding…" : "Yes, cancel & refund all"}
-          </button>
-          <button type="button" onClick={onCancel} disabled={pending} className="btn btn-ghost btn-md w-full">
-            Not now · Bado
-          </button>
+  return (
+    <Modal
+      open={open}
+      onClose={onCancel}
+      role="alertdialog"
+      ariaLabel="Confirm emergency void"
+      maxWidth={480}
+      closeOnScrim={!pending}
+      showClose={!pending}
+      initialFocus={textareaRef}
+    >
+      <div className="mb-3 flex items-start gap-2.5">
+        <I.warning s={20} />
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-claret-300">
+            Irreversible · Hatua ya dharura
+          </p>
+          <h2 className="mt-0.5 font-display text-[18px] font-bold text-text leading-tight">
+            Cancel this market & refund everyone?
+          </h2>
         </div>
       </div>
-    </div>,
-    document.body,
+      <p className="text-[13px] text-text-muted leading-relaxed mb-1.5 line-clamp-2">
+        <span className="text-text-subtle">Market:</span> {title}
+      </p>
+      <div className="text-[13px] text-text-muted leading-relaxed mb-3">
+        <p><strong>This is final.</strong> Every open stake is refunded in full, the live pool closes, and an immutable compliance entry is recorded. No payouts, no fees.</p>
+      </div>
+      <label className="block mb-4">
+        <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-1.5">
+          Reason (required) · Sababu
+        </span>
+        <textarea
+          ref={textareaRef}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          rows={2}
+          maxLength={500}
+          placeholder="e.g. Suspended by directive of the Gaming Board"
+          className="w-full rounded-md border border-border bg-bg-inset px-3 py-2 text-[16px] text-text outline-none admin-focus"
+        />
+        <span className="mt-1 block font-mono text-[10px] text-text-subtle">{reason.trim().length}/500 — minimum 5 characters</span>
+      </label>
+      <div className="flex flex-col gap-2">
+        <button type="button" onClick={onConfirm} disabled={!canConfirm} className="btn btn-claret btn-lg w-full disabled:opacity-50 disabled:cursor-not-allowed">
+          {pending ? "Voiding…" : "Yes, cancel & refund all"}
+        </button>
+        <button type="button" onClick={onCancel} disabled={pending} className="btn btn-ghost btn-md w-full">
+          Not now · Bado
+        </button>
+      </div>
+    </Modal>
   );
 }

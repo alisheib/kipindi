@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import { createPortal } from "react-dom";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { resolveMarketAction } from "@/app/markets/actions";
 import { BrandSpinner } from "@/components/brand";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
+import { ConfirmModal } from "@/components/ui/modal";
 
 export function ResolveControls({ marketId, stage, stagedOutcome }: { marketId: string; stage: "stage1" | "stage2"; stagedOutcome?: "YES" | "NO" | "VOID" | null }) {
   const [pending, startTransition] = useTransition();
@@ -169,52 +168,20 @@ function SettleConfirm({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { e.preventDefault(); onCancel(); }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onCancel]);
-  if (!mounted || !open || !outcome) return null;
+  if (!outcome) return null;
   const verb = outcome === "VOID" ? "Void" : `Settle ${outcome}`;
-  return createPortal(
-    <div
-      role="alertdialog"
-      aria-modal="true"
-      aria-label="Confirm settlement"
-      className="fixed inset-0 z-[100] flex justify-center px-3 py-4 overflow-y-auto overscroll-contain"
-    >
-      <button
-        type="button"
-        aria-label="Cancel"
-        onClick={onCancel}
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm"
-      />
-      <div className="relative my-auto w-full max-w-[460px] rounded-xl border border-border bg-bg-elevated shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)] p-5 lg:p-6">
-        <button
-          type="button"
-          onClick={onCancel}
-          aria-label="Close"
-          className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
-        >
-          <I.x s={16} />
-        </button>
-        <div className="mb-3 flex items-start gap-2.5">
-          <I.warning s={20} />
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-claret-300">
-              Irreversible · Hatua ya mwisho
-            </p>
-            <h2 className="mt-0.5 font-display text-[18px] font-bold text-text leading-tight">
-              {verb} now?
-            </h2>
-          </div>
-        </div>
-        <div className="text-[13px] text-text-muted leading-relaxed mb-4">
+  return (
+    <ConfirmModal
+      open={open}
+      onClose={onCancel}
+      onConfirm={onConfirm}
+      tone="claret"
+      eyebrow="Irreversible · Hatua ya mwisho"
+      title={`${verb} now?`}
+      confirmLabel={`Yes, ${verb.toLowerCase()}`}
+      cancelLabel="Not yet · Bado"
+      body={
+        <>
           <p>
             <strong>This is final.</strong> {outcome === "VOID"
               ? "Every stake will be refunded and the market closes — no payouts, no margin, no undo."
@@ -223,17 +190,8 @@ function SettleConfirm({
           <p className="text-text-subtle italic text-[12px] mt-1.5">
             Hatua hii haiwezi kubatilishwa.
           </p>
-        </div>
-        <div className="flex flex-col gap-2">
-          <button type="button" onClick={onConfirm} className="btn btn-claret btn-lg w-full" autoFocus>
-            Yes, {verb.toLowerCase()}
-          </button>
-          <button type="button" onClick={onCancel} className="btn btn-ghost btn-md w-full">
-            Not yet · Bado
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body,
+        </>
+      }
+    />
   );
 }
