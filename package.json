@@ -46,6 +46,7 @@
     "test:admin-roles": "tsx scripts/admin-roles.test.mts",
     "test:ledger": "tsx scripts/ledger.test.mts",
     "test:officer-conflict": "tsx scripts/officer-conflict.test.mts",
+    "test:solo-resolution": "tsx scripts/solo-resolution-override.test.mts",
     "test:proposals": "tsx scripts/proposal-approval-bonus.test.mts",
     "test:proposal-close": "tsx scripts/proposal-selection-close.test.mts",
     "test:kyc": "tsx scripts/kyc-review.test.mts && tsx scripts/kyc-submit-notify.test.mts && tsx scripts/kyc-flow-stress.test.mts && tsx scripts/kyc-security.test.mts",

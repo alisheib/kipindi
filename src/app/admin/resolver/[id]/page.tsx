@@ -7,6 +7,7 @@ import { I } from "@/components/ui/glyphs";
 import { ProbabilityBar } from "@/components/markets/probability-bar";
 import { CountdownRing } from "@/components/positions/countdown-ring";
 import { getMarket, impliedYesPct, listPositionsForMarket } from "@/lib/server/market-service";
+import { getConflictedResolutionAllowed } from "@/lib/server/test-overrides";
 import { getAuditPage } from "@/lib/server/audit";
 import { db } from "@/lib/server/store";
 import { currentSession } from "@/lib/server/auth-service";
@@ -41,7 +42,10 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
   const stage1By = m.resolutionStage1By;
   const stage2By = m.resolutionStage2By;
   const stage: "stage1" | "stage2" = stage1By ? "stage2" : "stage1";
-  const isSelfCountersign = stage === "stage2" && !!currentOfficerId && currentOfficerId === stage1By;
+  // The testing override (resolver-queue toggle) lets one officer seal their own
+  // stage-1 for solo resolution — so don't block self-countersign when it's ON.
+  const testingOverride = await getConflictedResolutionAllowed().catch(() => false);
+  const isSelfCountersign = stage === "stage2" && !!currentOfficerId && currentOfficerId === stage1By && !testingOverride;
 
   const [officerA, officerB] = await Promise.all([officerName(stage1By), officerName(stage2By)]);
 

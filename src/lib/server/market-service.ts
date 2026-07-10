@@ -1032,6 +1032,14 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   // that justifies the verdict). Recorded into the immutable audit payload at
   // each attestation so the fairness story is provable; capped defensively.
   const evidence = (opts.evidence ?? "").trim().slice(0, 2000) || null;
+  // TESTING override (default OFF): when an admin enables it on the resolver
+  // queue, a single officer may resolve a market end-to-end even if they hold a
+  // position in it — so a tester acting as admin + player can settle a market
+  // alone and have their own position pay out normally. It relaxes BOTH the
+  // position-conflict block (below) AND the "second officer must differ" gate
+  // (stage-2). Every bypass is written to the COMPLIANCE trail; production
+  // behaviour is unchanged while the flag is OFF.
+  const testingResolveOverride = await getConflictedResolutionAllowed();
   // Officer-conflict hard-block (Elevation #12): an officer who holds a position
   // in this market MUST NOT resolve it — they have a financial interest in the
   // outcome. This is a POCA §16 / GBT licensing requirement. Checked before
@@ -1039,12 +1047,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   const officerPositions = (await listPositionsForMarket(opts.marketId))
     .filter((p) => p.userId === opts.officerId && (p.status === "OPEN" || p.status === "WIN" || p.status === "LOSS"));
   if (officerPositions.length > 0) {
-    // TESTING override (default OFF): when an admin has enabled it, a
-    // conflicted officer may resolve — their own position then settles in the
-    // normal loop below, exactly like any other player's. The bypass is always
-    // recorded to the COMPLIANCE trail so it can never happen silently.
-    const conflictAllowed = await getConflictedResolutionAllowed();
-    if (!conflictAllowed) {
+    if (!testingResolveOverride) {
       audit({
         category: "COMPLIANCE",
         action: "market.resolve.conflict_blocked",
@@ -1100,8 +1103,20 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
     });
     return { ok: true, data: { stage: "stage1" } };
   }
-  if (m.resolutionStage1By === opts.officerId) {
+  if (m.resolutionStage1By === opts.officerId && !testingResolveOverride) {
     return { ok: false, error: "Second-officer must be a different reviewer.", code: "INVALID" };
+  }
+  if (m.resolutionStage1By === opts.officerId && testingResolveOverride) {
+    // Solo-resolution testing path — the same officer confirms stage-2. Recorded
+    // so the single-officer settlement is never silent in the compliance trail.
+    audit({
+      category: "COMPLIANCE",
+      action: "market.resolve.solo_overridden",
+      actorId: opts.officerId,
+      targetType: "Market",
+      targetId: m.id,
+      payload: { note: "TESTING override active — same officer confirmed stage-1 and stage-2 (two-officer rule bypassed)." },
+    });
   }
   // The second officer is confirming the first officer's decision — they cannot
   // silently settle on a *different* outcome than the one recorded at stage 1.

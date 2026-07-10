@@ -1,10 +1,11 @@
 "use client";
 
 /**
- * TESTING override toggle — allows a conflicted officer (one holding a position)
- * to resolve a market. Claret-warned because it bypasses the POCA §16
- * conflict-of-interest block; default OFF. Lives in the resolver-queue header
- * where a tester acting as both admin and player will hit the block.
+ * TESTING override toggle — lets ONE admin resolve a market end-to-end alone,
+ * even one they hold a position in: it relaxes both the position-conflict block
+ * (POCA §16) AND the two-officer "second reviewer must differ" gate, so a tester
+ * acting as admin + player can settle a market and get paid. Claret-warned;
+ * default OFF; lives in the resolver-queue header where the tester hits it.
  */
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -27,8 +28,8 @@ export function ConflictOverrideToggle({ enabled }: { enabled: boolean }) {
         return;
       }
       toast({
-        title: r.enabled ? "Conflicted resolution ENABLED" : "Conflicted resolution disabled",
-        description: r.enabled ? "Testing only — officers with positions may now resolve." : "Production rule restored — conflicted officers are blocked.",
+        title: r.enabled ? "Solo resolution ENABLED" : "Solo resolution disabled",
+        description: r.enabled ? "Testing only — one admin can now resolve a market alone, even one they bet on." : "Production rules restored — two distinct officers required; conflicted officers blocked.",
         variant: r.enabled ? "warning" : "success",
       });
       router.refresh();
@@ -41,7 +42,7 @@ export function ConflictOverrideToggle({ enabled }: { enabled: boolean }) {
       onClick={toggle}
       disabled={pending}
       aria-pressed={enabled}
-      title="Testing override — allow an officer who holds a position to resolve that market"
+      title="Testing override — let one admin resolve a market alone (bypasses the two-officer rule + the position-conflict block)"
       className="inline-flex items-center gap-2 rounded-md border px-2.5 h-8 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors disabled:opacity-50"
       style={
         enabled
@@ -50,8 +51,8 @@ export function ConflictOverrideToggle({ enabled }: { enabled: boolean }) {
       }
     >
       <I.alertCircle s={13} />
-      <span className="hidden sm:inline">Conflicted resolve · testing</span>
-      <span className="sm:hidden">Conflict</span>
+      <span className="hidden sm:inline">Solo resolve · testing</span>
+      <span className="sm:hidden">Solo</span>
       <span
         className="relative inline-flex h-4 w-7 items-center rounded-full transition-colors"
         style={{ background: enabled ? "var(--claret-400, var(--no-500))" : "var(--border-strong)" }}
