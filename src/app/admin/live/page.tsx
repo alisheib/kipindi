@@ -39,8 +39,12 @@ export default async function AdminLivePage() {
         sw="Operesheni za moja kwa moja"
         period={false}
         actions={
-          <span className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border border-gold bg-gold/10 text-gold">
-            <span className="h-1.5 w-1.5 rounded-full bg-gold inline-block" />
+          // Aqua = live-feed signal (admin gold-discipline: gold only on the resolved seal).
+          <span
+            className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border"
+            style={{ borderColor: "var(--aqua-400)", background: "color-mix(in oklab, var(--aqua-400) 12%, transparent)", color: "var(--aqua-400)" }}
+          >
+            <span className="h-1.5 w-1.5 rounded-full inline-block" style={{ background: "var(--aqua-400)" }} />
             polling · 5s
           </span>
         }
@@ -81,8 +85,16 @@ export default async function AdminLivePage() {
                           {m.home.shortName} <span className="text-text-tertiary">vs</span> {m.away.shortName}
                         </td>
                         <td className="py-2 pr-3 font-mono tabular">{m.homeScore} · {m.awayScore}</td>
-                        <td className="py-2 pr-3"><Chip size="sm" variant="gold">●&nbsp;{m.minute}&apos;</Chip></td>
-                        <td className="py-2 pr-3 font-mono tabular text-right text-gold">{formatTzs(totalPool)}</td>
+                        <td className="py-2 pr-3">
+                          {/* Live match minute → aqua (admin live-feed signal), not gold. */}
+                          <span
+                            className="inline-flex items-center rounded-pill font-bold uppercase border"
+                            style={{ height: 20, padding: "0 7px", fontSize: 10, letterSpacing: "0.06em", lineHeight: 1, borderColor: "oklch(70% 0.12 195 / 0.5)", background: "oklch(70% 0.12 195 / 0.18)", color: "var(--aqua-400)" }}
+                          >
+                            ●&nbsp;{m.minute}&apos;
+                          </span>
+                        </td>
+                        <td className="py-2 pr-3 font-mono tabular text-right text-text">{formatTzs(totalPool)}</td>
                         <td className="py-2 pl-3 text-right">
                           <a href={`/markets/${m.id}`} className="font-mono text-micro tracking-[0.10em] uppercase text-royal hover:underline">view →</a>
                         </td>
@@ -109,7 +121,7 @@ export default async function AdminLivePage() {
                   key={e.id}
                   ts={formatTime(e.createdAt)}
                   category="BET"
-                  variant="gold"
+                  variant="neutral"
                   body={`${e.action} · ${e.targetType ?? ""} ${e.targetId?.slice(0, 12) ?? ""}`}
                 />
               ))}

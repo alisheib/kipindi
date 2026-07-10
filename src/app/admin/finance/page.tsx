@@ -1,5 +1,5 @@
 import { AdminPageHead, AdminKpi, AdminCard } from "@/components/admin/admin-shell";
-import { AdminAreaChart, AdminStackedBars } from "@/components/admin/admin-charts";
+import { AdminAreaChart, AdminStackedBars, AdminBarList } from "@/components/admin/admin-charts";
 import {
   depositsTotal,
   withdrawalsTotal,
@@ -91,23 +91,25 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
             <AdminStackedBars bars={provBars} legend={providers} height={240} />
           </AdminCard>
           <AdminCard title="Top-10 player concentration" sw="Wachezaji 10 wakubwa">
-            <div className="space-y-1.5">
-              {top.length === 0 && <p className="text-caption text-text-tertiary">No active players yet in this window.</p>}
-              {top.map((t, i) => {
-                const max = top[0]?.ngr || 1;
-                const pct = Math.max(2, Math.round((t.ngr / max) * 100));
-                return (
-                  <div key={t.userId} className="flex items-center gap-2 text-caption">
-                    <span className="w-6 font-mono text-text-tertiary">#{i + 1}</span>
-                    <span className="w-28 font-mono text-text truncate">p_{t.userId.slice(-6)}</span>
-                    <div className="flex-1 h-3 bg-bg-sunken rounded-sm relative overflow-hidden">
-                      <div className="absolute inset-y-0 left-0 bg-gold/70 prog-sweep" style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="font-mono text-text-secondary tabular w-20 text-right">{formatTzsCompact(t.ngr)}</span>
-                  </div>
-                );
-              })}
-            </div>
+            {top.length === 0 ? (
+              <p className="text-caption text-text-tertiary">No active players yet in this window.</p>
+            ) : (
+              // AdminBarList (royal fill) — replaces the hand-rolled gold bar
+              // (admin gold-discipline) and adopts the A8 distribution primitive.
+              <AdminBarList
+                rows={top.map((t, i) => ({
+                  label: (
+                    <span className="font-mono">
+                      <span className="text-text-tertiary">#{i + 1}</span>{" "}
+                      <span className="text-text">p_{t.userId.slice(-6)}</span>
+                    </span>
+                  ),
+                  value: t.ngr,
+                  title: t.userId,
+                }))}
+                format={(n) => formatTzsCompact(n)}
+              />
+            )}
           </AdminCard>
         </div>
 
@@ -136,7 +138,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
                     <td className="font-mono tabular text-right text-text-secondary">{p.depositCount.toLocaleString()}</td>
                     <td className="font-mono tabular text-right">{formatTzs(p.withdrawals)}</td>
                     <td className="font-mono tabular text-right text-text-secondary">{p.withdrawalCount.toLocaleString()}</td>
-                    <td className={["font-mono tabular text-right font-semibold", p.net >= 0 ? "text-gold" : "text-text-tertiary"].join(" ")}>
+                    <td className={["font-mono tabular text-right font-semibold", p.net >= 0 ? "text-text" : "text-text-tertiary"].join(" ")}>
                       {p.net >= 0 ? "+" : ""}{formatTzsCompact(p.net)}
                     </td>
                   </tr>

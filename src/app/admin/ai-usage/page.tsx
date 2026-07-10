@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
+import { AdminMeter } from "@/components/admin/admin-charts";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
@@ -200,6 +201,19 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
               )}
             </div>
           </div>
+          {/* A8 AdminMeter — spend-vs-cap gauge; flips to danger past the 80%
+              alert threshold (the same point admins are emailed). */}
+          {c.limitUsd > 0 && (
+            <div className="mb-4">
+              <AdminMeter
+                value={c.spentThisCycleUsd}
+                cap={c.limitUsd}
+                label="Cycle spend"
+                thresholdPct={80}
+                format={(n) => usd(n)}
+              />
+            </div>
+          )}
           <CreditControls limitUsd={c.limitUsd} />
         </AdminCard>
 

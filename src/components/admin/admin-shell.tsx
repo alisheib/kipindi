@@ -34,9 +34,10 @@ export async function ConfidentialBand({ session }: { session: AdminSession }) {
   const officer = await db.user.findById(session.userId);
   const email = officer?.displayName ?? session.phoneE164;
   return (
-    <div className="bg-bg-sunken text-onBrand border-b border-gold flex items-center justify-between px-4 lg:px-6 h-7 text-micro font-mono uppercase tracking-[0.18em]">
+    <div className="bg-bg-sunken text-onBrand border-b border-border-strong flex items-center justify-between px-4 lg:px-6 h-7 text-micro font-mono uppercase tracking-[0.18em]">
       <span className="flex items-center gap-2">
-        <span className="inline-block h-1.5 w-1.5 rounded-pill bg-gold" />
+        {/* Claret "restricted" dot — admin gold-discipline: gold is only the resolved seal. */}
+        <span className="inline-block h-1.5 w-1.5 rounded-pill" style={{ background: "var(--claret-200)" }} />
         <span className="text-white">Staff · Confidential · Internal only</span>
       </span>
       <span className="hidden sm:inline text-white/70">
@@ -137,7 +138,8 @@ export async function AdminTopBar({ crumbs, session, activeKey }: { crumbs: stri
           ACTIVE
         </span>
         <span className="font-mono text-micro tracking-[0.14em] px-2.5 h-7 inline-flex items-center rounded-md border border-border bg-bg-elevated text-text gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-pill bg-gold" />
+          {/* Aqua = officer-active signal (admin live-feed hue), not gold. */}
+          <span className="h-1.5 w-1.5 rounded-pill" style={{ background: "var(--aqua-400)" }} />
           <span className="hidden sm:inline">{((await db.user.findById(session.userId))?.displayName ?? "Officer").split(" ")[0]}</span>
         </span>
       </div>

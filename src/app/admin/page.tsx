@@ -9,11 +9,13 @@ import { formatTzsCompact } from "@/lib/utils";
 export const metadata = { title: "Admin · Overview" };
 export const dynamic = "force-dynamic";
 
+// Admin gold-discipline: gold is reserved for the resolved/sealed state only.
+// BET events use neutral (the calm, highest-volume log category).
 const CATEGORY_VARIANT: Record<AuditCategory, "gold" | "royal" | "danger" | "success" | "warning" | "neutral"> = {
   AUTH:       "royal",
   KYC:        "royal",
   WALLET:     "royal",
-  BET:        "gold",
+  BET:        "neutral",
   ADMIN:      "warning",
   COMPLIANCE: "warning",
   SECURITY:   "danger",
@@ -104,7 +106,7 @@ export default async function AdminOverviewPage() {
               ]}
             />
             <p className="text-caption text-text-tertiary">
-              conversion {conversion.toFixed(1)}% · <span className="text-gold italic">uthibitisho</span>
+              conversion {conversion.toFixed(1)}% · <span className="text-text-tertiary italic">uthibitisho</span>
             </p>
           </AdminCard>
 
@@ -118,7 +120,7 @@ export default async function AdminOverviewPage() {
                     label: p.provider.split("_")[0],
                   }))}
                 />
-                <p className="text-caption text-text-tertiary">28-day deposit share · <span className="text-gold italic">asilimia</span></p>
+                <p className="text-caption text-text-tertiary">28-day deposit share · <span className="text-text-tertiary italic">asilimia</span></p>
               </>
             ) : (
               <div className="text-caption text-text-tertiary py-3 text-center">No provider data in window.</div>
