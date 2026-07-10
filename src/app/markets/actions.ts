@@ -72,13 +72,16 @@ export async function resolveMarketAction(formData: FormData) {
   await requireAdminTotp(session.userId, session.sessionId); // B3: 2FA at the action layer
   const marketId = String(formData.get("marketId") ?? "");
   const outcome = String(formData.get("outcome") ?? "") as Side | "VOID";
+  // ADM2 ceremony — optional evidence excerpt the officer declares to justify
+  // the verdict; recorded into the immutable audit payload by resolveMarket.
+  const evidence = String(formData.get("evidence") ?? "").trim() || undefined;
   // Validate at runtime — the `as` cast is erased, so an invalid string would
   // otherwise reach settlement, mark the market RESOLVED with no winners, and
   // permanently lock every stake.
   if (outcome !== "YES" && outcome !== "NO" && outcome !== "VOID") {
     return { ok: false as const, error: "Invalid outcome.", code: "INVALID" as const };
   }
-  const r = await resolveMarket({ marketId, outcome, officerId: session.userId });
+  const r = await resolveMarket({ marketId, outcome, officerId: session.userId, evidence });
   if (r.ok) {
     revalidatePath("/admin/resolver-queue");
     revalidatePath("/markets");

@@ -1026,7 +1026,11 @@ export async function cashOutPosition(
   });
 }
 
-export async function resolveMarket(opts: { marketId: string; outcome: Side | "VOID"; officerId: string }): Promise<ServiceResult<{ stage: "stage1" | "complete"; winnersPaid?: number }>> {
+export async function resolveMarket(opts: { marketId: string; outcome: Side | "VOID"; officerId: string; evidence?: string }): Promise<ServiceResult<{ stage: "stage1" | "complete"; winnersPaid?: number }>> {
+  // ADM2 ceremony — the officer's declared evidence excerpt (the source quote
+  // that justifies the verdict). Recorded into the immutable audit payload at
+  // each attestation so the fairness story is provable; capped defensively.
+  const evidence = (opts.evidence ?? "").trim().slice(0, 2000) || null;
   // Officer-conflict hard-block (Elevation #12): an officer who holds a position
   // in this market MUST NOT resolve it — they have a financial interest in the
   // outcome. This is a POCA §16 / GBT licensing requirement. Checked before
@@ -1076,7 +1080,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
       actorId: opts.officerId,
       targetType: "Market",
       targetId: m.id,
-      payload: { outcome: opts.outcome },
+      payload: { outcome: opts.outcome, evidence },
     });
     return { ok: true, data: { stage: "stage1" } };
   }
@@ -1171,6 +1175,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
         grossPool,
         stage1By: m.resolutionStage1By, stage2By: m.resolutionStage2By,
         sourceUrl: m.sourceUrl,
+        evidence,
         reason: "One-sided market — all bets on same side, full refund issued at 0% fee",
       },
     });
@@ -1299,6 +1304,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
       winnersPaid,
       stage1By: m.resolutionStage1By, stage2By: m.resolutionStage2By,
       sourceUrl: m.sourceUrl,
+      evidence,
     },
   });
 

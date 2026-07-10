@@ -25,12 +25,18 @@ export function CountdownRing({
   serverNow,
   size = 44,
   ariaLabel,
+  accent,
+  urgentAccent,
 }: {
   deadlineIso: string;
   startIso: string;
   serverNow: number;
   size?: number;
   ariaLabel?: string;
+  /** Override the running arc colour. Defaults to aqua. Admin surfaces pass
+   *  aqua for both to keep gold reserved for the resolved seal. */
+  accent?: string;
+  urgentAccent?: string;
 }) {
   const [now, setNow] = useState(serverNow);
   useEffect(() => {
@@ -50,7 +56,9 @@ export function CountdownRing({
   const sw = 3.5;
   const r = size / 2 - sw / 2 - 1;
   const c = 2 * Math.PI * r;
-  const stroke = closed ? "var(--text-subtle)" : urgent ? "var(--gold-400)" : "var(--aqua-400)";
+  const runColor = accent ?? "var(--aqua-400)";
+  const urgentColor = urgentAccent ?? "var(--gold-400)";
+  const stroke = closed ? "var(--text-subtle)" : urgent ? urgentColor : runColor;
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={ariaLabel ?? compact(remaining)} className="shrink-0">
