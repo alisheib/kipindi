@@ -9,6 +9,7 @@ import { Chip } from "@/components/ui/chip";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { getAuditPage } from "@/lib/server/audit";
 import { GenerateButton } from "./generate-button";
+import { ReportPackCard } from "./report-pack-card";
 import { formatDateTime, formatTzs, formatTzsCompact } from "@/lib/utils";
 import { reportSummary, dailyPnl, categoryBreakdown, type ReportPeriod } from "@/lib/server/report-money";
 
@@ -300,6 +301,9 @@ export default async function AdminReportsPage({
           )}
         </div>
 
+        {/* ── Regulator pack — maker-checker signing chain (ADM1 §1) ── */}
+        <ReportPackCard />
+
         {/* ── Report library — statutory + operational templates ── */}
         <div className="pt-3 border-t border-dashed border-border-subtle">
           <p className="font-display font-semibold text-body-sm text-text">Report library</p>
@@ -315,7 +319,7 @@ export default async function AdminReportsPage({
                   className={[
                     "h-9 w-9 rounded-md inline-flex items-center justify-center shrink-0",
                     t.severity === "critical" ? "bg-danger/15 text-danger" :
-                    t.severity === "high"     ? "bg-gold/15 text-gold" :
+                    t.severity === "high"     ? "bg-warning/15 text-warning" :
                                                 "bg-royal/15 text-royal",
                   ].join(" ")}
                 >
@@ -329,7 +333,7 @@ export default async function AdminReportsPage({
                   <div className="flex flex-wrap gap-1.5">
                     <Chip
                       size="sm"
-                      variant={t.severity === "critical" ? "danger" : t.severity === "high" ? "gold" : "neutral"}
+                      variant={t.severity === "critical" ? "danger" : t.severity === "high" ? "warning" : "neutral"}
                     >
                       {t.target}
                     </Chip>
