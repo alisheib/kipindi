@@ -228,7 +228,7 @@ export default async function AdminCompliancePage({
                     "h-7 w-7 rounded-md inline-flex items-center justify-center font-mono text-micro shrink-0",
                     r.tone === "warning" ? "bg-warning/15 text-warning" :
                     r.tone === "royal"   ? "bg-royal/15 text-royal-300" :
-                    r.tone === "danger"  ? "bg-danger/15 text-danger" :
+                    r.tone === "danger"  ? "bg-danger/15 text-danger-fg" :
                                            "bg-bg-sunken text-text-tertiary",
                   ].join(" ")}>↓</span>
                   <span className="flex-1 min-w-0 flex items-center justify-between gap-2">

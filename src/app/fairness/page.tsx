@@ -30,7 +30,12 @@ export const dynamic = "force-dynamic";
 // panel on narrow screens instead of forcing page h-overflow.
 function FairnessChain({ steps }: { steps: { glyph: keyof typeof I; label: string; gilt?: boolean }[] }) {
   return (
-    <div className="overflow-x-auto -mx-1 px-1">
+    <div
+      className="overflow-x-auto -mx-1 px-1 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--brand-400)]"
+      tabIndex={0}
+      role="region"
+      aria-label="Provably-fair steps"
+    >
       <ol className="flex items-start min-w-[540px]">
         {steps.map((s, i) => {
           const Glyph = I[s.glyph];

@@ -336,7 +336,7 @@ export function FeedRow({
   const variantClass = {
     gold: "bg-gold/15 text-gold",
     royal: "bg-royal/15 text-royal-300",
-    danger: "bg-danger/15 text-danger",
+    danger: "bg-danger/15 text-danger-fg",
     success: "bg-success/15 text-success",
     warning: "bg-warning/15 text-warning",
     neutral: "bg-bg-sunken text-text-tertiary",
@@ -417,7 +417,7 @@ export function StatusPill({
   const cls = {
     ok: "bg-success/15 text-success",
     warn: "bg-warning/15 text-warning",
-    fail: "bg-danger/15 text-danger",
+    fail: "bg-danger/15 text-danger-fg",
   }[status];
   return (
     <span

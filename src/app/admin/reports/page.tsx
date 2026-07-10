@@ -233,7 +233,7 @@ export default async function AdminReportsPage({
             {activeRows.length === 0 ? (
               <EmptyState kind="admin" title="No settled activity in this period" body="Stakes, payouts and GGR appear here once markets settle in the selected window." />
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--brand-400)]" tabIndex={0} role="region" aria-label="Daily P&L">
                 <table className="admin-tbl min-w-[680px]">
                   <thead>
                     <tr>
@@ -318,7 +318,7 @@ export default async function AdminReportsPage({
                 <span
                   className={[
                     "h-9 w-9 rounded-md inline-flex items-center justify-center shrink-0",
-                    t.severity === "critical" ? "bg-danger/15 text-danger" :
+                    t.severity === "critical" ? "bg-danger/15 text-danger-fg" :
                     t.severity === "high"     ? "bg-warning/15 text-warning" :
                                                 "bg-royal/15 text-royal-300",
                   ].join(" ")}
@@ -368,7 +368,7 @@ export default async function AdminReportsPage({
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--brand-400)]" tabIndex={0} role="region" aria-label="Report library">
               <table className="admin-tbl">
                 <thead>
                   <tr>

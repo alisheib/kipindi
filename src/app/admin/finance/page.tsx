@@ -118,7 +118,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
           title="Provider summary"
           sw="Muhtasari wa watoa huduma"
         >
-          <div className="overflow-x-auto -mx-4 px-4">
+          <div className="overflow-x-auto -mx-4 px-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--brand-400)]" tabIndex={0} role="region" aria-label="Top players by deposits">
             <table className="admin-tbl min-w-[640px]">
               <thead>
                 <tr>
