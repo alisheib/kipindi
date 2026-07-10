@@ -71,6 +71,24 @@ export async function updatePlatformTimezoneAction(formData: FormData) {
   }
 }
 
+/** §9.3 #5 — site-wide broadcast banner shown to every player. Audited. */
+export async function setAnnouncementAction(formData: FormData) {
+  const s = await requireAdmin();
+  const active = String(formData.get("active") ?? "") === "true";
+  const message = String(formData.get("message") ?? "").trim().slice(0, 280);
+  const toneRaw = String(formData.get("tone") ?? "info");
+  const tone = (["info", "warning", "success"].includes(toneRaw) ? toneRaw : "info") as "info" | "warning" | "success";
+  if (active && !message) return { ok: false as const, error: "Add a message before publishing the banner." };
+  try {
+    const announcement = active || message ? { active, message, tone } : null;
+    const r = await setPlatformConfig({ announcement }, s.userId);
+    revalidatePath("/admin/system");
+    return r;
+  } catch (err) {
+    return { ok: false as const, error: safeError(err, "Announcement update failed") };
+  }
+}
+
 /** §9.3 #1 — global maintenance switch: pause NEW bets + deposits platform-wide
  *  (withdrawals + cash-outs stay open). Audited via setPlatformConfig. */
 export async function setMaintenanceModeAction(formData: FormData) {

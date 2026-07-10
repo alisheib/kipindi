@@ -19,6 +19,13 @@ export type PlatformConfig = {
   /** Operator note shown to players who hit a paused action while maintenance
    *  is on. Null → a sensible default message. */
   maintenanceNote?: string | null;
+  /** Site-wide broadcast banner (§9.3 #5) — an operator announcement (outage,
+   *  promo, new market) shown to every player until dismissed. Null = none. */
+  announcement?: {
+    active: boolean;
+    message: string;
+    tone: "info" | "warning" | "success";
+  } | null;
 };
 
 const CONFIG_KEY = "platform_config";
@@ -26,6 +33,7 @@ const DEFAULT: PlatformConfig = {
   timezone: process.env.PLATFORM_TIMEZONE || "Africa/Dar_es_Salaam",
   maintenanceMode: false,
   maintenanceNote: null,
+  announcement: null,
 };
 
 // In-memory cache — survives HMR, hydrated from DB on first read.

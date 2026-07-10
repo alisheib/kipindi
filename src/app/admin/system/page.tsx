@@ -1,6 +1,6 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { I } from "@/components/ui/glyphs";
-import { SystemActions, SupportConfigForm, TimezoneForm, MaintenanceModeForm } from "./system-client";
+import { SystemActions, SupportConfigForm, TimezoneForm, MaintenanceModeForm, AnnouncementForm } from "./system-client";
 import { getSupportConfig } from "@/lib/support-config";
 import { db } from "@/lib/server/store";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
@@ -61,6 +61,20 @@ export default async function AdminSystemPage() {
             Takes effect <strong>immediately</strong> — no redeploy — and every flip is written to the audit chain.
           </p>
           <MaintenanceModeForm enabled={platform.maintenanceMode ?? false} note={platform.maintenanceNote ?? ""} />
+        </AdminCard>
+
+        {/* Broadcast banner — site-wide player announcement (§9.3 #5) */}
+        <AdminCard title="Broadcast banner" sw="Tangazo kwa wachezaji">
+          <p className="text-caption text-text-secondary mb-3">
+            Publish a site-wide banner to every player — an outage notice, a promo, or a new market.
+            It shows under the top bar until each player dismisses it, and re-appears if you change the message.
+            Maintenance mode shows its own banner and takes priority over this one.
+          </p>
+          <AnnouncementForm
+            active={platform.announcement?.active ?? false}
+            message={platform.announcement?.message ?? ""}
+            tone={platform.announcement?.tone ?? "info"}
+          />
         </AdminCard>
 
         {/* Platform timezone */}

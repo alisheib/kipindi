@@ -7,8 +7,10 @@ import { useDeferredToast, useToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
 import { Input, Field } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { verifyChainAction, updateSupportConfigAction, updatePlatformTimezoneAction, setMaintenanceModeAction } from "./actions";
+import { verifyChainAction, updateSupportConfigAction, updatePlatformTimezoneAction, setMaintenanceModeAction, setAnnouncementAction } from "./actions";
 import type { SupportConfig } from "@/lib/support-config";
+
+type AnnouncementTone = "info" | "warning" | "success";
 
 const TIMEZONES = [
   { value: "Africa/Dar_es_Salaam", label: "Africa/Dar es Salaam (EAT, UTC+3)" },
@@ -105,6 +107,97 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
         Save · Hifadhi
       </Button>
     </form>
+  );
+}
+
+export function AnnouncementForm({
+  active: initialActive,
+  message: initialMessage,
+  tone: initialTone,
+}: {
+  active: boolean;
+  message: string;
+  tone: AnnouncementTone;
+}) {
+  const [active, setActive] = useState(initialActive);
+  const [message, setMessage] = useState(initialMessage);
+  const [tone, setTone] = useState<AnnouncementTone>(initialTone);
+  const [pending, start] = useTransition();
+  const router = useRouter();
+  const { deferToast, toast } = useDeferredToast(pending);
+  const changed = active !== initialActive || message.trim() !== initialMessage.trim() || tone !== initialTone;
+
+  const submit = () => {
+    if (active && !message.trim()) {
+      toast({ title: "Add a message", description: "A banner needs text before it can go live.", variant: "danger" });
+      return;
+    }
+    const fd = new FormData();
+    fd.set("active", String(active));
+    fd.set("message", message.trim());
+    fd.set("tone", tone);
+    start(async () => {
+      const r = await setAnnouncementAction(fd);
+      if (!r.ok) {
+        toast({ title: "Couldn't update", description: (r as { error?: string }).error, variant: "danger" });
+      } else {
+        router.refresh();
+        deferToast(active
+          ? { title: "Banner published to all players", variant: "success" }
+          : { title: "Banner taken down", variant: "success" });
+      }
+    });
+  };
+
+  return (
+    <div className="space-y-3">
+      <label className="block">
+        <span className="block font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">
+          Message
+        </span>
+        <Input
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          maxLength={280}
+          placeholder="e.g. New markets are live for the AFCON qualifiers — good luck!"
+        />
+      </label>
+      <div className="flex items-end gap-3 flex-wrap">
+        <label className="block flex-1 min-w-[160px]">
+          <span className="block font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">
+            Tone
+          </span>
+          <Select
+            name="tone"
+            value={tone}
+            onChange={(v) => setTone(v as AnnouncementTone)}
+            options={[
+              { value: "info", label: "Info (royal)" },
+              { value: "success", label: "Success (emerald)" },
+              { value: "warning", label: "Warning (amber)" },
+            ]}
+            size="xs"
+          />
+        </label>
+        <label className="flex items-center gap-2.5 pb-1.5">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={active}
+            aria-label="Publish banner"
+            onClick={() => setActive((v) => !v)}
+            className="relative shrink-0 h-7 w-12 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-400)] ring-offset-2 ring-offset-[color:var(--bg-base)]"
+            style={{ background: active ? "var(--brand-500)" : "var(--border-strong)" }}
+          >
+            <span className="absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-[left]" style={{ left: active ? "22px" : "2px" }} />
+          </button>
+          <span className="text-[13px] font-semibold text-text">{active ? "Live" : "Off"}</span>
+        </label>
+      </div>
+      <Button onClick={submit} loading={pending} disabled={!changed}>
+        {active ? "Publish banner" : "Save"}
+      </Button>
+    </div>
   );
 }
 

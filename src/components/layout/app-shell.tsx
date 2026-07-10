@@ -26,6 +26,8 @@ import { getRgSettings } from "@/lib/server/responsible-gambling";
 import { hasRole, ADMIN_CONSOLE_ROLES } from "@/lib/server/roles";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { getServerT } from "@/lib/i18n-server";
+import { getPlatformConfig, maintenanceMessage } from "@/lib/server/platform-config";
+import { AnnouncementBanner } from "./announcement-banner";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const { t } = await getServerT();
@@ -81,6 +83,15 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     };
     realityCheckMin = rg?.realityCheckIntervalMin || 30;
   }
+
+  // Site-wide operator banner (§9.3 #5) — maintenance notice takes priority
+  // over an active broadcast. Cheap cached config read (graceful on failure).
+  const platformCfg = await getPlatformConfig().catch(() => null);
+  const maintBanner = platformCfg?.maintenanceMode ? await maintenanceMessage().catch(() => null) : null;
+  const announcement = platformCfg?.announcement?.active && platformCfg.announcement.message.trim()
+    ? { message: platformCfg.announcement.message, tone: platformCfg.announcement.tone }
+    : null;
+
   return (
     <div className="min-h-screen bg-bg-base text-text">
       {/* Skip-to-content — WCAG 2.4.1. Visually hidden until focused,
@@ -94,6 +105,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       </a>
       <Suspense fallback={null}><NavProgress /></Suspense>
       <TopAppBar user={topUser} />
+      <AnnouncementBanner maintenance={maintBanner} announcement={announcement} />
       <LiveTicker events={getTickerFeed()} />
       <main id="main-content" className="pb-[calc(88px+env(safe-area-inset-bottom))] lg:pb-0">
         <RouteTransition>{children}</RouteTransition>
