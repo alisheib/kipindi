@@ -12,6 +12,7 @@ import { sendEmailToUser, depositConfirmedHtml, withdrawalSentHtml, withdrawalUn
 import { db, type StoredTxn } from "./store";
 import { randomId } from "./crypto";
 import { dispatchDeposit, dispatchWithdrawal, computeWithdrawalTax } from "./payments";
+import { isPaymentPaused } from "./payment-ops";
 import { rateCheck } from "./rate-limit";
 import { DepositSchema, AdminDepositSchema, WithdrawSchema } from "./validators";
 import { checkDepositLimit, isLockedOut } from "./responsible-gambling";
@@ -53,6 +54,11 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
 
   const parse = (adminTest ? AdminDepositSchema : DepositSchema).safeParse(input);
   if (!parse.success) return { ok: false, error: parse.error.errors[0]?.message ?? "Invalid input", code: "INVALID" };
+
+  // ADM4 kill-switch — deposits for this provider may be paused by an operator.
+  if (await isPaymentPaused(parse.data.provider, "deposits")) {
+    return { ok: false, error: "Deposits for this provider are temporarily paused. Try another method or check back shortly.", code: "SUSPENDED" };
+  }
 
   const wallet = await db.wallet.findByUserId(userId);
   if (!wallet) return { ok: false, error: "Wallet not found.", code: "NOT_FOUND" };
@@ -423,6 +429,11 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
 
   const parse = WithdrawSchema.safeParse(input);
   if (!parse.success) return { ok: false, error: parse.error.errors[0]?.message ?? "Invalid input", code: "INVALID" };
+
+  // ADM4 kill-switch — withdrawals for this provider may be paused by an operator.
+  if (await isPaymentPaused(parse.data.provider, "withdrawals")) {
+    return { ok: false, error: "Withdrawals for this provider are temporarily paused. Try another method or check back shortly.", code: "SUSPENDED" };
+  }
 
   const user = await db.user.findById(userId);
   if (!user) return { ok: false, error: "User not found.", code: "NOT_FOUND" };

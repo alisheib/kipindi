@@ -14,6 +14,7 @@ export const NAV_GROUPS: ReadonlyArray<{
     items: [
       { href: "/admin/finance", label: "Finance", key: "finance" },
       { href: "/admin/reports", label: "Reports", key: "reports" },
+      { href: "/admin/payments", label: "Payments ops", key: "payments" },
     ],
   },
   {
