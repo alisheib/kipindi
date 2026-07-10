@@ -35,7 +35,7 @@ export default function PollNotFound() {
             </p>
             <Link
               href="/admin/ai-polls"
-              className="btn btn-gold btn-sm rounded-pill inline-flex items-center gap-1.5 mt-2"
+              className="btn btn-primary btn-sm rounded-pill inline-flex items-center gap-1.5 mt-2"
             >
               <I.chevronLeft s={14} />
               View all polls

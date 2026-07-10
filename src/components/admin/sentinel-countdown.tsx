@@ -133,10 +133,10 @@ export function SentinelCountdown() {
         aria-label="Market sentinel timer"
         title="Market sentinel — next sweep"
         className={`font-mono text-micro tracking-[0.12em] px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border transition-colors ${
-          soon ? "border-gold-700 bg-gold-500/10 text-gold-200" : "border-border bg-bg-elevated text-text hover:border-gold-700/60"
+          soon ? "border-aqua-700 bg-aqua-500/10 text-aqua-200" : "border-border bg-bg-elevated text-text hover:border-aqua-700/60"
         }`}
       >
-        <span className={`inline-flex ${status?.sweeping ? "animate-spin" : ""} ${status?.paused ? "text-no-300" : soon ? "text-gold-300" : "text-gold"}`}>
+        <span className={`inline-flex ${status?.sweeping ? "animate-spin" : ""} ${status?.paused ? "text-no-300" : soon ? "text-aqua-300" : "text-aqua-400"}`}>
           {status?.sweeping ? <I.rotateCcw s={12} /> : status?.paused ? <I.pause s={12} /> : <I.activity s={12} />}
         </span>
         <span className="hidden md:inline opacity-70">Sentinel</span>
@@ -150,7 +150,7 @@ export function SentinelCountdown() {
           style={{ animation: "np-rise 160ms cubic-bezier(.2,.8,.2,1)" }}
         >
           <div className="flex items-center gap-2 mb-2.5">
-            <span className="grid h-7 w-7 place-items-center rounded-md bg-gold-500/12 text-gold-300"><I.activity s={15} /></span>
+            <span className="grid h-7 w-7 place-items-center rounded-md bg-aqua-500/12 text-aqua-300"><I.activity s={15} /></span>
             <div className="min-w-0">
               <p className="font-display text-[13px] font-semibold text-text leading-tight">Market sentinel</p>
               <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-subtle">
@@ -173,7 +173,7 @@ export function SentinelCountdown() {
             status.paused ? (
               <button
                 type="button" onClick={resume} disabled={pending}
-                className="btn btn-gold btn-sm rounded-pill w-full mb-2 disabled:opacity-40"
+                className="btn btn-primary btn-sm rounded-pill w-full mb-2 disabled:opacity-40"
               >
                 <I.play s={13} /> Resume
               </button>
@@ -197,7 +197,7 @@ export function SentinelCountdown() {
             </button>
             <button
               type="button" onClick={runNow} disabled={pending || !status?.enabled || status?.sweeping}
-              className="btn btn-gold btn-sm rounded-pill flex-1 disabled:opacity-40"
+              className="btn btn-primary btn-sm rounded-pill flex-1 disabled:opacity-40"
             >
               <I.stepForward s={13} /> Run now
             </button>
@@ -223,7 +223,7 @@ function Row({ label, value, accent }: { label: string; value: string; accent?: 
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="text-text-subtle">{label}</span>
-      <span className={`tabular-nums font-semibold ${accent ? "text-gold-300" : "text-text"}`}>{value}</span>
+      <span className={`tabular-nums font-semibold ${accent ? "text-aqua-300" : "text-text"}`}>{value}</span>
     </div>
   );
 }

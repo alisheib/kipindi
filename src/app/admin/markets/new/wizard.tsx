@@ -129,7 +129,7 @@ export function NewMarketWizard() {
           </Button>
         ) : (
           <Button
-            variant="gold"
+            variant="primary"
             size="md"
             onClick={submit}
             disabled={pending}

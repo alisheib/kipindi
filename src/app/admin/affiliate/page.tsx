@@ -92,7 +92,7 @@ export default async function AdminAffiliatePage({
                 <tbody>
                   {stats.leaderboard.map((b, i) => (
                     <tr key={b.userId}>
-                      <td className={`font-mono font-bold ${i === 0 ? "text-gold-400" : "text-text-subtle"}`}>{String(i + 1).padStart(2, "0")}</td>
+                      <td className={`font-mono font-bold ${i === 0 ? "text-text" : "text-text-subtle"}`}>{String(i + 1).padStart(2, "0")}</td>
                       <td>
                         <span className="inline-flex items-center gap-2 min-w-0">
                           <Avatar initials={b.handle.replace(/[^a-z0-9]/gi, "").slice(0, 2)} size="sm" seed={b.userId} />
@@ -100,7 +100,7 @@ export default async function AdminAffiliatePage({
                         </span>
                       </td>
                       <td className="text-right font-mono text-text-muted">{b.recruits}</td>
-                      <td className="text-right font-mono font-semibold text-gold-300">{formatTzs(b.earnedTzs)}</td>
+                      <td className="text-right font-mono font-semibold text-text">{formatTzs(b.earnedTzs)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -138,7 +138,7 @@ export default async function AdminAffiliatePage({
                         <td className="font-mono font-semibold">{r.referrerHandle}</td>
                         <td className="font-mono text-text-muted">{r.recruitMasked}</td>
                         <td className="text-text-muted">{r.type}</td>
-                        <td className="text-right font-mono font-semibold text-gold-300">{formatTzs(r.amountTzs)}</td>
+                        <td className="text-right font-mono font-semibold text-text">{formatTzs(r.amountTzs)}</td>
                         <td className="font-mono text-text-subtle whitespace-nowrap">{formatDateShort(r.date)}</td>
                         <td><Chip size="sm" variant={LEDGER_CHIP[r.status]}>{r.status.toLowerCase()}</Chip></td>
                       </tr>

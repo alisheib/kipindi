@@ -28,11 +28,11 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: `Admin · Player — ${label}` };
 }
 
-const CATEGORY_VARIANT: Record<AuditCategory, "gold" | "royal" | "danger" | "success" | "warning" | "neutral"> = {
+const CATEGORY_VARIANT: Record<AuditCategory, "royal" | "danger" | "success" | "warning" | "neutral"> = {
   AUTH:       "royal",
   KYC:        "royal",
   WALLET:     "royal",
-  BET:        "gold",
+  BET:        "royal",
   ADMIN:      "warning",
   COMPLIANCE: "warning",
   SECURITY:   "danger",
@@ -122,10 +122,10 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   ];
 
   // KYC is the most critical tab — give it an at-a-glance status so an officer
-  // immediately sees whether it needs action. Gold = not approved (needs you),
+  // immediately sees whether it needs action. Warn = not approved (needs you),
   // green = approved, red = rejected.
-  const kycTone: "gold" | "green" | "red" =
-    kyc?.status === "APPROVED" ? "green" : kyc?.status === "REJECTED" ? "red" : "gold";
+  const kycTone: "warn" | "green" | "red" =
+    kyc?.status === "APPROVED" ? "green" : kyc?.status === "REJECTED" ? "red" : "warn";
   const kycNeedsAction = kyc?.status === "PENDING_REVIEW" || kyc?.status === "ADDITIONAL_INFO_REQUIRED";
 
   return (
@@ -186,7 +186,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
               <p
                 className={[
                   "font-mono font-bold tabular leading-none mt-1 text-display-3",
-                  riskBand === "high" ? "text-danger" : riskBand === "medium" ? "text-gold" : "text-success",
+                  riskBand === "high" ? "text-danger" : riskBand === "medium" ? "text-warning-fg" : "text-success",
                 ].join(" ")}
               >
                 {riskScore}
@@ -213,11 +213,11 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
               // The KYC tab stays visually loud when it's not approved, even
               // when another tab is active, so the officer always notices it.
               const kycHot = isKyc && kycTone !== "green";
-              const dotColor = kycTone === "green" ? "bg-yes-500" : kycTone === "red" ? "bg-no-500" : "bg-gold";
+              const dotColor = kycTone === "green" ? "bg-yes-500" : kycTone === "red" ? "bg-no-500" : "bg-warning-fg";
               const cls = active
-                ? (kycHot ? "border-gold text-gold-300 font-bold" : "border-gold text-text font-semibold")
+                ? (kycHot ? "border-warning-fg/40 text-warning-fg font-bold" : "border-brand-500 text-text font-semibold")
                 : kycHot
-                  ? (kycTone === "red" ? "border-no-700/60 text-no-300 font-semibold hover:text-no-200" : "border-gold-700/60 text-gold-300 font-semibold hover:text-gold-200")
+                  ? (kycTone === "red" ? "border-no-700/60 text-no-300 font-semibold hover:text-no-200" : "border-warning-fg/40 text-warning-fg font-semibold hover:text-warning-fg")
                   : isKyc
                     ? "border-transparent text-yes-300 hover:text-yes-200" // approved → calm green
                     : "border-transparent text-text-tertiary hover:text-text";
@@ -237,7 +237,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                   )}
                   {t.label}
                   {isKyc && kycNeedsAction && (
-                    <span className="font-mono text-micro uppercase tracking-[0.1em] text-gold-300">· review</span>
+                    <span className="font-mono text-micro uppercase tracking-[0.1em] text-warning-fg">· review</span>
                   )}
                   {isKyc && kyc?.status === "APPROVED" && <I.check s={12} className="text-yes-400" />}
                   {t.count !== undefined && <span className="ml-1.5 font-mono text-micro text-text-tertiary">· {t.count}</span>}
@@ -280,7 +280,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                         <td className="py-2 pr-3 font-medium text-text">{t.type}</td>
                         <td className="py-2 pr-3">{t.provider ?? "—"}</td>
                         <td className="py-2 pr-3"><span className="font-mono text-micro tracking-wider uppercase">{t.status}</span></td>
-                        <td className={["py-2 pl-3 font-mono tabular text-right", t.amount >= 0 ? "text-gold" : "text-text-secondary"].join(" ")}>{formatTzs(t.amount)}</td>
+                        <td className={["py-2 pl-3 font-mono tabular text-right", t.amount >= 0 ? "text-text" : "text-text-secondary"].join(" ")}>{formatTzs(t.amount)}</td>
                       </tr>
                     ))}
                     {txns.length === 0 && <tr><td colSpan={5} className="py-6 text-center text-text-tertiary">No transactions.</td></tr>}
@@ -338,10 +338,10 @@ function KycTab({ kyc, userEmail, userId }: { kyc: Awaited<ReturnType<typeof db.
     <div className="space-y-4">
       {/* Status banner — most important signal, shown first so officers see it immediately */}
       {kyc.status === "PENDING_REVIEW" && (
-        <div className="rounded-lg border-2 border-gold-700/70 bg-gold-500/[0.08] px-4 py-3 flex items-start gap-3">
-          <I.shieldAlert s={16} className="text-gold-300 shrink-0 mt-0.5 animate-pulse" />
+        <div className="rounded-lg border-2 border-warning-fg/40 bg-warning/10 px-4 py-3 flex items-start gap-3">
+          <I.shieldAlert s={16} className="text-warning-fg shrink-0 mt-0.5 animate-pulse" />
           <div>
-            <p className="font-display font-semibold text-gold-300 text-[13px]">Action required · Inahitaji ukaguzi</p>
+            <p className="font-display font-semibold text-warning-fg text-[13px]">Action required · Inahitaji ukaguzi</p>
             <p className="mt-0.5 text-caption text-text-muted">This identity submission is awaiting officer review. Check the documents below and make a decision.</p>
           </div>
         </div>
@@ -372,14 +372,14 @@ function KycTab({ kyc, userEmail, userId }: { kyc: Awaited<ReturnType<typeof db.
       )}
       {/* Email status — critical for KYC notifications. Warn if missing. */}
       <div className={`rounded-md px-3 py-2.5 flex items-start gap-2.5 text-caption ${userEmail ? "border border-border bg-bg-inset/30" : "border-2 border-warning-border bg-warning-bg/20"}`}>
-        <I.mail s={14} className={userEmail ? "text-text-tertiary mt-0.5" : "text-gold-300 mt-0.5"} />
+        <I.mail s={14} className={userEmail ? "text-text-tertiary mt-0.5" : "text-warning-fg mt-0.5"} />
         <div className="flex-1 min-w-0">
           <p className="font-mono text-micro tracking-[0.12em] uppercase text-text-tertiary">Player email</p>
           {userEmail ? (
             <p className="text-body-sm font-medium text-text break-all">{userEmail}</p>
           ) : (
             <>
-              <p className="text-body-sm font-semibold text-gold-300">No email on file — KYC notifications will not reach this player</p>
+              <p className="text-body-sm font-semibold text-warning-fg">No email on file — KYC notifications will not reach this player</p>
               <SetEmailForm userId={userId} />
             </>
           )}
@@ -417,7 +417,7 @@ function KycTab({ kyc, userEmail, userId }: { kyc: Awaited<ReturnType<typeof db.
                 return (
                   <div key={s.type} className="space-y-1">
                     {has ? (
-                      <a href={src} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-md border border-border bg-bg-inset hover:border-gold-500 transition-colors" title={`Open ${s.label} full size`}>
+                      <a href={src} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-md border border-border bg-bg-inset hover:border-brand-500 transition-colors" title={`Open ${s.label} full size`}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={src} alt={s.label} loading="lazy" className="h-28 w-full object-cover" />
                       </a>
@@ -452,7 +452,7 @@ function KycTab({ kyc, userEmail, userId }: { kyc: Awaited<ReturnType<typeof db.
                     </p>
                   </div>
                   {rq.storageKey ? (
-                    <a href={src} target="_blank" rel="noopener noreferrer" className="block shrink-0 overflow-hidden rounded-md border border-border hover:border-gold-500 transition-colors" title="Open full size">
+                    <a href={src} target="_blank" rel="noopener noreferrer" className="block shrink-0 overflow-hidden rounded-md border border-border hover:border-brand-500 transition-colors" title="Open full size">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={src} alt="requested document" loading="lazy" className="h-16 w-16 object-cover" />
                     </a>

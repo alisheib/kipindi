@@ -63,7 +63,7 @@ export function CreateCampaignForm() {
           <Input size="sm" value={messageSw} onChange={(e) => setMessageSw(e.target.value)} />
         </div>
       </div>
-      <Button variant="gold" size="sm" leading={<I.plus s={14} />} loading={pending} onClick={create}>Create campaign</Button>
+      <Button variant="primary" size="sm" leading={<I.plus s={14} />} loading={pending} onClick={create}>Create campaign</Button>
     </div>
   );
 }
@@ -183,7 +183,7 @@ export function CampaignControls({ campaignId, status, queued, smsLive }: { camp
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 flex-1 min-w-0">
                   {row.email && <span className="font-mono text-text-muted truncate">{row.email}</span>}
                   {row.phone && <span className="font-mono text-text-muted">+255 {row.phone}</span>}
-                  {row.amount !== "" && <span className="font-mono text-gold-300">TZS {Number(row.amount).toLocaleString("en-US")}</span>}
+                  {row.amount !== "" && <span className="font-mono text-text">TZS {Number(row.amount).toLocaleString("en-US")}</span>}
                 </div>
                 <button type="button" onClick={() => removeRow(i)} className="text-text-subtle hover:text-no-300 transition-colors shrink-0" aria-label="Remove">
                   <I.x s={14} />
@@ -208,7 +208,7 @@ export function CampaignControls({ campaignId, status, queued, smsLive }: { camp
         <Button variant="aqua-ghost" size="sm" leading={<I.plus s={13} />} loading={pending} onClick={submitRows} disabled={rows.length === 0 || locked}>
           Add {rows.length > 0 ? `${rows.length} ` : ""}to campaign
         </Button>
-        <Button variant="gold" size="sm" leading={<I.megaphone s={13} />} loading={pending} onClick={send} disabled={queued === 0 || locked}>
+        <Button variant="primary" size="sm" leading={<I.megaphone s={13} />} loading={pending} onClick={send} disabled={queued === 0 || locked}>
           Send {queued > 0 ? `(${queued} queued)` : ""}
         </Button>
         {!locked && (

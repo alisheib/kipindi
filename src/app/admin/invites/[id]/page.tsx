@@ -51,8 +51,8 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
         </div>
 
         {!smsLive && queuedPhone > 0 && (
-          <div className="flex items-start gap-2.5 rounded-lg border border-gold-700/60 bg-gold-500/10 px-3.5 py-3 text-[12.5px] text-text-muted">
-            <span className="text-gold-300 shrink-0 mt-0.5"><I.warning s={15} /></span>
+          <div className="flex items-start gap-2.5 rounded-lg border border-warning-fg/40 bg-warning/10 px-3.5 py-3 text-[12.5px] text-text-muted">
+            <span className="text-warning-fg shrink-0 mt-0.5"><I.warning s={15} /></span>
             <span>
               <span className="font-semibold text-text">{queuedPhone} phone {queuedPhone === 1 ? "invite is" : "invites are"} waiting.</span>{" "}
               SMS isn&apos;t live yet, so phone invites stay queued (email invites send normally). They&apos;ll go out automatically once an SMS provider is configured — set <span className="font-mono">SMS_PROVIDER</span>, <span className="font-mono">SMS_API_KEY</span> and <span className="font-mono">SMS_SENDER_ID</span>, then press Send again.
@@ -90,7 +90,7 @@ export default async function AdminCampaignDetailPage({ params }: { params: Prom
                     <tr key={e.id}>
                       <td className="font-mono text-text-muted">{e.contactValue}</td>
                       <td className="text-text-subtle">{e.contactType === "EMAIL" ? "Email" : "Phone"}</td>
-                      <td className="text-right font-mono text-gold-300">{formatTzs(e.bonusAmountTzs)}</td>
+                      <td className="text-right font-mono text-text">{formatTzs(e.bonusAmountTzs)}</td>
                       <td className="font-mono text-text-subtle whitespace-nowrap">{e.sentAt ? formatDateShort(e.sentAt) : "—"}</td>
                       <td><Chip size="sm" variant={ENTRY_CHIP[e.status] ?? "paused"}>{e.status.toLowerCase()}</Chip></td>
                     </tr>

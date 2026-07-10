@@ -59,9 +59,9 @@ export default async function AdminConfigPage() {
               <p className="text-text font-bold">Whole-pool distribution model</p>
               <p>
                 Every stake — YES and NO — joins one pool. At resolution we compute{" "}
-                <code className="font-mono text-gold-300">netPool = grossPool × (1 − tax − commission − reserve − aggregator)</code>,
+                <code className="font-mono text-text">netPool = grossPool × (1 − tax − commission − reserve − aggregator)</code>,
                 then pay each winner{" "}
-                <code className="font-mono text-gold-300">stake × (netPool / winningSidePool)</code>.
+                <code className="font-mono text-text">stake × (netPool / winningSidePool)</code>.
                 Payouts are dynamic and depend on how the pool ends up split.
               </p>
               <p>

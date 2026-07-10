@@ -48,7 +48,7 @@ export function SetEmailForm({ userId }: { userId: string }) {
           <button
             type="button"
             disabled={pending || !email.trim()}
-            className="h-8 px-3 rounded-md border border-gold-700 bg-gold-500/10 font-mono text-[11px] font-bold text-gold-300 hover:bg-gold-500/20 disabled:opacity-40 transition-colors"
+            className="h-8 px-3 rounded-md border border-warning-fg/40 bg-warning/10 font-mono text-[11px] font-bold text-warning-fg hover:bg-warning/20 disabled:opacity-40 transition-colors"
           >
             {pending ? "Saving…" : "Set email"}
           </button>

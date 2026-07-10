@@ -62,7 +62,7 @@ export function AdminSidebarNav({ badges, fallbackKey }: { badges: Record<string
               >
                 <span>{it.label}</span>
                 {badge && (
-                  <span className="bg-gold text-gold-fg font-mono text-micro leading-none" style={{ padding: "1px 5px", borderRadius: 4 }}>
+                  <span className="bg-brand-500 text-white font-mono text-micro leading-none" style={{ padding: "1px 5px", borderRadius: 4 }}>
                     {badge}
                   </span>
                 )}

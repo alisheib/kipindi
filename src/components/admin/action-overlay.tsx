@@ -80,7 +80,7 @@ export function ActionOverlay({ state, onDismiss }: { state: OverlayState; onDis
         {state.phase === "running" && (
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <span className="inline-block h-5 w-5 rounded-full border-2 border-gold-300 border-t-transparent animate-spin shrink-0" />
+              <span className="inline-block h-5 w-5 rounded-full border-2 border-brand-300 border-t-transparent animate-spin shrink-0" />
               <p className="font-display text-[15px] font-semibold text-text">{state.label}</p>
             </div>
             {state.sublabel && (

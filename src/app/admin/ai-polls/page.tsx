@@ -354,7 +354,7 @@ export default async function AdminAIPollsPage({
                         <td className="p-3 font-mono tabular-nums text-right">
                           <span style={{
                             color: p.overallQuality >= 80 ? "var(--yes-300)"
-                              : p.overallQuality >= 50 ? "var(--gold-300)"
+                              : p.overallQuality >= 50 ? "var(--warning-fg)"
                               : "var(--text-tertiary)",
                           }}>
                             {p.overallQuality}%
@@ -363,7 +363,7 @@ export default async function AdminAIPollsPage({
                         <td className="p-3 font-mono tabular-nums text-right">
                           <span style={{
                             color: p.confidence >= 85 ? "var(--yes-300)"
-                              : p.confidence >= 50 ? "var(--gold-300)"
+                              : p.confidence >= 50 ? "var(--warning-fg)"
                               : "var(--text-tertiary)",
                           }}>
                             {p.confidence}

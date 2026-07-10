@@ -14,8 +14,8 @@ import { formatClock, formatDate, formatDateTime } from "@/lib/utils";
 export const metadata = { title: "Admin · Compliance" };
 export const dynamic = "force-dynamic";
 
-const REPORTS: ReadonlyArray<{ id: string; title: string; sub: string; tone: "gold" | "royal" | "danger" | "neutral" }> = [
-  { id: "gbt-monthly",    title: "Monthly report",         sub: "Last 28 days · 12 sheets · signed JSON", tone: "gold" },
+const REPORTS: ReadonlyArray<{ id: string; title: string; sub: string; tone: "warning" | "royal" | "danger" | "neutral" }> = [
+  { id: "gbt-monthly",    title: "Monthly report",         sub: "Last 28 days · 12 sheets · signed JSON", tone: "warning" },
   { id: "tra-tax",        title: "TRA withholding tax",   sub: "Last 28 days · CSV · ready",             tone: "royal" },
   { id: "fiu-sar",        title: "FIU SAR · suspicious",  sub: "7-day rolling · entries pending review", tone: "danger" },
   { id: "iso-audit",      title: "ISO 27001 audit log",   sub: "Last 90 days · CSV",                     tone: "neutral" },
@@ -61,7 +61,7 @@ export default async function AdminCompliancePage({
         actions={
           <Link
             href="/admin/reports"
-            className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border border-gold bg-gold/10 text-gold hover:bg-gold/20 transition-colors"
+            className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border border-brand-500 bg-brand-500/10 text-brand-300 hover:bg-brand-500/20 transition-colors"
           >
             <I.download s={12} /> Generate reports →
           </Link>
@@ -162,14 +162,14 @@ export default async function AdminCompliancePage({
             <p className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">in progress</p>
           </AdminCard>
           <AdminCard title="Limit-increase deferrals" sw="Kuongeza kikomo">
-            <div className="font-mono font-bold text-title-md tabular text-gold">{rg.pendingLimitIncrease}</div>
+            <div className="font-mono font-bold text-title-md tabular text-warning-fg">{rg.pendingLimitIncrease}</div>
             <p className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">pending 24h cool-down</p>
           </AdminCard>
           <AdminCard title="Reality-check engagement" sw="Tahadhari ya hali halisi">
             <AdminStackedBar
               segments={[
                 { flex: Math.max(2, Math.round((continued / rcTotal) * 100)), color: "var(--text-tertiary)", label: continued > 0 ? `${continued}` : undefined },
-                { flex: Math.max(2, Math.round((tookBreak / rcTotal) * 100)), color: "var(--gold)", label: tookBreak > 0 ? `${tookBreak}` : undefined },
+                { flex: Math.max(2, Math.round((tookBreak / rcTotal) * 100)), color: "var(--warning-fg)", label: tookBreak > 0 ? `${tookBreak}` : undefined },
                 { flex: Math.max(2, Math.round((sxd / rcTotal) * 100)), color: "var(--bet-lose)", label: sxd > 0 ? `${sxd}` : undefined },
               ]}
               height={14}
@@ -226,7 +226,7 @@ export default async function AdminCompliancePage({
                 <a key={r.id} href={`/admin/reports#${r.id}`} className="flex items-center gap-3 py-2 border-b border-border-subtle last:border-b-0 hover:bg-bg-overlay -mx-2 px-2 rounded transition-colors">
                   <span className={[
                     "h-7 w-7 rounded-md inline-flex items-center justify-center font-mono text-micro shrink-0",
-                    r.tone === "gold"    ? "bg-gold/15 text-gold" :
+                    r.tone === "warning" ? "bg-warning/15 text-warning" :
                     r.tone === "royal"   ? "bg-royal/15 text-royal" :
                     r.tone === "danger"  ? "bg-danger/15 text-danger" :
                                            "bg-bg-sunken text-text-tertiary",

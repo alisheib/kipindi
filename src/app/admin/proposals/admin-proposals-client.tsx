@@ -311,7 +311,7 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
             <div className="flex items-center gap-1.5">
               {(["all", "review", "approved", "flagged"] as QFilter[]).map((f) => (
                 <button key={f} onClick={() => setQFilter(f)} className="rounded-pill border px-2.5 py-0.5 text-[11px] font-semibold capitalize transition-colors"
-                  style={qFilter === f ? { borderColor: "color-mix(in oklab, var(--gold-500) 40%, transparent)", background: "color-mix(in oklab, var(--gold-500) 14%, transparent)", color: "var(--gold-200)" } : { borderColor: "var(--border)", color: "var(--text-muted)" }}>{f}</button>
+                  style={qFilter === f ? { borderColor: "color-mix(in oklab, var(--brand-500) 40%, transparent)", background: "color-mix(in oklab, var(--brand-500) 14%, transparent)", color: "var(--brand-200)" } : { borderColor: "var(--border)", color: "var(--text-muted)" }}>{f}</button>
               ))}
               <RefreshButton variant="icon" className="!h-7 !w-7" />
             </div>
@@ -342,9 +342,9 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
             const active = q.id === sel?.id;
             return (
               <button key={q.id} onClick={() => { setSelId(q.id); resetReview(); }} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors"
-                style={{ borderBottom: i < shownQueue.length - 1 ? "1px solid var(--border)" : "none", borderLeft: "3px solid " + (active ? "var(--gold-500)" : "transparent"), background: active ? "color-mix(in oklab, var(--gold-500) 8%, transparent)" : "transparent" }}>
+                style={{ borderBottom: i < shownQueue.length - 1 ? "1px solid var(--border)" : "none", borderLeft: "3px solid " + (active ? "var(--brand-500)" : "transparent"), background: active ? "color-mix(in oklab, var(--brand-500) 8%, transparent)" : "transparent" }}>
                 <div className="flex w-[42px] shrink-0 flex-col items-center font-mono">
-                  <span className="text-[14px] font-bold" style={{ color: q.score >= 0 ? "var(--gold-300)" : "var(--claret-300)" }}>{q.score}</span>
+                  <span className="text-[14px] font-bold" style={{ color: q.score >= 0 ? "var(--text)" : "var(--claret-300)" }}>{q.score}</span>
                   <span className="text-[9px] text-text-subtle">net</span>
                 </div>
                 <div className="min-w-0 flex-1">
@@ -382,13 +382,13 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
                 </p>
               )}
               {sel.bonusGrantedTzs > 0 && (
-                <p className="mt-1.5 flex items-center gap-1.5 font-mono text-[10.5px] text-gold-300"><I.coins s={12} />bonus paid · TZS {sel.bonusGrantedTzs.toLocaleString()}</p>
+                <p className="mt-1.5 flex items-center gap-1.5 font-mono text-[10.5px] text-text"><I.coins s={12} />bonus paid · TZS {sel.bonusGrantedTzs.toLocaleString()}</p>
               )}
             </div>
 
             {/* Vote stats — rank only */}
             <div className="flex gap-2.5">
-              {[["Upvotes", sel.up, "var(--gold-300)", I.chevronUp], ["Downvotes", sel.down, "var(--claret-300)", I.chevronDown], ["Score", sel.score, "var(--text)", I.fileText]].map(([l, v, col, Ic]) => {
+              {[["Upvotes", sel.up, "var(--text)", I.chevronUp], ["Downvotes", sel.down, "var(--claret-300)", I.chevronDown], ["Score", sel.score, "var(--text)", I.fileText]].map(([l, v, col, Ic]) => {
                 const Icon = Ic as (typeof I)[keyof typeof I];
                 return (
                   <div key={l as string} className="flex-1 rounded-md bg-bg-overlay p-3">
@@ -426,7 +426,7 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
                   <div className="flex flex-wrap gap-1.5">
                     {CATEGORIES.map((ct) => (
                       <button key={ct} type="button" onClick={() => setECategory(ct)} className="inline-flex h-[30px] items-center gap-1.5 rounded-pill border px-3 text-[12px] font-semibold transition-colors"
-                        style={eCategory === ct ? { borderColor: "color-mix(in oklab, var(--gold-500) 40%, transparent)", background: "color-mix(in oklab, var(--gold-500) 14%, transparent)", color: "var(--gold-200)" } : { borderColor: "var(--border)", color: "var(--text-muted)" }}>
+                        style={eCategory === ct ? { borderColor: "color-mix(in oklab, var(--brand-500) 40%, transparent)", background: "color-mix(in oklab, var(--brand-500) 14%, transparent)", color: "var(--brand-200)" } : { borderColor: "var(--border)", color: "var(--text-muted)" }}>
                         <CategoryIcon category={ct} size={13} />{CATEGORY_LABEL[ct]}
                       </button>
                     ))}
@@ -451,13 +451,13 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
                 )}
                 <div className="flex gap-2">
                   <Button variant="ghost" size="md" onClick={() => setEditing(false)}>Cancel</Button>
-                  <Button variant="gold" size="md" fullWidth disabled={!editValid} loading={pending} leading={<I.check size={15} />} onClick={saveEdit}>Save changes</Button>
+                  <Button variant="primary" size="md" fullWidth disabled={!editValid} loading={pending} leading={<I.check size={15} />} onClick={saveEdit}>Save changes</Button>
                 </div>
               </div>
             ) : approved ? (
               <div className="space-y-2.5">
-                <div className="rounded-md border p-2.5" style={{ borderColor: "color-mix(in oklab, var(--gold-500) 30%, var(--border))", background: "color-mix(in oklab, var(--gold-500) 7%, transparent)" }}>
-                  <p className="flex items-center gap-1.5 text-[11.5px] text-gold-200"><I.checkCircle s={13} />Approved &amp; bonus paid. Publish it live to open the market — no further reward is granted.</p>
+                <div className="rounded-md border p-2.5" style={{ borderColor: "color-mix(in oklab, var(--brand-500) 30%, var(--border))", background: "color-mix(in oklab, var(--brand-500) 7%, transparent)" }}>
+                  <p className="flex items-center gap-1.5 text-[11.5px] text-text"><I.checkCircle s={13} />Approved &amp; bonus paid. Publish it live to open the market — no further reward is granted.</p>
                 </div>
                 <div>
                   <div className="mb-1.5 text-[12px] font-semibold text-text">Source URL · Chanzo</div>
@@ -465,7 +465,7 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
                   <p className="mt-1 text-[10.5px] text-text-subtle">Pre-filled from the proposal · must be on the approved source registry.</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="gold" size="md" loading={pending} leading={<I.arrowRight size={15} />} onClick={goLive}>Publish live · Orodhesha</Button>
+                  <Button variant="primary" size="md" loading={pending} leading={<I.arrowRight size={15} />} onClick={goLive}>Publish live · Orodhesha</Button>
                   <Button variant="ghost" size="md" leading={<I.edit s={15} />} onClick={openEdit}>Edit</Button>
                 </div>
                 <p className="text-[10.5px] text-text-subtle">You decide when it goes to market — publishing is a deliberate step, separate from approval.</p>
@@ -475,7 +475,7 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
             ) : !declining ? (
               <div className="space-y-2.5">
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="gold" size="md" loading={pending} leading={<I.checkCircle size={15} />} onClick={approve}>Approve &amp; pay bonus · Kubali</Button>
+                  <Button variant="primary" size="md" loading={pending} leading={<I.checkCircle size={15} />} onClick={approve}>Approve &amp; pay bonus · Kubali</Button>
                   <Button variant="ghost" size="md" leading={<I.edit s={15} />} onClick={openEdit}>Edit</Button>
                   <Button variant="ghost" size="md" loading={pending} leading={<I.fileText s={15} />} onClick={sendBack}>Request changes</Button>
                   <Button variant="ghost" size="md" leading={<I.xCircle size={15} />} onClick={() => setDeclining(true)} className="!text-claret-300">Decline</Button>
@@ -507,16 +507,16 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
       {/* Config */}
       <div className="overflow-hidden rounded-lg glass-panel">
         <div className="flex items-center gap-3.5 border-b border-border px-4 py-3.5" style={{ background: on ? "transparent" : "color-mix(in oklab, var(--warning-500) 8%, transparent)" }}>
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px]" style={{ background: on ? "color-mix(in oklab, var(--gold-500) 16%, transparent)" : "color-mix(in oklab, var(--warning-500) 20%, transparent)", color: on ? "var(--gold-300)" : "var(--gold-300)" }}>
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px]" style={{ background: on ? "color-mix(in oklab, var(--brand-500) 16%, transparent)" : "color-mix(in oklab, var(--warning-500) 20%, transparent)", color: on ? "var(--brand-300)" : "var(--warning-fg)" }}>
             {on ? <I.trophy s={21} /> : <I.pause s={21} />}
           </span>
           <div className="flex-1">
             <div className="text-[15px] font-bold">Proposals feature · master switch</div>
             <div className="mt-0.5 text-[12px] text-text-muted">{on ? "Live — players can submit and vote on proposals." : "Paused — the board is read-only; no new submissions."}</div>
           </div>
-          <span className="font-mono text-[11px] tracking-[0.1em]" style={{ color: on ? "var(--gold-300)" : "var(--gold-300)" }}>{on ? "ON" : "PAUSED"}</span>
-          <Toggle on={on} gold onClick={() => setC((p) => ({ ...p, enabled: !p.enabled }))} aria-label="Proposals master switch" />
-          <Button variant="gold" size="sm" leading={<I.check s={14} />} loading={pending} onClick={saveConfig}>Save</Button>
+          <span className="font-mono text-[11px] tracking-[0.1em]" style={{ color: on ? "var(--brand-300)" : "var(--warning-fg)" }}>{on ? "ON" : "PAUSED"}</span>
+          <Toggle on={on} onClick={() => setC((p) => ({ ...p, enabled: !p.enabled }))} aria-label="Proposals master switch" />
+          <Button variant="primary" size="sm" leading={<I.check s={14} />} loading={pending} onClick={saveConfig}>Save</Button>
         </div>
         <div className="flex flex-wrap gap-5 p-4">
           <CField label="Approval bonus" hint="Bonus paid to the proposer on approval" prefix="TZS" width={200} value={c.prizeTzs} onChange={(n) => setC((p) => ({ ...p, prizeTzs: n }))} />

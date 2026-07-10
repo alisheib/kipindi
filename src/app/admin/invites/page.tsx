@@ -58,9 +58,9 @@ export default async function AdminInvitesPage() {
                 <tbody>
                   {campaigns.map((c) => (
                     <tr key={c.id}>
-                      <td><Link href={`/admin/invites/${c.id}` as Route} className="font-semibold text-text hover:text-gold-300 transition-colors">{c.name}</Link></td>
+                      <td><Link href={`/admin/invites/${c.id}` as Route} className="font-semibold text-text hover:text-brand-300 transition-colors">{c.name}</Link></td>
                       <td className="font-mono text-text-muted">{c.code}</td>
-                      <td className="text-right font-mono font-semibold text-gold-300">{formatTzs(c.bonusAmountTzs)}</td>
+                      <td className="text-right font-mono font-semibold text-text">{formatTzs(c.bonusAmountTzs)}</td>
                       <td className="text-right font-mono text-text-muted">{c.totalInvites.toLocaleString()}</td>
                       <td className="text-right font-mono text-text-muted">{c.totalRegistered.toLocaleString()}</td>
                       <td className="font-mono text-text-subtle whitespace-nowrap">{formatDateShort(c.createdAt)}</td>

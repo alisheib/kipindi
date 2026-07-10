@@ -118,7 +118,7 @@ export default async function AdminBonusesPage({
                       <tr key={r.id}>
                         <td className="font-mono font-semibold">{r.playerHandle}</td>
                         <td className="text-text-muted">{SOURCE_LABEL[r.source] ?? r.source}</td>
-                        <td className="text-right font-mono font-semibold text-gold-300">{formatTzs(r.amountTzs)}</td>
+                        <td className="text-right font-mono font-semibold text-text">{formatTzs(r.amountTzs)}</td>
                         <td className="min-w-[160px]">
                           <div className="flex items-center gap-2">
                             <div className="h-1.5 flex-1 rounded-pill bg-bg-sunken overflow-hidden">

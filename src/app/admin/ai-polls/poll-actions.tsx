@@ -268,7 +268,7 @@ export function GenerateForm() {
                 onClick={() => setCategory(c.id)}
                 className={`px-3 py-1.5 rounded-pill text-[12px] font-mono uppercase tracking-[0.1em] border transition-colors ${
                   category === c.id
-                    ? "border-gold bg-gold/10 text-gold-300"
+                    ? "border-brand-500 bg-brand-500/10 text-brand-300"
                     : "border-border bg-bg-overlay text-text-muted hover:border-text-subtle"
                 }`}
               >
@@ -376,7 +376,7 @@ export function GenerateForm() {
               type="button"
               onClick={generate}
               disabled={pending || active}
-              className="btn btn-gold btn-sm rounded-pill min-w-[160px]"
+              className="btn btn-primary btn-sm rounded-pill min-w-[160px]"
             >
               {controlled ? "Generate controlled poll" : "Generate poll"}
             </button>
@@ -395,7 +395,7 @@ export function GenerateForm() {
               /* ── In-progress ── */
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <span className="inline-block h-5 w-5 rounded-full border-2 border-gold-300 border-t-transparent animate-spin shrink-0" />
+                  <span className="inline-block h-5 w-5 rounded-full border-2 border-brand-300 border-t-transparent animate-spin shrink-0" />
                   <p className="font-display text-[15px] font-semibold text-text">Generating poll</p>
                 </div>
                 {/* Progress bar */}
@@ -405,7 +405,7 @@ export function GenerateForm() {
                       className="h-full rounded-pill transition-all duration-700 ease-out"
                       style={{
                         width: `${PHASE_PROGRESS[phase]}%`,
-                        background: "linear-gradient(90deg, var(--gold-500), var(--gold-400))",
+                        background: "linear-gradient(90deg, var(--brand-500), var(--brand-400))",
                       }}
                     />
                   </div>
@@ -468,7 +468,7 @@ export function GenerateForm() {
                   <button type="button" onClick={dismiss} className="btn btn-ghost btn-sm rounded-pill flex-1">
                     Dismiss
                   </button>
-                  <button type="button" onClick={() => { dismiss(); generate(); }} className="btn btn-gold btn-sm rounded-pill flex-1">
+                  <button type="button" onClick={() => { dismiss(); generate(); }} className="btn btn-primary btn-sm rounded-pill flex-1">
                     Generate another
                   </button>
                 </div>
@@ -611,14 +611,14 @@ export function BatchGenerateForm({ maxBatch, remaining }: { maxBatch: number; r
             {phase === "running" ? (
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <span className="inline-block h-5 w-5 rounded-full border-2 border-gold-300 border-t-transparent animate-spin shrink-0" />
+                  <span className="inline-block h-5 w-5 rounded-full border-2 border-brand-300 border-t-transparent animate-spin shrink-0" />
                   <p className="font-display text-[15px] font-semibold text-text">Generating {total} poll{total !== 1 ? "s" : ""}</p>
                 </div>
                 <div className="space-y-2">
                   <div className="h-2 w-full rounded-pill bg-bg-overlay overflow-hidden">
                     <div
                       className="h-full rounded-pill transition-all duration-300 ease-out"
-                      style={{ width: `${pct}%`, background: "linear-gradient(90deg, var(--gold-500), var(--gold-400))" }}
+                      style={{ width: `${pct}%`, background: "linear-gradient(90deg, var(--brand-500), var(--brand-400))" }}
                     />
                   </div>
                   <p className="font-mono text-[11px] text-text-subtle tabular-nums">
@@ -773,7 +773,7 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
         </div>
       </div>
 
-      <button type="button" onClick={() => save()} disabled={pending} className="btn btn-gold btn-sm rounded-pill min-w-[140px]">
+      <button type="button" onClick={() => save()} disabled={pending} className="btn btn-primary btn-sm rounded-pill min-w-[140px]">
         {pending ? "Saving…" : "Save settings"}
       </button>
     </div>
@@ -784,7 +784,7 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
 
 export function QualityBadges({ indicators, overall }: { indicators: QualityIndicator[]; overall: number }) {
   const statusColor = (s: "good" | "warning" | "bad") =>
-    s === "good" ? "var(--yes-300)" : s === "warning" ? "var(--gold-300)" : "var(--claret-300)";
+    s === "good" ? "var(--yes-300)" : s === "warning" ? "var(--warning-fg)" : "var(--claret-300)";
 
   return (
     <div className="space-y-1.5">
@@ -795,7 +795,7 @@ export function QualityBadges({ indicators, overall }: { indicators: QualityIndi
         </span>
         <span
           className="font-mono text-[13px] font-bold tabular-nums"
-          style={{ color: overall >= 80 ? "var(--yes-300)" : overall >= 50 ? "var(--gold-300)" : "var(--claret-300)" }}
+          style={{ color: overall >= 80 ? "var(--yes-300)" : overall >= 50 ? "var(--warning-fg)" : "var(--claret-300)" }}
         >
           {overall}%
         </span>
@@ -920,7 +920,7 @@ export function ReviewActions({ poll }: { poll: StoredAIPoll }) {
 
   return (
     <div className="flex flex-col gap-2 min-w-[160px]">
-      <button onClick={approve} disabled={pending} className="btn btn-gold btn-sm rounded-pill">
+      <button onClick={approve} disabled={pending} className="btn btn-primary btn-sm rounded-pill">
         {pending ? "Processing…" : "Approve"}
       </button>
       <button onClick={() => setShowEdit((v) => !v)} disabled={pending} className="btn btn-ghost btn-sm rounded-pill">
@@ -965,7 +965,7 @@ export function PublishActions({ poll }: { poll: StoredAIPoll }) {
 
   return (
     <>
-      <button onClick={publish} disabled={pending} className="btn btn-gold btn-sm rounded-pill min-w-[120px]">
+      <button onClick={publish} disabled={pending} className="btn btn-primary btn-sm rounded-pill min-w-[120px]">
         {pending ? "Publishing…" : "Publish as market"}
       </button>
       <ActionOverlay state={overlay.state} onDismiss={overlay.dismiss} />
@@ -1369,7 +1369,7 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
         {dateError && <p className="mt-1 text-[11px] text-no-300">{dateError}</p>}
       </div>
       <div className="flex flex-col gap-2 pt-1">
-        <button type="button" onClick={submit} disabled={pending} className="btn btn-gold btn-md w-full">
+        <button type="button" onClick={submit} disabled={pending} className="btn btn-primary btn-md w-full">
           {pending ? "Saving…" : "Save & re-validate"}
         </button>
         <button type="button" onClick={onClose} className="btn btn-ghost btn-sm w-full">Cancel</button>

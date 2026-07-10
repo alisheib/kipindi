@@ -38,9 +38,9 @@ export default async function AdminTotpVerifyPage({ searchParams }: { searchPara
     <main className="mx-auto grid min-h-[calc(100vh-44px)] place-items-center px-3 py-6">
       <div className="w-full max-w-md space-y-4">
         <header className="text-center space-y-1.5">
-          <div className="inline-flex items-center gap-2 px-3 h-7 rounded-pill border border-gold-700 bg-gold-500/10">
-            <span className="h-1.5 w-1.5 rounded-pill bg-gold-300" />
-            <span className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-gold-300">
+          <div className="inline-flex items-center gap-2 px-3 h-7 rounded-pill border border-brand-500 bg-brand-500/10">
+            <span className="h-1.5 w-1.5 rounded-pill bg-brand-300" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-brand-300">
               Step 2 of 2 · Authenticator
             </span>
           </div>
@@ -51,14 +51,14 @@ export default async function AdminTotpVerifyPage({ searchParams }: { searchPara
         </header>
 
         <section
-          className="relative overflow-hidden rounded-xl border border-gold-700 bg-bg-elevated p-5 lg:p-6 space-y-4"
-          style={{ boxShadow: "0 0 0 1px color-mix(in oklab, var(--gilt) 30%, transparent) inset" }}
+          className="relative overflow-hidden rounded-xl border border-brand-500 bg-bg-elevated p-5 lg:p-6 space-y-4"
+          style={{ boxShadow: "0 0 0 1px color-mix(in oklab, var(--brand-500) 30%, transparent) inset" }}
         >
           <div className="absolute -right-6 -top-6 opacity-[0.06]" aria-hidden>
             <FiftyMark size={140} />
           </div>
           <div className="relative flex items-start gap-2.5">
-            <I.keyRound size={16} className="text-gold-300 shrink-0 mt-0.5" />
+            <I.keyRound size={16} className="text-brand-300 shrink-0 mt-0.5" />
             <div className="text-[12.5px] text-text-muted">
               <p className="font-display font-semibold text-text">Open your authenticator app</p>
               <p>Codes refresh every 30 seconds. Enter the current 6-digit code to complete admin sign-in.</p>

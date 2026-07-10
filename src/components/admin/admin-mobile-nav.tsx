@@ -67,7 +67,7 @@ export function AdminMobileNavTrigger({ groups, badges, activeKey }: { groups: R
                       >
                         <span>{it.label}</span>
                         {badge && (
-                          <span className="bg-gold text-gold-fg font-mono text-micro px-1.5 py-0.5 rounded-sm leading-none">
+                          <span className="bg-brand-500 text-white font-mono text-micro px-1.5 py-0.5 rounded-sm leading-none">
                             {badge}
                           </span>
                         )}

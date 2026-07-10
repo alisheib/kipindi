@@ -120,7 +120,7 @@ export function BonusAdminClient({ config }: { config: BonusConfig }) {
           className="grid h-11 w-11 shrink-0 place-items-center rounded-[11px]"
           style={{
             background: on ? "color-mix(in oklab, var(--royal-500) 18%, transparent)" : "color-mix(in oklab, var(--warning-500) 20%, transparent)",
-            color: on ? "var(--royal-300)" : "var(--gold-300)",
+            color: on ? "var(--royal-300)" : "var(--warning-fg)",
           }}
         >
           {on ? <I.gift size={23} /> : <I.pause s={23} />}
@@ -135,8 +135,8 @@ export function BonusAdminClient({ config }: { config: BonusConfig }) {
               : "Paused — no new bonus grants from any source. Existing bonuses keep running."}
           </div>
         </div>
-        <Toggle on={on} gold onClick={() => setC((p) => ({ ...p, enabled: !p.enabled }))} aria-label="Bonus program master switch" />
-        <Button variant="gold" size="sm" leading={<I.check s={14} />} loading={pending} onClick={save}>Save</Button>
+        <Toggle on={on} onClick={() => setC((p) => ({ ...p, enabled: !p.enabled }))} aria-label="Bonus program master switch" />
+        <Button variant="primary" size="sm" leading={<I.check s={14} />} loading={pending} onClick={save}>Save</Button>
       </div>
 
       {/* Defaults */}
@@ -249,7 +249,7 @@ export function GrantBonusForm() {
           <Input size="sm" placeholder="e.g. retention gift" value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
       </div>
-      <Button variant="gold" size="sm" leading={<I.plus s={14} />} loading={pending} onClick={grant}>Grant bonus</Button>
+      <Button variant="primary" size="sm" leading={<I.plus s={14} />} loading={pending} onClick={grant}>Grant bonus</Button>
     </div>
   );
 }

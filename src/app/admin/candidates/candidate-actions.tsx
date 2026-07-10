@@ -84,7 +84,7 @@ export function CandidateActions({ id, mode }: { id: string; mode: "review" | "p
           type="button"
           onClick={publish}
           disabled={pending}
-          className="btn btn-gold btn-sm rounded-pill min-w-[120px]"
+          className="btn btn-primary btn-sm rounded-pill min-w-[120px]"
         >
           {pending ? "Publishing…" : "Publish"}
         </button>
@@ -99,7 +99,7 @@ export function CandidateActions({ id, mode }: { id: string; mode: "review" | "p
         type="button"
         onClick={approve}
         disabled={pending}
-        className="btn btn-gold btn-sm rounded-pill"
+        className="btn btn-primary btn-sm rounded-pill"
       >
         {pending ? "Processing…" : "Approve"}
       </button>

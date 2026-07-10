@@ -104,7 +104,7 @@ export function KycReviewControls({ userId, status }: { userId: string; status: 
   if (mode !== "idle") {
     const rejecting = mode === "rejecting";
     return (
-      <><div className={`space-y-2 rounded-lg border p-3 ${rejecting ? "border-no-700/50 bg-no-500/[0.06]" : "border-gold-700/50 bg-gold-500/[0.06]"}`}>
+      <><div className={`space-y-2 rounded-lg border p-3 ${rejecting ? "border-no-700/50 bg-no-500/[0.06]" : "border-warning/50 bg-warning/[0.06]"}`}>
         <label className="block font-mono text-micro tracking-[0.12em] uppercase text-text-secondary">
           {rejecting ? "Rejection reason (sent to the player)" : "What do you need? (sent to the player)"}
         </label>
@@ -143,7 +143,7 @@ export function KycReviewControls({ userId, status }: { userId: string; status: 
               </div>
             ))}
             <button type="button" onClick={() => setDocReqs((prev) => [...prev, ""])}
-              className="inline-flex items-center gap-1.5 font-mono text-micro tracking-[0.08em] uppercase text-gold-300 hover:text-gold-200">
+              className="inline-flex items-center gap-1.5 font-mono text-micro tracking-[0.08em] uppercase text-brand-300 hover:text-brand-200">
               <I.plus s={14} /> Add a document request
             </button>
           </div>
@@ -154,7 +154,7 @@ export function KycReviewControls({ userId, status }: { userId: string; status: 
             type="button"
             onClick={rejecting ? reject : requestInfo}
             disabled={pending}
-            className={`btn ${rejecting ? "btn-no" : "btn-gold"} btn-md w-full sm:w-auto inline-flex items-center justify-center gap-1.5`}
+            className={`btn ${rejecting ? "btn-no" : "btn-primary"} btn-md w-full sm:w-auto inline-flex items-center justify-center gap-1.5`}
             style={{ borderRadius: 999 }}
           >
             {pending ? <Spinner size={15} /> : rejecting ? <I.x s={15} /> : <I.alertCircle s={15} />}
@@ -182,7 +182,7 @@ export function KycReviewControls({ userId, status }: { userId: string; status: 
     <>
       <div className="grid grid-cols-1 sm:flex sm:flex-wrap sm:items-center gap-2.5">
         <ConfirmDialog
-          tone="gold"
+          tone="warning"
           title="Approve verification · Idhinisha"
           body="Approve this identity verification? The player will be notified and (if gated by KYC) unlocked."
           confirmLabel="Yes, approve"
@@ -195,7 +195,7 @@ export function KycReviewControls({ userId, status }: { userId: string; status: 
           }
         />
         <button type="button" onClick={() => setMode("requesting")} disabled={pending}
-          className="btn btn-gold btn-md w-full sm:w-auto inline-flex items-center justify-center gap-1.5" style={{ borderRadius: 999 }}>
+          className="btn btn-primary btn-md w-full sm:w-auto inline-flex items-center justify-center gap-1.5" style={{ borderRadius: 999 }}>
           <I.alertCircle s={15} /> Request info…
         </button>
         <button type="button" onClick={() => setMode("rejecting")} disabled={pending}

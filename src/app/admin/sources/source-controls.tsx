@@ -127,7 +127,7 @@ export function AddSourceForm() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="btn btn-gold btn-sm"
+        className="btn btn-primary btn-sm"
       >
         + Add source
       </button>
@@ -157,7 +157,7 @@ export function AddSourceForm() {
         </label>
       </div>
       <div className="flex gap-2">
-        <button type="submit" disabled={pending} className="btn btn-gold btn-md">
+        <button type="submit" disabled={pending} className="btn btn-primary btn-md">
           {pending ? "Adding…" : "Add source"}
         </button>
         <button type="button" onClick={() => setOpen(false)} className="btn btn-ghost btn-md">

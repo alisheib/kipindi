@@ -81,7 +81,7 @@ export function PollFilterToolbar({ totalFiltered, totalAll }: { totalFiltered: 
         <button
           type="button"
           onClick={() => push({ q: search })}
-          className="btn btn-gold btn-sm rounded-pill min-w-[80px] h-8"
+          className="btn btn-primary btn-sm rounded-pill min-w-[80px] h-8"
         >
           Search
         </button>
@@ -112,7 +112,7 @@ export function PollFilterToolbar({ totalFiltered, totalAll }: { totalFiltered: 
               onClick={() => push({ date: d.id })}
               className={`px-2.5 py-1 rounded-pill text-[10.5px] font-mono uppercase tracking-[0.08em] border transition-colors ${
                 currentDate === d.id
-                  ? "border-gold bg-gold/10 text-gold-300 font-bold"
+                  ? "border-brand-500 bg-brand-500/10 text-brand-300 font-bold"
                   : "border-border bg-bg-overlay text-text-muted hover:border-text-subtle"
               }`}
             >
@@ -152,7 +152,7 @@ export function PollFilterToolbar({ totalFiltered, totalAll }: { totalFiltered: 
             onClick={() => push({ category: c.id })}
             className={`px-2.5 py-1 rounded-pill text-[10.5px] font-mono uppercase tracking-[0.08em] border transition-colors ${
               currentCategory === c.id
-                ? "border-gold bg-gold/10 text-gold-300 font-bold"
+                ? "border-brand-500 bg-brand-500/10 text-brand-300 font-bold"
                 : "border-border bg-bg-overlay text-text-muted hover:border-text-subtle"
             }`}
           >

@@ -142,7 +142,7 @@ export function AffiliateAdminClient({ config }: { config: AffiliateConfig }) {
           className="grid h-11 w-11 shrink-0 place-items-center rounded-[11px]"
           style={{
             background: on ? "color-mix(in oklab, var(--royal-500) 18%, transparent)" : "color-mix(in oklab, var(--warning-500) 20%, transparent)",
-            color: on ? "var(--royal-300)" : "var(--gold-300)",
+            color: on ? "var(--royal-300)" : "var(--warning-fg)",
           }}
         >
           {on ? <I.megaphone size={23} /> : <I.pause s={23} />}
@@ -157,8 +157,8 @@ export function AffiliateAdminClient({ config }: { config: AffiliateConfig }) {
               : "Paused — links still resolve, but no new rewards accrue. Players see a paused banner."}
           </div>
         </div>
-        <Toggle on={on} gold onClick={() => setMaster(!on)} aria-label="Program master switch" />
-        <Button variant="gold" size="sm" leading={<I.check s={14} />} loading={pending} onClick={save}>
+        <Toggle on={on} onClick={() => setMaster(!on)} aria-label="Program master switch" />
+        <Button variant="primary" size="sm" leading={<I.check s={14} />} loading={pending} onClick={save}>
           Save
         </Button>
       </div>
