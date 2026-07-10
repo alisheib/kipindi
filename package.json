@@ -51,6 +51,7 @@
     "test:proposals": "tsx scripts/proposal-approval-bonus.test.mts",
     "test:proposal-close": "tsx scripts/proposal-selection-close.test.mts",
     "test:kyc": "tsx scripts/kyc-review.test.mts && tsx scripts/kyc-submit-notify.test.mts && tsx scripts/kyc-flow-stress.test.mts && tsx scripts/kyc-security.test.mts",
+    "test:all": "node scripts/test-all.mjs",
     "backfill:zh": "tsx scripts/backfill-zh-titles.mts",
     "qa:live": "node scripts/pre-deploy-live-check.mjs",
     "qa:cards": "node scripts/marketing-invite-stress.mjs",
