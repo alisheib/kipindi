@@ -21,6 +21,7 @@
     "test:cashback": "tsx scripts/deposit-cashback.test.mts",
     "test:email-stress": "tsx scripts/email-stress.test.mts",
     "test:cashout": "tsx scripts/cashout-fee.test.mts",
+    "test:money-invariants": "tsx scripts/money-invariants.test.mts",
     "test:emergency": "tsx scripts/emergency-void.test.mts",
     "test:markets": "tsx scripts/market-resolution-notify.test.mts",
     "test:selection-closed": "tsx scripts/selection-closed-notify.test.mts",
