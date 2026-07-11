@@ -247,6 +247,16 @@ if (LOCAL) {
     ok(`?side=YES -> cannot place NO (locked)`, (await page.getByRole("button", { name: /Place NO/ }).count()) === 0);
     ok(`"Your pick" indicator shown`, (await page.locator("body").innerText()).toLowerCase().includes("your pick"));
     ok(`no in-dial switch control (display-only)`, (await page.getByRole("button", { name: /Switch to (YES|NO)|Backing/ }).count()) === 0);
+    // Drag-lock: the dial defaults to LOCKED so an accidental brush can't move a
+    // set stake; exact entry via the type input must still work while locked.
+    const lockToggle = page.locator('[data-testid="dial-lock-toggle"]');
+    ok(`dial defaults to LOCKED (drag disabled)`, (await lockToggle.getAttribute("aria-pressed")) === "false", String(await lockToggle.getAttribute("aria-pressed")));
+    const stakeBox = page.locator('input[inputmode="numeric"]').first();
+    await stakeBox.click(); await stakeBox.fill("3000"); await stakeBox.press("Enter"); await page.waitForTimeout(150);
+    ok(`locked dial: exact stake still typeable (3,000)`, (await stakeBox.inputValue()).replace(/\D/g, "") === "3000", await stakeBox.inputValue());
+    ok(`typing did not arm the dial (still locked)`, (await lockToggle.getAttribute("aria-pressed")) === "false");
+    await lockToggle.click(); await page.waitForTimeout(120);
+    ok(`lock toggle arms the dial (drag enabled)`, (await lockToggle.getAttribute("aria-pressed")) === "true");
     const slider = page.getByRole("slider"); await slider.focus();
     for (let i = 0; i < 12; i++) await page.keyboard.press("ArrowRight");
     await page.waitForTimeout(150);

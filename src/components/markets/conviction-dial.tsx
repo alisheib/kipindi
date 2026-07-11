@@ -165,6 +165,15 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
   const [pos, setPos] = useState(initial);
   const [dragging, setDragging] = useState(false);
   const [hover, setHover] = useState(false);
+  // Drag-lock ("armed"). The dial SLIDER (drag + keyboard nudge) is inert until
+  // the player explicitly activates it — a tap on the track or the lock toggle
+  // arms it. This stops an accidental brush from nudging a carefully-set stake.
+  // The exact-value TYPE inputs below stay live at ALL times, so a precise
+  // amount can always be entered without the slider interfering. Default LOCKED
+  // on every mount, so leaving the page and returning re-locks (safe default).
+  // Locking never touches pos/side, so the current YES/NO pick + stake survive
+  // a lock→unlock round-trip unchanged.
+  const [armed, setArmed] = useState(false);
   // One-time coach hint ("drag to set stake") — shown until the player first
   // touches the dial, then dismissed forever (localStorage). Kit B1 affordance.
   const [showCoach, setShowCoach] = useState(false);
@@ -587,7 +596,31 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
     };
   }, [dragging, setFromClientX]);
 
+  // Activate the slider (unlock the drag). No value change — arming must never
+  // move the knob, or a stray touch would defeat the whole point of the lock.
+  const armDial = useCallback(() => setArmed(true), []);
+  // Toggle the lock. Locking mid-drag cancels the in-flight gesture cleanly:
+  // clearing `dragging` tears down the pointermove/up listeners (the drag
+  // effect is keyed on it) and we reset the drag-mode ref so no state lingers.
+  const toggleLock = () => {
+    setArmed((a) => {
+      const next = !a;
+      if (!next) {
+        setDragging(false);
+        dragModeRef.current = { kind: "idle" };
+      }
+      return next;
+    });
+  };
+
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // Locked: the first press ARMS the slider (no jump, no drag) so an
+    // accidental brush can't move the stake. The player presses again to drag.
+    if (!armed) {
+      e.preventDefault();
+      armDial();
+      return;
+    }
     // Prevent default FIRST — stops mobile browsers from initiating
     // scroll, pull-to-refresh, or long-press menus that compete with
     // the drag gesture. Must fire before any state updates.
@@ -625,6 +658,16 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // Locked: Enter/Space still confirms (the stake may already be set via the
+    // type inputs); any adjustment key arms the slider instead of moving it.
+    if (!armed) {
+      if (e.key === " " || e.key === "Enter") { e.preventDefault(); openConfirm(); return; }
+      if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"].includes(e.key)) {
+        e.preventDefault();
+        armDial();
+      }
+      return;
+    }
     // Any slider-driven movement clears BOTH typed-exact locks (the player has
     // shifted back to "slide to a vibe" mode) and dismisses the coach hint.
     // Keyboard steps are deliberate/discrete, so the 50× drag-gate doesn't
@@ -829,7 +872,28 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
   const ariaValue = Math.round(pos * 100);
 
   return (
-    <div className="rounded-xl border border-border bg-bg-elevated p-5 lg:p-6 select-none">
+    <div className="relative rounded-xl border border-border bg-bg-elevated p-5 lg:p-6 select-none">
+      {/* Slider lock toggle. Locked (default) = the drag is inert so a stray
+          touch can't move the stake; the type inputs below stay live for exact
+          entry. Tap to activate the drag; tap again to re-lock. Purely additive
+          — the dial itself is unchanged. Hidden once the market is closed. */}
+      {!closedNow && (
+        <button
+          type="button"
+          onClick={toggleLock}
+          aria-pressed={armed}
+          aria-label={armed ? t.market.lockDialAria : t.market.unlockDialAria}
+          title={armed ? t.market.lockDialAria : t.market.unlockDialAria}
+          data-testid="dial-lock-toggle"
+          className="absolute right-3 top-3 z-20 inline-flex items-center gap-1 rounded-pill border px-2 py-[3px] font-mono text-[9px] font-bold uppercase tracking-[0.12em] transition-colors"
+          style={armed
+            ? { borderColor: "var(--brand-500)", color: "var(--brand-300)", background: "color-mix(in oklab, var(--brand-500) 14%, transparent)" }
+            : { borderColor: "var(--border)", color: "var(--text-subtle)", background: "var(--bg-inset)" }}
+        >
+          {armed ? <I.unlock s={11} /> : <I.lock s={11} />}
+          {armed ? t.market.dialActive : t.market.dialLocked}
+        </button>
+      )}
       {lock ? (
         /* Locked mode — DISPLAY-ONLY side indicators (not clickable). The side
            was chosen on the market card and is final here: the backed side
@@ -909,11 +973,14 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
         onPointerLeave={closedNow ? undefined : () => setHover(false)}
         // Focus indicator is the brand-400 ring drawn ON the grab-pip (kit B1),
         // revealed by `.dial-track:focus-visible .dial-focus-ring`, not a rect.
+        data-armed={armed}
         className={`dial-track relative w-full overflow-hidden focus-visible:outline-none rounded-md touch-none transition-opacity ${closedNow ? "opacity-40" : ""}`}
-        style={{ height, cursor: closedNow ? "not-allowed" : (dragging ? "grabbing" : "grab") }}
+        style={{ height, cursor: closedNow ? "not-allowed" : (!armed ? "pointer" : (dragging ? "grabbing" : "grab")) }}
       >
-        {/* One-time coach hint — a nudging pill above the knob until first touch. */}
-        {showCoach && !closedNow && (
+        {/* One-time coach hint — a nudging pill above the knob. Only once the
+            slider is armed (a locked dial isn't draggable, so the "drag" nudge
+            would mislead). */}
+        {showCoach && !closedNow && armed && (
           <div className="dial-coach pointer-events-none absolute left-1/2 top-1.5 z-10 flex items-center gap-1.5 rounded-pill border border-brand-500/40 bg-bg-overlay px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-brand-300">
             <I.dragHandle s={11} />
             {t.market.dragToSetStake}
