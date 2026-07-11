@@ -131,8 +131,8 @@ export default async function LandingPage() {
               >
                 wisdom
               </span>{" "}
-              of <span style={{ color: "oklch(80% 0.18 152)" }}>YES</span> &{" "}
-              <span style={{ color: "oklch(80% 0.20 22)" }}>NO</span>.
+              of <span style={{ color: "var(--hero-yes-accent)" }}>YES</span> &{" "}
+              <span style={{ color: "var(--hero-no-accent)" }}>NO</span>.
             </h1>
 
             <div className="flex items-center gap-3">
