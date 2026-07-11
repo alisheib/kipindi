@@ -6,6 +6,7 @@ import { I } from "@/components/ui/glyphs";
 import { PageHeader } from "@/components/ui/page-header";
 import { FiftyMark } from "@/components/brand";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Tabs } from "@/components/ui/tabs";
 import { Pagination } from "@/components/ui/pagination";
 import type { Transaction } from "@/lib/ui-stubs";
 import { Cash } from "@/components/ui/cash";
@@ -348,10 +349,10 @@ export function WalletPageClient({
   const safePage = Math.min(page, pageCount - 1);
   const pagedTxns = transactions.slice(safePage * TXNS_PER_PAGE, safePage * TXNS_PER_PAGE + TXNS_PER_PAGE);
 
-  const tabs: { v: TabValue; label: string }[] = [
-    { v: "activity", label: t.common.activity },
-    { v: "methods",  label: t.common.methods },
-    { v: "limits",   label: t.common.limits },
+  const tabs = [
+    { value: "activity", labelEn: t.common.activity },
+    { value: "methods",  labelEn: t.common.methods },
+    { value: "limits",   labelEn: t.common.limits },
   ];
 
   // Derived from the server validators (via props) — never a hand-typed literal.
@@ -392,29 +393,15 @@ export function WalletPageClient({
 
       {cashbackPercent > 0 && <CashbackPromo percent={cashbackPercent} mode={cashbackMode} />}
 
-      {/* Kit tabs — line variant rebuilt inline so we don't pull the legacy Tabs component. */}
-      <nav role="tablist" aria-label={t.common.walletLabel} className="flex items-center gap-1 border-b border-border">
-        {tabs.map((tb) => {
-          const active = tab === tb.v;
-          return (
-            <button
-              key={tb.v}
-              type="button"
-              role="tab"
-              aria-selected={active ? "true" : "false"}
-              onClick={() => setTab(tb.v)}
-              className={`relative h-9 px-3.5 font-display text-[13px] font-semibold transition-colors ${
-                active ? "text-text" : "text-text-subtle hover:text-text-muted"
-              }`}
-            >
-              {tb.label}
-              {active && (
-                <span aria-hidden className="absolute left-2 right-2 -bottom-px h-[2px] rounded-pill bg-gold-500" />
-              )}
-            </button>
-          );
-        })}
-      </nav>
+      {/* Kit line tabs — the shared primitive (brand underline, gold-disciplined:
+          wallet section tabs are navigation, not earned money). */}
+      <Tabs
+        variant="line"
+        tabs={tabs}
+        value={tab}
+        onChange={(v) => setTab(v as TabValue)}
+        ariaLabel={t.common.walletLabel}
+      />
 
       {tab === "activity" && (
         transactions.length > 0 ? (

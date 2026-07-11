@@ -24,17 +24,20 @@ export function Tabs({
   onChange,
   variant = "line",
   className,
+  ariaLabel,
 }: {
   tabs: TabItem[];
   value: string;
   onChange: (v: string) => void;
   variant?: Variant;
   className?: string;
+  ariaLabel?: string;
 }) {
   if (variant === "segmented") {
     return (
       <div
         role="tablist"
+        aria-label={ariaLabel}
         className={cn(
           "inline-flex items-center gap-0.5 rounded-lg bg-bg-inset p-1 border border-border",
           className,
@@ -70,7 +73,7 @@ export function Tabs({
 
   if (variant === "pill") {
     return (
-      <div role="tablist" className={cn("flex flex-wrap gap-1.5", className)}>
+      <div role="tablist" aria-label={ariaLabel} className={cn("flex flex-wrap gap-1.5", className)}>
         {tabs.map((t) => {
           const active = value === t.value;
           return (
@@ -98,7 +101,7 @@ export function Tabs({
 
   // line
   return (
-    <div role="tablist" className={cn("flex items-end gap-1 border-b border-border overflow-x-auto", className)}>
+    <div role="tablist" aria-label={ariaLabel} className={cn("flex items-end gap-1 border-b border-border overflow-x-auto", className)}>
       {tabs.map((t) => {
         const active = value === t.value;
         return (
