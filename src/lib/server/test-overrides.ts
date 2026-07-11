@@ -44,12 +44,33 @@ export async function getTestOverrides(): Promise<TestOverrides> {
 }
 
 export async function getConflictedResolutionAllowed(): Promise<boolean> {
+  // Hard rule: the officer-conflict / self-countersign bypass can NEVER be
+  // active in production — not even if a stored flag or leaked env says so.
+  // POCA §16 / GBT licensing forbid an officer resolving a market they hold a
+  // position in, or countersigning their own Stage-1. This is a TESTING-only
+  // relaxation. Mirrors the ADMIN_TEST_DEPOSITS prod-lock in wallet-service.
+  if (process.env.NODE_ENV === "production") return false;
   await ensureHydrated();
   return store.allowConflictedResolution;
 }
 
 export async function setConflictedResolutionAllowed(enabled: boolean, officerId: string): Promise<boolean> {
   await ensureHydrated();
+  // Prod-lock: refuse to persist an ON state in production. The getter already
+  // returns false in prod regardless of the stored value, but we also block the
+  // toggle so the UI can never show a misleading "enabled" state — and we audit
+  // the blocked attempt for the compliance trail.
+  if (enabled && process.env.NODE_ENV === "production") {
+    audit({
+      category: "COMPLIANCE",
+      action: "test.conflicted_resolution.blocked_in_prod",
+      actorId: officerId,
+      targetType: "SystemFlag",
+      targetId: "allowConflictedResolution",
+      payload: { enabled: false, note: "Attempt to enable the officer-conflict bypass in production was refused (POCA §16 / GBT). The override is testing-only." },
+    });
+    return false;
+  }
   store.allowConflictedResolution = enabled;
   void saveConfig(KEY, { ...store });
   audit({
