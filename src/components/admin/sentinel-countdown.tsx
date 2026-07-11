@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { I } from "@/components/ui/glyphs";
 import {
   getSentinelStatusAction,
@@ -9,6 +10,18 @@ import {
   pauseSentinelAction,
   resumeSentinelAction,
 } from "@/app/admin/ai-usage/actions";
+
+// Sweep progress phases — a simulated advance while the single server sweep runs
+// (mirrors the poll-generation overlay), so the operator SEES it running and
+// finishing. The real burst result (resolved / checked) fills the final card.
+type SweepPhase = "idle" | "scanning" | "triaging" | "resolving" | "done";
+const SWEEP_PROGRESS: Record<Exclude<SweepPhase, "idle">, number> = { scanning: 22, triaging: 58, resolving: 88, done: 100 };
+const SWEEP_LABELS: Record<Exclude<SweepPhase, "idle">, string> = {
+  scanning: "Scanning live markets…",
+  triaging: "AI triaging candidates…",
+  resolving: "Resolving settled markets…",
+  done: "Done",
+};
 
 type Status = {
   enabled: boolean;
@@ -52,7 +65,17 @@ export function SentinelCountdown() {
   const [open, setOpen] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [mounted, setMounted] = useState(false);
+  const [sweepPhase, setSweepPhase] = useState<SweepPhase>("idle");
+  const [sweepResult, setSweepResult] = useState<
+    | { ok: true; closed: number; errors: number; total: number }
+    | { ok: false; error: string }
+    | null
+  >(null);
+  const sweepTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const boxRef = useRef<HTMLDivElement>(null);
+  const clearSweepTimers = () => { sweepTimers.current.forEach(clearTimeout); sweepTimers.current = []; };
+  const dismissSweep = () => { clearSweepTimers(); setSweepPhase("idle"); setSweepResult(null); };
   // server clock − client clock, captured at each fetch. The countdown is driven
   // by server time, so it stays correct even if the admin's device clock is wrong
   // or changes (DST, manual change, timezone switch). All values are epoch-ms UTC.
@@ -63,11 +86,12 @@ export function SentinelCountdown() {
   };
 
   useEffect(() => {
+    setMounted(true);
     refresh();
     setNow(Date.now());
     const tick = setInterval(() => setNow(Date.now()), 1000);
     const sync = setInterval(refresh, 60_000);
-    return () => { clearInterval(tick); clearInterval(sync); };
+    return () => { clearInterval(tick); clearInterval(sync); clearSweepTimers(); };
   }, []);
 
   // Close popover on outside click / Escape.
@@ -85,16 +109,25 @@ export function SentinelCountdown() {
     const r = await resetSentinelTimerAction();
     if (r.ok) { setMsg("Timer reset."); refresh(); } else setMsg(r.error ?? "Couldn't reset.");
   });
-  const runNow = () => start(async () => {
-    setMsg("Running sweep…");
-    const r = await runSentinelNowAction();
-    if (!r.ok) { setMsg(r.error ?? "Couldn't run."); return; }
-    if ((r.total ?? 0) === 0) { setMsg("No live markets to check right now."); refresh(); return; }
-    const parts = [`${r.closed ?? 0} closed`];
-    if ((r.errors ?? 0) > 0) parts.push(`${r.errors} errored (check AI usage / credit)`);
-    setMsg(`Done · ${parts.join(" · ")} of ${r.total} live.`);
-    refresh();
-  });
+  const runNow = () => {
+    setMsg(null);
+    setOpen(false);          // close the popover; the overlay takes over
+    setSweepResult(null);
+    setSweepPhase("scanning");
+    clearSweepTimers();
+    // Simulate phase advance while the real sweep runs (guards so a fast return
+    // that already set "done" is never overwritten back to an in-progress phase).
+    sweepTimers.current.push(setTimeout(() => setSweepPhase((p) => (p === "scanning" ? "triaging" : p)), 900));
+    sweepTimers.current.push(setTimeout(() => setSweepPhase((p) => (p === "triaging" ? "resolving" : p)), 2000));
+    start(async () => {
+      const r = await runSentinelNowAction();
+      clearSweepTimers();
+      if (!r.ok) { setSweepResult({ ok: false, error: r.error ?? "Couldn't run the sweep." }); setSweepPhase("done"); return; }
+      setSweepResult({ ok: true, closed: r.closed ?? 0, errors: r.errors ?? 0, total: r.total ?? 0 });
+      setSweepPhase("done");
+      refresh();
+    });
+  };
   const pause = () => start(async () => {
     setMsg(null);
     const r = await pauseSentinelAction();
@@ -214,6 +247,85 @@ export function SentinelCountdown() {
 
           {msg && <p className="mt-2.5 text-[11px] text-text-muted leading-snug">{msg}</p>}
         </div>
+      )}
+
+      {/* Sweep progress overlay — a full-page loader (poll-generation style) so
+          the operator sees the sentinel run start → progress → finish, with the
+          burst result (how many markets it resolved this run). */}
+      {mounted && sweepPhase !== "idle" && createPortal(
+        <div
+          role="dialog" aria-modal="true"
+          aria-label={sweepPhase === "done" ? "Market sentinel result" : "Market sentinel running"}
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+        >
+          <div
+            className="w-[90vw] max-w-[420px] rounded-xl border border-border bg-bg-elevated p-5 shadow-e4"
+            style={{ animation: "np-rise 200ms cubic-bezier(.2,.8,.2,1)" }}
+          >
+            {sweepPhase !== "done" ? (
+              /* ── In progress ── */
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <span className="inline-block h-5 w-5 rounded-full border-2 border-aqua-300 border-t-transparent animate-spin shrink-0" />
+                  <p className="font-display text-[15px] font-semibold text-text">Market sentinel running</p>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-2 w-full rounded-pill bg-bg-overlay overflow-hidden">
+                    <div
+                      className="h-full rounded-pill transition-all duration-700 ease-out"
+                      style={{ width: `${SWEEP_PROGRESS[sweepPhase]}%`, background: "linear-gradient(90deg, var(--aqua-500), var(--aqua-400))" }}
+                    />
+                  </div>
+                  <p className="font-mono text-[11px] text-text-subtle tabular-nums">{SWEEP_LABELS[sweepPhase]}</p>
+                </div>
+                <p className="text-[11px] text-text-subtle leading-relaxed">
+                  The sentinel scans live markets, asks the AI which have a settled
+                  outcome, and resolves the ones that are due — winners are paid in
+                  the same burst.
+                </p>
+              </div>
+            ) : sweepResult && sweepResult.ok ? (
+              /* ── Done · burst result ── */
+              <div className="space-y-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-yes-500/15 text-yes-300 shrink-0"><I.check s={18} /></span>
+                  <div>
+                    <p className="font-display text-[15px] font-semibold text-text">
+                      {sweepResult.total === 0 ? "Nothing due — all clear" : "Sweep complete"}
+                    </p>
+                    <p className="font-mono text-[11px] text-yes-300">
+                      {sweepResult.total === 0
+                        ? "No live markets needed resolving."
+                        : `${sweepResult.closed} resolved of ${sweepResult.total} checked`}
+                    </p>
+                  </div>
+                </div>
+                <div className="h-2 w-full rounded-pill bg-bg-overlay overflow-hidden">
+                  <div className="h-full rounded-pill" style={{ width: "100%", background: "linear-gradient(90deg, var(--yes-500), var(--yes-400))" }} />
+                </div>
+                {sweepResult.errors > 0 && (
+                  <p className="text-[11px] text-no-300 leading-snug">
+                    {sweepResult.errors} couldn&apos;t be checked (AI usage / credit) — they&apos;ll be retried next sweep.
+                  </p>
+                )}
+                <button type="button" onClick={dismissSweep} className="btn btn-ghost btn-sm rounded-pill w-full">Done · Sawa</button>
+              </div>
+            ) : (
+              /* ── Done · error ── */
+              <div className="space-y-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-no-500/15 text-no-300 shrink-0"><I.x s={18} /></span>
+                  <div>
+                    <p className="font-display text-[15px] font-semibold text-text">Sweep couldn&apos;t run</p>
+                    <p className="text-[11px] text-no-300 leading-snug">{sweepResult && !sweepResult.ok ? sweepResult.error : "Unknown error."}</p>
+                  </div>
+                </div>
+                <button type="button" onClick={dismissSweep} className="btn btn-ghost btn-sm rounded-pill w-full">Dismiss · Funga</button>
+              </div>
+            )}
+          </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
