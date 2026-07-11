@@ -1,3 +1,6 @@
+> ⚠️ **SUPERSEDED (2026-07-11)** — use `docs/next-session-prompt.md` as the
+> canonical handoff. This file is kept for history only; its mission was executed.
+
 # Next session — "What's missing / loosely-built / needs better design" sprint
 
 > Paste this as the opening prompt. It's a **discovery-first quality sprint**: find

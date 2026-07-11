@@ -1,3 +1,6 @@
+> ⚠️ **SUPERSEDED (2026-07-11)** — use `docs/next-session-prompt.md` as the
+> canonical handoff. This file is kept for history only.
+
 # Next-session handoff — 50pick Final UI enhancement Kit rollout
 
 > **Status: the autonomous UI-kit rollout is COMPLETE.** Every item that could be built without a
