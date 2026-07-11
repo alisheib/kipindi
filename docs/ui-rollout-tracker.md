@@ -149,6 +149,9 @@ smoke scripts + `scripts/ui-regression.mjs` at 360/768/1280/1920) passes and is 
 ## Batch log
 _(append one entry per batch: date · items · regression result)_
 
+- **2026-07-11 (compliance-H2 + Phase C admin & full-page) (`c0d31cc` + runner)** — closed the last actionable Phase E finding + extended Phase C:
+  - **compliance-H2 (`c0d31cc`):** GBT monthly pack now reports its exact EAT calendar month (not a rolling 28d) — analytics helpers accept explicit `{start,end}` bounds (Window union), `packPeriodBounds` added, pack-actions threads the period. Smoke: "June 2026 · 2026-06-01 → 2026-06-30 (EAT)". **All Phase E findings now fixed except the two Ali-blocked (payments MOCK, withdrawal-tax policy).**
+  - **Phase C full-page:** added `FULLPAGE=1` to the matrix runner; read below-fold shots of wallet/results/leaderboard @360 — clean footers (18+, license honestly "(pending)", RG helpline), no truncation. Admin matrix (11 routes × EN/SW × 360/1280 = 132/132) already logged. **Remaining Phase C slice:** per-state seeding (loading/error/edge) + a `/markets` full-page (skipped — long polling board).
 - **2026-07-11 (money-safety H1+M2 + Phase C player matrix) (`8b5a95a`, `c16a22f`)** — closed two flagged money findings, each with a regression test proven red without the fix, and ran the Phase C player-surface trilingual matrix:
   - **money-H1 (`8b5a95a`):** withdrawal idempotency now re-checked INSIDE the wallet lock (was pre-lock only → concurrent same-key = double-debit + stranded hold). Concurrency case E; red-without-fix = 3 txns / triple-debit.
   - **money-M2 (`c16a22f`):** the 3 affiliate reward payers now lock (per recruit / referrer / referrer:recruit) with the guard re-read inside + deterministic `sourceRef` on one-time rewards. Concurrency case F; red-without-lock = 3 prize records (sourceRef alone held money to 1×).

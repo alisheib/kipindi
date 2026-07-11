@@ -22,11 +22,12 @@ The platform is **feature-complete and passing its gates**. Recently landed:
 
 - **Phase E — security/compliance/money-safety audit (2026-07-11)** — 6 findings
   fixed & shipped incl. a 🔴CRITICAL money race (`cashOutPosition` now holds the
-  `market:` lock), THEN money-H1 (withdrawal idempotency re-check) + money-M2
-  (affiliate reward lock+sourceRef) also fixed — each with a red-without-fix
-  concurrency test (case E, F). Still open (need Ali/credentials/policy): payments
-  MOCK (P0), withdrawal-tax-on-principal ⚠, GBT pack period. Full record:
-  **`docs/PHASE_E_AUDIT_2026-07-11.md`**.
+  `market:` lock), THEN money-H1 (withdrawal idempotency), money-M2 (affiliate
+  reward lock+sourceRef) — each with a red-without-fix concurrency test (case E,
+  F) — and compliance-H2 (GBT pack reports its calendar month, not rolling 28d).
+  **Every actionable Phase E finding is now fixed.** Still open ONLY because they
+  need Ali/credentials/policy: payments MOCK (P0), withdrawal-tax-on-principal ⚠.
+  Full record: **`docs/PHASE_E_AUDIT_2026-07-11.md`**.
 - **Sentinel run progress-loader (2026-07-11, Ali)** — admin "Run now" shows a
   theme-kit loader (spinner + phased progress bar → burst-result card).
 - **Phase C visual matrix (2026-07-11)** — `scripts/visual-matrix.mjs`. Player:

@@ -24,6 +24,7 @@ const WIDTHS = process.env.WIDTHS ? process.env.WIDTHS.split(",").map(Number) : 
 const ALL_LOCALES = ["en", "sw", "zh"];
 const LOCALES = process.env.LOCALES ? process.env.LOCALES.split(",") : ALL_LOCALES;
 const ONLY = process.env.ONLY ? process.env.ONLY.split(",") : null;
+const FULLPAGE = process.env.FULLPAGE === "1"; // capture below-the-fold (full scroll height)
 
 // The core player-facing surfaces where SW/ZH length stress is most likely to
 // truncate, wrap ugly, or clip. Admin is EN+SW per the plan (set SURFACE=admin).
@@ -108,7 +109,7 @@ for (const route of ROUTES) {
         // Ignore the known benign navigator.vibrate console noise from seeded stores.
         const realErrs = errs.filter((e) => !/vibrate/i.test(e));
         ok(`${route.path} ${loc}@${w} no console errors`, realErrs.length === 0, realErrs[0]?.slice(0, 120));
-        await page.screenshot({ path: `${SHOTS}/${tag}.png`, fullPage: false });
+        await page.screenshot({ path: `${SHOTS}/${tag}${FULLPAGE ? "-full" : ""}.png`, fullPage: FULLPAGE });
       } catch (e) {
         ok(`${route.path} ${loc}@${w} render`, false, String(e).split("\n")[0]);
       }

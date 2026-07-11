@@ -79,13 +79,13 @@ decision — do NOT guess the model. Needs Ali + a TRA/tax view** on whether
 withholding applies to net gaming winnings only. Then compute taxable winnings
 from the bet ledger, not gross.
 
-### 🟡 compliance-H2 — GBT monthly pack: period LABEL ≠ figures window
-`report-pack.ts:51-64` derives the pack period as the previous **calendar month**,
-but `catalogue.ts buildGbtMonthly` always reports a rolling **"Last 28 days"**
-window ending now. A "June 2026" pack embeds ~13 Jun–11 Jul data, and the
-maker-checker sha256 is over that mismatched artifact. **Fix:** thread the pack's
-`period` (YYYY-MM) into `buildGbtMonthly` and compute EAT calendar-month bounds
-via `report-money.periodBounds`/`moneyForWindow`.
+### ✅ compliance-H2 — FIXED (`c0d31cc`, 2026-07-11)
+The GBT pack reported a rolling "Last 28 days" window under its calendar-month
+label. Now `buildGbtMonthly(generatorId, packPeriod)` computes the exact EAT
+calendar-month bounds (new `packPeriodBounds` in report-pack) and the analytics
+helpers accept explicit `{start,end}` bounds (`Window` union; Period callers
+unchanged). pack-actions threads the pack period through. Smoke-verified:
+"June 2026 · 2026-06-01 → 2026-06-30 (EAT)".
 
 ### 🟡 money-M3 / L1 (reporting-accuracy, not real money)
 - **M3** `ledger.ts:182-200` — POOL account balance can drift across settlement
