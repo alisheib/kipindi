@@ -59,21 +59,36 @@ The canonical planning docs are `SESSION_STATUS.md` (state) + this file (handoff
 - No stray temp scripts. Screenshots go to gitignored `.50pick-shots/`.
 - Dev server: **stop it when done** (`Stop-Process -Id (Get-NetTCPConnection -LocalPort <port> -State Listen).OwningProcess -Force`). Only one `next dev` per repo dir.
 
-## 4 · Open work (pick with Ali; ranked)
-1. **🔴 Real payment integration (biggest launch blocker, postponed by Ali):**
-   replace the mock in `src/lib/server/payments.ts` with a BoT-licensed aggregator
-   (Selcom/Azampay) behind the existing `/api/webhooks/payments` path. Needs credentials.
-2. **⊘ Wire bitmap assets** the moment Ali delivers them (hero, banners, category
-   art, texture, win-seal, 4 MNO logos, regulator seal) — code slots are ready.
-3. **GLI certification** remediation — `docs/gli-remediation-{plan,tracker}.md`.
-4. **Perfection-plan** remaining phases — Phase C (visual matrix), E (security/
-   compliance/money-safety re-drive), F (enhancements), G (final 9-role sign-off).
-   See `docs/perfection-plan.md`.
-5. Set launch env in Railway: `NEXT_PUBLIC_LICENSE_REF`, `NEXT_PUBLIC_APP_URL`,
-   confirmed `SMS_SENDER_ID`, real license/TIN — **never fabricate these**.
-6. (Low, optional) revive the stale `scripts/dial-*-stress-e2e.mjs` dev tools —
-   they die at registration because DOB is now a `DateSelect` (pre-existing; not
-   in any gate). Needs DateSelect-DOB entry + an arm-the-dial step.
+## 4 · Open work — the FINALIZATION PLAN (drive to 100%; ranked)
+
+**DONE (2026-07-11→12):** Phase E security/compliance/money-safety — TWO full
+audit rounds, **15 findings fixed** (1 CRITICAL cash-out race, 4 HIGH incl.
+non-resumable settlement + MODERATOR void escalation, + MED/LOW), each money fix
+carrying a red-without-fix regression test · compliance-H2 (GBT pack calendar
+month) · Track-3 fast-follows (chat-ticket honesty, fairness officer-id leak,
+deposit idempotency, cash-out conservation clamp, affiliate off the bet-lock,
+AI-batch rate-limit) · one consistency win (retired the dead confirm `gold` tone)
+· **Phase C visual matrix** player 324/324 + admin 132/132 automated + ~18 human-read
+(zero defects) · sentinel run progress-loader. Full record: `docs/PHASE_E_AUDIT_2026-07-11.md`.
+
+**REMAINING (our work — no external inputs; ranked):**
+1. **Track 2 · consistency deep-pass** (`docs/consistency-audit.md` + perfection-plan §9).
+   Each is a shared-code refactor → do ONE per batch with visual re-verification:
+   status-label lexicon (EN/SW/ZH — one source for pending/closes/awaiting) ·
+   ban raw `toLocaleString` on money (route through `formatTzs`) · `band()`/`<ScoreBadge>` ·
+   `officerLabel()/playerLabel()` · collapse overlapping Chip variants · one config factory.
+2. **Track 1 · Phase D perf** — Lighthouse ≥90 on the top-6 pages, bundle-size budget, a 2G/CPU-throttled smoke.
+3. **Track 1 · Phase C tail** — seed the loading/error/edge states + a light-mode spot-check.
+4. **Track 4 · materialize heavy aggregates** — payout-sum, stats bands, per-MNO health (full-scan today).
+5. **Track 1 · Phase G** — final 9-role sign-off walk on a fresh player+operator, EN/SW/ZH; regression-lock.
+
+**BLOCKED on Ali (external):**
+6. 🔴 Real payment integration — mock `src/lib/server/payments.ts` → BoT aggregator (Selcom/Azampay) behind `/api/webhooks/payments`. Needs credentials.
+7. Confirmed `SMS_SENDER_ID` (telco-registered) + real license/TIN + `NEXT_PUBLIC_*` env in Railway — **never fabricate**.
+8. **⊘ Bitmap assets** (hero, banners, category art, texture, win-seal, 4 MNO logos, regulator seal) — code slots ready.
+9. **GLI certification** — `docs/gli-remediation-{plan,tracker}.md`.
+
+**Fast-follows still open** (in `docs/PHASE_E_AUDIT_2026-07-11.md` §Re-evaluation): none blocking — all HIGH/MED closed; only stylistic/low items remain.
 
 ## 5 · Workflow & standing rules (Ali)
 - **Commit AND push** every change (Railway auto-deploys). Full Railway CLI access here.
