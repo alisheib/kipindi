@@ -921,6 +921,21 @@ export async function cashOutPosition(
   if (pre.userId !== userId) return { ok: false, error: "Not your position.", code: "INVALID" };
 
   return withLock(`wallet:${userId}`, async () => {
+    // Learn the market so we can nest its lock. Lock order is ALWAYS
+    // wallet→market (identical to buyPosition), so this nesting cannot deadlock.
+    const owned = await positionStore.get(positionId);
+    if (!owned) return { ok: false as const, error: "Position not found.", code: "NOT_FOUND" as const };
+    if (owned.userId !== userId) return { ok: false as const, error: "Not your position.", code: "INVALID" as const };
+    // The pool mutation + position settlement below MUST hold the market lock.
+    // resolveMarket holds market:<id> while it settles positions, so nesting it
+    // here serializes cash-out against resolve (and buyPosition): a concurrent
+    // resolve either ran first (position no longer OPEN / market RESOLVED → we
+    // abort below, no double-credit) or waits for us. Without this the two ops
+    // take disjoint locks and can interleave — double-paying the position AND
+    // dropping pool updates. This is a prod-only race: the in-memory dev store
+    // shares object references so it never manifests there, but Prisma returns a
+    // fresh copy per read and writes absolute pool values, so the update is lost.
+    return withLock(`market:${owned.marketId}`, async () => {
     // Re-fetch under the lock: a concurrent resolveMarket may have settled this
     // position (and credited the wallet) at an await point between the pre-lock
     // read above and acquiring the lock. Validating the live state here is what
@@ -1031,6 +1046,7 @@ export async function cashOutPosition(
     });
 
     return { ok: true as const, data: { value, balance: newBalance } };
+    });
   });
 }
 

@@ -12,7 +12,8 @@
  *   C · Concurrent double stage-2 settle → winner paid ONCE (no double payout).
  */
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
-import { createMarket, buyPosition, resolveMarket, getMarket } from "../src/lib/server/market-service.ts";
+import { createMarket, buyPosition, resolveMarket, getMarket, cashOutPosition } from "../src/lib/server/market-service.ts";
+import { positionStore } from "../src/lib/server/market-dal.ts";
 
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
@@ -120,6 +121,61 @@ async function makeMarket(): Promise<string> {
 
   const m = (await getMarket(mid))!;
   ok("C: market resolved once", m.status === "RESOLVED" && m.resolvedOutcome === "YES", `status=${m.status}`);
+}
+
+// ── D · Concurrent cash-out vs stage-2 settle — the SHARED market lock ───────
+// A position must be paid EXACTLY once: either the player cashes it out, or the
+// resolver settles it as a winner — never both. Cash-out mutates the pool and
+// credits the wallet; resolveMarket does too. If cash-out doesn't hold the same
+// market:<id> lock resolve holds, the two interleave and the position is
+// credited twice (money minted) and the pool loses an update. The harmful
+// interleave is PROD-only (Prisma returns a fresh copy per read + absolute
+// pool writes; the in-memory store shares object refs and resolves without
+// yielding at the critical await, so it can't reproduce the race) — so this is
+// a forward-guard on the concurrent path: each round the player's net credit
+// must be a SINGLE payout, never a sum, and the position must end terminal once.
+{
+  const ROUNDS = 25;
+  let doublePaid = 0, minted = 0, notTerminal = 0, creditedRounds = 0;
+  for (let r = 0; r < ROUNDS; r++) {
+    const mid = await makeMarket();
+    const winner = `cc_race_win_${r}`;
+    const other = `cc_race_other_${r}`;
+    await fundedUser(winner, 100_000);
+    await fundedUser(other, 100_000);
+    // winner: YES 10k · other: NO 10k → both pools live so cash-out value > 0.
+    const wr = await buyPosition(winner, { marketId: mid, side: "YES", stake: 10_000 });
+    await buyPosition(other, { marketId: mid, side: "NO", stake: 10_000 });
+    const posId = wr.ok ? wr.data!.positionId : "?";
+    // Stage-1 by a neutral officer (no position → no conflict) stages YES.
+    await resolveMarket({ marketId: mid, outcome: "YES", officerId: `cc_race_alpha_${r}` });
+
+    const before = await bal(winner);
+    // The player taps "cash out" at the exact instant a second officer confirms.
+    await Promise.all([
+      cashOutPosition(winner, posId),
+      resolveMarket({ marketId: mid, outcome: "YES", officerId: `cc_race_beta_${r}` }),
+    ]);
+    const delta = (await bal(winner)) - before;
+    const totalIn = 20_000; // the only money that ever entered this market
+
+    if (delta > 0) creditedRounds++;
+    // No mint: the player can never receive more than the money that entered.
+    if (delta > totalIn) minted++;
+    // Position must end in exactly ONE terminal state (CASHED_OUT xor WIN),
+    // never a mix, and never still OPEN.
+    const p = await positionStore.get(posId);
+    if (!p || p.status === "OPEN") notTerminal++;
+    // Double-pay signature: credited AND a win payout stacked on a cash-out
+    // (delta ≈ cashout value + full-pool win) — caught by the mint check, but
+    // also flag directly if the credit exceeds a lone cash-out's ceiling while
+    // the position reads CASHED_OUT (i.e. it was also paid as a winner).
+    if (p?.status === "CASHED_OUT" && delta > (p.finalPayout ?? 0)) doublePaid++;
+  }
+  ok("D: player credited every round", creditedRounds === ROUNDS, `credited=${creditedRounds}/${ROUNDS}`);
+  ok("D: never minted (credit ≤ money-in) across all rounds", minted === 0, `minted=${minted}/${ROUNDS}`);
+  ok("D: position always terminal (no stuck OPEN)", notTerminal === 0, `notTerminal=${notTerminal}/${ROUNDS}`);
+  ok("D: never double-paid (cash-out + win stacked)", doublePaid === 0, `doublePaid=${doublePaid}/${ROUNDS}`);
 }
 
 console.log(`\nconcurrency: ${pass} passed, ${fail} failed`);
