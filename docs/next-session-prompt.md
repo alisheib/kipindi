@@ -90,11 +90,39 @@ AI-batch rate-limit) · one consistency win (retired the dead confirm `gold` ton
 
 **Fast-follows still open** (in `docs/PHASE_E_AUDIT_2026-07-11.md` §Re-evaluation): none blocking — all HIGH/MED closed; only stylistic/low items remain.
 
+## 4.5 · SIX-ROLE SIGN-OFF GATE (Ali — mandatory) 🔒
+**No change "passes" — no `git push`, no marking a track/batch done — until it has
+been reviewed and EXPLICITLY approved through ALL SIX expert lenses below.** Hold
+all six at once for every batch; if any lens raises a concern, resolve it before
+passing. State the sign-off in the commit body / batch-log (e.g. "6-role: ✓").
+Do NOT pass a change in dev without this approval.
+
+1. **Graphic designer** — spacing, type scale, colour, iconography, hierarchy,
+   brand-exactness; gold-discipline held (player = earned-money/money-in, admin =
+   resolved-seal only); alignment + rhythm are deliberate, nothing ad-hoc.
+2. **UI/UX engineer** — every page × state × width (360→768→1280→1920) × locale
+   (EN/SW/ZH) is pixel-clean: 0 h-overflow, no clipped-not-scrolled content, touch
+   targets ≥40px; a11y (focus-visible, labels, contrast ≥4.5:1, keyboard, screen-
+   reader); motion has a correct `prefers-reduced-motion` path.
+3. **Professional art evaluator** — the surface reads *premium + trustworthy*;
+   empty-states, illustrations, celebrations delight and never cheapen; the whole
+   composition earns confidence for a real-money product.
+4. **Quality assurance** — the change is exercised end-to-end (drive it, not just
+   tsc); tests cover it (money/security/concurrency/edge as applicable); adversarial
+   regression run; all gates green on a FRESH server; 0 open defects.
+5. **Compliance engineer** — never-fabricate (prod shows only live data; no
+   synthesized officers/numbers/history); RG enforced on every money path; PII
+   masked; audit-on-every-mutation; POCA/GBT/TRA/PDPA obligations held.
+6. **Theme-consistency engineer** — uses the kit + tokens (no one-off UI); ONE
+   primitive per concern; status wording from the single lexicon; consistent
+   hover/active/focus/loading; naming + variants match the documented set; no drift.
+
 ## 5 · Workflow & standing rules (Ali)
 - **Commit AND push** every change (Railway auto-deploys). Full Railway CLI access here.
 - Per screen/feature: read → change → `tsc` + relevant `test:*` → **live-drive with
   Playwright, screenshot to `.50pick-shots/`, and READ the shot** (360 first) →
-  commit + push. Gate on a FRESH server for `ui-regression` (see SESSION_STATUS gotchas).
+  **run the §4.5 six-role sign-off** → commit + push. Gate on a FRESH server for
+  `ui-regression` (see SESSION_STATUS gotchas).
 - **Never fabricate** legal/business/audit data or history — flag placeholders for Ali.
 - **Production shows only live data**; UI hides/empties when aggregates are empty.
 - **Gold-discipline:** player = earned-money/money-in only; admin = resolved seal only.
