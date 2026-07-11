@@ -28,6 +28,14 @@ The platform is **feature-complete and passing its gates**. Recently landed:
   **Every actionable Phase E finding is now fixed.** Still open ONLY because they
   need Ali/credentials/policy: payments MOCK (P0), withdrawal-tax-on-principal ⚠.
   Full record: **`docs/PHASE_E_AUDIT_2026-07-11.md`**.
+- **Re-evaluation (round 2, 2026-07-11)** — a second independent 3-lane re-audit
+  re-confirmed all fixes and caught 2 more 🔴HIGH, both now fixed: a MODERATOR
+  live-market-void escalation (ai-poll delete path) and **non-resumable
+  settlement** (RESOLVED persisted before payouts → a crash stranded winners;
+  now persisted last + resume test). Plus MED/LOW: completed phone masking
+  (raw E.164 was in audit `targetId`), removed a fabricated leaderboard sparkline,
+  prod-gated the AI-poll seed-fixtures button, TOTP on reopen/create, timing-safe
+  Postmark. Fast-follows listed in the audit doc §Re-evaluation.
 - **Sentinel run progress-loader (2026-07-11, Ali)** — admin "Run now" shows a
   theme-kit loader (spinner + phased progress bar → burst-result card).
 - **Phase C visual matrix (2026-07-11)** — `scripts/visual-matrix.mjs`. Player:

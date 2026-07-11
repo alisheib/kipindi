@@ -5,6 +5,37 @@
 > **6 findings fixed + shipped this session; the rest are ranked and flagged
 > below with the exact remediation.** This is the Phase E record for
 > `docs/perfection-plan.md` §Phase E.
+>
+> **↓ See "Re-evaluation (round 2)" at the bottom** — a second independent
+> 3-lane re-audit that CONFIRMED every fix and surfaced 2 more HIGH (both now
+> fixed) plus MED/LOW hardening.
+
+## Re-evaluation (round 2, 2026-07-11)
+
+A fresh 3-lane re-audit of the CURRENT code. **All 9 prior fixes re-confirmed
+correct.** Round-2 found and FIXED:
+
+| ID | Sev | Fix | Commit |
+|---|---|---|---|
+| ai-poll void escalation | 🔴 HIGH | `emergencyVoidMarket` now gates ADMIN/COMPLIANCE at the SERVICE layer — the ai-poll delete path (MARKET_OPS, incl. MODERATOR) could void live markets + refund money. +MODERATOR-blocked test. | `51ef592` |
+| non-resumable settlement | 🔴 HIGH | `resolveMarket` persists RESOLVED/VOIDED status LAST (after payouts) so a mid-settlement crash leaves it CLOSED + resumable (no stranded winners); double-settle still guarded by the market lock. `autoResolveExpiredDemoMarkets` hard prod-locked. +resume test (case G). | `fc2b08c` |
+| phone in audit `targetId` | 🟠 MED | Completed the phone-masking — 8 pre-auth events wrote raw E.164 in `targetId`; now masked at source (never in the append-only chain / ISO export). | `3592f98` |
+| fabricated leaderboard sparkline | 🟠 MED | Real players no longer get a synthesized 14-day activity series (kept only on the dev-only synthetic board). | `3592f98` |
+| ungated prod seed-fixtures | 🟠 MED | AI-poll "Seed fixtures" action prod-gated + button hidden in prod (it wrote a fake reviewer + Math.random telemetry). | `3592f98` |
+| TOTP on reopen/create | 🟡 LOW | Added the 2FA step-up to `adminReopenMarketAction` + `createMarketAction`. | `3592f98` |
+| postmark webhook | 🟡 LOW | Constant-time secret compare (matches the payments webhook). | `3592f98` |
+
+**Still flagged for a fast follow (verified real, not blocking a first close of Phase E):**
+- **money-MED** — `buyPosition` holds the bettor's wallet lock across nested affiliate + referrer-wallet locks; in prod (each `withLock` = a pooled `$transaction`) this risks pool exhaustion/latency under concurrent referred betting. Fix: accrue `onRecruitBet` rewards AFTER the bettor's wallet lock releases (fire-and-forget, like the bonus-fulfilment notices). Degrades to dropped commission + latency, not lost money.
+- **money-LOW** — `cashOutPosition` credits `value` unconditionally even if the pool debit was capped short (currently unreachable behind the market lock); tie the credit to the amount actually removed.
+- **money-LOW** — `deposit` idempotency is pre-check-only (UX asymmetry with the hardened `withdraw`; no double-credit — the throw precedes the credit).
+- **durability-LOW** — post-lock bonus/wagering reversals in resolve/void aren't crash-atomic (same root as the settlement HIGH; best-effort by design).
+- **security-LOW** — `/api/fairness/recent` returns raw officer user-ids (use display labels); the unauth auto-resolve trigger it also fired is now prod-locked.
+- **security-LOW** — AI batch generation (MODERATOR) has no per-actor rate limit (cost/DoS within the trusted-admin boundary).
+- **compliance-LOW** — chat shows a fabricated `HC-####` support-ticket number + fixed ETA; back it with a real ticket or drop the number.
+
+---
+
 
 ## Method
 - **Lane A — authz/role matrix:** every server action (27 `actions.ts`) + every
