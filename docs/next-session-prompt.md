@@ -62,11 +62,6 @@ The canonical planning docs are `SESSION_STATUS.md` (state) + this file (handoff
 - Dev server: **stop it when done** (`Stop-Process -Id (Get-NetTCPConnection -LocalPort <port> -State Listen).OwningProcess -Force`). Only one `next dev` per repo dir.
 
 ## 4 · Open work (pick with Ali; ranked)
-0. **Quick fix — `/markets` hydration flake:** `ui-regression` intermittently fails
-   with a hydration mismatch on `/markets` because the board server-renders with
-   `Date.now()` (`src/app/markets/page.tsx:199,253`). Seed one server `now` and pass
-   it down (same fix as the countdown-ring). Small, isolated, makes the gate
-   deterministic again.
 1. **🔴 Real payment integration (biggest launch blocker, postponed by Ali):**
    replace the mock in `src/lib/server/payments.ts` with a BoT-licensed aggregator
    (Selcom/Azampay) behind the existing `/api/webhooks/payments` path. Needs credentials.
@@ -91,3 +86,15 @@ The canonical planning docs are `SESSION_STATUS.md` (state) + this file (handoff
 - **Production shows only live data**; UI hides/empties when aggregates are empty.
 - **Gold-discipline:** player = earned-money/money-in only; admin = resolved seal only.
 - Reuse the kit; don't invent one-off UI. Motion must be genuinely polished or not shipped.
+
+## 6 · Living doc — UPDATE THIS BEFORE YOU END THE SESSION
+This file is the single continuation point — keep it true so the next session
+knows exactly where to pick up. Before ending a session:
+1. Update **§2 (where we stand)** with what landed.
+2. Update **§2's PATHS map** if you added/moved/renamed any route, component,
+   service, or doc — so paths never drift or get mixed.
+3. Update **§4 (open work)** — remove done items, add new findings (ranked).
+4. Mirror the state into `docs/SESSION_STATUS.md` and append a batch-log entry to
+   `docs/ui-rollout-tracker.md`.
+5. Confirm a clean tree (`git status`), stop the dev server, then hand Ali the
+   refreshed copy-paste version of this prompt.

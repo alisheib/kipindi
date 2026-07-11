@@ -46,12 +46,17 @@ The platform is **feature-complete and passing its gates**. Recently landed:
 `scripts/ui-regression.mjs` 360/768/1280/1920 · `admin-grids-smoke` 125/125 ·
 pre-deploy gauntlet `npm run qa:live`.
 
-> **⚠ Known intermittent (pre-existing, needs a fix):** `ui-regression` shows an
-> intermittent **hydration mismatch on `/markets`** (6–9 flaky fails some runs,
-> clean others). Root cause: the board server-renders with `Date.now()`
-> (`src/app/markets/page.tsx:199,253`) so a time-bucket can flip between SSR and
-> client hydration. Fix = seed ONE server `now` and thread it down (same pattern
-> the countdown-ring already uses). Unrelated to the dial/lock work.
+> **Note — rare `/markets` hydration warning (investigated 2026-07-11):** one
+> ui-regression run showed a transient hydration mismatch on `/markets` (6–9 flaky
+> "fails"). Investigated hard: **not reproducible** in 26 isolated loads (warm,
+> cold-compile, authed) nor in two consecutive fresh-server runs (both **158/158**).
+> The board is a server component, so its `Date.now()` bakes into the HTML and
+> cannot cause a hydration mismatch — the earlier "seed `now`" hypothesis was
+> wrong. Conclusion: a **rare dev-only timing artifact under load**, not a prod
+> bug — do NOT speculatively patch the money-adjacent board. Always run the gate
+> on a genuinely FRESH server (per the ui-regression gotcha). **If it recurs,
+> capture the FULL React hydration diff (the specific element/attribute) first**,
+> then fix that element — don't guess.
 
 ## 3 · How to run / test / deploy (essentials — full detail in CLAUDE.md)
 - **Local dev (in-memory, no prod risk):**
