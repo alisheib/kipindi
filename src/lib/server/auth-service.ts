@@ -22,6 +22,15 @@ import { displayLabel } from "@/lib/display-label";
 import { resolvePhoneEmail } from "./email-map";
 import { validatePasswordStrength } from "./password-policy";
 
+/** Mask a phone for an audit payload — keep country code + last 2 (e.g.
+ *  "+25570*****19"). The audit entry already carries actorId, so the full number
+ *  is recoverable from the user record; it must NOT be stored raw in the chain
+ *  (it renders unmasked in /admin/audit and the ISO audit-log export). */
+function maskPhoneForAudit(phone?: string | null): string {
+  const p = (phone ?? "").trim();
+  return p.length > 6 ? `${p.slice(0, 6)}*****${p.slice(-2)}` : "****";
+}
+
 /** Phone numbers Ali wants auto-promoted to ADMIN on first registration.
  *  Set ADMIN_BOOTSTRAP_PHONES=+255712345678,+255700000000 in env. */
 function adminBootstrapPhones(): Set<string> {
@@ -278,7 +287,7 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
         payload: { amount: starterBalance },
       });
     }
-    audit({ category: "AUTH", action: "user.registered", actorId: user.id, targetType: "User", targetId: user.id, payload: { phone } });
+    audit({ category: "AUTH", action: "user.registered", actorId: user.id, targetType: "User", targetId: user.id, payload: { phone: maskPhoneForAudit(phone) } });
     isNew = true;
     // Welcome email — parity with the password registration path. Best-effort;
     // no-ops cleanly when an OTP-only user has no email on file yet.
@@ -468,7 +477,7 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
     category: "AUTH",
     action: isBootstrapAdmin ? "user.registered.admin_bootstrap" : "user.registered",
     actorId: user.id, targetType: "User", targetId: user.id,
-    payload: { phone, role: user.role },
+    payload: { phone: maskPhoneForAudit(phone), role: user.role },
   });
 
   // Welcome email — best-effort, never blocks registration
