@@ -10,8 +10,7 @@ import { FieldLegend } from "@/components/ui/field-legend";
 import { currentSession } from "@/lib/server/auth-service";
 import { getRgSettings } from "@/lib/server/responsible-gambling";
 import { setLimitsAction, selfExcludeAction, coolOffAction } from "./actions";
-import { SelfExcludeConfirm } from "@/components/rg/self-exclude-confirm";
-import { CoolOffConfirm } from "@/components/rg/cool-off-confirm";
+import { RgConfirmSubmit } from "@/components/rg/rg-confirm-submit";
 import { SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/support-config";
 import { Select } from "@/components/ui/select";
 import { Input, Field as KitField } from "@/components/ui/input";
@@ -141,7 +140,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
               options={COOLING_OFF_OPTIONS.map((o) => ({ value: o.id, label: o.label }))}
             />
           </div>
-          <CoolOffConfirm />
+          <RgConfirmSubmit label={t.common.startABreak} body={t.rg.breakDescription} icon={<I.pause s={13} />} buttonClass="btn btn-ghost btn-md" />
         </form>
       </section>
 
@@ -164,7 +163,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
               options={SELF_EXCLUSION_OPTIONS.map((o) => ({ value: o.id, label: o.label }))}
             />
           </div>
-          <SelfExcludeConfirm />
+          <RgConfirmSubmit label={t.common.selfExclude} body={t.rg.selfExcludeDescription} icon={<I.lock s={13} />} buttonClass="btn btn-claret btn-md" />
         </form>
       </section>
     </main>
