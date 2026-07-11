@@ -47,7 +47,7 @@ export async function prepareReportPack(formData: FormData): Promise<ActionResul
   // Real artifact: render the actual monthly PDF and hash its bytes.
   let sha256 = "", sizeBytes = 0, reference = "";
   try {
-    const report = await buildGbtMonthly(gate.userId);
+    const report = await buildGbtMonthly(gate.userId, period);
     reference = report.reference;
     const buf = await renderPdf(report);
     sizeBytes = buf.length;

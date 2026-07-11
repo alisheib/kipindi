@@ -15,7 +15,7 @@ export const metadata = { title: "Admin · Compliance" };
 export const dynamic = "force-dynamic";
 
 const REPORTS: ReadonlyArray<{ id: string; title: string; sub: string; tone: "warning" | "royal" | "danger" | "neutral" }> = [
-  { id: "gbt-monthly",    title: "Monthly report",         sub: "Last 28 days · 12 sheets · signed JSON", tone: "warning" },
+  { id: "gbt-monthly",    title: "Monthly report",         sub: "Calendar month · 12 sheets · signed JSON", tone: "warning" },
   { id: "tra-tax",        title: "TRA withholding tax",   sub: "Last 28 days · CSV · ready",             tone: "royal" },
   { id: "fiu-sar",        title: "FIU SAR · suspicious",  sub: "7-day rolling · entries pending review", tone: "danger" },
   { id: "iso-audit",      title: "ISO 27001 audit log",   sub: "Last 90 days · CSV",                     tone: "neutral" },

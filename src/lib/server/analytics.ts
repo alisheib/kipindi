@@ -13,6 +13,10 @@ import type { StoredTxn, StoredUser } from "./store";
 import { moneyForWindow } from "./report-money";
 
 export type Period = "today" | "7d" | "28d" | "qtd";
+/** Either a rolling window (Period, ending now) OR explicit epoch bounds
+ *  [start, end) — the latter lets callers ask for a fixed calendar month
+ *  (e.g. the statutory GBT monthly pack) instead of a rolling window. */
+export type Window = Period | { start: number; end: number };
 
 function periodToMs(p: Period): number {
   switch (p) {
@@ -23,10 +27,19 @@ function periodToMs(p: Period): number {
   }
 }
 
-async function txnsInPeriod(period: Period) {
-  const cutoff = Date.now() - periodToMs(period);
+function windowBounds(w: Window): { start: number; end: number } {
+  if (typeof w === "object") return w;
+  const end = Date.now();
+  return { start: end - periodToMs(w), end };
+}
+
+async function txnsInPeriod(w: Window) {
+  const { start, end } = windowBounds(w);
   // Single-pass over all transactions — O(T) instead of O(U × T/U).
-  return (await db.txn.listAll()).filter((t) => new Date(t.createdAt).getTime() >= cutoff);
+  return (await db.txn.listAll()).filter((t) => {
+    const ts = new Date(t.createdAt).getTime();
+    return ts >= start && ts < end;
+  });
 }
 
 /**
@@ -35,9 +48,9 @@ async function txnsInPeriod(period: Period) {
  * `report-money.moneyForWindow` so every admin surface shows ONE GGR figure.
  * (Previously this returned Stakes/turnover only, mislabelled "GGR"; reconciled.)
  */
-export async function grossGamingRevenue(period: Period = "today") {
-  const end = Date.now();
-  return (await moneyForWindow(end - periodToMs(period), end)).ggr;
+export async function grossGamingRevenue(period: Window = "today") {
+  const { start, end } = windowBounds(period);
+  return (await moneyForWindow(start, end)).ggr;
 }
 
 /**
@@ -46,23 +59,23 @@ export async function grossGamingRevenue(period: Period = "today") {
  * never drift. (Previously this returned Stakes − Payouts, i.e. the value that is
  * actually GGR; reconciled to the normative NGR.)
  */
-export async function netGamingRevenue(period: Period = "today") {
-  const end = Date.now();
-  return (await moneyForWindow(end - periodToMs(period), end)).ngr;
+export async function netGamingRevenue(period: Window = "today") {
+  const { start, end } = windowBounds(period);
+  return (await moneyForWindow(start, end)).ngr;
 }
 
-export async function depositsTotal(period: Period = "today") {
+export async function depositsTotal(period: Window = "today") {
   const ts = (await txnsInPeriod(period)).filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED");
   return { amount: ts.reduce((s, t) => s + t.amount, 0), count: ts.length };
 }
 
-export async function withdrawalsTotal(period: Period = "today") {
+export async function withdrawalsTotal(period: Window = "today") {
   const ts = (await txnsInPeriod(period)).filter((t) => t.type === "WITHDRAWAL" && t.status === "CONFIRMED");
   return { amount: ts.reduce((s, t) => s + Math.abs(t.amount), 0), count: ts.length };
 }
 
 /** Per-provider deposit/withdrawal totals with fees + net. */
-export async function providerSummary(period: Period = "today") {
+export async function providerSummary(period: Window = "today") {
   const ts = await txnsInPeriod(period);
   const map: Record<string, { deposits: number; depositCount: number; withdrawals: number; withdrawalCount: number }> = {};
   for (const t of ts) {

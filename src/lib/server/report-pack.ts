@@ -64,6 +64,15 @@ export function packPeriodLabel(period: string): string {
   return new Date(Date.UTC(y, m - 1, 1)).toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
 }
 
+/** Epoch [start, end) bounds for a YYYY-MM pack period, in EAT (Africa/Dar_es_Salaam,
+ *  fixed UTC+3, no DST). The statutory figures MUST cover exactly this calendar
+ *  month — not a rolling 28-day window — so the pack's numbers match its label. */
+export function packPeriodBounds(period: string): { start: number; end: number } {
+  const [y, m] = period.split("-").map(Number);
+  const EAT_OFFSET_MS = 3 * 3600_000;
+  return { start: Date.UTC(y, m - 1, 1) - EAT_OFFSET_MS, end: Date.UTC(y, m, 1) - EAT_OFFSET_MS };
+}
+
 export function packIdFor(period: string): string {
   return `gbt-monthly:${period}`;
 }

@@ -16,6 +16,7 @@ import {
   providerSummary, depositsTotal, withdrawalsTotal,
   grossGamingRevenue, netGamingRevenue, kycFunnel, rgRosterCounts,
 } from "../analytics";
+import { currentPackPeriod, packPeriodLabel, packPeriodBounds } from "../report-pack";
 import { getGlobalConfig } from "../market-config";
 import type { Report, Row, SignatureRow, SummaryItem } from "./types";
 import { formatDateTime } from "@/lib/utils";
@@ -59,19 +60,26 @@ function makeReference(acronym: string, generatorId: string): string {
 // 1 · GBT MONTHLY SUMMARY
 // ─────────────────────────────────────────────────────────────────────
 
-export async function buildGbtMonthly(generatorId: string): Promise<Report> {
-  const periodLabel = "Last 28 days";
-  const dep = await depositsTotal("28d");
-  const wd = await withdrawalsTotal("28d");
-  const ggr = await grossGamingRevenue("28d");
-  const ngr = await netGamingRevenue("28d");
+export async function buildGbtMonthly(generatorId: string, packPeriod: string = currentPackPeriod()): Promise<Report> {
+  // Statutory GBT monthly pack: the figures MUST cover the exact calendar month
+  // named by `packPeriod` (YYYY-MM), not a rolling 28-day window — otherwise the
+  // numbers in the signed artifact don't match its "June 2026" heading (and the
+  // maker-checker sha256 would be over a mislabelled document).
+  const bounds = packPeriodBounds(packPeriod);
+  const dep = await depositsTotal(bounds);
+  const wd = await withdrawalsTotal(bounds);
+  const ggr = await grossGamingRevenue(bounds);
+  const ngr = await netGamingRevenue(bounds);
   const kyc = await kycFunnel();
   const rg = await rgRosterCounts();
-  const provs = await providerSummary("28d");
+  const provs = await providerSummary(bounds);
 
-  const periodEnd = new Date();
-  const periodStart = new Date(Date.now() - 28 * 24 * 3600_000);
-  const period = `${periodLabel} · ${periodStart.toISOString().slice(0, 10)} → ${periodEnd.toISOString().slice(0, 10)}`;
+  const periodLabel = packPeriodLabel(packPeriod);
+  // Display the EAT calendar dates (not the UTC instant, which would read as the
+  // last day of the prior month since EAT midnight is 21:00 UTC the day before).
+  const [py, pm] = packPeriod.split("-").map(Number);
+  const lastDay = new Date(Date.UTC(py, pm, 0)).getUTCDate();
+  const period = `${periodLabel} · ${packPeriod}-01 → ${packPeriod}-${String(lastDay).padStart(2, "0")} (EAT)`;
 
   return {
     title: "Monthly report",
@@ -92,7 +100,7 @@ export async function buildGbtMonthly(generatorId: string): Promise<Report> {
     sections: [
       {
         title: "Aggregate financials",
-        description: "TZS totals for the 28-day window. Counts reflect confirmed transactions only.",
+        description: "TZS totals for the statutory calendar month. Counts reflect confirmed transactions only.",
         columns: [
           { header: "Metric", key: "metric", width: 55 },
           { header: "Value", sub: "TZS", key: "value", format: "tzs", align: "right", width: 25 },
@@ -136,7 +144,7 @@ export async function buildGbtMonthly(generatorId: string): Promise<Report> {
       },
       {
         title: "Mobile-money provider summary",
-        description: "Volume by aggregator over the 28-day window. Negative net = aggregator paid out more than it took in.",
+        description: "Volume by aggregator over the statutory calendar month. Negative net = aggregator paid out more than it took in.",
         columns: [
           { header: "Provider", key: "provider", width: 18 },
           { header: "Deposits", sub: "TZS", key: "deposits", format: "tzs", align: "right", width: 18 },
