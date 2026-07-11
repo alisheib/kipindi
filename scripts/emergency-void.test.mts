@@ -98,6 +98,20 @@ const before: Record<string, number> = {};
 for (const u of ["ev_b", "ev_c", "ev_d", "ev_e"]) before[u] = await bal(u);
 const aBeforeVoid = await bal("ev_a"); // already cashed out — must NOT change
 
+// ── Least-privilege: a MODERATOR must NOT be able to void (it moves money) ──
+// Closes the ai-polls-delete escalation path — the gate is now in the service.
+await db.user.create({
+  id: "ev_mod", phoneE164: `+25595${String(++seq).padStart(7, "0")}`, passwordHash: null, passwordSalt: null,
+  failedLoginCount: 0, lockedUntil: null, role: "MODERATOR", status: "ACTIVE", locale: "EN",
+  displayName: "Mod", dob: null, region: null, acceptedTermsVersion: null, acceptedTermsAt: null,
+  marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null, email: null,
+  createdAt: now(), updatedAt: now(), lastLoginAt: null, closedAt: null,
+} as never);
+const modVoid = await emergencyVoidMarket({ marketId: m.id, officerId: "ev_mod", reason: "moderator attempting a live-market void" });
+ok("MODERATOR void BLOCKED at service layer", !modVoid.ok, modVoid.ok ? "unexpectedly ok" : modVoid.error);
+ok("market still LIVE after blocked moderator void", (await getMarket(m.id))!.status === "LIVE");
+ok("open positions untouched by blocked moderator void", (await posOf("ev_b")).status === "OPEN");
+
 // ── THE KILL SWITCH (capture console to prove emails dispatch) ─────────────
 const REASON = "Suspended by directive of the Gaming Board";
 const logs: string[] = [];

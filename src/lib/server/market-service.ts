@@ -1449,6 +1449,24 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
   const reason = (opts.reason ?? "").trim();
   if (reason.length < 5) return { ok: false, error: "A reason (≥ 5 characters) is required for an emergency void.", code: "INVALID" };
 
+  // Money-moving void — refunds every open stake. Hard-gate to ADMIN/COMPLIANCE
+  // at the SERVICE layer (defense-in-depth): the direct emergencyVoidMarketAction
+  // already restricts this, but other callers run under MARKET_OPS (incl.
+  // MODERATOR) — e.g. deleting a PUBLISHED AI poll voids its live market. Voiding
+  // a live market and moving money is never a moderator action.
+  const officer = await db.user.findById(opts.officerId);
+  if (!officer || !["ADMIN", "COMPLIANCE"].includes(officer.role)) {
+    audit({
+      category: "SECURITY",
+      action: "market.emergency_void.forbidden",
+      actorId: opts.officerId,
+      targetType: "Market",
+      targetId: opts.marketId,
+      payload: { role: officer?.role ?? "unknown", note: "ADMIN/COMPLIANCE required to void a market (money movement)." },
+    });
+    return { ok: false, error: "Forbidden: ADMIN or COMPLIANCE role required to void a market.", code: "INVALID" };
+  }
+
   // Officer-conflict hard-block (Elevation #12): same rule as resolveMarket.
   const officerPositions = (await listPositionsForMarket(opts.marketId))
     .filter((p) => p.userId === opts.officerId && (p.status === "OPEN" || p.status === "WIN" || p.status === "LOSS"));
