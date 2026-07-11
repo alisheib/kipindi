@@ -159,7 +159,9 @@ export function Modal({
   );
 }
 
-type Tone = "claret" | "warning" | "gold" | "brand";
+// Gold is intentionally NOT a confirm-button tone — gold-discipline reserves it
+// for the resolved-seal / earned-money language, never a destructive/confirm CTA.
+type Tone = "claret" | "warning" | "brand";
 
 export type ConfirmModalProps = {
   open: boolean;
@@ -184,13 +186,11 @@ export type ConfirmModalProps = {
 const TONE_BTN: Record<Tone, string> = {
   claret: "btn btn-claret",
   warning: "btn btn-claret",
-  gold: "btn btn-gold",
   brand: "btn btn-primary",
 };
 const TONE_INK: Record<Tone, { ring: string; ink: string }> = {
   claret: { ring: "var(--claret-500)", ink: "var(--claret-300)" },
   warning: { ring: "var(--claret-500)", ink: "var(--claret-300)" },
-  gold: { ring: "var(--gold-500)", ink: "var(--gold-300)" },
   brand: { ring: "var(--brand-500)", ink: "var(--brand-300)" },
 };
 

@@ -23,7 +23,7 @@
 import * as React from "react";
 import { ConfirmModal } from "@/components/ui/modal";
 
-type Tone = "claret" | "warning" | "gold" | "brand";
+type Tone = "claret" | "warning" | "brand";
 
 type Props = {
   trigger: React.ReactElement;
