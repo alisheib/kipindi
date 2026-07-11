@@ -20,6 +20,16 @@ in-memory store (dev). Prod flag `USE_PRISMA_DAL=true` on Railway.
 ## 2 · Current state (feature-complete, hardening for launch)
 The platform is **feature-complete and passing its gates**. Recently landed:
 
+- **Phase E — security/compliance/money-safety audit (2026-07-11)** — 6 findings
+  fixed & shipped incl. a 🔴CRITICAL money race (`cashOutPosition` now holds the
+  `market:` lock). Full record + the ranked flagged list (payments MOCK, withdrawal
+  idempotency, affiliate idempotency, withdrawal-tax-policy ⚠, GBT pack period) is
+  in **`docs/PHASE_E_AUDIT_2026-07-11.md`**.
+- **Sentinel run progress-loader (2026-07-11, Ali)** — admin "Run now" shows a
+  theme-kit loader (spinner + phased progress bar → burst-result card).
+- **Phase C kickoff (2026-07-11)** — `scripts/visual-matrix.mjs` trilingual matrix
+  runner; mobile slice 36/36 auto-pass. Human-read + full matrix is the next UI step.
+
 - **Admin console fully built** — ADM1 regulator-pack maker-checker signing chain,
   ADM2 two-officer resolution ceremony, ADM3 KYC/AML workstation, ADM4 payments
   ops (per-MNO health + kill-switches + reconciliation + retry). GGR reconciled to
