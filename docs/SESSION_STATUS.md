@@ -129,5 +129,5 @@ pre-deploy gauntlet `npm run qa:live`.
 - `docs/perfection-plan.md` — the 0-issue launch plan (phases A–G).
 - `docs/gli-remediation-{plan,tracker}.md` — certification gaps.
 - Audits: `ADMIN_VIEW_AUDIT_*`, `PLAYER_VIEW_AUDIT_*`, `ARCHITECTURE_AUDIT_*`.
-- Superseded (ignore for planning): `docs/next-sprint-prompt.md`,
-  `docs/ui-rollout-next-session.md` — folded into `next-session-prompt.md`.
+- `docs/PHASE_E_AUDIT_2026-07-11.md` — the security/compliance/money-safety audit
+  (6 fixed findings + the ranked flagged list for the next session).

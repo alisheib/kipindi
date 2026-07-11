@@ -1,11 +1,9 @@
 # 50pick / Kipindi — next-session opening prompt
 
 > Paste this as the first message of the next session. It is the **single
-> canonical handoff** — it supersedes `docs/next-sprint-prompt.md` and
-> `docs/ui-rollout-next-session.md` (older, left for history only). Read
-> `docs/SESSION_STATUS.md` first (current state + gotchas), then `CLAUDE.md`
-> (architecture). Last updated 2026-07-11 · HEAD after this session ≈ the docs
-> commit on `main`.
+> canonical handoff**. Read `docs/SESSION_STATUS.md` first (current state +
+> gotchas), then `CLAUDE.md` (architecture). Last updated 2026-07-11 · HEAD
+> after this session ≈ the docs commit on `main`.
 
 ---
 

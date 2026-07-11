@@ -11,7 +11,7 @@ resets, this file says exactly where to resume.
 > shots), **software architect** (single source of truth, no divergence, delete the
 > superseded), **manager** (scope/risk, ship-vs-defer, flag to Ali), and **player**
 > (clear, trustworthy, fast, RG-safe, correct in EN/SW/ZH). Resolve or record every
-> concern a lens raises — never ship past it silently. Full note in `docs/ui-rollout-next-session.md`.
+> concern a lens raises — never ship past it silently. Full note in `docs/perfection-plan.md` (the 9-role gate).
 
 Status legend: `[ ]` not started · `~` in flight · `[x]` done · `⊘` blocked/sourced-externally
 

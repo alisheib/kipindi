@@ -511,45 +511,21 @@ git push
 **Never leave commits unpushed.** Railway auto-redeploys on push.
 Ali checks the live site, not local — unpushed work is invisible to him.
 
-## Elevation Phase (July 2026 →)
+## Where progress is tracked (canonical)
 
-The platform is being elevated from "functionally complete" to "category-defining"
-based on a 142-recommendation spec from professional reviewers.
+The platform is **feature-complete and hardening for launch**. Progress and
+handoff live in a small set of living docs — read these, in order:
 
-### Tracker
+1. **`docs/SESSION_STATUS.md`** — read-first current state, launch blockers, gotchas.
+2. **`docs/next-session-prompt.md`** — the canonical next-session handoff (paths map + open work).
+3. **`docs/perfection-plan.md`** — the 0-issue launch plan (phases A–G; the master QA plan).
+4. **`docs/ui-rollout-tracker.md`** — per-batch work log (newest at the top of the Batch log).
 
-**`docs/elevation-tracker.md`** is the single source of truth for progress.
-Every item has a status, commit hash when done, and notes. Update it after
-every completed item — this file travels with `git pull/push` across PCs.
+Session protocol: `git pull` → `npx prisma generate` → `tsc` + `npm run test:all`
+(45/45) → read SESSION_STATUS → work one item → test + live-drive → **commit AND
+push** (Railway auto-deploys; Ali reviews live). Update the living docs before you end.
 
-### Session protocol
-
-Every session working on elevation:
-
-1. **Pull first**: `cd C:\kipindi-main && git pull`
-2. **Read the tracker**: `docs/elevation-tracker.md` — find the next `[ ]` item
-3. **Work the item**: implement, test, build
-4. **Update the tracker**: mark `[x]`, add commit hash + date to the session log
-5. **Build before push**: `npx next build` (catches typedRoutes + proxy issues)
-6. **Commit AND push**: Railway auto-redeploys, Ali reviews live
-7. **Never skip the tracker update** — it's how sessions stay coordinated
-
-### Phase order (strict)
-
-- **Phase 0** (items 0a-0g): Schema cleanup — BEFORE the ledger. betId split,
-  CHECK constraints, dead code. External review: "schema debt sabotages item #2."
-- **Phase 1A** (items 1-7): Pure correctness — ledger, outbox, webhooks, withdrawals.
-- **Phase 1B** (items 8-16): Infrastructure — Redis, observability, perf budgets (moved up).
-- **Phase 2** (items 17-55): Trusted & loved — withdrawal SLA first (trust moat).
-- **Phase 3** (items 56-70): Without peer — multi-outcome FROZEN until ledger stable.
-
-### Key elevation rules
-
-- **Phase 0 before ledger** — schema cleanup is a prerequisite
-- **P0 before P1 before P2** — never jump ahead
-- **Money paths are sacred** — test after every change
-- **Migrations must be reversible** — verify prod data compatibility first
-- **Ali Decision Memo** (items A1-A6 in tracker) blocks some items — skip to next
-- **Evidence table** in tracker — 10/10 requires proof, not just features
-- **The spec** lives at `NEW PHASE DESIGN/50pick Elevation Spec.dc.html`
-- **External review** at `50PICK/Claude Fable final recommendation/PLATFORM-REVIEW-FINAL.md`
+Point-in-time audits (kept for record): `docs/PHASE_E_AUDIT_*`, `ADMIN_VIEW_AUDIT_*`,
+`PLAYER_VIEW_AUDIT_*`, `ARCHITECTURE_AUDIT_*`, `consistency-audit.md`, `kit-gap-audit.md`,
+`navigation-ia-review.md`. Design source of truth for finalization:
+`docs/design-master-brief.md`, `docs/visual-assets-brief.md`, `docs/glyph-reference-for-design.md`.
