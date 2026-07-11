@@ -1,6 +1,6 @@
 # 50pick / Kipindi — Session status & handover
 
-**Updated:** 2026-07-11 · **Branch:** `main` · **HEAD:** `16c00f0` (see `git log -1`)
+**Updated:** 2026-07-11 (Phase E audit) · **Branch:** `main` · **HEAD:** see `git log -1`
 **Live:** https://kipindi-production.up.railway.app (Railway auto-deploys on push to `main`; custom domain `www.50pick.tz` registered but **not cut over** — DNS pending).
 
 > This is the **read-first** doc. It's a current-state snapshot + the launch
