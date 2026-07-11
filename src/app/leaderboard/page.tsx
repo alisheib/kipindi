@@ -1,18 +1,19 @@
 /**
  * /leaderboard — top predictors of the rolling window.
  *
- * Uses the kit's PriceChart for the platform's "consensus shift" visual at
- * the top, VolumeSparkline for each row's recent activity, and the kit's
- * tier-badge palette for rank tiers. Sample data is generated when there
- * aren't yet enough resolved positions in the in-memory store so the UI is
- * never empty in demo mode.
+ * Uses VolumeSparkline for each row's recent activity and the kit's
+ * tier-badge palette for rank tiers. In production the board shows ONLY real
+ * ranked players (a genuine empty state until players settle predictions);
+ * sample data is generated for the empty demo store in non-production only.
  */
 import { db } from "@/lib/server/store";
+import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
-import { listPositionsForUser, listMarkets } from "@/lib/server/market-service";
-import { PriceChart, VolumeSparkline } from "@/components/markets/price-chart";
+import { listPositionsForUser } from "@/lib/server/market-service";
+import { VolumeSparkline } from "@/components/markets/price-chart";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Avatar, TierBadge as KitTierBadge } from "@/components/ui/avatar";
 import { PageRibbon } from "@/components/layout/page-ribbon";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
@@ -133,31 +134,15 @@ function syntheticLeaderboard(): Row[] {
   }).sort((a, b) => b.roi - a.roi);
 }
 
-/** Build a "consensus shift" series — average market YES probability across
- *  all live markets over the last 14 days. Currently we don't snapshot
- *  history, so we synthesize a plausible series from the current pools. */
-async function buildConsensusSeries(todayLabel: string): Promise<{ t: string; yes: number }[]> {
-  const live = await listMarkets({ status: "LIVE" }).catch(() => []);
-  if (live.length === 0) return [];
-  // Walk that ends near the current crowd consensus
-  const end = live.reduce((s, m) => s + (m.yesPool / Math.max(1, m.yesPool + m.noPool)), 0) / live.length;
-  const days = ["Apr 22", "Apr 24", "Apr 26", "Apr 28", "Apr 30", "May 2", "May 4", todayLabel];
-  // Smooth walk from 0.40 → end
-  const points = days.map((t, i) => {
-    const k = i / (days.length - 1);
-    const noise = (Math.sin(i * 1.3) + Math.cos(i * 0.7)) * 0.03;
-    return { t, yes: Math.max(0.05, Math.min(0.95, 0.40 + (end - 0.40) * k + noise)) };
-  });
-  return points;
-}
-
 export default async function LeaderboardPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const { t } = await getServerT();
   const real = await buildLeaderboard();
   // Show REAL players from the very first one so a player can always see
-  // themselves ranked. Only fall back to the sample board when there are
-  // genuinely no ranked players yet (brand-new platform), so the page isn't empty.
-  const isSynthetic = real.length === 0;
+  // themselves ranked. The synthetic sample board is a NON-PRODUCTION demo
+  // convenience only — a licensed real-money site must never present
+  // fabricated players/rankings to real users, so in production an empty
+  // board renders a genuine empty state instead.
+  const isSynthetic = real.length === 0 && process.env.NODE_ENV !== "production";
   const rows = isSynthetic ? syntheticLeaderboard() : real;
   // Paginate the ranking the same way every other list on the platform paginates.
   const sp = await searchParams;
@@ -165,7 +150,6 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   const safePage = Math.min(Math.max(1, parseInt(sp.page ?? "1", 10) || 1), totalPages);
   const offset = (safePage - 1) * PLAYER_PER_PAGE;
   const pagedRows = rows.slice(offset, offset + PLAYER_PER_PAGE);
-  const consensus = await buildConsensusSeries(t.leaderboard.today).catch(() => []);
 
   // Tier display name from the dict (first word of the tier description)
   const tierDisplayName = (tier: Tier) => t.leaderboard[`tier${tier.charAt(0).toUpperCase()}${tier.slice(1)}` as keyof typeof t.leaderboard].split(" ")[0];
@@ -175,6 +159,15 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
       <RefreshPoller intervalMs={30_000} />
       <PageHeader eyebrow={t.leaderboard.title} title={t.leaderboard.topPredictors} />
 
+      {rows.length === 0 ? (
+        <EmptyState
+          kind="leaderboard"
+          title={t.leaderboard.emptyTitle}
+          body={t.leaderboard.emptyBody}
+          action={<Link href={"/markets" as never} className="btn btn-primary btn-sm">{t.positions.browseMarkets}</Link>}
+        />
+      ) : (
+        <>
       <PageRibbon
         stats={[
           { label: t.leaderboard.topTier, value: tierDisplayName(rows[0]?.tier ?? "bronze"), accent: "gold" },
@@ -186,24 +179,6 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
       {/* A10 podium — top-3, #1 raised in a gilt ring + crown. Real players
           from row 1; only shown with a genuine top-3. */}
       {rows.length >= 3 && <Podium top={rows} t={t} />}
-
-      {/* Consensus shift chart — the kit's PriceChart applied platform-wide */}
-      {consensus.length > 1 && (
-        <section className="rounded-xl glass-panel p-4 lg:p-5">
-          <div className="flex items-baseline justify-between mb-3">
-            <div>
-              <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">
-                {t.leaderboard.consensus}
-              </p>
-              <p className="text-[12px] italic text-text-subtle">{t.leaderboard.avgConviction}</p>
-            </div>
-            <p className="font-mono text-[11px] text-text-muted">
-              {Math.round(consensus[consensus.length - 1].yes * 100)}% {t.leaderboard.today}
-            </p>
-          </div>
-          <PriceChart data={consensus} height={180} ariaLabel={t.market.probOverTime} />
-        </section>
-      )}
 
       <section className="overflow-x-auto rounded-xl glass-panel">
         {isSynthetic && (
@@ -262,6 +237,8 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
         <div className="rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">
           <Pagination total={rows.length} page={safePage} perPage={PLAYER_PER_PAGE} baseHref="/leaderboard" ofLabel={t.common.of} prevLabel={t.common.previousPage} nextLabel={t.common.nextPage} />
         </div>
+      )}
+        </>
       )}
     </main>
   );
