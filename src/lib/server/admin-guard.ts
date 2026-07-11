@@ -18,13 +18,26 @@ import { TOTP_COOKIE_NAME } from "./totp-cookie";
  * Bound to userId+sessionId, so it can't be replayed across logins. No-op when
  * DISABLE_ADMIN_TOTP=true (matches the layout bypass switch).
  */
-export async function requireAdminTotp(userId: string, sessionId: string): Promise<void> {
-  if (process.env.DISABLE_ADMIN_TOTP === "true") return;
-  if (!(await hasTotp(userId))) redirect("/admin/2fa/setup");
+export type AdminTotpStatus = "ok" | "not-enrolled" | "unverified";
+
+/**
+ * Non-throwing TOTP step-up check. Returns the status instead of redirecting, so
+ * API route handlers (which stream images / downloads, where a NEXT_REDIRECT
+ * would corrupt the response) can map it to a 403. `requireAdminTotp` wraps this
+ * for the Server-Action / page path where a redirect is the right UX.
+ */
+export async function checkAdminTotp(userId: string, sessionId: string): Promise<AdminTotpStatus> {
+  if (process.env.DISABLE_ADMIN_TOTP === "true") return "ok";
+  if (!(await hasTotp(userId))) return "not-enrolled";
   const jar = await cookies();
   const raw = jar.get(TOTP_COOKIE_NAME)?.value;
   const data = verifySession<{ userId: string; sessionId: string; verifiedAt: number; exp: number }>(raw);
-  if (!data || data.userId !== userId || data.sessionId !== sessionId) {
-    redirect("/admin/totp-verify");
-  }
+  if (!data || data.userId !== userId || data.sessionId !== sessionId) return "unverified";
+  return "ok";
+}
+
+export async function requireAdminTotp(userId: string, sessionId: string): Promise<void> {
+  const status = await checkAdminTotp(userId, sessionId);
+  if (status === "not-enrolled") redirect("/admin/2fa/setup");
+  if (status === "unverified") redirect("/admin/totp-verify");
 }

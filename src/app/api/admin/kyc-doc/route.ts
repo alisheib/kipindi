@@ -17,6 +17,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { COMPLIANCE_ROLES } from "@/lib/server/roles";
+import { checkAdminTotp } from "@/lib/server/admin-guard";
 
 const ADMIN_ROLES = COMPLIANCE_ROLES; // role tier — see @/lib/server/roles
 const DOC_TYPES = new Set(["NIDA_FRONT", "NIDA_BACK", "SELFIE"]);
@@ -29,6 +30,14 @@ export async function GET(req: Request) {
   if (!me || !ADMIN_ROLES.has(me.role)) {
     audit({ category: "SECURITY", action: "kyc_doc.forbidden", actorId: session.userId, targetType: "Action", targetId: "kyc-doc", payload: { role: me?.role ?? "unknown" } });
     return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+  }
+  // Step-up 2FA (audit finding B3): the admin layout enforces TOTP on page
+  // render, but a direct GET to this URL skips the layout. Raw NIDA/selfie
+  // imagery must require a satisfied TOTP cookie here too — 403 (not a redirect,
+  // which would corrupt the image response).
+  if ((await checkAdminTotp(session.userId, session.sessionId)) !== "ok") {
+    audit({ category: "SECURITY", action: "kyc_doc.totp_required", actorId: session.userId, targetType: "Action", targetId: "kyc-doc", payload: {} });
+    return NextResponse.json({ ok: false, error: "2FA required" }, { status: 403 });
   }
 
   const url = new URL(req.url);

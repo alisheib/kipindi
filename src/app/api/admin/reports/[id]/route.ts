@@ -20,6 +20,7 @@ import { renderXlsx } from "@/lib/server/reports/xlsx";
 import { renderPdf } from "@/lib/server/reports/pdf";
 import { reportFilename } from "@/lib/server/reports/brand";
 import { CONFIG_ROLES } from "@/lib/server/roles";
+import { checkAdminTotp } from "@/lib/server/admin-guard";
 
 const ADMIN_ROLES = CONFIG_ROLES; // role tier — see @/lib/server/roles
 
@@ -34,6 +35,13 @@ export async function GET(
   const u = await db.user.findById(session.userId);
   if (!u || !ADMIN_ROLES.has(u.role)) {
     return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+  }
+  // Step-up 2FA (audit finding B3): a direct GET to this URL skips the admin
+  // layout's TOTP gate. Regulator-grade financial reports must require a
+  // satisfied TOTP cookie here too — 403 rather than a redirect (which would
+  // corrupt the download).
+  if ((await checkAdminTotp(session.userId, session.sessionId)) !== "ok") {
+    return NextResponse.json({ ok: false, error: "2FA required" }, { status: 403 });
   }
 
   const { id } = await params;
