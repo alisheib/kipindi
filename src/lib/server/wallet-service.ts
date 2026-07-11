@@ -138,27 +138,42 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
 
   // Open the transaction in PENDING
   const txnId = `txn_${randomId(12)}`;
-  const txn = await db.txn.create({
-    id: txnId,
-    walletId: wallet.id,
-    userId,
-    type: "DEPOSIT",
-    status: "PROCESSING",
-    amount: parse.data.amount,
-    fee: 0, taxWithheld: 0,
-    balanceAfter: null,
-    currency: "TZS",
-    provider: parse.data.provider,
-    providerRef: null,
-    msisdn: parse.data.msisdn ?? null,
-    description: `${friendlyProvider(parse.data.provider)} deposit`,
-    positionId: null,
-    amlReason: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    completedAt: null,
-    idempotencyKey: idempotencyKey ?? null,
-  });
+  let txn: StoredTxn;
+  try {
+    txn = await db.txn.create({
+      id: txnId,
+      walletId: wallet.id,
+      userId,
+      type: "DEPOSIT",
+      status: "PROCESSING",
+      amount: parse.data.amount,
+      fee: 0, taxWithheld: 0,
+      balanceAfter: null,
+      currency: "TZS",
+      provider: parse.data.provider,
+      providerRef: null,
+      msisdn: parse.data.msisdn ?? null,
+      description: `${friendlyProvider(parse.data.provider)} deposit`,
+      positionId: null,
+      amlReason: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      completedAt: null,
+      idempotencyKey: idempotencyKey ?? null,
+    });
+  } catch (err) {
+    // A concurrent same-key deposit created the txn first (the @unique
+    // idempotencyKey constraint fires in prod). Return THAT txn instead of a
+    // 500 — exactly-once, no duplicate PROCESSING row. Mirrors withdraw.
+    if (idempotencyKey) {
+      const existing = await db.txn.findByIdempotencyKey(idempotencyKey);
+      if (existing) {
+        const w = await db.wallet.findByUserId(userId);
+        return { ok: true, data: { txnId: existing.id, status: existing.status, balance: w?.balance ?? 0 } };
+      }
+    }
+    throw err;
+  }
   audit({ category: "WALLET", action: "deposit.initiated", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { provider: parse.data.provider, amount: parse.data.amount } });
 
   // Dispatch to provider

@@ -166,8 +166,6 @@ export function ChatRoot() {
                   role: "ai",
                   kind: "escalate",
                   lang: user.lang,
-                  ticketId: "HC-" + Math.floor(1000 + Math.random() * 9000),
-                  etaMinutes: 4,
                 },
               ]
             : [...prev, reply],

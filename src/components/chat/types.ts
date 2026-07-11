@@ -37,7 +37,7 @@ export type Message =
       citations: Citation[];
     })
   | (MsgBase & { role: "ai"; kind: "rg_redirect"; lang: Lang })
-  | (MsgBase & { role: "ai"; kind: "escalate"; lang: Lang; ticketId: string; etaMinutes: number });
+  | (MsgBase & { role: "ai"; kind: "escalate"; lang: Lang });
 
 export type ChatState = {
   open: boolean;

@@ -56,9 +56,11 @@ export async function GET() {
       category: m.category,
       sourceUrl: m.sourceUrl,
       resolvedOutcome: m.resolvedOutcome,
-      stage1By: m.resolutionStage1By,
+      // Public attestation proves TWO DISTINCT officers settled it — without
+      // leaking internal officer user-ids (or staff names) on an unauthenticated
+      // endpoint. Accountability by identity lives in the private audit chain.
+      twoOfficer: !!(m.resolutionStage1By && m.resolutionStage2By && m.resolutionStage1By !== m.resolutionStage2By),
       stage1At: m.resolutionStage1At,
-      stage2By: m.resolutionStage2By,
       stage2At: m.resolutionStage2At,
       objectionsClosedAt: m.objectionsClosedAt,
       yesPool: m.yesPool,

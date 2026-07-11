@@ -12,18 +12,14 @@
  */
 
 import { FiftyMark } from "@/components/brand";
-import { Num } from "./Primitives";
 import { SUPPORT_EMAIL } from "@/lib/support-config";
 import { useT } from "@/lib/i18n";
 
-export function EscalateHandoff({
-  ticketId,
-  etaMinutes,
-}: {
-  ticketId: string;
-  etaMinutes: number;
-}) {
+export function EscalateHandoff() {
   const { t } = useT();
+  // Never-fabricate: no invented ticket number or ETA — there is no ticket
+  // record behind them. The real escalation is the support email below (which
+  // opens a genuine message to the support inbox).
   return (
     <div className="cm-handoff" role="group" aria-label={t.common.handingToSupport}>
       <div className="cm-handoff-rule">{t.common.handingToSupport}</div>
@@ -32,20 +28,13 @@ export function EscalateHandoff({
           <FiftyMark size={36} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="cm-handoff-title">{t.chat.specialistTakeOver}</div>
-            <div className="cm-handoff-meta">
-              <span>{t.chat.ticket}</span>
-              <Num>#{ticketId}</Num>
-              <span style={{ opacity: 0.4 }}>·</span>
-              <span>{t.chat.eta}</span>
-              <Num>{t.chat.etaMin.replace("{n}", String(etaMinutes))}</Num>
-            </div>
           </div>
         </div>
         <div className="cm-handoff-body">
           {t.chat.handoffBody}
         </div>
         <a
-          href={`mailto:${SUPPORT_EMAIL()}?subject=${encodeURIComponent(t.chat.ticketSubject.replace("{id}", String(ticketId)))}`}
+          href={`mailto:${SUPPORT_EMAIL()}?subject=${encodeURIComponent(t.chat.specialistTakeOver)}`}
           className="cm-escalate"
           aria-label={t.chat.connectSupportAria}
         >

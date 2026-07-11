@@ -472,16 +472,6 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
       tag: "bet-placed",
     })).catch(() => {});
 
-    // Affiliate program — if this player was referred, accrue the referrer's
-    // commission on this stake and fire the first-bet milestone prize. The
-    // basis is the operator's commission on the stake; the referral cut is a
-    // configured share of that. Best-effort; never blocks the bet.
-    try {
-      await onRecruitBet(userId, { stake: opts.stake, operatorCommissionRate: stakeCfg.commissionRate });
-    } catch (err) {
-      audit({ category: "SYSTEM", action: "affiliate.accrual_error", actorId: userId, targetType: "Position", targetId: positionId, payload: { error: String(err) } });
-    }
-
     // Wagering accrues on the FULL stake (turnover) INSIDE this wallet lock, so
     // spend + wagering + any fulfilment are one atomic unit (no race with a
     // concurrent second bet on the same wallet). Turnover from this bet is
@@ -510,6 +500,20 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
       html: bonusFulfilledHtml({ amountTzs: g.amountTzs }),
       tag: "bonus",
     })).catch(() => {});
+  }
+
+  // Affiliate accrual runs AFTER the bettor's wallet lock releases — never
+  // nested inside it. onRecruitBet takes referral:* and the REFERRER's wallet
+  // lock; holding those under the bettor's wallet lock pins up to three pooled
+  // connections per referred bet and risks Prisma pool exhaustion under load
+  // (money-safety re-audit MED). Best-effort; a dropped commission never affects
+  // the placed bet.
+  if (result.ok) {
+    try {
+      await onRecruitBet(userId, { stake: opts.stake, operatorCommissionRate: stakeCfg.commissionRate });
+    } catch (err) {
+      audit({ category: "SYSTEM", action: "affiliate.accrual_error", actorId: userId, targetType: "Position", targetId: result.data!.positionId, payload: { error: String(err) } });
+    }
   }
   return result;
 }
@@ -1003,22 +1007,30 @@ export async function cashOutPosition(
     // SSE: push updated odds after cash-out changes the pool
     emit("market:odds", { marketId: m.id, yesPct: impliedYesPct(m) });
 
+    // Conservation guard: never credit/record more than actually left the pool.
+    // The debits are capped at available liquidity, so in every reachable state
+    // (this position's own side always holds ≥ its own stake) removed === value;
+    // this only bites if a future change broke that invariant — pay the lesser
+    // rather than mint. credit, position payout and the txn ledger all use `paid`
+    // so they can never disagree.
+    const paid = Math.min(value, ownDebit + oppDebit);
+
     // Mark the position closed.
     p.status = "CASHED_OUT";
-    p.finalPayout = value;
+    p.finalPayout = paid;
     p.settledAt = now;
     await positionStore.set(p);
 
     // Credit wallet + record the txn (atomic +delta on the live row).
-    const credited = await db.wallet.adjust(wallet.id, { balance: value });
-    const newBalance = credited?.balance ?? wallet.balance + value;
+    const credited = await db.wallet.adjust(wallet.id, { balance: paid });
+    const newBalance = credited?.balance ?? wallet.balance + paid;
     const cashoutTxnId = `txn_${randomId(12)}`;
     await db.txn.create({
       id: cashoutTxnId,
       walletId: wallet.id, userId,
       type: "CASHOUT",
       status: "CONFIRMED",
-      amount: value, fee: cashOutFee, taxWithheld: 0,
+      amount: paid, fee: cashOutFee, taxWithheld: 0,
       balanceAfter: newBalance, currency: "TZS",
       provider: "INTERNAL", providerRef: null, msisdn: null,
       description: `Cashed out · "${m.titleEn.slice(0, 60)}"`,
@@ -1027,7 +1039,7 @@ export async function cashOutPosition(
       createdAt: now, updatedAt: now, completedAt: now,
     });
     // Dual-write: cashout to double-entry ledger (fire-and-forget).
-    postLedgerEntries(`cashout_${cashoutTxnId}`, cashoutEntries({ txnId: cashoutTxnId, userId, marketId: m.id, value, fee: cashOutFee })).catch(() => {});
+    postLedgerEntries(`cashout_${cashoutTxnId}`, cashoutEntries({ txnId: cashoutTxnId, userId, marketId: m.id, value: paid, fee: cashOutFee })).catch(() => {});
 
     notifyCashout(userId, { amount: value, marketTitle: m.titleEn, marketId: m.id, inGracePeriod, positionId });
     sendEmailToUser(userId, (email) => ({
@@ -1050,7 +1062,7 @@ export async function cashOutPosition(
       },
     });
 
-    return { ok: true as const, data: { value, balance: newBalance } };
+    return { ok: true as const, data: { value: paid, balance: newBalance } };
     });
   });
 }

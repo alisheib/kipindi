@@ -167,7 +167,7 @@ function RenderMessage({ m }: { m: Message }) {
     return <RgRedirectCard lang={m.lang} />;
   }
   if (m.kind === "escalate") {
-    return <EscalateHandoff ticketId={m.ticketId} etaMinutes={m.etaMinutes} />;
+    return <EscalateHandoff />;
   }
   if (m.kind === "text_with_citations") {
     return (
