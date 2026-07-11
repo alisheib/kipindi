@@ -21,7 +21,11 @@ export function ToggleSource({ id, enabled }: { id: string; enabled: boolean }) 
         const fd = new FormData();
         fd.set("id", id);
         fd.set("enabled", String(!enabled));
-        await toggleSourceAction(fd);
+        const r = await toggleSourceAction(fd);
+        if (!r.ok) {
+          toast({ title: "Couldn't update source", description: r.error, variant: "danger" });
+          return;
+        }
         router.refresh();
         deferToast({ title: enabled ? "Source disabled" : "Source enabled", variant: "success" });
       } catch {
@@ -35,14 +39,22 @@ export function ToggleSource({ id, enabled }: { id: string; enabled: boolean }) 
 export function RemoveSource({ id, label }: { id: string; label: string }) {
   const [pending, start] = useTransition();
   const router = useRouter();
-  const { deferToast } = useDeferredToast(pending);
+  const { deferToast, toast } = useDeferredToast(pending);
   const doRemove = () => {
     start(async () => {
-      const fd = new FormData();
-      fd.set("id", id);
-      await removeSourceAction(fd);
-      router.refresh();
-      deferToast({ title: "Source removed", description: label, variant: "warning" });
+      try {
+        const fd = new FormData();
+        fd.set("id", id);
+        const r = await removeSourceAction(fd);
+        if (!r.ok) {
+          toast({ title: "Couldn't remove source", description: r.error, variant: "danger" });
+          return;
+        }
+        router.refresh();
+        deferToast({ title: "Source removed", description: label, variant: "warning" });
+      } catch {
+        toast({ title: "Couldn't remove source", variant: "danger" });
+      }
     });
   };
   return (
@@ -75,7 +87,11 @@ export function ToggleCategory({ category, enabled }: { category: string; enable
         const fd = new FormData();
         fd.set("category", category);
         fd.set("enabled", String(!enabled));
-        await toggleCategoryAction(fd);
+        const r = await toggleCategoryAction(fd);
+        if (!r.ok) {
+          toast({ title: "Couldn't update category", description: r.error, variant: "danger" });
+          return;
+        }
         router.refresh();
         deferToast({ title: `Category ${enabled ? "disabled" : "enabled"} · ${category}`, variant: "success" });
       } catch {

@@ -176,11 +176,19 @@ export function ClearOverrideButton({ marketId }: { marketId: string }) {
   const { deferToast, toast } = useDeferredToast(pending);
   const onClick = () => {
     start(async () => {
-      const fd = new FormData();
-      fd.set("marketId", marketId);
-      await clearMarketOverrideAction(fd);
-      router.refresh();
-      deferToast({ title: "Override cleared", variant: "warning" });
+      try {
+        const fd = new FormData();
+        fd.set("marketId", marketId);
+        const r = await clearMarketOverrideAction(fd);
+        if (!r.ok) {
+          toast({ title: "Couldn't clear override", description: r.error, variant: "danger" });
+          return;
+        }
+        router.refresh();
+        deferToast({ title: "Override cleared", variant: "warning" });
+      } catch {
+        toast({ title: "Couldn't clear override", variant: "danger" });
+      }
     });
   };
   return (
