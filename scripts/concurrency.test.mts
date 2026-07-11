@@ -252,5 +252,42 @@ async function makeMarket(): Promise<string> {
   }
 }
 
+// ── G · Resumable settlement — a re-run pays only OPEN, never double-pays ────
+// resolveMarket now persists the RESOLVED status LAST (after all payouts), so a
+// crash mid-settlement leaves the market CLOSED with some positions still OPEN,
+// and a re-run resumes them. This simulates that state: one winner already
+// settled+credited (as a crashed run would leave it), one still OPEN. The re-run
+// must pay the OPEN winner and NOT touch the already-settled one.
+{
+  const mid = await makeMarket();
+  await fundedUser("cc_res_wa", 100_000); // YES — pretend the crashed run already paid this one
+  await fundedUser("cc_res_wb", 100_000); // YES — still OPEN, must be paid on resume
+  await fundedUser("cc_res_l", 100_000);  // NO — loses
+  const ra = await buyPosition("cc_res_wa", { marketId: mid, side: "YES", stake: 10_000 });
+  const rb = await buyPosition("cc_res_wb", { marketId: mid, side: "YES", stake: 10_000 });
+  await buyPosition("cc_res_l", { marketId: mid, side: "NO", stake: 10_000 });
+  // Stage-1 YES (leaves the market CLOSED — exactly the pre-stage-2 state a crash
+  // between "status persisted CLOSED" and "status persisted RESOLVED" produces).
+  await resolveMarket({ marketId: mid, outcome: "YES", officerId: "cc_res_alpha" });
+
+  // Simulate the crashed run having ALREADY settled+credited winner A.
+  const paidA = 15_000;
+  const posA = await positionStore.get(ra.ok ? ra.data!.positionId : "?");
+  if (posA) { posA.status = "WIN"; posA.finalPayout = paidA; await positionStore.set(posA); }
+  const wa = await db.wallet.findByUserId("cc_res_wa");
+  if (wa) await db.wallet.adjust(wa.id, { balance: paidA });
+  const aAfterSimPay = await bal("cc_res_wa");
+  const bBeforeResume = await bal("cc_res_wb");
+
+  // RESUME: a different second officer confirms stage-2.
+  const done = await resolveMarket({ marketId: mid, outcome: "YES", officerId: "cc_res_beta" });
+  ok("G: resumed settlement completes", done.ok && done.data?.stage === "complete", JSON.stringify(done));
+  ok("G: already-settled winner NOT double-paid", (await bal("cc_res_wa")) === aAfterSimPay, `bal=${await bal("cc_res_wa")} expected=${aAfterSimPay}`);
+  ok("G: OPEN winner paid on resume", (await bal("cc_res_wb")) > bBeforeResume, `Δ=${(await bal("cc_res_wb")) - bBeforeResume}`);
+  ok("G: winner-A position stays WIN (untouched)", (await positionStore.get(posA!.id))!.status === "WIN");
+  ok("G: winner-B position now WIN", (await positionStore.get(rb.ok ? rb.data!.positionId : "?"))!.status === "WIN");
+  ok("G: market RESOLVED after resume", (await getMarket(mid))!.status === "RESOLVED");
+}
+
 console.log(`\nconcurrency: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

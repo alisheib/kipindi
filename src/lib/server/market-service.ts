@@ -556,6 +556,11 @@ export async function traderSeedsByMarket(n = 3) {
  * the two-officer dance because there's no second human in a demo.
  */
 export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: number }> {
+  // Hard prod-lock: this path picks a demo market's outcome with Math.random and
+  // pays real winners with no two-officer flow. It exists only for demo/dev
+  // markets ("Demo · " prefix, never seeded in prod), but the money-settling
+  // random path must be UNREACHABLE in production regardless of stray data.
+  if (process.env.NODE_ENV === "production") return { resolved: 0 };
   let resolved = 0;
   const now = Date.now();
   for (const m of await marketStore.values()) {
@@ -1147,17 +1152,27 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   if (opts.outcome !== m.resolvedOutcome) {
     return { ok: false, error: "Stage-2 outcome must match the Stage-1 decision. Reject and restart to change it.", code: "INVALID" };
   }
-  // Stage 2 — settle
+  // Stage 2 — settle. We compute the resolved fields in memory NOW (the payout
+  // loops stamp resolutionStage2At onto each position/txn), but we DO NOT persist
+  // the market's RESOLVED/VOIDED status until AFTER every position is paid — see
+  // persistResolution() at each return. Advisory-lock writes autocommit on their
+  // own connections, so persisting RESOLVED first then crashing mid-payout would
+  // strand winners as OPEN on a RESOLVED market with no recovery (the top-of-fn
+  // guard short-circuits any retry). Persisting status LAST makes settlement
+  // resumable: a re-run re-enters stage-2 (status still CLOSED) and pays only the
+  // still-OPEN positions (the OPEN filter skips already-settled ones — no
+  // double-pay). The market lock still serializes concurrent stage-2 calls, so
+  // exactly one settlement completes.
   m.resolutionStage2By = opts.officerId;
   m.resolutionStage2At = new Date().toISOString();
   m.objectionsClosedAt = new Date(Date.now() + 24 * 3600_000).toISOString();
   m.status = opts.outcome === "VOID" ? "VOIDED" : "RESOLVED";
   m.updatedAt = m.resolutionStage2At;
-  await marketStore.set(m);
-  // Snapshot at the moment of resolution — final point on the chart.
-  recordSnapshot(m.id, m.yesPool, m.noPool);
-  // SSE: broadcast resolution to all connected clients
-  emit("market:resolve", { marketId: m.id, outcome: opts.outcome });
+  const persistResolution = async () => {
+    await marketStore.set(m); // RESOLVED/VOIDED persisted LAST → settlement is resumable
+    recordSnapshot(m.id, m.yesPool, m.noPool); // final point on the chart
+    emit("market:resolve", { marketId: m.id, outcome: opts.outcome }); // SSE broadcast
+  };
 
   let winnersPaid = 0;
   const settleCfg = await getEffectiveConfig(m.id);
@@ -1237,6 +1252,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
       const { onMarketResolved } = await import("./proposals-service");
       await onMarketResolved(m.id, { voided: false });
     } catch { /* proposal prize must never break settlement */ }
+    await persistResolution(); // all one-sided refunds done → now flip status
     return { ok: true, data: { stage: "complete", winnersPaid: 0 } };
   }
 
@@ -1370,6 +1386,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
     await onMarketResolved(m.id, { voided: opts.outcome === "VOID" });
   } catch { /* proposal prize must never break settlement */ }
 
+  await persistResolution(); // all winners paid / refunds issued → now flip status
   return { ok: true, data: { stage: "complete", winnersPaid } };
   }); // end withLock market
 
