@@ -439,7 +439,13 @@ export async function deleteAllPollsAction(formData: FormData) {
 /* ─── Seed fixtures ─── */
 
 export async function seedFixturesAction() {
-  const { userId: officerId } = await requireAdmin("seedFixturesAction");
+  await requireAdmin("seedFixturesAction");
+  // Fixtures inject FABRICATED polls (a fake human reviewer + synthetic
+  // cost/latency telemetry) straight into the store the prod admin reads and
+  // that can feed AI-spend reporting. Dev/demo only — never in production.
+  if (process.env.NODE_ENV === "production") {
+    return { ok: false as const, error: "Seed fixtures is disabled in production." };
+  }
   try {
     const seeded = await seedAIPollFixtures();
     revalidatePath("/admin/ai-polls");

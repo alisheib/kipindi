@@ -102,7 +102,10 @@ async function buildLeaderboard() {
       roi,
       tier: tierFor(roi, resolved),
       streak,
-      spark: seededWalk(u.id, 14, Math.max(50_000, staked)),
+      // Never-fabricate: real players get NO synthesized activity series. We
+      // don't yet snapshot per-day staking, so the sparkline is omitted for real
+      // rows (rendered only for the dev-only synthetic board below).
+      spark: [],
     });
   }
   return out.sort((a, b) => b.roi - a.roi).slice(0, 50);
@@ -219,7 +222,9 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
                   {r.roi >= 0 ? "+" : ""}{r.roi.toFixed(1)}%
                 </td>
                 <td className="p-3 hidden md:table-cell">
-                  <VolumeSparkline data={r.spark} width={140} height={32} ariaLabel={t.market.volumeSparkline} />
+                  {r.spark.length > 0
+                    ? <VolumeSparkline data={r.spark} width={140} height={32} ariaLabel={t.market.volumeSparkline} />
+                    : <span className="text-text-subtle text-[11px]">—</span>}
                 </td>
                 <td className="p-3 text-right hidden md:table-cell font-mono tabular-nums text-text-muted">
                   {r.streak > 0 ? (

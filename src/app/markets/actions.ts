@@ -99,6 +99,7 @@ export async function adminReopenMarketAction(formData: FormData) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
   await requireAdminOrThrow(session.userId, "adminReopenMarketAction");
+  await requireAdminTotp(session.userId, session.sessionId); // B3: 2FA step-up (reopening resumes betting)
   const marketId = String(formData.get("marketId") ?? "");
   const r = await adminReopenMarket(marketId, session.userId);
   if (r.ok) {
@@ -148,6 +149,7 @@ export async function createMarketAction(formData: FormData) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
   await requireAdminOrThrow(session.userId, "createMarketAction");
+  await requireAdminTotp(session.userId, session.sessionId); // B3: 2FA step-up at the action layer
   const VALID_CATEGORIES = new Set(["sports", "macro", "weather", "crypto", "culture", "tech", "other"]);
   const titleEn = String(formData.get("titleEn") ?? "").trim();
   const titleSw = String(formData.get("titleSw") ?? "").trim();

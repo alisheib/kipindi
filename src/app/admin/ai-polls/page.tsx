@@ -294,7 +294,7 @@ export default async function AdminAIPollsPage({
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <SeedFixturesButton />
+                {process.env.NODE_ENV !== "production" && <SeedFixturesButton />}
                 <DeleteAllButton totalCount={totalAll} />
               </div>
             </div>

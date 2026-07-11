@@ -64,7 +64,7 @@ export async function requestLoginOtp(input: z.input<typeof LoginRequestSchema>)
 
   const rl = rateCheck(phone, "otp.send");
   if (!rl.allowed) {
-    audit({ category: "SECURITY", action: "otp.rate_limited", actorId: null, targetType: "Phone", targetId: phone, payload: { ip: meta.ip } });
+    audit({ category: "SECURITY", action: "otp.rate_limited", actorId: null, targetType: "Phone", targetId: maskPhoneForAudit(phone), payload: { ip: meta.ip } });
     return { ok: false, error: "Too many attempts. Please wait · Subiri kidogo.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
   }
 
@@ -75,7 +75,7 @@ export async function requestLoginOtp(input: z.input<typeof LoginRequestSchema>)
     // for this product — phone numbers aren't private and registration
     // is one-step OTP, so revealing whether a phone is signed up trades
     // off acceptably for usability.
-    audit({ category: "SECURITY", action: "otp.send_to_unknown_phone", actorId: null, targetType: "Phone", targetId: phone, ip: meta.ip, userAgent: meta.ua });
+    audit({ category: "SECURITY", action: "otp.send_to_unknown_phone", actorId: null, targetType: "Phone", targetId: maskPhoneForAudit(phone), ip: meta.ip, userAgent: meta.ua });
     return { ok: false, error: "No account with that phone. Create one to get started.", code: "NOT_FOUND" };
   }
   if (user.status === "SELF_EXCLUDED") {
@@ -109,7 +109,7 @@ export async function requestRegisterOtp(input: z.input<typeof RegisterSchema>):
 
   const existing = await db.user.findByPhone(phone);
   if (existing) {
-    audit({ category: "AUTH", action: "register.duplicate_phone", actorId: null, targetType: "Phone", targetId: phone, ip: meta.ip });
+    audit({ category: "AUTH", action: "register.duplicate_phone", actorId: null, targetType: "Phone", targetId: maskPhoneForAudit(phone), ip: meta.ip });
     return { ok: false, error: "An account with that phone already exists.", code: "ALREADY_EXISTS" };
   }
 
@@ -145,11 +145,11 @@ async function issueOtp(phone: string, purpose: "login" | "register" | "withdraw
     createdAt: new Date().toISOString(),
   });
 
-  audit({ category: "AUTH", action: `otp.${purpose}.sent`, actorId: null, targetType: "Phone", targetId: phone, payload: { otpId: otp.id }, ip: meta.ip, userAgent: meta.ua });
+  audit({ category: "AUTH", action: `otp.${purpose}.sent`, actorId: null, targetType: "Phone", targetId: maskPhoneForAudit(phone), payload: { otpId: otp.id }, ip: meta.ip, userAgent: meta.ua });
 
   // Fire-and-forget SMS — provider failures don't block UX
   sms.send(phone, otpMessage(code, "SW")).catch(() => {
-    audit({ category: "SECURITY", action: "sms.delivery_failed", actorId: null, targetType: "Phone", targetId: phone, payload: { otpId: otp.id } });
+    audit({ category: "SECURITY", action: "sms.delivery_failed", actorId: null, targetType: "Phone", targetId: maskPhoneForAudit(phone), payload: { otpId: otp.id } });
   });
 
   return { ok: true, data: { otpId: otp.id } };
@@ -196,7 +196,7 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
   // causing "wrong code" errors that users report as "sign-in doesn't work."
   const allActive = await db.otp.findAllActive(phone, purpose);
   if (allActive.length === 0) {
-    audit({ category: "SECURITY", action: "otp.verify.no_active", actorId: null, targetType: "Phone", targetId: phone, ip: meta.ip });
+    audit({ category: "SECURITY", action: "otp.verify.no_active", actorId: null, targetType: "Phone", targetId: maskPhoneForAudit(phone), ip: meta.ip });
     return { ok: false, error: "Code expired or not found.", code: "EXPIRED" };
   }
   // Check if ANY active OTP has exhausted attempts
@@ -390,7 +390,7 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
   return withLock(`register:${phone}`, async () => {
 
   if (await db.user.findByPhone(phone)) {
-    audit({ category: "AUTH", action: "register.duplicate_phone", actorId: null, targetType: "Phone", targetId: phone, ip: meta.ip });
+    audit({ category: "AUTH", action: "register.duplicate_phone", actorId: null, targetType: "Phone", targetId: maskPhoneForAudit(phone), ip: meta.ip });
     return { ok: false, error: "An account with that phone already exists.", code: "ALREADY_EXISTS" };
   }
 
@@ -526,7 +526,7 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
 
   const user = await db.user.findByPhone(phone);
   if (!user) {
-    audit({ category: "SECURITY", action: "auth.login.unknown_phone", actorId: null, targetType: "Phone", targetId: phone, ip: meta.ip });
+    audit({ category: "SECURITY", action: "auth.login.unknown_phone", actorId: null, targetType: "Phone", targetId: maskPhoneForAudit(phone), ip: meta.ip });
     return { ok: false, error: "No account with that phone. Create one to get started.", code: "NOT_FOUND" };
   }
   if (user.status === "SELF_EXCLUDED") {

@@ -11,18 +11,27 @@
  * endpoint is never left open); in dev it's allowed for local testing.
  */
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { suppressEmail } from "@/lib/server/email-suppression";
 import { audit } from "@/lib/server/audit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+/** Constant-time secret compare (consistent with the payments webhook). */
+function secretEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
+
 function authorized(req: Request): boolean {
   const secret = process.env.POSTMARK_WEBHOOK_SECRET ?? "";
   if (!secret) return process.env.NODE_ENV !== "production"; // open only in dev
   const url = new URL(req.url);
   const provided = url.searchParams.get("token") ?? req.headers.get("x-postmark-token") ?? "";
-  return provided === secret;
+  return secretEqual(provided, secret);
 }
 
 export async function POST(req: Request) {
