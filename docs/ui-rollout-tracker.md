@@ -149,6 +149,11 @@ smoke scripts + `scripts/ui-regression.mjs` at 360/768/1280/1920) passes and is 
 ## Batch log
 _(append one entry per batch: date · items · regression result)_
 
+- **2026-07-11 (money-safety H1+M2 + Phase C player matrix) (`8b5a95a`, `c16a22f`)** — closed two flagged money findings, each with a regression test proven red without the fix, and ran the Phase C player-surface trilingual matrix:
+  - **money-H1 (`8b5a95a`):** withdrawal idempotency now re-checked INSIDE the wallet lock (was pre-lock only → concurrent same-key = double-debit + stranded hold). Concurrency case E; red-without-fix = 3 txns / triple-debit.
+  - **money-M2 (`c16a22f`):** the 3 affiliate reward payers now lock (per recruit / referrer / referrer:recruit) with the guard re-read inside + deterministic `sourceRef` on one-time rewards. Concurrency case F; red-without-lock = 3 prize records (sourceRef alone held money to 1×).
+  - **Phase C player matrix:** `scripts/visual-matrix.mjs` run across **all 9 player routes × en/sw/zh × 360/768/1280/1920 = 108 cells → 324/324 automated** (no h-overflow, no console errors, all load). **Human-read 7 representative cells** (home hero SW, board ZH 360+1280, wallet ZH, proposals SW, leaderboard ZH, positions ZH) — production-clean, zero defects. **Remaining Phase C slice:** admin surface (EN+SW) + full-page (below-fold) reads.
+  - Gate: tsc · `test:all` **45/45** (concurrency now 26/26).
 - **2026-07-11 (Phase C kickoff + sentinel loader + doc reclean) (`faa8b97`, `adf4d99`, `6d26617`)** — three items after Phase E:
   - **Sentinel run progress-loader (`adf4d99`, Ali request):** admin "Run now" on the market-sentinel popover now shows a full-page **theme-kit loader** (poll-generation style) — aqua spinner + phased progress bar (Scanning → AI triaging → Resolving) → result card ("N resolved of M checked" / "Nothing due — all clear" / error) + Done · Sawa. RM-safe (global guard). **Live-verified at 360 + 1280, running + done states screenshot-read.** tsc · test:all 45/45.
   - **Phase C kickoff (`faa8b97`):** new `scripts/visual-matrix.mjs` — trilingual matrix runner (route × locale × width) adding the en/sw/zh dimension ui-regression lacks. Mobile slice (5 core player screens × 3 locales @360) **36/36 auto-pass** (no h-overflow, no console errors). Human-read of the shots + the full route/state matrix is the continuation.

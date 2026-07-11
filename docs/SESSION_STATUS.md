@@ -22,13 +22,17 @@ The platform is **feature-complete and passing its gates**. Recently landed:
 
 - **Phase E — security/compliance/money-safety audit (2026-07-11)** — 6 findings
   fixed & shipped incl. a 🔴CRITICAL money race (`cashOutPosition` now holds the
-  `market:` lock). Full record + the ranked flagged list (payments MOCK, withdrawal
-  idempotency, affiliate idempotency, withdrawal-tax-policy ⚠, GBT pack period) is
-  in **`docs/PHASE_E_AUDIT_2026-07-11.md`**.
+  `market:` lock), THEN money-H1 (withdrawal idempotency re-check) + money-M2
+  (affiliate reward lock+sourceRef) also fixed — each with a red-without-fix
+  concurrency test (case E, F). Still open (need Ali/credentials/policy): payments
+  MOCK (P0), withdrawal-tax-on-principal ⚠, GBT pack period. Full record:
+  **`docs/PHASE_E_AUDIT_2026-07-11.md`**.
 - **Sentinel run progress-loader (2026-07-11, Ali)** — admin "Run now" shows a
   theme-kit loader (spinner + phased progress bar → burst-result card).
-- **Phase C kickoff (2026-07-11)** — `scripts/visual-matrix.mjs` trilingual matrix
-  runner; mobile slice 36/36 auto-pass. Human-read + full matrix is the next UI step.
+- **Phase C player matrix (2026-07-11)** — `scripts/visual-matrix.mjs` run across
+  all 9 player routes × en/sw/zh × 360/768/1280/1920 = **108 cells, 324/324 auto**
+  (no overflow/console) + **7 human-read cells, zero defects**. Next Phase C slice:
+  admin surface (EN+SW) + below-fold full-page reads.
 
 - **Admin console fully built** — ADM1 regulator-pack maker-checker signing chain,
   ADM2 two-officer resolution ceremony, ADM3 KYC/AML workstation, ADM4 payments

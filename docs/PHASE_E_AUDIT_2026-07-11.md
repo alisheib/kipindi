@@ -54,25 +54,20 @@ always succeeds; no BoT-licensed aggregator behind `/api/webhooks/payments`. The
 **surrounding logic is sound** (webhook-authoritative, exactly-once, hold/release);
 this is the credential+integration blocker. **C1's stranded-hold risk (below H1) becomes real money once this lands.**
 
-### 🟠 money-H1 — withdrawal idempotency key not re-checked inside the lock
-`wallet-service.ts:~430`. Key is checked pre-lock only; two concurrent same-key
-withdrawals both debit (Phase A: balance→hold), the 2nd `txn.create` throws on the
-unique key **after** the debit → funds moved to `hold` with no Transaction row →
-`reconcileStalePayments` can't find it → **stranded** (needs balance ≥ 2× amount).
-`buyPosition` already re-checks the key inside its lock — mirror it here.
-**Fix:** re-check `findByIdempotencyKey` inside the `wallet:` lock; or create the
-txn before the debit so a failed create rolls back.
+### ✅ money-H1 — FIXED (`8b5a95a`, 2026-07-11)
+Withdrawal idempotency key was checked pre-lock only → a concurrent same-key
+withdrawal debited twice and the 2nd `txn.create` threw on the unique key after
+the debit, stranding funds in `hold`. Now re-checked INSIDE the wallet lock
+(mirrors buyPosition), returning the existing txn (exactly-once). Concurrency
+case E added; verified red without the fix (3 txns, triple-debit).
 
-### 🟠 money-M2 — affiliate/referral rewards not lock-protected / not idempotency-keyed
-`affiliate-service.ts`. Existence guards exist (`payPrize` "one prize per recruit",
-per-referrer cap) but are **read-then-act without a lock**, and `creditWallet`
-calls `creditBonus` **without a `sourceRef`** (falls back to `creditInternal`,
-which has no idempotency arg). A milestone re-fire / concurrent deposit crossing
-the threshold / retry can double-credit. Lower severity (guarded, capped,
-bonus-wallet = non-withdrawable). **Fix:** wrap each reward path (prize, sign-up
-bonus, commission) in `withLock` re-checking the guard inside, AND pass a
-deterministic `sourceRef` (e.g. `referral:<recruit>:<trigger>`) to `creditBonus`
-so bonus-service dedupes. Add a concurrency test.
+### ✅ money-M2 — FIXED (`c16a22f`, 2026-07-11)
+Affiliate reward payers (payBonus, payPrize, commission) did read-guard→credit→
+record without a lock. Now each wraps the guard→credit→record in `withLock` (per
+recruit / per referrer / per referrer:recruit) with the guard re-read inside, and
+one-time rewards pass a deterministic `sourceRef` to `creditBonus` for cross-instance
+dedupe. Concurrency case F added; verified red without the lock (3 prize records;
+the sourceRef alone still held the money to 1× — defense in depth).
 
 ### 🟠 money-M1 — withdrawal tax charged on the whole amount incl. principal ⚠ POLICY
 `payments.ts:88` / `wallet-service.ts:457` — `computeWithdrawalTax(amount, amount)`
@@ -116,7 +111,8 @@ via `report-money.periodBounds`/`moneyForWindow`.
 ## Exit-gate status (Phase E)
 - ✅ tsc · `test:all` **45/45** (concurrency now 19/19 with case D) on the integrated tree.
 - ✅ 6 findings fixed, each committed+pushed, Railway auto-deploying.
-- ⚠ Not fully green until money-H1 + money-M2 fixed, H2 corrected, and the
-  payments mock + money-M1 tax policy resolved (P0/policy — need Ali/credentials).
+- ✅ money-H1 + money-M2 now FIXED (2026-07-11) with red-without-fix concurrency
+  tests. Remaining before Phase E fully closes: H2 (GBT pack period), payments
+  mock (P0), money-M1 tax policy — all need Ali/credentials or a policy call.
 - Security-review of the diff + full authz-matrix negative-test suite = a good
   follow-on to close Phase E formally.
