@@ -596,9 +596,18 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
     };
   }, [dragging, setFromClientX]);
 
-  // Activate the slider (unlock the drag). No value change — arming must never
-  // move the knob, or a stray touch would defeat the whole point of the lock.
-  const armDial = useCallback(() => setArmed(true), []);
+  // A locked dial NEVER unlocks from a tap on the dial itself — only the Unlock
+  // button does. When the player presses a locked dial we flash the button so
+  // their eye is drawn to the one control that unlocks it.
+  const [hintUnlock, setHintUnlock] = useState(false);
+  const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flashUnlock = useCallback(() => {
+    setHintUnlock(false);
+    requestAnimationFrame(() => setHintUnlock(true)); // restart the pulse on repeat taps
+    if (hintTimer.current) clearTimeout(hintTimer.current);
+    hintTimer.current = setTimeout(() => setHintUnlock(false), 1100);
+  }, []);
+  useEffect(() => () => { if (hintTimer.current) clearTimeout(hintTimer.current); }, []);
   // Toggle the lock. Locking mid-drag cancels the in-flight gesture cleanly:
   // clearing `dragging` tears down the pointermove/up listeners (the drag
   // effect is keyed on it) and we reset the drag-mode ref so no state lingers.
@@ -614,11 +623,11 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    // Locked: the first press ARMS the slider (no jump, no drag) so an
-    // accidental brush can't move the stake. The player presses again to drag.
+    // Locked: pressing the dial does NOTHING to the value and does NOT unlock —
+    // only the Unlock button unlocks. Flash the button to point the player to it.
     if (!armed) {
       e.preventDefault();
-      armDial();
+      flashUnlock();
       return;
     }
     // Prevent default FIRST — stops mobile browsers from initiating
@@ -659,12 +668,13 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     // Locked: Enter/Space still confirms (the stake may already be set via the
-    // type inputs); any adjustment key arms the slider instead of moving it.
+    // type inputs); adjustment keys do NOT unlock — they flash the Unlock button
+    // (keyboard users unlock by tabbing to that button and pressing it).
     if (!armed) {
       if (e.key === " " || e.key === "Enter") { e.preventDefault(); openConfirm(); return; }
       if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"].includes(e.key)) {
         e.preventDefault();
-        armDial();
+        flashUnlock();
       }
       return;
     }
@@ -873,10 +883,11 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
 
   return (
     <div className="relative rounded-xl border border-border bg-bg-elevated p-5 lg:p-6 select-none">
-      {/* Slider lock toggle. Locked (default) = the drag is inert so a stray
-          touch can't move the stake; the type inputs below stay live for exact
-          entry. Tap to activate the drag; tap again to re-lock. Purely additive
-          — the dial itself is unchanged. Hidden once the market is closed. */}
+      {/* Lock / Unlock toggle — the ONLY control that unlocks the dial (a tap on
+          the dial itself never unlocks). Locked (default): the dial is greyed +
+          inert and this reads as an attractive royal "Unlock" CTA (pulses if the
+          player taps the locked dial). Unlocked: a subtle "Lock" to re-protect.
+          Hidden once the market is closed. */}
       {!closedNow && (
         <button
           type="button"
@@ -885,13 +896,13 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
           aria-label={armed ? t.market.lockDialAria : t.market.unlockDialAria}
           title={armed ? t.market.lockDialAria : t.market.unlockDialAria}
           data-testid="dial-lock-toggle"
-          className="absolute right-3 top-3 z-20 inline-flex items-center gap-1 rounded-pill border px-2 py-[3px] font-mono text-[9px] font-bold uppercase tracking-[0.12em] transition-colors"
+          className={`absolute right-3 top-3 z-20 inline-flex items-center gap-1.5 rounded-pill border font-mono font-bold uppercase tracking-[0.12em] transition-all ${armed ? "px-2 py-[3px] text-[9px]" : "px-2.5 py-1 text-[10px]"} ${!armed && hintUnlock ? "dial-unlock-hint" : ""}`}
           style={armed
-            ? { borderColor: "var(--brand-500)", color: "var(--brand-300)", background: "color-mix(in oklab, var(--brand-500) 14%, transparent)" }
-            : { borderColor: "var(--border)", color: "var(--text-subtle)", background: "var(--bg-inset)" }}
+            ? { borderColor: "var(--border)", color: "var(--text-subtle)", background: "var(--bg-inset)" }
+            : { borderColor: "var(--brand-500)", color: "var(--brand-200)", background: "color-mix(in oklab, var(--brand-500) 22%, transparent)", boxShadow: "0 0 14px -2px color-mix(in oklab, var(--brand-500) 45%, transparent)" }}
         >
-          {armed ? <I.unlock s={11} /> : <I.lock s={11} />}
-          {armed ? t.market.dialActive : t.market.dialLocked}
+          {armed ? <I.unlock s={11} /> : <I.lock s={12} />}
+          {armed ? t.market.dialLock : t.market.dialUnlock}
         </button>
       )}
       {lock ? (
@@ -974,8 +985,14 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
         // Focus indicator is the brand-400 ring drawn ON the grab-pip (kit B1),
         // revealed by `.dial-track:focus-visible .dial-focus-ring`, not a rect.
         data-armed={armed}
-        className={`dial-track relative w-full overflow-hidden focus-visible:outline-none rounded-md touch-none transition-opacity ${closedNow ? "opacity-40" : ""}`}
-        style={{ height, cursor: closedNow ? "not-allowed" : (!armed ? "pointer" : (dragging ? "grabbing" : "grab")) }}
+        className={`dial-track relative w-full overflow-hidden focus-visible:outline-none rounded-md touch-none ${closedNow ? "opacity-40" : ""}`}
+        style={{
+          height,
+          cursor: closedNow || !armed ? "not-allowed" : (dragging ? "grabbing" : "grab"),
+          // Locked → greyed + dimmed so it reads as inactive (unlock to colour it).
+          filter: !closedNow && !armed ? "saturate(0.1) brightness(0.92) opacity(0.6)" : undefined,
+          transition: "filter 260ms ease, opacity 260ms ease",
+        }}
       >
         {/* One-time coach hint — a nudging pill above the knob. Only once the
             slider is armed (a locked dial isn't draggable, so the "drag" nudge

@@ -43,36 +43,38 @@ async function testSide(side) {
   const deep = side === "YES" ? 0.12 : 0.88;
 
   // 1. default LOCKED
-  ok(`${side}: default toggle shows Locked`, /lock/i.test(await toggleText()) && !(await armed()), await toggleText());
+  ok(`${side}: default state is LOCKED`, !(await armed()), await toggleText());
 
-  // 2. attempt drag while LOCKED → value unchanged, but the press ARMS it
+  // 2. drag while LOCKED → value unchanged AND tapping the dial does NOT unlock
   const v0 = await valNow();
   await dragSlider(0.5, deep);
-  const v1 = await valNow();
-  ok(`${side}: locked drag does NOT change value`, v1 === v0, `v0=${v0} v1=${v1}`);
-  ok(`${side}: locked press ARMS the dial (toggle→Adjusting)`, await armed(), await toggleText());
+  ok(`${side}: locked drag does NOT change value`, (await valNow()) === v0, `v0=${v0}`);
+  ok(`${side}: tapping the locked dial does NOT unlock (button-only)`, !(await armed()), await toggleText());
 
-  // 3. now ARMED → drag DOES change value
+  // 3. unlock via the BUTTON only → armed
+  await toggle().click();
+  await page.waitForTimeout(150);
+  ok(`${side}: Unlock button unlocks the dial`, await armed(), await toggleText());
+
+  // 4. now ARMED → drag DOES change value
   await dragSlider(0.5, deep);
   const v2 = await valNow();
   ok(`${side}: armed drag changes value`, v2 !== v0, `v0=${v0} v2=${v2}`);
 
-  // 4. side preserved — the place button still matches the side
+  // 5. side preserved — the place button still matches the side
   const placeBtn = await page.getByRole("button", { name: new RegExp(`Place ${side}`, "i") }).count();
   const wrongBtn = await page.getByRole("button", { name: new RegExp(`Place ${side === "YES" ? "NO" : "YES"}`, "i") }).count();
   ok(`${side}: place-${side} button present, opposite absent (side preserved)`, placeBtn >= 1 && wrongBtn === 0, `place=${placeBtn} wrong=${wrongBtn}`);
 
-  // 5. re-lock via toggle → drag inert again
+  // 6. re-lock via the button → drag inert again
   await toggle().click();
   await page.waitForTimeout(150);
-  ok(`${side}: re-lock via toggle → Locked`, !(await armed()), await toggleText());
+  ok(`${side}: Lock button re-locks`, !(await armed()), await toggleText());
   const v3 = await valNow();
   await dragSlider(0.5, deep);
   ok(`${side}: relocked drag does NOT change value`, (await valNow()) === v3, `v3=${v3}`);
 
-  // 6. exact typing works WHILE locked (drag can't interfere); toggle stays Locked
-  // re-lock first (the drag above armed it again)
-  if (await armed()) { await toggle().click(); await page.waitForTimeout(120); }
+  // 7. exact typing works WHILE locked (drag can't interfere); stays locked
   const stakeInput = page.locator('input[inputmode="numeric"]').first();
   await stakeInput.click();
   await stakeInput.fill("7500");

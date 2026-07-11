@@ -72,6 +72,14 @@
     background: color-mix(in oklab, var(--gold-500) 16%, transparent); }
 }
 
+/* Dial "Unlock" button attention pulse — fired when a player taps the LOCKED
+   dial, to point their eye at the one control that unlocks it. */
+@keyframes dial-unlock-nudge {
+  0%, 100% { transform: scale(1);    box-shadow: 0 0 0 0 color-mix(in oklab, var(--brand-500) 0%, transparent); }
+  35%      { transform: scale(1.09); box-shadow: 0 0 0 4px color-mix(in oklab, var(--brand-500) 38%, transparent); }
+}
+.dial-unlock-hint { animation: dial-unlock-nudge 0.5s ease-out 2; }
+
 /* Button inline spinner */
 .btn-spin { width: 14px; height: 14px; border-radius: 50%;
   border: 2px solid color-mix(in oklab, currentColor 30%, transparent);
@@ -89,5 +97,6 @@
   .podium-crown { animation: none }
   .closing-pill { animation: none } /* stays on the gold "urgent" end-state */
   .contest-fade { animation: none }
+  .dial-unlock-hint { animation: none } /* the brand-styled button already stands out */
   .btn-spin { animation-duration: 1.4s } /* keep meaning, halve intensity */
 }
