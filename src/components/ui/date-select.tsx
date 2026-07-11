@@ -36,6 +36,9 @@ type Props = {
   defaultValue?: string;
   value?: string;
   onChange?: (iso: string) => void;
+  /** "md" (default, 44px form field) or "sm" (32px — for compact filter
+   *  toolbars like /admin/ai-usage; the calendar popup is unchanged). */
+  size?: "md" | "sm";
 };
 
 // Widths must comfortably fit the digits in the mono font or the centered text
@@ -43,8 +46,9 @@ type Props = {
 // digit; add headroom for letter-spacing/sub-pixel so nothing is ever cut.
 const SEG_WIDTH: Record<SegKey, string> = { dd: "2.6ch", mm: "2.6ch", yyyy: "4.8ch" };
 
-export function DateSelect({ name, id, required, min, max, defaultValue, value, onChange }: Props) {
+export function DateSelect({ name, id, required, min, max, defaultValue, value, onChange, size = "md" }: Props) {
   const { t } = useT();
+  const sm = size === "sm";
   const MONTH_NAMES = t.common.monthsLong;
   const MONTH_SHORT = t.common.monthsShort;
   const DAY_LABELS = t.common.weekdaysShort;
@@ -209,13 +213,14 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
     <>
       <div
         className={cn(
-          "flex items-stretch w-full h-11 rounded-lg border overflow-hidden transition-colors",
+          "flex items-stretch w-full rounded-lg border overflow-hidden transition-colors",
+          sm ? "h-8" : "h-11",
           "brand-focus-within",
           invalid ? "border-no-500" : "border-border",
         )}
         style={{ background: invalid ? "oklch(58% 0.2 25 / 0.08)" : "var(--bg-inset)" }}
       >
-        <div className="flex-1 flex items-center px-3.5 font-mono text-[16px] tabular-nums">
+        <div className={cn("flex-1 flex items-center tabular-nums font-mono", sm ? "px-2.5 text-[13px]" : "px-3.5 text-[16px]")}>
           {SEGMENTS.map((seg, idx) => (
             <span key={seg.key} className="flex items-center">
               {idx > 0 && <span className="text-text-subtle/40 mx-1 select-none" aria-hidden>/</span>}
@@ -246,9 +251,9 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
           onClick={openCal}
           tabIndex={-1}
           aria-label={t.common.openCalendar}
-          className="inline-flex items-center justify-center px-3 bg-bg-elevated border-l border-border text-text-subtle hover:text-text transition-colors shrink-0"
+          className={cn("inline-flex items-center justify-center bg-bg-elevated border-l border-border text-text-subtle hover:text-text transition-colors shrink-0", sm ? "px-2" : "px-3")}
         >
-          <I.calendar s={16} />
+          <I.calendar s={sm ? 14 : 16} />
         </button>
       </div>
 

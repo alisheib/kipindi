@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { I } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { DateSelect } from "@/components/ui/date-select";
 import { getAiUsageSummary, listAiUsage, type AiFeature, type UsageBucket, type AiUsageFilter, type AiUsageEventRecord } from "@/lib/server/ai-usage";
 import { getAnthropicSpend } from "@/lib/server/anthropic-billing";
 import { CreditControls } from "./credit-controls";
@@ -325,14 +326,18 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
                   />
                 </div>
               </div>
-              <label className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1">
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">From</span>
-                <input type="date" name="since" defaultValue={sinceDay} className="h-8 rounded-md border border-border bg-bg-overlay px-2.5 text-[12.5px] text-text admin-focus transition-colors" />
-              </label>
-              <label className="flex flex-col gap-1">
+                <div className="w-[150px]">
+                  <DateSelect name="since" size="sm" defaultValue={sinceDay} />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">To</span>
-                <input type="date" name="until" defaultValue={untilDay} className="h-8 rounded-md border border-border bg-bg-overlay px-2.5 text-[12.5px] text-text admin-focus transition-colors" />
-              </label>
+                <div className="w-[150px]">
+                  <DateSelect name="until" size="sm" defaultValue={untilDay} />
+                </div>
+              </div>
               <label className="flex flex-col gap-1 flex-1 min-w-[180px]">
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Search</span>
                 <div className="relative">
