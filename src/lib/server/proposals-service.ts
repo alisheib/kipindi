@@ -427,6 +427,16 @@ export async function approveProposal(proposalId: string, officerId: string): Pr
       return { ok: false, error: `Only a proposal under review can be approved (this one is ${p.status.toLowerCase().replace("_", " ")}).` };
     }
 
+    // Separation of duties: approving a proposal GRANTS the proposer a bonus
+    // (money). An officer must not approve their OWN proposal — that is
+    // self-dealing (mirrors the AML / SoF / KYC self-review blocks). The role
+    // gate on the action already excludes MODERATOR from this money action; this
+    // additionally stops an ADMIN/COMPLIANCE officer paying themselves.
+    if (p.proposerId === officerId) {
+      audit({ category: "COMPLIANCE", action: "proposal.self_approval_blocked", actorId: officerId, targetType: "Proposal", targetId: p.id, payload: { proposerId: p.proposerId, note: "An officer cannot approve their own proposal (self-dealing / bonus grant)." } });
+      return { ok: false, error: "You proposed this market — a different officer must approve it." };
+    }
+
     const prize = Math.round(getProposalsConfig().prizeTzs);
     const now = new Date().toISOString();
     const note = `Proposal approved · "${p.titleEn.slice(0, 50)}"`;

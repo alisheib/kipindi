@@ -161,6 +161,24 @@ const officer = await mkUser("ADMIN");
   ok("approve works from CHANGES_REQUESTED", a2.ok === true && (await bonusBal(P2)) === 20_000);
 }
 
+// ── separation of duties: an officer cannot approve their OWN proposal ───────
+{
+  // The proposer is also an officer (ADMIN) — approving their own proposal would
+  // grant themselves a bonus (self-dealing). Must be blocked, no bonus paid.
+  const selfOfficer = await mkUser("ADMIN");
+  const c = await createProposal(selfOfficer, { titleEn: "An officer proposing their very own market", resolutionCriterion: "Resolves from an official source.", category: "macro", resolutionDate: futureDate(), sourceUrl: SRC });
+  if (!c.ok) throw new Error("setup create failed");
+  const before = await bonusBal(selfOfficer);
+  const a = await approveProposal(c.proposal.id, selfOfficer);
+  ok("self-approval blocked", a.ok === false);
+  ok("self-approval pays no bonus", (await bonusBal(selfOfficer)) === before, `Δ=${(await bonusBal(selfOfficer)) - before}`);
+  const d = (await getProposalDetail(c.proposal.id, null))!;
+  ok("self-approved proposal stays under review", d.status === "REVIEW");
+  // A DIFFERENT officer can still approve it.
+  const a2 = await approveProposal(c.proposal.id, officer);
+  ok("a different officer can approve", a2.ok === true && a2.grantedTzs === 20_000);
+}
+
 // ── prizeTzs = 0 approves cleanly with no grant ──────────────────────────────
 {
   setProposalsConfig({ prizeTzs: 0 } as never, "test");

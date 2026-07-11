@@ -15,22 +15,24 @@ import {
   type DeclineReason,
   type EditProposalInput,
 } from "@/lib/server/proposals-service";
-import { MARKET_OPS_ROLES } from "@/lib/server/roles";
+import { MARKET_OPS_ROLES, MONEY_ROLES, CONFIG_ROLES, type Role } from "@/lib/server/roles";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
 
-const ADMIN_ROLES = MARKET_OPS_ROLES; // role tier — see @/lib/server/roles
-
-async function ensureAdmin() {
+// Content ops (edit / go-live / request-changes / decline) are market-ops.
+// Approving a proposal GRANTS a bonus (money) and setting the config changes the
+// prize economics — those are re-tiered below to exclude MODERATOR (see roles.ts:
+// money/economics are NEVER MODERATOR).
+async function ensureAdmin(tier: Set<Role> = MARKET_OPS_ROLES) {
   const s = await currentSession();
   if (!s) redirect("/auth/admin");
   const u = await db.user.findById(s.userId);
-  if (!u || !ADMIN_ROLES.has(u.role)) redirect("/auth/admin");
+  if (!u || !tier.has(u.role)) redirect("/auth/admin");
   await requireAdminTotp(s.userId, s.sessionId);
   return s;
 }
 
 export async function saveProposalsConfigAction(config: ProposalsConfig) {
-  const s = await ensureAdmin();
+  const s = await ensureAdmin(CONFIG_ROLES);
   try {
     const r = setProposalsConfig(config, s.userId);
     revalidatePath("/admin/proposals");
@@ -44,7 +46,7 @@ export async function saveProposalsConfigAction(config: ProposalsConfig) {
 /** Approve a proposal and grant the proposer's bonus INSTANTLY (exactly-once).
  *  Does NOT publish a market — that's a separate step (goLiveProposalAction). */
 export async function approveProposalAction(proposalId: string) {
-  const s = await ensureAdmin();
+  const s = await ensureAdmin(MONEY_ROLES);
   try {
     const r = await approveProposal(proposalId, s.userId);
     revalidatePath("/admin/proposals");
