@@ -14,6 +14,7 @@
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { createMarket, buyPosition, resolveMarket, getMarket, cashOutPosition } from "../src/lib/server/market-service.ts";
 import { positionStore } from "../src/lib/server/market-dal.ts";
+import { withdraw } from "../src/lib/server/wallet-service.ts";
 
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
@@ -176,6 +177,39 @@ async function makeMarket(): Promise<string> {
   ok("D: never minted (credit ≤ money-in) across all rounds", minted === 0, `minted=${minted}/${ROUNDS}`);
   ok("D: position always terminal (no stuck OPEN)", notTerminal === 0, `notTerminal=${notTerminal}/${ROUNDS}`);
   ok("D: never double-paid (cash-out + win stacked)", doublePaid === 0, `doublePaid=${doublePaid}/${ROUNDS}`);
+}
+
+// ── E · Concurrent same-key withdrawal — the wallet idempotency re-check ─────
+// Two taps of "withdraw" with the same key must debit ONCE and create ONE txn.
+// Before the fix the key was only checked pre-lock, so the 2nd caller debited
+// again and db.txn.create threw on the unique key AFTER the debit → funds
+// stranded in `hold`. The in-lock re-check makes it exactly-once.
+{
+  const uid = "cc_wd_idem";
+  await fundedUser(uid, 100_000);
+  const t0 = now();
+  await db.kyc.upsert({
+    id: `kyc_${uid}`, userId: uid, status: "APPROVED", rejectReason: null, rejectNote: null,
+    nidaNumber: "19900101456712341234", nidaVerifiedAt: t0, fullName: "WD Tester", dob: "1990-01-01",
+    documents: [], reviewerId: null, reviewedAt: null, submittedAt: t0, createdAt: t0, updatedAt: t0,
+  } as never);
+  const key = "cc-wd-key";
+  const amount = 20_000;
+  const [w1, w2, w3] = await Promise.all([
+    withdraw(uid, { provider: "MPESA", amount }, key),
+    withdraw(uid, { provider: "MPESA", amount }, key),
+    withdraw(uid, { provider: "MPESA", amount }, key),
+  ]);
+  ok("E: all three withdrawal calls ok", w1.ok && w2.ok && w3.ok, `${w1.ok}/${w2.ok}/${w3.ok}`);
+  const ids = [w1, w2, w3].map((r) => (r.ok ? r.data!.txnId : "?"));
+  ok("E: all resolve to ONE txn (idempotent)", ids[0] === ids[1] && ids[1] === ids[2], ids.join(","));
+  const wtxns = (await db.txn.findByUser(uid, 100)).filter((t) => t.type === "WITHDRAWAL");
+  ok("E: exactly one withdrawal txn (no double-debit)", wtxns.length === 1, `count=${wtxns.length}`);
+  const wal = await db.wallet.findByUserId(uid);
+  // Debited exactly once: 100k − 20k = 80k. A double-debit would show 60k.
+  ok("E: balance debited exactly once", (wal?.balance ?? -1) === 80_000, `balance=${wal?.balance}`);
+  // No stranded funds: hold never exceeds this single in-flight withdrawal.
+  ok("E: no stranded double-hold", (wal?.hold ?? 0) <= amount, `hold=${wal?.hold}`);
 }
 
 console.log(`\nconcurrency: ${pass} passed, ${fail} failed`);

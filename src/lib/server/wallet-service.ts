@@ -463,6 +463,17 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
   // Re-read inside the lock so the balance check and the debit can't be split
   // by a concurrent withdrawal/bet/payout on the same wallet (double-spend).
   const hold = await withLock(`wallet:${userId}`, async () => {
+    // Re-check idempotency INSIDE the lock. The pre-lock check above is only a
+    // fast-path; a concurrent same-key withdrawal (2G double-tap) may have created
+    // the txn between that read and our acquiring the lock. Without this re-check
+    // the second caller debits AGAIN and then db.txn.create throws on the @unique
+    // idempotencyKey — AFTER the debit — stranding funds in `hold` with no txn row
+    // (reconcileStalePayments scans txns, so it never finds/reverses them). Mirrors
+    // the in-lock re-check buyPosition already does.
+    if (idempotencyKey) {
+      const dup = await db.txn.findByIdempotencyKey(idempotencyKey);
+      if (dup) return { ok: true as const, duplicate: dup };
+    }
     const w = await db.wallet.findByUserId(userId);
     if (!w) return { ok: false as const, error: "Wallet not found.", code: "NOT_FOUND" as const };
     if (w.status !== "ACTIVE") return { ok: false as const, error: "Wallet frozen.", code: "SUSPENDED" as const };
@@ -498,9 +509,16 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
     });
     audit({ category: "WALLET", action: "withdraw.initiated", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { provider: parse.data.provider, amount, tax } });
     emit("wallet:balance", { userId, balance: balanceAfter });
-    return { ok: true as const };
+    return { ok: true as const, duplicate: null };
   });
   if (!hold.ok) return hold;
+  // Idempotent replay: a concurrent same-key withdrawal already created the txn.
+  // Return its result WITHOUT debiting or dispatching again (exactly-once).
+  if (hold.duplicate) {
+    const dup = hold.duplicate;
+    const t = computeWithdrawalTax(Math.abs(dup.amount), Math.abs(dup.amount));
+    return { ok: true, data: { txnId: dup.id, status: dup.status, tax: t, net: Math.abs(dup.amount) - t } };
+  }
 
   // ── Provider dispatch (UNLOCKED): never hold a wallet lock across network I/O.
   const result = await dispatchWithdrawal({ provider: parse.data.provider, amount: net, msisdn: parse.data.msisdn, userId });
