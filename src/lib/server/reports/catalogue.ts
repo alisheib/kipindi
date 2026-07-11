@@ -20,18 +20,21 @@ import { getGlobalConfig } from "../market-config";
 import type { Report, Row, SignatureRow, SummaryItem } from "./types";
 import { formatDateTime } from "@/lib/utils";
 
-/** Standard regulator attestation block — three roles applied at the foot
- *  of every hand-off-grade report. Names are intentionally placeholders;
- *  the operator countersigns the printed copy (or e-signs the PDF) and
- *  the signedAt date locks in the final attestation. Kept here so every
- *  regulator report renders the same three columns in the same order. */
+/** Standard regulator attestation block — three roles at the foot of every
+ *  hand-off-grade report. Only "Prepared by" is filled (the real generator, who
+ *  is known at build time). "Reviewed by" / "Approved by" are left BLANK
+ *  signature lines — never-fabricate: we must not pre-print a Compliance/AML
+ *  signer name that no identified person actually attested. The reviewer/approver
+ *  countersigns (or e-signs) the issued copy; the blank line + "Signature & date"
+ *  is what both renderers draw. Kept here so every report renders the same three
+ *  columns in the same order. */
 async function regulatorSignatures(generatorId: string) {
   const u = await db.user.findById(generatorId);
   const generator = u?.displayName?.trim() || `Generator · ${generatorId}`;
   return [
-    { role: "Prepared by",   name: generator,                       id: generatorId },
-    { role: "Reviewed by",   name: "Compliance Officer",            id: "Compliance · 50pick" },
-    { role: "Approved by",   name: "AML Lead / MLRO",               id: "AML Lead · 50pick" },
+    { role: "Prepared by",   name: generator, id: generatorId },
+    { role: "Reviewed by",   name: "" }, // countersigned on the issued copy — never pre-filled
+    { role: "Approved by",   name: "" },
   ];
 }
 
