@@ -26,6 +26,7 @@ import { creditBonus } from "./bonus-service";
 import { getBonusConfig } from "./bonus-config";
 import { sendEmailToUser, referralRewardHtml, referralEarningHtml } from "./email";
 import { appUrl } from "@/lib/app-url";
+import { withLock } from "./locks";
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I ambiguity
 
@@ -139,10 +140,14 @@ export async function resolveReferralPreview(code: string) {
  *  is enabled and affiliate→bonus routing is on (Ali's default — rewards must be
  *  played through); otherwise credits real balance directly. Falls back to real
  *  if a bonus credit can't be made, so a reward is never silently dropped. */
-async function creditWallet(userId: string, amount: number, description: string): Promise<boolean> {
+async function creditWallet(userId: string, amount: number, description: string, sourceRef?: string): Promise<boolean> {
   const bcfg = getBonusConfig();
   if (bcfg.enabled && bcfg.affiliateToBonus) {
-    const r = await creditBonus(userId, { amountTzs: amount, source: "REFERRAL", note: description });
+    // Pass a deterministic sourceRef so creditBonus dedupes: even if a reward
+    // payer is somehow re-entered, the grant lands at most once. (The payer's
+    // own lock + existence check is the primary guard; this is belt-and-suspenders
+    // and gives cross-instance dedupe on the bonus path.)
+    const r = await creditBonus(userId, { amountTzs: amount, source: "REFERRAL", sourceRef, note: description });
     if (r.ok) return true;
     // bonus credit failed (disabled mid-flight / wallet issue) → fall through to real.
   }
@@ -265,68 +270,84 @@ function referrerSharesIp(referrerUserId: string, ip: string): boolean {
 async function payBonus(opts: { referrerUserId: string; recruitUserId: string; held: boolean }): Promise<void> {
   const cfg = getAffiliateConfig();
   if (!cfg.enabled || !cfg.bonus.enabled) return;
-  // Idempotency — only one bonus per recruit, ever.
-  const priorBonus = (await db.referralReward.listByRecruit(opts.recruitUserId)).some((r) => r.type === "BONUS");
-  if (priorBonus) return;
 
-  const status: StoredReferralReward["status"] = opts.held ? "HELD" : "PAID";
-  const triggerLabel = cfg.bonus.trigger === "SIGNUP" ? "sign-up" : "deposit";
+  // Serialize per recruit so two concurrent triggers (e.g. sign-up + a racing
+  // first-deposit, or a retry) can't both pass the once-per-recruit guard and
+  // double-pay. The guard is RE-READ inside the lock — the read-then-act was
+  // the race. (withLock is a cross-instance advisory lock in prod.)
+  await withLock(`referral:reward:${opts.recruitUserId}`, async () => {
+    // Idempotency — only one bonus per recruit, ever (re-checked under the lock).
+    const priorBonus = (await db.referralReward.listByRecruit(opts.recruitUserId)).some((r) => r.type === "BONUS");
+    if (priorBonus) return;
 
-  const payTo = async (userId: string, amount: number, who: "new" | "referrer") => {
-    if (amount <= 0) return;
-    // If the credit can't land (frozen/missing wallet), record the reward as
-    // HELD rather than PAID — otherwise the ledger claims money was paid that
-    // never moved, and the held queue lets an officer retry it.
-    const credited = status === "PAID" ? await creditWallet(userId, amount, `Referral bonus · ${triggerLabel}`) : false;
-    const finalStatus: StoredReferralReward["status"] = status === "PAID" && !credited ? "HELD" : status;
-    await recordReward({
-      referrerUserId: opts.referrerUserId,
-      recruitUserId: opts.recruitUserId,
-      recipientUserId: userId,
-      type: "BONUS",
-      label: `Bonus · ${triggerLabel}`,
-      amountTzs: amount,
-      status: finalStatus,
-      note: who === "new" ? "new-player bonus" : "referrer bonus",
-    });
-    if (finalStatus === "PAID") {
-      notifyReferralReward(userId, { type: "BONUS", amountTzs: amount });
-      sendEmailToUser(userId, (email) => ({
-        to: email,
-        subject: `Referral bonus · TZS ${Math.round(amount).toLocaleString("en-US")}`,
-        html: referralEarningHtml({ type: "BONUS", amountTzs: amount }),
-        tag: "referral",
-      })).catch(() => {});
-    }
-  };
+    const status: StoredReferralReward["status"] = opts.held ? "HELD" : "PAID";
+    const triggerLabel = cfg.bonus.trigger === "SIGNUP" ? "sign-up" : "deposit";
 
-  if (cfg.bonus.recipient === "NEW" || cfg.bonus.recipient === "BOTH") await payTo(opts.recruitUserId, cfg.bonus.newAmountTzs, "new");
-  if (cfg.bonus.recipient === "REFERRER" || cfg.bonus.recipient === "BOTH") await payTo(opts.referrerUserId, cfg.bonus.referrerAmountTzs, "referrer");
+    const payTo = async (userId: string, amount: number, who: "new" | "referrer") => {
+      if (amount <= 0) return;
+      // If the credit can't land (frozen/missing wallet), record the reward as
+      // HELD rather than PAID — otherwise the ledger claims money was paid that
+      // never moved, and the held queue lets an officer retry it.
+      const credited = status === "PAID"
+        ? await creditWallet(userId, amount, `Referral bonus · ${triggerLabel}`, `referral:bonus:${opts.recruitUserId}:${who}`)
+        : false;
+      const finalStatus: StoredReferralReward["status"] = status === "PAID" && !credited ? "HELD" : status;
+      await recordReward({
+        referrerUserId: opts.referrerUserId,
+        recruitUserId: opts.recruitUserId,
+        recipientUserId: userId,
+        type: "BONUS",
+        label: `Bonus · ${triggerLabel}`,
+        amountTzs: amount,
+        status: finalStatus,
+        note: who === "new" ? "new-player bonus" : "referrer bonus",
+      });
+      if (finalStatus === "PAID") {
+        notifyReferralReward(userId, { type: "BONUS", amountTzs: amount });
+        sendEmailToUser(userId, (email) => ({
+          to: email,
+          subject: `Referral bonus · TZS ${Math.round(amount).toLocaleString("en-US")}`,
+          html: referralEarningHtml({ type: "BONUS", amountTzs: amount }),
+          tag: "referral",
+        })).catch(() => {});
+      }
+    };
+
+    if (cfg.bonus.recipient === "NEW" || cfg.bonus.recipient === "BOTH") await payTo(opts.recruitUserId, cfg.bonus.newAmountTzs, "new");
+    if (cfg.bonus.recipient === "REFERRER" || cfg.bonus.recipient === "BOTH") await payTo(opts.referrerUserId, cfg.bonus.referrerAmountTzs, "referrer");
+  });
 }
 
 /** Pay the milestone prize to the referrer once per recruit. */
 async function payPrize(opts: { referrerUserId: string; recruitUserId: string; milestoneLabel: string }): Promise<void> {
   const cfg = getAffiliateConfig();
   if (!cfg.enabled || !cfg.prize.enabled || cfg.prize.amountTzs <= 0) return;
-  // One prize per recruit.
-  const priorPrize = (await db.referralReward.listByRecruit(opts.recruitUserId)).some((r) => r.type === "PRIZE");
-  if (priorPrize) return;
-  // Per-referrer cap on number of prizes.
-  if (cfg.prize.capPerReferrer > 0) {
-    const prizeCount = (await db.referralReward.listByReferrer(opts.referrerUserId)).filter((r) => r.type === "PRIZE").length;
-    if (prizeCount >= cfg.prize.capPerReferrer) return;
-  }
-  const credited = await creditWallet(opts.referrerUserId, cfg.prize.amountTzs, `Referral prize · ${opts.milestoneLabel}`);
-  await recordReward({
-    referrerUserId: opts.referrerUserId,
-    recruitUserId: opts.recruitUserId,
-    recipientUserId: opts.referrerUserId,
-    type: "PRIZE",
-    label: `Prize · ${opts.milestoneLabel}`,
-    amountTzs: cfg.prize.amountTzs,
-    status: credited ? "PAID" : "HELD",
+  // Serialize per REFERRER so both guards below hold atomically under
+  // concurrency: (a) once-per-recruit, and (b) the per-referrer cap — two prizes
+  // for two different recruits of the same referrer must not both slip past the
+  // cap. Both checks are RE-READ inside the lock.
+  const done = await withLock(`referral:prize:${opts.referrerUserId}`, async (): Promise<boolean> => {
+    // One prize per recruit.
+    const priorPrize = (await db.referralReward.listByRecruit(opts.recruitUserId)).some((r) => r.type === "PRIZE");
+    if (priorPrize) return false;
+    // Per-referrer cap on number of prizes.
+    if (cfg.prize.capPerReferrer > 0) {
+      const prizeCount = (await db.referralReward.listByReferrer(opts.referrerUserId)).filter((r) => r.type === "PRIZE").length;
+      if (prizeCount >= cfg.prize.capPerReferrer) return false;
+    }
+    const credited = await creditWallet(opts.referrerUserId, cfg.prize.amountTzs, `Referral prize · ${opts.milestoneLabel}`, `referral:prize:${opts.recruitUserId}`);
+    await recordReward({
+      referrerUserId: opts.referrerUserId,
+      recruitUserId: opts.recruitUserId,
+      recipientUserId: opts.referrerUserId,
+      type: "PRIZE",
+      label: `Prize · ${opts.milestoneLabel}`,
+      amountTzs: cfg.prize.amountTzs,
+      status: credited ? "PAID" : "HELD",
+    });
+    return credited;
   });
-  if (credited) {
+  if (done) {
     notifyReferralReward(opts.referrerUserId, { type: "PRIZE", amountTzs: cfg.prize.amountTzs });
     // Email the referrer their reward (best-effort, fire-and-forget).
     const recruit = await db.user.findById(opts.recruitUserId);
@@ -385,37 +406,42 @@ export async function onRecruitBet(recruitUserId: string, opts: { stake: number;
     if (Date.now() > windowEnd.getTime()) return;
 
     const operatorFee = opts.stake * Math.max(0, opts.operatorCommissionRate);
-    let cut = Math.round(operatorFee * cfg.commission.rate);
-    if (cut <= 0) return;
+    const grossCut = Math.round(operatorFee * cfg.commission.rate);
+    if (grossCut <= 0) return;
 
-    // Per-recruit cap.
-    if (cfg.commission.capPerRecruitTzs > 0) {
-      const already = (await db.referralReward
-        .listByReferrer(referrerUserId))
-        .filter((r) => r.recruitUserId === recruitUserId && r.type === "COMMISSION")
-        .reduce((s, r) => s + r.amountTzs, 0);
-      const remaining = cfg.commission.capPerRecruitTzs - already;
-      if (remaining <= 0) return;
-      cut = Math.min(cut, remaining);
-    }
-    if (cut <= 0) return;
-
-    const credited = await creditWallet(referrerUserId, cut, "Referral commission");
-    await recordReward({
-      referrerUserId,
-      recruitUserId,
-      recipientUserId: referrerUserId,
-      type: "COMMISSION",
-      label: "Commission",
-      amountTzs: cut,
-      status: credited ? "PAID" : "HELD",
+    // Serialize per (referrer, recruit) so the per-recruit cap read + the credit
+    // + the record are atomic — two concurrent bets must not both read the same
+    // `already` and each credit up to `remaining`, overshooting the cap.
+    const paid = await withLock(`referral:commission:${referrerUserId}:${recruitUserId}`, async (): Promise<{ credited: boolean; cut: number } | null> => {
+      let cut = grossCut;
+      if (cfg.commission.capPerRecruitTzs > 0) {
+        const already = (await db.referralReward
+          .listByReferrer(referrerUserId))
+          .filter((r) => r.recruitUserId === recruitUserId && r.type === "COMMISSION")
+          .reduce((s, r) => s + r.amountTzs, 0);
+        const remaining = cfg.commission.capPerRecruitTzs - already;
+        if (remaining <= 0) return null;
+        cut = Math.min(cut, remaining);
+      }
+      if (cut <= 0) return null;
+      const credited = await creditWallet(referrerUserId, cut, "Referral commission");
+      await recordReward({
+        referrerUserId,
+        recruitUserId,
+        recipientUserId: referrerUserId,
+        type: "COMMISSION",
+        label: "Commission",
+        amountTzs: cut,
+        status: credited ? "PAID" : "HELD",
+      });
+      return { credited, cut };
     });
-    if (credited) {
-      notifyReferralReward(referrerUserId, { type: "COMMISSION", amountTzs: cut });
+    if (paid?.credited) {
+      notifyReferralReward(referrerUserId, { type: "COMMISSION", amountTzs: paid.cut });
       sendEmailToUser(referrerUserId, (email) => ({
         to: email,
-        subject: `Referral commission · TZS ${Math.round(cut).toLocaleString("en-US")}`,
-        html: referralEarningHtml({ type: "COMMISSION", amountTzs: cut }),
+        subject: `Referral commission · TZS ${Math.round(paid.cut).toLocaleString("en-US")}`,
+        html: referralEarningHtml({ type: "COMMISSION", amountTzs: paid.cut }),
         tag: "referral",
       })).catch(() => {});
     }

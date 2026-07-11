@@ -15,6 +15,9 @@ import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { createMarket, buyPosition, resolveMarket, getMarket, cashOutPosition } from "../src/lib/server/market-service.ts";
 import { positionStore } from "../src/lib/server/market-dal.ts";
 import { withdraw } from "../src/lib/server/wallet-service.ts";
+import { bindRecruit, ensureAffiliateAccount, onRecruitBet } from "../src/lib/server/affiliate-service.ts";
+import { getAffiliateConfig } from "../src/lib/server/affiliate-config.ts";
+import { getBonusSummary } from "../src/lib/server/bonus-service.ts";
 
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
@@ -210,6 +213,43 @@ async function makeMarket(): Promise<string> {
   ok("E: balance debited exactly once", (wal?.balance ?? -1) === 80_000, `balance=${wal?.balance}`);
   // No stranded funds: hold never exceeds this single in-flight withdrawal.
   ok("E: no stranded double-hold", (wal?.hold ?? 0) <= amount, `hold=${wal?.hold}`);
+}
+
+// ── F · Concurrent qualifying bets → the referrer gets EXACTLY ONE prize ─────
+// The milestone prize is once-per-recruit. Two concurrent qualifying bets both
+// read the "no prior prize" guard before either records → without the payPrize
+// lock they'd BOTH pay → double reward. The lock makes it exactly-once.
+{
+  const cfg = getAffiliateConfig();
+  if (cfg.enabled && cfg.prize.enabled && cfg.prize.milestone === "FIRST_BET") {
+    const PRIZE = cfg.prize.amountTzs;
+    const ref = "cc_ref_x";
+    const rec = "cc_rec_y";
+    await fundedUser(ref, 0);
+    await fundedUser(rec, 0);
+    const acct = await ensureAffiliateAccount(ref);
+    await bindRecruit({ recruitUserId: rec, code: acct.code });
+    // Confirmed deposit so requireDeposit passes.
+    await db.txn.create({
+      id: `txn_${rec}_dep`, walletId: `wal_${rec}`, userId: rec, type: "DEPOSIT", status: "CONFIRMED",
+      amount: 50_000, fee: 0, taxWithheld: 0, balanceAfter: 50_000, currency: "TZS", provider: "MPESA",
+      providerRef: null, msisdn: null, description: "dep", positionId: null, amlReason: null,
+      createdAt: now(), updatedAt: now(), completedAt: now(),
+    } as never);
+    const stake = Math.max(cfg.prize.minBetAmountTzs ?? 0, 25_000);
+    const bonusBefore = (await getBonusSummary(ref)).bonusBalance;
+    await Promise.all([
+      onRecruitBet(rec, { stake, operatorCommissionRate: 0.03 }),
+      onRecruitBet(rec, { stake, operatorCommissionRate: 0.03 }),
+      onRecruitBet(rec, { stake, operatorCommissionRate: 0.03 }),
+    ]);
+    const prizeRewards = (await db.referralReward.listByReferrer(ref)).filter((r) => r.type === "PRIZE");
+    ok("F: exactly one PRIZE reward recorded", prizeRewards.length === 1, `count=${prizeRewards.length}`);
+    const bonusDelta = (await getBonusSummary(ref)).bonusBalance - bonusBefore;
+    ok("F: referrer credited the prize exactly once", bonusDelta === PRIZE, `Δ=${bonusDelta} expected=${PRIZE}`);
+  } else {
+    ok("F: skipped (prize/FIRST_BET not default-enabled)", true);
+  }
 }
 
 console.log(`\nconcurrency: ${pass} passed, ${fail} failed`);
