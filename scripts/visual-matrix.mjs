@@ -26,8 +26,8 @@ const LOCALES = process.env.LOCALES ? process.env.LOCALES.split(",") : ALL_LOCAL
 const ONLY = process.env.ONLY ? process.env.ONLY.split(",") : null;
 
 // The core player-facing surfaces where SW/ZH length stress is most likely to
-// truncate, wrap ugly, or clip. (Admin EN+SW only per the plan — added later.)
-const ROUTES = [
+// truncate, wrap ugly, or clip. Admin is EN+SW per the plan (set SURFACE=admin).
+const PLAYER_ROUTES = [
   { path: "/",            ctx: "player" },
   { path: "/markets",     ctx: "player" },
   { path: "/live",        ctx: "player" },
@@ -38,6 +38,23 @@ const ROUTES = [
   { path: "/proposals",   ctx: "player" },
   { path: "/profile",     ctx: "player" },
 ];
+const ADMIN_ROUTES = [
+  { path: "/admin",                ctx: "admin" },
+  { path: "/admin/live",           ctx: "admin" },
+  { path: "/admin/finance",        ctx: "admin" },
+  { path: "/admin/reports",        ctx: "admin" },
+  { path: "/admin/payments",       ctx: "admin" },
+  { path: "/admin/resolver-queue", ctx: "admin" },
+  { path: "/admin/players",        ctx: "admin" },
+  { path: "/admin/proposals",      ctx: "admin" },
+  { path: "/admin/config",         ctx: "admin" },
+  { path: "/admin/audit",          ctx: "admin" },
+  { path: "/admin/ai-usage",       ctx: "admin" },
+];
+const SURFACE = process.env.SURFACE ?? "player";
+const ROUTES = SURFACE === "admin" ? ADMIN_ROUTES : PLAYER_ROUTES;
+// Admin is EN + SW per the plan (no ZH); player is trilingual.
+const EFFECTIVE_LOCALES = SURFACE === "admin" ? LOCALES.filter((l) => l !== "zh") : LOCALES;
 
 let pass = 0, fail = 0;
 const results = [];
@@ -45,19 +62,30 @@ const ok = (n, c, e = "") => { if (c) pass++; else { fail++; results.push(`FAIL 
 
 const browser = await chromium.launch();
 
-// One context per locale, each an authed demo player with the kp-locale cookie set.
+// One context per locale. Player surface = authed demo player; admin surface =
+// seeded admin (TOTP disabled in dev). Each carries the kp-locale cookie.
 const ctxByLocale = {};
-for (const loc of LOCALES) {
+const url = new URL(BASE);
+let adminSeq = 0;
+for (const loc of EFFECTIVE_LOCALES) {
   const ctx = await browser.newContext();
-  await ctx.request.get(`${BASE}/auth/demo`);
-  const url = new URL(BASE);
+  if (SURFACE === "admin") {
+    // Distinct admin phone per context — seed-admin's createSession enforces a
+    // single active session per user, so a shared phone would let each locale's
+    // seed invalidate the previous context's session (→ redirect to sign-in).
+    const phone = `+2557120000${String(10 + adminSeq++).padStart(2, "0")}`;
+    await ctx.request.post(`${BASE}/api/dev-test/seed-admin`, { data: { phone } });
+    await ctx.request.get(`${BASE}/admin`).catch(() => {});
+  } else {
+    await ctx.request.get(`${BASE}/auth/demo`);
+  }
   await ctx.addCookies([{ name: "kp-locale", value: loc, domain: url.hostname, path: "/" }]);
   ctxByLocale[loc] = ctx;
 }
 
 for (const route of ROUTES) {
   if (ONLY && !ONLY.includes(route.path)) continue;
-  for (const loc of LOCALES) {
+  for (const loc of EFFECTIVE_LOCALES) {
     const context = ctxByLocale[loc];
     for (const w of WIDTHS) {
       const page = await context.newPage();
@@ -91,6 +119,6 @@ for (const route of ROUTES) {
 
 await browser.close();
 for (const r of results) console.log(r);
-console.log(`\nvisual-matrix: ${pass} passed, ${fail} failed  (locales ${LOCALES.join("/")} · widths ${WIDTHS.join("/")})`);
+console.log(`\nvisual-matrix: ${pass} passed, ${fail} failed  (${SURFACE} · locales ${EFFECTIVE_LOCALES.join("/")} · widths ${WIDTHS.join("/")})`);
 console.log(`screenshots → ${SHOTS}/`);
 if (fail > 0) process.exit(1);

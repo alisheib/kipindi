@@ -29,10 +29,11 @@ The platform is **feature-complete and passing its gates**. Recently landed:
   **`docs/PHASE_E_AUDIT_2026-07-11.md`**.
 - **Sentinel run progress-loader (2026-07-11, Ali)** — admin "Run now" shows a
   theme-kit loader (spinner + phased progress bar → burst-result card).
-- **Phase C player matrix (2026-07-11)** — `scripts/visual-matrix.mjs` run across
-  all 9 player routes × en/sw/zh × 360/768/1280/1920 = **108 cells, 324/324 auto**
-  (no overflow/console) + **7 human-read cells, zero defects**. Next Phase C slice:
-  admin surface (EN+SW) + below-fold full-page reads.
+- **Phase C visual matrix (2026-07-11)** — `scripts/visual-matrix.mjs`. Player:
+  9 routes × en/sw/zh × 4 widths = **108 cells 324/324 auto** + 7 read. Admin
+  (`SURFACE=admin`): 11 routes × EN/SW × 360/1280 = **44 cells 132/132 auto** + 4
+  read. **Zero defects both surfaces.** Next Phase C slice: below-fold full-page
+  reads + per-state seeding (loading/error/edge).
 
 - **Admin console fully built** — ADM1 regulator-pack maker-checker signing chain,
   ADM2 two-officer resolution ceremony, ADM3 KYC/AML workstation, ADM4 payments
