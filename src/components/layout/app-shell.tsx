@@ -7,14 +7,23 @@ const LazyOfflineBanner = lazy(() =>
 const LazyPullToRefresh = lazy(() =>
   import("@/components/ui/pull-to-refresh").then((m) => ({ default: m.PullToRefresh })),
 );
+// Background, event-driven, never-LCP components — split out of the critical
+// first-load bundle (they render nothing until an event/poll fires, so a
+// post-hydration load is invisible). Trims initial JS on the low-end/2G profile.
+const LazyNotifyPoller = lazy(() =>
+  import("@/components/markets/notify-poller").then((m) => ({ default: m.NotifyPoller })),
+);
+const LazyEventStream = lazy(() =>
+  import("./event-stream-provider").then((m) => ({ default: m.EventStreamProvider })),
+);
+const LazyWinCelebration = lazy(() =>
+  import("@/components/markets/win-celebration").then((m) => ({ default: m.WinCelebrationHost })),
+);
 import { TopAppBar } from "./top-app-bar";
 import { LiveTicker } from "./live-ticker";
 import { BottomNav } from "./bottom-nav";
 import { PublicFooter } from "./public-footer";
 import { AuthFlash } from "./auth-flash";
-import { NotifyPoller } from "@/components/markets/notify-poller";
-import { EventStreamProvider } from "./event-stream-provider";
-import { WinCelebrationHost } from "@/components/markets/win-celebration";
 import { NavProgress } from "@/components/ui/nav-progress";
 import { RouteTransition } from "@/components/ui/route-transition";
 import { getSession } from "@/lib/server/session";
@@ -113,9 +122,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <PublicFooter />
       <BottomNav isAuthed={!!session} />
       <RealityCheckHost enabled={!!session} intervalMin={realityCheckMin} userId={session?.userId ?? null} />
-      <NotifyPoller />
-      {session && <EventStreamProvider />}
-      <WinCelebrationHost />
+      <Suspense fallback={null}><LazyNotifyPoller /></Suspense>
+      {session && <Suspense fallback={null}><LazyEventStream /></Suspense>}
+      <Suspense fallback={null}><LazyWinCelebration /></Suspense>
       <Suspense fallback={null}>
         <AuthFlash />
       </Suspense>
