@@ -20,6 +20,25 @@ in-memory store (dev). Prod flag `USE_PRISMA_DAL=true` on Railway.
 ## 2 · Current state (feature-complete, hardening for launch)
 The platform is **feature-complete and passing its gates**. Recently landed:
 
+- **2026-07-13 · FEATURE F2 — player 2FA + "Your activity"** (`d9d7091`) — both halves
+  shipped in one verified batch. **2FA:** opt-in TOTP (reuses the admin RFC-6238 engine)
+  + **self-service backup codes** (new `TotpBackupCode` table, migration
+  `20260712130000` — applied on Railway; HMAC-hashed, single-use). Login is a **true
+  pre-session gate**: no session/cookie is minted until `/auth/2fa` passes (5-min signed
+  `kp_pending_2fa` token, rate-limited); disable + regenerate both require fresh proof;
+  an unconfirmed enrollment can never lock a player out. **Activity:** `/profile/activity`
+  — deposits/withdrawals/staked/won/net (week|month|all) from real DB aggregates, with
+  the locked invariant `net === won − staked === sumGamblingNetSince` (the exact number
+  the loss-limit gate uses), and RG limits-used computed from the **same sums the gates
+  enforce**. "Time played" deliberately NOT shown (no server-side session history → would
+  be fabrication). New `test:2fa` (29/29) + `test:activity` (21/21) → `test:all` **46/47**
+  (only red = the responsiveness sprint's `test:responsive`, needs a live server).
+  i18n parity 1287³. Live-drive: 39 screens, 0 overflow, full enrollment lifecycle driven.
+  6-role: ✓. **⚠ Follow-up:** the TOTP **secret** column is stored plaintext (the code
+  comment claims AES-256-GCM at rest — it does not); affects admin 2FA equally; backup
+  codes ARE hashed. Encrypt-at-rest = separate hardening item, advise before real money.
+  **Next backlog item: F3+F4 (watchlist + push).**
+
 - **2026-07-12 · FULL-PLATFORM RESPONSIVENESS SPRINT (Lanes A–G COMPLETE)** —
   built `scripts/responsive-audit.mjs` (master driver: player + all 27 admin
   routes × **320/360/390/430/landscape/768/1024/1280/1920** × EN/SW/ZH + overlays;

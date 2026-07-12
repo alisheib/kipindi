@@ -69,7 +69,23 @@ the WHY, the kit pieces to reuse, the infra that already exists, and acceptance 
   source link (opens official source) + "Two-officer sealed" + objection status; EN/SW/ZH;
   empty/void variants handled; 320→1920 clean; screenshot read.
 
-#### F2 · Player security & activity self-serve (2FA + "Your activity")
+#### F2 · Player security & activity self-serve (2FA + "Your activity")  ✅ SHIPPED 2026-07-13 (d9d7091)
+- **Status:** DONE (both halves, one batch). **2FA:** opt-in TOTP reusing the admin
+  RFC-6238 engine + **self-service backup codes** (new `TotpBackupCode` model, migration
+  `20260712130000`; HMAC-hashed, single-use). Login is a TRUE pre-session gate — no
+  session/cookie is minted until the challenge passes (`/auth/2fa`, rate-limited);
+  disable+regenerate require fresh proof; a provisioned-but-unconfirmed secret can
+  never lock a player out. **Activity:** `/profile/activity` — deposits/withdrawals/
+  staked/won/net over week|month|all from real DB aggregates, with the invariant
+  `net === won − staked === sumGamblingNetSince` (the exact number the loss-limit gate
+  uses), plus RG limits-used-vs-cap computed from the SAME sums the gates enforce.
+  **"Time played" deliberately NOT shown** — no server-side session history exists, so
+  it would be fabrication. New suites `test:2fa` (29/29) + `test:activity` (21/21).
+  Live-drive 320→1920 × EN/SW/ZH, 0 overflow. 6-role: ✓.
+- **⚠ Follow-up (pre-existing, now documented):** the TOTP secret column is stored
+  **plaintext** (totp.ts's comment claims AES-256-GCM at rest — it does not). Affects
+  admin 2FA equally. Backup codes ARE hashed. Encrypting the shared secret at rest is
+  a separate cross-cutting hardening item — recommend before real-money launch.
 - **What:** (a) let players enable/disable **2FA** in profile; (b) a **"Your activity"**
   money-honesty dashboard — staked / won / lost / net this period, deposits vs
   winnings, time played, with RG limits inline.
@@ -183,8 +199,9 @@ the WHY, the kit pieces to reuse, the infra that already exists, and acceptance 
 ## 2 · Recommended first batch (my proposal)
 
 ~~Start with **F1 (settlement-proof)**~~ ✅ **F1 SHIPPED 2026-07-12 (5edd74b).**
-Next: **F2** (2FA + activity), then the **F3+F4** retention pair. Hold **F6**
-(liquidity) for a compliance-led design pass before any code.
+~~Then **F2** (2FA + activity)~~ ✅ **F2 SHIPPED 2026-07-13 (d9d7091)** — both halves.
+Next: the **F3+F4** retention pair (watchlist + push). Hold **F6** (liquidity) for a
+compliance-led design pass before any code.
 
 **Why this order:** F1/F2/F5 = *trust*, F3/F4 = *habit*, F6 = *liquidity* — the three
 axes a real-money prediction market lives or dies on — and F1–F5 all reuse infrastructure
