@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
+import { ScoreBadge } from "@/components/admin/score-badge";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, type SortDir } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
@@ -279,15 +280,7 @@ export default async function AdminCandidatesPage({
                         <td className="p-3 font-mono uppercase tracking-[0.12em] text-[10px]">{c.category}</td>
                         <td className="p-3 text-text max-w-[420px] truncate">{c.proposedTitleEn}</td>
                         <td className="p-3 font-mono tabular-nums text-right">
-                          <span
-                            style={{
-                              color: c.confidence >= 85 ? "var(--yes-300)"
-                                : c.confidence >= 75 ? "var(--warning-fg)"
-                                : "var(--text-tertiary)",
-                            }}
-                          >
-                            {c.confidence}
-                          </span>
+                          <ScoreBadge value={c.confidence} good={85} warn={75} muted />
                         </td>
                         <td className="p-3 font-mono tabular-nums text-right">{c.sources.length}</td>
                         <td className="p-3 font-mono text-[11px]">{fmtDate(c.resolutionAt)}</td>

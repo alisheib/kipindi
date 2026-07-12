@@ -28,6 +28,7 @@ import type { StoredAIPoll, QualityIndicator, FilterReason } from "@/lib/server/
 import type { AIPollConfig } from "@/lib/server/ai-poll-config";
 import { formatTzs } from "@/lib/utils";
 import { SELECTION, bi } from "@/lib/admin-status-lexicon";
+import { band, BAND_TEXT, BAND_FILL } from "@/lib/score-band";
 
 const adminTextarea = "w-full rounded-lg border border-border bg-[var(--bg-inset)] px-3 py-2.5 text-[13px] text-text placeholder:text-text-subtle outline-none admin-focus transition-colors resize-none";
 
@@ -787,6 +788,7 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
 export function QualityBadges({ indicators, overall }: { indicators: QualityIndicator[]; overall: number }) {
   const statusColor = (s: "good" | "warning" | "bad") =>
     s === "good" ? "var(--yes-300)" : s === "warning" ? "var(--warning-fg)" : "var(--claret-300)";
+  const overallBand = band(overall, { good: 80, warn: 50 });
 
   return (
     <div className="space-y-1.5">
@@ -797,7 +799,7 @@ export function QualityBadges({ indicators, overall }: { indicators: QualityIndi
         </span>
         <span
           className="font-mono text-[13px] font-bold tabular-nums"
-          style={{ color: overall >= 80 ? "var(--yes-300)" : overall >= 50 ? "var(--warning-fg)" : "var(--claret-300)" }}
+          style={{ color: BAND_TEXT[overallBand] }}
         >
           {overall}%
         </span>
@@ -806,7 +808,7 @@ export function QualityBadges({ indicators, overall }: { indicators: QualityIndi
             className="h-full rounded-pill transition-all prog-sweep"
             style={{
               width: `${overall}%`,
-              backgroundColor: overall >= 80 ? "var(--yes-500)" : overall >= 50 ? "var(--warning-500)" : "var(--danger-500)",
+              backgroundColor: BAND_FILL[overallBand],
             }}
           />
         </div>

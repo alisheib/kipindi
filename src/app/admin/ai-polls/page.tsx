@@ -8,6 +8,7 @@ import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { formatDateTimeSafe, formatUsd } from "@/lib/utils";
 import { SELECTION } from "@/lib/admin-status-lexicon";
+import { ScoreBadge } from "@/components/admin/score-badge";
 import {
   listAIPolls,
   countAIPollsByState,
@@ -353,22 +354,10 @@ export default async function AdminAIPollsPage({
                           </Link>
                         </td>
                         <td className="p-3 font-mono tabular-nums text-right">
-                          <span style={{
-                            color: p.overallQuality >= 80 ? "var(--yes-300)"
-                              : p.overallQuality >= 50 ? "var(--warning-fg)"
-                              : "var(--text-tertiary)",
-                          }}>
-                            {p.overallQuality}%
-                          </span>
+                          <ScoreBadge value={p.overallQuality} good={80} warn={50} muted suffix="%" />
                         </td>
                         <td className="p-3 font-mono tabular-nums text-right">
-                          <span style={{
-                            color: p.confidence >= 85 ? "var(--yes-300)"
-                              : p.confidence >= 50 ? "var(--warning-fg)"
-                              : "var(--text-tertiary)",
-                          }}>
-                            {p.confidence}
-                          </span>
+                          <ScoreBadge value={p.confidence} good={85} warn={50} muted />
                         </td>
                         <td className="p-3 font-mono tabular-nums text-right">{p.sources.length}</td>
                         <td className="p-3 font-mono text-[11px]">{fmtDate(p.createdAt)}</td>
