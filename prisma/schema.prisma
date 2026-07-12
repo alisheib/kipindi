@@ -900,6 +900,12 @@ model PredictionMarket {
   resolutionStage2By  String?
   resolutionStage2At  DateTime?
   objectionsClosedAt  DateTime?
+  /** The officer's recorded evidence excerpt — the exact quote from the official
+   *  source that justifies the verdict, captured at stage-1 of the resolution
+   *  ceremony (also written immutably to the audit chain). Denormalised here so
+   *  the player-facing settlement-proof panel can render it without scanning the
+   *  audit log. Capped at 2000 chars at the service layer. Null = none recorded. */
+  resolutionEvidence  String?   @db.Text
   /** When officers were alerted this market is closed-by-time + awaiting their
    *  resolution. Set once by the resolution-due sweep (one alert per market). */
   resolutionNotifiedAt DateTime?

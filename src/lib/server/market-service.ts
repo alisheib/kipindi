@@ -70,6 +70,12 @@ export type StoredMarket = {
   resolutionStage2By: string | null;
   resolutionStage2At: string | null;
   objectionsClosedAt: string | null;
+  /** The officer's recorded evidence excerpt — the exact quote from the official
+   *  source that justifies the verdict, captured at stage-1 of the two-officer
+   *  ceremony (and written immutably to the audit chain). Denormalised here so the
+   *  player-facing settlement-proof panel can render it. Capped at 2000 chars.
+   *  Null = none recorded (empty-state; never fabricated). */
+  resolutionEvidence?: string | null;
   /** When admins were alerted that this market is closed-by-time and awaiting
    *  their resolution. Set once by the resolution-due sweep so the alert fires
    *  exactly once per market. Null = not yet alerted (or not yet due). */
@@ -1134,6 +1140,10 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
     m.resolutionStage1By = opts.officerId;
     m.resolutionStage1At = new Date().toISOString();
     m.resolvedOutcome = opts.outcome;
+    // Denormalise the officer's evidence excerpt onto the market so the player-
+    // facing settlement-proof panel can render it (source of truth stays the audit
+    // chain below). Stage-1 is canonical — the stage-2 field is a countersign note.
+    m.resolutionEvidence = evidence;
     m.status = "CLOSED";
     m.updatedAt = m.resolutionStage1At;
     await marketStore.set(m);
@@ -1590,6 +1600,10 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
     m.resolutionStage1At = now;
     m.resolutionStage2By = opts.officerId;
     m.resolutionStage2At = now;
+    // Surface the recorded cancellation reason as the settlement-proof evidence so
+    // a voided market tells players WHY it was pulled (same value already sent in
+    // the cancellation notice; capped for parity with the ceremony path).
+    m.resolutionEvidence = reason ? String(reason).trim().slice(0, 2000) || null : null;
     m.updatedAt = now;
     await marketStore.set(m);
     recordSnapshot(m.id, 0, 0);

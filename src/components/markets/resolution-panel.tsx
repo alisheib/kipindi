@@ -30,6 +30,10 @@ type Props = {
   noPool: number;
   /** Total pool fee (0..1) — the exact rate winners' payouts were computed at. */
   feeRate: number;
+  /** The officer's recorded evidence excerpt (exact quote from the official
+   *  source) captured at the resolution ceremony. Null/empty → nothing recorded,
+   *  so the evidence block is omitted (empty-state; never fabricated). */
+  evidence?: string | null;
 };
 
 const fmtPct = (r: number) => {
@@ -38,12 +42,14 @@ const fmtPct = (r: number) => {
 };
 
 export function ResolutionPanel({
-  outcome, resolvedAt, twoOfficer, sourceUrl, objectionsClosedAt, serverNow, yesPool, noPool, feeRate,
+  outcome, resolvedAt, twoOfficer, sourceUrl, objectionsClosedAt, serverNow, yesPool, noPool, feeRate, evidence,
 }: Props) {
   const { t } = useT();
   const isVoid = outcome === "VOID";
   const gross = yesPool + noPool;
   const provisional = objectionsClosedAt != null && serverNow < Date.parse(objectionsClosedAt);
+  // Only the real recorded excerpt is ever shown — empty/whitespace → omit the block.
+  const evidenceText = evidence?.trim() || null;
 
   return (
     <section className="glass-panel p-5 space-y-4">
@@ -62,7 +68,7 @@ export function ResolutionPanel({
       <div className="space-y-2">
         {twoOfficer && (
           <p className="flex items-start gap-2 text-[12.5px] text-text-muted">
-            <I.check s={14} className="mt-[1px] shrink-0 text-yes-300" />
+            <I.sealCheck s={14} className="mt-[1px] shrink-0 text-yes-300" />
             <span>{t.market.resTwoOfficer}</span>
           </p>
         )}
@@ -84,6 +90,21 @@ export function ResolutionPanel({
           </a>
         </div>
       </div>
+
+      {/* Recorded officer evidence — the exact quote from the official source that
+          justifies the verdict. Shown ONLY when a real excerpt was recorded; the
+          quote renders as escaped text (React) so any markup is inert. */}
+      {evidenceText && (
+        <div className="space-y-1.5">
+          <p className="flex items-center gap-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-text-subtle">
+            <I.fileCheck s={12} className="text-gilt" />
+            {t.market.resEvidence}
+          </p>
+          <blockquote className="border-l-2 border-gilt/60 bg-bg-overlay/30 rounded-r-md px-3 py-2 text-[12.5px] leading-relaxed text-text-muted italic whitespace-pre-wrap break-words">
+            {evidenceText}
+          </blockquote>
+        </div>
+      )}
 
       {/* Finality / objection window */}
       {provisional && objectionsClosedAt ? (

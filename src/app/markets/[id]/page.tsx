@@ -248,6 +248,7 @@ export default async function MarketDetail({
               yesPool={m.yesPool}
               noPool={m.noPool}
               feeRate={marketFeeRate}
+              evidence={m.resolutionEvidence}
             />
           )}
 

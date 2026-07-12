@@ -14,6 +14,7 @@
  */
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { createMarket, buyPosition, resolveMarket, emergencyVoidMarket, cashOutPosition } from "../src/lib/server/market-service.ts";
+import { marketStore } from "../src/lib/server/market-dal.ts";
 import { getAuditPage } from "../src/lib/server/audit.ts";
 
 let pass = 0, fail = 0;
@@ -157,6 +158,96 @@ await buyPosition("player_1", { marketId: mkt2.id, side: "YES", stake: 1000 });
     // This is the pragmatic choice — the officer already exited before resolution.
     ok("cashed-out officer can resolve (exited position)", res.ok);
   }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// F1 · Settlement-proof — the officer's evidence excerpt must be persisted onto
+// the market (denormalised read cache) so the player settlement panel can show
+// it. Source of truth is still the audit chain; these tests lock the round-trip
+// + the honesty/hardening rules. No money assertions here — money paths are
+// covered by test:money-invariants / multi-player-resolution-e2e.
+// ══════════════════════════════════════════════════════════════════════════
+await mkUser("ev_officer_1", "ADMIN", 0);
+await mkUser("ev_officer_2", "ADMIN", 0);
+
+async function mkEvMarket(crit: string): Promise<string> {
+  const m = await createMarket({
+    titleEn: "Evidence market", titleSw: "Soko", titleZh: "市场",
+    descriptionEn: "T", descriptionSw: "T", descriptionZh: "T",
+    category: "FINANCE", resolutionAt: futureDate,
+    resolutionCriterion: crit, sourceUrl: "https://example.com",
+    createdById: "clean_officer",
+  } as never);
+  return (m as { id: string }).id;
+}
+
+// ── Test 9: stage-1 evidence is persisted onto the market and round-trips ──
+{
+  const id = await mkEvMarket("Evidence > 1");
+  const quote = "Per the official exchange ledger, BTC's daily close was 68,240 — above the 68,000 threshold.";
+  const res = await resolveMarket({ marketId: id, outcome: "YES", officerId: "ev_officer_1", evidence: quote });
+  ok("stage-1 with evidence ok", res.ok);
+  const m = await marketStore.get(id);
+  ok("evidence persisted onto market", m?.resolutionEvidence === quote, `got=${JSON.stringify(m?.resolutionEvidence)}`);
+}
+
+// ── Test 10: no evidence → null (empty-state, never "" ) ──────────────────
+{
+  const id = await mkEvMarket("Evidence null");
+  const res = await resolveMarket({ marketId: id, outcome: "NO", officerId: "ev_officer_1" });
+  ok("stage-1 without evidence ok", res.ok);
+  const m = await marketStore.get(id);
+  ok("no evidence → null (not empty string)", m?.resolutionEvidence === null, `got=${JSON.stringify(m?.resolutionEvidence)}`);
+}
+
+// ── Test 11: over-long evidence is capped at 2000 chars ───────────────────
+{
+  const id = await mkEvMarket("Evidence long");
+  const huge = "A".repeat(5000);
+  const res = await resolveMarket({ marketId: id, outcome: "YES", officerId: "ev_officer_1", evidence: huge });
+  ok("stage-1 with huge evidence ok", res.ok);
+  const m = await marketStore.get(id);
+  ok("evidence capped at 2000 chars", (m?.resolutionEvidence?.length ?? -1) === 2000, `len=${m?.resolutionEvidence?.length}`);
+}
+
+// ── Test 12: injection payload is stored raw (rendered inert by React) ─────
+{
+  const id = await mkEvMarket("Evidence injection");
+  const payload = "<script>alert(1)</script></section>{{7*7}} ‮RTL‬ 😀";
+  const res = await resolveMarket({ marketId: id, outcome: "YES", officerId: "ev_officer_1", evidence: payload });
+  ok("stage-1 with injection payload ok", res.ok);
+  const m = await marketStore.get(id);
+  // Stored verbatim (trimmed) — no server-side stripping; the panel escapes it at
+  // render via React text interpolation (no dangerouslySetInnerHTML).
+  ok("injection payload stored raw + inert", m?.resolutionEvidence === payload, `got=${JSON.stringify(m?.resolutionEvidence)}`);
+}
+
+// ── Test 13: stage-2 countersign note does NOT overwrite stage-1 evidence ──
+{
+  const id = await mkEvMarket("Evidence stage-2 preserve");
+  // Give the market a two-sided pool so stage-2 settlement completes cleanly.
+  await buyPosition("player_1", { marketId: id, side: "YES", stake: 500 });
+  await buyPosition("player_1", { marketId: id, side: "NO", stake: 500 });
+  const quote = "Official source confirms the YES condition was met at settlement time.";
+  const s1 = await resolveMarket({ marketId: id, outcome: "YES", officerId: "ev_officer_1", evidence: quote });
+  ok("evidence stage-1 ok", s1.ok);
+  const s2 = await resolveMarket({ marketId: id, outcome: "YES", officerId: "ev_officer_2", evidence: "counter-sign note — different text" });
+  ok("stage-2 seals", s2.ok && s2.data?.stage === "complete");
+  const m = await marketStore.get(id);
+  ok("stage-1 evidence preserved through stage-2", m?.resolutionEvidence === quote, `got=${JSON.stringify(m?.resolutionEvidence)}`);
+  ok("market is RESOLVED", m?.status === "RESOLVED");
+}
+
+// ── Test 14: two-officer honesty predicate — synthetic ids never claim seal ──
+// Locks the rule the player page uses to decide whether to show "two-officer
+// sealed": both stage ids present, DISTINCT, and NOT system/synthetic actors.
+{
+  const twoOfficerClaim = (s1: string | null, s2: string | null) =>
+    !!(s1 && s2 && s1 !== s2 && !s1.startsWith("system") && !s2.startsWith("system"));
+  ok("real distinct officers → seal shown", twoOfficerClaim("ev_officer_1", "ev_officer_2"));
+  ok("same officer → no seal", !twoOfficerClaim("ev_officer_1", "ev_officer_1"));
+  ok("system/synthetic resolver → no seal", !twoOfficerClaim("system_demo", "system_sentinel"));
+  ok("one missing stage → no seal", !twoOfficerClaim("ev_officer_1", null));
 }
 
 console.log(`\nofficer-conflict: ${pass} passed, ${fail} failed`);

@@ -492,6 +492,7 @@ export const dict = {
       resolutionCriterion: "Resolution criterion",
       // Resolution panel (resolved / voided markets)
       resTitle: "Resolution",
+      resEvidence: "Officer’s recorded evidence",
       resVoided: "Market voided",
       resTwoOfficer: "Confirmed under the two-officer review rule",
       resProvisional: "Provisional — becomes final on",
@@ -1520,6 +1521,7 @@ export const dict = {
       resolutionCriterion: "Kigezo cha utatuzi",
       // Resolution panel (resolved / voided markets)
       resTitle: "Utatuzi",
+      resEvidence: "Ushahidi uliorekodiwa na afisa",
       resVoided: "Soko limebatilishwa",
       resTwoOfficer: "Imethibitishwa kwa kanuni ya maofisa wawili",
       resProvisional: "Ya muda — inakuwa ya mwisho tarehe",
@@ -2547,6 +2549,7 @@ export const dict = {
       resolutionCriterion: "结算标准",
       // Resolution panel (resolved / voided markets)
       resTitle: "结算",
+      resEvidence: "官员记录的证据",
       resVoided: "市场已作废",
       resTwoOfficer: "已通过双审核员规则确认",
       resProvisional: "临时结果 — 最终生效日期",
