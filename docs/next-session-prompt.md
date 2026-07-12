@@ -22,6 +22,14 @@ DONE** (see §4). Green gates: tsc · `next build` · `test:all` **45/45** · i1
 `ui-regression` **158/158** (fresh) · `admin-grids-smoke` **125/125** · `qa:live`.
 `npm run perf:smoke` = the Phase-D perf baseline harness.
 
+**⚙️ AUTONOMOUS RUN:** proceed through the ENTIRE sprint (Lanes A→G) without
+stopping for confirmation — commit AND push every batch, move lane to lane, use
+as many tokens as needed, and keep going until the whole responsiveness audit is
+complete and green. Only pause for a genuine external blocker (Ali-owned items in
+§4) or a real ambiguity that changes the outcome. Apply the expert lenses on every
+batch — **graphic-design evaluator, graphic designer, UI/UX engineer, compliance
+engineer** (+ QA + theme) — per the §4.5 gate.
+
 **This sprint's mission → FULL-PLATFORM RESPONSIVENESS AUDIT.** Every surface, at
 every breakpoint, in every state and language, pixel-clean and fully usable —
 pages, **popups, modals, dialogs, toasts, notifications, dropdowns, reports,
