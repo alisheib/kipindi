@@ -770,6 +770,7 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
                 min={0}
                 max={43200}
                 size="sm"
+                className="w-full"
               />
             </div>
           ))}

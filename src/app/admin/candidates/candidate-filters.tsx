@@ -101,7 +101,7 @@ export function CandidateFilterToolbar({ totalFiltered, totalAll }: { totalFilte
 
       {/* Filter chips */}
       <div className="flex items-center gap-2 flex-wrap">
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 flex-wrap gap-y-1.5">
           <I.calendar size={12} className="text-text-subtle mr-0.5" />
           {DATE_PRESETS.map((d) => (
             <button
@@ -121,7 +121,7 @@ export function CandidateFilterToolbar({ totalFiltered, totalAll }: { totalFilte
 
         <span className="w-px h-5 bg-border/60" />
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 flex-wrap gap-y-1.5">
           <I.filter size={12} className="text-text-subtle mr-0.5" />
           {ALL_STATES.map((s) => (
             <button

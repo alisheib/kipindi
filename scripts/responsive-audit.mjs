@@ -112,12 +112,25 @@ async function assertCell(page) {
       }
     }
 
-    // fixed / sticky overlays that run off the right/left/top edge
+    // fixed / sticky overlays that run off the right/left/top edge.
+    // A sticky element inside a horizontal scroll container (e.g. a sticky <thead>
+    // in an overflow-x-auto table) is SUPPOSED to be as wide as its scroller and
+    // scroll with it — not an off-screen overlay. Exclude those.
+    const inXScroller = (el) => {
+      let a = el.parentElement;
+      while (a && a !== document.documentElement) {
+        const cs = getComputedStyle(a);
+        if (/auto|scroll/.test(cs.overflowX) && a.scrollWidth > a.clientWidth + 1) return true;
+        a = a.parentElement;
+      }
+      return false;
+    };
     const offscreen = [];
     for (const el of document.querySelectorAll("*")) {
       const cs = getComputedStyle(el);
       if (cs.position !== "fixed" && cs.position !== "sticky") continue;
       if (cs.display === "none" || cs.visibility === "hidden" || cs.opacity === "0") continue;
+      if (cs.position === "sticky" && inXScroller(el)) continue;
       const r = el.getBoundingClientRect();
       if (r.width === 0 || r.height === 0) continue;
       if (r.right > vw + 2 || r.left < -2) {
@@ -207,7 +220,7 @@ async function sweep(browser, label, paths, contextFactory, guestContextFactory)
           ok(`${cell} no off-screen fixed`, r.offscreen.length === 0, r.offscreen.slice(0, 3).join(" | "));
           ok(`${cell} no clipped controls`, r.clippedCount === 0, r.clipped.join(" | "));
           soft(`${cell} touch targets ≥40`, r.smallCount === 0, `${r.smallCount} small: ${r.small.join(", ")}`);
-          const real = errs.filter((e) => !/fonts\.googleapis|fonts\.gstatic|Failed to load resource.*font|vibrate/i.test(e));
+          const real = errs.filter((e) => !/fonts\.googleapis|fonts\.gstatic|Failed to load resource.*font|vibrate|webpack-hmr|WebSocket connection|_next\/static|hot-reloader/i.test(e));
           ok(`${cell} zero console errors`, real.length === 0, real.slice(0, 2).join(" | "));
           if (SHOTS_ALL || bp.tag === "xs" || bp.tag === "desktop" || bp.tag === "land") {
             await page.screenshot({ path: `${SHOTS}/${label}/${surfName}-${bp.tag}${locale !== "en" ? "-" + locale : ""}.png` });

@@ -308,9 +308,9 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
       {/* Queue + review */}
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1.3fr_1fr]">
         <div className="overflow-hidden rounded-lg glass-panel">
-          <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
             <div className="text-[14px] font-bold">Queue · sorted by votes</div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap gap-y-1.5">
               {(["all", "review", "approved", "flagged"] as QFilter[]).map((f) => (
                 <button key={f} onClick={() => setQFilter(f)} className="rounded-pill border px-2.5 py-0.5 text-[11px] font-semibold capitalize transition-colors"
                   style={qFilter === f ? { borderColor: "color-mix(in oklab, var(--brand-500) 40%, transparent)", background: "color-mix(in oklab, var(--brand-500) 14%, transparent)", color: "var(--brand-200)" } : { borderColor: "var(--border)", color: "var(--text-muted)" }}>{f}</button>
@@ -331,7 +331,7 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
               />
             </div>
           </div>
-          <div className="flex items-center gap-4 border-b border-border px-4 py-2">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-border px-4 py-2">
             <Cap>Sort</Cap>
             <SortBtn field="score" label="Votes" current={sort} dir={dir} onSort={onSort} />
             <SortBtn field="age" label="Age" current={sort} dir={dir} onSort={onSort} />
@@ -508,11 +508,11 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
 
       {/* Config */}
       <div className="overflow-hidden rounded-lg glass-panel">
-        <div className="flex items-center gap-3.5 border-b border-border px-4 py-3.5" style={{ background: on ? "transparent" : "color-mix(in oklab, var(--warning-500) 8%, transparent)" }}>
+        <div className="flex flex-wrap items-center gap-3.5 border-b border-border px-4 py-3.5" style={{ background: on ? "transparent" : "color-mix(in oklab, var(--warning-500) 8%, transparent)" }}>
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px]" style={{ background: on ? "color-mix(in oklab, var(--brand-500) 16%, transparent)" : "color-mix(in oklab, var(--warning-500) 20%, transparent)", color: on ? "var(--brand-300)" : "var(--warning-fg)" }}>
             {on ? <I.trophy s={21} /> : <I.pause s={21} />}
           </span>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <div className="text-[15px] font-bold">Proposals feature · master switch</div>
             <div className="mt-0.5 text-[12px] text-text-muted">{on ? "Live — players can submit and vote on proposals." : "Paused — the board is read-only; no new submissions."}</div>
           </div>

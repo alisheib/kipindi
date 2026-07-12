@@ -340,7 +340,7 @@ export default async function AdminReportsPage({
                     <span className="font-mono text-[10px] tracking-wider text-text-tertiary self-center">{t.cadence}</span>
                   </div>
                   <p className="text-[12px] text-text-secondary leading-relaxed">{t.body}</p>
-                  <div className="flex items-center justify-between gap-2 pt-2 mt-1 border-t border-border-subtle">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 mt-1 border-t border-border-subtle">
                     <div className="flex flex-wrap gap-1">
                       {t.formats.map((f) => (
                         <span key={f} className="font-mono text-[10px] tracking-wider px-1.5 py-0.5 rounded-sm bg-bg-sunken text-text-tertiary whitespace-nowrap">
