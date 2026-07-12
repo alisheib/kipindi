@@ -6,8 +6,13 @@
  * ±1 step tolerance for clock skew.
  *
  * Security:
- *  - Secrets stored in `globalThis.__50PICK_STORE.totpSecrets` Map (production:
- *    encrypted column on User row, AES-256-GCM at rest).
+ *  - Secrets are ENCRYPTED AT REST with AES-256-GCM (`encryptSecret`/`decryptSecret`
+ *    in crypto.ts) — both in the Prisma `TotpSecret.secret` column and the dev
+ *    in-memory Map. The store boundary below is the only place that sees plaintext,
+ *    so every caller (provision/verify) is unchanged.
+ *  - LEGACY UPGRADE: rows written before encryption hold a raw base32 secret. Reads
+ *    detect them (`isEncrypted`) and transparently re-write them encrypted, so the
+ *    fleet self-heals with no data migration and no 2FA interruption.
  *  - QR-code provisioning URI follows otpauth:// standard so any compliant
  *    authenticator app accepts it without manual entry.
  *  - Verification is constant-time via `timingSafeEqual`.
@@ -17,6 +22,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { audit } from "./audit";
 import { prisma, hasDatabase } from "./prisma";
+import { encryptSecret, decryptSecret, isEncrypted } from "./crypto";
 
 const STEP_SECONDS = 30;
 const DIGITS = 6;
@@ -76,7 +82,38 @@ const prismaStore: TotpStore = {
 };
 
 const usePrisma = hasDatabase() && process.env.USE_PRISMA_DAL !== "false";
-const store: TotpStore = usePrisma ? prismaStore : memoryStore;
+const rawStore: TotpStore = usePrisma ? prismaStore : memoryStore;
+
+/**
+ * Encryption boundary. Everything ABOVE this line deals in plaintext base32
+ * secrets; everything persisted BELOW it is an AES-256-GCM envelope. A legacy
+ * plaintext row (written before encryption shipped) is detected on read and
+ * transparently re-written encrypted — the fleet self-heals with no data
+ * migration and no interruption to anyone's existing authenticator.
+ */
+const store: TotpStore = {
+  async get(userId) {
+    const stored = await rawStore.get(userId);
+    if (!stored) return undefined;
+    if (!isEncrypted(stored)) {
+      // Legacy plaintext → upgrade in place, then serve it.
+      await rawStore.set(userId, encryptSecret(stored));
+      audit({ category: "SECURITY", action: "totp.secret_encrypted_at_rest", actorId: userId, targetType: "User", targetId: userId });
+      return stored;
+    }
+    const plain = decryptSecret(stored);
+    if (plain === null) {
+      // Tampered, or encrypted under a key we no longer hold. Fail closed: the
+      // code simply won't verify (the player falls back to a hashed backup code).
+      audit({ category: "SECURITY", action: "totp.secret_undecryptable", actorId: userId, targetType: "User", targetId: userId });
+      return undefined;
+    }
+    return plain;
+  },
+  async set(userId, secret) { await rawStore.set(userId, encryptSecret(secret)); },
+  async has(userId) { return rawStore.has(userId); },
+  async delete(userId) { await rawStore.delete(userId); },
+};
 
 /** RFC 4648 base32 encode (no padding chars stripped, since otpauth tolerates either). */
 function base32Encode(buf: Buffer): string {

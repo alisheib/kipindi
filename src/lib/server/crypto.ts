@@ -8,7 +8,7 @@
  *  - HMAC-SHA-256 for cookie integrity (>= 256-bit security)
  *  - Constant-time comparison via `timingSafeEqual` to prevent timing attacks
  */
-import { createHmac, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, scrypt, scryptSync, createCipheriv, createDecipheriv, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 
 const scryptAsync = promisify(scrypt) as (
@@ -48,6 +48,62 @@ function requireSecret(name: "SESSION_SECRET" | "OTP_PEPPER"): string {
 
 const sessionSecret = () => requireSecret("SESSION_SECRET");
 const otpPepper     = () => requireSecret("OTP_PEPPER");
+
+// ---------------------------------------------------------------------------
+// Symmetric encryption at rest (AES-256-GCM) — for shared secrets we must be able
+// to READ BACK (unlike passwords/OTPs, which are one-way hashed). Currently used
+// for the TOTP secret column.
+//
+// Key: `TOTP_ENC_KEY` when set, else derived from `SESSION_SECRET` (already
+// mandatory in production). Set TOTP_ENC_KEY explicitly if you ever intend to
+// rotate SESSION_SECRET — rotating the session secret without it would make
+// existing TOTP secrets undecryptable (players would fall back to their hashed
+// backup codes and re-enroll; nothing is lost, but it is avoidable).
+//
+// Format: `v1.<iv>.<tag>.<ciphertext>` (base64url). Legacy rows hold a raw base32
+// secret (A–Z2–7 only, never a "."), so `isEncrypted()` distinguishes them and the
+// store transparently upgrades them on next read.
+// ---------------------------------------------------------------------------
+const ENC_V1 = "v1.";
+let encKeyCache: Buffer | null = null;
+function encKey(): Buffer {
+  if (encKeyCache) return encKeyCache;
+  const material = process.env.TOTP_ENC_KEY || sessionSecret();
+  encKeyCache = scryptSync(material, "50pick-secret-enc-v1", 32);
+  return encKeyCache;
+}
+
+/** True when `stored` is an AES-GCM envelope produced by `encryptSecret`. */
+export function isEncrypted(stored: string): boolean {
+  return stored.startsWith(ENC_V1);
+}
+
+/** Encrypt a readable-back secret (e.g. a TOTP seed) for storage at rest. */
+export function encryptSecret(plaintext: string): string {
+  const iv = randomBytes(12); // GCM standard nonce length
+  const cipher = createCipheriv("aes-256-gcm", encKey(), iv);
+  const ct = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return `${ENC_V1}${iv.toString("base64url")}.${tag.toString("base64url")}.${ct.toString("base64url")}`;
+}
+
+/**
+ * Decrypt a stored secret. Returns the plaintext, or null if the envelope is
+ * malformed / tampered / encrypted under a different key (GCM auth failure).
+ * Legacy plaintext values are NOT handled here — callers check `isEncrypted`.
+ */
+export function decryptSecret(stored: string): string | null {
+  if (!isEncrypted(stored)) return null;
+  try {
+    const [, ivB64, tagB64, ctB64] = stored.split(".");
+    if (!ivB64 || !tagB64 || !ctB64) return null;
+    const decipher = createDecipheriv("aes-256-gcm", encKey(), Buffer.from(ivB64, "base64url"));
+    decipher.setAuthTag(Buffer.from(tagB64, "base64url"));
+    return Buffer.concat([decipher.update(Buffer.from(ctB64, "base64url")), decipher.final()]).toString("utf8");
+  } catch {
+    return null; // tampered or wrong key
+  }
+}
 
 /** Generate a CSPRNG-backed random ID. */
 export function randomId(bytes = 16): string {

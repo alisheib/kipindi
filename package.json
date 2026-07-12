@@ -52,6 +52,7 @@
     "test:solo-resolution": "tsx scripts/solo-resolution-override.test.mts",
     "test:activity": "tsx scripts/activity-summary.test.mts",
     "test:2fa": "tsx scripts/player-2fa.test.mts",
+    "test:totp-enc": "tsx scripts/totp-encryption.test.mts",
     "test:killswitch": "tsx scripts/payment-killswitch.test.mts",
     "test:proposals": "tsx scripts/proposal-approval-bonus.test.mts",
     "test:proposal-close": "tsx scripts/proposal-selection-close.test.mts",
