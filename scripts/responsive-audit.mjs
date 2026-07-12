@@ -269,7 +269,9 @@ async function overlaySweep(browser, playerCtxFactory, adminCtxFactory) {
         await bell.click().catch(() => {});
         await p.waitForTimeout(400);
         const dlg = p.locator('[role="dialog"][aria-label="Notifications"]').first();
-        await fitsViewport(p, dlg, `overlay notifications @${bp.tag}`, 56);
+        // safeBottom 0: this is a backdrop overlay (z-61, full-screen scrim) that
+        // legitimately covers the bottom nav — it only must fit the viewport.
+        await fitsViewport(p, dlg, `overlay notifications @${bp.tag}`, 0);
         await p.screenshot({ path: `${SHOTS}/overlays/notifications-${bp.tag}.png` });
       } else soft(`overlay notifications @${bp.tag}`, true, "bell not visible");
       await p.close();
@@ -285,7 +287,8 @@ async function overlaySweep(browser, playerCtxFactory, adminCtxFactory) {
         await av.click().catch(() => {});
         await p.waitForTimeout(300);
         const menu = p.locator('[role="menu"]').first();
-        await fitsViewport(p, menu, `overlay avatar-menu @${bp.tag}`, 56);
+        // safeBottom 0: backdrop overlay (z-61 scrim over the nav) — fits-viewport only.
+        await fitsViewport(p, menu, `overlay avatar-menu @${bp.tag}`, 0);
         await p.screenshot({ path: `${SHOTS}/overlays/avatar-${bp.tag}.png` });
       } else soft(`overlay avatar-menu @${bp.tag}`, true, "avatar not visible");
       await p.close();

@@ -238,7 +238,10 @@ export function NotificationsPanel() {
             className={cn(
               "fixed left-3 right-3 top-[calc(env(safe-area-inset-top)+72px)] z-[61] rounded-xl border border-border-strong bg-bg-elevated/85 backdrop-blur-xl overflow-hidden shadow-[0_24px_64px_-16px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.06)] flex flex-col",
               "max-h-[calc(100dvh-env(safe-area-inset-top)-72px-env(safe-area-inset-bottom)-72px)]",
-              "sm:left-auto sm:right-4 sm:top-[64px] sm:w-[380px] sm:max-w-[calc(100vw-24px)] sm:max-h-[480px]",
+              // max-h is viewport-bound (not a flat 480) so the panel fits a short
+              // landscape phone (≤360px tall) and scrolls internally instead of
+              // running off the bottom.
+              "sm:left-auto sm:right-4 sm:top-[64px] sm:w-[380px] sm:max-w-[calc(100vw-24px)] sm:max-h-[min(480px,calc(100dvh-80px))]",
             )}
             style={{ animation: "np-rise 180ms cubic-bezier(.2,.8,.2,1)" }}
           >
