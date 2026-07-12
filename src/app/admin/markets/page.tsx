@@ -9,6 +9,7 @@ import Link from "next/link";
 import { listMarkets, impliedYesPct, type MarketCategory } from "@/lib/server/market-service";
 import { ProbabilityBar } from "@/components/markets/probability-bar";
 import { formatTzs, formatDateTime } from "@/lib/utils";
+import { SELECTION } from "@/lib/admin-status-lexicon";
 import { EmergencyVoidControl } from "./emergency-void-control";
 
 export const metadata = { title: "Admin · Markets curation" };
@@ -138,7 +139,7 @@ export default async function AdminMarketsPage({
                   <SortTh field="category" label="Cat." current={sort} dir={dir} sp={sp} baseHref="/admin/markets" />
                   <th className="text-left min-w-[140px]">Probability</th>
                   <SortTh field="volume" label="Pool" current={sort} dir={dir} sp={sp} baseHref="/admin/markets" align="right" />
-                  <SortTh field="closes" label="Bets close · Resolves" current={sort} dir={dir} sp={sp} baseHref="/admin/markets" />
+                  <SortTh field="closes" label={`${SELECTION.betsClose.en} · Resolves`} current={sort} dir={dir} sp={sp} baseHref="/admin/markets" />
                   <SortTh field="status" label="Status" current={sort} dir={dir} sp={sp} baseHref="/admin/markets" />
                   <th className="text-left">Source</th>
                   <th className="text-left">Predictors ↗</th>

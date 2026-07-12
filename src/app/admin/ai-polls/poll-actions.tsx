@@ -27,6 +27,7 @@ import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overl
 import type { StoredAIPoll, QualityIndicator, FilterReason } from "@/lib/server/ai-poll-generation";
 import type { AIPollConfig } from "@/lib/server/ai-poll-config";
 import { formatTzs } from "@/lib/utils";
+import { SELECTION, bi } from "@/lib/admin-status-lexicon";
 
 const adminTextarea = "w-full rounded-lg border border-border bg-[var(--bg-inset)] px-3 py-2.5 text-[13px] text-text placeholder:text-text-subtle outline-none admin-focus transition-colors resize-none";
 
@@ -160,7 +161,7 @@ export function GenerateForm() {
       if (!selIso) {
         errs.selDate = "Pick a valid selection-close date.";
       } else if (new Date(selIso).getTime() <= Date.now()) {
-        errs.selDate = "Selection close must be in the future.";
+        errs.selDate = `${SELECTION.selectionClose.en} must be in the future.`;
       }
     }
     // Cross-validation: selectionClosedAt < resolutionAt
@@ -168,7 +169,7 @@ export function GenerateForm() {
       const selIso = combineDateTime(selDate, selTime)!;
       const resIso = combineDateTime(resDate, resTime)!;
       if (new Date(selIso).getTime() >= new Date(resIso).getTime()) {
-        errs.selDate = "Selection close must be before the resolution date.";
+        errs.selDate = `${SELECTION.selectionClose.en} must be before the resolution date.`;
       }
     }
     return errs;
@@ -319,7 +320,7 @@ export function GenerateForm() {
               {/* Selection Close: Date + Time */}
               <div data-field="selDate">
                 <label className="mb-1 flex items-center gap-1.5 text-[11.5px] font-semibold text-text">
-                  <I.calendarClock s={12} className="text-text-subtle shrink-0" /> Selection Close · Kufunga uchaguzi
+                  <I.calendarClock s={12} className="text-text-subtle shrink-0" /> {bi(SELECTION.selectionClose)}
                 </label>
                 <div className="flex flex-wrap items-start gap-2">
                   <div className="min-w-[150px] flex-1">
@@ -756,7 +757,7 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
       <div className="rounded-md border border-border bg-bg-overlay p-3">
         <p className="text-[12px] font-semibold text-text mb-1">Selection lead time per category · Muda wa kufunga uchaguzi</p>
         <p className="text-[10.5px] text-text-subtle mb-2.5 leading-snug">
-          How long before the resolution date betting closes for each category. Players see &quot;Selection Closed — Waiting for Results&quot; after this cutoff.
+          How long before the resolution date betting closes for each category. Players see &quot;{SELECTION.selectionClosedWaiting.en}&quot; after this cutoff.
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {LEAD_TIME_CATEGORIES.map((cat) => (
@@ -1293,8 +1294,8 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
     if (selDate) {
       const selIso = combineDateTime(selDate, selTime);
       if (!selIso) { setSelError("Pick a valid selection-close date."); return; }
-      if (new Date(selIso).getTime() <= Date.now()) { setSelError("Selection close must be in the future."); return; }
-      if (new Date(selIso).getTime() >= resIso.getTime()) { setSelError("Selection close must be before the resolution date."); return; }
+      if (new Date(selIso).getTime() <= Date.now()) { setSelError(`${SELECTION.selectionClose.en} must be in the future.`); return; }
+      if (new Date(selIso).getTime() >= resIso.getTime()) { setSelError(`${SELECTION.selectionClose.en} must be before the resolution date.`); return; }
       selIsoStr = selIso;
     }
     onClose();
@@ -1347,7 +1348,7 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
         <textarea value={criterion} onChange={(e) => setCriterion(e.target.value)} className={adminTextarea} rows={2} />
       </label>
       <div>
-        <span className="text-[10px] text-text-subtle">Selection close · Kufunga uchaguzi</span>
+        <span className="text-[10px] text-text-subtle">{bi(SELECTION.selectionClose)}</span>
         <div className="flex flex-wrap items-start gap-2 mt-1">
           <div className="min-w-[130px] flex-1">
             <DateSelect value={selDate} min={todayIso} onChange={(iso) => { setSelDate(iso); setSelError(""); }} />

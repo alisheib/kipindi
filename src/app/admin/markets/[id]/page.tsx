@@ -12,6 +12,7 @@ import { getMarket, listPositionsForMarket, impliedYesPct } from "@/lib/server/m
 import { db } from "@/lib/server/store";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { formatTzs, formatDateTime } from "@/lib/utils";
+import { SELECTION } from "@/lib/admin-status-lexicon";
 
 export const dynamic = "force-dynamic";
 
@@ -159,7 +160,7 @@ export default async function MarketPredictorsPage({
               {m.titleSw && <p className="mt-0.5 text-[12px] italic text-text-subtle">{m.titleSw}</p>}
               {m.titleZh && <p className="mt-0.5 text-[12px] italic text-text-subtle">{m.titleZh}</p>}
               <p className="mt-1.5 font-mono text-[11px] text-text-subtle">
-                Bets close {formatDateTime(m.selectionClosedAt ?? m.resolutionAt)} · Resolves {formatDateTime(m.resolutionAt)}
+                {SELECTION.betsClose.en} {formatDateTime(m.selectionClosedAt ?? m.resolutionAt)} · Resolves {formatDateTime(m.resolutionAt)}
                 {m.resolvedOutcome && (
                   <span className={`ml-3 font-bold ${m.resolvedOutcome === "YES" ? "text-yes-300" : m.resolvedOutcome === "NO" ? "text-no-300" : "text-text-muted"}`}>
                     → {m.resolvedOutcome}

@@ -12,7 +12,7 @@ import { getAuditPage } from "@/lib/server/audit";
 import { db } from "@/lib/server/store";
 import { currentSession } from "@/lib/server/auth-service";
 import { formatDateTime, formatTzs } from "@/lib/utils";
-import { CEREMONY, bi } from "@/lib/admin-status-lexicon";
+import { CEREMONY, SELECTION, bi } from "@/lib/admin-status-lexicon";
 import { ResolutionCeremony } from "./resolution-ceremony";
 
 export const metadata = { title: "Admin · Resolution ceremony" };
@@ -99,7 +99,7 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
 
               <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-dashed border-border-subtle pt-3 text-[12px]">
                 <div>
-                  <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Bets closed</dt>
+                  <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{SELECTION.betsClosed.en}</dt>
                   <dd className="font-mono text-text">{formatDateTime(m.selectionClosedAt ?? m.resolutionAt)}</dd>
                 </div>
                 <div>

@@ -10,6 +10,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { Textarea } from "@/components/ui/textarea";
 import { DateSelect } from "@/components/ui/date-select";
 import { useToast } from "@/components/ui/toast";
+import { SELECTION } from "@/lib/admin-status-lexicon";
 import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
 import { RefreshButton } from "@/components/admin/refresh-button";
 import { StatusBadge } from "@/components/proposals/status-badge";
@@ -435,7 +436,7 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
                 </div>
                 <div className="flex flex-wrap gap-4">
                   <div>
-                    <div className="mb-1.5 text-[12px] font-semibold text-text">Selection closes</div>
+                    <div className="mb-1.5 text-[12px] font-semibold text-text">{SELECTION.selectionCloses.en}</div>
                     <DateSelect value={eCloseDate} onChange={setECloseDate} min={TODAY()} max={eResDate || MAX_DATE()} />
                   </div>
                   <div>

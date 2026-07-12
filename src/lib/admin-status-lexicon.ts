@@ -71,3 +71,31 @@ export const CEREMONY = {
   recordedEvidence:       { en: "Recorded evidence",       sw: "Ushahidi" },
   evidenceExcerpt:        { en: "Evidence excerpt",        sw: "Ushahidi" },
 } satisfies Record<string, AdminLabel>;
+
+/**
+ * FAMILY 2 — selection / betting-close.
+ * One underlying state ("new predictions are no longer accepted; the market is
+ * waiting to be resolved") that had drifted into many admin wordings — the same
+ * bilingual field label appeared as both "Selection Close" and "Selection close"
+ * in a single file, and the ai-poll config help text quoted a title-cased
+ * "Selection Closed — Waiting for Results" that no longer matched the sentence-
+ * cased string players actually see.
+ */
+export const SELECTION = {
+  /** The close-time field label (form input). Canonical case = sentence case,
+   *  matching the dict's "Selection closes" style; SW from i18n-dict
+   *  selectionCloseDate. Fixes the "Selection Close" vs "Selection close" drift. */
+  selectionClose:         { en: "Selection close",  sw: "Kufunga uchaguzi" },
+  /** Read-only header showing WHEN selections close (a date value follows).
+   *  SW from i18n-dict selectionCloseDate. */
+  selectionCloses:        { en: "Selection closes", sw: "Uchaguzi unafungwa" },
+  /** Present tense — "when betting closes"; used where the close-time may be
+   *  future (markets list/detail, AI-poll cards). A timestamp follows. EN-only. */
+  betsClose:              { en: "Bets close" },
+  /** Past tense — betting HAS ended (resolver queue, always past selection-close).
+   *  A close-time follows. EN-only surface. */
+  betsClosed:             { en: "Bets closed" },
+  /** The exact player-facing post-cutoff string, quoted in admin help text so the
+   *  operator sees the real wording. SW from i18n-dict selectionClosedWaiting. */
+  selectionClosedWaiting: { en: "Selection closed — waiting for results", sw: "Uchaguzi umefungwa — tunasubiri matokeo" },
+} satisfies Record<string, AdminLabel>;

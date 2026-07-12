@@ -42,9 +42,19 @@ The platform is **feature-complete and passing its gates**. Recently landed:
   SW never fabricated (lifted from shipped admin/dict strings). Verified on a fresh
   server: admin-grids-smoke 125/125 + 13/13 rendered-string assertions (drift fix
   captured in situ) + test:all 45/45. See `docs/status-lexicon-inventory.md`.
-  **Next:** Track 2a·2 (Family 2 — selection/betting-close phrasings), then
-  2a·3 (Family 1 — market-lifecycle enum chips), 2a·4 (Family 4 — KYC/withdrawal/
-  proposal review states); then items (c)–(f) + Track 1 Phase D perf.
+
+- **2026-07-12 · Track 2a·2 — admin status-lexicon, Family 2 (selection/betting-
+  close)** — added the `SELECTION` group (selectionClose, selectionCloses, betsClose,
+  betsClosed, selectionClosedWaiting) + migrated 8 admin files. **Fixed** the
+  "Selection Close" vs "Selection close" case drift (same label, same file) and the
+  config help text that quoted a title-cased state string players never actually see
+  (now mirrors the real sentence-cased player wording). Present/past "Bets
+  close"/"Bets closed" tense split kept intentionally. Verified: admin-grids-smoke
+  125/125 + 9/9 fresh-server assertions + read screenshot + test:all 45/45.
+  **Next:** Track 2a·3 (Family 1 — market-lifecycle enum chips → shared
+  `<StatusBadge>`), 2a·4 (Family 4 — KYC/withdrawal/proposal review states); then
+  items (c)–(f) + Track 1 Phase D perf. _(Player-dict intra-locale dupe collapse —
+  closesIn/waitingForResults/recentlyResolved — is a separate test:i18n-path task.)_
 
 - **Phase E — security/compliance/money-safety audit (2026-07-11)** — 6 findings
   fixed & shipped incl. a 🔴CRITICAL money race (`cashOutPosition` now holds the

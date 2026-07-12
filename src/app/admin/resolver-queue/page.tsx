@@ -13,7 +13,7 @@ import { ResolveControls } from "./resolve-controls";
 import { ConflictOverrideToggle } from "./conflict-override-toggle";
 import { getConflictedResolutionAllowed } from "@/lib/server/test-overrides";
 import { formatDateTime } from "@/lib/utils";
-import { CEREMONY } from "@/lib/admin-status-lexicon";
+import { CEREMONY, SELECTION } from "@/lib/admin-status-lexicon";
 
 export const metadata = { title: "Admin · Resolver queue" };
 export const dynamic = "force-dynamic";
@@ -166,7 +166,7 @@ export default async function ResolverQueuePage({
                       <h3 className="mt-1 font-display text-[15px] font-semibold leading-tight text-text line-clamp-2">{m.titleEn}</h3>
                       <p className="text-[12px] italic text-text-subtle line-clamp-1">{m.titleSw}</p>
                       {m.titleZh && <p className="text-[12px] italic text-text-subtle line-clamp-1">{m.titleZh}</p>}
-                      <p className="mt-1 font-mono text-[11px] text-text-subtle">Bets closed {fmtTime(m.selectionClosedAt ?? m.resolutionAt)} · Resolves {fmtTime(m.resolutionAt)}</p>
+                      <p className="mt-1 font-mono text-[11px] text-text-subtle">{SELECTION.betsClosed.en} {fmtTime(m.selectionClosedAt ?? m.resolutionAt)} · Resolves {fmtTime(m.resolutionAt)}</p>
                     </div>
                   </div>
 

@@ -24,7 +24,21 @@ Drift lives in ADMIN (near-zero dict usage). Player surface already reads the di
   button "Approve (second officer)" (kyc-decision-rail) — folding those in would change
   wording, not fix drift. Verified: tsc · admin-grids-smoke 125/125 · fresh-server
   13/13 rendered-string assertions (incl. drift fix in situ) · test:all 45/45.
-- **2a·2 — Family 2: selection/betting-close** ("14 phrasings for one state").
+- **2a·2 — Family 2: selection/betting-close** ✅ **DONE 2026-07-12.** Added the
+  `SELECTION` group to `admin-status-lexicon.ts` (selectionClose, selectionCloses,
+  betsClose, betsClosed, selectionClosedWaiting) + migrated **7 files** (poll-actions,
+  ai-polls/page, ai-polls/[id]/page, admin-proposals-client, resolver/[id]/page,
+  resolver-queue/page, markets/page, markets/[id]/page). **Fixed:** the "Selection Close"
+  vs "Selection close" case drift (same bilingual label, same file — poll-actions:322 vs
+  :1350), and the config help text that quoted a title-cased "Selection Closed — Waiting
+  for Results" no longer matching the sentence-cased string players actually see. Kept the
+  intentional present/past tense split (betsClose = "when", betsClosed = "has"). SW from
+  i18n-dict (selectionCloseDate / selectionClosedWaiting) — not fabricated. Verified:
+  tsc · admin-grids-smoke 125/125 · fresh-server 9/9 assertions (drift fixes confirmed) ·
+  test:all 45/45.
+  - _Player-dict intra-locale dupes (closesIn 176/510, waitingForResults 445/476/523,
+    recentlyResolved 266/477) remain a separate cleanup — they live in the trilingual
+    dict (test:i18n path), not the admin lexicon._
 - **2a·3 — Family 1: market-lifecycle enum chips** — build ONE shared admin `<StatusBadge>`
   replacing raw `<Chip>{status}</Chip>` + per-file STATUS_LABEL maps.
 - **2a·4 — Family 4: KYC/withdrawal/proposal review states.**
