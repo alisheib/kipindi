@@ -72,7 +72,8 @@ function healthFor(id: Mno, label: string, txns: StoredTxn[]): MnoHealth {
 
 export async function allMnoHealth(windowMs = DAY_MS): Promise<MnoHealth[]> {
   const cutoff = Date.now() - windowMs;
-  const txns = (await db.txn.listAll()).filter((t) => Date.parse(t.createdAt) >= cutoff);
+  // Windowed DB query (only the 24h payment txns) instead of loading every row.
+  const txns = await db.txn.listSince(cutoff, { types: ["DEPOSIT", "WITHDRAWAL"] });
   return MNOS.map((m) => healthFor(m.id, m.label, txns));
 }
 
@@ -130,9 +131,8 @@ export async function setKillSwitch(provider: Mno, kind: "deposits" | "withdrawa
  *  This is the real, dev-safe reconciliation until a settlement-file feed lands. */
 export async function reconcile(windowMs = DAY_MS): Promise<{ matched: number; unmatched: number; driftTzs: number; unmatchedRefs: string[] }> {
   const cutoff = Date.now() - windowMs;
-  const money = (await db.txn.listAll()).filter(
-    (t) => (t.type === "DEPOSIT" || t.type === "WITHDRAWAL") && t.status === "CONFIRMED" && Date.parse(t.createdAt) >= cutoff,
-  );
+  const money = (await db.txn.listSince(cutoff, { types: ["DEPOSIT", "WITHDRAWAL"] }))
+    .filter((t) => t.status === "CONFIRMED");
   const matched = money.filter((t) => !!t.providerRef);
   const unmatched = money.filter((t) => !t.providerRef);
   return {

@@ -7,32 +7,28 @@ import { listMarkets, impliedYesPct, isClosedByTime, isSelectionClosed, traderSe
 
 import { getCardChart } from "@/lib/server/market-history";
 import { getSession } from "@/lib/server/session";
-import { db } from "@/lib/server/store";
+import { getPlatformStats } from "@/lib/server/platform-stats";
 import { StatsBand } from "@/components/home/stats-band";
 import { getServerT } from "@/lib/i18n-server";
 
 export const dynamic = "force-dynamic";
 
 export default async function LandingPage() {
-  const [{ t }, liveRaw, traderMap, session, resolvedRaw, allTxns] = await Promise.all([
+  const [{ t }, liveRaw, traderMap, session, stats] = await Promise.all([
     getServerT(),
     listMarkets({ status: "LIVE" }).catch(() => [] as Awaited<ReturnType<typeof listMarkets>>),
     traderSeedsByMarket().catch(() => new Map() as Awaited<ReturnType<typeof traderSeedsByMarket>>),
     getSession(),
-    listMarkets({ status: "RESOLVED" }).catch(() => [] as Awaited<ReturnType<typeof listMarkets>>),
-    // db.txn.listAll() is a sync array in the dev store → wrap so .catch is safe.
-    Promise.resolve(db.txn.listAll()).catch(() => [] as Awaited<ReturnType<typeof db.txn.listAll>>),
+    getPlatformStats(),
   ]);
   const live = liveRaw.filter((m) => !isClosedByTime(m)).slice(0, 6);
 
   // C2a stats band — REAL aggregates, never fabricated. Markets settled = resolved
-  // count; TZS paid out = all confirmed BET_PAYOUT + CASHOUT ledger txns (the same
-  // basis the finance reports use). NOTE: the payout sum is a full txn scan — fine
-  // at current scale, but materialise/cache it before high-traffic launch.
-  const settledCount = resolvedRaw.length;
-  const paidOut = allTxns
-    .filter((tx) => tx.status === "CONFIRMED" && (tx.type === "BET_PAYOUT" || tx.type === "CASHOUT"))
-    .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+  // count; TZS paid out = Σ of CONFIRMED BET_PAYOUT + CASHOUT (same basis as the
+  // finance reports). Materialised: `getPlatformStats` does a DB-side sum (no row
+  // scan) + a short-TTL cache so the high-traffic landing doesn't recompute per view.
+  const settledCount = stats.settledCount;
+  const paidOut = stats.paidOutTzs;
   const cardCharts = new Map(await Promise.all(live.map(async (m) => [m.id, await getCardChart(m.id).catch(() => ({ spark: [] as number[], move24h: undefined }))] as const)));
   const isAuthed = !!session;
 

@@ -578,6 +578,26 @@ const memoryDb = {
       }
       return sum;
     },
+    /** Platform-wide Σ of CONFIRMED amounts across the given txn types (in-memory
+     *  twin of the Prisma DB aggregate). Powers the landing "paid out" stats band. */
+    sumConfirmedByTypes: (types: StoredTxn["type"][]): number => {
+      const set = new Set<StoredTxn["type"]>(types);
+      let sum = 0;
+      for (const t of store.txns.values()) {
+        if (t.status === "CONFIRMED" && set.has(t.type)) sum += t.amount;
+      }
+      return sum;
+    },
+    /** Transactions since `sinceMs` (optionally filtered to `types`) — in-memory
+     *  twin of the windowed Prisma query. */
+    listSince: (sinceMs: number, opts?: { types?: StoredTxn["type"][] }): StoredTxn[] => {
+      const set = opts?.types && opts.types.length ? new Set<StoredTxn["type"]>(opts.types) : null;
+      const out: StoredTxn[] = [];
+      for (const t of store.txns.values()) {
+        if (Date.parse(t.createdAt) >= sinceMs && (!set || set.has(t.type))) out.push(t);
+      }
+      return out;
+    },
   },
   responsible: {
     get: (userId: string) => store.responsible.get(userId) ?? null,

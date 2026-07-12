@@ -755,6 +755,29 @@ export const prismaDb = {
       });
       return Number(result._sum.amount ?? 0);
     },
+    /** Platform-wide Σ of CONFIRMED amounts across the given txn types — a DB-side
+     *  aggregate (no row loading), for marketing stats like the landing "paid out"
+     *  band. BET_PAYOUT/CASHOUT are stored positive, so this equals the abs-sum. */
+    sumConfirmedByTypes: async (types: StoredTxn["type"][]): Promise<number> => {
+      if (types.length === 0) return 0;
+      const result = await pc().transaction.aggregate({
+        where: { status: "CONFIRMED", type: { in: types } },
+        _sum: { amount: true },
+      });
+      return Number(result._sum.amount ?? 0);
+    },
+    /** Transactions created since `sinceMs` (optionally filtered to `types`) — a
+     *  windowed DB query so time-bounded analytics (MNO health, reconciliation)
+     *  load only the window, not every row. */
+    listSince: async (sinceMs: number, opts?: { types?: StoredTxn["type"][] }): Promise<StoredTxn[]> => {
+      const rows = await pc().transaction.findMany({
+        where: {
+          createdAt: { gte: new Date(sinceMs) },
+          ...(opts?.types && opts.types.length ? { type: { in: opts.types } } : {}),
+        },
+      });
+      return rows.map(toStoredTxn);
+    },
   },
 
   // ── RESPONSIBLE GAMBLING ──────────────────────────────────────────────────
