@@ -7,6 +7,7 @@ import { resolveMarketAction } from "@/app/markets/actions";
 import { BrandSpinner } from "@/components/brand";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
 import { ConfirmModal } from "@/components/ui/modal";
+import { formatTzs } from "@/lib/utils";
 
 export function ResolveControls({ marketId, stage, stagedOutcome }: { marketId: string; stage: "stage1" | "stage2"; stagedOutcome?: "YES" | "NO" | "VOID" | null }) {
   const [pending, startTransition] = useTransition();
@@ -46,7 +47,7 @@ export function ResolveControls({ marketId, stage, stagedOutcome }: { marketId: 
         setResultOpen(true);
       } else {
         const detail = r.data?.winnersPaid
-          ? `Paid TZS ${r.data.winnersPaid.toLocaleString()} to winners`
+          ? `Paid ${formatTzs(r.data.winnersPaid)} to winners`
           : "All voided · refunds issued";
         toast({ title: `Resolved ${outcome}`, description: detail, variant: "success" });
         setResultData({

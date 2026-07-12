@@ -18,6 +18,7 @@ import type { ProposalsConfig } from "@/lib/server/proposals-config";
 import type { AdminQueueRow, DeclineReason } from "@/lib/server/proposals-service";
 import type { ProposalCategory } from "@/lib/server/store";
 import { saveProposalsConfigAction, approveProposalAction, goLiveProposalAction, declineProposalAction, requestChangesAction, editProposalAction } from "./actions";
+import { formatTzs } from "@/lib/utils";
 
 const DECLINE_REASONS: DeclineReason[] = ["Politics", "Ambiguous outcome", "No official source", "Duplicate", "Past resolution", "Outside jurisdiction", "Officer decision"];
 const CATEGORIES: ProposalCategory[] = ["sports", "macro", "weather", "crypto", "culture", "infrastructure", "tech", "mixed"];
@@ -258,7 +259,7 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
     start(async () => {
       try {
         const r = await approveProposalAction(sel.id);
-        if (r.ok) { overlay.succeed("Approved · bonus paid", r.grantedTzs > 0 ? `TZS ${r.grantedTzs.toLocaleString()} credited to the proposer's bonus wallet.` : "Proposer notified. Publish it live when ready."); resetReview(); refresh(); }
+        if (r.ok) { overlay.succeed("Approved · bonus paid", r.grantedTzs > 0 ? `${formatTzs(r.grantedTzs)} credited to the proposer's bonus wallet.` : "Proposer notified. Publish it live when ready."); resetReview(); refresh(); }
         else overlay.fail("Couldn't approve", r.error);
       } catch { overlay.fail("Couldn't approve", "Server error — please try again."); }
     });

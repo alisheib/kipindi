@@ -13,6 +13,7 @@ import { getInvitePreview } from "@/lib/server/invite-service";
 import { startRegisterAction } from "./actions";
 import { HELPLINE } from "@/lib/support-config";
 import { getServerT } from "@/lib/i18n-server";
+import { formatTzs } from "@/lib/utils";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -100,8 +101,8 @@ export default async function RegisterPage({
                   {referral.newPlayerBonusTzs > 0 && (
                     <p className="mt-1 text-[12.5px] font-semibold text-gold-300">
                       {referral.bonusTrigger === "SIGNUP"
-                        ? `${t.auth.signUpAndGet} TZS ${referral.newPlayerBonusTzs.toLocaleString()} ${t.auth.toStart}`
-                        : `${t.auth.getOnFirstDeposit} TZS ${referral.newPlayerBonusTzs.toLocaleString()}`}
+                        ? `${t.auth.signUpAndGet} ${formatTzs(referral.newPlayerBonusTzs)} ${t.auth.toStart}`
+                        : `${t.auth.getOnFirstDeposit} ${formatTzs(referral.newPlayerBonusTzs)}`}
                     </p>
                   )}
                 </div>

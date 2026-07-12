@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/toast";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
 import { emergencyVoidMarketAction } from "@/app/markets/actions";
 import { Modal } from "@/components/ui/modal";
+import { formatTzs } from "@/lib/utils";
 
 /**
  * Emergency "kill switch" for one market — voids it and refunds every open
@@ -33,7 +34,7 @@ export function EmergencyVoidControl({ marketId, title }: { marketId: string; ti
         toast({ title: "Could not void", description: r.error, variant: "danger" });
         setResult({ variant: "danger", title: "Could not void", subtitle: r.error ?? "Try again." });
       } else {
-        const detail = `Refunded TZS ${r.data!.refundedTzs.toLocaleString()} to ${r.data!.refundedCount} ${r.data!.refundedCount === 1 ? "player" : "players"}`;
+        const detail = `Refunded ${formatTzs(r.data!.refundedTzs)} to ${r.data!.refundedCount} ${r.data!.refundedCount === 1 ? "player" : "players"}`;
         toast({ title: "Market voided", description: detail, variant: "success" });
         setResult({ variant: "success", title: "Market voided & refunded", subtitle: "Every open stake was returned in full and the market is closed. Audit entry recorded.", detail });
         setReason("");

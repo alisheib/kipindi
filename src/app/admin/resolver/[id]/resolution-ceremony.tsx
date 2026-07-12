@@ -19,6 +19,7 @@ import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { resolveMarketAction } from "@/app/markets/actions";
 import { BrandSpinner } from "@/components/brand";
+import { formatTzs } from "@/lib/utils";
 
 type Outcome = "YES" | "NO" | "VOID";
 
@@ -71,7 +72,7 @@ export function ResolutionCeremony({
         toast({ title: "Stage 1 attested", description: "Awaiting a second officer to seal.", variant: "warning" });
       } else {
         const detail = r.data?.winnersPaid
-          ? `Paid TZS ${r.data.winnersPaid.toLocaleString()} to winners`
+          ? `Paid ${formatTzs(r.data.winnersPaid)} to winners`
           : "Voided · every stake refunded";
         toast({ title: `Sealed · ${outcome}`, description: detail, variant: "success" });
       }

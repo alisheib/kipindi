@@ -26,6 +26,7 @@ import {
 import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
 import type { StoredAIPoll, QualityIndicator, FilterReason } from "@/lib/server/ai-poll-generation";
 import type { AIPollConfig } from "@/lib/server/ai-poll-config";
+import { formatTzs } from "@/lib/utils";
 
 const adminTextarea = "w-full rounded-lg border border-border bg-[var(--bg-inset)] px-3 py-2.5 text-[13px] text-text placeholder:text-text-subtle outline-none admin-focus transition-colors resize-none";
 
@@ -1004,7 +1005,7 @@ export function DeleteAction({ pollId, state, redirectTo }: { pollId: string; st
         } else {
           router.refresh();
           if (r.refundedCount && r.refundedCount > 0) {
-            overlay.succeed("Market voided — players refunded", `${r.refundedCount} player${r.refundedCount !== 1 ? "s" : ""} refunded · TZS ${Math.round(r.refundedTzs ?? 0).toLocaleString("en-US")}`);
+            overlay.succeed("Market voided — players refunded", `${r.refundedCount} player${r.refundedCount !== 1 ? "s" : ""} refunded · ${formatTzs(r.refundedTzs ?? 0)}`);
           } else {
             overlay.succeed("Poll deleted", "It has been permanently removed.");
           }
@@ -1131,7 +1132,7 @@ export function DeleteAllButton({ totalCount }: { totalCount: number }) {
         if (r.deleted > 0) parts.push(`${r.deleted} poll${r.deleted !== 1 ? "s" : ""} deleted`);
         if (r.voided > 0) parts.push(`${r.voided} market${r.voided !== 1 ? "s" : ""} voided`);
         if (r.skipped > 0) parts.push(`${r.skipped} in-flight skipped`);
-        if (r.refundedCount > 0) parts.push(`${r.refundedCount} player${r.refundedCount !== 1 ? "s" : ""} refunded · TZS ${Math.round(r.refundedTzs ?? 0).toLocaleString("en-US")}`);
+        if (r.refundedCount > 0) parts.push(`${r.refundedCount} player${r.refundedCount !== 1 ? "s" : ""} refunded · ${formatTzs(r.refundedTzs ?? 0)}`);
         if (r.voidErrors && r.voidErrors.length > 0) parts.push(`${r.voidErrors.length} void error${r.voidErrors.length !== 1 ? "s" : ""}`);
         router.refresh();
         if (r.voidErrors && r.voidErrors.length > 0) {

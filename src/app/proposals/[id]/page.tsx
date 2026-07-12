@@ -14,6 +14,7 @@ import { CategoryIcon, categoryLabel } from "@/components/proposals/category-ico
 import { RewardBurst } from "@/components/brand/reward-burst";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
+import { formatTzsSigned } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -95,7 +96,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
             <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">{t.common.yourProposalApproved}</p>
             <RewardBurst
               glyph="trophy"
-              amount={`+TZS ${p.bonusGrantedTzs.toLocaleString()}`}
+              amount={formatTzsSigned(p.bonusGrantedTzs)}
               caption={t.common.earnedAPrize}
             />
             <p className="mt-2 text-[12.5px] text-text-muted">{t.common.creditedToBonusWallet}</p>

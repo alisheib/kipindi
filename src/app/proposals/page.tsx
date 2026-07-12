@@ -16,6 +16,7 @@ import { StatusBadge } from "@/components/proposals/status-badge";
 import { CategoryIcon, categoryLabel } from "@/components/proposals/category-icon";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
+import { formatTzs } from "@/lib/utils";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -125,7 +126,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
         <EmptyState
           kind="proposals"
           title={t.proposals.noProposalsYet}
-          body={`${t.proposals.noProposalsBody} ${t.proposals.noProposalsReward} TZS ${cfg.prizeTzs.toLocaleString()}.`}
+          body={`${t.proposals.noProposalsBody} ${t.proposals.noProposalsReward} ${formatTzs(cfg.prizeTzs)}.`}
           action={enabled ? (
             <Link href={"/proposals/new" as never}><Button variant="gold" size="sm" leading={<I.plus s={12} />}>{t.proposals.create}</Button></Link>
           ) : undefined}

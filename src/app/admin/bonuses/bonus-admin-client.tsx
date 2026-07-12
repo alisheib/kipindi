@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { useDeferredToast } from "@/components/ui/toast";
 import type { BonusConfig } from "@/lib/server/bonus-config";
 import { saveBonusConfigAction, grantBonusToPlayerAction, cancelGrantAction } from "./bonus-actions";
+import { formatTzs } from "@/lib/utils";
 
 /** Cancel an ACTIVE grant from the ledger row. */
 export function CancelGrantButton({ grantId }: { grantId: string }) {
@@ -20,7 +21,7 @@ export function CancelGrantButton({ grantId }: { grantId: string }) {
       variant="ghost" size="sm" loading={pending}
       onClick={() => start(async () => {
         const r = await cancelGrantAction(grantId);
-        if (r.ok) { router.refresh(); deferToast({ title: `Bonus cancelled · TZS ${r.removedTzs.toLocaleString()} removed`, variant: "success" }); }
+        if (r.ok) { router.refresh(); deferToast({ title: `Bonus cancelled · ${formatTzs(r.removedTzs)} removed`, variant: "success" }); }
         else toast({ title: "Couldn't cancel", description: r.error, variant: "danger" });
       })}
     >

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { getServerT } from "@/lib/i18n-server";
 import { getProposalsConfig } from "@/lib/server/proposals-config";
+import { formatTzs } from "@/lib/utils";
 
 /**
  * ProposePromo — the single gold-accented "propose markets & get paid" promo.
@@ -33,7 +34,7 @@ export async function ProposePromo({ href }: { href: string }) {
         <p className="font-display text-[14.5px] font-bold text-text">{t.market.proposeAndGetPaid}</p>
         <p className="font-display italic text-text-subtle text-[11.5px]">
           {t.common.proposeEarn}
-          {cfg.prizeTzs > 0 ? ` · TZS ${cfg.prizeTzs.toLocaleString()}` : ""}
+          {cfg.prizeTzs > 0 ? ` · ${formatTzs(cfg.prizeTzs)}` : ""}
         </p>
       </div>
       <I.arrowRight s={18} />
