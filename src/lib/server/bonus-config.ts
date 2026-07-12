@@ -16,8 +16,7 @@
  *   - cashback is REQUEST-based (player loses deposit, submits request, management approves)
  *   - bonuses are used SEQUENTIALLY (one at a time, not stacked)
  */
-import { audit } from "./audit";
-import { loadConfig, saveConfig } from "./config-store";
+import { defineConfig } from "./define-config";
 
 const BONUS_CONFIG_KEY = "bonus.config";
 
@@ -71,25 +70,6 @@ export const DEFAULT_BONUS_CONFIG: BonusConfig = {
   sequentialBonuses: true,
 };
 
-declare global {
-  // eslint-disable-next-line no-var
-  var __50PICK_BONUS_CONFIG: BonusConfig | undefined;
-}
-
-const stored =
-  globalThis.__50PICK_BONUS_CONFIG ??
-  (globalThis.__50PICK_BONUS_CONFIG = { ...DEFAULT_BONUS_CONFIG });
-
-// Restore persisted config on boot (eager; sync getters keep zero ripple). Write
-// through on set so admin changes survive deploys. No-ops without a DB.
-void loadConfig<BonusConfig>(BONUS_CONFIG_KEY)
-  .then((persisted) => { if (persisted) globalThis.__50PICK_BONUS_CONFIG = { ...DEFAULT_BONUS_CONFIG, ...persisted }; })
-  .catch(() => {});
-
-export function getBonusConfig(): BonusConfig {
-  return { ...(globalThis.__50PICK_BONUS_CONFIG ?? stored) };
-}
-
 function validate(c: BonusConfig): { ok: true } | { ok: false; reason: string } {
   if (!Number.isFinite(c.defaultWagerMultiplier) || c.defaultWagerMultiplier < 1 || c.defaultWagerMultiplier > 100)
     return { ok: false, reason: "Wagering multiplier must be 1–100×." };
@@ -102,22 +82,21 @@ function validate(c: BonusConfig): { ok: true } | { ok: false; reason: string } 
   return { ok: true };
 }
 
+// Boilerplate (globalThis cache + eager hydrate + get/set + audit) via the
+// shared factory. Behaviour identical to the prior hand-rolled version.
+const _config = defineConfig<BonusConfig>({
+  key: BONUS_CONFIG_KEY,
+  defaults: DEFAULT_BONUS_CONFIG,
+  validate,
+  audit: { action: "bonus.config.updated", targetType: "BonusConfig" },
+});
+
+export function getBonusConfig(): BonusConfig {
+  return _config.get();
+}
+
 export function setBonusConfig(updates: Partial<BonusConfig>, officerId: string):
   | { ok: true; config: BonusConfig }
   | { ok: false; error: string } {
-  const before = getBonusConfig();
-  const merged: BonusConfig = { ...before, ...updates };
-  const v = validate(merged);
-  if (!v.ok) return { ok: false, error: v.reason };
-  globalThis.__50PICK_BONUS_CONFIG = merged;
-  void saveConfig(BONUS_CONFIG_KEY, merged);
-  audit({
-    category: "ADMIN",
-    action: "bonus.config.updated",
-    actorId: officerId,
-    targetType: "BonusConfig",
-    targetId: "global",
-    payload: { before, after: merged, changes: updates },
-  });
-  return { ok: true, config: { ...merged } };
+  return _config.set(updates, officerId);
 }

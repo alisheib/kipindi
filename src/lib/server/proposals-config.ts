@@ -11,8 +11,7 @@
  * "get paid to propose" reward is a regulated inducement, so the operator can
  * pause the whole feature from the admin page.
  */
-import { audit } from "./audit";
-import { loadConfig, saveConfig } from "./config-store";
+import { defineConfig } from "./define-config";
 
 const PROPOSALS_CONFIG_KEY = "proposals.config";
 
@@ -37,25 +36,6 @@ export const DEFAULT_PROPOSALS_CONFIG: ProposalsConfig = {
   rateLimit: 3,
 };
 
-declare global {
-  // eslint-disable-next-line no-var
-  var __50PICK_PROPOSALS_CONFIG: ProposalsConfig | undefined;
-}
-
-const stored =
-  globalThis.__50PICK_PROPOSALS_CONFIG ??
-  (globalThis.__50PICK_PROPOSALS_CONFIG = { ...DEFAULT_PROPOSALS_CONFIG });
-
-// Restore persisted config on boot (eager; sync getters keep zero ripple). Write
-// through on set so admin changes survive deploys. No-ops without a DB.
-void loadConfig<ProposalsConfig>(PROPOSALS_CONFIG_KEY)
-  .then((persisted) => { if (persisted) globalThis.__50PICK_PROPOSALS_CONFIG = { ...DEFAULT_PROPOSALS_CONFIG, ...persisted }; })
-  .catch(() => {});
-
-export function getProposalsConfig(): ProposalsConfig {
-  return { ...(globalThis.__50PICK_PROPOSALS_CONFIG ?? stored) };
-}
-
 function validate(c: ProposalsConfig): { ok: true } | { ok: false; reason: string } {
   if (!Number.isFinite(c.prizeTzs) || c.prizeTzs < 0 || c.prizeTzs > 5_000_000) return { ok: false, reason: "Prize must be 0–5,000,000 TZS." };
   if (!Number.isInteger(c.hotThreshold) || c.hotThreshold < 1 || c.hotThreshold > 100_000) return { ok: false, reason: "Hot threshold must be 1–100,000 votes." };
@@ -63,22 +43,21 @@ function validate(c: ProposalsConfig): { ok: true } | { ok: false; reason: strin
   return { ok: true };
 }
 
+// Boilerplate (globalThis cache + eager hydrate + get/set + audit) via the
+// shared factory. Behaviour identical to the prior hand-rolled version.
+const _config = defineConfig<ProposalsConfig>({
+  key: PROPOSALS_CONFIG_KEY,
+  defaults: DEFAULT_PROPOSALS_CONFIG,
+  validate,
+  audit: { action: "proposals.config.updated", targetType: "ProposalsConfig" },
+});
+
+export function getProposalsConfig(): ProposalsConfig {
+  return _config.get();
+}
+
 export function setProposalsConfig(updates: Partial<ProposalsConfig>, officerId: string):
   | { ok: true; config: ProposalsConfig }
   | { ok: false; error: string } {
-  const before = getProposalsConfig();
-  const merged: ProposalsConfig = { ...before, ...updates };
-  const v = validate(merged);
-  if (!v.ok) return { ok: false, error: v.reason };
-  globalThis.__50PICK_PROPOSALS_CONFIG = merged;
-  void saveConfig(PROPOSALS_CONFIG_KEY, merged);
-  audit({
-    category: "ADMIN",
-    action: "proposals.config.updated",
-    actorId: officerId,
-    targetType: "ProposalsConfig",
-    targetId: "global",
-    payload: { before, after: merged, changes: updates },
-  });
-  return { ok: true, config: { ...merged } };
+  return _config.set(updates, officerId);
 }
