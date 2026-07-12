@@ -20,6 +20,20 @@ in-memory store (dev). Prod flag `USE_PRISMA_DAL=true` on Railway.
 ## 2 · Current state (feature-complete, hardening for launch)
 The platform is **feature-complete and passing its gates**. Recently landed:
 
+- **2026-07-13 · SECURITY — TOTP secrets encrypted at rest** (`aa3938f`) — closed the
+  gap found during F2: the TOTP secret column stored the **raw base32 seed in
+  plaintext** (for players AND admins) despite a code comment claiming AES-256-GCM.
+  Anyone with DB read access could mint valid 2FA codes. Now encrypted with
+  **AES-256-GCM at the store boundary** (all callers unchanged). **Legacy rows
+  self-heal**: detected on read, still verify (no 2FA interruption), re-written
+  encrypted in place — no data migration. Undecryptable/tampered → **fails closed**
+  (falls back to hashed backup codes), never bypasses. Key = `TOTP_ENC_KEY` if set,
+  else derived from `SESSION_SECRET` → **deployed with zero env changes**.
+  New `test:totp-enc` 22/22 → `test:all` **47/48**. Live-drive: full enrollment works
+  with encryption active. ⚠ **Set `TOTP_ENC_KEY` in Railway BEFORE ever rotating
+  `SESSION_SECRET`** (otherwise existing TOTP secrets become undecryptable and users
+  must re-enroll via backup codes — recoverable, but avoidable).
+
 - **2026-07-13 · FEATURE F2 — player 2FA + "Your activity"** (`d9d7091`) — both halves
   shipped in one verified batch. **2FA:** opt-in TOTP (reuses the admin RFC-6238 engine)
   + **self-service backup codes** (new `TotpBackupCode` table, migration

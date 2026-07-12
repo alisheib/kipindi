@@ -82,10 +82,15 @@ the WHY, the kit pieces to reuse, the infra that already exists, and acceptance 
   **"Time played" deliberately NOT shown** — no server-side session history exists, so
   it would be fabrication. New suites `test:2fa` (29/29) + `test:activity` (21/21).
   Live-drive 320→1920 × EN/SW/ZH, 0 overflow. 6-role: ✓.
-- **⚠ Follow-up (pre-existing, now documented):** the TOTP secret column is stored
-  **plaintext** (totp.ts's comment claims AES-256-GCM at rest — it does not). Affects
-  admin 2FA equally. Backup codes ARE hashed. Encrypting the shared secret at rest is
-  a separate cross-cutting hardening item — recommend before real-money launch.
+- ~~**⚠ Follow-up:** TOTP secret column stored plaintext~~ ✅ **RESOLVED 2026-07-13
+  (`aa3938f`)** — TOTP secrets are now **encrypted at rest (AES-256-GCM)** at the
+  store boundary (`encryptSecret`/`decryptSecret` in crypto.ts), covering player AND
+  admin 2FA. Legacy plaintext rows are detected on read, still verify (no 2FA
+  interruption), and are **re-written encrypted in place** — self-healing, no data
+  migration. Undecryptable/tampered envelopes **fail closed** (fall back to hashed
+  backup codes), never bypass. Key = `TOTP_ENC_KEY` if set, else derived from
+  `SESSION_SECRET` (zero env change to deploy). New suite `test:totp-enc` 22/22.
+  ⚠ **Set `TOTP_ENC_KEY` in Railway before ever rotating `SESSION_SECRET`.**
 - **What:** (a) let players enable/disable **2FA** in profile; (b) a **"Your activity"**
   money-honesty dashboard — staked / won / lost / net this period, deposits vs
   winnings, time played, with RG limits inline.
