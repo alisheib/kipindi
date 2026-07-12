@@ -188,7 +188,21 @@ the WHY, the kit pieces to reuse, the infra that already exists, and acceptance 
 
 ### P2 — structural & owner tooling (bigger, higher-care)
 
-#### F6 · Seeded / guaranteed liquidity on new markets  ⭐ (structural)
+#### F6 · Seeded / guaranteed liquidity on new markets  ⭐ (structural)  📋 DESIGN DELIVERED 2026-07-13 — **AWAITING ALI'S DECISION**
+- **See `docs/F6-LIQUIDITY-DESIGN.md`. No code written** (as this backlog required).
+- **Recommendation: DO NOT build house-backed liquidity.** It destroys outcome-neutrality
+  (the defining property of pari-mutuel), and it contradicts a rule we already enforce —
+  *"an officer who holds a position MUST NOT resolve it (POCA §16)"* — because the house
+  would hold a position in every market its own officers settle, and **the house cannot
+  recuse itself**. The guard is per-natural-person, so a house seed under a synthetic user
+  id would *pass the literal check while violating the principle exactly*. It also corrupts
+  GGR/holdPct (the metric whose docstring says "drift = alarm"). Every payout-guarantee
+  variant carries a perverse incentive; there is no outcome-neutral one.
+- **Instead:** solve cold-start with demand — **F8 (event-timed markets) is the real answer** —
+  plus a book-building minimum-liquidity gate and honest payout-ratio disclosure.
+- Notes a **`HousePoolLedger` table + `SEED_OUT`/`LOSS_ABSORBED` enum already in the prod DB
+  with zero code touching them**, and a **3× tax-base discrepancy** (ledger levies on the 3%
+  commission; the statutory return levies on ~9% GGR) that needs a **tax ruling, not code**.
 - **What:** transparent house-backed minimum liquidity (or a guaranteed-floor mechanic)
   so fresh markets aren't thin/one-sided → ugly payouts → bounce.
 - **Why (liquidity):** the pari-mutuel cold-start is the ceiling on volume; solving it
@@ -203,7 +217,19 @@ the WHY, the kit pieces to reuse, the infra that already exists, and acceptance 
 - **Accept:** *design-first* — produce the mechanic + risk/accounting/compliance model in
   planning; only build once the model is signed off.
 
-#### F7 · Owner insight dashboard (decision-grade BI)
+#### F7 · Owner insight dashboard (decision-grade BI)  ✅ SHIPPED 2026-07-13 (3f19537)
+- **Status:** DONE. `/admin/insights` — funnel, cohort retention, LTV, GGR-by-category,
+  top markets. Kit primitives only. **Honesty:** the funnel has **no "visit" stage** (zero
+  analytics instrumentation exists → it would be invented) and says so on the card;
+  retention is **activity**-retention (login-frequency is impossible — only `lastLoginAt`
+  is stored); staff excluded; empty → zeros. `test:insights` 35/35.
+- **🔴 Fixed a live MODERATOR data leak found while building it:** `/admin/finance` and
+  `/admin/reports` had **no page-level role check** (the layout only gates
+  ADMIN_CONSOLE_ROLES, which *includes* moderator), so a moderator could read GGR, NGR, the
+  top-contributor list and the statutory pack — despite `roles.ts` saying "NEVER MODERATOR".
+  All three surfaces now return a restricted panel **before** any aggregate is computed.
+- **🔴 Fixed a fabricated figure:** `/admin/finance` showed `taxAccrued = ggr × 0.05`
+  ("placeholder formula") as fact. Now the real TRA+GBT levies, or "—" if unavailable.
 - **What:** cohort retention, LTV, funnel (visit→register→KYC→deposit→first-bet), GGR by
   category, top markets by volume.
 - **Why (owner):** tells you which features/markets earn — steers the roadmap.

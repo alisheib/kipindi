@@ -20,6 +20,31 @@ in-memory store (dev). Prod flag `USE_PRISMA_DAL=true` on Railway.
 ## 2 · Current state (feature-complete, hardening for launch)
 The platform is **feature-complete and passing its gates**. Recently landed:
 
+- **2026-07-13 · F7 owner dashboard + TWO LIVE DEFECTS FIXED** (`3f19537`) —
+  `/admin/insights`: funnel, cohort retention, LTV, GGR-by-category, top markets
+  (kit primitives only; 60s cache). **Honesty:** no "visit" funnel stage (zero
+  analytics instrumentation → it would be fabricated) and the card says so;
+  retention is **activity**-retention (a login curve is impossible — only
+  `lastLoginAt` is stored); staff excluded. `test:insights` 35/35.
+  **🔴 Closed a MODERATOR data leak:** `/admin/finance` + `/admin/reports` had NO
+  page-level role check (the layout only gates ADMIN_CONSOLE_ROLES, which *includes*
+  MODERATOR) — a moderator could read GGR/NGR/top-contributors/statutory pack,
+  despite roles.ts saying "NEVER MODERATOR". Found by adversarially minting a
+  moderator session and driving the pages, not by reading code.
+  **🔴 Killed a fabricated figure:** finance showed `taxAccrued = ggr × 0.05`
+  ("placeholder formula") as fact → now the real TRA+GBT levies, or "—".
+
+- **2026-07-13 · F6 — DESIGN DELIVERED, AWAITING ALI** (`docs/F6-LIQUIDITY-DESIGN.md`,
+  **no code**). **Recommendation: do NOT build house-backed liquidity** — it destroys
+  pari-mutuel outcome-neutrality and contradicts our own POCA §16 rule ("an officer
+  who holds a position MUST NOT resolve it"): the house would hold a position in every
+  market its own officers settle and **cannot recuse itself**; a house seed under a
+  synthetic user id would *pass the literal guard while violating the principle*.
+  Solve cold-start with demand (F8) instead. Also flags: a **`HousePoolLedger` table +
+  `SEED_OUT`/`LOSS_ABSORBED` enum are already in the prod DB, unused**, and a **3×
+  tax-base discrepancy** (ledger levies on the 3% commission; the statutory return
+  levies on ~9% GGR) that needs a **tax ruling**.
+
 - **2026-07-13 · FEATURE F5 — WhatsApp share cards (pick + REAL win)** (`f58c0dd`) —
   share a pick, and share a genuine win, from the positions list. **Anti-fabrication
   is the whole design:** the OG card is a public URL, so a raw `?won=` param would let
