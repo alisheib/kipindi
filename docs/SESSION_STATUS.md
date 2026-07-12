@@ -55,6 +55,16 @@ The platform is **feature-complete and passing its gates**. Recently landed:
   collapse — closesIn/waitingForResults/recentlyResolved — is a separate
   test:i18n-path task.)_
 
+- **2026-07-12 · FINALIZATION SPRINT — our engineering tracks COMPLETE** —
+  Track 4 (materialize aggregates: landing payout-sum → DB `sumConfirmedByTypes`
+  + 60 s cache; per-MNO health/reconcile → windowed `listSince`; byte-identical),
+  Phase C tail (loading/error/empty states + light-scheme resilience — all
+  verified, no defects), 2G perf (background-shell lazy-split — critical-path win;
+  total JS unchanged, deeper lever documented), Phase G (**regression-lock ALL
+  GREEN**: tsc · build · test:all 45/45 · ui-regression 158/158 · admin-grids-smoke
+  125/125 · 6-role EN/SW/ZH walk clean). **Remaining to launch = external/Ali-owned
+  only** (real payments, bitmap assets, license/TIN/SMS-ID, GLI cert) + flip
+  solo-resolution OFF. See `docs/ui-rollout-tracker.md` batch log for each.
 - **2026-07-12 · Perfection items (c)–(f) + Track 1 Phase D perf baseline** —
   (c) `band()`+`<ScoreBadge>` (score→tone, byte-proof); (d) `officerLabel()`/`playerLabel()`
   (one by-id name resolver, 2 dupes removed); (e) Chip variant set documented + 4
