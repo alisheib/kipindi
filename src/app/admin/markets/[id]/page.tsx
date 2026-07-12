@@ -13,6 +13,7 @@ import { db } from "@/lib/server/store";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { formatTzs, formatDateTime } from "@/lib/utils";
 import { SELECTION } from "@/lib/admin-status-lexicon";
+import { MarketStatusBadge } from "@/components/admin/status-badge";
 
 export const dynamic = "force-dynamic";
 
@@ -123,10 +124,6 @@ export default async function MarketPredictorsPage({
   const openCount    = allPositions.filter((p) => p.status === "OPEN").length;
   const totalPool    = m.yesPool + m.noPool;
 
-  const STATUS_LABEL: Record<string, string> = {
-    LIVE: "Live", CLOSED: "Closed", RESOLVED: "Resolved", VOIDED: "Voided", DRAFT: "Draft",
-  };
-
   return (
     <>
       <AdminPageHead
@@ -148,12 +145,7 @@ export default async function MarketPredictorsPage({
           <div className="flex items-start gap-4">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1.5">
-                <Chip size="sm" variant={
-                  m.status === "LIVE" ? "success"
-                  : m.status === "RESOLVED" ? "gold"
-                  : m.status === "CLOSED" ? "warning"
-                  : "neutral"
-                }>{STATUS_LABEL[m.status] ?? m.status}</Chip>
+                <MarketStatusBadge status={m.status} />
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{m.category}</span>
               </div>
               <h2 className="font-display text-[17px] font-semibold text-text leading-snug">{m.titleEn}</h2>

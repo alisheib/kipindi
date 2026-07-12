@@ -3,13 +3,13 @@ import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/component
 import { RefreshButton } from "@/components/admin/refresh-button";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { I } from "@/components/ui/glyphs";
-import { Chip } from "@/components/ui/chip";
 import { Select } from "@/components/ui/select";
 import Link from "next/link";
 import { listMarkets, impliedYesPct, type MarketCategory } from "@/lib/server/market-service";
 import { ProbabilityBar } from "@/components/markets/probability-bar";
 import { formatTzs, formatDateTime } from "@/lib/utils";
 import { SELECTION } from "@/lib/admin-status-lexicon";
+import { MarketStatusBadge } from "@/components/admin/status-badge";
 import { EmergencyVoidControl } from "./emergency-void-control";
 
 export const metadata = { title: "Admin · Markets curation" };
@@ -176,12 +176,7 @@ export default async function AdminMarketsPage({
                         </div>
                       </td>
                       <td>
-                        <Chip size="sm" variant={
-                          m.status === "LIVE" ? "success"
-                          : m.status === "RESOLVED" ? "gold"
-                          : m.status === "CLOSED" ? "warning"
-                          : "neutral"
-                        }>{m.status}</Chip>
+                        <MarketStatusBadge status={m.status} />
                       </td>
                       <td>
                         <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-teal-300 hover:text-teal-200">

@@ -51,10 +51,19 @@ The platform is **feature-complete and passing its gates**. Recently landed:
   (now mirrors the real sentence-cased player wording). Present/past "Bets
   close"/"Bets closed" tense split kept intentionally. Verified: admin-grids-smoke
   125/125 + 9/9 fresh-server assertions + read screenshot + test:all 45/45.
-  **Next:** Track 2a·3 (Family 1 — market-lifecycle enum chips → shared
-  `<StatusBadge>`), 2a·4 (Family 4 — KYC/withdrawal/proposal review states); then
+  **Next:** Track 2a·4 (Family 4 — KYC/withdrawal/proposal review states); then
   items (c)–(f) + Track 1 Phase D perf. _(Player-dict intra-locale dupe collapse —
   closesIn/waitingForResults/recentlyResolved — is a separate test:i18n-path task.)_
+
+- **2026-07-12 · Track 2a·3 — Family 1, shared `<MarketStatusBadge>`** — built
+  `src/components/admin/status-badge.tsx` (the ONE market-lifecycle badge: owns
+  enum→variant + enum→label via the new `LIFECYCLE` lexicon group) and replaced the
+  raw `<Chip>{m.status}</Chip>`/`STATUS_LABEL` + duplicated inline variant ternaries
+  on /admin/markets and /admin/markets/[id]. Byte-identical rendered output (the Chip
+  atom upper-cases via CSS); the win is one reusable component + no duplicated logic.
+  Server-safe (`import type MarketStatus`). Position-status + the resolver seal chip
+  are a different enum, kept separate. Verified: admin-grids-smoke 125/125 + 4/4
+  fresh-server assertions + read screenshot + test:all 45/45.
 
 - **Phase E — security/compliance/money-safety audit (2026-07-11)** — 6 findings
   fixed & shipped incl. a 🔴CRITICAL money race (`cashOutPosition` now holds the

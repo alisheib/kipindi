@@ -39,8 +39,19 @@ Drift lives in ADMIN (near-zero dict usage). Player surface already reads the di
   - _Player-dict intra-locale dupes (closesIn 176/510, waitingForResults 445/476/523,
     recentlyResolved 266/477) remain a separate cleanup — they live in the trilingual
     dict (test:i18n path), not the admin lexicon._
-- **2a·3 — Family 1: market-lifecycle enum chips** — build ONE shared admin `<StatusBadge>`
-  replacing raw `<Chip>{status}</Chip>` + per-file STATUS_LABEL maps.
+- **2a·3 — Family 1: market-lifecycle enum chips** ✅ **DONE 2026-07-12.** Built
+  `src/components/admin/status-badge.tsx` (`<MarketStatusBadge>`) — the ONE way to render a
+  `MarketStatus` (DRAFT/LIVE/CLOSED/RESOLVED/VOIDED) chip; owns the enum→variant map
+  (LIVE→success, RESOLVED→gold, CLOSED→warning, DRAFT/VOIDED→neutral) + the enum→label via
+  a new `LIFECYCLE` lexicon group. Replaced the raw `<Chip>{m.status}</Chip>` + duplicated
+  inline variant ternary (markets/page) and the local `STATUS_LABEL` map + ternary
+  (markets/[id]). **Byte-identical rendered output** (the Chip atom upper-cases via CSS, so
+  "LIVE" and "Live" already displayed the same — the fix removes the source drift + the
+  duplicated logic, not pixels). Server-safe component (`import type MarketStatus`, no
+  bundle bloat). Position-status chips (OPEN/WIN/LOSS/VOID/CASHED_OUT) + the resolver
+  "SEALED · outcome" seal chip are a DIFFERENT enum — intentionally out of Family 1.
+  Verified: tsc · admin-grids-smoke 125/125 · fresh-server 4/4 assertions (list + detail
+  badges render, correct variants) + read screenshot · test:all 45/45.
 - **2a·4 — Family 4: KYC/withdrawal/proposal review states.**
 
 ## Family 3 hardcoded sites (migrate in 2a·1)

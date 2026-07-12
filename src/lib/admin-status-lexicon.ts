@@ -99,3 +99,21 @@ export const SELECTION = {
    *  operator sees the real wording. SW from i18n-dict selectionClosedWaiting. */
   selectionClosedWaiting: { en: "Selection closed — waiting for results", sw: "Uchaguzi umefungwa — tunasubiri matokeo" },
 } satisfies Record<string, AdminLabel>;
+
+/**
+ * FAMILY 1 — market-lifecycle enum.
+ * The canonical human label for each `MarketStatus` value
+ * (`src/lib/server/market-service.ts`). Rendered through the shared
+ * `<MarketStatusBadge>` (src/components/admin/status-badge.tsx), which owns the
+ * chip-variant mapping — replacing the raw `<Chip>{m.status}</Chip>` + the
+ * per-file `STATUS_LABEL` map that had one surface show the raw enum ("LIVE")
+ * and another a title-cased label ("Live"). Keys are the enum values lower-cased.
+ * EN-only: chips render a single token (the Chip atom upper-cases via CSS).
+ */
+export const LIFECYCLE = {
+  draft:    { en: "Draft" },
+  live:     { en: "Live" },
+  closed:   { en: "Closed" },
+  resolved: { en: "Resolved" },
+  voided:   { en: "Voided" },
+} satisfies Record<string, AdminLabel>;
