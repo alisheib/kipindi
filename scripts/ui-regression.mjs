@@ -22,8 +22,12 @@ const BASE = process.env.BASE || "http://localhost:3000";
 const SHOTS = ".50pick-shots/ui-regression";
 mkdirSync(SHOTS, { recursive: true });
 
-const ALL_WIDTHS = [360, 768, 1280, 1920];
+// 320 = the true low-end phone floor; 740 = phone LANDSCAPE (height 360).
+// Extended for the responsiveness sprint (docs/responsiveness-audit.md Lane G).
+const ALL_WIDTHS = [320, 360, 740, 768, 1280, 1920];
 const WIDTHS = process.env.WIDTHS ? process.env.WIDTHS.split(",").map(Number) : ALL_WIDTHS;
+// Landscape phone runs short; everything else uses a tall viewport.
+const heightFor = (w) => (w === 740 ? 360 : 900);
 const ONLY = process.env.ONLY ? process.env.ONLY.split(",") : null;
 
 // ctx: "player" (via /auth/demo) | "admin" (seeded) | "guest"
@@ -79,7 +83,7 @@ for (const route of ROUTES) {
   const context = ctxOf[route.ctx];
   for (const w of WIDTHS) {
     const page = await context.newPage();
-    await page.setViewportSize({ width: w, height: 900 });
+    await page.setViewportSize({ width: w, height: heightFor(w) });
     const errs = [];
     page.on("console", (m) => { if (m.type() === "error") errs.push(m.text()); });
     page.on("pageerror", (e) => errs.push(String(e)));
