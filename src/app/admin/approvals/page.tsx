@@ -1,4 +1,5 @@
 import { AdminPageHead, AdminCard, AdminKpi, FeedRow } from "@/components/admin/admin-shell";
+import { CEREMONY } from "@/lib/admin-status-lexicon";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
@@ -74,7 +75,7 @@ export default async function AdminApprovalsPage({
             className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border"
             style={{ borderColor: "var(--aqua-400)", background: "color-mix(in oklab, var(--aqua-400) 12%, transparent)", color: "var(--aqua-400)" }}
           >
-            <I.shieldcheck s={12} /> Co-sign required
+            <I.shieldcheck s={12} /> {CEREMONY.coSignRequired.en}
           </span>
         }
       />

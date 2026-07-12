@@ -20,6 +20,7 @@ import { useToast } from "@/components/ui/toast";
 import { resolveMarketAction } from "@/app/markets/actions";
 import { BrandSpinner } from "@/components/brand";
 import { formatTzs } from "@/lib/utils";
+import { CEREMONY, bi } from "@/lib/admin-status-lexicon";
 
 type Outcome = "YES" | "NO" | "VOID";
 
@@ -123,7 +124,7 @@ export function ResolutionCeremony({
 
         <label className="block">
           <span className="mb-1 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
-            <I.fileText s={12} /> Evidence excerpt · Ushahidi
+            <I.fileText s={12} /> {bi(CEREMONY.evidenceExcerpt)}
           </span>
           <textarea
             value={evidence}
@@ -176,7 +177,7 @@ export function ResolutionCeremony({
           <I.alertCircle s={16} className="mt-0.5 shrink-0 text-claret-300" />
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-claret-300">
-              Second officer required · Afisa wa pili anahitajika
+              {bi(CEREMONY.secondOfficerRequired)}
             </p>
             <p className="mt-0.5 text-[12px] text-text-muted">
               You staged this verdict at Stage 1. A different officer must countersign to seal it — the

@@ -15,6 +15,7 @@ import { createHash } from "node:crypto";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
+import { CEREMONY } from "@/lib/admin-status-lexicon";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
 import { COMPLIANCE_ROLES } from "@/lib/server/roles";
 import { getReportPack, packIdFor, currentPackPeriod } from "@/lib/server/report-pack";
@@ -79,7 +80,7 @@ export async function approveReportPack(formData: FormData): Promise<ActionResul
   if (pack.state !== "prepared") return { ok: false, error: `Pack must be Prepared before approval (currently ${pack.state}).` };
   if (pack.preparedBy === gate.userId) {
     audit({ category: "COMPLIANCE", action: "pack.approve.conflict_blocked", actorId: gate.userId, targetType: "ReportPack", targetId: packIdFor(period), payload: { reason: "self-approval" } });
-    return { ok: false, error: "Second officer required — you prepared this pack and cannot approve your own work." };
+    return { ok: false, error: `${CEREMONY.secondOfficerRequired.en} — you prepared this pack and cannot approve your own work.` };
   }
   audit({ category: "ADMIN", action: "pack.approved", actorId: gate.userId, targetType: "ReportPack", targetId: packIdFor(period), payload: { period, preparedBy: pack.preparedBy } });
   revalidatePath("/admin/reports");

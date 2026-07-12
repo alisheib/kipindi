@@ -12,6 +12,7 @@ import { getAuditPage } from "@/lib/server/audit";
 import { db } from "@/lib/server/store";
 import { currentSession } from "@/lib/server/auth-service";
 import { formatDateTime, formatTzs } from "@/lib/utils";
+import { CEREMONY, bi } from "@/lib/admin-status-lexicon";
 import { ResolutionCeremony } from "./resolution-ceremony";
 
 export const metadata = { title: "Admin · Resolution ceremony" };
@@ -87,9 +88,9 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
                     {m.status === "VOIDED" ? "VOIDED" : `SEALED · ${m.resolvedOutcome}`}
                   </Chip>
                 ) : stage === "stage2" ? (
-                  <Chip size="sm" variant="warning">AWAITING 2ND OFFICER</Chip>
+                  <Chip size="sm" variant="warning">{CEREMONY.awaitingSecondOfficer.en.toUpperCase()}</Chip>
                 ) : (
-                  <Chip size="sm" variant="pending">AWAITING STAGE 1</Chip>
+                  <Chip size="sm" variant="pending">{CEREMONY.awaitingStage1.en.toUpperCase()}</Chip>
                 )}
                 <span className="ml-auto font-mono text-[10px] text-text-subtle">{m.id}</span>
               </div>
@@ -163,7 +164,7 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
 
             {/* Recorded officer evidence (from the immutable audit trail). */}
             {recordedEvidence && (
-              <AdminCard title="Recorded evidence · Ushahidi" sw="From the Stage-1 attestation">
+              <AdminCard title={bi(CEREMONY.recordedEvidence)} sw="From the Stage-1 attestation">
                 <blockquote className="border-l-2 border-brand-500 pl-3 text-[12.5px] leading-relaxed text-text-muted italic">
                   {recordedEvidence}
                 </blockquote>
@@ -173,17 +174,17 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
 
           {/* ── Verdict rail (right) ─────────────────────────────────────── */}
           <div className="space-y-4 lg:sticky lg:top-4">
-            <AdminCard title="Two-officer attestation" sw="Uthibitisho wa maafisa wawili">
+            <AdminCard title={CEREMONY.twoOfficerAttestation.en} sw={CEREMONY.twoOfficerAttestation.sw}>
               <div className="grid grid-cols-2 gap-2">
                 <AttestSlot
-                  label="Officer A · Stage 1"
+                  label={`Officer A · ${CEREMONY.stage1.en}`}
                   name={officerA}
                   at={m.resolutionStage1At}
                   outcome={stage1By ? m.resolvedOutcome : null}
                   color={verdictColor(m.resolvedOutcome)}
                 />
                 <AttestSlot
-                  label="Officer B · Stage 2"
+                  label={`Officer B · ${CEREMONY.stage2.en}`}
                   name={officerB}
                   at={m.resolutionStage2At}
                   outcome={stage2By ? m.resolvedOutcome : null}
@@ -206,7 +207,7 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
                     ariaLabel="Objection window remaining"
                   />
                   <div>
-                    <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Objection window · Dirisha la pingamizi</p>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{bi(CEREMONY.objectionWindow)}</p>
                     <p className="mt-0.5 text-[13px] font-semibold text-text">Closes {formatDateTime(m.objectionsClosedAt)}</p>
                     <p className="mt-0.5 text-[11px] text-text-muted">Payouts are provisional until the 24-hour window elapses.</p>
                   </div>
@@ -296,7 +297,7 @@ function AttestSlot({
           )}
         </>
       ) : (
-        <p className="mt-1 font-mono text-[11px] italic text-text-subtle">awaiting signature</p>
+        <p className="mt-1 font-mono text-[11px] italic text-text-subtle">{CEREMONY.awaitingSignature.en}</p>
       )}
     </div>
   );

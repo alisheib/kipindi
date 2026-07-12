@@ -10,8 +10,20 @@ Drift lives in ADMIN (near-zero dict usage). Player surface already reads the di
 (market-card, conviction-dial, sell-button, resolution-panel, proposals StatusBadge).
 
 ## Batch plan (one family per verified push)
-- **2a·1 — Family 3: two-officer resolution ceremony** (the "22 variants"). ~38 hardcoded
-  sites across ~12 admin files. Build canonical `status.*` ceremony keys (EN/SW/ZH), migrate.
+- **2a·1 — Family 3: two-officer resolution ceremony** ✅ **DONE 2026-07-12.** Built
+  `src/lib/admin-status-lexicon.ts` (`CEREMONY` — 13 canonical `{en, sw?}` entries + `bi()`
+  bilingual join). Migrated the recurring ceremony vocabulary across **9 files**:
+  report-pack-controls, resolution-ceremony, resolver/[id]/page, resolver-queue/page,
+  aml/page, report-pack-card, approvals/page, pack-actions, kyc-actions. **Fixed the
+  `Afisa wa pili` → `Afisa wa pili anahitajika` drift** (report-pack-controls now matches
+  the resolver ceremony). SW is lifted verbatim from shipped sources (admin surfaces +
+  player dict `resTwoOfficer`/`step1`/`step2`) — never fabricated. **Left as-is** (unique
+  contextual copy, not shared drifting labels): one-off toasts/subtitles
+  (resolve-controls, resolution-ceremony toasts, aml-actions-client, aml/actions.ts:115
+  mid-sentence), and the genuinely-distinct KYC heading "Two-officer approval required" /
+  button "Approve (second officer)" (kyc-decision-rail) — folding those in would change
+  wording, not fix drift. Verified: tsc · admin-grids-smoke 125/125 · fresh-server
+  13/13 rendered-string assertions (incl. drift fix in situ) · test:all 45/45.
 - **2a·2 — Family 2: selection/betting-close** ("14 phrasings for one state").
 - **2a·3 — Family 1: market-lifecycle enum chips** — build ONE shared admin `<StatusBadge>`
   replacing raw `<Chip>{status}</Chip>` + per-file STATUS_LABEL maps.

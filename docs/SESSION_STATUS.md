@@ -32,8 +32,19 @@ The platform is **feature-complete and passing its gates**. Recently landed:
   host-locale drift). Prefix-less report cell formatters (`reports/brand.ts`
   `fmtTzs`, catalogue stat cells labelled "(TZS)") + the RG internal diagnostic
   string are intentionally left (adding a "TZS " prefix would corrupt them).
-  **Track 2b item (b) COMPLETE.** Next: Track 2a item (a) — the admin
-  status-label lexicon (`docs/status-lexicon-inventory.md`, Family 3 first).
+  **Track 2b item (b) COMPLETE.**
+
+- **2026-07-12 · Track 2a·1 — admin status-lexicon, Family 3 (ceremony)** — built
+  `src/lib/admin-status-lexicon.ts` (`CEREMONY`, 13 canonical `{en,sw?}` entries +
+  `bi()`) as the ONE source for the console's bilingual EN·SW status vocabulary;
+  migrated 9 admin files and **fixed the "Afisa wa pili" → "Afisa wa pili
+  anahitajika" drift** (report-pack-controls now matches the resolver ceremony).
+  SW never fabricated (lifted from shipped admin/dict strings). Verified on a fresh
+  server: admin-grids-smoke 125/125 + 13/13 rendered-string assertions (drift fix
+  captured in situ) + test:all 45/45. See `docs/status-lexicon-inventory.md`.
+  **Next:** Track 2a·2 (Family 2 — selection/betting-close phrasings), then
+  2a·3 (Family 1 — market-lifecycle enum chips), 2a·4 (Family 4 — KYC/withdrawal/
+  proposal review states); then items (c)–(f) + Track 1 Phase D perf.
 
 - **Phase E — security/compliance/money-safety audit (2026-07-11)** — 6 findings
   fixed & shipped incl. a 🔴CRITICAL money race (`cashOutPosition` now holds the

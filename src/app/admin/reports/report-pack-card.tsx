@@ -1,4 +1,5 @@
 import { AdminCard } from "@/components/admin/admin-shell";
+import { CEREMONY } from "@/lib/admin-status-lexicon";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { formatDateTime } from "@/lib/utils";
@@ -142,7 +143,7 @@ function SignSlot({ role, name, at }: { role: string; name: string | null; at: s
           {at && <p className="font-mono text-[10px] text-text-subtle">{formatDateTime(at)}</p>}
         </>
       ) : (
-        <p className="mt-1 font-mono text-[11px] italic text-text-subtle">awaiting signature</p>
+        <p className="mt-1 font-mono text-[11px] italic text-text-subtle">{CEREMONY.awaitingSignature.en}</p>
       )}
     </div>
   );

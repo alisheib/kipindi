@@ -15,6 +15,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
+import { CEREMONY } from "@/lib/admin-status-lexicon";
 import { COMPLIANCE_ROLES } from "@/lib/server/roles";
 import { reviewKyc } from "@/lib/server/kyc-service";
 import { kycRiskScore, getApprovalRecommendation, KYC_MAKER_CHECKER_THRESHOLD } from "@/lib/server/kyc-risk";
@@ -67,7 +68,7 @@ export async function approveKycWorkstationAction(formData: FormData): Promise<R
   if (risk.score >= KYC_MAKER_CHECKER_THRESHOLD) {
     const rec = await getApprovalRecommendation(userId);
     if (!rec) return { ok: false, error: `High-risk (score ${risk.score}) — a second officer must first recommend approval.` };
-    if (rec.officerId === g.userId) return { ok: false, error: "Second officer required — you recommended this approval; a different officer must seal it." };
+    if (rec.officerId === g.userId) return { ok: false, error: `${CEREMONY.secondOfficerRequired.en} — you recommended this approval; a different officer must seal it.` };
   }
   const r = await reviewKyc({ officerId: g.userId, userId, decision: "APPROVE" });
   if (!r.ok) return { ok: false, error: r.error ?? "Could not approve." };
