@@ -110,7 +110,15 @@ the WHY, the kit pieces to reuse, the infra that already exists, and acceptance 
 
 ### P1 — retention & growth (the habit + viral loop)
 
-#### F3 · Watchlist / follow + smart alerts  ⭐
+#### F3 · Watchlist / follow + smart alerts  ⭐  ✅ SHIPPED 2026-07-13 (0ad5525)
+- **Status:** DONE. `Watchlist` model + ⭐ toggle on market detail (optimistic) +
+  `/watchlist` view. **Closing-soon sweep** in the lifecycle ticker, idempotent via a
+  `closingSoonNotifiedAt` one-shot stamp written inside `withLock` (concurrent sweeps
+  can't double-alert). **Settled alert** fans out to watchers on `resolveMarket`,
+  EXCLUDING bettors (they already get their win/loss receipt). **RG suppression** —
+  self-excluded / cooling-off players are never alerted (audited); their star is
+  preserved. Alert wording is factual, never "bet now" (LCCP SR 3.4). `test:watchlist`
+  26/26. Gold discipline: active star is royal, not gilt.
 - **What:** ⭐ a market to a watchlist; get alerts — "closes in 1h", "odds moved",
   "settled". Home surface for the alerts = push (F4) + in-app inbox.
 - **Why (habit):** prediction markets are episodic; a follow-list + timely nudges is
@@ -124,7 +132,23 @@ the WHY, the kit pieces to reuse, the infra that already exists, and acceptance 
   followers via inbox (+ push if F4); a watchlist view; trilingual; responsive; RG-suppressed
   for excluded users; stress-tested (many followers, no duplicate alerts).
 
-#### F4 · Push notifications — actually live
+#### F4 · Push notifications — actually live  ✅ SHIPPED 2026-07-13 (0ad5525)
+- **Status:** DONE (code). The client half already existed (`public/sw.js` push +
+  notificationclick, `subscribeToPush`) but was never called. Wired the server half:
+  `web-push` dep, VAPID config, `PushSubscription` model (endpoint-unique, per-device)
+  + DAL twins, save/delete/status actions, and an explicit opt-in Toggle at
+  `/profile/notifications` (permission requested ONLY on click — never on page load).
+  ONE fan-out hook inside `notify()` covers all ~35 emitters, in the user's locale.
+  Dead endpoints (404/410) auto-pruned. **RG: excluded/cooled-off users are never
+  pushed at** (audited); their subscription is preserved. `test:push` 20/20.
+- **🔴 ALI — ACTION REQUIRED to go live:** push runs in **STUB MODE** until VAPID keys
+  are set in Railway. Graceful: the sender logs `[push-stub]` and returns success (like
+  the Postmark/SMS stubs) and the opt-in UI truthfully says "not available on this
+  deployment". To activate, set in Railway → Variables:
+  `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (= same
+  public key), `VAPID_SUBJECT=mailto:support@50pick.tz`. Generate a keypair with:
+  `node -e "console.log(require('web-push').generateVAPIDKeys())"`.
+  *(Claude did not set these — writing production secrets is an operator decision.)*
 - **What:** finish web-push: VAPID keys, subscription capture + storage, send path
   wired to the notification service; opt-in UI.
 - **Why (retention):** mobile-first TZ; push is the highest-ROI return channel and the

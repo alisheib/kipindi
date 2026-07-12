@@ -20,6 +20,28 @@ in-memory store (dev). Prod flag `USE_PRISMA_DAL=true` on Railway.
 ## 2 · Current state (feature-complete, hardening for launch)
 The platform is **feature-complete and passing its gates**. Recently landed:
 
+- **2026-07-13 · FEATURES F3 + F4 — watchlist/smart-alerts + web push** (`0ad5525`) —
+  **F3:** `Watchlist` model + ⭐ toggle on market detail (optimistic) + `/watchlist`
+  view; a **closing-soon sweep** in the lifecycle ticker (idempotent via a
+  `closingSoonNotifiedAt` one-shot stamp inside `withLock` → concurrent sweeps can't
+  double-alert) and a **settled alert** to watchers on resolve, **excluding bettors**
+  (they already get their win/loss receipt). **F4:** the client half already existed
+  (`public/sw.js`, `subscribeToPush`) but was never called — wired the server half:
+  `web-push`, VAPID, `PushSubscription` model + DAL twins, save/delete/status actions,
+  explicit opt-in Toggle at `/profile/notifications`. ONE fan-out hook inside `notify()`
+  covers all ~35 emitters in the user's locale; dead endpoints auto-pruned.
+  **COMPLIANCE (new):** RG suppression did NOT exist on the notification path before —
+  a self-excluded / cooling-off player is now **never alerted and never pushed at**
+  (audited per-user); their star + subscription are preserved (a break silences us, it
+  doesn't destroy their setup). Alert wording is factual, never "bet now" (LCCP SR 3.4).
+  New `test:watchlist` 26/26 + `test:push` 20/20 → `test:all` **49/50**. i18n 1310³.
+  Visual: 20 screens 320→1920 × EN/SW/ZH, 0 overflow; star toggled for real.
+  **🔴 ALI — push is in STUB MODE until VAPID keys are set in Railway** (graceful: UI
+  says "not available on this deployment"; nothing breaks). Set `VAPID_PUBLIC_KEY`,
+  `VAPID_PRIVATE_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_SUBJECT`. Generate with
+  `node -e "console.log(require('web-push').generateVAPIDKeys())"`. Claude did not set
+  these — writing production secrets is an operator decision.
+
 - **2026-07-13 · SECURITY — TOTP secrets encrypted at rest** (`aa3938f`) — closed the
   gap found during F2: the TOTP secret column stored the **raw base32 seed in
   plaintext** (for players AND admins) despite a code comment claiming AES-256-GCM.
