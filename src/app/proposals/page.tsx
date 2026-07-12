@@ -64,7 +64,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
       <h1 className="sr-only">{t.proposals.title}</h1>
 
-      <PageHero glow="gold" contentClassName="relative z-10 p-5 lg:p-6 flex items-start justify-between gap-4">
+      <PageHero glow="gold" contentClassName="relative z-10 p-5 lg:p-6 flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <PageHeader tone="gold" icon={<I.trophy s={18} />} eyebrow={t.proposals.title} title={t.proposals.voteForMarkets} />
         {enabled && (
           <Link href={"/proposals/new" as never} className="shrink-0">

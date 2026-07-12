@@ -38,9 +38,12 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
     // Fall through to render the login form
   }
 
+  // flex (not `grid place-items-center`): a centered grid track auto-sizes to the
+  // form's max-content width and, with overflow:clip, clips the form off a 320–390px
+  // phone (esp. the wider ZH strings). Flex sizes the child to the column instead.
   return (
-    <main className="mx-auto grid min-h-[calc(100vh-44px)] place-items-center px-3 py-6">
-      <div className="w-full max-w-lg space-y-4">
+    <main className="mx-auto flex min-h-[calc(100vh-44px)] items-center justify-center px-3 py-6">
+      <div className="w-full min-w-0 max-w-lg space-y-4">
         <header className="text-center space-y-1.5">
           <Link href="/" aria-label="50pick home" className="mb-2 inline-block">
             <FiftyLockup size={22} />

@@ -64,7 +64,7 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
         borderBottom: "1px solid var(--border)",
       }}
     >
-      <div className="mx-auto max-w-[1280px] flex items-center h-full gap-2 px-3 sm:gap-5 sm:px-5">
+      <div className="mx-auto max-w-[1280px] flex items-center h-full gap-2 px-3 sm:gap-4 sm:px-5">
         {/* Brand lockup — kit: BrandLockup size={30} */}
         <Link href="/" aria-label={`50pick ${t.common.home}`} className="shrink-0 hover:opacity-90 transition-opacity">
           <span className="inline-flex sm:hidden"><FiftyMark size={26} /></span>
@@ -78,14 +78,16 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
           {CORE_ITEMS.map((it) => (
             <NavLink key={it.href} it={it} pathname={pathname} />
           ))}
-          {/* Overflow links inline at xl only */}
+          {/* Overflow links inline only at 2xl — at xl the verbose locales (SW/ZH)
+              can't fit 8 links + the right cluster in 1280, so they stay in "More"
+              until 1536. */}
           {MORE_ITEMS.map((it) => (
-            <span key={it.href} className="hidden xl:inline-flex">
+            <span key={it.href} className="hidden 2xl:inline-flex">
               <NavLink it={it} pathname={pathname} />
             </span>
           ))}
-          {/* "More" menu — visible only at lg (xl shows the items inline above) */}
-          <span className="xl:hidden">
+          {/* "More" menu — visible lg→2xl (2xl shows the items inline above) */}
+          <span className="2xl:hidden">
             <NavMore items={MORE_ITEMS} label={t.common.more} />
           </span>
         </nav>
@@ -103,8 +105,10 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
             //  • sm–lg (tablet portrait): shown — no desktop nav competing.
             //  • lg–xl (1024–1279): hidden — the desktop nav turns on at lg and
             //    leaves no room; keeping the pill here clipped the avatar off-screen.
-            //  • ≥ xl (1280+): shown — proven to fit (ui-regression 1280/1920).
-            <div className="hidden sm:flex lg:hidden xl:flex items-center gap-2">
+            //  • xl–2xl (1280–1535): shown — nav is 5 links (More menu), room fits.
+            //  • ≥ 2xl (1536): hidden — the 3 overflow links go inline here (8 links),
+            //    which in SW/ZH would exceed the 1280 max-w container alongside the pill.
+            <div className="hidden sm:flex lg:hidden xl:flex 2xl:hidden items-center gap-2">
               <WalletBalancePill balance={user.balance} />
               {/* bare eye keeps the compact 14px glyph but takes a 40px hit area (WCAG 2.5.8) */}
               <CashEye bare size={14} className="inline-flex items-center justify-center h-7 w-7 -mx-1 text-[var(--gold-300)]" />
