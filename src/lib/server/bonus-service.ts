@@ -35,6 +35,7 @@ import { notifyBonusCredited, notifyBonusFulfilled, notifyBonusExpired } from ".
 import { sendEmailToUser, bonusCreditedHtml, bonusFulfilledHtml } from "./email";
 import { postLedgerEntries, bonusGrantEntries, bonusCreditEntries, bonusExpireEntries } from "./ledger";
 import { isLockedOut } from "./responsible-gambling";
+import { formatTzs } from "@/lib/utils";
 
 const BONUS_SOURCE_EMAIL_LABEL: Record<string, string> = {
   CASHBACK: "Cash back bonus",
@@ -184,7 +185,7 @@ export async function creditBonus(userId: string, input: CreditBonusInput): Prom
       // Dual-channel: money events email the player too (matches deposits/wins).
       sendEmailToUser(userId, (email) => ({
         to: email,
-        subject: `Bonus added · TZS ${Math.round(g.amountTzs).toLocaleString("en-US")}`,
+        subject: `Bonus added · ${formatTzs(g.amountTzs)}`,
         html: bonusCreditedHtml({ amountTzs: g.amountTzs, wagerRequiredTzs: g.wagerRequiredTzs, sourceLabel: BONUS_SOURCE_EMAIL_LABEL[g.source] }),
         tag: "bonus",
       })).catch(() => {});
@@ -210,7 +211,7 @@ export async function recordWagering(userId: string, stakeTzs: number): Promise<
     notifyBonusFulfilled(userId, { amountTzs: g.amountTzs }).catch(() => {});
     sendEmailToUser(userId, (email) => ({
       to: email,
-      subject: `Bonus unlocked · TZS ${Math.round(g.amountTzs).toLocaleString("en-US")}`,
+      subject: `Bonus unlocked · ${formatTzs(g.amountTzs)}`,
       html: bonusFulfilledHtml({ amountTzs: g.amountTzs }),
       tag: "bonus",
     })).catch(() => {});
@@ -560,7 +561,7 @@ async function activateNextQueued(userId: string): Promise<void> {
   notifyBonusCredited(userId, { amountTzs: nextQueued.amountTzs, wagerRequiredTzs: nextQueued.wagerRequiredTzs }).catch(() => {});
   sendEmailToUser(userId, (email) => ({
     to: email,
-    subject: `Bonus activated · TZS ${Math.round(nextQueued.amountTzs).toLocaleString("en-US")}`,
+    subject: `Bonus activated · ${formatTzs(nextQueued.amountTzs)}`,
     html: bonusCreditedHtml({ amountTzs: nextQueued.amountTzs, wagerRequiredTzs: nextQueued.wagerRequiredTzs, sourceLabel: BONUS_SOURCE_EMAIL_LABEL[nextQueued.source] ?? "Bonus" }),
     tag: "bonus",
   })).catch(() => {});

@@ -19,6 +19,7 @@ import { creditBonus } from "./bonus-service";
 import { tzPhone } from "./validators";
 import { sendEmail, inviteHtml } from "./email";
 import { sms, inviteMessage, smsConfigured } from "./sms";
+import { formatTzs } from "@/lib/utils";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -213,7 +214,7 @@ export async function sendCampaign(campaignId: string, adminId: string):
       if (e.contactType === "EMAIL") {
         const r = await sendEmail({
           to: e.contactValue,
-          subject: `You're invited to 50pick — TZS ${Math.round(e.bonusAmountTzs).toLocaleString("en-US")} bonus`,
+          subject: `You're invited to 50pick — ${formatTzs(e.bonusAmountTzs)} bonus`,
           html: inviteHtml({ campaignName: campaign.name, bonusAmountTzs: e.bonusAmountTzs, code: campaign.code, message: campaign.messageEn }),
           tag: "invite",
         });

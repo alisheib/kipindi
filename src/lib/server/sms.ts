@@ -13,6 +13,7 @@
  */
 import { audit } from "./audit";
 import { appUrl } from "@/lib/app-url";
+import { formatTzs } from "@/lib/utils";
 
 export type SmsProvider = {
   name: string;
@@ -167,7 +168,7 @@ const SMS_BASE_URL = appUrl();
  *  the campaign code. Kept compact to fit a single SMS segment where possible. */
 export function inviteMessage(opts: { message: string; code: string; bonusTzs: number }): string {
   const base = opts.message.trim();
-  const bonus = `Bonus TZS ${Math.round(opts.bonusTzs).toLocaleString("en-US")}`;
+  const bonus = `Bonus ${formatTzs(opts.bonusTzs)}`;
   const link = `${SMS_BASE_URL}/auth/register?invite=${encodeURIComponent(opts.code)}`;
   return `${base ? base + " " : ""}${bonus}. 50pick: ${link}`;
 }

@@ -22,6 +22,7 @@ import { LinkTrackingOptions } from "postmark/dist/client/models/message/Support
 import { resolvePhoneEmail } from "./email-map";
 import { isSuppressed } from "./email-suppression";
 import { appUrl } from "@/lib/app-url";
+import { formatTzs } from "@/lib/utils";
 
 const FROM = "noreply@50pick.tz";
 const REPLY_TO = "support@50pick.tz";
@@ -278,8 +279,6 @@ function stripHtml(html: string): string {
     .trim();
 }
 
-const fmtTzs = (n: number) => `TZS ${Math.round(n).toLocaleString("en-US")}`;
-
 /** Format an ISO timestamp in East Africa Time, e.g. "13 Jun 2026, 14:32 EAT". */
 const fmtDateTime = (iso?: string): string => {
   if (!iso) return "";
@@ -351,10 +350,10 @@ export function depositConfirmedHtml({ amount, method, reference, balance }: {
     ${heading("Funds added")}
     ${subtitle("Your wallet has been topped up. You can start predicting.")}
     ${detailRows([
-      { label: "Amount", value: fmtTzs(amount), tone: "good" },
+      { label: "Amount", value: formatTzs(amount), tone: "good" },
       { label: "Method", value: method },
       { label: "Reference", value: reference },
-      { label: "New balance", value: fmtTzs(balance) },
+      { label: "New balance", value: formatTzs(balance) },
     ])}
     ${ctaButton("/wallet", "View wallet · Tazama pochi")}
   `);
@@ -369,7 +368,7 @@ export function withdrawalSentHtml({ amount, destination, reference }: {
     ${subtitle("Your provider should pay out within moments.")}
     ${subtitleSw("Mtoa huduma wako atalipa hivi punde.")}
     ${detailRows([
-      { label: "Amount", value: fmtTzs(amount) },
+      { label: "Amount", value: formatTzs(amount) },
       { label: "Destination", value: destination },
       { label: "Reference", value: reference },
     ])}
@@ -385,7 +384,7 @@ export function withdrawalUnderReviewHtml({ amount, reference }: {
     ${subtitle("Amounts over TZS 1,000,000 are reviewed by our compliance team. This usually takes under 2 hours.")}
     ${subtitleSw("Kiasi kikubwa kinakaguliwa na timu yetu ya ufuatiliaji. Kawaida huchukua chini ya masaa 2.")}
     ${detailRows([
-      { label: "Amount", value: fmtTzs(amount) },
+      { label: "Amount", value: formatTzs(amount) },
       { label: "Reference", value: reference },
       { label: "Status", value: "AML review" },
     ])}
@@ -402,8 +401,8 @@ export function betPlacedHtml({ reference, side, stake, payoutIfWin, marketTitle
     ${detailRows([
       { label: "Reference", value: reference },
       { label: "Your pick", value: side, tone: side === "YES" ? "good" : "bad" },
-      { label: "Stake", value: fmtTzs(stake) },
-      ...(payoutIfWin ? [{ label: "Potential return", value: fmtTzs(payoutIfWin), tone: "good" as const }] : []),
+      { label: "Stake", value: formatTzs(stake) },
+      ...(payoutIfWin ? [{ label: "Potential return", value: formatTzs(payoutIfWin), tone: "good" as const }] : []),
       ...(placedAt ? [{ label: "Placed", value: fmtDateTime(placedAt) }] : []),
       { label: "Resolves", value: resolutionDate },
     ])}
@@ -420,13 +419,13 @@ export function winNotificationHtml({ reference, payout, stake, marketTitle, set
   const net = payout - stake;
   return wrapGold(`
     ${eyebrow("Position won", "Umeshinda", true)}
-    ${heading(`You won ${fmtTzs(payout)}`, GILT)}
+    ${heading(`You won ${formatTzs(payout)}`, GILT)}
     ${subtitle(marketTitle)}
     ${detailRows([
       { label: "Reference", value: reference },
-      { label: "Payout", value: fmtTzs(payout), tone: "good" },
-      { label: "Net profit", value: `+${fmtTzs(net)}`, tone: "good" },
-      { label: "Stake", value: fmtTzs(stake) },
+      { label: "Payout", value: formatTzs(payout), tone: "good" },
+      { label: "Net profit", value: `+${formatTzs(net)}`, tone: "good" },
+      { label: "Stake", value: formatTzs(stake) },
       ...(settledAt ? [{ label: "Settled", value: fmtDateTime(settledAt) }] : []),
     ])}
     ${refNote()}
@@ -439,11 +438,11 @@ export function lossNotificationHtml({ reference, stake, marketTitle, settledAt 
 }): string {
   return wrap(`
     ${eyebrow("Bet lost", "Dau limepotea")}
-    ${heading(`Bet lost · ${fmtTzs(stake)}`)}
+    ${heading(`Bet lost · ${formatTzs(stake)}`)}
     ${subtitle(marketTitle)}
     ${detailRows([
       { label: "Reference", value: reference },
-      { label: "Stake lost", value: fmtTzs(stake), tone: "bad" },
+      { label: "Stake lost", value: formatTzs(stake), tone: "bad" },
       ...(settledAt ? [{ label: "Settled", value: fmtDateTime(settledAt) }] : []),
     ])}
     ${subtitle("Most people play for fun. If it stops feeling fun, take a break.")}
@@ -478,14 +477,14 @@ export function cashOutReceiptHtml({ reference, value, stake, marketTitle, soldA
   const profit = net >= 0;
   return wrap(`
     ${eyebrow("Position sold", "Imeuzwa")}
-    ${heading(`Cashed out · ${fmtTzs(value)}`)}
+    ${heading(`Cashed out · ${formatTzs(value)}`)}
     ${subtitle(marketTitle)}
     ${gracePeriod ? `<p style="margin:12px 0;padding:10px 14px;background:oklch(40% 0.12 152 / 0.15);border-left:3px solid oklch(60% 0.14 152);border-radius:6px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:oklch(80% 0.10 152)">Grace period exit — full stake returned, no fee applied.</p>` : ""}
     ${detailRows([
       { label: "Reference", value: reference },
-      { label: "Sellback", value: fmtTzs(value), tone: gracePeriod ? "good" as const : undefined },
-      ...(gracePeriod ? [{ label: "Fee", value: "None (grace period)", tone: "good" as const }] : [{ label: "Net", value: `${profit ? "+" : "\u2212"}${fmtTzs(Math.abs(net))}`, tone: profit ? "good" as const : "bad" as const }]),
-      { label: "Stake", value: fmtTzs(stake) },
+      { label: "Sellback", value: formatTzs(value), tone: gracePeriod ? "good" as const : undefined },
+      ...(gracePeriod ? [{ label: "Fee", value: "None (grace period)", tone: "good" as const }] : [{ label: "Net", value: `${profit ? "+" : "\u2212"}${formatTzs(Math.abs(net))}`, tone: profit ? "good" as const : "bad" as const }]),
+      { label: "Stake", value: formatTzs(stake) },
       ...(soldAt ? [{ label: "Sold", value: fmtDateTime(soldAt) }] : []),
     ])}
     ${refNote()}
@@ -498,12 +497,12 @@ export function oneSidedRefundHtml({ reference, stake, marketTitle, settledAt }:
 }): string {
   return wrap(`
     ${eyebrow("Full refund", "Pesa imerudishwa")}
-    ${heading(`Refunded · ${fmtTzs(stake)}`)}
+    ${heading(`Refunded · ${formatTzs(stake)}`)}
     ${subtitle(marketTitle)}
     <p style="margin:12px 0;padding:10px 14px;background:oklch(40% 0.12 262 / 0.15);border-left:3px solid oklch(60% 0.14 262);border-radius:6px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:oklch(80% 0.10 262)">All bets were placed on the same side — no opposing pool existed to pay winnings from. Your full stake has been returned at no fee.</p>
     ${detailRows([
       { label: "Reference", value: reference },
-      { label: "Refunded", value: fmtTzs(stake), tone: "good" },
+      { label: "Refunded", value: formatTzs(stake), tone: "good" },
       { label: "Fee", value: "None" },
       ...(settledAt ? [{ label: "Settled", value: fmtDateTime(settledAt) }] : []),
     ])}
@@ -517,11 +516,11 @@ export function inviteHtml({ campaignName, bonusAmountTzs, code, message }: {
 }): string {
   return wrapGold(`
     ${eyebrow("You're invited · Umealikwa", undefined, true)}
-    ${heading(`Get a TZS ${Math.round(bonusAmountTzs).toLocaleString("en-US")} bonus on 50pick`)}
+    ${heading(`Get a ${formatTzs(bonusAmountTzs)} bonus on 50pick`)}
     ${subtitle(message?.trim() ? message.trim() : "Join 50pick and start predicting. Your welcome bonus is waiting.")}
     ${subtitleSw("Jiunge na 50pick uanze kutabiri. Bonasi yako ya kukukaribisha inakusubiri.")}
     ${detailRows([
-      { label: "Welcome bonus", value: fmtTzs(bonusAmountTzs), tone: "good" },
+      { label: "Welcome bonus", value: formatTzs(bonusAmountTzs), tone: "good" },
       { label: "Invite code", value: code },
       { label: "Campaign", value: campaignName },
     ])}
@@ -666,7 +665,7 @@ export function marketCancelledRefundHtml({ title, reason, amount, reference }: 
     ${detailRows([
       { label: "Market", value: title },
       { label: "Reason", value: reason },
-      { label: "Refunded to wallet", value: fmtTzs(amount), tone: "good" },
+      { label: "Refunded to wallet", value: formatTzs(amount), tone: "good" },
       { label: "Reference", value: reference },
     ])}
     ${ctaButton("/wallet", "View wallet · Pochi")}
@@ -685,7 +684,7 @@ export function marketCancelledAdminHtml({ title, reason, refundedCount, refunde
       { label: "Market", value: title },
       { label: "Reason", value: reason },
       { label: "Players refunded", value: String(refundedCount) },
-      { label: "Total refunded", value: fmtTzs(refundedTzs) },
+      { label: "Total refunded", value: formatTzs(refundedTzs) },
     ])}
     ${ctaButton("/admin/markets", "Open markets")}
   `);
@@ -739,7 +738,7 @@ export function amlRejectRefundHtml({ amount, reason }: { amount: number; reason
     ${heading("Withdrawal returned to wallet")}
     ${subtitle("Your withdrawal has been returned to your wallet balance.")}
     ${detailRows([
-      { label: "Amount refunded", value: fmtTzs(amount) },
+      { label: "Amount refunded", value: formatTzs(amount) },
       { label: "Reason", value: reason },
     ])}
     ${subtitle(`If you have questions, contact <a href="mailto:${REPLY_TO}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO}</a>`)}
@@ -751,12 +750,12 @@ export function referralRewardHtml({ amount, referredName, totalEarned }: {
 }): string {
   return wrapGold(`
     ${eyebrow("Referral reward", "Umepata tuzo", true)}
-    ${heading(`You earned ${fmtTzs(amount)}`)}
+    ${heading(`You earned ${formatTzs(amount)}`)}
     ${subtitle(`${referredName} joined through your referral link.`)}
     ${subtitleSw("Rafiki uliyemwalika amejiunga — umepata tuzo.")}
     ${detailRows([
-      { label: "Reward", value: fmtTzs(amount), tone: "good" },
-      { label: "Total earned", value: fmtTzs(totalEarned) },
+      { label: "Reward", value: formatTzs(amount), tone: "good" },
+      { label: "Total earned", value: formatTzs(totalEarned) },
     ])}
     ${ctaButton("/profile/invite", "Invite more · Alika zaidi")}
   `);
@@ -775,10 +774,10 @@ export function referralEarningHtml({ type, amountTzs }: {
     : "Zawadi ya hatua";
   return wrapGold(`
     ${eyebrow("Referral reward", sw, true)}
-    ${heading(`${en} · ${fmtTzs(amountTzs)}`)}
+    ${heading(`${en} · ${formatTzs(amountTzs)}`)}
     ${subtitle("It's in your wallet. Keep inviting friends to earn more.")}
     ${subtitleSw("Ipo kwenye pochi yako. Endelea kualika marafiki kupata zaidi.")}
-    ${detailRows([{ label: "Reward", value: fmtTzs(amountTzs), tone: "good" }])}
+    ${detailRows([{ label: "Reward", value: formatTzs(amountTzs), tone: "good" }])}
     ${ctaButton("/profile/invite", "Invite more · Alika zaidi")}
   `);
 }
@@ -836,19 +835,19 @@ export function proposalApprovedHtml({ titleEn, amountTzs, wagerRequiredTzs, que
   if (amountTzs > 0) {
     return wrapGold(`
       ${eyebrow("Proposal approved", "Pendekezo limekubaliwa", true)}
-      ${heading(queued ? `Approved · bonus ${fmtTzs(amountTzs)} reserved` : `Approved · bonus ${fmtTzs(amountTzs)} credited`, GILT)}
+      ${heading(queued ? `Approved · bonus ${formatTzs(amountTzs)} reserved` : `Approved · bonus ${formatTzs(amountTzs)} credited`, GILT)}
       ${subtitle(queued
-        ? `Great news — "${titleEn}" was approved. Your ${fmtTzs(amountTzs)} bonus is reserved and activates automatically once your current bonus completes.`
+        ? `Great news — "${titleEn}" was approved. Your ${formatTzs(amountTzs)} bonus is reserved and activates automatically once your current bonus completes.`
         : `Great news — "${titleEn}" was approved and your reward has landed in your bonus wallet.`)}
       ${subtitleSw(queued
         ? "Habari njema — pendekezo lako limekubaliwa. Bonasi yako itaanza mara bonasi yako ya sasa itakapokamilika."
         : "Habari njema — pendekezo lako limekubaliwa na zawadi yako ipo kwenye pochi yako ya bonasi.")}
       ${detailRows([
-        { label: queued ? "Bonus reserved" : "Bonus credited", value: fmtTzs(amountTzs), tone: "good" },
-        ...(wagerRequiredTzs > 0 ? [{ label: "Play-through", value: fmtTzs(wagerRequiredTzs) }] : []),
+        { label: queued ? "Bonus reserved" : "Bonus credited", value: formatTzs(amountTzs), tone: "good" },
+        ...(wagerRequiredTzs > 0 ? [{ label: "Play-through", value: formatTzs(wagerRequiredTzs) }] : []),
         { label: "Wallet", value: "Bonus wallet" },
       ])}
-      ${wagerRequiredTzs > 0 ? subtitle(`Play through ${fmtTzs(wagerRequiredTzs)} in bets and it becomes withdrawable cash.`) : ""}
+      ${wagerRequiredTzs > 0 ? subtitle(`Play through ${formatTzs(wagerRequiredTzs)} in bets and it becomes withdrawable cash.`) : ""}
       ${ctaButton("/wallet", "View bonus wallet · Pochi ya bonasi")}
     `);
   }
@@ -943,12 +942,12 @@ export function bonusCreditedHtml({ amountTzs, wagerRequiredTzs, sourceLabel }: 
 }): string {
   return wrapGold(`
     ${eyebrow("Bonus added", "Bonasi imeongezwa", true)}
-    ${heading(`Bonus added · ${fmtTzs(amountTzs)}`)}
-    ${subtitle(`${sourceLabel ? sourceLabel + ". " : ""}Play through ${fmtTzs(wagerRequiredTzs)} in bets and it becomes withdrawable cash.`)}
-    ${subtitleSw(`Cheza dau ya ${fmtTzs(wagerRequiredTzs)} ili kuibadilisha kuwa pesa unayoweza kutoa.`)}
+    ${heading(`Bonus added · ${formatTzs(amountTzs)}`)}
+    ${subtitle(`${sourceLabel ? sourceLabel + ". " : ""}Play through ${formatTzs(wagerRequiredTzs)} in bets and it becomes withdrawable cash.`)}
+    ${subtitleSw(`Cheza dau ya ${formatTzs(wagerRequiredTzs)} ili kuibadilisha kuwa pesa unayoweza kutoa.`)}
     ${detailRows([
-      { label: "Bonus", value: fmtTzs(amountTzs), tone: "good" },
-      { label: "Play-through", value: fmtTzs(wagerRequiredTzs) },
+      { label: "Bonus", value: formatTzs(amountTzs), tone: "good" },
+      { label: "Play-through", value: formatTzs(wagerRequiredTzs) },
     ])}
     ${ctaButton("/wallet", "View wallet · Pochi")}
   `);
@@ -957,10 +956,10 @@ export function bonusCreditedHtml({ amountTzs, wagerRequiredTzs, sourceLabel }: 
 export function bonusFulfilledHtml({ amountTzs }: { amountTzs: number }): string {
   return wrapGold(`
     ${eyebrow("Bonus unlocked", "Bonasi imefunguliwa", true)}
-    ${heading(`Bonus unlocked · ${fmtTzs(amountTzs)}`)}
-    ${subtitle(`You finished the play-through — ${fmtTzs(amountTzs)} is now real, withdrawable balance.`)}
-    ${subtitleSw(`Umemaliza masharti — ${fmtTzs(amountTzs)} sasa ni pesa halisi unayoweza kutoa.`)}
-    ${detailRows([{ label: "Now withdrawable", value: fmtTzs(amountTzs), tone: "good" }])}
+    ${heading(`Bonus unlocked · ${formatTzs(amountTzs)}`)}
+    ${subtitle(`You finished the play-through — ${formatTzs(amountTzs)} is now real, withdrawable balance.`)}
+    ${subtitleSw(`Umemaliza masharti — ${formatTzs(amountTzs)} sasa ni pesa halisi unayoweza kutoa.`)}
+    ${detailRows([{ label: "Now withdrawable", value: formatTzs(amountTzs), tone: "good" }])}
     ${ctaButton("/wallet", "Withdraw · Toa pesa", "gold")}
   `);
 }
@@ -1076,7 +1075,7 @@ export function amlReviewAdminHtml({ amount, kind, reference }: { amount: number
     ${subtitle(`A ${kind.toLowerCase()} has crossed the AML threshold and needs officer clearance.`)}
     ${detailRows([
       { label: "Type", value: kind },
-      { label: "Amount", value: fmtTzs(amount) },
+      { label: "Amount", value: formatTzs(amount) },
       { label: "Reference", value: reference },
     ])}
     ${ctaButton("/admin/aml", "Open AML queue")}

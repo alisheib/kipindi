@@ -24,6 +24,7 @@ import type { ServiceResult } from "./auth-service";
 import { sendEmailToUser, selfExclusionHtml, coolOffHtml } from "./email";
 import { revokeUserSessions } from "./session-registry";
 import { notifySelfExclusion, notifyCoolOff } from "./notification-service";
+import { formatTzs } from "@/lib/utils";
 
 /** Human-readable period labels for RG confirmation emails. */
 const PERIOD_LABEL: Record<string, string> = {
@@ -303,13 +304,13 @@ export async function checkDepositLimit(userId: string, amount: number) {
   ]);
 
   if (r.dailyDepositLimit !== null && dailySum + amount > r.dailyDepositLimit) {
-    return { allowed: false, reason: `Daily deposit limit of TZS ${r.dailyDepositLimit.toLocaleString()} would be exceeded.` };
+    return { allowed: false, reason: `Daily deposit limit of ${formatTzs(r.dailyDepositLimit)} would be exceeded.` };
   }
   if (r.weeklyDepositLimit !== null && weeklySum + amount > r.weeklyDepositLimit) {
-    return { allowed: false, reason: `Weekly deposit limit of TZS ${r.weeklyDepositLimit.toLocaleString()} would be exceeded.` };
+    return { allowed: false, reason: `Weekly deposit limit of ${formatTzs(r.weeklyDepositLimit)} would be exceeded.` };
   }
   if (r.monthlyDepositLimit !== null && monthlySum + amount > r.monthlyDepositLimit) {
-    return { allowed: false, reason: `Monthly deposit limit of TZS ${r.monthlyDepositLimit.toLocaleString()} would be exceeded.` };
+    return { allowed: false, reason: `Monthly deposit limit of ${formatTzs(r.monthlyDepositLimit)} would be exceeded.` };
   }
   return { allowed: true };
 }
@@ -336,7 +337,7 @@ export async function checkLossLimit(userId: string, stakeTzs: number) {
   if (lossSoFar + stakeTzs > r.dailyLossLimit) {
     return {
       allowed: false as const,
-      reason: `Daily loss limit of TZS ${r.dailyLossLimit.toLocaleString()} would be exceeded.`,
+      reason: `Daily loss limit of ${formatTzs(r.dailyLossLimit)} would be exceeded.`,
     };
   }
   return { allowed: true as const };

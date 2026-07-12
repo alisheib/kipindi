@@ -23,6 +23,7 @@ import { emit } from "./event-bus";
 import { postLedgerEntries, depositEntries, withdrawalEntries, internalCreditEntries } from "./ledger";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
+import { formatTzs } from "@/lib/utils";
 
 /** Deposit — debits external (mobile money), credits wallet on success. */
 export async function deposit(userId: string, input: z.input<typeof DepositSchema>, idempotencyKey?: string): Promise<ServiceResult<{ txnId: string; status: StoredTxn["status"]; balance: number }>> {
@@ -126,8 +127,8 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
       });
       const reasonEn =
         parse.data.amount >= SOF_SINGLE_TXN_TZS
-          ? `Deposits of TZS ${SOF_SINGLE_TXN_TZS.toLocaleString()} or more require a Source of Funds declaration on file.`
-          : `Your rolling 30-day deposits would exceed TZS ${SOF_ROLLING_30D_TZS.toLocaleString()}, which requires a Source of Funds declaration on file.`;
+          ? `Deposits of ${formatTzs(SOF_SINGLE_TXN_TZS)} or more require a Source of Funds declaration on file.`
+          : `Your rolling 30-day deposits would exceed ${formatTzs(SOF_ROLLING_30D_TZS)}, which requires a Source of Funds declaration on file.`;
       return {
         ok: false,
         error: `${reasonEn} Submit one at /profile/source-of-funds and wait for compliance to accept it.`,
@@ -259,7 +260,7 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string): Prom
     notifyDeposit(t.userId, t.amount, friendlyProvider(t.provider));
     sendEmailToUser(t.userId, (email) => ({
       to: email,
-      subject: `Deposit confirmed · TZS ${Math.round(t.amount).toLocaleString("en-US")}`,
+      subject: `Deposit confirmed · ${formatTzs(t.amount)}`,
       html: depositConfirmedHtml({ amount: t.amount, method: friendlyProvider(t.provider), reference: t.id, balance: outcome.balance }),
       tag: "deposit",
     })).catch(() => {});
@@ -354,7 +355,7 @@ export function notifyWithdrawalSent(txn: { id: string; userId: string; amount: 
   notifyWithdraw(txn.userId, { status: "CONFIRMED", amount: gross, net, provider: friendlyProvider(txn.provider) });
   sendEmailToUser(txn.userId, (email) => ({
     to: email,
-    subject: `Withdrawal sent · TZS ${Math.round(net).toLocaleString("en-US")}`,
+    subject: `Withdrawal sent · ${formatTzs(net)}`,
     html: withdrawalSentHtml({ amount: net, destination: friendlyProvider(txn.provider), reference: txn.id }),
     tag: "withdrawal",
   })).catch(() => {});
@@ -385,7 +386,7 @@ async function settleWithdrawalFailed(txnId: string, reason: string): Promise<bo
     // the wallet, so the player gets an email too (purpose-built refund template).
     sendEmailToUser(done.userId, (email) => ({
       to: email,
-      subject: `Withdrawal returned · TZS ${Math.round(refunded).toLocaleString("en-US")}`,
+      subject: `Withdrawal returned · ${formatTzs(refunded)}`,
       html: amlRejectRefundHtml({ amount: refunded, reason }),
       tag: "withdrawal",
     })).catch(() => {});
@@ -560,7 +561,7 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
     notifyAdminsAmlReview({ txnKind: "WITHDRAWAL", amountTzs: amount, reference: txnId }).catch(() => {});
     sendEmailToUser(userId, (email) => ({
       to: email,
-      subject: `Withdrawal under review · TZS ${Math.round(amount).toLocaleString("en-US")}`,
+      subject: `Withdrawal under review · ${formatTzs(amount)}`,
       html: withdrawalUnderReviewHtml({ amount, reference: txnId }),
       tag: "withdrawal-review",
     })).catch(() => {});

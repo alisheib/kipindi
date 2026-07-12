@@ -22,9 +22,18 @@ The platform is **feature-complete and passing its gates**. Recently landed:
 
 - **2026-07-12 · solo-resolution prod-lock removed** (`8e0cde3`) — see Launch
   blocker #6 + `[[project_kipindi_solo_resolution]]`. **2026-07-12 · Track 2b
-  money-format (client subset)** (`657c7f9`) — 12 client TZS renders routed
-  through `formatTzs`/`formatTzsSigned`; server subset (~72 sites) is next.
-  See `docs/status-lexicon-inventory.md` for the Track 2a status-lexicon plan.
+  money-format** — client subset (`657c7f9`, 12 renders) THEN **server subset
+  DONE**: 71 direct-interpolation + 6 pre-computed-var money strings across 12
+  server files (notification-service, email [local `fmtTzs` reimpl deduped],
+  sms, affiliate, market, wallet, bonus, kyc-risk, responsible-gambling,
+  proposals, invite, reports/catalogue) routed through the canonical
+  `formatTzs`. **Byte-identical** (proven over 140,020 values; all inputs are
+  integer money; `formatTzs` also pins en-US grouping → removes latent
+  host-locale drift). Prefix-less report cell formatters (`reports/brand.ts`
+  `fmtTzs`, catalogue stat cells labelled "(TZS)") + the RG internal diagnostic
+  string are intentionally left (adding a "TZS " prefix would corrupt them).
+  **Track 2b item (b) COMPLETE.** Next: Track 2a item (a) — the admin
+  status-label lexicon (`docs/status-lexicon-inventory.md`, Family 3 first).
 
 - **Phase E — security/compliance/money-safety audit (2026-07-11)** — 6 findings
   fixed & shipped incl. a 🔴CRITICAL money race (`cashOutPosition` now holds the

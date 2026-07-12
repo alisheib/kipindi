@@ -33,6 +33,7 @@ import { onRecruitBet } from "./affiliate-service";
 import { postLedgerEntries, stakeEntries, settlementPayoutEntries, refundEntries, cashoutEntries } from "./ledger";
 import type { ServiceResult } from "./auth-service";
 import { marketStore, positionStore } from "./market-dal";
+import { formatTzs } from "@/lib/utils";
 
 /** @deprecated Kept for backwards compat — use getEffectiveConfig instead. */
 export const OPERATOR_MARGIN = 0.09;
@@ -287,7 +288,7 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
   // Stake bounds come from runtime config — global with optional per-market override.
   const stakeCfg = await getEffectiveConfig(opts.marketId);
   if (!Number.isInteger(opts.stake) || opts.stake < stakeCfg.minStake || opts.stake > stakeCfg.maxStake) {
-    return { ok: false, error: `Stake must be a whole number between TZS ${stakeCfg.minStake.toLocaleString()} and TZS ${stakeCfg.maxStake.toLocaleString()}.`, code: "INVALID" };
+    return { ok: false, error: `Stake must be a whole number between ${formatTzs(stakeCfg.minStake)} and ${formatTzs(stakeCfg.maxStake)}.`, code: "INVALID" };
   }
   if (opts.side !== "YES" && opts.side !== "NO") return { ok: false, error: "Invalid side.", code: "INVALID" };
 
@@ -439,7 +440,7 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
       balanceAfter: newBalance, currency: "TZS",
       provider: "INTERNAL", providerRef: null, msisdn: null,
       description: bonusPart > 0
-        ? `${opts.side} on "${market.titleEn.slice(0, 50)}" (incl. TZS ${bonusPart.toLocaleString()} bonus)`
+        ? `${opts.side} on "${market.titleEn.slice(0, 50)}" (incl. ${formatTzs(bonusPart)} bonus)`
         : `${opts.side} on "${market.titleEn.slice(0, 60)}"`,
       positionId: positionId,
       amlReason: null,
@@ -496,7 +497,7 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
     notifyBonusFulfilled(userId, { amountTzs: g.amountTzs }).catch(() => {});
     sendEmailToUser(userId, (email) => ({
       to: email,
-      subject: `Bonus unlocked · TZS ${Math.round(g.amountTzs).toLocaleString("en-US")}`,
+      subject: `Bonus unlocked · ${formatTzs(g.amountTzs)}`,
       html: bonusFulfilledHtml({ amountTzs: g.amountTzs }),
       tag: "bonus",
     })).catch(() => {});
@@ -650,7 +651,7 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
           notifyWin(p.userId, payout, `${cur.titleEn} · ${p.id}`, "/positions");
           sendEmailToUser(p.userId, (email) => ({
             to: email,
-            subject: `You won · TZS ${Math.round(payout).toLocaleString("en-US")}`,
+            subject: `You won · ${formatTzs(payout)}`,
             html: winNotificationHtml({ reference: p.id, payout, stake: p.stake, marketTitle: cur.titleEn, settledAt: cur.resolutionStage2At ?? undefined }),
             tag: "win",
           })).catch(() => {});
@@ -660,7 +661,7 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
           notifyLoss(p.userId, { stake: p.stake, marketTitle: cur.titleEn, marketId: cur.id, positionId: p.id });
           sendEmailToUser(p.userId, (email) => ({
             to: email,
-            subject: `Bet lost · TZS ${Math.round(p.stake).toLocaleString("en-US")}`,
+            subject: `Bet lost · ${formatTzs(p.stake)}`,
             html: lossNotificationHtml({ reference: p.id, stake: p.stake, marketTitle: cur.titleEn, settledAt: cur.resolutionStage2At ?? undefined }),
             tag: "loss",
           })).catch(() => {});
@@ -1044,7 +1045,7 @@ export async function cashOutPosition(
     notifyCashout(userId, { amount: value, marketTitle: m.titleEn, marketId: m.id, inGracePeriod, positionId });
     sendEmailToUser(userId, (email) => ({
       to: email,
-      subject: `Position sold · TZS ${Math.round(value).toLocaleString("en-US")}`,
+      subject: `Position sold · ${formatTzs(value)}`,
       html: cashOutReceiptHtml({ reference: p.id, value, stake: p.stake, marketTitle: m.titleEn, soldAt: now, gracePeriod: inGracePeriod }),
       tag: "cashout",
     })).catch(() => {});
@@ -1242,7 +1243,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
       notifyOneSidedRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, positionId: p.id });
       sendEmailToUser(p.userId, (email) => ({
         to: email,
-        subject: `Full refund · TZS ${Math.round(p.stake).toLocaleString("en-US")} returned`,
+        subject: `Full refund · ${formatTzs(p.stake)} returned`,
         html: oneSidedRefundHtml({ reference: p.id, stake: p.stake, marketTitle: m.titleEn, settledAt: m.resolutionStage2At ?? undefined }),
         tag: "one-sided-refund",
       })).catch(() => {});
@@ -1351,7 +1352,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
         notifyWin(p.userId, payout, `${m.titleEn} · ${p.id}`, "/positions");
         sendEmailToUser(p.userId, (email) => ({
           to: email,
-          subject: `You won · TZS ${Math.round(payout).toLocaleString("en-US")}`,
+          subject: `You won · ${formatTzs(payout)}`,
           html: winNotificationHtml({ reference: p.id, payout, stake: p.stake, marketTitle: m.titleEn, settledAt: m.resolutionStage2At ?? undefined }),
           tag: "win",
         })).catch(() => {});
@@ -1362,7 +1363,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
         notifyLoss(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, positionId: p.id });
         sendEmailToUser(p.userId, (email) => ({
           to: email,
-          subject: `Bet lost · TZS ${Math.round(p.stake).toLocaleString("en-US")}`,
+          subject: `Bet lost · ${formatTzs(p.stake)}`,
           html: lossNotificationHtml({ reference: p.id, stake: p.stake, marketTitle: m.titleEn, settledAt: m.resolutionStage2At ?? undefined }),
           tag: "loss",
         })).catch(() => {});
@@ -1571,7 +1572,7 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
       notifyMarketCancelled(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, reason });
       sendEmailToUser(p.userId, (email) => ({
         to: email,
-        subject: `Market cancelled — TZS ${Math.round(p.stake).toLocaleString("en-US")} refunded`,
+        subject: `Market cancelled — ${formatTzs(p.stake)} refunded`,
         html: marketCancelledRefundHtml({ title: m.titleEn, reason, amount: p.stake, reference: p.id }),
         tag: "market-cancelled-refund",
       })).catch(() => {});

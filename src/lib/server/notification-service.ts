@@ -12,6 +12,7 @@ import { db } from "./store";
 import { randomId } from "./crypto";
 import { emit } from "./event-bus";
 import type { StoredNotification } from "./store";
+import { formatTzs } from "@/lib/utils";
 
 export type NotifyInput = Omit<StoredNotification, "id" | "userId" | "readAt" | "dismissedAt" | "createdAt"> & {
   userId: string;
@@ -102,8 +103,8 @@ export function notifyBetPlaced(userId: string, opts: {
   return notify({
     userId,
     kind: "BET_PLACED",
-    titleEn: `Bet placed · ${opts.side} TZS ${opts.stake.toLocaleString()}`,
-    titleSw: `Dau limewekwa · ${opts.side} TZS ${opts.stake.toLocaleString()}`,
+    titleEn: `Bet placed · ${opts.side} ${formatTzs(opts.stake)}`,
+    titleSw: `Dau limewekwa · ${opts.side} ${formatTzs(opts.stake)}`,
     bodyEn: `${opts.marketTitle.slice(0, 70)} · free exit within 5 min, then 9% fee applies.${ref}`,
     bodySw: `${opts.marketTitle.slice(0, 50)} · toka bila gharama ndani ya dakika 5.${ref}`,
     href: `/markets/${opts.marketId}`,
@@ -114,8 +115,8 @@ export function notifyWin(userId: string, amount: number, label: string, href = 
   return notify({
     userId,
     kind: "WIN",
-    titleEn: `You won TZS ${amount.toLocaleString()}`,
-    titleSw: `Umeshinda TZS ${amount.toLocaleString()}`,
+    titleEn: `You won ${formatTzs(amount)}`,
+    titleSw: `Umeshinda ${formatTzs(amount)}`,
     bodyEn: `${label} paid out. Tap to view.`,
     bodySw: `${label} kimelipa. Bonyeza kuona.`,
     href,
@@ -131,8 +132,8 @@ export function notifyLoss(userId: string, opts: { stake: number; marketTitle: s
   return notify({
     userId,
     kind: "LOSS",
-    titleEn: `Bet lost · TZS ${opts.stake.toLocaleString()}`,
-    titleSw: `Dau limepotea · TZS ${opts.stake.toLocaleString()}`,
+    titleEn: `Bet lost · ${formatTzs(opts.stake)}`,
+    titleSw: `Dau limepotea · ${formatTzs(opts.stake)}`,
     bodyEn: `${opts.marketTitle.slice(0, 70)} · your side didn't win.${ref}`,
     bodySw: `Upande wako haukushinda.${ref}`,
     href: `/markets/${opts.marketId}`,
@@ -155,8 +156,8 @@ export function notifyDeposit(userId: string, amount: number, provider: string) 
   return notify({
     userId,
     kind: "DEPOSIT",
-    titleEn: `Deposit confirmed · TZS ${amount.toLocaleString()}`,
-    titleSw: `Amana imethibitishwa · TZS ${amount.toLocaleString()}`,
+    titleEn: `Deposit confirmed · ${formatTzs(amount)}`,
+    titleSw: `Amana imethibitishwa · ${formatTzs(amount)}`,
     bodyEn: `Funds added via ${provider}.`,
     bodySw: `Pesa imeingia kupitia ${provider}.`,
     href: "/wallet",
@@ -178,8 +179,8 @@ export function notifyWithdraw(
     return notify({
       userId,
       kind: "WITHDRAW",
-      titleEn: `Withdrawal sent · TZS ${net.toLocaleString()}`,
-      titleSw: `Pesa imetumwa · TZS ${net.toLocaleString()}`,
+      titleEn: `Withdrawal sent · ${formatTzs(net)}`,
+      titleSw: `Pesa imetumwa · ${formatTzs(net)}`,
       bodyEn: `${opts.provider} should land in moments.`,
       bodySw: `${opts.provider} itafika sasa hivi.`,
       href: "/wallet",
@@ -189,8 +190,8 @@ export function notifyWithdraw(
     return notify({
       userId,
       kind: "WITHDRAW",
-      titleEn: `Withdrawal under review · TZS ${opts.amount.toLocaleString()}`,
-      titleSw: `Inakaguliwa · TZS ${opts.amount.toLocaleString()}`,
+      titleEn: `Withdrawal under review · ${formatTzs(opts.amount)}`,
+      titleSw: `Inakaguliwa · ${formatTzs(opts.amount)}`,
       bodyEn: "Compliance review takes up to 24h.",
       bodySw: "Ukaguzi unachukua hadi saa 24.",
       href: "/wallet",
@@ -200,8 +201,8 @@ export function notifyWithdraw(
     return notify({
       userId,
       kind: "WITHDRAW",
-      titleEn: `Withdrawal failed · TZS ${opts.amount.toLocaleString()}`,
-      titleSw: `Kutoa pesa kumeshindikana · TZS ${opts.amount.toLocaleString()}`,
+      titleEn: `Withdrawal failed · ${formatTzs(opts.amount)}`,
+      titleSw: `Kutoa pesa kumeshindikana · ${formatTzs(opts.amount)}`,
       bodyEn: opts.reason ? `Funds returned. ${opts.reason}` : "Funds returned to your balance.",
       bodySw: "Pesa imerudishwa kwenye salio lako.",
       href: "/wallet",
@@ -210,8 +211,8 @@ export function notifyWithdraw(
   return notify({
     userId,
     kind: "WITHDRAW",
-    titleEn: `Withdrawal in flight · TZS ${opts.amount.toLocaleString()}`,
-    titleSw: `Inatuma · TZS ${opts.amount.toLocaleString()}`,
+    titleEn: `Withdrawal in flight · ${formatTzs(opts.amount)}`,
+    titleSw: `Inatuma · ${formatTzs(opts.amount)}`,
     bodyEn: `${opts.provider} processing.`,
     bodySw: `${opts.provider} inaendelea.`,
     href: "/wallet",
@@ -235,15 +236,15 @@ export function notifyReferralJoined(referrerUserId: string, opts: { recruitMask
 
 /** A reward (commission / prize / bonus) landed in someone's wallet. */
 export function notifyReferralReward(userId: string, opts: { type: "COMMISSION" | "PRIZE" | "BONUS"; amountTzs: number }) {
-  const amount = opts.amountTzs.toLocaleString();
+  const amount = formatTzs(opts.amountTzs);
   const titleEn =
-    opts.type === "COMMISSION" ? `You earned TZS ${amount} from a referral`
-    : opts.type === "PRIZE"    ? `Milestone reward · TZS ${amount}`
-    :                            `Referral bonus · TZS ${amount}`;
+    opts.type === "COMMISSION" ? `You earned ${amount} from a referral`
+    : opts.type === "PRIZE"    ? `Milestone reward · ${amount}`
+    :                            `Referral bonus · ${amount}`;
   const titleSw =
-    opts.type === "COMMISSION" ? `Umepata TZS ${amount} kutoka kwa rafiki`
-    : opts.type === "PRIZE"    ? `Zawadi ya hatua · TZS ${amount}`
-    :                            `Bonasi ya rafiki · TZS ${amount}`;
+    opts.type === "COMMISSION" ? `Umepata ${amount} kutoka kwa rafiki`
+    : opts.type === "PRIZE"    ? `Zawadi ya hatua · ${amount}`
+    :                            `Bonasi ya rafiki · ${amount}`;
   const bodyEn =
     opts.type === "COMMISSION" ? "Commission from a friend's activity. Tap to view."
     : opts.type === "PRIZE"    ? "A friend hit a milestone. Tap to view."
@@ -263,38 +264,38 @@ export function notifyReferralReward(userId: string, opts: { type: "COMMISSION" 
 
 /** A bonus was credited to the player's bonus wallet. */
 export function notifyBonusCredited(userId: string, opts: { amountTzs: number; wagerRequiredTzs: number; queued?: boolean }) {
-  const amount = Math.round(opts.amountTzs).toLocaleString();
-  const target = Math.round(opts.wagerRequiredTzs).toLocaleString();
+  const amount = formatTzs(opts.amountTzs);
+  const target = formatTzs(opts.wagerRequiredTzs);
   if (opts.queued) {
     return notify({
       userId,
       kind: "BONUS",
-      titleEn: `Bonus queued · TZS ${amount}`,
-      titleSw: `Bonasi imepangwa · TZS ${amount}`,
-      bodyEn: `Your current bonus must be completed first. This TZS ${amount} bonus will activate automatically when ready.`,
-      bodySw: `Bonasi yako ya sasa lazima ikamilishwe kwanza. Bonasi ya TZS ${amount} itaamilishwa moja kwa moja.`,
+      titleEn: `Bonus queued · ${amount}`,
+      titleSw: `Bonasi imepangwa · ${amount}`,
+      bodyEn: `Your current bonus must be completed first. This ${amount} bonus will activate automatically when ready.`,
+      bodySw: `Bonasi yako ya sasa lazima ikamilishwe kwanza. Bonasi ya ${amount} itaamilishwa moja kwa moja.`,
       href: "/wallet",
     });
   }
   return notify({
     userId,
     kind: "BONUS",
-    titleEn: `Bonus credited · TZS ${amount}`,
-    titleSw: `Bonasi imewekwa · TZS ${amount}`,
-    bodyEn: `Play TZS ${target} to unlock it as withdrawable cash. Tap to view.`,
-    bodySw: `Cheza TZS ${target} ili kuibadilisha kuwa pesa unayoweza kutoa. Bonyeza kuona.`,
+    titleEn: `Bonus credited · ${amount}`,
+    titleSw: `Bonasi imewekwa · ${amount}`,
+    bodyEn: `Play ${target} to unlock it as withdrawable cash. Tap to view.`,
+    bodySw: `Cheza ${target} ili kuibadilisha kuwa pesa unayoweza kutoa. Bonyeza kuona.`,
     href: "/wallet",
   });
 }
 
 /** A bonus finished its wagering and converted to real, withdrawable balance. */
 export function notifyBonusFulfilled(userId: string, opts: { amountTzs: number }) {
-  const amount = Math.round(opts.amountTzs).toLocaleString();
+  const amount = formatTzs(opts.amountTzs);
   return notify({
     userId,
     kind: "BONUS",
-    titleEn: `Bonus unlocked · TZS ${amount} is now withdrawable!`,
-    titleSw: `Bonasi imefunguliwa · TZS ${amount} sasa unaweza kuitoa!`,
+    titleEn: `Bonus unlocked · ${amount} is now withdrawable!`,
+    titleSw: `Bonasi imefunguliwa · ${amount} sasa unaweza kuitoa!`,
     bodyEn: "Your bonus is now real cash in your main wallet. Tap to view.",
     bodySw: "Bonasi yako sasa ni pesa halisi kwenye pochi yako kuu. Bonyeza kuona.",
     href: "/wallet",
@@ -303,12 +304,12 @@ export function notifyBonusFulfilled(userId: string, opts: { amountTzs: number }
 
 /** An unfulfilled bonus expired and was removed from the bonus wallet. */
 export function notifyBonusExpired(userId: string, opts: { amountTzs: number }) {
-  const amount = Math.round(opts.amountTzs).toLocaleString();
+  const amount = formatTzs(opts.amountTzs);
   return notify({
     userId,
     kind: "BONUS",
-    titleEn: `Bonus expired · TZS ${amount}`,
-    titleSw: `Bonasi imeisha muda · TZS ${amount}`,
+    titleEn: `Bonus expired · ${amount}`,
+    titleSw: `Bonasi imeisha muda · ${amount}`,
     bodyEn: "An unfinished bonus reached its expiry date and was removed.",
     bodySw: "Bonasi ambayo haikukamilika imefikia tarehe ya mwisho na imeondolewa.",
     href: "/wallet",
@@ -345,23 +346,23 @@ export function notifyAdminProposalReview(adminUserId: string, opts: { proposerL
  *  (or queued behind an active bonus in sequential mode). */
 export function notifyProposalApproved(userId: string, opts: { titleEn: string; amountTzs: number; queued?: boolean }) {
   if (opts.amountTzs > 0) {
-    const amount = Math.round(opts.amountTzs).toLocaleString("en-US");
+    const amount = formatTzs(opts.amountTzs);
     if (opts.queued) {
       return notify({
         userId, kind: "PROPOSAL",
-        titleEn: `Proposal approved · bonus TZS ${amount} reserved`,
-        titleSw: `Pendekezo limekubaliwa · bonasi TZS ${amount} imehifadhiwa`,
-        bodyEn: `"${opts.titleEn.slice(0, 55)}" was approved. Your TZS ${amount} bonus activates automatically once your current bonus completes.`,
-        bodySw: `Pendekezo lako limekubaliwa. Bonasi ya TZS ${amount} itaanza mara bonasi yako ya sasa itakapokamilika.`,
+        titleEn: `Proposal approved · bonus ${amount} reserved`,
+        titleSw: `Pendekezo limekubaliwa · bonasi ${amount} imehifadhiwa`,
+        bodyEn: `"${opts.titleEn.slice(0, 55)}" was approved. Your ${amount} bonus activates automatically once your current bonus completes.`,
+        bodySw: `Pendekezo lako limekubaliwa. Bonasi ya ${amount} itaanza mara bonasi yako ya sasa itakapokamilika.`,
         href: "/wallet",
       });
     }
     return notify({
       userId, kind: "PROPOSAL",
-      titleEn: `Proposal approved · bonus TZS ${amount} credited`,
-      titleSw: `Pendekezo limekubaliwa · bonasi TZS ${amount}`,
-      bodyEn: `"${opts.titleEn.slice(0, 55)}" was approved. TZS ${amount} is in your bonus wallet.`,
-      bodySw: `Pendekezo lako limekubaliwa. TZS ${amount} ipo kwenye pochi yako ya bonasi.`,
+      titleEn: `Proposal approved · bonus ${amount} credited`,
+      titleSw: `Pendekezo limekubaliwa · bonasi ${amount}`,
+      bodyEn: `"${opts.titleEn.slice(0, 55)}" was approved. ${amount} is in your bonus wallet.`,
+      bodySw: `Pendekezo lako limekubaliwa. ${amount} ipo kwenye pochi yako ya bonasi.`,
       href: "/wallet",
     });
   }
@@ -413,8 +414,8 @@ export function notifyRefund(userId: string, opts: { stake: number; marketTitle:
   return notify({
     userId,
     kind: "DEPOSIT",
-    titleEn: `Refund · TZS ${opts.stake.toLocaleString()} returned`,
-    titleSw: `Kurudishiwa · TZS ${opts.stake.toLocaleString()}`,
+    titleEn: `Refund · ${formatTzs(opts.stake)} returned`,
+    titleSw: `Kurudishiwa · ${formatTzs(opts.stake)}`,
     bodyEn: `${opts.marketTitle.slice(0, 70)} was voided. Your stake has been returned.`,
     bodySw: `Soko limebatilishwa. Dau lako limerudishwa.`,
     href: `/markets/${opts.marketId}`,
@@ -427,8 +428,8 @@ export function notifyMarketCancelled(userId: string, opts: { stake: number; mar
   return notify({
     userId,
     kind: "DEPOSIT", // money returned to the wallet
-    titleEn: `Market cancelled · TZS ${opts.stake.toLocaleString()} refunded`,
-    titleSw: `Soko limefutwa · TZS ${opts.stake.toLocaleString()} imerejeshwa`,
+    titleEn: `Market cancelled · ${formatTzs(opts.stake)} refunded`,
+    titleSw: `Soko limefutwa · ${formatTzs(opts.stake)} imerejeshwa`,
     bodyEn: `"${opts.marketTitle.slice(0, 60)}" was cancelled: ${opts.reason.slice(0, 120)}. Your full stake has been returned to your wallet.`,
     bodySw: `Soko limefutwa. Dau lako lote limerejeshwa kwenye pochi yako.`,
     href: "/wallet",
@@ -442,8 +443,8 @@ export function notifyAdminMarketCancelled(adminUserId: string, opts: { title: s
     kind: "SECURITY",
     titleEn: `Market cancelled · ${opts.refundedCount} refunded`,
     titleSw: `Soko limefutwa · ${opts.refundedCount} wamerejeshewa`,
-    bodyEn: `"${opts.title.slice(0, 60)}" was emergency-voided — TZS ${opts.refundedTzs.toLocaleString()} refunded to ${opts.refundedCount} ${opts.refundedCount === 1 ? "player" : "players"}. Reason: ${opts.reason.slice(0, 100)}`,
-    bodySw: `Soko limefutwa kwa dharura. TZS ${opts.refundedTzs.toLocaleString()} imerejeshwa.`,
+    bodyEn: `"${opts.title.slice(0, 60)}" was emergency-voided — ${formatTzs(opts.refundedTzs)} refunded to ${opts.refundedCount} ${opts.refundedCount === 1 ? "player" : "players"}. Reason: ${opts.reason.slice(0, 100)}`,
+    bodySw: `Soko limefutwa kwa dharura. ${formatTzs(opts.refundedTzs)} imerejeshwa.`,
     href: "/admin/markets",
   });
 }
@@ -454,8 +455,8 @@ export function notifyCashout(userId: string, opts: { amount: number; marketTitl
   return notify({
     userId,
     kind: "WIN",
-    titleEn: `${opts.inGracePeriod ? "Free exit" : "Cashed out"} · TZS ${opts.amount.toLocaleString()}`,
-    titleSw: `${opts.inGracePeriod ? "Toka bila gharama" : "Umetoa"} · TZS ${opts.amount.toLocaleString()}`,
+    titleEn: `${opts.inGracePeriod ? "Free exit" : "Cashed out"} · ${formatTzs(opts.amount)}`,
+    titleSw: `${opts.inGracePeriod ? "Toka bila gharama" : "Umetoa"} · ${formatTzs(opts.amount)}`,
     bodyEn: opts.inGracePeriod
       ? `Full stake returned — sold within the 5-min grace window, no fee.${ref}`
       : `Early exit from ${opts.marketTitle.slice(0, 60)}. Funds in wallet.${ref}`,
@@ -472,8 +473,8 @@ export function notifyOneSidedRefund(userId: string, opts: { stake: number; mark
   return notify({
     userId,
     kind: "WIN",
-    titleEn: `Full refund · TZS ${opts.stake.toLocaleString()}`,
-    titleSw: `Pesa imerudishwa · TZS ${opts.stake.toLocaleString()}`,
+    titleEn: `Full refund · ${formatTzs(opts.stake)}`,
+    titleSw: `Pesa imerudishwa · ${formatTzs(opts.stake)}`,
     bodyEn: `${opts.marketTitle.slice(0, 60)} — all bets were on one side. Full stake returned, no fee.${ref}`,
     bodySw: `Dau lako lote limerudishwa bila gharama — wote walibetia upande mmoja.${ref}`,
     href: `/markets/${opts.marketId}`,
@@ -611,9 +612,9 @@ export async function notifyAdminsAmlReview(opts: { txnKind: "WITHDRAWAL" | "DEP
     await notify({
       userId: o.id,
       kind: "SECURITY",
-      titleEn: `AML review: ${label} TZS ${opts.amountTzs.toLocaleString()}`,
-      titleSw: `Ukaguzi wa AML · TZS ${opts.amountTzs.toLocaleString()}`,
-      bodyEn: `A ${label} of TZS ${opts.amountTzs.toLocaleString()} is awaiting AML clearance — open the queue.`,
+      titleEn: `AML review: ${label} ${formatTzs(opts.amountTzs)}`,
+      titleSw: `Ukaguzi wa AML · ${formatTzs(opts.amountTzs)}`,
+      bodyEn: `A ${label} of ${formatTzs(opts.amountTzs)} is awaiting AML clearance — open the queue.`,
       bodySw: "Muamala unasubiri ukaguzi wa AML — fungua foleni.",
       href: "/admin/aml",
     }).catch(() => {});
@@ -631,7 +632,7 @@ export async function notifyAdminsAmlReview(opts: { txnKind: "WITHDRAWAL" | "DEP
     for (const to of emails) {
       sendEmail({
         to,
-        subject: `AML review needed · TZS ${opts.amountTzs.toLocaleString()}`,
+        subject: `AML review needed · ${formatTzs(opts.amountTzs)}`,
         html: amlReviewAdminHtml({ amount: opts.amountTzs, kind: opts.txnKind, reference: opts.reference }),
         tag: "aml-review-admin",
         trackLinks: false,

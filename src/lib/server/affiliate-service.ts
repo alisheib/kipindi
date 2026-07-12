@@ -27,6 +27,7 @@ import { getBonusConfig } from "./bonus-config";
 import { sendEmailToUser, referralRewardHtml, referralEarningHtml } from "./email";
 import { appUrl } from "@/lib/app-url";
 import { withLock } from "./locks";
+import { formatTzs } from "@/lib/utils";
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I ambiguity
 
@@ -306,7 +307,7 @@ async function payBonus(opts: { referrerUserId: string; recruitUserId: string; h
         notifyReferralReward(userId, { type: "BONUS", amountTzs: amount });
         sendEmailToUser(userId, (email) => ({
           to: email,
-          subject: `Referral bonus · TZS ${Math.round(amount).toLocaleString("en-US")}`,
+          subject: `Referral bonus · ${formatTzs(amount)}`,
           html: referralEarningHtml({ type: "BONUS", amountTzs: amount }),
           tag: "referral",
         })).catch(() => {});
@@ -354,7 +355,7 @@ async function payPrize(opts: { referrerUserId: string; recruitUserId: string; m
     const acct = await db.affiliate.findByUserId(opts.referrerUserId);
     sendEmailToUser(opts.referrerUserId, (email) => ({
       to: email,
-      subject: `Referral reward · TZS ${cfg.prize.amountTzs.toLocaleString()}`,
+      subject: `Referral reward · ${formatTzs(cfg.prize.amountTzs)}`,
       html: referralRewardHtml({
         amount: cfg.prize.amountTzs,
         referredName: maskName(recruit?.displayName ?? null, recruit?.phoneE164 ?? ""),
@@ -440,7 +441,7 @@ export async function onRecruitBet(recruitUserId: string, opts: { stake: number;
       notifyReferralReward(referrerUserId, { type: "COMMISSION", amountTzs: paid.cut });
       sendEmailToUser(referrerUserId, (email) => ({
         to: email,
-        subject: `Referral commission · TZS ${Math.round(paid.cut).toLocaleString("en-US")}`,
+        subject: `Referral commission · ${formatTzs(paid.cut)}`,
         html: referralEarningHtml({ type: "COMMISSION", amountTzs: paid.cut }),
         tag: "referral",
       })).catch(() => {});
@@ -517,23 +518,23 @@ export async function getPlayerReferralSummary(userId: string) {
   }
   if (cfg.prize.enabled && cfg.prize.amountTzs > 0) {
     const minBet = cfg.prize.minBetAmountTzs ?? 0;
-    const minBetLabel = minBet > 0 ? ` (min TZS ${minBet.toLocaleString()})` : "";
-    const minBetLabelSw = minBet > 0 ? ` (angalau TZS ${minBet.toLocaleString()})` : "";
+    const minBetLabel = minBet > 0 ? ` (min ${formatTzs(minBet)})` : "";
+    const minBetLabelSw = minBet > 0 ? ` (angalau ${formatTzs(minBet)})` : "";
     promises.push({
       icon: "ticket",
       en: cfg.prize.milestone === "FIRST_BET"
-        ? `Get TZS ${cfg.prize.amountTzs.toLocaleString()} when a friend deposits & places their first bet${minBetLabel}`
-        : `Get TZS ${cfg.prize.amountTzs.toLocaleString()} when a friend deposits`,
+        ? `Get ${formatTzs(cfg.prize.amountTzs)} when a friend deposits & places their first bet${minBetLabel}`
+        : `Get ${formatTzs(cfg.prize.amountTzs)} when a friend deposits`,
       sw: cfg.prize.milestone === "FIRST_BET"
-        ? `Pata TZS ${cfg.prize.amountTzs.toLocaleString()} rafiki anapoweka amana na dau la kwanza${minBetLabelSw}`
-        : `Pata TZS ${cfg.prize.amountTzs.toLocaleString()} rafiki anapoweka amana`,
+        ? `Pata ${formatTzs(cfg.prize.amountTzs)} rafiki anapoweka amana na dau la kwanza${minBetLabelSw}`
+        : `Pata ${formatTzs(cfg.prize.amountTzs)} rafiki anapoweka amana`,
     });
   }
   if (cfg.bonus.enabled && (cfg.bonus.recipient === "REFERRER" || cfg.bonus.recipient === "BOTH") && cfg.bonus.referrerAmountTzs > 0) {
     promises.push({
       icon: "gift",
-      en: `Get TZS ${cfg.bonus.referrerAmountTzs.toLocaleString()} when a friend ${cfg.bonus.trigger === "SIGNUP" ? "signs up" : "makes their first deposit"}`,
-      sw: `Pata TZS ${cfg.bonus.referrerAmountTzs.toLocaleString()} rafiki ${cfg.bonus.trigger === "SIGNUP" ? "anapojisajili" : "anapoweka amana ya kwanza"}`,
+      en: `Get ${formatTzs(cfg.bonus.referrerAmountTzs)} when a friend ${cfg.bonus.trigger === "SIGNUP" ? "signs up" : "makes their first deposit"}`,
+      sw: `Pata ${formatTzs(cfg.bonus.referrerAmountTzs)} rafiki ${cfg.bonus.trigger === "SIGNUP" ? "anapojisajili" : "anapoweka amana ya kwanza"}`,
     });
   }
 

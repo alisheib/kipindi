@@ -12,6 +12,7 @@
  */
 import { db } from "./store";
 import { getAuditPage } from "./audit";
+import { formatTzs } from "@/lib/utils";
 
 export const KYC_MAKER_CHECKER_THRESHOLD = 70;
 const AML_THRESHOLD_TZS = 1_000_000;
@@ -28,7 +29,7 @@ export async function kycRiskScore(userId: string): Promise<KycRisk> {
 
   // 1 · Large withdrawals over the AML reporting threshold.
   const bigWd = confirmed.filter((t) => t.type === "WITHDRAWAL" && Math.abs(t.amount) >= AML_THRESHOLD_TZS);
-  if (bigWd.length) factors.push({ label: "Large withdrawals", points: Math.min(30, bigWd.length * 15), detail: `${bigWd.length} ≥ TZS ${AML_THRESHOLD_TZS.toLocaleString()}` });
+  if (bigWd.length) factors.push({ label: "Large withdrawals", points: Math.min(30, bigWd.length * 15), detail: `${bigWd.length} ≥ ${formatTzs(AML_THRESHOLD_TZS)}` });
 
   // 2 · Transactions already held for AML review.
   const amlTxns = txns.filter((t) => t.status === "AML_REVIEW");
@@ -47,7 +48,7 @@ export async function kycRiskScore(userId: string): Promise<KycRisk> {
   const totalDeposits = confirmed.filter((t) => t.type === "DEPOSIT").reduce((s, t) => s + t.amount, 0);
   const sof = await Promise.resolve(db.sourceOfFunds.get(userId)).catch(() => null);
   if (totalDeposits >= 5_000_000 && !sof) {
-    factors.push({ label: "No source-of-funds", points: 15, detail: `TZS ${totalDeposits.toLocaleString()} deposited, SoF not on file` });
+    factors.push({ label: "No source-of-funds", points: 15, detail: `${formatTzs(totalDeposits)} deposited, SoF not on file` });
   }
 
   const score = Math.min(100, factors.reduce((s, f) => s + f.points, 0));

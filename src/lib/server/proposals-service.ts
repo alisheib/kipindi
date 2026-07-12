@@ -28,6 +28,7 @@ import {
   type ProposalCategory,
   type ProposalStatus,
 } from "./store";
+import { formatTzs } from "@/lib/utils";
 import { getProposalsConfig } from "./proposals-config";
 import { getBonusConfig } from "./bonus-config";
 import { audit } from "./audit";
@@ -492,7 +493,7 @@ export async function approveProposal(proposalId: string, officerId: string): Pr
     notifyProposalApproved(p.proposerId, { titleEn: p.titleEn, amountTzs: grantedTzs, queued }).catch(() => {});
     sendEmailToUser(p.proposerId, (email) => ({
       to: email,
-      subject: grantedTzs > 0 ? `Proposal approved · bonus TZS ${grantedTzs.toLocaleString("en-US")} credited` : "Proposal approved",
+      subject: grantedTzs > 0 ? `Proposal approved · bonus ${formatTzs(grantedTzs)} credited` : "Proposal approved",
       html: proposalApprovedHtml({ titleEn: p.titleEn, amountTzs: grantedTzs, wagerRequiredTzs, queued }),
       tag: "proposal-approved",
     }));

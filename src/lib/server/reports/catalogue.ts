@@ -19,7 +19,7 @@ import {
 import { currentPackPeriod, packPeriodLabel, packPeriodBounds } from "../report-pack";
 import { getGlobalConfig } from "../market-config";
 import type { Report, Row, SignatureRow, SummaryItem } from "./types";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, formatTzs } from "@/lib/utils";
 
 /** Standard regulator attestation block — three roles at the foot of every
  *  hand-off-grade report. Only "Prepared by" is filled (the real generator, who
@@ -304,7 +304,7 @@ export async function buildFiuSar(generatorId: string): Promise<Report> {
   }
   return {
     title: "Financial Intelligence Unit · Suspicious-Activity Report",
-    subtitle: `Transactions over the TZS ${cutoff.toLocaleString()} threshold, or paused for AML review`,
+    subtitle: `Transactions over the ${formatTzs(cutoff)} threshold, or paused for AML review`,
     reference: makeReference("FIU", generatorId),
     meta: {
       generatedAt: new Date().toISOString(),
