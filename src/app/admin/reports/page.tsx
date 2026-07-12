@@ -12,6 +12,9 @@ import { GenerateButton } from "./generate-button";
 import { ReportPackCard } from "./report-pack-card";
 import { formatDateTime, formatTzs, formatTzsCompact } from "@/lib/utils";
 import { reportSummary, dailyPnl, categoryBreakdown, type ReportPeriod } from "@/lib/server/report-money";
+import { currentSession } from "@/lib/server/auth-service";
+import { hasRole, CONFIG_ROLES } from "@/lib/server/roles";
+import { AdminRestricted } from "@/components/admin/admin-restricted";
 
 export const metadata = { title: "Admin · Reports" };
 export const dynamic = "force-dynamic";
@@ -145,6 +148,15 @@ export default async function AdminReportsPage({
 }: {
   searchParams: Promise<{ page?: string; sort?: string; dir?: string; range?: string; cmp?: string }>;
 }) {
+  // Reports/exports expose regulator-grade data → CONFIG_ROLES only, NEVER
+  // MODERATOR (roles.ts). The admin layout only gates ADMIN_CONSOLE_ROLES (which
+  // DOES include MODERATOR), so without this a moderator could read + export the
+  // statutory pack. Return BEFORE any report aggregate is computed.
+  const session = await currentSession();
+  if (!hasRole(session?.role, CONFIG_ROLES)) {
+    return <AdminRestricted title="Reports" sw="Ripoti" need="Admin or Compliance" />;
+  }
+
   const sp = await searchParams;
 
   // ── Reporting console (Batch 3 §1) — real aggregates on the normative money

@@ -12,6 +12,7 @@ export const NAV_GROUPS: ReadonlyArray<{
   {
     group: { en: "Money", sw: "Pesa" },
     items: [
+      { href: "/admin/insights", label: "Insights", key: "insights" },
       { href: "/admin/finance", label: "Finance", key: "finance" },
       { href: "/admin/reports", label: "Reports", key: "reports" },
       { href: "/admin/payments", label: "Payments ops", key: "payments" },

@@ -18,6 +18,10 @@ import {
 import { formatTzs, formatTzsCompact } from "@/lib/utils";
 import { GenerateButton } from "../reports/generate-button";
 import type { Period } from "@/lib/server/analytics";
+import { currentSession } from "@/lib/server/auth-service";
+import { hasRole, MONEY_ROLES } from "@/lib/server/roles";
+import { getEffectiveConfig } from "@/lib/server/market-config";
+import { AdminRestricted } from "@/components/admin/admin-restricted";
 
 export const metadata = { title: "Admin · Finance" };
 export const dynamic = "force-dynamic";
@@ -25,6 +29,15 @@ export const dynamic = "force-dynamic";
 const VALID_PERIODS: Period[] = ["today", "7d", "28d", "qtd"];
 
 export default async function AdminFinancePage({ searchParams }: { searchParams: Promise<{ range?: string }> }) {
+  // Money data is MONEY_ROLES only — NEVER MODERATOR (roles.ts). The admin layout
+  // only gates ADMIN_CONSOLE_ROLES (which DOES include MODERATOR), so without this
+  // a moderator could read owner-grade GGR/NGR and the top-contributor list.
+  // Return BEFORE any money aggregate is computed.
+  const session = await currentSession();
+  if (!hasRole(session?.role, MONEY_ROLES)) {
+    return <AdminRestricted title="Finance" sw="Fedha" need="Admin or Compliance" />;
+  }
+
   const sp = await searchParams;
   // The PeriodPicker round-trips via ?range= — honour it (default 7d).
   const period: Period = VALID_PERIODS.includes(sp.range as Period) ? (sp.range as Period) : "7d";
@@ -43,9 +56,18 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
   const provBars = await providerStackedSeries(period, 14).catch(() => []);
   const providers = await listProvidersInPeriod(period).catch(() => []);
 
-  // Tax accrued — placeholder formula (5% of GGR for the QTD example), real
-  // calculation will come from TRA filing module.
-  const taxAccrued = Math.round(ggr * 0.05);
+  // Tax accrued — the REAL statutory levies, at the admin-configured rates, on
+  // the same basis the Daily Operations report files with (TRA + GBT levied on
+  // the operator's commission/GGR — see market-config.ts).
+  //
+  // This previously showed a FABRICATED `ggr * 0.05` "placeholder formula" and
+  // presented it to the owner as fact. Never ship an invented money figure: if we
+  // can't compute it, we show nothing. Negative GGR accrues no levy (you cannot
+  // owe tax on a loss), which matches reports/catalogue.ts's Math.max(0, ggr).
+  const rates = await getEffectiveConfig().catch(() => null);
+  const taxAccrued = rates
+    ? Math.round(Math.max(0, ggr) * (rates.traTaxOnCommissionRate + rates.gbtLevyOnCommissionRate))
+    : null;
 
   return (
     <>
@@ -71,7 +93,13 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
           <AdminKpi label="NGR"             sw="Mapato halisi"      value={`TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`}        delta="net of bonus + fees" />
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Tax accrued (est.)" sw="Kodi · makisio" value={`TZS ${formatTzsCompact(taxAccrued).replace("TZS ", "")}`} delta="pending TRA module" deltaDir="flat" />
+          <AdminKpi
+            label="Statutory levies"
+            sw="Kodi za kisheria"
+            value={taxAccrued === null ? "—" : `TZS ${formatTzsCompact(taxAccrued).replace("TZS ", "")}`}
+            delta={taxAccrued === null ? "rates unavailable" : "TRA + GBT on commission"}
+            deltaDir="flat"
+          />
           <AdminKpi label="Operator margin"  sw="Faida"         value={`${margin.toFixed(1)}%`} delta="vs 7-10% band" deltaDir={margin > 7 ? "up" : "flat"} />
           <AdminKpi label="Wallet liability" sw="Madeni"        value={`TZS ${formatTzsCompact(liability).replace("TZS ", "")}`} delta="real-time" />
           <AdminKpi label="Active players"   sw="Wachezaji"     value={activePeriod.toLocaleString()} delta={`${period}`} />
