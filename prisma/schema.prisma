@@ -217,6 +217,7 @@ model User {
   positions               Position[]
   marketComments          Comment[]
   totpSecret              TotpSecret?
+  totpBackupCodes         TotpBackupCode[]
   bonusGrants             BonusGrant[]
   inviteCampaigns         InviteCampaign[]
 
@@ -1089,6 +1090,21 @@ model TotpSecret {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   secret    String
   createdAt DateTime @default(now())
+}
+
+// One-time 2FA recovery codes. Stored HMAC-hashed (never plaintext); a code is
+// consumed exactly once (usedAt stamped) when a player logs in without their
+// authenticator. Regenerated as a set on enrollment / manual regenerate.
+model TotpBackupCode {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([userId, codeHash])
 }
 
 // ============================================================================

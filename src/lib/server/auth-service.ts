@@ -21,6 +21,7 @@ import { sendEmail, sendEmailToUser, welcomeHtml, loginNotificationHtml } from "
 import { displayLabel } from "@/lib/display-label";
 import { resolvePhoneEmail } from "./email-map";
 import { validatePasswordStrength } from "./password-policy";
+import { is2faEnabled } from "./player-2fa";
 
 /** Mask a phone for an audit payload — keep country code + last 2 (e.g.
  *  "+25570*****19"). The audit entry already carries actorId, so the full number
@@ -508,7 +509,7 @@ export type PasswordLoginInput = { phone: string; password: string };
 const LOCKOUT_MAX_FAILS = 5;
 const LOCKOUT_DURATION_MS = 30 * 60 * 1000;   // 30-minute lockout per LCCP guidance
 
-export async function loginWithPassword(input: PasswordLoginInput): Promise<ServiceResult<{ userId: string; role: string }>> {
+export async function loginWithPassword(input: PasswordLoginInput): Promise<ServiceResult<{ userId: string; role: string; twoFactorRequired?: boolean }>> {
   const parse = LoginRequestSchema.safeParse({ phone: input.phone });
   if (!parse.success) return { ok: false, error: parse.error.errors[0]?.message ?? "Invalid phone.", code: "INVALID" };
   const phone = parse.data.phone;
@@ -622,6 +623,17 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
 
   audit({ category: "AUTH", action: "user.login.password", actorId: user.id, targetType: "User", targetId: user.id, ip: meta.ip, userAgent: meta.ua });
 
+  // ── 2FA gate ──────────────────────────────────────────────────────────────
+  // The password is correct, but if the player has enabled TOTP we do NOT mint a
+  // session or send the "signed in" email here. We return a `twoFactorRequired`
+  // signal; the action issues a short-lived signed pending token and the session
+  // is created ONLY after the challenge passes (completeTwoFactorLogin). This is
+  // a true pre-session gate — no authenticated cookie exists until 2FA succeeds.
+  if (await is2faEnabled(user.id)) {
+    audit({ category: "SECURITY", action: "user.login.2fa_challenge", actorId: user.id, targetType: "User", targetId: user.id, ip: meta.ip });
+    return { ok: true, data: { userId: user.id, role: effectiveRole, twoFactorRequired: true } };
+  }
+
   // Bind env-mapped email (phone → email). Later this moves to KYC.
   const emailForPhone = resolvePhoneEmail(user.phoneE164);
   if (emailForPhone && user.email !== emailForPhone) {
@@ -651,4 +663,43 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
 
   return { ok: true, data: { userId: user.id, role: effectiveRole } };
   }); // end withLock login
+}
+
+/**
+ * Finalize a login that was gated by 2FA — mints the session AFTER the TOTP /
+ * backup-code challenge has been verified by the caller. Re-reads the user fresh
+ * (status may have changed since the password step) and mirrors the password
+ * path's tail: login-notification email + createSession + test-float. The caller
+ * (verifyLogin2faAction) is responsible for rate-limiting + verifying the code
+ * BEFORE calling this — this function does NOT verify any code.
+ */
+export async function completeTwoFactorLogin(userId: string): Promise<ServiceResult<{ role: string }>> {
+  const user = await db.user.findById(userId);
+  if (!user) return { ok: false, error: "Account not found.", code: "NOT_FOUND" };
+  if (user.status === "SELF_EXCLUDED" || user.status === "SUSPENDED" || user.status === "CLOSED") {
+    return { ok: false, error: "Account not available.", code: "SUSPENDED" };
+  }
+  const meta = await clientMeta();
+
+  const emailForPhone = resolvePhoneEmail(user.phoneE164);
+  if (emailForPhone && user.email !== emailForPhone) await db.user.update(user.id, { email: emailForPhone });
+  const userEmail = emailForPhone ?? user.email;
+  if (userEmail) {
+    sendEmail({
+      to: userEmail,
+      subject: "Signed in · Umeingia 50pick",
+      html: loginNotificationHtml({ name: displayLabel({ id: user.id, displayName: user.displayName }), time: new Date().toLocaleString("en-GB", { timeZone: "Africa/Dar_es_Salaam" }), ip: meta.ip ?? "unknown" }),
+      tag: "login",
+    }).catch(() => {});
+  }
+
+  await createSession({
+    userId: user.id,
+    phoneE164: user.phoneE164,
+    role: user.role,
+    kycStatus: (await db.kyc.findByUserId(user.id))?.status ?? "NOT_STARTED",
+  });
+  await applyTestFloat(user.id);
+  audit({ category: "SECURITY", action: "user.login.2fa_verified", actorId: user.id, targetType: "User", targetId: user.id, ip: meta.ip });
+  return { ok: true, data: { role: user.role } };
 }

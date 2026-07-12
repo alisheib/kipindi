@@ -1,7 +1,20 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { loginWithPassword, requestLoginOtp, verifyOtpAndAuth } from "@/lib/server/auth-service";
+import { cookies } from "next/headers";
+import { loginWithPassword, requestLoginOtp, verifyOtpAndAuth, completeTwoFactorLogin } from "@/lib/server/auth-service";
+import { signSession, verifySession } from "@/lib/server/crypto";
+import { rateCheck } from "@/lib/server/rate-limit";
+import { verifyPlayer2faChallenge } from "@/lib/server/player-2fa";
+
+/** Short-lived, HMAC-signed pre-session token proving the password step passed. */
+const PENDING_2FA_COOKIE = "kp_pending_2fa";
+const PENDING_2FA_TTL_MS = 5 * 60 * 1000;
+
+function sanitizeNext(raw: string): string {
+  const next = /^\/(?![/\\])/.test(raw) ? raw : "";
+  return next && !next.startsWith("/auth/") ? next : "";
+}
 
 /**
  * Phone + password sign-in. The OTP path below is preserved verbatim;
@@ -35,10 +48,55 @@ export async function startLoginAction(formData: FormData) {
     if (safeNext) params.set("next", safeNext);
     redirect(`/auth/login?${params.toString()}`);
   }
+  // 2FA gate — the password was correct but the player has TOTP enabled. No
+  // session was minted; issue a short-lived signed pending token and divert to
+  // the challenge. The token is HMAC-signed (unforgeable) + expires in 5 min.
+  if (result.data?.twoFactorRequired && result.data.userId) {
+    const jar = await cookies();
+    jar.set(PENDING_2FA_COOKIE, signSession({ p: "login-2fa", uid: result.data.userId, exp: Date.now() + PENDING_2FA_TTL_MS }), {
+      httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: PENDING_2FA_TTL_MS / 1000,
+    });
+    redirect((`/auth/2fa${safeNext ? `?next=${encodeURIComponent(safeNext)}` : ""}`) as never);
+  }
   // Admins land directly in /admin; players honour the proxy's `next`
   // round-trip when present so the visitor lands back on the page they
   // tried to reach (e.g. /wallet, /positions). Falls back to home.
   if (result.data?.role && result.data.role !== "PLAYER" && result.data.role !== "AGENT") {
+    redirect((safeNext.startsWith("/admin") ? safeNext : "/admin") as never);
+  }
+  redirect((safeNext || "/?welcome=back") as never);
+}
+
+/**
+ * Verify the login-time 2FA challenge (TOTP or a one-time backup code). Reads the
+ * signed pending token (proof the password step passed), rate-limits the attempt,
+ * verifies the code, and ONLY THEN mints the real session. No authenticated
+ * cookie exists until this succeeds.
+ */
+export async function verifyLogin2faAction(formData: FormData) {
+  const code = String(formData.get("code") ?? "");
+  const safeNext = sanitizeNext(String(formData.get("next") ?? ""));
+  const jar = await cookies();
+  const payload = verifySession<{ p?: string; uid?: string }>(jar.get(PENDING_2FA_COOKIE)?.value);
+  if (!payload || payload.p !== "login-2fa" || !payload.uid) {
+    redirect("/auth/login?error=session_expired");
+  }
+  const userId = payload!.uid!;
+  const nextParam = safeNext ? `&next=${encodeURIComponent(safeNext)}` : "";
+  const rl = rateCheck(userId, "totp.verify");
+  if (!rl.allowed) {
+    redirect((`/auth/2fa?error=rate_limited${nextParam}`) as never);
+  }
+  const proof = await verifyPlayer2faChallenge(userId, code);
+  if (!proof) {
+    redirect((`/auth/2fa?error=invalid${nextParam}`) as never);
+  }
+  const done = await completeTwoFactorLogin(userId);
+  jar.delete(PENDING_2FA_COOKIE);
+  if (!done.ok) {
+    redirect("/auth/login?error=blocked");
+  }
+  if (done.data?.role && done.data.role !== "PLAYER" && done.data.role !== "AGENT") {
     redirect((safeNext.startsWith("/admin") ? safeNext : "/admin") as never);
   }
   redirect((safeNext || "/?welcome=back") as never);

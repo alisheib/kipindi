@@ -578,6 +578,19 @@ const memoryDb = {
       }
       return sum;
     },
+    /** Per-user Σ of CONFIRMED signed amounts across the given txn types since a
+     *  cutoff (in-memory twin of the windowed Prisma aggregate). SIGNED sum —
+     *  BET_PLACED / WITHDRAWAL are negative money-out. Powers "Your activity". */
+    sumUserByTypesSince: (userId: string, sinceMs: number, types: StoredTxn["type"][]): number => {
+      const set = new Set<StoredTxn["type"]>(types);
+      let sum = 0;
+      for (const t of store.txns.values()) {
+        if (t.userId === userId && t.status === "CONFIRMED" && set.has(t.type) && Date.parse(t.createdAt) >= sinceMs) {
+          sum += t.amount;
+        }
+      }
+      return sum;
+    },
     /** Platform-wide Σ of CONFIRMED amounts across the given txn types (in-memory
      *  twin of the Prisma DB aggregate). Powers the landing "paid out" stats band. */
     sumConfirmedByTypes: (types: StoredTxn["type"][]): number => {

@@ -229,7 +229,9 @@ export default async function ProfilePage() {
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
           <SettingRow icon={I.gift}            title={t.profile.inviteEarn}          subtitle={t.profile.inviteEarnSub}         href="/profile/invite" accent badge={t.common.newBadge} />
           <SettingRow icon={I.user}            title={t.profile.myAccount}           subtitle={t.profile.myAccountSub}            href="/profile/account" />
+          <SettingRow icon={I.chart}           title={t.activity.title}              subtitle={t.activity.settingSub}             href="/profile/activity" />
           <SettingRow icon={I.settings}        title={t.profile.responsibleGambling} subtitle={t.profile.responsibleGamblingSub}              href="/profile/responsible-gambling" />
+          <SettingRow icon={I.keyRound}        title={t.security.title}              subtitle={t.security.settingSub}             href="/profile/security" />
           <SettingRow icon={I.shieldcheck}     title={t.common.verifyId}             subtitle={t.profile.verifyIdSub}            href="/profile/kyc" />
           <SettingRow icon={I.fileSignature}   title={t.profile.sourceOfFunds}       subtitle={t.profile.sourceOfFundsSub}                      href="/profile/source-of-funds" />
           <SettingRow icon={I.device}          title={t.profile.activeSessions}      subtitle={t.profile.activeSessionsSub}        href="/profile/sessions" />
