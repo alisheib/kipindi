@@ -161,7 +161,20 @@ the WHY, the kit pieces to reuse, the infra that already exists, and acceptance 
 - **Accept:** opt-in flow; subscription persisted; a real settled-result push arrives on
   a device; opt-out works; excluded users never receive; hardened (no send without consent).
 
-#### F5 · WhatsApp result / pick share cards
+#### F5 · WhatsApp result / pick share cards  ✅ SHIPPED 2026-07-13 (f58c0dd)
+- **Status:** DONE. Share a pick, and share a **REAL** win, WhatsApp-first, from the
+  positions list. **The anti-fabrication design is the point:** the OG card is a
+  PUBLIC url, so if the amount came from a query param (`?won=50000000`) anyone could
+  mint a branded "I won TZS 50M on 50pick" image. Instead a win card is addressed by an
+  **HMAC-signed token** our server mints only for the position's OWNER, and the amount
+  is **not in the token** — the renderer re-reads `finalPayout` from the ledger. An
+  injected `payout` field is ignored; forged/expired/tampered tokens fall back to the
+  ordinary market card. Losses, open bets and other players' positions can never be
+  minted as wins. For the same reason the share lives on the positions list and NOT on
+  the win-celebration popup (whose figure is a place-time localStorage projection that
+  would misstate the settled payout). `test:win-share` 25/25 (forge/tamper/expire/
+  inflate/cross-user). Gilt confined to the earned-money card; footer carries
+  GBT-licensed + 18+.
 - **What:** one-tap share of "I picked YES on [market]" and especially "I won TZS X ✅",
   rendering our per-market OG image, defaulting to WhatsApp (TZ's default channel).
 - **Why (acquisition):** cheapest authentic viral loop for Tanzania.

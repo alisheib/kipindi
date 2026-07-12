@@ -20,6 +20,20 @@ in-memory store (dev). Prod flag `USE_PRISMA_DAL=true` on Railway.
 ## 2 · Current state (feature-complete, hardening for launch)
 The platform is **feature-complete and passing its gates**. Recently landed:
 
+- **2026-07-13 · FEATURE F5 — WhatsApp share cards (pick + REAL win)** (`f58c0dd`) —
+  share a pick, and share a genuine win, from the positions list. **Anti-fabrication
+  is the whole design:** the OG card is a public URL, so a raw `?won=` param would let
+  anyone mint a branded "I won TZS 50M" image. A win card is instead addressed by an
+  **HMAC-signed token** minted only for the position's OWNER, and the amount is *not in
+  the token* — the renderer re-reads `finalPayout` from the ledger, so an injected
+  amount is ignored and a forged/expired token falls back to the ordinary market card.
+  Losses / open bets / other players' positions can never be minted as wins. The share
+  deliberately lives on the positions list, NOT the win-celebration popup (its figure
+  is a place-time localStorage projection that would misstate the settled payout).
+  New `test:win-share` 25/25 → `test:all` **50/51**. i18n 1315³. Live-drive: settled a
+  real bet and shared it — WhatsApp text read "I won TZS 7,963" against a ledger
+  finalPayout of exactly 7,963; OG card numbers reconcile (7,963 − 5,000 = +2,963).
+
 - **2026-07-13 · FEATURES F3 + F4 — watchlist/smart-alerts + web push** (`0ad5525`) —
   **F3:** `Watchlist` model + ⭐ toggle on market detail (optimistic) + `/watchlist`
   view; a **closing-soon sweep** in the lifecycle ticker (idempotent via a
