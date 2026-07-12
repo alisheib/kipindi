@@ -13,7 +13,7 @@
  * artifact hash is the sha256 of the actual rendered PDF.
  */
 import { getAuditPage } from "./audit";
-import { db } from "./store";
+import { officerLabel } from "./actor-label";
 
 export type PackState = "draft" | "prepared" | "approved" | "submitted" | "acknowledged";
 
@@ -77,11 +77,6 @@ export function packIdFor(period: string): string {
   return `gbt-monthly:${period}`;
 }
 
-async function nameOf(id: string | null): Promise<string | null> {
-  if (!id) return null;
-  const u = await Promise.resolve(db.user.findById(id)).catch(() => null);
-  return u?.displayName?.trim() || id;
-}
 
 /** Derive the pack's current state + signatures from the audit trail. */
 export async function getReportPack(period = currentPackPeriod()): Promise<ReportPack> {
@@ -102,9 +97,9 @@ export async function getReportPack(period = currentPackPeriod()): Promise<Repor
     : "draft";
 
   const [preparedByName, approvedByName, submittedByName] = await Promise.all([
-    nameOf(prepared?.actorId ?? null),
-    nameOf(approved?.actorId ?? null),
-    nameOf(submitted?.actorId ?? null),
+    officerLabel(prepared?.actorId ?? null),
+    officerLabel(approved?.actorId ?? null),
+    officerLabel(submitted?.actorId ?? null),
   ]);
 
   const art = prepared?.payload as { filename?: string; sizeBytes?: number; sha256?: string; reference?: string } | undefined;

@@ -9,7 +9,7 @@ import { CountdownRing } from "@/components/positions/countdown-ring";
 import { getMarket, impliedYesPct, listPositionsForMarket } from "@/lib/server/market-service";
 import { getConflictedResolutionAllowed } from "@/lib/server/test-overrides";
 import { getAuditPage } from "@/lib/server/audit";
-import { db } from "@/lib/server/store";
+import { officerLabel } from "@/lib/server/actor-label";
 import { currentSession } from "@/lib/server/auth-service";
 import { formatDateTime, formatTzs } from "@/lib/utils";
 import { CEREMONY, SELECTION, bi } from "@/lib/admin-status-lexicon";
@@ -18,13 +18,6 @@ import { ResolutionCeremony } from "./resolution-ceremony";
 export const metadata = { title: "Admin · Resolution ceremony" };
 export const dynamic = "force-dynamic";
 
-async function officerName(id: string | null): Promise<string | null> {
-  if (!id) return null;
-  if (id.startsWith("system")) return id;
-  // db.user.findById is a SYNC lookup in the dev store — wrap so .catch works.
-  const u = await Promise.resolve(db.user.findById(id)).catch(() => null);
-  return u?.displayName?.trim() || id;
-}
 
 export default async function ResolutionCeremonyPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -48,7 +41,7 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
   const testingOverride = await getConflictedResolutionAllowed().catch(() => false);
   const isSelfCountersign = stage === "stage2" && !!currentOfficerId && currentOfficerId === stage1By && !testingOverride;
 
-  const [officerA, officerB] = await Promise.all([officerName(stage1By), officerName(stage2By)]);
+  const [officerA, officerB] = await Promise.all([officerLabel(stage1By), officerLabel(stage2By)]);
 
   // Evidence + attestation timeline from the immutable audit trail (bounded scan).
   const resolutionAudit = getAuditPage({ category: "ADMIN", limit: 500 })
