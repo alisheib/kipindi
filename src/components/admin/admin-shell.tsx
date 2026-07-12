@@ -109,11 +109,13 @@ export async function AdminTopBar({ crumbs, session, activeKey }: { crumbs: stri
       </nav>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        {/* Back to the player app — the console had no clean way out. Understated
-            ghost pill; collapses to icon-only on narrow viewports. Mirrors the
-            player-side "Staff console" jump, closing the admin↔player loop. */}
+        {/* Back to the player app — lands on the landing/home ("/"), the app's
+            hub (hero + live markets + stats + full bottom-nav), NOT the raw
+            /markets board which reads as a dead-end. Understated ghost pill;
+            collapses to icon-only on narrow viewports. Mirrors the player-side
+            "Staff console" jump, closing the admin↔player loop. */}
         <Link
-          href="/markets"
+          href="/"
           aria-label="Back to app"
           className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-border bg-bg-inset text-text-secondary hover:text-text hover:border-border-strong hover:bg-bg-elevated transition-colors font-mono text-micro tracking-[0.10em] uppercase"
         >
