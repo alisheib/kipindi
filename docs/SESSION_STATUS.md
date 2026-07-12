@@ -1,6 +1,6 @@
 # 50pick / Kipindi — Session status & handover
 
-**Updated:** 2026-07-11 (Phase E audit) · **Branch:** `main` · **HEAD:** see `git log -1`
+**Updated:** 2026-07-12 (solo-resolution prod-lock hotfix + Track 2b money-format client subset) · **Branch:** `main` · **HEAD:** see `git log -1`
 **Live:** https://kipindi-production.up.railway.app (Railway auto-deploys on push to `main`; custom domain `www.50pick.tz` registered but **not cut over** — DNS pending).
 
 > This is the **read-first** doc. It's a current-state snapshot + the launch
@@ -19,6 +19,12 @@ in-memory store (dev). Prod flag `USE_PRISMA_DAL=true` on Railway.
 
 ## 2 · Current state (feature-complete, hardening for launch)
 The platform is **feature-complete and passing its gates**. Recently landed:
+
+- **2026-07-12 · solo-resolution prod-lock removed** (`8e0cde3`) — see Launch
+  blocker #6 + `[[project_kipindi_solo_resolution]]`. **2026-07-12 · Track 2b
+  money-format (client subset)** (`657c7f9`) — 12 client TZS renders routed
+  through `formatTzs`/`formatTzsSigned`; server subset (~72 sites) is next.
+  See `docs/status-lexicon-inventory.md` for the Track 2a status-lexicon plan.
 
 - **Phase E — security/compliance/money-safety audit (2026-07-11)** — 6 findings
   fixed & shipped incl. a 🔴CRITICAL money race (`cashOutPosition` now holds the
