@@ -55,6 +55,15 @@ The platform is **feature-complete and passing its gates**. Recently landed:
   collapse — closesIn/waitingForResults/recentlyResolved — is a separate
   test:i18n-path task.)_
 
+- **2026-07-12 · Perfection items (c)–(f) + Track 1 Phase D perf baseline** —
+  (c) `band()`+`<ScoreBadge>` (score→tone, byte-proof); (d) `officerLabel()`/`playerLabel()`
+  (one by-id name resolver, 2 dupes removed); (e) Chip variant set documented + 4
+  identical pairs de-duped to shared bases; (f) `defineConfig()` factory (bonus + proposals
+  configs migrated, 7 custom modules flagged). Each: tsc + admin-grids-smoke 125/125 +
+  fresh-server verify + test:all 45/45, shipped separately. **Phase D perf:** `next build`
+  passes; new `npm run perf:smoke` harness (Playwright+CDP, CPU×4 mobile vs live prod) —
+  baseline **JS ~410 kB gzip, LCP 1.9–3.1 s, FCP 1.2–1.7 s (within budget)**; on 2G LCP
+  5.6–19.8 s (landing heaviest → JS-reduction follow-up). See `docs/ui-rollout-tracker.md`.
 - **2026-07-12 · Track 2a·4 — Family 4 (KYC/DSAR review states) · CLOSES TRACK 2a** —
   added the `REVIEW` lexicon group + `<KycStatusBadge>`/`<DsarStatusBadge>`; migrated
   the KYC chips (players/[id]) + DSAR chip (privacy). Officers no longer see raw
