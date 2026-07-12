@@ -182,7 +182,10 @@ export function NotificationsPanel() {
         onClick={() => setOpen((v) => !v)}
         data-unread={unread}
         className={cn(
-          "relative inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors",
+          // 40px button (scale token `7`) — was `h-10 w-10` which is 80px on this
+          // project's custom spacing scale (10 → 80px), oversizing the bell vs the
+          // 40px avatar and overflowing the phone top-bar. Now matches the avatar.
+          "relative inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors",
           open ? "bg-bg-overlay/60 text-text" : "text-text-subtle hover:text-text hover:bg-bg-overlay/40",
         )}
       >
@@ -192,12 +195,11 @@ export function NotificationsPanel() {
             aria-hidden
             className="notif-badge-pulse"
             style={{
-              // The bell button renders 80px with the 20px glyph centred (inset
-              // ~30px), so the badge hugs the bell's top-right edge — not the far
-              // button corner (was top:14/right:5, which floated it away).
+              // 40px button with the 20px glyph centred (glyph spans 10–30px);
+              // the badge hugs the glyph's top-right corner.
               position: "absolute",
-              top: 24,
-              right: 20,
+              top: 3,
+              right: 1,
               minWidth: 18,
               height: 18,
               borderRadius: 9,

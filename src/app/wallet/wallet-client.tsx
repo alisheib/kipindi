@@ -366,7 +366,7 @@ export function WalletPageClient({
 
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
-      <header className="flex items-end justify-between gap-3">
+      <header className="flex flex-col items-start gap-3 sm:flex-row sm:items-end sm:justify-between">
         <PageHeader eyebrow={t.common.walletLabel} title={t.common.yourFunds} />
         {isAuthed && (
           <div className="flex items-center gap-2 shrink-0">

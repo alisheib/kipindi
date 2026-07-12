@@ -53,10 +53,13 @@ export async function AuthShell({ children }: { children: React.ReactNode }) {
           </div>
         </aside>
 
-        {/* Form column. */}
-        <div className="relative grid place-items-center px-3 py-8">
+        {/* Form column. Uses flex (not `grid place-items-center`): a centered grid
+            track auto-sizes to the form's max-content width (~398px from the big
+            heading) and, with `overflow:clip` on <main>, silently clips the form
+            off a 320px phone. Flex sizes the child to the column width instead. */}
+        <div className="relative flex items-center justify-center px-3 py-8">
           <BrandTopo id="auth-form-topo" opacity={0.09} />
-          <div className="relative w-full max-w-md">
+          <div className="relative w-full min-w-0 max-w-md">
             {/* Mobile lockup — the rail carries it on lg. */}
             <Link href="/" aria-label="50pick home" className="mb-6 inline-block lg:hidden">
               <FiftyLockup size={22} />

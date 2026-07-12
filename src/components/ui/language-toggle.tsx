@@ -34,7 +34,8 @@ export function LanguageToggle() {
             aria-pressed={active}
             onClick={() => setLocale(code)}
             style={{
-              padding: "4px 9px",
+              // 6px vertical → ~24px tap height (WCAG 2.5.8 AA); visible only ≥sm
+              padding: "6px 9px",
               borderRadius: "var(--r-pill)",
               fontSize: 11.5,
               fontWeight: 600,

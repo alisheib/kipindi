@@ -64,18 +64,21 @@ export function ReferralShare({ link, shareText }: { link: string; shareText: st
       <Button variant="gold" size="lg" fullWidth leading={<I.share s={17} />} onClick={share}>
         {t.profile.shareWithFriends}
       </Button>
-      <div className="mt-2.5 flex gap-2">
-        <a href={waHref} target="_blank" rel="noopener noreferrer" className="flex-1">
+      {/* 2-up on phones (3-up won't fit "Copy link" at 320), 3-up from sm.
+          Grid tracks are minmax(0,1fr) so cells shrink cleanly; Copy link spans
+          the full width on the phone's second row for balance. */}
+      <div className="mt-2.5 grid grid-cols-2 sm:grid-cols-3 gap-2">
+        <a href={waHref} target="_blank" rel="noopener noreferrer" className="block min-w-0">
           <Button variant="ghost" size="md" fullWidth leading={<I.messageWhatsapp s={14} />} className="text-[12px]">
             WhatsApp
           </Button>
         </a>
-        <a href={smsHref} className="flex-1">
+        <a href={smsHref} className="block min-w-0">
           <Button variant="ghost" size="md" fullWidth leading={<I.comment s={14} />} className="text-[12px]">
             SMS
           </Button>
         </a>
-        <Button variant="ghost" size="md" fullWidth leading={<I.copy s={14} />} className="flex-1 text-[12px]" onClick={copy}>
+        <Button variant="ghost" size="md" fullWidth leading={<I.copy s={14} />} className="col-span-2 sm:col-span-1 min-w-0 text-[12px]" onClick={copy}>
           {t.common.copyLink}
         </Button>
       </div>

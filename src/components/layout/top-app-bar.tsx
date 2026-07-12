@@ -96,10 +96,19 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
           <LanguageToggle />
 
           {user.isAuthed && user.balance !== null && user.balance !== undefined && (
-            <>
+            // Balance glance-pill visibility follows available width:
+            //  • < sm (phones): hidden — pill(~109) + eye can't coexist with the
+            //    deposit/bell/avatar cluster; the account menu MUST stay reachable
+            //    on a 320px phone. Balance is one tap away on the Wallet tab.
+            //  • sm–lg (tablet portrait): shown — no desktop nav competing.
+            //  • lg–xl (1024–1279): hidden — the desktop nav turns on at lg and
+            //    leaves no room; keeping the pill here clipped the avatar off-screen.
+            //  • ≥ xl (1280+): shown — proven to fit (ui-regression 1280/1920).
+            <div className="hidden sm:flex lg:hidden xl:flex items-center gap-2">
               <WalletBalancePill balance={user.balance} />
-              <CashEye bare size={14} className="inline-flex text-[var(--gold-300)]" />
-            </>
+              {/* bare eye keeps the compact 14px glyph but takes a 40px hit area (WCAG 2.5.8) */}
+              <CashEye bare size={14} className="inline-flex items-center justify-center h-7 w-7 -mx-1 text-[var(--gold-300)]" />
+            </div>
           )}
 
           {user.isAuthed && !pathname.startsWith("/wallet/deposit") && (
