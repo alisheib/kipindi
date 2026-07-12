@@ -52,7 +52,23 @@ Drift lives in ADMIN (near-zero dict usage). Player surface already reads the di
   "SEALED · outcome" seal chip are a DIFFERENT enum — intentionally out of Family 1.
   Verified: tsc · admin-grids-smoke 125/125 · fresh-server 4/4 assertions (list + detail
   badges render, correct variants) + read screenshot · test:all 45/45.
-- **2a·4 — Family 4: KYC/withdrawal/proposal review states.**
+- **2a·4 — Family 4: KYC/withdrawal/proposal review states** ✅ **DONE 2026-07-12 — closes Track 2a.**
+  Added the `REVIEW` lexicon group (KYC: notStarted/inProgress/pendingReview/approved/rejected/
+  additionalInfo; DSAR: pending/fulfilled/rejected) + `<KycStatusBadge>` / `<DsarStatusBadge>`
+  (in status-badge.tsx) owning the enum→variant maps. Migrated the KYC chips (players/[id] header
+  + KYC-tab Status item) and the DSAR chip (privacy). **Fixed:** officers no longer see the raw
+  screaming enum ("PENDING_REVIEW", "ADDITIONAL_INFO_REQUIRED") — now "Pending review" /
+  "More information needed" (the latter reuses dict `kycMoreInfo`). Proposal review states were
+  ALREADY consolidated (dict-backed `<StatusBadge>`), so untouched. Withdrawal/AML txn states
+  render no raw-enum chip in the admin UI today (no work needed). Audit-log payloads intentionally
+  keep the raw enum (compliance precision). **Out of scope (different enum):** user account-status
+  (ACTIVE/PENDING_KYC/SUSPENDED/…) still raw in a few spots — a future "account-status" cleanup,
+  not a review state. Verified: tsc · admin-grids-smoke 125/125 · fresh-server 7/7 assertions
+  (KYC PENDING_REVIEW + ADDITIONAL_INFO both render clean labels, no underscored enum in any status
+  chip) + read screenshot · test:all 45/45.
+
+> **Track 2a (admin status-lexicon) COMPLETE** — Families 1–4 all shipped. `admin-status-lexicon.ts`
+> now holds CEREMONY + SELECTION + LIFECYCLE + REVIEW; badges live in `components/admin/status-badge.tsx`.
 
 ## Family 3 hardcoded sites (migrate in 2a·1)
 - app/admin/approvals/page.tsx:77 "Co-sign required"; :87 "Avg cosign time"; :133 "AML queue · awaiting first signature"; :174 "…pending review"; :98 body

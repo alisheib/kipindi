@@ -15,8 +15,10 @@
  * import (erased at build) so no server code is pulled into the bundle.
  */
 import { Chip } from "@/components/ui/chip";
-import { LIFECYCLE } from "@/lib/admin-status-lexicon";
+import { LIFECYCLE, REVIEW } from "@/lib/admin-status-lexicon";
 import type { MarketStatus } from "@/lib/server/market-service";
+import type { StoredKyc } from "@/lib/server/store";
+import type { DsarStatus } from "@/lib/server/privacy";
 
 type ChipVariant = "success" | "gold" | "warning" | "neutral";
 
@@ -50,4 +52,44 @@ export function MarketStatusBadge({
       {LABEL[status] ?? status}
     </Chip>
   );
+}
+
+/* ── KYC review status (Family 4) ────────────────────────────────────────── */
+
+type KycStatus = StoredKyc["status"];
+
+/** Byte-identical to the prior inline ternary: APPROVED→success, REJECTED→danger,
+ *  everything mid-review→warning. */
+export function kycStatusVariant(status: KycStatus): "success" | "danger" | "warning" {
+  return status === "APPROVED" ? "success" : status === "REJECTED" ? "danger" : "warning";
+}
+
+/** Human label for a KYC status (replaces the raw screaming enum). */
+export function kycStatusLabel(status: KycStatus): string {
+  const L: Record<KycStatus, string> = {
+    NOT_STARTED: REVIEW.kycNotStarted.en,
+    IN_PROGRESS: REVIEW.kycInProgress.en,
+    PENDING_REVIEW: REVIEW.kycPendingReview.en,
+    APPROVED: REVIEW.kycApproved.en,
+    REJECTED: REVIEW.kycRejected.en,
+    ADDITIONAL_INFO_REQUIRED: REVIEW.kycAdditionalInfo.en,
+  };
+  return L[status] ?? status;
+}
+
+export function KycStatusBadge({ status, size = "sm" }: { status: KycStatus; size?: "sm" | "md" | "lg" }) {
+  return <Chip size={size} variant={kycStatusVariant(status)}>{kycStatusLabel(status)}</Chip>;
+}
+
+/* ── DSAR / privacy-request status (Family 4) ────────────────────────────── */
+
+/** Byte-identical to privacy/page's prior ternary: PENDING→warning,
+ *  FULFILLED→success, REJECTED→danger. */
+export function DsarStatusBadge({ status, size = "sm" }: { status: DsarStatus; size?: "sm" | "md" | "lg" }) {
+  const variant = status === "PENDING" ? "warning" : status === "FULFILLED" ? "success" : "danger";
+  const label =
+    status === "PENDING" ? REVIEW.dsarPending.en
+    : status === "FULFILLED" ? REVIEW.dsarFulfilled.en
+    : REVIEW.dsarRejected.en;
+  return <Chip size={size} variant={variant}>{label}</Chip>;
 }

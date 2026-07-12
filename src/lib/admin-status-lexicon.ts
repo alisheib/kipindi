@@ -117,3 +117,31 @@ export const LIFECYCLE = {
   resolved: { en: "Resolved" },
   voided:   { en: "Voided" },
 } satisfies Record<string, AdminLabel>;
+
+/**
+ * FAMILY 4 — review-workflow states (KYC + DSAR).
+ * Human labels for the review enums that were being rendered raw to officers —
+ * `<Chip>{kyc.status}</Chip>` printed the screaming enum "PENDING_REVIEW" /
+ * "ADDITIONAL_INFO_REQUIRED" (underscores and all), and the DSAR chip printed
+ * "FULFILLED". Rendered through `<KycStatusBadge>` / `<DsarStatusBadge>`
+ * (src/components/admin/status-badge.tsx), which own the enum→variant mapping.
+ * EN-only (officer console). "additional-info" reuses the player dict wording
+ * ("More information needed", i18n-dict `kycMoreInfo`).
+ *
+ * Proposal review states are NOT here — they already flow through the trilingual
+ * dict via `<StatusBadge>` (src/components/proposals/status-badge.tsx).
+ * Withdrawal/AML txn states render no raw-enum chip in the admin UI today.
+ */
+export const REVIEW = {
+  // KYC (StoredKyc.status)
+  kycNotStarted:      { en: "Not started" },
+  kycInProgress:      { en: "In progress" },
+  kycPendingReview:   { en: "Pending review" },
+  kycApproved:        { en: "Approved" },
+  kycRejected:        { en: "Rejected" },
+  kycAdditionalInfo:  { en: "More information needed" },
+  // DSAR / privacy request status
+  dsarPending:        { en: "Pending" },
+  dsarFulfilled:      { en: "Fulfilled" },
+  dsarRejected:       { en: "Rejected" },
+} satisfies Record<string, AdminLabel>;

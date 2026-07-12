@@ -12,6 +12,7 @@ import { exportUserData } from "@/lib/server/user-service";
 import { I } from "@/components/ui/glyphs";
 import { formatTzs, formatTzsCompact, formatDateTime, formatDateShort } from "@/lib/utils";
 import { displayLabel, displayInitials } from "@/lib/display-label";
+import { KycStatusBadge, kycStatusLabel, kycStatusVariant } from "@/components/admin/status-badge";
 import { KycReviewControls } from "@/components/admin/kyc-review-controls";
 import { SuspendControls } from "./suspend-controls";
 import { SetEmailForm } from "./set-email-form";
@@ -169,9 +170,9 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                 <Chip size="sm" variant={STATUS_VARIANT[user.status] ?? "neutral"}>● {user.status}</Chip>
                 {kyc && (
                   <a href={`/admin/players/${id}?tab=kyc`} className="inline-block hover:opacity-80 transition-opacity">
-                    <Chip size="sm" variant={kyc.status === "APPROVED" ? "success" : kyc.status === "REJECTED" ? "danger" : "warning"}>
+                    <Chip size="sm" variant={kycStatusVariant(kyc.status)}>
                       {kyc.status === "APPROVED" ? <I.shieldcheck s={10} className="inline -mt-0.5 mr-0.5" /> : <I.shieldAlert s={10} className="inline -mt-0.5 mr-0.5" />}
-                      KYC · {kyc.status}
+                      KYC · {kycStatusLabel(kyc.status)}
                     </Chip>
                   </a>
                 )}
@@ -387,7 +388,7 @@ function KycTab({ kyc, userEmail, userId }: { kyc: Awaited<ReturnType<typeof db.
       </div>
 
       <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-caption">
-        <Item label="Status" value={<Chip size="sm" variant={kyc.status === "APPROVED" ? "success" : kyc.status === "REJECTED" ? "danger" : "warning"}>{kyc.status}</Chip>} />
+        <Item label="Status" value={<KycStatusBadge status={kyc.status} />} />
         <Item label="NIDA number" value={<span className="font-mono">{kyc.nidaNumber ? `${kyc.nidaNumber.slice(0, 4)}…${kyc.nidaNumber.slice(-4)}` : "—"}</span>} />
         <Item label="Full name" value={kyc.fullName ?? "—"} />
         <Item label="DOB" value={kyc.dob ?? "—"} />

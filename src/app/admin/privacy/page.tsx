@@ -12,6 +12,7 @@ import { listDsarRequests } from "@/lib/server/privacy";
 import { ExportDsarBundleButton, FulfillDsarButton } from "./dsar-controls";
 import { formatDateTime } from "@/lib/utils";
 import { I } from "@/components/ui/glyphs";
+import { DsarStatusBadge } from "@/components/admin/status-badge";
 
 export const metadata = { title: "Admin · Privacy / DSAR" };
 export const dynamic = "force-dynamic";
@@ -83,7 +84,7 @@ export default async function AdminPrivacyPage({
                     </td>
                     <td className="p-3 text-text-tertiary max-w-[260px] truncate">{r.reason ?? "—"}</td>
                     <td className="p-3">
-                      <Chip size="sm" variant={r.status === "PENDING" ? "warning" : r.status === "FULFILLED" ? "success" : "danger"}>{r.status}</Chip>
+                      <DsarStatusBadge status={r.status} />
                     </td>
                     <td className="p-3">
                       {r.status === "PENDING" ? (

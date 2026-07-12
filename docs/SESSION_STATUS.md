@@ -51,9 +51,22 @@ The platform is **feature-complete and passing its gates**. Recently landed:
   (now mirrors the real sentence-cased player wording). Present/past "Bets
   close"/"Bets closed" tense split kept intentionally. Verified: admin-grids-smoke
   125/125 + 9/9 fresh-server assertions + read screenshot + test:all 45/45.
-  **Next:** Track 2a·4 (Family 4 — KYC/withdrawal/proposal review states); then
-  items (c)–(f) + Track 1 Phase D perf. _(Player-dict intra-locale dupe collapse —
-  closesIn/waitingForResults/recentlyResolved — is a separate test:i18n-path task.)_
+  **Next:** items (c)–(f) + Track 1 Phase D perf. _(Player-dict intra-locale dupe
+  collapse — closesIn/waitingForResults/recentlyResolved — is a separate
+  test:i18n-path task.)_
+
+- **2026-07-12 · Track 2a·4 — Family 4 (KYC/DSAR review states) · CLOSES TRACK 2a** —
+  added the `REVIEW` lexicon group + `<KycStatusBadge>`/`<DsarStatusBadge>`; migrated
+  the KYC chips (players/[id]) + DSAR chip (privacy). Officers no longer see raw
+  `PENDING_REVIEW`/`ADDITIONAL_INFO_REQUIRED` — now "Pending review"/"More information
+  needed". Proposal states already dict-backed; audit payloads keep raw enums (compliance);
+  account-status enum is a separate future cleanup. Verified: admin-grids-smoke 125/125 +
+  7/7 fresh-server assertions + screenshot + test:all 45/45. **Track 2a (admin
+  status-lexicon) COMPLETE — Families 1–4; lexicon = CEREMONY+SELECTION+LIFECYCLE+REVIEW.**
+- **2026-07-12 · Admin "Back to app" → landing** — the admin topbar's "Back to app"
+  now lands on `/` (the landing hub), not the raw `/markets` board (Ali: felt like a
+  dead-end). One-line href in `admin-shell.tsx`. Verified: admin→click→lands on `/`
+  with full player nav; direct `/` load has no admin-chrome leak; test:all 45/45.
 
 - **2026-07-12 · Track 2a·3 — Family 1, shared `<MarketStatusBadge>`** — built
   `src/components/admin/status-badge.tsx` (the ONE market-lifecycle badge: owns
