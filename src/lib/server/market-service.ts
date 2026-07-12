@@ -1072,13 +1072,16 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   // that justifies the verdict). Recorded into the immutable audit payload at
   // each attestation so the fairness story is provable; capped defensively.
   const evidence = (opts.evidence ?? "").trim().slice(0, 2000) || null;
-  // TESTING override (default OFF): when an admin enables it on the resolver
-  // queue, a single officer may resolve a market end-to-end even if they hold a
-  // position in it — so a tester acting as admin + player can settle a market
-  // alone and have their own position pay out normally. It relaxes BOTH the
+  // Solo-resolution override (default OFF) — ⚠️ NOT FOR PRODUCTION, testing /
+  // consultant-evaluation only (see test-overrides.ts header). When an admin
+  // enables it on the resolver queue, a single officer may resolve a market
+  // end-to-end even if they hold a position in it — so a tester acting as admin
+  // + player can settle a market alone and have their own position pay out
+  // normally (win pays, loss deducted from their wallet). It relaxes BOTH the
   // position-conflict block (below) AND the "second officer must differ" gate
   // (stage-2). Every bypass is written to the COMPLIANCE trail; production
-  // behaviour is unchanged while the flag is OFF.
+  // behaviour is unchanged while the flag is OFF — and it MUST be OFF for any
+  // real-money launch (leaving it ON lets an admin pay their own bets).
   const testingResolveOverride = await getConflictedResolutionAllowed();
   // Officer-conflict hard-block (Elevation #12): an officer who holds a position
   // in this market MUST NOT resolve it — they have a financial interest in the

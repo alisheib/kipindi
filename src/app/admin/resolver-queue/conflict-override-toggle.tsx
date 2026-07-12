@@ -29,7 +29,7 @@ export function ConflictOverrideToggle({ enabled }: { enabled: boolean }) {
       }
       toast({
         title: r.enabled ? "Solo resolution ENABLED" : "Solo resolution disabled",
-        description: r.enabled ? "Testing only — one admin can now resolve a market alone, even one they bet on." : "Production rules restored — two distinct officers required; conflicted officers blocked.",
+        description: r.enabled ? "⚠ Not for production — one admin can now resolve a market alone, even one they bet on. Keep OFF before real-money launch." : "Two distinct officers required again; conflicted officers blocked.",
         variant: r.enabled ? "warning" : "success",
       });
       router.refresh();
@@ -42,7 +42,7 @@ export function ConflictOverrideToggle({ enabled }: { enabled: boolean }) {
       onClick={toggle}
       disabled={pending}
       aria-pressed={enabled}
-      title="Testing override — let one admin resolve a market alone (bypasses the two-officer rule + the position-conflict block)"
+      title="Solo resolution (NOT FOR PRODUCTION — testing/consultant only) — let one admin resolve a market alone, even one they bet on; bypasses the two-officer rule + the position-conflict block. Keep OFF before real-money launch."
       className="inline-flex items-center gap-2 rounded-md border px-2.5 h-8 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors disabled:opacity-50"
       style={
         enabled

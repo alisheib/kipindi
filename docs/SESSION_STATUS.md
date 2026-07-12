@@ -116,6 +116,17 @@ pre-deploy gauntlet `npm run qa:live`.
    that is now a `DateSelect` (hidden), so they die at registration. NOT in any
    gate (the gate is `qa:live`). Reviving = DateSelect-DOB entry + arm-the-dial;
    deferred maintenance.
+6. **🔴 Solo-resolution override MUST be OFF before real-money launch.** The
+   resolver-queue "Solo resolve" toggle (`allowConflictedResolution`, default OFF)
+   lets ONE admin resolve a market they bet on — a POCA §16 conflict of interest.
+   On **2026-07-12** the `NODE_ENV === "production"` hard-lock in
+   `src/lib/server/test-overrides.ts` was **removed at Ali's request** so a
+   consultant could evaluate the resolution flow on the live-config deployment
+   (the lock was blocking them). It is now enforceable **only by discipline** —
+   the toggle works in every environment. It is testing/consultant-only: leaving
+   it ON with real funds lets an admin pay their own bets. **Before go-live:
+   confirm it is OFF (and consider reinstating the hard-lock).** Every toggle +
+   bypass is in the COMPLIANCE audit trail.
 
 ## 5 · Risk register / gotchas (carry forward — these have bitten us)
 - **After `git pull`, run `npx prisma generate`** before trusting `tsc`. Schema
@@ -136,7 +147,9 @@ pre-deploy gauntlet `npm run qa:live`.
   `await Promise.resolve(db.x()).catch(...)` where async parity matters.
 - **First cold-compile of a new page ~30s (Turbopack)** — bump Playwright `goto`
   timeouts to 40s.
-- **Testing overrides default OFF in prod** — solo-resolution + payment kill-switches.
+- **Testing overrides default OFF** — payment kill-switches + solo-resolution.
+  ⚠️ Solo-resolution is **no longer prod-hard-locked** (removed 2026-07-12, see
+  Launch blocker #6) — it works everywhere and must be kept OFF for real money.
 
 ## 6 · Standing directives (Ali)
 - **Never fabricate** legal/business/audit data or history — flag placeholders.
