@@ -26,6 +26,22 @@ export async function toggleWatchAction(marketId: string): Promise<{ ok: boolean
   return { ok: true, watching };
 }
 
+/**
+ * F5 — mint a signed share token for a win the caller actually owns.
+ *
+ * Returns null for anything that is not a settled WIN belonging to this user, so
+ * a loss, an open bet, or someone else's position can never be shared as a win.
+ * The token names the position only — the amount is re-read from the ledger when
+ * the card renders, so the figure can never be fabricated via the URL.
+ */
+export async function mintWinShareTokenAction(positionId: string): Promise<{ ok: boolean; token?: string }> {
+  const s = await currentSession();
+  if (!s) return { ok: false };
+  const { mintWinShareToken } = await import("@/lib/server/share-token");
+  const token = await mintWinShareToken(s.userId, positionId);
+  return token ? { ok: true, token } : { ok: false };
+}
+
 /** Defense-in-depth: even though the /admin layout gates non-admin
  *  access at render time, the Server Action itself must refuse a
  *  privileged write if the caller is not actually an admin. A leaked

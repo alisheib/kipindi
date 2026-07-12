@@ -7,6 +7,7 @@ import { Countdown } from "@/components/markets/countdown";
 import { ShareButton } from "@/components/markets/share-button";
 import { WatchStar } from "@/components/markets/watch-star";
 import { isWatching } from "@/lib/server/watchlist-service";
+import { resolveWinShareToken } from "@/lib/server/share-token";
 import { SidePicker } from "@/components/markets/side-picker";
 import { ChartToggle } from "@/components/markets/chart-toggle";
 import { SellButton } from "@/components/markets/sell-button";
@@ -29,29 +30,46 @@ import { pickLocalized } from "@/lib/localized";
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+export async function generateMetadata(
+  { params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ w?: string }> },
+): Promise<Metadata> {
   const { id } = await params;
   let m: Awaited<ReturnType<typeof getMarket>> | null = null;
   try { m = await getMarket(id); } catch { /* graceful */ }
   if (!m) notFound();
   const { locale } = await getServerT();
   const yes = impliedYesPct(m);
-  const desc = `YES ${yes}% · NO ${100 - yes}%. Predict on 50pick.`;
+
+  // F5 — a shared WIN link carries a signed token. When it validates, the share
+  // preview becomes the win card. The token only names the position; the amount
+  // is re-read from the ledger by the OG renderer, so it can't be faked.
+  const { w } = await searchParams;
+  let win: Awaited<ReturnType<typeof resolveWinShareToken>> = null;
+  if (w) { try { win = await resolveWinShareToken(w); } catch { /* graceful */ } }
+  const isWin = !!win && win.marketId === id;
+
+  const desc = isWin
+    ? `Won ${formatTzs(win!.payout)} on ${win!.side} · ${m.titleEn}`
+    : `YES ${yes}% · NO ${100 - yes}%. Predict on 50pick.`;
+  const ogImage = isWin
+    ? `/api/og/market/${id}?w=${encodeURIComponent(w!)}`
+    : `/api/og/market/${id}`;
+
   return {
     // Browser-tab title follows the viewer's language; OG/Twitter cards stay
     // English (canonical — crawlers/share previews carry no locale cookie).
     title: pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh),
     description: desc,
     openGraph: {
-      title: m.titleEn,
+      title: isWin ? `Won ${formatTzs(win!.payout)} on 50pick` : m.titleEn,
       description: desc,
-      images: [{ url: `/api/og/market/${id}`, width: 1200, height: 630 }],
+      images: [{ url: ogImage, width: 1200, height: 630 }],
     },
     twitter: {
       card: "summary_large_image",
-      title: m.titleEn,
+      title: isWin ? `Won ${formatTzs(win!.payout)} on 50pick` : m.titleEn,
       description: desc,
-      images: [`/api/og/market/${id}`],
+      images: [ogImage],
     },
   };
 }
@@ -63,7 +81,7 @@ export default async function MarketDetail({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ side?: "YES" | "NO" }>;
+  searchParams: Promise<{ side?: "YES" | "NO"; w?: string }>;
 }) {
   const { t, locale } = await getServerT();
   const { id } = await params;

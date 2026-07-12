@@ -6,6 +6,7 @@ import { Cash } from "@/components/ui/cash";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
+import { PositionShare } from "@/components/markets/position-share";
 
 type Props = {
   marketId: string;
@@ -19,10 +20,12 @@ type Props = {
   placedAt?: string;
   /** Position reference (e.g. pos_a1b2c3d4e5) — the ticket number quoted in emails. */
   positionId?: string;
+  /** The viewer's affiliate code, so a share carries their referral link. */
+  refCode?: string;
   className?: string;
 };
 
-export function PositionCard({ marketId, marketTitle, side, stake, current, payout, status, placedAt, positionId, className }: Props) {
+export function PositionCard({ marketId, marketTitle, side, stake, current, payout, status, placedAt, positionId, refCode, className }: Props) {
   const { t } = useT();
   const statusLabel = {
     OPEN: t.common.pending,
@@ -77,6 +80,22 @@ export function PositionCard({ marketId, marketTitle, side, stake, current, payo
         <div className="grid grid-cols-2 gap-3">
           <Stat label={t.market.finalLabel} value={formatTzs(current)} money />
           <Stat label={t.dialog.payoutLabel} value={formatTzs(payout)} tone={status === "WIN" ? "gold" : "default"} money />
+        </div>
+      )}
+
+      {/* F5 — share. A WIN shares the REAL settled payout (server-minted signed
+          token); an OPEN position shares the pick. Losses/voids get no share. */}
+      {(status === "WIN" || status === "OPEN") && (
+        <div className="mt-3 flex justify-end border-t border-border/60 pt-3">
+          <PositionShare
+            marketId={marketId}
+            marketTitle={marketTitle}
+            side={side}
+            positionId={positionId}
+            won={status === "WIN"}
+            payout={payout}
+            refCode={refCode}
+          />
         </div>
       )}
     </Link>

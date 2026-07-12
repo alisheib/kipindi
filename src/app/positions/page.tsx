@@ -9,6 +9,7 @@ import { SellButton } from "@/components/markets/sell-button";
 import { formatTzsCompact } from "@/lib/utils";
 import { listPositionsForUser, getMarket, cashOutValue, isSelectionClosed } from "@/lib/server/market-service";
 import { currentSession } from "@/lib/server/auth-service";
+import { ensureAffiliateAccount } from "@/lib/server/affiliate-service";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
@@ -31,6 +32,8 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
   // Fetch the full history (no silent 100-cap), then paginate the settled
   // archive with the shared player page size so older positions stay reachable.
   const positions = await listPositionsForUser(session.userId, 5_000).catch(() => []);
+  // F5 — the viewer's affiliate code, so a shared pick/win carries their link.
+  const myRefCode = await ensureAffiliateAccount(session.userId).then((a) => a.code).catch(() => undefined);
   const open = positions.filter((p) => p.status === "OPEN");
   const settled = positions.filter((p) => p.status !== "OPEN");
 
@@ -201,6 +204,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                     status="OPEN"
                     placedAt={p.placedAt}
                     positionId={p.id}
+                    refCode={myRefCode}
                   />
                   {(() => {
                     const cutoffIso = m.selectionClosedAt ?? m.resolutionAt;
@@ -267,6 +271,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                     status={p.status as "WIN" | "LOSS" | "VOID" | "CASHED_OUT"}
                     placedAt={p.placedAt}
                     positionId={p.id}
+                    refCode={myRefCode}
                   />
                 );
               })}

@@ -787,6 +787,13 @@ export const dict = {
       errInvalid: "That code didn’t match.",
       errGeneric: "Something went wrong. Try again.",
     },
+    share: {
+      sharePick: "Share pick",
+      shareWin: "Share win",
+      pickedText: "I picked {side} on “{title}” — 50pick",
+      wonText: "I won {amount} on “{title}” — 50pick",
+      errGeneric: "Couldn’t create the share link.",
+    },
     watchlist: {
       eyebrow: "Following",
       title: "Watchlist",
@@ -1902,6 +1909,13 @@ export const dict = {
       errInvalid: "Msimbo haukulingana.",
       errGeneric: "Hitilafu imetokea. Jaribu tena.",
     },
+    share: {
+      sharePick: "Shiriki chaguo",
+      shareWin: "Shiriki ushindi",
+      pickedText: "Nimechagua {side} kwenye “{title}” — 50pick",
+      wonText: "Nimeshinda {amount} kwenye “{title}” — 50pick",
+      errGeneric: "Imeshindwa kutengeneza kiungo cha kushiriki.",
+    },
     watchlist: {
       eyebrow: "Unafuatilia",
       title: "Orodha ya kufuatilia",
@@ -3015,6 +3029,13 @@ export const dict = {
       errRateLimited: "尝试次数过多，请稍候。",
       errInvalid: "验证码不匹配。",
       errGeneric: "出错了，请重试。",
+    },
+    share: {
+      sharePick: "分享选择",
+      shareWin: "分享战绩",
+      pickedText: "我在“{title}”选择了 {side} — 50pick",
+      wonText: "我在“{title}”赢得了 {amount} — 50pick",
+      errGeneric: "无法生成分享链接。",
     },
     watchlist: {
       eyebrow: "关注中",
