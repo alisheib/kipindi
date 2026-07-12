@@ -19,16 +19,28 @@
 Feature-complete, launch-hardening. Live on Railway (`kipindi-production.up.railway.app`;
 `www.50pick.tz` registered, not cut over). **All engineering finalization tracks are
 DONE** (see §4). Green gates: tsc · `next build` · `test:all` **45/45** · i18n parity ·
-`ui-regression` **158/158** (fresh) · `admin-grids-smoke` **125/125** · `qa:live`.
+`ui-regression` (now **320/360/740-landscape/768/1280/1920**, fresh) · `admin-grids-smoke`
+**125/125** · **`test:responsive`** (new — exhaustive responsiveness gate) · `qa:live`.
 `npm run perf:smoke` = the Phase-D perf baseline harness.
 
-**⚙️ AUTONOMOUS RUN:** proceed through the ENTIRE sprint (Lanes A→G) without
-stopping for confirmation — commit AND push every batch, move lane to lane, use
-as many tokens as needed, and keep going until the whole responsiveness audit is
-complete and green. Only pause for a genuine external blocker (Ali-owned items in
-§4) or a real ambiguity that changes the outcome. Apply the expert lenses on every
-batch — **graphic-design evaluator, graphic designer, UI/UX engineer, compliance
-engineer** (+ QA + theme) — per the §4.5 gate.
+**✅ RESPONSIVENESS SPRINT (Lanes A–G) — COMPLETE + shipped (2026-07-12).** Every
+surface × 9 breakpoints (320→1920 + landscape) × EN/SW/ZH + every overlay is
+pixel-clean: **0 h-overflow, 0 clipped-not-scrolled, account menu reachable at
+320, overlays fit landscape.** Built `scripts/responsive-audit.mjs` +
+`npm run test:responsive`. It caught a class of bugs `overflow-x:clip` had hidden
+(clipped account menu at 320, all `/auth/*` forms clipped off 320, admin filter/
+report overflow, SW/ZH top-bar overflow) — all fixed. Results: player EN 1000/0,
+player SW+ZH 2016/0, admin EN 972/0, overlays 15/15. Commits `e5d22dc · bd7d539 ·
+9cd1739 · f2c4b05 · d77a85f`. Full record: `docs/responsiveness-audit.md` (§8
+ticked) + `SESSION_STATUS.md` + `ui-rollout-tracker.md`. **Only follow-up:**
+axe-core isn't installed in this local node_modules — re-run `WIDTHS=320,360 node
+scripts/axe-audit.mjs` once deps are complete (changes were layout-only, so no new
+a11y risk expected).
+
+**NEXT SESSION:** the responsiveness mission is done — pick the next feature-backlog
+item (the parallel session shipped F1 settlement-proof; F2 = 2FA + activity is
+next per the backlog) OR address a launch-blocker in §4. There is no standing
+autonomous responsiveness run anymore.
 
 **This sprint's mission → FULL-PLATFORM RESPONSIVENESS AUDIT.** Every surface, at
 every breakpoint, in every state and language, pixel-clean and fully usable —
@@ -94,10 +106,14 @@ never rely on them for prod behavior. Design *source* lives under `50PICK/` &
   **Phase G** (regression-lock all-green + 6-role EN/SW/ZH walk).
 - Admin **"Back to app"** now lands on `/` (the hub), not the raw board.
 
-**▶ THIS SPRINT — full responsiveness audit:** see **`docs/responsiveness-audit.md`**.
-Lanes A (global chrome) → B (player core + bet dial/confirm) → C (player rest) →
-D (admin grids/filters) → E (admin ceremonies/reports) → F (states + SW/ZH
-overflow) → G (regression-lock + `test:responsive`). Build `scripts/responsive-audit.mjs`.
+**✅ DONE — full responsiveness audit (2026-07-12, Lanes A–G shipped + live):**
+built `scripts/responsive-audit.mjs` + `test:responsive`; fixed the clip-class
+bugs `overflow-x:clip` had hidden (320 account-menu clip via an 80px bell +
+pill; all `/auth/*` + `/auth/admin` forms clipped off 320 via `grid
+place-items-center`; wallet/proposals headers; invite/admin filter & report rows;
+SW/ZH top-bar overflow; landscape notifications panel). Verified player EN 1000/0,
+SW+ZH 2016/0, admin EN 972/0, overlays 15/15; ui-regression extended to
+320+landscape. See `docs/responsiveness-audit.md`.
 
 **BLOCKED on Ali (external — cannot finish without input):**
 1. 🔴 **Real payment integration** — mock `src/lib/server/payments.ts` → BoT

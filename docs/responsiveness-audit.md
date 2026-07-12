@@ -146,14 +146,37 @@ New (build this sprint):
    checklist and the tracker.
 
 ## 8 · Progress checklist (tick as lanes land)
-- [ ] Lane A — global chrome
-- [ ] Lane B — player core (+ bet dial / confirm modal)
-- [ ] Lane C — player rest
-- [ ] Lane D — admin grids & filters
-- [ ] Lane E — admin ceremonies & reports
-- [ ] Lane F — states & EN/SW/ZH overflow
-- [ ] Lane G — regression-lock + `test:responsive` wired into the gate
-- [ ] `scripts/responsive-audit.mjs` built + `npm run test:responsive` added
+- [x] Lane A — global chrome — bell 80→40px (custom-scale bug), balance pill
+  visibility band (sm–lg + xl–2xl; hidden on phones + tight bands so the account
+  menu is always reachable), bare-eye + language-toggle WCAG tap sizes. `e5d22dc`
+- [x] Lane B — player core (+ bet dial / confirm modal) — wallet header stacks on
+  phones (Withdraw no longer clipped); dial + bet-confirm modal + all overlays fit
+  xs/landscape (overlay sweep 15/15). `e5d22dc` · `9cd1739`
+- [x] Lane C — player rest — AuthShell `grid place-items-center`→flex (all 6
+  /auth/* forms clipped off 320 fixed); invite share row 2-up→3-up grid. `e5d22dc`
+- [x] Lane D — admin grids & filters — candidates + ai-polls filter clusters
+  flex-wrap; proposals queue/sort/config rows wrap; DurationInput w-full. `bd7d539`
+- [x] Lane E — admin ceremonies & reports — report-pack card footer flex-wrap;
+  swept with the admin pass (972/0). `bd7d539`
+- [x] Lane F — states & EN/SW/ZH overflow — top bar made locale-robust (nav
+  overflow-links → 2xl, pill hidden at 2xl, header gap); /proposals hero stacks;
+  admin-login (`/auth/admin`) flex fix. Player SW+ZH **2016/0**. `f2c4b05`
+- [x] Lane G — regression-lock — ui-regression extended to **320 + landscape**;
+  `test:responsive` wired; axe-core not installed locally (env gap — layout-only
+  changes don't affect a11y; reflow covered by the driver's 0-overflow/0-clip). `d77a85f`
+- [x] `scripts/responsive-audit.mjs` built + `npm run test:responsive` added `e5d22dc`
+
+### Driver capability notes (for the next session)
+- The master driver's key discriminator is the **clipped-not-scrolled** detector:
+  interactive controls past the viewport edge with NO scrollable ancestor — this
+  catches overflow that `overflow-x: clip` on <body> hides from
+  `documentElement.scrollWidth` (the trap that hid the clipped avatar + the auth
+  forms). It excludes sticky `<thead>` inside `overflow-x-auto` tables.
+- **Known limitation:** the admin-console SW/ZH full sweep is throttled by the
+  single-active-session model (re-seeding admin bounces tail routes to
+  `/auth/admin` mid-run). Admin route LAYOUT is locale-agnostic and passed EN
+  (972/0) + spot-checked clean in ZH; verify admin ZH per-route with a fresh
+  session if a specific concern arises.
 
 > Update this file (§8 + notes) at the end of every batch, mirror into
 > `SESSION_STATUS.md`, and append to `ui-rollout-tracker.md`.

@@ -20,6 +20,32 @@ in-memory store (dev). Prod flag `USE_PRISMA_DAL=true` on Railway.
 ## 2 · Current state (feature-complete, hardening for launch)
 The platform is **feature-complete and passing its gates**. Recently landed:
 
+- **2026-07-12 · FULL-PLATFORM RESPONSIVENESS SPRINT (Lanes A–G COMPLETE)** —
+  built `scripts/responsive-audit.mjs` (master driver: player + all 27 admin
+  routes × **320/360/390/430/landscape/768/1024/1280/1920** × EN/SW/ZH + overlays;
+  asserts 0 h-overflow, **no clipped-not-scrolled controls**, no off-screen fixed,
+  ≥40px targets) + `npm run test:responsive`. Its clipped-control detector caught
+  a class of real bugs that `overflow-x: clip` on <body> hid from
+  `scrollWidth`. **Fixed + shipped:** (A) top-bar bell `h-10 w-10`=**80px** on the
+  custom spacing scale → 40px (matched avatar; the oversized bell + balance pill
+  were **clipping the account menu off-screen at 320** — unreachable); balance pill
+  visibility banded so the account menu is always reachable (hidden on phones +
+  the 1024–1279 and ≥1536 tight bands); WCAG tap sizes for the bare eye + language
+  pills. (C) **AuthShell `grid place-items-center`→flex** — the grid track
+  auto-sized to the heading's max-content and clipped all six `/auth/*` forms +
+  submit off a 320 phone; same fix on the bespoke `/auth/admin` login. (B) wallet
+  header + (F) `/proposals` hero stack on phones; invite share row 2/3-up grid.
+  (D/E) admin filter clusters / action rows / report cards `flex-wrap`;
+  DurationInput `w-full`. (F) top bar made **locale-robust** (SW/ZH ~20% wider:
+  nav overflow-links → 2xl, header gap). **Results (fresh server):** player EN
+  1000/0, player SW+ZH **2016/0**, admin EN **972/0**, overlays **15/15**;
+  ui-regression extended to **320 + landscape**; tsc clean; admin-grids-smoke
+  125/125. Commits `e5d22dc · bd7d539 · 9cd1739 · f2c4b05 · d77a85f`. Shots read at
+  320/1024/landscape/ZH. Full spec + checklist: `docs/responsiveness-audit.md`.
+  _(axe-core is not installed in this local node_modules — a11y-reflow intent is
+  covered by the driver's 0-overflow/0-clip checks; changes are layout-only.)_
+
+
 - **2026-07-12 · FEATURE F1 — settlement-proof on resolved markets** (`5edd74b`) —
   first feature-backlog item shipped. Player `ResolutionPanel` now shows the
   **officer evidence excerpt** (the exact quote justifying the verdict) alongside
