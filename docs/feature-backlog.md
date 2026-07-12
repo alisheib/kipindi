@@ -44,7 +44,14 @@ the WHY, the kit pieces to reuse, the infra that already exists, and acceptance 
 
 ### P0 — highest value, low risk, infra mostly exists
 
-#### F1 · Settlement-proof on resolved markets  ⭐
+#### F1 · Settlement-proof on resolved markets  ⭐  ✅ SHIPPED 2026-07-12 (5edd74b)
+- **Status:** DONE. The `ResolutionPanel` already surfaced verdict + two-officer
+  seal + source link + objection window + pool/fee; this batch added the missing
+  **officer evidence excerpt** — persisted to `PredictionMarket.resolutionEvidence`
+  at stage-1 of the ceremony (migration `20260712..._add_resolution_evidence`) and
+  rendered as a gilt-bordered quote (trilingual `market.resEvidence`, empty-state
+  when absent, injection-inert). +12 hardening assertions in `test:officer-conflict`;
+  live-drive 320→1920 × EN/SW/ZH clean. 6-role: ✓.
 - **What:** on a RESOLVED/VOIDED market, show players *how* it was settled — the
   officer's evidence excerpt + official source link + "sealed by two officers" +
   the objection-window state.
@@ -175,10 +182,9 @@ the WHY, the kit pieces to reuse, the infra that already exists, and acceptance 
 
 ## 2 · Recommended first batch (my proposal)
 
-Start with **F1 (settlement-proof)** — highest trust ROI, data already exists, pure
-upside, low compliance risk — as the first fully-planned+built feature. Then **F2**
-(2FA + activity), then the **F3+F4** retention pair. Hold **F6** (liquidity) for a
-compliance-led design pass before any code.
+~~Start with **F1 (settlement-proof)**~~ ✅ **F1 SHIPPED 2026-07-12 (5edd74b).**
+Next: **F2** (2FA + activity), then the **F3+F4** retention pair. Hold **F6**
+(liquidity) for a compliance-led design pass before any code.
 
 **Why this order:** F1/F2/F5 = *trust*, F3/F4 = *habit*, F6 = *liquidity* — the three
 axes a real-money prediction market lives or dies on — and F1–F5 all reuse infrastructure

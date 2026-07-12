@@ -20,6 +20,21 @@ in-memory store (dev). Prod flag `USE_PRISMA_DAL=true` on Railway.
 ## 2 · Current state (feature-complete, hardening for launch)
 The platform is **feature-complete and passing its gates**. Recently landed:
 
+- **2026-07-12 · FEATURE F1 — settlement-proof on resolved markets** (`5edd74b`) —
+  first feature-backlog item shipped. Player `ResolutionPanel` now shows the
+  **officer evidence excerpt** (the exact quote justifying the verdict) alongside
+  the existing two-officer seal + source link + objection window + pool/fee. New
+  `PredictionMarket.resolutionEvidence` column (migration
+  `20260712120000_add_resolution_evidence`, additive/nullable — **run
+  `prisma migrate deploy` / verify it applied on Railway**) written at ceremony
+  stage-1; gilt-bordered blockquote, empty-state when absent (never fabricated),
+  injection-inert, trilingual `market.resEvidence` (parity 1221³). +12 hardening
+  assertions in `test:officer-conflict` (33/33). Verified: tsc · test:all 44/44
+  real suites (the parallel sprint's `test:responsive` is the only red, needs a
+  live server) · i18n parity · live-drive 320→1920 × EN/SW/ZH on an isolated
+  worktree server, 0 overflow. 6-role: ✓. See `docs/feature-backlog.md` F1 +
+  `ui-rollout-tracker.md` batch log. **Next backlog item: F2 (2FA + activity).**
+
 - **2026-07-12 · solo-resolution prod-lock removed** (`8e0cde3`) — see Launch
   blocker #6 + `[[project_kipindi_solo_resolution]]`. **2026-07-12 · Track 2b
   money-format** — client subset (`657c7f9`, 12 renders) THEN **server subset
