@@ -230,7 +230,9 @@ export type StoredNotification = {
     | "SECURITY"
     | "AFFILIATE"
     | "PROPOSAL"
-    | "BONUS";
+    | "BONUS"
+    /** F3 — a market on the player's watchlist closed soon / settled. */
+    | "WATCHLIST";
   titleEn: string;
   titleSw: string;
   titleZh?: string | null;
@@ -342,6 +344,22 @@ export type StoredProposalVote = {
   createdAt: string;
 };
 
+/** F3 — a player's star on a market. Composite id `${marketId}:${userId}`. */
+export type StoredWatchlist = {
+  id: string;
+  marketId: string;
+  userId: string;
+  createdAt: string;
+};
+
+/** F4 — one browser push endpoint. Keyed by `endpoint` (globally unique). */
+export type StoredPushSub = {
+  userId: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+};
+
 declare global {
   // eslint-disable-next-line no-var
   var __50PICK_STORE: {
@@ -359,6 +377,8 @@ declare global {
     referralRewards: Map<string, StoredReferralReward>;
     proposals: Map<string, StoredProposal>;
     proposalVotes: Map<string, StoredProposalVote>;
+    watchlist: Map<string, StoredWatchlist>;
+    pushSubs: Map<string, StoredPushSub>;
     bonusGrants: Map<string, StoredBonusGrant>;
     inviteCampaigns: Map<string, StoredInviteCampaign>;
     inviteEntries: Map<string, StoredInviteEntry>;
@@ -380,6 +400,8 @@ const store = globalThis.__50PICK_STORE ?? (globalThis.__50PICK_STORE = {
   referralRewards: new Map(),
   proposals: new Map(),
   proposalVotes: new Map(),
+  watchlist: new Map(),
+  pushSubs: new Map(),
   bonusGrants: new Map(),
   inviteCampaigns: new Map(),
   inviteEntries: new Map(),
@@ -396,6 +418,8 @@ if (!store.affiliates)      store.affiliates = new Map();
 if (!store.referralRewards) store.referralRewards = new Map();
 if (!store.proposals)       store.proposals = new Map();
 if (!store.proposalVotes)   store.proposalVotes = new Map();
+if (!store.watchlist)       store.watchlist = new Map();
+if (!store.pushSubs)        store.pushSubs = new Map();
 if (!store.bonusGrants)     store.bonusGrants = new Map();
 if (!store.inviteCampaigns) store.inviteCampaigns = new Map();
 if (!store.inviteEntries)   store.inviteEntries = new Map();
@@ -735,6 +759,31 @@ const memoryDb = {
     delete: (proposalId: string, userId: string): void => { store.proposalVotes.delete(`${proposalId}:${userId}`); },
     listByProposal: (proposalId: string): StoredProposalVote[] =>
       (Array.from(store.proposalVotes.values()) as StoredProposalVote[]).filter((v) => v.proposalId === proposalId),
+  },
+  watchlist: {
+    isWatching: (marketId: string, userId: string): boolean => store.watchlist.has(`${marketId}:${userId}`),
+    add: (marketId: string, userId: string): void => {
+      const id = `${marketId}:${userId}`;
+      if (!store.watchlist.has(id)) {
+        store.watchlist.set(id, { id, marketId, userId, createdAt: new Date().toISOString() });
+      }
+    },
+    remove: (marketId: string, userId: string): void => { store.watchlist.delete(`${marketId}:${userId}`); },
+    listWatcherIds: (marketId: string): string[] =>
+      Array.from(store.watchlist.values()).filter((w) => w.marketId === marketId).map((w) => w.userId),
+    listMarketIdsForUser: (userId: string): string[] =>
+      Array.from(store.watchlist.values())
+        .filter((w) => w.userId === userId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .map((w) => w.marketId),
+  },
+  pushSub: {
+    upsert: (s: StoredPushSub): void => { store.pushSubs.set(s.endpoint, s); },
+    listForUser: (userId: string): StoredPushSub[] =>
+      Array.from(store.pushSubs.values()).filter((s) => s.userId === userId),
+    deleteByEndpoint: (endpoint: string): void => { store.pushSubs.delete(endpoint); },
+    countForUser: (userId: string): number =>
+      Array.from(store.pushSubs.values()).filter((s) => s.userId === userId).length,
   },
   bonusGrant: {
     create: (g: StoredBonusGrant): StoredBonusGrant => { store.bonusGrants.set(g.id, g); return g; },

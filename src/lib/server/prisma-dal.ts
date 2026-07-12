@@ -28,6 +28,7 @@ import type {
   StoredReferralReward,
   StoredProposal,
   StoredProposalVote,
+  StoredPushSub,
   StoredBonusGrant,
   BonusGrantStatus,
   StoredInviteCampaign,
@@ -1149,6 +1150,63 @@ export const prismaDb = {
         where: { proposalId },
       });
       return rows.map(toStoredVote);
+    },
+  },
+
+  // ── WATCHLIST (F3) ────────────────────────────────────────────────────────
+  watchlist: {
+    isWatching: async (marketId: string, userId: string): Promise<boolean> => {
+      const row = await pc().watchlist.findUnique({
+        where: { marketId_userId: { marketId, userId } },
+        select: { id: true },
+      });
+      return !!row;
+    },
+    add: async (marketId: string, userId: string): Promise<void> => {
+      await pc().watchlist.upsert({
+        where: { marketId_userId: { marketId, userId } },
+        create: { marketId, userId },
+        update: {},
+      });
+    },
+    remove: async (marketId: string, userId: string): Promise<void> => {
+      await pc().watchlist.deleteMany({ where: { marketId, userId } });
+    },
+    /** User ids watching a market — the alert fan-out set. */
+    listWatcherIds: async (marketId: string): Promise<string[]> => {
+      const rows = await pc().watchlist.findMany({ where: { marketId }, select: { userId: true } });
+      return rows.map((r) => r.userId);
+    },
+    /** Market ids a user watches, newest first. */
+    listMarketIdsForUser: async (userId: string): Promise<string[]> => {
+      const rows = await pc().watchlist.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        select: { marketId: true },
+      });
+      return rows.map((r) => r.marketId);
+    },
+  },
+
+  // ── PUSH SUBSCRIPTIONS (F4) ───────────────────────────────────────────────
+  pushSub: {
+    upsert: async (s: StoredPushSub): Promise<void> => {
+      await pc().pushSubscription.upsert({
+        where: { endpoint: s.endpoint },
+        create: { userId: s.userId, endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth },
+        update: { userId: s.userId, p256dh: s.p256dh, auth: s.auth },
+      });
+    },
+    listForUser: async (userId: string): Promise<StoredPushSub[]> => {
+      const rows = await pc().pushSubscription.findMany({ where: { userId } });
+      return rows.map((r) => ({ userId: r.userId, endpoint: r.endpoint, p256dh: r.p256dh, auth: r.auth }));
+    },
+    /** Prune a dead endpoint (push service returned 404/410). */
+    deleteByEndpoint: async (endpoint: string): Promise<void> => {
+      await pc().pushSubscription.deleteMany({ where: { endpoint } });
+    },
+    countForUser: async (userId: string): Promise<number> => {
+      return pc().pushSubscription.count({ where: { userId } });
     },
   },
 

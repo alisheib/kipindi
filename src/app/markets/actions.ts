@@ -11,6 +11,21 @@ import { audit } from "@/lib/server/audit";
 import { MARKET_OPS_ROLES } from "@/lib/server/roles";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
 
+/**
+ * F3 — toggle the watchlist star on a market. Returns the NEW state so the
+ * client can reconcile its optimistic update. No revalidatePath on purpose (same
+ * reasoning as voteAction): the star updates optimistically and is persisted
+ * server-side; refetching the whole board on every click would only cause churn.
+ */
+export async function toggleWatchAction(marketId: string): Promise<{ ok: boolean; watching: boolean; error?: string }> {
+  const s = await currentSession();
+  if (!s) return { ok: false, watching: false, error: "auth" };
+  if (!marketId) return { ok: false, watching: false, error: "invalid" };
+  const { toggleWatch } = await import("@/lib/server/watchlist-service");
+  const watching = await toggleWatch(marketId, s.userId);
+  return { ok: true, watching };
+}
+
 /** Defense-in-depth: even though the /admin layout gates non-admin
  *  access at render time, the Server Action itself must refuse a
  *  privileged write if the caller is not actually an admin. A leaked

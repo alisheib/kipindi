@@ -230,6 +230,8 @@ export default async function ProfilePage() {
           <SettingRow icon={I.gift}            title={t.profile.inviteEarn}          subtitle={t.profile.inviteEarnSub}         href="/profile/invite" accent badge={t.common.newBadge} />
           <SettingRow icon={I.user}            title={t.profile.myAccount}           subtitle={t.profile.myAccountSub}            href="/profile/account" />
           <SettingRow icon={I.chart}           title={t.activity.title}              subtitle={t.activity.settingSub}             href="/profile/activity" />
+          <SettingRow icon={I.star}            title={t.watchlist.title}             subtitle={t.watchlist.settingSub}            href="/watchlist" />
+          <SettingRow icon={I.bellRing}        title={t.push.pageTitle}              subtitle={t.push.settingSub}                 href="/profile/notifications" />
           <SettingRow icon={I.settings}        title={t.profile.responsibleGambling} subtitle={t.profile.responsibleGamblingSub}              href="/profile/responsible-gambling" />
           <SettingRow icon={I.keyRound}        title={t.security.title}              subtitle={t.security.settingSub}             href="/profile/security" />
           <SettingRow icon={I.shieldcheck}     title={t.common.verifyId}             subtitle={t.profile.verifyIdSub}            href="/profile/kyc" />

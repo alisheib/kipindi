@@ -218,6 +218,8 @@ model User {
   marketComments          Comment[]
   totpSecret              TotpSecret?
   totpBackupCodes         TotpBackupCode[]
+  watchlist               Watchlist[]
+  pushSubscriptions       PushSubscription[]
   bonusGrants             BonusGrant[]
   inviteCampaigns         InviteCampaign[]
 
@@ -875,6 +877,34 @@ model ProposalVote {
   @@unique([proposalId, userId])
 }
 
+// A player's watchlist ("star") on a market. Drives the closing-soon + settled
+// alerts (F3). One row per (user, market); unfollow deletes the row.
+model Watchlist {
+  id        String           @id @default(cuid())
+  marketId  String
+  market    PredictionMarket @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now())
+
+  @@unique([marketId, userId])
+  @@index([userId, createdAt])
+}
+
+// A browser web-push subscription (F4). One row per device/endpoint; a player may
+// have several. Pruned automatically when the push service reports 404/410 (gone).
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
 // ============================================================================
 // PREDICTION MARKETS — binary YES/NO pari-mutuel markets
 // ============================================================================
@@ -914,6 +944,9 @@ model PredictionMarket {
    *  and it's awaiting results. Set once by the selection-closed sweep (one
    *  "waiting for results" notification per market). */
   selectionClosedNotifiedAt DateTime?
+  /** When WATCHERS were alerted that this market closes within the hour. Set once
+   *  by the closing-soon sweep, so a follower is nudged exactly once per market. */
+  closingSoonNotifiedAt     DateTime?
   /** AI sentinel recommendation — populated when the sentinel auto-closes this
    *  market. Officers see this pre-filled in the resolver queue. */
   sentinelOutcome      String?   // YES or NO
@@ -928,6 +961,7 @@ model PredictionMarket {
 
   positions Position[]
   comments  Comment[]
+  watchers  Watchlist[]
 
   @@index([status])
   @@index([resolutionAt])

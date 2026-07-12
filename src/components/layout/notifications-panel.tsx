@@ -25,6 +25,7 @@ const iconFor = (k: StoredNotification["kind"]) => {
     case "SECURITY":     return I.keyRound;
     case "AFFILIATE":    return I.megaphone;
     case "PROPOSAL":     return I.fileCheck;
+    case "WATCHLIST":    return I.star;
     default:             return I.coins;
   }
 };
@@ -45,6 +46,8 @@ const tintFor = (k: StoredNotification["kind"]) => {
     case "MATCH_START":  return "border-border bg-bg-overlay text-text-muted";
     case "AFFILIATE":    return "border-gold-700 bg-gold-500/10 text-gold-300";
     case "PROPOSAL":     return "border-gold-700 bg-gold-500/10 text-gold-300";
+    // Informational, never a "bet now" nudge → royal/info, never gold.
+    case "WATCHLIST":    return "border-info-border bg-info-bg/30 text-info-fg";
     default:             return "border-border bg-bg-overlay text-text-muted";
   }
 };

@@ -40,3 +40,33 @@ export async function dismissAllAction() {
   const count = await dismissAll(session.userId);
   return { ok: true as const, count };
 }
+
+// ── Web push (F4) ───────────────────────────────────────────────────────────
+
+/** Persist a browser push subscription for the signed-in user (explicit opt-in). */
+export async function savePushSubscriptionAction(sub: { endpoint: string; p256dh: string; auth: string }) {
+  const session = await currentSession();
+  if (!session) return { ok: false as const };
+  if (!sub?.endpoint || !sub.p256dh || !sub.auth) return { ok: false as const };
+  const { savePushSubscription } = await import("@/lib/server/push-service");
+  await savePushSubscription(session.userId, sub);
+  return { ok: true as const };
+}
+
+/** Remove this device's subscription (opt-out). Owner-scoped. */
+export async function deletePushSubscriptionAction(endpoint: string) {
+  const session = await currentSession();
+  if (!session) return { ok: false as const };
+  if (!endpoint) return { ok: false as const };
+  const { removePushSubscription } = await import("@/lib/server/push-service");
+  await removePushSubscription(session.userId, endpoint);
+  return { ok: true as const };
+}
+
+/** How many devices are subscribed for the signed-in user. */
+export async function pushStatusAction(): Promise<{ ok: boolean; devices: number }> {
+  const session = await currentSession();
+  if (!session) return { ok: false, devices: 0 };
+  const { pushDeviceCount } = await import("@/lib/server/push-service");
+  return { ok: true, devices: await pushDeviceCount(session.userId) };
+}

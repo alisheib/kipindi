@@ -54,6 +54,20 @@ export async function notify(input: NotifyInput): Promise<StoredNotification | n
       userId: n.userId,
       notification: { id: n.id, title: n.titleEn, body: n.bodyEn },
     });
+    // Web push (F4) — fan out to the user's subscribed devices in their own
+    // locale. Fire-and-forget: sendPushToUser never throws, self-suppresses for
+    // RG-locked players, and no-ops when VAPID is unconfigured. The inbox row
+    // above stays the canonical record regardless of what the push channel does.
+    void (async () => {
+      try {
+        const { sendPushToUser } = await import("./push-service");
+        const user = await db.user.findById(n.userId);
+        const loc = (user?.locale ?? "EN").toUpperCase();
+        const title = loc === "SW" ? n.titleSw : loc === "ZH" ? (n.titleZh ?? n.titleEn) : n.titleEn;
+        const body  = loc === "SW" ? n.bodySw  : loc === "ZH" ? (n.bodyZh  ?? n.bodyEn)  : n.bodyEn;
+        await sendPushToUser(n.userId, { title, body, url: n.href ?? "/", tag: n.kind });
+      } catch { /* push is a courtesy channel — never surfaces */ }
+    })();
     return n;
   } catch (err) {
     console.error("[notify] failed to record notification:", (err as Error)?.message ?? err);
@@ -136,6 +150,47 @@ export function notifyLoss(userId: string, opts: { stake: number; marketTitle: s
     titleSw: `Dau limepotea · ${formatTzs(opts.stake)}`,
     bodyEn: `${opts.marketTitle.slice(0, 70)} · your side didn't win.${ref}`,
     bodySw: `Upande wako haukushinda.${ref}`,
+    href: `/markets/${opts.marketId}`,
+  });
+}
+
+/**
+ * F3 — a WATCHED market closes within the hour.
+ *
+ * RG WORDING RULE: this is a factual, time-based notice about something the player
+ * explicitly asked to follow. It must NEVER be a call to action ("place your bet
+ * now!", "last chance!") — that would be pressuring an opted-in user and is an RG
+ * harm risk (LCCP SR 3.4). State the fact; let them decide.
+ */
+export function notifyWatchedClosingSoon(userId: string, opts: { marketTitle: string; marketId: string; minutes: number }) {
+  return notify({
+    userId,
+    kind: "WATCHLIST",
+    titleEn: "A market you follow closes soon",
+    titleSw: "Soko unalofuatilia linafunga karibuni",
+    titleZh: "你关注的市场即将关闭",
+    bodyEn: `${opts.marketTitle.slice(0, 70)} · selections close in about ${opts.minutes} minutes.`,
+    bodySw: `${opts.marketTitle.slice(0, 50)} · uchaguzi unafunga baada ya takriban dakika ${opts.minutes}.`,
+    bodyZh: `${opts.marketTitle.slice(0, 50)} · 选择将在约 ${opts.minutes} 分钟后关闭。`,
+    href: `/markets/${opts.marketId}`,
+  });
+}
+
+/**
+ * F3 — a WATCHED market has settled. Sent to followers who did NOT hold a
+ * position (bettors already get their own win/loss receipt, which carries the
+ * money). Purely informational: the outcome, not an invitation to bet again.
+ */
+export function notifyWatchedSettled(userId: string, opts: { marketTitle: string; marketId: string; outcome: string }) {
+  return notify({
+    userId,
+    kind: "WATCHLIST",
+    titleEn: "A market you follow has settled",
+    titleSw: "Soko unalofuatilia limetatuliwa",
+    titleZh: "你关注的市场已结算",
+    bodyEn: `${opts.marketTitle.slice(0, 70)} · resolved ${opts.outcome}.`,
+    bodySw: `${opts.marketTitle.slice(0, 50)} · matokeo: ${opts.outcome}.`,
+    bodyZh: `${opts.marketTitle.slice(0, 50)} · 结果：${opts.outcome}。`,
     href: `/markets/${opts.marketId}`,
   });
 }

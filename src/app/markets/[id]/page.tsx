@@ -5,6 +5,8 @@ import { BackLink } from "@/components/ui/back-link";
 import { TippingBar } from "@/components/brand";
 import { Countdown } from "@/components/markets/countdown";
 import { ShareButton } from "@/components/markets/share-button";
+import { WatchStar } from "@/components/markets/watch-star";
+import { isWatching } from "@/lib/server/watchlist-service";
 import { SidePicker } from "@/components/markets/side-picker";
 import { ChartToggle } from "@/components/markets/chart-toggle";
 import { SellButton } from "@/components/markets/sell-button";
@@ -80,6 +82,9 @@ export default async function MarketDetail({
   let myPositions: Awaited<ReturnType<typeof listPositionsForUser>> = [];
   try { myPositions = session ? (await listPositionsForUser(session.userId)).filter((p) => p.marketId === m!.id) : []; } catch { /* graceful */ }
   const myRefCode = session ? await ensureAffiliateAccount(session.userId).then((a) => a.code).catch(() => undefined) : undefined;
+  // F3 — is this market on the signed-in player's watchlist?
+  let watching = false;
+  if (session) { try { watching = await isWatching(m.id, session.userId); } catch { /* graceful */ } }
   const isResolved = m.status === "RESOLVED" || m.status === "VOIDED";
   // Two-officer attestation is claimed ONLY for genuinely distinct human officers
   // — never synthetic/auto (demo, sentinel) resolution whose ids are "system_*".
@@ -209,6 +214,7 @@ export default async function MarketDetail({
             {t.common.source}
             <I.ext s={12} />
           </a>
+          <WatchStar marketId={m.id} initial={watching} signedIn={!!session} />
           <ShareButton marketId={m.id} title={m.titleEn} refCode={myRefCode} />
         </div>
         {/* C1a — slim gilt hairline framing the question ("seal of the real") */}

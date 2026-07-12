@@ -19,6 +19,7 @@
  */
 
 import {
+  notifyClosingSoonMarkets,
   notifySelectionClosedMarkets,
   notifyDueMarketsForResolution,
   autoResolveExpiredDemoMarkets,
@@ -38,6 +39,7 @@ export async function runLifecyclePass(): Promise<void> {
   if (running) return; // never overlap passes
   running = true;
   try {
+    await notifyClosingSoonMarkets().catch((e) => console.error("[lifecycle] closing-soon sweep:", e));
     await notifySelectionClosedMarkets().catch((e) => console.error("[lifecycle] selection-closed sweep:", e));
     await notifyDueMarketsForResolution().catch((e) => console.error("[lifecycle] resolution-due sweep:", e));
     await autoResolveExpiredDemoMarkets().catch((e) => console.error("[lifecycle] demo auto-resolve:", e));

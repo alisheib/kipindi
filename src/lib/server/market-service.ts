@@ -84,6 +84,9 @@ export type StoredMarket = {
    *  is awaiting results. Set once by the selection-closed sweep so the
    *  "waiting for results" notification fires exactly once per market. */
   selectionClosedNotifiedAt?: string | null;
+  /** When WATCHERS were alerted this market closes within the hour. Set once by
+   *  the closing-soon sweep so a follower is nudged exactly once per market. */
+  closingSoonNotifiedAt?: string | null;
   /** AI sentinel recommendation — populated when the sentinel closes this
    *  market. Officers see this in the resolver queue as a pre-filled suggestion
    *  so their job is "verify + confirm" instead of "research + decide". */
@@ -764,6 +767,59 @@ export async function notifySelectionClosedMarkets(): Promise<{ notified: number
   return { notified, bettors: bettorsNotified };
 }
 
+/** How far ahead of close we nudge watchers. */
+const CLOSING_SOON_WINDOW_MS = 60 * 60_000; // 1 hour
+
+/**
+ * F3 — alert WATCHERS that a market they follow closes within the hour.
+ *
+ * Idempotency is the same one-shot stamp the selection-closed sweep uses:
+ * `closingSoonNotifiedAt` is written INSIDE `withLock("market:{id}")`, so two
+ * concurrent sweeps (or the ticker racing the /markets fire-and-forget trigger)
+ * can never double-alert a follower.
+ *
+ * Only fires for markets still OPEN for selections and inside the window — a
+ * market that is already past its cutoff is handled by the selection-closed
+ * sweep, not this one. Watchers under an RG lockout are suppressed (audited)
+ * inside `alertWatchersClosingSoon`.
+ */
+export async function notifyClosingSoonMarkets(): Promise<{ notified: number; watchers: number }> {
+  const now = Date.now();
+  let notified = 0;
+  let watchersNotified = 0;
+  const due = (await marketStore.values()).filter((m) => {
+    if (m.status !== "LIVE") return false;
+    if (m.titleEn.startsWith("Demo · ")) return false;
+    if (m.closingSoonNotifiedAt) return false;
+    const cutoff = m.selectionClosedAt ? Date.parse(m.selectionClosedAt) : Date.parse(m.resolutionAt);
+    if (!Number.isFinite(cutoff)) return false;
+    const ms = cutoff - now;
+    return ms > 0 && ms <= CLOSING_SOON_WINDOW_MS; // inside the window, not yet closed
+  });
+  if (due.length === 0) return { notified: 0, watchers: 0 };
+
+  for (const m of due) {
+    const stamped = await withLock(`market:${m.id}`, async () => {
+      const cur = await marketStore.get(m.id);
+      if (!cur || cur.status !== "LIVE" || cur.closingSoonNotifiedAt) return false;
+      const cutoff = cur.selectionClosedAt ? Date.parse(cur.selectionClosedAt) : Date.parse(cur.resolutionAt);
+      if (!Number.isFinite(cutoff)) return false;
+      const ms = cutoff - now;
+      if (ms <= 0 || ms > CLOSING_SOON_WINDOW_MS) return false;
+      await marketStore.set({ ...cur, closingSoonNotifiedAt: new Date().toISOString() });
+      return true;
+    });
+    if (!stamped) continue;
+    notified++;
+
+    const cutoff = m.selectionClosedAt ? Date.parse(m.selectionClosedAt) : Date.parse(m.resolutionAt);
+    const minutes = Math.max(1, Math.round((cutoff - now) / 60_000));
+    const { alertWatchersClosingSoon } = await import("./watchlist-service");
+    watchersNotified += await alertWatchersClosingSoon(m.id, m.titleEn, minutes);
+  }
+  return { notified, watchers: watchersNotified };
+}
+
 export async function notifyDueMarketsForResolution(): Promise<{ notified: number }> {
   const now = Date.now();
   let notified = 0;
@@ -1413,6 +1469,16 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   } catch { /* proposal prize must never break settlement */ }
 
   await persistResolution(); // all winners paid / refunds issued → now flip status
+
+  // F3 — tell WATCHERS the market they follow has settled. Bettors are EXCLUDED:
+  // they already receive their own win/loss receipt (which carries the money), so
+  // alerting them again would duplicate. Best-effort — never breaks settlement.
+  try {
+    const { alertWatchersSettled } = await import("./watchlist-service");
+    const bettorIds = new Set((await listPositionsForMarket(m.id)).map((p) => p.userId));
+    await alertWatchersSettled(m.id, m.titleEn, opts.outcome, bettorIds);
+  } catch { /* watcher alerts must never break settlement */ }
+
   return { ok: true, data: { stage: "complete", winnersPaid } };
   }); // end withLock market
 
