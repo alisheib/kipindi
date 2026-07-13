@@ -2,178 +2,112 @@
 
 > Paste this as the first message of the next session. It is the **single
 > canonical handoff**. Read `docs/SESSION_STATUS.md` first (current state +
-> gotchas), then `CLAUDE.md` (architecture). Last updated **2026-07-12** · HEAD
-> ≈ the docs commit on `main` after the finalization sprint.
+> gotchas), then `CLAUDE.md` (architecture). Last updated **2026-07-13** ·
+> HEAD ≈ `02f0921` on `main`.
 
 ---
 
-## 0 · First 5 minutes (do this before any task)
-1. `cd C:\kipindi-main` · `git status` (clean) · `git pull --rebase origin main` (parallel sessions may have pushed).
+## 0 · First 5 minutes (before any task)
+1. `cd C:\kipindi-main` · `git status` (clean) · `git pull --rebase origin main`.
 2. **`npx prisma generate`** (a pull often leaves the client stale → phantom tsc
    errors like "field does not exist"; regenerating fixes it — not a code bug).
-3. `npx tsc --noEmit` → clean · `npm run test:all` → **45/45**.
-4. Read `docs/SESSION_STATUS.md`, then **`docs/responsiveness-audit.md`** (this
-   sprint's spec) + the top of `docs/ui-rollout-tracker.md` (batch log).
+3. `npx tsc --noEmit` → clean · `npm run test:all` → **52/53**.
+   ⚠ `test:responsive` is the ONLY expected red — it drives Playwright against a
+   live server that isn't booted. Everything else must be green.
+4. Read `docs/SESSION_STATUS.md`, then `docs/feature-backlog.md`.
 
-## 1 · Where we stand (2026-07-12)
-Feature-complete, launch-hardening. Live on Railway (`kipindi-production.up.railway.app`;
-`www.50pick.tz` registered, not cut over). **All engineering finalization tracks are
-DONE** (see §4). Green gates: tsc · `next build` · `test:all` **45/45** · i18n parity ·
-`ui-regression` (now **320/360/740-landscape/768/1280/1920**, fresh) · `admin-grids-smoke`
-**125/125** · **`test:responsive`** (new — exhaustive responsiveness gate) · `qa:live`.
-`npm run perf:smoke` = the Phase-D perf baseline harness.
+## 1 · Where we stand (2026-07-13)
+Feature-complete, launch-hardening. Live on Railway
+(`kipindi-production.up.railway.app`; `www.50pick.tz` registered but **not cut over** —
+deep routes 404 on it. That's expected; use the railway host).
 
-**✅ RESPONSIVENESS SPRINT (Lanes A–G) — COMPLETE + shipped (2026-07-12).** Every
-surface × 9 breakpoints (320→1920 + landscape) × EN/SW/ZH + every overlay is
-pixel-clean: **0 h-overflow, 0 clipped-not-scrolled, account menu reachable at
-320, overlays fit landscape.** Built `scripts/responsive-audit.mjs` +
-`npm run test:responsive`. It caught a class of bugs `overflow-x:clip` had hidden
-(clipped account menu at 320, all `/auth/*` forms clipped off 320, admin filter/
-report overflow, SW/ZH top-bar overflow) — all fixed. Results: player EN 1000/0,
-player SW+ZH 2016/0, admin EN 972/0, overlays 15/15. Commits `e5d22dc · bd7d539 ·
-9cd1739 · f2c4b05 · d77a85f`. Full record: `docs/responsiveness-audit.md` (§8
-ticked) + `SESSION_STATUS.md` + `ui-rollout-tracker.md`. **Only follow-up:**
-axe-core isn't installed in this local node_modules — re-run `WIDTHS=320,360 node
-scripts/axe-audit.mjs` once deps are complete (changes were layout-only, so no new
-a11y risk expected).
+**The feature backlog F1–F8 is COMPLETE except F6** (which is a decision, not code):
 
-**NEXT SESSION:** the responsiveness mission is done — pick the next feature-backlog
-item (the parallel session shipped F1 settlement-proof; F2 = 2FA + activity is
-next per the backlog) OR address a launch-blocker in §4. There is no standing
-autonomous responsiveness run anymore.
+| | |
+|---|---|
+| F1 settlement-proof · F2 2FA + activity · F3 watchlist/alerts · F4 web push · F5 share cards · F7 owner BI · F8 event calendar | ✅ shipped |
+| **F6 seeded liquidity** | 📋 **design delivered — awaiting Ali** (`docs/F6-LIQUIDITY-DESIGN.md`) |
 
-**This sprint's mission → FULL-PLATFORM RESPONSIVENESS AUDIT.** Every surface, at
-every breakpoint, in every state and language, pixel-clean and fully usable —
-pages, **popups, modals, dialogs, toasts, notifications, dropdowns, reports,
-tables, forms, buttons, the bet dial — everything**; player AND operator. The
-complete spec (breakpoints, surface inventory, overlay list, pass-criteria,
-tooling, lane plan) lives in **`docs/responsiveness-audit.md`**. Drive it ONE
-lane per verified batch (Lanes A→G), screenshot + READ every cell, fix on sight,
-six-role sign-off (§4.5), commit + push.
+**Five live defects were found + fixed** during that build-out (none were asked for):
+plaintext TOTP secrets · a MODERATOR money-data leak · a fabricated tax figure on
+`/admin/finance` · the AI publish path bypassing the source allowlist · the AI budget
+never actually blocking overspend.
 
-## 2 · Paths — where things live (so nothing gets mixed)
-**Repo root:** `C:\kipindi-main` (branch `main`; push = deploy). GitHub `alisheib/kipindi`.
+## 2 · 🔴 OPEN — needs ALI, not code
+1. **F6 decision.** Recommendation: **do NOT build house-backed liquidity.** It destroys
+   pari-mutuel outcome-neutrality and contradicts our own POCA §16 rule ("an officer who
+   holds a position MUST NOT resolve it") — the house holds a position in every market its
+   own officers settle and **cannot recuse itself**. Read `docs/F6-LIQUIDITY-DESIGN.md` §7
+   and pick A / B / C.
+2. **VAPID keys** → push is in graceful **stub mode** until they're set in Railway.
+   Generate: `node -e "console.log(require('web-push').generateVAPIDKeys())"`, then set
+   `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (= the public
+   key) and `VAPID_SUBJECT=mailto:support@50pick.tz`. Claude is blocked from writing prod
+   secrets unless Ali names them explicitly.
+3. **Tax-base ruling.** The ledger levies TRA/GBT on the **3% commission**
+   (`ledger.ts:191`); the statutory Daily-Ops return levies them on **~9% GGR**
+   (`reports/catalogue.ts:525`). That is a **3× discrepancy in a regulator-facing filing**.
+   Needs a tax/legal answer, not an engineering one.
+
+## 3 · Paths — where things live
+**Repo root:** `C:\kipindi-main` (branch `main`; **push = deploy**). GitHub `alisheib/kipindi`.
 
 | What | Path |
 |---|---|
-| App routes (player + public) | `src/app/**` (`markets`, `wallet`, `positions`, `leaderboard`, `profile`, `proposals`, `results`, `live`, `auth`, `fairness`, `help`, `legal`) |
-| Admin console | `src/app/admin/**` (25 routes) |
-| Server actions | `src/app/**/actions.ts` (co-located) |
-| Production API routes | `src/app/api/**` (webhooks, og) |
-| **Dev-test endpoints (404 in prod)** | `src/app/api/dev-test/**` (`seed-admin`, `seed-markets`, `seed-kyc`, `stress-money`, `resolve-seed-markets`, `auth/demo`…) |
-| Server/business logic + DAL | `src/lib/server/**` (`market-service`, `wallet-service`, `payments.ts` ⚠mock, `prisma-dal.ts` + `store.ts` in-memory twin, `roles.ts`, `report-*`, `kyc-*`, `bonus-*`, **`platform-stats.ts`**, **`actor-label.ts`**, **`define-config.ts`**) |
-| Admin status vocabulary (single source) | **`src/lib/admin-status-lexicon.ts`** (CEREMONY·SELECTION·LIFECYCLE·REVIEW + `bi()`) |
-| Score→tone | **`src/lib/score-band.ts`** + **`src/components/admin/score-badge.tsx`** |
-| Admin status badges | **`src/components/admin/status-badge.tsx`** (`MarketStatusBadge`, `KycStatusBadge`, `DsarStatusBadge`) |
-| Money/number/date format | `src/lib/utils.ts` (`formatTzs`, `formatNumber`, `formatDate*`) |
-| Design-system kit (atoms) | `src/components/ui/**` (`modal`, `tabs`, `input`, `date-select`, `time-select`, `select`, `button`, `chip`, `empty-state`, `glyphs`, `pagination`) |
-| App shell / global chrome | `src/components/layout/**` (`app-shell`, `top-app-bar`, `bottom-nav`, `live-ticker`, `nav-more`, `avatar-menu`) |
-| The bet dial | `src/components/markets/conviction-dial.tsx` (drag + 3 stake inputs + lock) |
-| i18n dictionary (en/sw/zh) | `src/lib/i18n-dict.ts` — **never hardcode user-facing strings; keep parity** (`npm run test:i18n`) |
-| Design tokens / CSS | `src/app/globals.css`, `src/app/state-tokens.css`, `src/styles/**` |
-| Prisma schema | `prisma/schema.prisma` (prod Postgres; dev = in-memory `src/lib/server/store.ts`) |
-| Tests (in `test:all`) | `scripts/*.test.mts` (45 `test:*` suites) |
-| Responsive / E2E / perf harnesses (NOT in `test:all`) | `scripts/ui-regression.mjs`, `admin-grids-smoke.mjs`, `visual-matrix.mjs`, `responsive-overflow-test.mjs`, `overlay-responsiveness-test.mjs`, `chat-responsiveness-e2e.mjs`, `axe-audit.mjs`, `perf-smoke.mjs`, `*-e2e.mjs`, `pre-deploy-live-check.mjs` (=`qa:live`) · **build `responsive-audit.mjs` this sprint** |
-| Docs | `docs/**` — handoff = this file; state = `SESSION_STATUS.md`; log = `ui-rollout-tracker.md`; **sprint spec = `responsiveness-audit.md`** |
-| Screenshots (gitignored) | `.50pick-shots/` |
+| Player routes | `src/app/**` (`markets`, `wallet`, `positions`, **`watchlist`**, `profile/{activity,security,notifications}`, **`auth/2fa`**, …) |
+| Admin console | `src/app/admin/**` (incl. **`insights`** = owner BI, **`events`** = F8 calendar) |
+| Server logic / DAL | `src/lib/server/**` — `market-service`, `wallet-service`, `prisma-dal.ts` + `store.ts` (in-memory twin), `roles.ts`, **`report-money.ts` (normative money defs — do not re-derive GGR)**, `insights.ts`, `events-service.ts`, `watchlist-service.ts`, `push-service.ts`, `player-2fa.ts`, `share-token.ts`, `ai-poll-generation.ts` |
+| Money/date format | `src/lib/utils.ts` (`formatTzs`, `formatDate*`) |
+| Design-system kit | `src/components/ui/**` · admin: `src/components/admin/**` |
+| i18n (en/sw/zh) | `src/lib/i18n-dict.ts` — **never hardcode user-facing strings** (`npm run test:i18n`) |
+| Prisma | `prisma/schema.prisma` (prod Postgres; dev = in-memory store) |
+| Tests (in `test:all`) | `scripts/*.test.mts` (53 `test:*` suites) |
+| Docs | `SESSION_STATUS.md` (read-first) · `feature-backlog.md` · **`F6-LIQUIDITY-DESIGN.md`** · `ui-rollout-tracker.md` (batch log) |
 
-**Do not mix:** dev-test endpoints (`src/app/api/dev-test/**`) are 404 in prod —
-never rely on them for prod behavior. Design *source* lives under `50PICK/` &
-`Final UI enhancement Kit/`; *shipped* code is under `src/`.
+## 4 · Standing rules (Ali)
+- **Commit AND push** every change (Railway auto-deploys). Pull/rebase first.
+- **NEVER fabricate** legal/business/audit/money data. Show real data or an empty state.
+  This is a licensed real-money product — **an invented number is a defect**.
+  *(Three of this session's five defects were fabrication/authorisation bugs.)*
+- **RG on every money path** · PII masked · audit every mutation · gold = earned-money only.
+- **Kit-only.** No new UI library, no one-off component, no ad-hoc colour.
+- **Verify by DRIVING it, not by reading code.** Three of the five defects looked fine on
+  the page and only fell out of an adversarial live drive (e.g. minting a MODERATOR
+  session and hitting the money pages).
+- Every change: stress-tested (`*.test.mts`) + visually driven (Playwright, **320 first**
+  → 1920, EN/SW/ZH, screenshot **and read it**) + hardened (bad input, forged role, race).
+- Six-role sign-off in the commit body (`6-role: ✓`).
 
-## 3 · Cleanup status
-- Working tree **clean**; in sync with `origin/main`. No stray temp scripts
-  (delete verify scripts after use; screenshots go to gitignored `.50pick-shots/`).
-- **Fresh-server gotcha:** `ui-regression` / responsive drivers need a genuinely
-  fresh server — a dirty/seeded store from a prior live-drive causes false fails.
-  Reset: `Stop-Process` the :3000 listener → `rm -rf .next/dev` → reboot → seed.
-  A Turbopack `_Fragment`/segfault mid-run is a stale-cache artifact (Next-internal,
-  not our code) — same reset fixes it. **Only one `next dev` per repo dir.**
-- **Stop the dev server when done.**
+## 5 · Gotchas that have bitten us
+- **Fresh server needed** for `ui-regression`/responsive drivers; a seeded store causes
+  false fails. Reset: kill the :3000 listener → `rm -rf .next/dev` → reboot.
+  A Turbopack 500-on-every-route is a **stale-cache artifact** — same reset fixes it.
+- **Only one `next dev` per repo dir.** For an isolated server a git worktree seems
+  attractive, but **Turbopack rejects a junctioned `node_modules`** ("points out of the
+  filesystem root") so the worktree needs a full `npm ci`, and `--webpack` chokes on this
+  project's `node:` imports. Simplest: kill the existing dev server and boot in the main repo.
+- `redirect()` from an admin **page body** fires after the shell starts streaming → a soft
+  200 + client bounce (and a "Rendered more hooks" error). For role gates, **return an
+  `<AdminRestricted>` panel instead** (`src/components/admin/admin-restricted.tsx`).
+- The in-memory DAL returns values **synchronously** (the Prisma twin is async), so
+  `.catch()` on a `db.*` call throws. `await` inside `try/catch` instead.
+- `db` is typed as `typeof prismaDb` — any method added to the memory twin must exist on
+  the Prisma DAL with an identical async signature or tsc breaks.
+- Playwright: this app has pollers, so `networkidle` never settles — use
+  `domcontentloaded`. And allow ~2s after a soft redirect before asserting.
 
-## 4 · Open work
+## 6 · What to do next (if Ali gives no other steer)
+The backlog is done. Highest-value remaining, in order:
+1. **P3 polish** (`feature-backlog.md` §P3) — F9 richer market detail, F10 low-data lite
+   mode, **F11 player-facing dispute/objection flow** (the 24h objection window exists
+   server-side but has **no player submit path**; F1 currently routes disputes to support),
+   F12 live odds via SSE, F13 public fairness ledger.
+2. **Instrument analytics** — there is *zero* pageview tracking, which is why the F7 funnel
+   honestly has no "visit" stage. Adding it unlocks a real top-of-funnel.
+3. **Launch blockers** (Ali-owned): real payment aggregator (Selcom/Azampay), MNO logos,
+   telco SMS sender ID, GLI cert — and **flip the solo-resolution toggle OFF before real money**.
 
-**✅ DONE — engineering finalization (2026-07-12, all shipped + live):**
-- **Track 2 · consistency deep-pass (complete):** admin **status-lexicon** Families
-  1–4 (`admin-status-lexicon.ts`; fixed the "Afisa wa pili" + "Selection Close"
-  case drifts) · money → `formatTzs` (client **and** server, 77 sites, byte-proven)
-  · `band()`+`<ScoreBadge>` · `officerLabel()/playerLabel()` · Chip variant set
-  documented + de-duped · `defineConfig()` factory (bonus+proposals migrated).
-- **Track 4 · materialize aggregates:** landing payout-sum → DB `sumConfirmedByTypes`
-  + 60s cache; per-MNO health/reconcile → windowed `listSince` (byte-identical).
-- **Track 1 · Phase C tail** (loading/error/empty + light-scheme resilience — verified) ·
-  **Phase D perf** (baseline + `perf:smoke`; 2G background-shell lazy-split) ·
-  **Phase G** (regression-lock all-green + 6-role EN/SW/ZH walk).
-- Admin **"Back to app"** now lands on `/` (the hub), not the raw board.
-
-**✅ DONE — full responsiveness audit (2026-07-12, Lanes A–G shipped + live):**
-built `scripts/responsive-audit.mjs` + `test:responsive`; fixed the clip-class
-bugs `overflow-x:clip` had hidden (320 account-menu clip via an 80px bell +
-pill; all `/auth/*` + `/auth/admin` forms clipped off 320 via `grid
-place-items-center`; wallet/proposals headers; invite/admin filter & report rows;
-SW/ZH top-bar overflow; landscape notifications panel). Verified player EN 1000/0,
-SW+ZH 2016/0, admin EN 972/0, overlays 15/15; ui-regression extended to
-320+landscape. See `docs/responsiveness-audit.md`.
-
-**BLOCKED on Ali (external — cannot finish without input):**
-1. 🔴 **Real payment integration** — mock `src/lib/server/payments.ts` → BoT
-   aggregator (Selcom/Azampay) behind `/api/webhooks/payments`. Needs credentials.
-   *The single biggest go-live blocker.*
-2. **MNO logos (4)** — official M-Pesa / Airtel Money / HaloPesa / Mixx-by-Yas
-   marks → drop in `public/pay/` (`mpesa`,`airtel`,`halopesa`,`mixx`), then wire the
-   4 paths in `src/components/wallet/payment-logo.tsx` (currently hued-initials
-   placeholders). *This is the ONLY remaining art dependency — all icons are
-   in-house SVG glyphs; hero/OG/favicons already real.* Regulator seal comes with
-   the GBT license (never fabricated).
-3. Real `SMS_SENDER_ID` (telco-registered) + license no. / TIN + `NEXT_PUBLIC_*`
-   env in Railway — **never fabricate**.
-4. **GLI certification** — `docs/gli-remediation-{plan,tracker}.md`.
-
-**🔴 COMPLIANCE — before real money:** flip the **solo-resolution** toggle OFF
-(`test-overrides.ts`; unlocked for a consultant, discipline-enforced now — POCA §16).
-
-## 4.5 · SIX-ROLE SIGN-OFF GATE (Ali — mandatory) 🔒
-**No change "passes" — no `git push`, no marking a lane/batch done — until it has
-been reviewed and EXPLICITLY approved through ALL SIX expert lenses.** State it in
-the commit body / batch-log (`6-role: ✓`). Never pass a change in dev without it.
-
-1. **Graphic designer** — spacing, type scale, colour, iconography, hierarchy,
-   brand-exactness; gold-discipline (player = earned-money/money-in; admin =
-   resolved-seal only); deliberate alignment + rhythm.
-2. **UI/UX engineer** — every page × state × width (**320→1920 + landscape**) ×
-   locale (EN/SW/ZH) is pixel-clean: 0 h-overflow, no clipped-not-scrolled, touch
-   targets ≥40px; overlays fit the viewport; a11y (focus-visible, labels,
-   contrast ≥4.5:1, keyboard, SR); `prefers-reduced-motion` path.
-3. **Professional art evaluator** — reads *premium + trustworthy*; empty/loading/
-   celebration states delight and never cheapen a real-money product.
-4. **Quality assurance** — exercised end-to-end (drive it, not just tsc); tests
-   cover it; adversarial regression; all gates green on a FRESH server; 0 defects.
-5. **Compliance engineer** — never-fabricate (only live data); RG on every money
-   path; PII masked; audit-on-every-mutation; POCA/GBT/TRA/PDPA held.
-6. **Theme-consistency engineer** — kit + tokens only (no one-off UI); ONE
-   primitive per concern; status wording from the lexicon; consistent
-   hover/active/focus/loading; variants match the documented set; no drift.
-
-## 5 · Workflow & standing rules (Ali)
-- **Commit AND push** every change (Railway auto-deploys). Full Railway CLI access.
-- **Pull/fetch + rebase before push** (parallel sessions).
-- Per surface/lane: read → change → `tsc` + relevant `test:*` → **live-drive with
-  Playwright at 320 first, screenshot to `.50pick-shots/`, READ the shot** → the
-  §4.5 six-role sign-off → commit + push → confirm the Railway deploy is green.
-  Run `ui-regression`/responsive drivers on a FRESH server.
-- **Never fabricate** legal/business/audit data or history — flag placeholders.
-- **Production shows only live data**; UI hides/empties when aggregates are empty.
-- **Gold-discipline:** player = earned-money/money-in only; admin = resolved seal only.
-- Reuse the kit; no one-off UI. Motion must be genuinely polished or not shipped.
-- **Byte-identical discipline:** when a change should be visually invariant, prove
-  it (byte/pixel) rather than assert it.
-
-## 6 · Living doc — UPDATE BEFORE YOU END THE SESSION
-Keep this file true — it's the single continuation point.
-1. Update **§1 (where we stand)** with what landed and the current mission.
-2. Update **§2 PATHS** if any route/component/service/doc was added/moved/renamed.
-3. Update **§4** — move finished items to DONE, add new findings (ranked).
-4. Tick the **`responsiveness-audit.md` §8 checklist**, mirror state into
-   `SESSION_STATUS.md`, append a batch-log entry to `ui-rollout-tracker.md`.
-5. Confirm a clean tree (`git status`), stop the dev server, then hand Ali the
-   refreshed copy-paste version of this prompt.
+## 7 · Living doc — UPDATE BEFORE YOU END THE SESSION
+Keep this file true. Update §1/§2 with what landed and what's open, tick
+`feature-backlog.md`, mirror into `SESSION_STATUS.md`, append to `ui-rollout-tracker.md`,
+confirm a clean tree, stop the dev server.
