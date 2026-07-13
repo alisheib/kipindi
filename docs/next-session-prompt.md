@@ -54,6 +54,14 @@ Consequences you must know:
 - **ONE objection per player per market, for the life of the market.** Allowing a re-file after
   a rejection was a denial-of-payout hole: file → rejected → re-file → re-freeze, on a loop,
   while every other player in that market went unpaid. Do not relax this.
+- 🔴 **SELLING SHUTS WHEN SELECTIONS SHUT.** Cash-out is refused once `isSelectionClosed(market)`
+  — the same predicate that closes betting, and it covers sentinel-CLOSED markets too.
+  It used to stay open until *resolution*, which left a window where the real-world result was
+  already public but our officers hadn't recorded it: a losing player could watch their side lose,
+  then sell out and recover most of a stake they had already lost. Cash-out is paid **out of the
+  pool**, so that money came straight out of the players who were RIGHT (measured: a winner owed
+  18,200 got 9,919). **Never "restore" cash-out on CLOSED markets to stop players feeling trapped**
+  — that was the original reasoning and it is backwards. `scripts/cashout-lockout.test.mts` guards it.
 - 🔴 **AUTOMATIC PAYOUT IS PAUSED — every payout is MANUAL.** An officer settles each market by
   hand at **`/admin/settlement`**. Deliberate (Ali): we do not move money on a timer before the
   **payment aggregator (Selcom/Azampay)** is integrated.

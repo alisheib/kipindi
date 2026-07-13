@@ -26,7 +26,8 @@ export function SellButton({
   stake,
   value,
   placedAt,
-  resolutionAt,
+  closesAt,
+  alreadyClosed,
   serverNow,
 }: {
   positionId: string;
@@ -37,12 +38,25 @@ export function SellButton({
   /** ISO timestamp when the position was placed — used to determine
    *  whether the 5-minute free-exit grace window is still open. */
   placedAt?: string;
-  /** ISO timestamp when the underlying market closes. If supplied, the
-   *  button switches to a "Market closed" state the instant the wall
-   *  clock crosses this — avoiding the stale "Sell now · TZS X" call
-   *  to action sitting in front of a market the server has already
-   *  shut for cash-outs. Mirrors the dial's closedNow pattern. */
-  resolutionAt?: string;
+  /**
+   * ISO timestamp when SELLING shuts — i.e. the selection cutoff
+   * (`selectionClosedAt ?? resolutionAt`), NOT the resolution time.
+   *
+   * This used to be passed `resolutionAt`, which is LATER: it left the "Sell now"
+   * button live through the whole window between selections closing and the
+   * officers recording the result — exactly the window in which the real-world
+   * outcome is already knowable. The server now refuses those sales, so offering
+   * the button there would only be a lie the server rejects. The exit shuts when
+   * the entry shuts.
+   */
+  closesAt?: string;
+  /**
+   * The server's own verdict (`isSelectionClosed(market)`), so the button is
+   * right on the first paint and covers the cases a timestamp alone cannot —
+   * notably a sentinel-CLOSED market, which is the single most dangerous moment
+   * to leave an exit open.
+   */
+  alreadyClosed?: boolean;
   /** Server's Date.now() at render time. Passed from the server component
    *  so the client can calibrate its clock against the server — prevents
    *  clock skew (e.g. server 1 min ahead of device) from showing 6 min
@@ -69,14 +83,17 @@ export function SellButton({
   // closedNow flips client-side the moment the wall clock crosses
   // resolutionAt. Tick once per second.
   useEffect(() => {
-    if (!resolutionAt) return;
-    const closeTs = Date.parse(resolutionAt);
+    // The server already told us if selling is shut (covers sentinel-CLOSED, which
+    // no timestamp can express). Otherwise tick against the SELECTION cutoff.
+    if (alreadyClosed) { setClosedNow(true); return; }
+    if (!closesAt) return;
+    const closeTs = Date.parse(closesAt);
     if (!Number.isFinite(closeTs)) return;
     const update = () => setClosedNow(Date.now() >= closeTs);
     update();
     const id = setInterval(update, 1000);
     return () => clearInterval(id);
-  }, [resolutionAt]);
+  }, [closesAt, alreadyClosed]);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [resultOpen, setResultOpen] = useState(false);
   const [resultData, setResultData] = useState<{ variant: "success" | "danger"; value: number; net: number; error?: string } | null>(null);
@@ -86,7 +103,7 @@ export function SellButton({
 
   // Free exit is only valid if: grace window hasn't expired AND the market
   // closes in more than 5 min (prevents last-second exploitation).
-  const marketCloseMs = resolutionAt ? Date.parse(resolutionAt) - Date.now() : Infinity;
+  const marketCloseMs = closesAt ? Date.parse(closesAt) - Date.now() : Infinity;
   const inGrace = graceRemainMs > 0 && marketCloseMs > GRACE_MS;
   // Cash-out is an EARLY EXIT, never a profit. `value` is the stake returned:
   // the full stake inside the free-exit window, or stake − fee outside it.
@@ -152,7 +169,7 @@ export function SellButton({
         disabled={pending || closedNow}
         aria-label={
           closedNow
-            ? t.market.closedAwaitingSettlement
+            ? t.common.sellLockedHint
             : inGrace
             ? `${t.common.freeExitLabel} — ${formatTzs(value)}`
             : `${t.common.cashOut} ${formatTzs(value)}`
@@ -161,7 +178,7 @@ export function SellButton({
         style={{ justifyContent: "space-between", minHeight: 44 }}
       >
         <span>
-          {closedNow ? t.common.marketClosed
+          {closedNow ? t.common.sellLocked
             : pending ? t.common.selling
             : inGrace ? t.common.freeExitLabel
             : t.common.sellNow}

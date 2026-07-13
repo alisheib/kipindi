@@ -21,6 +21,7 @@
     "test:cashback": "tsx scripts/deposit-cashback.test.mts",
     "test:email-stress": "tsx scripts/email-stress.test.mts",
     "test:cashout": "tsx scripts/cashout-fee.test.mts",
+    "test:cashout-lock": "tsx scripts/cashout-lockout.test.mts",
     "test:money-invariants": "tsx scripts/money-invariants.test.mts",
     "test:settlement-gate": "tsx scripts/settlement-gate.test.mts",
     "test:concurrency": "tsx scripts/concurrency.test.mts",

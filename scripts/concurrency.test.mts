@@ -162,15 +162,24 @@ async function makeMarket(): Promise<string> {
     const wr = await buyPosition(winner, { marketId: mid, side: "YES", stake: 10_000 });
     await buyPosition(other, { marketId: mid, side: "NO", stake: 10_000 });
     const posId = wr.ok ? wr.data!.positionId : "?";
-    // Stage-1 by a neutral officer (no position → no conflict) stages YES.
-    await resolveMarket({ marketId: mid, outcome: "YES", officerId: `cc_race_alpha_${r}` });
 
     const before = await bal(winner);
-    // The player taps "cash out" at the exact instant a second officer confirms.
+    // THE RACE, as it now exists. Selling shuts the instant selections shut, and
+    // stage-1 is what shuts them (LIVE → CLOSED). So the dangerous interleave is
+    // no longer "cash out vs payout" — that window is gone, because a CLOSED
+    // market refuses a sale outright. It is "cash out vs the market closing":
+    // the player taps SELL at the exact instant the first officer stages the
+    // outcome. Exactly one of them must win, and the player must be credited
+    // exactly once either way — as a cash-out, OR as a settled winner, never both.
     await Promise.all([
       cashOutPosition(winner, posId),
-      resolveMarket({ marketId: mid, outcome: "YES", officerId: `cc_race_beta_${r}` }),
+      resolveMarket({ marketId: mid, outcome: "YES", officerId: `cc_race_alpha_${r}` }),
     ]);
+    // Complete the ceremony and settle, so the position must reach a terminal
+    // state whichever way the race fell.
+    await resolveMarket({ marketId: mid, outcome: "YES", officerId: `cc_race_beta_${r}` });
+    await settleMarket(mid, { force: true });
+
     const delta = (await bal(winner)) - before;
     const totalIn = 20_000; // the only money that ever entered this market
 
@@ -178,7 +187,7 @@ async function makeMarket(): Promise<string> {
     // No mint: the player can never receive more than the money that entered.
     if (delta > totalIn) minted++;
     // Position must end in exactly ONE terminal state (CASHED_OUT xor WIN),
-    // never a mix, and never still OPEN.
+    // never a mix, and never still OPEN — whichever way the race fell.
     const p = await positionStore.get(posId);
     if (!p || p.status === "OPEN") notTerminal++;
     // Double-pay signature: credited AND a win payout stacked on a cash-out

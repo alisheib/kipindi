@@ -1036,10 +1036,38 @@ export async function cashOutPosition(
 
     const m = await marketStore.get(p.marketId);
     if (!m) return { ok: false as const, error: "Market not found.", code: "NOT_FOUND" as const };
-    // Allow cash-out on LIVE and CLOSED (sentinel-closed) markets. Players
-    // shouldn't be trapped in positions just because the sentinel detected an
-    // early outcome. Only block cash-out once the market is actually RESOLVED/VOIDED.
     if (m.status === "RESOLVED" || m.status === "VOIDED") return { ok: false as const, error: "Market has been settled — position is final.", code: "INVALID" as const };
+
+    // THE EXIT SHUTS WHEN THE ENTRY SHUTS.
+    //
+    // Cash-out used to stay open right up until the officers resolved the market,
+    // CLOSED markets explicitly included — the reasoning being that a player
+    // shouldn't be "trapped" just because the sentinel spotted an early outcome.
+    // That reasoning had it exactly backwards. Selections close BEFORE the real-
+    // world event is settled in our records: the match finishes, the price prints,
+    // the result becomes public — and only later does an officer record it. In
+    // that gap the answer is knowable to the player but not yet to us.
+    //
+    // Leaving the exit open across that gap handed every losing player a free
+    // option on a known outcome: watch your side lose, then sell out and recover
+    // most of a stake you had already lost. And a cash-out is paid OUT OF THE
+    // POOL — so every shilling the late seller took came straight out of the
+    // players who were RIGHT. The house lost nothing; the winners paid for it.
+    // Measured in scripts/cashout-lockout.test.mts: a winner owed the full 18,200
+    // net pool received 9,919 — 45% of their money siphoned off by a player who
+    // already knew they had lost.
+    //
+    // So selling now closes at the SAME instant betting does, from the SAME
+    // source of truth (isSelectionClosed — which also covers sentinel-CLOSED, the
+    // single most dangerous moment to leave an exit open). Once selections shut,
+    // the position rides to settlement. You take the risk you actually took.
+    if (isSelectionClosed(m)) {
+      return {
+        ok: false as const,
+        error: "Selections are closed — this position now rides to settlement and can't be sold. · Uchaguzi umefungwa — dau hili litaenda hadi malipo, haliwezi kuuzwa.",
+        code: "SELECTION_CLOSED" as const,
+      };
+    }
 
     const wallet = await db.wallet.findByUserId(userId);
     if (!wallet) return { ok: false as const, error: "Wallet not found.", code: "NOT_FOUND" as const };

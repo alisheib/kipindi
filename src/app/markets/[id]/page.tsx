@@ -380,7 +380,8 @@ export default async function MarketDetail({
                         stake={p.stake}
                         value={liveValue}
                         placedAt={p.placedAt}
-                        resolutionAt={m.resolutionAt}
+                        closesAt={m.selectionClosedAt ?? m.resolutionAt}
+                        alreadyClosed={isSelectionClosed(m)}
                         serverNow={Date.now()}
                       />
                     )}

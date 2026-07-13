@@ -59,7 +59,10 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
   let openLiveValue = 0;
   for (const p of open) {
     const m = marketMap.get(p.marketId);
-    if (m && m.status === "LIVE") {
+    // Compute for CLOSED markets too — not so the player can sell (they cannot),
+    // but so the SellButton still renders and TELLS them selling has shut. Silently
+    // removing the control leaves them guessing where their exit went.
+    if (m && (m.status === "LIVE" || m.status === "CLOSED")) {
       try {
         openLiveValue += (await cashOutValue(
           { side: p.side, stake: p.stake, placedAt: p.placedAt },
@@ -227,13 +230,14 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                       </div>
                     ) : null;
                   })()}
-                  {liveValue !== null && (
+                  {(liveValue !== null || isSelectionClosed(m)) && (
                     <SellButton
                       positionId={p.id}
                       stake={p.stake}
-                      value={liveValue}
+                      value={liveValue ?? 0}
                       placedAt={p.placedAt}
-                      resolutionAt={m.resolutionAt}
+                      closesAt={m.selectionClosedAt ?? m.resolutionAt}
+                      alreadyClosed={isSelectionClosed(m)}
                       serverNow={Date.now()}
                     />
                   )}

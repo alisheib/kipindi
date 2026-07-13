@@ -10,6 +10,37 @@
 
 ---
 
+### 🔴 SELLING SHUTS WHEN SELECTIONS SHUT (2026-07-13) — closed a real money leak
+
+**You can no longer cash out once selections have closed.** Betting and selling now close at the
+SAME instant, from the SAME source of truth (`isSelectionClosed()` — which also covers a
+sentinel-CLOSED market).
+
+**What was wrong.** Cash-out stayed open right up until the officers *resolved* the market —
+CLOSED markets explicitly included ("players shouldn't be trapped just because the sentinel
+detected an early outcome"). But selections close BEFORE the real-world event is recorded by us.
+The match ends, the price prints, the result becomes public — and only later does an officer enter
+it. In that gap the answer was knowable to the player but not yet to us, and the exit was open.
+
+That handed every losing player a **free option on a known outcome**: watch your side lose, then
+sell out and recover most of a stake you had already lost. And a cash-out is paid **out of the
+pool** — so every shilling the late seller took came straight out of the players who were RIGHT.
+The house lost nothing; **the winners paid for it.**
+
+**Measured** (`scripts/cashout-lockout.test.mts` — 20 assertions, red-without-fix): a winner owed
+the full 18,200 net pool received **9,919** — 45% of their money siphoned off by a player who
+already knew they had lost.
+
+**Now:** once selections shut, the position rides to settlement. The server refuses the sale
+(`SELECTION_CLOSED`), and there is exactly **one** cash-out entry point, so a crafted POST hits the
+same guard. The UI renders a disabled "Selections closed" control (aria: *"this prediction now
+rides to settlement — it can no longer be sold"*) instead of a dangling SELL button.
+
+⚠ **Do not "restore" cash-out on CLOSED markets** as a kindness to trapped players. That was the
+original reasoning and it is exactly backwards — it is a free option, paid for by the winners.
+
+---
+
 ## 1 · What this is
 A **licensed real-money** pool-based prediction-market platform for Tanzania
 (Gaming Board of Tanzania). Players stake TZS on YES/NO market questions settled
