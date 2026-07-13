@@ -29,6 +29,7 @@ import type {
   StoredProposal,
   StoredProposalVote,
   StoredPushSub,
+  StoredEvent,
   StoredBonusGrant,
   BonusGrantStatus,
   StoredInviteCampaign,
@@ -324,6 +325,23 @@ function toStoredProposal(p: any): StoredProposal {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toStoredEvent(r: any): StoredEvent {
+  return {
+    id: r.id,
+    title: r.title,
+    category: r.category,
+    startsAt: iso(r.startsAt)!,
+    sourceUrl: r.sourceUrl,
+    note: r.note ?? null,
+    generatedAt: iso(r.generatedAt) ?? null,
+    aiPollId: r.aiPollId ?? null,
+    addedBy: r.addedBy,
+    createdAt: iso(r.createdAt)!,
+    updatedAt: iso(r.updatedAt)!,
+  };
+}
+
 function toStoredVote(v: any): StoredProposalVote {
   return {
     id: v.id,
@@ -1150,6 +1168,42 @@ export const prismaDb = {
         where: { proposalId },
       });
       return rows.map(toStoredVote);
+    },
+  },
+
+  // ── EVENT CALENDAR (F8) ───────────────────────────────────────────────────
+  event: {
+    create: async (e: {
+      title: string; category: string; startsAt: string; sourceUrl: string;
+      note: string | null; addedBy: string;
+    }): Promise<StoredEvent> => {
+      const row = await pc().eventCalendar.create({
+        data: {
+          title: e.title, category: e.category, startsAt: new Date(e.startsAt),
+          sourceUrl: e.sourceUrl, note: e.note, addedBy: e.addedBy,
+        },
+      });
+      return toStoredEvent(row);
+    },
+    findById: async (id: string): Promise<StoredEvent | null> => {
+      const row = await pc().eventCalendar.findUnique({ where: { id } });
+      return row ? toStoredEvent(row) : null;
+    },
+    list: async (): Promise<StoredEvent[]> => {
+      const rows = await pc().eventCalendar.findMany({ orderBy: { startsAt: "asc" } });
+      return rows.map(toStoredEvent);
+    },
+    update: async (id: string, patch: { generatedAt?: string | null; aiPollId?: string | null }): Promise<void> => {
+      await pc().eventCalendar.update({
+        where: { id },
+        data: {
+          ...(patch.generatedAt !== undefined ? { generatedAt: patch.generatedAt ? new Date(patch.generatedAt) : null } : {}),
+          ...(patch.aiPollId !== undefined ? { aiPollId: patch.aiPollId } : {}),
+        },
+      });
+    },
+    delete: async (id: string): Promise<void> => {
+      await pc().eventCalendar.delete({ where: { id } }).catch(() => {});
     },
   },
 

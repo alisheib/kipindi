@@ -28,6 +28,7 @@ export const NAV_GROUPS: ReadonlyArray<{
   {
     group: { en: "Markets", sw: "Masoko" },
     items: [
+      { href: "/admin/events",          label: "Event calendar", key: "events" },
       { href: "/admin/ai-polls",        label: "AI poll generation", key: "ai-polls" },
       { href: "/admin/candidates",     label: "AI candidates", key: "candidates" },
       { href: "/admin/proposals",      label: "Player proposals", key: "proposals" },

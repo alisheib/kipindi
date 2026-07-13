@@ -28,7 +28,7 @@ import {
   approveCandidate,
   markPublished,
 } from "@/lib/server/market-candidate";
-import { createMarket, emergencyVoidMarket } from "@/lib/server/market-service";
+import { createMarket, emergencyVoidMarket, type MarketCategory } from "@/lib/server/market-service";
 import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
 import { MARKET_OPS_ROLES } from "@/lib/server/roles";
 import { safeError } from "@/lib/server/safe-error";
@@ -286,6 +286,32 @@ export async function publishPollAction(formData: FormData) {
       const { computeSelectionClosedAt } = await import("@/lib/server/ai-poll-config");
       poll.selectionClosedAt = computeSelectionClosedAt(poll.resolutionAt, poll.category);
     }
+  }
+
+  // ── SOURCE ALLOWLIST GATE ────────────────────────────────────────────────
+  // This was MISSING: `isSourceTrusted` was imported here but never called, so the
+  // AI-poll → market path was the ONE publish path that skipped the trusted-domain
+  // allowlist (every other path — manual, candidate, proposal — enforces it). An
+  // AI-generated source URL is only syntax-checked, never fetched, so a plausible
+  // hallucinated domain could reach a live market. isSourceTrusted ALSO enforces
+  // the operator's disabled-category list, which was likewise being bypassed here.
+  const publishCategory = (poll.category === "tech" || poll.category === "other"
+    ? "macro"
+    : poll.category === "infrastructure" ? "macro" : poll.category) as MarketCategory;
+  const primarySource = poll.sources[0]?.url ?? "";
+  await seedDefaultSources();
+  const trust = await isSourceTrusted(primarySource, publishCategory);
+  if (!trust.ok) {
+    audit({
+      category: "COMPLIANCE",
+      action: "ai_poll.publish_blocked.untrusted_source",
+      actorId: officerId, targetType: "AIPoll", targetId: poll.id,
+      payload: { sourceUrl: primarySource, category: publishCategory, reason: trust.reason },
+    });
+    return {
+      ok: false as const,
+      error: `Source not permitted: ${trust.reason ?? "not on the trusted registry"}. Edit the poll's source, or add the domain under Sources & categories.`,
+    };
   }
 
   try {

@@ -18,6 +18,7 @@ import { loadConfig, saveConfig } from "./config-store";
 import { hasDatabase } from "./prisma";
 import { withLock } from "./locks";
 import { randomId } from "./crypto";
+import { audit } from "./audit";
 
 export type AiFeature = "polls" | "chat" | "sentinel" | "other";
 
@@ -143,6 +144,35 @@ export async function setCreditLimit(limitUsd: number): Promise<void> {
 export async function resetCreditCycle(): Promise<void> {
   const cur = await getCreditConfig();
   await saveCredit({ ...cur, cycleStartIso: new Date().toISOString(), alertedLevel: "none" });
+}
+
+/**
+ * HARD BUDGET GATE — call this BEFORE any paid Anthropic request.
+ *
+ * The credit meter used to be alert-only: it emailed admins AFTER the spend had
+ * already happened, and nothing ever refused a call. The only real cost cap was
+ * "a human has to click Generate" — which is exactly the control that a
+ * calendar/scheduled generator (F8) removes. So spend is now actually enforced.
+ *
+ * Fails OPEN on an internal error (a broken meter must not brick poll generation),
+ * but fails CLOSED on a genuine over-limit.
+ */
+export async function assertAiBudget(feature: string): Promise<{ ok: true } | { ok: false; spentUsd: number; limitUsd: number }> {
+  try {
+    const cfg = await getCreditConfig();
+    if (cfg.limitUsd <= 0) return { ok: true }; // 0 = no cap configured
+    const spent = await aiUsageDal.sumCostSince(cfg.cycleStartIso);
+    if (spent < cfg.limitUsd) return { ok: true };
+    audit({
+      category: "ADMIN",
+      action: "ai.call_blocked.budget_exhausted",
+      actorId: null, targetType: "AiUsage", targetId: feature,
+      payload: { spentUsd: round6(spent), limitUsd: cfg.limitUsd },
+    });
+    return { ok: false, spentUsd: round6(spent), limitUsd: cfg.limitUsd };
+  } catch {
+    return { ok: true }; // never let a broken meter block the platform
+  }
 }
 
 const LEVEL_ORDER: Record<CreditConfig["alertedLevel"], number> = { none: 0, warn: 1, limit: 2 };

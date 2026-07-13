@@ -1116,6 +1116,39 @@ model TrustedSource {
 }
 
 // ============================================================================
+// EVENT CALENDAR (F8) — real-world moments to schedule markets around.
+//
+// OPERATOR-AUTHORED, NEVER AI-AUTHORED. We have no fixtures feed (no Sportradar),
+// so if the model invented the calendar it would be inventing real-world events
+// and dates on a licensed real-money product. An officer enters each event with an
+// official source URL, which is validated against the TrustedSource allowlist for
+// its category. The AI is only ever STEERED by an event an officer already vouched
+// for — it never authors one.
+// ============================================================================
+model EventCalendar {
+  id          String   @id @default(cuid())
+  /** What happens, in plain English. e.g. "Simba SC vs Yanga — Kariakoo Derby". */
+  title       String
+  category    String // MarketCategory value
+  /** When the real-world event occurs (drives the market's resolution timing). */
+  startsAt    DateTime
+  /** Official, verifiable source for the event — must pass isSourceTrusted(). */
+  sourceUrl   String
+  /** Optional operator note steering what kind of market to draft. */
+  note        String?
+  /** Set once a market/poll has been generated for this event (no duplicates). */
+  generatedAt DateTime?
+  /** The AI poll drafted from this event, if any. */
+  aiPollId    String?
+  addedBy     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([startsAt])
+  @@index([category, startsAt])
+}
+
+// ============================================================================
 // TOTP — admin 2FA secrets (1:1 with User)
 // ============================================================================
 

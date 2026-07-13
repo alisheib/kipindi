@@ -7,6 +7,7 @@
  */
 import { prismaDb } from "./prisma-dal";
 import { hasDatabase } from "./prisma";
+import { randomId } from "./crypto";
 
 export type StoredUser = {
   id: string;
@@ -360,6 +361,23 @@ export type StoredPushSub = {
   auth: string;
 };
 
+/** F8 — an operator-authored real-world event the AI can be steered by.
+ *  `category` is a MarketCategory value (typed as string here to avoid a
+ *  store ↔ market-service import cycle; events-service narrows it). */
+export type StoredEvent = {
+  id: string;
+  title: string;
+  category: string;
+  startsAt: string;
+  sourceUrl: string;
+  note: string | null;
+  generatedAt: string | null;
+  aiPollId: string | null;
+  addedBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 declare global {
   // eslint-disable-next-line no-var
   var __50PICK_STORE: {
@@ -379,6 +397,7 @@ declare global {
     proposalVotes: Map<string, StoredProposalVote>;
     watchlist: Map<string, StoredWatchlist>;
     pushSubs: Map<string, StoredPushSub>;
+    events: Map<string, StoredEvent>;
     bonusGrants: Map<string, StoredBonusGrant>;
     inviteCampaigns: Map<string, StoredInviteCampaign>;
     inviteEntries: Map<string, StoredInviteEntry>;
@@ -402,6 +421,7 @@ const store = globalThis.__50PICK_STORE ?? (globalThis.__50PICK_STORE = {
   proposalVotes: new Map(),
   watchlist: new Map(),
   pushSubs: new Map(),
+  events: new Map(),
   bonusGrants: new Map(),
   inviteCampaigns: new Map(),
   inviteEntries: new Map(),
@@ -420,6 +440,7 @@ if (!store.proposals)       store.proposals = new Map();
 if (!store.proposalVotes)   store.proposalVotes = new Map();
 if (!store.watchlist)       store.watchlist = new Map();
 if (!store.pushSubs)        store.pushSubs = new Map();
+if (!store.events)          store.events = new Map();
 if (!store.bonusGrants)     store.bonusGrants = new Map();
 if (!store.inviteCampaigns) store.inviteCampaigns = new Map();
 if (!store.inviteEntries)   store.inviteEntries = new Map();
@@ -776,6 +797,28 @@ const memoryDb = {
         .filter((w) => w.userId === userId)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         .map((w) => w.marketId),
+  },
+  event: {
+    create: (e: { title: string; category: string; startsAt: string; sourceUrl: string; note: string | null; addedBy: string }): StoredEvent => {
+      const now = new Date().toISOString();
+      const row: StoredEvent = {
+        id: `evt_${randomId(10)}`,
+        title: e.title, category: e.category, startsAt: e.startsAt, sourceUrl: e.sourceUrl,
+        note: e.note, generatedAt: null, aiPollId: null, addedBy: e.addedBy,
+        createdAt: now, updatedAt: now,
+      };
+      store.events.set(row.id, row);
+      return row;
+    },
+    findById: (id: string): StoredEvent | null => store.events.get(id) ?? null,
+    list: (): StoredEvent[] =>
+      Array.from(store.events.values()).sort((a, b) => a.startsAt.localeCompare(b.startsAt)),
+    update: (id: string, patch: { generatedAt?: string | null; aiPollId?: string | null }): void => {
+      const cur = store.events.get(id);
+      if (!cur) return;
+      store.events.set(id, { ...cur, ...patch, updatedAt: new Date().toISOString() });
+    },
+    delete: (id: string): void => { store.events.delete(id); },
   },
   pushSub: {
     upsert: (s: StoredPushSub): void => { store.pushSubs.set(s.endpoint, s); },

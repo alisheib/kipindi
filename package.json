@@ -57,6 +57,7 @@
     "test:push": "tsx scripts/push-service.test.mts",
     "test:win-share": "tsx scripts/win-share.test.mts",
     "test:insights": "tsx scripts/insights.test.mts",
+    "test:events": "tsx scripts/events-calendar.test.mts",
     "test:killswitch": "tsx scripts/payment-killswitch.test.mts",
     "test:proposals": "tsx scripts/proposal-approval-bonus.test.mts",
     "test:proposal-close": "tsx scripts/proposal-selection-close.test.mts",
