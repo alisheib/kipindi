@@ -99,6 +99,28 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
             mono
           />
         </Field>
+        {/* F11 — this is a SETTLEMENT GATE, not a display timer. A resolved market
+            pays nobody until this many hours have passed with no objection standing.
+            0 disables the gate: legal for play-money, but it is the control we
+            describe to the regulator, so it must be a deliberate act. */}
+        <Field
+          label="Objection window (hours)"
+          hint={
+            (config.objectionWindowHours ?? 24) === 0
+              ? "⚠ 0 = NO objection window. Resolved markets pay out on the next sweep, and players cannot dispute a verdict before the money moves. Do not ship real money like this."
+              : `Currently ${config.objectionWindowHours ?? 24}h. A resolved market's money is HELD this long before payout, so players can object while the pool is still intact. An open objection freezes it further.`
+          }
+        >
+          <Input
+            name="objectionWindowHours"
+            type="number"
+            step="1"
+            min="0"
+            max="168"
+            defaultValue={config.objectionWindowHours ?? 24}
+            mono
+          />
+        </Field>
         <Field
           label="TRA tax on commission (%)"
           hint={`Current ${traPct}%. Percentage of the total commission paid to TRA. Does NOT affect player payouts.`}

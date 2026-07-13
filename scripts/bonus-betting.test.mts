@@ -9,7 +9,7 @@
  *   - market void refunds the bonus portion to the bonus wallet, real to real
  */
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
-import { createMarket, buyPosition, cashOutPosition, resolveMarket, getMarket } from "../src/lib/server/market-service.ts";
+import { createMarket, buyPosition, cashOutPosition, resolveMarket, settleMarket, getMarket } from "../src/lib/server/market-service.ts";
 import { creditBonus } from "../src/lib/server/bonus-service.ts";
 
 let pass = 0, fail = 0;
@@ -83,6 +83,7 @@ async function makeMarket() {
   // Two-officer void
   await resolveMarket({ marketId: m.id, outcome: "VOID", officerId: "officer_one" });
   await resolveMarket({ marketId: m.id, outcome: "VOID", officerId: "officer_two" });
+  await settleMarket(m.id, { force: true }); // refunds move at settlement, not at the verdict
   ok("real refunded to real (2,000)", (await real("usr_bb_void")) === 2_000, `real=${await real("usr_bb_void")}`);
   ok("bonus refunded to bonus (back to 10,000)", (await bonus("usr_bb_void")) === 10_000, `bonus=${await bonus("usr_bb_void")}`);
   ok("opposite bettor fully refunded to real (5,000)", (await real("usr_bb_opp")) === 5_000, `real=${await real("usr_bb_opp")}`);
@@ -104,6 +105,7 @@ async function makeMarket() {
     await buyPosition("usr_bb_exploit_opp", { marketId: m.id, side: "NO", stake: 8_000 });
     await resolveMarket({ marketId: m.id, outcome: "VOID", officerId: "off_a" });
     await resolveMarket({ marketId: m.id, outcome: "VOID", officerId: "off_b" });
+    await settleMarket(m.id, { force: true }); // the refund is what the exploit tries to farm
   }
   ok("real balance still 0 after 6 void cycles (no bonus→cash leak)", (await real("usr_bb_exploit")) === 0, `real=${await real("usr_bb_exploit")}`);
   ok("bonus still 10,000 (nothing converted)", (await bonus("usr_bb_exploit")) === 10_000, `bonus=${await bonus("usr_bb_exploit")}`);

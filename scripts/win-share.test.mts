@@ -18,7 +18,7 @@ process.env.OTP_PEPPER ??= "test-only-otp-pepper-16chars";
 
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { positionStore } from "../src/lib/server/market-dal.ts";
-import { createMarket, buyPosition, resolveMarket } from "../src/lib/server/market-service.ts";
+import { createMarket, buyPosition, resolveMarket, settleMarket } from "../src/lib/server/market-service.ts";
 import { mintWinShareToken, resolveWinShareToken } from "../src/lib/server/share-token.ts";
 import { signSession } from "../src/lib/server/crypto.ts";
 
@@ -59,6 +59,8 @@ await buyPosition("ws_lose", { marketId: mkt.id, side: "NO", stake: 10_000 });
 // Settle YES → ws_win wins, ws_lose loses.
 await resolveMarket({ marketId: mkt.id, outcome: "YES", officerId: "ws_off1", evidence: "official source" });
 await resolveMarket({ marketId: mkt.id, outcome: "YES", officerId: "ws_off2" });
+// Stage-2 only records the verdict now — a win is not a win until it is paid.
+await settleMarket(mkt.id, { force: true });
 
 const all = await positionStore.listForUser("ws_win");
 const winPos = all.find((p) => p.marketId === mkt.id)!;

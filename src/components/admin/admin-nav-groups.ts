@@ -50,6 +50,9 @@ export const NAV_GROUPS: ReadonlyArray<{
     group: { en: "Compliance", sw: "Kanuni" },
     items: [
       { href: "/admin/compliance",      label: "Compliance",     key: "compliance" },
+      // F11 — an OPEN objection freezes a market's settlement, so this queue holds
+      // real money hostage until an officer clears it. It sits high on purpose.
+      { href: "/admin/objections",      label: "Objections",     key: "objections" },
       { href: "/admin/moderation",      label: "Comment moderation", key: "moderation" },
       { href: "/admin/aml",             label: "AML queue",      key: "aml" },
       { href: "/admin/self-exclusions", label: "Self-exclusions", key: "sx" },

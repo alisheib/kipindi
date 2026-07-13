@@ -59,6 +59,8 @@ export async function updateGlobalConfigAction(formData: FormData) {
     const thin = parseRatio(String(formData.get("thinProfitRatio") ?? ""));
     const starter = parseInteger(String(formData.get("starterBalanceTzs") ?? ""));
     const tra = parseRate(String(formData.get("traTaxOnCommissionRate") ?? ""));
+    // F11 — the settlement gate. Hours, not a rate: 0..168, 0 = no window.
+    const objWindow = parseInteger(String(formData.get("objectionWindowHours") ?? ""));
     const gbt = parseRate(String(formData.get("gbtLevyOnCommissionRate") ?? ""));
     if (t !== undefined) updates.taxRate = t;
     if (c !== undefined) updates.commissionRate = c;
@@ -70,6 +72,7 @@ export async function updateGlobalConfigAction(formData: FormData) {
     if (thin !== undefined) updates.thinProfitRatio = thin;
     if (starter !== undefined) updates.starterBalanceTzs = starter;
     if (tra !== undefined) updates.traTaxOnCommissionRate = tra;
+    if (objWindow !== undefined) updates.objectionWindowHours = objWindow;
     if (gbt !== undefined) updates.gbtLevyOnCommissionRate = gbt;
     const r = await setGlobalConfig(updates, s.userId);
     revalidatePath("/admin/config");

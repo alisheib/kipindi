@@ -15,9 +15,9 @@
  * import (erased at build) so no server code is pulled into the bundle.
  */
 import { Chip } from "@/components/ui/chip";
-import { LIFECYCLE, REVIEW } from "@/lib/admin-status-lexicon";
+import { LIFECYCLE, REVIEW, OBJECTION } from "@/lib/admin-status-lexicon";
 import type { MarketStatus } from "@/lib/server/market-service";
-import type { StoredKyc } from "@/lib/server/store";
+import type { StoredKyc, ObjectionStatus } from "@/lib/server/store";
 import type { DsarStatus } from "@/lib/server/privacy";
 
 type ChipVariant = "success" | "gold" | "warning" | "neutral";
@@ -91,5 +91,24 @@ export function DsarStatusBadge({ status, size = "sm" }: { status: DsarStatus; s
     status === "PENDING" ? REVIEW.dsarPending.en
     : status === "FULFILLED" ? REVIEW.dsarFulfilled.en
     : REVIEW.dsarRejected.en;
+  return <Chip size={size} variant={variant}>{label}</Chip>;
+}
+
+/* ── Objection status (F11, Family 5) ────────────────────────────────────── */
+
+/** OPEN is claret, not neutral: an open objection is FREEZING a market's money,
+ *  and the queue must read that way at a glance. Never `objection` (gold) — gold
+ *  is earned money only. */
+export function ObjectionStatusBadge({ status, size = "sm" }: { status: ObjectionStatus; size?: "sm" | "md" | "lg" }) {
+  const variant =
+    status === "OPEN" ? "claret"
+    : status === "UPHELD" ? "success"
+    : status === "REJECTED" ? "neutral"
+    : "neutral";
+  const label =
+    status === "OPEN" ? OBJECTION.open.en
+    : status === "UPHELD" ? OBJECTION.upheld.en
+    : status === "REJECTED" ? OBJECTION.rejected.en
+    : OBJECTION.withdrawn.en;
   return <Chip size={size} variant={variant}>{label}</Chip>;
 }

@@ -233,7 +233,9 @@ export type StoredNotification = {
     | "PROPOSAL"
     | "BONUS"
     /** F3 — a market on the player's watchlist closed soon / settled. */
-    | "WATCHLIST";
+    | "WATCHLIST"
+    /** F11 — a player disputed a verdict, or an officer ruled on their dispute. */
+    | "OBJECTION";
   titleEn: string;
   titleSw: string;
   titleZh?: string | null;
@@ -345,6 +347,46 @@ export type StoredProposalVote = {
   createdAt: string;
 };
 
+/** Why a player says the verdict is wrong. A closed list, not free text — the
+ *  officer triages on the reason and the player writes their case in `detail`. */
+export type ObjectionReason =
+  | "WRONG_OUTCOME"        // the result is simply not what the source says
+  | "SOURCE_CONTRADICTS"   // the cited source says something else
+  | "AMBIGUOUS_CRITERION"  // the criterion doesn't decide this case
+  | "RESOLVED_EARLY"       // settled before the real-world event concluded
+  | "OTHER";
+
+/** OPEN freezes the market's money. Every other state releases it. */
+export type ObjectionStatus = "OPEN" | "UPHELD" | "REJECTED" | "WITHDRAWN";
+
+/** What the officer did about an upheld objection. Only reachable while the
+ *  market is unsettled — which is the entire reason settlement is gated. */
+export type ObjectionRemedy = "VOID" | "REVERSE";
+
+/**
+ * A player's formal objection to a market's verdict, filed inside the objection
+ * window while the pool is still intact. An OPEN objection blocks settlement
+ * (see settleMarket) — that is what gives it teeth.
+ */
+export type StoredObjection = {
+  id: string;                        // obj_…
+  marketId: string;
+  userId: string;                    // the objector — must hold a position
+  reason: ObjectionReason;
+  detail: string;                    // the player's case, capped at the app layer
+  status: ObjectionStatus;
+  createdAt: string;
+  /** Officer review. */
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+  /** Set only when status === "UPHELD" — what was done to the market. */
+  remedy: ObjectionRemedy | null;
+  /** The verdict at the time of filing, so the audit trail shows what was
+   *  actually being disputed even after a remedy changes the market. */
+  outcomeAtFiling: string | null;
+};
+
 /** F3 — a player's star on a market. Composite id `${marketId}:${userId}`. */
 export type StoredWatchlist = {
   id: string;
@@ -395,6 +437,7 @@ declare global {
     referralRewards: Map<string, StoredReferralReward>;
     proposals: Map<string, StoredProposal>;
     proposalVotes: Map<string, StoredProposalVote>;
+    objections: Map<string, StoredObjection>;
     watchlist: Map<string, StoredWatchlist>;
     pushSubs: Map<string, StoredPushSub>;
     events: Map<string, StoredEvent>;
@@ -419,6 +462,7 @@ const store = globalThis.__50PICK_STORE ?? (globalThis.__50PICK_STORE = {
   referralRewards: new Map(),
   proposals: new Map(),
   proposalVotes: new Map(),
+  objections: new Map(),
   watchlist: new Map(),
   pushSubs: new Map(),
   events: new Map(),
@@ -772,6 +816,30 @@ const memoryDb = {
       (Array.from(store.proposals.values()) as StoredProposal[])
         .filter((p) => p.proposerId === proposerId)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+  },
+  objection: {
+    create: (o: StoredObjection): StoredObjection => { store.objections.set(o.id, o); return o; },
+    findById: (id: string): StoredObjection | null => store.objections.get(id) ?? null,
+    update: (id: string, patch: Partial<StoredObjection>): StoredObjection | null => {
+      const o = store.objections.get(id);
+      if (!o) return null;
+      const next: StoredObjection = { ...o, ...patch };
+      store.objections.set(id, next);
+      return next;
+    },
+    /** Every objection against a market, newest first. */
+    listForMarket: (marketId: string): StoredObjection[] =>
+      (Array.from(store.objections.values()) as StoredObjection[])
+        .filter((o) => o.marketId === marketId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    listForUser: (userId: string): StoredObjection[] =>
+      (Array.from(store.objections.values()) as StoredObjection[])
+        .filter((o) => o.userId === userId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    list: (limit = 1000): StoredObjection[] =>
+      (Array.from(store.objections.values()) as StoredObjection[])
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .slice(0, limit),
   },
   proposalVote: {
     get: (proposalId: string, userId: string): StoredProposalVote | null =>

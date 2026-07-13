@@ -55,6 +55,18 @@ export type RateConfig = {
    *  E.g. 0.05 = 5% of the 9% commission goes to GBT.
    *  This does NOT affect player payouts — it's deducted from the operator's take. */
   gbtLevyOnCommissionRate: number;
+  /** How long a resolved market sits in the public objection window before its
+   *  money moves. This is a REAL settlement gate, not a display: stage-2 of the
+   *  resolution ceremony adjudicates the outcome but pays nobody, and the
+   *  lifecycle sweeper settles the market only once this window has elapsed AND
+   *  no objection is open against it (see settleMarket / settleDueMarkets in
+   *  market-service.ts). A player who disputes a verdict therefore does so while
+   *  the pool is still intact and an upheld objection can still change the money.
+   *
+   *  0 = no window (settle on the next sweep). Legal for a play-money/testing
+   *  deployment; for the licensed real-money product this MUST stay > 0 — it is
+   *  the control we describe to the regulator. */
+  objectionWindowHours: number;
 };
 
 export const DEFAULT_GLOBAL_CONFIG: RateConfig = {
@@ -79,6 +91,8 @@ export const DEFAULT_GLOBAL_CONFIG: RateConfig = {
   // not from the player's payout.
   traTaxOnCommissionRate: 0.10,   // 10% of commission → TRA
   gbtLevyOnCommissionRate: 0.05,  // 5% of commission → GBT
+  // The objection window players get before a verdict's money moves.
+  objectionWindowHours: 24,
 };
 
 declare global {
@@ -170,6 +184,16 @@ function validate(updates: Partial<RateConfig>): { ok: true } | { ok: false; rea
   if (updates.aggregatorRate !== undefined) {
     if (Number.isNaN(updates.aggregatorRate) || updates.aggregatorRate < 0 || updates.aggregatorRate > 0.10) {
       return { ok: false, reason: "Aggregator rate must be 0-10%." };
+    }
+  }
+  if (updates.objectionWindowHours !== undefined) {
+    const h = updates.objectionWindowHours;
+    // Cap at a week: a window longer than that strands players' money for no
+    // regulatory gain. 0 disables the gate — allowed (play-money/testing), but
+    // it is the control we describe to the regulator, so it must be a deliberate
+    // act and it is audited like every other config change.
+    if (!Number.isFinite(h) || h < 0 || h > 168) {
+      return { ok: false, reason: "Objection window must be 0-168 hours (0 = no window)." };
     }
   }
   // Combined ceiling: tax + commission + reserve + aggregator < 30%

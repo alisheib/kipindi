@@ -13,7 +13,7 @@
  *   D. The override is written to the COMPLIANCE audit trail (never silent).
  */
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
-import { createMarket, buyPosition, resolveMarket, listPositionsForUser } from "../src/lib/server/market-service.ts";
+import { createMarket, buyPosition, resolveMarket, settleMarket, listPositionsForUser } from "../src/lib/server/market-service.ts";
 import { setConflictedResolutionAllowed, getConflictedResolutionAllowed } from "../src/lib/server/test-overrides.ts";
 import { getAuditPage } from "../src/lib/server/audit.ts";
 
@@ -79,6 +79,11 @@ ok("ON: conflicted officer can stage-1", s1.ok && s1.data?.stage === "stage1", s
 const s2 = await resolveMarket({ marketId: mA.id, outcome: "YES", officerId: "officerX" });
 ok("ON: SAME officer can stage-2 (solo settle)", s2.ok && s2.data?.stage === "complete", s2.error);
 
+// Stage-2 records the verdict; settlement is what pays. The override under test
+// is the two-officer/conflict bypass, not the objection window, so force past it.
+const settled = await settleMarket(mA.id, { force: true, actorId: "officerX" });
+ok("solo settlement pays out", settled.ok, settled.ok ? "" : settled.error);
+
 // The conflicted officer's own YES position must WIN and be paid.
 const xPositions = await listPositionsForUser("officerX");
 const xPos = xPositions.find((p) => p.marketId === mA.id);
@@ -86,7 +91,7 @@ ok("officer's own position settled WIN", xPos?.status === "WIN", `status=${xPos?
 ok("officer's own position has a payout", (xPos?.finalPayout ?? 0) > 0, `payout=${xPos?.finalPayout}`);
 
 // Pari-mutuel math: grossPool 3000, fee 9% → netPool 2730, sole YES gets it all.
-const winnersPaid = s2.data?.winnersPaid ?? 0;
+const winnersPaid = settled.ok ? (settled.data?.winnersPaid ?? 0) : 0;
 ok("winnersPaid = netPool (2730)", winnersPaid === 2730, `winnersPaid=${winnersPaid}`);
 const xAfter = await bal("officerX");
 ok("officer credited exactly the payout", xAfter - xBefore === 2730, `Δ=${xAfter - xBefore}`);

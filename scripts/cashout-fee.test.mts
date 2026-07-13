@@ -14,7 +14,7 @@
  *   - holding to resolution pays the NORMAL payout, not stake-minus-fee
  */
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
-import { createMarket, buyPosition, cashOutPosition, cashOutValue, getMarket, resolveMarket } from "../src/lib/server/market-service.ts";
+import { createMarket, buyPosition, cashOutPosition, cashOutValue, getMarket, resolveMarket, settleMarket } from "../src/lib/server/market-service.ts";
 import { positionStore } from "../src/lib/server/market-dal.ts";
 import { setGlobalConfig, getGlobalConfig, getEffectiveConfig, settledPayoutWhole } from "../src/lib/server/market-config.ts";
 
@@ -140,7 +140,8 @@ await fundedUser("usr_co_b");
 
   const before = await bal("usr_hold");
   await resolveMarket({ marketId: m.id, outcome: "YES", officerId: "officer_one" }); // stage 1
-  await resolveMarket({ marketId: m.id, outcome: "YES", officerId: "officer_two" }); // stage 2 → pays winners
+  await resolveMarket({ marketId: m.id, outcome: "YES", officerId: "officer_two" }); // stage 2 → verdict only
+  await settleMarket(m.id, { force: true });                                          // money moves here now
   const delta = (await bal("usr_hold")) - before;
 
   ok("hold→settlement pays the normal pari-mutuel payout", delta === expectedPayout && expectedPayout > 0, `delta=${delta} expected=${expectedPayout}`);

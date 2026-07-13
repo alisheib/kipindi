@@ -70,6 +70,15 @@ export type StoredMarket = {
   resolutionStage2By: string | null;
   resolutionStage2At: string | null;
   objectionsClosedAt: string | null;
+  /** When this market's money actually moved — winners credited, losers closed,
+   *  refunds issued. THIS is settlement; `status: RESOLVED` is only the verdict.
+   *
+   *  A market that is RESOLVED with `settledAt: null` has been adjudicated but
+   *  its pool is still intact and every position is still OPEN: that is the state
+   *  a player objects from, and it is what makes the objection window a real gate
+   *  rather than a countdown drawn over money that already left. `settleDueMarkets`
+   *  stamps this once the window has closed and no objection is open. */
+  settledAt: string | null;
   /** The officer's recorded evidence excerpt — the exact quote from the official
    *  source that justifies the verdict, captured at stage-1 of the two-officer
    *  ceremony (and written immutably to the audit chain). Denormalised here so the
@@ -237,6 +246,7 @@ export async function createMarket(input: CreateMarketInput) {
     resolutionStage1By: null, resolutionStage1At: null,
     resolutionStage2By: null, resolutionStage2At: null,
     objectionsClosedAt: null,
+    settledAt: null,
     proposedBy: input.proposedBy,
     createdAt: now,
     updatedAt: now,
@@ -1130,7 +1140,7 @@ export async function cashOutPosition(
   });
 }
 
-export async function resolveMarket(opts: { marketId: string; outcome: Side | "VOID"; officerId: string; evidence?: string }): Promise<ServiceResult<{ stage: "stage1" | "complete"; winnersPaid?: number }>> {
+export async function resolveMarket(opts: { marketId: string; outcome: Side | "VOID"; officerId: string; evidence?: string }): Promise<ServiceResult<{ stage: "stage1" | "complete"; settlesAt?: string | null }>> {
   // ADM2 ceremony — the officer's declared evidence excerpt (the source quote
   // that justifies the verdict). Recorded into the immutable audit payload at
   // each attestation so the fairness story is provable; capped defensively.
@@ -1174,15 +1184,9 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
     });
   }
 
-  // Bonus portions of refunded bets are returned to the bonus wallet AFTER the
-  // market lock releases — refundBonusToActive takes the wallet lock, and taking
-  // it while holding the market lock would invert buyPosition's wallet→market
-  // order and could deadlock. Collected here, applied below.
-  const pendingBonusRefunds: Array<{ userId: string; amount: number }> = [];
-  // Every refunded bet's turnover must be reversed (it was never risked) so a
-  // refunded bonus/real bet can't clear wagering to cash for free.
-  const pendingWagerReversals: Array<{ userId: string; stake: number }> = [];
-  const result = await withLock(`market:${opts.marketId}`, async (): Promise<ServiceResult<{ stage: "stage1" | "complete"; winnersPaid?: number }>> => {
+  // No money moves in this function any more — the refund/wagering bookkeeping
+  // that used to live here moved with the payout loops into settleMarket().
+  const result = await withLock(`market:${opts.marketId}`, async (): Promise<ServiceResult<{ stage: "stage1" | "complete"; settlesAt?: string | null }>> => {
   const m = await marketStore.get(opts.marketId);
   if (!m) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
   if (m.status === "RESOLVED" || m.status === "VOIDED") return { ok: false, error: "Market already resolved.", code: "INVALID" };
@@ -1234,26 +1238,132 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   if (opts.outcome !== m.resolvedOutcome) {
     return { ok: false, error: "Stage-2 outcome must match the Stage-1 decision. Reject and restart to change it.", code: "INVALID" };
   }
-  // Stage 2 — settle. We compute the resolved fields in memory NOW (the payout
-  // loops stamp resolutionStage2At onto each position/txn), but we DO NOT persist
-  // the market's RESOLVED/VOIDED status until AFTER every position is paid — see
-  // persistResolution() at each return. Advisory-lock writes autocommit on their
-  // own connections, so persisting RESOLVED first then crashing mid-payout would
-  // strand winners as OPEN on a RESOLVED market with no recovery (the top-of-fn
-  // guard short-circuits any retry). Persisting status LAST makes settlement
-  // resumable: a re-run re-enters stage-2 (status still CLOSED) and pays only the
-  // still-OPEN positions (the OPEN filter skips already-settled ones — no
-  // double-pay). The market lock still serializes concurrent stage-2 calls, so
-  // exactly one settlement completes.
+  // Stage 2 — ADJUDICATE. The second officer countersigns and the verdict becomes
+  // final, but NO MONEY MOVES HERE. The pool stays intact and every position stays
+  // OPEN until the objection window closes with no objection standing, at which
+  // point settleDueMarkets() calls settleMarket() and the money is paid.
+  //
+  // That deferral is the whole point of the window. It used to be decorative — we
+  // stamped objectionsClosedAt and then paid the winners on the very next line, so
+  // a player "objecting" was arguing about money that had already left the pool,
+  // and there was no remedy path at all (emergencyVoidMarket refuses a settled
+  // market). Holding settlement until the window elapses is what lets an upheld
+  // objection actually change the outcome, and it is what makes the control we
+  // describe to the regulator a true statement.
+  const adjCfg = await getEffectiveConfig(m.id);
+  const windowMs = Math.max(0, adjCfg.objectionWindowHours) * 3600_000;
   m.resolutionStage2By = opts.officerId;
   m.resolutionStage2At = new Date().toISOString();
-  m.objectionsClosedAt = new Date(Date.now() + 24 * 3600_000).toISOString();
+  m.objectionsClosedAt = new Date(Date.parse(m.resolutionStage2At) + windowMs).toISOString();
   m.status = opts.outcome === "VOID" ? "VOIDED" : "RESOLVED";
   m.updatedAt = m.resolutionStage2At;
+  m.settledAt = null; // money has NOT moved — settleMarket stamps this
+  await marketStore.set(m);
+  recordSnapshot(m.id, m.yesPool, m.noPool); // final point on the chart
+  emit("market:resolve", { marketId: m.id, outcome: opts.outcome }); // SSE broadcast
+
+  audit({
+    category: "ADMIN",
+    action: "market.adjudicated",
+    actorId: opts.officerId,
+    targetType: "Market",
+    targetId: m.id,
+    payload: {
+      outcome: opts.outcome,
+      yesPool: m.yesPool, noPool: m.noPool,
+      grossPool: m.yesPool + m.noPool,
+      stage1By: m.resolutionStage1By, stage2By: m.resolutionStage2By,
+      sourceUrl: m.sourceUrl,
+      evidence,
+      objectionsClosedAt: m.objectionsClosedAt,
+      objectionWindowHours: adjCfg.objectionWindowHours,
+      settlement: windowMs > 0
+        ? "DEFERRED — no money moves until the objection window closes"
+        : "IMMEDIATE — objection window is configured to 0h",
+    },
+  });
+
+  return { ok: true, data: { stage: "complete", settlesAt: m.objectionsClosedAt } };
+  }); // end withLock market
+
+  return result;
+}
+
+/**
+ * SETTLE — the only place a resolved market's money moves.
+ *
+ * Split out of resolveMarket's stage-2 so that the objection window is a real
+ * settlement gate rather than a countdown drawn over money that already left.
+ * The payout/refund logic below is the same logic that used to run inline at
+ * stage-2 — it MOVED, it did not change; the pari-mutuel maths, the fee split,
+ * the one-sided refund rule and the ledger dual-write are all byte-for-byte the
+ * behaviour that money-invariants has always asserted.
+ *
+ * Refusal is the safe direction. We settle only when:
+ *   - the market is adjudicated (RESOLVED/VOIDED) and has a recorded outcome,
+ *   - it has not already settled (settledAt === null → idempotent; a re-run pays
+ *     nobody twice, and the OPEN-position filter is a second guard on that),
+ *   - the objection window has elapsed, and
+ *   - NO objection is standing against it.
+ *
+ * `force` skips only the last two (the window and the objection check) — it is for
+ * the officer-driven "settle now" path and for tests. It can never skip the
+ * already-settled guard, so it cannot double-pay.
+ */
+export async function settleMarket(
+  marketId: string,
+  settleOpts: { actorId?: string; force?: boolean } = {},
+): Promise<ServiceResult<{ winnersPaid: number; positionsSettled: number }>> {
+  // Bonus refunds + wagering reversals take the WALLET lock, and taking it while
+  // holding the market lock would invert buyPosition's wallet→market order and
+  // could deadlock. Collected inside the lock, applied after it releases.
+  const pendingBonusRefunds: Array<{ userId: string; amount: number }> = [];
+  const pendingWagerReversals: Array<{ userId: string; stake: number }> = [];
+
+  const result = await withLock(`market:${marketId}`, async (): Promise<ServiceResult<{ winnersPaid: number; positionsSettled: number }>> => {
+  const m = await marketStore.get(marketId);
+  if (!m) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
+  if (m.status !== "RESOLVED" && m.status !== "VOIDED") {
+    return { ok: false, error: "Market has not been adjudicated yet.", code: "INVALID" };
+  }
+  if (m.settledAt) return { ok: false, error: "Market is already settled.", code: "INVALID" };
+  if (!m.resolvedOutcome) return { ok: false, error: "Market has no recorded outcome.", code: "INVALID" };
+
+  if (!settleOpts.force) {
+    // THE GATE. Money does not move while players can still object.
+    if (m.objectionsClosedAt && Date.now() < Date.parse(m.objectionsClosedAt)) {
+      return { ok: false, error: "Objection window is still open.", code: "TOO_EARLY" };
+    }
+    // A standing objection freezes the pool past the window — otherwise an
+    // objection filed in the last minute would be paid out from under the player
+    // before an officer could ever read it. Deliberately NOT wrapped in a
+    // try/catch: if the objection store cannot be read we must fail CLOSED and
+    // leave the money where it is, not settle in the dark.
+    const { countOpenObjections } = await import("./objections-service");
+    if ((await countOpenObjections(m.id)) > 0) {
+      return { ok: false, error: "An objection is standing against this market.", code: "OBJECTION_OPEN" };
+    }
+  }
+
+  // The settlement loops below moved here verbatim from stage-2. `opts` and
+  // `evidence` are rebound to the market's own recorded verdict so that code
+  // reads exactly as it did before the split.
+  const opts = { marketId: m.id, outcome: m.resolvedOutcome, officerId: settleOpts.actorId ?? "system" };
+  const evidence = m.resolutionEvidence ?? null;
+
+  const settledAt = new Date().toISOString();
+  m.settledAt = settledAt;
+  m.updatedAt = settledAt;
+
+  // settledAt is persisted LAST, after every position is paid. Advisory-lock
+  // writes autocommit on their own connections, so stamping settledAt first and
+  // then crashing mid-payout would strand winners as OPEN on a market the guard
+  // above now considers settled — with no recovery. Persisting it last keeps
+  // settlement resumable: a re-run re-enters (settledAt still null) and pays only
+  // the still-OPEN positions.
   const persistResolution = async () => {
-    await marketStore.set(m); // RESOLVED/VOIDED persisted LAST → settlement is resumable
-    recordSnapshot(m.id, m.yesPool, m.noPool); // final point on the chart
-    emit("market:resolve", { marketId: m.id, outcome: opts.outcome }); // SSE broadcast
+    await marketStore.set(m);
+    recordSnapshot(m.id, m.yesPool, m.noPool);
   };
 
   let winnersPaid = 0;
@@ -1285,7 +1395,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
         const updated = await db.wallet.adjust(w.id, { balance: realPart });
         balanceAfter = updated?.balance ?? w.balance + realPart;
       }
-      p.status = "VOID"; p.finalPayout = p.stake; p.settledAt = m.resolutionStage2At!;
+      p.status = "VOID"; p.finalPayout = p.stake; p.settledAt = settledAt;
       await positionStore.set(p);
       pendingWagerReversals.push({ userId: p.userId, stake: p.stake });
       if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
@@ -1301,7 +1411,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
           description: `One-sided refund · "${m.titleEn.slice(0, 60)}"`,
           positionId: p.id,
           amlReason: null,
-          createdAt: m.resolutionStage2At!, updatedAt: m.resolutionStage2At!, completedAt: m.resolutionStage2At!,
+          createdAt: settledAt, updatedAt: settledAt, completedAt: settledAt,
         });
         // Dual-write: one-sided refund to double-entry ledger (fire-and-forget).
         postLedgerEntries(`refund_${oneSidedTxnId}`, refundEntries({ txnId: oneSidedTxnId, userId: p.userId, marketId: m.id, realPart, bonusPart })).catch(() => {});
@@ -1310,7 +1420,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
       sendEmailToUser(p.userId, (email) => ({
         to: email,
         subject: `Full refund · ${formatTzs(p.stake)} returned`,
-        html: oneSidedRefundHtml({ reference: p.id, stake: p.stake, marketTitle: m.titleEn, settledAt: m.resolutionStage2At ?? undefined }),
+        html: oneSidedRefundHtml({ reference: p.id, stake: p.stake, marketTitle: m.titleEn, settledAt }),
         tag: "one-sided-refund",
       })).catch(() => {});
     }
@@ -1334,8 +1444,16 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
       const { onMarketResolved } = await import("./proposals-service");
       await onMarketResolved(m.id, { voided: false });
     } catch { /* proposal prize must never break settlement */ }
-    await persistResolution(); // all one-sided refunds done → now flip status
-    return { ok: true, data: { stage: "complete", winnersPaid: 0 } };
+    await persistResolution(); // all one-sided refunds done → now stamp settledAt
+    audit({
+      category: "WALLET",
+      action: "market.settled",
+      actorId: opts.officerId,
+      targetType: "Market",
+      targetId: m.id,
+      payload: { outcome: opts.outcome, settledAt, winnersPaid: 0, positionsSettled: myPositions.length, reason: "one-sided refund" },
+    });
+    return { ok: true, data: { winnersPaid: 0, positionsSettled: myPositions.length } };
   }
 
   if (opts.outcome === "VOID") {
@@ -1352,7 +1470,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
       }
       p.status = "VOID";
       p.finalPayout = p.stake;
-      p.settledAt = m.resolutionStage2At!;
+      p.settledAt = settledAt;
       await positionStore.set(p);
       pendingWagerReversals.push({ userId: p.userId, stake: p.stake });
       if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
@@ -1368,7 +1486,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
           description: `Refund · "${m.titleEn.slice(0, 60)}" voided`,
           positionId: p.id,
           amlReason: null,
-          createdAt: m.resolutionStage2At!, updatedAt: m.resolutionStage2At!, completedAt: m.resolutionStage2At!,
+          createdAt: settledAt, updatedAt: settledAt, completedAt: settledAt,
         });
         // Dual-write: refund to double-entry ledger (fire-and-forget).
         postLedgerEntries(`refund_${refundTxnId}`, refundEntries({ txnId: refundTxnId, userId: p.userId, marketId: m.id, realPart, bonusPart })).catch(() => {});
@@ -1389,7 +1507,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
         );
         const updated = await db.wallet.adjust(w.id, { balance: payout });
         const balanceAfter = updated?.balance ?? w.balance + payout;
-        p.status = "WIN"; p.finalPayout = payout; p.settledAt = m.resolutionStage2At!;
+        p.status = "WIN"; p.finalPayout = payout; p.settledAt = settledAt;
         await positionStore.set(p);
         const payoutTxnId = `txn_${randomId(12)}`;
         await db.txn.create({
@@ -1402,7 +1520,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
           description: `${opts.outcome} won · "${m.titleEn.slice(0, 60)}"`,
           positionId: p.id,
           amlReason: null,
-          createdAt: m.resolutionStage2At!, updatedAt: m.resolutionStage2At!, completedAt: m.resolutionStage2At!,
+          createdAt: settledAt, updatedAt: settledAt, completedAt: settledAt,
         });
         // Dual-write: settlement payout to double-entry ledger (fire-and-forget).
         postLedgerEntries(`settle_${payoutTxnId}`, settlementPayoutEntries({
@@ -1419,18 +1537,18 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
         sendEmailToUser(p.userId, (email) => ({
           to: email,
           subject: `You won · ${formatTzs(payout)}`,
-          html: winNotificationHtml({ reference: p.id, payout, stake: p.stake, marketTitle: m.titleEn, settledAt: m.resolutionStage2At ?? undefined }),
+          html: winNotificationHtml({ reference: p.id, payout, stake: p.stake, marketTitle: m.titleEn, settledAt }),
           tag: "win",
         })).catch(() => {});
       } else {
-        p.status = "LOSS"; p.finalPayout = 0; p.settledAt = m.resolutionStage2At!;
+        p.status = "LOSS"; p.finalPayout = 0; p.settledAt = settledAt;
         await positionStore.set(p);
         // Loss receipt — kit copy reframes loss as "pool grew".
         notifyLoss(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, positionId: p.id });
         sendEmailToUser(p.userId, (email) => ({
           to: email,
           subject: `Bet lost · ${formatTzs(p.stake)}`,
-          html: lossNotificationHtml({ reference: p.id, stake: p.stake, marketTitle: m.titleEn, settledAt: m.resolutionStage2At ?? undefined }),
+          html: lossNotificationHtml({ reference: p.id, stake: p.stake, marketTitle: m.titleEn, settledAt }),
           tag: "loss",
         })).catch(() => {});
       }
@@ -1479,7 +1597,22 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
     await alertWatchersSettled(m.id, m.titleEn, opts.outcome, bettorIds);
   } catch { /* watcher alerts must never break settlement */ }
 
-  return { ok: true, data: { stage: "complete", winnersPaid } };
+  audit({
+    category: "WALLET",
+    action: "market.settled",
+    actorId: opts.officerId,
+    targetType: "Market",
+    targetId: m.id,
+    payload: {
+      outcome: opts.outcome, settledAt, winnersPaid,
+      positionsSettled: myPositions.length,
+      grossPool, winningPool,
+      objectionsClosedAt: m.objectionsClosedAt,
+      forced: settleOpts.force === true,
+    },
+  });
+
+  return { ok: true, data: { winnersPaid, positionsSettled: myPositions.length } };
   }); // end withLock market
 
   // Apply, now the market lock is released (refund helpers take the wallet lock —
@@ -1497,6 +1630,43 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
     }
   }
   return result;
+}
+
+/**
+ * SETTLEMENT SWEEP — pays out every adjudicated market whose objection window has
+ * closed. Runs on the lifecycle ticker (once a minute), which is what turns the
+ * window from a promise into a mechanism: nothing else pays a resolved market.
+ *
+ * Every guard that matters lives in settleMarket() and is re-checked under the
+ * market lock, so this sweep is deliberately dumb — it proposes candidates, it
+ * does not decide. Running it twice concurrently is safe (the lock serialises and
+ * the settledAt guard makes the second call a no-op), and a market that is not yet
+ * due, or that has an objection standing, simply refuses and is picked up on a
+ * later pass.
+ */
+export async function settleDueMarkets(): Promise<{ settled: number; skipped: number }> {
+  const now = Date.now();
+  const candidates = (await marketStore.values()).filter(
+    (m) => (m.status === "RESOLVED" || m.status === "VOIDED")
+      && !m.settledAt
+      && !!m.objectionsClosedAt
+      && Date.parse(m.objectionsClosedAt) <= now,
+  );
+
+  let settled = 0;
+  let skipped = 0;
+  for (const m of candidates) {
+    try {
+      const r = await settleMarket(m.id, { actorId: "system" });
+      if (r.ok) settled++;
+      else skipped++; // TOO_EARLY / OBJECTION_OPEN / already settled — all benign
+    } catch (e) {
+      // Fail closed: the money stays in the pool and we retry on the next pass.
+      skipped++;
+      console.error(`[settle] ${m.id} failed — money left in pool, will retry:`, e);
+    }
+  }
+  return { settled, skipped };
 }
 
 /**
@@ -1596,8 +1766,15 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
   const result = await withLock(`market:${opts.marketId}`, async () => {
     const m = await marketStore.get(opts.marketId);
     if (!m) return { ok: false as const, error: "Market not found.", code: "NOT_FOUND" as const };
-    if (m.status === "RESOLVED" || m.status === "VOIDED") {
-      return { ok: false as const, error: "Market is already settled — nothing to void.", code: "INVALID" as const };
+    // The test is whether the MONEY has moved, not what the status says. Since
+    // F11 a market can be RESOLVED (verdict recorded) while its pool is still
+    // whole and every position OPEN — and that is exactly the state an officer
+    // needs to be able to kill: it is the state a market sits in while players
+    // are objecting to the verdict. Only a market that has actually settled is
+    // beyond an emergency void, because undoing it would mean clawing money back
+    // out of players' wallets.
+    if (m.settledAt) {
+      return { ok: false as const, error: "Market is already settled — its money has moved. Nothing to void.", code: "INVALID" as const };
     }
 
     const now = new Date().toISOString();
@@ -1666,6 +1843,9 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
     m.resolutionStage1At = now;
     m.resolutionStage2By = opts.officerId;
     m.resolutionStage2At = now;
+    // The money moved HERE — stamp it, or settleDueMarkets would see a VOIDED
+    // market with settledAt still null and try to settle it a second time.
+    m.settledAt = now;
     // Surface the recorded cancellation reason as the settlement-proof evidence so
     // a voided market tells players WHY it was pulled (same value already sent in
     // the cancellation notice; capped for parity with the ceremony path).

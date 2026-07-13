@@ -145,3 +145,29 @@ export const REVIEW = {
   dsarFulfilled:      { en: "Fulfilled" },
   dsarRejected:       { en: "Rejected" },
 } satisfies Record<string, AdminLabel>;
+
+/**
+ * F11 — player objections to a market verdict (StoredObjection.status + remedy).
+ *
+ * The Swahili here is lifted from already-shipped surfaces, per the rule at the
+ * top of this file: "Dirisha la pingamizi" is CEREMONY.objectionWindow, and the
+ * player-facing dict already ships "Pinga matokeo haya" / "pingamizi".
+ */
+export const OBJECTION = {
+  // Status. OPEN is the one that matters: it FREEZES the market's settlement.
+  open:      { en: "Open · settlement frozen", sw: "Wazi · malipo yamesimamishwa" },
+  upheld:    { en: "Upheld", sw: "Limekubaliwa" },
+  rejected:  { en: "Rejected", sw: "Limekataliwa" },
+  withdrawn: { en: "Withdrawn", sw: "Limeondolewa" },
+  // Remedies available ONLY while the market is unsettled.
+  remedyVoid:    { en: "Void & refund every stake", sw: "Batilisha na urejeshe dau zote" },
+  remedyReverse: { en: "Reverse the verdict", sw: "Geuza uamuzi" },
+  // Reasons a player can give.
+  reasonWrongOutcome:      { en: "Result is wrong" },
+  reasonSourceContradicts: { en: "Source contradicts the verdict" },
+  reasonAmbiguousCriterion:{ en: "Criterion does not decide it" },
+  reasonResolvedEarly:     { en: "Resolved before the event finished" },
+  reasonOther:             { en: "Other" },
+  // The thing an officer must understand before they act.
+  frozenNotice: { en: "This market's money is frozen while this objection is open", sw: "Fedha za soko hili zimesimamishwa wakati pingamizi hili liko wazi" },
+} satisfies Record<string, AdminLabel>;

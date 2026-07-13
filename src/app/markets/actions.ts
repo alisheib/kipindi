@@ -6,7 +6,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { buyPosition, cashOutPosition, resolveMarket, emergencyVoidMarket, adminReopenMarket, createMarket, listPositionsForUser, type CreateMarketInput, type Side } from "@/lib/server/market-service";
 import { addComment, reportComment, deleteComment, restoreComment, type CommentSide } from "@/lib/server/comments-store";
 import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
-import { db } from "@/lib/server/store";
+import { db, type ObjectionReason } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { MARKET_OPS_ROLES } from "@/lib/server/roles";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
@@ -249,6 +249,43 @@ export async function postCommentAction(formData: FormData) {
   const open = (await listPositionsForUser(session.userId)).filter((p) => p.marketId === marketId && p.status === "OPEN");
   const side: CommentSide = open.length ? (open[open.length - 1].side as "YES" | "NO") : null;
   const r = await addComment(session.userId, marketId, body, side);
+  if (r.ok) revalidatePath(`/markets/${marketId}`);
+  return r;
+}
+
+/**
+ * F11 — a player formally objects to a market's verdict.
+ *
+ * This is only meaningful because settlement is gated: the market is RESOLVED but
+ * its pool is still whole, so an objection FREEZES the money until an officer
+ * rules. Every eligibility rule (stakeholder-only, one-open-per-market, window
+ * still open, not yet settled) is enforced in the SERVICE under the market lock —
+ * this action is a thin authenticated wrapper, so a crafted POST cannot bypass it.
+ */
+export async function fileObjectionAction(formData: FormData) {
+  const session = await currentSession();
+  if (!session) return { ok: false as const, error: "Sign in first." };
+
+  const marketId = String(formData.get("marketId") ?? "");
+  const reason = String(formData.get("reason") ?? "") as ObjectionReason;
+  const detail = String(formData.get("detail") ?? "");
+
+  const { fileObjection } = await import("@/lib/server/objections-service");
+  const r = await fileObjection(session.userId, { marketId, reason, detail });
+  if (r.ok) revalidatePath(`/markets/${marketId}`);
+  return r;
+}
+
+/** F11 — the objector changes their mind; this releases the settlement freeze. */
+export async function withdrawObjectionAction(formData: FormData) {
+  const session = await currentSession();
+  if (!session) return { ok: false as const, error: "Sign in first." };
+
+  const marketId = String(formData.get("marketId") ?? "");
+  const objectionId = String(formData.get("objectionId") ?? "");
+
+  const { withdrawObjection } = await import("@/lib/server/objections-service");
+  const r = await withdrawObjection(session.userId, objectionId);
   if (r.ok) revalidatePath(`/markets/${marketId}`);
   return r;
 }

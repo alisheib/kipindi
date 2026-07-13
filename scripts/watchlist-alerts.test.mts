@@ -16,7 +16,7 @@ process.env.OTP_PEPPER ??= "test-only-otp-pepper-16chars";
 
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { marketStore } from "../src/lib/server/market-dal.ts";
-import { notifyClosingSoonMarkets, createMarket, buyPosition, resolveMarket } from "../src/lib/server/market-service.ts";
+import { notifyClosingSoonMarkets, createMarket, buyPosition, resolveMarket, settleMarket } from "../src/lib/server/market-service.ts";
 import { toggleWatch, isWatching, listWatchedMarketIds, alertableWatcherIds } from "../src/lib/server/watchlist-service.ts";
 import { listForUser } from "../src/lib/server/notification-service.ts";
 import { selfExclude, coolOff } from "../src/lib/server/responsible-gambling.ts";
@@ -143,6 +143,9 @@ await mkUser("wl_cooled");
 
   await resolveMarket({ marketId: mkt, outcome: "YES", officerId: "wl_officer1", evidence: "src" });
   await resolveMarket({ marketId: mkt, outcome: "YES", officerId: "wl_officer2" });
+  // Watchers are told a market SETTLED, so the alert fires at settlement, not at
+  // the verdict — force it here rather than waiting out the objection window.
+  await settleMarket(mkt, { force: true });
 
   ok("watcher who did NOT bet got a settled alert", (await watchNotes("wl_a")).length === aBefore + 1);
   ok("watcher who DID bet got NO duplicate watchlist alert", (await watchNotes("wl_b")).length === bBefore, "bettor gets win/loss instead");

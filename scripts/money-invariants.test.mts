@@ -24,7 +24,7 @@
  *                         entry and the chain verifies end-to-end.
  */
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
-import { createMarket, buyPosition, cashOutPosition, getMarket, resolveMarket } from "../src/lib/server/market-service.ts";
+import { createMarket, buyPosition, cashOutPosition, getMarket, resolveMarket, settleMarket } from "../src/lib/server/market-service.ts";
 import { positionStore } from "../src/lib/server/market-dal.ts";
 import { getEffectiveConfig } from "../src/lib/server/market-config.ts";
 import { auditFlush, verifyChain, auditRingSize, getAuditPage } from "../src/lib/server/audit.ts";
@@ -62,10 +62,21 @@ async function makeMarket(): Promise<string> {
   return m.id;
 }
 
-/** Full two-officer resolution (both officers hold no position → no conflict). */
+/**
+ * Full two-officer resolution AND settlement.
+ *
+ * Since F11, stage-2 only ADJUDICATES — it records the verdict and opens the
+ * objection window; no money moves until the window closes with no objection
+ * standing. These invariants are about the payout MATHS, not about the gate, so
+ * we force settlement here to exercise the money path directly. The gate itself
+ * (money must NOT move while the window is open) is proven in
+ * scripts/settlement-gate.test.mts, which never forces.
+ */
 async function resolve(marketId: string, outcome: "YES" | "NO" | "VOID") {
   await resolveMarket({ marketId, outcome, officerId: "officer_alpha" });
-  return resolveMarket({ marketId, outcome, officerId: "officer_beta" });
+  const r = await resolveMarket({ marketId, outcome, officerId: "officer_beta" });
+  await settleMarket(marketId, { force: true });
+  return r;
 }
 
 /** THE universal safety net — no negative money anywhere in the system. */

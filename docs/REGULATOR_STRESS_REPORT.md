@@ -83,7 +83,7 @@ These are production-ready as-is:
 | Audit chain (HMAC-chained, append-only) | Monotonic non-decreasing verified at scale. Every privileged action logged with actor + target + payload. |
 | Source-trust registry | Markets cannot be published without an approved source URL on the registry. Admin must explicitly enable a source before it can be cited. |
 | Two-officer resolution | Stage 1 + stage 2 must be different officers. The codepath enforces it. |
-| 24-hour objection window | Implemented in `src/lib/server/market-service.ts` — settlement is gated on `objectionsClosedAt`. |
+| 24-hour objection window | Implemented in `src/lib/server/market-service.ts`. Settlement is genuinely gated on `objectionsClosedAt`: stage-2 of the resolution ceremony records the verdict but moves **no money** — every position stays OPEN and the pool stays whole. `settleDueMarkets()` (lifecycle ticker) pays the market only once the window has elapsed **and** no objection is standing against it. A player who disputes a verdict therefore does so while the money is still in the pool, and an upheld objection can VOID or REVERSE the outcome before anyone is paid. Window length is admin-configurable at `/admin/config` (`objectionWindowHours`, default 24). Proven end-to-end by `scripts/settlement-gate.test.mts`. |
 | Rate limiting | Per-user per-action limiter; correctly rejects burst patterns. Proven by SPIKE test rejecting 3500 bets. |
 | Responsible-gambling self-exclusion | Server-side check in `buyPosition` blocks bets while locked. Cannot be bypassed from the client. |
 | Account-status gating | SUSPENDED / CLOSED accounts cannot bet; checked before any wallet write. |
@@ -147,7 +147,7 @@ In order:
 4. **The responsible-gambling settings** at `/profile/responsible-gambling` — deposit limit, session limit, cooling-off, self-exclusion. Server-enforced.
 5. **The fuzz suite** at `scripts/fuzz-malformed-payloads.mjs` — proves the platform cannot be made to crash by malformed inputs from an attacker.
 6. **The two-officer settlement** demo — show how the resolver-queue requires different officers for stage 1 and stage 2.
-7. **The 24-hour objection window** — show how a resolved market sits in a public-objection state before paying out.
+7. **The 24-hour objection window** — show how a resolved market sits in a public-objection state, with its pool intact and every position still OPEN, **before** paying out: resolve a market in `/admin/resolver-queue` (the toast says "pays out \<when\>, unless a player objects"), show the player's `/markets/[id]` panel reading "Payout is on hold", file an objection from that player, then show `/admin/objections` reporting the money frozen and the market refusing to settle until an officer rules.
 
 What the regulator will ask for next that we don't have yet:
 - Postgres migration with daily backups + PITR (documented; gated on launch budget)

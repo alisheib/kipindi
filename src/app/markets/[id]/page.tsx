@@ -104,6 +104,29 @@ export default async function MarketDetail({
   let watching = false;
   if (session) { try { watching = await isWatching(m.id, session.userId); } catch { /* graceful */ } }
   const isResolved = m.status === "RESOLVED" || m.status === "VOIDED";
+
+  // F11 — decide the viewer's objection standing HERE, on the server, so the panel
+  // never dangles a control the service would refuse. The same rules are re-checked
+  // under the market lock when they actually file.
+  let objectionState: React.ComponentProps<typeof ResolutionPanel>["objection"] = { state: "SIGNED_OUT" };
+  if (isResolved && session) {
+    const { objectionEligibility, listObjectionsForUser } = await import("@/lib/server/objections-service");
+    const mine = (await listObjectionsForUser(session.userId)).find(
+      (o) => o.marketId === m!.id && o.status === "OPEN",
+    );
+    if (mine) {
+      objectionState = { state: "OPEN", objectionId: mine.id };
+    } else {
+      const elig = await objectionEligibility(session.userId, m.id);
+      objectionState = elig.eligible
+        ? { state: "ELIGIBLE" }
+        : elig.why === "NO_POSITION" ? { state: "NO_POSITION" }
+        : elig.why === "WINDOW_CLOSED" ? { state: "WINDOW_CLOSED" }
+        : elig.why === "ALREADY_SETTLED" ? { state: "ALREADY_SETTLED" }
+        : { state: "SIGNED_OUT" };
+    }
+  }
+
   // Two-officer attestation is claimed ONLY for genuinely distinct human officers
   // — never synthetic/auto (demo, sentinel) resolution whose ids are "system_*".
   const _s1 = m.resolutionStage1By, _s2 = m.resolutionStage2By;
@@ -263,6 +286,7 @@ export default async function MarketDetail({
           {/* 2b. Resolution panel — outcome, attestation, pool + fee (resolved only) */}
           {isResolved && m.resolvedOutcome && (
             <ResolutionPanel
+              marketId={m.id}
               outcome={m.resolvedOutcome}
               resolvedAt={m.resolutionStage2At ?? m.updatedAt}
               twoOfficer={twoOfficer}
@@ -273,6 +297,8 @@ export default async function MarketDetail({
               noPool={m.noPool}
               feeRate={marketFeeRate}
               evidence={m.resolutionEvidence}
+              settledAt={m.settledAt}
+              objection={objectionState}
             />
           )}
 

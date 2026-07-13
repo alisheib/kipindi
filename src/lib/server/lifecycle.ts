@@ -24,6 +24,7 @@ import {
   notifyDueMarketsForResolution,
   autoResolveExpiredDemoMarkets,
   repairOrphanedPositions,
+  settleDueMarkets,
 } from "./market-service";
 import { expireActiveGrants } from "./bonus-service";
 
@@ -43,6 +44,10 @@ export async function runLifecyclePass(): Promise<void> {
     await notifySelectionClosedMarkets().catch((e) => console.error("[lifecycle] selection-closed sweep:", e));
     await notifyDueMarketsForResolution().catch((e) => console.error("[lifecycle] resolution-due sweep:", e));
     await autoResolveExpiredDemoMarkets().catch((e) => console.error("[lifecycle] demo auto-resolve:", e));
+    // Settlement sweep — pays adjudicated markets whose objection window has
+    // closed. This is the ONLY thing that pays a resolved market, so if this
+    // sweep stops running, money stops moving (it does not leak — it waits).
+    await settleDueMarkets().catch((e) => console.error("[lifecycle] settlement sweep:", e));
     await expireActiveGrants().catch((e) => console.error("[lifecycle] bonus expiry:", e));
   } finally {
     running = false;

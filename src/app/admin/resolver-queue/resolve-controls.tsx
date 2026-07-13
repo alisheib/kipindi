@@ -7,7 +7,7 @@ import { resolveMarketAction } from "@/app/markets/actions";
 import { BrandSpinner } from "@/components/brand";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
 import { ConfirmModal } from "@/components/ui/modal";
-import { formatTzs } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
 
 export function ResolveControls({ marketId, stage, stagedOutcome }: { marketId: string; stage: "stage1" | "stage2"; stagedOutcome?: "YES" | "NO" | "VOID" | null }) {
   const [pending, startTransition] = useTransition();
@@ -46,14 +46,17 @@ export function ResolveControls({ marketId, stage, stagedOutcome }: { marketId: 
         });
         setResultOpen(true);
       } else {
-        const detail = r.data?.winnersPaid
-          ? `Paid ${formatTzs(r.data.winnersPaid)} to winners`
-          : "All voided · refunds issued";
-        toast({ title: `Resolved ${outcome}`, description: detail, variant: "success" });
+        // Stage-2 records the VERDICT — it does not pay. The money stays in the
+        // pool until the objection window closes with no objection standing, so
+        // saying "paid" here would be a lie to the officer.
+        const detail = r.data?.settlesAt
+          ? `Pays out ${formatDateTime(r.data.settlesAt)}, unless a player objects`
+          : "Pays out on the next settlement sweep";
+        toast({ title: `Verdict recorded · ${outcome}`, description: detail, variant: "success" });
         setResultData({
           variant: "success",
-          title: `Settled · ${outcome}`,
-          subtitle: "Payouts credited and positions closed. Audit entry recorded.",
+          title: `Verdict recorded · ${outcome}`,
+          subtitle: "No money has moved. Players who staked can object while the window is open; an objection freezes settlement until an officer rules.",
           detail,
         });
         setResultOpen(true);

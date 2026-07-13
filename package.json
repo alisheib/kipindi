@@ -22,6 +22,7 @@
     "test:email-stress": "tsx scripts/email-stress.test.mts",
     "test:cashout": "tsx scripts/cashout-fee.test.mts",
     "test:money-invariants": "tsx scripts/money-invariants.test.mts",
+    "test:settlement-gate": "tsx scripts/settlement-gate.test.mts",
     "test:concurrency": "tsx scripts/concurrency.test.mts",
     "test:maintenance": "tsx scripts/maintenance-mode.test.mts",
     "test:emergency": "tsx scripts/emergency-void.test.mts",

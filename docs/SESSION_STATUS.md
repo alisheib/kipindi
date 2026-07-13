@@ -1,6 +1,6 @@
 # 50pick / Kipindi — Session status & handover
 
-**Updated:** 2026-07-12 (solo-resolution prod-lock hotfix + Track 2b money-format client subset) · **Branch:** `main` · **HEAD:** see `git log -1`
+**Updated:** 2026-07-13 (**F11 — settlement is now GATED on the objection window**; Phase-D a11y batch closed out) · **Branch:** `main` · **HEAD:** see `git log -1`
 **Live:** https://kipindi-production.up.railway.app (Railway auto-deploys on push to `main`; custom domain `www.50pick.tz` registered but **not cut over** — DNS pending).
 
 > This is the **read-first** doc. It's a current-state snapshot + the launch
@@ -17,7 +17,29 @@ by official sources; the house takes a fee; winners share the pool. Trilingual
 (EN/SW/ZH). Next.js 16 · React 19 · TypeScript · Prisma · Postgres (prod) /
 in-memory store (dev). Prod flag `USE_PRISMA_DAL=true` on Railway.
 
-## 2 · Current state (feature-complete, hardening for launch)
+## ⚠ 2 · READ FIRST — settlement no longer happens at resolution (2026-07-13)
+`resolveMarket` stage-2 **adjudicates only**: it records the verdict, opens the objection
+window, and moves **no money** — the pool stays whole and every position stays OPEN. Money
+moves in **`settleMarket()`**, driven by **`settleDueMarkets()`** on the 60s lifecycle ticker,
+and only once the window has elapsed **and** no objection is standing against the market.
+
+Why: the old 24h "objection window" was cosmetic. `objectionsClosedAt` was stamped and the
+winners were paid on the very next line of the same function, so a player could only object to
+money that had already gone, and an upheld dispute had no remedy at all. Meanwhile
+`REGULATOR_STRESS_REPORT.md` told a regulator that settlement *was* gated on it. That claim is
+now true. `scripts/settlement-gate.test.mts` (72 assertions) is the proof; every assertion in it
+fails on the old code.
+
+**Traps this sets for new code:**
+- `status === "RESOLVED"` **no longer means the money moved.** Check `settledAt`. A market can
+  sit RESOLVED-and-unpaid for the whole objection window.
+- Resolving a market in a test no longer pays anybody — call
+  `await settleMarket(id, { force: true })`. `force` skips the window + objection checks only;
+  the already-settled guard still holds, so it cannot double-pay.
+- `objectionWindowHours` (default 24) is an `/admin/config` knob. **0 disables the gate** —
+  fine for play-money, never for real money.
+
+## 2b · Current state (feature-complete, hardening for launch)
 The platform is **feature-complete and passing its gates**. Recently landed:
 
 - **2026-07-13 · F8 event calendar + TWO AI-PIPELINE DEFECTS FIXED** (`2acef86`) —

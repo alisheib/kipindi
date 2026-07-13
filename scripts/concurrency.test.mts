@@ -12,7 +12,7 @@
  *   C · Concurrent double stage-2 settle → winner paid ONCE (no double payout).
  */
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
-import { createMarket, buyPosition, resolveMarket, getMarket, cashOutPosition } from "../src/lib/server/market-service.ts";
+import { createMarket, buyPosition, resolveMarket, settleMarket, getMarket, cashOutPosition } from "../src/lib/server/market-service.ts";
 import { positionStore } from "../src/lib/server/market-dal.ts";
 import { withdraw } from "../src/lib/server/wallet-service.ts";
 import { bindRecruit, ensureAffiliateAccount, onRecruitBet } from "../src/lib/server/affiliate-service.ts";
@@ -113,10 +113,21 @@ async function makeMarket(): Promise<string> {
   ]);
   const completes = [a, b].filter((r) => r.ok && r.data?.stage === "complete");
   const rejects = [a, b].filter((r) => !r.ok);
-  ok("C: exactly one settlement completed", completes.length === 1, `completes=${completes.length}`);
+  ok("C: exactly one adjudication completed", completes.length === 1, `completes=${completes.length}`);
   ok("C: the other was rejected (already resolved)", rejects.length === 1, `rejects=${rejects.length}`);
 
-  const winnersPaid = completes[0]?.ok ? (completes[0].data!.winnersPaid ?? 0) : 0;
+  // Stage-2 no longer moves money, so the race that can now double-pay is the
+  // SETTLEMENT race. Fire two at once: the market lock must serialise them and
+  // the settledAt guard must make the loser a no-op.
+  ok("C: no money moved at adjudication", (await bal("cc_win")) - winBefore === 0, `delta=${(await bal("cc_win")) - winBefore}`);
+  const [sa, sb] = await Promise.all([
+    settleMarket(mid, { force: true }),
+    settleMarket(mid, { force: true }),
+  ]);
+  const settled = [sa, sb].filter((r) => r.ok);
+  ok("C: exactly one settlement completed", settled.length === 1, `settled=${settled.length}`);
+
+  const winnersPaid = settled[0]?.ok ? (settled[0].data!.winnersPaid ?? 0) : 0;
   const delta = (await bal("cc_win")) - winBefore;
   ok("C: winner credited exactly once", delta > 0 && delta === winnersPaid, `delta=${delta} winnersPaid=${winnersPaid}`);
   // No mint: a double-settle would pay 2× → delta would exceed the whole pool.
@@ -253,11 +264,12 @@ async function makeMarket(): Promise<string> {
 }
 
 // ── G · Resumable settlement — a re-run pays only OPEN, never double-pays ────
-// resolveMarket now persists the RESOLVED status LAST (after all payouts), so a
-// crash mid-settlement leaves the market CLOSED with some positions still OPEN,
-// and a re-run resumes them. This simulates that state: one winner already
-// settled+credited (as a crashed run would leave it), one still OPEN. The re-run
-// must pay the OPEN winner and NOT touch the already-settled one.
+// settleMarket persists settledAt LAST (after every payout), so a crash
+// mid-settlement leaves the market RESOLVED-but-unsettled with some positions
+// already WIN and some still OPEN — and a re-run resumes them. This simulates
+// that state: one winner already settled+credited (as a crashed run would leave
+// it), one still OPEN. The re-run must pay the OPEN winner and NOT touch the
+// already-settled one.
 {
   const mid = await makeMarket();
   await fundedUser("cc_res_wa", 100_000); // YES — pretend the crashed run already paid this one
@@ -266,11 +278,13 @@ async function makeMarket(): Promise<string> {
   const ra = await buyPosition("cc_res_wa", { marketId: mid, side: "YES", stake: 10_000 });
   const rb = await buyPosition("cc_res_wb", { marketId: mid, side: "YES", stake: 10_000 });
   await buyPosition("cc_res_l", { marketId: mid, side: "NO", stake: 10_000 });
-  // Stage-1 YES (leaves the market CLOSED — exactly the pre-stage-2 state a crash
-  // between "status persisted CLOSED" and "status persisted RESOLVED" produces).
+  // Adjudicate fully (stage-1 + stage-2). No money moves; the market is now
+  // RESOLVED with settledAt still null and every position OPEN.
   await resolveMarket({ marketId: mid, outcome: "YES", officerId: "cc_res_alpha" });
+  await resolveMarket({ marketId: mid, outcome: "YES", officerId: "cc_res_beta" });
 
-  // Simulate the crashed run having ALREADY settled+credited winner A.
+  // Simulate a settlement run that crashed AFTER crediting winner A but BEFORE
+  // stamping settledAt.
   const paidA = 15_000;
   const posA = await positionStore.get(ra.ok ? ra.data!.positionId : "?");
   if (posA) { posA.status = "WIN"; posA.finalPayout = paidA; await positionStore.set(posA); }
@@ -279,9 +293,10 @@ async function makeMarket(): Promise<string> {
   const aAfterSimPay = await bal("cc_res_wa");
   const bBeforeResume = await bal("cc_res_wb");
 
-  // RESUME: a different second officer confirms stage-2.
-  const done = await resolveMarket({ marketId: mid, outcome: "YES", officerId: "cc_res_beta" });
-  ok("G: resumed settlement completes", done.ok && done.data?.stage === "complete", JSON.stringify(done));
+  // RESUME: re-run settlement. The OPEN-position filter is what prevents the
+  // double-pay; A is already WIN and must be skipped.
+  const done = await settleMarket(mid, { force: true });
+  ok("G: resumed settlement completes", done.ok, done.ok ? "" : done.error);
   ok("G: already-settled winner NOT double-paid", (await bal("cc_res_wa")) === aAfterSimPay, `bal=${await bal("cc_res_wa")} expected=${aAfterSimPay}`);
   ok("G: OPEN winner paid on resume", (await bal("cc_res_wb")) > bBeforeResume, `Δ=${(await bal("cc_res_wb")) - bBeforeResume}`);
   ok("G: winner-A position stays WIN (untouched)", (await positionStore.get(posA!.id))!.status === "WIN");

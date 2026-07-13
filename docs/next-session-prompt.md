@@ -8,18 +8,49 @@
 ---
 
 ## 0 · First 5 minutes (before any task)
-1. `cd C:\kipindi-main` · `git status` (clean) · `git pull --rebase origin main`.
-2. **`npx prisma generate`** (a pull often leaves the client stale → phantom tsc
+1. `cd F:\kipindi-main` · `git status` (clean) · `git pull --rebase origin main`.
+   ⚠ The repo is on **F:**, not C: — an older copy of this prompt said `C:\kipindi-main`.
+2. **`npm install`** if the pull touched `package.json` (F3/F4 added `web-push`; a stale
+   `node_modules` shows up as a phantom tsc error "Cannot find module 'web-push'").
+   Then **`npx prisma generate`** (a pull often leaves the client stale → phantom tsc
    errors like "field does not exist"; regenerating fixes it — not a code bug).
-3. `npx tsc --noEmit` → clean · `npm run test:all` → **52/53**.
-   ⚠ `test:responsive` is the ONLY expected red — it drives Playwright against a
-   live server that isn't booted. Everything else must be green.
+   ⚠ **Never run `npm install` while a dev server is up.** It rewrites `node_modules`
+   under the running server and poisons the Turbopack cache — every route then 500s with
+   `FATAL: An unexpected Turbopack error` / exit code `0xc0000142`. Cure: kill the server,
+   `rm -rf .next`, restart. It looks like catastrophic breakage and is purely local.
+3. `npx tsc --noEmit` → clean · `npm run test:all` → **55/55**.
+   `test:responsive` needs a live server on :3000 — boot one and it passes too; without a
+   server it is the only acceptable red.
 4. Read `docs/SESSION_STATUS.md`, then `docs/feature-backlog.md`.
 
 ## 1 · Where we stand (2026-07-13)
 Feature-complete, launch-hardening. Live on Railway
 (`kipindi-production.up.railway.app`; `www.50pick.tz` registered but **not cut over** —
 deep routes 404 on it. That's expected; use the railway host).
+
+### ⚠ 2026-07-13 — SETTLEMENT IS NOW GATED. Read this before touching the money path.
+`resolveMarket` **no longer pays anyone.** Stage-2 of the ceremony *adjudicates*: it records
+the verdict, opens the objection window, and leaves the pool whole with every position OPEN.
+Money moves only in **`settleMarket()`**, called by **`settleDueMarkets()`** on the lifecycle
+ticker, and only once the window has elapsed **and** no objection is standing.
+
+This was F11. The old "24h objection window" was decoration — `objectionsClosedAt` was stamped
+and the winners were paid on the next line, so a player could only ever object to money that
+had already left, and an upheld objection had no remedy (`emergencyVoidMarket` refuses a
+settled market). `REGULATOR_STRESS_REPORT.md` meanwhile told a regulator settlement *was*
+gated on it. It is now true, and `scripts/settlement-gate.test.mts` (72 assertions) proves it.
+
+Consequences you must know:
+- A market can be **RESOLVED with `settledAt: null`** — verdict final, money untouched. Any new
+  code that reads `status === "RESOLVED"` and assumes the money moved is **wrong**; check
+  `settledAt`.
+- A test that resolves a market and asserts a payout must now settle explicitly:
+  `await settleMarket(id, { force: true })`. `force` skips the window + objection checks; it can
+  never skip the already-settled guard, so it cannot double-pay.
+- `emergencyVoidMarket` now refuses on `settledAt`, not on status — so it CAN kill a resolved
+  but unsettled market (that is the uphold escape hatch) and stamps `settledAt` itself.
+- Objection rulings are **COMPLIANCE-gated in the service** (not just the route): a MODERATOR
+  cannot VOID/REVERSE a market, and the attempt is audited as `privilege_escalation_blocked`.
 
 **The feature backlog F1–F8 is COMPLETE except F6** (which is a decision, not code):
 
@@ -99,13 +130,17 @@ never actually blocking overspend.
 ## 6 · What to do next (if Ali gives no other steer)
 The backlog is done. Highest-value remaining, in order:
 1. **P3 polish** (`feature-backlog.md` §P3) — F9 richer market detail, F10 low-data lite
-   mode, **F11 player-facing dispute/objection flow** (the 24h objection window exists
-   server-side but has **no player submit path**; F1 currently routes disputes to support),
-   F12 live odds via SSE, F13 public fairness ledger.
+   mode, F12 live odds via SSE, F13 public fairness ledger.
+   *(F11 shipped 2026-07-13 — it became the settlement gate; see §1.)*
 2. **Instrument analytics** — there is *zero* pageview tracking, which is why the F7 funnel
    honestly has no "visit" stage. Adding it unlocks a real top-of-funnel.
 3. **Launch blockers** (Ali-owned): real payment aggregator (Selcom/Azampay), MNO logos,
    telco SMS sender ID, GLI cert — and **flip the solo-resolution toggle OFF before real money**.
+4. **Decide the production objection window.** `objectionWindowHours` now GATES settlement
+   (default 24). That is a real product trade-off nobody has signed off: winners wait a day.
+   Set it at `/admin/config`. **0 disables the gate** — legal for play-money, but it is the
+   control the regulator report describes, so it must never be 0 at real-money launch.
+   F13 (public fairness ledger) should now surface real dispute stats — they exist.
 
 ## 7 · Living doc — UPDATE BEFORE YOU END THE SESSION
 Keep this file true. Update §1/§2 with what landed and what's open, tick

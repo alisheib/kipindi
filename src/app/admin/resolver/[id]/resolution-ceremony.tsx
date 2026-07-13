@@ -19,7 +19,7 @@ import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { resolveMarketAction } from "@/app/markets/actions";
 import { BrandSpinner } from "@/components/brand";
-import { formatTzs } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
 import { CEREMONY, bi } from "@/lib/admin-status-lexicon";
 
 type Outcome = "YES" | "NO" | "VOID";
@@ -72,10 +72,12 @@ export function ResolutionCeremony({
       if (r.data?.stage === "stage1") {
         toast({ title: "Stage 1 attested", description: "Awaiting a second officer to seal.", variant: "warning" });
       } else {
-        const detail = r.data?.winnersPaid
-          ? `Paid ${formatTzs(r.data.winnersPaid)} to winners`
-          : "Voided · every stake refunded";
-        toast({ title: `Sealed · ${outcome}`, description: detail, variant: "success" });
+        // The seal records the verdict; it does not move money. Settlement waits
+        // for the objection window to close with no objection standing.
+        const detail = r.data?.settlesAt
+          ? `Pays out ${formatDateTime(r.data.settlesAt)}, unless a player objects`
+          : "Pays out on the next settlement sweep";
+        toast({ title: `Verdict sealed · ${outcome}`, description: detail, variant: "success" });
       }
       setSealText("");
       router.refresh();

@@ -274,8 +274,22 @@ the WHY, the kit pieces to reuse, the infra that already exists, and acceptance 
   line (`projectedPayout` exists) + "why this market" context. Kit + dataviz. *Why:* comprehension → conversion.
 - **F10 · Low-data "lite" mode** — text-first fast path (drop hero/charts) for true 2G
   (Phase-D found ~20s LCP on 2G). Toggle in profile. *Why:* widens rural reach.
-- **F11 · Player-facing dispute/objection flow** — a visible "question this result" path
-  into the admin queue (24h window exists server-side). *Why:* demonstrable fairness (POCA).
+- ~~**F11 · Player-facing dispute/objection flow**~~ ✅ **SHIPPED 2026-07-13** — and it turned
+  out to be much more than a form. The "24h objection window that exists server-side" **did not
+  exist**: `resolveMarket` stamped `objectionsClosedAt` and then paid the winners on the very
+  next line, in the same function. The window gated nothing, `docs/REGULATOR_STRESS_REPORT.md`
+  told a regulator it gated settlement, and an upheld dispute had **no remedy path at all**
+  (`emergencyVoidMarket` refuses a settled market). So F11 = **make the window real**:
+  - Stage-2 of the ceremony now only **adjudicates** — the verdict is recorded, the pool stays
+    whole and every position stays OPEN. The payout/refund logic moved verbatim into
+    `settleMarket()`, and `settleDueMarkets()` (lifecycle ticker) pays a market only once its
+    window has elapsed **and** no objection is standing.
+  - Players who staked can object (`ObjectionDialog`) — an OPEN objection **freezes the money**.
+  - Officers rule at `/admin/objections`: **VOID** (refund every stake) or **REVERSE** (pay the
+    other side), possible *only* because the money has not moved. COMPLIANCE-gated at the
+    **service** layer (a MODERATOR cannot reach a money remedy), TOTP, fully audited.
+  - `objectionWindowHours` is now a real `/admin/config` knob (was a hardcoded `24 * 3600_000`).
+  - Proven by `scripts/settlement-gate.test.mts` (72 assertions, every one red on the old code).
 - **F12 · Live odds via SSE** — pools update live as bets land. *Why:* liquidity *feels* alive.
 - **F13 · Public fairness ledger** — upgrade `/fairness` to a live, real-data transparency
   page (recent sourced settlements, dispute stats). *Why:* category-defining trust.

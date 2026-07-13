@@ -384,6 +384,41 @@ export function notifyProposalUnderReview(userId: string, opts: { titleEn: strin
   });
 }
 
+/**
+ * F11 — tell every officer that a player has objected to a verdict. This is not a
+ * courtesy ping: an OPEN objection FREEZES that market's settlement, so until an
+ * officer rules, nobody in that market gets paid. Fans out to all console roles.
+ */
+export async function notifyAdminObjectionFiled(objectionId: string, marketTitle: string): Promise<void> {
+  const officers = (await db.user.list()).filter((u) => ["ADMIN", "COMPLIANCE", "MODERATOR"].includes(u.role));
+  for (const o of officers) {
+    await notify({
+      userId: o.id, kind: "OBJECTION",
+      titleEn: "Objection filed · settlement frozen",
+      titleSw: "Pingamizi limewasilishwa · malipo yamesimamishwa",
+      bodyEn: `A player disputes the result of "${marketTitle.slice(0, 55)}". No money moves until you rule.`,
+      bodySw: `Mchezaji anapinga matokeo ya soko hili. Hakuna malipo hadi utakapoamua.`,
+      href: "/admin/objections",
+    });
+  }
+}
+
+/** F11 — tell the objector how their dispute was decided. */
+export function notifyObjectionDecided(userId: string, opts: { upheld: boolean; marketId: string; note: string }) {
+  return notify({
+    userId, kind: "OBJECTION",
+    titleEn: opts.upheld ? "Your objection was upheld" : "Your objection was reviewed",
+    titleSw: opts.upheld ? "Pingamizi lako limekubaliwa" : "Pingamizi lako limekaguliwa",
+    bodyEn: opts.upheld
+      ? `An officer agreed with you and corrected the result before any payout. ${opts.note.slice(0, 120)}`
+      : `An officer reviewed your objection and the result stands. ${opts.note.slice(0, 120)}`,
+    bodySw: opts.upheld
+      ? "Afisa amekubaliana nawe na amerekebisha matokeo kabla ya malipo yoyote."
+      : "Afisa amekagua pingamizi lako na matokeo yamebaki vilevile.",
+    href: `/markets/${opts.marketId}`,
+  });
+}
+
 /** In-app alert to an officer that a NEW proposal is awaiting review. Lands in
  *  the main admin bell and deep-links to the proposals review console. */
 export function notifyAdminProposalReview(adminUserId: string, opts: { proposerLabel: string; titleEn: string; proposalId: string }) {

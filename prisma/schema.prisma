@@ -213,6 +213,7 @@ model User {
   referralRewardsGiven    ReferralReward[]     @relation("ReferralRewardsGiven")
   referralRewardsReceived ReferralReward[]     @relation("ReferralRewardsReceived")
   proposals               Proposal[]
+  objections              Objection[]
   proposalVotes           ProposalVote[]
   positions               Position[]
   marketComments          Comment[]
@@ -826,6 +827,35 @@ model ReferralReward {
 // PROPOSALS — player-submitted market proposals + voting
 // ============================================================================
 
+/// F11 — a player's formal objection to a market's verdict, filed inside the
+/// objection window while the pool is still intact and every position is OPEN.
+/// An OPEN objection FREEZES that market's settlement (see settleMarket), so this
+/// is a money-bearing compliance record: it must survive a restart.
+model Objection {
+  id              String    @id @default(cuid())
+  marketId        String
+  market          PredictionMarket @relation(fields: [marketId], references: [id])
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  /// WRONG_OUTCOME | SOURCE_CONTRADICTS | AMBIGUOUS_CRITERION | RESOLVED_EARLY | OTHER
+  reason          String
+  detail          String    @db.Text
+  /// OPEN | UPHELD | REJECTED | WITHDRAWN — only OPEN freezes the money.
+  status          String    @default("OPEN")
+  createdAt       DateTime  @default(now())
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  reviewNote      String?   @db.Text
+  /// VOID | REVERSE — what the officer did about an upheld objection.
+  remedy          String?
+  /// The verdict being disputed, captured at filing so the trail survives a remedy.
+  outcomeAtFiling String?
+
+  @@index([status])
+  @@index([marketId])
+  @@index([userId])
+}
+
 model Proposal {
   id                  String         @id @default(cuid())
   proposerId          String
@@ -931,6 +961,11 @@ model PredictionMarket {
   resolutionStage2By  String?
   resolutionStage2At  DateTime?
   objectionsClosedAt  DateTime?
+  /** When the money actually moved. `status: RESOLVED` is only the verdict; a
+   *  RESOLVED market with settledAt = null has an intact pool and OPEN positions,
+   *  and is still inside its objection window. Settlement is gated on that window
+   *  elapsing with no objection open — see settleDueMarkets in market-service.ts. */
+  settledAt           DateTime?
   /** The officer's recorded evidence excerpt — the exact quote from the official
    *  source that justifies the verdict, captured at stage-1 of the resolution
    *  ceremony (also written immutably to the audit chain). Denormalised here so
@@ -959,9 +994,10 @@ model PredictionMarket {
   createdAt           DateTime               @default(now())
   updatedAt           DateTime               @updatedAt
 
-  positions Position[]
-  comments  Comment[]
-  watchers  Watchlist[]
+  positions  Position[]
+  comments   Comment[]
+  watchers   Watchlist[]
+  objections Objection[]
 
   @@index([status])
   @@index([resolutionAt])

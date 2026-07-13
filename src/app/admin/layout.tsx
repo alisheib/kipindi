@@ -56,6 +56,7 @@ function activeKeyFromPath(path: string): string {
   if (path.startsWith("/admin/system"))               return "system";
   if (path.startsWith("/admin/ai-usage"))             return "ai-usage";
   if (path.startsWith("/admin/kyc"))                  return "approvals";
+  if (path.startsWith("/admin/objections"))           return "objections";
   if (path.startsWith("/admin/approvals"))            return "approvals";
   if (path.startsWith("/admin/2fa"))                  return "2fa";
   return "overview";

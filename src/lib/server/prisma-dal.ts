@@ -27,6 +27,7 @@ import type {
   StoredAffiliateAccount,
   StoredReferralReward,
   StoredProposal,
+  StoredObjection,
   StoredProposalVote,
   StoredPushSub,
   StoredEvent,
@@ -294,6 +295,24 @@ function toStoredReward(r: any): StoredReferralReward {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toStoredObjection(o: any): StoredObjection {
+  return {
+    id: o.id,
+    marketId: o.marketId,
+    userId: o.userId,
+    reason: o.reason as StoredObjection["reason"],
+    detail: o.detail,
+    status: o.status as StoredObjection["status"],
+    createdAt: o.createdAt instanceof Date ? o.createdAt.toISOString() : o.createdAt,
+    reviewedBy: o.reviewedBy ?? null,
+    reviewedAt: o.reviewedAt ? new Date(o.reviewedAt).toISOString() : null,
+    reviewNote: o.reviewNote ?? null,
+    remedy: (o.remedy ?? null) as StoredObjection["remedy"],
+    outcomeAtFiling: o.outcomeAtFiling ?? null,
+  };
+}
+
 function toStoredProposal(p: any): StoredProposal {
   return {
     id: p.id,
@@ -1056,6 +1075,60 @@ export const prismaDb = {
         where: { recruitUserId },
       });
       return rows.map(toStoredReward);
+    },
+  },
+
+  // ── OBJECTION (F11) ───────────────────────────────────────────────────────
+  // An OPEN row here freezes a market's settlement, so these are money-bearing
+  // compliance records — they persist, they are never silently dropped.
+  objection: {
+    create: async (o: StoredObjection): Promise<StoredObjection> => {
+      const row = await pc().objection.create({
+        data: {
+          id: o.id,
+          marketId: o.marketId,
+          userId: o.userId,
+          reason: o.reason,
+          detail: o.detail,
+          status: o.status,
+          createdAt: new Date(o.createdAt),
+          reviewedBy: o.reviewedBy,
+          reviewedAt: o.reviewedAt ? new Date(o.reviewedAt) : null,
+          reviewNote: o.reviewNote,
+          remedy: o.remedy,
+          outcomeAtFiling: o.outcomeAtFiling,
+        },
+      });
+      return toStoredObjection(row);
+    },
+    findById: async (id: string): Promise<StoredObjection | null> => {
+      const row = await pc().objection.findUnique({ where: { id } });
+      return row ? toStoredObjection(row) : null;
+    },
+    update: async (id: string, patch: Partial<StoredObjection>): Promise<StoredObjection | null> => {
+      const row = await pc().objection.update({
+        where: { id },
+        data: {
+          ...(patch.status !== undefined ? { status: patch.status } : {}),
+          ...(patch.reviewedBy !== undefined ? { reviewedBy: patch.reviewedBy } : {}),
+          ...(patch.reviewedAt !== undefined ? { reviewedAt: patch.reviewedAt ? new Date(patch.reviewedAt) : null } : {}),
+          ...(patch.reviewNote !== undefined ? { reviewNote: patch.reviewNote } : {}),
+          ...(patch.remedy !== undefined ? { remedy: patch.remedy } : {}),
+        },
+      });
+      return toStoredObjection(row);
+    },
+    listForMarket: async (marketId: string): Promise<StoredObjection[]> => {
+      const rows = await pc().objection.findMany({ where: { marketId }, orderBy: { createdAt: "desc" } });
+      return rows.map(toStoredObjection);
+    },
+    listForUser: async (userId: string): Promise<StoredObjection[]> => {
+      const rows = await pc().objection.findMany({ where: { userId }, orderBy: { createdAt: "desc" } });
+      return rows.map(toStoredObjection);
+    },
+    list: async (limit = 1000): Promise<StoredObjection[]> => {
+      const rows = await pc().objection.findMany({ orderBy: { createdAt: "desc" }, take: limit });
+      return rows.map(toStoredObjection);
     },
   },
 
