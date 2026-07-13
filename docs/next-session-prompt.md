@@ -56,6 +56,23 @@ Consequences you must know:
 - **ONE objection per player per market, for the life of the market.** Allowing a re-file after
   a rejection was a denial-of-payout hole: file → rejected → re-file → re-freeze, on a loop,
   while every other player in that market went unpaid. Do not relax this.
+- 🔴🔴 **WE HAVE NEVER TESTED AGAINST POSTGRES. NEXT SESSION'S WORK.**
+  The DAL is selected on `!!DATABASE_URL` (`store.ts:996`). **There is no `.env` in the repo and no
+  test sets `DATABASE_URL`** — so all 56 suites, the local dev server, and every `stress-*` endpoint
+  run against an **in-memory `Map`**. The **Postgres advisory-lock path** (`locks.ts:54-77`) and the
+  **connection pool** have **never executed in any test**.
+  **Static analysis predicts the platform pool-deadlocks at ~5–9 concurrent bets/container**
+  (`buyPosition` holds a pooled connection for `withLock('wallet:…')` at `market-service.ts:337`,
+  then **nests** `withLock('market:…')` at `:412` needing a second connection from the same pool;
+  Prisma's pool is **unsized** → default 5 on 2-vCPU Railway). And because `locks.ts:58-60` runs
+  `fn()`'s writes on **autocommitting** connections *outside* the lock's transaction, a timeout
+  mid-bet may **debit a wallet, create no position, and never refund it** — a suspected **live money
+  bug**, not a perf issue.
+  **Full plan (approved):** `C:\Users\asheib\.claude\plans\cleanup-eveyrhting-ebfroe-next-sequential-tiger.md`.
+  **Day 1 = 3 hours:** install local Postgres → run the *existing* `test:money-invariants` /
+  `test:concurrency` / `test:wallet` with `DATABASE_URL` set (never done) → 20 concurrent
+  `buyPosition` at `connection_limit=5`, asserting **`walletΔ == 0` on every FAILED bet**. If that
+  assertion trips: **STOP and report to Ali** — do not touch the money path unilaterally.
 - 🔴 **SELLING SHUTS WHEN SELECTIONS SHUT.** Cash-out is refused once `isSelectionClosed(market)`
   — the same predicate that closes betting, and it covers sentinel-CLOSED markets too.
   It used to stay open until *resolution*, which left a window where the real-world result was

@@ -19,6 +19,7 @@
  *    matches the debits to their wallet.
  */
 import { NextResponse } from "next/server";
+import { hasDatabase } from "@/lib/server/prisma";
 import { db } from "@/lib/server/store";
 import type { StoredUser, StoredWallet } from "@/lib/server/store";
 import { buyPosition, getMarket } from "@/lib/server/market-service";
@@ -89,6 +90,17 @@ async function ensureStressUsers(prefix: string, count: number, fundEach: number
 export async function POST(req: Request) {
   if (process.env.NODE_ENV === "production") {
     return NextResponse.json({ ok: false, error: "Not available" }, { status: 404 });
+  }
+  // IN-MEMORY PROBE ONLY. This route reads globalThis.__50PICK_* stores, which
+  // exist ONLY on the in-memory path (market-dal.ts / store.ts). Point it at
+  // Postgres and its position/wallet/pool checks silently read ZERO and report
+  // PASS — a green test measuring nothing. Refuse rather than lie.
+  // For real Postgres load testing use scripts/load/ (see docs/next-session-prompt.md).
+  if (hasDatabase()) {
+    return NextResponse.json({
+      ok: false,
+      error: "in-memory probe only — DATABASE_URL is set, so this route would report zeros as PASS. Use scripts/load/ for Postgres load tests.",
+    }, { status: 409 });
   }
   const body = (await req.json().catch(() => null)) as Body | null;
   const marketId = typeof body?.marketId === "string" ? body.marketId : "";

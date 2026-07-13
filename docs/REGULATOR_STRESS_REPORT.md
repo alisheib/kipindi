@@ -1,10 +1,43 @@
 # Regulator stress report — 2026-05-26
 
-What we can present to Tanzania Gaming Board / GBT inspectors today, what's gated on the Postgres swap, and the test scripts that produced these numbers.
+> # ⛔ DO NOT SHOW THIS SECTION TO A REGULATOR AS-IS
+>
+> **Every number in §1 and §2 was measured against an in-memory JavaScript `Map`, not against
+> Postgres.** (Discovered 2026-07-13.)
+>
+> The data layer is selected on `!!DATABASE_URL` (`store.ts:996`). There is **no `.env` in this
+> repo**, and **no test script sets `DATABASE_URL`** — so every one of these runs, and every
+> `stress-*` endpoint that produced them, exercised a `Map` in a single Node process. The
+> production path — the **Postgres advisory locks** (`locks.ts:54-77`) and the **connection
+> pool** — has **never been executed by any test.**
+>
+> Concretely, that means:
+>
+> | Claim below | What it actually measured |
+> |---|---|
+> | *"Δ = 0 across 5000 concurrent bets"* | conservation inside one process's `Map`, with no DB, no pool, no advisory lock |
+> | *"Per-bet latency 5.0–5.9 ms"* | a `Map` write. Real Postgres does **~15 sequential round-trips** per bet |
+> | *"Same-user double-spend blocked · per-wallet lock + **JS-atomic** pool update"* | the phrase *JS-atomic* names the in-memory mechanism. The **Postgres** lock path is untested |
+> | *"Audit chain monotonic · +5000 entries verified"* | the count assertion read `globalThis.__50PICK_AUDIT_COUNTER`, **which is never defined anywhere** — so it compared `0` to the ring length and was **vacuously true, unable to fail**. (Fixed 2026-07-13.) |
+>
+> **Static analysis of the real Postgres path predicts it fails at ~5–9 concurrent bets**
+> (a connection-pool deadlock: `buyPosition` holds a pooled connection for the wallet lock, then
+> nests a market lock needing a second connection from the same unsized pool).
+>
+> **These numbers are therefore not evidence of production concurrency safety, and must not be
+> presented as such.** The load & scale suite that will produce honest, Postgres-backed numbers is
+> specified in `docs/next-session-prompt.md`. **Nothing in §1/§2 should be quoted to the Gaming
+> Board until that suite has run.**
+>
+> The *non-performance* findings in §3 onwards (fuzz, path traversal, XSS/SQLi rejection,
+> two-officer resolution, source-trust registry, the 24h objection window) are **unaffected** —
+> they are logic checks, not scale claims.
 
 ---
 
 ## 1 · Headline
+
+⚠ **In-memory only — see the banner above. Not a Postgres measurement.**
 
 **Every money-correctness invariant holds at regulator-grade scale on the current build:**
 
@@ -20,10 +53,12 @@ What we can present to Tanzania Gaming Board / GBT inspectors today, what's gate
 | Path traversal / XSS / SQLi / oversized inputs | ✅ REJECT | All return clean 4xx |
 | Memory under heavy bet fan-out | ✅ OK | RSS stayed under 5 GB single-process |
 
-**Performance:**
-- Per-bet latency at scale: **5.0–5.9 ms**
-- 5000 concurrent bets across 1000 markets settled in **27 seconds** on the dev process
-- Audit insert: sub-millisecond
+**Performance — ⚠ IN-MEMORY `Map`, NOT POSTGRES. These are not production numbers.**
+- Per-bet latency at scale: **5.0–5.9 ms** ← *a `Map` write. On Postgres a bet is ~15 sequential
+  round-trips inside a wallet lock; the real figure is unknown and will be orders of magnitude higher.*
+- 5000 concurrent bets across 1000 markets settled in **27 seconds** on the dev process ← *single
+  process, no DB, no connection pool, no advisory locks*
+- Audit insert: sub-millisecond ← *an array push into a 10,000-entry in-memory ring*
 
 ---
 

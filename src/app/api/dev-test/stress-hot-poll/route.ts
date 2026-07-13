@@ -6,12 +6,24 @@
  * 404 in production.   POST { votes?: number }
  */
 import { NextResponse } from "next/server";
+import { hasDatabase } from "@/lib/server/prisma";
 import { db } from "@/lib/server/store";
 import { createProposal, castVote } from "@/lib/server/proposals-service";
 import { getProposalsConfig, setProposalsConfig, type ProposalsConfig } from "@/lib/server/proposals-config";
 
 export async function POST(req: Request) {
   if (process.env.NODE_ENV === "production") return NextResponse.json({ ok: false }, { status: 404 });
+  // IN-MEMORY PROBE ONLY. This route reads globalThis.__50PICK_* stores, which
+  // exist ONLY on the in-memory path (market-dal.ts / store.ts). Point it at
+  // Postgres and its position/wallet/pool checks silently read ZERO and report
+  // PASS — a green test measuring nothing. Refuse rather than lie.
+  // For real Postgres load testing use scripts/load/ (see docs/next-session-prompt.md).
+  if (hasDatabase()) {
+    return NextResponse.json({
+      ok: false,
+      error: "in-memory probe only — DATABASE_URL is set, so this route would report zeros as PASS. Use scripts/load/ for Postgres load tests.",
+    }, { status: 409 });
+  }
   const body = (await req.json().catch(() => ({}))) as { votes?: number };
   const N = Math.max(1, Math.min(200_000, body.votes ?? 5000));
 

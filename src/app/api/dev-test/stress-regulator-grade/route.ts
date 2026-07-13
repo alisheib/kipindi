@@ -23,6 +23,7 @@
  *   POST { n?: 1000, u?: 200, b?: 5000, r?: 100 }
  */
 import { NextResponse } from "next/server";
+import { hasDatabase } from "@/lib/server/prisma";
 import { db } from "@/lib/server/store";
 import type { StoredUser, StoredWallet } from "@/lib/server/store";
 import {
@@ -185,6 +186,17 @@ export async function POST(req: Request) {
   if (process.env.NODE_ENV === "production") {
     return NextResponse.json({ ok: false, error: "Not available" }, { status: 404 });
   }
+  // IN-MEMORY PROBE ONLY. This route reads globalThis.__50PICK_* stores, which
+  // exist ONLY on the in-memory path (market-dal.ts / store.ts). Point it at
+  // Postgres and its position/wallet/pool checks silently read ZERO and report
+  // PASS — a green test measuring nothing. Refuse rather than lie.
+  // For real Postgres load testing use scripts/load/ (see docs/next-session-prompt.md).
+  if (hasDatabase()) {
+    return NextResponse.json({
+      ok: false,
+      error: "in-memory probe only — DATABASE_URL is set, so this route would report zeros as PASS. Use scripts/load/ for Postgres load tests.",
+    }, { status: 409 });
+  }
 
   const body = (await req.json().catch(() => null)) as Body | null;
   // Explicit finiteness — Math.max/min silently propagates NaN.
@@ -204,9 +216,18 @@ export async function POST(req: Request) {
     n, u, b, r,
     phases: {} as Record<string, { ms: number; ok: boolean; detail?: string }>,
   };
-  const auditCountBefore = getAuditPage({ limit: 1 }).length > 0
-    ? Number((globalThis as unknown as { __50PICK_AUDIT_COUNTER?: number }).__50PICK_AUDIT_COUNTER ?? 0)
-    : 0;
+  // Count the audit entries that actually exist, from the ring itself.
+  //
+  // This used to read `globalThis.__50PICK_AUDIT_COUNTER`, which is NEVER DEFINED
+  // anywhere (audit.ts declares __50PICK_AUDIT_RING / _QUEUE / _HYDRATED — no
+  // counter). So `before` was always 0 and `after` was always the ring length,
+  // making the "audit grew" assertion `ring.length > 0` — vacuously true, unable
+  // to fail. That vacuous check is what docs/REGULATOR_STRESS_REPORT.md cited as
+  // "+5000 entries verified".
+  //
+  // NOTE the ring is capped at MAX_IN_MEM = 10_000 (audit.ts:51), so this delta
+  // SATURATES above 10k entries. It is an in-memory count, not a DB count.
+  const auditCountBefore = getAuditPage({ limit: 1_000_000 }).length;
   const memBefore = process.memoryUsage();
 
   // ── PHASE 1 · Provision admin + users + markets ─────────────────
@@ -371,9 +392,7 @@ export async function POST(req: Request) {
     if (s < prevSeq) { monotonic = false; break; }
     prevSeq = s;
   }
-  const auditCountAfter = Number(
-    (globalThis as unknown as { __50PICK_AUDIT_COUNTER?: number }).__50PICK_AUDIT_COUNTER ?? auditPage.length,
-  );
+  const auditCountAfter = getAuditPage({ limit: 1_000_000 }).length;
   totals.phases["4-audit"] = {
     ms: Date.now() - t,
     ok: monotonic && auditCountAfter > auditCountBefore,
