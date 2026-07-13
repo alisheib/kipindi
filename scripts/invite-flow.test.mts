@@ -68,7 +68,7 @@ await mkUser("usr_if_admin", "ADMIN");
   ok("campaign totalRegistered = 1", detail?.campaign.totalRegistered === 1, `tr=${detail?.campaign.totalRegistered}`);
 
   // Bonus is real money the invitee can bet with (proves the wallet works).
-  const m = await createMarket({ titleEn: "Invitee market", titleSw: null as unknown as string, category: "macro", sourceUrl: "https://bot.go.tz", resolutionCriterion: "x", resolutionAt: new Date(Date.now() + 7 * 864e5).toISOString(), proposedBy: "t" } as never);
+  const m = await createMarket({ titleEn: "Invitee market", titleSw: "Soko la majaribio", category: "macro", sourceUrl: "https://bot.go.tz", resolutionCriterion: "x", resolutionAt: new Date(Date.now() + 7 * 864e5).toISOString(), proposedBy: "t" } as never);
   const bet = await buyPosition("usr_if_invitee", { marketId: m.id, side: "YES", stake: 4_000 });
   ok("invitee can bet with bonus", bet.ok);
   ok("bonus reduced 10,000 → 6,000 after 4,000 bonus bet", (await bonus("usr_if_invitee")) === 6_000, `bonus=${await bonus("usr_if_invitee")}`);

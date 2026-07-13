@@ -66,7 +66,7 @@ await db.user.update("gate_officer", { role: "COMPLIANCE" });
 
 async function makeMarket(): Promise<string> {
   const m = await createMarket({
-    titleEn: "Gate market", titleSw: null as unknown as string, category: "macro",
+    titleEn: "Gate market", titleSw: "Soko la majaribio", category: "macro",
     sourceUrl: "https://bot.go.tz", resolutionCriterion: "Resolves at the official date.",
     resolutionAt: new Date(Date.now() + 7 * 864e5).toISOString(), proposedBy: "test",
   } as never);

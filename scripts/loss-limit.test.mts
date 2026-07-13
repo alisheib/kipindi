@@ -52,7 +52,7 @@ async function seedTxn(userId: string, type: StoredTxn["type"], amount: number, 
 
 async function makeMarket() {
   return createMarket({
-    titleEn: "Loss-limit market", titleSw: null as unknown as string, category: "macro",
+    titleEn: "Loss-limit market", titleSw: "Soko la majaribio", category: "macro",
     sourceUrl: "https://bot.go.tz", resolutionCriterion: "Resolves at the official date.",
     resolutionAt: new Date(Date.now() + 7 * 864e5).toISOString(), proposedBy: "test",
   } as never);

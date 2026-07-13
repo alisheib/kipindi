@@ -36,7 +36,7 @@ const real = async (uid: string) => (await db.wallet.findByUserId(uid))?.balance
 const bonus = async (uid: string) => (await db.wallet.findByUserId(uid))?.bonusBalance ?? -1;
 async function makeMarket() {
   return createMarket({
-    titleEn: "Bonus betting market", titleSw: null as unknown as string, category: "macro",
+    titleEn: "Bonus betting market", titleSw: "Soko la majaribio", category: "macro",
     sourceUrl: "https://bot.go.tz", resolutionCriterion: "Resolves at the official date.",
     resolutionAt: new Date(Date.now() + 7 * 864e5).toISOString(), proposedBy: "test",
   } as never);

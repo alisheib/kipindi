@@ -57,7 +57,7 @@ const bal = async (uid: string) => (await db.wallet.findByUserId(uid))?.balance 
 /** A market whose selections close in `mins` (negative = already closed). */
 async function makeMarket(selectionInMins: number): Promise<string> {
   const m = await createMarket({
-    titleEn: "Lockout market", titleSw: null as unknown as string, category: "sports",
+    titleEn: "Lockout market", titleSw: "Soko la majaribio", category: "sports",
     sourceUrl: "https://bot.go.tz", resolutionCriterion: "Resolves at the official date.",
     resolutionAt: new Date(Date.now() + 7 * 864e5).toISOString(),
     selectionClosedAt: new Date(Date.now() + selectionInMins * 60_000).toISOString(),

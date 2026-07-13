@@ -49,7 +49,7 @@ const pools = async (mid: string) => { const m = (await getMarket(mid))!; return
 
 async function makeMarket() {
   return createMarket({
-    titleEn: "Cashout fee market", titleSw: null as unknown as string, category: "macro",
+    titleEn: "Cashout fee market", titleSw: "Soko la majaribio", category: "macro",
     sourceUrl: "https://bot.go.tz", resolutionCriterion: "Resolves at the official date.",
     resolutionAt: new Date(Date.now() + 7 * 864e5).toISOString(), proposedBy: "test",
   } as never);

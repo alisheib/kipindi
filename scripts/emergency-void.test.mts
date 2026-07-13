@@ -66,7 +66,7 @@ await mkAdmin("ev_admin", "void-admin@test.tz");     // officer → must get the
 const startSystem = await sumWallets(); // pools = 0 (no market yet)
 
 const m = await createMarket({
-  titleEn: "Emergency void market", titleSw: null as unknown as string, category: "macro",
+  titleEn: "Emergency void market", titleSw: "Soko la majaribio", category: "macro",
   sourceUrl: "https://bot.go.tz", resolutionCriterion: "Resolves at the official date.",
   resolutionAt: new Date(Date.now() + 7 * 864e5).toISOString(), proposedBy: "test",
 } as never);

@@ -42,7 +42,7 @@ async function fundedUser(id: string, balance: number): Promise<void> {
 const bal = async (uid: string) => (await db.wallet.findByUserId(uid))?.balance ?? -1;
 async function makeMarket(): Promise<string> {
   const m = await createMarket({
-    titleEn: "Concurrency market", titleSw: null as unknown as string, category: "macro",
+    titleEn: "Concurrency market", titleSw: "Soko la majaribio", category: "macro",
     sourceUrl: "https://bot.go.tz", resolutionCriterion: "Resolves at the official date.",
     resolutionAt: new Date(Date.now() + 7 * 864e5).toISOString(), proposedBy: "test",
   } as never);

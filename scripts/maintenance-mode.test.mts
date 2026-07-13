@@ -34,7 +34,7 @@ await db.wallet.create({
 } as StoredWallet);
 
 const market = await createMarket({
-  titleEn: "Maintenance market", titleSw: null as unknown as string, category: "macro",
+  titleEn: "Maintenance market", titleSw: "Soko la majaribio", category: "macro",
   sourceUrl: "https://bot.go.tz", resolutionCriterion: "Resolves at the official date.",
   resolutionAt: new Date(Date.now() + 7 * 864e5).toISOString(), proposedBy: "test",
 } as never);

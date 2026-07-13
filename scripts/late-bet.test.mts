@@ -40,7 +40,7 @@ const bal = async (uid: string) => (await db.wallet.findByUserId(uid))?.balance 
 const bonusBal = async (uid: string) => (await db.wallet.findByUserId(uid))?.bonusBalance ?? -1;
 async function makeMarket() {
   return createMarket({
-    titleEn: "Late-bet market", titleSw: null as unknown as string, category: "macro",
+    titleEn: "Late-bet market", titleSw: "Soko la majaribio", category: "macro",
     sourceUrl: "https://bot.go.tz", resolutionCriterion: "Resolves at the official date.",
     resolutionAt: new Date(Date.now() + 7 * 864e5).toISOString(), proposedBy: "test",
   } as never);

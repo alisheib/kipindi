@@ -15,7 +15,10 @@ function ok(label: string, cond: boolean) {
 }
 
 const now = new Date().toISOString();
-db.wallet.create({ id: "wlt_t", userId: "usr_t", balance: 1000, pending: 0, hold: 0, currency: "TZS", status: "ACTIVE", createdAt: now, updatedAt: now });
+// `await` is load-bearing on Postgres: the in-memory DAL returns synchronously,
+// the Prisma twin returns a Promise. Without it this suite passes in memory and
+// tests nothing at all against a real database.
+await db.wallet.create({ id: "wlt_t", userId: "usr_t", balance: 1000, pending: 0, hold: 0, currency: "TZS", status: "ACTIVE", createdAt: now, updatedAt: now });
 
 // 1. Credit applies a positive delta.
 ok("credit +500 -> 1500", (await db.wallet.adjust("wlt_t", { balance: 500 }))?.balance === 1500);
@@ -26,7 +29,7 @@ ok("debit 300 -> 1200", (await db.wallet.adjust("wlt_t", { balance: -300 }, { re
 // 3. Guarded debit is REJECTED (null) when it would overdraw…
 ok("overdraw rejected -> null", (await db.wallet.adjust("wlt_t", { balance: -5000 }, { requireBalanceGte: 5000 })) === null);
 // …and the balance is untouched.
-ok("balance unchanged after reject", db.wallet.findByUserId("usr_t")?.balance === 1200);
+ok("balance unchanged after reject", (await db.wallet.findByUserId("usr_t"))?.balance === 1200);
 
 // 4. Combined balance→hold move (withdraw initiation), overdraw-guarded.
 {
