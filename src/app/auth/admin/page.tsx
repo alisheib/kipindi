@@ -48,9 +48,12 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
           <Link href="/" aria-label="50pick home" className="mb-2 inline-block">
             <FiftyLockup size={22} />
           </Link>
-          <div className="inline-flex items-center gap-2 px-3 h-7 rounded-pill border border-gold-700 bg-gold-500/10">
-            <span className="h-1.5 w-1.5 rounded-pill bg-gold-300" />
-            <span className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-gold-300">
+          {/* Admin gold-discipline: gold is only the resolved seal. Royal frame
+              (sibling of the Step-2 authenticator card) with a claret "restricted"
+              dot — the console ConfidentialBand's security signal. */}
+          <div className="flex w-fit mx-auto items-center gap-2 px-3 h-7 rounded-pill border border-brand-500 bg-brand-500/10">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-pill" style={{ background: "var(--claret-200)" }} />
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-brand-300 whitespace-nowrap">
               Staff · Confidential
             </span>
           </div>
@@ -61,15 +64,15 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
         </header>
 
         <section
-          className="relative overflow-hidden rounded-xl border border-gold-700 bg-bg-elevated p-6 space-y-5"
-          style={{ boxShadow: "0 0 0 1px color-mix(in oklab, var(--gilt) 30%, transparent) inset" }}
+          className="relative overflow-hidden rounded-xl border border-brand-500 bg-bg-elevated p-6 space-y-5"
+          style={{ boxShadow: "0 0 0 1px color-mix(in oklab, var(--brand-500) 30%, transparent) inset" }}
         >
           <div className="absolute -right-6 -top-6 opacity-[0.06]" aria-hidden>
             <FiftyMark size={160} />
           </div>
 
           <div className="relative flex items-start gap-2.5 pb-3 border-b border-border">
-            <I.shieldcheck s={16} className="text-gold-300 shrink-0 mt-0.5" />
+            <I.shieldcheck s={16} className="text-brand-300 shrink-0 mt-0.5" />
             <div className="text-[12.5px] text-text-muted">
               <p className="font-display font-semibold text-text">
                 For ADMIN, COMPLIANCE, MODERATOR roles only

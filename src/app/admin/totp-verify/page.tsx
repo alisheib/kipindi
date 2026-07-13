@@ -38,9 +38,9 @@ export default async function AdminTotpVerifyPage({ searchParams }: { searchPara
     <main className="mx-auto grid min-h-[calc(100vh-44px)] place-items-center px-3 py-6">
       <div className="w-full max-w-md space-y-4">
         <header className="text-center space-y-1.5">
-          <div className="inline-flex items-center gap-2 px-3 h-7 rounded-pill border border-brand-500 bg-brand-500/10">
-            <span className="h-1.5 w-1.5 rounded-pill bg-brand-300" />
-            <span className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-brand-300">
+          <div className="flex w-fit mx-auto items-center gap-2 px-3 h-7 rounded-pill border border-brand-500 bg-brand-500/10">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-pill bg-brand-300" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-brand-300 whitespace-nowrap">
               Step 2 of 2 · Authenticator
             </span>
           </div>
