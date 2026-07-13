@@ -10,6 +10,39 @@
 
 ---
 
+### 🔴🔴 2026-07-13 — FIRST-EVER POSTGRES RUN: THREE CONFIRMED MONEY-SAFETY DEFECTS. DO NOT LAUNCH FOR REAL MONEY.
+
+**Full report: `docs/LOAD_DAY1_FINDINGS.md`.** The load suite finally ran the advisory-lock +
+connection-pool path against real Postgres (every prior "stress test" measured a JS `Map`).
+Three defects are confirmed reachable at loads far below any target. The money *math* is fine
+(`money-invariants` passes 72/72 on Postgres); every defect is **structural** — in the pool /
+lock / settlement plumbing.
+
+1. **Pool deadlock + silent money loss (Finding A).** `buyPosition` holds a pooled connection
+   for `withLock('wallet:')` then nests `withLock('market:')` needing a *second* connection from
+   the same pool → max safe concurrency = **pool ÷ 2**. At Railway's default pool of 5 that is
+   **2 concurrent bets**; C=4 is 100 % failure. Worse: at C=3–4 a bet **debits the wallet, creates
+   no position, never refunds, and leaves NO row anywhere** (0 Transaction / 0 Ledger / 0 Audit).
+   A bigger pool only slides the cliff. **Needs the nested lock restructured — Ali's call.**
+2. **Read-path OOM (Finding B).** `traderSeedsByMarket()` `findMany()`s the ENTIRE Position table
+   (no where/take/select) on `/`, `/markets`, `/live` — uncached — to draw 3 avatars/card. ~1.3 KB
+   heap per row per request; 500k rows → 9.4 s homepage, 3 views → 1.3 GB → container OOM. A
+   **calendar problem** (positions never archived): gets worse every day, needs zero concurrency.
+3. **Settlement cliff + void mint (Finding C).** 22.5 sequential round-trips/winner inside a 30 s
+   tx → **a market with > ~700 winners can never pay out** on Railway. Retry does NOT double-pay
+   (good). But a *timed-out partial settle* leaves winners paid + `settledAt` null, and
+   `emergencyVoidMarket` (guards only on `settledAt`) then refunds full stakes out of an
+   already-drained pool → **73,000 TZS minted, measured**.
+
+**Harness:** `scripts/load/**` + local PG16 on **port 5433** (disposable, marker-gated). Money
+path NOT touched pending Ali's decision on the fix.
+
+⚠ Unrelated: `scripts/trilingual-titles.test.mts` is a **pre-existing cross-suite flake** —
+passes 36/36 standalone, occasionally red inside the concurrent `test:all`. Not caused by the
+load work; worth a look separately.
+
+---
+
 ### 🔴 SELLING SHUTS WHEN SELECTIONS SHUT (2026-07-13) — closed a real money leak
 
 **You can no longer cash out once selections have closed.** Betting and selling now close at the
