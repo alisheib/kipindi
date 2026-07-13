@@ -240,7 +240,25 @@ the WHY, the kit pieces to reuse, the infra that already exists, and acceptance 
 - **Accept:** admin-only; real aggregates (perf-safe, no full scans); trilingual N/A (admin
   EN·SW); responsive tables; screenshot read.
 
-#### F8 · Local events content engine (AI-poll calendar)
+#### F8 · Local events content engine (AI-poll calendar)  ✅ SHIPPED 2026-07-13 (2acef86)
+- **Status:** DONE. `/admin/events` — an **operator-authored** event calendar; one-click
+  "Draft poll" steers AI generation at a real, sourced moment. Officer approval of the
+  poll is unchanged (all four state guards intact); nothing auto-publishes.
+- **Why operator-authored:** we have **no fixtures feed**, and the model's only grounding
+  is web_search — which an operator can switch OFF, after which it writes from memory. An
+  AI-authored calendar could **invent a Simba–Yanga fixture on a date that doesn't exist**
+  and we'd open a real-money market on it. So an officer enters each event with an official
+  source that must clear the **same trusted-domain allowlist that gates market publish**;
+  the AI is only *steered* by it (title + exact ISO date + source pinned; forbidden from
+  substituting a fixture or changing the date). `test:events` 27/27.
+- **🔴 Fixed: the AI-poll publish path skipped the source allowlist.** `isSourceTrusted` was
+  imported into `admin/ai-polls/actions.ts` and **never called** — the AI→market path was the
+  ONE publish path not checking the trusted registry (manual/candidate/proposal all do). AI
+  source URLs are only syntax-checked, never fetched, so a **plausible hallucinated domain
+  could reach a live market** — and the operator's **disabled-category list was bypassed too**.
+- **🔴 Fixed: the AI budget alerted but never blocked.** Nothing checked spend *before* an
+  Anthropic call; the only real cost cap was "a human clicks Generate" — exactly what a
+  calendar-driven generator removes. New `assertAiBudget()` refuses before spending.
 - **What:** point AI-poll generation at a Tanzanian events calendar — Ligi Kuu (Simba/
   Yanga), CECAFA/AFCON, weather, crypto, entertainment — scheduling markets around real moments.
 - **Why (growth):** relevance = organic virality; a market on tonight's Simba match sells itself.

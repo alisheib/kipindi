@@ -20,6 +20,20 @@ in-memory store (dev). Prod flag `USE_PRISMA_DAL=true` on Railway.
 ## 2 · Current state (feature-complete, hardening for launch)
 The platform is **feature-complete and passing its gates**. Recently landed:
 
+- **2026-07-13 · F8 event calendar + TWO AI-PIPELINE DEFECTS FIXED** (`2acef86`) —
+  `/admin/events`: an **operator-authored** calendar of real moments; one-click "Draft
+  poll" *steers* AI generation at a sourced event. **The AI never authors the calendar** —
+  we have no fixtures feed, and its only grounding (web_search) can be switched OFF, so an
+  AI-authored calendar could invent a fixture that doesn't exist. Each event needs an
+  official source clearing the **same trusted-domain allowlist that gates market publish**;
+  officer approval of the poll is unchanged. `test:events` 27/27 → `test:all` **52/53**.
+  **🔴 Fixed: the AI-poll publish path skipped the source allowlist** (`isSourceTrusted`
+  was imported and never called) — the one publish path not checking the trusted registry,
+  so a hallucinated domain (and a *disabled category*) could reach a live market.
+  **🔴 Fixed: the AI budget alerted but never blocked** — nothing checked spend before an
+  Anthropic call; new `assertAiBudget()` refuses before spending (limit 0 = uncapped).
+  **→ THE FEATURE BACKLOG F1–F8 IS NOW COMPLETE except F6, which awaits Ali's decision.**
+
 - **2026-07-13 · F7 owner dashboard + TWO LIVE DEFECTS FIXED** (`3f19537`) —
   `/admin/insights`: funnel, cohort retention, LTV, GGR-by-category, top markets
   (kit primitives only; 60s cache). **Honesty:** no "visit" funnel stage (zero
