@@ -100,7 +100,7 @@ export async function listObjections(filter?: { status?: StoredObjection["status
 export async function objectionEligibility(
   userId: string,
   marketId: string,
-): Promise<{ eligible: true; closesAt: string | null } | { eligible: false; why: "NOT_ADJUDICATED" | "ALREADY_SETTLED" | "WINDOW_CLOSED" | "NO_POSITION" | "ALREADY_OBJECTED" }> {
+): Promise<{ eligible: true; closesAt: string | null } | { eligible: false; why: "NOT_ADJUDICATED" | "ALREADY_SETTLED" | "WINDOW_CLOSED" | "NO_POSITION" | "ALREADY_OBJECTED" | "ALREADY_DECIDED" }> {
   const m = await getMarket(marketId);
   if (!m || (m.status !== "RESOLVED" && m.status !== "VOIDED")) return { eligible: false, why: "NOT_ADJUDICATED" };
   // The money is gone — an objection here could not change it, so we do not
@@ -111,8 +111,21 @@ export async function objectionEligibility(
   }
   const holdsPosition = (await listPositionsForMarket(marketId)).some((p) => p.userId === userId);
   if (!holdsPosition) return { eligible: false, why: "NO_POSITION" };
-  const mine = (await db.objection.listForUser(userId)).filter((o) => o.marketId === marketId && o.status === "OPEN");
-  if (mine.length > 0) return { eligible: false, why: "ALREADY_OBJECTED" };
+
+  // ONE objection per player per market — for the life of the market, not merely
+  // one at a time.
+  //
+  // Checking only for an OPEN objection was a denial-of-payout hole: an objection
+  // freezes the market's money, so a player could file, wait for the officer to
+  // reject it, file again, and re-freeze — over and over for the whole window.
+  // Every other player in that market goes unpaid the entire time, and each round
+  // burns an officer ruling. You get one case per market. Make it count.
+  const mine = (await db.objection.listForUser(userId)).filter((o) => o.marketId === marketId);
+  const open = mine.find((o) => o.status === "OPEN");
+  if (open) return { eligible: false, why: "ALREADY_OBJECTED" };
+  const decided = mine.find((o) => o.status === "UPHELD" || o.status === "REJECTED");
+  if (decided) return { eligible: false, why: "ALREADY_DECIDED" };
+
   return { eligible: true, closesAt: m.objectionsClosedAt };
 }
 
@@ -143,6 +156,7 @@ export async function fileObjection(
         WINDOW_CLOSED: "The objection window for this market has closed.",
         NO_POSITION: "Only a player who staked on this market can object to its result.",
         ALREADY_OBJECTED: "You already have an objection open on this market.",
+        ALREADY_DECIDED: "Your objection on this market has already been reviewed. Contact support if you still disagree.",
       };
       return { ok: false, error: msg[elig.why] ?? "You cannot object to this market.", code: "INVALID" };
     }
@@ -185,6 +199,46 @@ export async function fileObjection(
 
     return { ok: true, data: { objectionId: objection.id } };
   });
+}
+
+/**
+ * An emergency void kills a market outright and refunds every stake. It is the
+ * ops kill-switch, so it deliberately does NOT wait for objections — but that
+ * leaves any OPEN objection stranded on a market that has now settled: stuck in
+ * the officer queue as un-actionable, inflating the frozen-money KPI, and leaving
+ * the player who filed it with no answer.
+ *
+ * A void IS the VOID remedy — every stake came back in full, which is exactly what
+ * upholding with VOID does. So we close them out as UPHELD/VOID and tell the
+ * objector, rather than letting them rot. Called from emergencyVoidMarket AFTER
+ * the officer's role has already been checked there.
+ */
+export async function closeObjectionsForVoidedMarket(
+  marketId: string,
+  officerId: string,
+  reason: string,
+): Promise<number> {
+  const open = (await db.objection.listForMarket(marketId)).filter((o) => o.status === "OPEN");
+  const now = new Date().toISOString();
+  for (const o of open) {
+    await db.objection.update(o.id, {
+      status: "UPHELD",
+      remedy: "VOID",
+      reviewedBy: officerId,
+      reviewedAt: now,
+      reviewNote: `Market emergency-voided; every stake refunded in full. Reason: ${reason}`.slice(0, 1000),
+    });
+    audit({
+      category: "COMPLIANCE",
+      action: "objection.closed_by_void",
+      actorId: officerId,
+      targetType: "Market",
+      targetId: marketId,
+      payload: { objectionId: o.id, objectorId: o.userId, reason, effect: "market voided and every stake refunded — the objection is answered by the void" },
+    });
+    notifyObjectionDecided(o.userId, { upheld: true, marketId, note: `The market was voided and your stake was refunded in full. ${reason}` }).catch(() => {});
+  }
+  return open.length;
 }
 
 /** A player may withdraw their own objection; that releases the money. */

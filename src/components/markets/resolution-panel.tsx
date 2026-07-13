@@ -140,6 +140,9 @@ export function ResolutionPanel({
           <p className="pl-[21px] leading-relaxed opacity-90">{t.market.resHeldWhy}</p>
         </div>
       ) : settledAt ? (
+        // Just "Settled <when>". Who was paid and how much is INTERNAL — the player
+        // sees their own payout under Your positions, and the operator sees the rest
+        // in the admin console. Do not narrate the payout run on a public surface.
         <p className="flex items-center gap-1.5 text-[12px] text-text-subtle">
           <I.check s={13} className="text-yes-300" />
           {t.market.resPaidOut} <span className="font-mono tabular-nums">{formatDateTime(settledAt)}</span>

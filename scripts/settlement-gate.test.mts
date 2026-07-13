@@ -30,7 +30,7 @@ import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { marketStore, positionStore } from "../src/lib/server/market-dal.ts";
 import {
   createMarket, buyPosition, getMarket, resolveMarket, settleMarket, settleDueMarkets,
-  emergencyVoidMarket,
+  emergencyVoidMarket, getSettlementHealth,
 } from "../src/lib/server/market-service.ts";
 import {
   fileObjection, upholdObjection, rejectObjection, withdrawObjection,
@@ -376,6 +376,24 @@ async function closeWindow(mid: string): Promise<void> {
     marketId: mid, officerId: "gate_compliance", reason: "Trying to void an already-settled market.",
   });
   ok("8: an emergency void is REFUSED once the money has moved", !late.ok, JSON.stringify(late));
+
+  // An emergency void does NOT wait for objections — so an objection open against
+  // the market it kills must not be left stranded on a now-settled market.
+  const mid2 = await makeMarket();
+  await fundedUser("g8_c");
+  await fundedUser("g8_d");
+  await buyPosition("g8_c", { marketId: mid2, side: "NO", stake: 6_000 });
+  await buyPosition("g8_d", { marketId: mid2, side: "YES", stake: 6_000 });
+  await adjudicate(mid2, "YES");
+  await fileObjection("g8_c", { marketId: mid2, reason: "WRONG_OUTCOME", detail: "The source reports the opposite of this verdict." });
+  ok("8: objection is open before the void", (await countOpenObjections(mid2)) === 1);
+
+  await emergencyVoidMarket({ marketId: mid2, officerId: "gate_compliance", reason: "Source retracted after the verdict." });
+  ok("8: the void leaves NO stranded objection", (await countOpenObjections(mid2)) === 0);
+  const closed = (await db.objection.listForMarket(mid2))[0];
+  ok("8: it is closed as UPHELD/VOID (a refund IS the void remedy)",
+     closed.status === "UPHELD" && closed.remedy === "VOID", `${closed.status}/${closed.remedy}`);
+  ok("8: and the ruling says why", (closed.reviewNote ?? "").includes("emergency-voided"));
 }
 
 // ═══ 9 · HARDENING — the remedy is a money act, so it is gated like one ══════
@@ -430,6 +448,118 @@ async function closeWindow(mid: string): Promise<void> {
   // The real officer CAN rule, and that releases the freeze.
   const good = await rejectObjection(objId, "gate_officer", "Verified against the source — the verdict is correct.");
   ok("9: a COMPLIANCE officer CAN rule", good.ok, JSON.stringify(good));
+}
+
+// ═══ 10 · DENIAL OF PAYOUT — one player must not be able to freeze a market ══
+// An objection freezes the market's money. If a player could file, be rejected,
+// and file AGAIN, they could re-freeze on a loop for the whole window: every other
+// player in that market goes unpaid, and each round burns an officer ruling. The
+// rule is therefore ONE objection per player per market, for the life of the
+// market — not one at a time.
+{
+  const mid = await makeMarket();
+  await fundedUser("g10_grief");
+  await fundedUser("g10_victim");
+  await buyPosition("g10_grief", { marketId: mid, side: "NO", stake: 10_000 });
+  await buyPosition("g10_victim", { marketId: mid, side: "YES", stake: 10_000 });
+  await adjudicate(mid, "YES"); // the victim won
+
+  const victimBefore = await bal("g10_victim");
+
+  // Round 1: a legitimate objection, then the officer rejects it.
+  const first = await fileObjection("g10_grief", { marketId: mid, reason: "OTHER", detail: "I disagree with this outcome entirely." });
+  ok("10: the first objection is accepted", first.ok);
+  ok("10: it freezes the money", (await countOpenObjections(mid)) === 1);
+  const objId = (await db.objection.listForMarket(mid)).find((o) => o.status === "OPEN")!.id;
+  await rejectObjection(objId, "gate_officer", "Checked the source; the verdict stands.");
+
+  // Round 2: the re-file. THIS is the hole — it must be refused.
+  const refile = await fileObjection("g10_grief", { marketId: mid, reason: "OTHER", detail: "I still disagree, freezing this again." });
+  ok("10: a re-file after a rejection is REFUSED", !refile.ok, JSON.stringify(refile));
+  ok("10: the market is not re-frozen", (await countOpenObjections(mid)) === 0);
+
+  const elig = await objectionEligibility("g10_grief", mid);
+  ok("10: eligibility says ALREADY_DECIDED", !elig.eligible && elig.why === "ALREADY_DECIDED", JSON.stringify(elig));
+
+  // …and the winner actually gets paid once the window closes.
+  await closeWindow(mid);
+  const swept = await settleDueMarkets();
+  ok("10: the market settles despite the griefer", swept.settled === 1, JSON.stringify(swept));
+  ok("10: the winner is PAID (no denial of payout)", (await bal("g10_victim")) > victimBefore,
+     `delta=${(await bal("g10_victim")) - victimBefore}`);
+
+  // A DIFFERENT stakeholder is still entitled to their own one objection — the
+  // fix must not silence everyone else.
+  const mid2 = await makeMarket();
+  await fundedUser("g10_a");
+  await fundedUser("g10_b");
+  await buyPosition("g10_a", { marketId: mid2, side: "NO", stake: 5_000 });
+  await buyPosition("g10_b", { marketId: mid2, side: "YES", stake: 5_000 });
+  await adjudicate(mid2, "YES");
+  const oneA = await fileObjection("g10_a", { marketId: mid2, reason: "WRONG_OUTCOME", detail: "The source says the opposite of this." });
+  const oneB = await fileObjection("g10_b", { marketId: mid2, reason: "AMBIGUOUS_CRITERION", detail: "The criterion cannot decide this case." });
+  ok("10: a second, different stakeholder can still object", oneA.ok && oneB.ok);
+  ok("10: both objections freeze the market", (await countOpenObjections(mid2)) === 2);
+}
+
+// ═══ 11 · THE WATCHDOG — a dead sweep must be LOUD, not silent ══════════════
+// Settlement is now the job of a background sweep. If that sweep stops running,
+// no market ever pays and nothing else in the system complains — players just
+// quietly go unpaid. getSettlementHealth() is what turns that into an alarm, so
+// it has to actually fire, and it has to blame the right thing.
+{
+  const before = await getSettlementHealth();
+
+  const mid = await makeMarket();
+  await fundedUser("g11_a");
+  await fundedUser("g11_b");
+  await buyPosition("g11_a", { marketId: mid, side: "YES", stake: 9_000 });
+  await buyPosition("g11_b", { marketId: mid, side: "NO", stake: 9_000 });
+  await adjudicate(mid, "YES");
+
+  // Window open, money held: this is NORMAL, not an alarm.
+  const waiting = await getSettlementHealth();
+  ok("11: an in-window market counts as AWAITING", waiting.awaiting.count === before.awaiting.count + 1,
+     `awaiting=${waiting.awaiting.count}`);
+  ok("11: it holds real money", waiting.awaiting.tzs >= 18_000, `tzs=${waiting.awaiting.tzs}`);
+  ok("11: and it is NOT overdue", waiting.overdue.count === before.overdue.count, `overdue=${waiting.overdue.count}`);
+
+  // Window closes and the sweep does NOT run. This is the failure we must catch:
+  // the money is due, nothing is disputing it, and it has not been paid.
+  await closeWindow(mid);
+  const stuck = await getSettlementHealth();
+  ok("11: a due-but-unpaid market is flagged OVERDUE (the sweep is dead)",
+     stuck.overdue.count === before.overdue.count + 1, `overdue=${stuck.overdue.count}`);
+  ok("11: the alarm reports the money that is stranded", stuck.overdue.tzs >= 18_000, `tzs=${stuck.overdue.tzs}`);
+
+  // Run the sweep — the alarm must clear.
+  await settleDueMarkets();
+  const healed = await getSettlementHealth();
+  ok("11: once the sweep runs, nothing is overdue", healed.overdue.count === before.overdue.count,
+     `overdue=${healed.overdue.count}`);
+  ok("11: the sweep records a heartbeat", !!healed.lastSweepAt);
+
+  // A market frozen by an OPEN objection past its window is NOT the sweep's fault —
+  // it is waiting on an officer. Blaming the sweeper for it would cry wolf and
+  // train the operator to ignore a real alarm.
+  // Measure against the CURRENT baseline — earlier sections legitimately leave
+  // their own objection-frozen markets behind, so only the delta is meaningful.
+  const frozenBase = healed.frozenByObjection.count;
+  const mid2 = await makeMarket();
+  await fundedUser("g11_c");
+  await fundedUser("g11_d");
+  await buyPosition("g11_c", { marketId: mid2, side: "YES", stake: 4_000 });
+  await buyPosition("g11_d", { marketId: mid2, side: "NO", stake: 4_000 });
+  await adjudicate(mid2, "YES");
+  await fileObjection("g11_d", { marketId: mid2, reason: "WRONG_OUTCOME", detail: "The official source disagrees with this result." });
+  await closeWindow(mid2);
+
+  const frozen = await getSettlementHealth();
+  ok("11: an objection-frozen market is reported as FROZEN, not overdue",
+     frozen.frozenByObjection.count === frozenBase + 1 && frozen.overdue.count === healed.overdue.count,
+     `frozen=${frozen.frozenByObjection.count} (base ${frozenBase}) overdue=${frozen.overdue.count}`);
+  ok("11: the frozen money is attributed to the objection", frozen.frozenByObjection.tzs >= 8_000,
+     `tzs=${frozen.frozenByObjection.tzs}`);
 }
 
 console.log(`\nsettlement-gate: ${pass} passed, ${fail} failed`);

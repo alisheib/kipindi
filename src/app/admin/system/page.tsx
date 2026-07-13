@@ -7,9 +7,9 @@ import { db } from "@/lib/server/store";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
 import { smsHealthSnapshot, sms as smsClient } from "@/lib/server/sms";
 import { rateLimitSnapshot } from "@/lib/server/rate-limit";
-import { listMarkets } from "@/lib/server/market-service";
+import { listMarkets, getSettlementHealth } from "@/lib/server/market-service";
 import { hasDatabase, pingDatabase } from "@/lib/server/prisma";
-import { formatTime } from "@/lib/utils";
+import { formatTime, formatTzs } from "@/lib/utils";
 import { getPlatformConfig } from "@/lib/server/platform-config";
 
 export const metadata = { title: "Admin · System" };
@@ -30,6 +30,14 @@ export default async function AdminSystemPage() {
   const buckets = rateLimitSnapshot();
   const liveMarkets = await listMarkets({ status: "LIVE" }).then(l => l.length).catch(() => 0);
   const resolvedMarkets = await listMarkets({ status: "RESOLVED" }).then(l => l.length).catch(() => 0);
+  // F11 — is settlement actually happening? Degrade to an empty (not fabricated)
+  // reading if this throws; never let a health card take the page down.
+  const settlement = await getSettlementHealth().catch(() => ({
+    lastSweepAt: null, lastSweep: null,
+    awaiting: { count: 0, tzs: 0, nextDueAt: null },
+    frozenByObjection: { count: 0, tzs: 0 },
+    overdue: { count: 0, tzs: 0, oldestDueAt: null },
+  }));
   const dbBackend: "postgres" | "disk-only" = hasDatabase() ? "postgres" : "disk-only";
   const health = { lastOk: null as string | null, lastFail: null as string | null, lastError: null as string | null, consecutiveFails: 0 };
   const ping = await pingDatabase().catch(() => ({ envSet: false, reachable: false, tableExists: false, latencyMs: null, error: "ping failed", hostHint: null }));
@@ -62,6 +70,80 @@ export default async function AdminSystemPage() {
             Takes effect <strong>immediately</strong> — no redeploy — and every flip is written to the audit chain.
           </p>
           <MaintenanceModeForm enabled={platform.maintenanceMode ?? false} note={platform.maintenanceNote ?? ""} />
+        </AdminCard>
+
+        {/* F11 — SETTLEMENT HEALTH. Since the objection window became a real gate,
+            a resolved market does NOT pay at resolution: a background sweep pays it
+            once the window closes. That makes "the sweep stopped running" a silent,
+            money-shaped failure — players simply never get paid and nothing else
+            complains. This card is what makes it loud. */}
+        <AdminCard title="Settlement" sw="Malipo">
+          {settlement.overdue.count > 0 ? (
+            <div className="flex items-start gap-2 rounded-md border border-danger-border bg-danger-bg/25 px-3 py-2.5 mb-3 text-[12.5px] text-danger-fg">
+              <I.alertCircle size={15} className="mt-[1px] shrink-0" />
+              <div>
+                <p className="font-semibold">
+                  {settlement.overdue.count} market{settlement.overdue.count === 1 ? " is" : "s are"} OVERDUE — players are not being paid.
+                </p>
+                <p className="mt-0.5">
+                  Their objection window closed, nothing is disputing them, and the money
+                  ({formatTzs(settlement.overdue.tzs)}) is still sitting in the pool. The settlement
+                  sweep is the only thing that pays a resolved market, so this means it is not
+                  running — check that the lifecycle ticker started and that
+                  <code className="mx-1 font-mono">LIFECYCLE_TICKER</code> is not set to
+                  <code className="mx-1 font-mono">false</code>.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="flex items-center gap-1.5 mb-3 text-[12.5px] text-success">
+              <I.check size={14} className="shrink-0" />
+              No overdue settlements — every market whose window has closed has been paid.
+            </p>
+          )}
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <AdminKpi
+              label="Awaiting window"
+              sw="Inasubiri dirisha"
+              value={String(settlement.awaiting.count)}
+              delta={formatTzs(settlement.awaiting.tzs)}
+            />
+            <AdminKpi
+              label="Frozen by objection"
+              sw="Imesimamishwa"
+              value={String(settlement.frozenByObjection.count)}
+              delta={formatTzs(settlement.frozenByObjection.tzs)}
+            />
+            <AdminKpi
+              label="Overdue"
+              sw="Imechelewa"
+              value={String(settlement.overdue.count)}
+              delta={formatTzs(settlement.overdue.tzs)}
+              deltaDir={settlement.overdue.count > 0 ? "down" : "up"}
+              pulse={settlement.overdue.count > 0}
+            />
+            <AdminKpi
+              label="Last sweep"
+              sw="Usafishaji"
+              value={settlement.lastSweepAt ? formatTime(settlement.lastSweepAt) : "NEVER"}
+              delta={
+                settlement.lastSweep
+                  ? `${settlement.lastSweep.settled} settled · ${settlement.lastSweep.skipped} skipped`
+                  : "ticker has not run"
+              }
+              deltaDir={settlement.lastSweepAt ? "up" : "down"}
+              pulse={!settlement.lastSweepAt}
+            />
+          </div>
+
+          <p className="mt-3 text-caption text-text-secondary">
+            A resolved market is <strong>adjudicated, not paid</strong>. Its money stays in the pool
+            until the objection window closes with no objection standing — then the sweep (every 60s,
+            on the lifecycle ticker) settles it. &ldquo;Awaiting window&rdquo; is normal.
+            &ldquo;Frozen by objection&rdquo; is waiting on an <em>officer</em>, at{" "}
+            <strong>/admin/objections</strong>. &ldquo;Overdue&rdquo; should always be zero.
+          </p>
         </AdminCard>
 
         {/* Broadcast banner — site-wide player announcement (§9.3 #5) */}

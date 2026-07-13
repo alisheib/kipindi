@@ -1666,7 +1666,94 @@ export async function settleDueMarkets(): Promise<{ settled: number; skipped: nu
       console.error(`[settle] ${m.id} failed — money left in pool, will retry:`, e);
     }
   }
+
+  // Heartbeat. This sweep is now the ONLY thing that pays a resolved market, so
+  // if it silently stops running, nobody gets paid and nothing else complains.
+  // Recording the beat is what makes that failure visible instead of invisible —
+  // see getSettlementHealth(), surfaced on /admin/system.
+  setLastSweep({ at: new Date().toISOString(), settled, skipped });
   return { settled, skipped };
+}
+
+/**
+ * The heartbeat is held on globalThis, NOT in a module-level `let`.
+ *
+ * The sweep is started from instrumentation.register(); the /admin/system page
+ * that reads the heartbeat is rendered in a different module graph. A plain
+ * module-level variable is per-module-instance, so the page read `null` even
+ * while the ticker was demonstrably running — the health card cried "ticker has
+ * not run" on a perfectly healthy system. A false alarm on the one dial that says
+ * whether players are being paid is worse than no dial: it trains the operator to
+ * ignore it. globalThis is per-PROCESS, so both sides see the same beat (and it
+ * is the pattern the rest of this codebase already uses for singletons).
+ */
+declare global {
+  // eslint-disable-next-line no-var
+  var __50PICK_LAST_SWEEP: { at: string; settled: number; skipped: number } | undefined;
+}
+const setLastSweep = (v: { at: string; settled: number; skipped: number }) => { globalThis.__50PICK_LAST_SWEEP = v; };
+const getLastSweep = () => globalThis.__50PICK_LAST_SWEEP ?? null;
+
+export type SettlementHealth = {
+  /** When the sweep last ran. Null = it has NEVER run in this process. */
+  lastSweepAt: string | null;
+  lastSweep: { settled: number; skipped: number } | null;
+  /** Adjudicated, money still in the pool, window still open — normal. */
+  awaiting: { count: number; tzs: number; nextDueAt: string | null };
+  /** Frozen by a standing objection — waiting on an OFFICER, not on the clock. */
+  frozenByObjection: { count: number; tzs: number };
+  /**
+   * The alarm. Window closed, no objection standing, and STILL unsettled — the
+   * sweep should have paid these and did not. A non-zero value here means the
+   * lifecycle ticker is dead (or LIFECYCLE_TICKER=false) and players are going
+   * unpaid right now.
+   */
+  overdue: { count: number; tzs: number; oldestDueAt: string | null };
+};
+
+/**
+ * Is settlement actually happening? Before the gate, "resolved" meant "paid", so
+ * there was nothing to watch. Now a market can sit adjudicated-and-unpaid, and the
+ * only thing that moves it is a background sweep — so the sweep failing is a
+ * silent, money-shaped failure. This is the readout that makes it loud.
+ */
+export async function getSettlementHealth(): Promise<SettlementHealth> {
+  const now = Date.now();
+  const unsettled = (await marketStore.values()).filter(
+    (m) => (m.status === "RESOLVED" || m.status === "VOIDED") && !m.settledAt,
+  );
+
+  const { countOpenObjections } = await import("./objections-service");
+
+  const awaiting = { count: 0, tzs: 0, nextDueAt: null as string | null };
+  const frozen = { count: 0, tzs: 0 };
+  const overdue = { count: 0, tzs: 0, oldestDueAt: null as string | null };
+
+  for (const m of unsettled) {
+    const pool = m.yesPool + m.noPool;
+    const due = m.objectionsClosedAt ? Date.parse(m.objectionsClosedAt) : now;
+    const blocked = (await countOpenObjections(m.id)) > 0;
+
+    if (blocked) {
+      frozen.count++;
+      frozen.tzs += pool;
+    } else if (due > now) {
+      awaiting.count++;
+      awaiting.tzs += pool;
+      if (!awaiting.nextDueAt || due < Date.parse(awaiting.nextDueAt)) awaiting.nextDueAt = m.objectionsClosedAt;
+    } else {
+      // Due, unblocked, unpaid. The sweep had its chance and the money is still here.
+      overdue.count++;
+      overdue.tzs += pool;
+      if (!overdue.oldestDueAt || due < Date.parse(overdue.oldestDueAt)) overdue.oldestDueAt = m.objectionsClosedAt;
+    }
+  }
+
+  return {
+    lastSweepAt: getLastSweep()?.at ?? null,
+    lastSweep: getLastSweep() ? { settled: getLastSweep()!.settled, skipped: getLastSweep()!.skipped } : null,
+    awaiting, frozenByObjection: frozen, overdue,
+  };
 }
 
 /**
@@ -1862,6 +1949,19 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
       targetId: m.id,
       payload: { reason, refundedCount, refundedTzs, grossPoolBefore: grossPool, title: m.titleEn },
     });
+
+    // An emergency void does not wait for objections — it is the kill switch. But
+    // it has just SETTLED the market, so any objection still open against it would
+    // be stranded: un-actionable in the officer queue, and unanswered for the
+    // player who filed it. A void refunds every stake in full, which is precisely
+    // the VOID remedy, so close them out as that and notify the objectors.
+    try {
+      const { closeObjectionsForVoidedMarket } = await import("./objections-service");
+      await closeObjectionsForVoidedMarket(m.id, opts.officerId, reason);
+    } catch (e) {
+      // Never let this break the refund path — the money is already back.
+      console.error("[emergency-void] could not close objections:", e);
+    }
 
     // Confirm to EVERY admin/officer that the cancellation succeeded — in-app +
     // email — so the whole team has an awareness/audit trail (and the acting
