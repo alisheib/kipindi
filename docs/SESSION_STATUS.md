@@ -30,6 +30,19 @@ money that had already gone, and an upheld dispute had no remedy at all. Meanwhi
 now true. `scripts/settlement-gate.test.mts` (72 assertions) is the proof; every assertion in it
 fails on the old code.
 
+**⚠ OPERATIONAL: if the sweep stops, NOBODY GETS PAID — and nothing else complains.**
+The settlement sweep runs on the lifecycle ticker (`startLifecycleTicker`, every 60s, started
+from `instrumentation.register()`). It is now the **only** thing that pays a resolved market.
+Setting `LIFECYCLE_TICKER=false` on Railway would silently stop every payout on the platform.
+**Check `/admin/system` → Settlement.** "Overdue" must always be **0**; a non-zero value means
+the window closed, nothing is disputing the market, and the money is still sitting in the pool —
+i.e. the ticker is dead. "Last sweep" shows the heartbeat. Verified live: with the window set to
+0h, an adjudicated market was settled by the background ticker alone ("1 settled · 0 skipped").
+
+**Player-facing copy rule (Ali, 2026-07-13):** a settled market says only **"Settled"** — never
+"winners were paid". Who was paid is internal: the player sees their own payout under *Your
+positions*, the operator sees the rest in the console. Don't narrate the payout run publicly.
+
 **Traps this sets for new code:**
 - `status === "RESOLVED"` **no longer means the money moved.** Check `settledAt`. A market can
   sit RESOLVED-and-unpaid for the whole objection window.
@@ -38,6 +51,13 @@ fails on the old code.
   the already-settled guard still holds, so it cannot double-pay.
 - `objectionWindowHours` (default 24) is an `/admin/config` knob. **0 disables the gate** —
   fine for play-money, never for real money.
+- **One objection per player per market, for the life of the market.** Checking only for an
+  *open* objection was a denial-of-payout hole: a player could file, be rejected, and re-file,
+  re-freezing the pool on a loop while every other player in that market went unpaid. If you
+  ever relax this, you re-open that hole.
+- `emergencyVoidMarket` closes any objection still open against the market it kills (as
+  UPHELD/VOID — a full refund *is* the void remedy), so nothing is left stranded on a settled
+  market.
 
 ## 2b · Current state (feature-complete, hardening for launch)
 The platform is **feature-complete and passing its gates**. Recently landed:

@@ -51,6 +51,15 @@ Consequences you must know:
   but unsettled market (that is the uphold escape hatch) and stamps `settledAt` itself.
 - Objection rulings are **COMPLIANCE-gated in the service** (not just the route): a MODERATOR
   cannot VOID/REVERSE a market, and the attempt is audited as `privilege_escalation_blocked`.
+- **ONE objection per player per market, for the life of the market.** Allowing a re-file after
+  a rejection was a denial-of-payout hole: file → rejected → re-file → re-freeze, on a loop,
+  while every other player in that market went unpaid. Do not relax this.
+- **If the lifecycle ticker dies, nobody gets paid and nothing complains.** The settlement sweep
+  is the only thing that pays a resolved market. Watch `/admin/system` → **Settlement**:
+  "Overdue" must always be **0**, and "Last sweep" is the heartbeat. Never set
+  `LIFECYCLE_TICKER=false` on Railway.
+- **Player-facing copy:** a settled market says only "Settled" — never "winners were paid". Who
+  was paid is internal; the player sees their own payout under *Your positions* (Ali, 2026-07-13).
 
 **The feature backlog F1–F8 is COMPLETE except F6** (which is a decision, not code):
 
