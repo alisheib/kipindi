@@ -56,7 +56,7 @@ A screen/flow/feature is **DONE** only when ALL are true:
 | Modal/overlay/popup surfaces | ~21 |
 | Code-health: TODO/FIXME · `any` · eslint-disable · ts-ignore | 8 · 47 · 92 · 1 |
 
-**Already green** (do not regress): `tsc`, i18n 1217³, the money suite (markets/ledger/wallet/cashout/officer-conflict/emergency/solo-resolution/killswitch/kyc/payments/selection-closed/proposals), `admin-grids-smoke` 125/125, `ui-regression` 158/158.
+**Already green** (do not regress): `tsc`, i18n 1217³, the money suite (markets/ledger/wallet/cashout/officer-conflict/emergency/solo-resolution/killswitch/kyc/payments/selection-closed/proposals), `admin-grids-smoke` 125/125, `ui-regression` 236/236.
 
 **Known ⊘ blockers (asset pipeline — Ali):** `hero-bg.webp` (TZ-appropriate), propose/bonus/invite banners, category `*.webp`, navy-weave texture, `win-seal.png`, the 4 official MNO logos, the regulator seal. All are drop-in-ready in code.
 
@@ -184,7 +184,7 @@ register→KYC→deposit→bet→(cashout|resolve)→payout→withdraw · referr
 ## 6 · Risk register / known gotchas (carry forward)
 
 - **Dev store is SYNC** — `db.user.*`, `db.kyc.*`, `db.sourceOfFunds.get` return values, not Promises, in-memory; tsc sees the async Prisma types. Wrap `await Promise.resolve(db.x()).catch(...)` or tests/pages crash at runtime only.
-- **ui-regression false-fails on a seeded store** — a seeded store fires `navigator.vibrate` → dozens of false console-error fails. Always run the 158/158 gate on a **fresh, unseeded** server (kill node → one clean PID).
+- **ui-regression false-fails on a seeded store** — a seeded store fires `navigator.vibrate` → dozens of false console-error fails. Always run the ui-regression gate (236/236) on a **fresh, unseeded** server (kill node → one clean PID).
 - **Clipped-not-scrolled overflow passes the auto-check** — always READ the screenshot; fix admin grids with `grid-cols-[minmax(0,1fr)_…]`.
 - **First cold-compile of a new page ~30s (Turbopack)** — bump Playwright `goto` timeout to 40s.
 - **Windows dev-server orphans the node child** — `taskkill //F //IM node.exe`; confirm a single PID on :3000 before ui-regression.

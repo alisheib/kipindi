@@ -103,12 +103,10 @@ export function ObjectionStatusBadge({ status, size = "sm" }: { status: Objectio
   const variant =
     status === "OPEN" ? "claret"
     : status === "UPHELD" ? "success"
-    : status === "REJECTED" ? "neutral"
     : "neutral";
   const label =
     status === "OPEN" ? OBJECTION.open.en
     : status === "UPHELD" ? OBJECTION.upheld.en
-    : status === "REJECTED" ? OBJECTION.rejected.en
-    : OBJECTION.withdrawn.en;
+    : OBJECTION.rejected.en;
   return <Chip size={size} variant={variant}>{label}</Chip>;
 }

@@ -74,10 +74,6 @@ export async function countOpenObjections(marketId: string): Promise<number> {
   return (await db.objection.listForMarket(marketId)).filter((o) => o.status === "OPEN").length;
 }
 
-export async function listObjectionsForMarket(marketId: string): Promise<StoredObjection[]> {
-  return db.objection.listForMarket(marketId);
-}
-
 export async function listObjectionsForUser(userId: string): Promise<StoredObjection[]> {
   return db.objection.listForUser(userId);
 }
@@ -239,25 +235,6 @@ export async function closeObjectionsForVoidedMarket(
     notifyObjectionDecided(o.userId, { upheld: true, marketId, note: `The market was voided and your stake was refunded in full. ${reason}` }).catch(() => {});
   }
   return open.length;
-}
-
-/** A player may withdraw their own objection; that releases the money. */
-export async function withdrawObjection(userId: string, objectionId: string): Promise<ServiceResult<void>> {
-  const o = await db.objection.findById(objectionId);
-  if (!o) return { ok: false, error: "Objection not found.", code: "NOT_FOUND" };
-  if (o.userId !== userId) return { ok: false, error: "That is not your objection.", code: "INVALID" };
-  if (o.status !== "OPEN") return { ok: false, error: "This objection has already been decided.", code: "INVALID" };
-
-  await db.objection.update(objectionId, { status: "WITHDRAWN", reviewedAt: new Date().toISOString() });
-  audit({
-    category: "COMPLIANCE",
-    action: "objection.withdrawn",
-    actorId: userId,
-    targetType: "Market",
-    targetId: o.marketId,
-    payload: { objectionId, effect: "settlement no longer frozen by this objection" },
-  });
-  return { ok: true };
 }
 
 /**

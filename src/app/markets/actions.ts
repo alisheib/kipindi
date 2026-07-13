@@ -276,20 +276,6 @@ export async function fileObjectionAction(formData: FormData) {
   return r;
 }
 
-/** F11 — the objector changes their mind; this releases the settlement freeze. */
-export async function withdrawObjectionAction(formData: FormData) {
-  const session = await currentSession();
-  if (!session) return { ok: false as const, error: "Sign in first." };
-
-  const marketId = String(formData.get("marketId") ?? "");
-  const objectionId = String(formData.get("objectionId") ?? "");
-
-  const { withdrawObjection } = await import("@/lib/server/objections-service");
-  const r = await withdrawObjection(session.userId, objectionId);
-  if (r.ok) revalidatePath(`/markets/${marketId}`);
-  return r;
-}
-
 export async function reportCommentAction(formData: FormData) {
   const session = await currentSession();
   if (!session) return { ok: false as const, error: "Sign in first." };

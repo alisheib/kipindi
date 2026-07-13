@@ -18,7 +18,7 @@
    under the running server and poisons the Turbopack cache — every route then 500s with
    `FATAL: An unexpected Turbopack error` / exit code `0xc0000142`. Cure: kill the server,
    `rm -rf .next`, restart. It looks like catastrophic breakage and is purely local.
-3. `npx tsc --noEmit` → clean · `npm run test:all` → **55/55**.
+3. `npx tsc --noEmit` → clean · `npm run test:all` → **56/56**.
    `test:responsive` needs a live server on :3000 — boot one and it passes too; without a
    server it is the only acceptable red.
 4. Read `docs/SESSION_STATUS.md`, then `docs/feature-backlog.md`.
@@ -31,14 +31,16 @@ deep routes 404 on it. That's expected; use the railway host).
 ### ⚠ 2026-07-13 — SETTLEMENT IS NOW GATED. Read this before touching the money path.
 `resolveMarket` **no longer pays anyone.** Stage-2 of the ceremony *adjudicates*: it records
 the verdict, opens the objection window, and leaves the pool whole with every position OPEN.
-Money moves only in **`settleMarket()`**, called by **`settleDueMarkets()`** on the lifecycle
-ticker, and only once the window has elapsed **and** no objection is standing.
+Money moves only in **`settleMarket()`** — and **today only an officer calls it**, by hand at
+**`/admin/settlement`**. Automatic payout is PAUSED (see below): the sweep exists and is fully
+tested, but the lifecycle ticker does not drive it. Either way, money moves only once the window
+has elapsed **and** no objection is standing against the market.
 
 This was F11. The old "24h objection window" was decoration — `objectionsClosedAt` was stamped
 and the winners were paid on the next line, so a player could only ever object to money that
 had already left, and an upheld objection had no remedy (`emergencyVoidMarket` refuses a
 settled market). `REGULATOR_STRESS_REPORT.md` meanwhile told a regulator settlement *was*
-gated on it. It is now true, and `scripts/settlement-gate.test.mts` (72 assertions) proves it.
+gated on it. It is now true, and `scripts/settlement-gate.test.mts` (107 assertions) proves it.
 
 Consequences you must know:
 - A market can be **RESOLVED with `settledAt: null`** — verdict final, money untouched. Any new
@@ -104,7 +106,7 @@ never actually blocking overspend.
    Needs a tax/legal answer, not an engineering one.
 
 ## 3 · Paths — where things live
-**Repo root:** `C:\kipindi-main` (branch `main`; **push = deploy**). GitHub `alisheib/kipindi`.
+**Repo root:** `F:\kipindi-main` — **NOT `C:`** (branch `main`; **push = deploy**). GitHub `alisheib/kipindi`.
 
 | What | Path |
 |---|---|

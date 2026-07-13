@@ -33,7 +33,7 @@ import {
   emergencyVoidMarket, getSettlementHealth, listSettlementQueue,
 } from "../src/lib/server/market-service.ts";
 import {
-  fileObjection, upholdObjection, rejectObjection, withdrawObjection,
+  fileObjection, upholdObjection, rejectObjection,
   countOpenObjections, objectionEligibility,
 } from "../src/lib/server/objections-service.ts";
 import { getGlobalConfig } from "../src/lib/server/market-config.ts";
@@ -303,10 +303,13 @@ async function closeWindow(mid: string): Promise<void> {
   ok("6: even a COMPLIANCE officer cannot rule on their OWN objection", !selfReview.ok && selfReview.code === "CONFLICT", JSON.stringify(selfReview));
   await db.user.update("g6_opp", { role: "PLAYER" });
 
-  // The player can withdraw, which releases the freeze.
-  const wd = await withdrawObjection("g6_opp", objId);
-  ok("6: the objector can withdraw", wd.ok);
-  ok("6: withdrawing releases the freeze", (await countOpenObjections(mid)) === 0);
+  // A mistaken objection is released by an OFFICER ruling on it — there is
+  // deliberately no player-side withdraw (an officer must read every objection
+  // anyway, and a withdraw path would re-open the file/withdraw/re-file loop that
+  // the one-per-market rule closes).
+  const released = await rejectObjection(objId, "gate_officer", "Objection reviewed; the verdict stands.");
+  ok("6: an officer ruling releases the freeze", released.ok, JSON.stringify(released));
+  ok("6: no objection is left holding the money", (await countOpenObjections(mid)) === 0);
 
   // Once settled, the objection route is closed and says so honestly.
   await closeWindow(mid);

@@ -158,7 +158,6 @@ export const OBJECTION = {
   open:      { en: "Open · settlement frozen", sw: "Wazi · malipo yamesimamishwa" },
   upheld:    { en: "Upheld", sw: "Limekubaliwa" },
   rejected:  { en: "Rejected", sw: "Limekataliwa" },
-  withdrawn: { en: "Withdrawn", sw: "Limeondolewa" },
   // Remedies available ONLY while the market is unsettled.
   remedyVoid:    { en: "Void & refund every stake", sw: "Batilisha na urejeshe dau zote" },
   remedyReverse: { en: "Reverse the verdict", sw: "Geuza uamuzi" },

@@ -356,8 +356,15 @@ export type ObjectionReason =
   | "RESOLVED_EARLY"       // settled before the real-world event concluded
   | "OTHER";
 
-/** OPEN freezes the market's money. Every other state releases it. */
-export type ObjectionStatus = "OPEN" | "UPHELD" | "REJECTED" | "WITHDRAWN";
+/**
+ * OPEN freezes the market's money; a ruling releases it.
+ *
+ * There is deliberately NO player-side withdraw. An officer has to read every
+ * objection anyway, so a mistaken one is released by them rejecting it — and a
+ * withdraw path would have re-opened the file → withdraw → re-file loop that the
+ * one-objection-per-market rule exists to close.
+ */
+export type ObjectionStatus = "OPEN" | "UPHELD" | "REJECTED";
 
 /** What the officer did about an upheld objection. Only reachable while the
  *  market is unsettled — which is the entire reason settlement is gated. */

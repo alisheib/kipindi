@@ -840,7 +840,8 @@ model Objection {
   /// WRONG_OUTCOME | SOURCE_CONTRADICTS | AMBIGUOUS_CRITERION | RESOLVED_EARLY | OTHER
   reason          String
   detail          String    @db.Text
-  /// OPEN | UPHELD | REJECTED | WITHDRAWN — only OPEN freezes the money.
+  /// OPEN | UPHELD | REJECTED — only OPEN freezes the money. There is no player
+  /// withdraw: a mistaken objection is released by an officer rejecting it.
   status          String    @default("OPEN")
   createdAt       DateTime  @default(now())
   reviewedBy      String?

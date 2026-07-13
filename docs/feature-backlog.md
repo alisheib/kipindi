@@ -32,7 +32,7 @@ at once; if any objects, resolve before shipping:
    - **stress-tested** (concurrency / money-invariant / edge-load `*.test.mts` where money or state is touched; add a red-without-fix test for any money path),
    - **visually tested** (Playwright live-drive at **320 first** → 1920 + landscape, EN/SW/ZH, screenshot + READ; 0 h-overflow, overlays on-screen, ≥40px targets),
    - **hardened / "tampered"** (adversarial: bad input, forged cookies/roles, double-submit, race, offline, huge/long values — prove it can't be abused),
-   - green on a FRESH server; tsc + `test:all` 45/45; six-role sign-off in the commit (`6-role: ✓`); commit AND push; confirm Railway deploy green.
+   - green on a FRESH server; tsc + `test:all` fully green (56/56 as of 2026-07-13 — check, do not hardcode); six-role sign-off in the commit (`6-role: ✓`); commit AND push; confirm Railway deploy green.
 4. **Gold-discipline:** player = earned-money / money-in only; admin = resolved-seal only.
 
 ---
