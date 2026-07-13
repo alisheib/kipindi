@@ -30,14 +30,36 @@ money that had already gone, and an upheld dispute had no remedy at all. Meanwhi
 now true. `scripts/settlement-gate.test.mts` (72 assertions) is the proof; every assertion in it
 fails on the old code.
 
-**⚠ OPERATIONAL: if the sweep stops, NOBODY GETS PAID — and nothing else complains.**
-The settlement sweep runs on the lifecycle ticker (`startLifecycleTicker`, every 60s, started
-from `instrumentation.register()`). It is now the **only** thing that pays a resolved market.
-Setting `LIFECYCLE_TICKER=false` on Railway would silently stop every payout on the platform.
-**Check `/admin/system` → Settlement.** "Overdue" must always be **0**; a non-zero value means
-the window closed, nothing is disputing the market, and the money is still sitting in the pool —
-i.e. the ticker is dead. "Last sweep" shows the heartbeat. Verified live: with the window set to
-0h, an adjudicated market was settled by the background ticker alone ("1 settled · 0 skipped").
+### 🔴 AUTOMATIC PAYOUT IS PAUSED — every payout is MANUAL (Ali, 2026-07-13)
+
+**Nothing pays a market by itself.** An officer settles each resolved market by hand at
+**`/admin/settlement`** (*Money → Settlement*). This is deliberate: we are not letting the
+platform move money on a timer before the **payment aggregator (Selcom / Azampay)** is
+integrated and reconciled against.
+
+**The payout code was NOT deleted — it is paused.** `settleDueMarkets()`, its idempotency
+guards, its heartbeat and its whole test suite are all still here and still green. The single
+thing that changed is that the lifecycle ticker no longer *calls* it:
+
+```ts
+// src/lib/server/lifecycle.ts
+if (process.env.AUTO_SETTLE === "true") {
+  await settleDueMarkets();      // ← paused: not set, so this never runs today
+}
+```
+
+**TO RE-ENABLE WHEN THE GATEWAY IS LIVE:** set **`AUTO_SETTLE=true`** on Railway. That is the
+entire switch. There is a test (`settlement-gate.test.mts` §12) that proves *both* halves: with
+the flag off a full lifecycle pass pays nobody, and with it on the sweep pays again.
+
+**Manual settle is not a bypass.** `/admin/settlement` calls `settleMarket()` **without**
+`force`, so every guard is re-checked under the market lock: it **cannot** pay a market whose
+objection window is still open, **cannot** pay one with an objection standing against it, and
+**cannot** pay one twice. ADMIN/COMPLIANCE only (never MODERATOR), TOTP, fully audited.
+
+The queue shows three states: **Ready** (window closed, nothing disputing it → press *Settle
+now*), **Window open** (too early), **Objection** (rule on it at `/admin/objections` first).
+`/admin/system` → Settlement mirrors the same numbers and tells you which mode you are in.
 
 **Player-facing copy rule (Ali, 2026-07-13):** a settled market says only **"Settled"** — never
 "winners were paid". Who was paid is internal: the player sees their own payout under *Your

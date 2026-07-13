@@ -44,10 +44,27 @@ export async function runLifecyclePass(): Promise<void> {
     await notifySelectionClosedMarkets().catch((e) => console.error("[lifecycle] selection-closed sweep:", e));
     await notifyDueMarketsForResolution().catch((e) => console.error("[lifecycle] resolution-due sweep:", e));
     await autoResolveExpiredDemoMarkets().catch((e) => console.error("[lifecycle] demo auto-resolve:", e));
-    // Settlement sweep — pays adjudicated markets whose objection window has
-    // closed. This is the ONLY thing that pays a resolved market, so if this
-    // sweep stops running, money stops moving (it does not leak — it waits).
-    await settleDueMarkets().catch((e) => console.error("[lifecycle] settlement sweep:", e));
+
+    // ── AUTOMATIC PAYOUT IS PAUSED (Ali, 2026-07-13) ────────────────────────
+    // Nothing pays a market by itself. Every payout is a deliberate officer
+    // action at /admin/settlement until the payment aggregator (Selcom/Azampay)
+    // is integrated — we are not letting the platform move money on a timer
+    // before the real money-out rail exists and has been reconciled against.
+    //
+    // NOTE this does not weaken the settlement gate: a resolved market still
+    // holds its pool, still honours the objection window, and still refuses to
+    // pay while an objection stands. All that changes is WHO presses go — a
+    // human, not the clock. The guards live in settleMarket() and are re-checked
+    // under the market lock on every manual settle, so the officer cannot pay a
+    // market early or pay one that is under dispute.
+    //
+    // TO RE-ENABLE once the gateway is live: set AUTO_SETTLE=true. That is the
+    // whole switch — the sweep, its idempotency and its heartbeat are all still
+    // here and still tested; they are simply not driven by the ticker today.
+    if (process.env.AUTO_SETTLE === "true") {
+      await settleDueMarkets().catch((e) => console.error("[lifecycle] settlement sweep:", e));
+    }
+
     await expireActiveGrants().catch((e) => console.error("[lifecycle] bonus expiry:", e));
   } finally {
     running = false;

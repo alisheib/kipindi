@@ -1694,21 +1694,79 @@ declare global {
 const setLastSweep = (v: { at: string; settled: number; skipped: number }) => { globalThis.__50PICK_LAST_SWEEP = v; };
 const getLastSweep = () => globalThis.__50PICK_LAST_SWEEP ?? null;
 
+/** Is anything allowed to pay a market on its own? Paused until the payment
+ *  aggregator is integrated — see lifecycle.ts. */
+export function isAutoSettleEnabled(): boolean {
+  return process.env.AUTO_SETTLE === "true";
+}
+
+export type SettlementQueueRow = {
+  id: string;
+  titleEn: string;
+  outcome: string | null;
+  pool: number;
+  positions: number;
+  objectionsClosedAt: string | null;
+  /** READY   — window closed, nothing disputing it: an officer may settle it now.
+   *  WAITING — objection window still running; too early to pay.
+   *  FROZEN  — an objection is standing; rule on it at /admin/objections first. */
+  state: "READY" | "WAITING" | "FROZEN";
+};
+
+/**
+ * Every market that has been adjudicated but whose money has NOT moved — i.e.
+ * everything the officer might have to act on. This is the operator's payout
+ * worklist while automatic settlement is paused.
+ */
+export async function listSettlementQueue(): Promise<SettlementQueueRow[]> {
+  const now = Date.now();
+  const unsettled = (await marketStore.values()).filter(
+    (m) => (m.status === "RESOLVED" || m.status === "VOIDED") && !m.settledAt,
+  );
+  const { countOpenObjections } = await import("./objections-service");
+
+  const rows: SettlementQueueRow[] = [];
+  for (const m of unsettled) {
+    const frozen = (await countOpenObjections(m.id)) > 0;
+    const due = m.objectionsClosedAt ? Date.parse(m.objectionsClosedAt) : now;
+    rows.push({
+      id: m.id,
+      titleEn: m.titleEn,
+      outcome: m.resolvedOutcome,
+      pool: m.yesPool + m.noPool,
+      positions: (await listPositionsForMarket(m.id)).filter((p) => p.status === "OPEN").length,
+      objectionsClosedAt: m.objectionsClosedAt,
+      state: frozen ? "FROZEN" : due > now ? "WAITING" : "READY",
+    });
+  }
+  // Actionable first, then the biggest pools — the officer's eye should land on
+  // the money that has been waiting.
+  const rank = { READY: 0, FROZEN: 1, WAITING: 2 } as const;
+  return rows.sort((a, b) => rank[a.state] - rank[b.state] || b.pool - a.pool);
+}
+
 export type SettlementHealth = {
-  /** When the sweep last ran. Null = it has NEVER run in this process. */
+  /** False = nothing pays by itself; an officer settles each market by hand. */
+  autoSettle: boolean;
+  /** When the sweep last ran. Null = never (expected while auto-settle is off). */
   lastSweepAt: string | null;
   lastSweep: { settled: number; skipped: number } | null;
-  /** Adjudicated, money still in the pool, window still open — normal. */
+  /** Adjudicated, money still in the pool, objection window still running. */
   awaiting: { count: number; tzs: number; nextDueAt: string | null };
-  /** Frozen by a standing objection — waiting on an OFFICER, not on the clock. */
+  /** Frozen by a standing objection — waiting on an OFFICER to rule. */
   frozenByObjection: { count: number; tzs: number };
   /**
-   * The alarm. Window closed, no objection standing, and STILL unsettled — the
-   * sweep should have paid these and did not. A non-zero value here means the
-   * lifecycle ticker is dead (or LIFECYCLE_TICKER=false) and players are going
-   * unpaid right now.
+   * Window closed, nothing disputing it, money still in the pool.
+   *
+   * While automatic payout is PAUSED this is simply the officer's work queue —
+   * these markets are waiting for a human to press Settle at /admin/settlement.
+   * It is normal for this to be non-zero.
+   *
+   * If AUTO_SETTLE is ever turned back on, the meaning flips: the sweep should be
+   * clearing these within a minute, so a number that sits here is an ALARM — it
+   * means the ticker is dead and players are silently going unpaid.
    */
-  overdue: { count: number; tzs: number; oldestDueAt: string | null };
+  readyToSettle: { count: number; tzs: number; oldestDueAt: string | null };
 };
 
 /**
@@ -1727,7 +1785,7 @@ export async function getSettlementHealth(): Promise<SettlementHealth> {
 
   const awaiting = { count: 0, tzs: 0, nextDueAt: null as string | null };
   const frozen = { count: 0, tzs: 0 };
-  const overdue = { count: 0, tzs: 0, oldestDueAt: null as string | null };
+  const readyToSettle = { count: 0, tzs: 0, oldestDueAt: null as string | null };
 
   for (const m of unsettled) {
     const pool = m.yesPool + m.noPool;
@@ -1742,17 +1800,19 @@ export async function getSettlementHealth(): Promise<SettlementHealth> {
       awaiting.tzs += pool;
       if (!awaiting.nextDueAt || due < Date.parse(awaiting.nextDueAt)) awaiting.nextDueAt = m.objectionsClosedAt;
     } else {
-      // Due, unblocked, unpaid. The sweep had its chance and the money is still here.
-      overdue.count++;
-      overdue.tzs += pool;
-      if (!overdue.oldestDueAt || due < Date.parse(overdue.oldestDueAt)) overdue.oldestDueAt = m.objectionsClosedAt;
+      // Window closed, nothing disputing it, money still in the pool. With
+      // automatic payout paused this is the officer's queue, not a fault.
+      readyToSettle.count++;
+      readyToSettle.tzs += pool;
+      if (!readyToSettle.oldestDueAt || due < Date.parse(readyToSettle.oldestDueAt)) readyToSettle.oldestDueAt = m.objectionsClosedAt;
     }
   }
 
   return {
+    autoSettle: isAutoSettleEnabled(),
     lastSweepAt: getLastSweep()?.at ?? null,
     lastSweep: getLastSweep() ? { settled: getLastSweep()!.settled, skipped: getLastSweep()!.skipped } : null,
-    awaiting, frozenByObjection: frozen, overdue,
+    awaiting, frozenByObjection: frozen, readyToSettle,
   };
 }
 

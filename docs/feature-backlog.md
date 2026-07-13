@@ -315,3 +315,41 @@ we already built (lowest risk, fastest to value).
    plan, and the six-role sign-off checklist — **before** writing code.
 4. On approval, build → verify (stress + visual + hardened) → six-role → push → deploy green.
 5. Tick this doc, mirror into `SESSION_STATUS.md`, append to `ui-rollout-tracker.md`.
+
+---
+
+## 4 · DEFERRED — re-enable automatic payout when the payment gateway lands
+
+**Status: PAUSED on purpose (Ali, 2026-07-13). Nothing is broken and nothing was deleted.**
+
+Since F11, a resolved market is **adjudicated, not paid**: its pool is held until the objection
+window closes. The code that pays it (`settleDueMarkets()` on the lifecycle ticker) is complete,
+idempotent, and fully tested — but it is **not being driven**, because we are not letting the
+platform move money on a timer before the **payment aggregator (Selcom / Azampay)** is integrated
+and reconciled against.
+
+**Today:** an officer pays each market by hand at **`/admin/settlement`** (*Money → Settlement*).
+The queue shows Ready / Window-open / Objection, and the button calls `settleMarket()` **without**
+`force`, so it cannot pay a market early, cannot pay one under dispute, and cannot pay one twice.
+ADMIN/COMPLIANCE only, TOTP, audited.
+
+**The pause is one line** — `src/lib/server/lifecycle.ts`:
+
+```ts
+if (process.env.AUTO_SETTLE === "true") {
+  await settleDueMarkets();
+}
+```
+
+### To re-enable, once the aggregator is integrated
+1. Confirm the money-out rail works end-to-end and reconciles (this is the actual blocker —
+   automatic settlement is only safe once a payout can be *traced to a real transfer*).
+2. Set **`AUTO_SETTLE=true`** on Railway. That is the whole switch.
+3. Watch `/admin/system` → **Settlement**. In auto mode the meaning of "Ready to settle" flips:
+   the sweep should clear it within a minute, so a number that *sits* there is an **alarm** — it
+   means the lifecycle ticker is dead and players are silently going unpaid. Also never set
+   `LIFECYCLE_TICKER=false`.
+4. `scripts/settlement-gate.test.mts` §12 already covers both halves — with the flag off a full
+   lifecycle pass pays nobody; with it on the sweep pays again. Nothing new to write.
+
+**Do not "fix" the paused sweep by deleting it.** It is the path we go back to.

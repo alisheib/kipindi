@@ -7,7 +7,7 @@ import { db } from "@/lib/server/store";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
 import { smsHealthSnapshot, sms as smsClient } from "@/lib/server/sms";
 import { rateLimitSnapshot } from "@/lib/server/rate-limit";
-import { listMarkets, getSettlementHealth } from "@/lib/server/market-service";
+import { listMarkets, getSettlementHealth, isAutoSettleEnabled, type SettlementHealth } from "@/lib/server/market-service";
 import { hasDatabase, pingDatabase } from "@/lib/server/prisma";
 import { formatTime, formatTzs } from "@/lib/utils";
 import { getPlatformConfig } from "@/lib/server/platform-config";
@@ -32,11 +32,12 @@ export default async function AdminSystemPage() {
   const resolvedMarkets = await listMarkets({ status: "RESOLVED" }).then(l => l.length).catch(() => 0);
   // F11 — is settlement actually happening? Degrade to an empty (not fabricated)
   // reading if this throws; never let a health card take the page down.
-  const settlement = await getSettlementHealth().catch(() => ({
+  const settlement: SettlementHealth = await getSettlementHealth().catch(() => ({
+    autoSettle: isAutoSettleEnabled(),
     lastSweepAt: null, lastSweep: null,
     awaiting: { count: 0, tzs: 0, nextDueAt: null },
     frozenByObjection: { count: 0, tzs: 0 },
-    overdue: { count: 0, tzs: 0, oldestDueAt: null },
+    readyToSettle: { count: 0, tzs: 0, oldestDueAt: null },
   }));
   const dbBackend: "postgres" | "disk-only" = hasDatabase() ? "postgres" : "disk-only";
   const health = { lastOk: null as string | null, lastFail: null as string | null, lastError: null as string | null, consecutiveFails: 0 };
@@ -72,37 +73,65 @@ export default async function AdminSystemPage() {
           <MaintenanceModeForm enabled={platform.maintenanceMode ?? false} note={platform.maintenanceNote ?? ""} />
         </AdminCard>
 
-        {/* F11 — SETTLEMENT HEALTH. Since the objection window became a real gate,
-            a resolved market does NOT pay at resolution: a background sweep pays it
-            once the window closes. That makes "the sweep stopped running" a silent,
-            money-shaped failure — players simply never get paid and nothing else
-            complains. This card is what makes it loud. */}
+        {/* F11 — SETTLEMENT. A resolved market does NOT pay at resolution: its pool
+            is held until the objection window closes. Automatic payout is currently
+            PAUSED (see lifecycle.ts) — an officer settles each market by hand at
+            /admin/settlement until the payment aggregator is integrated. So a
+            market sitting in "Ready to settle" is WORK TO DO, not a fault; it only
+            becomes an alarm if automatic payout is switched back on and the sweep
+            then fails to clear it. */}
         <AdminCard title="Settlement" sw="Malipo">
-          {settlement.overdue.count > 0 ? (
+          {!settlement.autoSettle ? (
+            <div className="flex items-start gap-2 rounded-md border border-brand-500 bg-brand-500/10 px-3 py-2.5 mb-3 text-[12.5px] text-text-muted">
+              <I.alertCircle size={15} className="mt-[1px] shrink-0 text-brand-300" />
+              <p>
+                <strong className="text-text">Automatic payout is PAUSED — payouts are manual.</strong>{" "}
+                Nothing pays a market by itself until the payment aggregator is integrated.
+                {settlement.readyToSettle.count > 0 ? (
+                  <>
+                    {" "}<strong className="text-text">{settlement.readyToSettle.count} market
+                    {settlement.readyToSettle.count === 1 ? " is" : "s are"} ready to pay
+                    ({formatTzs(settlement.readyToSettle.tzs)})</strong> — settle them at{" "}
+                    <strong>/admin/settlement</strong>.
+                  </>
+                ) : (
+                  <> Nothing is waiting to be paid right now.</>
+                )}
+              </p>
+            </div>
+          ) : settlement.readyToSettle.count > 0 ? (
             <div className="flex items-start gap-2 rounded-md border border-danger-border bg-danger-bg/25 px-3 py-2.5 mb-3 text-[12.5px] text-danger-fg">
               <I.alertCircle size={15} className="mt-[1px] shrink-0" />
               <div>
                 <p className="font-semibold">
-                  {settlement.overdue.count} market{settlement.overdue.count === 1 ? " is" : "s are"} OVERDUE — players are not being paid.
+                  {settlement.readyToSettle.count} market{settlement.readyToSettle.count === 1 ? " is" : "s are"} OVERDUE — players are not being paid.
                 </p>
                 <p className="mt-0.5">
-                  Their objection window closed, nothing is disputing them, and the money
-                  ({formatTzs(settlement.overdue.tzs)}) is still sitting in the pool. The settlement
-                  sweep is the only thing that pays a resolved market, so this means it is not
-                  running — check that the lifecycle ticker started and that
-                  <code className="mx-1 font-mono">LIFECYCLE_TICKER</code> is not set to
-                  <code className="mx-1 font-mono">false</code>.
+                  Automatic payout is ON, so the sweep should have cleared these within a minute.
+                  Their window closed, nothing is disputing them, and the money
+                  ({formatTzs(settlement.readyToSettle.tzs)}) is still in the pool — the lifecycle
+                  ticker is not running. Check <code className="mx-1 font-mono">LIFECYCLE_TICKER</code>
+                  is not <code className="mx-1 font-mono">false</code>, or settle by hand at
+                  /admin/settlement.
                 </p>
               </div>
             </div>
           ) : (
             <p className="flex items-center gap-1.5 mb-3 text-[12.5px] text-success">
               <I.check size={14} className="shrink-0" />
-              No overdue settlements — every market whose window has closed has been paid.
+              Automatic payout is ON and nothing is overdue — every due market has been paid.
             </p>
           )}
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <AdminKpi
+              label="Ready to settle"
+              sw="Tayari kulipwa"
+              value={String(settlement.readyToSettle.count)}
+              delta={formatTzs(settlement.readyToSettle.tzs)}
+              deltaDir={settlement.readyToSettle.count > 0 ? "up" : undefined}
+              pulse={settlement.readyToSettle.count > 0}
+            />
             <AdminKpi
               label="Awaiting window"
               sw="Inasubiri dirisha"
@@ -116,33 +145,29 @@ export default async function AdminSystemPage() {
               delta={formatTzs(settlement.frozenByObjection.tzs)}
             />
             <AdminKpi
-              label="Overdue"
-              sw="Imechelewa"
-              value={String(settlement.overdue.count)}
-              delta={formatTzs(settlement.overdue.tzs)}
-              deltaDir={settlement.overdue.count > 0 ? "down" : "up"}
-              pulse={settlement.overdue.count > 0}
-            />
-            <AdminKpi
-              label="Last sweep"
-              sw="Usafishaji"
-              value={settlement.lastSweepAt ? formatTime(settlement.lastSweepAt) : "NEVER"}
+              label="Auto payout"
+              sw="Malipo ya kiotomatiki"
+              value={settlement.autoSettle ? "ON" : "PAUSED"}
               delta={
-                settlement.lastSweep
-                  ? `${settlement.lastSweep.settled} settled · ${settlement.lastSweep.skipped} skipped`
-                  : "ticker has not run"
+                settlement.autoSettle
+                  ? settlement.lastSweepAt
+                    ? `last sweep ${formatTime(settlement.lastSweepAt)}`
+                    : "ticker has not run"
+                  : "manual until gateway"
               }
-              deltaDir={settlement.lastSweepAt ? "up" : "down"}
-              pulse={!settlement.lastSweepAt}
+              deltaDir={settlement.autoSettle ? "up" : "down"}
+              pulse={settlement.autoSettle && !settlement.lastSweepAt}
             />
           </div>
 
           <p className="mt-3 text-caption text-text-secondary">
             A resolved market is <strong>adjudicated, not paid</strong>. Its money stays in the pool
-            until the objection window closes with no objection standing — then the sweep (every 60s,
-            on the lifecycle ticker) settles it. &ldquo;Awaiting window&rdquo; is normal.
-            &ldquo;Frozen by objection&rdquo; is waiting on an <em>officer</em>, at{" "}
-            <strong>/admin/objections</strong>. &ldquo;Overdue&rdquo; should always be zero.
+            until the objection window closes with no objection standing. Today an{" "}
+            <strong>officer</strong> then pays it at <strong>/admin/settlement</strong> — automatic
+            payout is paused until the payment aggregator is integrated (re-enable with{" "}
+            <code className="font-mono">AUTO_SETTLE=true</code>).
+            &ldquo;Awaiting window&rdquo; is too early to pay. &ldquo;Frozen by objection&rdquo; is
+            waiting on a ruling at <strong>/admin/objections</strong>.
           </p>
         </AdminCard>
 

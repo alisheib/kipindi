@@ -54,10 +54,16 @@ Consequences you must know:
 - **ONE objection per player per market, for the life of the market.** Allowing a re-file after
   a rejection was a denial-of-payout hole: file → rejected → re-file → re-freeze, on a loop,
   while every other player in that market went unpaid. Do not relax this.
-- **If the lifecycle ticker dies, nobody gets paid and nothing complains.** The settlement sweep
-  is the only thing that pays a resolved market. Watch `/admin/system` → **Settlement**:
-  "Overdue" must always be **0**, and "Last sweep" is the heartbeat. Never set
-  `LIFECYCLE_TICKER=false` on Railway.
+- 🔴 **AUTOMATIC PAYOUT IS PAUSED — every payout is MANUAL.** An officer settles each market by
+  hand at **`/admin/settlement`**. Deliberate (Ali): we do not move money on a timer before the
+  **payment aggregator (Selcom/Azampay)** is integrated.
+  **The code is paused, NOT deleted** — `settleDueMarkets()` and its whole test suite are intact;
+  the ticker simply doesn't call it (`if (process.env.AUTO_SETTLE === "true")` in `lifecycle.ts`).
+  **Re-enable after the gateway lands with `AUTO_SETTLE=true` on Railway** — that is the whole
+  switch, and `settlement-gate.test.mts` §12 proves both halves (off → the tick pays nobody;
+  on → the sweep pays again).
+  Manual settle is **not** a bypass: it calls `settleMarket()` without `force`, so it still can't
+  pay early, can't pay a disputed market, and can't pay twice.
 - **Player-facing copy:** a settled market says only "Settled" — never "winners were paid". Who
   was paid is internal; the player sees their own payout under *Your positions* (Ali, 2026-07-13).
 

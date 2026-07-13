@@ -30,7 +30,7 @@ import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { marketStore, positionStore } from "../src/lib/server/market-dal.ts";
 import {
   createMarket, buyPosition, getMarket, resolveMarket, settleMarket, settleDueMarkets,
-  emergencyVoidMarket, getSettlementHealth,
+  emergencyVoidMarket, getSettlementHealth, listSettlementQueue,
 } from "../src/lib/server/market-service.ts";
 import {
   fileObjection, upholdObjection, rejectObjection, withdrawObjection,
@@ -522,21 +522,21 @@ async function closeWindow(mid: string): Promise<void> {
   ok("11: an in-window market counts as AWAITING", waiting.awaiting.count === before.awaiting.count + 1,
      `awaiting=${waiting.awaiting.count}`);
   ok("11: it holds real money", waiting.awaiting.tzs >= 18_000, `tzs=${waiting.awaiting.tzs}`);
-  ok("11: and it is NOT overdue", waiting.overdue.count === before.overdue.count, `overdue=${waiting.overdue.count}`);
+  ok("11: and it is NOT overdue", waiting.readyToSettle.count === before.readyToSettle.count, `overdue=${waiting.readyToSettle.count}`);
 
   // Window closes and the sweep does NOT run. This is the failure we must catch:
   // the money is due, nothing is disputing it, and it has not been paid.
   await closeWindow(mid);
   const stuck = await getSettlementHealth();
-  ok("11: a due-but-unpaid market is flagged OVERDUE (the sweep is dead)",
-     stuck.overdue.count === before.overdue.count + 1, `overdue=${stuck.overdue.count}`);
-  ok("11: the alarm reports the money that is stranded", stuck.overdue.tzs >= 18_000, `tzs=${stuck.overdue.tzs}`);
+  ok("11: a due-but-unpaid market is flagged READY (the officer must pay it)",
+     stuck.readyToSettle.count === before.readyToSettle.count + 1, `overdue=${stuck.readyToSettle.count}`);
+  ok("11: the alarm reports the money that is stranded", stuck.readyToSettle.tzs >= 18_000, `tzs=${stuck.readyToSettle.tzs}`);
 
   // Run the sweep — the alarm must clear.
   await settleDueMarkets();
   const healed = await getSettlementHealth();
-  ok("11: once the sweep runs, nothing is overdue", healed.overdue.count === before.overdue.count,
-     `overdue=${healed.overdue.count}`);
+  ok("11: once it is settled, nothing is left ready", healed.readyToSettle.count === before.readyToSettle.count,
+     `overdue=${healed.readyToSettle.count}`);
   ok("11: the sweep records a heartbeat", !!healed.lastSweepAt);
 
   // A market frozen by an OPEN objection past its window is NOT the sweep's fault —
@@ -555,11 +555,93 @@ async function closeWindow(mid: string): Promise<void> {
   await closeWindow(mid2);
 
   const frozen = await getSettlementHealth();
-  ok("11: an objection-frozen market is reported as FROZEN, not overdue",
-     frozen.frozenByObjection.count === frozenBase + 1 && frozen.overdue.count === healed.overdue.count,
-     `frozen=${frozen.frozenByObjection.count} (base ${frozenBase}) overdue=${frozen.overdue.count}`);
+  ok("11: an objection-frozen market is reported as FROZEN, not ready-to-pay",
+     frozen.frozenByObjection.count === frozenBase + 1 && frozen.readyToSettle.count === healed.readyToSettle.count,
+     `frozen=${frozen.frozenByObjection.count} (base ${frozenBase}) overdue=${frozen.readyToSettle.count}`);
   ok("11: the frozen money is attributed to the objection", frozen.frozenByObjection.tzs >= 8_000,
      `tzs=${frozen.frozenByObjection.tzs}`);
+}
+
+// ═══ 12 · AUTOMATIC PAYOUT IS PAUSED — the clock must not move money ════════
+// Ali's call: nothing pays a market by itself until the payment aggregator is
+// integrated. Every payout is a deliberate officer action. The sweep code is NOT
+// deleted — it is simply not driven by the ticker (AUTO_SETTLE=true re-arms it) —
+// so what has to be true today is: a full lifecycle pass pays NOBODY, and the
+// manual path pays correctly while still honouring every guard.
+{
+  const mid = await makeMarket();
+  await fundedUser("g12_win");
+  await fundedUser("g12_lose");
+  await buyPosition("g12_win", { marketId: mid, side: "YES", stake: 10_000 });
+  await buyPosition("g12_lose", { marketId: mid, side: "NO", stake: 10_000 });
+  await adjudicate(mid, "YES");
+  await closeWindow(mid); // due, unblocked — the sweep WOULD have paid this
+
+  const winBefore = await bal("g12_win");
+
+  // The real production tick. It must not pay.
+  delete process.env.AUTO_SETTLE;
+  const { runLifecyclePass } = await import("../src/lib/server/lifecycle.ts");
+  await runLifecyclePass();
+
+  ok("12: a full lifecycle pass does NOT pay a due market", (await bal("g12_win")) === winBefore,
+     `delta=${(await bal("g12_win")) - winBefore}`);
+  ok("12: the market is still unsettled", (await getMarket(mid))!.settledAt === null);
+
+  // It shows up as the officer's work, not as a fault.
+  const health = await getSettlementHealth();
+  ok("12: auto-settle reports as OFF", health.autoSettle === false);
+  ok("12: the market is queued as READY for a human", health.readyToSettle.count >= 1,
+     `ready=${health.readyToSettle.count}`);
+  const queue = await listSettlementQueue();
+  const row = queue.find((r) => r.id === mid);
+  ok("12: it appears in the officer's payout queue as READY", row?.state === "READY", `state=${row?.state}`);
+  ok("12: the queue reports the money it is holding", (row?.pool ?? 0) === 20_000, `pool=${row?.pool}`);
+
+  // The MANUAL settle pays it — and it is a money act, so it is ADMIN/COMPLIANCE
+  // only at the service layer (settleMarket is called without `force`, so every
+  // guard still applies).
+  const manual = await settleMarket(mid, { actorId: "gate_officer" });
+  ok("12: an officer CAN settle it by hand", manual.ok, JSON.stringify(manual));
+  ok("12: the winner is paid by the manual settle", (await bal("g12_win")) > winBefore,
+     `delta=${(await bal("g12_win")) - winBefore}`);
+  ok("12: settling twice by hand is refused", !(await settleMarket(mid, { actorId: "gate_officer" })).ok);
+
+  // The manual button is NOT a bypass: it still refuses an in-window market and a
+  // market under objection, because it does not use `force`.
+  const early = await makeMarket();
+  await fundedUser("g12_a");
+  await fundedUser("g12_b");
+  await buyPosition("g12_a", { marketId: early, side: "YES", stake: 5_000 });
+  await buyPosition("g12_b", { marketId: early, side: "NO", stake: 5_000 });
+  await adjudicate(early, "YES");
+  const tooEarly = await settleMarket(early, { actorId: "gate_officer" });
+  ok("12: manual settle still refuses an OPEN window", !tooEarly.ok && tooEarly.code === "TOO_EARLY",
+     JSON.stringify(tooEarly));
+
+  await fileObjection("g12_b", { marketId: early, reason: "WRONG_OUTCOME", detail: "The source reports the opposite result." });
+  await closeWindow(early);
+  const disputed = await settleMarket(early, { actorId: "gate_officer" });
+  ok("12: manual settle still refuses a market under OBJECTION",
+     !disputed.ok && disputed.code === "OBJECTION_OPEN", JSON.stringify(disputed));
+
+  // And when AUTO_SETTLE is re-armed (post-gateway), the sweep works again — the
+  // code was paused, not removed.
+  process.env.AUTO_SETTLE = "true";
+  const armed = await getSettlementHealth();
+  ok("12: AUTO_SETTLE=true reports as ON", armed.autoSettle === true);
+  const mid3 = await makeMarket();
+  await fundedUser("g12_c");
+  await fundedUser("g12_d");
+  await buyPosition("g12_c", { marketId: mid3, side: "YES", stake: 7_000 });
+  await buyPosition("g12_d", { marketId: mid3, side: "NO", stake: 7_000 });
+  await adjudicate(mid3, "YES");
+  await closeWindow(mid3);
+  const cBefore = await bal("g12_c");
+  await runLifecyclePass();
+  ok("12: with AUTO_SETTLE=true the tick pays again (paused, not deleted)",
+     (await bal("g12_c")) > cBefore, `delta=${(await bal("g12_c")) - cBefore}`);
+  delete process.env.AUTO_SETTLE;
 }
 
 console.log(`\nsettlement-gate: ${pass} passed, ${fail} failed`);

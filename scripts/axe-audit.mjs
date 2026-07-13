@@ -49,6 +49,7 @@ const ROUTES = [
   { path: "/admin/audit", ctx: "admin" },
   { path: "/admin/compliance", ctx: "admin" },
   { path: "/admin/objections", ctx: "admin" },
+  { path: "/admin/settlement", ctx: "admin" },
   { path: "/admin/affiliate", ctx: "admin" },
   { path: "/admin/config", ctx: "admin" },
   { path: "/admin/candidates", ctx: "admin" },
