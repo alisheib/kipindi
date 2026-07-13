@@ -162,6 +162,62 @@ cliff is not merely a liveness bug: it manufactures a state where a well-meaning
 
 ---
 
+## Finding D — playing density: the single-market ceiling ⚠️ (measured, not a defect)
+
+The owner's headline question: *thousands of players on ONE market.* Measured with a
+generous pool (so Finding A's deadlock doesn't mask the lock behaviour):
+
+| | throughput | note |
+|---|---|---|
+| **One market** | **~180 bets/s** | rising concurrency scaled it 54 → 181 bets/s |
+| **25 markets** | **~204 bets/s** | only **1.1×** more |
+
+**The market lock is *not* the bottleneck** (this *corrects* the plan's S03 hypothesis).
+Concurrency scaled a single market 3.3×, so bets are **not** fully serialized on the market
+advisory lock. Spreading across 25 markets barely helped, so the ceiling is **per-bet path
+cost**, not lock contention.
+
+**Positive:** conservation held **exactly** under contention — pool == Σ stakes across 2,400
+positions, **zero drift**. The market lock correctly prevents lost updates. The happy path is
+money-safe.
+
+> Targets: T2 needs 200 bets/s and T3 needs **1,000 bets/s on one market**. Local ceiling is
+> ~180/s and Railway's higher RTT makes it worse — see Finding E for why.
+
+## Finding E — the per-bet cost: 31 DB round-trips ⚠️ (measured)
+
+One `buyPosition` = **31 sequential DB round-trips**:
+- **52%** money path (wallet / position / pool / txn / validation reads)
+- **35%** transaction control — **8 BEGIN/COMMIT + 2 advisory locks**, the overhead of the
+  *nested double-transaction*
+- **13%** fire-and-forget background (audit / ledger / notification)
+
+This **corrects** the plan's guess that ~40% is background ("you need a job queue"). The audit
+chain is already batched (a ring buffer), so background is small. The real ceiling driver is the
+**31 sequential round-trips**: at Railway's 1–2 ms RTT that is **31–62 ms of pure network per
+bet** before any concurrency — which is why Finding D's ~180/s will be much lower on Railway.
+The actionable lever is **reducing round-trips per bet** (and collapsing the two nested
+transactions into one), not a job queue.
+
+## Finding S10 — cross-instance double-spend safety ✅ (PASS — the critical positive)
+
+*"Advisory locks are DB-global, so two Railway instances cannot double-spend one wallet"* — the
+single most important safety property for horizontal scale, and it had **never** been tested
+(every prior test ran one in-process `Map`, where the fallback mutex is per-process and would
+silently fail across instances).
+
+**Test:** two separate **OS processes** (each its own pool = a Railway container) fired 16 bets
+at one wallet funded for exactly 5.
+**Result:** exactly **5 succeeded, balance exactly 0, pool exactly 5,000, no negative, no
+double-spend.** The Postgres advisory lock **is genuinely DB-global.** Horizontal scaling is
+money-safe *for the wallet lock*. (The things that *do* break on the 2nd container — audit-chain
+fork, per-process rate limits, in-process SSE — are non-money and remain future work: S10 items
+1–3.)
+
+**Reproduce:** `node scripts/load/reset-db.mjs && npx tsx scripts/load/s10-cross-instance.mts`
+
+---
+
 ## What Day 1 also established
 
 **The existing money suites could not run on Postgres at all** — they encode three assumptions
@@ -194,9 +250,12 @@ runs.* All three are structural and fixable; none is in the money arithmetic.
 ## The load-test harness (new, committed)
 - `scripts/load/reset-db.mjs` — 3-gate disposable-DB reset (hostname denylist + localhost-only
   + `SystemConfig['__LOAD_TEST_TARGET__']` marker row). Refuses any non-disposable DB.
-- `scripts/load/spike-a-pool-deadlock.mts` / `spike-a-sweep.mts` / `spike-a-proof.mts`
-- `scripts/load/spike-b-read-oom.mts`
-- `scripts/load/spike-c-settlement-cliff.mts`
+- `scripts/load/spike-a-pool-deadlock.mts` / `spike-a-sweep.mts` / `spike-a-proof.mts` — Finding A
+- `scripts/load/spike-b-read-oom.mts` — Finding B
+- `scripts/load/spike-c-settlement-cliff.mts` — Finding C
+- `scripts/load/spike-d-density.mts` — Finding D (single-market ceiling)
+- `scripts/load/spike-e-census.mts` — Finding E (per-bet round-trip census)
+- `scripts/load/s10-cross-instance.mts` + `s10-worker.mts` — Finding S10 (cross-instance safety)
 
 **Instrumentation hook:** each spike installs its own pool-limited `PrismaClient` on
 `globalThis.__50PICK_PRISMA` **before** any dynamic service import, and asserts the singleton
