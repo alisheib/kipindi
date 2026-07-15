@@ -5,11 +5,10 @@
      Any new session: read THIS block first to know exactly where we are.
      ═══════════════════════════════════════════════════════════════════════ -->
 > ## ▶ WHERE WE ARE
-> - **STAGE 7 of 12 complete** (C4 ✓, C5 exploit ✓ + nonce follow-up, M4 ✓, L1 ✓). Next: **STAGE 8 — Ledger provability & audit chain (C3, C6)**.
-> - **Closed so far:** C1, C2, C4, C7, C8, C9, C10, C11, H7, H12, M4, M9, M11, M12, L1 (+ C5 exploit closed).
-> - **Next up:** Stage 8 (C3, C6) → 9 (scale H4/H5/M1/M3/M5/M6/M7) → 10 (a11y H1/H10/H11 + L2–L6) → 11 (cleanup) → 12 (CI/Sentry).
-> - **What's LEFT overall:** C3, C6 (money-provability); H1/H4/H5/H10/H11; M1/M2(verify)/M3/M5/M6/M7/M8; L2–L6; repo cleanup; CI+Sentry scaffold.
-> - **Blocked on Ali/infra:** C6 full proof + C3 trial-balance need a local Postgres; C5 nonce table; H2 Redis; H8 object storage; H6 Sentry DSN; TRA tax ruling; MNO logos; pentest.
+> - **Stages 1–7 + 11 complete.** Next: **STAGE 8 — Ledger provability & audit chain (C3, C6)** — Ali authorised DB access; do against Postgres.
+> - **Closed so far:** C1, C2, C4, C7, C8, C9, C10, C11, H7, H12, M4, M9, M11, M12, L1 (+ C5 exploit); repo cleanup done.
+> - **What's LEFT overall:** C3, C6 (money-provability, need Postgres); H1/H4/H5/H10/H11; M1/M2(verify)/M3/M5/M6/M7/M8; L2–L6; CI (H9) + Sentry (H6) scaffold.
+> - **Blocked on Ali/infra:** C5 nonce table; H2 Redis; H8 object storage; H6 Sentry DSN; TRA tax ruling; MNO logos; pentest. **Move-out (archive to Drive then rm):** `Final UI enhancement Kit/`, `50PICK/New Designs/`, `Email Signatures/`, `Translations/`, `Final logo design/`, `assets/glyphs/`, `docs/*.pdf`.
 > - **Verify locally:** `npm run typecheck` · per-suite `npx tsx scripts/<name>.test.mts` · full `npm run test:all`.
 
 **Source:** `Final Audit 1507/50pick-FINAL-AUDIT-v8-FINAL-2026-07-15.md`
@@ -47,7 +46,7 @@ Verified at baseline (2026-07-15): `tsc --noEmit` clean · `test:fee-model` 77/7
 | 8 | Ledger provability & audit chain | C3, C6 | `[ ]` |
 | 9 | Scale & performance | H4, H5, M5, M3, M1, M6, M7 | `[ ]` |
 | 10 | Security, a11y, design polish | H1, H10, H11, L1–L6 | `[ ]` |
-| 11 | Repo cleanup | §15 / §18 | `[ ]` |
+| 11 | Repo cleanup | §15 / §18 | `[x]`* |
 | 12 | CI & observability | H9, H6 | `[ ]` |
 | — | External / Ali-blocked | H2, H8, pentest, TRA ruling, MNO logos | `[A]` |
 
@@ -64,7 +63,7 @@ Verified at baseline (2026-07-15): `tsc --noEmit` clean · `test:fee-model` 77/7
 - `[ ]` **C6** — audit chain forks multi-instance → DB-side head + `@@unique([prevHash])` + await persist. *(Stage 8)*
 - `[x]` **C7** — POCA §16 lock **restored** (`test-overrides.ts`: prod returns `false` unconditionally + `assertProductionComplianceLocks()` refuses boot if flag ON, wired in `instrumentation.ts` via `boot-checks.ts`). Tests: solo-resolution 18/18, officer-conflict 33/33. **Ali/ops:** verify prod DB flag=false + audit query for historical conflicted resolutions.
 - `[x]` **C8** — the "tax on winnings" copy is **gone**. Fee model rewrote `taxNotice`/`taxBody` in EN/SW/ZH to "a {pct}% withdrawal fee applies, and nothing else; no tax is withheld from your money." Verified all three locales. **Ali:** legal review of final wording.
-- `[x]` **C9** — kit mandates **removed** (CLAUDE.md source-of-truth row + "Working with Ali" hero note; README.md row) → now point at `docs/DESIGN_AUTHORITY.md` (**written**, B1–B4). `kit-gap-audit.md` marked historical + rule retired; teal-kit `tokens.css`/`README.md` carry SUPERSEDED headers; `design-master-brief.md` marked authoritative. Grep clean: no active kit mandate. **Stage 11 tail:** physically delete `50PICK/design_handoff.../` + fix 10 code comments citing the kit (§18.8).
+- `[x]` **C9** — kit mandates **removed** (CLAUDE.md + README.md) → point at `docs/DESIGN_AUTHORITY.md` (written, B1–B4); `design-master-brief.md` authoritative. **Stage 11:** teal kit `50PICK/design_handoff_prediction_market_kit/` + `docs/kit-gap-audit.md` **deleted**. Only remaining kit comment is `pnl-chart.tsx:4` (kept — it documents the teal→royal re-tokenisation, praised by the audit).
 - `[x]` **C10** — `db-check.cjs` **removed** (`git rm`); `.gitignore` blocks `db-check.*`, `*-check.cjs`, `scratch-*`, `*.zip`, `*.docx`. **Ali/ops:** check git history + CI/shell logs for any leaked NIDA output; if it ran against prod, treat as a disclosure event.
 - `[x]` **C11** — brand assets **regenerated** from a single source. New `src/lib/brand-mark.ts` defines the mark once; `brand.tsx` imports it; `scripts/build-brand-assets.mts` (npm `build:brand`, sharp) emits the 4 SVGs + 7 PNGs; old `build-logo-png.mjs` (Playwright, re-declared old mark) removed. Grep gate `<text|r="44.6"` → 0. **Verified visually:** mark-color-512, tile-512, maskable-512 all render the needle mark (no ring/numerals); OG/twitter already the new mark. **Ali/ops:** confirm PWA install icon + email header at runtime after deploy.
 
@@ -100,3 +99,4 @@ _(appended after each stage)_
 - **Stage 5 — DONE.** C8 (copy already trilingual via fee model), H12 (withdraw confirm shows amount/−fee/net via shared `computeWithdrawalFee`), M9 (new `DepositConfirm`). +2 i18n keys (confirmDeposit/depositSendBody) all locales. Verified: `tsc` clean · `test:withdrawal` 16/16 · `test:i18n` parity PASS.
 - **Stage 6 — DONE.** C2 closed. `refundBonusToActive` mints a zero-wagering restitution grant when no active grant remains (never forfeits). New `scripts/bonus-void-restitution.test.mts` (npm `test:bonus-restitution`) 16/16. Verified: `tsc` clean · bonus-service 59/59 · bonus-betting 24/24 · emergency-void 33/33. **Policy note for Ali:** restitution is zero-wagering per the audit ("turnover already served"); if bonus-abuse-via-void is a concern, the wagering requirement on the restitution grant is the lever to revisit.
 - **Stage 7 — DONE*** (C4, C5-exploit, M4, L1). C4 (`ea51e5f`): RG caps re-checked inside the wallet lock + `sumDepositsSince` includePending; `rg-limit-race` 5/5. C5+M4+L1: mandatory & bound webhook timestamp, amount verification, hex validation; `webhook-security` 10/10, payment-webhook 25/25. `tsc` clean. *= C5 nonce table deferred (needs migration + real provider schemes; idempotency covers double-credit).
+- **Stage 11 — DONE*** (done early, out of order). Deleted: 4 dead components (`card`, `skeleton`, `AchievementToast`, `market-stats` — 0 importers), the teal kit `50PICK/design_handoff_prediction_market_kit/` (0 royal-268, 0 imports), `docs/kit-gap-audit.md` (retired rule), and session scratch (`SESSION_STATUS.md`, `next-session-prompt.md`, `fee-model-session-prompt.md`). `tsc` clean. *= "move-out" design material (Final UI enhancement Kit, New Designs, Email Signatures, Translations, Final logo design, glyphs, PDFs) left for **Ali to archive to Drive** before `git rm` — it has value and git can't diff it.
