@@ -409,8 +409,40 @@ export async function refundBonusToActive(userId: string, amountTzs: number): Pr
   if (!(amount > 0)) return { refundedToBonus: 0 };
   return withLock(`wallet:${userId}`, async () => {
     const active = await db.bonusGrant.listActiveByUser(userId); // oldest first
-    const target = active[0];
-    if (!target) return { refundedToBonus: 0 };
+    let target = active[0];
+    if (!target) {
+      // Money must never evaporate (audit C2). A voided bet means the player took
+      // no risk, so the bonus stake must come back. If no ACTIVE grant remains to
+      // hold it (the original was fulfilled or expired), mint a zero-wagering
+      // restitution grant — zero is correct because the original turnover was
+      // already served — so the refund lands in the bonus wallet instead of being
+      // silently forfeited. This is restitution of the player's own stake, NOT a
+      // promotional incentive, so it deliberately does NOT route through
+      // creditBonus (whose RG-lockout suppression must never block a refund).
+      const wallet = await db.wallet.findByUserId(userId);
+      if (!wallet) return { refundedToBonus: 0 }; // no wallet — nothing safe to do
+      const nowIso = new Date().toISOString();
+      target = {
+        id: `bg_${randomId(12)}`,
+        userId,
+        walletId: wallet.id,
+        amountTzs: amount,
+        remainingTzs: 0, // the update below adds `amount`
+        wagerMultiplier: 1,
+        wagerRequiredTzs: 0, // zero wagering — turnover already served
+        wageredTzs: 0,
+        source: "ADMIN",
+        sourceRef: `void-restitution:${randomId(8)}`,
+        status: "ACTIVE",
+        expiresAt: null,
+        fulfilledAt: null,
+        note: "Void restitution — bonus stake returned after market void",
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+      await db.bonusGrant.create(target);
+      audit({ category: "WALLET", action: "bonus.void_restitution_grant", actorId: userId, targetType: "BonusGrant", targetId: target.id, payload: { amount, reason: "no active grant to hold voided bonus refund" } });
+    }
     await db.bonusGrant.update(target.id, { remainingTzs: target.remainingTzs + amount });
     await db.wallet.adjust(target.walletId, { bonusBalance: amount });
     audit({ category: "WALLET", action: "bonus.refund_to_active", actorId: userId, targetType: "BonusGrant", targetId: target.id, payload: { amount } });

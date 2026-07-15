@@ -1838,9 +1838,11 @@ export async function settleMarket(
   // Apply, now the market lock is released (refund helpers take the wallet lock —
   // taking it inside the market lock would invert buyPosition's wallet→market
   // order and could deadlock). Reverse each refunded bet's turnover first, then
-  // return the bonus principal to the bonus wallet. Bonus is NEVER converted to
-  // real here: if the source grant is gone, the bonus principal is forfeit (it
-  // must never become withdrawable cash without meeting the wagering requirement).
+  // return the bonus principal to the bonus wallet. If the source grant is gone,
+  // refundBonusToActive mints a zero-wagering restitution grant so the principal
+  // is never forfeited (audit C2) — the money the ledger already recorded as a
+  // BONUS_REFUND (refundEntries, above) now always lands in the wallet too, so
+  // ledger and wallet cannot diverge on a void.
   for (const r of pendingWagerReversals) await reverseWagering(r.userId, r.stake);
   for (const r of pendingBonusRefunds) {
     if (r.amount <= 0) continue;

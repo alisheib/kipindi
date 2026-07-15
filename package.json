@@ -45,6 +45,7 @@
     "test:duration": "tsx scripts/duration-input.test.mts",
     "test:mixed-flow": "tsx scripts/mixed-unit-flow.test.mts",
     "test:bonus": "tsx scripts/bonus-service.test.mts",
+    "test:bonus-restitution": "tsx scripts/bonus-void-restitution.test.mts",
     "test:bonus-betting": "tsx scripts/bonus-betting.test.mts",
     "test:bonus-stress": "tsx scripts/bonus-stress.test.mts",
     "test:referral": "tsx scripts/referral-signup.test.mts",

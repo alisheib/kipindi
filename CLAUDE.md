@@ -8,6 +8,11 @@
 > Read this first. It tells you what's true about the codebase right now,
 > and where to look before editing anything.
 
+> ⏳ **ACTIVE WORK — Final Audit remediation (pre-real-money launch gate).**
+> Progress + current stage live in **[`docs/FINAL-AUDIT-REMEDIATION.md`](docs/FINAL-AUDIT-REMEDIATION.md)**
+> — read its "▶ WHERE WE ARE" block first to know which stage is in flight.
+> Work in stages; after each: test → update that tracker → commit → push `main`.
+
 ## What this is
 
 **50pick** — Tanzania-licensed pari-mutuel

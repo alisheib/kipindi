@@ -1,5 +1,16 @@
 # Final Audit Remediation — progress tracker
 
+<!-- ═══════════════════════════════════════════════════════════════════════
+     ▶▶▶  CURRENT STATUS — update this block at the end of EVERY stage  ◀◀◀
+     Any new session: read THIS block first to know exactly where we are.
+     ═══════════════════════════════════════════════════════════════════════ -->
+> ## ▶ WHERE WE ARE
+> - **STAGE 6 of 12 complete.** Next: **STAGE 7 — Concurrency & webhook security (C4, C5, M4)**.
+> - **Closed so far:** C1, C2, C7, C8, C9, C10, C11, H7, H12, M9, M11, M12.
+> - **Next up:** Stage 7 (C4, C5, M4) → 8 (C3, C6) → 9 (scale H4/H5/M1/M3/M5/M6/M7) → 10 (a11y H1/H10/H11 + L1–L6) → 11 (cleanup) → 12 (CI/Sentry).
+> - **Blocked on Ali/infra:** C4/C6 full proof needs a local Postgres; H2 Redis; H8 object storage; H6 Sentry DSN; TRA tax ruling; MNO logos; pentest.
+> - **Verify locally:** `npm run typecheck` · per-suite `npx tsx scripts/<name>.test.mts` · full `npm run test:all`.
+
 **Source:** `Final Audit 1507/50pick-FINAL-AUDIT-v8-FINAL-2026-07-15.md`
 **Started:** 2026-07-15 · **Owner:** Ali · **Driver:** Claude
 **Goal:** every launch-gate box ticked, 100% functional, before real money.
@@ -30,7 +41,7 @@ Verified at baseline (2026-07-15): `tsc --noEmit` clean · `test:fee-model` 77/7
 | 3 | Documentation authority | C9, §16 | `[x]` |
 | 4 | Brand identity | C11 | `[x]` |
 | 5 | Money copy & disclosure | C8, H12, M9 | `[x]` |
-| 6 | Bonus integrity | C2 | `[ ]` |
+| 6 | Bonus integrity | C2 | `[x]` |
 | 7 | Concurrency & webhook security | C4, C5, M4 | `[ ]` |
 | 8 | Ledger provability & audit chain | C3, C6 | `[ ]` |
 | 9 | Scale & performance | H4, H5, M5, M3, M1, M6, M7 | `[ ]` |
@@ -45,7 +56,7 @@ Verified at baseline (2026-07-15): `tsc --noEmit` clean · `test:fee-model` 77/7
 
 ### Critical
 - `[x]` **C1** — tax on principal → **DELETED** by fee model. `computeWithdrawalTax` gone (`payments.ts:87`). Verified: `test:withdrawal` deposit→never-bet→withdraw = 99,000.
-- `[ ]` **C2** — bonus destroyed on void → restitution grant + ledger-after-wallet. *(Stage 6)*
+- `[x]` **C2** — bonus no longer evaporates on void. `refundBonusToActive` now mints a zero-wagering **restitution grant** when no ACTIVE grant remains, so it NEVER returns less than requested; `bonus.refund_forfeited` is unreachable in the normal path. Ledger↔wallet can't diverge: the wallet refund always equals the `bonusPart` the ledger already recorded (chosen over reordering, which would invert the wallet→market lock order and risk deadlock). New test `scripts/bonus-void-restitution.test.mts` 16/16; bonus suites 59+24+33 still green. **Ali/ops:** audit-query historical `bonus.refund_forfeited` and compensate; nightly `bonusBalance == Σ ACTIVE remaining` lands with C3 (Stage 8).
 - `[ ]` **C3** — ledger fire-and-forget + blind reconcile → atomic `$transaction` + trial balance. *(Stage 8)*
 - `[ ]` **C4** — RG limits TOCTOU → move checks inside `withLock`; include PROCESSING. *(Stage 7)*
 - `[ ]` **C5** — webhook replay via missing timestamp → mandatory ts, sign `ts.body`, nonce table. *(Stage 7)*
@@ -86,3 +97,4 @@ _(appended after each stage)_
 - **Stage 3 — DONE.** C9 closed (docs only). Rewrote CLAUDE.md (2 mandates) + README.md to point at new `docs/DESIGN_AUTHORITY.md`; superseded headers on teal kit + kit-gap-audit (rule retired); authoritative header on design-master-brief. Grep clean: no active kit mandate. Docs-only — no code/test impact.
 - **Stage 4 — DONE.** C11 closed. Single-source brand pipeline (`src/lib/brand-mark.ts` → `brand.tsx` + `scripts/build-brand-assets.mts`, npm `build:brand`). Regenerated 4 SVGs + 7 PNGs; removed old Playwright script. Verified: `tsc` clean · grep gate 0 · PNGs eyeballed (needle mark, not the old ring) · OG images already correct.
 - **Stage 5 — DONE.** C8 (copy already trilingual via fee model), H12 (withdraw confirm shows amount/−fee/net via shared `computeWithdrawalFee`), M9 (new `DepositConfirm`). +2 i18n keys (confirmDeposit/depositSendBody) all locales. Verified: `tsc` clean · `test:withdrawal` 16/16 · `test:i18n` parity PASS.
+- **Stage 6 — DONE.** C2 closed. `refundBonusToActive` mints a zero-wagering restitution grant when no active grant remains (never forfeits). New `scripts/bonus-void-restitution.test.mts` (npm `test:bonus-restitution`) 16/16. Verified: `tsc` clean · bonus-service 59/59 · bonus-betting 24/24 · emergency-void 33/33. **Policy note for Ali:** restitution is zero-wagering per the audit ("turnover already served"); if bonus-abuse-via-void is a concern, the wagering requirement on the restitution grant is the lever to revisit.
