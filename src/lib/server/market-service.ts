@@ -348,21 +348,9 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
   if (isSelectionClosed(market)) return { ok: false, error: "Selections are closed — waiting for results. · Uchaguzi umefungwa — tunasubiri matokeo.", code: "SELECTION_CLOSED" };
   if (Date.parse(market.resolutionAt) <= Date.now()) return { ok: false, error: "Market has closed.", code: "INVALID" };
 
-  // Daily loss-limit gate (RG / GLI-19). Refuse a bet that would push the player's
-  // rolling-24h net real-money loss past their configured cap. Checked here, before
-  // any funding/debit, so a rejected bet never moves money.
-  const lossCheck = await checkLossLimit(userId, opts.stake);
-  if (!lossCheck.allowed) {
-    audit({
-      category: "COMPLIANCE",
-      action: "bet.loss_limit_blocked",
-      actorId: userId,
-      targetType: "User",
-      targetId: userId,
-      payload: { stake: opts.stake, reason: lossCheck.reason },
-    });
-    return { ok: false, error: lossCheck.reason ?? "Daily loss limit reached.", code: "INVALID" };
-  }
+  // Daily loss-limit gate (RG / GLI-19) is re-checked INSIDE the wallet lock
+  // below (audit C4), not here — checking outside the lock let two concurrent
+  // bets each read the pre-bet 24h net loss and both clear a cap only one should.
 
   let wageringFulfilled: { amountTzs: number }[] = [];
   const result = await withLock(`wallet:${userId}`, async () => {
@@ -378,6 +366,15 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
 
     const wallet = await db.wallet.findByUserId(userId);
     if (!wallet || wallet.status !== "ACTIVE") return { ok: false as const, error: "Wallet unavailable.", code: "NOT_FOUND" as const };
+
+    // Daily loss-limit gate (RG / GLI-19), re-read INSIDE the lock so a concurrent
+    // bet that already committed its stake is counted (audit C4). Before any debit,
+    // so a rejected bet never moves money.
+    const lossCheck = await checkLossLimit(userId, opts.stake);
+    if (!lossCheck.allowed) {
+      audit({ category: "COMPLIANCE", action: "bet.loss_limit_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { stake: opts.stake, reason: lossCheck.reason } });
+      return { ok: false as const, error: lossCheck.reason ?? "Daily loss limit reached.", code: "INVALID" as const };
+    }
 
     // Real-first funding: spend the player's own (withdrawable) balance first,
     // then top up the remainder from the bonus wallet. Both debits run inside

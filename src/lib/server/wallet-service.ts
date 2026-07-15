@@ -86,99 +86,110 @@ export async function deposit(userId: string, input: z.input<typeof DepositSchem
     return { ok: false, error: `You are in a ${lockout.reason === "self_exclusion" ? "self-exclusion" : "cooling-off"} period until ${new Date(lockout.until!).toLocaleString("en-GB")}.`, code: "SUSPENDED" };
   }
 
-  // Responsible-gambling deposit-limit check (daily / weekly / monthly).
-  // Skipped for admin test-funding (see bypass note above).
-  if (!adminTest) {
-    const limitCheck = await checkDepositLimit(userId, parse.data.amount);
-    if (!limitCheck.allowed) {
-      await audit({ category: "COMPLIANCE", action: "deposit.limit_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { reason: limitCheck.reason } });
-      return { ok: false, error: limitCheck.reason ?? "Deposit limit reached.", code: "INVALID" };
-    }
-  }
-
-  // Source-of-Funds gate — Anti-Money-Laundering Act 2006 + LCCP SR 9.2.
-  // Two thresholds trigger an SOF requirement:
-  //   (a) any single deposit ≥ TZS 1,000,000, OR
-  //   (b) rolling 30-day cumulative deposits incl. this one ≥ TZS 5,000,000.
-  // If the threshold trips and the player has no ACCEPTED SOF on file
-  // (PENDING, REJECTED, or never-submitted), block the deposit with a
-  // pointer to the form. UX policy: don't take their money first, then
-  // freeze it for AML — make the requirement obvious *before* the call.
+  // ── Atomic reservation: RG deposit-cap + SOF gate + PROCESSING row (audit C4) ──
+  // These read the deposit history and then commit a PROCESSING row, so they MUST
+  // be atomic per wallet — otherwise N concurrent deposits each read the
+  // pre-deposit total and all clear a cap only one should (10× the daily limit by
+  // double-tapping). The wallet lock serialises the read-then-reserve, and
+  // sumDepositsSince(..., includePending=true) counts the just-reserved PROCESSING
+  // rows so the next deposit sees the earlier ones. The ~1.5s provider dispatch is
+  // deliberately kept OUT of the lock (below) — a network call must never hold it.
   const SOF_SINGLE_TXN_TZS = 1_000_000;
   const SOF_ROLLING_30D_TZS = 5_000_000;
   const thirtyDaysAgo = Date.now() - 30 * 24 * 3600_000;
-  // Time-bounded SUM — no row-count cap (fixes the 500-txn ceiling bug).
-  const recentDeposits = await db.txn.sumDepositsSince(userId, thirtyDaysAgo);
-  const cumulativeAfter = recentDeposits + parse.data.amount;
-  const triggersSof =
-    !adminTest && (parse.data.amount >= SOF_SINGLE_TXN_TZS || cumulativeAfter >= SOF_ROLLING_30D_TZS);
-  if (triggersSof) {
-    const sof = await db.sourceOfFunds.get(userId);
-    if (!sof || sof.reviewStatus !== "ACCEPTED") {
-      audit({
-        category: "COMPLIANCE",
-        action: "deposit.sof_gate_blocked",
-        actorId: userId,
-        targetType: "User",
-        targetId: userId,
-        payload: {
-          amount: parse.data.amount,
-          rolling30dBefore: recentDeposits,
-          rolling30dAfter: cumulativeAfter,
-          singleTxnThreshold: SOF_SINGLE_TXN_TZS,
-          rolling30dThreshold: SOF_ROLLING_30D_TZS,
-          sofStatus: sof?.reviewStatus ?? "NOT_SUBMITTED",
-        },
-      });
-      const reasonEn =
-        parse.data.amount >= SOF_SINGLE_TXN_TZS
-          ? `Deposits of ${formatTzs(SOF_SINGLE_TXN_TZS)} or more require a Source of Funds declaration on file.`
-          : `Your rolling 30-day deposits would exceed ${formatTzs(SOF_ROLLING_30D_TZS)}, which requires a Source of Funds declaration on file.`;
-      return {
-        ok: false,
-        error: `${reasonEn} Submit one at /profile/source-of-funds and wait for compliance to accept it.`,
-        code: "INVALID",
-      };
-    }
-  }
 
-  // Open the transaction in PENDING
-  const txnId = `txn_${randomId(12)}`;
-  let txn: StoredTxn;
-  try {
-    txn = await db.txn.create({
-      id: txnId,
-      walletId: wallet.id,
-      userId,
-      type: "DEPOSIT",
-      status: "PROCESSING",
-      amount: parse.data.amount,
-      fee: 0, taxWithheld: 0,
-      balanceAfter: null,
-      currency: "TZS",
-      provider: parse.data.provider,
-      providerRef: null,
-      msisdn: parse.data.msisdn ?? null,
-      description: `${friendlyProvider(parse.data.provider)} deposit`,
-      positionId: null,
-      amlReason: null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      completedAt: null,
-      idempotencyKey: idempotencyKey ?? null,
-    });
-  } catch (err) {
-    // A concurrent same-key deposit created the txn first (the @unique
-    // idempotencyKey constraint fires in prod). Return THAT txn instead of a
-    // 500 — exactly-once, no duplicate PROCESSING row. Mirrors withdraw.
-    if (idempotencyKey) {
-      const existing = await db.txn.findByIdempotencyKey(idempotencyKey);
-      if (existing) {
-        const w = await db.wallet.findByUserId(userId);
-        return { ok: true, data: { txnId: existing.id, status: existing.status, balance: w?.balance ?? 0 } };
+  type Reservation =
+    | { ok: true; txn: StoredTxn; reused: boolean }
+    | { ok: false; error: string; code: "INVALID" };
+
+  const reservation: Reservation = await withLock(`wallet:${userId}`, async (): Promise<Reservation> => {
+    // Responsible-gambling deposit-limit (daily / weekly / monthly), re-read
+    // INSIDE the lock. Skipped for admin test-funding (see bypass note above).
+    if (!adminTest) {
+      const limitCheck = await checkDepositLimit(userId, parse.data.amount);
+      if (!limitCheck.allowed) {
+        await audit({ category: "COMPLIANCE", action: "deposit.limit_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { reason: limitCheck.reason } });
+        return { ok: false, error: limitCheck.reason ?? "Deposit limit reached.", code: "INVALID" };
       }
     }
-    throw err;
+
+    // Source-of-Funds gate — AML Act 2006 + LCCP SR 9.2. An SOF on file is required
+    // when (a) a single deposit ≥ 1,000,000, or (b) rolling 30-day cumulative (incl.
+    // this one) ≥ 5,000,000. Same rolling sum as the cap → kept atomic here.
+    const recentDeposits = await db.txn.sumDepositsSince(userId, thirtyDaysAgo, true);
+    const cumulativeAfter = recentDeposits + parse.data.amount;
+    const triggersSof = !adminTest && (parse.data.amount >= SOF_SINGLE_TXN_TZS || cumulativeAfter >= SOF_ROLLING_30D_TZS);
+    if (triggersSof) {
+      const sof = await db.sourceOfFunds.get(userId);
+      if (!sof || sof.reviewStatus !== "ACCEPTED") {
+        audit({
+          category: "COMPLIANCE",
+          action: "deposit.sof_gate_blocked",
+          actorId: userId,
+          targetType: "User",
+          targetId: userId,
+          payload: {
+            amount: parse.data.amount,
+            rolling30dBefore: recentDeposits,
+            rolling30dAfter: cumulativeAfter,
+            singleTxnThreshold: SOF_SINGLE_TXN_TZS,
+            rolling30dThreshold: SOF_ROLLING_30D_TZS,
+            sofStatus: sof?.reviewStatus ?? "NOT_SUBMITTED",
+          },
+        });
+        const reasonEn =
+          parse.data.amount >= SOF_SINGLE_TXN_TZS
+            ? `Deposits of ${formatTzs(SOF_SINGLE_TXN_TZS)} or more require a Source of Funds declaration on file.`
+            : `Your rolling 30-day deposits would exceed ${formatTzs(SOF_ROLLING_30D_TZS)}, which requires a Source of Funds declaration on file.`;
+        return { ok: false, error: `${reasonEn} Submit one at /profile/source-of-funds and wait for compliance to accept it.`, code: "INVALID" };
+      }
+    }
+
+    // Reserve the PROCESSING row while still holding the lock, so the next
+    // concurrent deposit's sumDepositsSince counts it and can be capped.
+    const newTxnId = `txn_${randomId(12)}`;
+    try {
+      const created = await db.txn.create({
+        id: newTxnId,
+        walletId: wallet.id,
+        userId,
+        type: "DEPOSIT",
+        status: "PROCESSING",
+        amount: parse.data.amount,
+        fee: 0, taxWithheld: 0,
+        balanceAfter: null,
+        currency: "TZS",
+        provider: parse.data.provider,
+        providerRef: null,
+        msisdn: parse.data.msisdn ?? null,
+        description: `${friendlyProvider(parse.data.provider)} deposit`,
+        positionId: null,
+        amlReason: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        completedAt: null,
+        idempotencyKey: idempotencyKey ?? null,
+      });
+      return { ok: true, txn: created, reused: false };
+    } catch (err) {
+      // A concurrent same-key deposit created the txn first (the @unique
+      // idempotencyKey constraint fires in prod). Return THAT txn instead of a
+      // 500 — exactly-once, no duplicate PROCESSING row. Mirrors withdraw.
+      if (idempotencyKey) {
+        const existing = await db.txn.findByIdempotencyKey(idempotencyKey);
+        if (existing) return { ok: true, txn: existing, reused: true };
+      }
+      throw err;
+    }
+  });
+
+  if (!reservation.ok) return { ok: false, error: reservation.error, code: reservation.code };
+  const txn = reservation.txn;
+  const txnId = txn.id;
+  if (reservation.reused) {
+    // Idempotent replay — the deposit was already initiated; don't dispatch again.
+    const w = await db.wallet.findByUserId(userId);
+    return { ok: true, data: { txnId, status: txn.status, balance: w?.balance ?? 0 } };
   }
   audit({ category: "WALLET", action: "deposit.initiated", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { provider: parse.data.provider, amount: parse.data.amount } });
 

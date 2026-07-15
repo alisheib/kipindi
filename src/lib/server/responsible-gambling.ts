@@ -297,10 +297,14 @@ export async function checkDepositLimit(userId: string, amount: number) {
   // Use time-bounded SUM queries — no row-count cap. A high-frequency user
   // who has made >500 transactions in 30 days would previously undercount
   // deposits and slip under the gate (bug #312 in SESSION_STATUS).
+  // includePending=true: count in-flight PROCESSING deposits, so N concurrent
+  // deposits (each still PROCESSING) can't each read a pre-deposit total and all
+  // clear a cap only one should (audit C4). The caller re-checks inside the
+  // wallet lock and creates the PROCESSING row before releasing it.
   const [monthlySum, weeklySum, dailySum] = await Promise.all([
-    db.txn.sumDepositsSince(userId, cutoffMonth),
-    db.txn.sumDepositsSince(userId, cutoffWeek),
-    db.txn.sumDepositsSince(userId, cutoffDay),
+    db.txn.sumDepositsSince(userId, cutoffMonth, true),
+    db.txn.sumDepositsSince(userId, cutoffWeek, true),
+    db.txn.sumDepositsSince(userId, cutoffDay, true),
   ]);
 
   if (r.dailyDepositLimit !== null && dailySum + amount > r.dailyDepositLimit) {

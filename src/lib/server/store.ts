@@ -645,12 +645,15 @@ const memoryDb = {
       for (const t of store.txns.values()) if (t.idempotencyKey === key) return t;
       return null;
     },
-    /** Sum of confirmed deposits for a user since a cutoff timestamp.
-     *  No row-count cap — walks all transactions for correctness. */
-    sumDepositsSince: (userId: string, sinceMs: number): number => {
+    /** Sum of deposits for a user since a cutoff timestamp. No row-count cap.
+     *  `includePending` also counts PROCESSING deposits — used by the RG deposit-
+     *  cap + SOF gate so an in-flight deposit is visible to a concurrent one
+     *  (audit C4). Off by default (the player-facing dashboard wants confirmed-only). */
+    sumDepositsSince: (userId: string, sinceMs: number, includePending = false): number => {
       let sum = 0;
       for (const t of store.txns.values()) {
-        if (t.userId === userId && t.type === "DEPOSIT" && t.status === "CONFIRMED" && Date.parse(t.createdAt) >= sinceMs) {
+        const counts = t.status === "CONFIRMED" || (includePending && t.status === "PROCESSING");
+        if (t.userId === userId && t.type === "DEPOSIT" && counts && Date.parse(t.createdAt) >= sinceMs) {
           sum += t.amount;
         }
       }

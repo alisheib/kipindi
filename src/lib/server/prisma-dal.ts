@@ -769,12 +769,15 @@ export const prismaDb = {
       const row = await pc().transaction.findUnique({ where: { idempotencyKey: key } });
       return row ? toStoredTxn(row) : null;
     },
-    sumDepositsSince: async (userId: string, sinceMs: number): Promise<number> => {
+    sumDepositsSince: async (userId: string, sinceMs: number, includePending = false): Promise<number> => {
       const result = await pc().transaction.aggregate({
         where: {
           userId,
           type: "DEPOSIT",
-          status: "CONFIRMED",
+          // includePending counts in-flight PROCESSING deposits so a concurrent
+          // deposit is visible to the RG cap / SOF gate (audit C4). Default is
+          // confirmed-only for the player-facing dashboard.
+          status: includePending ? { in: ["CONFIRMED", "PROCESSING"] } : "CONFIRMED",
           createdAt: { gte: new Date(sinceMs) },
         },
         _sum: { amount: true },
