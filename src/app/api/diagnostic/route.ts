@@ -66,7 +66,7 @@ export async function GET() {
   const chain = verifyChain();
 
   let userCount = -1;
-  try { userCount = (await db.user.list()).length; } catch { /* graceful */ }
+  try { userCount = await db.user.count(); } catch { /* graceful */ } // audit H4/M5 — COUNT(*)
   // Active DB ping — proves reachability + table existence WITHOUT
   // having to perform a mutation. Cheap (5–50ms on a healthy link).
   let ping: Awaited<ReturnType<typeof pingDatabase>> = { envSet: false, reachable: false, tableExists: false, latencyMs: null, hostHint: null, error: "not-attempted" };

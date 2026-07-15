@@ -12,6 +12,7 @@ import { AmountField } from "@/components/wallet/amount-field";
 import { formatTzs, fill, pctNum } from "@/lib/utils";
 import { getEffectiveConfig } from "@/lib/server/market-config";
 import { WithdrawConfirm } from "./withdraw-confirm";
+import { IdempotencyKeyField } from "@/components/wallet/idempotency-key-field";
 import { WITHDRAW_MIN_TZS, WITHDRAW_MAX_TZS } from "@/lib/server/validators";
 
 // Quick-amount chips for withdraw — AmountField hides any chip above the
@@ -115,7 +116,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
         action={withdrawAction}
         className={`rounded-xl glass-panel p-5 lg:p-6 space-y-5 ${kycApproved ? "" : "opacity-60"}`}
       >
-        <input type="hidden" name="idempotencyKey" value={crypto.randomUUID()} />
+        <IdempotencyKeyField />
         <fieldset disabled={!kycApproved}>
           <FieldLegend as="legend" className="mb-2">
             {t.wallet.destination}

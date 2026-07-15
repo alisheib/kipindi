@@ -109,12 +109,10 @@ export async function submitNidaStep(userId: string, input: z.input<typeof KycNi
   // Uniqueness: one NIDA = one account. Block if this national ID is already on
   // ANOTHER user's submission that isn't rejected (a rejected one frees it).
   // Multi-accounting / identity-reuse is a P0 AML control for a licensed book.
-  // Scan ALL submissions (not findByNida's single arbitrary/most-recent row) so
-  // the control is correct regardless of store ordering: block if ANY other
-  // user holds this NIDA on a non-rejected submission.
-  const nidaConflict = (await db.kyc.list()).find(
-    (k) => k.userId !== userId && (k.nidaNumber ?? "").trim() === parse.data.nida && k.status !== "REJECTED",
-  );
+  // findActiveByNida is an indexed findFirst that returns only { userId, status }
+  // — it never hydrates the base64 KYC images the old list()+find() pulled on
+  // every submission (audit H5: ~1.2 TB at 100k players).
+  const nidaConflict = await db.kyc.findActiveByNida(parse.data.nida, userId);
   if (nidaConflict) {
     audit({ category: "SECURITY", action: "kyc.nida.duplicate_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { conflictUserId: nidaConflict.userId, conflictStatus: nidaConflict.status } });
     return { ok: false, error: "This National ID is already linked to another account. If this is a mistake, contact support.", code: "INVALID" };

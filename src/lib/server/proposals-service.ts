@@ -224,7 +224,7 @@ export async function createProposal(userId: string, input: CreateProposalInput)
 async function notifyOfficersOfNewProposal(proposal: StoredProposal): Promise<void> {
   const proposer = await db.user.findById(proposal.proposerId);
   const proposerLabel = displayLabel(proposer ?? { id: proposal.proposerId, displayName: null });
-  const officers = (await db.user.list()).filter((u) => ["ADMIN", "COMPLIANCE", "MODERATOR"].includes(u.role));
+  const officers = await db.user.listByRoles(["ADMIN", "COMPLIANCE", "MODERATOR"]); // audit M5
 
   for (const o of officers) {
     notifyAdminProposalReview(o.id, { proposerLabel, titleEn: proposal.titleEn, proposalId: proposal.id }).catch(() => {});

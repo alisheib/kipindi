@@ -15,6 +15,7 @@ import { depositAction } from "./actions";
 import { DEPOSIT_MAX_TZS } from "@/lib/server/validators";
 import { DepositAmount } from "./deposit-amount";
 import { DepositConfirm } from "./deposit-confirm";
+import { IdempotencyKeyField } from "@/components/wallet/idempotency-key-field";
 import { ProviderRadioGrid } from "@/components/wallet/provider-radio-grid";
 
 export const metadata = { title: "Deposit" };
@@ -77,7 +78,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
       {showCashback && <CashbackPromo percent={bonusCfg.cashbackPercentage} mode={bonusCfg.cashbackMode} compact cta={false} />}
 
       <form action={depositAction} className="rounded-xl glass-panel p-5 lg:p-6 space-y-5">
-        <input type="hidden" name="idempotencyKey" value={crypto.randomUUID()} />
+        <IdempotencyKeyField />
         <fieldset>
           <FieldLegend as="legend" className="mb-2">
             {t.wallet.mobileMoney}

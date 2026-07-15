@@ -13,22 +13,23 @@
  *  - Without this, two concurrent round settlements pay winners twice.
  */
 
+import { createHash } from "node:crypto";
 import { prisma, hasDatabase } from "./prisma";
 
 /**
- * Hash a string key to a 32-bit signed integer for pg_advisory_xact_lock.
- * Uses Java's String.hashCode algorithm — fast, decent distribution.
+ * Hash a lock key to a 64-bit signed integer for pg_advisory_xact_lock(bigint)
+ * (audit M1). The old 32-bit Java-hashCode collided across namespaces — over
+ * 100k realistic cuid keys, `wallet:X` and `market:Y` mapped to the same lock id,
+ * so a wallet op could block an unrelated market op (correctness was preserved by
+ * over-serializing, but it was an undiagnosable latency bug). The full key string
+ * already carries its namespace (`wallet:` / `market:`), so hashing it into the
+ * full 64-bit advisory-lock space makes a cross-namespace collision ~2^-64.
  */
-function hashKey(key: string): number {
-  let h = 0;
-  for (let i = 0; i < key.length; i++) {
-    h = ((h << 5) - h + key.charCodeAt(i)) | 0;
-  }
-  return h;
+export function hashKey64(key: string): bigint {
+  const digest = createHash("sha256").update(key).digest();
+  // First 8 bytes as an unsigned 64-bit, reinterpreted as signed for PG bigint.
+  return BigInt.asIntN(64, digest.readBigUInt64BE(0));
 }
-
-/** Fixed namespace so 50pick locks don't collide with other advisory lock users. */
-const NS = 50;
 
 /* ── In-memory fallback (dev without Postgres) ──────────────────────── */
 
@@ -53,7 +54,7 @@ async function withMemoryLock<T>(key: string, fn: () => Promise<T>): Promise<T> 
 
 async function withAdvisoryLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
   const db = prisma()!;
-  const lockId = hashKey(key);
+  const lockId = hashKey64(key);
   // $transaction pins to one connection. pg_advisory_xact_lock blocks until
   // the lock is free, then holds it until the transaction ends (commit/rollback).
   // fn() runs its own queries on OTHER pool connections — the advisory lock is
@@ -61,15 +62,15 @@ async function withAdvisoryLock<T>(key: string, fn: () => Promise<T>): Promise<T
   return db.$transaction(async (tx) => {
     // Two Postgres gotchas, both of which only surface against real PG
     // (dev uses the in-memory mutex, so neither is caught by local tests):
-    //  1. Cast both args to int4 — Prisma binds JS number params as bigint
-    //     (int8), and PG has no pg_advisory_xact_lock(bigint, bigint), only
-    //     (int, int) and (bigint). Missing casts → SQLSTATE 42883.
+    //  1. Use the single-arg pg_advisory_xact_lock(bigint) with our 64-bit key
+    //     (audit M1). Prisma binds a JS BigInt as int8, and the ::bigint cast
+    //     resolves the overload; a missing cast → SQLSTATE 42883.
     //  2. Use $executeRaw, NOT $queryRaw — pg_advisory_xact_lock returns
     //     `void`, which $queryRaw cannot deserialize ("Failed to deserialize
     //     column of type 'void'"). $executeRaw runs the statement and returns
     //     an affected-row count without reading result columns.
     // Together these took down login/register/betting/deposit/withdraw.
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${NS}::int, ${lockId}::int)`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lockId}::bigint)`;
     return await fn();
   }, {
     timeout: 30000,  // 30s — covers worst-case resolution payouts

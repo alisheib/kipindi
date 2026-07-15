@@ -922,7 +922,7 @@ export async function notifyDueMarketsForResolution(): Promise<{ notified: numbe
   );
   if (due.length === 0) return { notified: 0 };
 
-  const officers = (await db.user.list()).filter((u) => ["ADMIN", "COMPLIANCE", "MODERATOR"].includes(u.role));
+  const officers = await db.user.listByRoles(["ADMIN", "COMPLIANCE", "MODERATOR"]); // audit M5
   for (const m of due) {
     const stamped = await withLock(`market:${m.id}`, async () => {
       const cur = await marketStore.get(m.id);
@@ -2260,7 +2260,7 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
     // Confirm to EVERY admin/officer that the cancellation succeeded — in-app +
     // email — so the whole team has an awareness/audit trail (and the acting
     // officer gets a definitive "done" beyond the result modal). Best-effort.
-    const officers = (await db.user.list()).filter((u) => ["ADMIN", "COMPLIANCE", "MODERATOR"].includes(u.role));
+    const officers = await db.user.listByRoles(["ADMIN", "COMPLIANCE", "MODERATOR"]); // audit M5
     for (const o of officers) {
       notifyAdminMarketCancelled(o.id, { title: m.titleEn, reason, refundedCount, refundedTzs }).catch(() => {});
       sendEmailToUser(o.id, (email) => ({

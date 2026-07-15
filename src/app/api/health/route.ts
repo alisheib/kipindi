@@ -19,7 +19,7 @@ export async function GET() {
   try {
     const uptimeSec = Math.floor((Date.now() - BOOT_AT) / 1000);
     let userCount = -1;
-    try { userCount = (await db.user.list()).length; } catch { /* graceful */ }
+    try { userCount = await db.user.count(); } catch { /* graceful */ } // audit H4 — COUNT(*), not a full scan every probe
     const auditCount = auditRingSize();
     const smsHealth = smsHealthSnapshot();
     const liveMarkets = await listMarkets({ status: "LIVE" }).then((l) => l.length).catch(() => -1);

@@ -31,6 +31,7 @@
     "test:concurrency": "tsx scripts/concurrency.test.mts",
     "test:rg-race": "tsx scripts/rg-limit-race.test.mts",
     "test:webhook-sec": "tsx scripts/webhook-security.test.mts",
+    "test:lock-hash": "tsx scripts/lock-hash.test.mts",
     "test:maintenance": "tsx scripts/maintenance-mode.test.mts",
     "test:emergency": "tsx scripts/emergency-void.test.mts",
     "test:markets": "tsx scripts/market-resolution-notify.test.mts",

@@ -420,7 +420,7 @@ export function notifyProposalUnderReview(userId: string, opts: { titleEn: strin
  * officer rules, nobody in that market gets paid. Fans out to all console roles.
  */
 export async function notifyAdminObjectionFiled(objectionId: string, marketTitle: string): Promise<void> {
-  const officers = (await db.user.list()).filter((u) => ["ADMIN", "COMPLIANCE", "MODERATOR"].includes(u.role));
+  const officers = await db.user.listByRoles(["ADMIN", "COMPLIANCE", "MODERATOR"]); // audit M5
   for (const o of officers) {
     await notify({
       userId: o.id, kind: "OBJECTION",
@@ -726,7 +726,7 @@ export function notifyCoolOff(userId: string, opts: { until: string }) {
  * Best-effort throughout; never blocks the transaction.
  */
 export async function notifyAdminsAmlReview(opts: { txnKind: "WITHDRAWAL" | "DEPOSIT"; amountTzs: number; reference: string }) {
-  const officers = (await db.user.list()).filter((u) => ["ADMIN", "COMPLIANCE"].includes(u.role));
+  const officers = await db.user.listByRoles(["ADMIN", "COMPLIANCE"]); // audit M5
   const label = opts.txnKind === "WITHDRAWAL" ? "withdrawal" : "deposit";
   for (const o of officers) {
     await notify({
@@ -768,7 +768,7 @@ export async function notifyAdminsAmlReview(opts: { txnKind: "WITHDRAWAL" | "DEP
  *  debounced by the sentinel runner; in-app SECURITY bell + best-effort email to
  *  every ADMIN/COMPLIANCE officer. */
 export async function notifyAdminsSentinelDown(opts: { reason: string; errorCount: number; sampleError: string }) {
-  const officers = (await db.user.list()).filter((u) => ["ADMIN", "COMPLIANCE"].includes(u.role));
+  const officers = await db.user.listByRoles(["ADMIN", "COMPLIANCE"]); // audit M5
   for (const o of officers) {
     await notify({
       userId: o.id,
@@ -806,7 +806,7 @@ export async function notifyAdminsSentinelDown(opts: { reason: string; errorCoun
  *  ADMIN/COMPLIANCE officer so credit can be topped up before the AI goes dark.
  *  Fired once per level by the usage meter (re-armed when the cycle resets). */
 export async function notifyAdminsAiCreditLimit(opts: { level: "warn" | "limit"; spentUsd: number; limitUsd: number }) {
-  const officers = (await db.user.list()).filter((u) => ["ADMIN", "COMPLIANCE"].includes(u.role));
+  const officers = await db.user.listByRoles(["ADMIN", "COMPLIANCE"]); // audit M5
   const spent = `$${opts.spentUsd.toFixed(2)}`;
   const limit = `$${opts.limitUsd.toFixed(2)}`;
   const reached = opts.level === "limit";

@@ -520,6 +520,14 @@ const memoryDb = {
       return next;
     },
     list: (): StoredUser[] => Array.from(store.users.values()),
+    /** COUNT(*) — never materialises rows (audit H4/M5). */
+    count: (): number => store.users.size,
+    /** Users holding any of `roles` — replaces list().filter(...) officer scans
+     *  (audit M5). Indexed on role in the Prisma DAL. */
+    listByRoles: (roles: string[], select?: { id: true; email?: true }): StoredUser[] => {
+      void select; // in-memory returns full rows; the Prisma DAL honours select
+      return Array.from(store.users.values()).filter((u) => roles.includes(u.role));
+    },
   },
   kyc: {
     findByUserId: (userId: string) => {
@@ -540,6 +548,21 @@ const memoryDb = {
       const norm = nidaNumber.trim();
       if (!norm) return null;
       for (const k of store.kyc.values()) if ((k.nidaNumber ?? "").trim() === norm) return k;
+      return null;
+    },
+    /** A non-REJECTED submission with this NIDA belonging to a DIFFERENT user —
+     *  the one-NIDA-per-account (AML) duplicate check. Returns only { userId,
+     *  status }; the Prisma DAL uses an indexed findFirst + select so it never
+     *  loads KYC images (audit H5). */
+    findActiveByNida: (nidaNumber: string, excludeUserId?: string): { userId: string; status: string } | null => {
+      const norm = nidaNumber.trim();
+      if (!norm) return null;
+      for (const k of store.kyc.values()) {
+        if ((k.nidaNumber ?? "").trim() !== norm) continue;
+        if (excludeUserId && k.userId === excludeUserId) continue;
+        if (k.status === "REJECTED") continue;
+        return { userId: k.userId, status: k.status };
+      }
       return null;
     },
     list: () => Array.from(store.kyc.values()),
@@ -779,6 +802,15 @@ const memoryDb = {
       const a = store.affiliates.get(userId);
       if (!a) return null;
       const next: StoredAffiliateAccount = { ...a, ...patch, updatedAt: new Date().toISOString() };
+      store.affiliates.set(userId, next);
+      return next;
+    },
+    /** Atomic +1 to recruitCount (audit M7) — a lost-update-safe increment
+     *  (Prisma `{ increment: 1 }`); never read-modify-write from app code. */
+    incrementRecruitCount: (userId: string): StoredAffiliateAccount | null => {
+      const a = store.affiliates.get(userId);
+      if (!a) return null;
+      const next: StoredAffiliateAccount = { ...a, recruitCount: a.recruitCount + 1, updatedAt: new Date().toISOString() };
       store.affiliates.set(userId, next);
       return next;
     },

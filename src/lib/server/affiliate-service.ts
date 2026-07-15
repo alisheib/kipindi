@@ -226,8 +226,10 @@ export async function bindRecruit(opts: { recruitUserId: string; code: string; i
   const suspectIpOverlap = !!opts.ip && referrerSharesIp(referrerUserId, opts.ip);
 
   await db.user.update(opts.recruitUserId, { recruitedBy: referrerUserId });
-  const acct = await ensureAffiliateAccount(referrerUserId);
-  await db.affiliate.update(referrerUserId, { recruitCount: acct.recruitCount + 1 });
+  await ensureAffiliateAccount(referrerUserId);
+  // Atomic increment (audit M7) — the old `recruitCount + 1` read-modify-write
+  // lost updates when two recruits bound concurrently. Display-only, but correct.
+  await db.affiliate.incrementRecruitCount(referrerUserId);
   await ensureAffiliateAccount(opts.recruitUserId); // recruit gets their own link too
 
   audit({

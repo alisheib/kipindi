@@ -482,6 +482,15 @@ export const prismaDb = {
       const rows = await pc().user.findMany();
       return rows.map(toStoredUser);
     },
+    /** COUNT(*) — no rows materialised (audit H4/M5). */
+    count: async (): Promise<number> => pc().user.count(),
+    /** Users holding any of `roles` — indexed on role; avoids the full-scan
+     *  list().filter() officer lookups (audit M5). */
+    listByRoles: async (roles: string[], select?: { id: true; email?: true }): Promise<StoredUser[]> => {
+      void select; // return full rows so callers keep the StoredUser shape
+      const rows = await pc().user.findMany({ where: { role: { in: roles as never } } });
+      return rows.map(toStoredUser);
+    },
   },
 
   // ── KYC ───────────────────────────────────────────────────────────────────
@@ -555,6 +564,22 @@ export const prismaDb = {
         orderBy: { createdAt: "desc" },
       });
       return row ? toStoredKyc(row) : null;
+    },
+    /** Indexed duplicate check — findFirst on the indexed nidaNumber with a
+     *  tiny select, so it never hydrates the base64 KYC images the way
+     *  list()+find did (audit H5: ~1.2 TB pulled per submission at scale). */
+    findActiveByNida: async (nidaNumber: string, excludeUserId?: string): Promise<{ userId: string; status: string } | null> => {
+      const norm = nidaNumber.trim();
+      if (!norm) return null;
+      const row = await pc().kycSubmission.findFirst({
+        where: {
+          nidaNumber: norm,
+          status: { not: "REJECTED" },
+          ...(excludeUserId ? { userId: { not: excludeUserId } } : {}),
+        },
+        select: { userId: true, status: true },
+      });
+      return row ? { userId: row.userId, status: String(row.status) } : null;
     },
     list: async (): Promise<StoredKyc[]> => {
       const rows = await pc().kycSubmission.findMany({ include: { documents: true } });
@@ -1020,6 +1045,16 @@ export const prismaDb = {
         if (patch.recruitCount !== undefined) data.totalRecruits = patch.recruitCount;
         if (patch.totalEarnedTzs !== undefined) data.totalCommission = patch.totalEarnedTzs;
         const row = await pc().affiliateAgent.update({ where: { userId }, data });
+        return toStoredAffiliate(row);
+      } catch {
+        return null;
+      }
+    },
+    /** Atomic +1 (audit M7) — Prisma `{ increment: 1 }`, immune to the
+     *  read-modify-write lost update the old `recruitCount + 1` had. */
+    incrementRecruitCount: async (userId: string): Promise<StoredAffiliateAccount | null> => {
+      try {
+        const row = await pc().affiliateAgent.update({ where: { userId }, data: { totalRecruits: { increment: 1 } } });
         return toStoredAffiliate(row);
       } catch {
         return null;
