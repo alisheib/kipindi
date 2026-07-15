@@ -1,0 +1,60 @@
+---
+name: 50pick-audit
+description: Operational playbook for the 50pick (kipindi) real-money platform — how to continue the Final Audit remediation, work safely against Postgres/Railway/Prisma, run the tests, and respect the money-code invariants. Use at the START of any 50pick session and before any DB, migration, or money-path change.
+---
+
+# 50pick — audit remediation & safe-ops playbook
+
+50pick is a **Tanzania-licensed, real-money** pari-mutuel prediction market
+(repo dir `kipindi-main`; product name is always **50pick**). Money correctness
+and provability are the whole job. Read this before touching anything.
+
+## 1. Where the work stands — read this FIRST
+- **Living tracker (source of truth):** [`docs/FINAL-AUDIT-REMEDIATION.md`](../../docs/FINAL-AUDIT-REMEDIATION.md). Its **"▶ WHERE WE ARE"** block names the current stage, what's closed, and what's LEFT. Update it at the end of every stage.
+- The audit itself: `Final Audit 1507/50pick-FINAL-AUDIT-v8-FINAL-2026-07-15.md` (11 Critical, 11 High, 11 Medium, 6 Low).
+- Work in **stages**: after each → run tests → update the tracker's WHERE-WE-ARE block → commit → `git push origin main`.
+- Keep the tracker, `CLAUDE.md`'s "ACTIVE WORK" banner, and the `final-audit-remediation` memory in sync so any new session instantly knows the stage.
+
+## 2. Testing
+- **Default (no DB):** every `test:*` suite runs against an in-memory `Map` when `DATABASE_URL` is unset. `npm run typecheck` then `npm run test:all` (stays green, ~57 suites). Per-suite: `npx tsx scripts/<name>.test.mts`.
+- **Real Postgres (load/concurrency/ledger/audit-chain):** the in-memory `withLock` is a single-process mutex, so C4/C6-class multi-instance defects only show on real PG. Use the **local disposable cluster** (§3).
+- New proof suites added during remediation: `bonus-void-restitution`, `rg-limit-race`, `webhook-security` (+ `test:*` scripts). `test-all.mjs` auto-discovers any `test:*` script in `package.json`.
+
+## 3. Local disposable Postgres — the SAFE DB target
+A user-space PG16 cluster lives at **`F:\pg-loadtest`, port 5433** (`fsync=off`, disposable). Full guide: `scripts/load/README.md`. Three gates refuse prod (hostname denylist `rlwy.net`/`railway.app`/`50pick.tz`, localhost-only, and a `SystemConfig['__LOAD_TEST_TARGET__']` marker row).
+
+```powershell
+# start (idempotent)
+& F:\pg-loadtest\pgsql\bin\pg_ctl.exe -D F:\pg-loadtest\data -l F:\pg-loadtest\pg.log start
+$env:DATABASE_URL='postgresql://postgres:pw@localhost:5433/kipindi_load?schema=public'
+node scripts/load/reset-db.mjs         # clean + migrate + re-plant marker (before any money-total assertion)
+npx tsx scripts/load/s10-cross-instance.mts   # the multi-instance (C6/C4) harness
+```
+psql: `& F:\pg-loadtest\pgsql\bin\psql.exe "postgresql://postgres:pw@localhost:5433/kipindi_load" -c "..."`
+
+## 4. Migrations — the ONLY safe workflow ⛔
+**Never hand-run an untested schema change against the production money DB.** A push that outran its schema once took checkout + admin down (see memory).
+1. Edit `prisma/schema.prisma`.
+2. Author the migration **by hand** as `prisma/migrations/<YYYYMMDDHHMMSS>_<name>/migration.sql` (idempotent SQL, e.g. `CREATE INDEX IF NOT EXISTS …`). Avoid `prisma migrate dev` — it is interactive (fails headless) and its shadow-DB diff trips on pre-existing drift.
+3. Apply to the **local disposable PG** with `npx prisma migrate deploy` (non-interactive; applies files, doesn't diff). Verify with psql.
+4. Commit. **Production gets it via the normal deploy** (`start` = `prisma migrate deploy && next start`, run by Railway on push) — not by you.
+- ⚠️ Known pre-existing drift: schema has `@@unique([provider, providerRef])` on `Transaction` that `migrate dev` wants to add — confirm production actually enforces it (it's a double-credit guard) as a follow-up.
+
+## 5. Railway
+`https://github.com/alisheib/kipindi.git`, branch `main`. Push to main → Railway builds and runs `prisma migrate deploy && next start`. You may have `railway` CLI + Prisma access; use it for **read/observe** freely, but treat writes/migrations to the live money DB as deploy-only (§4). If email/payments break in prod, check the provider secrets first (`SELCOM_/AZAMPAY_/MIXX_WEBHOOK_SECRET`, exact names — audit H7).
+
+## 6. Money-code invariants (do not break)
+- **Lock order is wallet → market.** Refund/bonus/referral helpers take the wallet lock, so they run OUTSIDE the market lock (queued after release) to avoid deadlock.
+- **Claim the row:** money writes use conditional updates (`updateMany WHERE status = the status you read`) so a race can't double-spend/pocket cash.
+- **RG caps re-checked INSIDE `withLock`** (audit C4); `sumDepositsSince(...true)` counts PROCESSING for the cap/SOF only.
+- **Fee = `min(commissionRate·pool, feeCeilingRate·smaller)`**, frozen per poll (`feeSnapshot`). A winning bet is never paid below stake (`assertWinnerFloor` throws rather than underpay). Single source: `src/lib/payout.ts` (isomorphic).
+- **Taxes are only ever on 50pick's commission**, never a player's money. The old 15% withholding tax is deleted.
+- **POCA §16:** `getConflictedResolutionAllowed()` returns false in production unconditionally; `boot-checks.ts` refuses to boot if the flag is on. Never remove.
+- **Bonus never evaporates on void** — `refundBonusToActive` mints a zero-wagering restitution grant (audit C2).
+- **Webhook:** timestamp mandatory + HMAC over `${timestamp}.${body}`; amount verified vs the initiated txn (C5/M4).
+- Design authority: `docs/DESIGN_AUTHORITY.md` (royal 268, single dark theme). Never build from the deleted teal kit.
+
+## 7. Still deep / needs a focused session
+- **C3** — wrap wallet+txn+ledger writes in one Prisma `$transaction` across the money paths, and add a CORRECT wallet↔ledger trial balance (must account for `hold`/`pending`/bonus, or it false-positives). Then nightly job + `/admin/finance` surface + alert.
+- **C6** — make the audit chain DB-authoritative: `pg_advisory_xact_lock` + SQL head-selection + `@@unique([prevHash])` migration + `await persist()` for money/compliance. Verify with `s10-cross-instance`.
+- Both need the local PG (§3) and careful, unrushed work — a wrong ledger/audit change is catastrophic.

@@ -1299,6 +1299,7 @@ model LedgerEntry {
   @@index([txnId])
   @@index([marketId])
   @@index([entryType, createdAt])
+  @@index([userId]) // audit M3 — per-user ledger scans (trial balance / C3)
 }
 
 enum LedgerEntryType {
