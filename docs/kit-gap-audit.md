@@ -1,9 +1,15 @@
+> **STATUS: historical — 2026-07-04. Superseded by `docs/design-master-brief.md`
+> and `docs/DESIGN_AUTHORITY.md`.** The "build only from the kit" rule below is
+> **RETIRED** (audit C9): the kit is teal 215 with a dead light theme; the live
+> build is royal 268, dark-only, and matches the master brief. Following the rule
+> today reverts the brand and resurrects the killed light theme. Do not apply it.
+
 # Kit-vs-Live Gap Audit (2026-07-04)
 
 Six parallel analysts compared the design kit
 (`50PICK/design_handoff_prediction_market_kit/kit/`) against the shipped app.
-Rule for this sprint: **build only from the kit; never invent; when the kit is
-silent, stop and commission Claude Design (sharing our kit).**
+Rule for this sprint (**RETIRED — see status header**): ~~build only from the kit;
+never invent; when the kit is silent, stop and commission Claude Design.~~
 
 ## Motion quality bar (Ali, 2026-07-04)
 Any motion/animation we touch must be **perfect** — real easing/physics, weight,

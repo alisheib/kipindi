@@ -63,7 +63,7 @@ step function is gameable.
 
 | Topic | File |
 |---|---|
-| Design kit (palette, banners, screens, tokens) | [`50Pick/design_handoff_prediction_market_kit/kit/`](50Pick/design_handoff_prediction_market_kit/kit/) — **read before any color / composition / hero change** |
+| Design authority (palette, tokens, invariants) | [`docs/DESIGN_AUTHORITY.md`](docs/DESIGN_AUTHORITY.md) — **read before any color / composition / hero change.** Implementation is [`src/app/globals.css`](src/app/globals.css) (authoritative); palette rationale is [`docs/design-master-brief.md`](docs/design-master-brief.md). ⚠️ `50PICK/design_handoff_prediction_market_kit/kit/` is a **SUPERSEDED snapshot** (teal 215, dead light theme) — historical only, do **NOT** build from it. |
 | Prisma data model | [`prisma/schema.prisma`](prisma/schema.prisma) |
 | In-memory store (Prisma-shaped) | [`src/lib/server/store.ts`](src/lib/server/store.ts) |
 | Auth service | [`src/lib/server/auth-service.ts`](src/lib/server/auth-service.ts) |
@@ -302,9 +302,13 @@ hit dev-only helpers under `/api/dev-test/*` (returns 404 in production).
 - Lead on architecture and design decisions; he is non-technical.
 - He doesn't want screenshots dumped after every sprint — only on request.
 - For any color, gradient, hero composition, or banner change: **read
-  `50Pick/design_handoff_prediction_market_kit/kit/` first.** This was a
-  hard-learned lesson — the `--hero-grad-warm` token was named "warm" but
-  the kit's actual hero is a deep royal radial; trust the kit, not the name.
+  [`docs/DESIGN_AUTHORITY.md`](docs/DESIGN_AUTHORITY.md) first, then
+  [`src/app/globals.css`](src/app/globals.css)** (the authoritative
+  implementation). Historical note: the `--hero-grad-warm` token was once
+  misnamed but is now correctly a deep royal radial (`globals.css`). Lesson
+  retained: **trust the tokens, not the name** — and never the superseded teal
+  kit, which would revert the brand to teal 215 and resurrect the killed light
+  theme (audit C9).
 - The Tanzania licensing path (Gaming Board of Tanzania) and the Selcom
   payment + SMS aggregator are real prerequisites. Don't ship paid flows
   before both are signed.

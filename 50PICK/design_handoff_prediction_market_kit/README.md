@@ -1,3 +1,8 @@
+> ⚠️ **SUPERSEDED SNAPSHOT — do not build from this kit (audit C9).**
+> Brand is royal 268, not teal 215. The `[data-theme="light"]` block is DEAD.
+> Authority: `docs/DESIGN_AUTHORITY.md` · Implementation: `src/app/globals.css`.
+> Scheduled for deletion (audit §15.3).
+
 # Handoff — Prediction-market design kit (concept)
 
 ## Overview

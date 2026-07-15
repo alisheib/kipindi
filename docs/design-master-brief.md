@@ -1,3 +1,7 @@
+> **STATUS: authoritative** — palette + composition source of truth. The live
+> tokens in `src/app/globals.css` match this brief to ~0.3%. Invariants (single
+> theme, YES/NO semantics, claret/aqua rules) are in `docs/DESIGN_AUTHORITY.md`.
+
 # 50pick — Master Design Brief ("the perfect truth")
 
 > **For Claude Design (highest access).** This is the complete, grounded source of truth to

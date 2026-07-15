@@ -27,7 +27,7 @@ Verified at baseline (2026-07-15): `tsc --noEmit` clean · `test:fee-model` 77/7
 |---|---|---|---|
 | 1 | Baseline — commit fee model | C1 ✓, M2 (verify), C8 partial | `[x]` |
 | 2 | Repo integrity & hard-locks | C10, C7, H7, M11, M12 | `[x]` |
-| 3 | Documentation authority | C9, §16 | `[ ]` |
+| 3 | Documentation authority | C9, §16 | `[x]` |
 | 4 | Brand identity | C11 | `[ ]` |
 | 5 | Money copy & disclosure | C8, H12, M9 | `[ ]` |
 | 6 | Bonus integrity | C2 | `[ ]` |
@@ -52,7 +52,7 @@ Verified at baseline (2026-07-15): `tsc --noEmit` clean · `test:fee-model` 77/7
 - `[ ]` **C6** — audit chain forks multi-instance → DB-side head + `@@unique([prevHash])` + await persist. *(Stage 8)*
 - `[x]` **C7** — POCA §16 lock **restored** (`test-overrides.ts`: prod returns `false` unconditionally + `assertProductionComplianceLocks()` refuses boot if flag ON, wired in `instrumentation.ts` via `boot-checks.ts`). Tests: solo-resolution 18/18, officer-conflict 33/33. **Ali/ops:** verify prod DB flag=false + audit query for historical conflicted resolutions.
 - `[~]` **C8** — UI promises tax on winnings → fee model rewrote the tax model; re-verify withdraw copy EN/SW/ZH. *(Stage 5)*
-- `[ ]` **C9** — docs mandate teal kit → rewrite CLAUDE.md 39/278; write DESIGN_AUTHORITY.md. *(Stage 3)*
+- `[x]` **C9** — kit mandates **removed** (CLAUDE.md source-of-truth row + "Working with Ali" hero note; README.md row) → now point at `docs/DESIGN_AUTHORITY.md` (**written**, B1–B4). `kit-gap-audit.md` marked historical + rule retired; teal-kit `tokens.css`/`README.md` carry SUPERSEDED headers; `design-master-brief.md` marked authoritative. Grep clean: no active kit mandate. **Stage 11 tail:** physically delete `50PICK/design_handoff.../` + fix 10 code comments citing the kit (§18.8).
 - `[x]` **C10** — `db-check.cjs` **removed** (`git rm`); `.gitignore` blocks `db-check.*`, `*-check.cjs`, `scratch-*`, `*.zip`, `*.docx`. **Ali/ops:** check git history + CI/shell logs for any leaked NIDA output; if it ran against prod, treat as a disclosure event.
 - `[ ]` **C11** — brand split (old logo in PWA/email) → regenerate SVGs+PNGs from `mark-a.svg`. *(Stage 4)*
 
@@ -83,3 +83,4 @@ _(appended after each stage)_
 
 - **Stage 1 — DONE (commit `1614a7c`, pushed).** Committed the verified capped-fee-model feature (65 files). C1 closed. Baseline: `tsc` clean · fee-model 77/77 · withdrawal 16/16.
 - **Stage 2 — DONE.** C7 (POCA §16 hard-lock restored + boot assertion), C10 (`db-check.cjs` removed + gitignore), H7 (webhook env names + boot warning), M11 (next-themes removed), M12 (tsconfig scoped). New file `src/lib/server/boot-checks.ts`. Verified: `tsc` clean · solo-resolution 18/18 · officer-conflict 33/33 · config-persist 10/10.
+- **Stage 3 — DONE.** C9 closed (docs only). Rewrote CLAUDE.md (2 mandates) + README.md to point at new `docs/DESIGN_AUTHORITY.md`; superseded headers on teal kit + kit-gap-audit (rule retired); authoritative header on design-master-brief. Grep clean: no active kit mandate. Docs-only — no code/test impact.
