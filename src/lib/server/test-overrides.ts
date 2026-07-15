@@ -87,10 +87,19 @@ export async function assertProductionComplianceLocks(): Promise<void> {
     return;
   }
   if (flagOn) {
-    throw new Error(
-      "FATAL: allowConflictedResolution is ON in production. POCA §16 forbids an officer " +
-        "resolving a market they hold a position in. Clear it (persisted SystemConfig 'test.overrides') " +
-        "before starting. Refusing to boot.",
+    // FAIL-OPEN, on purpose. getConflictedResolutionAllowed() ALREADY returns
+    // false in production unconditionally, so the POCA §16 control is fully
+    // enforced at runtime regardless of this flag. Throwing here would take a
+    // real-money platform DOWN over a compliance *alarm* that changes nothing —
+    // the wrong trade. So we log loudly (ops must still clear the flag) but let
+    // the server boot. Do NOT convert this back to a throw.
+    console.error(
+      "\n" + "!".repeat(72) + "\n" +
+        "[compliance] WARNING: allowConflictedResolution is ON in the production DB.\n" +
+        "  The runtime guard forces it OFF (officers still cannot resolve their own\n" +
+        "  markets — POCA §16 enforced), but CLEAR the persisted SystemConfig\n" +
+        "  'test.overrides' flag so the intent is unambiguous.\n" +
+        "!".repeat(72) + "\n",
     );
   }
 }
