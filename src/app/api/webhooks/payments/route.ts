@@ -81,6 +81,10 @@ export async function POST(req: Request) {
     ?? (parsed as { providerRef?: string })?.providerRef
     ?? "";
   const status = normalizeStatus((parsed as { status?: string })?.status);
+  // M4 — the provider-reported amount, verified against the initiated txn in
+  // settlePaymentWebhook (mismatch → fail closed + SECURITY alert).
+  const rawAmount = (parsed as { amount?: unknown })?.amount;
+  const amount = typeof rawAmount === "number" ? rawAmount : typeof rawAmount === "string" && rawAmount.trim() !== "" && !Number.isNaN(Number(rawAmount)) ? Number(rawAmount) : undefined;
 
   audit({
     category: "WALLET",
@@ -100,7 +104,7 @@ export async function POST(req: Request) {
   }
   let settled: Awaited<ReturnType<typeof settlePaymentWebhook>>;
   try {
-    settled = await settlePaymentWebhook({ providerRef: ref, status });
+    settled = await settlePaymentWebhook({ providerRef: ref, status, amount });
   } catch (err) {
     audit({
       category: "WALLET",

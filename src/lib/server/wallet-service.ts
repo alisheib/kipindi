@@ -427,10 +427,19 @@ async function settleWithdrawalFailed(txnId: string, reason: string): Promise<bo
  * All underlying settle fns are idempotent, so a retried (at-least-once) webhook
  * is safe. Returns a small verdict for the route to log.
  */
-export async function settlePaymentWebhook(input: { providerRef: string; status: "CONFIRMED" | "FAILED" }): Promise<{ handled: boolean; reason: string }> {
+export async function settlePaymentWebhook(input: { providerRef: string; status: "CONFIRMED" | "FAILED"; amount?: number }): Promise<{ handled: boolean; reason: string }> {
   const txn = await db.txn.findByProviderRef(input.providerRef);
   if (!txn) return { handled: false, reason: "unknown-reference" };
   if (txn.status !== "PROCESSING") return { handled: true, reason: `already-${txn.status.toLowerCase()}` };
+
+  // M4: verify the provider-reported amount against what we initiated. We only
+  // ever credit txn.amount (so tampering the webhook amount can't over-credit),
+  // but a mismatch means the provider settled a DIFFERENT amount than we asked
+  // for — a reconciliation/fraud signal. Fail closed and alert; never settle it.
+  if (input.amount != null && Math.abs(input.amount) !== Math.abs(txn.amount)) {
+    audit({ category: "SECURITY", action: "webhook.amount_mismatch", actorId: null, targetType: "Transaction", targetId: txn.id, payload: { expected: txn.amount, got: input.amount, providerRef: input.providerRef } });
+    return { handled: false, reason: "amount-mismatch" };
+  }
 
   if (txn.type === "DEPOSIT") {
     if (input.status === "CONFIRMED") await settleDepositConfirmed(txn.id, txn.providerRef ?? input.providerRef);

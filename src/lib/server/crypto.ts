@@ -181,38 +181,41 @@ export async function verifyPassword(password: string, salt: string, hashedHex: 
  * payment-aggregator agreement is signed. Caller MUST pass the secret name
  * (eg. `SELCOM_WEBHOOK_SECRET`) — we never default this for security.
  *
- * Includes optional timestamp staleness check (default 5 minutes) so a
- * captured-and-replayed payload from days ago is rejected.
+ * Timestamp is MANDATORY (audit C5). The replay window cannot be bypassed by
+ * omitting the header, and the HMAC is computed OVER the timestamp (Stripe's
+ * `${timestamp}.${body}` construction) so the timestamp cannot be stripped or
+ * altered without invalidating the signature.
  */
 export function verifyWebhookSignature(opts: {
   body: string;
   signatureHex: string;
   secret: string;
-  /** ISO timestamp from the webhook header, optional; if present, must be within `maxSkewSec`. */
+  /** ISO timestamp from the webhook header. REQUIRED — a missing timestamp is rejected. */
   timestamp?: string;
   maxSkewSec?: number;
 }): { valid: boolean; reason?: string } {
   if (!opts.secret) return { valid: false, reason: "missing-secret" };
   if (!opts.signatureHex) return { valid: false, reason: "missing-signature" };
-  const expectedMac = createHmac("sha256", opts.secret).update(opts.body, "utf8").digest();
-  let actualMac: Buffer;
-  try {
-    actualMac = Buffer.from(opts.signatureHex, "hex");
-  } catch {
-    return { valid: false, reason: "bad-signature-encoding" };
-  }
+  // Reject non-hex early with a truthful reason (audit L1): Buffer.from(x,"hex")
+  // silently drops invalid nibbles instead of throwing, so the old try/catch was
+  // dead and the "bad-signature-encoding" reason was unreachable.
+  if (!/^[0-9a-fA-F]+$/.test(opts.signatureHex)) return { valid: false, reason: "bad-signature-encoding" };
+  // Timestamp is mandatory and must be fresh (audit C5).
+  if (!opts.timestamp) return { valid: false, reason: "missing-timestamp" };
+  const ts = Date.parse(opts.timestamp);
+  if (Number.isNaN(ts)) return { valid: false, reason: "bad-timestamp" };
+  const skew = Math.abs(Date.now() - ts) / 1000;
+  if (skew > (opts.maxSkewSec ?? 300)) return { valid: false, reason: "stale-timestamp" };
+  // HMAC over `${timestamp}.${body}` so the timestamp is bound to the signature.
+  const expectedMac = createHmac("sha256", opts.secret).update(`${opts.timestamp}.${opts.body}`, "utf8").digest();
+  const actualMac = Buffer.from(opts.signatureHex, "hex");
   if (expectedMac.length !== actualMac.length) return { valid: false, reason: "length-mismatch" };
   if (!timingSafeEqual(expectedMac, actualMac)) return { valid: false, reason: "signature-mismatch" };
-  if (opts.timestamp) {
-    const ts = Date.parse(opts.timestamp);
-    if (Number.isNaN(ts)) return { valid: false, reason: "bad-timestamp" };
-    const skew = Math.abs(Date.now() - ts) / 1000;
-    if (skew > (opts.maxSkewSec ?? 300)) return { valid: false, reason: "stale-timestamp" };
-  }
   return { valid: true };
 }
 
-/** Helper for outbound signatures (test fixtures, dev tooling). */
-export function signWebhook(body: string, secret: string): string {
-  return createHmac("sha256", secret).update(body, "utf8").digest("hex");
+/** Helper for outbound signatures (test fixtures, dev tooling). Signs the same
+ *  `${timestamp}.${body}` construction verifyWebhookSignature checks (audit C5). */
+export function signWebhook(timestamp: string, body: string, secret: string): string {
+  return createHmac("sha256", secret).update(`${timestamp}.${body}`, "utf8").digest("hex");
 }
