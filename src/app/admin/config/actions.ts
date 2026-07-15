@@ -49,11 +49,14 @@ export async function updateGlobalConfigAction(formData: FormData) {
   const s = await ensureAdmin();
   try {
     const updates: Partial<RateConfig> = {};
-    const t = parseRate(String(formData.get("taxRate") ?? ""));
     const c = parseRate(String(formData.get("commissionRate") ?? ""));
+    const ceil = parseRate(String(formData.get("feeCeilingRate") ?? ""));
     const co = parseRate(String(formData.get("cashOutFeeRate") ?? ""));
-    const rv = parseRate(String(formData.get("reserveRate") ?? ""));
-    const ag = parseRate(String(formData.get("aggregatorRate") ?? ""));
+    // Minutes, not a rate.
+    const grace = parseInteger(String(formData.get("freeExitGraceMinutes") ?? ""));
+    const paidWin = parseInteger(String(formData.get("paidExitWindowMinutes") ?? ""));
+    const wdr = parseRate(String(formData.get("withdrawalFeeRate") ?? ""));
+    const gw = parseRate(String(formData.get("withdrawalGatewayShareRate") ?? ""));
     const min = parseInteger(String(formData.get("minStake") ?? ""));
     const max = parseInteger(String(formData.get("maxStake") ?? ""));
     const thin = parseRatio(String(formData.get("thinProfitRatio") ?? ""));
@@ -62,11 +65,13 @@ export async function updateGlobalConfigAction(formData: FormData) {
     // F11 — the settlement gate. Hours, not a rate: 0..168, 0 = no window.
     const objWindow = parseInteger(String(formData.get("objectionWindowHours") ?? ""));
     const gbt = parseRate(String(formData.get("gbtLevyOnCommissionRate") ?? ""));
-    if (t !== undefined) updates.taxRate = t;
     if (c !== undefined) updates.commissionRate = c;
+    if (ceil !== undefined) updates.feeCeilingRate = ceil;
     if (co !== undefined) updates.cashOutFeeRate = co;
-    if (rv !== undefined) updates.reserveRate = rv;
-    if (ag !== undefined) updates.aggregatorRate = ag;
+    if (grace !== undefined) updates.freeExitGraceMinutes = grace;
+    if (paidWin !== undefined) updates.paidExitWindowMinutes = paidWin;
+    if (wdr !== undefined) updates.withdrawalFeeRate = wdr;
+    if (gw !== undefined) updates.withdrawalGatewayShareRate = gw;
     if (min !== undefined) updates.minStake = min;
     if (max !== undefined) updates.maxStake = max;
     if (thin !== undefined) updates.thinProfitRatio = thin;
@@ -74,6 +79,9 @@ export async function updateGlobalConfigAction(formData: FormData) {
     if (tra !== undefined) updates.traTaxOnCommissionRate = tra;
     if (objWindow !== undefined) updates.objectionWindowHours = objWindow;
     if (gbt !== undefined) updates.gbtLevyOnCommissionRate = gbt;
+    // setGlobalConfig REFUSES a config under which a winner could be paid below
+    // their stake (the winner-floor guardrail in validate()), and may return a
+    // `warn` for a ceiling above 50%. Both surface to the officer.
     const r = await setGlobalConfig(updates, s.userId);
     revalidatePath("/admin/config");
     return r;
@@ -88,12 +96,18 @@ export async function setMarketOverrideAction(formData: FormData) {
   if (!marketId) return { ok: false as const, error: "Missing market id." };
   try {
     const updates: Partial<RateConfig> = {};
-    const t = parseRate(String(formData.get("taxRate") ?? ""));
     const c = parseRate(String(formData.get("commissionRate") ?? ""));
+    const ceil = parseRate(String(formData.get("feeCeilingRate") ?? ""));
+    // cashOutFeeRate + thinProfitRatio were always merged by getEffectiveConfig
+    // but had no input in the form, so overriding either was unreachable.
+    const co = parseRate(String(formData.get("cashOutFeeRate") ?? ""));
+    const thin = parseRatio(String(formData.get("thinProfitRatio") ?? ""));
     const min = parseInteger(String(formData.get("minStake") ?? ""));
     const max = parseInteger(String(formData.get("maxStake") ?? ""));
-    if (t !== undefined) updates.taxRate = t;
     if (c !== undefined) updates.commissionRate = c;
+    if (ceil !== undefined) updates.feeCeilingRate = ceil;
+    if (co !== undefined) updates.cashOutFeeRate = co;
+    if (thin !== undefined) updates.thinProfitRatio = thin;
     if (min !== undefined) updates.minStake = min;
     if (max !== undefined) updates.maxStake = max;
     if (Object.keys(updates).length === 0) {

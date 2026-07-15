@@ -369,11 +369,24 @@ async function payPrize(opts: { referrerUserId: string; recruitUserId: string; m
 // ── Activity hooks (called from the betting + wallet flows) ──────────────
 
 /**
- * A recruit placed a bet. Accrues the referrer's commission (a share of the
- * operator margin on this stake) and fires the FIRST_BET milestone prize.
- * `operatorCommissionRate` is the effective per-market commission fraction.
+ * A recruit placed a bet. Fires the FIRST_BET milestone prize.
+ *
+ * ⚠️ COMMISSION IS NO LONGER ACCRUED HERE — see `onRecruitSettlement` below.
+ * It used to be, priced at `stake × commissionRate`, and under the capped-fee
+ * model that number is a fiction: it is the fee we would have taken if the poll
+ * were balanced. On a lopsided poll we take far less (on the reported poll we earn
+ * 3,500, not 31,050), and on a one-sided poll we earn NOTHING while this would
+ * still have paid the referrer. We would have been paying out a share of revenue
+ * we never made — and `reverseWagering` unwinds turnover on a refund, but a
+ * referral credit was never clawed back.
+ *
+ * The real fee is not knowable at bet time. It depends on the FINAL pools. So the
+ * commission now accrues where the fee actually exists: at settlement.
+ *
+ * The PRIZE stays here, because it is a milestone on the ACT of betting ("your
+ * recruit placed their first bet"), not a share of revenue. That is correct.
  */
-export async function onRecruitBet(recruitUserId: string, opts: { stake: number; operatorCommissionRate: number }): Promise<void> {
+export async function onRecruitBet(recruitUserId: string, opts: { stake: number }): Promise<void> {
   const recruit = await db.user.findById(recruitUserId);
   const referrerUserId = recruit?.recruitedBy;
   if (!referrerUserId) return;
@@ -395,8 +408,38 @@ export async function onRecruitBet(recruitUserId: string, opts: { stake: number;
       await payPrize({ referrerUserId, recruitUserId, milestoneLabel: "first bet" });
     }
   }
+}
 
-  // Commission accrual.
+/**
+ * A recruit's position SETTLED, and we took a fee on the poll.
+ *
+ * This is where referral commission belongs, and it is the fix for a real defect:
+ * commission used to accrue at BET time against `stake × commissionRate` — the
+ * fee we would have charged on a balanced poll. Under the capped-fee model that
+ * is a fiction:
+ *
+ *   • the reported poll (YES 300,000 / NO 10,500): we earn 3,500, not 31,050;
+ *   • a ONE-SIDED poll: we earn NOTHING (everyone is refunded) — but the old code
+ *     still paid the referrer a share of a fee that never existed;
+ *   • a VOIDED poll: same.
+ *
+ * The real fee is not knowable until the pools are final. So `operatorFee` here is
+ * THIS POSITION'S ACTUAL SHARE of the fee we actually charged —
+ * `(stake / pool) × fee` — passed in by settleMarket. If we earned nothing, the
+ * referrer earns nothing. We can no longer pay out on revenue we never made.
+ *
+ * Accrues on EVERY settled position (win or lose): every stake was in the pool, so
+ * every stake contributed to the fee. Refunds (one-sided / void) pass a fee of 0.
+ */
+export async function onRecruitSettlement(recruitUserId: string, opts: { operatorFee: number }): Promise<void> {
+  if (!(opts.operatorFee > 0)) return; // no fee earned → nothing to share
+
+  const recruit = await db.user.findById(recruitUserId);
+  const referrerUserId = recruit?.recruitedBy;
+  if (!referrerUserId) return;
+  const cfg = getAffiliateConfig();
+  if (!cfg.enabled) return;
+
   if (cfg.commission.enabled && cfg.commission.rate > 0) {
     // Window check — commission only accrues for windowMonths after join.
     const acct = await db.affiliate.findByUserId(referrerUserId);
@@ -406,8 +449,8 @@ export async function onRecruitBet(recruitUserId: string, opts: { stake: number;
     windowEnd.setMonth(windowEnd.getMonth() + cfg.commission.windowMonths);
     if (Date.now() > windowEnd.getTime()) return;
 
-    const operatorFee = opts.stake * Math.max(0, opts.operatorCommissionRate);
-    const grossCut = Math.round(operatorFee * cfg.commission.rate);
+    // A share of the fee WE ACTUALLY TOOK on this position. Not a notional rate.
+    const grossCut = Math.round(opts.operatorFee * cfg.commission.rate);
     if (grossCut <= 0) return;
 
     // Serialize per (referrer, recruit) so the per-recruit cap read + the credit

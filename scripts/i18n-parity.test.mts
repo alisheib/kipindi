@@ -82,5 +82,61 @@ for (const [name, loc] of [["sw", sw], ["zh", zh]] as const) {
   );
 }
 
+// 3. PLACEHOLDER PARITY.
+//
+// Call sites interpolate by hand — `t.dialog.freeExitBody.replace("{pct}", …)`.
+// So if EN carries a {pct} and the Swahili string does not, the Swahili player is
+// shown a fee sentence WITH NO NUMBER IN IT and nothing fails. That is exactly how
+// a money surface goes quietly wrong in a language nobody on the team reads, and
+// it is the reason this check exists: every locale must carry the same set of
+// placeholders as EN, or the interpolation silently drops on the floor.
+{
+  const tokens = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+  for (const [name, loc] of [["sw", sw], ["zh", zh]] as const) {
+    const mismatched = [...en.entries()]
+      .filter(([k, v]) => {
+        const a = tokens(v);
+        const b = tokens(loc.get(k) ?? "");
+        return a.join("|") !== b.join("|");
+      })
+      .map(([k, v]) => `${k} (en:{${tokens(v).join(",")}} vs ${name}:{${tokens(loc.get(k) ?? "").join(",")}})`);
+    check(
+      `${name}: placeholder parity`,
+      mismatched.length === 0,
+      mismatched.length ? `${mismatched.length}: ${mismatched.slice(0, 10).join("; ")}` : "",
+    );
+  }
+}
+
+// 4. NO HARDCODED FEE RATES IN COPY.
+//
+// The regression guard for the whole capped-fee change. Every fee number a player
+// reads must be interpolated from the poll's own rates. A literal "9%" in a string
+// was true when it was written, became false the moment admin retuned the rate,
+// and nothing anywhere told us. Several such strings shipped and lied for months.
+//
+// Percentages that are NOT fee rates (ROI tiers, "100% verified") are allowlisted
+// by key. Everything else must use a {placeholder}.
+{
+  const RATE_PCT_OK = new Set([
+    "leaderboard.tierSovereign", "leaderboard.tierDiamond", "leaderboard.tierGold",
+  ]);
+  // A fee-ish percentage: a number followed by % in a string that also talks about
+  // fees/commission/tax/exit. Deliberately narrow — we want no false positives.
+  const FEE_WORDS = /(fee|commission|margin|tax|levy|exit|ada|kamisheni|kodi|手续费|佣金|税)/i;
+  const offenders: string[] = [];
+  for (const [name, loc] of [["en", en], ["sw", sw], ["zh", zh]] as const) {
+    for (const [k, v] of loc.entries()) {
+      if (RATE_PCT_OK.has(k)) continue;
+      if (/\d+(\.\d+)?\s*%/.test(v) && FEE_WORDS.test(v)) offenders.push(`${name}.${k}: "${v.slice(0, 60)}…"`);
+    }
+  }
+  check(
+    "no hardcoded fee percentages in copy (use {pct})",
+    offenders.length === 0,
+    offenders.length ? `${offenders.length}: ${offenders.slice(0, 8).join(" | ")}` : "",
+  );
+}
+
 log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILED`} — en=${en.size} sw=${sw.size} zh=${zh.size} keys`);
 process.exit(fail === 0 ? 0 : 1);

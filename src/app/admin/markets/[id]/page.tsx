@@ -5,6 +5,10 @@ import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/component
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Avatar } from "@/components/ui/avatar";
 import { Chip } from "@/components/ui/chip";
+import { Stat } from "@/components/ui/stat";
+import { Callout } from "@/components/ui/callout";
+import { poolFee } from "@/lib/payout";
+import { ratesFor } from "@/lib/server/market-service";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { Select } from "@/components/ui/select";
 import { I } from "@/components/ui/glyphs";
@@ -125,6 +129,12 @@ export default async function MarketPredictorsPage({
   const openCount    = allPositions.filter((p) => p.status === "OPEN").length;
   const totalPool    = m.yesPool + m.noPool;
 
+  // THIS POLL'S frozen rates, and the fee they produce on these exact pools.
+  // Read from the market's own feeSnapshot, so an officer sees what this poll will
+  // actually settle at — not whatever is currently set in admin config.
+  const marketRates = ratesFor(m);
+  const marketFee = poolFee(m.yesPool, m.noPool, marketRates);
+
   return (
     <>
       <AdminPageHead
@@ -189,6 +199,55 @@ export default async function MarketPredictorsPage({
               <span className="text-text font-semibold">{formatTzs(totalPool)}</span>
             </div>
           </div>
+
+          {/* THE FEE ARITHMETIC ON THIS POLL — and the lean/thin flag.
+              An officer can see, before the result lands, exactly what we will take
+              and what the winners will get. On a lopsided poll this is where the
+              ceiling shows up: it is the difference between the headline commission
+              and what we actually charge. */}
+          <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Stat
+              label="Smaller side (the prize)"
+              value={formatTzs(marketFee.smaller)}
+              money
+              hint={totalPool > 0 ? `${((marketFee.smaller / totalPool) * 100).toFixed(1)}% of pool` : "—"}
+            />
+            <Stat
+              label={`Commission (${(marketRates.commissionRate * 100).toFixed(0)}% of pool)`}
+              value={formatTzs(Math.round(marketFee.commission))}
+              tone={marketFee.capped ? "muted" : "default"}
+              money
+              hint={marketFee.capped ? "capped — not charged" : "charged"}
+            />
+            <Stat
+              label="Fee charged"
+              value={formatTzs(Math.round(marketFee.fee))}
+              tone="gold"
+              money
+              hint={marketFee.capped ? `capped at ${(marketRates.feeCeilingRate * 100).toFixed(0)}% of the smaller side` : "the full commission"}
+            />
+            <Stat
+              label="Worst winner ratio"
+              value={marketFee.larger > 0 ? `${(marketFee.netPool / marketFee.larger).toFixed(3)}×` : "—"}
+              tone={marketFee.larger > 0 && marketFee.netPool / marketFee.larger >= 1 ? "yes" : "muted"}
+              hint="never below 1.000×"
+            />
+          </div>
+
+          {marketFee.smaller === 0 && totalPool > 0 ? (
+            <Callout tone="warning" className="mt-3" title="ONE-SIDED — this poll will refund everyone and earn nothing">
+              Every stake is on the same side. There is no opposing pool to pay winnings from, so at settlement
+              every player is refunded in full at zero fee. Consider promoting the other side before betting closes.
+            </Callout>
+          ) : marketFee.capped ? (
+            <Callout tone="info" className="mt-3" title="LOPSIDED — the fee ceiling is binding">
+              The smaller side is only {((marketFee.smaller / totalPool) * 100).toFixed(1)}% of the pool, so a full{" "}
+              {(marketRates.commissionRate * 100).toFixed(0)}% commission ({formatTzs(Math.round(marketFee.commission))}) would exceed
+              a third of the entire prize. We are charging {formatTzs(Math.round(marketFee.fee))} instead. Winners are
+              protected — they can never be paid below their stake — but their upside is thin and our take is below the
+              headline rate.
+            </Callout>
+          ) : null}
         </AdminCard>
 
         {/* KPIs */}

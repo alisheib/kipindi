@@ -9,7 +9,8 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { Input, Field as KitField } from "@/components/ui/input";
 import { Cash } from "@/components/ui/cash";
 import { AmountField } from "@/components/wallet/amount-field";
-import { formatTzs } from "@/lib/utils";
+import { formatTzs, fill, pctNum } from "@/lib/utils";
+import { getEffectiveConfig } from "@/lib/server/market-config";
 import { WithdrawConfirm } from "./withdraw-confirm";
 import { WITHDRAW_MIN_TZS, WITHDRAW_MAX_TZS } from "@/lib/server/validators";
 
@@ -37,6 +38,11 @@ const PROVIDERS = [
 
 export default async function WithdrawPage({ searchParams }: { searchParams: Promise<{ error?: string; provider?: string; amount?: string; msisdn?: string }> }) {
   const { t } = await getServerT();
+  // The withdrawal fee we quote here must be the one we actually charge. It also
+  // replaces the old "Tax notice" panel, which told the player that Tanzania
+  // withholds tax on their winnings at withdrawal — we withheld 15% of every
+  // withdrawal, including money they had deposited and never bet. That is gone.
+  const wcfg = await getEffectiveConfig();
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/wallet/withdraw");
 
@@ -150,7 +156,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
             separate info/warning strips). */}
         <div className="rounded-xl border border-border bg-bg-elevated/50 divide-y divide-border/60">
           <NoticeRow icon={<I.shieldcheck s={15} className="text-info-fg" />} title={t.wallet.securedByKyc} body={t.wallet.securedBody} />
-          <NoticeRow icon={<I.alertCircle s={15} className="text-warning-fg" />} title={t.wallet.taxNotice} body={t.wallet.taxBody} />
+          <NoticeRow icon={<I.alertCircle s={15} className="text-warning-fg" />} title={t.wallet.taxNotice} body={fill(t.wallet.taxBody, { pct: pctNum(wcfg.withdrawalFeeRate) })} />
         </div>
 
         {kycApproved ? <WithdrawConfirm /> : <SubmitButton label={t.common.confirm} pendingLabel={t.common.loading} />}

@@ -13,7 +13,8 @@ import { ChartToggle } from "@/components/markets/chart-toggle";
 import { SellButton } from "@/components/markets/sell-button";
 import { ResolutionPanel } from "@/components/markets/resolution-panel";
 import { Chip } from "@/components/ui/chip";
-import { cashOutValue, getMarket, impliedYesPct, isClosedByTime, isSelectionClosed, listPositionsForUser } from "@/lib/server/market-service";
+import { cashOutValue, getMarket, impliedYesPct, isClosedByTime, isSelectionClosed, listPositionsForUser, ratesFor } from "@/lib/server/market-service";
+import { poolFee } from "@/lib/payout";
 import { getEffectiveConfig } from "@/lib/server/market-config";
 import { getProbabilityChart, seedHistory } from "@/lib/server/market-history";
 import { currentSession } from "@/lib/server/auth-service";
@@ -22,7 +23,7 @@ import { ensureAffiliateAccount } from "@/lib/server/affiliate-service";
 import { listComments } from "@/lib/server/comments-store";
 import { CommentsThread } from "@/components/markets/comments-thread";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
-import { formatDateTime, formatTzsCompact, formatTzs } from "@/lib/utils";
+import { formatDateTime, formatTzsCompact, formatTzs, fill, pctNum } from "@/lib/utils";
 import { appUrl } from "@/lib/app-url";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
@@ -91,11 +92,26 @@ export default async function MarketDetail({
   if (!m) notFound();
 
   const yesPct = impliedYesPct(m);
-  // Effective fee for THIS market (incl. any per-market override) so the dial's
-  // inline payout/lean projection matches the rate the server settles at.
-  let feeCfg: Awaited<ReturnType<typeof getEffectiveConfig>>;
-  try { feeCfg = await getEffectiveConfig(m.id); } catch { feeCfg = { taxRate: 0, commissionRate: 0.03, reserveRate: 0.01, aggregatorRate: 0, starterBalanceTzs: 0, minStake: 500, maxStake: 100_000 } as Awaited<ReturnType<typeof getEffectiveConfig>>; }
-  const marketFeeRate = Math.min(0.99, Math.max(0, feeCfg.taxRate + feeCfg.commissionRate + feeCfg.reserveRate + feeCfg.aggregatorRate));
+
+  // THIS POLL'S OWN RATES — frozen onto the market at creation and loaded with it.
+  //
+  // No config read, and therefore NO FALLBACK TO GUESS AT. The old code did
+  // `try { getEffectiveConfig(m.id) } catch { …commissionRate: 0.03, reserveRate: 0.01… }`,
+  // and that catch branch summed to a 4% fee — while settlement used the real 9%.
+  // So if the config read ever threw, every player on this page was quietly shown
+  // a 4% platform fee and a 4%-based projection, and then paid at 9%. It failed
+  // silently, in the player's favour on screen and against them in the wallet.
+  //
+  // It cannot happen now: the rates ride on the market row. There is nothing to
+  // fetch, nothing to fail, and nothing to invent.
+  const marketRates = ratesFor(m);
+  const marketFee = poolFee(m.yesPool, m.noPool, marketRates);
+  // Stake BOUNDS are entry-time, so they correctly read LIVE config (a poll does
+  // not freeze how much you may stake) — and buyPosition re-validates them
+  // server-side anyway, so the dial showing a stale bound cannot cost anyone
+  // money. Only the FEE is frozen to the poll. Deliberately un-caught: if config
+  // is unreadable we fail loudly rather than invent a limit.
+  const stakeCfg = await getEffectiveConfig(m.id);
   const session = await currentSession();
   let myPositions: Awaited<ReturnType<typeof listPositionsForUser>> = [];
   try { myPositions = session ? (await listPositionsForUser(session.userId)).filter((p) => p.marketId === m!.id) : []; } catch { /* graceful */ }
@@ -157,15 +173,21 @@ export default async function MarketDetail({
         ? "closing"
         : "open";
 
-  // Pre-compute cash-out values for positions (cashOutValue is async)
+  // Pre-compute cash-out values for positions (cashOutValue is async). `sellable`
+  // is false once the exit window has passed — the sell control must then show
+  // "selling closed" rather than a price the server would refuse.
   const positionCashOutValues = new Map<string, number | null>();
+  const positionSellable = new Map<string, boolean>();
   for (const p of myPositions) {
     if (!isResolved && (m.status === "LIVE" || m.status === "CLOSED") && p.status === "OPEN") {
       try {
-        positionCashOutValues.set(p.id, (await cashOutValue({ side: p.side, stake: p.stake, placedAt: p.placedAt }, { id: m.id, yesPool: m.yesPool, noPool: m.noPool, resolutionAt: m.resolutionAt })).value);
-      } catch { positionCashOutValues.set(p.id, null); }
+        const co = await cashOutValue({ side: p.side, stake: p.stake, placedAt: p.placedAt }, { id: m.id, yesPool: m.yesPool, noPool: m.noPool, resolutionAt: m.resolutionAt, selectionClosedAt: m.selectionClosedAt, feeSnapshot: m.feeSnapshot });
+        positionCashOutValues.set(p.id, co.sellable ? co.value : null);
+        positionSellable.set(p.id, co.sellable);
+      } catch { positionCashOutValues.set(p.id, null); positionSellable.set(p.id, false); }
     } else {
       positionCashOutValues.set(p.id, null);
+      positionSellable.set(p.id, false);
     }
   }
 
@@ -295,7 +317,8 @@ export default async function MarketDetail({
               serverNow={Date.now()}
               yesPool={m.yesPool}
               noPool={m.noPool}
-              feeRate={marketFeeRate}
+              fee={marketFee}
+              rates={marketRates}
               evidence={m.resolutionEvidence}
               settledAt={m.settledAt}
               objection={objectionState}
@@ -347,6 +370,7 @@ export default async function MarketDetail({
               )}
               {myPositions.map((p) => {
                 const liveValue = positionCashOutValues.get(p.id) ?? null;
+                const sellShut = p.status === "OPEN" && (isSelectionClosed(m) || positionSellable.get(p.id) === false);
                 return (
                   <div key={p.id} className="rounded-md border border-border bg-bg-overlay/40 p-3 space-y-2">
                     <div className="flex items-center justify-between gap-2 font-mono text-[12px]">
@@ -374,14 +398,14 @@ export default async function MarketDetail({
                         {t.market.opened} {fmtTime(p.placedAt)}
                       </p>
                     </div>
-                    {liveValue !== null && (
+                    {(liveValue !== null || sellShut) && (
                       <SellButton
                         positionId={p.id}
                         stake={p.stake}
-                        value={liveValue}
+                        value={liveValue ?? 0}
                         placedAt={p.placedAt}
                         closesAt={m.selectionClosedAt ?? m.resolutionAt}
-                        alreadyClosed={isSelectionClosed(m)}
+                        alreadyClosed={sellShut}
                         serverNow={Date.now()}
                       />
                     )}
@@ -431,9 +455,9 @@ export default async function MarketDetail({
                   </p>
                   <p className="mt-1 text-[12px] leading-snug text-text-muted">
                     {hedgeBoth
-                      ? t.market.hedgeBothBody
+                      ? fill(t.market.hedgeBothBody, { pct: pctNum(marketRates.commissionRate) })
                       : hedgeOpposite
-                        ? t.market.hedgeOppositeBody
+                        ? fill(t.market.hedgeOppositeBody, { pct: pctNum(marketRates.commissionRate) })
                         : t.market.hedgeAddBody}
                   </p>
                 </div>
@@ -447,9 +471,9 @@ export default async function MarketDetail({
                 resolutionAt={m.resolutionAt}
                 balance={myBalance}
                 initialSide={side === "YES" || side === "NO" ? side : undefined}
-                feeRate={marketFeeRate}
-                minStake={feeCfg.minStake}
-                maxStake={feeCfg.maxStake}
+                rates={marketRates}
+                minStake={stakeCfg.minStake}
+                maxStake={stakeCfg.maxStake}
               />
               </>
             ) : (

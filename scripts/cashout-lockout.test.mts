@@ -83,8 +83,12 @@ async function pastGrace(posId: string): Promise<void> {
 {
   const mid = await makeMarket(60); // selections close in an hour
   await fundedUser("co_a");
+  await fundedUser("co_a2");
   await fundedUser("co_b");
   const a = await buyPosition("co_a", { marketId: mid, side: "YES", stake: 10_000 });
+  // Co-bettor on the SAME side: without one, co_a is the last YES stake and the
+  // side-collapse guard refuses the exit (it would void the poll for everyone).
+  await buyPosition("co_a2", { marketId: mid, side: "YES", stake: 10_000 });
   await buyPosition("co_b", { marketId: mid, side: "NO", stake: 10_000 });
   const posId = a.ok ? a.data!.positionId : "";
   await pastGrace(posId);
@@ -150,10 +154,13 @@ async function pastGrace(posId: string): Promise<void> {
   await settleMarket(mid, { force: true });
 
   const won = (await bal("co_winner")) - winnerBefore;
-  // Whole pool 20,000 less the 9% platform fee = 18,200 — the winner gets ALL of
-  // it, because nothing leaked out of the pool through a late exit.
-  ok("3: the winner receives the WHOLE net pool (nothing was siphoned)", won === 18_200,
-     `won=${won} expected=18200`);
+  // Whole pool 20,000, split 10k/10k. The poll is balanced, so the ceiling is
+  // slack and the 10% commission binds: fee = min(2,000, 3,333) = 2,000, leaving a
+  // netPool of 18,000. (It was 18,200 under the old flat 9%.) The winner gets ALL
+  // of it, because nothing leaked out of the pool through a late exit.
+  ok("3: the winner receives the WHOLE net pool (nothing was siphoned)", won === 18_000,
+     `won=${won} expected=18000`);
+  ok("3: WINNER FLOOR — a correct call is never paid below its stake", won >= 10_000, `won=${won}`);
   ok("3: the loser lost their stake, as they should", (await positionStore.get(loserPos))!.status === "LOSS");
 }
 

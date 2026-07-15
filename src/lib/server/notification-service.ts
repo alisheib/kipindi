@@ -112,15 +112,22 @@ export async function dismissAll(userId: string) {
  */
 export function notifyBetPlaced(userId: string, opts: {
   side: "YES" | "NO"; stake: number; payoutIfWin: number; marketTitle: string; marketId: string; positionId?: string;
+  /** The poll's OWN rates. Hardcoding these numbers is how the copy came to lie. */
+  cashOutFeeRate: number; freeExitGraceMinutes: number;
 }) {
   const ref = opts.positionId ? ` · ${opts.positionId}` : "";
+  // These were hardcoded "free exit within 5 min, then 9% fee applies" (and the
+  // Swahili silently omitted the fee entirely). Both numbers now come from the
+  // poll's frozen snapshot, so they cannot drift from what we actually charge.
+  const mins = opts.freeExitGraceMinutes;
+  const pct = +(opts.cashOutFeeRate * 100).toFixed(1);
   return notify({
     userId,
     kind: "BET_PLACED",
     titleEn: `Bet placed · ${opts.side} ${formatTzs(opts.stake)}`,
     titleSw: `Dau limewekwa · ${opts.side} ${formatTzs(opts.stake)}`,
-    bodyEn: `${opts.marketTitle.slice(0, 70)} · free exit within 5 min, then 9% fee applies.${ref}`,
-    bodySw: `${opts.marketTitle.slice(0, 50)} · toka bila gharama ndani ya dakika 5.${ref}`,
+    bodyEn: `${opts.marketTitle.slice(0, 70)} · free exit within ${mins} min, then a ${pct}% fee applies.${ref}`,
+    bodySw: `${opts.marketTitle.slice(0, 50)} · toka bila gharama ndani ya dakika ${mins}, baadaye ada ya ${pct}% itatumika.${ref}`,
     href: `/markets/${opts.marketId}`,
   });
 }
@@ -195,14 +202,37 @@ export function notifyWatchedSettled(userId: string, opts: { marketTitle: string
   });
 }
 
-export function notifySelectionClosed(userId: string, opts: { marketTitle: string; marketId: string }) {
+/**
+ * Betting has closed — and with the pools now frozen, we can tell the player the
+ * EXACT amount he receives if he is right. Not an estimate: `settledPayoutFor`,
+ * the same function that pays him, computed it from the final pools and the
+ * poll's own frozen rates.
+ *
+ * A player holding both sides gets both figures.
+ */
+export function notifySelectionClosed(userId: string, opts: {
+  marketTitle: string; marketId: string;
+  payoutIfYes: number; payoutIfNo: number;
+  hasYes: boolean; hasNo: boolean;
+}) {
+  const both = opts.hasYes && opts.hasNo;
+  const only = opts.hasYes ? opts.payoutIfYes : opts.payoutIfNo;
+  const side = opts.hasYes ? "YES" : "NO";
+
+  const bodyEn = both
+    ? `${opts.marketTitle.slice(0, 60)} · Betting is closed. If YES wins you receive ${formatTzs(opts.payoutIfYes)}; if NO wins you receive ${formatTzs(opts.payoutIfNo)}.`
+    : `${opts.marketTitle.slice(0, 60)} · Betting is closed. If ${side} wins you receive ${formatTzs(only)}.`;
+  const bodySw = both
+    ? `Kuweka dau kumefungwa. YES ikishinda utapata ${formatTzs(opts.payoutIfYes)}; NO ikishinda utapata ${formatTzs(opts.payoutIfNo)}.`
+    : `Kuweka dau kumefungwa. ${side} ikishinda utapata ${formatTzs(only)}.`;
+
   return notify({
     userId,
     kind: "SELECTION_CLOSED",
-    titleEn: "Selections closed — waiting for results",
-    titleSw: "Uchaguzi umefungwa — tunasubiri matokeo",
-    bodyEn: `${opts.marketTitle.slice(0, 70)} · betting is now closed. We'll notify you with your result as soon as it's settled.`,
-    bodySw: `Kuweka dau kumefungwa. Tutakujulisha matokeo mara yatakapotolewa.`,
+    titleEn: both ? "Betting closed — your payouts are set" : `Betting closed — you receive ${formatTzs(only)} if you're right`,
+    titleSw: both ? "Dau limefungwa — malipo yako yamewekwa" : `Dau limefungwa — utapata ${formatTzs(only)} ukiwa sahihi`,
+    bodyEn,
+    bodySw,
     href: `/markets/${opts.marketId}`,
   });
 }

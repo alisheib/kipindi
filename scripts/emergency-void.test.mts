@@ -78,14 +78,14 @@ await buyPosition("ev_c", { marketId: m.id, side: "YES", stake: stakes.ev_c });
 await buyPosition("ev_d", { marketId: m.id, side: "NO", stake: stakes.ev_d });
 await buyPosition("ev_e", { marketId: m.id, side: "NO", stake: stakes.ev_e });
 
-// ev_a cashes out EARLY first (takes the 9% penalty — proves game flow intact).
+// ev_a cashes out EARLY first (takes the 10% early-exit fee — proves game flow intact).
 // Backdate past the 5-min free-exit window so the fee applies.
 const aPos = await posOf("ev_a");
 { const p = await positionStore.get(aPos.id); if (p) { p.placedAt = new Date(Date.now() - 10 * 60_000).toISOString(); await positionStore.set(p); } }
 const aBalBeforeCashout = await bal("ev_a");
 const co = await cashOutPosition("ev_a", aPos.id);
-ok("early cash-out still works (game flow intact)", co.ok && co.data!.value === Math.round(10_000 * 0.91), `value=${co.ok ? co.data!.value : "n/a"}`);
-ok("cashed-out player got stake − 9% (9,100)", (await bal("ev_a")) - aBalBeforeCashout === 9_100);
+ok("early cash-out still works (game flow intact)", co.ok && co.data!.value === Math.round(10_000 * 0.90), `value=${co.ok ? co.data!.value : "n/a"}`);
+ok("cashed-out player got stake − 10% (9,000)", (await bal("ev_a")) - aBalBeforeCashout === 9_000);
 ok("ev_a position is CASHED_OUT", (await posOf("ev_a")).status === "CASHED_OUT");
 
 // ── Guards: reason required ────────────────────────────────────────────────
@@ -143,7 +143,10 @@ ok("pools zeroed", mkt.yesPool === 0 && mkt.noPool === 0, `yes=${mkt.yesPool} no
 // Whole-system conservation: the only expected drift is the cash-out fee (900)
 // that stayed in the pool and was zeroed on void (fee was legitimately collected
 // but has no destination when the market is cancelled — acceptable for emergency voids).
-const cashoutFee = Math.round(stakes.ev_a * 0.09); // 900
+// The early-exit fee now LEAVES the pool and lands on the house, so the money
+// visible in wallets+pools drops by the WHOLE fee. It used to stay in the pool
+// (and this drift was only the 900 the player forfeited to the other bettors).
+const cashoutFee = Math.round(stakes.ev_a * 0.10); // 1,000 → HOUSE:COMMISSION
 const endSystem = (await sumWallets()) + mkt.yesPool + mkt.noPool;
 ok("whole-system money conserved (wallets + pools + house)", endSystem === startSystem - cashoutFee, `start=${startSystem} end=${endSystem} expectedDrift=${-cashoutFee} actualDrift=${endSystem - startSystem}`);
 

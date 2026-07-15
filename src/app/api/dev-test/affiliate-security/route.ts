@@ -17,7 +17,7 @@ import { NextResponse } from "next/server";
 import { db, type StoredUser } from "@/lib/server/store";
 import { randomId } from "@/lib/server/crypto";
 import { setAffiliateConfig, getAffiliateConfig, type AffiliateConfig } from "@/lib/server/affiliate-config";
-import { ensureAffiliateAccount, bindRecruit, onRecruitBet, onRecruitDeposit, maskName } from "@/lib/server/affiliate-service";
+import { ensureAffiliateAccount, bindRecruit, onRecruitBet, onRecruitSettlement, onRecruitDeposit, maskName } from "@/lib/server/affiliate-service";
 
 const OFFICER = "system_sec";
 
@@ -77,7 +77,7 @@ export async function POST() {
     for (let i = 0; i < 8; i++) await onRecruitDeposit(rec.id, { cumulativeDepositsTzs: 10_000 });
     const bonusRows = (await db.referralReward.listByRecruit(rec.id)).filter((r) => r.type === "BONUS").length;
     ok("bonus paid once under deposit replay (≤2 rows BOTH)", bonusRows <= 2, `rows=${bonusRows}`);
-    for (let i = 0; i < 8; i++) await onRecruitBet(rec.id, { stake: 50_000, operatorCommissionRate: 0.03 });
+    for (let i = 0; i < 8; i++) await onRecruitSettlement(rec.id, { operatorFee: 3_000 });
     const prizeRows = (await db.referralReward.listByRecruit(rec.id)).filter((r) => r.type === "PRIZE").length;
     const commTotal = (await db.referralReward.listByRecruit(rec.id)).filter((r) => r.type === "COMMISSION").reduce((s, r) => s + r.amountTzs, 0);
     ok("prize paid once under bet replay", prizeRows === 1, `rows=${prizeRows}`);
@@ -89,7 +89,7 @@ export async function POST() {
     const oldRec = await mkUser({ createdAt: oldJoin });
     await bindRecruit({ recruitUserId: oldRec.id, code: acctA.code });
     const beforeOld = await bal(A.id);
-    await onRecruitBet(oldRec.id, { stake: 50_000, operatorCommissionRate: 0.03 });
+    await onRecruitSettlement(oldRec.id, { operatorFee: 3_000 });
     const oldComm = (await db.referralReward.listByRecruit(oldRec.id)).filter((r) => r.type === "COMMISSION").length;
     ok("commission window enforced (expired → no commission)", oldComm === 0, `rows=${oldComm}`);
     // (prize may still pay — milestone isn't windowed; commission is.)
@@ -100,7 +100,7 @@ export async function POST() {
     await bindRecruit({ recruitUserId: pausedRec.id, code: acctA.code });
     const beforePause = await bal(A.id);
     await onRecruitDeposit(pausedRec.id, { cumulativeDepositsTzs: 50_000 });
-    await onRecruitBet(pausedRec.id, { stake: 100_000, operatorCommissionRate: 0.03 });
+    await onRecruitSettlement(pausedRec.id, { operatorFee: 3_000 });
     await ok("paused program: zero accrual", await bal(A.id) === beforePause, `Δ=${await bal(A.id) - beforePause}`);
     setAffiliateConfig({ enabled: true } as Partial<AffiliateConfig>, OFFICER);
 
@@ -108,8 +108,8 @@ export async function POST() {
     const zRec = await mkUser();
     await bindRecruit({ recruitUserId: zRec.id, code: acctA.code });
     const beforeZ = await bal(A.id);
-    await onRecruitBet(zRec.id, { stake: 0, operatorCommissionRate: 0.03 });
-    await onRecruitBet(zRec.id, { stake: -100_000, operatorCommissionRate: 0.03 });
+    await onRecruitSettlement(zRec.id, { operatorFee: 3_000 });
+    await onRecruitSettlement(zRec.id, { operatorFee: -3_000 }); // a negative fee must never credit
     const zComm = (await db.referralReward.listByRecruit(zRec.id)).filter((r) => r.type === "COMMISSION").length;
     ok("zero/negative stake creates no commission", zComm === 0);
     ok("zero/negative stake never reduces or mints balance", await bal(A.id) >= beforeZ);
@@ -118,7 +118,7 @@ export async function POST() {
     const cRec = await mkUser();
     await bindRecruit({ recruitUserId: cRec.id, code: acctA.code });
     const beforeB = await bal(B.id);
-    await onRecruitBet(cRec.id, { stake: 50_000, operatorCommissionRate: 0.03 });
+    await onRecruitSettlement(cRec.id, { operatorFee: 3_000 });
     await ok("recruit of A never pays referrer B", await bal(B.id) === beforeB, `Δ=${await bal(B.id) - beforeB}`);
     const cRewardsToB = (await db.referralReward.listByRecruit(cRec.id)).filter((r) => r.referrerUserId === B.id).length;
     ok("no reward rows attribute A's recruit to B", cRewardsToB === 0);

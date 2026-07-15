@@ -7,9 +7,14 @@
  * HONESTY RULES (money + compliance surface):
  *  - The two-officer attestation shows ONLY when two genuinely distinct human
  *    officers resolved it — never for synthetic/auto (demo, sentinel) resolution.
- *  - Every figure shown is an exact stored value (final pools) or an exact config
- *    rate (platform fee). We do NOT reconstruct per-winner payouts here — a
- *    player's own exact payout lives in "Your positions". No fabricated numbers.
+ *  - Every figure shown is an exact stored value (the final pools) or exactly
+ *    computed from them (the fee). The fee is shown in SHILLINGS, not as a rate:
+ *    under the capped model the effective rate differs per poll, so a single "9%"
+ *    would be false on any lopsided poll — in the one place a player comes to
+ *    check that we paid him correctly. When the ceiling bound, we show the
+ *    arithmetic (what the uncapped commission would have been, what we actually
+ *    charged) so he can verify it himself. We do NOT reconstruct per-winner
+ *    payouts here — a player's own exact payout lives in "Your positions".
  *  - F11: the objection window is now a REAL settlement gate. A market can be
  *    RESOLVED with its pool still whole and every position OPEN, so this panel
  *    says "payout is on hold" rather than the old "provisional" hedge — and it
@@ -20,6 +25,7 @@
 import { I } from "@/components/ui/glyphs";
 import { cn, formatTzs } from "@/lib/utils";
 import { formatDateTime } from "@/lib/utils";
+import { Callout } from "@/components/ui/callout";
 import { useT } from "@/lib/i18n";
 import { ObjectionDialog } from "./objection-dialog";
 
@@ -34,8 +40,35 @@ type Props = {
   serverNow: number;
   yesPool: number;
   noPool: number;
-  /** Total pool fee (0..1) — the exact rate winners' payouts were computed at. */
-  feeRate: number;
+  /**
+   * The fee actually taken from this pool, in TZS — and the arithmetic behind it.
+   *
+   * This used to be `feeRate: number`, a single percentage. That can no longer
+   * describe the fee: under the ceiling the effective rate is `fee / pool`, which
+   * differs for every poll depending on how lopsided it ended up. Printing "9%"
+   * against a poll whose fee was capped at 1.1% of the pool would be a lie in the
+   * one place a player goes to check we paid him correctly.
+   *
+   * So we show him the actual arithmetic instead: what 10% of the pool WOULD have
+   * been, what the third-of-the-smaller-side ceiling was, and which one we charged.
+   * He can check it himself.
+   */
+  fee: {
+    /** yesPool + noPool. */
+    pool: number;
+    /** min(yesPool, noPool) — the prize. */
+    smaller: number;
+    /** commissionRate × pool, before the cap. */
+    commission: number;
+    /** feeCeilingRate × smaller — the most we were allowed to take. */
+    ceiling: number;
+    /** What we actually took: min(commission, ceiling). */
+    fee: number;
+    /** True when the ceiling bound — i.e. the poll was lopsided. */
+    capped: boolean;
+  };
+  /** The rates this poll was frozen at, for the disclosure line. */
+  rates: { commissionRate: number; feeCeilingRate: number };
   /** The officer's recorded evidence excerpt (exact quote from the official
    *  source) captured at the resolution ceremony. Null/empty → nothing recorded,
    *  so the evidence block is omitted (empty-state; never fabricated). */
@@ -61,7 +94,7 @@ const fmtPct = (r: number) => {
 
 export function ResolutionPanel({
   marketId, outcome, resolvedAt, twoOfficer, sourceUrl, objectionsClosedAt, serverNow,
-  yesPool, noPool, feeRate, evidence, settledAt, objection,
+  yesPool, noPool, fee, rates, evidence, settledAt, objection,
 }: Props) {
   const { t } = useT();
   const isVoid = outcome === "VOID";
@@ -170,8 +203,30 @@ export function ResolutionPanel({
             value={formatTzs(noPool)}
             win={outcome === "NO"}
           />
-          <Row label={t.market.resPlatformFee} value={fmtPct(feeRate)} muted />
+          {/* THE FEE, IN SHILLINGS — and, when the ceiling bound, the arithmetic
+              that produced it. A player checking that we paid him correctly can
+              recompute the whole thing from the four numbers on this panel.
+              A single "9%" here would have been a lie on any capped poll. */}
+          <Row label={t.market.resPlatformFee} value={formatTzs(Math.round(fee.fee))} muted />
+          {fee.capped && (
+            <Row
+              label={t.market.resFeeCapped}
+              value={`${fmtPct(rates.feeCeilingRate)} × ${formatTzs(Math.round(fee.smaller))}`}
+              muted
+            />
+          )}
         </div>
+      )}
+
+      {/* Why the fee was capped — the promise, stated where it was kept. */}
+      {!isVoid && fee.capped && (
+        <Callout tone="brand">
+          {t.market.resFeeCappedNote
+            .replace(/\{ceiling\}/g, fmtPct(rates.feeCeilingRate))
+            .replace(/\{commission\}/g, fmtPct(rates.commissionRate))
+            .replace(/\{uncapped\}/g, formatTzs(Math.round(fee.commission)))
+            .replace(/\{charged\}/g, formatTzs(Math.round(fee.fee)))}
+        </Callout>
       )}
 
       {/* Truthful footnotes — personal payout + the dispute route that actually

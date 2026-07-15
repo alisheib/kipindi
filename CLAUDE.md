@@ -12,9 +12,36 @@
 
 **50pick** — Tanzania-licensed pari-mutuel
 prediction-markets platform. Players pick YES or NO on a proposition
-(sports, weather, macro, crypto, culture); winners share the losing
-pool minus an operator margin (default 9%). Mobile-first, bilingual
-EN + SW (FR also wired), regulator-ready.
+(sports, weather, macro, crypto, culture); winners share the pool minus
+our commission. Mobile-first, trilingual EN + SW + ZH, regulator-ready.
+
+**THE FEE RULE (2026-07-14, Ali's signed-off decision — do not change):**
+> Our commission is **10% of the pool, but never more than a third of the
+> smaller side.**
+
+```
+fee = min(commissionRate * pool, feeCeilingRate * min(yesPool, noPool))
+```
+
+The smaller side **is the prize** — all the money the winners can win. Capping the
+fee below it makes **"a winning bet is never paid less than it staked"** true
+arithmetically, for *any* rate an admin can set. Before this, a flat 9%-of-pool fee
+on a lopsided poll grew **bigger than the entire prize** and was paid out of the
+winners' own stakes: a real poll (YES 300,000 / NO 10,500) paid a man who staked
+100,000 on the **winning** side just **93,150**. He now gets **102,333**.
+
+Write it as `min(commission, ceiling)` — **never as a threshold `if`**. The two
+rules cross over seamlessly at 70/30; a threshold would be a step function, and a
+step function is gameable.
+
+- Single source of truth: **`src/lib/payout.ts`** (isomorphic — client *and* server).
+- **Rates stick to the poll.** Every market freezes its rates at creation
+  (`PredictionMarket.feeSnapshot`). Settlement, cash-out and every preview read the
+  snapshot, **never live config** — so retuning a rate cannot reprice a bet already
+  placed. Use `ratesFor(market)`, not `getEffectiveConfig()`, in any money path.
+- The `negative` lean level is **deleted** — a winner cannot be paid below stake, so
+  never write copy that says they might be.
+- Proof: `npm run test:fee-model` (77 assertions), `npm run test:withdrawal`.
 
 - **Repo:** `C:\kipindi`
 - **GitHub:** `https://github.com/alisheib/kipindi.git` (private)
@@ -478,16 +505,36 @@ signature element — same object as the TippingBar needle + conviction dial.
 - Master SVGs: `/brand/mark-{color,white,dark,simplified}.svg`
 - Hard rules: full mark ≥ 24px, simplified < 24px, never mirror/re-tint/stretch
 
-## Tax model — TRA/GBT on operator commission (June 2026)
+## Tax model — TAXES ARE ONLY EVER ON OUR COMMISSION (July 2026)
 
-Taxes come OUT of the operator's 9% commission, NOT from the player pool:
-- `traTaxOnCommissionRate` (default 10%) — 10% of commission → TRA
-- `gbtLevyOnCommissionRate` (default 5%) — 5% of commission → GBT
-- Both are admin-editable at `/admin/config` — no redeploy needed
-- Daily operations report (`daily-ops`) in `/admin/reports` uses these rates
+**A player is never taxed. Not on a payout, not on a withdrawal, not ever.** Taxes
+come out of the fee *we* earned:
+- `traTaxOnCommissionRate` (default 10%) — 10% of **our fee** → TRA
+- `gbtLevyOnCommissionRate` (default 5%) — 5% of **our fee** → GBT
+- Both admin-editable at `/admin/config` — no redeploy needed
 
-Example: TZS 100,000 pool → 9% commission = TZS 9,000 → TRA 900 + GBT 450 →
-operator keeps TZS 7,650. Player payout unchanged.
+Example: pool 100,000, balanced → fee 10,000 → TRA 1,000 + GBT 500 → we keep 8,500.
+**The player's payout is untouched by any of it.**
+
+**⚠️ THE 15% WITHHOLDING TAX IS DELETED (2026-07-14).** `computeWithdrawalTax()`
+withheld 15% of **every** withdrawal — including money a player had deposited and
+never bet. Deposit 100,000, place no bets, withdraw → he received **85,000**. The
+code comment called itself *"naïve"*. It is gone.
+
+**What a player is charged, in full:**
+| | |
+|---|---|
+| The pool commission | indirectly, through the payout — capped, see above |
+| `withdrawalFeeRate` (1%) | on withdrawal. `withdrawalGatewayShareRate` (0.5%) of it is the gateway's |
+| `cashOutFeeRate` (10%) | only if he exits early, after the free window. Goes to the HOUSE |
+
+Nothing else. If you find yourself adding a deduction to a player's money, stop.
+
+**✅ RESOLVED 2026-07-15 — tax on what we KEEP.** The ledger and the statutory report
+now levy TRA/GBT on the same base: our actual commission. GGR is computed net of
+refunds (`stakes − payouts − refunds`) so a voided/one-sided poll — where we keep
+nothing — is taxed on nothing. Report == ledger, verified end-to-end. Rates live in
+admin config. See `docs/F6-LIQUIDITY-DESIGN.md` §6.1 and the decision doc.
 
 ## Gold budget (June 2026 design authority)
 

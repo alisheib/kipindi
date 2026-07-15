@@ -16,6 +16,7 @@ import { Chip } from "@/components/ui/chip";
 import { ConvictionDial } from "./conviction-dial";
 import { NotifyPrompt } from "./notify-prompt";
 import { useT } from "@/lib/i18n";
+import type { PollRates } from "@/lib/payout";
 
 type Props = {
   marketId: string;
@@ -29,7 +30,8 @@ type Props = {
   initialSide?: "YES" | "NO";
   /** Total effective fee for this market — passed straight to the dial so its
    *  payout/lean projection matches server settlement. */
-  feeRate?: number;
+  /** THIS POLL'S frozen fee rates — see PollRates. */
+  rates?: PollRates;
   /** Admin-configured stake bounds (getEffectiveConfig) — threaded to the dial
    *  so its range reflects the operator's min/max, not a hardcoded 500–100k. */
   minStake?: number;
@@ -37,7 +39,7 @@ type Props = {
 };
 
 export function SidePicker({
-  marketId, marketTitle, yesPool, noPool, yesPct, resolutionAt, balance, initialSide, feeRate, minStake, maxStake,
+  marketId, marketTitle, yesPool, noPool, yesPct, resolutionAt, balance, initialSide, rates, minStake, maxStake,
 }: Props) {
   const { t } = useT();
   const [side, setSide] = useState<"YES" | "NO" | null>(initialSide ?? null);
@@ -70,7 +72,7 @@ export function SidePicker({
           resolutionAt={resolutionAt}
           balance={balance}
           lockedSide={side}
-          feeRate={feeRate}
+          rates={rates}
           baseStake={minStake}
           maxStake={maxStake}
         />

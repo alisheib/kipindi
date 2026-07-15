@@ -102,3 +102,37 @@ export function hexToRgba(hex: string, alpha = 1): string {
   const b = n & 255;
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
+
+/**
+ * Fill {placeholders} in an i18n string.
+ *
+ * The dictionary is a plain frozen object — there is no t() function and no ICU
+ * layer — so interpolation is done at the call site. This is that, in one place,
+ * with a GLOBAL replace: `String.replace("{pct}", …)` only swaps the FIRST
+ * occurrence, so a sentence that mentions the rate twice would silently keep one
+ * raw `{pct}` in the player's face. Several strings now do mention it twice.
+ *
+ *   fill(t.dialog.freeExitBody, { mins: 5, pct: 10 })
+ */
+export function fill(s: string, vars: Record<string, string | number>): string {
+  return s.replace(/\{(\w+)\}/g, (raw, k: string) =>
+    Object.prototype.hasOwnProperty.call(vars, k) ? String(vars[k]) : raw,
+  );
+}
+
+/** Format a rate (0.10) as a percentage string ("10%"), trimming a trailing .0 */
+export function fmtRate(rate: number): string {
+  return `${pctNum(rate)}%`;
+}
+
+/**
+ * A rate (0.10) as the bare number for a "{pct}%" slot → 10.
+ *
+ * The copy carries the "%" so that Chinese can put it where Chinese puts it.
+ * Rounded to one decimal: an admin who types 12.5% must see 12.5, not
+ * 12.500000000000002.
+ */
+export function pctNum(rate: number): number {
+  const v = rate * 100;
+  return Number.isInteger(v) ? v : Number(v.toFixed(1));
+}

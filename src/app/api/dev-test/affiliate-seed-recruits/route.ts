@@ -9,7 +9,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { db, type StoredUser } from "@/lib/server/store";
 import { randomId } from "@/lib/server/crypto";
-import { bindRecruit, onRecruitBet } from "@/lib/server/affiliate-service";
+import { bindRecruit, onRecruitBet, onRecruitSettlement } from "@/lib/server/affiliate-service";
 
 async function mkUser(displayName: string) {
   const id = `usr_${randomId(12)}`;
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     const r = await bindRecruit({ recruitUserId: rec.id, code });
     if (r.bound) {
       bound++;
-      if (activity && i % 2 === 0) await onRecruitBet(rec.id, { stake: 50_000, operatorCommissionRate: 0.03 });
+      if (activity && i % 2 === 0) await onRecruitSettlement(rec.id, { operatorFee: 1_500 });
     }
   }
   return NextResponse.json({ ok: true, bound });

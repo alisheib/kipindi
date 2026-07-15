@@ -22,11 +22,16 @@ import { useT } from "@/lib/i18n";
 const STORAGE_KEY = "50pick-primer-seen";
 const HIDE_ON = /^\/(auth|admin)(\/|$)/;
 
+type Lang = "en" | "sw" | "zh";
+type L10n = { en: string; sw: string; zh: string };
+
 type Card = {
-  eyebrow: { en: string; sw: string; zh: string };
-  title: { en: string; sw: string; zh: string };
-  body: { en: string; sw: string; zh: string };
-  visual: React.ReactNode;
+  eyebrow: L10n;
+  title: L10n;
+  body: L10n;
+  /** Takes the locale — the card visuals carry captions, and those captions were
+   *  being rendered in English to Swahili and Chinese players. */
+  visual: (lang: Lang) => React.ReactNode;
 };
 
 /* ── Card 1 visual: the 50pick mark flanked by YES/NO paths ────────────── */
@@ -105,14 +110,14 @@ function VisualDial() {
       <div className="flex items-center justify-between px-2 font-mono text-[9px] tracking-[0.12em] uppercase text-text-subtle">
         <span>1x min</span>
         <span style={{ color: "var(--gilt)" }}>drag to commit</span>
-        <span>5x max</span>
+        <span>200x max</span>
       </div>
     </div>
   );
 }
 
 /* ── Card 3 visual: real TippingBar showing the pool split ─────────────── */
-function VisualPools() {
+function VisualPools({ lang }: { lang: Lang }) {
   return (
     <div className="space-y-4 py-1 w-full">
       {/* Real TippingBar component — 62% YES / 38% NO */}
@@ -135,12 +140,22 @@ function VisualPools() {
           <p className="font-display text-[15px] font-bold text-text">TZS 18k</p>
         </div>
       </div>
+      {/* This caption was hardcoded English — shown untranslated to every Swahili
+          and Chinese player — and it said "small operator margin", which is the
+          old model. It now states the actual promise, in the player's language. */}
       <p className="text-center font-mono text-[8px] uppercase tracking-[0.14em] text-text-subtle">
-        losers fund winners &middot; small operator margin
+        {POOL_CAPTION[lang]}
       </p>
     </div>
   );
 }
+
+/** The one-line promise under the pool visual. Never below your stake. */
+const POOL_CAPTION: L10n = {
+  en: "losers fund winners · a correct call never loses",
+  sw: "wapotezao hulipa washindi · jibu sahihi halipotezi",
+  zh: "输家资助赢家 · 判断正确绝不亏损",
+};
 
 const CARDS: Card[] = [
   {
@@ -155,7 +170,7 @@ const CARDS: Card[] = [
       sw: "Kila swali ni tukio halisi lenye jibu la NDIO au HAPANA — linatatuliwa kupitia chanzo rasmi cha umma. Hakuna kete. Imani tu.",
       zh: "每个问题都是真实事件，答案为「是」或「否」 — 以官方公开来源为准。没有骰子，没有老虎机。只有信念。",
     },
-    visual: <VisualWhatIs />,
+    visual: () => <VisualWhatIs />,
   },
   {
     eyebrow: { en: "how you bet", sw: "jinsi ya kuweka dau", zh: "如何投注" },
@@ -165,11 +180,11 @@ const CARDS: Card[] = [
       zh: "拖动刻度盘。信念 = 投注。",
     },
     body: {
-      en: "One gesture sets both your side and your stake. Drag toward YES or NO — the further from centre, the higher your conviction multiplier (1x to 5x).",
+      en: "One gesture sets both your side and your stake. Drag toward YES or NO — the further from centre, the higher your conviction multiplier.",
       sw: "Mguso mmoja huweka upande wako na dau lako. Sogeza kuelekea NDIO au HAPANA — kadri unavyosogea mbali, ndivyo kiwango chako kinaongezeka.",
-      zh: "一个手势设置您的立场和投注额。向「是」或「否」拖动 — 离中心越远，信念倍数越高（1倍到5倍）。",
+      zh: "一个手势设置您的立场和投注额。向「是」或「否」拖动 — 离中心越远，信念倍数越高。",
     },
-    visual: <VisualDial />,
+    visual: () => <VisualDial />,
   },
   {
     eyebrow: { en: "how payouts work", sw: "jinsi malipo yanavyofanya kazi", zh: "赔付如何运作" },
@@ -178,12 +193,16 @@ const CARDS: Card[] = [
       sw: "Washindi wanagawana bwawa la wapotezao.",
       zh: "赢家分享输家的奖池。",
     },
+    // Rewritten for the capped-fee model. The old copy said the pool is split
+    // "minus a small margin" — and the SWAHILI version dropped the margin
+    // entirely, describing a fee-free split. All three now say the same thing, and
+    // the thing they say is the promise: a correct call never loses money.
     body: {
-      en: "No fixed odds. The losing side's pool (minus a small margin) is split among winners by the size of their stake. When one side grows, the other's potential payout grows too.",
-      sw: "Hakuna odds. Bwawa la upande uliopoteza linagawanywa kati ya washindi kulingana na dau. Upande mmoja ukikua, malipo ya upande mwingine yanaongezeka.",
-      zh: "没有固定赔率。输方奖池（扣除少量佣金）按投注额比例分配给赢家。一方增长，另一方的潜在赔付也随之增长。",
+      en: "No fixed odds. Winners share the pool by the size of their stake, after our commission — which is capped at a third of the smaller side, so being right never costs you money. When betting closes we tell you the exact amount you'll receive.",
+      sw: "Hakuna odds. Washindi wanagawana bwawa kulingana na dau lao, baada ya kamisheni yetu — ambayo haizidi theluthi moja ya upande mdogo, kwa hiyo kuwa sahihi hakukugharimu pesa kamwe. Dau likifungwa tutakuambia kiasi kamili utakachopata.",
+      zh: "没有固定赔率。赢家按投注额比例分享奖池（扣除我们的佣金后）— 佣金上限为较小一方的三分之一，因此判断正确绝不会让您亏钱。投注关闭时，我们会告知您将收到的确切金额。",
     },
-    visual: <VisualPools />,
+    visual: (lang) => <VisualPools lang={lang} />,
   },
 ];
 
@@ -326,7 +345,7 @@ export function FirstVisitPrimer() {
             className="flex items-center justify-center rounded-xl border border-border/60 bg-bg-overlay/40 px-4 py-5"
             style={{ minHeight: 120 }}
           >
-            {c.visual}
+            {c.visual(lang)}
           </div>
 
           {/* Eyebrow */}

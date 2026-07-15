@@ -24,9 +24,9 @@ import { buyPositionAction } from "@/app/markets/actions";
 import { HouseLeanWarning } from "./house-lean-warning";
 import { BetConfirmModal } from "./bet-confirm-modal";
 import { OperationResultModal } from "./operation-result-modal";
-import { payoutFor, leanFor, type LeanLevel } from "@/lib/payout";
+import { payoutFor, leanFor, DEFAULT_COMMISSION_RATE, DEFAULT_FEE_CEILING_RATE, type LeanLevel, type PollRates } from "@/lib/payout";
 import { haptics, motionReduced } from "@/lib/haptics";
-import { formatTzs, formatNumber } from "@/lib/utils";
+import { formatTzs, formatNumber, fill, fmtRate, pctNum } from "@/lib/utils";
 
 type Side = "YES" | "NO" | "NEUTRAL";
 
@@ -142,14 +142,17 @@ type Props = {
    *  is greyed + lock-marked, and a YES/NO segmented toggle lets the player
    *  switch sides deliberately. Undefined → classic bidirectional dial. */
   lockedSide?: "YES" | "NO";
-  /** Total effective fee (tax+commission+reserve+aggregator) for THIS market,
-   *  from getEffectiveConfig(marketId). Threaded from the server so the inline
-   *  payout/lean projection matches the rate the server will actually settle
-   *  at — including any per-market override. Undefined → payout.ts default (9%). */
-  feeRate?: number;
+  /** THIS POLL'S frozen fee rates (its `feeSnapshot`), threaded from the server.
+   *
+   *  The projection here must be computed at the rates the server will actually
+   *  settle at, or the dial quotes one number and settlement pays another. This
+   *  used to be a single blended `feeRate: number` smuggled in through the
+   *  `taxRate` slot with the other three zeroed — a hack that could not survive a
+   *  fee that is no longer a flat percentage of the pool. */
+  rates?: PollRates;
 };
 
-export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, maxStake, initial = 0.5, marketTitle, resolutionAt, balance, lockedSide, feeRate }: Props) {
+export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, maxStake, initial = 0.5, marketTitle, resolutionAt, balance, lockedSide, rates }: Props) {
   // The side the dial is locked to (null = free bidirectional). The choice is
   // made on the market card (outside) and is FINAL here — the in-dial YES/NO
   // pills are display-only indicators, NOT switchable. To change sides the
@@ -473,18 +476,14 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
   // Whole-pool projection — payout AND warning level. Single source of
   // truth lives in `@/lib/payout` so the dial, the confirm modal, the
   // position card, and the server settlement engine never disagree.
+  // Projected at THIS POLL'S OWN rates, via the same `payoutFor` the server uses.
   const proj = effectiveSide === "NEUTRAL"
     ? { payout: 0, ratio: 0 }
-    : payoutFor({
-        yesPool, noPool, side: effectiveSide, stake,
-        // Carry the per-market effective fee (if supplied) so the lean warning
-        // matches the rate the server settles at. Pass it as the sole fee
-        // component; the others are folded into this single total.
-        ...(feeRate != null ? { taxRate: feeRate, commissionRate: 0, reserveRate: 0, aggregatorRate: 0 } : {}),
-      });
+    : payoutFor({ yesPool, noPool, side: effectiveSide, stake }, rates ?? {});
   const lean: LeanLevel = effectiveSide === "NEUTRAL" ? "fair" : leanFor(proj.ratio);
-  const payoutRolled = useRollingNumber(proj.payout);
-  const payoutDisplay = Math.max(0, Math.round(payoutRolled));
+  // `payoutRolled` / `payoutDisplay` deleted: the rolling-number spring animated a
+  // value that was computed every frame and rendered NOWHERE (D3 hides the figure
+  // pre-bet). Dead code that cost a re-render per frame.
 
   // Strength curve (calmed): linear ramp out of the neutral band, then
   // tapered after a 0.7 peak so the side glow stops escalating into an
@@ -1342,7 +1341,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
         <div className="mt-3 rounded-md border border-border bg-bg-overlay px-3 py-2.5">
           <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mb-1">
             {t.common.payout2}
-            <InfoHint size={10} label={t.dialog.payoutHowItWorks} />
+            <InfoHint size={10} label={fill(t.dialog.payoutHowItWorks, { pct: pctNum(rates?.commissionRate ?? DEFAULT_COMMISSION_RATE), ceiling: fmtRate(rates?.feeCeilingRate ?? DEFAULT_FEE_CEILING_RATE) })} />
           </p>
           <p className="text-[12px] leading-relaxed text-text-muted">
             {t.dialog.payoutCalcBody}
@@ -1419,9 +1418,8 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 500, max
         side={lockedQuote?.side ?? (effectiveSide === "NEUTRAL" ? "YES" : effectiveSide)}
         stake={lockedQuote?.stake ?? stake}
         multiplier={lockedQuote?.multiplier ?? multiplierTarget}
-        payout={proj.payout}
-        ratio={proj.ratio}
         lean={lean}
+        rates={rates}
         isOneSided={(yesPool > 0 && noPool === 0) || (noPool > 0 && yesPool === 0)}
         pending={pending}
         marketTitle={marketTitle}

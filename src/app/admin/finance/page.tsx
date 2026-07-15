@@ -22,8 +22,22 @@ import type { Period } from "@/lib/server/analytics";
 import { currentSession } from "@/lib/server/auth-service";
 import { hasRole, MONEY_ROLES } from "@/lib/server/roles";
 import { getEffectiveConfig } from "@/lib/server/market-config";
+import { houseAccountBalances } from "@/lib/server/ledger";
+import { Stat } from "@/components/ui/stat";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
 
+/** What each house account actually holds — so the owner doesn't have to guess. */
+const HOUSE_ACCOUNT_NOTE: Record<string, string> = {
+  "HOUSE:COMMISSION": "our fee: pool + early-exit + withdrawal",
+  "HOUSE:AGGREGATOR": "the payment gateway's share",
+  "HOUSE:TRA_LEVY": "TRA, levied on our commission",
+  "HOUSE:GBT_LEVY": "GBT, levied on our commission",
+  "HOUSE:TAX": "RETIRED — historical rows only",
+  "HOUSE:RESERVE": "RETIRED — historical rows only",
+  "SYSTEM:BONUS": "bonus issuance",
+  "SYSTEM:ADJUSTMENT": "admin adjustments",
+  "SYSTEM:VOID": "expired bonus sink",
+};
 export const metadata = { title: "Admin · Finance" };
 export const dynamic = "force-dynamic";
 
@@ -66,6 +80,8 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
   // can't compute it, we show nothing. Negative GGR accrues no levy (you cannot
   // owe tax on a loss), which matches reports/catalogue.ts's Math.max(0, ggr).
   const rates = await getEffectiveConfig().catch(() => null);
+  // Real balances from the double-entry ledger. Empty object without a DB.
+  const houseBalances = await houseAccountBalances().catch(() => ({} as Record<string, number>));
   const taxAccrued = rates
     ? Math.round(Math.max(0, ggr) * (rates.traTaxOnCommissionRate + rates.gbtLevyOnCommissionRate))
     : null;
@@ -101,10 +117,48 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
             delta={taxAccrued === null ? "rates unavailable" : "TRA + GBT on commission"}
             deltaDir="flat"
           />
-          <AdminKpi label="Operator margin"  sw="Faida"         value={`${margin.toFixed(1)}%`} delta="vs 7-10% band" deltaDir={margin > 7 ? "up" : "flat"} />
+          <AdminKpi label="Operator margin"  sw="Faida"         value={`${margin.toFixed(1)}%`} delta="capped fee — lower on lopsided polls by design" deltaDir="flat" />
           <AdminKpi label="Wallet liability" sw="Madeni"        value={`TZS ${formatTzsCompact(liability).replace("TZS ", "")}`} delta="real-time" />
           <AdminKpi label="Active players"   sw="Wachezaji"     value={activePeriod.toLocaleString()} delta={`${period}`} />
         </div>
+
+        {/* THE HOUSE ACCOUNTS — straight from the double-entry ledger.
+            `houseAccountBalances()` has existed in ledger.ts since the ledger was
+            built and had ZERO call sites: the books were being kept and nobody was
+            shown them. These are the real balances, summed from the real entries —
+            not derived from analytics, not a formula, not an estimate.
+            An empty state is shown rather than a fabricated number. */}
+        <AdminCard
+          title="House accounts (double-entry ledger)"
+          sw="Akaunti za nyumba"
+          action={
+            <span className="font-mono text-[10px] tracking-[0.10em] uppercase text-text-tertiary">
+              summed from ledger entries
+            </span>
+          }
+        >
+          {Object.keys(houseBalances).length === 0 ? (
+            <p className="text-caption text-text-tertiary">
+              No ledger entries yet. This panel shows real balances only — it will stay empty rather than show a
+              number we cannot substantiate.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {Object.entries(houseBalances)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([account, amount]) => (
+                  <Stat
+                    key={account}
+                    label={account.replace(/^(HOUSE|SYSTEM):/, "")}
+                    value={`TZS ${formatTzsCompact(amount).replace("TZS ", "")}`}
+                    tone={account === "HOUSE:COMMISSION" ? "gold" : "default"}
+                    money
+                    hint={HOUSE_ACCOUNT_NOTE[account]}
+                  />
+                ))}
+            </div>
+          )}
+        </AdminCard>
 
         {/* Charts row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">

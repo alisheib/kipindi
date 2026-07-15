@@ -10,15 +10,18 @@
  *   PLAYER_BONUS:{userId}    — player's bonus balance
  *   EXTERNAL:{provider}      — external payment provider (M-Pesa, Airtel, etc.)
  *   POOL:{marketId}          — market's betting pool
- *   HOUSE:TAX                — TRA withholding tax
- *   HOUSE:COMMISSION         — operator revenue (commission)
- *   HOUSE:RESERVE            — operator reserve fund
- *   HOUSE:AGGREGATOR         — payment aggregator fees
- *   HOUSE:TRA_LEVY           — TRA tax on commission
- *   HOUSE:GBT_LEVY           — GBT gaming board levy on commission
+ *   HOUSE:COMMISSION         — operator revenue: the capped pool fee, the
+ *                              early-exit fee, and our slice of the 1% withdrawal fee
+ *   HOUSE:AGGREGATOR         — the payment gateway's slice of the withdrawal fee
+ *   HOUSE:TRA_LEVY           — TRA tax, levied on our commission
+ *   HOUSE:GBT_LEVY           — GBT gaming board levy, levied on our commission
  *   SYSTEM:BONUS             — bonus issuance source
  *   SYSTEM:ADJUSTMENT        — admin adjustments
  *   SYSTEM:VOID              — expired/cancelled bonus sink
+ *
+ *   HOUSE:TAX, HOUSE:RESERVE — RETIRED 2026-07 with taxRate/reserveRate. Never
+ *                              credited again; historical entries remain, so the
+ *                              accounts stay on the books and still reconcile.
  */
 
 import { prisma } from "./prisma";
@@ -125,21 +128,43 @@ export function depositEntries(opts: {
   ];
 }
 
-/** Withdrawal: player wallet → external (with optional tax split) */
+/**
+ * Withdrawal: player wallet → external, minus the withdrawal fee.
+ *
+ * ⚠️ THERE IS NO WITHHOLDING TAX. The old path withheld 15% of EVERY withdrawal
+ * — `computeWithdrawalTax(amount, amount)`, whose own comment called itself
+ * "naïve" — including money a player had deposited and never bet. Deposit
+ * 100,000, place no bet, withdraw, receive 85,000. Ali's decision: taxes are only
+ * ever on OUR commission, never on the player. That function is deleted.
+ *
+ * A player now pays exactly one thing on a withdrawal: `withdrawalFeeRate` (1%).
+ * Of that, `withdrawalGatewayShareRate` (0.5% of the amount) is what the payment
+ * gateway charges us, and we keep the rest.
+ */
 export function withdrawalEntries(opts: {
   txnId: string;
   userId: string;
   grossAmount: number;
-  taxWithheld: number;
+  /** Total charged to the player (1% of gross). */
+  fee: number;
+  /** The gateway's slice of that fee. The remainder is ours. */
+  gatewayShare: number;
   provider: string;
 }): LedgerLine[] {
-  const net = opts.grossAmount - opts.taxWithheld;
+  const fee = Math.max(0, Math.round(opts.fee));
+  const gatewayShare = Math.min(fee, Math.max(0, Math.round(opts.gatewayShare)));
+  const houseShare = fee - gatewayShare;
+  const net = opts.grossAmount - fee;
+
   const lines: LedgerLine[] = [
     { account: acct.player(opts.userId), entryType: "WITHDRAWAL", amount: -opts.grossAmount, txnId: opts.txnId, userId: opts.userId, memo: `Withdrawal` },
     { account: acct.external(opts.provider), entryType: "WITHDRAWAL", amount: net, txnId: opts.txnId, userId: opts.userId, memo: `Payout to ${opts.provider}` },
   ];
-  if (opts.taxWithheld > 0) {
-    lines.push({ account: acct.tax, entryType: "WITHDRAWAL_TAX", amount: opts.taxWithheld, txnId: opts.txnId, userId: opts.userId, memo: `Withholding tax` });
+  if (gatewayShare > 0) {
+    lines.push({ account: acct.aggregator, entryType: "WITHDRAWAL_FEE", amount: gatewayShare, txnId: opts.txnId, userId: opts.userId, memo: `Payment gateway fee` });
+  }
+  if (houseShare > 0) {
+    lines.push({ account: acct.commission, entryType: "WITHDRAWAL_FEE", amount: houseShare, txnId: opts.txnId, userId: opts.userId, memo: `Withdrawal fee (operator)` });
   }
   return lines;
 }
@@ -168,45 +193,62 @@ export function stakeEntries(opts: {
   return lines;
 }
 
-/** Settlement payout: market pool → player wallet + house accounts */
+/**
+ * Settlement payout: market pool → player wallet + house accounts.
+ *
+ * The fee is now ONE number — `min(commissionRate × pool, feeCeilingRate ×
+ * smallerSide)` — not four rate-slices of the pool. So this books the winner's
+ * proportional share of that single fee to HOUSE:COMMISSION, and the TRA/GBT
+ * levies out of it.
+ *
+ * HOUSE:TAX / HOUSE:RESERVE / HOUSE:AGGREGATOR are no longer credited at
+ * settlement: taxRate, reserveRate and aggregatorRate are gone. The accounts
+ * still exist on the ledger because historical entries reference them and the
+ * books must still add up — they are simply never credited again.
+ *
+ * Conservation: each GROUP sums to exactly zero — pool debit == player credit +
+ * commission + levies. That is the property `postLedgerEntries` enforces, and a
+ * group that failed it would be REJECTED and silently dropped, so it matters.
+ *
+ * Rounding: the caller passes the whole poll's `fee` and this books only THIS
+ * winner's share of it (`round(share × fee)`). Summed across winners that
+ * reconstitutes the fee to within **under 1 TZS per winner** — inherent dust in any
+ * pari-mutuel with integer payouts, and the same dust the old model carried. The
+ * POOL account can therefore end a settlement a shilling or two off zero. No real
+ * money is created or destroyed by it: the wallet credit and the ledger's player
+ * line are the SAME `payout` value, so a player is never paid a different amount
+ * than the books say. Bounded and asserted in scripts/money-invariants.test.mts
+ * (GLOBAL conservation, dust ≤ winners + markets + 2).
+ */
 export function settlementPayoutEntries(opts: {
   groupId: string;
   userId: string;
   marketId: string;
   payout: number;
   stake: number;
-  grossPool: number;
+  /** The WHOLE poll's fee in TZS, from poolFee(). Not a rate. */
+  fee: number;
   winningPool: number;
-  rates: { taxRate: number; commissionRate: number; reserveRate: number; aggregatorRate: number; traTaxOnCommissionRate: number; gbtLevyOnCommissionRate: number };
+  rates: { traTaxOnCommissionRate: number; gbtLevyOnCommissionRate: number };
 }): LedgerLine[] {
-  // The payout already has fees deducted. Calculate the player's proportional
-  // share of each fee bucket so the ledger entries sum to zero.
+  // This winner's share of the poll's single fee.
   const share = opts.winningPool > 0 ? opts.stake / opts.winningPool : 0;
-  const totalFeeRate = opts.rates.taxRate + opts.rates.commissionRate + opts.rates.reserveRate + opts.rates.aggregatorRate;
-  const grossShare = Math.round(share * opts.grossPool);
-  const taxAmt = Math.round(share * opts.grossPool * opts.rates.taxRate);
-  const commAmt = Math.round(share * opts.grossPool * opts.rates.commissionRate);
-  const reserveAmt = Math.round(share * opts.grossPool * opts.rates.reserveRate);
-  const aggAmt = Math.round(share * opts.grossPool * opts.rates.aggregatorRate);
+  const commAmt = Math.max(0, Math.round(share * opts.fee));
   const traLevyAmt = Math.round(commAmt * opts.rates.traTaxOnCommissionRate);
   const gbtLevyAmt = Math.round(commAmt * opts.rates.gbtLevyOnCommissionRate);
 
-  // The net payout already delivered to the player
   const netPayout = opts.payout;
-  // Ensure conservation: the pool debits must exactly equal all credits
-  const totalCredits = netPayout + taxAmt + commAmt + reserveAmt + aggAmt;
+  // The pool gives up the player's payout plus his share of our fee. Nothing else.
+  const totalCredits = netPayout + commAmt;
 
   const lines: LedgerLine[] = [
     { account: acct.pool(opts.marketId), entryType: "PAYOUT_CREDIT", amount: -totalCredits, userId: opts.userId, marketId: opts.marketId, memo: `Settlement debit` },
     { account: acct.player(opts.userId), entryType: "PAYOUT_CREDIT", amount: netPayout, userId: opts.userId, marketId: opts.marketId, memo: `Payout` },
   ];
 
-  if (taxAmt > 0) {
-    lines.push({ account: acct.tax, entryType: "SETTLEMENT_TAX", amount: taxAmt, marketId: opts.marketId, memo: `Pari-mutuel tax` });
-  }
   if (commAmt > 0) {
     lines.push({ account: acct.commission, entryType: "SETTLEMENT_COMMISSION", amount: commAmt, marketId: opts.marketId, memo: `Commission` });
-    // TRA/GBT levies on the commission
+    // The levies come OUT of our commission — never out of the player's payout.
     if (traLevyAmt > 0) {
       lines.push(
         { account: acct.commission, entryType: "SETTLEMENT_TRA_LEVY", amount: -traLevyAmt, marketId: opts.marketId, memo: `TRA levy on commission` },
@@ -220,29 +262,8 @@ export function settlementPayoutEntries(opts: {
       );
     }
   }
-  if (reserveAmt > 0) {
-    lines.push({ account: acct.reserve, entryType: "SETTLEMENT_RESERVE", amount: reserveAmt, marketId: opts.marketId, memo: `Reserve` });
-  }
-  if (aggAmt > 0) {
-    lines.push({ account: acct.aggregator, entryType: "SETTLEMENT_AGGREGATOR", amount: aggAmt, marketId: opts.marketId, memo: `Aggregator fee` });
-  }
 
   return lines;
-}
-
-/** Settlement loss: losing position's stake stays in pool (no entry needed —
- *  the pool already holds it). For the ledger, we do need to account for
- *  where the loser's stake went: it was distributed to winners + house.
- *  This is implicit in the settlement entries, but we record an explicit
- *  loss entry so the player's ledger shows the debit. */
-export function settlementLossEntries(opts: {
-  userId: string;
-  marketId: string;
-  stake: number;
-}): LedgerLine[] {
-  // No actual money movement — the stake was debited at bet placement
-  // and the pool distributed it at resolution. No double-counting.
-  return [];
 }
 
 /** Refund (void): market pool → player wallet */
@@ -269,22 +290,56 @@ export function refundEntries(opts: {
   return lines;
 }
 
-/** Cashout: market pool → player wallet (fee stays in pool for remaining bettors) */
+/**
+ * Cashout: market pool → player wallet + HOUSE.
+ *
+ * ⚠️ THE FEE IS REVENUE NOW. It used to be left sitting in the pool: the player
+ * was charged it, but it was never removed, so the REMAINING PLAYERS collected it
+ * at resolution and 50pick earned exactly ZERO on every early exit. The old
+ * comment here described that leak as intentional ("it stays distributed among
+ * remaining participants") while market-config.ts's docstring simultaneously
+ * claimed the fee was "booked to the house reserve as operator revenue". Two
+ * files, two stories, and the money went to neither of them on purpose.
+ *
+ * Now: the whole stake leaves the pool, `value` goes to the player, and `fee`
+ * goes to HOUSE:COMMISSION — carrying the TRA/GBT levies like any other fee we
+ * earn, because it IS a fee we earn.
+ */
 export function cashoutEntries(opts: {
   txnId: string;
   userId: string;
   marketId: string;
-  value: number;   // net amount player receives
-  fee: number;     // fee retained in pool
+  value: number;   // net amount the player receives
+  fee: number;     // our commission — leaves the pool, lands on the house
+  rates: { traTaxOnCommissionRate: number; gbtLevyOnCommissionRate: number };
 }): LedgerLine[] {
-  // The fee stays in the pool (distributed to remaining bettors at resolution).
-  // Only the `value` (net) actually moves to the player.
-  return [
-    { account: acct.pool(opts.marketId), entryType: "CASHOUT", amount: -opts.value, txnId: opts.txnId, userId: opts.userId, marketId: opts.marketId, memo: `Cash out` },
+  const fee = Math.max(0, Math.round(opts.fee));
+  const traLevyAmt = Math.round(fee * opts.rates.traTaxOnCommissionRate);
+  const gbtLevyAmt = Math.round(fee * opts.rates.gbtLevyOnCommissionRate);
+
+  // The pool gives up the player's whole stake: his proceeds + our fee.
+  const lines: LedgerLine[] = [
+    { account: acct.pool(opts.marketId), entryType: "CASHOUT", amount: -(opts.value + fee), txnId: opts.txnId, userId: opts.userId, marketId: opts.marketId, memo: `Cash out (stake leaves pool)` },
     { account: acct.player(opts.userId), entryType: "CASHOUT", amount: opts.value, txnId: opts.txnId, userId: opts.userId, marketId: opts.marketId, memo: `Cash out received` },
   ];
-  // Note: the fee doesn't appear as a ledger movement because it was never
-  // removed from the pool — it stays distributed among remaining participants.
+
+  if (fee > 0) {
+    lines.push({ account: acct.commission, entryType: "CASHOUT_FEE", amount: fee, txnId: opts.txnId, marketId: opts.marketId, memo: `Early-exit fee` });
+    if (traLevyAmt > 0) {
+      lines.push(
+        { account: acct.commission, entryType: "SETTLEMENT_TRA_LEVY", amount: -traLevyAmt, txnId: opts.txnId, marketId: opts.marketId, memo: `TRA levy on early-exit fee` },
+        { account: acct.traLevy, entryType: "SETTLEMENT_TRA_LEVY", amount: traLevyAmt, txnId: opts.txnId, marketId: opts.marketId, memo: `TRA levy received` },
+      );
+    }
+    if (gbtLevyAmt > 0) {
+      lines.push(
+        { account: acct.commission, entryType: "SETTLEMENT_GBT_LEVY", amount: -gbtLevyAmt, txnId: opts.txnId, marketId: opts.marketId, memo: `GBT levy on early-exit fee` },
+        { account: acct.gbtLevy, entryType: "SETTLEMENT_GBT_LEVY", amount: gbtLevyAmt, txnId: opts.txnId, marketId: opts.marketId, memo: `GBT levy received` },
+      );
+    }
+  }
+
+  return lines;
 }
 
 /** Bonus grant: system → player bonus account */

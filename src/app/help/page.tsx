@@ -4,6 +4,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
 import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/support-config";
 import { getServerT } from "@/lib/i18n-server";
+import { getEffectiveConfig } from "@/lib/server/market-config";
+import { fill, fmtRate, pctNum } from "@/lib/utils";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -25,6 +27,10 @@ const FAQ_ITEMS = [
 
 export default async function HelpPage() {
   const { t } = await getServerT();
+  // The FAQ quotes the LIVE rates — i.e. what a poll created right now would be
+  // priced at. The numbers are interpolated, never written into the copy: a
+  // hardcoded "9%" in an FAQ was true the day it shipped and false ever after.
+  const cfg = await getEffectiveConfig();
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-5">
       <PageHero glow="info">
@@ -79,7 +85,7 @@ export default async function HelpPage() {
                   </span>
                 </summary>
                 <p className="mt-2 pl-[25px] text-[12.5px] text-text-muted leading-relaxed">
-                  {t.help[`${key}a` as keyof typeof t.help]}
+                  {fill(t.help[`${key}a` as keyof typeof t.help], { pct: pctNum(cfg.commissionRate), ceiling: fmtRate(cfg.feeCeilingRate) })}
                   {key === "faq5" && ` ${SUPPORT_PHONE()} (${t.common.free}).`}
                 </p>
               </details>

@@ -17,7 +17,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { db, type StoredUser } from "@/lib/server/store";
 import { randomId } from "@/lib/server/crypto";
 import { setAffiliateConfig, getAffiliateConfig, type AffiliateConfig } from "@/lib/server/affiliate-config";
-import { ensureAffiliateAccount, bindRecruit, onRecruitBet, onRecruitDeposit } from "@/lib/server/affiliate-service";
+import { ensureAffiliateAccount, bindRecruit, onRecruitBet, onRecruitSettlement, onRecruitDeposit } from "@/lib/server/affiliate-service";
 
 const OFFICER = "system_stress";
 const COMMISSION_CAP = 5_000;
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
         // CROSS-recruit concurrency separately below.
         for (let e = 0; e < E; e++) {
           await onRecruitDeposit(rec.id, { cumulativeDepositsTzs: 10_000 * (e + 1) });
-          await onRecruitBet(rec.id, { stake: 50_000, operatorCommissionRate: 0.03 });
+          await onRecruitSettlement(rec.id, { operatorFee: 1_500 });
           eventCount += 2;
         }
       }
@@ -167,7 +167,7 @@ export async function POST(req: NextRequest) {
       const before = (await db.wallet.findByUserId(cref.id))?.balance ?? 0;
       const earnedBefore = (await db.affiliate.findByUserId(cref.id))?.totalEarnedTzs ?? 0;
       // Each recruit's FIRST bet → commission 750 + first-bet prize 5000 = 5750.
-      await Promise.all(crecs.map((rid) => Promise.resolve().then(() => onRecruitBet(rid, { stake: 50_000, operatorCommissionRate: 0.03 }))));
+      await Promise.all(crecs.map((rid) => Promise.resolve().then(() => onRecruitSettlement(rid, { operatorFee: 1_500 }))));
       const after = (await db.wallet.findByUserId(cref.id))?.balance ?? 0;
       const earnedAfter = (await db.affiliate.findByUserId(cref.id))?.totalEarnedTzs ?? 0;
       const expected = crecs.length * (750 + 5_000);

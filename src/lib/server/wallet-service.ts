@@ -5,13 +5,16 @@
  *  - Withdrawals require KYC APPROVED
  *  - AML threshold (TZS 1M) holds withdrawal in `AML_REVIEW`
  *  - Daily/weekly/monthly deposit limits enforced (Responsible Gambling)
- *  - Tax line shown to user but actual deduction at confirmation
+ *  - A withdrawal is charged ONE fee: `withdrawalFeeRate` (1%), part of which
+ *    (`withdrawalGatewayShareRate`) is the payment gateway's. There is NO
+ *    withholding tax — see the note in payments.ts. Taxes are only ever levied
+ *    on OUR commission, never on a player's money.
  */
 import { audit } from "./audit";
 import { sendEmailToUser, depositConfirmedHtml, withdrawalSentHtml, withdrawalUnderReviewHtml, amlRejectRefundHtml } from "./email";
 import { db, type StoredTxn } from "./store";
 import { randomId } from "./crypto";
-import { dispatchDeposit, dispatchWithdrawal, computeWithdrawalTax } from "./payments";
+import { dispatchDeposit, dispatchWithdrawal } from "./payments";
 import { isPaymentPaused } from "./payment-ops";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
 import { rateCheck } from "./rate-limit";
@@ -21,6 +24,7 @@ import { notifyDeposit, notifyWithdraw, notifyAdminsAmlReview } from "./notifica
 import { withLock } from "./locks";
 import { emit } from "./event-bus";
 import { postLedgerEntries, depositEntries, withdrawalEntries, internalCreditEntries } from "./ledger";
+import { getEffectiveConfig } from "./market-config";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
 import { formatTzs } from "@/lib/utils";
@@ -334,10 +338,20 @@ async function settleWithdrawalConfirmed(txnId: string): Promise<boolean> {
   });
   if (done) {
     const gross = Math.abs(done.amount);
-    const net = gross - done.taxWithheld;
+    // The fee was computed and frozen onto the txn row when the withdrawal was
+    // initiated. Read it back — never recompute, or a rate change between
+    // initiation and settlement would reprice a withdrawal already in flight.
+    const fee = done.fee ?? 0;
+    const net = gross - fee;
+    // The gateway's slice of that fee, at the rates in force. Clamped to the fee
+    // so the ledger group can never be unbalanced by a config change mid-flight.
+    const wcfg = await getEffectiveConfig().catch(() => null);
+    const gatewayShare = wcfg
+      ? Math.min(fee, Math.max(0, Math.round(gross * Math.max(0, wcfg.withdrawalGatewayShareRate))))
+      : 0;
     // Dual-write: post withdrawal to double-entry ledger (fire-and-forget).
-    postLedgerEntries(`wdr_${done.id}`, withdrawalEntries({ txnId: done.id, userId: done.userId, grossAmount: gross, taxWithheld: done.taxWithheld, provider: done.provider ?? "INTERNAL" })).catch(() => {});
-    audit({ category: "WALLET", action: "withdraw.confirmed", actorId: done.userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: done.providerRef, net } });
+    postLedgerEntries(`wdr_${done.id}`, withdrawalEntries({ txnId: done.id, userId: done.userId, grossAmount: gross, fee, gatewayShare, provider: done.provider ?? "INTERNAL" })).catch(() => {});
+    audit({ category: "WALLET", action: "withdraw.confirmed", actorId: done.userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: done.providerRef, gross, fee, gatewayShare, net } });
     notifyWithdrawalSent(done);
   }
   return !!done;
@@ -349,9 +363,10 @@ async function settleWithdrawalConfirmed(txnId: string): Promise<boolean> {
  * large (≥ TZS 1M) two-officer-approved withdrawal gets the same confirmation as
  * an ordinary one — previously the AML approve path released the funds silently.
  */
-export function notifyWithdrawalSent(txn: { id: string; userId: string; amount: number; taxWithheld: number; provider: string | null }): void {
+export function notifyWithdrawalSent(txn: { id: string; userId: string; amount: number; fee: number; provider: string | null }): void {
   const gross = Math.abs(txn.amount);
-  const net = gross - txn.taxWithheld;
+  // Net of the 1% withdrawal fee — the only deduction. There is no withholding tax.
+  const net = gross - (txn.fee ?? 0);
   notifyWithdraw(txn.userId, { status: "CONFIRMED", amount: gross, net, provider: friendlyProvider(txn.provider) });
   sendEmailToUser(txn.userId, (email) => ({
     to: email,
@@ -438,16 +453,29 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
 }
 
 /** Withdrawal — debits wallet immediately, dispatches to provider, settles. */
-export async function withdraw(userId: string, input: z.input<typeof WithdrawSchema>, idempotencyKey?: string): Promise<ServiceResult<{ txnId: string; status: StoredTxn["status"]; tax: number; net: number }>> {
+/**
+ * Withdrawal.
+ *
+ * The player is charged ONE thing: `withdrawalFeeRate` (1% of the amount). Of
+ * that, `withdrawalGatewayShareRate` (0.5%) is what the payment gateway costs us
+ * and the rest is ours.
+ *
+ * ⚠️ THE 15% WITHHOLDING TAX IS GONE. It applied to every withdrawal, including a
+ * player's own untouched deposit — deposit 100,000, bet nothing, withdraw, get
+ * 85,000. Taxes are only ever on OUR commission (see payments.ts).
+ */
+export async function withdraw(userId: string, input: z.input<typeof WithdrawSchema>, idempotencyKey?: string): Promise<ServiceResult<{ txnId: string; status: StoredTxn["status"]; fee: number; net: number }>> {
   const rl = rateCheck(userId, "wallet.withdraw");
   if (!rl.allowed) return { ok: false, error: "Too many withdrawal attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
 
   // Idempotency: if this key was already used, return the existing txn result.
+  // Read the fee off the STORED ROW rather than recomputing it — recomputing
+  // would silently reprice a replayed withdrawal at today's rate.
   if (idempotencyKey) {
     const existing = await db.txn.findByIdempotencyKey(idempotencyKey);
     if (existing) {
-      const tax = computeWithdrawalTax(Math.abs(existing.amount), Math.abs(existing.amount));
-      return { ok: true, data: { txnId: existing.id, status: existing.status, tax, net: Math.abs(existing.amount) - tax } };
+      const f = existing.fee ?? 0;
+      return { ok: true, data: { txnId: existing.id, status: existing.status, fee: f, net: Math.abs(existing.amount) - f } };
     }
   }
 
@@ -469,9 +497,12 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
   }
 
   const amount = parse.data.amount;
-  // Withholding tax — naïve: assume entire amount is taxable winnings until we wire bet ledger
-  const tax = computeWithdrawalTax(amount, amount);
-  const net = amount - tax;
+  // The withdrawal fee — the ONLY thing a player is charged here. Admin-tunable,
+  // never hardcoded.
+  const wcfg = await getEffectiveConfig();
+  const fee = Math.max(0, Math.round(amount * Math.max(0, wcfg.withdrawalFeeRate)));
+  const gatewayShare = Math.min(fee, Math.max(0, Math.round(amount * Math.max(0, wcfg.withdrawalGatewayShareRate))));
+  const net = amount - fee;
   const providerLabel = friendlyProvider(parse.data.provider);
   const txnId = `txn_${randomId(12)}`;
 
@@ -508,8 +539,8 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
       type: "WITHDRAWAL",
       status: "PROCESSING",
       amount: -amount,
-      fee: 0,
-      taxWithheld: tax,
+      fee,
+      taxWithheld: 0,   // no withholding tax — deleted 2026-07
       balanceAfter,
       currency: "TZS",
       provider: parse.data.provider,
@@ -523,7 +554,7 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
       completedAt: null,
       idempotencyKey: idempotencyKey ?? null,
     });
-    audit({ category: "WALLET", action: "withdraw.initiated", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { provider: parse.data.provider, amount, tax } });
+    audit({ category: "WALLET", action: "withdraw.initiated", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { provider: parse.data.provider, amount, fee, gatewayShare, net } });
     emit("wallet:balance", { userId, balance: balanceAfter });
     return { ok: true as const, duplicate: null };
   });
@@ -532,8 +563,8 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
   // Return its result WITHOUT debiting or dispatching again (exactly-once).
   if (hold.duplicate) {
     const dup = hold.duplicate;
-    const t = computeWithdrawalTax(Math.abs(dup.amount), Math.abs(dup.amount));
-    return { ok: true, data: { txnId: dup.id, status: dup.status, tax: t, net: Math.abs(dup.amount) - t } };
+    const f = dup.fee ?? 0;
+    return { ok: true, data: { txnId: dup.id, status: dup.status, fee: f, net: Math.abs(dup.amount) - f } };
   }
 
   // ── Provider dispatch (UNLOCKED): never hold a wallet lock across network I/O.
@@ -565,7 +596,7 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
       html: withdrawalUnderReviewHtml({ amount, reference: txnId }),
       tag: "withdrawal-review",
     })).catch(() => {});
-    return { ok: true, data: { txnId, status: "AML_REVIEW", tax, net } };
+    return { ok: true, data: { txnId, status: "AML_REVIEW", fee, net } };
   }
 
   if (result.status === "PENDING") {
@@ -574,13 +605,13 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
     // is the authority — we don't release the hold here.
     audit({ category: "WALLET", action: "withdraw.pending", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: result.providerRef, net } });
     notifyWithdraw(userId, { status: "INITIATED", amount, net, provider: providerLabel });
-    return { ok: true, data: { txnId, status: "PROCESSING", tax, net } };
+    return { ok: true, data: { txnId, status: "PROCESSING", fee, net } };
   }
 
   // CONFIRMED (synchronous provider / mock): release the hold + finalize. Same
   // exactly-once path the payout webhook uses — they can't double-settle.
   await settleWithdrawalConfirmed(txnId);
-  return { ok: true, data: { txnId, status: "CONFIRMED", tax, net } };
+  return { ok: true, data: { txnId, status: "CONFIRMED", fee, net } };
 }
 
 export async function listTransactions(userId: string, limit = 50) {

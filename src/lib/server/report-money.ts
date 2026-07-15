@@ -8,11 +8,22 @@
  * standard; see docs/50pick-admin-reporting-spec.md §1):
  *   Stakes  = Σ|BET_PLACED (CONFIRMED)|                — gross wagered in period
  *   Payouts = Σ|BET_PAYOUT + CASHOUT (CONFIRMED)|      — winner distributions
- *   GGR     = Stakes − Payouts                         — operator pool commission
+ *   Refunds = Σ|BET_REFUND (CONFIRMED)|                — voided/one-sided stakes returned
+ *   GGR     = Stakes − Payouts − Refunds               — operator commission (= what we KEEP)
  *   Bonus   = Σ|BONUS_CREDIT (CONFIRMED)|              — bonus-wallet cost
  *   Fees    = Σ fee on DEPOSIT + WITHDRAWAL (CONFIRMED)— payment-processing fees
  *   NGR     = GGR − Bonus − Fees                       — bottom line before tax
  *   Hold %  = GGR / Stakes × 100                       — near-constant; drift = alarm
+ *
+ * ⚠️ GGR nets out REFUNDS (2026-07). A voided or one-sided poll returns every
+ * stake and we earn NOTHING on it — but a refunded stake was still counted in
+ * `Stakes`, and the refund is a BET_REFUND, not a payout. Without subtracting it,
+ * GGR was overstated by the whole refunded amount, and the TRA/GBT levy (which is
+ * 15% of GGR = 15% of our commission) was charged on money we never made. Under
+ * the capped-fee model one-sided polls are common, so this was a live over-tax.
+ * GGR now equals the actual commission we keep, which is the base the ledger
+ * already levies TRA/GBT on (levySplit in payout.ts) — so the report and the
+ * ledger finally agree, per Ali's decision (tax on what we keep).
  *
  * SINGLE SOURCE OF TRUTH: `analytics.grossGamingRevenue()` / `netGamingRevenue()`
  * now delegate to `moneyForWindow()` below, so /admin/finance, /admin/live, the
@@ -62,6 +73,7 @@ export function priorBounds(bounds: { start: number; end: number }): { start: nu
 export type MoneySummary = {
   stakes: number;
   payouts: number;
+  refunds: number;
   ggr: number;
   bonusCost: number;
   fees: number;
@@ -83,15 +95,19 @@ function summarise(txns: StoredTxn[]): MoneySummary {
   const conf = txns.filter((t) => t.status === "CONFIRMED");
   const stakes = conf.filter((t) => t.type === "BET_PLACED").reduce((s, t) => s + Math.abs(t.amount), 0);
   const payouts = conf.filter((t) => t.type === "BET_PAYOUT" || t.type === "CASHOUT").reduce((s, t) => s + Math.abs(t.amount), 0);
+  // Refunds return the whole stake and earn us nothing — they MUST net out of GGR,
+  // or a voided/one-sided poll is taxed on money we never kept.
+  const refunds = conf.filter((t) => t.type === "BET_REFUND").reduce((s, t) => s + Math.abs(t.amount), 0);
   const bonusCost = conf.filter((t) => t.type === "BONUS_CREDIT").reduce((s, t) => s + Math.abs(t.amount), 0);
   const fees = conf.filter((t) => t.type === "DEPOSIT" || t.type === "WITHDRAWAL").reduce((s, t) => s + (t.fee || 0), 0);
   const deposits = conf.filter((t) => t.type === "DEPOSIT");
   const withdrawals = conf.filter((t) => t.type === "WITHDRAWAL");
-  const ggr = stakes - payouts;
+  const ggr = stakes - payouts - refunds;
   const ngr = ggr - bonusCost - fees;
   return {
     stakes,
     payouts,
+    refunds,
     ggr,
     bonusCost,
     fees,
@@ -189,7 +205,8 @@ export async function categoryBreakdown(period: ReportPeriod, now = Date.now()):
   for (const t of await db.txn.listAll()) {
     if (t.status !== "CONFIRMED" || !t.positionId) continue;
     const isStake = t.type === "BET_PLACED";
-    const isPayout = t.type === "BET_PAYOUT" || t.type === "CASHOUT";
+    // A refund is payout-like for GGR: it returns a stake we keep nothing from.
+    const isPayout = t.type === "BET_PAYOUT" || t.type === "CASHOUT" || t.type === "BET_REFUND";
     if (!isStake && !isPayout) continue;
     if (!within(t, start, end)) continue;
     const cat = posCat.get(t.positionId);

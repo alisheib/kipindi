@@ -32,11 +32,11 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
     });
   };
 
-  const taxPct = (config.taxRate * 100).toFixed(1);
   const commPct = (config.commissionRate * 100).toFixed(1);
-  const cashOutPct = ((config.cashOutFeeRate ?? 0.09) * 100).toFixed(1);
-  const resPct = (config.reserveRate * 100).toFixed(1);
-  const aggPct = (config.aggregatorRate * 100).toFixed(1);
+  const ceilPct = (config.feeCeilingRate * 100).toFixed(1);
+  const cashOutPct = (config.cashOutFeeRate * 100).toFixed(1);
+  const wdrPct = (config.withdrawalFeeRate * 100).toFixed(2);
+  const gwPct = (config.withdrawalGatewayShareRate * 100).toFixed(2);
   const traPct = (config.traTaxOnCommissionRate * 100).toFixed(1);
   const gbtPct = (config.gbtLevyOnCommissionRate * 100).toFixed(1);
 
@@ -44,34 +44,52 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
     <form onSubmit={onSubmit} className="space-y-3">
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <Field
-          label="Tax rate (%)"
-          hint={`Current ${taxPct}%. To TRA per Income Tax Act §80.`}
-        >
-          <Input name="taxRate" type="number" step="0.1" min="0" max="20" defaultValue={taxPct} mono />
-        </Field>
-        <Field
           label="Commission rate (%)"
-          hint={`Current ${commPct}%. 50pick operator margin.`}
+          hint={`Current ${commPct}%. Our cut, as a share of the WHOLE pool — capped by the fee ceiling below.`}
         >
-          <Input name="commissionRate" type="number" step="0.1" min="0" max="20" defaultValue={commPct} mono />
+          <Input name="commissionRate" type="number" step="0.1" min="0" max="30" defaultValue={commPct} mono />
+        </Field>
+        {/* THE CEILING. This one field is what makes "a winner is never paid below
+            his stake" true. It is not a tuning knob like the others — read the hint. */}
+        <Field
+          label="Fee ceiling (% of the smaller side)"
+          hint={
+            config.feeCeilingRate > 0.5
+              ? `⚠ Current ${ceilPct}%. Above 50% the house takes MORE than all the winners combined. Winners still never lose money, but check this is what you mean.`
+              : `Current ${ceilPct}%. The fee can never exceed this share of the SMALLER side. The smaller side is the prize — cap the fee below it and a winning bet can never be paid less than it staked. At 33.3% winners always keep at least twice what we take.`
+          }
+        >
+          <Input name="feeCeilingRate" type="number" step="0.1" min="0" max="100" defaultValue={ceilPct} mono />
         </Field>
         <Field
           label="Cash-out fee (%)"
-          hint={`Current ${cashOutPct}%. Withheld from a player's EARLY cash-out (closing before the event resolves) and booked to the house. Holding to settlement is unaffected.`}
+          hint={`Current ${cashOutPct}%. Charged on an EARLY exit after the free window, and booked to the house. Holding to settlement is unaffected.`}
         >
           <Input name="cashOutFeeRate" type="number" step="0.1" min="0" max="30" defaultValue={cashOutPct} mono />
         </Field>
         <Field
-          label="Reserve rate (%)"
-          hint={`Current ${resPct}%. Replenishes the house liquidity pool.`}
+          label="Free-exit window (minutes)"
+          hint={`Current ${config.freeExitGraceMinutes} min. Sell within this long of placing a bet and it's a full refund at zero fee. 0 = no free window.`}
         >
-          <Input name="reserveRate" type="number" step="0.1" min="0" max="10" defaultValue={resPct} mono />
+          <Input name="freeExitGraceMinutes" type="number" step="1" min="0" max="60" defaultValue={config.freeExitGraceMinutes} mono />
         </Field>
         <Field
-          label="Aggregator rate (%)"
-          hint={`Current ${aggPct}%. Covers payment aggregator fees (Selcom/Pesapal).`}
+          label="Paid-exit window (minutes)"
+          hint={`Current ${config.paidExitWindowMinutes} min. After the free window, selling is allowed at the cash-out fee for this long — then it LOCKS and the bet rides to settlement. Total sell window = ${config.freeExitGraceMinutes + config.paidExitWindowMinutes} min. This timer is what stops a losing player bailing late to gut a winner's prize.`}
         >
-          <Input name="aggregatorRate" type="number" step="0.1" min="0" max="10" defaultValue={aggPct} mono />
+          <Input name="paidExitWindowMinutes" type="number" step="1" min="0" max="1440" defaultValue={config.paidExitWindowMinutes} mono />
+        </Field>
+        <Field
+          label="Withdrawal fee (%)"
+          hint={`Current ${wdrPct}%. The ONLY thing a player is charged on a withdrawal. There is no withholding tax — taxes come out of our commission, never a player's money.`}
+        >
+          <Input name="withdrawalFeeRate" type="number" step="0.01" min="0" max="5" defaultValue={wdrPct} mono />
+        </Field>
+        <Field
+          label="— of which, gateway share (%)"
+          hint={`Current ${gwPct}%. The payment gateway's slice of that fee; we keep the rest. Cannot exceed the withdrawal fee.`}
+        >
+          <Input name="withdrawalGatewayShareRate" type="number" step="0.01" min="0" max="5" defaultValue={gwPct} mono />
         </Field>
         <Field label="Min stake (TZS)" hint={`Current ${formatTzs(config.minStake)}`}>
           <Input name="minStake" type="number" step="100" min="100" defaultValue={config.minStake} mono />
@@ -138,8 +156,14 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
         <Button type="submit" variant="yes" loading={pending}>
           Save · Hifadhi
         </Button>
+        {/* The old note here read "Combined tax + commission + reserve + aggregator
+            must stay ≤ 30%". That check could not have caught the bug that caused
+            this rewrite — 9% passed it comfortably while paying winners less than
+            they staked. The real guard is now the winner floor, enforced in
+            validate(): a config under which any winner could be underpaid is
+            REFUSED, not warned about. */}
         <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">
-          Combined tax + commission + reserve + aggregator must stay ≤ 30%
+          A save is refused if any winner could be paid below their stake
         </p>
       </div>
     </form>
@@ -171,12 +195,24 @@ export function MarketOverrideForm({ globalConfig }: { globalConfig: RateConfig 
       <Field label="Market id" hint="Get this from the markets table — starts with mkt_">
         <Input name="marketId" placeholder="mkt_abc123…" mono />
       </Field>
+      {/* An override only affects polls created AFTER it is set — a poll freezes
+          its rates at creation, so setting an override on a poll that already
+          exists changes nothing about it. That is the point. */}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <Field label="Tax (%)" hint={`Leave blank to inherit ${(globalConfig.taxRate * 100).toFixed(1)}%`}>
-          <Input name="taxRate" type="number" step="0.1" min="0" max="20" placeholder="" mono />
-        </Field>
         <Field label="Commission (%)" hint={`Leave blank to inherit ${(globalConfig.commissionRate * 100).toFixed(1)}%`}>
-          <Input name="commissionRate" type="number" step="0.1" min="0" max="20" placeholder="" mono />
+          <Input name="commissionRate" type="number" step="0.1" min="0" max="30" placeholder="" mono />
+        </Field>
+        <Field label="Fee ceiling (%)" hint={`Leave blank to inherit ${(globalConfig.feeCeilingRate * 100).toFixed(1)}% of the smaller side`}>
+          <Input name="feeCeilingRate" type="number" step="0.1" min="0" max="100" placeholder="" mono />
+        </Field>
+        {/* These two were merged by getEffectiveConfig() but the form had no input
+            for them — so a per-market override of either was unreachable through
+            the UI. The storage layer always supported it. */}
+        <Field label="Cash-out fee (%)" hint={`Leave blank to inherit ${(globalConfig.cashOutFeeRate * 100).toFixed(1)}%`}>
+          <Input name="cashOutFeeRate" type="number" step="0.1" min="0" max="30" placeholder="" mono />
+        </Field>
+        <Field label="Thin-profit threshold" hint={`Leave blank to inherit ${globalConfig.thinProfitRatio.toFixed(2)}×`}>
+          <Input name="thinProfitRatio" type="number" step="0.01" min="1" max="2" placeholder="" mono />
         </Field>
         <Field label="Min stake (TZS)" hint="Optional override">
           <Input name="minStake" type="number" step="100" min="100" placeholder="" mono />

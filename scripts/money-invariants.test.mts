@@ -24,7 +24,8 @@
  *                         entry and the chain verifies end-to-end.
  */
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
-import { createMarket, buyPosition, cashOutPosition, getMarket, resolveMarket, settleMarket } from "../src/lib/server/market-service.ts";
+import { createMarket, buyPosition, cashOutPosition, getMarket, resolveMarket, settleMarket, listPositionsForMarket, ratesFor } from "../src/lib/server/market-service.ts";
+import { poolFee } from "../src/lib/payout.ts";
 import { positionStore } from "../src/lib/server/market-dal.ts";
 import { getEffectiveConfig } from "../src/lib/server/market-config.ts";
 import { auditFlush, verifyChain, auditRingSize, getAuditPage } from "../src/lib/server/audit.ts";
@@ -143,9 +144,13 @@ for (let s = 0; s < scenarios.length; s++) {
 
   const mkt = (await getMarket(mid))!;
   const grossPool = mkt.yesPool + mkt.noPool;
-  const cfg = await getEffectiveConfig(mid);
-  const feeRate = cfg.taxRate + cfg.commissionRate + cfg.reserveRate + cfg.aggregatorRate;
-  expectedHouseTake += Math.round(grossPool * feeRate);
+  // The house take, computed INDEPENDENTLY of the measured payouts — that is the
+  // whole point of this oracle. It re-derives the fee from the RULE
+  // (min(commission × pool, ceiling × smallerSide)) against the poll's own frozen
+  // rates, so an over- or under-paying regression in settlement breaks
+  // conservation instead of quietly agreeing with itself.
+  const fee = poolFee(mkt.yesPool, mkt.noPool, ratesFor(mkt));
+  expectedHouseTake += Math.round(fee.fee);
 
   // Snapshot balances, resolve, measure credits.
   const before = new Map<string, number>();
@@ -167,9 +172,21 @@ for (let s = 0; s < scenarios.length; s++) {
   measuredPayouts += marketPayouts;
   // NO-MINT: the pool can never pay out more than it holds.
   ok(`no-mint m${s} (payouts ≤ pool)`, marketPayouts <= grossPool, `payouts=${marketPayouts} pool=${grossPool}`);
-  // Payouts ≈ net pool (gross − fees), within per-winner rounding dust.
-  const netPool = Math.round(grossPool * (1 - feeRate));
+  // Payouts ≈ net pool (gross − the capped fee), within per-winner rounding dust.
+  const netPool = Math.round(fee.netPool);
   ok(`payouts ≈ net pool m${s}`, Math.abs(marketPayouts - netPool) <= sc.bets.length, `payouts=${marketPayouts} netPool=${netPool}`);
+
+  // THE WINNER FLOOR — the invariant this whole model exists to guarantee.
+  // Checked here on the real settlement path, on every scenario, for every winner.
+  for (const bp of betPlayers) {
+    if (bp.side !== sc.outcome) continue;
+    const p = (await listPositionsForMarket(mid)).find((x) => x.userId === bp.uid);
+    ok(
+      `WINNER FLOOR m${s} ${bp.uid}: payout ≥ stake`,
+      (p?.finalPayout ?? 0) >= bp.stake,
+      `stake=${bp.stake} payout=${p?.finalPayout}`,
+    );
+  }
   await assertNoNegatives(`after resolve m${s}`);
 }
 
@@ -223,10 +240,25 @@ ok("house take is positive (fees collected)", expectedHouseTake > 0, `house=${ex
   if (p) { p.placedAt = new Date(Date.now() - 10 * 60_000).toISOString(); await positionStore.set(p); }
 
   const xBefore = await bal("co_x");
+  const poolBeforeCashout = (await getMarket(mid))!.yesPool + (await getMarket(mid))!.noPool;
   const co = await cashOutPosition("co_x", posX);
   ok("cashout succeeded", co.ok, co.ok ? "" : (co as { error?: string }).error);
   const xGot = (await bal("co_x")) - xBefore;
-  ok("cashout paid stake−fee (9,100 at 9%)", xGot === 9_100, `got=${xGot}`);
+  // Stake − the cash-out fee, at the poll's own frozen rate (10% default).
+  const coRates = ratesFor((await getMarket(mid))!);
+  const expectCo = Math.round(10_000 * (1 - coRates.cashOutFeeRate));
+  ok(`cashout paid stake−fee (${expectCo} at ${coRates.cashOutFeeRate * 100}%)`, xGot === expectCo, `got=${xGot}`);
+
+  // THE FEE LEAVES THE POOL. It used to be deducted from the player and then LEFT
+  // IN THE POOL, where the remaining players collected it at settlement — so we
+  // earned nothing on an early exit. The whole stake must now leave: the pool
+  // drops by the full 10,000, not by the 9,000 the player received.
+  const poolAfterCashout = (await getMarket(mid))!.yesPool + (await getMarket(mid))!.noPool;
+  ok(
+    "cashout: the WHOLE stake leaves the pool (fee does not stay behind)",
+    poolBeforeCashout - poolAfterCashout === 10_000,
+    `pool dropped ${poolBeforeCashout - poolAfterCashout}, expected 10,000 (player got ${xGot}, house kept ${10_000 - xGot})`,
+  );
   ok("no double cashout", !(await cashOutPosition("co_x", posX)).ok);
   await assertNoNegatives("after cashout");
 

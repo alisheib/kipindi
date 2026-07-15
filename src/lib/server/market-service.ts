@@ -23,20 +23,22 @@ import { spendBonusLocked, recordWageringLocked, reverseWagering, refundBonusToA
 import { notifyBonusFulfilled } from "./notification-service";
 import { isLockedOut, checkLossLimit } from "./responsible-gambling";
 import { rateCheck } from "./rate-limit";
-import { getEffectiveConfig, payoutForWhole, settledPayoutWhole } from "./market-config";
+import { getEffectiveConfig, snapshotFromConfig, snapshotOrLegacy } from "./market-config";
+import { payoutFor, settledPayoutFor, poolFee, levySplit, type FeeSnapshot } from "@/lib/payout";
 import { getConflictedResolutionAllowed } from "./test-overrides";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
 import { recordSnapshot, seedHistory } from "./market-history";
 import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, notifyAdminMarketResolution, notifyMarketCancelled, notifyAdminMarketCancelled, notifyOneSidedRefund, notifySelectionClosed } from "./notification-service";
 import { sendEmailToUser, betPlacedHtml, winNotificationHtml, lossNotificationHtml, cashOutReceiptHtml, oneSidedRefundHtml, marketResolutionAdminHtml, marketCancelledRefundHtml, marketCancelledAdminHtml, bonusFulfilledHtml, selectionClosedHtml } from "./email";
-import { onRecruitBet } from "./affiliate-service";
+import { onRecruitBet, onRecruitSettlement } from "./affiliate-service";
 import { postLedgerEntries, stakeEntries, settlementPayoutEntries, refundEntries, cashoutEntries } from "./ledger";
 import type { ServiceResult } from "./auth-service";
 import { marketStore, positionStore } from "./market-dal";
 import { formatTzs } from "@/lib/utils";
 
-/** @deprecated Kept for backwards compat — use getEffectiveConfig instead. */
-export const OPERATOR_MARGIN = 0.09;
+// OPERATOR_MARGIN (a dead 0.09 constant with no call sites) is gone. So is
+// CASHOUT_SLIPPAGE. Rates live in RateConfig and, for a poll that exists, in its
+// immutable feeSnapshot — nothing money-side is hardcoded any more.
 export const MIN_STAKE = 100;
 export const MAX_STAKE = 1_000_000;
 
@@ -64,6 +66,11 @@ export type StoredMarket = {
   yesPool: number;
   noPool: number;
   predictorCount: number;
+  /** The fee rates FROZEN onto this poll at creation. Settlement, cash-out and
+   *  every payout preview price against THIS, never live admin config — so
+   *  retuning a rate can no longer reprice a bet that is already placed.
+   *  Null only on pre-migration rows; snapshotOrLegacy() handles those. */
+  feeSnapshot: FeeSnapshot | null;
   resolvedOutcome: Side | "VOID" | null;
   resolutionStage1By: string | null;
   resolutionStage1At: string | null;
@@ -137,22 +144,25 @@ export function impliedYesPct(m: Pick<StoredMarket, "yesPool" | "noPool">): numb
 }
 
 /**
- * Whole-pool pari-mutuel projection.
- *   netPool = (yesPool + noPool + stake) × (1 - tax - commission)
- *   payout  = (stake / winningSidePool) × netPool
- * Under heavy lean, payout/stake can drop below 1.0 — that's the
- * `negative` lean state surfaced by the inline warning.
+ * Whole-pool pari-mutuel projection for a bet NOT YET PLACED.
+ *   fee     = min(commissionRate × pool, feeCeilingRate × smallerSide)
+ *   payout  = (stake / winningSidePool) × (pool - fee)
  *
- * Marketid is optional; without it we use the global config.
+ * Prices against the POLL'S OWN frozen rates when the poll exists. A projection
+ * that used live config while settlement used something else is precisely how the
+ * dial ended up quoting a number we did not pay.
  */
 export async function projectedPayout(
-  m: Pick<StoredMarket, "yesPool" | "noPool"> & { id?: string },
+  m: Pick<StoredMarket, "yesPool" | "noPool"> & { id?: string; feeSnapshot?: FeeSnapshot | null },
   side: Side,
   stake: number,
 ): Promise<number> {
-  const cfg = await getEffectiveConfig(m.id);
-  const r = payoutForWhole({ yesPool: m.yesPool, noPool: m.noPool, side, stake }, cfg);
-  return r.payout;
+  // A poll in hand → its snapshot. No poll yet (a pre-creation preview) → the
+  // live config, which is exactly what a poll created right now would freeze.
+  const rates = m.feeSnapshot !== undefined
+    ? ratesFor({ feeSnapshot: m.feeSnapshot ?? null })
+    : await getEffectiveConfig(m.id);
+  return payoutFor({ yesPool: m.yesPool, noPool: m.noPool, side, stake }, rates).payout;
 }
 
 /** A "Demo · " market is a synthetic training fixture. Per tester feedback
@@ -228,6 +238,12 @@ export async function createMarket(input: CreateMarketInput) {
     }
   }
 
+  // THE RATES STICK TO THE POLL. Freeze the live config onto the market at
+  // creation; settlement, cash-out and every preview price against this copy for
+  // the rest of the poll's life. An admin retuning a rate tomorrow cannot reach
+  // back and reprice a bet placed today.
+  const feeSnapshot = snapshotFromConfig(await getEffectiveConfig(id));
+
   const m: StoredMarket = {
     id,
     titleEn: input.titleEn,
@@ -242,6 +258,7 @@ export async function createMarket(input: CreateMarketInput) {
     yesPool: 0,
     noPool: 0,
     predictorCount: 0,
+    feeSnapshot,
     resolvedOutcome: null,
     resolutionStage1By: null, resolutionStage1At: null,
     resolutionStage2By: null, resolutionStage2At: null,
@@ -258,9 +275,23 @@ export async function createMarket(input: CreateMarketInput) {
     actorId: input.proposedBy,
     targetType: "Market",
     targetId: m.id,
-    payload: { titleEn: m.titleEn, category: m.category, sourceUrl: m.sourceUrl, resolutionAt: m.resolutionAt, selectionClosedAt: m.selectionClosedAt },
+    // The frozen rates go into the tamper-evident chain too — so we can always
+    // prove, to a player or an inspector, what this poll was priced at.
+    payload: { titleEn: m.titleEn, category: m.category, sourceUrl: m.sourceUrl, resolutionAt: m.resolutionAt, selectionClosedAt: m.selectionClosedAt, feeSnapshot },
   });
   return m;
+}
+
+/**
+ * The rates THIS poll is priced at. The one function every money path calls.
+ *
+ * Never call getEffectiveConfig() in a payout path — that reads LIVE config and
+ * is exactly how a rate change used to silently reprice bets already placed.
+ * getEffectiveConfig is for stamping a NEW poll and for the admin UI. This is for
+ * paying an existing one.
+ */
+export function ratesFor(m: Pick<StoredMarket, "feeSnapshot">): FeeSnapshot {
+  return snapshotOrLegacy(m.feeSnapshot);
 }
 
 /** Player buys a position on a market. */
@@ -476,7 +507,9 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
       targetId: positionId,
       payload: { marketId: market.id, side: opts.side, stake: opts.stake, payoutIfWin },
     });
-    // Inbox receipt — kit-faithful, opens to the market detail.
+    // Inbox receipt — kit-faithful, opens to the market detail. The cash-out terms
+    // it quotes come from THIS POLL'S frozen rates, not a hardcoded "5 min / 9%".
+    const betRates = ratesFor(market);
     notifyBetPlaced(userId, {
       side: opts.side,
       stake: opts.stake,
@@ -484,11 +517,22 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
       marketTitle: market.titleEn,
       marketId: market.id,
       positionId,
+      cashOutFeeRate: betRates.cashOutFeeRate,
+      freeExitGraceMinutes: betRates.freeExitGraceMinutes,
     });
+    // Note: `payoutIfWin` is deliberately NOT passed to the email. It printed a
+    // "Potential return" figure that every in-app surface suppresses before betting
+    // closes (D3, license review 2026-05) — the policy was enforced on screen and
+    // broken in the inbox. The exact figure is emailed when betting CLOSES and the
+    // pools freeze, where it is a fact rather than a moving projection.
     sendEmailToUser(userId, (email) => ({
       to: email,
       subject: `Bet placed · ${opts.side} on "${market.titleEn.slice(0, 40)}"`,
-      html: betPlacedHtml({ reference: positionId, side: opts.side, stake: opts.stake, payoutIfWin, marketTitle: market.titleEn, placedAt, resolutionDate: market.resolutionAt.slice(0, 10) }),
+      html: betPlacedHtml({
+        reference: positionId, side: opts.side, stake: opts.stake,
+        marketTitle: market.titleEn, placedAt, resolutionDate: market.resolutionAt.slice(0, 10),
+        cashOutFeeRate: betRates.cashOutFeeRate, freeExitGraceMinutes: betRates.freeExitGraceMinutes,
+      }),
       tag: "bet-placed",
     })).catch(() => {});
 
@@ -530,7 +574,13 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
   // the placed bet.
   if (result.ok) {
     try {
-      await onRecruitBet(userId, { stake: opts.stake, operatorCommissionRate: stakeCfg.commissionRate });
+      // The first-bet PRIZE only. Referral COMMISSION is no longer accrued here —
+      // it accrues at SETTLEMENT, from the fee we actually charged
+      // (see onRecruitSettlement). The real fee is not knowable at bet time: it
+      // depends on the final pools. Accruing it here meant paying a referrer a
+      // share of 31,050 on a poll where we earned 3,500 — and paying out at all on
+      // a one-sided poll, where we earn nothing.
+      await onRecruitBet(userId, { stake: opts.stake });
     } catch (err) {
       audit({ category: "SYSTEM", action: "affiliate.accrual_error", actorId: userId, targetType: "Position", targetId: result.data!.positionId, payload: { error: String(err) } });
     }
@@ -619,73 +669,14 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
       cur.resolutionStage1At = new Date(now).toISOString();
       cur.resolutionStage2By = "system_demo_auto";
       cur.resolutionStage2At = new Date(now).toISOString();
-      cur.objectionsClosedAt = new Date(now + 24 * 3600_000).toISOString();
+      cur.objectionsClosedAt = new Date(now).toISOString(); // no window for a synthetic market
       cur.resolvedOutcome = outcome;
       cur.status = "RESOLVED";
       cur.updatedAt = cur.resolutionStage2At;
+      cur.settledAt = null; // ADJUDICATED only — settleMarket moves the money
       await marketStore.set(cur);
       recordSnapshot(cur.id, cur.yesPool, cur.noPool);
 
-      let winnersPaid = 0;
-      const settleCfg = await getEffectiveConfig(cur.id);
-
-      const winningPool = outcome === "YES" ? cur.yesPool : cur.noPool;
-      const myPositions = (await listPositionsForMarket(cur.id)).filter((p) => p.status === "OPEN");
-      for (const p of myPositions) {
-        const w = await db.wallet.findByUserId(p.userId);
-        if (!w) continue;
-        if (p.side === outcome) {
-          const payout = settledPayoutWhole(
-            { yesPool: cur.yesPool, noPool: cur.noPool, side: p.side, stake: p.stake },
-            settleCfg,
-          );
-          const updated = await db.wallet.adjust(w.id, { balance: payout });
-          const newBal = updated?.balance ?? w.balance + payout;
-          p.status = "WIN"; p.finalPayout = payout; p.settledAt = cur.resolutionStage2At!;
-          await positionStore.set(p);
-          const demoPayoutTxnId = `txn_${randomId(12)}`;
-          await db.txn.create({
-            id: demoPayoutTxnId,
-            walletId: w.id, userId: p.userId,
-            type: "BET_PAYOUT", status: "CONFIRMED",
-            amount: payout, fee: 0, taxWithheld: 0,
-            balanceAfter: newBal, currency: "TZS",
-            provider: "INTERNAL", providerRef: null, msisdn: null,
-            description: `${outcome} won · "${cur.titleEn.slice(0, 60)}" (auto)`,
-            positionId: p.id,
-            amlReason: null,
-            createdAt: cur.resolutionStage2At!, updatedAt: cur.resolutionStage2At!, completedAt: cur.resolutionStage2At!,
-          });
-          // Dual-write: settlement payout to double-entry ledger (fire-and-forget).
-          const grossPool = cur.yesPool + cur.noPool;
-          postLedgerEntries(`settle_${demoPayoutTxnId}`, settlementPayoutEntries({
-            groupId: `settle_${demoPayoutTxnId}`, userId: p.userId, marketId: cur.id,
-            payout, stake: p.stake, grossPool, winningPool,
-            rates: { taxRate: settleCfg.taxRate, commissionRate: settleCfg.commissionRate, reserveRate: settleCfg.reserveRate, aggregatorRate: settleCfg.aggregatorRate, traTaxOnCommissionRate: settleCfg.traTaxOnCommissionRate, gbtLevyOnCommissionRate: settleCfg.gbtLevyOnCommissionRate },
-          })).catch(() => {});
-          winnersPaid += payout;
-          // Tamper-evident chain entry for the credit (the txn row is the ledger;
-          // this puts the payout in the HMAC audit chain a regulator walks).
-          audit({ category: "WALLET", action: "bet.payout", actorId: p.userId, targetType: "Position", targetId: p.id, payload: { marketId: cur.id, outcome, payout, balanceAfter: newBal, auto: true } });
-          notifyWin(p.userId, payout, `${cur.titleEn} · ${p.id}`, "/positions");
-          sendEmailToUser(p.userId, (email) => ({
-            to: email,
-            subject: `You won · ${formatTzs(payout)}`,
-            html: winNotificationHtml({ reference: p.id, payout, stake: p.stake, marketTitle: cur.titleEn, settledAt: cur.resolutionStage2At ?? undefined }),
-            tag: "win",
-          })).catch(() => {});
-        } else {
-          p.status = "LOSS"; p.finalPayout = 0; p.settledAt = cur.resolutionStage2At!;
-          await positionStore.set(p);
-          notifyLoss(p.userId, { stake: p.stake, marketTitle: cur.titleEn, marketId: cur.id, positionId: p.id });
-          sendEmailToUser(p.userId, (email) => ({
-            to: email,
-            subject: `Bet lost · ${formatTzs(p.stake)}`,
-            html: lossNotificationHtml({ reference: p.id, stake: p.stake, marketTitle: cur.titleEn, settledAt: cur.resolutionStage2At ?? undefined }),
-            tag: "loss",
-          })).catch(() => {});
-        }
-      }
       audit({
         category: "ADMIN",
         action: "market.resolved.demo_auto",
@@ -695,15 +686,34 @@ export async function autoResolveExpiredDemoMarkets(): Promise<{ resolved: numbe
         payload: {
           outcome,
           yesPool: cur.yesPool, noPool: cur.noPool,
-          payoutModel: "whole-pool",
-          winningPool,
-          winnersPaid,
           reason: "Demo market countdown elapsed; no human officer required for synthetic markets",
         },
       });
       return true;
     });
-    if (didResolve) resolved++;
+
+    // ── SETTLE VIA THE REAL CODEPATH ─────────────────────────────────────────
+    //
+    // This used to be a HAND-COPIED settlement loop, ~75 lines duplicating
+    // settleMarket's pay-winners/forfeit-losers/ledger/notify logic. Its comment
+    // claimed it ran "the exact settlement codepath used by the resolver-queue's
+    // stage-2 confirm". It did not — it was a copy, and the copy had already
+    // drifted: it was MISSING THE ONE-SIDED REFUND BRANCH entirely, so a demo poll
+    // whose outcome landed on an empty side would have paid nobody and quietly
+    // eaten the pool. It would also have needed its own copy of the new capped-fee
+    // maths, its own winner-floor assertion, and its own snapshot lookup — three
+    // more chances to drift.
+    //
+    // Now it adjudicates (above, under the lock) and then calls the ONE settlement
+    // function (below, which takes the lock itself — so this must be OUTSIDE the
+    // lock: withLock is not re-entrant and nesting it would self-deadlock).
+    // Exactly the shape of the real flow: resolveMarket adjudicates, settleMarket
+    // pays. One settlement codepath. One fee model. Nothing left to diverge.
+    if (didResolve) {
+      const settled = await settleMarket(m.id, { force: true, actorId: "system_demo_auto" });
+      if (!settled.ok) console.error(`[demo-auto] settle failed for ${m.id}: ${settled.error}`);
+      resolved++;
+    }
   }
   return { resolved };
 }
@@ -759,19 +769,93 @@ export async function notifySelectionClosedMarkets(): Promise<{ notified: number
     if (!stamped) continue;
     notified++;
 
-    // One notification per distinct bettor with an OPEN position (someone may
-    // hold both YES and NO — they still get a single "selection closed" note).
+    // ── THE EXACT PAYOUT, DISCLOSED THE MOMENT BETTING CLOSES ────────────────
+    //
+    // Once selections close the pools are FROZEN. So the payout stops being a
+    // projection and becomes an exact number — arithmetic, not a forecast. We tell
+    // every player precisely what they receive if their side wins, to the shilling.
+    //
+    // It is computed by `settledPayoutFor` — THE FUNCTION THAT ACTUALLY SETTLES —
+    // against the poll's own frozen fee snapshot. Not a re-derivation, not an
+    // estimate, and emphatically not a model: what we tell him here and what we
+    // pay him at settlement come out of the same line of code, so they cannot
+    // disagree. (It also asserts the winner floor, so a poll that could underpay a
+    // winner would throw HERE, at disclosure time, days before any money moves.)
+    //
+    // This does not touch the D3 policy (license review 2026-05), which hides the
+    // payout figure BEFORE a bet is placed. Betting is over; there is nothing left
+    // to influence.
     const open = (await listPositionsForMarket(m.id)).filter((p) => p.status === "OPEN");
+    const closeFee = poolFee(m.yesPool, m.noPool, ratesFor(m));
+
+    // Persist each position's exact payoutIfWin.
+    const payoutByPosition = new Map<string, number>();
+    for (const p of open) {
+      const { payout } = settledPayoutFor(
+        { yesPool: m.yesPool, noPool: m.noPool, side: p.side, stake: p.stake },
+        ratesFor(m),
+      );
+      payoutByPosition.set(p.id, payout);
+      p.potentialPayout = payout;
+      await positionStore.set(p);
+    }
+
+    // A player may hold both YES and NO. Sum what he'd receive per side so the
+    // notification tells him the truth about his own book, not one leg of it.
     const bettors = Array.from(new Set(open.map((p) => p.userId)));
     for (const userId of bettors) {
       bettorsNotified++;
-      notifySelectionClosed(userId, { marketTitle: m.titleEn, marketId: m.id }).catch(() => {});
+      const mine = open.filter((p) => p.userId === userId);
+      const ifYes = mine.filter((p) => p.side === "YES").reduce((s, p) => s + (payoutByPosition.get(p.id) ?? 0), 0);
+      const ifNo = mine.filter((p) => p.side === "NO").reduce((s, p) => s + (payoutByPosition.get(p.id) ?? 0), 0);
+
+      notifySelectionClosed(userId, {
+        marketTitle: m.titleEn, marketId: m.id,
+        payoutIfYes: ifYes, payoutIfNo: ifNo,
+        hasYes: mine.some((p) => p.side === "YES"),
+        hasNo: mine.some((p) => p.side === "NO"),
+      }).catch(() => {});
       sendEmailToUser(userId, (email) => ({
         to: email,
-        subject: `Selections closed — waiting for results · ${m.titleEn.slice(0, 50)}`,
-        html: selectionClosedHtml({ marketTitle: m.titleEn, closedAt: m.selectionClosedAt ?? m.resolutionAt, resolvesAt: m.resolutionAt, marketId: m.id }),
+        subject: `Betting closed — if you're right you receive ${formatTzs(Math.max(ifYes, ifNo))} · ${m.titleEn.slice(0, 40)}`,
+        html: selectionClosedHtml({
+          marketTitle: m.titleEn, closedAt: m.selectionClosedAt ?? m.resolutionAt, resolvesAt: m.resolutionAt, marketId: m.id,
+          payoutIfYes: mine.some((p) => p.side === "YES") ? ifYes : null,
+          payoutIfNo: mine.some((p) => p.side === "NO") ? ifNo : null,
+        }),
         tag: "selection-closed",
       })).catch(() => {});
+    }
+
+    // ── ADMIN: flag a lopsided / thin poll at close, while it can still be managed
+    //
+    // The fee being CAPPED is the signal: it means 10%-of-pool exceeded a third of
+    // the prize, i.e. the poll is lopsided enough that an uncapped rake would have
+    // bitten into the winners. Winners are safe — that is what the ceiling is for —
+    // but their upside is thin, we earn less than the headline rate, and an officer
+    // should know before the result lands.
+    const winnerRatio = closeFee.larger > 0 ? closeFee.netPool / closeFee.larger : 0;
+    if (closeFee.capped || closeFee.smaller === 0) {
+      audit({
+        category: "ADMIN",
+        action: "market.selection_closed.thin_poll",
+        actorId: "system",
+        targetType: "Market",
+        targetId: m.id,
+        payload: {
+          titleEn: m.titleEn,
+          yesPool: m.yesPool, noPool: m.noPool,
+          pool: closeFee.pool, smallerSide: closeFee.smaller,
+          smallerPctOfPool: closeFee.pool > 0 ? +(closeFee.smaller / closeFee.pool * 100).toFixed(1) : 0,
+          commissionUncapped: Math.round(closeFee.commission),
+          feeCharged: Math.round(closeFee.fee),
+          feeWasCapped: closeFee.capped,
+          worstWinnerRatio: +winnerRatio.toFixed(4),
+          reason: closeFee.smaller === 0
+            ? "ONE-SIDED — no opposing pool. Every stake will be refunded in full; this poll earns nothing."
+            : "LOPSIDED — the fee hit the ceiling. Winners are protected (never below stake) but upside is thin and our take is below the headline rate.",
+        },
+      });
     }
   }
   return { notified, bettors: bettorsNotified };
@@ -944,50 +1028,80 @@ export async function repairOrphanedPositions(): Promise<{ repaired: number; ref
   return { repaired, refundedTzs };
 }
 
-/** Two-officer resolution. First call stages, second call (different officer) settles. */
-/** Default early-cash-out commission, if no config value is present. The live
- *  rate is `RateConfig.cashOutFeeRate` (admin-tunable at /admin/config) — this
- *  constant is only the cold-start fallback. Per management spec (license
- *  review · 2026-05): 9% of the projected cash-out is withheld to the house. */
-export const CASHOUT_SLIPPAGE = 0.09;
-
 /**
- * Early cash-out value of an OPEN position.
+ * Early cash-out value of an OPEN position, and WHETHER it can be sold at all.
  *
- * Management model (2026-06): closing a position before the market resolves
- * simply RETURNS THE PLAYER'S OWN STAKE minus the admin-configured cash-out
- * commission (`cashOutFeeRate`, default 9%). No winnings are paid on an early
- * exit — that would let a player ratchet profit out of the pool without taking
- * resolution risk. Profit is only possible by HOLDING to settlement (normal
- * pari-mutuel rates apply there, untouched by this fee).
+ * ── THE EXIT WINDOW (2026-07-15, Ali's design) ─────────────────────────────
  *
- * Conservation: exactly the stake leaves the player's own pool side — `value`
- * goes to the player, `fee` (stake − value) is booked to the house reserve.
- * The `market` pools are not needed for the amount (kept in the signature so
- * the call sites that pass them are unchanged).
+ * Measured from when the bet was PLACED:
+ *   • 0 .. freeExitGraceMinutes (5)          → FREE: full stake back, no fee.
+ *   • free .. free+paidExitWindowMinutes (20)→ PAID: stake × (1 − cashOutFeeRate).
+ *   • after that                             → LOCKED: rides to settlement.
  *
- * Returns: value (net to player), gross (= the stake removed from the pool),
- * fee (the house commission), feeRate, ratio.
+ * WHY A HARD TIME LOCK. Every abusive exit — gutting a winner's prize, voiding a
+ * poll you're losing — requires a LATE exit, because you can only tell you're
+ * losing once the real-world event is near, which is HOURS OR DAYS after the bet.
+ * Locking the exit ~20 minutes in means that by the time anyone could know the
+ * outcome, their door shut long ago. It replaces the old side-collapse guard,
+ * which only blocked the last shilling and trapped the eventual winner.
+ *
+ * ── SHORT / ENDING-SOON POLLS (Ali's edge case) ────────────────────────────
+ *
+ * The window is measured from the bet, but a poll can CLOSE (betting shuts) sooner
+ * than 20 minutes — a short poll, or a bet placed near close. Two rules keep that
+ * safe, and they auto-shrink the window to fit:
+ *
+ *   1. Selling always shuts at SELECTION CLOSE (isSelectionClosed, enforced in
+ *      cashOutPosition), whichever comes first. A poll that closes 8 minutes after
+ *      your bet gives you 5 free + 3 paid, then locks — never any exit after close.
+ *
+ *   2. `RUNWAY` — cash-out is only offered if, when you bet, there were at least
+ *      `freeExitGraceMinutes` of betting time LEFT. Bet 2 minutes before a poll
+ *      closes (or on a 3-minute poll) and you get NO cash-out at all: you took a
+ *      last-moment position, you ride it. This is what stops a short/no-gap poll
+ *      being sold at the wire, when the outcome is becoming visible.
+ *
+ * Profit is never paid on an exit — only the stake back (minus any fee). Winnings
+ * come only from HOLDING to settlement. The fee goes to the HOUSE
+ * (HOUSE:COMMISSION, with TRA/GBT levies) — it used to be left in the pool for the
+ * other players, so we earned zero on every early exit.
+ *
+ * Returns `sellable` — false means the exit window has passed (or never opened for
+ * a too-short runway) and the UI must show "rides to settlement", not a sell price.
  */
-const GRACE_PERIOD_MS = 5 * 60_000; // 5 minutes
-
 export async function cashOutValue(
   position: Pick<StoredPosition, "side" | "stake" | "placedAt">,
-  market: Pick<StoredMarket, "id" | "yesPool" | "noPool" | "resolutionAt">,
-): Promise<{ value: number; ratio: number; gross: number; fee: number; feeRate: number; inGracePeriod: boolean }> {
-  const cfg = await getEffectiveConfig(market.id);
-  // Grace period only applies if: bet was placed < 5 min ago AND the market
-  // still has more than 5 min before it closes (prevents last-second abuse).
-  const marketClosesIn = Date.parse(market.resolutionAt) - Date.now();
-  const inGracePeriod = Boolean(position.placedAt)
-    && (Date.now() - Date.parse(position.placedAt) < GRACE_PERIOD_MS)
-    && (marketClosesIn > GRACE_PERIOD_MS);
-  const feeRate = inGracePeriod ? 0 : Math.min(0.30, Math.max(0, cfg.cashOutFeeRate ?? CASHOUT_SLIPPAGE));
+  market: Pick<StoredMarket, "id" | "yesPool" | "noPool" | "resolutionAt" | "selectionClosedAt" | "feeSnapshot">,
+): Promise<{ value: number; ratio: number; gross: number; fee: number; feeRate: number; inGracePeriod: boolean; sellable: boolean; reason?: "WINDOW_PASSED" | "TOO_SHORT" }> {
+  // The poll's OWN rates, not live config — a mid-poll retune must not change the
+  // exit terms a player was promised when he bet.
+  const cfg = ratesFor(market);
+  const graceMs = Math.max(0, cfg.freeExitGraceMinutes) * 60_000;
+  const windowMs = graceMs + Math.max(0, cfg.paidExitWindowMinutes) * 60_000;
+
+  const placedAt = position.placedAt ? Date.parse(position.placedAt) : Date.now();
+  const sinceBet = Date.now() - placedAt;
+  // Selling shuts when SELECTIONS shut, never at resolutionAt (see the lockout
+  // note in cashOutPosition). No gap set → betting closes at resolutionAt.
+  const closesAt = market.selectionClosedAt ? Date.parse(market.selectionClosedAt) : Date.parse(market.resolutionAt);
+
+  // RUNWAY: how much betting time this bet had when it was placed. A bet placed
+  // with less than the free window left never gets a cash-out — it is a
+  // last-moment position and it rides to settlement. This is what makes an
+  // ending-soon / no-gap poll un-gameable at the wire.
+  const hadRunway = graceMs > 0 && closesAt - placedAt >= graceMs;
+
+  const withinWindow = sinceBet < windowMs;
+  const inGracePeriod = hadRunway && withinWindow && sinceBet < graceMs;
+  const sellable = hadRunway && withinWindow; // the LIVE / open / selection-open checks live in cashOutPosition
+
+  const feeRate = inGracePeriod ? 0 : Math.min(0.30, Math.max(0, cfg.cashOutFeeRate));
   const gross = Math.max(0, Math.round(position.stake)); // the player's money in the pool
   const value = inGracePeriod ? gross : Math.round(gross * (1 - feeRate)); // full refund in grace
   const cashOutFee = Math.max(0, gross - value);          // our commission (0 in grace)
   const ratio = gross > 0 ? value / gross : 0;
-  return { value, ratio, gross, fee: cashOutFee, feeRate, inGracePeriod };
+  const reason = sellable ? undefined : (!hadRunway ? "TOO_SHORT" as const : "WINDOW_PASSED" as const);
+  return { value, ratio, gross, fee: cashOutFee, feeRate, inGracePeriod, sellable, reason };
 }
 
 export async function cashOutPosition(
@@ -1072,49 +1186,67 @@ export async function cashOutPosition(
     const wallet = await db.wallet.findByUserId(userId);
     if (!wallet) return { ok: false as const, error: "Wallet not found.", code: "NOT_FOUND" as const };
 
-    const { value, gross, fee: cashOutFee, feeRate, inGracePeriod } = await cashOutValue(p, m);
+    // The poll's frozen rates — the levies on our cash-out fee are booked at the
+    // rates this poll was created under, exactly like a settlement fee.
+    const cfg = ratesFor(m);
+    const { value, gross, fee: cashOutFee, feeRate, inGracePeriod, sellable, reason } = await cashOutValue(p, m);
+
+    // ── THE EXIT WINDOW (Ali's design — replaces the old side-collapse guard) ──
+    //
+    // Once free + paid have elapsed, or the bet was placed with too little betting
+    // runway to ever offer an exit, the position is LOCKED and rides to settlement.
+    // This is what makes a late exit — the only kind that can gut a winner's prize
+    // or void a poll you're losing — impossible, without trapping the eventual
+    // winner the way the old last-shilling guard did.
+    if (!sellable) {
+      return {
+        ok: false as const,
+        error: reason === "TOO_SHORT"
+          ? "This poll is closing too soon to sell out — your position rides to settlement. · Kura hii inafungwa hivi karibuni — dau lako litaenda hadi malipo."
+          : "The sell-out window for this bet has closed — it now rides to settlement. · Muda wa kuuza dau hili umefungwa — litaenda hadi malipo.",
+        code: "SELECTION_CLOSED" as const,
+      };
+    }
     if (value <= 0) {
       return { ok: false as const, error: "Current cash-out value is zero — your side has no live pool.", code: "INVALID" as const };
     }
 
+    const ownYes = p.side === "YES";
+    const ownPool = ownYes ? m.yesPool : m.noPool;
+
     const now = new Date().toISOString();
 
-    // Conservation: the pool drops by exactly `value` (what the player receives).
-    // The fee (`cashOutFee` = gross − value) is NOT removed from the pool — it
-    // stays distributed across remaining participants, giving them a marginally
-    // better payout at resolution. This keeps the system perfectly conserved:
-    // every TZS that ever entered the pool is either paid out at resolution,
-    // returned to a cashing-out player, or left in the pool for remaining bettors.
-    // (With no house reserve, the fee must stay in the pool; removing gross would
-    // destroy it — nothing outside the pool to absorb it.)
-    const ownYes = p.side === "YES";
-    let ownDebit = Math.min(ownYes ? m.yesPool : m.noPool, Math.min(value, p.stake));
-    let oppDebit = Math.min(ownYes ? m.noPool : m.yesPool, Math.max(0, value - ownDebit));
-    let residual = value - ownDebit - oppDebit;
-    if (residual > 0) {
-      // Residual sweep: if `value` > own pool (edge case: concurrent cashouts
-      // drained the own side), pull remainder from opposite side.
-      const ownRoom = (ownYes ? m.yesPool : m.noPool) - ownDebit;
-      const addOwn = Math.min(ownRoom, residual);
-      ownDebit += addOwn; residual -= addOwn;
-      const oppRoom = (ownYes ? m.noPool : m.yesPool) - oppDebit;
-      oppDebit += Math.min(oppRoom, residual);
-    }
-    if (ownYes) { m.yesPool = Math.max(0, m.yesPool - ownDebit); m.noPool = Math.max(0, m.noPool - oppDebit); }
-    else        { m.noPool  = Math.max(0, m.noPool  - ownDebit); m.yesPool = Math.max(0, m.yesPool - oppDebit); }
+    // ── Conservation ──────────────────────────────────────────────────────────
+    //
+    // THE WHOLE STAKE LEAVES THE POOL. `value` goes to the player, `cashOutFee`
+    // goes to the HOUSE (booked to HOUSE:COMMISSION by cashoutEntries, with the
+    // TRA/GBT levies applied like any other fee).
+    //
+    // It did not used to. The old code debited only `value` and left the fee
+    // sitting in the pool, where the remaining players collected it at resolution
+    // — so 50pick earned ZERO on every early exit, while market-config.ts's
+    // docstring claimed the fee was "booked to the house as operator revenue".
+    // The comment that used to sit here even explained the leak as a virtue
+    // ("giving them a marginally better payout at resolution"). It was revenue we
+    // were quietly handing to whoever happened to still be in the poll.
+    //
+    // The player's own stake is by definition in his own side's pool, so the
+    // whole debit comes from there. The clamp is belt-and-braces against a future
+    // change breaking that invariant: pay the lesser rather than mint.
+    const ownDebit = Math.min(ownPool, gross);
+    if (ownYes) m.yesPool = Math.max(0, m.yesPool - ownDebit);
+    else        m.noPool  = Math.max(0, m.noPool  - ownDebit);
     m.updatedAt = now;
     await marketStore.set(m);
     recordSnapshot(m.id, m.yesPool, m.noPool);
     // SSE: push updated odds after cash-out changes the pool
     emit("market:odds", { marketId: m.id, yesPct: impliedYesPct(m) });
 
-    // Conservation guard: never credit/record more than actually left the pool.
-    // The debits are capped at available liquidity, so in every reachable state
-    // (this position's own side always holds ≥ its own stake) removed === value;
-    // this only bites if a future change broke that invariant — pay the lesser
-    // rather than mint. credit, position payout and the txn ledger all use `paid`
-    // so they can never disagree.
-    const paid = Math.min(value, ownDebit + oppDebit);
+    // Never credit more than actually left the pool.
+    const paid = Math.min(value, ownDebit);
+    // Whatever we removed but did not pay the player is ours. If the clamp above
+    // ever bit, the fee shrinks with it — the ledger group must still balance.
+    const houseFee = Math.max(0, ownDebit - paid);
 
     // Mark the position closed.
     p.status = "CASHED_OUT";
@@ -1131,7 +1263,7 @@ export async function cashOutPosition(
       walletId: wallet.id, userId,
       type: "CASHOUT",
       status: "CONFIRMED",
-      amount: paid, fee: cashOutFee, taxWithheld: 0,
+      amount: paid, fee: houseFee, taxWithheld: 0,
       balanceAfter: newBalance, currency: "TZS",
       provider: "INTERNAL", providerRef: null, msisdn: null,
       description: `Cashed out · "${m.titleEn.slice(0, 60)}"`,
@@ -1139,14 +1271,25 @@ export async function cashOutPosition(
       amlReason: null,
       createdAt: now, updatedAt: now, completedAt: now,
     });
-    // Dual-write: cashout to double-entry ledger (fire-and-forget).
-    postLedgerEntries(`cashout_${cashoutTxnId}`, cashoutEntries({ txnId: cashoutTxnId, userId, marketId: m.id, value: paid, fee: cashOutFee })).catch(() => {});
+    // Dual-write: cashout to the double-entry ledger. The pool is debited the
+    // whole stake; the player is credited `value` and the HOUSE is credited the
+    // fee (net of the TRA/GBT levies, which are booked to their own accounts).
+    postLedgerEntries(`cashout_${cashoutTxnId}`, cashoutEntries({
+      txnId: cashoutTxnId, userId, marketId: m.id,
+      value: paid, fee: houseFee,
+      rates: { traTaxOnCommissionRate: cfg.traTaxOnCommissionRate, gbtLevyOnCommissionRate: cfg.gbtLevyOnCommissionRate },
+    })).catch(() => {});
 
-    notifyCashout(userId, { amount: value, marketTitle: m.titleEn, marketId: m.id, inGracePeriod, positionId });
+    // EVERY figure below is `paid` / `houseFee` — what actually moved — not the
+    // pre-clamp `value` / `cashOutFee`. They differ only when the conservation
+    // clamp bites (ownPool < gross), which is exactly the case the clamp exists
+    // for; telling a player he received a number we did not credit him is the last
+    // thing we should do in that state.
+    notifyCashout(userId, { amount: paid, marketTitle: m.titleEn, marketId: m.id, inGracePeriod, positionId });
     sendEmailToUser(userId, (email) => ({
       to: email,
-      subject: `Position sold · ${formatTzs(value)}`,
-      html: cashOutReceiptHtml({ reference: p.id, value, stake: p.stake, marketTitle: m.titleEn, soldAt: now, gracePeriod: inGracePeriod }),
+      subject: `Position sold · ${formatTzs(paid)}`,
+      html: cashOutReceiptHtml({ reference: p.id, value: paid, stake: p.stake, marketTitle: m.titleEn, soldAt: now, gracePeriod: inGracePeriod }),
       tag: "cashout",
     })).catch(() => {});
 
@@ -1157,8 +1300,11 @@ export async function cashOutPosition(
       targetType: "Position",
       targetId: p.id,
       payload: {
-        marketId: m.id, side: p.side, stake: p.stake, value,
-        gross, cashOutFee, feeRate,
+        marketId: m.id, side: p.side, stake: p.stake,
+        paid, houseFee, feeRate, gross,
+        // Recorded only when the clamp actually bit — so a divergence is visible
+        // in the audit chain rather than silently smoothed over.
+        ...(paid !== value ? { quotedValueBeforeClamp: value, quotedFee: cashOutFee } : {}),
         yesPoolAfter: m.yesPool, noPoolAfter: m.noPool,
       },
     });
@@ -1347,6 +1493,9 @@ export async function settleMarket(
   // could deadlock. Collected inside the lock, applied after it releases.
   const pendingBonusRefunds: Array<{ userId: string; amount: number }> = [];
   const pendingWagerReversals: Array<{ userId: string; stake: number }> = [];
+  // Referral commission — a share of the fee we ACTUALLY charged. Applied after
+  // the market lock releases, because it takes the REFERRER's wallet lock.
+  const pendingReferralAccruals: Array<{ userId: string; operatorFee: number }> = [];
 
   const result = await withLock(`market:${marketId}`, async (): Promise<ServiceResult<{ winnersPaid: number; positionsSettled: number }>> => {
   const m = await marketStore.get(marketId);
@@ -1395,9 +1544,16 @@ export async function settleMarket(
   };
 
   let winnersPaid = 0;
-  const settleCfg = await getEffectiveConfig(m.id);
+  // THE POLL'S OWN RATES — frozen at creation, not whatever admin has set today.
+  const settleCfg = ratesFor(m);
   const grossPool = m.yesPool + m.noPool;
   const winningPool = opts.outcome === "YES" ? m.yesPool : opts.outcome === "NO" ? m.noPool : 0;
+
+  // THE FEE. Computed ONCE, from the two pool numbers and the frozen rates, before
+  // we know or care which side won. It is byte-identical for a YES win and a NO win
+  // on the same final pools — that outcome-neutrality is what the pari-mutuel
+  // licence rests on (F6 §3.1), and it is why `poolFee` takes no outcome argument.
+  const settleFee = poolFee(m.yesPool, m.noPool, settleCfg);
 
   // Settle only OPEN positions. A CASHED_OUT (or otherwise already-settled)
   // position has already paid out and had its stake removed from the pool —
@@ -1522,14 +1678,22 @@ export async function settleMarket(
       notifyRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id });
     }
   } else {
-    // Whole-pool pari-mutuel distribution.
-    //   netPool = grossPool × (1 - totalFee)
+    // Whole-pool pari-mutuel distribution, with the capped fee.
+    //   fee     = min(commissionRate × pool, feeCeilingRate × smallerSide)
+    //   netPool = pool - fee
     //   payout  = (stake / winningSidePool) × netPool
+    //
+    // `settledPayoutFor` asserts the winner floor and THROWS if a WIN position
+    // would be paid below its stake. That is deliberate: the throw propagates,
+    // settlement aborts, the pool stays intact and an officer sees it. Refusing to
+    // settle is recoverable. Paying a winner 93,150 on a 100,000 stake is not —
+    // by the time anyone notices, the money is gone. That is the bug this whole
+    // change exists to kill, and this is the tripwire that keeps it dead.
     for (const p of myPositions) {
       const w = await db.wallet.findByUserId(p.userId);
       if (!w) continue;
       if (p.side === opts.outcome) {
-        const payout = settledPayoutWhole(
+        const { payout } = settledPayoutFor(
           { yesPool: m.yesPool, noPool: m.noPool, side: p.side, stake: p.stake },
           settleCfg,
         );
@@ -1551,10 +1715,12 @@ export async function settleMarket(
           createdAt: settledAt, updatedAt: settledAt, completedAt: settledAt,
         });
         // Dual-write: settlement payout to double-entry ledger (fire-and-forget).
+        // The ledger books this winner's SHARE of the poll's single fee — summing
+        // every winner's group reconstitutes the whole fee exactly.
         postLedgerEntries(`settle_${payoutTxnId}`, settlementPayoutEntries({
           groupId: `settle_${payoutTxnId}`, userId: p.userId, marketId: m.id,
-          payout, stake: p.stake, grossPool: m.yesPool + m.noPool, winningPool,
-          rates: { taxRate: settleCfg.taxRate, commissionRate: settleCfg.commissionRate, reserveRate: settleCfg.reserveRate, aggregatorRate: settleCfg.aggregatorRate, traTaxOnCommissionRate: settleCfg.traTaxOnCommissionRate, gbtLevyOnCommissionRate: settleCfg.gbtLevyOnCommissionRate },
+          payout, stake: p.stake, fee: settleFee.fee, winningPool,
+          rates: { traTaxOnCommissionRate: settleCfg.traTaxOnCommissionRate, gbtLevyOnCommissionRate: settleCfg.gbtLevyOnCommissionRate },
         })).catch(() => {});
         winnersPaid += payout;
         // Tamper-evident chain entry for the payout credit (txn row is the
@@ -1580,6 +1746,25 @@ export async function settleMarket(
           tag: "loss",
         })).catch(() => {});
       }
+
+      // ── REFERRAL COMMISSION — accrued HERE, from the fee we ACTUALLY charged.
+      //
+      // It used to accrue at BET time against `stake × commissionRate`, which under
+      // the capped model is a fee we may never earn: on the reported poll we take
+      // 3,500, not 31,050, and on a one-sided poll we take NOTHING while the old
+      // code still paid the referrer. We were paying out a share of revenue that
+      // did not exist.
+      //
+      // This position's honest share of the fee is `(stake / pool) × fee` — it put
+      // that fraction of the money into the pool the fee came out of. Win or lose:
+      // a loser's stake funded the fee just as much as a winner's did.
+      //
+      // The refund branches (one-sided, VOID) never reach this line, so a refunded
+      // poll accrues nothing — which is correct, because we earned nothing.
+      if (settleFee.pool > 0 && settleFee.fee > 0) {
+        const attributableFee = (p.stake / settleFee.pool) * settleFee.fee;
+        pendingReferralAccruals.push({ userId: p.userId, operatorFee: attributableFee });
+      }
     }
   }
   audit({
@@ -1591,13 +1776,20 @@ export async function settleMarket(
     payload: {
       outcome: opts.outcome,
       yesPool: m.yesPool, noPool: m.noPool,
-      payoutModel: "whole-pool",
-      taxRate: settleCfg.taxRate,
-      commissionRate: settleCfg.commissionRate,
-      reserveRate: settleCfg.reserveRate,
-      aggregatorRate: settleCfg.aggregatorRate,
-      grossPool: m.yesPool + m.noPool,
-      netPool: Math.round((m.yesPool + m.noPool) * (1 - settleCfg.taxRate - settleCfg.commissionRate - settleCfg.reserveRate - settleCfg.aggregatorRate)),
+      payoutModel: "whole-pool-capped-fee",
+      // The whole fee arithmetic, in the tamper-evident chain. An inspector (or a
+      // player who disputes a payout) can recompute the fee from these five
+      // numbers alone and check that `fee = min(commission, ceiling)` — and that
+      // it did not depend on which side won.
+      rates: { commissionRate: settleCfg.commissionRate, feeCeilingRate: settleCfg.feeCeilingRate },
+      grossPool: settleFee.pool,
+      smallerSide: settleFee.smaller,
+      commissionUncapped: Math.round(settleFee.commission),
+      feeCeiling: Math.round(settleFee.ceiling),
+      fee: Math.round(settleFee.fee),
+      feeWasCapped: settleFee.capped,
+      netPool: Math.round(settleFee.netPool),
+      levies: levySplit(settleFee.fee, settleCfg),
       winningPool,
       winnersPaid,
       stage1By: m.resolutionStage1By, stage2By: m.resolutionStage2By,
@@ -1655,6 +1847,21 @@ export async function settleMarket(
     const { refundedToBonus } = await refundBonusToActive(r.userId, r.amount);
     if (refundedToBonus < r.amount) {
       audit({ category: "WALLET", action: "bonus.refund_forfeited", actorId: r.userId, targetType: "User", targetId: r.userId, payload: { requested: r.amount, refundedToBonus, forfeited: r.amount - refundedToBonus, reason: "no active grant to hold refunded bonus" } });
+    }
+  }
+
+  // Referral commission, on the fee we ACTUALLY charged. Outside the market lock
+  // for the same reason as the bonus work above: onRecruitSettlement takes the
+  // REFERRER's wallet lock, and taking a wallet lock while holding the market lock
+  // would invert buyPosition's wallet→market order and could deadlock.
+  //
+  // Best-effort: a dropped referral credit must never break a settlement. It is
+  // audited and can be replayed from the settlement audit entry.
+  for (const r of pendingReferralAccruals) {
+    try {
+      await onRecruitSettlement(r.userId, { operatorFee: r.operatorFee });
+    } catch (err) {
+      audit({ category: "SYSTEM", action: "affiliate.settlement_accrual_error", actorId: r.userId, targetType: "Market", targetId: marketId, payload: { error: String(err), operatorFee: r.operatorFee } });
     }
   }
   return result;

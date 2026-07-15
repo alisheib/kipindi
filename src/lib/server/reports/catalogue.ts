@@ -182,95 +182,6 @@ export async function buildGbtMonthly(generatorId: string, packPeriod: string = 
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// 2 · TRA WITHHOLDING TAX REMITTANCE
-// ─────────────────────────────────────────────────────────────────────
-
-export async function buildTraTax(generatorId: string): Promise<Report> {
-  type Row = {
-    playerId: string; phone: string; nida: string;
-    grossWinnings: number; taxWithheld: number; netPaid: number; withdrawalCount: number;
-  };
-  // Single-pass: aggregate txn data by userId from the full txn list.
-  const agg = new Map<string, { gross: number; tax: number; wdCount: number }>();
-  for (const t of await db.txn.listAll()) {
-    if (t.status !== "CONFIRMED") continue;
-    const e = agg.get(t.userId) ?? { gross: 0, tax: 0, wdCount: 0 };
-    if (t.type === "BET_PAYOUT" || t.type === "CASHOUT") e.gross += Math.abs(t.amount);
-    e.tax += (t.taxWithheld || 0);
-    if (t.type === "WITHDRAWAL") e.wdCount++;
-    agg.set(t.userId, e);
-  }
-  const rows: Row[] = [];
-  let totalGross = 0, totalTax = 0, totalNet = 0;
-  for (const [userId, { gross, tax, wdCount }] of agg) {
-    if (gross === 0) continue;
-    const u = await db.user.findById(userId);
-    if (!u) continue;
-    const kyc = await db.kyc.findByUserId(userId);
-    const nida = kyc?.nidaNumber ? `${kyc.nidaNumber.slice(0, 4)}…${kyc.nidaNumber.slice(-4)}` : "—";
-    const net = gross - tax;
-    rows.push({
-      playerId: userId,
-      phone: `${u.phoneE164.slice(0, 4)}*****${u.phoneE164.slice(-2)}`,
-      nida,
-      grossWinnings: gross, taxWithheld: tax, netPaid: net,
-      withdrawalCount: wdCount,
-    });
-    totalGross += gross;
-    totalTax += tax;
-    totalNet += net;
-  }
-  return {
-    title: "Tanzania Revenue Authority · Withholding Tax Remittance",
-    subtitle: "Per-player gross winnings, tax withheld, and net paid — Income Tax Act Cap 332",
-    reference: makeReference("TRA", generatorId),
-    meta: {
-      generatedAt: new Date().toISOString(),
-      generatedBy: generatorId,
-      period: "All time (lifetime)",
-      classification: "Regulator hand-off",
-    },
-    summary: [
-      { label: "Total gross winnings (TZS)", value: totalGross.toLocaleString("en-US"), tone: "neutral" },
-      { label: "Total tax withheld (TZS)", value: totalTax.toLocaleString("en-US"), tone: "good" },
-      { label: "Total net paid (TZS)", value: totalNet.toLocaleString("en-US"), tone: "neutral" },
-      { label: "Players with winnings", value: rows.length.toLocaleString(), tone: "neutral" },
-    ],
-    sections: [
-      {
-        title: "Player remittance",
-        description: "Each row is one player who has received at least one settled payout. Phone masked per PDPA.",
-        columns: [
-          { header: "Player ID", key: "playerId", width: 22 },
-          { header: "Phone", sub: "masked", key: "phone", width: 14 },
-          { header: "NIDA", sub: "masked", key: "nida", width: 13 },
-          { header: "Gross", sub: "TZS", key: "grossWinnings", format: "tzs", align: "right", width: 14 },
-          { header: "Tax", sub: "TZS", key: "taxWithheld", format: "tzs", align: "right", width: 12 },
-          { header: "Net paid", sub: "TZS", key: "netPaid", format: "tzs", align: "right", width: 14 },
-          { header: "Wd. count", key: "withdrawalCount", format: "integer", align: "right", width: 11 },
-        ],
-        rows,
-        totals: {
-          playerId: "Total",
-          phone: "",
-          nida: "",
-          grossWinnings: totalGross,
-          taxWithheld: totalTax,
-          netPaid: totalNet,
-          withdrawalCount: rows.reduce((s, r) => s + r.withdrawalCount, 0),
-        },
-      },
-    ],
-    notes: [
-      "Reference: Income Tax Act, Cap 332. Withholding rate as configured in /admin/config.",
-      "Reconcile this total against the TRA online portal remittance figure before submission.",
-      "Phone and NIDA masking is applied per the Tanzania Personal Data Protection Act (PDPA, 2022).",
-    ],
-    signatures: await regulatorSignatures(generatorId),
-  };
-}
-
-// ─────────────────────────────────────────────────────────────────────
 // 3 · FIU SUSPICIOUS-ACTIVITY REPORT
 // ─────────────────────────────────────────────────────────────────────
 
@@ -513,23 +424,33 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
   // --- Core metrics ---
   const bets = todayTxns.filter((t) => t.type === "BET_PLACED");
   const payouts = todayTxns.filter((t) => t.type === "BET_PAYOUT" || t.type === "CASHOUT");
+  // Refunds (voided / one-sided polls) return the whole stake — we keep nothing.
+  const refunds = todayTxns.filter((t) => t.type === "BET_REFUND");
   const deposits = todayTxns.filter((t) => t.type === "DEPOSIT");
   const withdrawals = todayTxns.filter((t) => t.type === "WITHDRAWAL");
 
   const totalSales = bets.reduce((s, t) => s + Math.abs(t.amount), 0);
   const ticketCount = bets.length;
   const totalPayouts = payouts.reduce((s, t) => s + Math.abs(t.amount), 0);
+  const totalRefunds = refunds.reduce((s, t) => s + Math.abs(t.amount), 0);
   const totalDeposits = deposits.reduce((s, t) => s + t.amount, 0);
   const totalWithdrawals = withdrawals.reduce((s, t) => s + Math.abs(t.amount), 0);
 
-  // GGR = stakes - payouts (this is the operator's total commission from the pool)
-  const ggr = totalSales - totalPayouts;
+  // GGR = stakes − payouts − refunds = the operator's commission (what we KEEP).
+  // Refunds MUST be subtracted: a voided/one-sided poll returns every stake and we
+  // earn nothing, but the stake was counted in totalSales. Under the capped-fee
+  // model one-sided polls are common, so without this GGR (and the TRA/GBT levy on
+  // it) was overstated by the whole refunded amount. This is the same commission
+  // base the ledger levies TRA/GBT on (levySplit) — report and ledger now agree.
+  const ggr = totalSales - totalPayouts - totalRefunds;
 
-  // Tax computations — taxes come OUT of the operator's commission (GGR),
-  // not from the player pool. Rates are admin-editable in /admin/config.
+  // The TRA/GBT levies. 15% of our commission (10% TRA + 5% GBT), on GGR — which
+  // is now exactly the commission we kept. This is NOT the deleted per-player
+  // withholding tax (Ali's decision, 2026-07): players are never taxed. Rates are
+  // admin-editable at /admin/config and are the single source of truth.
   const cfg = await getGlobalConfig();
-  const TRA_RATE = cfg.traTaxOnCommissionRate;   // default 10% of commission
-  const GBT_RATE = cfg.gbtLevyOnCommissionRate;  // default 5% of commission
+  const TRA_RATE = cfg.traTaxOnCommissionRate;   // 10% of commission
+  const GBT_RATE = cfg.gbtLevyOnCommissionRate;  // 5% of commission
   const traTax = Math.max(0, ggr) * TRA_RATE;
   const gbtLevy = Math.max(0, ggr) * GBT_RATE;
   const marginPct = totalSales > 0 ? ((ggr / totalSales) * 100) : 0;
@@ -552,10 +473,12 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
     });
     const hBets = hTxns.filter((t) => t.type === "BET_PLACED");
     const hPayouts = hTxns.filter((t) => t.type === "BET_PAYOUT" || t.type === "CASHOUT");
+    const hRefunds = hTxns.filter((t) => t.type === "BET_REFUND");
     const hDep = hTxns.filter((t) => t.type === "DEPOSIT");
     const hWd = hTxns.filter((t) => t.type === "WITHDRAWAL");
     const hSales = hBets.reduce((s, t) => s + Math.abs(t.amount), 0);
     const hPay = hPayouts.reduce((s, t) => s + Math.abs(t.amount), 0);
+    const hRef = hRefunds.reduce((s, t) => s + Math.abs(t.amount), 0);
     hourlyRows.push({
       hour: `${String(h).padStart(2, "0")}:00`,
       sales: hSales,
@@ -563,7 +486,7 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
       payouts: hPay,
       deposits: hDep.reduce((s, t) => s + t.amount, 0),
       withdrawals: hWd.reduce((s, t) => s + Math.abs(t.amount), 0),
-      ggr: hSales - hPay,
+      ggr: hSales - hPay - hRef, // net of refunds — see the GGR note above
     });
   }
 
@@ -882,7 +805,6 @@ export async function buildMatchIntegrity(generatorId: string): Promise<Report> 
 export const REPORT_CATALOGUE = {
   "daily-ops":   { name: "Daily Operations Report", build: buildDailyOps },
   "gbt-monthly": { name: "Monthly report", build: buildGbtMonthly },
-  "tra-tax":     { name: "TRA Withholding Tax", build: buildTraTax },
   "fiu-sar":     { name: "FIU SAR",             build: buildFiuSar },
   "sx-register": { name: "Self-exclusion Register", build: buildSxRegister },
   "iso-audit":   { name: "ISO 27001 Audit Log", build: buildIsoAudit },

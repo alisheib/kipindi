@@ -1,59 +1,127 @@
 /**
- * Runtime market-config — tax + commission + stake bounds.
+ * Runtime market-config — the rates, and the stake bounds.
  *
  * Two scopes:
  *   GLOBAL   — applies to every market unless overridden
  *   PER-MARKET — optional override stored against a specific market id
  *
- * `getEffectiveConfig(marketId)` returns the merged values used by the
- * payout engine + the admin UI. Every set/clear is HMAC-audited so the
- * GBT inspector trail is intact.
+ * `getEffectiveConfig(marketId)` returns the merged values. It is what a NEW
+ * market's `feeSnapshot` is stamped from — and, crucially, it is NOT what an
+ * existing market is settled at. See `snapshotFromConfig` below.
  *
- * Persists across hot-reloads via `globalThis.__50PICK_MARKET_CONFIG`,
- * same backup pattern as the audit ring + market store.
+ * ⚠️ RATES STICK TO THE POLL. Settlement, cash-out and every payout preview read
+ * the immutable `feeSnapshot` frozen onto the market at creation, never this live
+ * config. Before this change, settlement read live config, so an admin retuning a
+ * rate silently repriced bets ALREADY PLACED — while the admin page claimed in
+ * writing that it didn't. A rate change now affects FUTURE polls only.
  *
- * DAL: All exported functions are async for DAL consistency. Config data
- * remains in-memory for now (pure configuration, not entity data).
- * // TODO Phase 6: back with SystemConfig Prisma table
+ * The payout formula itself lives in `src/lib/payout.ts` and is re-exported here.
+ * It used to be duplicated in both files, with the rates re-declared as separate
+ * client constants, and the two copies had already drifted.
+ *
+ * Every set/clear is HMAC-audited so the GBT inspector trail is intact.
+ * Persists across hot-reloads via `globalThis.__50PICK_MARKET_CONFIG`.
  */
 import { audit } from "./audit";
 import { loadConfig, saveConfig } from "./config-store";
+import {
+  DEFAULT_COMMISSION_RATE,
+  DEFAULT_FEE_CEILING_RATE,
+  DEFAULT_CASHOUT_FEE_RATE,
+  DEFAULT_FREE_EXIT_GRACE_MINUTES,
+  DEFAULT_PAID_EXIT_WINDOW_MINUTES,
+  DEFAULT_WITHDRAWAL_FEE_RATE,
+  DEFAULT_WITHDRAWAL_GATEWAY_SHARE_RATE,
+  DEFAULT_TRA_TAX_ON_COMMISSION_RATE,
+  DEFAULT_GBT_LEVY_ON_COMMISSION_RATE,
+  THIN_PROFIT_RATIO,
+  MAX_COMMISSION_RATE,
+  MAX_FEE_CEILING_RATE,
+  FEE_CEILING_WARN_ABOVE,
+  worstCaseWinnerRatio,
+  payoutFor,
+  settledPayoutFor,
+  leanFor,
+  type FeeSnapshot,
+  type LeanLevel as LeanLevelType,
+} from "../payout";
+
+// The payout engine is ONE implementation, shared with the client. Re-exported
+// so existing server call sites keep working without reaching across layers.
+export {
+  poolFee,
+  payoutFor,
+  settledPayoutFor,
+  leanFor,
+  levySplit,
+  assertWinnerFloor,
+  worstCaseWinnerRatio,
+  type LeanLevel,
+  type FeeRates,
+  type FeeSnapshot,
+  type FeeBreakdown,
+  type PayoutResult,
+} from "../payout";
 
 export type RateConfig = {
-  /** Tax rate (e.g. 0.04 = 4%). Going to TRA per Income Tax Act $80. */
-  taxRate: number;
-  /** Operator commission (e.g. 0.05 = 5%). 50pick keeps this. */
+  /**
+   * Our commission, as a share of the WHOLE pool (0.10 = 10%).
+   * Capped in effect by `feeCeilingRate` — see payout.ts.
+   */
   commissionRate: number;
-  /** Early cash-out commission (e.g. 0.09 = 9%). Withheld from a player's
-   *  cash-out proceeds when they CLOSE a position before the market resolves,
-   *  and booked to the house reserve as operator revenue. Holding to settlement
-   *  is unaffected (normal tax + commission apply at resolution). Admin-tunable;
-   *  separate from the settlement pool fees above. */
+  /**
+   * THE CEILING. The fee may never exceed this share of the SMALLER side
+   * (1/3 = a third). The smaller side is the prize — all the money the winners
+   * can actually win — so an uncapped percentage-of-pool fee on a lopsided poll
+   * grows bigger than the whole prize and starts eating the winners' own stakes.
+   * This is the field that makes "a winner is never paid below his stake" true.
+   * Store the exact fraction (1/3), not a rounded 0.33.
+   */
+  feeCeilingRate: number;
+  /** Early cash-out commission (0.10 = 10%), charged after the free-exit window.
+   *  Goes to the HOUSE (booked to HOUSE:COMMISSION, levies applied like any other
+   *  fee). It previously left the fee sitting in the pool, where the remaining
+   *  players collected it and we earned nothing on an early exit. */
   cashOutFeeRate: number;
-  /** Operator reserve rate (e.g. 0.02 = 2%). Contributes to the pool
-   *  fee taken at resolution; kept as operator margin. Can be 0 to disable. */
-  reserveRate: number;
-  /** Payment aggregator rate (e.g. 0.01 = 1%). Covers Selcom/Pesapal/etc
-   *  transaction fees. Can be 0 pre-launch. */
-  aggregatorRate: number;
+  /** Minutes after placing a bet during which an exit is FREE (full refund, zero
+   *  fee). Was a hardcoded GRACE_PERIOD_MS in market-service.ts. */
+  freeExitGraceMinutes: number;
+  /** Minutes of PAID exit (at cashOutFeeRate) AFTER the free window. Once free +
+   *  paid have elapsed, the exit LOCKS and the position rides to settlement.
+   *  This timer is what makes a late exit — the only kind that can gut a winner's
+   *  prize or void a poll you're losing — impossible. */
+  paidExitWindowMinutes: number;
+  /** Charged to the player on withdrawal (0.01 = 1%). This is the ONLY thing a
+   *  player is ever charged besides the pool commission — there is no withholding
+   *  tax. See the note on `traTaxOnCommissionRate`. */
+  withdrawalFeeRate: number;
+  /** The slice of `withdrawalFeeRate` that goes to the payment gateway
+   *  (0.005 = 0.5% of the amount). We keep the remainder. */
+  withdrawalGatewayShareRate: number;
   /** Minimum stake in TZS. */
   minStake: number;
   /** Maximum stake in TZS. */
   maxStake: number;
-  /** Show "thin profit" warning when projected payout/stake < this. Default 1.05. */
+  /** Show "thin upside" notice when projected payout/stake < this. Default 1.05. */
   thinProfitRatio: number;
   /** Starter wallet balance for newly-registered users in TZS.
    *  Default 0 — anyone can sign up but must add funds (or be credited
    *  by an admin) before they can place a stake. Setting this to a
    *  positive number turns 50pick into a free-trial sandbox. */
   starterBalanceTzs: number;
-  /** TRA withholding tax as a fraction of the operator's total commission.
-   *  E.g. 0.10 = 10% of the 9% commission goes to TRA.
-   *  This does NOT affect player payouts — it's deducted from the operator's take. */
+  /** TRA tax as a fraction of OUR FEE (0.10 = 10% of the commission we earned).
+   *
+   *  TAXES ARE ONLY EVER ON OUR COMMISSION. Never on the player. There is no
+   *  withholding tax on a withdrawal — the old code withheld 15% of EVERY
+   *  withdrawal, including money a player deposited and never bet, so a player
+   *  who deposited 100,000 and placed no bet withdrew 85,000. That is deleted.
+   *  A player pays the pool commission (indirectly, via the payout) and the 1%
+   *  withdrawal fee, and nothing else.
+   *
+   *  Does NOT affect player payouts — it comes out of the operator's take. */
   traTaxOnCommissionRate: number;
-  /** GBT levy as a fraction of the operator's total commission.
-   *  E.g. 0.05 = 5% of the 9% commission goes to GBT.
-   *  This does NOT affect player payouts — it's deducted from the operator's take. */
+  /** GBT levy as a fraction of OUR FEE (0.05 = 5% of the commission we earned).
+   *  Does NOT affect player payouts — it comes out of the operator's take. */
   gbtLevyOnCommissionRate: number;
   /** How long a resolved market sits in the public objection window before its
    *  money moves. This is a REAL settlement gate, not a display: stage-2 of the
@@ -70,30 +138,118 @@ export type RateConfig = {
 };
 
 export const DEFAULT_GLOBAL_CONFIG: RateConfig = {
-  taxRate: 0.04,
-  commissionRate: 0.03,
-  cashOutFeeRate: 0.09,  // 9% early-cash-out commission (management spec, license review 2026-05)
-  reserveRate: 0.02,
-  aggregatorRate: 0.00, // 0% until aggregator contract is signed
+  // THE RULE: "our commission is 10% of the pool, but never more than a third of
+  // the smaller side." These two numbers are that sentence. They cross over
+  // seamlessly at 70/30 — see payout.ts.
+  commissionRate: DEFAULT_COMMISSION_RATE,   // 0.10
+  feeCeilingRate: DEFAULT_FEE_CEILING_RATE,  // 1/3 — the exact fraction, not 0.33
+  // Early exit after the free window. Goes to the HOUSE (it used to be left in
+  // the pool, so we earned nothing on an early exit).
+  cashOutFeeRate: DEFAULT_CASHOUT_FEE_RATE,               // 0.10
+  freeExitGraceMinutes: DEFAULT_FREE_EXIT_GRACE_MINUTES,      // 5
+  paidExitWindowMinutes: DEFAULT_PAID_EXIT_WINDOW_MINUTES,    // 15 → total 20-min exit window
+  // Withdrawal. The ONLY thing a player is charged directly. No withholding tax.
+  withdrawalFeeRate: DEFAULT_WITHDRAWAL_FEE_RATE,                     // 0.01 (1%)
+  withdrawalGatewayShareRate: DEFAULT_WITHDRAWAL_GATEWAY_SHARE_RATE,  // 0.005 → gateway
   minStake: 100,
   // Must equal the dial's reachable cap (baseStake 500 × maxMultiplier 200 =
   // 100,000) so the server enforces exactly what the UI shows — otherwise a
   // crafted POST could stake far above the displayed limit. Admin can raise it
   // at /admin/config (raise the dial's maxMultiplier to match if you do).
   maxStake: 100_000,
-  thinProfitRatio: 1.05,
+  thinProfitRatio: THIN_PROFIT_RATIO,
   // Starter balance for new wallets. 0 in production — only tester phones
   // (TESTER_BOOTSTRAP_PHONES env) get 100K for QA. Admin can raise this
   // temporarily at /admin/config for promotional campaigns.
   starterBalanceTzs: 0,
-  // Taxes on the operator's commission (total pool fee = tax + commission
-  // + reserve + aggregator = 9%). These come OUT of the operator's take,
-  // not from the player's payout.
-  traTaxOnCommissionRate: 0.10,   // 10% of commission → TRA
-  gbtLevyOnCommissionRate: 0.05,  // 5% of commission → GBT
+  // Levies on OUR FEE. Out of the operator's take, never the player's payout.
+  traTaxOnCommissionRate: DEFAULT_TRA_TAX_ON_COMMISSION_RATE,    // 10% of our fee → TRA
+  gbtLevyOnCommissionRate: DEFAULT_GBT_LEVY_ON_COMMISSION_RATE,  // 5% of our fee → GBT
   // The objection window players get before a verdict's money moves.
   objectionWindowHours: 24,
 };
+
+/**
+ * The rates that get FROZEN onto a market at creation.
+ *
+ * This is the fix for the thing the admin page has been claiming in writing but
+ * not doing: settlement used to read LIVE config, so retuning a rate silently
+ * repriced bets that had already been placed. Settlement, cash-out and every
+ * payout preview now read this snapshot. A rate change affects FUTURE polls only.
+ *
+ * Only the rates that price a POSITION belong here. Stake bounds are entry-time
+ * checks and the objection window is procedural, so both correctly stay live.
+ */
+export function snapshotFromConfig(cfg: RateConfig): FeeSnapshot {
+  return {
+    commissionRate: cfg.commissionRate,
+    feeCeilingRate: cfg.feeCeilingRate,
+    cashOutFeeRate: cfg.cashOutFeeRate,
+    freeExitGraceMinutes: cfg.freeExitGraceMinutes,
+    paidExitWindowMinutes: cfg.paidExitWindowMinutes,
+    traTaxOnCommissionRate: cfg.traTaxOnCommissionRate,
+    gbtLevyOnCommissionRate: cfg.gbtLevyOnCommissionRate,
+    thinProfitRatio: cfg.thinProfitRatio,
+    v: 1,
+    stampedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Read a market's frozen rates, with a safe fallback for rows created before
+ * feeSnapshot existed (the backfill stamps those, but a race or a restore could
+ * still surface one).
+ *
+ * The fallback deliberately uses the OLD commission (9%) with the NEW ceiling.
+ * The ceiling can only ever REDUCE the fee versus what those players were quoted,
+ * so an un-backfilled poll pays its winners MORE, never less — nobody can
+ * complain, and the in-flight bug is dead either way. Migrating them to 10% would
+ * pay them less than they agreed to, which we will not do.
+ */
+export const LEGACY_COMMISSION_RATE = 0.09;
+
+/**
+ * A rate read out of persisted JSON, made safe.
+ *
+ * `?? DEFAULT` is NOT enough: `typeof NaN === "number"`, so a NaN survives the
+ * nullish coalesce and every downstream guard that only checks for null. It then
+ * flows into `Math.min(0.30, Math.max(0, NaN)) === NaN` → a NaN cash-out value →
+ * `if (value <= 0)` is FALSE for NaN → a NaN wallet credit. `poolFee` clamps its
+ * own inputs, but the cash-out and levy rates are read outside it. Clamp here.
+ */
+function safeRate(v: unknown, fallback: number, hi = 1): number {
+  return typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(0, v)) : fallback;
+}
+
+export function snapshotOrLegacy(raw: unknown): FeeSnapshot {
+  const s = raw as Partial<FeeSnapshot> | null | undefined;
+  if (s && Number.isFinite(s.commissionRate) && Number.isFinite(s.feeCeilingRate)) {
+    return {
+      commissionRate: safeRate(s.commissionRate, DEFAULT_COMMISSION_RATE),
+      feeCeilingRate: safeRate(s.feeCeilingRate, DEFAULT_FEE_CEILING_RATE, MAX_FEE_CEILING_RATE),
+      cashOutFeeRate: safeRate(s.cashOutFeeRate, DEFAULT_CASHOUT_FEE_RATE),
+      freeExitGraceMinutes: Number.isFinite(s.freeExitGraceMinutes) ? Math.max(0, s.freeExitGraceMinutes as number) : DEFAULT_FREE_EXIT_GRACE_MINUTES,
+      paidExitWindowMinutes: Number.isFinite(s.paidExitWindowMinutes) ? Math.max(0, s.paidExitWindowMinutes as number) : DEFAULT_PAID_EXIT_WINDOW_MINUTES,
+      traTaxOnCommissionRate: safeRate(s.traTaxOnCommissionRate, DEFAULT_TRA_TAX_ON_COMMISSION_RATE),
+      gbtLevyOnCommissionRate: safeRate(s.gbtLevyOnCommissionRate, DEFAULT_GBT_LEVY_ON_COMMISSION_RATE),
+      thinProfitRatio: Number.isFinite(s.thinProfitRatio) ? (s.thinProfitRatio as number) : THIN_PROFIT_RATIO,
+      v: 1,
+      stampedAt: s.stampedAt ?? "legacy",
+    };
+  }
+  return {
+    commissionRate: LEGACY_COMMISSION_RATE,      // what those players were quoted
+    feeCeilingRate: DEFAULT_FEE_CEILING_RATE,    // the ceiling — can only pay them MORE
+    cashOutFeeRate: DEFAULT_CASHOUT_FEE_RATE,
+    freeExitGraceMinutes: DEFAULT_FREE_EXIT_GRACE_MINUTES,
+    paidExitWindowMinutes: DEFAULT_PAID_EXIT_WINDOW_MINUTES,
+    traTaxOnCommissionRate: DEFAULT_TRA_TAX_ON_COMMISSION_RATE,
+    gbtLevyOnCommissionRate: DEFAULT_GBT_LEVY_ON_COMMISSION_RATE,
+    thinProfitRatio: THIN_PROFIT_RATIO,
+    v: 1,
+    stampedAt: "legacy",
+  };
+}
 
 declare global {
   // eslint-disable-next-line no-var
@@ -159,16 +315,28 @@ export async function listMarketOverrides(): Promise<Array<{ marketId: string; o
   return Array.from(store.perMarket.entries()).map(([marketId, over]) => ({ marketId, over }));
 }
 
-/** Validation — guards user-input ranges before audit. */
-function validate(updates: Partial<RateConfig>): { ok: true } | { ok: false; reason: string } {
-  if (updates.taxRate !== undefined) {
-    if (Number.isNaN(updates.taxRate) || updates.taxRate < 0 || updates.taxRate > 0.20) {
-      return { ok: false, reason: "Tax rate must be 0-20%." };
+/**
+ * Validation — guards user-input ranges before audit.
+ *
+ * The old combined-fee ceiling (`tax + commission + reserve + aggregator < 30%`)
+ * is gone with those fields. It has been replaced by something that actually
+ * protects a player: THE WINNER-FLOOR GUARDRAIL at the bottom of this function,
+ * which refuses any config under which a winner could be paid below his stake.
+ * The old check could not have caught the reported bug — 9% passed it easily.
+ */
+function validate(updates: Partial<RateConfig>): { ok: true; warn?: string } | { ok: false; reason: string } {
+  if (updates.commissionRate !== undefined) {
+    if (Number.isNaN(updates.commissionRate) || updates.commissionRate < 0 || updates.commissionRate > MAX_COMMISSION_RATE) {
+      return { ok: false, reason: `Commission rate must be 0-${(MAX_COMMISSION_RATE * 100).toFixed(0)}%.` };
     }
   }
-  if (updates.commissionRate !== undefined) {
-    if (Number.isNaN(updates.commissionRate) || updates.commissionRate < 0 || updates.commissionRate > 0.20) {
-      return { ok: false, reason: "Commission rate must be 0-20%." };
+  if (updates.feeCeilingRate !== undefined) {
+    if (Number.isNaN(updates.feeCeilingRate) || updates.feeCeilingRate < 0 || updates.feeCeilingRate > MAX_FEE_CEILING_RATE) {
+      // The hard stop. Above 100% of the smaller side the fee exceeds the entire
+      // prize and starts eating the winners' own stakes — the exact bug this
+      // whole model exists to kill. It is not a preference; it is the bound
+      // invariant 1 depends on.
+      return { ok: false, reason: "Fee ceiling must be 0-100% of the smaller side. Above 100% a winner could be paid less than they staked." };
     }
   }
   if (updates.cashOutFeeRate !== undefined) {
@@ -176,14 +344,36 @@ function validate(updates: Partial<RateConfig>): { ok: true } | { ok: false; rea
       return { ok: false, reason: "Cash-out fee must be 0-30%." };
     }
   }
-  if (updates.reserveRate !== undefined) {
-    if (Number.isNaN(updates.reserveRate) || updates.reserveRate < 0 || updates.reserveRate > 0.10) {
-      return { ok: false, reason: "Reserve rate must be 0-10%." };
+  if (updates.freeExitGraceMinutes !== undefined) {
+    const g = updates.freeExitGraceMinutes;
+    if (!Number.isFinite(g) || g < 0 || g > 60) {
+      return { ok: false, reason: "Free-exit grace must be 0-60 minutes (0 = no free window)." };
     }
   }
-  if (updates.aggregatorRate !== undefined) {
-    if (Number.isNaN(updates.aggregatorRate) || updates.aggregatorRate < 0 || updates.aggregatorRate > 0.10) {
-      return { ok: false, reason: "Aggregator rate must be 0-10%." };
+  if (updates.paidExitWindowMinutes !== undefined) {
+    const w = updates.paidExitWindowMinutes;
+    if (!Number.isFinite(w) || w < 0 || w > 1440) {
+      return { ok: false, reason: "Paid-exit window must be 0-1440 minutes (0 = no paid exit; exit locks at the free window)." };
+    }
+  }
+  if (updates.withdrawalFeeRate !== undefined) {
+    if (Number.isNaN(updates.withdrawalFeeRate) || updates.withdrawalFeeRate < 0 || updates.withdrawalFeeRate > 0.05) {
+      return { ok: false, reason: "Withdrawal fee must be 0-5%." };
+    }
+  }
+  if (updates.withdrawalGatewayShareRate !== undefined) {
+    if (Number.isNaN(updates.withdrawalGatewayShareRate) || updates.withdrawalGatewayShareRate < 0 || updates.withdrawalGatewayShareRate > 0.05) {
+      return { ok: false, reason: "Gateway share must be 0-5%." };
+    }
+  }
+  // The gateway's slice comes OUT of the withdrawal fee — it cannot exceed it, or
+  // we would be paying the gateway more than we charged the player and taking a
+  // loss on every withdrawal.
+  {
+    const wf = updates.withdrawalFeeRate ?? store.global.withdrawalFeeRate;
+    const gs = updates.withdrawalGatewayShareRate ?? store.global.withdrawalGatewayShareRate;
+    if (gs > wf) {
+      return { ok: false, reason: "Gateway share cannot exceed the withdrawal fee — it is paid out of it." };
     }
   }
   if (updates.objectionWindowHours !== undefined) {
@@ -195,14 +385,6 @@ function validate(updates: Partial<RateConfig>): { ok: true } | { ok: false; rea
     if (!Number.isFinite(h) || h < 0 || h > 168) {
       return { ok: false, reason: "Objection window must be 0-168 hours (0 = no window)." };
     }
-  }
-  // Combined ceiling: tax + commission + reserve + aggregator < 30%
-  {
-    const t = updates.taxRate ?? store.global.taxRate;
-    const c = updates.commissionRate ?? store.global.commissionRate;
-    const r = updates.reserveRate ?? store.global.reserveRate;
-    const a = updates.aggregatorRate ?? store.global.aggregatorRate;
-    if (t + c + r + a >= 0.30) return { ok: false, reason: "Combined fees (tax + commission + reserve + aggregator) cannot exceed 30%." };
   }
   if (updates.minStake !== undefined) {
     if (updates.minStake < 100 || !Number.isFinite(updates.minStake)) {
@@ -241,11 +423,54 @@ function validate(updates: Partial<RateConfig>): { ok: true } | { ok: false; rea
       return { ok: false, reason: "GBT levy on commission must be 0-50%." };
     }
   }
+  // The levies come OUT of our fee. If they summed above 100% we would owe more
+  // tax than we earned commission and the operator's take would go negative.
+  {
+    const tra = updates.traTaxOnCommissionRate ?? store.global.traTaxOnCommissionRate;
+    const gbt = updates.gbtLevyOnCommissionRate ?? store.global.gbtLevyOnCommissionRate;
+    if (tra + gbt > 1) {
+      return { ok: false, reason: "TRA + GBT levies cannot exceed 100% of the commission — they are paid out of it." };
+    }
+  }
+
+  // ── THE GUARDRAIL ─────────────────────────────────────────────────────────
+  // Refuse to save a config under which a winner could be paid below his stake.
+  //
+  // This is the check that would have stopped the reported bug reaching a player.
+  // We do not trust the algebra here — we sweep the whole lean range numerically
+  // with the real payout function and look at the actual floor. If a future edit
+  // to the fee maths ever reintroduces a way to underpay a winner, an admin save
+  // fails loudly rather than a player quietly losing money on a correct call.
+  {
+    const c = updates.commissionRate ?? store.global.commissionRate;
+    const k = updates.feeCeilingRate ?? store.global.feeCeilingRate;
+    const worst = worstCaseWinnerRatio({ commissionRate: c, feeCeilingRate: k });
+    if (worst.ratio < 1) {
+      return {
+        ok: false,
+        reason:
+          `Refused: under these rates a winner could be paid ${(worst.ratio * 100).toFixed(1)}% of their stake ` +
+          `(worst case at a ${Math.round((worst.atYes / (worst.atYes + worst.atNo)) * 100)}/` +
+          `${Math.round((worst.atNo / (worst.atYes + worst.atNo)) * 100)} pool). ` +
+          `A correct call must never lose money. Lower the fee ceiling.`,
+      };
+    }
+    // Warn — but allow. Above a ceiling of one half we take at least as much as
+    // ALL the winners combined, which is defensible only if Ali means it.
+    if (k > FEE_CEILING_WARN_ABOVE) {
+      return {
+        ok: true,
+        warn:
+          `Fee ceiling is ${(k * 100).toFixed(0)}% of the smaller side. Above ${(FEE_CEILING_WARN_ABOVE * 100).toFixed(0)}% ` +
+          `the house takes more than all the winners put together. Winners still never lose money, but check this is intended.`,
+      };
+    }
+  }
   return { ok: true };
 }
 
 export async function setGlobalConfig(updates: Partial<RateConfig>, officerId: string):
-  Promise<{ ok: true; config: RateConfig } | { ok: false; error: string }> {
+  Promise<{ ok: true; config: RateConfig; warn?: string } | { ok: false; error: string }> {
   await ensureHydrated();
   const v = validate(updates);
   if (!v.ok) return { ok: false, error: v.reason };
@@ -258,9 +483,11 @@ export async function setGlobalConfig(updates: Partial<RateConfig>, officerId: s
     actorId: officerId,
     targetType: "MarketConfig",
     targetId: "global",
-    payload: { before, after: store.global, changes: updates },
+    // The audit trail records the winner-floor warning too — if an officer sets a
+    // ceiling above 50%, the fact that they were told is part of the record.
+    payload: { before, after: store.global, changes: updates, warn: v.warn ?? null },
   });
-  return { ok: true, config: { ...store.global } };
+  return { ok: true, config: { ...store.global }, warn: v.warn };
 }
 
 export async function setMarketOverride(marketId: string, updates: Partial<RateConfig>, officerId: string):
@@ -299,54 +526,52 @@ export async function clearMarketOverride(marketId: string, officerId: string): 
   return { ok: true };
 }
 
+// ── Payout adapters ─────────────────────────────────────────────────────────
+//
+// The formula itself lives in src/lib/payout.ts and is shared with the client.
+// These are thin adapters that accept anything carrying the two rates — a live
+// RateConfig OR a market's frozen FeeSnapshot — so a caller physically cannot
+// pick the wrong one by passing the wrong shape.
+//
+// The two functions that used to live here each carried their own copy of
+//   fee = tax + commission + reserve + aggregator; netPool = gross * (1 - fee)
+// alongside a third copy in payout.ts. That is how the dial ended up quoting a
+// different number than settlement paid.
+
 /**
- * Whole-pool pari-mutuel payout.
- *
- *   netPool = (yesPool + noPool) x (1 - tax - commission)
- *   payout  = (myStake / winningSidePool) x netPool
- *
- * IMPORTANT: under heavy lean (winning side dominates), payout/stake can
- * approach (1 - tax - commission). At extremes (e.g. 95%+ favorite wins)
- * winners can take a small NET LOSS even though they "won". The
- * `houseLean()` helper below labels this for the UI.
+ * Projection for a bet NOT YET PLACED — the stake is added to the chosen side.
+ * @deprecated Prefer importing `payoutFor` from `@/lib/payout` directly.
  */
 export function payoutForWhole(
   opts: { yesPool: number; noPool: number; side: "YES" | "NO"; stake: number },
-  cfg: RateConfig,
+  rates: FeeRatesLike,
 ): { payout: number; net: number; share: number; ratio: number } {
-  // Player's stake is already in the pool when this is called for projection.
-  const yesPool = opts.side === "YES" ? opts.yesPool + opts.stake : opts.yesPool;
-  const noPool  = opts.side === "NO"  ? opts.noPool  + opts.stake : opts.noPool;
-  const grossPool   = yesPool + noPool;
-  const winningPool = opts.side === "YES" ? yesPool : noPool;
-  const fee = Math.min(0.99, Math.max(0, cfg.taxRate + cfg.commissionRate + cfg.reserveRate + cfg.aggregatorRate));
-  const netPool = grossPool * (1 - fee);
-  if (winningPool <= 0) return { payout: 0, net: 0, share: 0, ratio: 0 };
-  const share = opts.stake / winningPool;
-  const payout = Math.round(share * netPool);
-  const ratio = opts.stake > 0 ? payout / opts.stake : 0;
-  return { payout, net: payout - opts.stake, share, ratio };
+  const r = payoutFor(opts, rates);
+  return { payout: r.payout, net: r.net, share: r.share, ratio: r.ratio };
 }
 
-/** Projected payout for an actual settlement — uses the *current* pools (no
- *  hypothetical stake added), since the position was already placed. */
+/**
+ * SETTLEMENT payout — the pools are final and already contain this stake.
+ *
+ * ⚠️ Pass the market's `feeSnapshot`, not live config. Settlement must price a
+ * position at the rates it was placed under.
+ */
 export function settledPayoutWhole(
   opts: { yesPool: number; noPool: number; side: "YES" | "NO"; stake: number },
-  cfg: RateConfig,
+  rates: FeeRatesLike,
 ): number {
-  const grossPool   = opts.yesPool + opts.noPool;
-  const winningPool = opts.side === "YES" ? opts.yesPool : opts.noPool;
-  if (winningPool <= 0) return 0;
-  const fee = Math.min(0.99, Math.max(0, cfg.taxRate + cfg.commissionRate + cfg.reserveRate + cfg.aggregatorRate));
-  const netPool = grossPool * (1 - fee);
-  return Math.round((opts.stake / winningPool) * netPool);
+  return settledPayoutFor(opts, rates).payout;
 }
 
-export type LeanLevel = "fair" | "thin" | "negative";
+/** Anything that carries the two rates the fee is made of. */
+export type FeeRatesLike = { commissionRate: number; feeCeilingRate: number };
 
-/** Categorise the projected payout/stake ratio for the inline warning. */
-export function houseLean(ratio: number, cfg: RateConfig): LeanLevel {
-  if (ratio < 1.0) return "negative";
-  if (ratio < cfg.thinProfitRatio) return "thin";
-  return "fair";
+/**
+ * Categorise the projected payout/stake ratio.
+ *
+ * There is no `negative` level any more — a winner cannot be paid below his
+ * stake, so the state that meant "you won but you lost money" is unreachable.
+ */
+export function houseLean(ratio: number, cfg: { thinProfitRatio: number }): LeanLevelType {
+  return leanFor(ratio, cfg.thinProfitRatio);
 }

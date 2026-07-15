@@ -90,18 +90,19 @@ const xPos = xPositions.find((p) => p.marketId === mA.id);
 ok("officer's own position settled WIN", xPos?.status === "WIN", `status=${xPos?.status}`);
 ok("officer's own position has a payout", (xPos?.finalPayout ?? 0) > 0, `payout=${xPos?.finalPayout}`);
 
-// Pari-mutuel math: grossPool 3000, fee 9% → netPool 2730, sole YES gets it all.
+// Capped-fee math: grossPool 3000. The poll is not lopsided enough for the ceiling
+// to bind, so the 10% commission applies: fee = 300 → netPool 2700, sole YES takes it all.
 const winnersPaid = settled.ok ? (settled.data?.winnersPaid ?? 0) : 0;
-ok("winnersPaid = netPool (2730)", winnersPaid === 2730, `winnersPaid=${winnersPaid}`);
+ok("winnersPaid = netPool (2700)", winnersPaid === 2700, `winnersPaid=${winnersPaid}`);
 const xAfter = await bal("officerX");
-ok("officer credited exactly the payout", xAfter - xBefore === 2730, `Δ=${xAfter - xBefore}`);
+ok("officer credited exactly the payout", xAfter - xBefore === 2700, `Δ=${xAfter - xBefore}`);
 const pAfter = await bal("playerP");
 ok("losing player's balance unchanged by settlement", pAfter === pBefore, `before=${pBefore} after=${pAfter}`);
 
-// Money conservation: stakes in (3000) = payouts to players (2730) + house fee (270).
+// Money conservation: stakes in (3000) = payouts to players (2700) + house fee (300).
 const grossPool = 1000 + 2000;
 const houseFee = grossPool - winnersPaid;
-ok("money conserved: stakes = payouts + house fee", grossPool === winnersPaid + houseFee && houseFee === 270, `gross=${grossPool} paid=${winnersPaid} fee=${houseFee}`);
+ok("money conserved: stakes = payouts + house fee", grossPool === winnersPaid + houseFee && houseFee === 300, `gross=${grossPool} paid=${winnersPaid} fee=${houseFee}`);
 
 // ── C · Re-disable restores production ───────────────────────────────────────
 await setConflictedResolutionAllowed(false, "test_admin");

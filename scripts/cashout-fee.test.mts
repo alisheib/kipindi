@@ -1,24 +1,41 @@
 /**
  * Early-cash-out commission tests (in-memory store; no DATABASE_URL).
  *
- * Management model: closing a position EARLY returns the player's OWN STAKE
- * minus the admin-configured cash-out fee (default 9%) — no winnings. The stake
- * leaves the player's own pool side; the fee is booked to the house reserve.
- * HOLDING to settlement is unaffected (normal pari-mutuel rates).
+ * Closing a position EARLY returns the player's OWN STAKE minus the cash-out fee
+ * (default 10%) — no winnings. HOLDING to settlement is unaffected.
  *
- * Verifies, for "he has 10k in the pool, sells early, we take 9%":
- *   - player gets stake × (1 − feeRate)         (e.g. 10k → 9.1k)
- *   - house reserve gains stake × feeRate         (e.g. 900)
- *   - the pool drops by exactly the stake (10k)   (conserved; total unaffected)
- *   - rate is admin-configurable (9% → 20% → 0%)
+ * ⚠️ TWO THINGS CHANGED HERE, AND THEY REWROTE THIS SUITE:
+ *
+ * 1. THE FEE GOES TO THE HOUSE. It used to be deducted from the player and then
+ *    LEFT IN THE POOL, where the remaining players collected it at settlement —
+ *    50pick earned exactly ZERO on every early exit. This suite ASSERTED that
+ *    leak as correct behaviour ("pool dropped by value paid — fee stays in pool").
+ *    The assertion is now inverted: the WHOLE stake must leave the pool.
+ *
+ * 2. THE EXIT WINDOW (Ali's design, 2026-07-15). Cash-out is open only for a fixed
+ *    window measured from the bet: free for the first freeExitGraceMinutes (5),
+ *    then paid at cashOutFeeRate for paidExitWindowMinutes (15), then LOCKED. A
+ *    poll closing too soon (or a bet placed near close) offers no cash-out at all.
+ *    This replaced the old side-collapse guard, which only blocked the last
+ *    shilling and could still be bypassed for 100 TZS to gut a winner's prize. The
+ *    time lock kills every late-exit attack because a late exit is now impossible.
+ *
+ * Verifies, for "he has 10k in the pool, sells early, we take 10%":
+ *   - player gets stake × (1 − feeRate)              (10k → 9,000)
+ *   - the house gains stake × feeRate                (1,000)
+ *   - THE WHOLE STAKE (10k) leaves the pool — the fee does not stay behind
+ *   - the rate is admin-configurable (10% → 20% → 0%)
+ *   - the free-exit window is admin-configurable and refunds in full
+ *   - a LATE exit (past the window) is locked; a SHORT poll offers no exit
  *   - holding to resolution pays the NORMAL payout, not stake-minus-fee
  */
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
-import { createMarket, buyPosition, cashOutPosition, cashOutValue, getMarket, resolveMarket, settleMarket } from "../src/lib/server/market-service.ts";
+import { createMarket, buyPosition, cashOutPosition, cashOutValue, getMarket, resolveMarket, settleMarket, ratesFor } from "../src/lib/server/market-service.ts";
 import { positionStore } from "../src/lib/server/market-dal.ts";
-import { setGlobalConfig, getGlobalConfig, getEffectiveConfig, settledPayoutWhole } from "../src/lib/server/market-config.ts";
+import { setGlobalConfig, getGlobalConfig, settledPayoutWhole } from "../src/lib/server/market-config.ts";
+import { DEFAULT_CASHOUT_FEE_RATE } from "../src/lib/payout.ts";
 
-/** Backdate a position's placedAt to 10 min ago so it's past the 5-min grace window. */
+/** Backdate a position's placedAt so it is past the free-exit grace window. */
 async function backdatePastGrace(posId: string) {
   const p = await positionStore.get(posId);
   if (p) { p.placedAt = new Date(Date.now() - 10 * 60_000).toISOString(); await positionStore.set(p); }
@@ -55,35 +72,107 @@ async function makeMarket() {
   } as never);
 }
 
-// ── Default 9%: "he has 10k in the pool, sells early, we take 9%" ───────────
+// ── Default 10%: "he has 10k in the pool, sells early, we take 10%" ─────────
+//
+// NOTE the co-bettor (usr_co_a2) on the SAME side. Without one, usr_co_a is the
+// only YES stake, and selling would empty the YES side and void the whole poll —
+// which the side-collapse guard now refuses. This is a realistic poll, not a
+// two-player degenerate one.
 await fundedUser("usr_co_a");
+await fundedUser("usr_co_a2");
 await fundedUser("usr_co_b");
 {
   const m = await makeMarket();
   const a = await buyPosition("usr_co_a", { marketId: m.id, side: "YES", stake: 10_000 });
+  await buyPosition("usr_co_a2", { marketId: m.id, side: "YES", stake: 10_000 }); // co-bettor, same side
   await buyPosition("usr_co_b", { marketId: m.id, side: "NO", stake: 10_000 });
   ok("position opened (10k YES)", a.ok);
   const posId = a.ok ? a.data!.positionId : "";
 
   const mkt = (await getMarket(m.id))!;
-  const proj = await cashOutValue({ side: "YES", stake: 10_000 }, { id: m.id, yesPool: mkt.yesPool, noPool: mkt.noPool });
-  ok("default fee rate is 9%", Math.abs(proj.feeRate - 0.09) < 1e-9, `feeRate=${proj.feeRate}`);
+  const proj = await cashOutValue(
+    { side: "YES", stake: 10_000, placedAt: new Date(Date.now() - 10 * 60_000).toISOString() },
+    { id: m.id, yesPool: mkt.yesPool, noPool: mkt.noPool, resolutionAt: mkt.resolutionAt, feeSnapshot: mkt.feeSnapshot },
+  );
+  ok(`default fee rate is ${DEFAULT_CASHOUT_FEE_RATE * 100}%`, Math.abs(proj.feeRate - DEFAULT_CASHOUT_FEE_RATE) < 1e-9, `feeRate=${proj.feeRate}`);
   ok("gross == stake (10k)", proj.gross === 10_000, `gross=${proj.gross}`);
-  ok("player gets 9,100 (10k − 9%)", proj.value === 9_100, `value=${proj.value}`);
-  ok("house fee is 900", proj.fee === 900, `fee=${proj.fee}`);
+  ok("player gets 9,000 (10k − 10%)", proj.value === 9_000, `value=${proj.value}`);
+  ok("house fee is 1,000", proj.fee === 1_000, `fee=${proj.fee}`);
 
-  await backdatePastGrace(posId); // move past the 5-min free-exit window
+  await backdatePastGrace(posId); // move past the free-exit window
 
   const walletBefore = await bal("usr_co_a");
   const poolsBefore = await pools(m.id);
 
   const r = await cashOutPosition("usr_co_a", posId);
-  ok("cash-out succeeded", r.ok);
+  ok("cash-out succeeded", r.ok, r.ok ? "" : (r as { error?: string }).error);
   const got = r.ok ? r.data!.value : -1;
 
-  ok("player received 9,100", (await bal("usr_co_a")) - walletBefore === 9_100 && got === 9_100, `Δwallet=${(await bal("usr_co_a")) - walletBefore} value=${got}`);
-  ok("pool dropped by value paid (9,100) — fee stays in pool", poolsBefore - (await pools(m.id)) === 9_100, `Δpools=${poolsBefore - (await pools(m.id))}`);
+  ok("player received 9,000", (await bal("usr_co_a")) - walletBefore === 9_000 && got === 9_000, `Δwallet=${(await bal("usr_co_a")) - walletBefore} value=${got}`);
+
+  // THE FIX. The pool must drop by the WHOLE stake (10,000), not by the 9,000 the
+  // player received. The old suite asserted the opposite and called the 1,000
+  // difference "fee stays in pool" — that was 50pick's revenue being handed to
+  // whoever else happened to be in the poll.
+  ok(
+    "THE WHOLE STAKE (10,000) leaves the pool — the fee goes to the HOUSE, not to the other players",
+    poolsBefore - (await pools(m.id)) === 10_000,
+    `Δpools=${poolsBefore - (await pools(m.id))} (expected 10,000)`,
+  );
   ok("no double cash-out", !(await cashOutPosition("usr_co_a", posId)).ok);
+}
+
+// ── THE EXIT WINDOW — free / paid / LOCKED (Ali's design, 2026-07-15) ────────
+//
+// Cash-out is only open for a fixed window measured from the bet: free for the
+// first freeExitGraceMinutes, then paid for paidExitWindowMinutes, then LOCKED.
+// This replaces the old side-collapse guard: the guttng/void attacks all needed a
+// LATE exit (you can only tell you're losing near the real-world event, hours/days
+// out), and a hard time lock ~20 min in makes a late exit impossible for everyone.
+{
+  const closesInMs = (m: { selectionClosedAt?: string | null; resolutionAt: string }) =>
+    (m.selectionClosedAt ? Date.parse(m.selectionClosedAt) : Date.parse(m.resolutionAt)) - Date.now();
+  void closesInMs; // (documentation of the runway concept; the service computes it)
+
+  // (a) A LATE exit — 60 min after the bet, past the 20-min window — is LOCKED.
+  await fundedUser("win_a"); await fundedUser("win_a2"); await fundedUser("win_b");
+  {
+    const m = await makeMarket();
+    const big = await buyPosition("win_a", { marketId: m.id, side: "YES", stake: 100_000 });
+    await buyPosition("win_a2", { marketId: m.id, side: "YES", stake: 100_000 });
+    await buyPosition("win_b",  { marketId: m.id, side: "NO",  stake: 10_000 });
+    const pid = big.ok ? big.data!.positionId : "";
+    // An hour later — long past the exit window.
+    const p = await positionStore.get(pid);
+    if (p) { p.placedAt = new Date(Date.now() - 60 * 60_000).toISOString(); await positionStore.set(p); }
+
+    const before = await bal("win_a");
+    const r = await cashOutPosition("win_a", pid);
+    ok("EXIT WINDOW: a late exit (60 min in) is LOCKED — rides to settlement", !r.ok, r.ok ? "!! late exit allowed — the gutting attack is open" : "");
+    ok("EXIT WINDOW: no money moved on a locked exit", (await bal("win_a")) === before);
+    ok("EXIT WINDOW: the winning side's prize is INTACT (not gutted)", (await getMarket(m.id))!.yesPool === 200_000);
+
+    // And the +100-TZS 'buy a token position then bail' bypass no longer helps:
+    // the big position is still past its own window, so it stays locked.
+    await buyPosition("win_a", { marketId: m.id, side: "YES", stake: 100 });
+    const stillLocked = await cashOutPosition("win_a", pid);
+    ok("EXIT WINDOW: the old 100-TZS bypass is dead — the big position is still locked", !stillLocked.ok);
+  }
+
+  // (b) A SHORT poll — closes in 3 min — offers NO cash-out at all (too short).
+  await fundedUser("short_a"); await fundedUser("short_b");
+  {
+    const m = await createMarket({
+      titleEn: "Short poll", titleSw: "x", category: "macro", sourceUrl: "https://bot.go.tz",
+      resolutionCriterion: "x", resolutionAt: new Date(Date.now() + 3 * 60_000).toISOString(),
+      selectionClosedAt: new Date(Date.now() + 3 * 60_000).toISOString(), proposedBy: "test",
+    } as never);
+    const a = await buyPosition("short_a", { marketId: m.id, side: "YES", stake: 10_000 });
+    await buyPosition("short_b", { marketId: m.id, side: "NO", stake: 10_000 });
+    const pid = a.ok ? a.data!.positionId : "";
+    const r = await cashOutPosition("short_a", pid);
+    ok("EXIT WINDOW: a 3-minute poll offers NO cash-out (too short a runway)", !r.ok, r.ok ? "!! short poll allowed a sell-out" : "");
+  }
 }
 
 // ── Admin-configurable: 20% ────────────────────────────────────────────────
@@ -93,13 +182,15 @@ await fundedUser("usr_co_b");
   ok("admin can set cash-out fee to 20%", set.ok && (set as { config: { cashOutFeeRate: number } }).config.cashOutFeeRate === 0.20);
 
   await fundedUser("usr_co_c");
+  await fundedUser("usr_co_c2");
   await fundedUser("usr_co_d");
-  const m = await makeMarket();
+  const m = await makeMarket(); // created AFTER the retune → freezes 20%
   const c = await buyPosition("usr_co_c", { marketId: m.id, side: "YES", stake: 30_000 });
+  await buyPosition("usr_co_c2", { marketId: m.id, side: "YES", stake: 30_000 }); // co-bettor
   await buyPosition("usr_co_d", { marketId: m.id, side: "NO", stake: 30_000 });
   const posId = c.ok ? c.data!.positionId : "";
 
-  await backdatePastGrace(posId); // move past the 5-min free-exit window
+  await backdatePastGrace(posId);
 
   const walletBefore = await bal("usr_co_c");
   const r = await cashOutPosition("usr_co_c", posId);
@@ -108,19 +199,54 @@ await fundedUser("usr_co_b");
   await setGlobalConfig({ cashOutFeeRate: before.cashOutFeeRate }, "officer_test");
 }
 
+// ── RATES STICK TO THE POLL ────────────────────────────────────────────────
+//
+// A poll created at 10% must still exit at 10% after admin retunes to 25%. This
+// is the whole point of the feeSnapshot: a rate change cannot reach back and
+// reprice a bet that has already been placed.
+{
+  await fundedUser("usr_stick_a");
+  await fundedUser("usr_stick_a2");
+  await fundedUser("usr_stick_b");
+  const m = await makeMarket(); // frozen at the current 10%
+  const a = await buyPosition("usr_stick_a", { marketId: m.id, side: "YES", stake: 10_000 });
+  await buyPosition("usr_stick_a2", { marketId: m.id, side: "YES", stake: 10_000 });
+  await buyPosition("usr_stick_b", { marketId: m.id, side: "NO", stake: 10_000 });
+  const posId = a.ok ? a.data!.positionId : "";
+  await backdatePastGrace(posId);
+
+  // Admin retunes AFTER the bet is placed.
+  const saved = await getGlobalConfig();
+  await setGlobalConfig({ cashOutFeeRate: 0.25 }, "officer_test");
+
+  const before = await bal("usr_stick_a");
+  const r = await cashOutPosition("usr_stick_a", posId);
+  ok(
+    "a mid-poll retune does NOT reprice a bet already placed (still 10%, not 25%)",
+    r.ok && (await bal("usr_stick_a")) - before === 9_000,
+    `Δ=${(await bal("usr_stick_a")) - before} (expected 9,000 at the poll's frozen 10%, NOT 7,500 at the new 25%)`,
+  );
+
+  await setGlobalConfig({ cashOutFeeRate: saved.cashOutFeeRate }, "officer_test");
+}
+
 // ── Rate 0 disables the fee (knob covers the full range) ───────────────────
 {
+  const saved = await getGlobalConfig();
   await setGlobalConfig({ cashOutFeeRate: 0 }, "officer_test");
   await fundedUser("usr_co_e");
+  await fundedUser("usr_co_e2");
   await fundedUser("usr_co_f");
-  const m = await makeMarket();
+  const m = await makeMarket(); // created after the retune → freezes 0%
   const e = await buyPosition("usr_co_e", { marketId: m.id, side: "YES", stake: 10_000 });
+  await buyPosition("usr_co_e2", { marketId: m.id, side: "YES", stake: 10_000 }); // co-bettor
   await buyPosition("usr_co_f", { marketId: m.id, side: "NO", stake: 10_000 });
   const posId = e.ok ? e.data!.positionId : "";
+  await backdatePastGrace(posId);
   const walletBefore = await bal("usr_co_e");
   const r = await cashOutPosition("usr_co_e", posId);
-  ok("rate 0 → full stake back, no fee", r.ok && (await bal("usr_co_e")) - walletBefore === 10_000);
-  await setGlobalConfig({ cashOutFeeRate: 0.09 }, "officer_test");
+  ok("rate 0 → full stake back, no fee", r.ok && (await bal("usr_co_e")) - walletBefore === 10_000, `Δ=${(await bal("usr_co_e")) - walletBefore}`);
+  await setGlobalConfig({ cashOutFeeRate: saved.cashOutFeeRate }, "officer_test");
 }
 
 // ── HOLDING to settlement applies NORMAL rates (NOT the cash-out fee) ───────
@@ -134,7 +260,8 @@ await fundedUser("usr_co_b");
   ok("hold position opened", h.ok);
 
   const mkt = (await getMarket(m.id))!;
-  const cfg = await getEffectiveConfig(m.id);
+  // The POLL'S rates, not live config — that is what settlement uses.
+  const cfg = ratesFor(mkt);
   const expectedPayout = settledPayoutWhole({ yesPool: mkt.yesPool, noPool: mkt.noPool, side: "YES", stake: 10_000 }, cfg);
   const stakeMinusCashoutFee = Math.round(10_000 * (1 - 0.30)); // 7,000 — what a 30% early sell WOULD give
 

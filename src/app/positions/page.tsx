@@ -66,23 +66,29 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
       try {
         openLiveValue += (await cashOutValue(
           { side: p.side, stake: p.stake, placedAt: p.placedAt },
-          { id: m.id, yesPool: m.yesPool, noPool: m.noPool, resolutionAt: m.resolutionAt },
+          { id: m.id, yesPool: m.yesPool, noPool: m.noPool, resolutionAt: m.resolutionAt, selectionClosedAt: m.selectionClosedAt, feeSnapshot: m.feeSnapshot },
         )).value;
       } catch { openLiveValue += p.potentialPayout; }
     } else {
       openLiveValue += p.potentialPayout;
     }
   }
-  // Pre-compute cash-out values for open positions (cashOutValue is async)
+  // Pre-compute cash-out values for open positions (cashOutValue is async).
+  // `sellable` is false once the exit window has passed (or never opened for a
+  // too-short poll) — the button must then show "rides to settlement", not a price.
   const openCashOutValues = new Map<string, number | null>();
+  const openSellable = new Map<string, boolean>();
   for (const p of open) {
     const m = marketMap.get(p.marketId);
     if (m && m.status === "LIVE") {
       try {
-        openCashOutValues.set(p.id, (await cashOutValue({ side: p.side, stake: p.stake, placedAt: p.placedAt }, { id: m.id, yesPool: m.yesPool, noPool: m.noPool, resolutionAt: m.resolutionAt })).value);
-      } catch { openCashOutValues.set(p.id, null); }
+        const co = await cashOutValue({ side: p.side, stake: p.stake, placedAt: p.placedAt }, { id: m.id, yesPool: m.yesPool, noPool: m.noPool, resolutionAt: m.resolutionAt, selectionClosedAt: m.selectionClosedAt, feeSnapshot: m.feeSnapshot });
+        openCashOutValues.set(p.id, co.sellable ? co.value : null);
+        openSellable.set(p.id, co.sellable);
+      } catch { openCashOutValues.set(p.id, null); openSellable.set(p.id, false); }
     } else {
       openCashOutValues.set(p.id, null);
+      openSellable.set(p.id, false);
     }
   }
 
@@ -195,6 +201,8 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
               const m = marketMap.get(p.marketId);
               if (!m) return null;
               const liveValue = openCashOutValues.get(p.id) ?? null;
+              // Selling is shut if selections closed OR the exit window has passed.
+              const sellShut = isSelectionClosed(m) || openSellable.get(p.id) === false;
               return (
                 <div key={p.id} className="space-y-2">
                   <PositionCard
@@ -205,6 +213,11 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                     current={liveValue ?? p.potentialPayout}
                     payout={p.potentialPayout}
                     status="OPEN"
+                    // Once selections close, the pools are frozen and
+                    // `potentialPayout` has been restamped with the EXACT amount
+                    // (notifySelectionClosedMarkets → settledPayoutFor). Before
+                    // that it is a moving projection and the card shows no figure.
+                    bettingClosed={isSelectionClosed(m)}
                     placedAt={p.placedAt}
                     positionId={p.id}
                     refCode={myRefCode}
@@ -230,14 +243,14 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                       </div>
                     ) : null;
                   })()}
-                  {(liveValue !== null || isSelectionClosed(m)) && (
+                  {(liveValue !== null || sellShut) && (
                     <SellButton
                       positionId={p.id}
                       stake={p.stake}
                       value={liveValue ?? 0}
                       placedAt={p.placedAt}
                       closesAt={m.selectionClosedAt ?? m.resolutionAt}
-                      alreadyClosed={isSelectionClosed(m)}
+                      alreadyClosed={sellShut}
                       serverNow={Date.now()}
                     />
                   )}

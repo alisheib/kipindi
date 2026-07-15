@@ -4,6 +4,9 @@ import Link from "next/link";
 import { cn, formatDateTime, formatTzs } from "@/lib/utils";
 import { Cash } from "@/components/ui/cash";
 import { Chip } from "@/components/ui/chip";
+// The kit primitive, replacing this file's own local copy of it (one of three
+// hand-rolled label/value pairs across the fee surfaces).
+import { Stat } from "@/components/ui/stat";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import { PositionShare } from "@/components/markets/position-share";
@@ -16,6 +19,18 @@ type Props = {
   current: number;          // current value if open, final if settled
   payout: number;           // potentialPayout if open, finalPayout if settled
   status: "OPEN" | "WIN" | "LOSS" | "VOID" | "CASHED_OUT";
+  /**
+   * True once betting has CLOSED on this market.
+   *
+   * This is the switch for the whole payout-disclosure policy. While betting is
+   * open the pools keep moving, so any figure we showed would be a projection —
+   * and D3 (license review 2026-05) says we show none. Once betting closes the
+   * pools are FROZEN, so `payout` stops being a projection and becomes the exact
+   * amount we will pay, computed by the same function that settles.
+   *
+   * An OPEN position used to render no money figure at all, in either state.
+   */
+  bettingClosed?: boolean;
   /** ISO timestamp the bet was placed — shown as a small "Opened …" meta line. */
   placedAt?: string;
   /** Position reference (e.g. pos_a1b2c3d4e5) — the ticket number quoted in emails. */
@@ -25,7 +40,7 @@ type Props = {
   className?: string;
 };
 
-export function PositionCard({ marketId, marketTitle, side, stake, current, payout, status, placedAt, positionId, refCode, className }: Props) {
+export function PositionCard({ marketId, marketTitle, side, stake, current, payout, status, bettingClosed, placedAt, positionId, refCode, className }: Props) {
   const { t } = useT();
   const statusLabel = {
     OPEN: t.common.pending,
@@ -73,13 +88,36 @@ export function PositionCard({ marketId, marketTitle, side, stake, current, payo
           )}
         </div>
       </div>
-      {/* Open positions: per management spec (license review · 2026-05)
-          the potential payout is NOT shown until the event has resolved.
-          Settled positions show the actual final payout. */}
-      {status !== "OPEN" && (
+      {/* THE PAYOUT, in the three states it can honestly be in.
+          Before this, an OPEN position showed NOTHING — in either state. */}
+      {status !== "OPEN" ? (
+        // Settled: the real, final, paid amount.
         <div className="grid grid-cols-2 gap-3">
           <Stat label={t.market.finalLabel} value={formatTzs(current)} money />
           <Stat label={t.dialog.payoutLabel} value={formatTzs(payout)} tone={status === "WIN" ? "gold" : "default"} money />
+        </div>
+      ) : bettingClosed ? (
+        // Betting is CLOSED: the pools are frozen, so this figure is exact — it was
+        // computed by the same function that will settle it. Not an estimate, and we
+        // say so, because "you'll get about X" and "you will get X" are different
+        // promises and we are making the second one.
+        <div className="grid grid-cols-2 gap-3">
+          <Stat label={t.dialog.stakeLabel} value={formatTzs(stake)} money />
+          <Stat
+            label={t.market.payoutIfWin}
+            value={formatTzs(payout)}
+            tone="gold"
+            money
+            hint={t.market.payoutExactNote}
+          />
+        </div>
+      ) : (
+        // Betting is OPEN: the pools are still moving, so there is no exact number
+        // to give. D3 (license review 2026-05) says we show no projection. Instead
+        // of a blank card, tell the player when they WILL get the number.
+        <div className="grid grid-cols-2 gap-3">
+          <Stat label={t.dialog.stakeLabel} value={formatTzs(stake)} money />
+          <Stat label={t.dialog.payoutLabel} value={t.market.payoutAtClose} tone="muted" />
         </div>
       )}
 
@@ -99,16 +137,5 @@ export function PositionCard({ marketId, marketTitle, side, stake, current, payo
         </div>
       )}
     </Link>
-  );
-}
-
-function Stat({ label, value, tone = "default", money }: { label: string; value: string; tone?: "default" | "gold"; money?: boolean }) {
-  return (
-    <div>
-      <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{label}</p>
-      <p className={cn("font-mono text-[13.5px] font-bold tabular-nums leading-tight", tone === "gold" ? "text-gold-300" : "text-text")}>
-        {money ? <Cash>{value}</Cash> : value}
-      </p>
-    </div>
   );
 }

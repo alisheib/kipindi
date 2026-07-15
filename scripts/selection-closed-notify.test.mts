@@ -50,9 +50,18 @@ async function mkUser(id: string, email: string | null = null) {
 
 // 0. Email template renders.
 {
-  const html = selectionClosedHtml({ marketTitle: "Will it rain in Dodoma Friday?", closedAt: iso, resolvesAt: ahead(120), marketId: "mkt_x" });
+  // §6: once betting closes the pools are FROZEN, so the payout stops being a
+  // projection and becomes an exact number. This email no longer says "waiting for
+  // results" — it states the exact amount the player receives if his side wins,
+  // computed by the very function that will settle it.
+  const html = selectionClosedHtml({
+    marketTitle: "Will it rain in Dodoma Friday?", closedAt: iso, resolvesAt: ahead(120), marketId: "mkt_x",
+    payoutIfYes: 102_333, payoutIfNo: null,
+  });
   ok("email shows market title", html.includes("Will it rain in Dodoma Friday?"));
-  ok("email says waiting for results", html.toLowerCase().includes("waiting for results"));
+  ok("email says betting is closed", html.toLowerCase().includes("betting closed"));
+  ok("email states the EXACT payout figure", html.includes("102,333"));
+  ok("email says the figure is exact, not an estimate", html.toLowerCase().includes("exact amount"));
   ok("email links to the market", html.includes("/markets/mkt_x"));
 }
 

@@ -2,6 +2,8 @@ import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-she
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { getGlobalConfig, listMarketOverrides, DEFAULT_GLOBAL_CONFIG } from "@/lib/server/market-config";
+import { worstCaseWinnerRatio } from "@/lib/payout";
+import { FeeSimulator } from "./fee-simulator";
 import { getMarket } from "@/lib/server/market-service";
 import { getAuditPage } from "@/lib/server/audit";
 import { Chip } from "@/components/ui/chip";
@@ -27,7 +29,10 @@ export default async function AdminConfigPage() {
     (e) => e.action.startsWith("config."),
   ).slice(0, 12);
 
-  const totalFee = config.taxRate + config.commissionRate + config.reserveRate + config.aggregatorRate;
+  // The worst payout/stake ratio any winner could suffer under the CURRENT rates,
+  // swept across the whole lean range. Under the ceiling this is always > 1 — the
+  // KPI exists to make that visible and to make a regression loud.
+  const worst = worstCaseWinnerRatio(config);
 
   return (
     <>
@@ -37,42 +42,80 @@ export default async function AdminConfigPage() {
         period={false}
         actions={
           <Chip size="md" variant="resolved">
-            Price Competition · whole-pool
+            Pari-mutuel · capped fee
           </Chip>
         }
       />
       <div className="px-4 lg:px-6 py-5 space-y-4">
         {/* Snapshot KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-          <AdminKpi label="Tax rate"        sw="Kodi"        value={`${(config.taxRate * 100).toFixed(1)}%`} delta="TRA · Cap 332" />
-          <AdminKpi label="Commission"      sw="Faida"       value={`${(config.commissionRate * 100).toFixed(1)}%`} delta="50pick" />
-          <AdminKpi label="Reserve"         sw="Akiba"       value={`${(config.reserveRate * 100).toFixed(1)}%`} delta="operator reserve" />
-          <AdminKpi label="Total pool fee"  sw="Jumla"       value={`${(totalFee * 100).toFixed(1)}%`} delta="≤ 30% ceiling" />
-          <AdminKpi label="TRA on commission" sw="TRA"       value={`${(config.traTaxOnCommissionRate * 100).toFixed(0)}%`} delta="of operator take" />
-          <AdminKpi label="GBT on commission" sw="GBT"       value={`${(config.gbtLevyOnCommissionRate * 100).toFixed(0)}%`} delta="of operator take" />
+          <AdminKpi label="Commission"        sw="Faida"   value={`${(config.commissionRate * 100).toFixed(1)}%`} delta="of the whole pool" />
+          <AdminKpi label="Fee ceiling"       sw="Kikomo"  value={`${(config.feeCeilingRate * 100).toFixed(1)}%`} delta="of the smaller side" />
+          {/* THE KPI THAT MATTERS. If this ever reads below 1.00×, a player who
+              called it right is losing money — which is the bug this whole model
+              exists to make impossible. validate() refuses to save such a config,
+              so it should never happen; showing it means we would SEE it if it did. */}
+          <AdminKpi
+            label="Worst winner ratio"
+            sw="Kiwango cha chini"
+            value={`${worst.ratio.toFixed(3)}×`}
+            delta={worst.ratio >= 1 ? "never below 1.00× — a correct call cannot lose" : "⚠ BELOW STAKE — winners lose money"}
+            deltaDir={worst.ratio >= 1 ? "up" : "down"}
+          />
+          <AdminKpi label="Cash-out fee"      sw="Ada ya kuuza" value={`${(config.cashOutFeeRate * 100).toFixed(1)}%`} delta={`free for ${config.freeExitGraceMinutes} min`} />
+          <AdminKpi label="Withdrawal fee"    sw="Ada ya kutoa" value={`${(config.withdrawalFeeRate * 100).toFixed(2)}%`} delta={`${(config.withdrawalGatewayShareRate * 100).toFixed(2)}% to gateway`} />
+          <AdminKpi label="TRA + GBT"         sw="TRA + GBT" value={`${((config.traTaxOnCommissionRate + config.gbtLevyOnCommissionRate) * 100).toFixed(0)}%`} delta="of OUR fee, not the player's" />
         </div>
 
-        {/* Pari-mutuel formula */}
+        {/* The model, stated correctly. The old copy here documented
+            `netPool = grossPool × (1 − tax − commission − reserve − aggregator)` and
+            then warned, as accepted behaviour, that "even winning positions can
+            yield … a small net loss after fees". That edge case is the bug; it is
+            gone, and so is the paragraph that normalised it. */}
         <AdminCard className="border-info-border bg-info-bg/15">
           <div className="flex items-start gap-3">
             <I.settings size={18} className="text-info shrink-0 mt-0.5" />
             <div className="text-caption text-text-secondary space-y-1.5">
-              <p className="text-text font-bold">Whole-pool distribution model</p>
+              <p className="text-text font-bold">Capped-fee pari-mutuel</p>
               <p>
-                Every stake — YES and NO — joins one pool. At resolution we compute{" "}
-                <code className="font-mono text-text">netPool = grossPool × (1 − tax − commission − reserve − aggregator)</code>,
-                then pay each winner{" "}
+                Every stake — YES and NO — joins one pool. At settlement:{" "}
+                <code className="font-mono text-text">fee = min(commission × pool, ceiling × smallerSide)</code>,{" "}
+                <code className="font-mono text-text">netPool = pool − fee</code>, and each winner is paid{" "}
                 <code className="font-mono text-text">stake × (netPool / winningSidePool)</code>.
-                Payouts are dynamic and depend on how the pool ends up split.
               </p>
               <p>
-                <strong className="text-text">Edge case warning:</strong> when one side dominates, even winning
-                positions can yield thin profit or a small net loss after fees. The dial surfaces this
-                automatically when the projected payout/stake ratio drops below the
-                <code className="font-mono ml-1">thinProfitRatio</code> below.
+                <strong className="text-text">Why the ceiling:</strong> the smaller side <em>is</em> the prize — it is
+                all the money the winners can win. An uncapped percentage-of-pool fee on a lopsided poll grows{" "}
+                <em>bigger than the whole prize</em>, so the balance comes out of the winners&apos; own returned
+                stakes and a correct call loses money. Capping the fee below the prize makes that arithmetically
+                impossible. At a third, winners always keep at least twice what we take.
+              </p>
+              <p>
+                <strong className="text-text">No cliff:</strong> &ldquo;the full {(config.commissionRate * 100).toFixed(0)}% whenever the smaller side is
+                ≥ {(config.commissionRate / config.feeCeilingRate * 100).toFixed(0)}% of the pool&rdquo; and &ldquo;never more than{" "}
+                {(config.feeCeilingRate * 100).toFixed(1)}% of the smaller side&rdquo; are the <em>same rule</em>. They cross over
+                seamlessly — <code className="font-mono">min()</code> finds the seam by itself, so there is no threshold to game.
+              </p>
+              <p>
+                <strong className="text-text">Rates stick to the poll.</strong> A poll freezes these rates when it is created.
+                Changing anything here affects <strong>future polls only</strong> — it cannot reprice a bet that has
+                already been placed.
               </p>
             </div>
           </div>
+        </AdminCard>
+
+        {/* The simulator — see a rate change before you save it. */}
+        <AdminCard
+          title="Fee simulator"
+          sw="Kijaribio cha ada"
+          action={
+            <span className="font-mono text-[10px] tracking-[0.10em] uppercase text-text-tertiary">
+              runs the real payout function
+            </span>
+          }
+        >
+          <FeeSimulator config={config} />
         </AdminCard>
 
         {/* Global config form */}
@@ -120,7 +163,7 @@ export default async function AdminConfigPage() {
                   <thead className="border-b border-border bg-bg-overlay">
                     <tr className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
                       <th className="text-left p-3">Market</th>
-                      <th className="text-left p-3">Tax</th>
+                      <th className="text-left p-3">Fee ceiling</th>
                       <th className="text-left p-3">Commission</th>
                       <th className="text-left p-3">Stake bounds</th>
                       <th className="text-right p-3">Action</th>
@@ -140,7 +183,7 @@ export default async function AdminConfigPage() {
                             <p className="mt-0.5 font-mono text-[10px] text-text-subtle">{marketId}</p>
                           </td>
                           <td className="p-3 font-mono">
-                            {over.taxRate !== undefined ? `${(over.taxRate * 100).toFixed(1)}%` : "—"}
+                            {over.feeCeilingRate !== undefined ? `${(over.feeCeilingRate * 100).toFixed(1)}%` : "—"}
                           </td>
                           <td className="p-3 font-mono">
                             {over.commissionRate !== undefined ? `${(over.commissionRate * 100).toFixed(1)}%` : "—"}
@@ -208,11 +251,17 @@ export default async function AdminConfigPage() {
           <div className="flex items-start gap-3">
             <I.alertCircle s={18} />
             <div className="text-caption text-text-secondary">
-              <p className="text-text font-bold">Live markets keep their config at place-time</p>
+              <p className="text-text font-bold">Live polls keep the rates they were created with</p>
               <p>
-                A rate change applies to <strong>future</strong> bets only. Positions already opened keep the fee
-                model that was in effect when they were placed. This is the regulator-friendly default — predictors
-                see the rates they signed up for.
+                A rate change applies to <strong>future polls only</strong>. Every poll freezes the rates above onto
+                itself the moment it is created (its <code className="font-mono">feeSnapshot</code>), and settlement,
+                cash-out and every payout preview read that frozen copy — never these live values. Predictors are
+                settled at the rates they signed up for.
+              </p>
+              <p className="text-text-tertiary">
+                This panel used to make exactly this promise while the code did the opposite: settlement read the
+                live config, so retuning a rate here silently repriced bets that had <strong>already been placed</strong>.
+                The promise is now enforced by the data model rather than asserted by this paragraph.
               </p>
             </div>
           </div>

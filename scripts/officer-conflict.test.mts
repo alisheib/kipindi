@@ -48,6 +48,7 @@ await mkUser("officer_a", "ADMIN");
 await mkUser("officer_b", "ADMIN");
 await mkUser("clean_officer", "ADMIN", 0);
 await mkUser("player_1", "PLAYER");
+await mkUser("player_2", "PLAYER"); // co-bettor — see the side-collapse note below
 
 const mkt1 = await createMarket({
   titleEn: "Conflict test market", titleSw: "Soko", titleZh: "市场",
@@ -137,6 +138,11 @@ await buyPosition("player_1", { marketId: mkt2.id, side: "YES", stake: 1000 });
     createdById: "clean_officer",
   });
   await buyPosition("officer_b", { marketId: mkt3.id, side: "YES", stake: 500 });
+  // A co-bettor on the officer's side. Without one he is the last YES stake, and
+  // the side-collapse guard refuses his exit (it would void the poll for everyone)
+  // — so his position would stay OPEN and the conflict-of-interest guard would
+  // correctly refuse to let him resolve. This test is about the CASHED_OUT path.
+  await buyPosition("player_2", { marketId: mkt3.id, side: "YES", stake: 500 });
   await buyPosition("player_1", { marketId: mkt3.id, side: "NO", stake: 500 });
 
   // Cash out the position

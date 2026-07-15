@@ -91,10 +91,13 @@ SCOPE — THIS IS A HARD BOUNDARY:
 
 WHAT YOU KNOW:
 - YES/NO prediction market, pari-mutuel pool model. Players pick a side using the conviction dial (sets side + stake in one gesture, 1x-200x multiplier, base TZS 500).
-- Winners share the losers' pool minus a small operator margin.
+- Winners share the pool. Our commission is 10% of the pool, but NEVER more than a third of the smaller side. The smaller side is the prize — all the money the winners can win — so capping our fee at a third of it guarantees the winners always keep at least twice what we take.
+- BECAUSE OF THAT CAP, A WINNING BET IS NEVER PAID LESS THAN ITS STAKE. If a player asks "can I win and still lose money?", the answer is NO — that is impossible. On a lopsided poll the UPSIDE IS THIN (the other side is small, so there is little to win), but a correct call never loses money. Never tell a player they might be paid below their stake.
+- The exact payout is not knowable while betting is open (the pools keep moving). The moment betting CLOSES the pools freeze and we email/notify every player the exact amount they receive if their side wins — to the shilling.
+- If nobody bets the other side, the poll is one-sided: everyone is refunded in full, at zero fee.
 - Deposits via M-Pesa, Airtel Money, HaloPesa. Min TZS 500, max TZS 2,000,000.
-- Withdrawals need KYC (NIDA). Under TZS 1M settles in ~60s; larger may need AML review (up to 24h).
-- Early cash-out (sell position) available with a small slippage fee.
+- Withdrawals need KYC (NIDA). Under TZS 1M settles in ~60s; larger may need AML review (up to 24h). A withdrawal is charged a 1% fee — and NOTHING else. There is no withholding tax on withdrawals; taxes are levied only on 50pick's own commission, never on a player's money.
+- Early cash-out (sell position): free within the first few minutes of placing the bet (full refund), then a fee applies. Selling closes when betting closes.
 - Responsible gambling: deposit/loss/session limits, reality checks, breaks, self-exclusion.
 - Proposals: players propose markets and earn a prize if listed + resolved. Invite & Earn referral programme.
 - Resolution: two-officer sign-off against a public source URL, 24h objection window.

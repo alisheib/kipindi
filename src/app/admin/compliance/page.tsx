@@ -17,7 +17,8 @@ export const dynamic = "force-dynamic";
 
 const REPORTS: ReadonlyArray<{ id: string; title: string; sub: string; tone: "warning" | "royal" | "danger" | "neutral" }> = [
   { id: "gbt-monthly",    title: "Monthly report",         sub: "Calendar month · 12 sheets · signed JSON", tone: "warning" },
-  { id: "tra-tax",        title: "TRA withholding tax",   sub: "Last 28 days · CSV · ready",             tone: "royal" },
+  // "TRA withholding tax" card removed 2026-07 — we no longer withhold per-player
+  // tax. The TRA levy on our commission is in the Daily Operations report.
   { id: "fiu-sar",        title: "FIU SAR · suspicious",  sub: "7-day rolling · entries pending review", tone: "danger" },
   { id: "iso-audit",      title: "ISO 27001 audit log",   sub: "Last 90 days · CSV",                     tone: "neutral" },
   { id: "kyc-reverify",   title: "KYC re-verify roster",  sub: "Players due in 14 days",                 tone: "neutral" },

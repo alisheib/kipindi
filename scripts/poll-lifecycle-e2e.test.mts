@@ -516,16 +516,19 @@ section("10. Numeric input sanitiser — strict mode");
 // ═══════════════════════════════════════════════════════════════════
 section("11. Email templates render correctly");
 {
+  // §6: betting closed → the pools are frozen → the payout is EXACT, and we say so.
   const selHtml = selectionClosedHtml({
     marketTitle: "Will Tanzania beat Kenya in CECAFA?",
     closedAt: iso,
     resolvesAt: ahead(180),
     marketId: "mkt_email_test",
+    payoutIfYes: 45_600,
+    payoutIfNo: null,
   });
   ok("11.1 selection-closed email has title", selHtml.includes("Will Tanzania beat Kenya"));
-  ok("11.2 selection-closed email has 'waiting'", selHtml.toLowerCase().includes("waiting for results"));
+  ok("11.2 selection-closed email states the EXACT payout (not 'waiting for results')", selHtml.includes("45,600"));
   ok("11.3 selection-closed email links to market", selHtml.includes("/markets/mkt_email_test"));
-  ok("11.4 selection-closed email has bilingual text", selHtml.includes("Uchaguzi umefungwa") || selHtml.includes("umefungwa"));
+  ok("11.4 selection-closed email has bilingual text", selHtml.includes("limefungwa")); // "Dau limefungwa" / "Bwawa limefungwa"
   ok("11.5 no raw HTML tags leaked (XSS safe)", !selHtml.includes("<script"));
 
   const betHtml = betPlacedHtml({ reference: "pos_test", side: "YES", stake: 5000, payoutIfWin: 9000, marketTitle: "Test <b>bold</b>", resolutionDate: ahead(180) });

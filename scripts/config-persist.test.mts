@@ -21,15 +21,31 @@ await (async () => {
 
   // 2. market-config set→get round-trips through the in-process cache (the
   //    write-through to DB is fire-and-forget and no-ops here).
-  const r = await setGlobalConfig({ taxRate: 0.07, commissionRate: 0.04 }, "usr_officer");
+  const r = await setGlobalConfig({ feeCeilingRate: 0.40, commissionRate: 0.12 }, "usr_officer");
   ok("setGlobalConfig ok", r.ok === true);
   const g = await getGlobalConfig();
-  ok("taxRate persisted in cache", g.taxRate === 0.07);
-  ok("commissionRate persisted in cache", g.commissionRate === 0.04);
+  ok("feeCeilingRate persisted in cache", g.feeCeilingRate === 0.40);
+  ok("commissionRate persisted in cache", g.commissionRate === 0.12);
 
   // 3. validation still rejects bad input (guard intact after refactor).
-  const bad = await setGlobalConfig({ taxRate: 0.99 }, "usr_officer");
-  ok("rejects out-of-range taxRate", bad.ok === false);
+  const bad = await setGlobalConfig({ commissionRate: 0.99 }, "usr_officer");
+  ok("rejects out-of-range commissionRate", bad.ok === false);
+
+  // 4. THE WINNER-FLOOR GUARDRAIL. A fee ceiling above 100% of the smaller side
+  //    would let the fee exceed the entire prize and eat into the winners' own
+  //    stakes — the exact bug the capped model exists to kill. A config that
+  //    allows it must be REFUSED, not merely warned about.
+  const unsafe = await setGlobalConfig({ feeCeilingRate: 1.5 }, "usr_officer");
+  ok("REFUSES a config where a winner could be paid below their stake", unsafe.ok === false);
+  ok("…and says why", !unsafe.ok && /less than they staked|0-100%/i.test(unsafe.error));
+
+  // 5. A ceiling above 50% is allowed but WARNS — above half we take at least as
+  //    much as all the winners combined. Winners still never lose money.
+  const warned = await setGlobalConfig({ feeCeilingRate: 0.75 }, "usr_officer");
+  ok("allows a ceiling above 50% but returns a warning", warned.ok === true && typeof warned.warn === "string");
+
+  // Restore sane defaults for anything downstream.
+  await setGlobalConfig({ commissionRate: 0.10, feeCeilingRate: 1 / 3 }, "usr_officer");
 
   // 4. proposals-config set→get round-trips.
   const p = setProposalsConfig({ prizeTzs: 33_000 }, "usr_officer");

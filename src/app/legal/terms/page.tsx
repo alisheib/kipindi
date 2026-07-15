@@ -55,24 +55,47 @@ const CONTENT: Record<Locale, React.ReactNode> = {
       <LegalSection n="4" title="How price-competition markets work">
         <p>
           50pick operates a <strong className="text-text">whole-pool Price Competition</strong> market model.
-          All stakes — YES and NO — are pooled. After applying the published platform tax and operator commission,
-          the remaining net pool is distributed to the winning side, pro-rata to each correct stake&apos;s share of
-          the winning side&apos;s pool. The current rates are displayed on every market, in your placement preview,
-          and on the public <a href="/fairness" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">market config</a>.
+          All stakes — YES and NO — are pooled. We deduct our commission, and the remaining net pool is
+          distributed to the winning side, pro-rata to each correct stake&apos;s share of the winning
+          side&apos;s pool.
+        </p>
+        <p>
+          <strong className="text-text">Our commission is 10% of the pool, but never more than a third of the
+          smaller side.</strong> The smaller side is the prize — it is all the money the winning side can win —
+          so capping our commission below it means that{" "}
+          <strong className="text-text">a winning bet is never paid less than it staked</strong>. We never take
+          more than a third of what you win.
+        </p>
+        <p>
+          The rates that apply to a market are <strong className="text-text">fixed when that market is
+          created</strong> and cannot be changed afterwards. A later change to our rates affects future markets
+          only; it can never re-price a bet you have already placed. The exact commission taken from a settled
+          pool is shown, in shillings, on that market&apos;s resolution panel.
         </p>
         <p>
           The probabilities shown on the dial are <em>implied</em> by the current pool composition and update with
-          every new bet — they are not guaranteed odds. Cash-out is available before resolution at a value derived
-          from the same pool maths plus a small slippage buffer.
+          every new bet — they are not guaranteed odds. While betting is open your final payout is not yet
+          determined, because the pools are still moving. <strong className="text-text">The moment betting closes,
+          the pools are final and we notify you of the exact amount you will receive if your side wins.</strong>
+        </p>
+        <p>
+          Cash-out is available while betting is open. Within the free-exit window after placing a bet you may
+          sell for a full refund at no charge; after that an early-exit fee applies. If no bets are placed on the
+          opposing side, there is no prize to pay from and every stake is refunded in full, at no charge.
         </p>
       </LegalSection>
 
       <LegalSection n="5" title="Settlement and payout">
         <p>
-          Payouts are credited to your wallet immediately on market resolution. Withdrawals to mobile money or
+          Payouts are credited to your wallet immediately on market settlement. Withdrawals to mobile money or
           bank complete within 60 seconds for amounts under TZS 1,000,000; larger amounts may be held for AML
-          review for up to 24 hours. A withholding tax applies to gross winnings at the rate prescribed by the
-          Income Tax Act (Cap 332). The current rate is shown on the withdrawal screen at the time of withdrawal.
+          review for up to 24 hours.
+        </p>
+        <p>
+          <strong className="text-text">A withdrawal is charged a 1% fee, and nothing else. No tax is withheld
+          from your money.</strong> Taxes and statutory levies are paid by 50pick out of its own commission —
+          they are never deducted from your balance or your winnings. The fee is shown on the withdrawal screen
+          before you confirm.
         </p>
       </LegalSection>
 
@@ -147,15 +170,33 @@ const CONTENT: Record<Locale, React.ReactNode> = {
       <LegalSection n="4" title="Jinsi masoko ya ushindani wa bei yanavyofanya kazi">
         <p>
           50pick inaendesha mfumo wa soko wa <strong className="text-text">Ushindani wa Bei wa kibwawa-kizima (whole-pool)</strong>.
-          Dau zote — NDIYO na HAPANA — zinakusanywa kwenye bwawa moja. Baada ya kutoza kodi ya jukwaa na komisheni ya
-          mwendeshaji iliyotangazwa, salio la bwawa linagawanywa kwa upande ulioshinda, kwa uwiano wa mchango wa kila
-          dau sahihi katika bwawa la upande ulioshinda. Viwango vya sasa vinaonyeshwa kwenye kila soko, kwenye onyesho la
-          awali la uwekaji wako wa dau, na kwenye <a href="/fairness" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">usanidi wa soko</a> wa umma.
+          Dau zote — NDIYO na HAPANA — zinakusanywa kwenye bwawa moja. Tunatoza kamisheni yetu, na salio la bwawa
+          linagawanywa kwa upande ulioshinda, kwa uwiano wa mchango wa kila dau sahihi katika bwawa la upande ulioshinda.
+        </p>
+        <p>
+          <strong className="text-text">Kamisheni yetu ni 10% ya bwawa, lakini kamwe si zaidi ya theluthi moja ya upande
+          mdogo.</strong> Upande mdogo ndiyo zawadi — ndiyo pesa zote ambazo upande ulioshinda unaweza kushinda — kwa hiyo
+          kuweka kikomo cha kamisheni chini yake kunamaanisha kwamba{" "}
+          <strong className="text-text">dau lililoshinda halilipwi chini ya dau lake kamwe</strong>. Hatuchukui zaidi ya
+          theluthi moja ya unachoshinda.
+        </p>
+        <p>
+          Viwango vinavyotumika kwenye soko <strong className="text-text">vinawekwa soko linapoundwa</strong> na haviwezi
+          kubadilishwa baadaye. Mabadiliko ya viwango vyetu yataathiri masoko yajayo pekee; hayawezi kubadilisha bei ya dau
+          ulilokwisha weka. Kamisheni kamili iliyochukuliwa kwenye bwawa lililotatuliwa inaonyeshwa, kwa shilingi, kwenye
+          paneli ya matokeo ya soko hilo.
         </p>
         <p>
           Uwezekano unaoonyeshwa kwenye kipima-dau <em>unadokezwa</em> na muundo wa sasa wa bwawa na hubadilika kila
-          linapowekwa dau jipya — si bei (odds) za uhakika. Kutoa fedha kabla ya kufungwa kwa soko (cash-out) kunapatikana
-          kwa thamani inayotokana na hesabu zile zile za bwawa pamoja na buffer ndogo ya mteremko (slippage).
+          linapowekwa dau jipya — si bei (odds) za uhakika. Wakati dau bado liko wazi, malipo yako ya mwisho bado
+          hayajapangwa kwa sababu bwawa bado linabadilika.{" "}
+          <strong className="text-text">Mara dau litakapofungwa, bwawa litakuwa la mwisho na tutakujulisha kiasi kamili
+          utakachopata iwapo upande wako utashinda.</strong>
+        </p>
+        <p>
+          Kuuza dau (cash-out) kunapatikana wakati dau liko wazi. Ndani ya dirisha la kutoka bila gharama baada ya kuweka
+          dau, unaweza kuuza na kurudishiwa dau lako kamili bila malipo; baada ya hapo ada ya kutoka mapema itatumika.
+          Kama hakuna dau lililowekwa upande mwingine, hakuna zawadi ya kulipa na kila dau litarudishwa kamili, bila gharama.
         </p>
       </LegalSection>
 
@@ -163,9 +204,13 @@ const CONTENT: Record<Locale, React.ReactNode> = {
         <p>
           Malipo huingizwa kwenye pochi yako mara moja soko linapofungwa. Utoaji wa fedha kwenda kwenye pesa za simu au
           benki hukamilika ndani ya sekunde 60 kwa kiasi chini ya TZS 1,000,000; kiasi kikubwa zaidi kinaweza kushikiliwa
-          kwa ukaguzi wa AML kwa hadi saa 24. Kodi ya zuio (withholding tax) hutozwa kwenye jumla ya fedha ulizoshinda kwa
-          kiwango kilichowekwa na Income Tax Act (Cap 332). Kiwango cha sasa kinaonyeshwa kwenye skrini ya kutoa fedha wakati
-          wa kutoa.
+          kwa ukaguzi wa AML kwa hadi saa 24.
+        </p>
+        <p>
+          <strong className="text-text">Utoaji wa fedha hutozwa ada ya 1%, na si kitu kingine. Hakuna kodi inayokatwa
+          kwenye pesa zako.</strong> Kodi na tozo za kisheria hulipwa na 50pick kutoka kamisheni yake yenyewe — hazikatwi
+          kamwe kwenye salio lako wala kwenye ushindi wako. Ada inaonyeshwa kwenye skrini ya kutoa fedha kabla
+          hujathibitisha.
         </p>
       </LegalSection>
 
@@ -236,21 +281,37 @@ const CONTENT: Record<Locale, React.ReactNode> = {
       <LegalSection n="4" title="价格竞争市场的运作方式">
         <p>
           50pick 采用 <strong className="text-text">全资金池价格竞争（whole-pool Price Competition）</strong> 市场模型。
-          所有注金——YES 与 NO——汇入同一资金池。在扣除已公布的平台税与运营方佣金后，剩余的净资金池按各正确注金在获胜方资金池中
-          所占份额，按比例分配给获胜方。当前费率显示在每个市场、您的下注预览以及公开的
-          <a href="/fairness" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">市场配置</a>页面中。
+          所有注金——YES 与 NO——汇入同一资金池。我们扣除佣金后，剩余的净资金池按各正确注金在获胜方资金池中所占份额，
+          按比例分配给获胜方。
         </p>
         <p>
-          转盘上显示的概率是由当前资金池构成所<em>隐含</em>的，并随每一笔新下注而更新——它们并非保证的赔率。在结算前可进行兑现
-          （cash-out），其价值依据相同的资金池算法并加上少量滑点（slippage）缓冲得出。
+          <strong className="text-text">我们的佣金为资金池的 10%，但绝不超过较小一方的三分之一。</strong>
+          较小一方就是奖金——它是获胜方所能赢得的全部金额——因此将佣金上限设在其之下，就意味着
+          <strong className="text-text">获胜的投注绝不会拿到低于本金的金额</strong>。我们收取的绝不超过您赢得金额的三分之一。
+        </p>
+        <p>
+          适用于某个市场的费率<strong className="text-text">在该市场创建时即已固定</strong>，此后不可更改。我们日后调整费率
+          仅影响未来的市场；绝不会重新计价您已下的注。已结算奖池实际收取的佣金，会以先令金额显示在该市场的结算面板上。
+        </p>
+        <p>
+          转盘上显示的概率是由当前资金池构成所<em>隐含</em>的，并随每一笔新下注而更新——它们并非保证的赔率。在投注开放期间，
+          由于资金池仍在变动，您的最终赔付尚未确定。
+          <strong className="text-text">投注一经关闭，资金池即告最终确定，我们会通知您：若您所选一方获胜，您将收到的确切金额。</strong>
+        </p>
+        <p>
+          投注开放期间可进行兑现（cash-out）。在下注后的免费退出窗口内，您可全额取回本金且不收取任何费用；此后提前退出将
+          收取手续费。若无人投注对方，则没有奖金可供支付，所有注金将全额退还，不收取任何费用。
         </p>
       </LegalSection>
 
       <LegalSection n="5" title="结算与派彩">
         <p>
           市场结算后，派彩立即记入您的钱包。提现至移动货币或银行账户，金额低于 TZS 1,000,000 的将在 60 秒内完成；金额较大者
-          可能因 AML 审查而被暂扣最长 24 小时。对总奖金按 Income Tax Act (Cap 332) 规定的税率征收预扣税。当前税率在提现时显示
-          于提现界面。
+          可能因 AML 审查而被暂扣最长 24 小时。
+        </p>
+        <p>
+          <strong className="text-text">提现收取 1% 手续费，除此之外别无其他。我们不会从您的资金中预扣任何税款。</strong>
+          税款及法定征费由 50pick 从自己的佣金中缴纳——绝不会从您的余额或奖金中扣除。手续费会在您确认提现前显示于提现界面。
         </p>
       </LegalSection>
 

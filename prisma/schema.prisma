@@ -956,6 +956,20 @@ model PredictionMarket {
   yesPool             Decimal                @default(0) @db.Decimal(18, 2)
   noPool              Decimal                @default(0) @db.Decimal(18, 2)
   predictorCount      Int                    @default(0)
+  /** The fee rates FROZEN onto this poll at creation — commissionRate,
+   *  feeCeilingRate, cashOutFeeRate, freeExitGraceMinutes, the TRA/GBT levy
+   *  rates and thinProfitRatio. See FeeSnapshot in src/lib/payout.ts.
+   *
+   *  Settlement, cash-out and every payout preview read THIS, never the live
+   *  admin config. Before it existed, settlement read live config, so retuning a
+   *  rate in admin silently repriced bets that had ALREADY BEEN PLACED — while
+   *  the admin page claimed in writing that it did not. A rate change now affects
+   *  future polls only.
+   *
+   *  Null only on rows created before this column existed; snapshotOrLegacy()
+   *  in market-config.ts prices those at the OLD 9% commission plus the NEW
+   *  ceiling, which can only ever pay their winners MORE than they were quoted. */
+  feeSnapshot         Json?
   resolvedOutcome     String? // YES, NO, VOID
   resolutionStage1By  String?
   resolutionStage1At  DateTime?
@@ -1290,13 +1304,10 @@ model LedgerEntry {
 enum LedgerEntryType {
   DEPOSIT                // External money in → player account
   WITHDRAWAL             // Player account → external money out
-  WITHDRAWAL_TAX         // Player account → TRA (withholding tax on withdrawal)
+  WITHDRAWAL_FEE         // Withdrawal fee (1%) → payment gateway + operator
   STAKE_DEBIT            // Player account → market pool (bet placed)
   PAYOUT_CREDIT          // Market pool → player account (bet won)
-  SETTLEMENT_TAX         // Market pool → TRA (pari-mutuel tax)
-  SETTLEMENT_COMMISSION  // Market pool → operator revenue
-  SETTLEMENT_RESERVE     // Market pool → operator reserve
-  SETTLEMENT_AGGREGATOR  // Market pool → payment processor
+  SETTLEMENT_COMMISSION  // Market pool → operator revenue (the capped fee)
   SETTLEMENT_TRA_LEVY    // Operator commission → TRA (tax on commission)
   SETTLEMENT_GBT_LEVY    // Operator commission → GBT (gaming board levy)
   REFUND                 // Market pool → player account (void/refund)
@@ -1306,7 +1317,16 @@ enum LedgerEntryType {
   BONUS_EXPIRE           // Bonus account → void (expired grant)
   BONUS_REFUND           // Market pool → bonus account (void refund to bonus)
   CASHOUT                // Market pool → player account (early exit)
-  CASHOUT_FEE            // Cashout fee retained in pool (stays with remaining bettors)
+  CASHOUT_FEE            // Early-exit fee → operator revenue. Goes to the HOUSE.
   ADJUSTMENT             // Admin adjustment (credit or debit)
   INTERNAL_CREDIT        // Internal credit (affiliate reward, proposal prize)
+
+  // ── Retired 2026-07 with the tax/reserve/aggregator rates ────────────────
+  // Never written again. Kept because historical LedgerEntry rows reference
+  // them and the books must continue to reconcile — dropping an enum value
+  // that existing rows use would break the migration and orphan real money.
+  WITHDRAWAL_TAX         // DEAD. Was the 15% withholding tax on every withdrawal.
+  SETTLEMENT_TAX         // DEAD. Was taxRate × pool.
+  SETTLEMENT_RESERVE     // DEAD. Was reserveRate × pool.
+  SETTLEMENT_AGGREGATOR  // DEAD. Was aggregatorRate × pool.
 }

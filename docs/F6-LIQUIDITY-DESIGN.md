@@ -22,8 +22,55 @@ side there is no opposing pool to pay from, so we refund everyone at 0% fee
 player is made whole — good — but the operator earns **zero**. Every one-sided
 market is a market we ran for free.
 
-**(b) A winner on a heavy favourite can LOSE money.** Our payout is whole-pool
-pari-mutuel:
+**(b) A winner on a heavy favourite can LOSE money.**
+
+> ## ✅ SOLVED — 2026-07-14. This is no longer possible.
+>
+> It stopped being hypothetical before it was fixed. A real poll — **YES 300,000 /
+> NO 10,500** — paid a player who staked **100,000 on the winning side** just
+> **93,150**. He was right, and he lost **6,850**.
+>
+> **The fee was 9% of the WHOLE POOL, including the winners' own returned stakes.**
+> On that poll it came to **31,050** against a prize (the entire NO side) of only
+> **10,500** — *three times larger than everything there was to win*. The balance
+> could only come out of the winners' own money. Every single player on the winning
+> side was mathematically guaranteed to lose.
+>
+> **THE FIX — Ali's decision, signed off 2026-07-14:**
+>
+> ```
+> pool       = yesPool + noPool
+> smaller    = min(yesPool, noPool)        # the prize — all the winners can win
+> commission = commissionRate * pool       # 10%
+> ceiling    = feeCeilingRate  * smaller   # a third
+> fee        = min(commission, ceiling)    # <- the whole fix
+> netPool    = pool - fee
+> ```
+>
+> **The smaller side IS the prize.** Cap the fee below it and a correct call cannot
+> lose money — arithmetically, not as a matter of policy. Because
+> `fee ≤ (1/3)·smaller`, the payout ratio is `≥ 1 + (2/3)·smaller/larger > 1`, and
+> this holds **for any `commissionRate` an admin can type**: it is the *ceiling*
+> that seals it, so admin error cannot resurrect the bug either.
+>
+> **Why a third:** at a ceiling of one half we would take exactly as much as all the
+> winners combined; above that, more than they do. At a third, the winners always
+> keep at least twice what we take — a promise we now print in the Terms:
+> *"We never take more than a third of what you win."*
+>
+> **No cliff:** "the full 10% whenever the smaller side is ≥ 30% of the pool" and
+> "never more than a third of the smaller side" are the *same rule*. They cross over
+> seamlessly at exactly 70/30. `min()` finds the seam by itself — there is no
+> threshold to game.
+>
+> On the reported poll the fee is now `min(31,050, 3,500) = 3,500`, and the 100,000
+> stake pays **102,333**. Verified end-to-end against real Postgres.
+>
+> The `negative` lean level is **deleted from the `LeanLevel` type** — it is
+> unreachable, and it existed only to warn players about this bug. Code:
+> `src/lib/payout.ts`. Proof: `scripts/fee-model.test.mts` (77 assertions).
+
+*(Original text, for the record:)* Our payout is whole-pool pari-mutuel:
 
 ```
 grossPool   = yesPool + noPool
@@ -72,10 +119,29 @@ card (`market-service.ts:539-550`). It touches no money. It is not a precedent.
 
 ### 3.1 It destroys outcome-neutrality — the defining property of pari-mutuel
 
-Today the operator takes a **fixed 9% rake and does not care who wins.** That
-neutrality is the whole reason a pool-betting licence is a lower-risk instrument
-than a bookmaker's: the house has no position, so it has no incentive to
-influence an outcome.
+The operator takes a rake and **does not care who wins.** That neutrality is the
+whole reason a pool-betting licence is a lower-risk instrument than a bookmaker's:
+the house has no position, so it has no incentive to influence an outcome.
+
+> **NOTE (2026-07-14) — the capped fee PRESERVES outcome-neutrality. Read this
+> before assuming otherwise.**
+>
+> The fee is no longer a flat 9% of the pool; it is
+> `min(commissionRate × pool, feeCeilingRate × min(yesPool, noPool))`. That makes it
+> a function of **how the pool is split** — but *not* of **which side wins**.
+>
+> `poolFee()` takes the two pool sizes and nothing else. **It has no outcome
+> parameter, and it must never be given one.** On any given final pool the fee is
+> byte-identical whether YES or NO is declared the winner — so the house's revenue
+> is completely independent of the outcome, and the house still has no position.
+> This is asserted in `scripts/fee-model.test.mts` (§2) and was verified end-to-end
+> against real Postgres: on the reported poll, the house takes **exactly 3,500**
+> whether YES wins or NO wins.
+>
+> The property that would break the licence is *"the operator's P&L depends on which
+> way the market resolves."* It still does not. What changed is only that we take
+> **less** when the poll is lopsided — because taking more would come out of the
+> winners' own stakes.
 
 The moment the house stakes into the pool, its P&L depends on which way the market
 resolves. Economically the product stops being pari-mutuel and starts being a
@@ -188,25 +254,46 @@ I would not ship this without **all** of these:
 
 These are live today and I did not go looking for them:
 
-1. **🔴 The tax base is inconsistent — two different answers in a regulator-facing
-   return.** The ledger books the TRA/GBT levy on the **3% commission slice**
-   (`ledger.ts:191-192` → TRA = 10% × 3% = **0.3% of gross**). The statutory Daily
-   Operations report books the same levy on **GGR ≈ the whole 9%**
-   (`reports/catalogue.ts:525-538` → TRA = 10% × 9% = **0.9% of gross**). That is a
-   **3× discrepancy** between our books and our statutory return. One of them is
-   wrong and I don't know which — it needs a tax/legal answer, not an engineering one.
+1. **✅ RESOLVED 2026-07-15 — the tax base is now consistent.** The ledger books the
+   TRA/GBT levy on the **commission we actually took** (`levySplit` in `payout.ts`).
+   The statutory report used to book it on **GGR**, and GGR was computed as
+   `stakes − payouts` **without netting out refunds** — so a voided/one-sided poll,
+   where we keep nothing, still showed GGR = the whole stake and was taxed on it.
+   Under the capped-fee model one-sided polls are common, so this over-taxed us on a
+   live basis. That was the "3× discrepancy."
+   >
+   > **Ali's decision (2026-07-15): tax on what we KEEP.** GGR now nets out refunds
+   > (`stakes − payouts − refunds`) everywhere it is computed (`report-money.ts`,
+   > `reports/catalogue.ts`), so GGR == the commission we actually kept == the base
+   > the ledger already levies on. **The report and the ledger now produce the same
+   > number, to the shilling** — verified against real Postgres with a mixed
+   > two-sided + one-sided + voided workload (report TRA/GBT == ledger
+   > HOUSE:TRA_LEVY / HOUSE:GBT_LEVY). The rates (10% TRA + 5% GBT = 15% of
+   > commission) live in admin config and are the single source of truth.
 
 2. **🔴 `/admin/finance` shows a FABRICATED tax number.** `admin/finance/page.tsx:46-48`
    computes `taxAccrued = ggr × 0.05` with the comment *"placeholder formula"*. It is
    presented to the owner as real. This violates our own never-fabricate rule and I
    would fix it immediately (show the real computed levies, or an empty state).
 
-3. **🟠 The cash-out fee is documented as revenue but is not.** `market-config.ts:27-31`
-   says the 9% cash-out fee is *"booked to the house reserve as operator revenue"*.
-   The ledger says the opposite (`ledger.ts:272-288`): the fee *"was never removed
-   from the pool — it stays distributed among remaining participants."* And GGR counts
-   `CASHOUT` as a **payout**, which *reduces* GGR. So the fee is invisible in every
-   direction and the config docs are misleading.
+3. **✅ FIXED 2026-07-14 — The cash-out fee is documented as revenue but is not.**
+   `market-config.ts` said the cash-out fee was *"booked to the house reserve as
+   operator revenue"*. The ledger said the opposite: the fee *"was never removed from
+   the pool — it stays distributed among remaining participants."* Two files, two
+   stories, and **the money went to neither of them on purpose: 50pick earned exactly
+   ZERO on every early exit**, while the remaining players quietly collected the fee.
+   >
+   > Now: the **whole stake leaves the pool**, the player receives
+   > `stake × (1 − cashOutFeeRate)`, and the fee is booked to **`HOUSE:COMMISSION`**
+   > with the TRA/GBT levies applied like any other fee we earn — because it *is* a
+   > fee we earn. `cashoutEntries()` in `ledger.ts`. Asserted in
+   > `scripts/cashout-fee.test.mts` ("THE WHOLE STAKE leaves the pool") and
+   > `scripts/ledger.test.mts`.
+   >
+   > **A new guard came with it:** an exit that would empty the player's own side is
+   > now **refused**. A one-sided poll refunds everybody at zero fee, so without the
+   > guard the last player on a side could sell out and retroactively **void a poll he
+   > was losing** — a free option, paid for by the winners and by us.
 
 Also noted: `houseAccountBalances()` (`ledger.ts:394`) has **zero call sites** — the
 house ledger is written but never surfaced anywhere. Worth putting on the owner

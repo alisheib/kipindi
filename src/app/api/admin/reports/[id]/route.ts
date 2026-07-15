@@ -6,7 +6,7 @@
  * + middleware 307 outside).
  *
  *   GET /api/admin/reports/gbt-monthly?format=xlsx
- *   GET /api/admin/reports/tra-tax?format=pdf
+ *   GET /api/admin/reports/daily-ops?format=pdf
  *
  * The buttons in /admin/reports/page.tsx call these URLs in a new tab;
  * the browser handles the download via Content-Disposition.

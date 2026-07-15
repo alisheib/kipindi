@@ -22,7 +22,7 @@ import { haptics } from "@/lib/haptics";
 import { useModalLock } from "@/lib/use-modal-lock";
 import { HouseLeanWarning } from "./house-lean-warning";
 import { useT } from "@/lib/i18n";
-import type { LeanLevel } from "@/lib/payout";
+import { DEFAULT_CASHOUT_FEE_RATE, DEFAULT_FREE_EXIT_GRACE_MINUTES, DEFAULT_PAID_EXIT_WINDOW_MINUTES, type LeanLevel, type PollRates } from "@/lib/payout";
 import { formatTzs, formatNumber } from "@/lib/utils";
 
 const QUOTE_HOLD_MS = 10_000;
@@ -32,22 +32,40 @@ type Props = {
   side: "YES" | "NO";
   stake: number;
   multiplier: number;
-  payout: number;
-  ratio: number;
   lean: LeanLevel;
-  /** When true, suppress the lean warning — settlement will refund at 0% fee. */
+  /** When true, suppress the thin-upside notice — settlement will refund at 0% fee. */
   isOneSided?: boolean;
+  /** THIS POLL'S frozen rates — the free-exit terms quoted here must be the ones
+   *  we will actually honour, not a hardcoded "5 minutes / 9%". */
+  rates?: PollRates;
   pending: boolean;
   marketTitle?: string;
   onConfirm: () => void;
   onCancel: () => void;
 };
 
+// `payout` and `ratio` are gone from Props. They were passed in from the dial and
+// used ONLY to compute a `net` and a `netColor` that were never rendered — D3
+// (license review 2026-05) hides the payout figure until betting closes, so the
+// modal shows copy, not numbers. Threading a payout in here just to throw it away
+// invited someone to "helpfully" render it one day and break the policy.
 export function BetConfirmModal({
-  open, side, stake, multiplier, payout, ratio, lean, isOneSided, pending, marketTitle, onConfirm, onCancel,
+  open, side, stake, multiplier, lean, isOneSided, rates, pending, marketTitle, onConfirm, onCancel,
 }: Props) {
   useModalLock(open);
   const { t } = useT();
+
+  // The exit terms, stated at THIS POLL'S rates: free window, fee, and the total
+  // window after which selling LOCKS and the bet rides to settlement. The copy
+  // used to hardcode "within 5 minutes … a 9% fee applies" in all three locales
+  // (and the Swahili silently dropped the "full refund" half of the promise).
+  const graceMins = rates?.freeExitGraceMinutes ?? DEFAULT_FREE_EXIT_GRACE_MINUTES;
+  const lockMins = graceMins + (rates?.paidExitWindowMinutes ?? DEFAULT_PAID_EXIT_WINDOW_MINUTES);
+  const exitPct = +((rates?.cashOutFeeRate ?? DEFAULT_CASHOUT_FEE_RATE) * 100).toFixed(1);
+  const freeExitBody = t.dialog.freeExitBody
+    .replace(/\{mins\}/g, String(graceMins))
+    .replace(/\{lock\}/g, String(lockMins))
+    .replace(/\{pct\}/g, String(exitPct));
   const [mounted, setMounted] = useState(false);
   const [remainingMs, setRemainingMs] = useState(QUOTE_HOLD_MS);
   const startedAtRef = useRef<number>(0);
@@ -147,8 +165,6 @@ export function BetConfirmModal({
   const sideTone = side === "YES"
     ? { fg: "oklch(78% 0.13 152)", bg: "oklch(40% 0.10 152 / 0.18)", brd: "oklch(45% 0.13 152)" }
     : { fg: "oklch(78% 0.16 22)",  bg: "oklch(40% 0.13 22 / 0.18)",  brd: "oklch(48% 0.15 22)" };
-  const net = payout - stake;
-  const netColor = lean === "negative" ? "var(--no-300)" : lean === "thin" ? "var(--warning-fg)" : "var(--gold-300)";
   const seconds = Math.ceil(remainingMs / 1000);
 
   return createPortal(
@@ -263,7 +279,7 @@ export function BetConfirmModal({
             <I.shieldcheck s={13} className="shrink-0 mt-0.5 text-brand-300" />
             <p className="text-[11px] leading-relaxed text-text-muted">
               <span className="font-semibold text-brand-300">{t.dialog.freeExitLabel} · </span>
-              {t.dialog.freeExitBody}
+              {freeExitBody}
             </p>
           </div>
 

@@ -7,6 +7,7 @@ import { db, type StoredTxn } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { withLock } from "@/lib/server/locks";
 import { notifyWithdrawalSent } from "@/lib/server/wallet-service";
+import { getEffectiveConfig } from "@/lib/server/market-config";
 import { loadConfig, saveConfig } from "@/lib/server/config-store";
 
 import { TWO_PERSON_THRESHOLD_TZS } from "./constants";
@@ -36,6 +37,17 @@ async function requireAdmin() {
 type Stage1Sig = { actorId: string; at: string };
 const STAGE1_KEY = (txnId: string) => `aml.stage1:${txnId}`;
 const stage1Mem = new Map<string, Stage1Sig>();
+/**
+ * The payment gateway's slice of the 1% withdrawal fee, at the rates in force.
+ * Clamped to the fee actually charged on the txn so the ledger group can never be
+ * unbalanced by a config change between initiation and AML release.
+ */
+async function gatewayShareFor(gross: number, fee: number): Promise<number> {
+  const cfg = await getEffectiveConfig().catch(() => null);
+  if (!cfg) return 0;
+  return Math.min(fee, Math.max(0, Math.round(gross * Math.max(0, cfg.withdrawalGatewayShareRate))));
+}
+
 async function getFirstSignature(txnId: string): Promise<Stage1Sig | null> {
   const mem = stage1Mem.get(txnId);
   if (mem) return mem;
@@ -142,7 +154,8 @@ export async function approveAmlAction(formData: FormData) {
       // receipt as an ordinary withdrawal. Previously this path was silent.
       if (txn.type === "WITHDRAWAL") {
         const gross = Math.abs(txn.amount);
-        postLedgerEntries(`wdr_${txn.id}`, withdrawalEntries({ txnId: txn.id, userId: txn.userId, grossAmount: gross, taxWithheld: txn.taxWithheld, provider: txn.provider ?? "INTERNAL" })).catch(() => {});
+        const wFee = txn.fee ?? 0;
+        postLedgerEntries(`wdr_${txn.id}`, withdrawalEntries({ txnId: txn.id, userId: txn.userId, grossAmount: gross, fee: wFee, gatewayShare: await gatewayShareFor(gross, wFee), provider: txn.provider ?? "INTERNAL" })).catch(() => {});
         notifyWithdrawalSent(txn);
       }
       revalidatePath("/admin/aml");
@@ -159,7 +172,8 @@ export async function approveAmlAction(formData: FormData) {
     // Dual-write: withdrawal confirmed via AML → double-entry ledger.
     if (txn.type === "WITHDRAWAL") {
       const gross = Math.abs(txn.amount);
-      postLedgerEntries(`wdr_${txn.id}`, withdrawalEntries({ txnId: txn.id, userId: txn.userId, grossAmount: gross, taxWithheld: txn.taxWithheld, provider: txn.provider ?? "INTERNAL" })).catch(() => {});
+      const wFee = txn.fee ?? 0;
+        postLedgerEntries(`wdr_${txn.id}`, withdrawalEntries({ txnId: txn.id, userId: txn.userId, grossAmount: gross, fee: wFee, gatewayShare: await gatewayShareFor(gross, wFee), provider: txn.provider ?? "INTERNAL" })).catch(() => {});
     }
     audit({
       category: "ADMIN",

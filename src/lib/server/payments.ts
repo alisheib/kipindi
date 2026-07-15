@@ -84,7 +84,19 @@ function mask(msisdn: string) {
   return msisdn.length > 6 ? `${msisdn.slice(0, 4)}*****${msisdn.slice(-2)}` : "****";
 }
 
-/** Tax computation for withdrawals — 15% withholding on declared winnings (TZ Gaming Act). */
-export function computeWithdrawalTax(amount: number, taxableWinnings: number): number {
-  return Math.round(Math.max(0, Math.min(amount, taxableWinnings)) * 0.15);
-}
+// `computeWithdrawalTax` is DELETED.
+//
+// It withheld a hardcoded 15% of EVERY withdrawal — it was called as
+// `computeWithdrawalTax(amount, amount)`, i.e. treating the entire withdrawal as
+// taxable winnings, and its own comment at the call site admitted this was
+// "naïve". A player who deposited 100,000, never placed a bet, and withdrew,
+// received 85,000. We were taking 15% of a player's own untouched deposit and
+// booking it as tax.
+//
+// Ali's decision (2026-07): taxes are only ever on OUR commission. A player pays
+// the pool fee (indirectly, through the payout) and the 1% withdrawal fee, and
+// nothing else. The withdrawal fee lives in RateConfig — `withdrawalFeeRate` /
+// `withdrawalGatewayShareRate` — and is applied in wallet-service.ts.
+//
+// ⚠️ LEGAL: the 15% cited the Income Tax Act. Removing it is a legal call, not an
+// engineering one. Ali has made it; it is on the record in the session summary.

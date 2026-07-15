@@ -56,7 +56,7 @@ const TEMPLATES = [
     id: "daily-ops",
     title: "Daily operations report",
     sw: "Ripoti ya kila siku",
-    body: "Total sales (stakes), number of tickets, GGR, TRA 10% withholding tax, GBT 5% levy, operator margin, hourly breakdown, deposits/withdrawals. One-page operational snapshot.",
+    body: "Total sales (stakes), number of tickets, GGR (net of refunds), TRA 10% + GBT 5% levy on operator commission, operator margin, hourly breakdown, deposits/withdrawals. One-page operational snapshot.",
     formats: ["Excel", "PDF"],
     cadence: "Daily",
     severity: "medium",
@@ -72,16 +72,12 @@ const TEMPLATES = [
     severity: "high",
     target: "Regulator",
   },
-  {
-    id: "tra-tax",
-    title: "TRA withholding tax remittance",
-    sw: "Kodi · TRA",
-    body: "Tanzania Revenue Authority · per-player withholding-tax filing, Income Tax Act Cap 332 schedule. Includes player NIDA, gross winnings, tax withheld, net paid, mobile-money provider reference.",
-    formats: ["CSV (TRA-format)", "JSON"],
-    cadence: "Monthly · 7th of each month",
-    severity: "high",
-    target: "TRA",
-  },
+  // The per-player "TRA Withholding Tax Remittance" report was REMOVED (2026-07).
+  // 50pick no longer withholds any tax from a player's winnings or withdrawals —
+  // that 15% withholding was deleted (Ali's decision). Our real TRA obligation is
+  // the 10% levy on OUR commission, and it is filed in the Daily Operations report
+  // (which also carries the GBT 5% levy). Filing a per-player "we withheld nothing"
+  // return under Income Tax Act Cap 332 would misrepresent a scheme we abolished.
   {
     id: "fiu-sar",
     title: "Suspicious activity report (FIU)",

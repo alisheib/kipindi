@@ -391,9 +391,30 @@ export function withdrawalUnderReviewHtml({ amount, reference }: {
   `);
 }
 
-export function betPlacedHtml({ reference, side, stake, payoutIfWin, marketTitle, placedAt, resolutionDate }: {
-  reference: string; side: "YES" | "NO"; stake: number; payoutIfWin?: number; marketTitle: string; placedAt?: string; resolutionDate: string;
+/**
+ * Bet-placed receipt.
+ *
+ * ⚠️ NO "Potential return" ROW. This email used to print `payoutIfWin` as a
+ * headline figure — a number every in-app surface deliberately suppresses before
+ * betting closes (the D3 policy, license review 2026-05). The policy was being
+ * enforced on the screen and quietly broken in the player's inbox.
+ *
+ * A pre-close payout figure is a projection anyway: the pools keep moving, so the
+ * number would be wrong by the time he read it. The exact figure is now disclosed
+ * when betting CLOSES and the pools freeze — see notifySelectionClosedMarkets, and
+ * `selectionClosedHtml` below, which prints the real, final, to-the-shilling
+ * amount. That is the honest moment to state a number, and we state it there.
+ *
+ * The cash-out terms come from the poll's own frozen rates. They used to be a
+ * hardcoded "5 minutes" and "9%", which would have started lying the moment an
+ * admin retuned either one.
+ */
+export function betPlacedHtml({ reference, side, stake, marketTitle, placedAt, resolutionDate, cashOutFeeRate, freeExitGraceMinutes }: {
+  reference: string; side: "YES" | "NO"; stake: number; marketTitle: string; placedAt?: string; resolutionDate: string;
+  cashOutFeeRate: number; freeExitGraceMinutes: number;
 }): string {
+  const mins = freeExitGraceMinutes;
+  const pct = +(cashOutFeeRate * 100).toFixed(1);
   return wrap(`
     ${eyebrow("Bet placed", "Dau limewekwa")}
     ${heading("Position open")}
@@ -402,12 +423,11 @@ export function betPlacedHtml({ reference, side, stake, payoutIfWin, marketTitle
       { label: "Reference", value: reference },
       { label: "Your pick", value: side, tone: side === "YES" ? "good" : "bad" },
       { label: "Stake", value: formatTzs(stake) },
-      ...(payoutIfWin ? [{ label: "Potential return", value: formatTzs(payoutIfWin), tone: "good" as const }] : []),
       ...(placedAt ? [{ label: "Placed", value: fmtDateTime(placedAt) }] : []),
       { label: "Resolves", value: resolutionDate },
     ])}
-    ${subtitle("Payout is calculated at resolution from the final pool share.")}
-    ${subtitle("5-min free exit · You can sell this position within 5 minutes for a full refund at no cost. After that, a 9% fee applies on early exit.")}
+    ${subtitle("Your payout depends on how the pool ends up split. We'll email you the exact amount the moment betting closes and the pools are final.")}
+    ${subtitle(`${mins}-min free exit · You can sell this position within ${mins} minutes for a full refund at no cost. After that, a ${pct}% fee applies on early exit.`)}
     ${refNote()}
     ${ctaButton("/positions", "View positions · Tazama madau")}
   `);
@@ -452,20 +472,34 @@ export function lossNotificationHtml({ reference, stake, marketTitle, settledAt 
   `);
 }
 
-export function selectionClosedHtml({ marketTitle, closedAt, resolvesAt, marketId }: {
+/**
+ * Betting has closed — and this is the email that finally states a NUMBER.
+ *
+ * With the pools frozen, the payout is no longer a projection. `payoutIfYes` /
+ * `payoutIfNo` were computed by `settledPayoutFor` — the very function that will
+ * pay him — against the poll's own frozen rates. What this email says and what
+ * lands in his wallet are the same arithmetic. To the shilling.
+ */
+export function selectionClosedHtml({ marketTitle, closedAt, resolvesAt, marketId, payoutIfYes, payoutIfNo }: {
   marketTitle: string; closedAt?: string; resolvesAt?: string | null; marketId: string;
+  payoutIfYes?: number | null; payoutIfNo?: number | null;
 }): string {
+  const both = payoutIfYes != null && payoutIfNo != null;
+  const single = payoutIfYes ?? payoutIfNo;
+  const singleSide = payoutIfYes != null ? "YES" : "NO";
   return wrap(`
-    ${eyebrow("Selections closed", "Uchaguzi umefungwa")}
-    ${heading("Waiting for results")}
+    ${eyebrow("Betting closed", "Dau limefungwa")}
+    ${heading(both || single == null ? "Your payout is set" : `If ${singleSide} wins you receive ${formatTzs(single)}`)}
     ${subtitle(marketTitle)}
     ${detailRows([
-      { label: "Status", value: "Betting closed" },
+      { label: "Status", value: "Betting closed — pools are final" },
+      ...(payoutIfYes != null ? [{ label: "If YES wins, you receive", value: formatTzs(payoutIfYes), tone: "good" as const }] : []),
+      ...(payoutIfNo != null ? [{ label: "If NO wins, you receive", value: formatTzs(payoutIfNo), tone: "good" as const }] : []),
       ...(closedAt ? [{ label: "Closed", value: fmtDateTime(closedAt) }] : []),
       ...(resolvesAt ? [{ label: "Results expected", value: fmtDateTime(resolvesAt) }] : []),
     ])}
-    ${subtitle("Your prediction is locked in. We'll email you the moment the result is settled.")}
-    ${subtitleSw("Utabiri wako umehifadhiwa. Tutakutumia matokeo mara yatakapotolewa.")}
+    ${subtitle("The pools are frozen, so this is the exact amount — not an estimate. It is what we will pay you, to the shilling, if your side wins.")}
+    ${subtitleSw("Bwawa limefungwa, kwa hiyo hiki ndicho kiasi kamili — si makadirio. Ndicho tutakacholipa ukiwa sahihi.")}
     ${ctaButton(`/markets/${marketId}`, "View market · Tazama soko")}
   `);
 }
