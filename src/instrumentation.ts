@@ -20,6 +20,11 @@
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    // Boot-time validation (audit C7 + H7). NOT wrapped in try/catch: a
+    // compliance-lock violation MUST stop the server from starting.
+    const { runBootChecks } = await import("./lib/server/boot-checks");
+    await runBootChecks();
+
     try {
       const { startSentinel } = await import("./lib/server/market-sentinel");
       startSentinel();

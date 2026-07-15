@@ -47,8 +47,18 @@ F1 Tetsing image/
 
 # Translation docs + temp files (local working copies)
 *.doc
+*.docx
 tmp_*
 scripts/screenshots/
 docs/shots-admin/
 
 50pick logo files.zip
+
+# Ad-hoc DB scratch scripts — NEVER commit (audit C10). Use scripts/ with the
+# same masking the reports layer applies (nida.slice(0,4)…, phone ****). A raw
+# scratch script that dumps NIDA/PII bypasses every masking + audit control.
+db-check.*
+*-check.cjs
+scratch-*.js
+scratch-*.cjs
+*.zip

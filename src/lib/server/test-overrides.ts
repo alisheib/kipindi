@@ -16,11 +16,14 @@
  * both admin and player can settle a market end-to-end on a non-real-money
  * deployment. It MUST be OFF for any real-money production launch — leaving it
  * ON with real funds is a licensing violation (an admin could pay their own
- * bets). The old `NODE_ENV === "production"` hard-lock that used to enforce this
- * was removed 2026-07-12 at the operator's request because the live-config
- * deployment is currently used for consultant evaluation and the lock blocked
- * it; the not-for-production rule now lives in docs + audit trail instead of a
- * code gate, so re-check it is OFF before go-live. It is gated to
+ * bets). The `NODE_ENV === "production"` hard-lock was removed 2026-07-12 for a
+ * consultant-evaluation deployment and **restored 2026-07-15 (audit C7)**:
+ * `getConflictedResolutionAllowed()` now UNCONDITIONALLY returns `false` in
+ * production regardless of the persisted flag, and `assertProductionComplianceLocks()`
+ * refuses to boot if the flag was left ON. A control that can be toggled off by
+ * configuration is not a control. If a consultant needs the relaxation, run a
+ * SEPARATE staging deployment with `NODE_ENV !== "production"` — never remove the
+ * guard from the code that handles real money. It remains gated to
  * ADMIN/COMPLIANCE + 2FA, defaults OFF, and every toggle AND every actual bypass
  * is written to the COMPLIANCE audit trail so the relaxation is never silent.
  */
@@ -57,13 +60,39 @@ export async function getTestOverrides(): Promise<TestOverrides> {
 }
 
 export async function getConflictedResolutionAllowed(): Promise<boolean> {
-  // ⚠️ NOT FOR PRODUCTION — testing/consultant-evaluation only. When enabled,
-  // relaxes the POCA §16 / GBT officer-conflict + self-countersign rules in ALL
-  // environments (the old prod hard-lock was removed 2026-07-12 — see header).
-  // MUST be OFF before any real-money launch. 2FA-gated toggle, default OFF,
-  // every toggle and bypass audited.
+  // POCA §16 / GBT: an officer with a financial interest in a market must NEVER
+  // resolve it. This override is evaluation-only and is UNCONDITIONALLY disabled
+  // in production — the persisted flag cannot re-enable it on real money.
+  // Restored 2026-07-15 (audit C7); do NOT remove again. For evaluation, use a
+  // separate staging deployment with NODE_ENV !== "production".
+  if (process.env.NODE_ENV === "production") return false;
   await ensureHydrated();
   return store.allowConflictedResolution;
+}
+
+/**
+ * Boot-time compliance assertion (audit C7). The runtime guard above already
+ * forces the lock in production; this refuses to *start* if the persisted flag
+ * was left ON, so an operator notices and clears it rather than shipping with a
+ * compliance override set. Fails closed by throwing. A transient read failure at
+ * boot does not block startup — the runtime guard still holds.
+ */
+export async function assertProductionComplianceLocks(): Promise<void> {
+  if (process.env.NODE_ENV !== "production") return;
+  let flagOn = false;
+  try {
+    flagOn = (await getTestOverrides()).allowConflictedResolution;
+  } catch (err) {
+    console.error("[compliance] Could not read test overrides at boot (runtime guard still enforces the lock):", err);
+    return;
+  }
+  if (flagOn) {
+    throw new Error(
+      "FATAL: allowConflictedResolution is ON in production. POCA §16 forbids an officer " +
+        "resolving a market they hold a position in. Clear it (persisted SystemConfig 'test.overrides') " +
+        "before starting. Refusing to boot.",
+    );
+  }
 }
 
 export async function setConflictedResolutionAllowed(enabled: boolean, officerId: string): Promise<boolean> {
