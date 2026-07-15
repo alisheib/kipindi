@@ -5,9 +5,10 @@
      Any new session: read THIS block first to know exactly where we are.
      ═══════════════════════════════════════════════════════════════════════ -->
 > ## ▶ WHERE WE ARE
-> - **Stages 1–7 + 11 complete.** Next: **STAGE 8 — Ledger provability & audit chain (C3, C6)** — Ali authorised DB access; do against Postgres.
-> - **Closed so far:** C1, C2, C4, C7, C8, C9, C10, C11, H7, H12, M4, M9, M11, M12, L1 (+ C5 exploit); repo cleanup done.
-> - **What's LEFT overall:** C3, C6 (money-provability, need Postgres); H1/H4/H5/H10/H11; M1/M2(verify)/M3/M5/M6/M7/M8; L2–L6; CI (H9) + Sentry (H6) scaffold.
+> - **Stages 1–7 + 11 complete; Stage 8 partial** (M3 ✓, ops skill ✓, local PG ready). Next in Stage 8: **C3 + C6** (need the local PG + focused time). Then Stage 9/10/12.
+> - **Full regression sweep after last change: 60/61 green** (`test:responsive` needs a live server — not a regression).
+> - **Closed so far:** C1, C2, C4, C7, C8, C9, C10, C11, H7, H12, M3, M4, M9, M11, M12, L1 (+ C5 exploit); repo cleanup done.
+> - **What's LEFT overall:** C3, C6 (money-provability, need Postgres); H1/H4/H5/H10/H11; M1/M2(verify)/M5/M6/M7/M8; L2–L6; CI (H9) + Sentry (H6) scaffold.
 > - **Blocked on Ali/infra:** C5 nonce table; H2 Redis; H8 object storage; H6 Sentry DSN; TRA tax ruling; MNO logos; pentest. **Move-out (archive to Drive then rm):** `Final UI enhancement Kit/`, `50PICK/New Designs/`, `Email Signatures/`, `Translations/`, `Final logo design/`, `assets/glyphs/`, `docs/*.pdf`.
 > - **Verify locally:** `npm run typecheck` · per-suite `npx tsx scripts/<name>.test.mts` · full `npm run test:all`.
 > - **Safe DB workflow + all ops knowledge:** committed skill `.claude/skills/50pick-audit/SKILL.md` (local disposable PG `F:\pg-loadtest:5433`; migrations hand-authored + `migrate deploy` local, prod via `git push`). C3/C6 need it + focused time.
@@ -19,6 +20,8 @@
 ## How this file works
 - The audit is the specification. This file is the **execution plan**, divided into stages.
 - After each stage: tests run → this tracker updated → committed → pushed.
+- **No-regression gate:** the full suite `node scripts/test-all.mjs` must stay green (only `test:responsive` may fail — it needs a live dev server on :3000, not a code regression). Last full sweep: **60/61 green** after Stage 8-partial.
+- **`git add -A` caution:** review staged deletions before committing — an external working-tree deletion (the audit doc) was once swept in and had to be restored. Prefer explicit `git add <paths>`.
 - Status legend: `[ ]` not started · `[~]` in progress · `[x]` done+verified · `[A]` Ali/external-blocked (cannot be closed in code by an agent).
 - **A finding is only `[x]` when its reproduction is re-run and its "Done when" boxes pass.**
 
@@ -101,3 +104,4 @@ _(appended after each stage)_
 - **Stage 6 — DONE.** C2 closed. `refundBonusToActive` mints a zero-wagering restitution grant when no active grant remains (never forfeits). New `scripts/bonus-void-restitution.test.mts` (npm `test:bonus-restitution`) 16/16. Verified: `tsc` clean · bonus-service 59/59 · bonus-betting 24/24 · emergency-void 33/33. **Policy note for Ali:** restitution is zero-wagering per the audit ("turnover already served"); if bonus-abuse-via-void is a concern, the wagering requirement on the restitution grant is the lever to revisit.
 - **Stage 7 — DONE*** (C4, C5-exploit, M4, L1). C4 (`ea51e5f`): RG caps re-checked inside the wallet lock + `sumDepositsSince` includePending; `rg-limit-race` 5/5. C5+M4+L1: mandatory & bound webhook timestamp, amount verification, hex validation; `webhook-security` 10/10, payment-webhook 25/25. `tsc` clean. *= C5 nonce table deferred (needs migration + real provider schemes; idempotency covers double-credit).
 - **Stage 11 — DONE*** (done early, out of order). Deleted: 4 dead components (`card`, `skeleton`, `AchievementToast`, `market-stats` — 0 importers), the teal kit `50PICK/design_handoff_prediction_market_kit/` (0 royal-268, 0 imports), `docs/kit-gap-audit.md` (retired rule), and session scratch (`SESSION_STATUS.md`, `next-session-prompt.md`, `fee-model-session-prompt.md`). `tsc` clean. *= "move-out" design material (Final UI enhancement Kit, New Designs, Email Signatures, Translations, Final logo design, glyphs, PDFs) left for **Ali to archive to Drive** before `git rm` — it has value and git can't diff it.
+- **Stage 8 — PARTIAL (in progress).** Done: M3 (`LedgerEntry.userId` index, migration applied to local PG), committed `.claude/skills/50pick-audit` ops skill, and the local disposable PG environment readied/verified (reset-db migrated, all 3 gates pass). Restored the audit doc after a `git add -A` mishap. **Full regression sweep: 60/61 green** (`test:responsive` needs a live server). **Still open in Stage 8:** C3 (money-path `$transaction` + correct wallet↔ledger trial balance + nightly job + `/admin/finance` + alert) and C6 (DB-authoritative audit chain: advisory lock + SQL head + `@@unique([prevHash])` + `await persist`). Both need the local PG (skill §3) and focused, unrushed time — a wrong ledger/audit change is catastrophic.
