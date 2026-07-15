@@ -266,6 +266,16 @@ export function poolFee(yesPool: number, noPool: number, rates: Partial<FeeRates
 }
 
 /**
+ * The withdrawal fee a player is charged: `round(amount * rate)`, floored at 0.
+ * Isomorphic — the confirm modal (client) and wallet-service (server) both call
+ * this, so what the player is shown before confirming equals what leaves the
+ * wallet, to the shilling (audit H12). `net = amount - fee`.
+ */
+export function computeWithdrawalFee(amount: number, rate: number): number {
+  return Math.max(0, Math.round(amount * Math.max(0, rate)));
+}
+
+/**
  * Invariant 1, enforced. Throws rather than paying a winner less than he staked.
  *
  * Refusing to settle is the safe direction: the pool stays intact, the market

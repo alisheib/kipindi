@@ -25,6 +25,7 @@ import { withLock } from "./locks";
 import { emit } from "./event-bus";
 import { postLedgerEntries, depositEntries, withdrawalEntries, internalCreditEntries } from "./ledger";
 import { getEffectiveConfig } from "./market-config";
+import { computeWithdrawalFee } from "@/lib/payout";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
 import { formatTzs } from "@/lib/utils";
@@ -500,7 +501,7 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
   // The withdrawal fee — the ONLY thing a player is charged here. Admin-tunable,
   // never hardcoded.
   const wcfg = await getEffectiveConfig();
-  const fee = Math.max(0, Math.round(amount * Math.max(0, wcfg.withdrawalFeeRate)));
+  const fee = computeWithdrawalFee(amount, wcfg.withdrawalFeeRate);
   const gatewayShare = Math.min(fee, Math.max(0, Math.round(amount * Math.max(0, wcfg.withdrawalGatewayShareRate))));
   const net = amount - fee;
   const providerLabel = friendlyProvider(parse.data.provider);

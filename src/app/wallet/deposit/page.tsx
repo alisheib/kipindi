@@ -6,7 +6,6 @@ import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
 import { FieldLegend } from "@/components/ui/field-legend";
 import { Input } from "@/components/ui/input";
-import { SubmitButton } from "@/components/ui/submit-button";
 import { CashbackPromo } from "@/components/ui/cashback-promo";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
@@ -15,6 +14,7 @@ import { getServerT } from "@/lib/i18n-server";
 import { depositAction } from "./actions";
 import { DEPOSIT_MAX_TZS } from "@/lib/server/validators";
 import { DepositAmount } from "./deposit-amount";
+import { DepositConfirm } from "./deposit-confirm";
 import { ProviderRadioGrid } from "@/components/wallet/provider-radio-grid";
 
 export const metadata = { title: "Deposit" };
@@ -105,8 +105,9 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
           />
         </div>
 
-        {/* Deposit is money-in → gold is the sanctioned variant (micro-spec §1). */}
-        <SubmitButton label={t.common.confirm} pendingLabel={t.common.loading} variant="gold" />
+        {/* Deposit confirms before dispatch (audit M9), matching bet + withdraw.
+            Money-in → gold trigger (micro-spec §1). */}
+        <DepositConfirm />
       </form>
 
       {/* Trust strip — the regulator seal is a licensed asset (⊘ pending, Ali);

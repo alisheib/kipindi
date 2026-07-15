@@ -29,7 +29,7 @@ Verified at baseline (2026-07-15): `tsc --noEmit` clean · `test:fee-model` 77/7
 | 2 | Repo integrity & hard-locks | C10, C7, H7, M11, M12 | `[x]` |
 | 3 | Documentation authority | C9, §16 | `[x]` |
 | 4 | Brand identity | C11 | `[x]` |
-| 5 | Money copy & disclosure | C8, H12, M9 | `[ ]` |
+| 5 | Money copy & disclosure | C8, H12, M9 | `[x]` |
 | 6 | Bonus integrity | C2 | `[ ]` |
 | 7 | Concurrency & webhook security | C4, C5, M4 | `[ ]` |
 | 8 | Ledger provability & audit chain | C3, C6 | `[ ]` |
@@ -51,7 +51,7 @@ Verified at baseline (2026-07-15): `tsc --noEmit` clean · `test:fee-model` 77/7
 - `[ ]` **C5** — webhook replay via missing timestamp → mandatory ts, sign `ts.body`, nonce table. *(Stage 7)*
 - `[ ]` **C6** — audit chain forks multi-instance → DB-side head + `@@unique([prevHash])` + await persist. *(Stage 8)*
 - `[x]` **C7** — POCA §16 lock **restored** (`test-overrides.ts`: prod returns `false` unconditionally + `assertProductionComplianceLocks()` refuses boot if flag ON, wired in `instrumentation.ts` via `boot-checks.ts`). Tests: solo-resolution 18/18, officer-conflict 33/33. **Ali/ops:** verify prod DB flag=false + audit query for historical conflicted resolutions.
-- `[~]` **C8** — UI promises tax on winnings → fee model rewrote the tax model; re-verify withdraw copy EN/SW/ZH. *(Stage 5)*
+- `[x]` **C8** — the "tax on winnings" copy is **gone**. Fee model rewrote `taxNotice`/`taxBody` in EN/SW/ZH to "a {pct}% withdrawal fee applies, and nothing else; no tax is withheld from your money." Verified all three locales. **Ali:** legal review of final wording.
 - `[x]` **C9** — kit mandates **removed** (CLAUDE.md source-of-truth row + "Working with Ali" hero note; README.md row) → now point at `docs/DESIGN_AUTHORITY.md` (**written**, B1–B4). `kit-gap-audit.md` marked historical + rule retired; teal-kit `tokens.css`/`README.md` carry SUPERSEDED headers; `design-master-brief.md` marked authoritative. Grep clean: no active kit mandate. **Stage 11 tail:** physically delete `50PICK/design_handoff.../` + fix 10 code comments citing the kit (§18.8).
 - `[x]` **C10** — `db-check.cjs` **removed** (`git rm`); `.gitignore` blocks `db-check.*`, `*-check.cjs`, `scratch-*`, `*.zip`, `*.docx`. **Ali/ops:** check git history + CI/shell logs for any leaked NIDA output; if it ran against prod, treat as a disclosure event.
 - `[x]` **C11** — brand assets **regenerated** from a single source. New `src/lib/brand-mark.ts` defines the mark once; `brand.tsx` imports it; `scripts/build-brand-assets.mts` (npm `build:brand`, sharp) emits the 4 SVGs + 7 PNGs; old `build-logo-png.mjs` (Playwright, re-declared old mark) removed. Grep gate `<text|r="44.6"` → 0. **Verified visually:** mark-color-512, tile-512, maskable-512 all render the needle mark (no ring/numerals); OG/twitter already the new mark. **Ali/ops:** confirm PWA install icon + email header at runtime after deploy.
@@ -68,10 +68,10 @@ Verified at baseline (2026-07-15): `tsc --noEmit` clean · `test:fee-model` 77/7
 - `[~]` **H9** — no CI → GitHub Actions + Postgres service. *(Stage 12)*
 - `[ ]` **H10** — 5 WCAG contrast fails → `btn-no`, `btn-danger`, `--border-control`. *(Stage 10)*
 - `[ ]` **H11** — no skip link → add to `app-shell.tsx` + EN/SW/ZH. *(Stage 10)*
-- `[ ]` **H12** — withdraw confirm gross only → show fee + net. *(Stage 5)*
+- `[x]` **H12** — withdraw confirm now shows **amount → −fee → you receive (net)**, plus provider. Fee computed by new isomorphic `computeWithdrawalFee(amount, rate)` in `payout.ts`, used by BOTH the modal and `wallet-service` — shown == charged, to the shilling. Verified: `tsc` clean · `test:withdrawal` 16/16 (server math unchanged). **Ali/QA:** visual pass of the modal.
 
 ### Medium
-- `[ ]` **M1** 64-bit lock hash *(Stage 9)* · `[~]` **M2** largest-remainder (verify fee model) *(Stage 1)* · `[ ]` **M3** indexes *(Stage 9)* · `[ ]` **M4** webhook amount *(Stage 7)* · `[ ]` **M5** remove `db.user.list()` *(Stage 9)* · `[ ]` **M6** idempotency keys *(Stage 9)* · `[ ]` **M7** atomic increment *(Stage 9)* · `[ ]` **M8** schema comment (with H8) *(Stage 9/doc)* · `[ ]` **M9** deposit confirm *(Stage 5)* · `[x]` **M11** next-themes **removed** from package.json · `[x]` **M12** tsconfig **scoped** to `src/`+`scripts/*.ts`+configs; stale excludes replaced with `50PICK`/`Final UI enhancement Kit`; design mocks no longer swept; `tsc` clean.
+- `[ ]` **M1** 64-bit lock hash *(Stage 9)* · `[~]` **M2** largest-remainder (verify fee model) *(Stage 1)* · `[ ]` **M3** indexes *(Stage 9)* · `[ ]` **M4** webhook amount *(Stage 7)* · `[ ]` **M5** remove `db.user.list()` *(Stage 9)* · `[ ]` **M6** idempotency keys *(Stage 9)* · `[ ]` **M7** atomic increment *(Stage 9)* · `[ ]` **M8** schema comment (with H8) *(Stage 9/doc)* · `[x]` **M9** deposit confirm added (`DepositConfirm` mirrors withdraw; shows amount, provider, MSISDN) · `[x]` **M11** next-themes **removed** from package.json · `[x]` **M12** tsconfig **scoped** to `src/`+`scripts/*.ts`+configs; stale excludes replaced with `50PICK`/`Final UI enhancement Kit`; design mocks no longer swept; `tsc` clean.
 
 ### Low
 - `[ ]` **L1** hex validation · `[ ]` **L2** winnersPaid derived · `[ ]` **L3** tokenise hex · `[ ]` **L4** finalPayout=refund · `[ ]` **L5** `--royal-*` canonical · `[ ]` **L6** 44px targets *(all Stage 10)*
@@ -85,3 +85,4 @@ _(appended after each stage)_
 - **Stage 2 — DONE.** C7 (POCA §16 hard-lock restored + boot assertion), C10 (`db-check.cjs` removed + gitignore), H7 (webhook env names + boot warning), M11 (next-themes removed), M12 (tsconfig scoped). New file `src/lib/server/boot-checks.ts`. Verified: `tsc` clean · solo-resolution 18/18 · officer-conflict 33/33 · config-persist 10/10.
 - **Stage 3 — DONE.** C9 closed (docs only). Rewrote CLAUDE.md (2 mandates) + README.md to point at new `docs/DESIGN_AUTHORITY.md`; superseded headers on teal kit + kit-gap-audit (rule retired); authoritative header on design-master-brief. Grep clean: no active kit mandate. Docs-only — no code/test impact.
 - **Stage 4 — DONE.** C11 closed. Single-source brand pipeline (`src/lib/brand-mark.ts` → `brand.tsx` + `scripts/build-brand-assets.mts`, npm `build:brand`). Regenerated 4 SVGs + 7 PNGs; removed old Playwright script. Verified: `tsc` clean · grep gate 0 · PNGs eyeballed (needle mark, not the old ring) · OG images already correct.
+- **Stage 5 — DONE.** C8 (copy already trilingual via fee model), H12 (withdraw confirm shows amount/−fee/net via shared `computeWithdrawalFee`), M9 (new `DepositConfirm`). +2 i18n keys (confirmDeposit/depositSendBody) all locales. Verified: `tsc` clean · `test:withdrawal` 16/16 · `test:i18n` parity PASS.

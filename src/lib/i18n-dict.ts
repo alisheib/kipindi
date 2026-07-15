@@ -348,6 +348,8 @@ export const dict = {
       confirmWithdrawal: "Confirm withdrawal",
       via: "Via",
       withdrawSendBody: "This action sends funds out of your wallet. Make sure the destination phone is correct.",
+      confirmDeposit: "Confirm deposit",
+      depositSendBody: "Confirm the amount and destination before you deposit.",
       // === i18n coverage pass: shared UI strings ===
       delete: "Delete", report: "Report", net: "net",
       max: "Max", min: "Min", working: "Working…", info: "Info",
@@ -1500,6 +1502,8 @@ export const dict = {
       confirmWithdrawal: "Thibitisha kutoa",
       via: "Kupitia",
       withdrawSendBody: "Kitendo hiki kinatuma pesa nje ya pochi yako. Hakikisha nambari ya simu ya mpokeaji ni sahihi.",
+      confirmDeposit: "Thibitisha amana",
+      depositSendBody: "Thibitisha kiasi na mpokeaji kabla ya kuweka pesa.",
       // === i18n coverage pass: shared UI strings ===
       delete: "Futa", report: "Ripoti", net: "halisi",
       max: "Juu", min: "Chini", working: "Inafanya kazi…", info: "Taarifa",
@@ -2649,6 +2653,8 @@ export const dict = {
       confirmWithdrawal: "确认提现",
       via: "通过",
       withdrawSendBody: "此操作将从您的钱包转出资金。请确保目标手机号正确。",
+      confirmDeposit: "确认存款",
+      depositSendBody: "存款前请确认金额和目标账户。",
       // === i18n coverage pass: shared UI strings ===
       delete: "删除", report: "举报", net: "净额",
       max: "上限", min: "下限", working: "处理中…", info: "信息",
