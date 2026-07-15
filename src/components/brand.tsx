@@ -1,16 +1,19 @@
 /**
  * 50pick brand primitives — FINAL (logo round 2, Direction B "Needle").
  *
- * The mark: YES emerald LEFT · NO rose RIGHT · royal ring · the gilt
- * NEEDLE crossing the rim (same object as TippingBar needle + conviction
- * dial) with a gilt counterweight hub on the lower arm · "50" JetBrains
- * Mono 700. Tilt −14°.
+ * The mark: YES emerald LEFT · NO rose RIGHT · the gilt NEEDLE riding the seam
+ * past the rim (same object as TippingBar needle + conviction dial) over a gilt
+ * hub with a navy pivot. No ring, no numerals — the wordmark carries the name.
+ *
+ * Geometry + colours live in `@/lib/brand-mark` (the ONE definition, shared with
+ * `scripts/build-brand-assets.mts` so the in-app mark and exported assets cannot
+ * drift — audit C11).
  *
  * Variants:
  *   variant="color"  — full color (default; dark canvas)
  *   variant="white"  — single-ink white (dark canvas, photos via plate)
  *   variant="dark"   — single-ink royal (light backgrounds, print)
- *   simplified       — no numerals/hub, heavier strokes; REQUIRED ≤ 20px
+ *   simplified       — no pivot, heavier strokes; REQUIRED ≤ 20px
  *
  * Reproduction rules:
  *   min full mark 24px · min simplified 14px · clear space 0.25 × diameter
@@ -19,32 +22,9 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { MARK, markColors, type FiftyMarkVariant } from "@/lib/brand-mark";
 
-/* Final mark — "mark-a" (delivered 2026-07-09, `Final logo design/`). A circle
-   split YES-emerald LEFT · NO-rose RIGHT by a diagonal chord, the gilt NEEDLE
-   riding the seam just past the rim, over a gilt hub with a navy pivot. No ring,
-   no numerals — the wordmark carries the name (same object as the TippingBar
-   needle + conviction dial). Delivered brand hex is authoritative.
-   Variants: color (default) · white / dark (single-ink) · simplified (≤ ~20px:
-   heavier needle + hub, drops the pivot). */
-const MARK = {
-  green: "#1EA362",
-  red: "#B03A3E",
-  gold: "#E3BC66",
-  pivot: "#1A2140",
-  whiteInk: "#F7F8FC",
-  darkInk: "#1A2140",
-  greenPath: "M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z",
-  redPath: "M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z",
-  n: { x1: 38.39, y1: 3.43, x2: 61.61, y2: 96.57 },
-};
-
-function hexA(hex: string, a: number): string {
-  const n = parseInt(hex.slice(1), 16);
-  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
-}
-
-export type FiftyMarkVariant = "color" | "white" | "dark";
+export type { FiftyMarkVariant };
 
 /* ── FiftyMark ──────────────────────────────────────────────────────────── */
 
@@ -61,19 +41,14 @@ export function FiftyMark({
   className?: string;
 }) {
   const simple = simplified ?? size < 24;
-  const mono = variant !== "color";
-  const ink = variant === "white" ? MARK.whiteInk : MARK.darkInk;
-  const green = mono ? hexA(ink, variant === "white" ? 0.30 : 0.26) : MARK.green;
-  const red = mono ? hexA(ink, variant === "white" ? 0.14 : 0.11) : MARK.red;
-  const needle = mono ? ink : MARK.gold;
-  const hub = mono ? ink : MARK.gold;
+  const c = markColors(variant, simple);
   return (
     <svg viewBox="0 0 100 100" width={size} height={size} className={className} style={{ display: "block" }} aria-label="50pick">
-      <path d={MARK.greenPath} fill={green} />
-      <path d={MARK.redPath} fill={red} />
-      <line x1={MARK.n.x1} y1={MARK.n.y1} x2={MARK.n.x2} y2={MARK.n.y2} stroke={needle} strokeWidth={simple ? 5 : 3.5} strokeLinecap="round" />
-      <circle cx="50" cy="50" r={simple ? 6 : 5} fill={hub} />
-      {!simple && !mono && <circle cx="50" cy="50" r="1.7" fill={MARK.pivot} />}
+      <path d={MARK.greenPath} fill={c.green} />
+      <path d={MARK.redPath} fill={c.red} />
+      <line x1={MARK.n.x1} y1={MARK.n.y1} x2={MARK.n.x2} y2={MARK.n.y2} stroke={c.needle} strokeWidth={simple ? 5 : 3.5} strokeLinecap="round" />
+      <circle cx="50" cy="50" r={simple ? 6 : 5} fill={c.hub} />
+      {c.pivot && <circle cx="50" cy="50" r="1.7" fill={c.pivot} />}
     </svg>
   );
 }

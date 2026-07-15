@@ -10,6 +10,7 @@
     "postinstall": "prisma generate",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
+    "build:brand": "tsx scripts/build-brand-assets.mts",
     "test:date": "tsx scripts/date-mask.test.mts",
     "test:time": "tsx scripts/time-mask.test.mts",
     "test:numeric": "tsx scripts/numeric-input.test.mts",

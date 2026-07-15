@@ -1,10 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="-3 -3 106 106">
-  
-  <defs><clipPath id="f"><circle cx="50" cy="50" r="44.6"></circle></clipPath></defs>
-  <g clip-path="url(#f)">
-    <path d="M 30.646 -27.624 A 80 80 0 0 0 69.354 127.624 L 30.646 -27.624 Z" fill="oklch(58% 0.16 152)"></path>
-    <path d="M 30.646 -27.624 A 80 80 0 0 1 69.354 127.624 L 30.646 -27.624 Z" fill="oklch(60% 0.18 22)"></path>
-  </g>
-  <circle cx="50" cy="50" r="44.6" fill="none" stroke="oklch(48% 0.20 268)" stroke-width="4"></circle>
-  <line x1="37.541" y1="0.030" x2="62.459" y2="99.970" stroke="oklch(78% 0.13 86)" stroke-width="5" stroke-linecap="round"></line>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" aria-label="50pick">
+  <path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362"/>
+  <path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E"/>
+  <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" stroke="#E3BC66" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="50" cy="50" r="6" fill="#E3BC66"/>
 </svg>
