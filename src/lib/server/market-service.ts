@@ -295,6 +295,14 @@ export function ratesFor(m: Pick<StoredMarket, "feeSnapshot">): FeeSnapshot {
   return snapshotOrLegacy(m.feeSnapshot);
 }
 
+/** Internal control-flow signal for buyPosition's money transaction: thrown
+ *  inside `withMoneyTx` so Prisma rolls back EVERY write of the bet (real debit,
+ *  bonus spend, pool increment, position, txn, ledger), then mapped to a clean
+ *  player-facing rejection. Never escapes buyPosition. */
+class BetAbort extends Error {
+  constructor(readonly reason: "NO_FUNDS") { super(`bet aborted: ${reason}`); }
+}
+
 /** Player buys a position on a market. */
 export async function buyPosition(userId: string, opts: { marketId: string; side: Side; stake: number; idempotencyKey?: string }): Promise<ServiceResult<{ positionId: string; balance: number; payoutIfWin: number }>> {
   const rl = rateCheck(userId, "bet.place");
@@ -380,33 +388,18 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
     // Real-first funding: spend the player's own (withdrawable) balance first,
     // then top up the remainder from the bonus wallet. Both debits run inside
     // THIS wallet lock so the affordability check and the two debits can't be
-    // split by a concurrent bet/withdraw (no double-spend).
+    // split by a concurrent bet/withdraw (no double-spend). The affordability
+    // PRE-CHECK runs here on the locked read; the actual debits run inside the
+    // single money transaction below, still guard-protected (belt-and-suspenders).
     const realAvail = wallet.balance;
     const bonusAvail = wallet.bonusBalance ?? 0;
     const realPart = Math.min(opts.stake, realAvail);
     const bonusPart = opts.stake - realPart;
     if (bonusPart > bonusAvail) return { ok: false as const, error: "Not enough balance.", code: "INVALID" as const };
 
-    let newBalance = realAvail;
-    if (realPart > 0) {
-      // Atomic, overdraw-guarded debit (WHERE balance >= realPart).
-      const debited = await db.wallet.adjust(wallet.id, { balance: -realPart }, { requireBalanceGte: realPart });
-      if (!debited) return { ok: false as const, error: "Not enough balance.", code: "INVALID" as const };
-      newBalance = debited.balance;
-    }
-    let bonusAllocations: BonusAllocation[] = [];
-    if (bonusPart > 0) {
-      // Lock-free spend — we already hold wallet:<userId>.
-      const spend = await spendBonusLocked(userId, bonusPart);
-      if (spend.spent < bonusPart) {
-        if (realPart > 0) await db.wallet.adjust(wallet.id, { balance: realPart }); // roll back real debit
-        return { ok: false as const, error: "Not enough balance.", code: "INVALID" as const };
-      }
-      bonusAllocations = spend.allocations;
-    }
-
     const payoutIfWin = await projectedPayout(market, opts.side, opts.stake);
     const positionId = `pos_${randomId(10)}`;
+    const betTxnId = `txn_${randomId(12)}`;
     const placedAt = new Date().toISOString();
     const position: StoredPosition = {
       id: positionId,
@@ -433,69 +426,127 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
     // so this nesting cannot deadlock.
     //
     // We ALSO re-check the close state INSIDE this lock (GLI-33 late-bet
-    // defence): a bet that slipped past the pre-lock close checks — placed in
-    // the microseconds before the cutoff, or racing a concurrent admin suspend /
-    // auto-close — must NOT be allowed to add money to a closed market. If the
-    // window closed in-flight we abort the pool write and unwind below.
-    let closedInFlight = false;
-    await withLock(`market:${opts.marketId}`, async () => {
+    // defence) BEFORE any money moves: a bet that slipped past the pre-lock
+    // close checks — placed in the microseconds before the cutoff, or racing a
+    // concurrent admin suspend / auto-close — is rejected with the wallet
+    // UNTOUCHED. Checks-first kills the whole unwind path the old shape needed.
+    //
+    // Then EVERY money write of the bet — the real-balance debit, the bonus
+    // spend (grant decrements + bonusBalance), the pool increment, the Position
+    // row, the BET_PLACED transaction and the stake ledger entries — commits in
+    // ONE Prisma $transaction (withMoneyTx). A failure of ANY write rolls back
+    // ALL of them; a crash between two writes can no longer leave partial state.
+    // Both advisory locks are acquired BEFORE the tx opens: opening the tx first
+    // (debit, then wait on the market lock) would hold the bettor's wallet ROW
+    // inside an open tx while settlement (market lock → withMoneyTx paying that
+    // same wallet) holds the market lock — an advisory-lock/row-lock deadlock
+    // cycle that does not exist today. Locks-then-tx preserves it.
+    let newBalance = realAvail;
+    let bonusAllocations: BonusAllocation[] = [];
+    let usedTx = false;
+    const outcome = await withLock(`market:${opts.marketId}`, async (): Promise<"OK" | "CLOSED" | "NO_FUNDS"> => {
       const fresh = await marketStore.get(opts.marketId);
       if (!fresh || fresh.status !== "LIVE" || isSelectionClosed(fresh) || Date.parse(fresh.resolutionAt) <= Date.now()) {
-        closedInFlight = true;
-        return;
+        return "CLOSED";
       }
-      if (opts.side === "YES") fresh.yesPool += opts.stake;
-      else                     fresh.noPool  += opts.stake;
-      fresh.predictorCount += 1;
-      fresh.updatedAt = placedAt;
-      await marketStore.set(fresh);
-      // Snapshot the new pool for the per-market history chart.
+      try {
+        await withMoneyTx(async (tx) => {
+          usedTx = tx !== null;
+          if (realPart > 0) {
+            // Atomic, overdraw-guarded debit (WHERE balance >= realPart).
+            const debited = await db.wallet.adjust(wallet.id, { balance: -realPart }, { requireBalanceGte: realPart }, tx);
+            if (!debited) throw new BetAbort("NO_FUNDS");
+            newBalance = debited.balance;
+          }
+          if (bonusPart > 0) {
+            // Lock-free spend — we already hold wallet:<userId>. Threaded into
+            // this tx so the grant decrements + bonusBalance debit roll back
+            // with everything else on abort.
+            const spend = await spendBonusLocked(userId, bonusPart, tx);
+            if (spend.spent < bonusPart) {
+              // Defensive only — can't normally happen under the wallet lock
+              // (bonusPart ≤ bonusAvail was checked on the locked read). With a
+              // real tx, throwing rolls the whole movement back. In-memory
+              // (tx === null) there is no rollback, so compensate by hand: the
+              // real debit was the only prior write, plus any partial
+              // allocations the spend made before falling short.
+              if (!tx) {
+                if (realPart > 0) await db.wallet.adjust(wallet.id, { balance: realPart });
+                if (spend.allocations.length > 0) await refundBonusLocked(userId, spend.allocations);
+              }
+              throw new BetAbort("NO_FUNDS");
+            }
+            bonusAllocations = spend.allocations;
+          }
+
+          // Money is secured — apply the pool increment and persist everything.
+          // (In-memory `fresh` aliases the stored object, so the mutation comes
+          // AFTER the two throw points above — an abort must not corrupt pools.)
+          if (opts.side === "YES") fresh.yesPool += opts.stake;
+          else                     fresh.noPool  += opts.stake;
+          fresh.predictorCount += 1;
+          fresh.updatedAt = placedAt;
+          await marketStore.set(fresh, tx);
+          await positionStore.set(position, tx);
+
+          // The real-wallet ledger records only the REAL cash that left `balance`
+          // (-realPart). The bonus-funded portion moves on the bonus wallet and is
+          // tracked via BonusGrant + bonus audit entries, not here, so balanceAfter
+          // stays reconcilable with the running real-balance sum.
+          await db.txn.create({
+            id: betTxnId,
+            walletId: wallet.id, userId,
+            type: "BET_PLACED", status: "CONFIRMED",
+            amount: -realPart, fee: 0, taxWithheld: 0,
+            balanceAfter: newBalance, currency: "TZS",
+            provider: "INTERNAL", providerRef: null, msisdn: null,
+            description: bonusPart > 0
+              ? `${opts.side} on "${market.titleEn.slice(0, 50)}" (incl. ${formatTzs(bonusPart)} bonus)`
+              : `${opts.side} on "${market.titleEn.slice(0, 60)}"`,
+            positionId: positionId,
+            amlReason: null,
+            createdAt: placedAt, updatedAt: placedAt, completedAt: placedAt,
+          });
+          // Dual-write: stake to the double-entry ledger, IN the transaction —
+          // a ledger failure now rejects the whole bet (rollback) instead of
+          // silently dropping the ledger row (was fire-and-forget .catch()).
+          await postLedgerEntries(`stake_${betTxnId}`, stakeEntries({ txnId: betTxnId, userId, marketId: opts.marketId, realPart, bonusPart }), tx);
+        });
+      } catch (err) {
+        if (err instanceof BetAbort) return "NO_FUNDS";
+        throw err; // unexpected failure — the tx already rolled back; surface it
+      }
+      // COMMITTED — only now snapshot the pool + push live odds, so subscribers
+      // and the history chart never see a pool state that later rolled back.
       recordSnapshot(fresh.id, fresh.yesPool, fresh.noPool);
       // SSE: push live odds to all connected clients
       emit("market:odds", { marketId: fresh.id, yesPct: impliedYesPct(fresh) });
+      return "OK";
     });
 
-    // Closed in-flight → refund every shilling that was debited (real balance +
-    // the exact bonus allocations, lock-free since we still hold the wallet lock)
-    // and reject. No position, txn, ledger entry, or pool change was committed.
-    if (closedInFlight) {
-      if (realPart > 0) await db.wallet.adjust(wallet.id, { balance: realPart });
-      if (bonusAllocations.length > 0) await refundBonusLocked(userId, bonusAllocations);
+    // Closed in-flight → reject. NOTHING was debited (the close re-check runs
+    // before any money write), so there is nothing to refund — the old unwind
+    // path no longer exists.
+    if (outcome === "CLOSED") {
       audit({
         category: "BET",
         action: "bet.rejected.closed_in_flight",
         actorId: userId,
         targetType: "Market",
         targetId: opts.marketId,
-        payload: { side: opts.side, stake: opts.stake, refundedReal: realPart, refundedBonus: bonusPart },
+        payload: { side: opts.side, stake: opts.stake, moneyMoved: false },
       });
       return { ok: false as const, error: "Selections closed while placing your bet. · Uchaguzi umefungwa.", code: "SELECTION_CLOSED" as const };
     }
+    if (outcome === "NO_FUNDS") {
+      return { ok: false as const, error: "Not enough balance.", code: "INVALID" as const };
+    }
 
-    // Committed — persist the position now that the stake is safely in the pool.
-    await positionStore.set(position);
-
-    // The real-wallet ledger records only the REAL cash that left `balance`
-    // (-realPart). The bonus-funded portion moves on the bonus wallet and is
-    // tracked via BonusGrant + bonus audit entries, not here, so balanceAfter
-    // stays reconcilable with the running real-balance sum.
-    const betTxnId = `txn_${randomId(12)}`;
-    await db.txn.create({
-      id: betTxnId,
-      walletId: wallet.id, userId,
-      type: "BET_PLACED", status: "CONFIRMED",
-      amount: -realPart, fee: 0, taxWithheld: 0,
-      balanceAfter: newBalance, currency: "TZS",
-      provider: "INTERNAL", providerRef: null, msisdn: null,
-      description: bonusPart > 0
-        ? `${opts.side} on "${market.titleEn.slice(0, 50)}" (incl. ${formatTzs(bonusPart)} bonus)`
-        : `${opts.side} on "${market.titleEn.slice(0, 60)}"`,
-      positionId: positionId,
-      amlReason: null,
-      createdAt: placedAt, updatedAt: placedAt, completedAt: placedAt,
-    });
-    // Dual-write: post stake to double-entry ledger (fire-and-forget).
-    postLedgerEntries(`stake_${betTxnId}`, stakeEntries({ txnId: betTxnId, userId, marketId: opts.marketId, realPart, bonusPart })).catch(() => {});
+    // Deferred from spendBonusLocked in tx mode (see there): raised only after
+    // the transaction committed, so the audit can never narrate a rolled-back spend.
+    if (usedTx && bonusPart > 0) {
+      audit({ category: "WALLET", action: "bonus.spent", actorId: userId, targetType: "Wallet", targetId: wallet.id, payload: { spent: bonusPart, allocations: bonusAllocations } });
+    }
 
     audit({
       category: "BET",

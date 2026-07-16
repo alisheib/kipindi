@@ -100,7 +100,11 @@ function toStoredPosition(r: any): StoredPosition {
 
 export interface MarketStore {
   get(id: string): Promise<StoredMarket | null>;
-  set(m: StoredMarket): Promise<void>;
+  // tx (bet-stake single-tx): pass a Prisma transaction client to persist the
+  // pool mutation in the SAME transaction as the stake's wallet/txn/ledger
+  // movement, so a mid-bet failure rolls the pool increment back with the debit.
+  // Ignored by the in-memory store (same contract as PositionStore.set below).
+  set(m: StoredMarket, tx?: Prisma.TransactionClient | null): Promise<void>;
   delete(id: string): Promise<void>;
   has(id: string): Promise<boolean>;
   values(): Promise<StoredMarket[]>;
@@ -125,7 +129,7 @@ export interface PositionStore {
 
 const memoryMarkets: MarketStore = {
   async get(id) { return markets.get(id) ?? null; },
-  async set(m) { markets.set(m.id, m); },
+  async set(m, _tx) { markets.set(m.id, m); },
   async delete(id) { markets.delete(id); },
   async has(id) { return markets.has(id); },
   async values() { return Array.from(markets.values()); },
@@ -165,8 +169,8 @@ const prismaMarkets: MarketStore = {
     const r = await pc().predictionMarket.findUnique({ where: { id } });
     return r ? toStoredMarket(r) : null;
   },
-  async set(m) {
-    await pc().predictionMarket.upsert({
+  async set(m, tx) {
+    await (tx ?? pc()).predictionMarket.upsert({
       where: { id: m.id },
       create: {
         id: m.id,
