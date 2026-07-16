@@ -22,30 +22,34 @@
   /* ---------- Color ramps (OKLCH) ---------- */
 
   /* Royal blue — primary chrome. Sovereign, financial, trustworthy.
-     `--teal-*` retained for backward compat. Hue 268 = royal indigo (#060a50). */
-  --teal-50:  oklch(97% 0.018 268);
-  --teal-100: oklch(93% 0.040 268);
-  --teal-200: oklch(86% 0.080 268);
-  --teal-300: oklch(76% 0.130 268);
-  --teal-400: oklch(60% 0.180 268);
-  --teal-500: oklch(48% 0.200 268);
-  --teal-600: oklch(40% 0.200 268);
-  --teal-700: oklch(32% 0.150 268);
-  --teal-800: oklch(24% 0.110 268);
-  --teal-900: oklch(18% 0.080 268);
-  --teal-950: oklch(13% 0.060 268);
+     `--royal-*` is CANONICAL (audit L5). Hue 268 = royal indigo (#060a50).
+     NB: `--aqua-*` (hue 195) is the actual teal-family ramp — the old `--teal-*`
+     name held this royal hue and actively misled, so it is now a DEPRECATED alias
+     (below): do not use it in new code; it will be removed after one release. */
+  --royal-50:  oklch(97% 0.018 268);
+  --royal-100: oklch(93% 0.040 268);
+  --royal-200: oklch(86% 0.080 268);
+  --royal-300: oklch(76% 0.130 268);
+  --royal-400: oklch(60% 0.180 268);
+  --royal-500: oklch(48% 0.200 268);
+  --royal-600: oklch(40% 0.200 268);
+  --royal-700: oklch(32% 0.150 268);
+  --royal-800: oklch(24% 0.110 268);
+  --royal-900: oklch(18% 0.080 268);
+  --royal-950: oklch(13% 0.060 268);
 
-  --royal-50:  var(--teal-50);
-  --royal-100: var(--teal-100);
-  --royal-200: var(--teal-200);
-  --royal-300: var(--teal-300);
-  --royal-400: var(--teal-400);
-  --royal-500: var(--teal-500);
-  --royal-600: var(--teal-600);
-  --royal-700: var(--teal-700);
-  --royal-800: var(--teal-800);
-  --royal-900: var(--teal-900);
-  --royal-950: var(--teal-950);
+  /* DEPRECATED aliases of --royal-* — backward compat only (audit L5). */
+  --teal-50:  var(--royal-50);
+  --teal-100: var(--royal-100);
+  --teal-200: var(--royal-200);
+  --teal-300: var(--royal-300);
+  --teal-400: var(--royal-400);
+  --teal-500: var(--royal-500);
+  --teal-600: var(--royal-600);
+  --teal-700: var(--royal-700);
+  --teal-800: var(--royal-800);
+  --teal-900: var(--royal-900);
+  --teal-950: var(--royal-950);
 
   /* YES — emerald (hue 152). Semantic, untouchable. */
   --yes-50:  oklch(96% 0.04 152);

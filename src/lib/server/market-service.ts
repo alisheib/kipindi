@@ -1541,7 +1541,6 @@ export async function settleMarket(
     recordSnapshot(m.id, m.yesPool, m.noPool);
   };
 
-  let winnersPaid = 0;
   // THE POLL'S OWN RATES — frozen at creation, not whatever admin has set today.
   const settleCfg = ratesFor(m);
   const grossPool = m.yesPool + m.noPool;
@@ -1577,6 +1576,9 @@ export async function settleMarket(
         const updated = await db.wallet.adjust(w.id, { balance: realPart });
         balanceAfter = updated?.balance ?? w.balance + realPart;
       }
+      // L4/C2: finalPayout = the FULL stake, and that is honest — the void refund
+      // returns every shilling: the real part → balance (above) and the bonus part
+      // → a zero-wagering restitution grant (refundBonusToActive never forfeits).
       p.status = "VOID"; p.finalPayout = p.stake; p.settledAt = settledAt;
       await positionStore.set(p);
       pendingWagerReversals.push({ userId: p.userId, stake: p.stake });
@@ -1651,6 +1653,7 @@ export async function settleMarket(
         balanceAfter = updated?.balance ?? w.balance + realPart;
       }
       p.status = "VOID";
+      // L4/C2: full-stake refund is honest — real → balance, bonus → restitution grant.
       p.finalPayout = p.stake;
       p.settledAt = settledAt;
       await positionStore.set(p);
@@ -1720,7 +1723,6 @@ export async function settleMarket(
           payout, stake: p.stake, fee: settleFee.fee, winningPool,
           rates: { traTaxOnCommissionRate: settleCfg.traTaxOnCommissionRate, gbtLevyOnCommissionRate: settleCfg.gbtLevyOnCommissionRate },
         })).catch(() => {});
-        winnersPaid += payout;
         // Tamper-evident chain entry for the payout credit (txn row is the
         // ledger; this anchors it in the HMAC audit chain too).
         audit({ category: "WALLET", action: "bet.payout", actorId: p.userId, targetType: "Position", targetId: p.id, payload: { marketId: m.id, outcome: opts.outcome, payout, balanceAfter } });
@@ -1765,6 +1767,16 @@ export async function settleMarket(
       }
     }
   }
+
+  // L2 — report the FULL settled totals from the authoritative position rows. A
+  // resumed settlement's loop sees only the still-OPEN positions, so an in-loop
+  // accumulator under-counts on re-entry; Σ(finalPayout WHERE WIN) and the
+  // non-OPEN count are correct whether this is the first run or a re-entry. This
+  // is the number a regulator reconciles. Money-neutral — reporting only.
+  const settledNow = await listPositionsForMarket(m.id);
+  const totalWinnersPaid = settledNow.reduce((s, p) => s + (p.status === "WIN" ? (p.finalPayout ?? 0) : 0), 0);
+  const totalPositionsSettled = settledNow.filter((p) => p.status !== "OPEN").length;
+
   audit({
     category: "ADMIN",
     action: "market.resolved",
@@ -1789,7 +1801,7 @@ export async function settleMarket(
       netPool: Math.round(settleFee.netPool),
       levies: levySplit(settleFee.fee, settleCfg),
       winningPool,
-      winnersPaid,
+      winnersPaid: totalWinnersPaid,
       stage1By: m.resolutionStage1By, stage2By: m.resolutionStage2By,
       sourceUrl: m.sourceUrl,
       evidence,
@@ -1822,15 +1834,15 @@ export async function settleMarket(
     targetType: "Market",
     targetId: m.id,
     payload: {
-      outcome: opts.outcome, settledAt, winnersPaid,
-      positionsSettled: myPositions.length,
+      outcome: opts.outcome, settledAt, winnersPaid: totalWinnersPaid,
+      positionsSettled: totalPositionsSettled,
       grossPool, winningPool,
       objectionsClosedAt: m.objectionsClosedAt,
       forced: settleOpts.force === true,
     },
   });
 
-  return { ok: true, data: { winnersPaid, positionsSettled: myPositions.length } };
+  return { ok: true, data: { winnersPaid: totalWinnersPaid, positionsSettled: totalPositionsSettled } };
   }); // end withLock market
 
   // Apply, now the market lock is released (refund helpers take the wallet lock —
