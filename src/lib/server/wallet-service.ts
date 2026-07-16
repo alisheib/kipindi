@@ -23,7 +23,7 @@ import { checkDepositLimit, isLockedOut } from "./responsible-gambling";
 import { notifyDeposit, notifyWithdraw, notifyAdminsAmlReview } from "./notification-service";
 import { withLock } from "./locks";
 import { emit } from "./event-bus";
-import { postLedgerEntries, depositEntries, withdrawalEntries, internalCreditEntries, withMoneyTx } from "./ledger";
+import { postLedgerEntries, depositEntries, withdrawalEntries, internalCreditEntries, adjustmentEntries, withMoneyTx } from "./ledger";
 import { getEffectiveConfig } from "./market-config";
 import { computeWithdrawalFee } from "@/lib/payout";
 import type { z } from "zod";
@@ -713,6 +713,87 @@ export async function creditInternal(
     });
     emit("wallet:balance", { userId, balance: newBalance });
     return newBalance;
+  });
+}
+
+/**
+ * Manual admin balance adjustment (audit §9.3 #4) — an officer credits or debits
+ * a player's real balance with a mandatory reason (disputes, goodwill, clawback,
+ * correction). `amountTzs` is SIGNED: positive = credit, negative = debit.
+ *
+ * MONEY-SAFE: the wallet mutation, the CONFIRMED Transaction, and the ledger
+ * ADJUSTMENT group commit ATOMICALLY (withMoneyTx, C3) inside the wallet lock, so
+ * the trial balance stays reconciled and a ledger failure rolls the money back.
+ * A debit is overdraw-guarded (never drives the balance negative). Every
+ * adjustment raises a WATCHED `COMPLIANCE` audit — an officer moving money by
+ * hand must always be traceable. Bounded by a per-adjustment cap.
+ *
+ * NOTE (hardening): like AML withdrawals ≥1M, large adjustments should ideally
+ * require a second officer (maker-checker). v1 is single-officer + audit + cap;
+ * two-officer is a documented follow-up.
+ */
+const ADJUSTMENT_CAP_TZS = 50_000_000;
+export async function adminAdjustBalance(
+  userId: string,
+  officerId: string,
+  amountTzs: number,
+  reason: string,
+): Promise<{ ok: true; balance: number } | { ok: false; error: string; code?: string }> {
+  const amount = Math.round(amountTzs);
+  if (!Number.isFinite(amount) || amount === 0) return { ok: false, error: "Enter a non-zero whole-shilling amount." };
+  if (Math.abs(amount) > ADJUSTMENT_CAP_TZS) return { ok: false, error: `Amount exceeds the single-adjustment cap (${formatTzs(ADJUSTMENT_CAP_TZS)}).` };
+  const cleanReason = (reason ?? "").trim().slice(0, 300);
+  if (cleanReason.length < 5) return { ok: false, error: "A reason (≥ 5 chars) is required." };
+
+  return withLock(`wallet:${userId}`, async () => {
+    const wallet = await db.wallet.findByUserId(userId);
+    if (!wallet) return { ok: false as const, error: "Wallet not found.", code: "NOT_FOUND" };
+    if (wallet.status !== "ACTIVE") return { ok: false as const, error: `Wallet is ${wallet.status}, not ACTIVE.`, code: "INVALID" };
+
+    const txnId = `txn_${randomId(12)}`;
+    const now = new Date().toISOString();
+    let newBalance = wallet.balance;
+
+    const committed = await withMoneyTx(async (tx) => {
+      // Overdraw-guarded on a debit; a credit needs no guard.
+      const updated = await db.wallet.adjust(
+        wallet.id,
+        { balance: amount },
+        amount < 0 ? { requireBalanceGte: -amount } : undefined,
+        tx,
+      );
+      if (!updated) return false; // insufficient balance for the debit, or row vanished
+      newBalance = updated.balance;
+      await db.txn.create({
+        id: txnId,
+        walletId: wallet.id, userId,
+        type: amount >= 0 ? "ADJUSTMENT_CREDIT" : "ADJUSTMENT_DEBIT",
+        status: "CONFIRMED",
+        amount, fee: 0, taxWithheld: 0,
+        balanceAfter: updated.balance, currency: "TZS",
+        provider: "INTERNAL", providerRef: null, msisdn: null,
+        description: `Admin adjustment · ${cleanReason.slice(0, 120)}`,
+        positionId: null, amlReason: cleanReason,
+        createdAt: now, updatedAt: now, completedAt: now,
+      }, tx);
+      await postLedgerEntries(`adj_${txnId}`, adjustmentEntries({ txnId, userId, amount, description: `Admin adjustment: ${cleanReason.slice(0, 120)}` }), tx);
+      return true;
+    });
+
+    if (!committed) {
+      return { ok: false as const, error: amount < 0 ? "Insufficient balance for this debit." : "Adjustment failed.", code: "INVALID" };
+    }
+
+    await audit({
+      category: "COMPLIANCE",
+      action: "wallet.admin_adjustment",
+      actorId: officerId,
+      targetType: "User",
+      targetId: userId,
+      payload: { txnId, amount, direction: amount >= 0 ? "credit" : "debit", balanceAfter: newBalance, reason: cleanReason },
+    });
+    emit("wallet:balance", { userId, balance: newBalance });
+    return { ok: true as const, balance: newBalance };
   });
 }
 

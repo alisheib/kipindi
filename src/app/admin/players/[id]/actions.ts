@@ -180,6 +180,31 @@ export async function setPlayerEmailAction(formData: FormData) {
   return { ok: true as const };
 }
 
+// ─── Manual balance adjustment (audit §9.3 #4) ──────────────────────────────
+// Officer credits/debits a player's real balance with a mandatory reason. The
+// money move + txn + ledger are atomic (wallet-service.adminAdjustBalance); this
+// wrapper only gates (MONEY_ROLES via requireAdmin + TOTP) and validates input.
+export async function adjustBalanceAction(formData: FormData) {
+  const officerId = await requireAdmin("adjustBalanceAction");
+  const userId = String(formData.get("userId") ?? "");
+  const direction = String(formData.get("direction") ?? "credit"); // "credit" | "debit"
+  const amountRaw = Number(String(formData.get("amount") ?? "0").replace(/[,\s]/g, ""));
+  const reason = String(formData.get("reason") ?? "").trim().slice(0, 300);
+  if (!userId) return { ok: false as const, error: "Missing user id." };
+  if (!Number.isFinite(amountRaw) || amountRaw <= 0) return { ok: false as const, error: "Enter a positive whole-shilling amount." };
+  if (reason.length < 5) return { ok: false as const, error: "Reason is required (≥ 5 chars)." };
+  const signed = direction === "debit" ? -Math.round(amountRaw) : Math.round(amountRaw);
+  try {
+    const { adminAdjustBalance } = await import("@/lib/server/wallet-service");
+    const r = await adminAdjustBalance(userId, officerId, signed, reason);
+    if (!r.ok) return { ok: false as const, error: r.error };
+    revalidatePath(`/admin/players/${userId}`);
+    return { ok: true as const, balance: r.balance };
+  } catch (err) {
+    return { ok: false as const, error: safeError(err, "Adjustment failed") };
+  }
+}
+
 // ─── KYC review (officer decision on a pending submission) ──────────────────
 
 export async function approveKycAction(formData: FormData) {

@@ -23,9 +23,14 @@ Ordered by value for a clean go-live + real-money ops. Update status inline.
       R2 creds set. Wired into `kyc-service` upload + `/api/admin/kyc-doc` read;
       old inline rows keep working. KYC suites 15+12 green. **Ali to ACTIVATE:**
       `npm i @aws-sdk/client-s3`, set R2 env (see `.env.example`), staging round-trip.
-- [ ] **A2 · Player balance adjustment (audited)** — §9.3 #4. Operators need manual
-      credit/debit-with-reason for disputes/corrections once real money flows. Also:
-      per-player limit override, force-reverify KYC, resend-comms.
+- [~] **A2 · Player balance adjustment (audited)** — §9.3 #4. **DONE:** manual
+      credit/debit with mandatory reason — `wallet-service.adminAdjustBalance`
+      (atomic wallet+txn+ledger via withMoneyTx, overdraw-guarded, `COMPLIANCE`
+      audit, 50M cap) + gated `adjustBalanceAction` + `BalanceAdjustControls` UI on
+      `/admin/players/[id]`. Proven on PG (credit/debit move balance + ledger in
+      lockstep; overdraw blocked). *Deferred (lower value):* per-player limit
+      override, force-reverify KYC, resend-comms. *Hardening:* two-officer for
+      large adjustments (like AML ≥1M).
 - [ ] **A3 · Reconciliation match / write-off** — §9.3 #7. `payment-ops.reconcile()`
       is view-only; add manual "match / write-off with reason" (audited) for real PSP ops.
 - [ ] **A4 · Withdrawal retry + bulk retry** — §9.3 #8. Today deposit-only, single.

@@ -18,6 +18,7 @@ import { KycReviewControls } from "@/components/admin/kyc-review-controls";
 import { SuspendControls } from "./suspend-controls";
 import { SetEmailForm } from "./set-email-form";
 import { ResetPasswordButton } from "./reset-password-button";
+import { BalanceAdjustControls } from "./balance-adjust-controls";
 import { ExportPlayerButton } from "./export-player-button";
 
 export const dynamic = "force-dynamic";
@@ -322,6 +323,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
           <div className="flex items-center gap-3 flex-wrap">
             <SuspendControls userId={data.user!.id} currentStatus={data.user!.status} />
             <ResetPasswordButton userId={data.user!.id} />
+            <BalanceAdjustControls userId={data.user!.id} currentBalance={wallet?.balance ?? 0} />
             <p className="text-caption text-text-tertiary flex items-center gap-1.5 ml-auto">
               <I.shieldcheck s={12} />
               Every action is audited · reason required
