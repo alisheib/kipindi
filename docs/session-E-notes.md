@@ -13,6 +13,9 @@
 - [x] A8  twoOfficerGate() + <AttestationRail> (unify maker-checker)
 - [x] A10 money .toLocaleString → formatTzs + guard (via test:integrity, no ESLint)
 - [x] A9  config-factory rollout — migrated affiliate-config; other 5 done/excluded (see log)
+- [x] §9.4 removed the redundant KPI `tone="gold"` alias (kept the `gold` boolean)
+- [x] §9.2 Chip overlap — already structurally solved + call-site collapse gated on Ali (documented)
+- [x] A17 hide the empty live-ops matches section (render only on a real feed)
 - [ ] A9  migrate NON-money config modules to defineConfig
 - [ ] A10 money .toLocaleString → formatTzs + lint rule
 - [ ] A11 migrate 6 player popups onto <Modal> (wrapper only)
@@ -126,3 +129,23 @@ only self-references — the docstring's "backup snapshots the global" was stale
 safely the factory would need an "await-first-read" hydration option; that change
 would also touch the DENYLISTED `bonus-config` (which uses defineConfig), so it's
 an M-side call, not E's.
+
+### §9.4 + §9.2 UI cleanups + A17 (DONE, batch 4)
+- **§9.4 KPI de-dup:** `AdminKpi` (admin-shell.tsx) had BOTH a `gold` boolean and a
+  redundant `tone="gold"` alias; no caller ever passed `tone="gold"` (only the
+  boolean, at insights/page.tsx). Dropped `"gold"` from the `tone` union
+  (now `"danger" | "success"`); kept the `gold` boolean + the live `text-gold`
+  branch. tsc-verified no AdminKpi caller relied on `tone="gold"` (other
+  components' own `tone="gold"` — Stat/PageHeader/PageHero — are untouched).
+- **§9.2 Chip:** NOT changed — chip.tsx already solves the overlap structurally
+  (the semantic pairs neutral/cat, yes/success, brand/active, gold/objection share
+  ONE style object so they can't drift), and its own docstring says collapsing the
+  aliases at call sites is "a separate design decision — pending Ali's sign-off."
+  That's an Ali call (and it's listed under "(C) optional polish"), so E leaves it.
+- **A17 live-ops matches:** the `matches` feed is a permanently-empty stub
+  (`ui-stubs.ts`, awaiting the Sportradar integrity feed) used only on
+  `/admin/live`. Changed the "Live matches · in progress" card to render ONLY when
+  `liveMatches.length > 0` — so the perpetual "No live matches at the moment" empty
+  card is gone, the table scaffolding stays ready for the signed feed, and the
+  truthful "0 live matches" KPI (doesn't pulse at 0) stays. Never fabricates.
+- Verified: tsc clean.

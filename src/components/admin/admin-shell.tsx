@@ -199,10 +199,11 @@ export function AdminKpi({
   value: string | number;
   delta?: string;
   deltaDir?: "up" | "down" | "flat";
+  /** Earned/gold emphasis for the value (e.g. Lifetime GGR). The single way to
+   *  ask for gold — there is no `tone="gold"` (it was a redundant alias). */
   gold?: boolean;
-  /** Colours the value for status KPIs (e.g. chain integrity, budget health).
-   *  `gold` still works and is equivalent to tone="gold". */
-  tone?: "danger" | "success" | "gold";
+  /** Colours the value for status KPIs (e.g. chain integrity, budget health). */
+  tone?: "danger" | "success";
   pulse?: boolean;
   spark?: boolean;
   /** Mini 24h/7d series — renders the A8 sparkline in the tile's spark slot. */
