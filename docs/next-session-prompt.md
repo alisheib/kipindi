@@ -51,7 +51,13 @@ push; verify after every push (tech/logical/visual/200/logs); never throw at boo
 migrations on the local PG only; NEVER commit secrets (creds go in Railway vars
 only); keep trackers + CLAUDE.md + memory current as you go.
 
-Deferred BY DESIGN to the first post-launch stabilization session (do NOT do them
-on launch day): bet-STAKE single-`$transaction` (highest blast radius — launch runs
-on today's battle-tested code; risk is bounded: money correct + drift-detected),
+**bet-STAKE single-`$transaction`:** being built TONIGHT (2026-07-16) in a
+dedicated parallel session on branch `feat/bet-stake-single-tx` (spec:
+`docs/bet-stake-session-prompt.md`; notes: `docs/session-betstake-notes.md`).
+Session M reviews + merges tonight IF the full bar is met (65/65 + PG proofs +
+fault-injection). **If the branch is not HANDOFF-READY + verified by launch time,
+launch WITHOUT it** — never rush-merge a money refactor during go-live; it then
+lands in stabilization (risk bounded: money correct + drift-detected).
+
+Deferred BY DESIGN to post-launch stabilization (do NOT do them on launch day):
 Redis wiring + replicas (scale step), Cloudflare orange/WAF flip, PG load benchmark.
