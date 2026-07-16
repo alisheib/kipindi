@@ -506,7 +506,7 @@ export async function buyPosition(userId: string, opts: { marketId: string; side
             positionId: positionId,
             amlReason: null,
             createdAt: placedAt, updatedAt: placedAt, completedAt: placedAt,
-          });
+          }, tx);
           // Dual-write: stake to the double-entry ledger, IN the transaction —
           // a ledger failure now rejects the whole bet (rollback) instead of
           // silently dropping the ledger row (was fire-and-forget .catch()).
