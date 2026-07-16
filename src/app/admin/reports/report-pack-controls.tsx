@@ -18,7 +18,8 @@ import {
   submitReportPack,
   acknowledgeReportPack,
 } from "./pack-actions";
-import { CEREMONY, bi } from "@/lib/admin-status-lexicon";
+import { CEREMONY } from "@/lib/admin-status-lexicon";
+import { AttestationRail } from "@/components/admin/attestation-rail";
 
 type PackState = "draft" | "prepared" | "approved" | "submitted" | "acknowledged";
 
@@ -75,13 +76,9 @@ export function ReportPackControls({
   if (state === "prepared") {
     if (isPreparer) {
       return (
-        <div className="flex items-start gap-2.5 rounded-md border border-claret-edge bg-claret-soft px-3 py-2.5">
-          <I.alertCircle s={15} className="mt-0.5 shrink-0 text-claret-300" />
-          <p className="text-[12px] text-text-muted">
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-claret-300">{bi(CEREMONY.secondOfficerRequired)}</span>
-            <br />You prepared this pack — a different officer must approve it.
-          </p>
-        </div>
+        <AttestationRail tone="blocked" title={CEREMONY.secondOfficerRequired}>
+          You prepared this pack — a different officer must approve it.
+        </AttestationRail>
       );
     }
     return (
