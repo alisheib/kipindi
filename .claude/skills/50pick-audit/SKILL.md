@@ -32,7 +32,8 @@ next start` **against the live money DB**. There is no staging. So:
 ## 2. Testing
 - **Default (no DB):** every `test:*` suite runs against an in-memory `Map` when `DATABASE_URL` is unset. `npm run typecheck` then `npm run test:all` (stays green, ~57 suites). Per-suite: `npx tsx scripts/<name>.test.mts`.
 - **Real Postgres (load/concurrency/ledger/audit-chain):** the in-memory `withLock` is a single-process mutex, so C4/C6-class multi-instance defects only show on real PG. Use the **local disposable cluster** (§3).
-- New proof suites added during remediation: `bonus-void-restitution`, `rg-limit-race`, `webhook-security` (+ `test:*` scripts). `test-all.mjs` auto-discovers any `test:*` script in `package.json`.
+- New proof suites added during remediation: `bonus-void-restitution`, `rg-limit-race`, `webhook-security`, `lock-hash`, `contrast` (+ `test:*` scripts). `test-all.mjs` auto-discovers any `test:*` script in `package.json`.
+- **`npm run test:integrity`** — content-integrity guard: fails if a superseded/removed pattern returns in a current-truth surface (README/CLAUDE/source): the 15% withholding tax, a French UI locale, "bilingual EN/SW", the flat-9% fee, a light theme / next-themes, a committed `db-check.*`, raw-PII selects outside the server layer, or a doc mandating the teal kit. Keep it green — it's how the "docs say things that aren't true" class stays fixed.
 
 ## 3. Local disposable Postgres — the SAFE DB target
 A user-space PG16 cluster lives at **`F:\pg-loadtest`, port 5433** (`fsync=off`, disposable). Full guide: `scripts/load/README.md`. Three gates refuse prod (hostname denylist `rlwy.net`/`railway.app`/`50pick.tz`, localhost-only, and a `SystemConfig['__LOAD_TEST_TARGET__']` marker row).

@@ -9,7 +9,8 @@
  *   3. At resolutionAt, two officers (different userIds) confirm the outcome.
  *      Audit chain captures both signatures + the source URL.
  *   4. 24-hour public objection window — anyone can flag, audit captures it.
- *   5. After window closes: winners share losers' pool, minus 9% operator margin.
+ *   5. After window closes: winners share the pool, minus our commission —
+ *      min(commissionRate * pool, feeCeilingRate * smaller side); see payout.ts.
  *      Each winner's payout = stake + (their_stake / winning_pool) × (losing_pool * 0.91)
  *
  * Aligns with Tanzania GBT pari-mutuel licensing + LCCP RTS 7B disclosure.

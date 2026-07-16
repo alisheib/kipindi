@@ -31,7 +31,7 @@ const jbm = JetBrains_Mono({
 });
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://kipindi-production.up.railway.app";
-const APP_DESC = "Tanzania-licensed prediction markets. Pick YES or NO on real events — winners share the losing pool. Mobile-first, bilingual EN/SW.";
+const APP_DESC = "Tanzania-licensed prediction markets. Pick YES or NO on real events — winners share the pool minus our commission. Mobile-first, trilingual EN/SW/ZH.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
