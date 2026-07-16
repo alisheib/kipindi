@@ -25,7 +25,7 @@ import { notifyBonusFulfilled } from "./notification-service";
 import { isLockedOut, checkLossLimit } from "./responsible-gambling";
 import { rateCheck } from "./rate-limit";
 import { getEffectiveConfig, snapshotFromConfig, snapshotOrLegacy } from "./market-config";
-import { payoutFor, settledPayoutFor, poolFee, levySplit, type FeeSnapshot } from "@/lib/payout";
+import { payoutFor, settledPayoutFor, allocateWinnerPayouts, poolFee, levySplit, type FeeSnapshot } from "@/lib/payout";
 import { getConflictedResolutionAllowed } from "./test-overrides";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
 import { recordSnapshot, seedHistory } from "./market-history";
@@ -1554,8 +1554,11 @@ export async function settleMarket(
 
   // Settle only OPEN positions. A CASHED_OUT (or otherwise already-settled)
   // position has already paid out and had its stake removed from the pool —
-  // re-settling it here would double-credit the player.
-  const myPositions = (await listPositionsForMarket(m.id)).filter((p) => p.status === "OPEN");
+  // re-settling it here would double-credit the player. (The full list is also
+  // used for the M2 largest-remainder allocation, which must see ALL winning-side
+  // positions — WIN + OPEN — to stay correct across a resume.)
+  const allMarketPositions = await listPositionsForMarket(m.id);
+  const myPositions = allMarketPositions.filter((p) => p.status === "OPEN");
 
   // One-sided market: all bets went to the same side, so there is no
   // opposing pool to pay winnings from. Per the platform rules, all
@@ -1698,14 +1701,25 @@ export async function settleMarket(
     // settle is recoverable. Paying a winner 93,150 on a 100,000 stake is not —
     // by the time anyone notices, the money is gone. That is the bug this whole
     // change exists to kill, and this is the tripwire that keeps it dead.
+    //
+    // M2 — allocate payouts across ALL winning-side positions by largest-remainder
+    // (deterministic, so a resumed settlement reproduces each amount) so the sum is
+    // EXACTLY floor(netPool): no per-winner rounding drift, the operator's fee is
+    // exact. assertWinnerFloor runs per allocation inside allocateWinnerPayouts.
+    const winningSidePositions = allMarketPositions.filter((wp) => wp.side === opts.outcome);
+    const payoutByPos = allocateWinnerPayouts(
+      winningSidePositions.map((wp) => ({ id: wp.id, stake: wp.stake })),
+      winningPool,
+      settleFee.netPool,
+    );
     for (const p of myPositions) {
       const w = await db.wallet.findByUserId(p.userId);
       if (!w) continue;
       if (p.side === opts.outcome) {
-        const { payout } = settledPayoutFor(
-          { yesPool: m.yesPool, noPool: m.noPool, side: p.side, stake: p.stake },
-          settleCfg,
-        );
+        // M2: use the pre-computed largest-remainder allocation (Σ == floor(netPool),
+        // winner floor asserted in allocateWinnerPayouts) instead of an independent
+        // per-winner round that could drift the operator's fee by a few TZS.
+        const payout = payoutByPos.get(p.id) ?? 0;
         const payoutTxnId = `txn_${randomId(12)}`;
         // ATOMIC (audit C3): the wallet credit, the position → WIN mark, the
         // BET_PAYOUT txn row, and the ledger settlement group all commit in ONE

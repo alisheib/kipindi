@@ -84,12 +84,15 @@ Ordered by value for a clean go-live + real-money ops. Update status inline.
         legitimate retry-after-failure → the txn would never settle. Status-gating
         already prevents replay double-credit. So C5 as specified is closed as
         not-needed.
-      • **M2 largest-remainder payout — DEFERRED (safe to build, do fresh):**
-        re-analysis shows the winner-floor CANNOT break under largest-remainder —
-        the fee cap guarantees `netPool ≥ winningPool`, so `share·netPool ≥ stake`
-        and `floor(share·netPool) ≥ stake` (stake is integer). It restructures the
-        settlement payout loop (pre-pass allocation), so it's a fresh focused change,
-        not a session-tail edit. Current dust is bounded + tested (money-invariants).
+      • **M2 largest-remainder payout — DONE (2026-07-16).** `allocateWinnerPayouts`
+        (payout.ts) allocates across ALL winning-side positions so **Σ payouts ==
+        floor(netPool) EXACTLY** (no per-winner rounding drift → the operator's fee
+        is exact; no "pool a shilling off"). Deterministic (stable id tiebreak) so a
+        resumed settlement reproduces each amount; winner floor asserted per
+        allocation (proven safe by the fee cap). `settleMarket` computes it once and
+        credits each OPEN winner the allocated amount. New `test:payout-alloc` 12/12;
+        money-invariants 78/78, ledger 89/89, markets/solo/emergency/settlement-gate
+        green; **money-e2e on PG 57/57, conservation drift 0.00**.
       • **bet-STAKE single-`$transaction` — DEFERRED:** highest blast radius (nested
         wallet→market lock + pool unwind + bonus spend); money is already correct +
         drift detected. Fresh focused session with the load harness.

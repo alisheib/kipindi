@@ -327,6 +327,53 @@ export function settledPayoutFor(
 }
 
 /**
+ * LARGEST-REMAINDER payout allocation across ALL winners of a settled poll
+ * (audit M2). `settledPayoutFor` rounds each winner independently, so the sum can
+ * drift a few TZS from `netPool` (bounded, but the operator's fee then differs
+ * from `poolFee` by that dust). This allocates so **Σ payouts == floor(netPool)
+ * EXACTLY**: floor each winner's exact share, then hand the leftover shillings to
+ * the largest fractional parts.
+ *
+ * Correctness:
+ *  - Σ(stake over winners) == winningPool, so Σ(exact share·netPool) == netPool
+ *    exactly ⇒ the remainder to distribute is in [0, #winners) — always enough
+ *    winners to absorb it.
+ *  - Each exact share·netPool ≥ stake (the fee cap ⇒ netPool ≥ winningPool), so
+ *    floor(·) ≥ stake (stake is integer) — the winner floor holds; `+1` only helps.
+ *    `assertWinnerFloor` re-checks each as a tripwire.
+ *  - Deterministic (stable id tiebreak), so a RESUMED settlement computing the
+ *    allocation over the SAME full winning-side set reproduces each winner's
+ *    amount exactly — no drift across a crash/resume. The residual sub-shilling
+ *    (`netPool - floor(netPool)`, < 1 TZS) stays with the house; no money is minted.
+ *
+ * Returns a Map keyed by the caller's position id.
+ */
+export function allocateWinnerPayouts(
+  winners: Array<{ id: string; stake: number }>,
+  winningPool: number,
+  netPool: number,
+): Map<string, number> {
+  const out = new Map<string, number>();
+  if (winners.length === 0 || winningPool <= 0 || netPool <= 0) {
+    for (const w of winners) out.set(w.id, 0);
+    return out;
+  }
+  const rows = winners.map((w) => {
+    const raw = Math.max(0, (w.stake / winningPool) * netPool);
+    return { id: w.id, stake: w.stake, floor: Math.floor(raw), frac: raw - Math.floor(raw) };
+  });
+  let allocated = 0;
+  for (const r of rows) { out.set(r.id, r.floor); allocated += r.floor; }
+  let remainder = Math.floor(netPool) - allocated; // in [0, winners.length)
+  const byFrac = [...rows].sort((a, b) => (b.frac !== a.frac ? b.frac - a.frac : (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)));
+  for (let i = 0; i < byFrac.length && remainder > 0; i++, remainder--) {
+    out.set(byFrac[i].id, (out.get(byFrac[i].id) ?? 0) + 1);
+  }
+  for (const w of winners) assertWinnerFloor(out.get(w.id) ?? 0, w.stake, `alloc winningPool ${winningPool} netPool ${netPool}`);
+  return out;
+}
+
+/**
  * PROJECTION for a bet not yet placed: the stake is added to the chosen side
  * first, then the settlement function runs on the resulting pools. Same maths,
  * one code path — a projection that used its own formula is how the old code
