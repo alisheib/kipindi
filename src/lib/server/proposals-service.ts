@@ -146,6 +146,10 @@ export async function createProposal(userId: string, input: CreateProposalInput)
   const criterion = (input.resolutionCriterion ?? "").trim();
   const date = (input.resolutionDate ?? "").trim();
   if (titleEn.length < 8 || titleEn.length > 120) return { ok: false, error: "Title must be 8–120 characters.", code: "INVALID" };
+  // Reject angle brackets — the title is rendered into JSON-LD and elsewhere;
+  // `<`/`>` have no legitimate place in a market question and are the XSS vector
+  // (audit H1). Defence-in-depth alongside the JSON-LD escaping on the render side.
+  if (/[<>]/.test(titleEn)) return { ok: false, error: "Title cannot contain < or >.", code: "INVALID" };
   if (criterion.length < 12) return { ok: false, error: "Resolution criterion must be at least 12 characters.", code: "INVALID" };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: "Resolution date must be YYYY-MM-DD.", code: "INVALID" };
   const ts = Date.parse(`${date}T23:59:59.000Z`);

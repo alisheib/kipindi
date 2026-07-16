@@ -224,7 +224,10 @@ export default async function MarketDetail({
 
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      {/* Escape `<` → <: JSON.stringify does NOT escape it, so a proposal
+          title containing `</script>` would break out of this block (stored XSS,
+          audit H1). Titles also reject `<`/`>` at submission (proposals-service). */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
       {/* Auto-refresh every 15s on the detail page — tighter than the
           grid because a player on this page is about to bet and needs
           the freshest possible odds/pool/status. */}

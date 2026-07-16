@@ -4,6 +4,12 @@
      ▶▶▶  CURRENT STATUS — update this block at the end of EVERY stage  ◀◀◀
      Any new session: read THIS block first to know exactly where we are.
      ═══════════════════════════════════════════════════════════════════════ -->
+> ## ✅ P0 — PROD OUTAGE (RESOLVED 2026-07-15, commit `e6427c5`)
+> **Root cause (mine):** the Stage-2 C7 boot assertion **threw** ("FATAL: allowConflictedResolution is ON in production … Refusing to boot") because the prod DB genuinely had that flag ON (left from consultant eval — exactly as audit C7 predicted). Next 16 surfaces a thrown instrumentation hook as **HTTP 500 on every request** → prod down. Confirmed via `railway logs -s 50pick`.
+> **Fix:** `assertProductionComplianceLocks()` now **fails open** (logs loudly, does not throw). POCA §16 stays enforced — `getConflictedResolutionAllowed()` returns false in prod unconditionally. Redeployed → **prod HTTP 200**. ✅
+> **Lesson:** never gate boot of a live money platform on a compliance *alarm* when the control is already enforced at runtime. Also: every `git push` auto-deploys `migrate deploy` + `next start` to the LIVE DB — treat pushes as prod deploys.
+> **Follow-ups (not blocking):** (a) clear the persisted `test.overrides.allowConflictedResolution` flag via the audited admin path (runtime guard already holds it false); prod DB host is `postgres.railway.internal` so it's only writable from inside Railway or the admin UI. (b) prod is missing `AZAMPAY_WEBHOOK_SECRET` / `MIXX_WEBHOOK_SECRET` (boot warned — H7 working) — set before enabling those providers. (c) 6 Redis services on the 50pick project look unused (rate limiter is in-memory) — verify + prune.
+> **Railway:** CLI logged in as alisheib07 (50pick = `5e87353c`). Deleted the awarkeh zombie project `e6050dcf` from this account (was mixing accounts; LIVE awarkeh is a different project under awarkehmobiles@outlook.com).
 > ## ▶ WHERE WE ARE
 > - **Stages 1–7, 9, 11 complete; Stage 8 partial** (M3 ✓, ops skill ✓, local PG ready). Next: **C3 + C6** (need local PG + focus), then **Stage 10** (a11y/security) and **Stage 12** (CI/Sentry).
 > - **Full regression sweep: 61/62 green** (`test:responsive` needs a live server; `test:trilingual` is **flaky under full-sweep load only** — passes 36/36 standalone + via the harness, failed 2 of 3 full sweeps — pre-existing, not a code regression; stabilise in CI, Stage 12).
@@ -73,7 +79,7 @@ Verified at baseline (2026-07-15): `tsc --noEmit` clean · `test:fee-model` 77/7
 
 ### High
 - `[x]` ~~H3~~ — RETRACTED by auditor; headers exist in `src/proxy.ts`. No action.
-- `[ ]` **H1** — JSON-LD XSS → escape `<`, Zod title schema. *(Stage 10)*
+- `[x]` **H1** — JSON-LD XSS closed: `markets/[id]` escapes `<`→`<` in the serialized JSON-LD, and proposal titles now reject `[<>]` at submission (`proposals-service`). Build ✓.
 - `[A]` **H2** — in-memory rate limiter → Redis/Postgres bucket (needs infra). *(documented; Stage 12 partial)*
 - `[x]` **H4** — `/api/health` + `/api/diagnostic` now use `db.user.count()` (COUNT(*)), not `list().length`. New DAL method both stores.
 - `[x]` **H5** — NIDA dup check now `db.kyc.findActiveByNida(nida, userId)` — indexed `findFirst` returning only `{userId,status}`, never hydrates KYC images. kyc-review 15/15.
