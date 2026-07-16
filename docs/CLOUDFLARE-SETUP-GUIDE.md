@@ -38,6 +38,31 @@ Delete any imported A/AAAA records (they point at the Apache parking). Add:
 The two TXT records are Railway's domain verification — without them the domains
 stay `Verified: no` and certificates stay stuck in ISSUING.
 
+### C2. ⚠️ CARRY OVER THE MAIL RECORDS — or ali.sheib@50pick.tz + Postmark BREAK
+
+The current (Netpoa) zone carries LIVE email infrastructure (verified by DNS query
+2026-07-16). Cloudflare's import scan may miss some — confirm ALL of these exist
+in the Cloudflare zone before/at the nameserver swap:
+
+| Type  | Name         | Content                                   | Proxy | Why |
+|-------|--------------|-------------------------------------------|-------|-----|
+| A     | `mail`       | `157.180.76.142`                          | DNS only | the mailbox host (new name — see below) |
+| MX    | `@`          | `mail.50pick.tz` (priority 0)             | —     | inbound mail for `@50pick.tz` |
+| TXT   | `@`          | `v=spf1 +a +mx +ip4:157.180.76.142 ~all`  | —     | SPF (keep verbatim) |
+| CNAME | `pm-bounces` | `pm.mtasv.net`                            | DNS only | Postmark return-path (exists today) |
+| TXT   | `<selector>._domainkey` | *(copy from Netpoa zone / Postmark dashboard)* | — | **Postmark DKIM — copy it EXACTLY; can't be guessed** |
+
+**The trap:** today the MX is literally `50pick.tz → 50pick.tz` (the apex A record
+doubles as web + mail). Once the apex CNAMEs to Railway, an MX pointing at the
+bare domain resolves to RAILWAY → inbound mail dies. Hence the new `mail`
+subdomain A-record + repointing the MX at `mail.50pick.tz`.
+
+**After the swap, verify:** Postmark dashboard → Sender Signatures → 50pick.tz →
+DKIM + Return-Path both green; send yourself a test email (an order/reset email)
+and confirm delivery to ali.sheib@50pick.tz.
+(Postmark itself is account-based — the paid account, templates, and API key are
+untouched by any hosting/DNS move; only these DNS records anchor it to the domain.)
+
 **Grey-cloud first:** with "DNS only", Railway verifies + issues the TLS certs
 itself and everything just works. Flip to Proxied (orange) + SSL **Full (Strict)**
 + WAF (Steps 5–7) AFTER launch is stable — never before the certs are issued.
