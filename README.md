@@ -2,9 +2,13 @@
 
 **The wisdom of YES & NO.** Tanzania-licensed pari-mutuel prediction-markets platform.
 
-Players pick **YES** or **NO** on a proposition (sports, weather, macro, crypto, culture, tech). Stakes from every player on the same market join one pool. After tax + commission (9% combined), the net pool is paid out only to the correct side, pro-rata to each correct stake's share of the winning pool. The implied probability on the conviction dial is live and updates with every new bet.
+Players pick **YES** or **NO** on a proposition (sports, weather, macro, crypto, culture, tech). Stakes from every player on the same market join one pool. Our commission is **`min(10% of the pool, ⅓ of the smaller side)`** — so a winning bet is never paid below its stake — and the net pool is paid out only to the correct side, pro-rata to each correct stake's share of the winning pool. **Players are never taxed on their own money;** taxes apply only to 50pick's commission. The implied probability on the conviction dial is live and updates with every new bet.
 
-Bilingual EN + SW + FR. Mobile-first. Calm, premium, regulator-ready.
+Trilingual **EN + SW + ZH**. Mobile-first. Calm, premium, regulator-ready.
+
+---
+
+> 🧭 **Engineers/agents:** start with the **`50pick-audit`** skill (`.claude/skills/50pick-audit/SKILL.md`) — the platform operational playbook. Active launch work: [`docs/FINAL-AUDIT-REMEDIATION.md`](docs/FINAL-AUDIT-REMEDIATION.md) · next session: [`docs/NEXT-SESSION.md`](docs/NEXT-SESSION.md).
 
 ---
 
@@ -40,7 +44,7 @@ All surfaces below are E2E-tested. Total: **9 suites · 246 tests passing**.
 | Visibility states | ✅ 44 | Every page's top-bar / nav / CTAs are correct for public / player / admin actors |
 | Responsive | ✅ 70 | 393w / 768w / 1024w / 1280w / 1440w across every public + auth route |
 | Auto-resolve | ✅ 31 | Demo markets settle on their own; payout math + notification + audit verified |
-| i18n EN/SW/FR | ✅ 13 | Cookie + localStorage + `<html lang>` round trip survives reload + navigation |
+| i18n EN/SW/ZH | ✅ 13 | Cookie + localStorage + `<html lang>` round trip survives reload + navigation |
 | Flow architecture | ✅ 16 | Auth gates, KYC gates, RG gates, admin role gates, SOF threshold, /not-found, /error |
 
 **Mocked / stubbed for dev** (interface stable, swap is one line per service):
@@ -93,7 +97,7 @@ src/
     rg/                 RealityCheckHost (session reality-check timer)
   lib/
     server/             SERVER-ONLY services (audit, auth, crypto, KYC, RG, wallet, market, etc.)
-    i18n.tsx            EN + SW + FR dictionary + provider
+    i18n.tsx            EN + SW + ZH dictionary + provider
     utils.ts            cn() · formatTzs() · etc.
   proxy.ts              Edge middleware — security headers + auth gate for /wallet, /positions, /profile, /admin
 prisma/schema.prisma    Postgres schema
@@ -154,7 +158,7 @@ These are contract-pending — the platform code is ready to receive each adapte
 - Source-of-Funds threshold gate on deposits ≥ TZS 1M (single) or ≥ TZS 5M (rolling 30d)
 - KYC required for withdrawal (TZ Gaming Board model — bets allowed pre-KYC)
 - Withholding-tax computation at withdrawal time
-- Bilingual EN+SW player-facing copy across every flow
+- Trilingual EN+SW+ZH player-facing copy across every flow
 
 ---
 

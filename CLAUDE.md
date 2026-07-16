@@ -9,9 +9,12 @@
 > and where to look before editing anything.
 
 > ⏳ **ACTIVE WORK — Final Audit remediation (pre-real-money launch gate).**
-> Progress + current stage live in **[`docs/FINAL-AUDIT-REMEDIATION.md`](docs/FINAL-AUDIT-REMEDIATION.md)**
-> — read its "▶ WHERE WE ARE" block first to know which stage is in flight.
-> Work in stages; after each: test → update that tracker → commit → push `main`.
+> 🧭 **START HERE:** invoke the **`50pick-audit` skill** (`.claude/skills/50pick-audit/SKILL.md`)
+> — the operational playbook (safe DB/migration workflow, Railway access, money
+> invariants, ⚠️ every push = a LIVE prod deploy, verify-after-push protocol).
+> Progress + current stage: **[`docs/FINAL-AUDIT-REMEDIATION.md`](docs/FINAL-AUDIT-REMEDIATION.md)**
+> ("▶ WHERE WE ARE"). Next-session brief: **[`docs/NEXT-SESSION.md`](docs/NEXT-SESSION.md)**.
+> Work in stages; after each: test → verify (tech/logical/visual/live-DB) → update the tracker → commit → push `main`.
 
 ## What this is
 
@@ -266,13 +269,13 @@ hit dev-only helpers under `/api/dev-test/*` (returns 404 in production).
 | `visibility-states-test.mjs` | Top-bar / nav / CTAs per actor (public · player · admin). 44/44. |
 | `responsive-overflow-test.mjs` | 393/768/1024/1280/1440 across all public + auth routes. 70/70. |
 | `demo-auto-resolve-test.mjs` | Auto-resolved demo markets settle correctly + emit notifications. 31/31. |
-| `i18n-toggle-e2e.mjs` | EN/SW/FR cookie + localStorage + `<html lang>` round trip + persistence. 13/13. |
+| `i18n-toggle-e2e.mjs` | EN/SW/ZH cookie + localStorage + `<html lang>` round trip + persistence. 13/13. |
 | `report-renderers-smoke.mjs` | Renders every catalogue entry (5 reports × PDF + XLSX) and checks magic bytes. 11/11. |
 | `break-it-player.mjs` | 23 manipulator scenarios — auth bypass, cookie tampering, stake validation, race, KYC, XSS, privilege escalation. |
 | `break-it-admin.mjs` | 10 admin-portal QA scenarios — anon + player gating, TOTP cookie spoofing, forged Server Actions, CSV gating. |
 | `multi-viewport-audit.mjs` | 99 routes × 4 viewports for layout overflow. |
 | `overlay-responsiveness-test.mjs` | Notifications / language menu / avatar / reality-check inside viewport. |
-| `screenshot.mjs` | Capture all routes (light/dark, public/authed). |
+| `screenshot.mjs` | Capture all routes (public/authed; single dark-royal theme). |
 | `capture-manual-screenshots.mjs` | 19 screenshots (10 player + 9 admin) for the user manuals. |
 | `generate-pdfs.mjs` | Render the 4 production PDFs (operator brief, technical brief, player manual, admin manual). |
 | `rasterize-pdfs-for-audit.mjs` | Per-page PNGs of every PDF for visual audit before delivery. |
