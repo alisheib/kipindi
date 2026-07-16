@@ -35,7 +35,7 @@ Paste-ready brief for the next session. Read the `50pick-audit` skill
 ## Ali / ops actions (not code)
 - Set `AZAMPAY_WEBHOOK_SECRET` + `MIXX_WEBHOOK_SECRET` in Railway before enabling those providers.
 - Clear `test.overrides.allowConflictedResolution` via the admin UI (runtime already forces it false).
-- Prune the ~6 unused Redis services on the 50pick Railway project (rate limiter is in-memory).
+- ✅ DONE: Railway 50pick project cleaned — only `50pick` (app) + `Postgres` remain; 6 unused Redis services removed.
 - Blocked/external: H2 Redis rate-limiter, H8 KYC object storage, TRA tax-base ruling,
   trademarked MNO logos, third-party pentest, DR-restore rehearsal.
 
