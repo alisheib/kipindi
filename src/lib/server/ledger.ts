@@ -26,6 +26,7 @@
 
 import { prisma } from "./prisma";
 import { randomId } from "./crypto";
+import { audit } from "./audit";
 import type { LedgerEntryType } from "@prisma/client";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -46,9 +47,13 @@ export interface LedgerLine {
  * Post a balanced group of ledger entries. The sum of all amounts MUST be 0.
  * Returns the groupId on success, null if no database or entries are empty.
  *
- * This is fire-and-forget safe: if the DB is down the existing Transaction
- * flow still works (graceful degradation). The ledger is a secondary
- * accounting layer, not the gate for wallet mutations.
+ * The ledger is a SECONDARY accounting mirror — the Wallet/Transaction tables
+ * are the source of truth for money, so a ledger write must never crash or block
+ * a money path (callers fire-and-forget). But it must NOT fail SILENTLY (audit
+ * C3: "swallowed into a void nobody watches"). So on failure we retry, then raise
+ * a watched COMPLIANCE audit `ledger.post_failed`. The nightly wallet↔ledger
+ * trial balance (trialBalance) then catches the resulting drift regardless of
+ * cause — the two together guarantee no ledger gap stays invisible.
  */
 export async function postLedgerEntries(
   groupId: string,
@@ -60,6 +65,8 @@ export async function postLedgerEntries(
   const sum = entries.reduce((s, e) => s + e.amount, 0);
   if (Math.abs(sum) > 0.005) {
     console.error(`[ledger] IMBALANCED group ${groupId}: sum=${sum}`, entries);
+    // An imbalanced group is a caller BUG, not a transient failure — surface it.
+    void audit({ category: "COMPLIANCE", action: "ledger.imbalanced_rejected", actorId: null, targetType: "LedgerGroup", targetId: groupId, payload: { sum, lines: entries.length } });
     return null;
   }
 
@@ -70,29 +77,45 @@ export async function postLedgerEntries(
     return groupId;
   }
 
-  try {
-    await pc.ledgerEntry.createMany({
-      data: entries.map((e) => ({
-        id: `le_${randomId(12)}`,
-        groupId,
-        account: e.account,
-        entryType: e.entryType,
-        amount: e.amount,
-        memo: e.memo ?? null,
-        txnId: e.txnId ?? null,
-        marketId: e.marketId ?? null,
-        userId: e.userId ?? null,
-      })),
-    });
-    return groupId;
-  } catch (err) {
-    // Fire-and-forget: log the error but don't crash the money path.
-    // The existing Transaction table is the primary record; the ledger is
-    // a reconciliation layer. A missing ledger group is detectable by
-    // reconciliation and backfillable from the Transaction history.
-    console.error(`[ledger] Failed to post group ${groupId}:`, err);
-    return null;
+  // Stable ids so a retry is idempotent (skipDuplicates keys on the PK), and a
+  // single multi-row INSERT is atomic in Postgres — a failed attempt inserts
+  // nothing, so a retry can never double-post.
+  const data = entries.map((e) => ({
+    id: `le_${randomId(12)}`,
+    groupId,
+    account: e.account,
+    entryType: e.entryType,
+    amount: e.amount,
+    memo: e.memo ?? null,
+    txnId: e.txnId ?? null,
+    marketId: e.marketId ?? null,
+    userId: e.userId ?? null,
+  }));
+
+  const MAX_ATTEMPTS = 3;
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      await pc.ledgerEntry.createMany({ data, skipDuplicates: true });
+      return groupId;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < MAX_ATTEMPTS) continue;
+    }
   }
+  // Final failure — the wallet/txn mutation already happened, so this group is a
+  // real drift. Do NOT swallow it: log loudly AND raise a watched audit entry so
+  // it appears in the compliance stream and on the nightly trial balance.
+  console.error(`[ledger] Failed to post group ${groupId} after ${MAX_ATTEMPTS} attempts:`, lastErr);
+  void audit({
+    category: "COMPLIANCE",
+    action: "ledger.post_failed",
+    actorId: null,
+    targetType: "LedgerGroup",
+    targetId: groupId,
+    payload: { lines: entries.length, error: String((lastErr as Error)?.message ?? lastErr).slice(0, 200) },
+  });
+  return null;
 }
 
 // ── Account helpers ────────────────────────────────────────────────────────
@@ -443,6 +466,169 @@ export async function ledgerAccountBalance(account: string): Promise<number> {
     account,
   );
   return Number(result[0]?.sum ?? 0);
+}
+
+// ── Trial balance: wallet ↔ ledger reconciliation (audit C3) ────────────────
+//
+// reconcileLedger() only asks "does each group sum to zero?" — which
+// postLedgerEntries already guarantees before insert, so it is structurally
+// blind to a group that was NEVER WRITTEN (the fire-and-forget failure mode).
+// The trial balance is the real check: it compares, per wallet, the MONEY
+// (source of truth) against what the LEDGER (the evidence) says, and flags any
+// divergence. The invariants it proves:
+//
+//   ledger(PLAYER:{userId})       == Wallet.balance + Wallet.hold
+//     (hold = money reserved for an in-flight withdrawal; the ledger only debits
+//      WITHDRAWAL when the payout CONFIRMS, so during the in-flight window the
+//      wallet is already down but the ledger isn't — netting hold makes both
+//      sides move together. Getting this wrong false-positives, so it is exact.)
+//   ledger(PLAYER_BONUS:{userId}) == Wallet.bonusBalance
+//   Wallet.bonusBalance           == Σ ACTIVE BonusGrant.remainingTzs   (schema invariant)
+//   Σ (every ledger amount)       == 0                                  (global conservation)
+//   every ledger group            sums to 0                             (no imbalanced group)
+
+export interface WalletSnapshot {
+  userId: string;
+  balance: number;
+  hold: number;
+  bonusBalance: number;
+}
+
+export interface TrialBalanceRow {
+  userId: string;
+  walletReal: number;   // balance + hold
+  ledgerReal: number;   // Σ PLAYER:{userId}
+  realDrift: number;    // walletReal − ledgerReal
+  walletBonus: number;  // bonusBalance
+  ledgerBonus: number;  // Σ PLAYER_BONUS:{userId}
+  bonusDrift: number;   // walletBonus − ledgerBonus
+  activeGrants: number; // Σ ACTIVE BonusGrant.remainingTzs
+  grantDrift: number;   // walletBonus − activeGrants
+}
+
+export interface TrialBalanceReport {
+  ok: boolean;              // no per-wallet drift + global balanced + no imbalanced group
+  checkedWallets: number;
+  driftingWallets: number;
+  totalAbsDrift: number;    // Σ of all absolute drifts (TZS)
+  globalSum: number;        // Σ every ledger amount (must be ~0)
+  globalBalanced: boolean;
+  imbalancedGroups: Array<{ groupId: string; sum: number }>;
+  drift: TrialBalanceRow[]; // drifting wallets, worst first
+  worst: TrialBalanceRow | null;
+}
+
+// Amounts are whole-shilling integers everywhere; half a shilling absorbs any
+// Decimal(18,2) representation noise without hiding a real 1-TZS divergence.
+const DRIFT_TOL = 0.5;
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * Pure trial-balance computation — no DB, so it is exhaustively unit-testable
+ * (scripts/trial-balance.test.mts). `trialBalance()` gathers the inputs from
+ * Postgres and delegates here.
+ */
+export function computeTrialBalance(input: {
+  wallets: WalletSnapshot[];
+  ledgerRealByUser: Map<string, number>;
+  ledgerBonusByUser: Map<string, number>;
+  activeGrantsByUser: Map<string, number>;
+  globalSum: number;
+  imbalancedGroups: Array<{ groupId: string; sum: number }>;
+}): TrialBalanceReport {
+  const walletByUser = new Map(input.wallets.map((w) => [w.userId, w]));
+  // Check every userId that appears on EITHER side — a ledger PLAYER balance for
+  // a user with no wallet row is itself drift (money in the books for a ghost).
+  const userIds = new Set<string>([
+    ...input.wallets.map((w) => w.userId),
+    ...input.ledgerRealByUser.keys(),
+    ...input.ledgerBonusByUser.keys(),
+    ...input.activeGrantsByUser.keys(),
+  ]);
+
+  const drift: TrialBalanceRow[] = [];
+  let totalAbsDrift = 0;
+  for (const userId of userIds) {
+    const w = walletByUser.get(userId);
+    const walletReal = w ? w.balance + w.hold : 0;
+    const walletBonus = w ? w.bonusBalance : 0;
+    const ledgerReal = input.ledgerRealByUser.get(userId) ?? 0;
+    const ledgerBonus = input.ledgerBonusByUser.get(userId) ?? 0;
+    const activeGrants = input.activeGrantsByUser.get(userId) ?? 0;
+
+    const realDrift = round2(walletReal - ledgerReal);
+    const bonusDrift = round2(walletBonus - ledgerBonus);
+    const grantDrift = round2(walletBonus - activeGrants);
+
+    if (Math.abs(realDrift) > DRIFT_TOL || Math.abs(bonusDrift) > DRIFT_TOL || Math.abs(grantDrift) > DRIFT_TOL) {
+      totalAbsDrift += Math.abs(realDrift) + Math.abs(bonusDrift) + Math.abs(grantDrift);
+      drift.push({ userId, walletReal, ledgerReal, realDrift, walletBonus, ledgerBonus, bonusDrift, activeGrants, grantDrift });
+    }
+  }
+
+  const rowAbs = (r: TrialBalanceRow) => Math.abs(r.realDrift) + Math.abs(r.bonusDrift) + Math.abs(r.grantDrift);
+  drift.sort((a, b) => rowAbs(b) - rowAbs(a));
+
+  const globalBalanced = Math.abs(input.globalSum) <= DRIFT_TOL;
+  const ok = drift.length === 0 && globalBalanced && input.imbalancedGroups.length === 0;
+
+  return {
+    ok,
+    checkedWallets: input.wallets.length,
+    driftingWallets: drift.length,
+    totalAbsDrift: round2(totalAbsDrift),
+    globalSum: round2(input.globalSum),
+    globalBalanced,
+    imbalancedGroups: input.imbalancedGroups,
+    drift,
+    worst: drift[0] ?? null,
+  };
+}
+
+/**
+ * Run the wallet↔ledger trial balance against Postgres. Read-only. Used by the
+ * nightly lifecycle sweep (alerts on drift) and the /admin/finance surface.
+ * Returns a clean (empty) report when there is no DB.
+ */
+export async function trialBalance(): Promise<TrialBalanceReport> {
+  const pc = prisma();
+  if (!pc) {
+    return { ok: true, checkedWallets: 0, driftingWallets: 0, totalAbsDrift: 0, globalSum: 0, globalBalanced: true, imbalancedGroups: [], drift: [], worst: null };
+  }
+
+  const walletRows = await pc.wallet.findMany({ select: { userId: true, balance: true, hold: true, bonusBalance: true } });
+  const wallets: WalletSnapshot[] = walletRows.map((w) => ({
+    userId: w.userId,
+    balance: Number(w.balance),
+    hold: Number(w.hold),
+    bonusBalance: Number(w.bonusBalance),
+  }));
+
+  // Per-account player balances (real + bonus) in one grouped scan.
+  const ledgerRows = await pc.$queryRawUnsafe<Array<{ account: string; sum: string | null }>>(
+    `SELECT account, SUM(amount) AS sum FROM "LedgerEntry" WHERE account LIKE 'PLAYER%' GROUP BY account`,
+  );
+  const ledgerRealByUser = new Map<string, number>();
+  const ledgerBonusByUser = new Map<string, number>();
+  for (const r of ledgerRows) {
+    const amt = Number(r.sum ?? 0);
+    if (r.account.startsWith("PLAYER_BONUS:")) ledgerBonusByUser.set(r.account.slice("PLAYER_BONUS:".length), amt);
+    else if (r.account.startsWith("PLAYER:")) ledgerRealByUser.set(r.account.slice("PLAYER:".length), amt);
+  }
+
+  // Σ ACTIVE BonusGrant.remainingTzs per user — the source of truth for bonusBalance.
+  const grantRows = await pc.$queryRawUnsafe<Array<{ userId: string; sum: string | null }>>(
+    `SELECT "userId", SUM("remainingTzs") AS sum FROM "BonusGrant" WHERE status = 'ACTIVE' GROUP BY "userId"`,
+  );
+  const activeGrantsByUser = new Map<string, number>();
+  for (const r of grantRows) activeGrantsByUser.set(r.userId, Number(r.sum ?? 0));
+
+  const globalRow = await pc.$queryRawUnsafe<Array<{ sum: string | null }>>(`SELECT SUM(amount) AS sum FROM "LedgerEntry"`);
+  const globalSum = Number(globalRow[0]?.sum ?? 0);
+
+  const { imbalanced } = await reconcileLedger();
+
+  return computeTrialBalance({ wallets, ledgerRealByUser, ledgerBonusByUser, activeGrantsByUser, globalSum, imbalancedGroups: imbalanced });
 }
 
 /** Get all house account balances for the admin dashboard. */

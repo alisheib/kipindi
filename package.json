@@ -60,6 +60,7 @@
     "test:sentinel-pause": "tsx scripts/sentinel-pause.test.mts",
     "test:admin-roles": "tsx scripts/admin-roles.test.mts",
     "test:ledger": "tsx scripts/ledger.test.mts",
+    "test:trial-balance": "tsx scripts/trial-balance.test.mts",
     "test:officer-conflict": "tsx scripts/officer-conflict.test.mts",
     "test:solo-resolution": "tsx scripts/solo-resolution-override.test.mts",
     "test:activity": "tsx scripts/activity-summary.test.mts",

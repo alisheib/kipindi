@@ -27,12 +27,59 @@ import {
   settleDueMarkets,
 } from "./market-service";
 import { expireActiveGrants } from "./bonus-service";
+import { trialBalance } from "./ledger";
+import { audit } from "./audit";
 
 const TICK_MS = 60_000;       // run the lifecycle sweeps once a minute
 const FIRST_TICK_MS = 8_000;  // first pass shortly after boot (let the app settle)
 
 let timer: ReturnType<typeof setInterval> | null = null;
 let running = false;
+
+// ── Nightly wallet↔ledger trial balance (audit C3) ──────────────────────────
+// The books must be able to prove themselves. Once a day (and once after each
+// boot's grace window) reconcile every wallet against the double-entry ledger;
+// any drift raises a WATCHED compliance alert instead of dying in a console no
+// one reads. Read-only — it never moves money.
+const RECONCILE_EVERY_MS = 24 * 60 * 60 * 1000;
+const RECONCILE_BOOT_GRACE_MS = 5 * 60 * 1000; // don't scan every wallet during boot
+const tickerStartedAt = Date.now();
+let lastReconcileAt = 0;
+
+async function maybeReconcileLedger(): Promise<void> {
+  const now = Date.now();
+  if (now - tickerStartedAt < RECONCILE_BOOT_GRACE_MS) return; // let boot settle
+  if (now - lastReconcileAt < RECONCILE_EVERY_MS) return;
+  lastReconcileAt = now;
+  const tb = await trialBalance();
+  if (tb.ok) {
+    console.log(`[lifecycle] ledger trial balance OK — ${tb.checkedWallets} wallets reconcile, books balanced`);
+    return;
+  }
+  console.error(
+    `[lifecycle] LEDGER TRIAL BALANCE DRIFT — ${tb.driftingWallets}/${tb.checkedWallets} wallets drift, ` +
+      `globalSum=${tb.globalSum} (balanced=${tb.globalBalanced}), imbalancedGroups=${tb.imbalancedGroups.length}, ` +
+      `totalAbsDrift=${tb.totalAbsDrift} TZS`,
+  );
+  await audit({
+    category: "COMPLIANCE",
+    action: "ledger.trial_balance_drift",
+    actorId: null,
+    targetType: null,
+    targetId: null,
+    payload: {
+      driftingWallets: tb.driftingWallets,
+      checkedWallets: tb.checkedWallets,
+      globalSum: tb.globalSum,
+      globalBalanced: tb.globalBalanced,
+      imbalancedGroups: tb.imbalancedGroups.length,
+      totalAbsDrift: tb.totalAbsDrift,
+      worst: tb.worst
+        ? { userId: tb.worst.userId, realDrift: tb.worst.realDrift, bonusDrift: tb.worst.bonusDrift, grantDrift: tb.worst.grantDrift }
+        : null,
+    },
+  }).catch(() => {});
+}
 
 /** Run one lifecycle pass. Each sweep is self-contained and best-effort; one
  *  failing must never stop the others or throw out of the tick. */
@@ -66,6 +113,7 @@ export async function runLifecyclePass(): Promise<void> {
     }
 
     await expireActiveGrants().catch((e) => console.error("[lifecycle] bonus expiry:", e));
+    await maybeReconcileLedger().catch((e) => console.error("[lifecycle] trial balance:", e));
   } finally {
     running = false;
   }

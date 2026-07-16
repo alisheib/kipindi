@@ -22,7 +22,7 @@ import type { Period } from "@/lib/server/analytics";
 import { currentSession } from "@/lib/server/auth-service";
 import { hasRole, MONEY_ROLES } from "@/lib/server/roles";
 import { getEffectiveConfig } from "@/lib/server/market-config";
-import { houseAccountBalances } from "@/lib/server/ledger";
+import { houseAccountBalances, trialBalance } from "@/lib/server/ledger";
 import { Stat } from "@/components/ui/stat";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
 
@@ -82,6 +82,9 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
   const rates = await getEffectiveConfig().catch(() => null);
   // Real balances from the double-entry ledger. Empty object without a DB.
   const houseBalances = await houseAccountBalances().catch(() => ({} as Record<string, number>));
+  // Wallet↔ledger trial balance (audit C3) — proves the books match the money.
+  // Read-only; guarded so a slow/failed scan never takes the finance page down.
+  const tb = await trialBalance().catch(() => null);
   const taxAccrued = rates
     ? Math.round(Math.max(0, ggr) * (rates.traTaxOnCommissionRate + rates.gbtLevyOnCommissionRate))
     : null;
@@ -159,6 +162,88 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
             </div>
           )}
         </AdminCard>
+
+        {/* LEDGER TRIAL BALANCE — the books proving themselves (audit C3).
+            Compares each wallet's real money (balance + in-flight hold) and bonus
+            against the double-entry ledger, plus global conservation (Σ = 0) and
+            the bonus-grant invariant. A nightly sweep re-runs this and raises a
+            COMPLIANCE alert on any drift; this panel is the live view. */}
+        {tb && (
+          <AdminCard
+            title="Ledger trial balance"
+            sw="Ulinganifu wa daftari"
+            className={tb.ok ? undefined : "border-danger-border bg-danger-bg/20"}
+            action={
+              <span className={["font-mono text-[10px] tracking-[0.10em] uppercase", tb.ok ? "text-success" : "text-danger-fg"].join(" ")}>
+                {tb.ok ? "✓ reconciles" : "✗ drift detected"}
+              </span>
+            }
+          >
+            <p className="text-caption text-text-secondary mb-3">
+              Every wallet&rsquo;s money reconciled to the double-entry ledger:{" "}
+              <code className="font-mono">ledger(PLAYER) = balance + hold</code>,{" "}
+              <code className="font-mono">ledger(BONUS) = bonusBalance = Σ active grants</code>, and{" "}
+              <code className="font-mono">Σ all entries = 0</code>. Re-checked nightly; drift raises a compliance alert.
+            </p>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <AdminKpi label="Wallets checked" sw="Pochi zilizokaguliwa" value={tb.checkedWallets.toLocaleString()} />
+              <AdminKpi
+                label="Drifting wallets"
+                sw="Pochi zenye tofauti"
+                value={tb.driftingWallets.toLocaleString()}
+                delta={tb.driftingWallets === 0 ? "all reconcile" : `${formatTzs(tb.totalAbsDrift)} total`}
+                deltaDir={tb.driftingWallets === 0 ? "up" : "down"}
+                pulse={tb.driftingWallets > 0}
+              />
+              <AdminKpi
+                label="Global conservation"
+                sw="Uhifadhi wa jumla"
+                value={tb.globalBalanced ? "Σ = 0" : `Σ = ${formatTzs(tb.globalSum)}`}
+                delta={tb.globalBalanced ? "balanced" : "NOT balanced"}
+                deltaDir={tb.globalBalanced ? "up" : "down"}
+                pulse={!tb.globalBalanced}
+              />
+              <AdminKpi
+                label="Imbalanced groups"
+                sw="Makundi yasiyolingana"
+                value={tb.imbalancedGroups.length.toLocaleString()}
+                deltaDir={tb.imbalancedGroups.length === 0 ? "up" : "down"}
+                pulse={tb.imbalancedGroups.length > 0}
+              />
+            </div>
+            {tb.drift.length > 0 && (
+              <ScrollX label="Drifting wallets" className="-mx-4 px-4 mt-3">
+                <table className="admin-tbl min-w-[560px]">
+                  <thead>
+                    <tr>
+                      <th className="text-left">Player</th>
+                      <th className="text-right">Wallet (bal+hold)</th>
+                      <th className="text-right">Ledger</th>
+                      <th className="text-right">Real drift</th>
+                      <th className="text-right">Bonus drift</th>
+                      <th className="text-right">Grant drift</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tb.drift.slice(0, 20).map((r) => (
+                      <tr key={r.userId}>
+                        <td className="font-mono text-text-tertiary whitespace-nowrap">p_{r.userId.slice(-6)}</td>
+                        <td className="font-mono tabular text-right">{formatTzs(r.walletReal)}</td>
+                        <td className="font-mono tabular text-right text-text-secondary">{formatTzs(r.ledgerReal)}</td>
+                        <td className={["font-mono tabular text-right font-semibold", Math.abs(r.realDrift) > 0.5 ? "text-danger" : "text-text-tertiary"].join(" ")}>{r.realDrift >= 0 ? "+" : ""}{formatTzs(r.realDrift)}</td>
+                        <td className={["font-mono tabular text-right", Math.abs(r.bonusDrift) > 0.5 ? "text-danger" : "text-text-tertiary"].join(" ")}>{r.bonusDrift >= 0 ? "+" : ""}{formatTzs(r.bonusDrift)}</td>
+                        <td className={["font-mono tabular text-right", Math.abs(r.grantDrift) > 0.5 ? "text-danger" : "text-text-tertiary"].join(" ")}>{r.grantDrift >= 0 ? "+" : ""}{formatTzs(r.grantDrift)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {tb.drift.length > 20 && (
+                  <p className="text-caption text-text-tertiary mt-2">Showing the 20 largest of {tb.drift.length} drifting wallets.</p>
+                )}
+              </ScrollX>
+            )}
+          </AdminCard>
+        )}
 
         {/* Charts row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
