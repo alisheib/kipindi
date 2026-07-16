@@ -9,8 +9,9 @@
  *     so there's no traversal / IDOR beyond what an officer may already see
  *   - each view is audited (who looked at whose document)
  *
- * Documents are stored as base64 image data URLs on the submission. (When an
- * object store is wired, swap the decode below for a signed-URL redirect.)
+ * Documents are read through the storage seam (`readKycDocument`, audit H8):
+ * INLINE base64 data URLs today, Cloudflare R2 objects once configured — this
+ * route is unchanged either way.
  */
 import { NextResponse } from "next/server";
 import { currentSession } from "@/lib/server/auth-service";
@@ -18,10 +19,10 @@ import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { COMPLIANCE_ROLES } from "@/lib/server/roles";
 import { checkAdminTotp } from "@/lib/server/admin-guard";
+import { readKycDocument } from "@/lib/server/storage";
 
 const ADMIN_ROLES = COMPLIANCE_ROLES; // role tier — see @/lib/server/roles
 const DOC_TYPES = new Set(["NIDA_FRONT", "NIDA_BACK", "SELFIE"]);
-const DATAURL_RE = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/;
 
 export async function GET(req: Request) {
   const session = await currentSession();
@@ -55,14 +56,13 @@ export async function GET(req: Request) {
     : kyc?.documents.find((d: { docType: string }) => d.docType === docType)?.storageKey ?? null;
   if (!storageKey) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
 
-  const m = DATAURL_RE.exec(storageKey);
-  if (!m) {
-    // Legacy placeholder key (pre-image-upload) or external store reference.
+  // Resolve via the storage seam — inline data URL or R2 object (H8).
+  const doc = await readKycDocument(storageKey).catch(() => null);
+  if (!doc) {
+    // Legacy placeholder key (pre-image-upload) or an unreadable store reference.
     return NextResponse.json({ ok: false, error: "No image on file" }, { status: 404 });
   }
-  const mime = m[1];
-  let bytes: Buffer;
-  try { bytes = Buffer.from(m[2], "base64"); } catch { return NextResponse.json({ ok: false, error: "Corrupt image" }, { status: 422 }); }
+  const { mime, bytes } = doc;
 
   audit({ category: "KYC", action: "kyc_doc.viewed", actorId: session.userId, targetType: "User", targetId: userId, payload: reqId ? { req: reqId } : { docType } });
 

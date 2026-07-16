@@ -16,6 +16,7 @@ import { audit } from "./audit";
 import { db } from "./store";
 import type { StoredUser, KycExtraRequest } from "./store";
 import { randomId } from "./crypto";
+import { putKycDocument } from "./storage";
 import { verifyNida } from "./nida";
 import { rateCheck } from "./rate-limit";
 import { KycNidaSchema } from "./validators";
@@ -192,7 +193,10 @@ export async function attachDocument(userId: string, docType: "NIDA_FRONT" | "NI
   if (k.status === "PENDING_REVIEW" || k.status === "APPROVED") {
     return { ok: false, error: "Documents are locked while your submission is under review.", code: "INVALID" };
   }
-  const docs = [...k.documents.filter((d: { docType: string }) => d.docType !== docType), { docType, storageKey, uploadedAt: new Date().toISOString() }];
+  // H8: persist via the storage seam — INLINE (data URL) today, Cloudflare R2 the
+  // moment it's configured, with no change to this call site.
+  const storedKey = await putKycDocument(storageKey, `${userId}/${docType}`);
+  const docs = [...k.documents.filter((d: { docType: string }) => d.docType !== docType), { docType, storageKey: storedKey, uploadedAt: new Date().toISOString() }];
   await db.kyc.upsert({ ...k, documents: docs, updatedAt: new Date().toISOString() });
   // Note: never log the image bytes themselves in the audit payload.
   audit({ category: "KYC", action: "kyc.document.uploaded", actorId: userId, targetType: "Kyc", targetId: k.id, payload: { docType, bytes: valid.bytes } });
@@ -216,7 +220,8 @@ export async function attachExtraDocument(userId: string, requestId: string, sto
   const target = requests.find((r: KycExtraRequest) => r.id === requestId);
   if (!target) return { ok: false, error: "Unknown document request.", code: "NOT_FOUND" };
   const now = new Date().toISOString();
-  const next = requests.map((r: KycExtraRequest) => (r.id === requestId ? { ...r, storageKey, uploadedAt: now } : r));
+  const storedKey = await putKycDocument(storageKey, `${userId}/extra_${requestId}`);
+  const next = requests.map((r: KycExtraRequest) => (r.id === requestId ? { ...r, storageKey: storedKey, uploadedAt: now } : r));
   await db.kyc.upsert({ ...k, extraRequests: next, updatedAt: now });
   audit({ category: "KYC", action: "kyc.extra_document.uploaded", actorId: userId, targetType: "Kyc", targetId: k.id, payload: { requestId, bytes: valid.bytes } });
   return { ok: true };

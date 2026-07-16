@@ -319,11 +319,11 @@ model KycDocument {
   submissionId String
   submission   KycSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
   docType      DocType
-  // ⚠️ M8/H8: despite the name, this currently holds an INLINE base64 data URL
-  // (the image bytes themselves), validated as `data:image/...;base64,...` in
-  // kyc-service.ts. KYC binaries live in Postgres today. Migrating them to object
-  // storage (so this becomes a real key) is audit H8 — blocked on a storage
-  // provider. Until then the comment matches reality, not the intent.
+  // M8/H8: written + read through the storage seam (src/lib/server/storage.ts).
+  // Default (INLINE) → an image data URL (`data:image/...;base64,...`) stored in
+  // Postgres. With `KYC_STORAGE=r2` + R2 creds → an `r2:<key>` reference to a
+  // Cloudflare R2 (S3-compatible) object; `readKycDocument` routes by key shape,
+  // so old inline rows keep working after switching new uploads to R2.
   storageKey   String
   mimeType     String
   sizeBytes    Int
