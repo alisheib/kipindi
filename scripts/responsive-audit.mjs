@@ -376,8 +376,20 @@ async function main() {
   const adminCtxFactory = async (locale) => {
     const c = await browser.newContext();
     await c.request.post(`${BASE}/api/dev-test/seed-admin`);
-    await c.request.get(`${BASE}/admin`).catch(() => {});
     await c.addCookies(localeCookie(locale));
+    // Admin pages sit behind TOTP. REAL admin coverage requires the SERVER to run
+    // with DISABLE_ADMIN_TOTP=true (audit F1) — otherwise every /admin/* renders
+    // the 2FA gate and an "admin PASS" is FALSE coverage (+ a redirect race that
+    // reads as a hard fail). Probe once and warn loudly if coverage is gated, so a
+    // green admin run can be trusted.
+    try {
+      const probe = await c.request.get(`${BASE}/admin/finance`);
+      const p = new URL(probe.url()).pathname;
+      if (/\/auth|\/2fa/.test(p)) {
+        console.warn(`\n  ⚠️  ADMIN COVERAGE GATED — /admin/finance redirected to ${p}.`);
+        console.warn(`      Restart the server with DISABLE_ADMIN_TOTP=true for real admin coverage (audit F1).\n`);
+      }
+    } catch { /* server down / probe failed — the sweep itself will surface it */ }
     return c;
   };
 

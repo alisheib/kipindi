@@ -312,7 +312,7 @@ export function BetConfirmModal({
               type="button"
               onClick={onCancel}
               disabled={pending}
-              className="btn btn-ghost btn-md w-full"
+              className="btn btn-ghost btn-md w-full min-h-11"
             >
               {t.common.cancel}
             </button>

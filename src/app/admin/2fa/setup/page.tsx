@@ -58,7 +58,7 @@ export default async function TotpSetupPage() {
               there is no self-service reset.
             </p>
             <p>
-              All 2FA events (provisioning, successful verification, removed) are recorded under <code>SECURITY</code>
+              All 2FA events (provisioning, successful verification, removed) are recorded under <code>SECURITY</code>{" "}
               in the audit log.
             </p>
           </div>

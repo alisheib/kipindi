@@ -120,7 +120,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
             delta={taxAccrued === null ? "rates unavailable" : "TRA + GBT on commission"}
             deltaDir="flat"
           />
-          <AdminKpi label="Operator margin"  sw="Faida"         value={`${margin.toFixed(1)}%`} delta="capped fee — lower on lopsided polls by design" deltaDir="flat" />
+          <AdminKpi label="Operator margin"  sw="Faida"         value={`${margin.toFixed(1)}%`} delta="capped-fee model" deltaDir="flat" />
           <AdminKpi label="Wallet liability" sw="Madeni"        value={`TZS ${formatTzsCompact(liability).replace("TZS ", "")}`} delta="real-time" />
           <AdminKpi label="Active players"   sw="Wachezaji"     value={activePeriod.toLocaleString()} delta={`${period}`} />
         </div>

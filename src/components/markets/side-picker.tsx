@@ -58,7 +58,10 @@ export function SidePicker({
           <button
             type="button"
             onClick={() => setSide(null)}
-            className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle hover:text-text transition-colors"
+            aria-label={t.market.changeSide}
+            /* L6: 44px tap target without growing the row — padding for the hit
+               area, negative margin absorbs it so the layout is unchanged. */
+            className="inline-flex items-center gap-1 min-h-11 px-2 -mx-2 -my-2 font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle hover:text-text transition-colors"
           >
             <I.chevronLeft s={10} />
             {t.market.changeSide}
