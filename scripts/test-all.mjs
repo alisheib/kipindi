@@ -14,6 +14,7 @@
  *   node scripts/test-all.mjs --no-tsc     # skip the typecheck step
  *   node scripts/test-all.mjs --only money # only suites whose key contains "money"
  *   node scripts/test-all.mjs --filter kyc,ledger,wallet
+ *   node scripts/test-all.mjs --skip responsive  # drop suites needing a live server (CI)
  */
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -30,6 +31,8 @@ const onlyIdx = args.indexOf("--only");
 const only = onlyIdx >= 0 ? args[onlyIdx + 1] : null;
 const filterIdx = args.indexOf("--filter");
 const filterList = filterIdx >= 0 ? (args[filterIdx + 1] ?? "").split(",").map((s) => s.trim()).filter(Boolean) : null;
+const skipIdx = args.indexOf("--skip");
+const skipList = skipIdx >= 0 ? (args[skipIdx + 1] ?? "").split(",").map((s) => s.trim()).filter(Boolean) : null;
 
 // Every `test:*` script except the aggregator itself, in declaration order.
 let suites = Object.keys(pkg.scripts)
@@ -38,6 +41,7 @@ let suites = Object.keys(pkg.scripts)
 
 if (only) suites = suites.filter((s) => s.key.includes(only));
 if (filterList) suites = suites.filter((s) => filterList.some((f) => s.key.includes(f)));
+if (skipList) suites = suites.filter((s) => !skipList.some((f) => s.key.includes(f)));
 
 const npmCli = process.platform === "win32" ? "npm.cmd" : "npm";
 const results = [];

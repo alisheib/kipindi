@@ -91,6 +91,11 @@ export async function onRequestError(
         "──────────────────────────────────────────────────────────",
       ].join("\n"),
     );
+
+    // Off-box mirror (audit H6) — ships to Sentry when SENTRY_DSN is configured,
+    // otherwise a no-op. Awaited-not-blocking-safe: it never throws.
+    const { captureServerError } = await import("./lib/server/monitoring");
+    void captureServerError(err, { path, method, digest, routePath: context?.routePath });
   } catch {
     // Never let the reporter itself throw.
   }

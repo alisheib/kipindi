@@ -1,0 +1,87 @@
+name: CI
+
+# Audit H9 — there was no CI. Every push to main is ALSO a live Railway deploy,
+# so this runs in parallel as the safety net: types, the content-integrity guard,
+# the full in-memory suite, the production build, and — the part a single laptop
+# can't prove — the cross-instance money + audit-chain proofs against a REAL
+# Postgres service (C4 double-spend, C6 audit-chain fork). PRs get the same gate
+# before merge.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: pw
+          POSTGRES_DB: kipindi_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      # Non-secret CI values. AUDIT_CHAIN_SECRET must be distinct from SESSION_SECRET
+      # (chainSecret() enforces that in production-mode paths).
+      SESSION_SECRET: ci-session-secret-0000000000000000
+      AUDIT_CHAIN_SECRET: ci-audit-chain-secret-1111111111
+      CI_DB_URL: postgresql://postgres:pw@localhost:5432/kipindi_ci?schema=public
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # npm ci runs `postinstall: prisma generate`, so the client is ready.
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Content integrity
+        run: npm run test:integrity
+
+      # In-memory suite (no DATABASE_URL). test:responsive needs a live :3000
+      # server and is exercised by the visual sweep, not CI — skip it here.
+      - name: Test suite (in-memory)
+        run: node scripts/test-all.mjs --skip responsive
+
+      - name: Build
+        run: npm run build
+
+      # ── The real-Postgres proofs — what a single process cannot show ─────────
+      - name: Migrate CI Postgres
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ env.CI_DB_URL }}
+
+      - name: Certify the CI DB as a disposable load-test target
+        run: node scripts/load/ci-plant-marker.mjs
+        env:
+          DATABASE_URL: ${{ env.CI_DB_URL }}
+
+      - name: C4 — cross-instance wallet double-spend proof (s10)
+        run: npx tsx scripts/load/s10-cross-instance.mts
+        env:
+          DATABASE_URL: ${{ env.CI_DB_URL }}
+
+      - name: C6 — cross-instance audit-chain fork proof (s11)
+        run: npx tsx scripts/load/s11-audit-cross-instance.mts
+        env:
+          DATABASE_URL: ${{ env.CI_DB_URL }}
