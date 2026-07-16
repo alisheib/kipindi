@@ -87,8 +87,8 @@ Verified at baseline (2026-07-15): `tsc --noEmit` clean · `test:fee-model` 77/7
 - `[x]` **H7** — webhook env names **fixed** (`.env.example`, `RAILWAY.md` now list `SELCOM_/AZAMPAY_/MIXX_WEBHOOK_SECRET`); `boot-checks.ts` warns per missing secret in production. **Ali/ops:** staging webhook round-trip.
 - `[A]` **H8** — KYC base64 in Postgres → object storage (needs storage provider). *(documented)*
 - `[~]` **H9** — no CI → GitHub Actions + Postgres service. *(Stage 12)*
-- `[ ]` **H10** — 5 WCAG contrast fails → `btn-no`, `btn-danger`, `--border-control`. *(Stage 10)*
-- `[ ]` **H11** — no skip link → add to `app-shell.tsx` + EN/SW/ZH. *(Stage 10)*
+- `[x]` **H10** — contrast fixed & **measured** by new `scripts/contrast-audit.mts` (npm `test:contrast`, 0 gate failures). `btn-no` already passed (5.00); darkened `btn-yes` 57→53% (4.74) and `--danger-500` 60→57% (4.85); added `--border-control` (52%, 3.45/3.35) on form inputs. `--border`/`--border-strong` stay decorative (WCAG 1.4.11-exempt). Note: btn-yes was a *current* fail (4.05) the audit missed.
+- `[x]` **H11** — **already present** (verified): `app-shell.tsx` has the skip link (`sr-only focus:not-sr-only` → `#main-content`) + `<main id="main-content">`; `skipToContent` in EN/SW/ZH.
 - `[x]` **H12** — withdraw confirm now shows **amount → −fee → you receive (net)**, plus provider. Fee computed by new isomorphic `computeWithdrawalFee(amount, rate)` in `payout.ts`, used by BOTH the modal and `wallet-service` — shown == charged, to the shilling. Verified: `tsc` clean · `test:withdrawal` 16/16 (server math unchanged). **Ali/QA:** visual pass of the modal.
 
 ### Medium

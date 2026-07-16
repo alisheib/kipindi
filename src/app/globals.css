@@ -152,7 +152,7 @@
   --royal-ink-3: oklch(64% 0.060 268);
 
   /* Semantic */
-  --danger-500:  oklch(60% 0.22 25);
+  --danger-500:  oklch(57% 0.22 25); /* audit H10: white label → 4.85:1 (was 60% = 4.28, fail) */
   --info-500:    oklch(64% 0.17 268);
   --warning-500: oklch(78% 0.13 86);
 
@@ -207,6 +207,11 @@
   --border-strong: oklch(44% 0.150 268);
   --border-royal:  oklch(56% 0.170 268);
   --border-gold:   oklch(78% 0.13 80);
+  /* audit H10: WCAG 1.4.11 (3:1) for a border that is the ONLY boundary of a
+     control (inputs, unfilled buttons). --border stays darker for DECORATIVE
+     dividers (exempt), preserving the elevation hierarchy. --border-control on
+     --bg = 3.45:1, on --bg-elevated = 3.35:1. */
+  --border-control: oklch(52% 0.130 268);
   --text:          oklch(98% 0.012 268);
   --text-muted:    oklch(86% 0.040 268);
   --text-subtle:   oklch(70% 0.080 268);
@@ -481,7 +486,7 @@ body {
 /* v2 kit: one flat-solid family — YES/NO/gold are SOLID fills (not gradients),
    with a 1px inset top-highlight + soft shadow. (primary keeps its gradient.) */
 .btn-yes {
-  background: oklch(57% 0.155 150);
+  background: oklch(53% 0.155 150); /* audit H10: white label → 4.74:1 (was 57% = 4.05, fail) */
   color: var(--pearl-50);
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -717,7 +722,7 @@ body {
   height: 44px;
   padding: 0 14px;
   border-radius: var(--r-md);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control); /* audit H10 — the input outline is its only boundary (WCAG 1.4.11) */
   background: var(--bg-inset);
   color: var(--text);
   font-family: var(--font-body);
