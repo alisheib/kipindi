@@ -582,6 +582,8 @@ Session protocol: `git pull` → `npx prisma generate` → `tsc` + `npm run test
 push** (Railway auto-deploys; Ali reviews live). Update the living docs before you end.
 
 Point-in-time audits (kept for record): `docs/PHASE_E_AUDIT_*`, `ADMIN_VIEW_AUDIT_*`,
-`PLAYER_VIEW_AUDIT_*`, `ARCHITECTURE_AUDIT_*`, `consistency-audit.md`, `kit-gap-audit.md`,
-`navigation-ia-review.md`. Design source of truth for finalization:
-`docs/design-master-brief.md`, `docs/visual-assets-brief.md`, `docs/glyph-reference-for-design.md`.
+`PLAYER_VIEW_AUDIT_*`, `ARCHITECTURE_AUDIT_*`, `navigation-ia-review.md`. Design source
+of truth: `docs/design-master-brief.md` + `docs/DESIGN_AUTHORITY.md` (invariants B1–B4).
+Active launch work: `docs/FINAL-AUDIT-REMEDIATION.md` (+ `docs/NEXT-SESSION.md`).
+(Superseded/historical design docs — consistency-audit, kit-gap-audit, visual-assets-brief,
+glyph-reference — were removed in the 2026-07-15 finalization; see `F:/50pick-design-archive/` + git history.)

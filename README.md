@@ -65,7 +65,7 @@ All surfaces below are E2E-tested. Total: **9 suites · 246 tests passing**.
 | [`RAILWAY.md`](RAILWAY.md) | Railway deployment + persistent-volume notes |
 | [`RAILWAY_DB_README.md`](RAILWAY_DB_README.md) | Step-by-step Postgres provisioning on Railway |
 | [`docs/DESIGN_AUTHORITY.md`](docs/DESIGN_AUTHORITY.md) | **Design authority** — palette, tokens, invariants (B1–B4). Read before any color, gradient, or composition change. Implementation: `src/app/globals.css`. ⚠️ The old `50PICK/design_handoff_prediction_market_kit/` is a superseded teal snapshot — do not build from it. |
-| [`docs/50pick-admin-user-manual.pdf`](docs/) | Generated operator manuals (PDF + HTML, regenerable via `scripts/generate-pdfs.mjs`) |
+| Operator/player manuals | **Generated** (not committed) — regenerate the PDF + HTML via `scripts/generate-pdfs.mjs`. |
 
 ---
 

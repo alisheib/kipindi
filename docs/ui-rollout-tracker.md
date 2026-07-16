@@ -1,3 +1,7 @@
+> **STATUS: historical / completed.** The UI-kit rollout sprint shipped. This is a
+> record, not outstanding work — do not re-implement from it. Current launch work
+> lives in `docs/FINAL-AUDIT-REMEDIATION.md`.
+
 # UI Rollout Tracker — Final UI Enhancement Kit
 
 Single source of rollout truth for porting Claude Design's Final UI enhancement Kit

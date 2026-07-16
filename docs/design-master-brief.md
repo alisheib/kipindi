@@ -12,9 +12,10 @@
 > **Every mockup you produce MUST carry the full data model** (§2): exact hex colours, **real
 > EN/SW/ZH strings** (this app is **English / Swahili / Chinese — NOT Arabic**), real market
 > products, all interaction states, and the interaction logic. **No lorem-ipsum, no placeholder
-> colours, no fake copy.** Companion files in this bundle: `design-handover.md` (interaction),
-> `visual-assets-brief.md` (bitmap assets), `glyph-reference-for-design.md`, `kit-gap-audit.md`,
-> the live theme kit (`design_handoff_prediction_market_kit/`), `palette.txt`, brand marks,
+> colours, no fake copy.** (Historical companion files — `visual-assets-brief.md`,
+> `glyph-reference-for-design.md`, `kit-gap-audit.md`, the teal `design_handoff_prediction_market_kit/`
+> — were removed in the 2026-07-15 finalization; see `F:/50pick-design-archive/` + git history.
+> Invariants now live in `docs/DESIGN_AUTHORITY.md`; implementation is `src/app/globals.css`.)
 > current screenshots. Return format: §9.
 >
 > **Nothing is off-limits — this is a full refinement pass, not just gap-filling.** If an item that
@@ -97,7 +98,7 @@ text** (trilingual). All new scene art follows this.
 
 ## 4. ATOMIC LAYER — refine, fill gaps, complete every state
 
-### 4a. Glyphs (129 exist — `components/ui/glyphs.tsx`, `glyph-reference-for-design.md`)
+### 4a. Glyphs (129 exist — `components/ui/glyphs.tsx` is the source)
 Strong custom set. **Gaps to fill:** real **MNO/payment logos** (M-Pesa, Airtel Money, HaloPesa,
 Mixx by Yas, Card, Bank) — biggest single iconography win, used on deposit/withdraw + wallet
 Methods; **per-source glyphs** (salary/business/savings/investment/gift) for source-of-funds;
@@ -239,7 +240,7 @@ specific change. Be candid; we would rather redo a built thing now than ship it 
 
 ---
 
-## 7. ASSET PRODUCTION LIST (see visual-assets-brief.md for exact paths/dims)
+## 7. ASSET PRODUCTION LIST
 Bitmaps: **hero background** (replaces the deleted 20 stock slides) · in-page **banners**
 (propose/bonus/invite) · **OG/social cards** (+ dynamic per surface) · **category art set** (8) ·
 **section texture** · **win/resolution seal** · **MNO logo set** · **invite share-card** template.

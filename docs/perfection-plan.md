@@ -1,3 +1,6 @@
+> **STATUS: aspirational planning doc** (not a verified list of current defects).
+> The authoritative launch-gate work is `docs/FINAL-AUDIT-REMEDIATION.md`.
+
 # 50pick — Path to Perfect · 0-Issue Launch Plan
 
 > **Purpose.** A single, role-driven master plan to take 50pick from "feature-complete

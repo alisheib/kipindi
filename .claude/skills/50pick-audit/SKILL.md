@@ -9,6 +9,20 @@ description: Operational playbook for the 50pick (kipindi) real-money platform �
 (repo dir `kipindi-main`; product name is always **50pick**). Money correctness
 and provability are the whole job. Read this before touching anything.
 
+## 0. ⚠️ NON-NEGOTIABLE — every push is a LIVE production deploy
+`git push origin main` triggers Railway to run `prisma migrate deploy && … &&
+next start` **against the live money DB**. There is no staging. So:
+- **Never push code that fails `npx tsc --noEmit` AND `npm run build`.** Build is
+  the deploy gate; a broken build or a thrown `instrumentation.register()` = prod down.
+- **Never crash boot on a non-fatal condition.** (This session's outage: a C7
+  compliance *alarm* threw in `register()` → HTTP 500 everywhere. Fixed by
+  fail-open. Enforce controls at runtime, alarm at boot — never `throw` at boot
+  unless a real secret/DB is missing.)
+- **Verify AFTER every push (Ali's rule):** technical (`tsc`+`test:*`) · logical ·
+  **visual** (screenshot the live page with playwright + LOOK) · **live-DB**
+  (`curl` prod → HTTP 200, and `railway logs -s 50pick` shows a clean boot).
+- **Migrations:** additive only where possible; test on local PG first (§3/§4).
+
 ## 1. Where the work stands — read this FIRST
 - **Living tracker (source of truth):** [`docs/FINAL-AUDIT-REMEDIATION.md`](../../docs/FINAL-AUDIT-REMEDIATION.md). Its **"▶ WHERE WE ARE"** block names the current stage, what's closed, and what's LEFT. Update it at the end of every stage.
 - The audit itself: `Final Audit 1507/50pick-FINAL-AUDIT-v8-FINAL-2026-07-15.md` (11 Critical, 11 High, 11 Medium, 6 Low).
@@ -41,7 +55,12 @@ psql: `& F:\pg-loadtest\pgsql\bin\psql.exe "postgresql://postgres:pw@localhost:5
 - ⚠️ Known pre-existing drift: schema has `@@unique([provider, providerRef])` on `Transaction` that `migrate dev` wants to add — confirm production actually enforces it (it's a double-credit guard) as a follow-up.
 
 ## 5. Railway
-`https://github.com/alisheib/kipindi.git`, branch `main`. Push to main → Railway builds and runs `prisma migrate deploy && next start`. You may have `railway` CLI + Prisma access; use it for **read/observe** freely, but treat writes/migrations to the live money DB as deploy-only (§4). If email/payments break in prod, check the provider secrets first (`SELCOM_/AZAMPAY_/MIXX_WEBHOOK_SECRET`, exact names — audit H7).
+`https://github.com/alisheib/kipindi.git`, branch `main`. Push to main → Railway builds + runs `prisma migrate deploy && … && next start`. Treat DB writes/migrations to prod as deploy-only (§4).
+- **CLI account: `alisheib07@gmail.com`** (interactive `railway login` / `railway login --browserless` → give Ali the pairing URL to approve; login is GLOBAL — it displaces the awarkeh CLI login, so the awarkeh session must re-login as awarkehmobiles@outlook.com afterward).
+- **Project `50pick` = `5e87353c-1d59-433d-a683-a32b9149f74c`**, env `production`, app service **`50pick`** (`railway link -p 50pick`; multiple Redis services exist — likely unused, rate limiter is in-memory).
+- **Logs:** `railway logs -s 50pick` (instrumentation prints `[snag]` blocks per server error, and boot warnings). This is how the C7 outage was diagnosed.
+- **Prod DB host is `postgres.railway.internal`** — only reachable inside Railway (`railway run --service 50pick -- <cmd>` injects it) or via the admin UI; NOT from a local script. `scripts/ops-clear-conflicted-override.mjs` is meant to run under `railway run`.
+- If email/payments break in prod, check the provider secrets first (`SELCOM_/AZAMPAY_/MIXX_WEBHOOK_SECRET`, exact names — audit H7; prod is currently missing AZAMPAY/MIXX).
 
 ## 6. Money-code invariants (do not break)
 - **Lock order is wallet → market.** Refund/bonus/referral helpers take the wallet lock, so they run OUTSIDE the market lock (queued after release) to avoid deadlock.

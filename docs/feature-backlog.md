@@ -1,3 +1,6 @@
+> **STATUS: backlog / wishlist** — future ideas, not committed requirements or
+> current work. Launch-gate work is `docs/FINAL-AUDIT-REMEDIATION.md`.
+
 # 50pick / Kipindi — Feature Backlog & Planning Input
 
 > **Purpose:** the ranked, planning-ready catalog of *new* features (post-launch-
@@ -7,7 +10,7 @@
 >
 > Created 2026-07-12 from the product brainstorm (player · owner · designer ·
 > compliance · growth · ops lenses). See `next-session-prompt.md` for the
-> canonical handoff and `responsiveness-audit.md` (a separate parallel sprint).
+> canonical handoff (a separate parallel sprint).
 
 ---
 

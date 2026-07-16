@@ -16,7 +16,8 @@
 > - **Closed so far:** C1, C2, C4, C5(exploit), C7, C8, C9, C10, C11, H1, H4, H5, H7, H10, H11, H12, M1, M3, M4, M5, M6, M7, M9, M11, M12, L1; repo cleanup done.
 > - **What's LEFT:** C3, C6 (money-provability — need PG + focus); L2–L6 (Low polish); M2 (verify), M8 (doc); Stage 12 CI (H9) + Sentry (H6); C5 nonce table. Ali/infra: H2 Redis, H8 object storage, H6 DSN, TRA ruling, MNO logos, pentest.
 > - **Verify-after-push protocol (Ali's rule):** technical (`tsc`+tests) · logical · visual (screenshot the live page) · live-DB (prod HTTP 200 + boot logs). Every push auto-deploys to the LIVE DB.
-> - **Blocked on Ali/infra:** C5 nonce table; H2 Redis; H8 object storage; H6 Sentry DSN; TRA tax ruling; MNO logos; pentest. **Move-out (archive to Drive then rm):** `Final UI enhancement Kit/`, `50PICK/New Designs/`, `Email Signatures/`, `Translations/`, `Final logo design/`, `assets/glyphs/`, `docs/*.pdf`.
+> - **Repo FINALIZED** (2026-07-15): non-product material removed → archived at `F:/50pick-design-archive/` + git history. Next session: `docs/NEXT-SESSION.md`.
+> - **Ali/infra-blocked:** C5 nonce table; H2 Redis; H8 object storage; H6 Sentry DSN; TRA tax ruling; MNO logos; pentest.
 > - **Verify locally:** `npm run typecheck` · per-suite `npx tsx scripts/<name>.test.mts` · full `npm run test:all`.
 > - **Safe DB workflow + all ops knowledge:** committed skill `.claude/skills/50pick-audit/SKILL.md` (local disposable PG `F:\pg-loadtest:5433`; migrations hand-authored + `migrate deploy` local, prod via `git push`). C3/C6 need it + focused time.
 
