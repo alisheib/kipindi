@@ -12,6 +12,7 @@
 ## Scope (only items that DON'T need a money service or the schema)
 - [x] A8  twoOfficerGate() + <AttestationRail> (unify maker-checker)
 - [x] A10 money .toLocaleString → formatTzs + guard (via test:integrity, no ESLint)
+- [x] A9  config-factory rollout — migrated affiliate-config; other 5 done/excluded (see log)
 - [ ] A9  migrate NON-money config modules to defineConfig
 - [ ] A10 money .toLocaleString → formatTzs + lint rule
 - [ ] A11 migrate 6 player popups onto <Modal> (wrapper only)
@@ -87,3 +88,41 @@ _(newest last)_
   interpolation) and `*Tzs.toLocaleString`. Verified: catches the 4 antipatterns,
   no false-positive on count/date toLocaleString (incl. finance's count line).
 - Verified: tsc clean; test:integrity OK.
+
+### A9 — config-factory rollout (DONE, batch 3)
+Migrated **affiliate-config.ts** onto the shared `defineConfig` factory (the clean,
+intended deep-merge adopter): removed its hand-rolled `globalThis.__50PICK_AFFILIATE_CONFIG`
+cache + eager `loadConfig().then()` hydrate + manual `saveConfig`/`audit`; kept its
+types, DEFAULT, `validate`, deep `mergeConfig` (passed as the factory `merge`), and
+`deepClone` on the sync getter (preserves nested-object isolation the factory's
+shallow get() doesn't give). Audit shape unchanged (ADMIN `affiliate.config.updated`,
+`{before,after,changes}`). Confirmed no external reader of the old global (grep:
+only self-references — the docstring's "backup snapshots the global" was stale).
+- Verified: tsc clean; test:config 10/10, test:referral 15/15, test:invites 32/32,
+  test:invite-flow 25/25.
+
+**The other 6 named modules — deliberately NOT force-migrated (rationale):**
+- `proposals-config` — ALREADY on defineConfig (nothing to do).
+- `ai-config` — no admin-mutable persisted state (static env const + one async
+  `getConfiguredModel` helper); has no `set`, so the factory shape doesn't apply.
+- `ai-poll-config` — INTENTIONALLY not DB-persisted (explicit comment; `updateAIPollConfig`
+  clamps fields in place). defineConfig always loads/saves via config-store, so
+  migrating would start persisting to Postgres in prod — a behaviour change. Left as-is.
+- `ai-ops-config` — async getter with read-time model/interval **whitelist coercion**
+  (a stored deprecated model silently falls back to default), and per-field setters
+  (`setAiModel`/`setSentinelInterval`) with **no officerId and no audit**. Migrating
+  would change those signatures + start emitting audits + drop the read-time coercion.
+- `platform-config` — `getPlatformConfig()` **awaits** the DB load on first read, so
+  `isMaintenanceMode()` (gates NEW bets/deposits in the DENYLISTED wallet/market
+  services) is correct from the very first call. defineConfig hydrates eagerly+async,
+  so `get()` returns defaults until the background load resolves → a brief post-boot
+  window where maintenance could read OFF on a money path. **Money-safety regression —
+  not migrated.**
+- `test-overrides` — POCA §16 control: `getConflictedResolutionAllowed()` hard-returns
+  false in prod and the setter writes a **COMPLIANCE**-category audit with a custom
+  payload; defineConfig only emits ADMIN audits. Compliance-sensitive — not migrated.
+
+**Flag for M (optional, needs the factory owner):** to migrate `platform-config`
+safely the factory would need an "await-first-read" hydration option; that change
+would also touch the DENYLISTED `bonus-config` (which uses defineConfig), so it's
+an M-side call, not E's.
