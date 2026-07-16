@@ -21,6 +21,13 @@ next start` **against the live money DB**. There is no staging. So:
 - **Verify AFTER every push (Ali's rule):** technical (`tsc`+`test:*`) · logical ·
   **visual** (screenshot the live page with playwright + LOOK) · **live-DB**
   (`curl` prod → HTTP 200, and `railway logs -s 50pick` shows a clean boot).
+- **⚠️ Verify against the RAILWAY domain `https://kipindi-production.up.railway.app`,
+  NOT `50pick.tz`.** As of 2026-07-16 the custom domain (`50pick.tz` + `www.`) DNS
+  resolves to an **Apache parking page** (`Server: Apache`, an "Index of /"), NOT
+  Railway — so `curl 50pick.tz` returns a misleading HTTP 200 from the wrong host.
+  Both customs are ACTIVE on the Railway service; DNS just isn't pointing at it.
+  **Ali/ops:** repoint `50pick.tz`/`www` DNS at Railway (CNAME to the service) —
+  real users currently see a directory listing, not the platform.
 - **Migrations:** additive only where possible; test on local PG first (§3/§4).
 
 ## 1. Where the work stands — read this FIRST
