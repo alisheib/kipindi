@@ -62,6 +62,7 @@
     "test:ledger": "tsx scripts/ledger.test.mts",
     "test:trial-balance": "tsx scripts/trial-balance.test.mts",
     "test:payout-alloc": "tsx scripts/payout-allocation.test.mts",
+    "test:admin-money-ops": "tsx scripts/admin-money-ops.test.mts",
     "test:officer-conflict": "tsx scripts/officer-conflict.test.mts",
     "test:solo-resolution": "tsx scripts/solo-resolution-override.test.mts",
     "test:activity": "tsx scripts/activity-summary.test.mts",

@@ -268,18 +268,26 @@ async function makeMarket() {
   await settleMarket(m.id, { force: true });
   const paid = (await bal("rp_victim")) - before;
 
-  ok("8: ★ THE FIX — the 100,000 stake is paid 102,333 (it was paid 93,150)", paid === 102_333, `paid=${paid}`);
+  // M2 largest-remainder: each winner's fair share is 102,333.33, so each is paid
+  // 102,333 or 102,334 (whichever gets the remainder shilling — the SUM is exact,
+  // asserted below). Either way the winner PROFITS — it was paid 93,150 under the
+  // old flat-fee bug.
+  ok("8: ★ THE FIX — the 100,000 stake is paid ~102,333 (it was paid 93,150)", paid === 102_333 || paid === 102_334, `paid=${paid}`);
   ok("8: ★ the winner PROFITS on a correct call", paid > 100_000, `profit=${paid - 100_000}`);
 
   const pos = (await listPositionsForMarket(m.id)).find((p) => p.userId === "rp_victim")!;
   ok("8: the position is WIN", pos.status === "WIN");
-  ok("8: finalPayout matches the credit", pos.finalPayout === 102_333);
+  ok("8: finalPayout matches the credit", pos.finalPayout === paid, `finalPayout=${pos.finalPayout} paid=${paid}`);
 
   // Every winner on this poll — all three — must clear their stake.
   for (const p of await listPositionsForMarket(m.id)) {
     if (p.side !== "YES") continue;
     ok(`8: winner ${p.userId} paid ≥ stake`, (p.finalPayout ?? 0) >= p.stake, `stake=${p.stake} paid=${p.finalPayout}`);
   }
+  // M2 — the three winners' payouts sum to EXACTLY floor(netPool) = 307,000: no
+  // per-winner rounding drift, so the operator's fee is exact (largest-remainder).
+  const yesSum = (await listPositionsForMarket(m.id)).filter((p) => p.side === "YES").reduce((s, p) => s + (p.finalPayout ?? 0), 0);
+  ok("8: ★ winners' payouts sum to netPool EXACTLY (307,000)", yesSum === 307_000, `sum=${yesSum}`);
 
   // The levies come out of OUR 3,500 — the player's 102,333 is untouched by them.
   const lev = levySplit(f.fee, ratesFor(mkt));
