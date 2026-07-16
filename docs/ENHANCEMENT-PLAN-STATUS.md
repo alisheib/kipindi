@@ -36,10 +36,12 @@ Ordered by value for a clean go-live + real-money ops. Update status inline.
       `reconcileWriteOffAction` (sentinel ref + mandatory reason), both gated +
       `COMPLIANCE`-audited (no money moves); `ReconcileControls` per unmatched item
       on `/admin/payments`.
-- [~] **A4 · Withdrawal retry** — §9.3 #8. DONE: `retryWithdrawalAction`
-      (re-runs the tested `withdraw()`; the failed one was auto-refunded at
-      fail-time, so no double-pay) + Retry now shown for WITHDRAWAL rows. *Deferred
-      (lower value):* bulk "retry all" + auto-retry policy.
+- [x] **A4 · Withdrawal + bulk retry** — §9.3 #8. DONE: `retryWithdrawalAction`
+      (Retry now shown for WITHDRAWAL rows too) + `bulkRetryAction` ("Retry all"
+      on the queue card, capped 50/run) — both re-run the tested `deposit()`/
+      `withdraw()` flows (no double-pay: deposits never debit; failed withdrawals
+      were auto-refunded at fail-time), gated + audited. *Deferred (low value):*
+      auto-retry policy config.
 - [x] **A5 · Materialise heavy aggregates** — VERIFIED already handled where it
       matters. The high-traffic home `stats-band` → `getPlatformStats`
       (`platform-stats.ts`) is a DB-side SUM (`sumConfirmedByTypes`, no row scan) +
@@ -74,8 +76,24 @@ Ordered by value for a clean go-live + real-money ops. Update status inline.
       lang switcher, admin tabs → ≥44px; re-run responsive-audit. AAA (AA met).
 - [ ] **A19 · P1 delighters** — `/live` carousel auto-advance + swipe; `/results`
       notable arrows/swipe.
-- [ ] **A20 · Audit hardenings** — bet-STAKE single-`$transaction`; M2 largest-remainder
-      payout; C5 webhook nonce table; triage the 1 `eslint-disable` in market-service.
+- [~] **A20 · Audit hardenings** —
+      • **C5 webhook nonce — WON'T BUILD (verified 2026-07-16):** redundant AND
+        harmful. Settlement is already idempotent (status-gated + amount-verify +
+        5-min timestamp window), and the webhook returns 200 on verified posts so
+        providers stop retrying. A signature-nonce would REJECT a provider's
+        legitimate retry-after-failure → the txn would never settle. Status-gating
+        already prevents replay double-credit. So C5 as specified is closed as
+        not-needed.
+      • **M2 largest-remainder payout — DEFERRED (safe to build, do fresh):**
+        re-analysis shows the winner-floor CANNOT break under largest-remainder —
+        the fee cap guarantees `netPool ≥ winningPool`, so `share·netPool ≥ stake`
+        and `floor(share·netPool) ≥ stake` (stake is integer). It restructures the
+        settlement payout loop (pre-pass allocation), so it's a fresh focused change,
+        not a session-tail edit. Current dust is bounded + tested (money-invariants).
+      • **bet-STAKE single-`$transaction` — DEFERRED:** highest blast radius (nested
+        wallet→market lock + pool unwind + bonus spend); money is already correct +
+        drift detected. Fresh focused session with the load harness.
+      • 1 `eslint-disable` in market-service — cosmetic, leave.
 - [ ] **A21 · F10 lite mode · F12 live odds via SSE** (SSE bus exists, notifications-only).
 
 **Already DONE (do not redo):** empty-state copy (B3), micro-interactions (B4),

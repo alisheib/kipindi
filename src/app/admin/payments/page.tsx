@@ -11,6 +11,7 @@ import { formatTzs, formatTzsCompact, formatDateTime } from "@/lib/utils";
 import { KillSwitch } from "./kill-switch-toggle";
 import { RetryControls } from "./retry-controls";
 import { ReconcileControls } from "./reconcile-controls";
+import { BulkRetryControls } from "./bulk-retry-controls";
 
 export const metadata = { title: "Admin · Payments ops" };
 export const dynamic = "force-dynamic";
@@ -135,7 +136,7 @@ export default async function PaymentsOpsPage() {
         </div>
 
         {/* Retry queue. */}
-        <AdminCard title="Retry queue · Foleni ya majaribio" sw="Failed deposits & withdrawals" padding={queue.length ? "p-0" : "p-4"}>
+        <AdminCard title="Retry queue · Foleni ya majaribio" sw="Failed deposits & withdrawals" padding={queue.length ? "p-0" : "p-4"} action={queue.length > 1 ? <BulkRetryControls /> : undefined}>
           {queue.length === 0 ? (
             <div className="flex items-center gap-2.5 text-caption text-text-secondary">
               <I.checkCircle s={16} className="text-yes-300" /> No failed transactions — the rails are clear.

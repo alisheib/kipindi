@@ -136,3 +136,27 @@ export async function reconcileWriteOffAction(formData: FormData): Promise<Resul
   revalidatePath("/admin/payments");
   return { ok: true };
 }
+
+/** Bulk-retry every FAILED deposit/withdrawal (A4) via the same tested flows the
+ *  single-row retry uses — deposits never debit and a failed withdrawal was
+ *  auto-refunded at fail-time, so re-running can't double-pay. Capped per run. */
+export async function bulkRetryAction(): Promise<{ ok: true; retried: number; stillFailed: number } | { ok: false; error: string }> {
+  const g = await gate("bulkRetry");
+  if ("error" in g) return { ok: false, error: g.error };
+  const failed = (await db.txn.listByStatus("FAILED")).filter((t) => t.type === "DEPOSIT" || t.type === "WITHDRAWAL").slice(0, 50);
+  const { deposit, withdraw } = await import("@/lib/server/wallet-service");
+  let retried = 0, stillFailed = 0;
+  for (const t of failed) {
+    try {
+      const r = t.type === "DEPOSIT"
+        ? await deposit(t.userId, { provider: (t.provider ?? "MPESA") as DepositProvider, amount: Math.abs(t.amount), msisdn: t.msisdn ?? undefined })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        : await withdraw(t.userId, { provider: (t.provider ?? "MPESA"), amount: Math.abs(t.amount), msisdn: t.msisdn ?? undefined } as any);
+      await db.txn.update(t.id, { status: "CANCELLED", description: `${t.description ?? "failed"} · superseded by bulk retry` });
+      if (r.ok) retried++; else stillFailed++;
+    } catch { stillFailed++; }
+  }
+  audit({ category: "WALLET", action: "payments.retry.bulk", actorId: g.userId, targetType: null, targetId: null, payload: { attempted: failed.length, retried, stillFailed } });
+  revalidatePath("/admin/payments");
+  return { ok: true, retried, stillFailed };
+}
