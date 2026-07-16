@@ -23,10 +23,11 @@
       you set the R2 creds (§2).
 
 ## 2 · Infra / hosting you provision (👤 Ali)
-- [ ] **DNS → Railway (this is "go to 50pick.tz").** Point `50pick.tz` + `www.50pick.tz`
-      at the Railway service (both custom domains are ALREADY attached in Railway;
-      today they resolve to an Apache parking page). Railway issues the TLS cert
-      once DNS resolves. Then tell me so I set `NEXT_PUBLIC_APP_URL=https://www.50pick.tz`.
+- [ ] **DNS → Railway (this is "go to 50pick.tz").** Follow the ⭐ cutover section in
+      `CLOUDFLARE-SETUP-GUIDE.md`: finish the (existing) Cloudflare onboarding →
+      swap nameservers at Netpoa → add the 4 exact records (per-host CNAME targets
+      + 2 `_railway-verify` TXT), grey-cloud first. Both custom domains are ALREADY
+      attached in Railway; `NEXT_PUBLIC_APP_URL` is already `https://www.50pick.tz`.
 - [ ] **Cloudflare R2 bucket** (e.g. `kipindi-kyc`) + an R2 API token. Gives me the
       creds for §3. (If you also front the app with Cloudflare DNS/CDN/WAF, do that
       here too — recommended, not required.)

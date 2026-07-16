@@ -1,7 +1,71 @@
 # Cloudflare Setup Guide — 50pick.tz
 
 > Architecture: Cloudflare (DNS + CDN + WAF + R2) in front of Railway (Next.js + Postgres + Redis)
-> Date: 2026-07-03
+> Date: 2026-07-03 · **CUTOVER PLAN updated 2026-07-16 (see the ⭐ section — it
+> SUPERSEDES Step 4's record table and Step 8's env names).**
+
+---
+
+## ⭐ GO-LIVE CUTOVER — do this TODAY (2026-07-16), live tomorrow
+
+Hosting decision: **the app stays on Railway** (already live + healthy, Postgres
+there). Only **DNS moves to Cloudflare**. The domain stays REGISTERED at Netpoa —
+Netpoa is only used once, to change the nameservers; after that Netpoa's DNS
+limitations (www/CNAME) are irrelevant because Cloudflare serves the zone.
+
+### A. Resume Cloudflare onboarding (account EXISTS since 2026-07-03, stalled at plan selection)
+1. dash.cloudflare.com → the `50pick.tz` site → finish onboarding.
+2. Plan: **Free is fine for tomorrow's launch** (Pro $20/mo adds WAF/CDN polish —
+   upgrade any time later; NOT a launch gate).
+3. Cloudflare shows your **2 nameservers** (e.g. `xxx.ns.cloudflare.com`).
+
+### B. At Netpoa (the ONLY Netpoa step)
+Replace the domain's nameservers with the 2 Cloudflare nameservers. Propagation:
+usually minutes–hours (Cloudflare emails when the zone is active).
+
+### C. Cloudflare DNS records — EXACT values (from `railway domain status`, 2026-07-16)
+Delete any imported A/AAAA records (they point at the Apache parking). Add:
+
+| Type  | Name                  | Content / Value                                                                    | Proxy |
+|-------|-----------------------|------------------------------------------------------------------------------------|-------|
+| CNAME | `@`                   | `g31rs69a.up.railway.app`                                                           | **DNS only (grey)** |
+| CNAME | `www`                 | `ss3egn8f.up.railway.app`                                                           | **DNS only (grey)** |
+| TXT   | `_railway-verify`     | `railway-verify=5a2ae218422d38d9c358ffaa0e6e559cb1244d1daebe2e8af197a05b461cdd13`   | —     |
+| TXT   | `_railway-verify.www` | `railway-verify=b159edaa5b8003bc7267e79f780838a320f9d186ad733a1aa3d049d10bf2306c`   | —     |
+
+⚠️ Each hostname has its OWN Railway target — do NOT point both at
+`kipindi-production.up.railway.app` (the old Step 4 table below is superseded).
+The two TXT records are Railway's domain verification — without them the domains
+stay `Verified: no` and certificates stay stuck in ISSUING.
+
+**Grey-cloud first:** with "DNS only", Railway verifies + issues the TLS certs
+itself and everything just works. Flip to Proxied (orange) + SSL **Full (Strict)**
++ WAF (Steps 5–7) AFTER launch is stable — never before the certs are issued.
+
+### D. Verify (once Cloudflare says the zone is active)
+- `https://50pick.tz` and `https://www.50pick.tz` load the app with a valid cert
+  (railway CLI: `railway domain status 50pick.tz -s 50pick` → `Verified: yes`).
+- In grey mode there is NO `cf-ray`/`server: cloudflare` header — that's expected
+  (Step 9's checks apply only after flipping to Proxied).
+- `NEXT_PUBLIC_APP_URL` is already `https://www.50pick.tz` (set 2026-07-03).
+
+### E. R2 while you're in Cloudflare (KYC storage) — CORRECTED env names
+Create bucket `kipindi-kyc` + an API token (Object Read & Write on that bucket),
+then set in Railway → 50pick → Variables (these EXACT names — the code reads them
+in `src/lib/server/storage.ts`; the old Step 8 names are superseded):
+- `KYC_STORAGE=r2`  ← the activation switch (without it R2 is silently ignored)
+- `R2_BUCKET=kipindi-kyc`  (NOT `R2_BUCKET_NAME`)
+- `R2_ENDPOINT=https://<ACCOUNT_ID>.r2.cloudflarestorage.com`
+- `R2_ACCESS_KEY_ID=…` · `R2_SECRET_ACCESS_KEY=…`
+(`R2_ACCOUNT_ID` is not read — the account id lives inside the endpoint URL.)
+Then the code session runs `npm i @aws-sdk/client-s3` and a staging KYC round-trip.
+
+### F. Hand the payment provider everything (after DNS is live)
+- Static outbound IP from Railway (enable Static Outbound IPs on the 50pick
+  service first — dynamic egress would break their whitelist).
+- Webhook URL on the FINAL domain: `https://www.50pick.tz/api/webhooks/payments`.
+- Ask back: API docs (collection + disbursement), sandbox creds, webhook signature
+  scheme (headers + HMAC construction), webhook signing secret.
 
 ---
 
@@ -50,16 +114,18 @@ Ali created Cloudflare account, entered `50pick.tz`, configured:
 2. Replace current nameservers with the 2 Cloudflare nameservers
 3. Wait 5-30 min for propagation (Cloudflare will email you when active)
 
-### Step 4: Configure DNS Records in Cloudflare
+### ~~Step 4: Configure DNS Records in Cloudflare~~ SUPERSEDED — use the ⭐ cutover section (§C) above
 
-Once the domain is active on Cloudflare, set these records:
+The table below is the OLD (wrong) version kept for history: Railway requires a
+**distinct target per hostname + two `_railway-verify` TXT records**, and grey
+cloud (DNS only) until certs are issued — see §C for the exact 2026-07-16 values.
 
 | Type | Name | Content | Proxy |
 |------|------|---------|-------|
-| CNAME | @ (or 50pick.tz) | kipindi-production.up.railway.app | Proxied (orange cloud ON) |
-| CNAME | www | kipindi-production.up.railway.app | Proxied (orange cloud ON) |
+| ~~CNAME~~ | ~~@ (or 50pick.tz)~~ | ~~kipindi-production.up.railway.app~~ | ~~Proxied~~ |
+| ~~CNAME~~ | ~~www~~ | ~~kipindi-production.up.railway.app~~ | ~~Proxied~~ |
 
-Delete any old A/AAAA records pointing to Railway IPs — the CNAME handles it.
+Delete any old A/AAAA records pointing at the Apache parking — see §C.
 
 ### Step 5: SSL/TLS Settings
 
@@ -89,12 +155,14 @@ Delete any old A/AAAA records pointing to Railway IPs — the CNAME handles it.
 4. Go to R2 -> Manage R2 API Tokens -> Create API token
 5. Permissions: Object Read & Write on kipindi-kyc bucket only
 6. Copy Account ID, Access Key ID, Secret Access Key
-7. In Railway -> 50pick service -> Variables -> add:
-   - `R2_ACCOUNT_ID` = (your Cloudflare account ID)
+7. In Railway -> 50pick service -> Variables -> add (**names CORRECTED 2026-07-16
+   to what `src/lib/server/storage.ts` actually reads — see ⭐ §E**):
+   - `KYC_STORAGE` = `r2`  (the activation switch — without it R2 is ignored)
+   - `R2_BUCKET` = `kipindi-kyc`  (the code reads `R2_BUCKET`, not `R2_BUCKET_NAME`)
+   - `R2_ENDPOINT` = `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`
    - `R2_ACCESS_KEY_ID` = (from step 6)
    - `R2_SECRET_ACCESS_KEY` = (from step 6)
-   - `R2_BUCKET_NAME` = kipindi-kyc
-   - `R2_ENDPOINT` = `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`
+   - (`R2_ACCOUNT_ID` is NOT read by the code — the account id is in the endpoint)
 
 ### Step 9: Verify Everything Works
 
