@@ -1,46 +1,48 @@
-# 50pick — next-session prompt (Final Audit remediation)
+# 50pick — next-session brief
 
-Paste-ready brief for the next session. Read the `50pick-audit` skill
-(`.claude/skills/50pick-audit/SKILL.md`) and the tracker
-(`docs/FINAL-AUDIT-REMEDIATION.md` → "▶ WHERE WE ARE") first.
+Read the two always-on skills first (`.claude/skills/50pick-standards` +
+`.claude/skills/50pick-audit`), then this. Last updated 2026-07-16.
 
-## Suggested opening prompt
-> Continue the 50pick Final Audit remediation. Read `.claude/skills/50pick-audit`
-> and `docs/FINAL-AUDIT-REMEDIATION.md` first. **10/11 Criticals are done and prod
-> is healthy — do NOT regress it.** Every `git push` is a live prod deploy, so
-> tsc + build must pass and you must verify after each push (technical, logical,
-> visual screenshot, live prod HTTP 200 + boot logs). Proceed stage by stage,
-> update the tracker, commit + push after each. Start with C6, then C3.
+## State at handoff
+- **The Final Audit is COMPLETE** — all 11 Criticals + all Highs + all Mediums
+  closed. Record: `docs/FINAL-AUDIT-REMEDIATION.md`.
+- **Prod HEALTHY.** Verify against **`https://kipindi-production.up.railway.app`**
+  (the `50pick.tz` custom domain currently parks on an Apache page — DNS not yet
+  pointed at Railway). Railway CLI = alisheib07 (`railway logs -s 50pick`).
+- Now finishing the **perfection-plan §9 enhancement work** before the payment
+  gateway. Live tracker: **`docs/ENHANCEMENT-PLAN-STATUS.md`** (grouped: (A)
+  code-doable / (B) needs-Ali / (C) optional).
+- Go-live + payment-gateway map: **`docs/GO-LIVE-READINESS.md`**.
 
-## State at handoff (2026-07-15, main @ e3d754e)
-- **10/11 Criticals closed** — only **C3** and **C6** remain.
-- **Prod: HEALTHY (HTTP 200)**, clean boot; repo finalized/clean.
-- Railway CLI = alisheib07; local disposable PG at `F:\pg-loadtest:5433` (skill §3).
-- Design deliverables archived at `F:/50pick-design-archive/` (+ git history).
+## Done (Session M — money-ops, all live + verified)
+A1 R2 storage seam (H8) · A2 audited balance-adjust + force-reverify KYC · A3 PSP
+reconcile match/write-off · A4 withdrawal + bulk retry · A5 aggregates (verified
+materialized) · M2 largest-remainder payouts (Σ == floor(netPool) exactly;
+money-e2e drift 0.00). New tests: `test:payout-alloc`, `test:admin-money-ops`.
 
-## Do next, in order
-1. **C6 — audit chain (contained; do first).** Make the chain DB-authoritative:
-   `pg_advisory_xact_lock` + SQL head-select + `@@unique([prevHash])` migration +
-   `await persist()` for money/compliance. Verify with `scripts/load/s10-cross-instance.mts`
-   on the local PG. (Fail-closed is fine for audit writes — but NOT at boot, per skill §0.)
-2. **C3 — ledger provability.** Wrap wallet+txn+ledger writes in one Prisma
-   `$transaction` on the money paths; write a CORRECT wallet↔ledger trial balance
-   (must net `hold`/`pending`/bonus, or it false-positives) to replace the dead
-   `reconcileLedger()`; nightly job + `/admin/finance` surface + alert. Verify on local PG.
-3. **L2–L6** low polish · **M2** verify (fee-model rounding) · **M8** schema comment.
-4. **Stage 12 — CI + Sentry.** GitHub Actions running `test:*` against a Postgres
-   service container (makes C4/C6 provable in CI; also stabilise flaky `test:trilingual`).
-   Sentry needs a DSN from Ali.
+## Do next (code) — in priority order
+1. **When a parallel Session E branch (`enhance/perfection-9`) is ready:** fetch it,
+   run the full gate (`tsc` + `build` + `test:all` + `test:integrity`), merge to
+   `main`, deploy, verify. (Coordination contract: `docs/PARALLEL-SESSION-COORDINATION.md`.)
+2. **Cross-cutting features (best AFTER E merges — they touch money/schema + UI):**
+   A6 featured/pinned markets · A7 configurable compliance knobs (KYC/AML thresholds
+   → `/admin/config`) · A13 officer/RBAC UI · A14 scheduled-reports engine · A15
+   post-publish market edit · A16 bonus start/end windows · two-officer for large
+   balance adjustments (reuse E's `twoOfficerGate`).
+3. **Dedicated focused session (highest blast radius):** bet-STAKE
+   single-`$transaction` — thread `tx` through bonus-service + a pool-unwind path;
+   verify with the load harness. (Money already correct + durable + detected.)
 
-## Ali / ops actions (not code)
-- Set `AZAMPAY_WEBHOOK_SECRET` + `MIXX_WEBHOOK_SECRET` in Railway before enabling those providers.
-- Clear `test.overrides.allowConflictedResolution` via the admin UI (runtime already forces it false).
-- ✅ DONE: Railway 50pick project cleaned — only `50pick` (app) + `Postgres` remain; 6 unused Redis services removed.
-- Blocked/external: H2 Redis rate-limiter, H8 KYC object storage, TRA tax-base ruling,
-  trademarked MNO logos, third-party pentest, DR-restore rehearsal.
+## Guardrails (do not violate)
+- Every push = LIVE deploy. **Full `npm run test:all` before ANY money push** (M2
+  once shipped on a subset and a stale test slipped through).
+- `tsc` + `next build` green before pushing. Never `throw` at boot on a non-fatal.
+- Money lock order wallet→market; claim rows; migrations on the local PG first.
+- Keep the trackers + `CLAUDE.md` banner + memory in sync as you go.
 
-## Guardrails (from the skill — do not violate)
-- Every push = live deploy. tsc + `npm run build` green before pushing.
-- Never `throw` at boot on a non-fatal condition.
-- Money lock order is wallet → market; claim rows on money writes.
-- Develop migrations on the local PG; prod gets them via the deploy, not by hand.
+## Ali / ops (not code) — the real go-live gate
+Repoint DNS 50pick.tz→Railway · turn OFF `TEST_FUNDING` + format/rebaseline the DB
+at go-live · set `SELCOM_/AZAMPAY_/MIXX_WEBHOOK_SECRET` · R2 creds (activates A1) +
+`npm i @aws-sdk/client-s3` · Sentry DSN + `npm i @sentry/node` · VAPID keys · ⊘
+bitmap assets · Redis (H2) · TRA ruling + F6 decision · pentest. Then integrate the
+aggregator (only the outbound call in `payments.ts` is a stub) → `AUTO_SETTLE=true`.
