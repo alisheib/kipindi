@@ -22,7 +22,7 @@ import { RewardBurst } from "@/components/brand/reward-burst";
 import { haptics } from "@/lib/haptics";
 import { useModalLock } from "@/lib/use-modal-lock";
 import { useT } from "@/lib/i18n";
-import { formatNumber } from "@/lib/utils";
+import { formatNumber, formatTzs } from "@/lib/utils";
 
 const EVENT_NAME = "50pick:celebrate";
 
@@ -63,7 +63,7 @@ function RollingAmount({ value }: { value: number }) {
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [value]);
-  return <>TZS {n.toLocaleString("en-US")}</>;
+  return <>{formatTzs(n)}</>;
 }
 
 export function WinCelebrationHost() {

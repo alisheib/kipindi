@@ -123,7 +123,7 @@ export default async function RegisterPage({
                   <I.gift s={20} />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[14px] font-bold text-text">{t.auth.claimBonus} TZS {invite.bonusAmountTzs.toLocaleString()}</p>
+                  <p className="text-[14px] font-bold text-text">{t.auth.claimBonus} {formatTzs(invite.bonusAmountTzs)}</p>
                   <p className="mt-1 text-[12px] font-semibold text-gold-300">{t.auth.bonusWalletHint}</p>
                 </div>
               </div>

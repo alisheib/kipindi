@@ -11,6 +11,7 @@
 
 ## Scope (only items that DON'T need a money service or the schema)
 - [x] A8  twoOfficerGate() + <AttestationRail> (unify maker-checker)
+- [x] A10 money .toLocaleString → formatTzs + guard (via test:integrity, no ESLint)
 - [ ] A9  migrate NON-money config modules to defineConfig
 - [ ] A10 money .toLocaleString → formatTzs + lint rule
 - [ ] A11 migrate 6 player popups onto <Modal> (wrapper only)
@@ -26,6 +27,13 @@
   ~L2166) — DENYLISTED. They could adopt the new `twoOfficerGate()` helper
   (`src/lib/server/two-officer.ts`) for full unification, but I did not touch
   money code. Optional follow-up for M; behaviourally identical today.
+- **A10 (server money toLocaleString):** raw-money `.toLocaleString` hits live in
+  DENYLISTED `src/lib/server/**` (M's) and were NOT touched; my A10 guard skips
+  `src/lib/server/`. M may want to route them through the money formatters too:
+  `analytics.ts:384`, `validators.ts:85`, `responsible-gambling.ts:432`,
+  `reports/brand.ts:91`, `reports/xlsx.ts:20`, `reports/pdf.ts:232`,
+  `reports/catalogue.ts` (many money rows). Admin money pages
+  (players/payments/finance/settlement/aml) already have NO money toLocaleString.
 
 ## Work log
 _(newest last)_
@@ -57,3 +65,25 @@ _(newest last)_
   test:solo-resolution 18/18, test:audit 17/17 green.
 - ⚠️ Visual re-verify of the 3 admin banners (kyc/reports/resolver) deferred to
   the consolidated admin visual pass in A18 (server up w/ DISABLE_ADMIN_TOTP).
+
+### A10 — money format hygiene + guard (DONE, batch 2)
+- Converted every editable UI money `.toLocaleString` to the shared formatters
+  (`formatTzs`/`formatTzsCompact`/`formatNumber` in src/lib/utils):
+  - components: `win-celebration.tsx` (RollingAmount → formatTzs),
+    `live-ticker.tsx` (deleted the local `fmtAmt` dup → formatTzsCompact),
+    `wallet-balance-pill.tsx` (delta → formatNumber, keeps its own +/− sign).
+  - app routes (mine, same defect class): `profile/invite/page.tsx` (×2, bare
+    cells → formatNumber), `proposals/page.tsx` (bare → formatNumber),
+    `auth/register/page.tsx` (→ formatTzs), `admin/invites/invite-admin-client.tsx`
+    (→ formatTzs), `admin/proposals/page.tsx` (deleted local `fmt` dup: counts →
+    formatNumber, money → formatTzs), `admin/proposals/admin-proposals-client.tsx`
+    (→ formatTzs).
+  All output-identical (formatTzs(n)=="TZS "+grouped for +ints; compact edge
+  cases like billions/≥10M read cleaner, e.g. "2.0B" not "2000.0M").
+- **Guard (no ESLint in repo — `lint`==`tsc`):** added an A10 rule to the existing
+  `scripts/content-integrity.test.mts` (`npm run test:integrity`, in test:all/CI).
+  Two precise regexes over `src/components` + `src/app` (skips denylisted
+  `src/lib/server`): bans `TZS {…toLocaleString}` (toLocaleString INSIDE the unit
+  interpolation) and `*Tzs.toLocaleString`. Verified: catches the 4 antipatterns,
+  no false-positive on count/date toLocaleString (incl. finance's count line).
+- Verified: tsc clean; test:integrity OK.

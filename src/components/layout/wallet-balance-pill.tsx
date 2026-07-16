@@ -17,7 +17,7 @@ import { useT } from "@/lib/i18n";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { cn, formatTzs } from "@/lib/utils";
+import { cn, formatTzs, formatNumber } from "@/lib/utils";
 import { useCashHidden } from "@/components/ui/cash";
 
 const TWEEN_DURATION = 600;     // ms — full rolling-counter run
@@ -143,7 +143,7 @@ export function WalletBalancePill({ balance }: { balance: number }) {
           }}
         >
           {delta > 0 ? "+" : ""}
-          {delta.toLocaleString("en-US")}
+          {formatNumber(delta)}
         </span>
       )}
       <style>{`
