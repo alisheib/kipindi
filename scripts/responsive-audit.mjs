@@ -3,8 +3,8 @@
  *
  * For every surface (player + all 25 operator routes) it loads at EVERY
  * breakpoint (320 / 360 / 390 / 430 / landscape / 768 / 1024 / 1280 / 1920),
- * optionally in EN/SW/ZH, and asserts the §5 pass-criteria of
- * docs/responsiveness-audit.md:
+ * optionally in EN/SW/ZH, and asserts the pass-criteria in
+ * .claude/skills/50pick-standards/references/responsiveness-and-visual.md:
  *   1. 0 horizontal overflow           (documentElement.scrollWidth ≤ clientWidth + 1)
  *   2. no clipped-not-scrolled content (overflow lives in an auto/scroll container)
  *   3. nothing off-screen              (fixed/sticky overlays fully within the viewport)
@@ -17,7 +17,8 @@
  * Screenshots → .50pick-shots/responsive/<surface>/<width>[-<locale>].png  (READ them).
  * Emits a per-surface PASS/FAIL table + a global summary; exit 1 on any hard fail.
  *
- * Run against a FRESH dev server (see docs/next-session-prompt.md §3):
+ * Run against a FRESH server (see the 50pick-standards skill → references/
+ * responsiveness-and-visual.md; prefer `next build && next start` for CSS fidelity):
  *   BASE=http://localhost:3000 node scripts/responsive-audit.mjs
  *
  * Env:

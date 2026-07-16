@@ -9,9 +9,13 @@
 > and where to look before editing anything.
 
 > ⏳ **ACTIVE WORK — Final Audit remediation (pre-real-money launch gate).**
-> 🧭 **START HERE:** invoke the **`50pick-audit` skill** (`.claude/skills/50pick-audit/SKILL.md`)
-> — the operational playbook (safe DB/migration workflow, Railway access, money
-> invariants, ⚠️ every push = a LIVE prod deploy, verify-after-push protocol).
+> 🧭 **START HERE — two always-on skills:**
+> • **`50pick-standards`** (`.claude/skills/50pick-standards/SKILL.md`) — **how we build**:
+>   the quality bar, the 9-role gate, UI-kit & design discipline, the responsiveness matrix
+>   (360/768/1280/1920), visual-verification discipline, testing discipline, copy rules.
+> • **`50pick-audit`** (`.claude/skills/50pick-audit/SKILL.md`) — the ops playbook (safe
+>   DB/migration workflow, Railway access, money invariants, ⚠️ every push = a LIVE prod
+>   deploy, verify-after-push protocol).
 > Progress + current stage: **[`docs/FINAL-AUDIT-REMEDIATION.md`](docs/FINAL-AUDIT-REMEDIATION.md)**
 > ("▶ WHERE WE ARE"). Next-session brief: **[`docs/NEXT-SESSION.md`](docs/NEXT-SESSION.md)**.
 > Work in stages; after each: test → verify (tech/logical/visual/live-DB) → update the tracker → commit → push `main`.
