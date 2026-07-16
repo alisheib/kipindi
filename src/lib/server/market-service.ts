@@ -32,7 +32,7 @@ import { recordSnapshot, seedHistory } from "./market-history";
 import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, notifyAdminMarketResolution, notifyMarketCancelled, notifyAdminMarketCancelled, notifyOneSidedRefund, notifySelectionClosed } from "./notification-service";
 import { sendEmailToUser, betPlacedHtml, winNotificationHtml, lossNotificationHtml, cashOutReceiptHtml, oneSidedRefundHtml, marketResolutionAdminHtml, marketCancelledRefundHtml, marketCancelledAdminHtml, bonusFulfilledHtml, selectionClosedHtml } from "./email";
 import { onRecruitBet, onRecruitSettlement } from "./affiliate-service";
-import { postLedgerEntries, stakeEntries, settlementPayoutEntries, refundEntries, cashoutEntries } from "./ledger";
+import { postLedgerEntries, stakeEntries, settlementPayoutEntries, refundEntries, cashoutEntries, withMoneyTx } from "./ledger";
 import type { ServiceResult } from "./auth-service";
 import { marketStore, positionStore } from "./market-dal";
 import { formatTzs } from "@/lib/utils";
@@ -1571,35 +1571,39 @@ export async function settleMarket(
       // after the lock (queued in pendingBonusRefunds).
       const bonusPart = p.bonusStakeTzs ?? 0;
       const realPart = p.stake - bonusPart;
-      let balanceAfter = w.balance;
-      if (realPart > 0) {
-        const updated = await db.wallet.adjust(w.id, { balance: realPart });
-        balanceAfter = updated?.balance ?? w.balance + realPart;
-      }
-      // L4/C2: finalPayout = the FULL stake, and that is honest — the void refund
-      // returns every shilling: the real part → balance (above) and the bonus part
-      // → a zero-wagering restitution grant (refundBonusToActive never forfeits).
-      p.status = "VOID"; p.finalPayout = p.stake; p.settledAt = settledAt;
-      await positionStore.set(p);
+      const oneSidedTxnId = `txn_${randomId(12)}`;
+      // ATOMIC (audit C3): the real-money refund credit, the position → VOID mark,
+      // the BET_REFUND txn, and the ledger refund group commit together. A ledger
+      // failure rolls the credit back and the position stays OPEN for a clean
+      // resume. (The bonus part is refunded after the lock via pendingBonusRefunds
+      // → a zero-wagering restitution grant, per C2.)
+      await withMoneyTx(async (tx) => {
+        // L4/C2: finalPayout = the FULL stake, honest — real → balance, bonus →
+        // a zero-wagering restitution grant (refundBonusToActive never forfeits).
+        p.status = "VOID"; p.finalPayout = p.stake; p.settledAt = settledAt;
+        if (realPart > 0) {
+          const updated = await db.wallet.adjust(w.id, { balance: realPart }, undefined, tx);
+          if (!updated) throw new Error(`one-sided refund ${m.id}: wallet ${w.id} row missing`);
+          await db.txn.create({
+            id: oneSidedTxnId,
+            walletId: w.id, userId: p.userId,
+            type: "BET_REFUND", status: "CONFIRMED",
+            amount: realPart, fee: 0, taxWithheld: 0,
+            balanceAfter: updated.balance, currency: "TZS",
+            provider: "INTERNAL", providerRef: null, msisdn: null,
+            description: `One-sided refund · "${m.titleEn.slice(0, 60)}"`,
+            positionId: p.id,
+            amlReason: null,
+            createdAt: settledAt, updatedAt: settledAt, completedAt: settledAt,
+          }, tx);
+        }
+        await positionStore.set(p, tx);
+        if (realPart > 0 || bonusPart > 0) {
+          await postLedgerEntries(`refund_${oneSidedTxnId}`, refundEntries({ txnId: oneSidedTxnId, userId: p.userId, marketId: m.id, realPart, bonusPart }), tx);
+        }
+      });
       pendingWagerReversals.push({ userId: p.userId, stake: p.stake });
       if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
-      if (realPart > 0 || bonusPart > 0) {
-        const oneSidedTxnId = `txn_${randomId(12)}`;
-        if (realPart > 0) await db.txn.create({
-          id: oneSidedTxnId,
-          walletId: w.id, userId: p.userId,
-          type: "BET_REFUND", status: "CONFIRMED",
-          amount: realPart, fee: 0, taxWithheld: 0,
-          balanceAfter, currency: "TZS",
-          provider: "INTERNAL", providerRef: null, msisdn: null,
-          description: `One-sided refund · "${m.titleEn.slice(0, 60)}"`,
-          positionId: p.id,
-          amlReason: null,
-          createdAt: settledAt, updatedAt: settledAt, completedAt: settledAt,
-        });
-        // Dual-write: one-sided refund to double-entry ledger (fire-and-forget).
-        postLedgerEntries(`refund_${oneSidedTxnId}`, refundEntries({ txnId: oneSidedTxnId, userId: p.userId, marketId: m.id, realPart, bonusPart })).catch(() => {});
-      }
       notifyOneSidedRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, positionId: p.id });
       sendEmailToUser(p.userId, (email) => ({
         to: email,
@@ -1647,35 +1651,39 @@ export async function settleMarket(
       if (!w) continue;
       const bonusPart = p.bonusStakeTzs ?? 0;
       const realPart = p.stake - bonusPart;
-      let balanceAfter = w.balance;
-      if (realPart > 0) {
-        const updated = await db.wallet.adjust(w.id, { balance: realPart });
-        balanceAfter = updated?.balance ?? w.balance + realPart;
-      }
-      p.status = "VOID";
-      // L4/C2: full-stake refund is honest — real → balance, bonus → restitution grant.
-      p.finalPayout = p.stake;
-      p.settledAt = settledAt;
-      await positionStore.set(p);
+      const refundTxnId = `txn_${randomId(12)}`;
+      // ATOMIC (audit C3): real refund credit + position → VOID + BET_REFUND txn +
+      // ledger refund group commit together; a failure rolls back and the position
+      // stays OPEN for a clean resume. (Bonus part → restitution grant after the
+      // lock via pendingBonusRefunds, per C2.)
+      await withMoneyTx(async (tx) => {
+        p.status = "VOID";
+        // L4/C2: full-stake refund is honest — real → balance, bonus → restitution grant.
+        p.finalPayout = p.stake;
+        p.settledAt = settledAt;
+        if (realPart > 0) {
+          const updated = await db.wallet.adjust(w.id, { balance: realPart }, undefined, tx);
+          if (!updated) throw new Error(`void refund ${m.id}: wallet ${w.id} row missing`);
+          await db.txn.create({
+            id: refundTxnId,
+            walletId: w.id, userId: p.userId,
+            type: "BET_REFUND", status: "CONFIRMED",
+            amount: realPart, fee: 0, taxWithheld: 0,
+            balanceAfter: updated.balance, currency: "TZS",
+            provider: "INTERNAL", providerRef: null, msisdn: null,
+            description: `Refund · "${m.titleEn.slice(0, 60)}" voided`,
+            positionId: p.id,
+            amlReason: null,
+            createdAt: settledAt, updatedAt: settledAt, completedAt: settledAt,
+          }, tx);
+        }
+        await positionStore.set(p, tx);
+        if (realPart > 0 || bonusPart > 0) {
+          await postLedgerEntries(`refund_${refundTxnId}`, refundEntries({ txnId: refundTxnId, userId: p.userId, marketId: m.id, realPart, bonusPart }), tx);
+        }
+      });
       pendingWagerReversals.push({ userId: p.userId, stake: p.stake });
       if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
-      if (realPart > 0 || bonusPart > 0) {
-        const refundTxnId = `txn_${randomId(12)}`;
-        if (realPart > 0) await db.txn.create({
-          id: refundTxnId,
-          walletId: w.id, userId: p.userId,
-          type: "BET_REFUND", status: "CONFIRMED",
-          amount: realPart, fee: 0, taxWithheld: 0,
-          balanceAfter, currency: "TZS",
-          provider: "INTERNAL", providerRef: null, msisdn: null,
-          description: `Refund · "${m.titleEn.slice(0, 60)}" voided`,
-          positionId: p.id,
-          amlReason: null,
-          createdAt: settledAt, updatedAt: settledAt, completedAt: settledAt,
-        });
-        // Dual-write: refund to double-entry ledger (fire-and-forget).
-        postLedgerEntries(`refund_${refundTxnId}`, refundEntries({ txnId: refundTxnId, userId: p.userId, marketId: m.id, realPart, bonusPart })).catch(() => {});
-      }
       notifyRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id });
     }
   } else {
@@ -1698,31 +1706,40 @@ export async function settleMarket(
           { yesPool: m.yesPool, noPool: m.noPool, side: p.side, stake: p.stake },
           settleCfg,
         );
-        const updated = await db.wallet.adjust(w.id, { balance: payout });
-        const balanceAfter = updated?.balance ?? w.balance + payout;
-        p.status = "WIN"; p.finalPayout = payout; p.settledAt = settledAt;
-        await positionStore.set(p);
         const payoutTxnId = `txn_${randomId(12)}`;
-        await db.txn.create({
-          id: payoutTxnId,
-          walletId: w.id, userId: p.userId,
-          type: "BET_PAYOUT", status: "CONFIRMED",
-          amount: payout, fee: 0, taxWithheld: 0,
-          balanceAfter, currency: "TZS",
-          provider: "INTERNAL", providerRef: null, msisdn: null,
-          description: `${opts.outcome} won · "${m.titleEn.slice(0, 60)}"`,
-          positionId: p.id,
-          amlReason: null,
-          createdAt: settledAt, updatedAt: settledAt, completedAt: settledAt,
+        // ATOMIC (audit C3): the wallet credit, the position → WIN mark, the
+        // BET_PAYOUT txn row, and the ledger settlement group all commit in ONE
+        // transaction. This closes TWO holes at once: a ledger group can no longer
+        // be lost while the money moved (the finding), and a crash can no longer
+        // land between "credited" and "marked WIN" — which on resume (OPEN-only
+        // filter) would double-pay. Any throw rolls the whole winner back; the
+        // position stays OPEN and the resumed settlement pays it exactly once.
+        const balanceAfter = await withMoneyTx(async (tx) => {
+          const updated = await db.wallet.adjust(w.id, { balance: payout }, undefined, tx);
+          if (!updated) throw new Error(`settle ${m.id}: wallet ${w.id} row missing for payout`);
+          p.status = "WIN"; p.finalPayout = payout; p.settledAt = settledAt;
+          await positionStore.set(p, tx);
+          await db.txn.create({
+            id: payoutTxnId,
+            walletId: w.id, userId: p.userId,
+            type: "BET_PAYOUT", status: "CONFIRMED",
+            amount: payout, fee: 0, taxWithheld: 0,
+            balanceAfter: updated.balance, currency: "TZS",
+            provider: "INTERNAL", providerRef: null, msisdn: null,
+            description: `${opts.outcome} won · "${m.titleEn.slice(0, 60)}"`,
+            positionId: p.id,
+            amlReason: null,
+            createdAt: settledAt, updatedAt: settledAt, completedAt: settledAt,
+          }, tx);
+          // The ledger books this winner's SHARE of the poll's single fee — summing
+          // every winner's group reconstitutes the whole fee exactly.
+          await postLedgerEntries(`settle_${payoutTxnId}`, settlementPayoutEntries({
+            groupId: `settle_${payoutTxnId}`, userId: p.userId, marketId: m.id,
+            payout, stake: p.stake, fee: settleFee.fee, winningPool,
+            rates: { traTaxOnCommissionRate: settleCfg.traTaxOnCommissionRate, gbtLevyOnCommissionRate: settleCfg.gbtLevyOnCommissionRate },
+          }), tx);
+          return updated.balance;
         });
-        // Dual-write: settlement payout to double-entry ledger (fire-and-forget).
-        // The ledger books this winner's SHARE of the poll's single fee — summing
-        // every winner's group reconstitutes the whole fee exactly.
-        postLedgerEntries(`settle_${payoutTxnId}`, settlementPayoutEntries({
-          groupId: `settle_${payoutTxnId}`, userId: p.userId, marketId: m.id,
-          payout, stake: p.stake, fee: settleFee.fee, winningPool,
-          rates: { traTaxOnCommissionRate: settleCfg.traTaxOnCommissionRate, gbtLevyOnCommissionRate: settleCfg.gbtLevyOnCommissionRate },
-        })).catch(() => {});
         // Tamper-evident chain entry for the payout credit (txn row is the
         // ledger; this anchors it in the HMAC audit chain too).
         audit({ category: "WALLET", action: "bet.payout", actorId: p.userId, targetType: "Position", targetId: p.id, payload: { marketId: m.id, outcome: opts.outcome, payout, balanceAfter } });

@@ -14,7 +14,14 @@
  * NOT wired up until Phase 2 flips the switch in store.ts.
  */
 import { prisma } from "./prisma";
-import type { PrismaClient } from "@prisma/client";
+import type { PrismaClient, Prisma } from "@prisma/client";
+
+// A money-path write can pass a Prisma transaction client (audit C3) so the
+// wallet mutation, its Transaction row, and its ledger entries commit together
+// (see withMoneyTx in ledger.ts). When omitted, the method self-commits as
+// before. `PrismaClient` is assignable to `TransactionClient` (it has a superset
+// of the model delegates), so `tx ?? pc()` is well-typed for the model calls.
+type Db = Prisma.TransactionClient | PrismaClient;
 import type {
   StoredUser,
   StoredKyc,
@@ -697,8 +704,15 @@ export const prismaDb = {
       id: string,
       deltas: { balance?: number; hold?: number; pending?: number; bonusBalance?: number },
       opts?: { requireBalanceGte?: number; requireHoldGte?: number; requireBonusBalanceGte?: number },
+      tx?: Prisma.TransactionClient | null,
     ): Promise<StoredWallet | null> => {
-      try {
+      // In tx mode (a money $transaction, audit C3) a DB error must PROPAGATE so
+      // the whole transaction rolls back — never swallow it to null, or the caller
+      // would commit a half-written movement. A guard failure / missing row still
+      // returns null; the caller throws on that to abort the tx. Self-committing
+      // mode (no tx) keeps the original catch → null contract.
+      const db: Db = tx ?? pc();
+      const run = async (): Promise<StoredWallet | null> => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const where: any = { id };
         if (opts?.requireBalanceGte !== undefined) where.balance = { gte: opts.requireBalanceGte };
@@ -710,20 +724,21 @@ export const prismaDb = {
         if (deltas.hold !== undefined) data.hold = { increment: deltas.hold };
         if (deltas.pending !== undefined) data.pending = { increment: deltas.pending };
         if (deltas.bonusBalance !== undefined) data.bonusBalance = { increment: deltas.bonusBalance };
-        const res = await pc().wallet.updateMany({ where, data });
+        const res = await db.wallet.updateMany({ where, data });
         if (res.count === 0) return null;
-        const row = await pc().wallet.findUnique({ where: { id } });
+        const row = await db.wallet.findUnique({ where: { id } });
         return row ? toStoredWallet(row) : null;
-      } catch {
-        return null;
-      }
+      };
+      if (tx) return run(); // let a guard failure / db error propagate to roll back the tx
+      try { return await run(); } catch { return null; }
     },
   },
 
   // ── TRANSACTION ───────────────────────────────────────────────────────────
   txn: {
-    create: async (t: StoredTxn): Promise<StoredTxn> => {
-      const row = await pc().transaction.create({
+    create: async (t: StoredTxn, tx?: Prisma.TransactionClient | null): Promise<StoredTxn> => {
+      const db: Db = tx ?? pc();
+      const row = await db.transaction.create({
         data: {
           id: t.id,
           walletId: t.walletId,
@@ -764,8 +779,9 @@ export const prismaDb = {
       const row = await pc().transaction.findFirst({ where: { providerRef } });
       return row ? toStoredTxn(row) : null;
     },
-    update: async (id: string, patch: Partial<StoredTxn>): Promise<StoredTxn | null> => {
-      try {
+    update: async (id: string, patch: Partial<StoredTxn>, tx?: Prisma.TransactionClient | null): Promise<StoredTxn | null> => {
+      const db: Db = tx ?? pc();
+      const run = async (): Promise<StoredTxn | null> => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const data: Record<string, any> = {};
         for (const [k, v] of Object.entries(patch)) {
@@ -776,11 +792,12 @@ export const prismaDb = {
             data[k] = v;
           }
         }
-        const row = await pc().transaction.update({ where: { id }, data });
+        const row = await db.transaction.update({ where: { id }, data });
         return toStoredTxn(row);
-      } catch {
-        return null;
-      }
+      };
+      // In tx mode, let the error propagate to roll back; otherwise keep catch → null.
+      if (tx) return run();
+      try { return await run(); } catch { return null; }
     },
     listByStatus: async (status: StoredTxn["status"]): Promise<StoredTxn[]> => {
       const rows = await pc().transaction.findMany({ where: { status } });

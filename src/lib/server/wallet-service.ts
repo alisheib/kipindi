@@ -23,7 +23,7 @@ import { checkDepositLimit, isLockedOut } from "./responsible-gambling";
 import { notifyDeposit, notifyWithdraw, notifyAdminsAmlReview } from "./notification-service";
 import { withLock } from "./locks";
 import { emit } from "./event-bus";
-import { postLedgerEntries, depositEntries, withdrawalEntries, internalCreditEntries } from "./ledger";
+import { postLedgerEntries, depositEntries, withdrawalEntries, internalCreditEntries, withMoneyTx } from "./ledger";
 import { getEffectiveConfig } from "./market-config";
 import { computeWithdrawalFee } from "@/lib/payout";
 import type { z } from "zod";
@@ -260,17 +260,24 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string): Prom
       });
       return { credited: false, balance: fresh.balance, txn: t, rgReversed: true };
     }
-    // Atomic +delta on the live row — never writes back a stale absolute balance.
-    const updated = await db.wallet.adjust(fresh.id, { balance: t.amount });
-    const newBalance = updated?.balance ?? fresh.balance + t.amount;
-    await db.txn.update(txnId, { status: "CONFIRMED", providerRef: providerRef ?? t.providerRef, balanceAfter: newBalance, completedAt: new Date().toISOString() });
+    // Atomic (audit C3): the wallet credit, the txn → CONFIRMED, and the ledger
+    // DEPOSIT group commit together, or none do. A ledger failure now rolls the
+    // credit back (the deposit stays PROCESSING and is retried) instead of moving
+    // the money with no ledger evidence. Still inside the wallet advisory lock, so
+    // the balance can't change under us.
+    const newBalance = await withMoneyTx(async (tx) => {
+      const updated = await db.wallet.adjust(fresh.id, { balance: t.amount }, undefined, tx);
+      if (!updated) throw new Error(`deposit ${txnId}: wallet ${fresh.id} row missing`);
+      await db.txn.update(txnId, { status: "CONFIRMED", providerRef: providerRef ?? t.providerRef, balanceAfter: updated.balance, completedAt: new Date().toISOString() }, tx);
+      await postLedgerEntries(`dep_${t.id}`, depositEntries({ txnId: t.id, userId: t.userId, amount: t.amount, provider: t.provider ?? "INTERNAL" }), tx);
+      return updated.balance;
+    });
     return { credited: true, balance: newBalance, txn: t };
   });
 
   if (outcome.credited && outcome.txn) {
     const t = outcome.txn;
-    // Dual-write: post deposit to double-entry ledger (fire-and-forget).
-    postLedgerEntries(`dep_${t.id}`, depositEntries({ txnId: t.id, userId: t.userId, amount: t.amount, provider: t.provider ?? "INTERNAL" })).catch(() => {});
+    // Ledger DEPOSIT was posted atomically with the credit inside the lock (C3).
     audit({ category: "WALLET", action: "deposit.confirmed", actorId: t.userId, targetType: "Transaction", targetId: t.id, payload: { providerRef: providerRef ?? t.providerRef, balanceAfter: outcome.balance } });
     emit("wallet:balance", { userId: t.userId, balance: outcome.balance });
     notifyDeposit(t.userId, t.amount, friendlyProvider(t.provider));
@@ -339,32 +346,41 @@ async function settleDepositFailed(txnId: string, reason: string): Promise<boole
 async function settleWithdrawalConfirmed(txnId: string): Promise<boolean> {
   const pre = await db.txn.findById(txnId);
   if (!pre) return false;
-  const done = await withLock(`wallet:${pre.userId}`, async (): Promise<StoredTxn | null> => {
+  const done = await withLock(`wallet:${pre.userId}`, async (): Promise<{ txn: StoredTxn; gatewayShare: number } | null> => {
     const t = await db.txn.findById(txnId);
     if (!t || t.status !== "PROCESSING") return null;
     const amt = Math.abs(t.amount);
     const w = await db.wallet.findByUserId(t.userId);
-    if (w) await db.wallet.adjust(w.id, { hold: -amt });
-    await db.txn.update(txnId, { status: "CONFIRMED", completedAt: new Date().toISOString() });
-    return t;
-  });
-  if (done) {
-    const gross = Math.abs(done.amount);
-    // The fee was computed and frozen onto the txn row when the withdrawal was
-    // initiated. Read it back — never recompute, or a rate change between
-    // initiation and settlement would reprice a withdrawal already in flight.
-    const fee = done.fee ?? 0;
-    const net = gross - fee;
-    // The gateway's slice of that fee, at the rates in force. Clamped to the fee
-    // so the ledger group can never be unbalanced by a config change mid-flight.
+    // The fee was frozen onto the txn row at initiation — read it back, never
+    // recompute (a rate change mid-flight would reprice a withdrawal in flight).
+    const fee = t.fee ?? 0;
+    // The gateway's slice, clamped to the fee so the ledger group can't unbalance.
     const wcfg = await getEffectiveConfig().catch(() => null);
     const gatewayShare = wcfg
-      ? Math.min(fee, Math.max(0, Math.round(gross * Math.max(0, wcfg.withdrawalGatewayShareRate))))
+      ? Math.min(fee, Math.max(0, Math.round(amt * Math.max(0, wcfg.withdrawalGatewayShareRate))))
       : 0;
-    // Dual-write: post withdrawal to double-entry ledger (fire-and-forget).
-    postLedgerEntries(`wdr_${done.id}`, withdrawalEntries({ txnId: done.id, userId: done.userId, grossAmount: gross, fee, gatewayShare, provider: done.provider ?? "INTERNAL" })).catch(() => {});
-    audit({ category: "WALLET", action: "withdraw.confirmed", actorId: done.userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: done.providerRef, gross, fee, gatewayShare, net } });
-    notifyWithdrawalSent(done);
+    // Atomic (audit C3): release the hold, mark CONFIRMED, and post the ledger
+    // WITHDRAWAL group together — a ledger failure rolls the whole thing back
+    // (the withdrawal stays PROCESSING and retries) rather than dropping the hold
+    // with no ledger record.
+    await withMoneyTx(async (tx) => {
+      if (w) {
+        const upd = await db.wallet.adjust(w.id, { hold: -amt }, undefined, tx);
+        if (!upd) throw new Error(`withdraw ${txnId}: wallet ${w.id} row missing`);
+      }
+      await db.txn.update(txnId, { status: "CONFIRMED", completedAt: new Date().toISOString() }, tx);
+      await postLedgerEntries(`wdr_${t.id}`, withdrawalEntries({ txnId: t.id, userId: t.userId, grossAmount: amt, fee, gatewayShare, provider: t.provider ?? "INTERNAL" }), tx);
+    });
+    return { txn: t, gatewayShare };
+  });
+  if (done) {
+    const t = done.txn;
+    const gross = Math.abs(t.amount);
+    const fee = t.fee ?? 0;
+    const net = gross - fee;
+    // Ledger WITHDRAWAL was posted atomically with the hold-release inside the lock.
+    audit({ category: "WALLET", action: "withdraw.confirmed", actorId: t.userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: t.providerRef, gross, fee, gatewayShare: done.gatewayShare, net } });
+    notifyWithdrawalSent(t);
   }
   return !!done;
 }

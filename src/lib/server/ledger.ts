@@ -27,7 +27,25 @@
 import { prisma } from "./prisma";
 import { randomId } from "./crypto";
 import { audit } from "./audit";
-import type { LedgerEntryType } from "@prisma/client";
+import type { LedgerEntryType, Prisma } from "@prisma/client";
+
+/**
+ * Run a money movement so its wallet mutation, its Transaction row, and its
+ * ledger entries commit ATOMICALLY (audit C3). With a database it opens one
+ * Prisma `$transaction` and hands the `tx` client to `db.wallet.adjust` /
+ * `db.txn.*` / `postLedgerEntries` — any throw inside rolls the WHOLE movement
+ * back, so the ledger can never be written without the wallet move (or vice
+ * versa). Without a database (dev / unit tests) it runs `fn(null)`: the in-memory
+ * store self-applies and the ledger no-ops, so the SAME caller code path works in
+ * both modes. Lock note: the money paths already hold their wallet/market
+ * advisory lock; this inner tx takes NO advisory lock, so it can't reorder the
+ * wallet→market lock order or deadlock.
+ */
+export async function withMoneyTx<T>(fn: (tx: Prisma.TransactionClient | null) => Promise<T>): Promise<T> {
+  const pcc = prisma();
+  if (!pcc) return fn(null);
+  return pcc.$transaction((tx) => fn(tx), { timeout: 30000, maxWait: 10000 });
+}
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -58,6 +76,7 @@ export interface LedgerLine {
 export async function postLedgerEntries(
   groupId: string,
   entries: LedgerLine[],
+  tx?: Prisma.TransactionClient | null,
 ): Promise<string | null> {
   if (entries.length === 0) return null;
 
@@ -65,12 +84,15 @@ export async function postLedgerEntries(
   const sum = entries.reduce((s, e) => s + e.amount, 0);
   if (Math.abs(sum) > 0.005) {
     console.error(`[ledger] IMBALANCED group ${groupId}: sum=${sum}`, entries);
-    // An imbalanced group is a caller BUG, not a transient failure — surface it.
+    // An imbalanced group is a caller BUG, not a transient failure. In a money
+    // tx (audit C3), THROW so the whole movement rolls back rather than committing
+    // wallet+txn with a rejected ledger. Otherwise surface it as a watched audit.
+    if (tx) throw new Error(`[ledger] imbalanced group ${groupId}: sum=${sum}`);
     void audit({ category: "COMPLIANCE", action: "ledger.imbalanced_rejected", actorId: null, targetType: "LedgerGroup", targetId: groupId, payload: { sum, lines: entries.length } });
     return null;
   }
 
-  const pc = prisma();
+  const pc = tx ?? prisma();
   if (!pc) {
     // No database (local dev / unit tests) — entries are skipped.
     // The in-memory store doesn't have a LedgerEntry model.
@@ -91,6 +113,14 @@ export async function postLedgerEntries(
     marketId: e.marketId ?? null,
     userId: e.userId ?? null,
   }));
+
+  // Atomic mode (inside a money tx): one insert, and any failure THROWS so the
+  // wallet + txn roll back with it — that is the entire point (a ledger write can
+  // no longer be lost while the money moved). No retry/swallow here.
+  if (tx) {
+    await tx.ledgerEntry.createMany({ data, skipDuplicates: true });
+    return groupId;
+  }
 
   const MAX_ATTEMPTS = 3;
   let lastErr: unknown;

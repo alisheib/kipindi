@@ -7,6 +7,7 @@
  */
 import { prisma } from "./prisma";
 import { hasDatabase } from "./prisma";
+import type { Prisma } from "@prisma/client";
 import type { StoredMarket, StoredPosition, MarketStatus, MarketCategory, Side } from "./market-service";
 
 // ---------------------------------------------------------------------------
@@ -107,7 +108,11 @@ export interface MarketStore {
 
 export interface PositionStore {
   get(id: string): Promise<StoredPosition | null>;
-  set(p: StoredPosition): Promise<void>;
+  // tx (audit C3): pass a Prisma transaction client to persist the position in
+  // the SAME transaction as its wallet/txn/ledger movement (settlement), so a
+  // credit and its "paid" mark commit together — no double-pay on resume, no
+  // ledger loss. Ignored by the in-memory store.
+  set(p: StoredPosition, tx?: Prisma.TransactionClient | null): Promise<void>;
   values(): Promise<StoredPosition[]>;
   listForUser(userId: string, limit?: number): Promise<StoredPosition[]>;
   listForMarket(marketId: string): Promise<StoredPosition[]>;
@@ -128,7 +133,7 @@ const memoryMarkets: MarketStore = {
 
 const memoryPositions: PositionStore = {
   async get(id) { return positions.get(id) ?? null; },
-  async set(p) { positions.set(p.id, p); },
+  async set(p, _tx) { positions.set(p.id, p); },
   async values() { return Array.from(positions.values()); },
   async listForUser(userId, limit = 100) {
     return Array.from(positions.values())
@@ -240,8 +245,8 @@ const prismaPositions: PositionStore = {
     const r = await pc().position.findUnique({ where: { id } });
     return r ? toStoredPosition(r) : null;
   },
-  async set(p) {
-    await pc().position.upsert({
+  async set(p, tx) {
+    await (tx ?? pc()).position.upsert({
       where: { id: p.id },
       create: {
         id: p.id, userId: p.userId, marketId: p.marketId,
