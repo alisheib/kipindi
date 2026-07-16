@@ -81,6 +81,20 @@ await (async () => {
     { entryHash: "g3", prevHash: "g2_missing", createdAt: "2026-01-01T00:00:02.000Z" },
   ];
   eq("reconstruct keeps all rows on gap", reconstructChainOrder(gapped).map((r) => r.entryHash).sort(), ["g1", "g3"]);
+
+  // 9. Canonical payload hashing (audit C6) — verification must survive a payload
+  //    KEY REORDER. Postgres jsonb normalizes key order on write, so a payload
+  //    hashed in insertion order comes back reordered; the HMAC must be invariant
+  //    to that or the persisted chain (and the ring after a rehydrate) would
+  //    falsely read BROKEN for every multi-key payload. We simulate the round-trip
+  //    by rebuilding the live ring entry's payload with the same values in a
+  //    different key order — the chain must stay valid.
+  await audit({ category: "WALLET", action: "deposit.multi", actorId: "usr_c", targetType: "User", targetId: "usr_c", payload: { provider: "AZAM", amount: 100, note: "x", nested: { z: 1, a: 2 } } });
+  await auditFlush();
+  ok("chain valid before reorder", verifyChain().valid);
+  const latest = getAuditPage({ limit: 1 })[0]; // newest-first; live ring ref
+  latest.payload = { nested: { a: 2, z: 1 }, note: "x", amount: 100, provider: "AZAM" }; // same data, keys reordered
+  ok("canonical hash survives payload key reorder", verifyChain().valid);
 })();
 
 console.log(`\naudit-chain: ${pass} passed, ${fail} failed`);

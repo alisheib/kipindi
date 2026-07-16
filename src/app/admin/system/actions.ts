@@ -4,7 +4,7 @@ import { safeError } from "@/lib/server/safe-error";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
-import { verifyChain } from "@/lib/server/audit";
+import { verifyChainFull } from "@/lib/server/audit";
 import { audit } from "@/lib/server/audit";
 import { revalidatePath } from "next/cache";
 import { setSupportConfig } from "@/lib/support-config";
@@ -26,18 +26,23 @@ async function requireAdmin() {
 export async function verifyChainAction() {
   const session = await requireAdmin();
   try {
-    const result = verifyChain();
+    // DB-authoritative full walk (audit C6) — validates the entire persisted
+    // chain, not just this instance's in-memory ring, so it stays correct when
+    // the platform runs on more than one container.
+    const result = await verifyChainFull();
     audit({
       category: "ADMIN",
       action: "audit.chain.verified",
       actorId: session.userId,
       targetType: null,
       targetId: null,
-      payload: result.valid ? { valid: true } : { valid: false, firstBreakAt: result.firstBreakAt, index: result.index },
+      payload: result.valid
+        ? { valid: true, total: result.total }
+        : { valid: false, firstBreakAt: result.firstBreakAt, index: result.index, total: result.total },
     });
     return result;
   } catch (err) {
-    return { valid: false as const, firstBreakAt: null, index: -1, error: safeError(err, "Verification failed") };
+    return { valid: false as const, firstBreakAt: null, index: -1, total: 0, error: safeError(err, "Verification failed") };
   }
 }
 

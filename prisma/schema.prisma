@@ -647,12 +647,19 @@ model AuditLog {
   ip         String?
   userAgent  String?
   createdAt  DateTime      @default(now())
+  // Monotonic insertion counter (BIGSERIAL). Used only to find the chain tail in
+  // O(log n) — selectHead() reads the greatest seq and confirms it is a true tail
+  // (audit C6). Never the source of truth for chain ORDER; the prevHash links are.
+  seq        BigInt        @unique @default(autoincrement())
   // HMAC chain: prevHash links to the previous entry's entryHash ("GENESIS" for
   // the first); entryHash is the HMAC over the row. Together they make the table
   // tamper-evident — any deletion or in-place edit breaks the chain on verify.
+  // @@unique([prevHash]) makes the chain physically fork-proof: two entries can
+  // never share a predecessor, so multi-instance appends can't diverge (C6).
   prevHash   String        @default("GENESIS")
   entryHash  String        @unique
 
+  @@unique([prevHash])
   @@index([category, createdAt])
   @@index([actorId, createdAt])
   @@index([targetType, targetId])
