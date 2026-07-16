@@ -10,6 +10,7 @@ import { allMnoHealth, getKillSwitches, reconcile, retryQueue } from "@/lib/serv
 import { formatTzs, formatTzsCompact, formatDateTime } from "@/lib/utils";
 import { KillSwitch } from "./kill-switch-toggle";
 import { RetryControls } from "./retry-controls";
+import { ReconcileControls } from "./reconcile-controls";
 
 export const metadata = { title: "Admin · Payments ops" };
 export const dynamic = "force-dynamic";
@@ -58,6 +59,19 @@ export default async function PaymentsOpsPage() {
             )}
           </div>
           <p className="mt-2 font-mono text-[10px] text-text-tertiary">A confirmed movement reconciles when it carries the PSP correlation ref. Drift must be TZS 0.</p>
+          {recon.unmatchedRefs.length > 0 && (
+            <div className="mt-3 border-t border-border-subtle pt-3">
+              <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-subtle mb-2">Unmatched movements — match to a PSP ref or write off (A3)</p>
+              <ul className="space-y-1.5">
+                {recon.unmatchedRefs.map((id) => (
+                  <li key={id} className="flex items-center justify-between gap-3 flex-wrap">
+                    <span className="font-mono text-[10.5px] text-text-tertiary">{id}</span>
+                    <ReconcileControls txnId={id} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </AdminCard>
 
         {/* Per-MNO health cards. */}

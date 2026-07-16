@@ -31,9 +31,15 @@ Ordered by value for a clean go-live + real-money ops. Update status inline.
       lockstep; overdraw blocked). *Deferred (lower value):* per-player limit
       override, force-reverify KYC, resend-comms. *Hardening:* two-officer for
       large adjustments (like AML ≥1M).
-- [ ] **A3 · Reconciliation match / write-off** — §9.3 #7. `payment-ops.reconcile()`
-      is view-only; add manual "match / write-off with reason" (audited) for real PSP ops.
-- [ ] **A4 · Withdrawal retry + bulk retry** — §9.3 #8. Today deposit-only, single.
+- [x] **A3 · Reconciliation match / write-off** — §9.3 #7. DONE:
+      `reconcileMatchAction` (set the PSP settlement ref → clears drift) +
+      `reconcileWriteOffAction` (sentinel ref + mandatory reason), both gated +
+      `COMPLIANCE`-audited (no money moves); `ReconcileControls` per unmatched item
+      on `/admin/payments`.
+- [~] **A4 · Withdrawal retry** — §9.3 #8. DONE: `retryWithdrawalAction`
+      (re-runs the tested `withdraw()`; the failed one was auto-refunded at
+      fail-time, so no double-pay) + Retry now shown for WITHDRAWAL rows. *Deferred
+      (lower value):* bulk "retry all" + auto-retry policy.
 - [ ] **A5 · Materialise heavy aggregates** — P2/§9.4: payout-sum, `stats-band`,
       per-MNO health still full-scan the txn table. Cache before high traffic.
 - [ ] **A6 · Featured/pinned markets** — §9.3 #3. `isPinned` + admin pin control +

@@ -82,3 +82,57 @@ export async function cancelRefundTxnAction(formData: FormData): Promise<Result>
   revalidatePath("/admin/payments");
   return { ok: true };
 }
+
+/** Retry a failed WITHDRAWAL via the tested withdraw() flow; cancel the old
+ *  record (A4). A failed withdrawal was auto-refunded to spendable balance at
+ *  fail-time, so re-initiating debits from the restored balance — no double-pay. */
+export async function retryWithdrawalAction(formData: FormData): Promise<Result> {
+  const g = await gate("retryWithdrawal");
+  if ("error" in g) return { ok: false, error: g.error };
+  const txnId = String(formData.get("txnId") ?? "");
+  const t = await db.txn.findById(txnId);
+  if (!t || t.type !== "WITHDRAWAL" || t.status !== "FAILED") return { ok: false, error: "Not a retryable failed withdrawal." };
+  const { withdraw } = await import("@/lib/server/wallet-service");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const r = await withdraw(t.userId, { provider: (t.provider ?? "MPESA"), amount: Math.abs(t.amount), msisdn: t.msisdn ?? undefined } as any);
+  await db.txn.update(txnId, { status: "CANCELLED", description: `${t.description ?? "withdrawal failed"} · superseded by retry` });
+  audit({ category: "WALLET", action: "payments.retry.withdrawal", actorId: g.userId, targetType: "Transaction", targetId: txnId, payload: { retried: r.ok, newStatus: r.ok ? r.data?.status : null } });
+  revalidatePath("/admin/payments");
+  return r.ok ? { ok: true } : { ok: false, error: r.error ?? "Retry failed again." };
+}
+
+/** PSP reconciliation — manually MATCH an unmatched CONFIRMED money movement to a
+ *  provider settlement id (A3). The ref removes it from reconcile() drift. */
+export async function reconcileMatchAction(formData: FormData): Promise<Result> {
+  const g = await gate("reconcileMatch");
+  if ("error" in g) return { ok: false, error: g.error };
+  const txnId = String(formData.get("txnId") ?? "");
+  const providerRef = String(formData.get("providerRef") ?? "").trim().slice(0, 120);
+  const reason = String(formData.get("reason") ?? "").trim().slice(0, 200);
+  if (providerRef.length < 3) return { ok: false, error: "Enter the provider settlement reference." };
+  const t = await db.txn.findById(txnId);
+  if (!t || t.status !== "CONFIRMED" || (t.type !== "DEPOSIT" && t.type !== "WITHDRAWAL")) return { ok: false, error: "Not an unmatched settled money movement." };
+  if (t.providerRef) return { ok: false, error: "Already matched." };
+  await db.txn.update(txnId, { providerRef });
+  audit({ category: "COMPLIANCE", action: "payments.reconcile.matched", actorId: g.userId, targetType: "Transaction", targetId: txnId, payload: { providerRef, reason, type: t.type, amount: Math.abs(t.amount) } });
+  revalidatePath("/admin/payments");
+  return { ok: true };
+}
+
+/** PSP reconciliation — WRITE OFF an unmatched item with no PSP correlation
+ *  (e.g. a manual/internal movement), with a mandatory reason (A3). Records a
+ *  sentinel ref so it clears drift + a watched COMPLIANCE audit. No money moves. */
+export async function reconcileWriteOffAction(formData: FormData): Promise<Result> {
+  const g = await gate("reconcileWriteOff");
+  if ("error" in g) return { ok: false, error: g.error };
+  const txnId = String(formData.get("txnId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim().slice(0, 200);
+  if (reason.length < 5) return { ok: false, error: "A write-off reason (≥ 5 chars) is required." };
+  const t = await db.txn.findById(txnId);
+  if (!t || t.status !== "CONFIRMED" || (t.type !== "DEPOSIT" && t.type !== "WITHDRAWAL")) return { ok: false, error: "Not an unmatched settled money movement." };
+  if (t.providerRef) return { ok: false, error: "Already matched." };
+  await db.txn.update(txnId, { providerRef: `WRITEOFF-${g.userId.slice(0, 10)}`, amlReason: reason });
+  audit({ category: "COMPLIANCE", action: "payments.reconcile.written_off", actorId: g.userId, targetType: "Transaction", targetId: txnId, payload: { reason, type: t.type, amount: Math.abs(t.amount) } });
+  revalidatePath("/admin/payments");
+  return { ok: true };
+}

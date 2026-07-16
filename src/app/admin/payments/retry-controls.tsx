@@ -6,7 +6,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
-import { retryDepositAction, cancelRefundTxnAction } from "./payment-actions";
+import { retryDepositAction, retryWithdrawalAction, cancelRefundTxnAction } from "./payment-actions";
 
 export function RetryControls({ txnId, type }: { txnId: string; type: "DEPOSIT" | "WITHDRAWAL" }) {
   const [pending, startTransition] = useTransition();
@@ -38,11 +38,9 @@ export function RetryControls({ txnId, type }: { txnId: string; type: "DEPOSIT" 
 
   return (
     <span className="inline-flex items-center gap-2">
-      {type === "DEPOSIT" && (
-        <button type="button" disabled={pending} onClick={() => run(retryDepositAction, "Retry dispatched")} className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.08em] text-royal-300 hover:underline disabled:opacity-40">
-          <I.rotateCcw s={11} /> Retry
-        </button>
-      )}
+      <button type="button" disabled={pending} onClick={() => run(type === "DEPOSIT" ? retryDepositAction : retryWithdrawalAction, "Retry dispatched")} className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.08em] text-royal-300 hover:underline disabled:opacity-40">
+        <I.rotateCcw s={11} /> Retry
+      </button>
       <button type="button" disabled={pending} onClick={() => setConfirmCancel(true)} className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.08em] text-text-subtle hover:text-claret-300 disabled:opacity-40">
         <I.x s={11} /> Cancel
       </button>
