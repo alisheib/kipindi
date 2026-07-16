@@ -8,9 +8,15 @@
 > Read this first. It tells you what's true about the codebase right now,
 > and where to look before editing anything.
 
-> ⏳ **ACTIVE WORK — pre-real-money launch.** The **Final Audit is COMPLETE** — all
-> 11 Criticals + Highs + Mediums closed (record: [`docs/FINAL-AUDIT-REMEDIATION.md`](docs/FINAL-AUDIT-REMEDIATION.md)).
-> Now finishing the **perfection-plan §9 enhancement work** before the payment gateway.
+> ⏳ **ACTIVE WORK — pre-real-money launch.** The **Final Audit is COMPLETE** (all
+> 11 Criticals + Highs + Mediums, record: [`docs/FINAL-AUDIT-REMEDIATION.md`](docs/FINAL-AUDIT-REMEDIATION.md))
+> **and the §9 enhancement batch is DONE + LIVE.** Money-ops (A1–A5, M2 exact payouts,
+> audited balance-adjust + force-reverify-KYC) and Session-E's §9 UI/compliance work
+> (A8 unified maker-checker · A9 config factory · A10 money-format guard · A11 six
+> popups→`<Modal>` · A17/§9.2/§9.4 · A18 tap-targets · A19 carousels) merged
+> zero-conflict @ `023dfbf` and verified on prod. **Nothing in the plan now blocks
+> launch — the one remaining unblock is the payment aggregator API keys** (in
+> progress). Remaining code = optional admin features (A6/A7/A13–A16) + polish.
 > 🧭 **START HERE — two always-on skills:**
 > • **`50pick-standards`** (`.claude/skills/50pick-standards/SKILL.md`) — **how we build**:
 >   the quality bar, the 9-role gate, UI-kit & design discipline, the responsiveness matrix

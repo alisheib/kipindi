@@ -10,15 +10,20 @@
 ## 0 · Where the audit stands
 
 **All 11 Criticals, all Highs, all Mediums are closed** (see the audit tracker).
-The remaining code items are optional AAA-polish / hardening, none blocking launch:
-- **L6** (44px tap targets) — money controls done (chips, bet-confirm Cancel,
-  Change side); top-bar Wallet/Deposit pill, dial Lock/Unlock, language switcher,
-  admin tabs remain (AAA upgrade; AA/2.5.8 already met).
+**The Session-E §9 enhancement batch is merged + live (023dfbf, 2026-07-16):**
+unified maker-checker, config factory (affiliate), money-format hygiene + guard, 6
+popups → `<Modal>`, tap targets ≥44px, /live + /results carousels. The remaining
+code items are optional admin features (A6/A7/A13–A16) + polish, none blocking launch:
+- **L6** (44px tap targets) — **DONE for the named set** (money controls, top-bar
+  Wallet/Deposit pill, dial Lock/Unlock, language switcher, admin tabs/sort/period).
+  Remaining <44px: logo Home link, desktop nav links, /proposals buttons — a future
+  sweep; AA/2.5.8 already met.
+- **M2** largest-remainder payout — **DONE** (Σ payouts == floor(netPool) exactly).
 - **bet-STAKE single-`$transaction`** — the one C3 atomicity exception (settlement,
   deposit, withdraw, refunds are already atomic; the money is correct + drift is
-  detected/alerted, so this is hardening, not a blocker).
-- **M2** largest-remainder payout (bounded, tested dust today) · **C5** webhook
-  nonce table (idempotency already prevents double-credit).
+  detected/alerted, so this is hardening, not a blocker; fresh focused session).
+- **C5** webhook nonce table — closed as won't-build (idempotency already prevents
+  double-credit; a nonce would reject providers' legitimate retries).
 
 ---
 
@@ -35,10 +40,11 @@ These are environment / infra actions, each verified against the code:
   genesis so the ledger, the audit chain, and every wallet reconcile from zero.
   This clears: the test float, the pre-C6 audit rows (hashed pre-canonical), and
   any historical ledger gaps. After this, ANY trial-balance drift = a real defect.
-- [ ] **Set the payment webhook secrets** (see §2): `SELCOM_WEBHOOK_SECRET`,
-  `AZAMPAY_WEBHOOK_SECRET`, `MIXX_WEBHOOK_SECRET` (exact names). Boot warns per
-  missing secret in production; a provider whose secret is missing rejects EVERY
-  callback (401) → deposits never credit.
+- [~] **Set the payment webhook secrets** (see §2): `SELCOM_WEBHOOK_SECRET` is SET
+  in prod (2026-07-16 boot no longer warns on it); `AZAMPAY_WEBHOOK_SECRET`,
+  `MIXX_WEBHOOK_SECRET` still to set as each provider is enabled (exact names). Boot
+  warns per missing secret in production; a provider whose secret is missing rejects
+  EVERY callback (401) → deposits never credit.
 - [ ] **Repoint DNS** `50pick.tz` + `www.50pick.tz` → Railway. They currently
   resolve to an Apache parking page; the app is only reachable at
   `https://kipindi-production.up.railway.app`. Verify-after-deploy uses the

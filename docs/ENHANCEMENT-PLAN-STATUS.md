@@ -7,8 +7,27 @@
 > Grouped: **(A) code-doable now · (B) needs Ali (infra/creds/assets/decision) ·
 > (C) optional polish.** Work top-down within (A); update as we go.
 
-Big picture: kit rollout + feature backlog are essentially shipped. Real remaining
-surface = §9 (unify primitives + missing admin controls) + a few infra/assets.
+## ⭐ WHERE WE STAND (2026-07-16, after the Session-E merge → LIVE @ 023dfbf)
+
+**Nothing in the enhancement plan blocks payment integration or launch.** The
+launch-critical work is DONE and deployed:
+- **Audit** — all 11 Criticals + all Highs + all Mediums closed.
+- **Money-ops (Session M)** — A1–A5, M2 exact-conservation payouts, audited
+  balance-adjust + force-reverify-KYC. Money is atomic, provable (trial balance),
+  fork-proof (audit chain), drift-detected.
+- **Session E (§9 UI/compliance)** — A8 unified maker-checker, A9 config factory
+  (affiliate), A10 money-format hygiene + guard, A11 six popups → `<Modal>`,
+  A17/§9.2/§9.4 cleanups, A18 tap targets ≥44px, A19 /live + /results carousels.
+  Merged zero-conflict, full gate green, prod verified (200s, logs clean, visual
+  0 hard fails at 360/768/1280/1920).
+
+**The ONE thing that unblocks real money = the payment aggregator API keys**
+(item B below). Everything else remaining is *optional* admin features (A6/A7/
+A13–A16) and polish — nice operational tooling, not launch gates. See
+`GO-LIVE-READINESS.md` §2 for the exact keys-today wiring.
+
+Big picture: kit rollout + feature backlog are shipped; §9 primitives-unification
+is done. Real remaining surface = a few optional admin features + Ali's infra/creds.
 
 ---
 
@@ -59,28 +78,51 @@ Ordered by value for a clean go-live + real-money ops. Update status inline.
 - [ ] **A7 · Configurable compliance knobs** — §9.3 #2. Surface KYC maker-checker
       threshold (70), AML threshold (1M), KYC SLA, reject reason-codes, void reasons
       in `/admin/config` (hardcoded in `kyc-risk.ts`).
-- [ ] **A8 · `twoOfficerGate()` + `<AttestationRail>`** — §9.1. Unify maker-checker
-      duplicated in reports/kyc/resolver/objections.
-- [ ] **A9 · Migrate config modules to `defineConfig`** — §9.1. ~8 modules still
-      hand-roll globalThis-cache + ensureHydrated (only bonus/proposals migrated).
-- [ ] **A10 · Money-format hygiene** — §9.1. Convert remaining ~9 component
-      `.toLocaleString` on money → `formatTzs`; add a lint rule banning it.
-- [ ] **A11 · Migrate 6 player popups to `<Modal>`** — §9.1 (bet-confirm, sell-confirm,
-      operation-result, win-celebration, first-visit-primer, reality-check). Needs
-      visual re-verify at 360/768/1280/1920.
+- [x] **A8 · `twoOfficerGate()` + `<AttestationRail>`** — §9.1. DONE (Session E).
+      Shared `src/lib/server/two-officer.ts` + `components/admin/attestation-rail.tsx`;
+      reports/kyc/resolver banners unified; **KYC self-approval now also writes a
+      `conflict_blocked` COMPLIANCE audit** (was silent). objections = single-officer
+      by design. *M follow-up (optional):* resolver/emergency-void B≠A gate in the
+      DENYLISTED `market-service.ts` could adopt the helper — behaviourally identical.
+- [~] **A9 · Migrate config modules to `defineConfig`** — §9.1. **affiliate-config
+      DONE (Session E).** The other 6 deliberately NOT force-migrated with rationale
+      (proposals already on it; ai-config has no setter; ai-poll-config is intentionally
+      not DB-persisted; ai-ops-config has read-time coercion + unaudited setters;
+      **platform-config awaits-first-read for the maintenance money-gate — migrating
+      would open a post-boot OFF window (money-safety regression)**; test-overrides is
+      a POCA §16 COMPLIANCE control). platform-config needs an "await-first-read"
+      factory option (also touches bonus-config) — an M-side call. See session-E-notes.
+- [x] **A10 · Money-format hygiene** — §9.1. DONE (Session E). Every editable-UI money
+      `.toLocaleString` → `formatTzs`/`formatTzsCompact`/`formatNumber`; a precise A10
+      guard added to `test:integrity` (no ESLint in repo) banning `TZS {…toLocaleString}`
+      / `*Tzs.toLocaleString` in src/components + src/app (skips src/lib/server).
+      *M follow-up (cosmetic):* server-side money `.toLocaleString` in `src/lib/server/**`
+      (analytics/validators/RG/reports) — out of the UI guard's scope.
+- [x] **A11 · Migrate 6 player popups to `<Modal>`** — §9.1. DONE (Session E).
+      bet-confirm/sell-confirm/operation-result/win-celebration/first-visit-primer/
+      reality-check all on the extended `<Modal>` (added `zIndex`/`ariaBusy`/`sheet`);
+      wrapper-only, no bet/sell/settlement logic changed. Visual re-verified.
 - [ ] **A12 · Async in-memory store** — §9.4. Kills the `Promise.resolve(db.x()).catch`
-      crash class (true dev↔prod parity). Broad but mechanical.
+      crash class (true dev↔prod parity). Broad but mechanical. *Not a launch gate*
+      (prod uses the Prisma DAL; the in-memory store is test-only + now boot-blocked
+      under NODE_ENV=production).
 - [ ] **A13 · Officer directory / RBAC UI** — §9.3 #11. `/admin/roles` role assignment.
 - [ ] **A14 · Scheduled reports engine** — §9.3 #6. cadence/recipients/pause/delete.
 - [ ] **A15 · Post-publish market edit (audited)** — §9.3 #9. copy/source/criterion +
       merge/dup detection.
 - [ ] **A16 · Bonus start/end windows + targeting** — §9.3 #10.
-- [ ] **A17 · Live-ops matches feed** — §9.3 #12. Decide: hide the empty section, or
-      wire a real feed (never fabricate). (Currently shows empty "no live matches".)
-- [ ] **A18 · L6 remainder (visual)** — top-bar Wallet/Deposit pill, dial Lock/Unlock,
-      lang switcher, admin tabs → ≥44px; re-run responsive-audit. AAA (AA met).
-- [ ] **A19 · P1 delighters** — `/live` carousel auto-advance + swipe; `/results`
-      notable arrows/swipe.
+- [~] **A17 · Live-ops matches feed** — §9.3 #12. **DONE (Session E):** the empty
+      "no live matches" card is hidden (renders only on a real feed); scaffolding
+      stays ready for the signed Sportradar feed; never fabricates. (Wiring a real
+      feed is a (B) integration.)
+- [~] **A18 · L6 tap targets (visual)** — §9.1. **DONE (Session E) for the named set:**
+      top-bar Wallet/Deposit pill, dial Lock/Unlock (112×44, no overlap), language
+      switcher, admin tabs/sort/period → ≥44px (height-only, no reflow; touch-warns
+      756→473, 0 hard fails). *Remaining (out of scope, flagged):* logo Home link,
+      desktop nav links, /proposals buttons still <44px — a future L6 sweep. AA met.
+- [x] **A19 · P1 delighters** — §9.1. DONE (Session E). `/live` FeaturedContest
+      auto-advance (6s, reduced-motion aware) + swipe; `/results` notable-carousel
+      (gold arrows + ←/→ + dots + swipe, no auto-advance). Verified live on prod.
 - [~] **A20 · Audit hardenings** —
       • **C5 webhook nonce — WON'T BUILD (verified 2026-07-16):** redundant AND
         harmful. Settlement is already idempotent (status-gated + amount-verify +
@@ -114,7 +156,12 @@ F1–F5/F7–F9/F11/F13, regulator-pack maker-checker.
 
 ## (B) Needs Ali — infra / credentials / assets / decision
 - [ ] **R2 bucket + credentials** (activates A1). Cloudflare R2 (S3-compatible).
-- [ ] **Payment aggregator** (Selcom/AzamPay/Mixx) integration → then `AUTO_SETTLE=true`. See `GO-LIVE-READINESS.md` §2.
+- [ ] **⭐ Payment aggregator API keys (Selcom/AzamPay) — IN PROGRESS (keys today).**
+      Wire `PAYMENT_AGGREGATOR`/`PAYMENT_API_KEY`/`PAYMENT_API_SECRET` + the two
+      outbound calls in `payments.ts` → then `AUTO_SETTLE=true`. Inbound webhook,
+      settlement state-machine, ledger, ops are ALL built. `SELCOM_WEBHOOK_SECRET`
+      is set in prod; `AZAMPAY_`/`MIXX_WEBHOOK_SECRET` still to set per provider
+      enabled. See `GO-LIVE-READINESS.md` §2 for the exact wiring.
 - [ ] **VAPID keys** for web-push (F4 in stub mode).
 - [ ] **⊘ bitmap assets:** TZ hero-bg.webp, 4 MNO logos, regulator seal, propose/bonus/invite banners, navy-weave texture, category *.webp.
 - [ ] **F6 seeded liquidity** — business/compliance decision (+ TRA tax-base ruling; unused `HousePoolLedger`).
@@ -126,5 +173,8 @@ F1–F5/F7–F9/F11/F13, regulator-pack maker-checker.
 
 ## (C) Optional polish (low value / covered another way)
 - win-seal.png (RewardBurst is SVG) · category section-toppers (glyph tier covers it)
-  · OG brand fonts · per-locale manifest · collapse overlapping Chip variants ·
-  remove dead KPI `tone`/`gold` branch in admin-shell.
+  · OG brand fonts · per-locale manifest.
+- **DONE (Session E):** dead KPI `tone="gold"` alias removed from `AdminKpi` (§9.4).
+- **Gated on Ali:** collapse overlapping Chip call-site variants — chip.tsx already
+  solves the overlap structurally; collapsing the aliases is a design decision
+  pending Ali's sign-off (§9.2).
