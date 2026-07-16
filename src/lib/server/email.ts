@@ -91,7 +91,7 @@ export async function sendEmail({ to, subject, html, tag, trackLinks = true }: S
 }
 
 // ─── Brand Kit v2 "Needle" — email design tokens ────────────────────────
-// Matched to the email signature (50pick/Email Signatures/signature.html)
+// Aligned with the brand mark in src/lib/brand-mark.ts (single source).
 
 // Exact hex conversions of the OKLCH tokens in globals.css
 const BRAND_BG = "#0c0e28";        // --bg-base

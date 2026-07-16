@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  
-  <path d="M 50 4 A 46 46 0 0 0 50 96 Z" fill="#1EA362"></path>
-  <path d="M 50 4 A 46 46 0 0 1 50 96 Z" fill="#B03A3E"></path>
-  <line x1="50" y1="1.5" x2="50" y2="98.5" stroke="#E3BC66" stroke-width="3" stroke-linecap="round"></line>
-  <text x="50" y="62" text-anchor="middle" font-family="&#39;JetBrains Mono&#39;,ui-monospace,monospace" font-weight="700" font-size="33" letter-spacing="-0.04em" fill="#F7F8FC">50</text>
-</svg>

@@ -237,7 +237,7 @@ const Ibase = {
   emptyLeaderboard: (p: GlyphProps) => <GL {...p}><path d="M19 12h26v9a13 13 0 0 1-26 0z" /><path d="M19 16h-7v3a7 7 0 0 0 7 7M45 16h7v3a7 7 0 0 1-7 7" /><path d="M32 34v6M25 52h14M27 52l1.5-8h7l1.5 8" /><path d="M32 20l1.4 2.9 3.2.4-2.3 2.2.6 3.1L32 29.3l-2.9 1.3.6-3.1-2.3-2.2 3.2-.4z" fill="currentColor" stroke="none" /></GL>,
 };
 
-/* ── Final UI enhancement Kit additions (Claude Design, glyphs-additions.tsx) ──
+/* ── Controlled-Poll glyph additions ──
    Spread last so the three redraws (percent, activity) and the final
    controlled-poll geometry win over any interim originals in Ibase. */
 const Iplus = {
