@@ -8,7 +8,9 @@
 > Read this first. It tells you what's true about the codebase right now,
 > and where to look before editing anything.
 
-> ⏳ **ACTIVE WORK — Final Audit remediation (pre-real-money launch gate).**
+> ⏳ **ACTIVE WORK — pre-real-money launch.** The **Final Audit is COMPLETE** — all
+> 11 Criticals + Highs + Mediums closed (record: [`docs/FINAL-AUDIT-REMEDIATION.md`](docs/FINAL-AUDIT-REMEDIATION.md)).
+> Now finishing the **perfection-plan §9 enhancement work** before the payment gateway.
 > 🧭 **START HERE — two always-on skills:**
 > • **`50pick-standards`** (`.claude/skills/50pick-standards/SKILL.md`) — **how we build**:
 >   the quality bar, the 9-role gate, UI-kit & design discipline, the responsiveness matrix
@@ -16,9 +18,15 @@
 > • **`50pick-audit`** (`.claude/skills/50pick-audit/SKILL.md`) — the ops playbook (safe
 >   DB/migration workflow, Railway access, money invariants, ⚠️ every push = a LIVE prod
 >   deploy, verify-after-push protocol).
-> Progress + current stage: **[`docs/FINAL-AUDIT-REMEDIATION.md`](docs/FINAL-AUDIT-REMEDIATION.md)**
-> ("▶ WHERE WE ARE"). Next-session brief: **[`docs/NEXT-SESSION.md`](docs/NEXT-SESSION.md)**.
-> Work in stages; after each: test → verify (tech/logical/visual/live-DB) → update the tracker → commit → push `main`.
+> 📍 **Current trackers:** [`docs/ENHANCEMENT-PLAN-STATUS.md`](docs/ENHANCEMENT-PLAN-STATUS.md)
+> (the finish-the-plan queue, grouped code-doable / needs-Ali / optional) ·
+> [`docs/GO-LIVE-READINESS.md`](docs/GO-LIVE-READINESS.md) (pre-launch ops + payment-gateway
+> map) · [`docs/PARALLEL-SESSION-COORDINATION.md`](docs/PARALLEL-SESSION-COORDINATION.md)
+> (when two sessions run at once — Session M owns `main`/deploys/money/schema; Session E is
+> branch-only).
+> Work in stages; after each: test (**full `npm run test:all` before any money push**) →
+> verify (tech/logical/visual/live-DB, against `kipindi-production.up.railway.app`) → update
+> the trackers → commit → push `main`.
 
 ## What this is
 
