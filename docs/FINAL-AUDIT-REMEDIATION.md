@@ -11,10 +11,11 @@
 > **Follow-ups (not blocking):** (a) clear the persisted `test.overrides.allowConflictedResolution` flag via the audited admin path (runtime guard already holds it false); prod DB host is `postgres.railway.internal` so it's only writable from inside Railway or the admin UI. (b) prod is missing `AZAMPAY_WEBHOOK_SECRET` / `MIXX_WEBHOOK_SECRET` (boot warned — H7 working) — set before enabling those providers. (c) 6 Redis services on the 50pick project look unused (rate limiter is in-memory) — verify + prune.
 > **Railway:** CLI logged in as alisheib07 (50pick = `5e87353c`). Deleted the awarkeh zombie project `e6050dcf` from this account (was mixing accounts; LIVE awarkeh is a different project under awarkehmobiles@outlook.com).
 > ## ▶ WHERE WE ARE
-> - **Stages 1–7, 9, 11 complete; Stage 8 partial** (M3 ✓, ops skill ✓, local PG ready). Next: **C3 + C6** (need local PG + focus), then **Stage 10** (a11y/security) and **Stage 12** (CI/Sentry).
-> - **Full regression sweep: 61/62 green** (`test:responsive` needs a live server; `test:trilingual` is **flaky under full-sweep load only** — passes 36/36 standalone + via the harness, failed 2 of 3 full sweeps — pre-existing, not a code regression; stabilise in CI, Stage 12).
-> - **Closed so far:** C1, C2, C4, C7, C8, C9, C10, C11, H4, H5, H7, H12, M1, M3, M4, M5, M6, M7, M9, M11, M12, L1 (+ C5 exploit); repo cleanup done.
-> - **What's LEFT overall:** C3, C6 (money-provability, need Postgres); H1/H10/H11; M2(verify)/M8; L2–L6; CI (H9) + Sentry (H6) scaffold.
+> - **Stages 1–7, 9, 11 complete; Stage 10 Highs done (H1/H10/H11); Stage 8 partial** (M3 ✓, ops skill ✓, local PG ready). **Prod is HEALTHY (HTTP 200)** after the C7 hotfix. Railway CLI logged in as alisheib07 (50pick=`5e87353c`).
+> - **10 of 11 Criticals closed** (all but C3, C6). Verified on the LIVE deploy: homepage renders, new logo, YES/NO colors, HTTP 200.
+> - **Closed so far:** C1, C2, C4, C5(exploit), C7, C8, C9, C10, C11, H1, H4, H5, H7, H10, H11, H12, M1, M3, M4, M5, M6, M7, M9, M11, M12, L1; repo cleanup done.
+> - **What's LEFT:** C3, C6 (money-provability — need PG + focus); L2–L6 (Low polish); M2 (verify), M8 (doc); Stage 12 CI (H9) + Sentry (H6); C5 nonce table. Ali/infra: H2 Redis, H8 object storage, H6 DSN, TRA ruling, MNO logos, pentest.
+> - **Verify-after-push protocol (Ali's rule):** technical (`tsc`+tests) · logical · visual (screenshot the live page) · live-DB (prod HTTP 200 + boot logs). Every push auto-deploys to the LIVE DB.
 > - **Blocked on Ali/infra:** C5 nonce table; H2 Redis; H8 object storage; H6 Sentry DSN; TRA tax ruling; MNO logos; pentest. **Move-out (archive to Drive then rm):** `Final UI enhancement Kit/`, `50PICK/New Designs/`, `Email Signatures/`, `Translations/`, `Final logo design/`, `assets/glyphs/`, `docs/*.pdf`.
 > - **Verify locally:** `npm run typecheck` · per-suite `npx tsx scripts/<name>.test.mts` · full `npm run test:all`.
 > - **Safe DB workflow + all ops knowledge:** committed skill `.claude/skills/50pick-audit/SKILL.md` (local disposable PG `F:\pg-loadtest:5433`; migrations hand-authored + `migrate deploy` local, prod via `git push`). C3/C6 need it + focused time.
