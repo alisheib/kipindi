@@ -40,8 +40,13 @@ Ordered by value for a clean go-live + real-money ops. Update status inline.
       (re-runs the tested `withdraw()`; the failed one was auto-refunded at
       fail-time, so no double-pay) + Retry now shown for WITHDRAWAL rows. *Deferred
       (lower value):* bulk "retry all" + auto-retry policy.
-- [ ] **A5 · Materialise heavy aggregates** — P2/§9.4: payout-sum, `stats-band`,
-      per-MNO health still full-scan the txn table. Cache before high traffic.
+- [x] **A5 · Materialise heavy aggregates** — VERIFIED already handled where it
+      matters. The high-traffic home `stats-band` → `getPlatformStats`
+      (`platform-stats.ts`) is a DB-side SUM (`sumConfirmedByTypes`, no row scan) +
+      60s `globalThis` TTL cache. `allMnoHealth` is a bounded windowed query (24h,
+      DEPOSIT/WITHDRAWAL only), and a health dashboard should stay LIVE (caching it
+      would show stale health), so it's correctly uncached. No full-table scans
+      remain on a hot path — no change needed.
 - [ ] **A6 · Featured/pinned markets** — §9.3 #3. `isPinned` + admin pin control +
       wire `/live` hero + `/results` notable (auto today).
 - [ ] **A7 · Configurable compliance knobs** — §9.3 #2. Surface KYC maker-checker
