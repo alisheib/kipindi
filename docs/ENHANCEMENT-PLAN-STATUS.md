@@ -28,9 +28,14 @@ Ordered by value for a clean go-live + real-money ops. Update status inline.
       (atomic wallet+txn+ledger via withMoneyTx, overdraw-guarded, `COMPLIANCE`
       audit, 50M cap) + gated `adjustBalanceAction` + `BalanceAdjustControls` UI on
       `/admin/players/[id]`. Proven on PG (credit/debit move balance + ledger in
-      lockstep; overdraw blocked). *Deferred (lower value):* per-player limit
-      override, force-reverify KYC, resend-comms. *Hardening:* two-officer for
-      large adjustments (like AML ≥1M).
+      lockstep; overdraw blocked). **Also DONE: force-reverify KYC** —
+      `forceReverifyKyc` (APPROVED → ADDITIONAL_INFO_REQUIRED: re-locks withdrawals
+      via the `kyc.status==="APPROVED"` gate + reopens resubmit) + gated action +
+      `ForceReverifyControls` (shown when APPROVED), COMPLIANCE-audited; KYC suites
+      15+12 green. *Deferred:* per-player RG limit override (needs an admin-vs-RG
+      cooldown policy call — `setLimits` exists but increases are cooled-off by
+      design), resend-comms (underspecified). *Hardening:* two-officer for large
+      balance adjustments (like AML ≥1M).
 - [x] **A3 · Reconciliation match / write-off** — §9.3 #7. DONE:
       `reconcileMatchAction` (set the PSP settlement ref → clears drift) +
       `reconcileWriteOffAction` (sentinel ref + mandatory reason), both gated +

@@ -333,6 +333,43 @@ export async function listPendingKyc() {
  *  - REJECT leaves the user able to resubmit; it does not change account status.
  *  - Player is always notified (in-app + best-effort email). Both clicks audited.
  */
+/**
+ * Force an already-APPROVED player to re-verify (audit §9.3 #4) — document
+ * expiry, a name mismatch, suspicious activity. Moves KYC APPROVED →
+ * ADDITIONAL_INFO_REQUIRED with the officer's reason, which (a) re-locks
+ * WITHDRAWALS immediately (the withdraw gate requires kyc.status === "APPROVED")
+ * and (b) reopens the document upload + resubmit flow so the player can
+ * re-verify. Login/betting are left alone — this targets the money-out gate.
+ * COMPLIANCE-audited; an officer cannot force-reverify themselves.
+ */
+export async function forceReverifyKyc(officerId: string, userId: string, reason: string): Promise<ServiceResult> {
+  if (!userId) return { ok: false, error: "Missing user.", code: "INVALID" };
+  if (officerId === userId) {
+    audit({ category: "SECURITY", action: "kyc.reverify.self_blocked", actorId: officerId, targetType: "User", targetId: userId });
+    return { ok: false, error: "You cannot force yourself to re-verify.", code: "INVALID" };
+  }
+  const clean = (reason ?? "").trim().slice(0, 300);
+  if (clean.length < 5) return { ok: false, error: "A reason (≥ 5 characters) is required.", code: "INVALID" };
+  return withLock(`kyc:${userId}`, async () => {
+    const k = await db.kyc.findByUserId(userId);
+    if (!k) return { ok: false as const, error: "No KYC submission for this user.", code: "NOT_FOUND" as const };
+    if (k.status !== "APPROVED") {
+      return { ok: false as const, error: `KYC is ${k.status} — only an APPROVED player can be forced to re-verify.`, code: "INVALID" as const };
+    }
+    const now = new Date().toISOString();
+    await db.kyc.upsert({ ...k, status: "ADDITIONAL_INFO_REQUIRED", reviewerId: officerId, reviewedAt: now, rejectNote: clean, updatedAt: now });
+    audit({ category: "COMPLIANCE", action: "kyc.force_reverify", actorId: officerId, targetType: "User", targetId: userId, payload: { kycId: k.id, reason: clean } });
+    notifyKyc(userId, "ADDITIONAL_INFO").catch(() => {});
+    sendEmailToUser(userId, (email) => ({
+      to: email,
+      subject: "Action needed · Please re-verify your identity",
+      html: kycMoreInfoHtml({ reason: clean, reference: k.id }),
+      tag: "kyc-more-info",
+    })).catch(() => {});
+    return { ok: true as const };
+  });
+}
+
 export async function reviewKyc(opts: {
   officerId: string;
   userId: string;

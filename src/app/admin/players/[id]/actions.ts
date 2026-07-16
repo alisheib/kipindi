@@ -205,6 +205,26 @@ export async function adjustBalanceAction(formData: FormData) {
   }
 }
 
+// ─── Force re-verify KYC (audit §9.3 #4) ────────────────────────────────────
+// Moves an APPROVED player to ADDITIONAL_INFO_REQUIRED → re-locks withdrawals +
+// reopens the resubmit flow. Money-out gate only; audited in kyc-service.
+export async function forceReverifyKycAction(formData: FormData) {
+  const officerId = await requireAdmin("forceReverifyKycAction");
+  const userId = String(formData.get("userId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim().slice(0, 300);
+  if (!userId) return { ok: false as const, error: "Missing user id." };
+  if (reason.length < 5) return { ok: false as const, error: "Reason is required (≥ 5 chars)." };
+  try {
+    const { forceReverifyKyc } = await import("@/lib/server/kyc-service");
+    const r = await forceReverifyKyc(officerId, userId, reason);
+    if (!r.ok) return { ok: false as const, error: r.error };
+    revalidatePath(`/admin/players/${userId}`);
+    return { ok: true as const };
+  } catch (err) {
+    return { ok: false as const, error: safeError(err, "Force re-verify failed") };
+  }
+}
+
 // ─── KYC review (officer decision on a pending submission) ──────────────────
 
 export async function approveKycAction(formData: FormData) {
