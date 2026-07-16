@@ -34,8 +34,14 @@ export function LanguageToggle() {
             aria-pressed={active}
             onClick={() => setLocale(code)}
             style={{
-              // 6px vertical → ~24px tap height (WCAG 2.5.8 AA); visible only ≥sm
-              padding: "6px 9px",
+              // 44px-tall tap target (WCAG 2.5.5 AAA); visible only ≥sm. Height via
+              // minHeight + flex-centring so the glyph stays 11.5px and the pill
+              // keeps its 9px side padding (no horizontal reflow in the top bar).
+              minHeight: 44,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "0 9px",
               borderRadius: "var(--r-pill)",
               fontSize: 11.5,
               fontWeight: 600,

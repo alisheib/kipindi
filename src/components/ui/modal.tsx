@@ -55,6 +55,16 @@ export type ModalProps = {
   initialFocus?: React.RefObject<HTMLElement | null>;
   /** Extra classes for the panel (spacing/tone overrides). */
   panelClassName?: string;
+  /** Stacking context. Defaults to 100. Raise for overlays that must sit above
+   *  other modals/toasts (e.g. the win celebration + reality-check at 1700). */
+  zIndex?: number;
+  /** Reflects a mutation-in-flight to assistive tech (sets aria-busy on the
+   *  dialog). Used by the bet-confirm while the wager is submitting. */
+  ariaBusy?: boolean;
+  /** Bottom-sheet on phones, centered dialog on ≥sm. For the onboarding primer
+   *  and the RG reality-check, which dock to the bottom edge on mobile for
+   *  thumb reach. Default false = the standard centered dialog. */
+  sheet?: boolean;
 };
 
 /** The shared centered-dialog shell. Controlled — the caller owns `open`. */
@@ -70,6 +80,9 @@ export function Modal({
   closeOnScrim = true,
   initialFocus,
   panelClassName = "",
+  zIndex = 100,
+  ariaBusy,
+  sheet = false,
 }: ModalProps) {
   const { t } = useT();
   const [mounted, setMounted] = React.useState(false);
@@ -118,9 +131,13 @@ export function Modal({
     <div
       role={role}
       aria-modal="true"
+      aria-busy={ariaBusy}
       aria-label={labelledBy ? undefined : ariaLabel}
       aria-labelledby={labelledBy}
-      className="fixed inset-0 z-[100] flex justify-center px-3 py-4 overflow-y-auto overscroll-contain"
+      className={`fixed inset-0 flex justify-center overflow-y-auto overscroll-contain ${
+        sheet ? "items-end sm:items-center px-0 sm:px-3 py-0 sm:py-4" : "px-3 py-4"
+      }`}
+      style={{ zIndex }}
     >
       <button
         type="button"
@@ -132,8 +149,10 @@ export function Modal({
       />
       <div
         ref={panelRef}
-        className={`relative my-auto w-full rounded-xl border border-border-strong bg-bg-elevated shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65),inset_0_1px_0_rgba(255,255,255,0.06)] p-5 lg:p-6 ${panelClassName}`}
-        style={{ maxWidth, animation: "kp-modal-rise 200ms var(--ease-arrive)" }}
+        className={`relative w-full border border-border-strong bg-bg-elevated shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65),inset_0_1px_0_rgba(255,255,255,0.06)] p-5 lg:p-6 ${
+          sheet ? "rounded-t-xl sm:rounded-xl sm:my-auto" : "my-auto rounded-xl"
+        } ${panelClassName}`}
+        style={{ maxWidth, animation: `${sheet ? "kp-sheet-rise 260ms" : "kp-modal-rise 200ms"} var(--ease-arrive)` }}
       >
         {showClose && (
           <button
@@ -150,6 +169,7 @@ export function Modal({
       <style>{`
         @keyframes kp-modal-fade { from { opacity: 0; } to { opacity: 1; } }
         @keyframes kp-modal-rise { from { transform: translateY(8px) scale(.98); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+        @keyframes kp-sheet-rise { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @media (prefers-reduced-motion: reduce) {
           [role="dialog"] > *, [role="alertdialog"] > * { animation: none !important; }
         }

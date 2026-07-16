@@ -86,6 +86,26 @@ for (const f of ["README.md", "CLAUDE.md"]) {
   }
 }
 
+// ── A10 · money is always formatted (never a raw toLocaleString on a TZS value) ─
+// Player/admin UI money must go through formatTzs / formatTzsCompact / formatNumber
+// (src/lib/utils) — a raw `.toLocaleString` on a currency value drops the "TZS"
+// unit + real-minus glyph and lets locale grouping drift. This guards the UI
+// surface (src/components + src/app). Server money surfaces (reports/analytics
+// under src/lib/server) are owned separately and out of this UI-hygiene scope.
+for (const f of srcFiles) {
+  if (f.startsWith("src/lib/server/")) continue;
+  for (const [i, line] of read(f).split("\n").entries()) {
+    // `TZS {x.toLocaleString()}` / `TZS ${x.toLocaleString()}` — the toLocaleString
+    // must be INSIDE the interpolation right after the TZS unit (so a `TZS` string
+    // literal that merely sits near an unrelated count.toLocaleString is not flagged).
+    if (/TZS\s*\$?\{[^{}]*\.toLocaleString/.test(line))
+      fail("A10", `${f}:${i + 1}: money "TZS …toLocaleString" — use formatTzs()/formatTzsCompact()`);
+    // A `…Tzs` value formatted with a raw toLocaleString (e.g. bonusGrantedTzs.toLocaleString()).
+    else if (/\w*Tzs\.toLocaleString\b/.test(line))
+      fail("A10", `${f}:${i + 1}: raw toLocaleString on a *Tzs value — use formatTzs()/formatNumber()`);
+  }
+}
+
 if (fails.length) {
   console.error(`\ncontent-integrity: ${fails.length} FAILURE(S) — misleading/superseded content detected:\n` + fails.map((x) => "  ✗ " + x).join("\n") + "\n");
   process.exit(1);

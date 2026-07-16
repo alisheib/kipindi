@@ -21,6 +21,7 @@ import { resolveMarketAction } from "@/app/markets/actions";
 import { BrandSpinner } from "@/components/brand";
 import { formatDateTime } from "@/lib/utils";
 import { CEREMONY, bi } from "@/lib/admin-status-lexicon";
+import { AttestationRail } from "@/components/admin/attestation-rail";
 
 type Outcome = "YES" | "NO" | "VOID";
 
@@ -175,18 +176,10 @@ export function ResolutionCeremony({
       </div>
 
       {isSelfCountersign ? (
-        <div className="flex items-start gap-2.5 rounded-lg border border-claret-edge bg-claret-soft px-3.5 py-3">
-          <I.alertCircle s={16} className="mt-0.5 shrink-0 text-claret-300" />
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-claret-300">
-              {bi(CEREMONY.secondOfficerRequired)}
-            </p>
-            <p className="mt-0.5 text-[12px] text-text-muted">
-              You staged this verdict at Stage 1. A different officer must countersign to seal it — the
-              two-officer rule forbids a single officer from settling a market alone.
-            </p>
-          </div>
-        </div>
+        <AttestationRail tone="blocked" title={CEREMONY.secondOfficerRequired}>
+          You staged this verdict at Stage 1. A different officer must countersign to seal it — the
+          two-officer rule forbids a single officer from settling a market alone.
+        </AttestationRail>
       ) : (
         <>
           <label className="block">

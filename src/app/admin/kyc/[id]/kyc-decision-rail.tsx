@@ -12,6 +12,8 @@ import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { BrandSpinner } from "@/components/brand";
+import { AttestationRail } from "@/components/admin/attestation-rail";
+import { CEREMONY } from "@/lib/admin-status-lexicon";
 import {
   approveKycWorkstationAction,
   rejectKycWorkstationAction,
@@ -123,18 +125,13 @@ export function KycDecisionRail({
 
       {/* Maker-checker banner for high-risk */}
       {makerCheckerRequired && (
-        <div className="flex items-start gap-2.5 rounded-md border border-warning-fg/40 bg-warning/10 px-3 py-2.5">
-          <I.users s={15} className="mt-0.5 shrink-0 text-warning-fg" />
-          <p className="text-[12px] text-text-muted">
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-warning-fg">Two-officer approval required</span>
-            <br />
-            {hasRecommendation
-              ? isRecommender
-                ? "You recommended this approval — a different officer must seal it."
-                : `Recommended by ${recommenderName ?? "an officer"}. You may approve as the second officer.`
-              : "High-risk score — one officer recommends, a second approves."}
-          </p>
-        </div>
+        <AttestationRail tone="info" title={CEREMONY.twoOfficerRule}>
+          {hasRecommendation
+            ? isRecommender
+              ? "You recommended this approval — a different officer must seal it."
+              : `Recommended by ${recommenderName ?? "an officer"}. You may approve as the second officer.`
+            : "High-risk score — one officer recommends, a second approves."}
+        </AttestationRail>
       )}
 
       {/* Actions */}

@@ -9,6 +9,7 @@ import { Input, Field } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { Spinner } from "@/components/ui/spinner";
 import { useDeferredToast } from "@/components/ui/toast";
+import { formatTzs } from "@/lib/utils";
 import { createCampaignAction, addContactsStructuredAction, sendCampaignAction, cancelCampaignAction } from "./invite-actions";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -183,7 +184,7 @@ export function CampaignControls({ campaignId, status, queued, smsLive }: { camp
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 flex-1 min-w-0">
                   {row.email && <span className="font-mono text-text-muted truncate">{row.email}</span>}
                   {row.phone && <span className="font-mono text-text-muted">+255 {row.phone}</span>}
-                  {row.amount !== "" && <span className="font-mono text-text">TZS {Number(row.amount).toLocaleString("en-US")}</span>}
+                  {row.amount !== "" && <span className="font-mono text-text">{formatTzs(Number(row.amount))}</span>}
                 </div>
                 <button type="button" onClick={() => removeRow(i)} className="text-text-subtle hover:text-no-300 transition-colors shrink-0" aria-label="Remove">
                   <I.x s={14} />

@@ -89,13 +89,15 @@ export default async function AdminAuditPage({
           />
         </div>
 
-        {/* Category filters — kit Chip pills wrapped as nav links */}
+        {/* Category filters — kit Chip pills wrapped as nav links. The link is the
+            tap target: min-h-[44px] + flex-centring gives it a 44px-tall hit area
+            (WCAG 2.5.5 AAA) while the chip keeps its size. */}
         <div className="flex flex-wrap items-center gap-1.5">
-          <Link href="/admin/audit" className="transition-opacity hover:opacity-80">
+          <Link href="/admin/audit" className="inline-flex items-center min-h-[44px] transition-opacity hover:opacity-80">
             <Chip size="lg" variant={!category ? "brand" : "neutral"} selected={!category}>All</Chip>
           </Link>
           {CATEGORIES.map((c) => (
-            <Link key={c} href={`/admin/audit?category=${c}`} className="transition-opacity hover:opacity-80">
+            <Link key={c} href={`/admin/audit?category=${c}`} className="inline-flex items-center min-h-[44px] transition-opacity hover:opacity-80">
               <Chip size="lg" variant={category === c ? "brand" : "neutral"} selected={category === c}>{c}</Chip>
             </Link>
           ))}

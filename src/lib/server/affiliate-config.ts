@@ -3,17 +3,17 @@
  *
  * One global config object. A master `enabled` switch plus three
  * independently-toggleable reward modes (commission / bonus / prize), each
- * with its own rates, amounts and caps. Mirrors `market-config.ts`: every
- * mutation is HMAC-audited for the GBT inspector trail and the object
- * persists across hot-reloads via `globalThis.__50PICK_AFFILIATE_CONFIG`,
- * which the backup module snapshots alongside the store.
+ * with its own rates, amounts and caps. Every mutation is HMAC-audited for the
+ * GBT inspector trail, and the object is DB-persisted + cached across
+ * hot-reloads by the shared `defineConfig` factory (same eager write-through
+ * hydration + ADMIN `{ before, after, changes }` audit as bonus/proposals). The
+ * only affiliate-specific piece is the deep `merge` for its nested modes.
  *
  * Brand/compliance note: referral rewards are a regulated inducement under
  * Gaming Board of Tanzania guidance. The master switch lets the operator run
  * the whole program dark, or enable only the modes they've cleared.
  */
-import { audit } from "./audit";
-import { loadConfig, saveConfig } from "./config-store";
+import { defineConfig } from "./define-config";
 
 const AFFILIATE_CONFIG_KEY = "affiliate.config";
 
@@ -85,11 +85,6 @@ export const DEFAULT_AFFILIATE_CONFIG: AffiliateConfig = {
   prize: { enabled: true, milestone: "FIRST_BET", depositThresholdTzs: 10_000, amountTzs: 10_000, capPerReferrer: 20, minBetAmountTzs: 20_000, requireDeposit: true },
 };
 
-declare global {
-  // eslint-disable-next-line no-var
-  var __50PICK_AFFILIATE_CONFIG: AffiliateConfig | undefined;
-}
-
 function deepClone(c: AffiliateConfig): AffiliateConfig {
   return {
     enabled: c.enabled,
@@ -99,21 +94,21 @@ function deepClone(c: AffiliateConfig): AffiliateConfig {
   };
 }
 
-const stored =
-  globalThis.__50PICK_AFFILIATE_CONFIG ??
-  (globalThis.__50PICK_AFFILIATE_CONFIG = deepClone(DEFAULT_AFFILIATE_CONFIG));
+// The shared factory owns the globalThis cache, eager DB hydration, write-through
+// persistence and the ADMIN `{ before, after, changes }` audit. Affiliate's only
+// specialisations are the deep `merge` (three nested reward-mode objects) and the
+// `validate` guard below. Getters are sync (58 call sites), matching the factory.
+const _config = defineConfig<AffiliateConfig, DeepPartial<AffiliateConfig>>({
+  key: AFFILIATE_CONFIG_KEY,
+  defaults: DEFAULT_AFFILIATE_CONFIG,
+  validate,
+  audit: { action: "affiliate.config.updated", targetType: "AffiliateConfig" },
+  merge: (current, updates) => mergeConfig(current, updates),
+});
 
-// Restore the persisted config into the cache on boot. Getters are sync (58 call
-// sites), so rather than make them async we hydrate eagerly at module load and
-// write through on every set — admin retunes now survive deploys. The only race
-// is a read in the first moments after a cold boot, which harmlessly returns
-// defaults until this resolves. No-ops without a DB (dev/tests).
-void loadConfig<AffiliateConfig>(AFFILIATE_CONFIG_KEY)
-  .then((persisted) => { if (persisted) globalThis.__50PICK_AFFILIATE_CONFIG = mergeConfig(DEFAULT_AFFILIATE_CONFIG, persisted); })
-  .catch(() => {});
-
+/** Sync read. Deep-cloned so a caller can't mutate a nested mode in the cache. */
 export function getAffiliateConfig(): AffiliateConfig {
-  return deepClone(globalThis.__50PICK_AFFILIATE_CONFIG ?? stored);
+  return deepClone(_config.get());
 }
 
 /** Deep-merge a partial update onto the current config. */
@@ -146,19 +141,5 @@ function validate(c: AffiliateConfig): { ok: true } | { ok: false; reason: strin
 export function setAffiliateConfig(updates: DeepPartial<AffiliateConfig>, officerId: string):
   | { ok: true; config: AffiliateConfig }
   | { ok: false; error: string } {
-  const before = getAffiliateConfig();
-  const merged = mergeConfig(before, updates);
-  const v = validate(merged);
-  if (!v.ok) return { ok: false, error: v.reason };
-  globalThis.__50PICK_AFFILIATE_CONFIG = merged;
-  void saveConfig(AFFILIATE_CONFIG_KEY, merged);
-  audit({
-    category: "ADMIN",
-    action: "affiliate.config.updated",
-    actorId: officerId,
-    targetType: "AffiliateConfig",
-    targetId: "global",
-    payload: { before, after: merged, changes: updates },
-  });
-  return { ok: true, config: deepClone(merged) };
+  return _config.set(updates, officerId);
 }

@@ -13,10 +13,9 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { createPortal } from "react-dom";
+import { Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark, TippingBar, GiltCorner } from "@/components/brand";
-import { useModalLock } from "@/lib/use-modal-lock";
 import { useT } from "@/lib/i18n";
 
 const STORAGE_KEY = "50pick-primer-seen";
@@ -220,7 +219,6 @@ export function FirstVisitPrimer() {
   const [step, setStep] = useState(0);
   const [lang, setLang] = useState<"en" | "sw" | "zh">("en");
   const { t } = useT();
-  useModalLock(open);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -239,8 +237,8 @@ export function FirstVisitPrimer() {
 
   useEffect(() => {
     if (!open) return;
+    // ←/→ step through the cards (bespoke). Esc is handled by <Modal>.
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") dismiss();
       if (e.key === "ArrowRight") setStep((s) => Math.min(CARDS.length - 1, s + 1));
       if (e.key === "ArrowLeft") setStep((s) => Math.max(0, s - 1));
     };
@@ -266,30 +264,21 @@ export function FirstVisitPrimer() {
     if (step > 0) setStep(step - 1);
   }
 
-  if (!open || typeof document === "undefined") return null;
   if (HIDE_ON.test(pathname ?? "/")) return null;
 
   const c = CARDS[step];
 
-  return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={t.primer.primerLabel}
-      className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center"
+  return (
+    <Modal
+      open={open}
+      onClose={dismiss}
+      sheet
+      zIndex={150}
+      maxWidth={460}
+      ariaLabel={t.primer.primerLabel}
+      showClose={false}
+      panelClassName="overflow-hidden !p-0"
     >
-      <button
-        type="button"
-        aria-label={lang === "sw" ? "Ruka utangulizi" : lang === "zh" ? "跳过引导" : "Skip primer"}
-        onClick={dismiss}
-        className="absolute inset-0 bg-black/60 backdrop-blur-md"
-        style={{ animation: "fvp-fade 200ms ease-out" }}
-      />
-
-      <div
-        className="relative w-full sm:max-w-[460px] rounded-t-xl sm:rounded-xl border border-border-strong bg-bg-elevated overflow-hidden shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65)]"
-        style={{ animation: "fvp-rise 360ms var(--ease-arrive)" }}
-      >
         {/* Gilt corners — heraldic framing from the brand kit */}
         <div className="pointer-events-none absolute top-0 left-0" aria-hidden>
           <GiltCorner size={40} rotate={0} />
@@ -399,17 +388,6 @@ export function FirstVisitPrimer() {
             </button>
           </div>
         </div>
-
-        <style>{`
-          @keyframes fvp-fade { from { opacity: 0; } to { opacity: 1; } }
-          @keyframes fvp-rise { from { transform: translateY(24px) scale(0.97); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
-          @media (prefers-reduced-motion: reduce) {
-            @keyframes fvp-fade { from, to { opacity: 1; } }
-            @keyframes fvp-rise { from, to { opacity: 1; transform: none; } }
-          }
-        `}</style>
-      </div>
-    </div>,
-    document.body,
+    </Modal>
   );
 }

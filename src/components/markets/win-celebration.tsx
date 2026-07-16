@@ -16,13 +16,11 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { I } from "@/components/ui/glyphs";
+import { Modal } from "@/components/ui/modal";
 import { RewardBurst } from "@/components/brand/reward-burst";
 import { haptics } from "@/lib/haptics";
-import { useModalLock } from "@/lib/use-modal-lock";
 import { useT } from "@/lib/i18n";
-import { formatNumber } from "@/lib/utils";
+import { formatNumber, formatTzs } from "@/lib/utils";
 
 const EVENT_NAME = "50pick:celebrate";
 
@@ -63,13 +61,12 @@ function RollingAmount({ value }: { value: number }) {
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [value]);
-  return <>TZS {n.toLocaleString("en-US")}</>;
+  return <>{formatTzs(n)}</>;
 }
 
 export function WinCelebrationHost() {
   const { t } = useT();
   const [open, setOpen] = useState(false);
-  useModalLock(open);
   const [payload, setPayload] = useState<WinCelebrationPayload | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -92,59 +89,28 @@ export function WinCelebrationHost() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
-
-  if (typeof document === "undefined" || !open || !payload) return null;
+  if (!payload) return null;
 
   const heading = t.market.wonHeading;
   const sub = t.market.wonSub;
 
-  return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={heading}
-      className="fixed inset-0 z-[1700] flex items-center justify-center px-3"
+  return (
+    <Modal
+      open={open}
+      onClose={() => setOpen(false)}
+      ariaLabel={heading}
+      maxWidth={380}
+      zIndex={1700}
+      panelClassName="overflow-hidden !p-0"
     >
-      {/* Scrim */}
-      <button
-        type="button"
-        aria-label={t.common.dismiss}
-        onClick={() => setOpen(false)}
-        className="absolute inset-0 bg-black/60 backdrop-blur-md"
-        style={{ animation: "wc-fade 160ms ease-out" }}
+      {/* Gold top strip */}
+      <div
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-1"
+        style={{ background: "linear-gradient(90deg, var(--gold-500), var(--gold-300), var(--gold-500))" }}
       />
 
-      {/* Card — matches OperationResultModal's glass surface */}
-      <div
-        className="relative z-10 w-full max-w-[380px] overflow-hidden rounded-xl border border-border-strong bg-bg-elevated shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65),inset_0_1px_0_rgba(255,255,255,0.06)]"
-        style={{ animation: "wc-rise 240ms var(--ease-arrive)" }}
-      >
-        {/* Gold top strip */}
-        <div
-          aria-hidden
-          className="absolute inset-x-0 top-0 h-1"
-          style={{ background: "linear-gradient(90deg, var(--gold-500), var(--gold-300), var(--gold-500))" }}
-        />
-
-        {/* Close button */}
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          aria-label={t.common.close}
-          className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
-        >
-          <I.x s={16} />
-        </button>
-
-        <div className="p-6 lg:p-7 text-center">
+      <div className="p-6 lg:p-7 text-center">
           {/* Shared A5 reward-burst crest — 12 gilt rays + bracketed trophy
               medallion — unifies the win with proposal-approved and KYC-verified
               (B7 completes the A5-deferred win pairing; pure SVG, no bitmap). */}
@@ -194,17 +160,6 @@ export function WinCelebrationHost() {
             {t.common.continue}
           </button>
         </div>
-      </div>
-
-      <style>{`
-        @keyframes wc-fade { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes wc-rise { from { transform: translateY(8px) scale(.96); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
-        @media (prefers-reduced-motion: reduce) {
-          @keyframes wc-fade { from, to { opacity: 1; } }
-          @keyframes wc-rise { from, to { opacity: 1; transform: none; } }
-        }
-      `}</style>
-    </div>,
-    document.body,
+    </Modal>
   );
 }

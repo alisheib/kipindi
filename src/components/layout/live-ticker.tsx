@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import { useT } from "@/lib/i18n";
+import { formatTzsCompact } from "@/lib/utils";
 
 export type TickerEvent = {
   id: string;
@@ -17,18 +18,11 @@ export type TickerEvent = {
   timeAgo: string;
 };
 
-function fmtAmt(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
-  return n.toLocaleString();
-}
-
-
 function Items({ events, prefix, verbs }: { events: TickerEvent[]; prefix: string; verbs: { predicted: string; wonOn: string; settled: string; on: string } }) {
   return (
     <>
       {events.map((ev) => {
-        const amt = ev.amount && ev.amount > 0 ? `TZS ${fmtAmt(ev.amount)} ` : "";
+        const amt = ev.amount && ev.amount > 0 ? `${formatTzsCompact(ev.amount)} ` : "";
         const verb = ev.kind === "bet" ? verbs.predicted : ev.kind === "win" ? verbs.wonOn : ev.kind === "resolve" ? verbs.settled : "";
         return (
           <span key={`${prefix}-${ev.id}`} className="inline-flex items-center gap-1.5 shrink-0 font-mono text-[12px] pr-8 whitespace-nowrap">

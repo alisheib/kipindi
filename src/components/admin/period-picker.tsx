@@ -43,7 +43,7 @@ export function PeriodPicker({
             href={href(s.id) as never}
             scroll={false}
             className={[
-              "px-3 h-8 inline-flex items-center border-r border-border last:border-r-0 transition-all cursor-pointer select-none",
+              "px-3 h-11 inline-flex items-center border-r border-border last:border-r-0 transition-all cursor-pointer select-none",
               isActive
                 ? "text-white font-bold"
                 : "text-text-subtle hover:text-text",

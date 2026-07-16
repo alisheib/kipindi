@@ -16,8 +16,8 @@
  */
 import * as React from "react";
 import Link from "next/link";
+import { Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
-import { useModalLock } from "@/lib/use-modal-lock";
 import { SUPPORT_PHONE } from "@/lib/support-config";
 import { useT } from "@/lib/i18n";
 
@@ -25,7 +25,6 @@ const DEFAULT_INTERVAL   = 30; // minutes
 
 export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, userId }: { enabled: boolean; intervalMin?: number; userId?: string | null }) {
   const [open, setOpen] = React.useState(false);
-  useModalLock(open);
   const [elapsedMin, setElapsedMin] = React.useState(0);
 
   React.useEffect(() => {
@@ -85,62 +84,36 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
     }
   }, [userId]);
 
-  React.useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && dismiss();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, dismiss]);
-
   const { t } = useT();
 
-  if (!enabled || !open) return null;
+  if (!enabled) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[1700] flex items-end sm:items-center justify-center p-3 sm:p-4 pb-[calc(env(safe-area-inset-bottom)+12px)]"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="reality-check-title"
+    <Modal
+      open={open}
+      onClose={dismiss}
+      sheet
+      zIndex={1700}
+      maxWidth={448}
+      labelledBy="reality-check-title"
+      panelClassName="overflow-hidden"
     >
-      <button
-        type="button"
-        aria-label={t.common.dismiss}
-        onClick={dismiss}
-        className="absolute inset-0 bg-black/60 backdrop-blur-md"
-        style={{ animation: "rc-fade 160ms ease-out" }}
-      />
-      <div
-        className="relative w-full max-w-md max-h-[calc(100dvh-env(safe-area-inset-bottom)-24px)] overflow-y-auto overscroll-contain rounded-xl border border-border-strong bg-bg-elevated shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65),inset_0_1px_0_rgba(255,255,255,0.06)] p-5 sm:p-6 space-y-4 overflow-hidden"
-        style={{ animation: "rc-rise 240ms var(--ease-arrive)" }}
-      >
-        {/* Gold rail at top */}
-        <div aria-hidden className="absolute inset-x-0 top-0 h-[2px]" style={{ background: "linear-gradient(90deg, var(--gold-500), var(--gold-300), var(--gold-500))" }} />
+      {/* Gold rail at top */}
+      <div aria-hidden className="absolute inset-x-0 top-0 h-[2px]" style={{ background: "linear-gradient(90deg, var(--gold-500), var(--gold-300), var(--gold-500))" }} />
 
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-bg-inset border border-border text-gold-300">
-              <I.clock s={18} />
-            </span>
-            <div>
-              <h2
-                id="reality-check-title"
-                className="font-display text-[15.5px] font-bold leading-tight text-text"
-              >
-                {t.rg.playingFor}{" "}
-                <span className="font-mono text-gold-300">{elapsedMin}</span>{" "}
-                {elapsedMin === 1 ? t.rg.minute : t.rg.minutes}
-              </h2>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={dismiss}
-            aria-label={t.common.dismiss}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors shrink-0"
+      <div className="space-y-4">
+        <div className="flex items-center gap-2.5">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-bg-inset border border-border text-gold-300">
+            <I.clock s={18} />
+          </span>
+          <h2
+            id="reality-check-title"
+            className="font-display text-[15.5px] font-bold leading-tight text-text"
           >
-            <I.x s={16} />
-          </button>
+            {t.rg.playingFor}{" "}
+            <span className="font-mono text-gold-300">{elapsedMin}</span>{" "}
+            {elapsedMin === 1 ? t.rg.minute : t.rg.minutes}
+          </h2>
         </div>
 
         <p className="text-[12.5px] text-text-muted leading-snug">
@@ -171,11 +144,6 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
           {t.rg.helpline} · <span className="text-text-muted">{SUPPORT_PHONE()}</span>
         </p>
       </div>
-
-      <style>{`
-        @keyframes rc-fade { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes rc-rise { from { transform: translateY(8px) scale(.96); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
-      `}</style>
-    </div>
+    </Modal>
   );
 }

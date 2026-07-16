@@ -59,11 +59,12 @@ export default async function AdminLivePage() {
           <AdminKpi label="Live matches"           sw="Mechi za moja"    value={liveMatches.length} pulse={liveMatches.length > 0} />
         </div>
 
-        {/* Active matches */}
-        <AdminCard title="Live matches · in progress" sw="Mechi za moja kwa moja">
-          {liveMatches.length === 0 ? (
-            <p className="text-caption text-text-tertiary py-4 text-center">No live matches at the moment.</p>
-          ) : (
+        {/* Active matches — shown ONLY when a signed live feed actually reports
+            matches. No perpetual "no live matches" card is rendered (we never build
+            a surface around empty data); the table scaffolding stays ready for the
+            Sportradar integrity feed. The truthful "0 live matches" KPI stays above. */}
+        {liveMatches.length > 0 && (
+          <AdminCard title="Live matches · in progress" sw="Mechi za moja kwa moja">
             <ScrollX label="Live matches" className="-mx-4 px-4">
               <table className="admin-tbl min-w-[600px]">
                 <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
@@ -105,8 +106,8 @@ export default async function AdminLivePage() {
                 </tbody>
               </table>
             </ScrollX>
-          )}
-        </AdminCard>
+          </AdminCard>
+        )}
 
         {/* Live flow + bet feed */}
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-3">

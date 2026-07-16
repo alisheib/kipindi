@@ -384,7 +384,7 @@ export function AdminProposalsClient({ config, queue }: { config: ProposalsConfi
                 </p>
               )}
               {sel.bonusGrantedTzs > 0 && (
-                <p className="mt-1.5 flex items-center gap-1.5 font-mono text-[10.5px] text-text"><I.coins s={12} />bonus paid · TZS {sel.bonusGrantedTzs.toLocaleString()}</p>
+                <p className="mt-1.5 flex items-center gap-1.5 font-mono text-[10.5px] text-text"><I.coins s={12} />bonus paid · {formatTzs(sel.bonusGrantedTzs)}</p>
               )}
             </div>
 

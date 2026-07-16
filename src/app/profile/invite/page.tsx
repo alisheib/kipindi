@@ -12,7 +12,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ReferralShare } from "./invite-client";
-import { formatDateShort as fmtDate } from "@/lib/utils";
+import { formatDateShort as fmtDate, formatNumber } from "@/lib/utils";
 import { getServerT } from "@/lib/i18n-server";
 
 export const metadata = { title: "Invite & Earn" };
@@ -227,7 +227,7 @@ export default async function InvitePage() {
       {/* Stat tiles */}
       <div className="grid grid-cols-2 gap-2.5">
         <Kpi label={t.common.invite} value={String(s.recruitCount)} sub={s.recruitCount > 0 ? t.common.allTime : "—"} />
-        <Kpi label={t.proposals.earned} value={s.earnedTzs > 0 ? s.earnedTzs.toLocaleString("en-US") : "0"} sub="TZS" gold />
+        <Kpi label={t.proposals.earned} value={formatNumber(s.earnedTzs)} sub="TZS" gold />
       </div>
 
       {/* How it works */}
@@ -292,7 +292,7 @@ export default async function InvitePage() {
               </div>
               <Chip variant={r.earnedTzs > 0 ? "resolved" : "pending"}>{r.status}</Chip>
               <div className={`w-[64px] text-right font-mono text-[12.5px] font-semibold ${r.earnedTzs > 0 ? "text-gold-300" : "text-text-subtle"}`}>
-                {r.earnedTzs > 0 ? "+" + r.earnedTzs.toLocaleString("en-US") : "—"}
+                {r.earnedTzs > 0 ? "+" + formatNumber(r.earnedTzs) : "—"}
               </div>
             </div>
           ))}

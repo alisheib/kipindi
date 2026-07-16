@@ -9,14 +9,15 @@
  * Design language mirrors the BetConfirmModal so the user gets a
  * recognisable beat at every checkpoint:
  *
- *   • Portaled to body (escapes any backdrop-filter trap)
- *   • Scrim + raised card + 200ms rise / 160ms fade
+ *   • A11: dialog chrome (portal, scrim, Android scroll/zoom lock, focus-trap,
+ *     focus-return, Esc, kit rise/fade, ✕) is the shared <Modal>; the panel is
+ *     `overflow-hidden !p-0` so the gold auto-close strip clips flush.
  *   • Large branded ✓ / ✗ / ! crest at the top — the visual hit
  *   • One headline, one bilingual subhead, optional summary rows
  *   • Single primary CTA (defaults to "Done · Sawa") + optional ghost
  *   • Auto-dismiss countdown for success; failures stay open until
  *     dismissed (so the user can read the reason)
- *   • Esc + Enter close on success; Esc dismisses on failure too
+ *   • Enter fires the primary action (bespoke); Esc closes via <Modal>.
  *
  * Why one shared component for every flow: the result modal is a
  * category, not a single screen — every mutation pipes through it.
@@ -25,11 +26,10 @@
  * payment apps use because corner toasts get missed.
  */
 
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useRef } from "react";
+import { Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
 import { RewardBurst, type RewardGlyph } from "@/components/brand/reward-burst";
-import { useModalLock } from "@/lib/use-modal-lock";
 import { useT } from "@/lib/i18n";
 
 const DEFAULT_AUTO_CLOSE_MS = 5_000;
@@ -136,10 +136,9 @@ export function OperationResultModal({
   primaryLabel, secondaryLabel, onPrimary, onSecondary, onClose,
   autoCloseMs, stripTone = "brand", celebrate = false, celebrateGlyph = "trophy",
 }: Props) {
-  useModalLock(open);
   const { t } = useT();
-  const [mounted, setMounted] = useState(false);
   const closeRef = useRef(onClose);
+  const primaryRef = useRef<HTMLButtonElement>(null);
   useEffect(() => { closeRef.current = onClose; }, [onClose]);
 
   // RAF-driven gold strip. Same pattern as BetConfirmModal — direct
@@ -155,8 +154,6 @@ export function OperationResultModal({
   // close the modal early. The bar uses the same anchor so the gold
   // strip can never drift away from the close moment.
   const closeTargetRef = useRef<number | null>(null);
-
-  useEffect(() => { setMounted(true); }, []);
 
   // Anchor / release the close target as `open` toggles. Separate
   // from the tick effect so closeMs prop changes can't reset the
@@ -176,10 +173,10 @@ export function OperationResultModal({
   useEffect(() => {
     if (!open) return;
     // Errors / warnings / info don't auto-close (LCCP informed-consent).
+    // Enter fires the primary action; Esc closes via <Modal>.
     if (variant !== "success") {
       const onKey = (e: KeyboardEvent) => {
-        if (e.key === "Escape") { e.preventDefault(); closeRef.current(); }
-        if (e.key === "Enter")  { e.preventDefault(); (onPrimary ?? closeRef.current)(); }
+        if (e.key === "Enter") { e.preventDefault(); (onPrimary ?? closeRef.current)(); }
       };
       window.addEventListener("keydown", onKey);
       return () => window.removeEventListener("keydown", onKey);
@@ -215,8 +212,7 @@ export function OperationResultModal({
     const backstop = setTimeout(() => closeRef.current(), remainingForBackstop);
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { e.preventDefault(); closeRef.current(); }
-      if (e.key === "Enter")  { e.preventDefault(); (onPrimary ?? closeRef.current)(); }
+      if (e.key === "Enter") { e.preventDefault(); (onPrimary ?? closeRef.current)(); }
     };
     window.addEventListener("keydown", onKey);
     return () => {
@@ -225,8 +221,6 @@ export function OperationResultModal({
       window.removeEventListener("keydown", onKey);
     };
   }, [open, variant, onPrimary, closeMs]);
-
-  if (!mounted || !open) return null;
 
   const tone = TONE[variant];
   // For success, override the primary button and crest tones based on stripTone.
@@ -237,161 +231,129 @@ export function OperationResultModal({
     ? (stripTone === "gold" ? "btn-gold" : stripTone === "yes" ? "btn-yes" : stripTone === "no" ? "btn-no" : "btn-primary")
     : tone.primaryBtn;
 
-  return createPortal(
-    <div
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
       role={variant === "danger" ? "alertdialog" : "dialog"}
-      aria-modal="true"
-      aria-label={title}
-      className="fixed inset-0 z-[100] flex justify-center px-3 py-4 overflow-y-auto overscroll-contain"
+      ariaLabel={title}
+      maxWidth={460}
+      initialFocus={primaryRef}
+      panelClassName="overflow-hidden !p-0"
     >
-      <button
-        type="button"
-        aria-label={t.common.close}
-        onClick={onClose}
-        className="fixed inset-0 bg-black/60 backdrop-blur-md"
-        style={{ animation: "orm-fade 160ms ease-out" }}
-      />
+      {/* Auto-close progress strip — success only. Driven by the same RAF tick
+          that schedules the close, so the bar and the dismiss land on the same
+          frame. The panel's `overflow-hidden` clips it to the rounded corners. */}
+      {variant === "success" && (
+        <div className="absolute inset-x-0 top-0 h-1 overflow-hidden rounded-t-xl" aria-hidden>
+          <div
+            ref={stripRef}
+            className="h-full w-full origin-left"
+            style={{
+              background: STRIP_GRADIENTS[stripTone] ?? STRIP_GRADIENTS.brand,
+              transform: "scaleX(1)",
+              willChange: "transform",
+            }}
+          />
+        </div>
+      )}
 
-      <div
-        className="relative my-auto w-full max-w-[460px] rounded-xl border border-border-strong bg-bg-elevated shadow-[0_30px_80px_oklch(5%_0.05_264_/_0.65),inset_0_1px_0_rgba(255,255,255,0.06)] overflow-hidden"
-        // `overflow-hidden` clips the gold auto-close strip to the
-        // rounded corners; without it, the strip's `rounded-t-2xl`
-        // can render slightly past the popup's `rounded-xl` + 1 px
-        // border edge (same bug Ali caught on BetConfirmModal).
-        //
-        // Kit `--ease-arrive` is the gentle overshoot reserved for
-        // entry surfaces — gives the modal a confident "land" that
-        // a generic cubic-bezier can't match.
-        style={{ animation: "orm-rise 240ms var(--ease-arrive)" }}
-      >
-        {/* Auto-close progress strip — success only. Driven by the
-            same RAF tick that schedules the close, so the bar and the
-            dismiss are guaranteed to land on the same frame. No CSS
-            animation that could race against the timer. */}
-        {variant === "success" && (
-          <div className="absolute inset-x-0 top-0 h-1 overflow-hidden rounded-t-xl" aria-hidden>
-            <div
-              ref={stripRef}
-              className="h-full w-full origin-left"
-              style={{
-                background: STRIP_GRADIENTS[stripTone] ?? STRIP_GRADIENTS.brand,
-                transform: "scaleX(1)",
-                willChange: "transform",
-              }}
-            />
+      <div className="p-6 lg:p-7 text-center">
+        {/* Crest — the visual hit. Earned-money success gets the A5 gilt
+            reward-burst; everything else gets the plain OKLCH glow circle. */}
+        {variant === "success" && celebrate ? (
+          <RewardBurst glyph={celebrateGlyph} size={64} className="mx-auto" />
+        ) : (
+          <div
+            className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full"
+            style={{
+              background: tone.bg,
+              border: `2px solid ${tone.brd}`,
+              boxShadow: tone.shadow,
+              animation: "orm-pop 360ms cubic-bezier(.2,1.4,.4,1)",
+            }}
+            aria-hidden
+          >
+            <CrestIcon variant={variant} color={tone.fg} />
           </div>
         )}
 
-        {/* Close affordance — top-right */}
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t.common.close}
-          className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
+        <p
+          className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] font-bold"
+          style={{ color: tone.fg }}
         >
-          <I.x s={16} />
-        </button>
-
-        <div className="p-6 lg:p-7 text-center">
-          {/* Crest — the visual hit. Earned-money success gets the A5 gilt
-              reward-burst; everything else gets the plain OKLCH glow circle. */}
-          {variant === "success" && celebrate ? (
-            <RewardBurst glyph={celebrateGlyph} size={64} className="mx-auto" />
-          ) : (
-            <div
-              className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full"
-              style={{
-                background: tone.bg,
-                border: `2px solid ${tone.brd}`,
-                boxShadow: tone.shadow,
-                animation: "orm-pop 360ms cubic-bezier(.2,1.4,.4,1)",
-              }}
-              aria-hidden
-            >
-              <CrestIcon variant={variant} color={tone.fg} />
-            </div>
-          )}
-
-          <p
-            className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] font-bold"
-            style={{ color: tone.fg }}
-          >
-            {eyebrow}
+          {eyebrow}
+        </p>
+        <h2 className="mt-1 font-display text-[22px] font-bold text-text leading-tight tracking-[-0.018em]">
+          {title}
+        </h2>
+        {subtitle && (
+          <p className="mt-1.5 text-[13px] text-text-muted leading-snug">
+            {subtitle}
           </p>
-          <h2 className="mt-1 font-display text-[22px] font-bold text-text leading-tight tracking-[-0.018em]">
-            {title}
-          </h2>
-          {subtitle && (
-            <p className="mt-1.5 text-[13px] text-text-muted leading-snug">
-              {subtitle}
-            </p>
-          )}
+        )}
 
-          {details && details.length > 0 && (
-            <div className="mt-4 grid grid-cols-1 gap-2 text-left">
-              {details.map((d, i) => (
-                <div
-                  key={i}
-                  className="rounded-md border border-border bg-bg-overlay/60 px-3 py-2 flex items-baseline justify-between gap-3"
-                >
-                  <div>
-                    <p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-subtle">
-                      {d.label}
-                    </p>
-                    {d.sw && (
-                      <p className="text-[11px] italic text-text-subtle">{d.sw}</p>
-                    )}
-                  </div>
-                  <p
-                    className="font-mono text-[14px] font-bold tabular-nums"
-                    style={{
-                      color:
-                        d.tone === "good" ? "oklch(78% 0.13 152)" :
-                        d.tone === "bad"  ? "oklch(78% 0.16 22)"  :
-                                            "var(--text)",
-                    }}
-                  >
-                    {d.value}
+        {details && details.length > 0 && (
+          <div className="mt-4 grid grid-cols-1 gap-2 text-left">
+            {details.map((d, i) => (
+              <div
+                key={i}
+                className="rounded-md border border-border bg-bg-overlay/60 px-3 py-2 flex items-baseline justify-between gap-3"
+              >
+                <div>
+                  <p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-subtle">
+                    {d.label}
                   </p>
+                  {d.sw && (
+                    <p className="text-[11px] italic text-text-subtle">{d.sw}</p>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
+                <p
+                  className="font-mono text-[14px] font-bold tabular-nums"
+                  style={{
+                    color:
+                      d.tone === "good" ? "oklch(78% 0.13 152)" :
+                      d.tone === "bad"  ? "oklch(78% 0.16 22)"  :
+                                          "var(--text)",
+                  }}
+                >
+                  {d.value}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
 
-          <div className="mt-5 flex flex-col gap-2">
+        <div className="mt-5 flex flex-col gap-2">
+          <button
+            ref={primaryRef}
+            type="button"
+            onClick={() => { onPrimary?.(); onClose(); }}
+            className={`btn ${effectiveBtn} btn-lg w-full`}
+          >
+            {primaryLabel ?? t.common.doneSawa}
+          </button>
+          {secondaryLabel && (
             <button
               type="button"
-              onClick={() => { onPrimary?.(); onClose(); }}
-              className={`btn ${effectiveBtn} btn-lg w-full`}
-              autoFocus
+              onClick={() => { onSecondary?.(); onClose(); }}
+              className="btn btn-ghost btn-md w-full"
             >
-              {primaryLabel ?? t.common.doneSawa}
+              {secondaryLabel}
             </button>
-            {secondaryLabel && (
-              <button
-                type="button"
-                onClick={() => { onSecondary?.(); onClose(); }}
-                className="btn btn-ghost btn-md w-full"
-              >
-                {secondaryLabel}
-              </button>
-            )}
-          </div>
-
-          {footnote && (
-            <p className="mt-3 text-[11px] text-text-subtle">
-              {footnote}
-            </p>
           )}
         </div>
+
+        {footnote && (
+          <p className="mt-3 text-[11px] text-text-subtle">
+            {footnote}
+          </p>
+        )}
       </div>
 
       <style>{`
-        @keyframes orm-rise  { from { transform: translateY(8px) scale(.96); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
-        @keyframes orm-fade  { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes orm-pop   { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.06); opacity: 1; } 100% { transform: scale(1); } }
+        @keyframes orm-pop { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.06); opacity: 1; } 100% { transform: scale(1); } }
       `}</style>
-    </div>,
-    document.body,
+    </Modal>
   );
 }
