@@ -4,17 +4,31 @@
  * /live featured-contest carousel — the "hot poll on the large one".
  *
  * The aqua hero used to show only the single most-contested market. This lets
- * you swap through the top-N most-contested markets with nice, aesthetic
- * left/right arrows (and ←/→ keys, and a dot rail). Each swap re-draws the
- * TippingBar. Reduced-motion: the cross-fade is guarded; the bar still renders.
+ * you swap through the top-N most-contested markets: it AUTO-ADVANCES (pausing
+ * while hovered/focused), takes a left/right SWIPE on touch, and still offers the
+ * aesthetic arrows, ←/→ keys and a dot rail. Each swap re-draws the TippingBar.
+ * Reduced-motion: no auto-advance at all, and the cross-fade is CSS-guarded.
  */
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { TippingBar } from "@/components/brand";
 import { I } from "@/components/ui/glyphs";
 
 export type FeaturedMarket = { id: string; title: string; yesPct: number };
+
+const AUTO_ADVANCE_MS = 6000;
+const SWIPE_THRESHOLD = 40;
+
+/** True if the OS OR the in-app "reduce motion" setting asks to limit motion. */
+function prefersReducedMotion(): boolean {
+  if (typeof window === "undefined") return false;
+  const root = document.documentElement;
+  if (root.classList.contains("kp-reduce-motion")) return true;
+  const dm = root.getAttribute("data-motion");
+  if (dm && dm !== "full") return true;
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+}
 
 export function FeaturedContest({
   markets,
@@ -26,11 +40,32 @@ export function FeaturedContest({
   openLabel: string;
 }) {
   const [idx, setIdx] = useState(0);
+  const [paused, setPaused] = useState(false);
   const n = markets.length;
+  const multi = n > 1;
   const go = useCallback((d: number) => setIdx((i) => (i + d + n) % n), [n]);
+
+  // Auto-advance through the contested markets — but only when motion is allowed
+  // and the player isn't hovering/focusing the hero (never yank a slide away
+  // mid-read). Fully disabled under reduced-motion.
+  useEffect(() => {
+    if (!multi || paused || prefersReducedMotion()) return;
+    const t = setInterval(() => setIdx((i) => (i + 1) % n), AUTO_ADVANCE_MS);
+    return () => clearInterval(t);
+  }, [multi, paused, n]);
+
+  // Touch swipe: a horizontal drag past the threshold flips one slide.
+  const touchX = useRef<number | null>(null);
+  const onTouchStart = (e: React.TouchEvent) => { touchX.current = e.touches[0]?.clientX ?? null; };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchX.current == null) return;
+    const dx = (e.changedTouches[0]?.clientX ?? touchX.current) - touchX.current;
+    touchX.current = null;
+    if (Math.abs(dx) >= SWIPE_THRESHOLD) go(dx < 0 ? 1 : -1);
+  };
+
   if (n === 0) return null;
   const m = markets[Math.min(idx, n - 1)];
-  const multi = n > 1;
 
   return (
     <div
@@ -43,6 +78,12 @@ export function FeaturedContest({
         if (e.key === "ArrowLeft") { e.preventDefault(); go(-1); }
         else if (e.key === "ArrowRight") { e.preventDefault(); go(1); }
       }}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
+      onTouchStart={multi ? onTouchStart : undefined}
+      onTouchEnd={multi ? onTouchEnd : undefined}
     >
       {/* Eyebrow + arrow controls */}
       <div className="mb-2 flex items-center justify-between gap-3">
@@ -101,7 +142,7 @@ function Arrow({ dir, onClick }: { dir: "prev" | "next"; onClick: () => void }) 
       type="button"
       onClick={onClick}
       aria-label={dir === "prev" ? "Previous market" : "Next market"}
-      className="grid h-9 w-9 place-items-center rounded-full border transition-colors hover:bg-[color-mix(in_oklab,var(--aqua-400)_14%,transparent)]"
+      className="grid h-11 w-11 place-items-center rounded-full border transition-colors hover:bg-[color-mix(in_oklab,var(--aqua-400)_14%,transparent)]"
       style={{ borderColor: "color-mix(in oklab, var(--aqua-400) 55%, transparent)", color: "var(--aqua-300)" }}
     >
       <Icon s={16} />

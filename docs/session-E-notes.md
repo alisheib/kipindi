@@ -16,6 +16,8 @@
 - [x] §9.4 removed the redundant KPI `tone="gold"` alias (kept the `gold` boolean)
 - [x] §9.2 Chip overlap — already structurally solved + call-site collapse gated on Ali (documented)
 - [x] A17 hide the empty live-ops matches section (render only on a real feed)
+- [x] A18 tap targets → ≥44px (named controls) + visual verify (756→473 touch-warns, 0 hard fails)
+- [x] A19 P1 delighters — /live carousel auto-advance+swipe; /results notable arrows+swipe
 - [ ] A9  migrate NON-money config modules to defineConfig
 - [ ] A10 money .toLocaleString → formatTzs + lint rule
 - [ ] A11 migrate 6 player popups onto <Modal> (wrapper only)
@@ -103,6 +105,47 @@ shallow get() doesn't give). Audit shape unchanged (ADMIN `affiliate.config.upda
 only self-references — the docstring's "backup snapshots the global" was stale).
 - Verified: tsc clean; test:config 10/10, test:referral 15/15, test:invites 32/32,
   test:invite-flow 25/25.
+
+### A18 + A19 (DONE, batch 5) — tap targets + delighters, with visual verify
+**A18 — remaining tap targets → ≥44px.** The audit flags a control at `height<38 ||
+width<24`; every named control is already ≥24px wide, so I bumped HEIGHT only →
+no horizontal reflow (top bar is fixed-height, items vertically centred):
+- top bar: wallet pill 32→44 (`wallet-balance-pill.tsx`); Deposit 34→44 + cash-hide
+  eye `h-7 w-7`→`h-11 w-7` (44 tall, 28 wide, no h-reflow) (`top-app-bar.tsx`).
+- language switcher: pills → `minHeight:44` + flex-centre, side padding kept
+  (`language-toggle.tsx`).
+- dial Lock/Unlock: `min-h-[44px]` (`conviction-dial.tsx`) — verified 112×44, sits
+  in the card's top-right corner with NO overlap of the "your pick" content.
+- admin: `SortTh` link `min-h-[44px]` (`admin-sort.tsx`); PeriodPicker segments
+  `h-8`→`h-11` (`period-picker.tsx`); audit category tabs — the `<Link>` around
+  each Chip gets `inline-flex items-center min-h-[44px]` so the tap area is 44px
+  while the chip keeps its size (`admin/audit/page.tsx`).
+- Also bumped the /live carousel arrows `h-9 w-9`→`h-11 w-11` (they were 36px).
+- **Visual verify** (`BASE=…:3001 node scripts/responsive-audit.mjs`, server run
+  with DISABLE_ADMIN_TOTP=true, seeded via /api/dev-test/seed-markets): touch-warn
+  soft-warnings dropped **756 → 473**, **0 hard failures** (no new overflow/clip/
+  offscreen — nothing shifted). Every named A18 control is GONE from the small
+  list. Remaining small controls are all OUT OF SCOPE (the `50pick Home` logo
+  link 26×33, the desktop nav links Markets/Live/Results/History/Wallet ~34px, the
+  /proposals Create + category buttons) — pre-existing, not in A18's named list;
+  flagged below for a future L6 pass.
+**A19 — P1 delighters.**
+- `/live` `FeaturedContest`: added AUTO-ADVANCE (6s, pauses on hover/focus, fully
+  off under reduced-motion incl. the in-app `kp-reduce-motion`/`data-motion`
+  settings) + touch SWIPE; kept the existing arrows/dots/keyboard. Verified the
+  carousel renders with the 44px arrows + "1 / 6" counter + dot rail.
+- `/results` notable: new `notable-carousel.tsx` (client) wraps the server-rendered
+  `<FeaturedResult>` cards with gold arrows + ←/→ + dots + swipe (NO auto-advance
+  — a result is read, not tickered). Top-N by volume: 3 when ≥8 resolved, else 1
+  (single-card = unchanged behaviour for small sets). Featured ids excluded from
+  the page-1 grid. Verified single-card path; multi uses the same verified pattern.
+- Verified: tsc clean.
+
+**Flag for M / future L6 pass (out of A18's named scope, pre-existing sub-44):**
+the top-bar `50pick Home` logo link (~33px tall) and the desktop primary-nav links
+(Markets/Live/Results/History/Wallet, ~34px) + `/proposals` Create & category
+buttons are still <44px. Not in A18's list ("Wallet/Deposit pill, dial, language,
+admin tabs/sort"), so left untouched — a candidate for the next tap-target sweep.
 
 **The other 6 named modules — deliberately NOT force-migrated (rationale):**
 - `proposals-config` — ALREADY on defineConfig (nothing to do).

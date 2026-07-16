@@ -97,7 +97,7 @@ export function SortTh({
     <th className={`${align === "right" ? "text-right" : "text-left"} ${className ?? ""}`}>
       <Link
         href={`${baseHref}?${params.toString()}` as never}
-        className={`inline-flex items-center gap-1 hover:text-text transition-colors ${isActive ? "text-text" : ""}`}
+        className={`inline-flex min-h-[44px] items-center gap-1 hover:text-text transition-colors ${isActive ? "text-text" : ""}`}
         scroll={false}
       >
         {label}

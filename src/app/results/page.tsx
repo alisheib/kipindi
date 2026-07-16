@@ -9,6 +9,7 @@ import { getCardChart } from "@/lib/server/market-history";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { ResultsSearch } from "./results-search";
+import { NotableCarousel } from "./notable-carousel";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { formatTzsCompact } from "@/lib/utils";
 import { pickLocalized } from "@/lib/localized";
@@ -130,13 +131,16 @@ async function ResultsContent({
   const noWins = all.filter((m) => m.resolvedOutcome === "NO").length;
   const voidCount = all.filter((m) => m.resolvedOutcome === "VOID" || m.status === "VOIDED").length;
 
-  // C2b — the single "notable result" featured above the grid = the highest-volume
-  // settled market. Only on page 1 with no active search. Exclude it from the
-  // page-1 grid so it isn't shown twice.
+  // C2b / A19 — "notable results" featured above the grid = the highest-volume
+  // settled markets. Only on page 1 with no active search. On a healthy result set
+  // we spotlight the top 3 in a small swipeable carousel; with fewer results it
+  // stays a single card (unchanged behaviour). Featured ids are excluded from the
+  // page-1 grid so nothing is shown twice.
   const showFeatured = !searching && safePage === 1 && all.length > 0;
-  const notable = showFeatured
-    ? all.reduce((best, m) => (m.yesPool + m.noPool > best.yesPool + best.noPool ? m : best))
-    : null;
+  const notableList = showFeatured
+    ? [...all].sort((a, b) => (b.yesPool + b.noPool) - (a.yesPool + a.noPool)).slice(0, all.length >= 8 ? 3 : 1)
+    : [];
+  const notableIds = new Set(notableList.map((m) => m.id));
 
   // Build chart data for visible page only
   const cardCharts = new Map(
@@ -268,9 +272,18 @@ async function ResultsContent({
 
           {paged.length > 0 ? (
             <>
-              {notable && <FeaturedResult m={notable} t={t} locale={locale} />}
+              {notableList.length > 0 && (
+                <NotableCarousel
+                  label={t.results.notableResult}
+                  prevLabel={t.common.back}
+                  nextLabel={t.common.next}
+                  slides={notableList.map((nm) => (
+                    <FeaturedResult key={nm.id} m={nm} t={t} locale={locale} />
+                  ))}
+                />
+              )}
               <section className="market-grid">
-                {paged.filter((m) => m.id !== notable?.id).map((m) => (
+                {paged.filter((m) => !notableIds.has(m.id)).map((m) => (
                   <MarketCard
                     key={m.id}
                     id={m.id}
@@ -350,7 +363,7 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
   return (
     <Link
       href={`/markets/${m.id}` as never}
-      className="group relative mb-5 block overflow-hidden rounded-xl border border-gold-700/40 bg-bg-elevated p-5 lg:p-6"
+      className="group relative block overflow-hidden rounded-xl border border-gold-700/40 bg-bg-elevated p-5 lg:p-6"
       style={{ background: "radial-gradient(120% 140% at 100% 0%, oklch(40% 0.10 80 / 0.10), transparent 55%), var(--bg-elevated)" }}
     >
       <div className="mb-3 flex flex-wrap items-center gap-2">

@@ -118,7 +118,7 @@ export function WalletBalancePill({ balance }: { balance: number }) {
           : "hover:text-gold-300",
       )}
       style={{
-        height: 32,
+        height: 44,
         padding: "0 12px",
         gap: 7,
         background: "var(--bg-inset)",

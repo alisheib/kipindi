@@ -110,8 +110,10 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
             //    which in SW/ZH would exceed the 1280 max-w container alongside the pill.
             <div className="hidden sm:flex lg:hidden xl:flex 2xl:hidden items-center gap-2">
               <WalletBalancePill balance={user.balance} />
-              {/* bare eye keeps the compact 14px glyph but takes a 40px hit area (WCAG 2.5.8) */}
-              <CashEye bare size={14} className="inline-flex items-center justify-center h-7 w-7 -mx-1 text-[var(--gold-300)]" />
+              {/* bare eye keeps the compact 14px glyph but takes a 44px-tall hit area
+                  (WCAG 2.5.5 AAA). Height only — width stays 28px so the cluster
+                  doesn't reflow horizontally. */}
+              <CashEye bare size={14} className="inline-flex items-center justify-center h-11 w-7 -mx-1 text-[var(--gold-300)]" />
             </div>
           )}
 
@@ -121,7 +123,7 @@ export function TopAppBar({ user }: { user: TopAppBarUser }) {
               aria-label={t.common.deposit}
               className="inline-flex items-center justify-center gap-1.5 rounded-pill font-display font-bold text-[12px] tracking-[-0.01em] transition-all duration-150 hover:brightness-110 hover:shadow-[0_0_18px_-2px_var(--gold-400)] active:scale-[0.97]"
               style={{
-                height: 34,
+                height: 44,
                 padding: "0 12px",
                 background: "linear-gradient(135deg, var(--gold-500), var(--gold-600))",
                 color: "var(--gold-50)",
