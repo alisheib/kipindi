@@ -18,6 +18,7 @@
 - [x] A17 hide the empty live-ops matches section (render only on a real feed)
 - [x] A18 tap targets → ≥44px (named controls) + visual verify (756→473 touch-warns, 0 hard fails)
 - [x] A19 P1 delighters — /live carousel auto-advance+swipe; /results notable arrows+swipe
+- [x] A11 migrate all 6 player popups onto <Modal> (wrapper only) + visual re-verify
 - [ ] A9  migrate NON-money config modules to defineConfig
 - [ ] A10 money .toLocaleString → formatTzs + lint rule
 - [ ] A11 migrate 6 player popups onto <Modal> (wrapper only)
@@ -146,6 +147,44 @@ the top-bar `50pick Home` logo link (~33px tall) and the desktop primary-nav lin
 (Markets/Live/Results/History/Wallet, ~34px) + `/proposals` Create & category
 buttons are still <44px. Not in A18's list ("Wallet/Deposit pill, dial, language,
 admin tabs/sort"), so left untouched — a candidate for the next tap-target sweep.
+
+### A11 — migrate the 6 player popups onto <Modal> (DONE, batch 6) — WRAPPER ONLY
+Extended the shared `<Modal>` primitive (additive, all defaults preserve current
+behaviour so existing consumers — settle/emergency-void/objection/ConfirmModal —
+are untouched):
+- `zIndex?` (default 100) — for overlays that must sit above other modals.
+- `ariaBusy?` — sets aria-busy on the dialog (bet-confirm while submitting).
+- `sheet?` — responsive bottom-sheet: docks to the bottom edge with `rounded-t-xl`
+  on phones, centered `rounded-xl` on ≥sm (adds a `kp-sheet-rise` slide-up keyframe).
+Then swapped each popup's hand-rolled `createPortal + scrim + useModalLock +
+focus-trap + Esc + ✕ + keyframes` for `<Modal>`, preserving ALL bespoke logic and
+animation as children. **No bet/sell/settlement logic changed.**
+- `sell-confirm-modal.tsx` — cleanest; kept only Enter-to-confirm. Money math intact.
+- `bet-confirm-modal.tsx` — `panelClassName="overflow-hidden !p-0"` so the RAF
+  gilt quote-hold strip still clips flush; `ariaBusy={pending}`; `showClose={false}`
+  (keeps its in-header ✕). The 10 s quote-hold RAF loop + backstop are UNCHANGED.
+- `operation-result-modal.tsx` — `overflow-hidden !p-0` for the RAF auto-close
+  strip; `role` from variant (danger→alertdialog); `initialFocus` = primary CTA;
+  the absolute-target close/backstop logic is UNCHANGED.
+- `win-celebration.tsx` — `zIndex={1700}` + `overflow-hidden !p-0` (gold strip);
+  RewardBurst + RollingAmount count-up + 4.5 s auto-dismiss kept.
+- `first-visit-primer.tsx` — `sheet` + `zIndex={150}` + `!p-0`; GiltCorners, gold
+  progress strip, 3-step carousel + ←/→ keys kept (Esc now via Modal).
+- `reality-check.tsx` — `sheet` + `zIndex={1700}`; now portaled via Modal (its own
+  `[role=dialog][aria-modal]` defer-check still fires). RG links + session timer kept.
+- **Visual re-verify** (seeded dev server, driven via Playwright) at 360 + 1280:
+  bet-confirm (strip clips), sell-confirm (centered), operation-result (green strip),
+  win-celebration (renders at z-1700 ABOVE the operation-result at z-100 — proves
+  the zIndex layering), first-visit-primer (bottom-sheet at 360, centered at 1280 —
+  proves the responsive sheet mode). **reality-check verified by pattern** (identical
+  sheet mode to the primer, proven at both breakpoints) + tsc + review — M may
+  spot-check it live if desired.
+- Verified: tsc clean; test-all 64/64.
+
+---
+
+## ✅ ALL SESSION-E SCOPE COMPLETE (A8, A9, A10, A11, A17, A18, A19, §9.2/§9.4)
+6 batches pushed to `enhance/perfection-9`. Ready for Session M review + merge.
 
 **The other 6 named modules — deliberately NOT force-migrated (rationale):**
 - `proposals-config` — ALREADY on defineConfig (nothing to do).
