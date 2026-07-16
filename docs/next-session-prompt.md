@@ -1,56 +1,57 @@
-# Next-session kickoff prompt (copy-paste)
+# GO-LIVE DAY kickoff prompt (copy-paste tomorrow, 2026-07-17)
 
-> Paste the block below to start the next session. Written 2026-07-16, for the
-> session that integrates the payment aggregator (keys expected ~2026-07-17).
+> Paste the block below to start the go-live session. Ali brings: payment API
+> keys + docs, Cloudflare access (ideally a Zone-DNS-Edit API token), the Netpoa
+> login (or does the 1-screen NS swap himself), and the Postmark DKIM record.
+> Railway CLI is already logged in (alisheib07).
 
 ---
 
-You are continuing 50pick (repo `F:\kipindi-main`, pushes to `main`). Read the two
-always-on skills first — `.claude/skills/50pick-standards` (how we build: 9-role
-gate, UI-kit, responsiveness 360/768/1280/1920, visual verification, testing, copy
-rules) and `.claude/skills/50pick-audit` (ops playbook, safe DB/migration workflow,
-Railway, money invariants) — then `docs/NEXT-SESSION.md`.
+You are running 50pick's GO-LIVE DAY (repo `F:\kipindi-main`, pushes to `main` =
+LIVE deploys). Read `.claude/skills/50pick-standards` + `.claude/skills/50pick-audit`
+first. State: audit COMPLETE, §9 enhancements LIVE, GBT licence obtained, Railway
+static egress IPs active (162.220.232.250 / 152.55.176.240 / 152.55.177.181),
+payment adapter scaffold ready on branch `feat/payment-adapter`. Prod verify host:
+`kipindi-production.up.railway.app` until DNS lands, then `https://www.50pick.tz`.
 
-**State:** Final Audit COMPLETE + the §9 enhancement batch DONE & LIVE (Session M
-money-ops + Session E UI/compliance, merged @ `023dfbf`). Prod is HEALTHY — verify
-against `https://kipindi-production.up.railway.app` (the `50pick.tz` domain still
-parks on Apache). Trackers: `docs/ENHANCEMENT-PLAN-STATUS.md`,
-`docs/GO-LIVE-READINESS.md`. Nothing in the plan blocks launch except the payment
-rail.
+Execute in THIS order (details in the named docs — follow them exactly):
 
-**PRIMARY TASK — payment aggregator integration (if the API keys are in hand):**
-Execute `docs/PAYMENT-INTEGRATION-CHECKLIST.md` step by step on the branch
-`feat/payment-adapter` (already pushed — it has the env-switched adapter scaffold;
-you fill the two adapter bodies for the signed provider (selcom/azampay), wire
-`PAYMENT_AGGREGATOR`/`PAYMENT_API_KEY`/`PAYMENT_API_SECRET` + the webhook secret,
-confirm the inbound webhook contract in `route.ts`, map MNO→aggregator). Test:
-`PAYMENTS_DEMO_ASYNC=true` suites + full gate + `e2e:money` on the local PG + a
-sandbox round-trip. Then merge → main, deploy, verify, do the go-live DB hygiene
-(unset `TEST_FUNDING`, format/rebaseline), and only THEN flip `AUTO_SETTLE=true`.
-Ask me for: which aggregator, the API/webhook docs, the base URL + key/secret.
-NEVER ship a guessed signature — every provider-specific value is marked VERIFY.
+**1 · DNS cutover FIRST (morning — propagation needs lead time).**
+`docs/CLOUDFLARE-SETUP-GUIDE.md` ⭐ §A–§D + **§C2 (mail records — the mailbox +
+Postmark DKIM/pm-bounces MUST carry over or email dies)**. Free plan is fine;
+grey-cloud (DNS only) until Railway certs issue. Verify: both hosts serve the app,
+`railway domain status` → Verified: yes, Postmark dashboard DKIM+Return-Path green,
+test email delivered to ali.sheib@50pick.tz.
 
-**IF the keys are NOT here yet — do safe, valuable work (no live-money risk):**
-pick from the optional admin features in ENHANCEMENT-PLAN-STATUS (A) — A6
-featured/pinned markets, A7 configurable compliance knobs, A13 officer/RBAC UI,
-A14 scheduled reports, A15 post-publish market edit, A16 bonus windows — or the E
-DENYLIST cosmetics (server-side money `toLocaleString`, resolver B≠A gate →
-`twoOfficerGate`, L6 tap-targets on logo/nav/proposals). Keep each self-contained.
+**2 · R2 (parallel, while DNS propagates).** Bucket `kipindi-kyc` + API token →
+Railway vars (EXACT names: `KYC_STORAGE=r2`, `R2_BUCKET`, `R2_ENDPOINT`,
+`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`) → `npm i @aws-sdk/client-s3` →
+KYC upload→admin-view round-trip.
 
-**Non-negotiable guardrails:**
-- Every `git push` to `main` = a LIVE production deploy to the money DB.
-- Before ANY push: `npx tsc --noEmit` + `npm run build` green. Before any push that
-  touches money code: the FULL `npm run test:all` (not a subset) + `test:integrity`.
-- Incomplete/unproven money code stays on a BRANCH — never deploy it to main.
-- After every push VERIFY: technical + logical + visual (screenshot the live page)
-  + live-DB HTTP 200 + `railway logs` clean. Railway CLI = alisheib07.
-- Never `throw` at boot on a non-fatal condition. Money lock order wallet→market;
-  claim rows on money writes. Develop/test migrations on the LOCAL disposable PG
-  (`F:\pg-loadtest:5433`) only — prod gets them via deploy.
-- Keep it factual (test:integrity bans 15% tax / "bilingual EN/SW" / flat-9% fee /
-  teal-kit / light-theme). Keep the trackers + `CLAUDE.md` banner + memory current.
+**3 · Payment integration (when keys arrive).** `docs/PAYMENT-INTEGRATION-CHECKLIST.md`
+on `feat/payment-adapter`: fill the signed provider's two adapter bodies (VERIFY
+every endpoint/field/signature against their real docs — never guess a signature),
+creds + webhook secret env, confirm `route.ts` inbound contract + `normalizeStatus`,
+MNO map. Test: `PAYMENTS_DEMO_ASYNC=true` suites, full gate (tsc/build/test:all/
+integrity), `e2e:money` on the local PG (drift 0.00), sandbox round-trip (deposit
+push → webhook → credited exactly once; withdrawal payout; ≥1M → AML hold). Then
+merge → main → deploy → verify.
 
-Two open policy questions for Ali (each unblocks one small money-ops item): does an
-admin RG-limit override bypass the cooling-off on increases? which comm should the
-"resend" action send? And a dedicated future session should do the bet-STAKE
-single-`$transaction` (highest blast radius; money is already correct + drift-detected).
+**4 · THE SWITCH (only after 1–3 are green).** `docs/LAUNCH-GO-NO-GO.md` §5:
+unset `TEST_FUNDING` → format/rebaseline the DB (clean genesis) → verify trial
+balance = TZS 0 drift + audit chain VALID → one real small deposit→bet→settle→
+withdraw round-trip → flip `AUTO_SETTLE=true` → confirm https://50pick.tz +
+https://www.50pick.tz serve with valid certs → announce.
+
+**5 · Post-launch watch.** railway logs clean · /admin/payments reconcile drift 0
+· nightly `ledger.trial_balance_drift` stays quiet · first real player flows.
+
+Guardrails (unchanged): every push = LIVE deploy; full `test:all` before any money
+push; verify after every push (tech/logical/visual/200/logs); never throw at boot;
+migrations on the local PG only; NEVER commit secrets (creds go in Railway vars
+only); keep trackers + CLAUDE.md + memory current as you go.
+
+Deferred BY DESIGN to the first post-launch stabilization session (do NOT do them
+on launch day): bet-STAKE single-`$transaction` (highest blast radius — launch runs
+on today's battle-tested code; risk is bounded: money correct + drift-detected),
+Redis wiring + replicas (scale step), Cloudflare orange/WAF flip, PG load benchmark.
