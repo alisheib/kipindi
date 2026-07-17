@@ -28,7 +28,7 @@
   webmail/autodiscover). Independent of the app.
 - **App transactional email:** Postmark (account owner `ali.sheib@50pick.tz`) — order/reset/
   admin emails. Anchored to the domain by a DKIM TXT + the `pm-bounces` return-path CNAME.
-- **KYC document storage:** Cloudflare R2 (bucket `kipindi-kyc`) — S3-compatible; seam in
+- **KYC document storage:** Cloudflare R2 (bucket `50pick-kyc`) — S3-compatible; seam in
   `src/lib/server/storage.ts`. (Activation pending R2 creds — see §5.)
 - **Payments:** Selcom (BoT-licensed aggregator) — adapter staged on `feat/payment-selcom`
   (see §6). Pending Selcom API keys/docs.
@@ -36,8 +36,8 @@
 ---
 
 ## 1. The go-live run order (high level)
-1. **DNS cutover** (Netpoa → Cloudflare) — **DONE 2026-07-17** (§2–§3).
-2. **R2 KYC storage** — code side DONE; needs the R2 creds (§5).
+1. **DNS cutover** (Netpoa → Cloudflare) — **DONE 2026-07-17**; tzNIC registry flipped ~15:23, propagating + Railway verifying (§2–§3).
+2. **R2 KYC storage** — **✅ DONE + LIVE 2026-07-17** (bucket `50pick-kyc`, round-trip PASS) (§5).
 3. **Selcom payment adapter** — branch staged; needs Selcom keys/docs (§6).
 4. **The switch** — unset `TEST_FUNDING`, rebaseline DB, flip `AUTO_SETTLE` (§7).
 5. **Post-launch watch** (§8).
@@ -156,12 +156,16 @@ leave or delete; none affect launch.)*
 deployed; the storage seam (`src/lib/server/storage.ts`) loads it lazily and stays inline
 until switched on.
 
-**Remaining (needs the R2 creds from Ali):**
-1. Cloudflare → **R2** → create bucket **`kipindi-kyc`** → **Manage R2 API Tokens** → create
+**✅ DONE + LIVE (2026-07-17):** bucket `50pick-kyc` created (Cloudflare R2, WEUR); all 5
+Railway vars set; local + prod-env round-trip (`scripts/r2-roundtrip.mjs`) PASS. New KYC
+uploads store to R2. The steps below are the record of what was done:
+
+**Steps (completed):**
+1. Cloudflare → **R2** → create bucket **`50pick-kyc`** → **Manage R2 API Tokens** → create
    an **Object Read & Write** token → note **Access Key ID**, **Secret Access Key**, **Account ID**.
 2. Set these Railway env vars (**exact** names — code reads them in `storage.ts`):
    - `KYC_STORAGE=r2` (the activation switch — without it R2 is ignored)
-   - `R2_BUCKET=kipindi-kyc`
+   - `R2_BUCKET=50pick-kyc`
    - `R2_ENDPOINT=https://<ACCOUNT_ID>.r2.cloudflarestorage.com`
    - `R2_ACCESS_KEY_ID=…` *(secret — value in Railway only)*
    - `R2_SECRET_ACCESS_KEY=…` *(secret — value in Railway only)*

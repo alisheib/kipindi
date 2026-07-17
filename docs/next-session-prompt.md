@@ -44,7 +44,7 @@ STATE — everything code is DONE, merged, live, and verified:
   (collection + disbursement + webhook signature) + **sandbox creds** + **base URL**
   + **API key/secret** + **webhook signing secret**. Paste secrets in-session (never
   into the repo).
-- **Cloudflare R2** — create bucket `kipindi-kyc` + an R2 API token (Object R/W) and
+- **Cloudflare R2** — create bucket `50pick-kyc` + an R2 API token (Object R/W) and
   paste: account id (for the endpoint), access key id, secret.
 🔐 All secrets go into Railway env vars or are pasted to me in-session — never committed.
 
@@ -57,7 +57,7 @@ RUN IN THIS ORDER (each step has a dedicated doc — follow it exactly):
    both hosts serve the app, `railway domain status 50pick.tz -s 50pick` →
    Verified: yes, Postmark DKIM+Return-Path green, a test email lands.
 
-2 · R2 (parallel with DNS propagation). Bucket `kipindi-kyc` + API token → Railway
+2 · R2 (parallel with DNS propagation). Bucket `50pick-kyc` + API token → Railway
    vars EXACT: `KYC_STORAGE=r2`, `R2_BUCKET`, `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`,
    `R2_SECRET_ACCESS_KEY` → `npm i @aws-sdk/client-s3` → KYC upload→admin-view test.
 

@@ -5,32 +5,31 @@
 > Full procedures/architecture live in [`GO-LIVE-RUNBOOK.md`](GO-LIVE-RUNBOOK.md); this file
 > is just "where are we RIGHT NOW."
 >
-> **Last updated: 2026-07-17 — DNS cutover done, BLOCKED on Netpoa pushing the NS change to
-> the tzNIC registry. Everything else staged.**
+> **Last updated: 2026-07-17 15:30 — tzNIC registry FLIPPED to Cloudflare (~15:23); DNS
+> propagating worldwide, Railway domains verifying. R2 KYC storage LIVE + verified.**
 
 ## TL;DR status
 | Item | State | Blocker / next |
 |---|---|---|
 | App on Railway host | 🟢 LIVE & healthy | `kipindi-production.up.railway.app` → 200; testers active |
-| Custom domain `50pick.tz`/`www` | 🟡 **PENDING** | Netpoa hasn't pushed the NS change to the `.tz` registry (support ticket open) |
-| Cloudflare DNS zone | 🟢 Done & verified | all records correct incl. mail; grey-cloud; verified against CF NS |
-| Railway cert issuance | 🟡 Waiting | `Verified: no` until the registry flips → then auto-issues |
-| R2 (KYC storage) | 🟡 Code done, creds pending | client deployed; needs bucket `kipindi-kyc` + token |
+| DNS delegation (tzNIC registry) | 🟢 **FLIPPED** ~15:23 | registry now returns `ollie`/`yadiel.ns.cloudflare.com` |
+| Custom domain `50pick.tz`/`www` | 🟡 Propagating | resolvers catching up (24h old-TTL); www already → Railway, apex still cached-old on some |
+| Cloudflare DNS zone | 🟢 Done & verified | 31 records, 0 proxied; all correct incl. mail; verified via CF API |
+| Railway verify + cert | 🟡 Issuing | `Verified: no` → flips to yes once Railway's resolvers see the delegation (mins–~1h); then `https://50pick.tz` serves the app (returns 404 until verified) |
+| R2 (KYC storage) | 🟢 **LIVE** | bucket `50pick-kyc`; 5 vars set in Railway; prod-env round-trip PASS |
 | Selcom payments | 🟡 Branch staged | `feat/payment-selcom`; needs Selcom keys/docs |
-| The go-live switch | ⚪ Not started | after R2 + Selcom: unset TEST_FUNDING, rebaseline, AUTO_SETTLE |
+| The go-live switch | ⚪ Not started | after Selcom + certs: unset TEST_FUNDING, rebaseline, AUTO_SETTLE |
 
-## ⛔ THE ONE BLOCKER RIGHT NOW: Netpoa → tzNIC registry push
-- Ali switched `50pick.tz` nameservers to **`ollie.ns.cloudflare.com` / `yadiel.ns.cloudflare.com`**
-  in the Netpoa panel (saved twice, account email verified, no registrar lock).
-- **But the `.tz` registry still returns `dns1/dns2.netpoa.com`** — Netpoa hasn't synced the
-  change to tzNIC. This is a Netpoa-side processing step; a support ticket is open (they're
-  on WhatsApp). ccTLD pushes can lag / need a human. Nothing on our side is wrong.
-- **Check it directly (bypasses caches):**
-  `nslookup -norecurse -type=ns 50pick.tz 196.216.162.67` (ns2.tznic.or.tz).
-  When it returns `ollie/yadiel.ns.cloudflare.com`, propagation has started.
-- Then: `railway domain status 50pick.tz -s 50pick` → `Verified: yes` + cert ISSUED, and
-  `https://50pick.tz` + `https://www.50pick.tz` serve the app. (A background watcher polls
-  the registry every 10 min.)
+## ⏳ CURRENT WAIT: DNS propagation → Railway verify → certs
+- The tzNIC registry **FLIPPED to Cloudflare ~15:23** (Netpoa pushed it — took ~3h). Now the
+  delegation propagates to resolvers worldwide (old NS had a 24h TTL, so some resolvers lag).
+- **Next:** Railway's resolvers see the delegation → `railway domain status` flips to
+  `Verified: yes` → TLS certs issue → `https://50pick.tz` + `https://www.50pick.tz` serve
+  the app. Until verified, the custom domains return **404** (Railway edge for an unverified
+  domain) — expected, not a defect.
+- **Watch:** `railway domain status 50pick.tz -s 50pick` (+ `www.…`) for `Verified: yes`;
+  `curl -I https://50pick.tz` for the app + valid cert. (Background watcher polling.)
+- Nothing to do but wait for propagation to reach Railway (mins–~1h typically).
 
 ## ⚠️ Do NOT (guardrails for any session touching this)
 - Do **not** re-edit the Cloudflare **web** records (apex/www CNAMEs, the two `_railway-verify`
@@ -40,14 +39,14 @@
 - A parallel session may be doing the **Zoho email migration** — it owns only the mail
   records (MX/SPF/DKIM), never the web records.
 
-## R2 (KYC) — how to finish (creds-only, independent of the DNS blocker)
-- Done: `@aws-sdk/client-s3` deployed (@9f4acd3); seam in `src/lib/server/storage.ts`;
-  smoke test at `scripts/r2-roundtrip.mjs`.
-- Ali creates bucket `kipindi-kyc` + an Object R/W token → then set Railway vars:
-  `KYC_STORAGE=r2`, `R2_BUCKET=kipindi-kyc`,
-  `R2_ENDPOINT=https://<ACCOUNT_ID>.r2.cloudflarestorage.com`, `R2_ACCESS_KEY_ID`,
-  `R2_SECRET_ACCESS_KEY` (secrets — Railway only).
-- Test: `node scripts/r2-roundtrip.mjs` (with the R2_* vars in the shell) → expect `PASS ✅`.
+## R2 (KYC) — ✅ DONE + LIVE (2026-07-17)
+- `@aws-sdk/client-s3` deployed (@9f4acd3); seam `src/lib/server/storage.ts`; smoke test
+  `scripts/r2-roundtrip.mjs`.
+- Bucket `50pick-kyc` (Cloudflare R2, WEUR). All 5 Railway vars set: `KYC_STORAGE=r2`,
+  `R2_BUCKET=50pick-kyc`, `R2_ENDPOINT=https://e6e5f86245721a28fea6fe1170feba12.r2.cloudflarestorage.com`,
+  `R2_ACCESS_KEY_ID` + `R2_SECRET_ACCESS_KEY` (secret values — Railway only).
+- Verified: local + prod-env (`railway run … node scripts/r2-roundtrip.mjs`) round-trip PASS.
+  New KYC uploads → R2; existing inline docs keep working (no backfill).
 
 ## Selcom payments — how to finish
 - Branch `feat/payment-selcom` (off current main + adapter scaffold, tsc green). Fill the
@@ -64,8 +63,10 @@
   `TZ-GBT-2026-XXXX`).
 - **Staying as-is (Ali's calls):** `DISABLE_ADMIN_TOTP=true` (2FA later), `SMS_PROVIDER=console`
   (launching without SMS).
-- **Removed as dead/irrelevant:** `SPORTS_API_PROVIDER` (markets are AI-generated),
-  `DEMO_MODE_ENABLED` (read nowhere).
+- **To remove at the switch (still set, no-op):** `SPORTS_API_PROVIDER` (markets are
+  AI-generated), `DEMO_MODE_ENABLED` (read nowhere) — folded into the switch redeploy.
+- **Added + live (R2 KYC):** `KYC_STORAGE=r2`, `R2_BUCKET=50pick-kyc`, `R2_ENDPOINT`,
+  `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`.
 
 ## Quick health commands
 - App: `curl -s -o /dev/null -w "%{http_code}" https://kipindi-production.up.railway.app/api/health`

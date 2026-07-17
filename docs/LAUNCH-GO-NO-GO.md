@@ -29,7 +29,7 @@
       swap nameservers at Netpoa → add the 4 exact records (per-host CNAME targets
       + 2 `_railway-verify` TXT), grey-cloud first. Both custom domains are ALREADY
       attached in Railway; `NEXT_PUBLIC_APP_URL` is already `https://www.50pick.tz`.
-- [ ] **Cloudflare R2 bucket** (e.g. `kipindi-kyc`) + an R2 API token. Gives me the
+- [ ] **Cloudflare R2 bucket** (e.g. `50pick-kyc`) + an R2 API token. Gives me the
       creds for §3. (If you also front the app with Cloudflare DNS/CDN/WAF, do that
       here too — recommended, not required.)
 - [ ] **Redis** (Railway tile) — *only needed if you run more than one instance.*
