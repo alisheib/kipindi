@@ -20,6 +20,11 @@
 > (DNS→R2→payment keys→the switch) is `docs/next-session-prompt.md`. **Nothing in
 > the plan now blocks launch — the one remaining unblock is the payment aggregator
 > API keys.** Remaining code = optional admin features (A6/A7/A13–A16) + polish.
+> 🚀 **GO-LIVE IN PROGRESS (2026-07-17):** DNS cut over Netpoa→Cloudflare (all records +
+> mail carried over, verified; awaiting propagation + Railway cert issuance). R2 KYC client
+> (`@aws-sdk/client-s3`) deployed — awaiting R2 creds. Selcom adapter staged on
+> `feat/payment-selcom` (⚠️ do NOT merge the stale `feat/payment-adapter`). Full record +
+> step-by-step: [`docs/GO-LIVE-RUNBOOK.md`](docs/GO-LIVE-RUNBOOK.md).
 > 🧭 **START HERE — two always-on skills:**
 > • **`50pick-standards`** (`.claude/skills/50pick-standards/SKILL.md`) — **how we build**:
 >   the quality bar, the 9-role gate, UI-kit & design discipline, the responsiveness matrix

@@ -31,7 +31,8 @@ next start` **against the live money DB**. There is no staging. So:
 - **Migrations:** additive only where possible; test on local PG first (§3/§4).
 
 ## 1. Where the work stands — read this FIRST
-- **Living tracker (source of truth):** [`docs/FINAL-AUDIT-REMEDIATION.md`](../../docs/FINAL-AUDIT-REMEDIATION.md). Its **"▶ WHERE WE ARE"** block names the current stage, what's closed, and what's LEFT. Update it at the end of every stage.
+- **GO-LIVE runbook & execution record (source of truth for launch):** [`docs/GO-LIVE-RUNBOOK.md`](../../docs/GO-LIVE-RUNBOOK.md) — architecture, the exact DNS-cutover steps we ran (Netpoa→Cloudflare, 2026-07-17) + gotchas, the final DNS/mail config, the env-var registry, and the R2/Selcom/switch procedures. 🔐 It contains NO secret values (secrets live in Railway env vars only).
+- **Living tracker (audit source of truth):** [`docs/FINAL-AUDIT-REMEDIATION.md`](../../docs/FINAL-AUDIT-REMEDIATION.md). Its **"▶ WHERE WE ARE"** block names the current stage, what's closed, and what's LEFT. Update it at the end of every stage.
 - The audit itself: `Final Audit 1507/50pick-FINAL-AUDIT-v8-FINAL-2026-07-15.md` (11 Critical, 11 High, 11 Medium, 6 Low).
 - Work in **stages**: after each → run tests → update the tracker's WHERE-WE-ARE block → commit → `git push origin main`.
 - Keep the tracker, `CLAUDE.md`'s "ACTIVE WORK" banner, and the `final-audit-remediation` memory in sync so any new session instantly knows the stage.
@@ -81,7 +82,11 @@ psql: `& F:\pg-loadtest\pgsql\bin\psql.exe "postgresql://postgres:pw@localhost:5
 - **Webhook:** timestamp mandatory + HMAC over `${timestamp}.${body}`; amount verified vs the initiated txn (C5/M4).
 - Design authority: `docs/DESIGN_AUTHORITY.md` (royal 268, single dark theme). Never build from the deleted teal kit.
 
-## 7. Still deep / needs a focused session
-- **C3** — wrap wallet+txn+ledger writes in one Prisma `$transaction` across the money paths, and add a CORRECT wallet↔ledger trial balance (must account for `hold`/`pending`/bonus, or it false-positives). Then nightly job + `/admin/finance` surface + alert.
-- **C6** — make the audit chain DB-authoritative: `pg_advisory_xact_lock` + SQL head-selection + `@@unique([prevHash])` migration + `await persist()` for money/compliance. Verify with `s10-cross-instance`.
-- Both need the local PG (§3) and careful, unrushed work — a wrong ledger/audit change is catastrophic.
+## 7. Done — formerly-deep items now closed + live (do NOT re-open as "todo")
+- **C3 — DONE + LIVE.** Wallet+txn+ledger writes are in one Prisma `$transaction` across ALL
+  money paths (incl. bet placement @595901e); a correct wallet↔ledger trial balance
+  (accounts for hold/pending/bonus) runs nightly + surfaces on `/admin/finance`.
+- **C6 — DONE + LIVE.** The audit chain is DB-authoritative (advisory lock + SQL head-select +
+  `@@unique([prevHash])` + `await persist()`), verified on `s10-cross-instance`.
+- Both were verified on the local PG (§3). Kept here as a note so a new session doesn't
+  mistake them for open work.
