@@ -75,11 +75,11 @@ itself and everything just works. Flip to Proxied (orange) + SSL **Full (Strict)
 - `NEXT_PUBLIC_APP_URL` is already `https://www.50pick.tz` (set 2026-07-03).
 
 ### E. R2 while you're in Cloudflare (KYC storage) — CORRECTED env names
-Create bucket `kipindi-kyc` + an API token (Object Read & Write on that bucket),
+Create bucket `50pick-kyc` + an API token (Object Read & Write on that bucket),
 then set in Railway → 50pick → Variables (these EXACT names — the code reads them
 in `src/lib/server/storage.ts`; the old Step 8 names are superseded):
 - `KYC_STORAGE=r2`  ← the activation switch (without it R2 is silently ignored)
-- `R2_BUCKET=kipindi-kyc`  (NOT `R2_BUCKET_NAME`)
+- `R2_BUCKET=50pick-kyc`  (NOT `R2_BUCKET_NAME`)
 - `R2_ENDPOINT=https://<ACCOUNT_ID>.r2.cloudflarestorage.com`
 - `R2_ACCESS_KEY_ID=…` · `R2_SECRET_ACCESS_KEY=…`
 (`R2_ACCOUNT_ID` is not read — the account id lives inside the endpoint URL.)
@@ -175,15 +175,15 @@ Delete any old A/AAAA records pointing at the Apache parking — see §C.
 ### Step 8: Create R2 Bucket (KYC Storage)
 
 1. R2 -> Create bucket
-2. Name: `kipindi-kyc`
+2. Name: `50pick-kyc`
 3. Region: Auto (or choose EMEA for closer to Tanzania)
 4. Go to R2 -> Manage R2 API Tokens -> Create API token
-5. Permissions: Object Read & Write on kipindi-kyc bucket only
+5. Permissions: Object Read & Write on 50pick-kyc bucket only
 6. Copy Account ID, Access Key ID, Secret Access Key
 7. In Railway -> 50pick service -> Variables -> add (**names CORRECTED 2026-07-16
    to what `src/lib/server/storage.ts` actually reads — see ⭐ §E**):
    - `KYC_STORAGE` = `r2`  (the activation switch — without it R2 is ignored)
-   - `R2_BUCKET` = `kipindi-kyc`  (the code reads `R2_BUCKET`, not `R2_BUCKET_NAME`)
+   - `R2_BUCKET` = `50pick-kyc`  (the code reads `R2_BUCKET`, not `R2_BUCKET_NAME`)
    - `R2_ENDPOINT` = `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`
    - `R2_ACCESS_KEY_ID` = (from step 6)
    - `R2_SECRET_ACCESS_KEY` = (from step 6)

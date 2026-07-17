@@ -402,9 +402,9 @@ Testing is **~70 standalone `tsx` test scripts** (`test:wallet`, `test:kyc`, `te
 > — but **storage is still in the database.**
 >
 > **Planned (NEXT):** per `docs/CLOUDFLARE-SETUP-GUIDE.md`, target architecture is **Cloudflare (DNS +
-> CDN + WAF + R2) in front of Railway**. Step 8 provisions an R2 bucket **`kipindi-kyc`** + an R2 API
+> CDN + WAF + R2) in front of Railway**. Step 8 provisions an R2 bucket **`50pick-kyc`** + an R2 API
 > token, adds env vars `R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY /
-> R2_BUCKET_NAME=kipindi-kyc / R2_ENDPOINT`, and the code task is *"move base64 from Postgres → R2
+> R2_BUCKET_NAME=50pick-kyc / R2_ENDPOINT`, and the code task is *"move base64 from Postgres → R2
 > signed URLs."* The `storageKey` column and the "signed-URL redirect" TODO are the **pre-built seam**
 > for this migration. Planned cost ≈ **$25–51/month** (Cloudflare Pro + WAF, R2, Railway Redis, Sentry).
 

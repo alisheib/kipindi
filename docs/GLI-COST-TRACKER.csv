@@ -1,6 +1,6 @@
 #,Category,Item,GLI Section,Severity,Status,What Needs To Be Done,Cost,Notes
 1,CLOUDFLARE,Cloudflare Pro Plan (DNS + CDN + WAF),GLI-19 S6 / S4,BLOCKER,NOT STARTED,Subscribe to Cloudflare Pro - point 50pick.tz nameservers - enable WAF OWASP rulesets,$20/month,Covers DNS + CDN + DDoS + WAF + SSL. Annual = $240
-2,CLOUDFLARE,Cloudflare R2 Storage (KYC Documents),GLI-19 S3.6,HIGH,NOT STARTED,Create R2 bucket 'kipindi-kyc' - enable encryption at rest - set CORS,$0.15/month,"Storage ~9GB @ $0.015/GB + ops ~$0.05. Essentially free at your scale"
+2,CLOUDFLARE,Cloudflare R2 Storage (KYC Documents),GLI-19 S3.6,HIGH,NOT STARTED,Create R2 bucket '50pick-kyc' - enable encryption at rest - set CORS,$0.15/month,"Storage ~9GB @ $0.015/GB + ops ~$0.05. Essentially free at your scale"
 3,CLOUDFLARE,Cloudflare SSL Full Strict,GLI-19 S4,BLOCKER,NOT STARTED,Set SSL mode to Full Strict in Cloudflare dashboard,Included in Pro,Part of Pro plan
 4,INFRASTRUCTURE,Railway PITR Backups,GLI-19 S6.2,BLOCKER,NOT STARTED,Enable Point-in-Time Recovery on Railway Postgres tile - test restore procedure,Included in Railway plan,Already paying Railway. Just enable the toggle + test restore
 5,INFRASTRUCTURE,Redis Add-on (Rate Limiting),GLI-19 S4.3,HIGH,NOT STARTED,Add Railway Redis service - swap in-memory rate limiter to Redis-backed,$5/month,Railway Redis starter. Survives redeploys
