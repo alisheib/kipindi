@@ -368,7 +368,7 @@ export default async function AdminSystemPage() {
               Backup → Postgres point-in-time recovery + audit log replicated synchronously across two regions.
               Audit chain → same HMAC scheme persisted as <code>prevHash</code> + <code>entryHash</code> columns;
               nightly cron re-verifies the entire chain and pages on-call if a break is detected.
-              Match-feed + SMS adapters are env-switched (<code>SPORTS_API_PROVIDER</code>, <code>SMS_PROVIDER</code>);
+              Markets are AI-generated; the SMS adapter is env-switched (<code>SMS_PROVIDER</code>);
               rate-limit buckets are in-process today and become Redis cluster in production.
             </p>
           </div>
