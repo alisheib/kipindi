@@ -305,6 +305,26 @@ export async function selcomVerifyCashin(env: SelcomEnv, transid: string): Promi
   return { status: envelopeSettlementVerdict(res.json) };
 }
 
+/**
+ * Connectivity + credential check that moves NO money: a signed order-status query
+ * for a fixed probe id. Valid creds/signature/IP → a normal envelope (e.g. "order
+ * not found"); wrong creds or a non-allow-listed IP → an auth/network rejection.
+ * No order is created and nothing is charged. Backs the admin "Test Selcom
+ * connection" button — which must run from an allow-listed IP (Railway egress).
+ */
+export async function selcomPing(env: SelcomEnv): Promise<{ reachable: boolean; authOk: boolean; httpStatus: number; resultcode?: string; message?: string; error?: string }> {
+  try {
+    const res = await selcomFetch(env, "GET", "/order-status", { order_id: "50pick-conn-probe" });
+    // Auth is accepted unless Selcom explicitly rejects it (401/403). A 200/404
+    // with a normal envelope means the signature was accepted (the order just
+    // doesn't exist) — exactly what we want to confirm without moving money.
+    const authOk = res.httpStatus !== 401 && res.httpStatus !== 403;
+    return { reachable: true, authOk, httpStatus: res.httpStatus, resultcode: String(res.json.resultcode ?? "") || undefined, message: String(res.json.message ?? "") || undefined };
+  } catch (err) {
+    return { reachable: false, authOk: false, httpStatus: 0, error: isAbort(err) ? "timeout" : "connection-failed" };
+  }
+}
+
 function isAbort(err: unknown): boolean {
   return err instanceof Error && (err.name === "AbortError" || err.name === "TimeoutError");
 }

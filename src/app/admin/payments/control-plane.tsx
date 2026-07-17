@@ -17,7 +17,7 @@ import { Chip } from "@/components/ui/chip";
 import { Toggle } from "@/components/ui/toggle";
 import { ConfirmModal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
-import { setPaymentControlsAction } from "./payment-actions";
+import { setPaymentControlsAction, testSelcomConnectionAction } from "./payment-actions";
 import type { PaymentControlsView, PaymentProviderId } from "@/lib/server/payment-control";
 
 const PROVIDER_LABEL: Record<PaymentProviderId, string> = { mock: "Mock (test)", selcom: "Selcom", azampay: "AzamPay" };
@@ -67,6 +67,14 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
             : "The mock is a deterministic test provider — no real money moves."}
         </>
       ),
+    });
+  };
+
+  const testConnection = () => {
+    startTransition(async () => {
+      const r = await testSelcomConnectionAction();
+      if (r.ok) toast({ title: "Selcom reachable", description: r.detail, variant: "success" });
+      else toast({ title: "Selcom check failed", description: r.error, variant: "danger" });
     });
   };
 
@@ -155,10 +163,21 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
             );
           })}
         </div>
-        <p className="mt-1.5 font-mono text-[10px] text-text-tertiary">
-          {controls.providerExplicit ? "Set by an officer." : `Inherited from env (PAYMENT_AGGREGATOR=${controls.env.provider}).`}
-          {" "}Selcom ships integrated but off — flip here when ready; the kill-switch is the emergency stop.
-        </p>
+        <div className="mt-1.5 flex items-center justify-between gap-2 flex-wrap">
+          <p className="font-mono text-[10px] text-text-tertiary max-w-[80%]">
+            {controls.providerExplicit ? "Set by an officer." : `Inherited from env (PAYMENT_AGGREGATOR=${controls.env.provider}).`}
+            {" "}Selcom ships integrated but off — flip here when ready; the kill-switch is the emergency stop.
+          </p>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={testConnection}
+            className="inline-flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-md border border-border px-3 font-mono text-[10.5px] uppercase tracking-[0.08em] text-text-muted transition-colors hover:text-text disabled:opacity-50"
+            title="Signed order-status probe — no money moves. Must run from an allow-listed IP."
+          >
+            <I.bolt s={12} /> Test Selcom · Jaribu
+          </button>
+        </div>
       </div>
 
       {/* Auto-settle + demo-async toggles */}

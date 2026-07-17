@@ -18,6 +18,7 @@ import { requireAdminTotp } from "@/lib/server/admin-guard";
 import { COMPLIANCE_ROLES } from "@/lib/server/roles";
 import { setKillSwitch, type Mno, MNOS } from "@/lib/server/payment-ops";
 import { setPaymentControls, type ControlsUpdate, type PaymentProviderId } from "@/lib/server/payment-control";
+import { selcomEnv, selcomPing } from "@/lib/server/selcom";
 import { deposit } from "@/lib/server/wallet-service";
 
 type DepositProvider = "MPESA" | "AIRTEL_MONEY" | "HALO_PESA" | "MIXX" | "CARD";
@@ -72,6 +73,24 @@ export async function setPaymentControlsAction(formData: FormData): Promise<Resu
   if (!r.ok) return { ok: false, error: r.error };
   revalidatePath("/admin/payments");
   return { ok: true };
+}
+
+/**
+ * Test the Selcom connection WITHOUT moving money — a signed order-status probe.
+ * Confirms the credentials + signature are accepted and that this server's IP is
+ * on Selcom's allow-list (the call must originate from the allow-listed egress).
+ * Audited; no order is created and nothing is charged.
+ */
+export async function testSelcomConnectionAction(): Promise<{ ok: true; detail: string } | { ok: false; error: string }> {
+  const g = await gate("testSelcomConnection");
+  if ("error" in g) return { ok: false, error: g.error };
+  const env = selcomEnv();
+  if (!env) return { ok: false, error: "Selcom is not configured — set PAYMENT_API_KEY / PAYMENT_API_SECRET / PAYMENT_VENDOR_ID / PAYMENT_API_URL." };
+  const r = await selcomPing(env);
+  audit({ category: "WALLET", action: "payments.selcom.ping", actorId: g.userId, targetType: "PaymentProvider", targetId: "selcom", payload: { reachable: r.reachable, authOk: r.authOk, httpStatus: r.httpStatus, resultcode: r.resultcode } });
+  if (!r.reachable) return { ok: false, error: `Could not reach Selcom (${r.error}). If prod, this server's IP must be on Selcom's allow-list.` };
+  if (!r.authOk) return { ok: false, error: `Reached Selcom but auth was rejected (HTTP ${r.httpStatus}). Check the API key/secret/vendor and that this IP is allow-listed.` };
+  return { ok: true, detail: `Reached Selcom · HTTP ${r.httpStatus}${r.resultcode ? ` · code ${r.resultcode}` : ""}${r.message ? ` · ${r.message.slice(0, 90)}` : ""}` };
 }
 
 /** Retry a failed DEPOSIT via the tested deposit() flow; cancel the old record. */
