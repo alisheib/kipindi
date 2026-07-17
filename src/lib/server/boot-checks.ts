@@ -1,22 +1,30 @@
 /**
  * Startup validation — runs once from instrumentation.register() on server boot.
  *
- * Two audit findings live here:
- *  - C7 (compliance): refuse to boot in production if the POCA §16 conflicted-
- *    resolution override was left ON. Throws — fail closed.
+ * Findings surfaced here (all FAIL-OPEN — a boot check must never take a live
+ * real-money platform down over an alarm the runtime guard already enforces; the
+ * C7 outage was exactly a boot `throw`):
+ *  - C7 (compliance): the POCA §16 conflicted-resolution override left ON. The
+ *    runtime guard forces it off in LIVE mode; this warns loudly to clear the stale
+ *    intent. See test-overrides.ts.
+ *  - Payment mode: in LIVE money-mode, warn if the active provider is the mock
+ *    (dispatch will refuse every payment) or a real provider with missing creds
+ *    (every call fails). Runtime dispatch is the enforcement — see payment-control.ts.
  *  - H7 (config): warn loudly for any missing payment-webhook secret in
  *    production. The webhook receiver reads these EXACT env names; a naming
  *    mismatch made every callback 401 and deposits silently never credit — a
  *    guaranteed launch-day outage. Catch it at boot, not in production traffic.
  */
 import { assertProductionComplianceLocks } from "./test-overrides";
+import { assertPaymentModeSane } from "./payment-control";
 
 /** The exact env names read by api/webhooks/payments/route.ts (KNOWN_PROVIDERS). */
 const WEBHOOK_SECRET_ENVS = ["SELCOM_WEBHOOK_SECRET", "AZAMPAY_WEBHOOK_SECRET", "MIXX_WEBHOOK_SECRET"] as const;
 
 export async function runBootChecks(): Promise<void> {
-  // May throw — intentional. Do not wrap in try/catch at the call site.
+  // Fail-open compliance + payment-mode surfaces (they log, never throw).
   await assertProductionComplianceLocks();
+  await assertPaymentModeSane();
 
   if (process.env.NODE_ENV === "production") {
     const missing = WEBHOOK_SECRET_ENVS.filter((name) => !process.env[name]);

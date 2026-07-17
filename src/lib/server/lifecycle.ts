@@ -29,6 +29,7 @@ import {
 import { expireActiveGrants } from "./bonus-service";
 import { trialBalance } from "./ledger";
 import { audit } from "./audit";
+import { getAutoSettleEnabled } from "./payment-control";
 
 const TICK_MS = 60_000;       // run the lifecycle sweeps once a minute
 const FIRST_TICK_MS = 8_000;  // first pass shortly after boot (let the app settle)
@@ -105,10 +106,12 @@ export async function runLifecyclePass(): Promise<void> {
     // under the market lock on every manual settle, so the officer cannot pay a
     // market early or pay one that is under dispute.
     //
-    // TO RE-ENABLE once the gateway is live: set AUTO_SETTLE=true. That is the
-    // whole switch — the sweep, its idempotency and its heartbeat are all still
-    // here and still tested; they are simply not driven by the ticker today.
-    if (process.env.AUTO_SETTLE === "true") {
+    // TO RE-ENABLE once the gateway is live: flip auto-settle ON from
+    // /admin/payments (or set AUTO_SETTLE=true). That is the whole switch — the
+    // sweep, its idempotency and its heartbeat are all still here and still tested;
+    // they are simply not driven by the ticker today. `getAutoSettleEnabled()`
+    // reads the admin control-plane, falling back to the env.
+    if (await getAutoSettleEnabled()) {
       await settleDueMarkets().catch((e) => console.error("[lifecycle] settlement sweep:", e));
     }
 

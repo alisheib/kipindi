@@ -17,6 +17,7 @@ import { audit } from "@/lib/server/audit";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
 import { COMPLIANCE_ROLES } from "@/lib/server/roles";
 import { setKillSwitch, type Mno, MNOS } from "@/lib/server/payment-ops";
+import { setPaymentControls, type ControlsUpdate, type PaymentProviderId } from "@/lib/server/payment-control";
 import { deposit } from "@/lib/server/wallet-service";
 
 type DepositProvider = "MPESA" | "AIRTEL_MONEY" | "HALO_PESA" | "MIXX" | "CARD";
@@ -45,6 +46,30 @@ export async function toggleKillSwitchAction(formData: FormData): Promise<Result
   if (!MNOS.some((m) => m.id === provider)) return { ok: false, error: "Unknown provider." };
   if (kind !== "deposits" && kind !== "withdrawals") return { ok: false, error: "Invalid flow." };
   await setKillSwitch(provider, kind, paused, g.userId);
+  revalidatePath("/admin/payments");
+  return { ok: true };
+}
+
+/**
+ * Operations control-plane — set the active payment provider, auto-settle, and
+ * demo-async at runtime. Gated to ADMIN/COMPLIANCE + 2FA and audited. The
+ * LIVE-mode hard-locks (no mock on real money, real provider must be configured,
+ * no demo-async on real money) are enforced in `setPaymentControls`, which refuses
+ * an invalid write — this action just carries the officer id and revalidates.
+ */
+export async function setPaymentControlsAction(formData: FormData): Promise<Result> {
+  const g = await gate("setPaymentControls");
+  if ("error" in g) return { ok: false, error: g.error };
+  const updates: ControlsUpdate = {};
+  const provider = formData.get("provider");
+  if (typeof provider === "string" && provider) updates.provider = provider as PaymentProviderId;
+  const autoSettle = formData.get("autoSettle");
+  if (typeof autoSettle === "string" && autoSettle) updates.autoSettle = autoSettle === "true";
+  const demoAsync = formData.get("demoAsync");
+  if (typeof demoAsync === "string" && demoAsync) updates.demoAsync = demoAsync === "true";
+  if (Object.keys(updates).length === 0) return { ok: false, error: "No change requested." };
+  const r = await setPaymentControls(updates, g.userId);
+  if (!r.ok) return { ok: false, error: r.error };
   revalidatePath("/admin/payments");
   return { ok: true };
 }

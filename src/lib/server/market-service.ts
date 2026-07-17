@@ -27,6 +27,7 @@ import { rateCheck } from "./rate-limit";
 import { getEffectiveConfig, snapshotFromConfig, snapshotOrLegacy } from "./market-config";
 import { payoutFor, settledPayoutFor, allocateWinnerPayouts, poolFee, levySplit, type FeeSnapshot } from "@/lib/payout";
 import { getConflictedResolutionAllowed } from "./test-overrides";
+import { getAutoSettleEnabled } from "./payment-control";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
 import { recordSnapshot, seedHistory } from "./market-history";
 import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, notifyAdminMarketResolution, notifyMarketCancelled, notifyAdminMarketCancelled, notifyOneSidedRefund, notifySelectionClosed } from "./notification-service";
@@ -2024,7 +2025,10 @@ const setLastSweep = (v: { at: string; settled: number; skipped: number }) => { 
 const getLastSweep = () => globalThis.__50PICK_LAST_SWEEP ?? null;
 
 /** Is anything allowed to pay a market on its own? Paused until the payment
- *  aggregator is integrated — see lifecycle.ts. */
+ *  aggregator is integrated — see lifecycle.ts. SYNC env-only read, kept for the
+ *  degraded display fallback; the effective value (which honours the admin
+ *  control-plane toggle) is `getAutoSettleEnabled()` in payment-control.ts, used by
+ *  the ticker and `getSettlementHealth()`. */
 export function isAutoSettleEnabled(): boolean {
   return process.env.AUTO_SETTLE === "true";
 }
@@ -2138,7 +2142,7 @@ export async function getSettlementHealth(): Promise<SettlementHealth> {
   }
 
   return {
-    autoSettle: isAutoSettleEnabled(),
+    autoSettle: await getAutoSettleEnabled(),
     lastSweepAt: getLastSweep()?.at ?? null,
     lastSweep: getLastSweep() ? { settled: getLastSweep()!.settled, skipped: getLastSweep()!.skipped } : null,
     awaiting, frozenByObjection: frozen, readyToSettle,

@@ -33,6 +33,7 @@
  */
 import { loadConfig, saveConfig } from "./config-store";
 import { audit } from "./audit";
+import { isLiveMoneyMode } from "./runtime-mode";
 
 const KEY = "test.overrides";
 
@@ -88,7 +89,11 @@ export async function getConflictedResolutionAllowed(): Promise<boolean> {
  * read — safe to call anywhere, no async, no hydration.
  */
 export function isConflictOverrideHardLocked(): boolean {
-  return process.env.NODE_ENV === "production" && process.env.TEST_FUNDING !== "true";
+  // The POCA §16 lock and the payments control-plane MUST agree on "real money is
+  // live", so the condition (`production && TEST_FUNDING!=="true"`) lives in ONE
+  // place — runtime-mode.ts. Behaviour here is unchanged; the shared predicate just
+  // stops the two from ever drifting. ⛔ Do NOT re-inline or weaken it.
+  return isLiveMoneyMode();
 }
 
 /**

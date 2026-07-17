@@ -7,8 +7,10 @@ import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { PaymentLogo } from "@/components/wallet/payment-logo";
 import { allMnoHealth, getKillSwitches, reconcile, retryQueue } from "@/lib/server/payment-ops";
+import { getPaymentControls } from "@/lib/server/payment-control";
 import { formatTzs, formatTzsCompact, formatDateTime } from "@/lib/utils";
 import { KillSwitch } from "./kill-switch-toggle";
+import { ControlPlane } from "./control-plane";
 import { RetryControls } from "./retry-controls";
 import { ReconcileControls } from "./reconcile-controls";
 import { BulkRetryControls } from "./bulk-retry-controls";
@@ -25,7 +27,7 @@ const ageLabel = (msv: number) => {
 };
 
 export default async function PaymentsOpsPage() {
-  const [health, kill, recon, queue] = await Promise.all([allMnoHealth(), getKillSwitches(), reconcile(), retryQueue()]);
+  const [health, kill, recon, queue, controls] = await Promise.all([allMnoHealth(), getKillSwitches(), reconcile(), retryQueue(), getPaymentControls()]);
 
   return (
     <>
@@ -39,6 +41,11 @@ export default async function PaymentsOpsPage() {
       />
 
       <div className="px-4 lg:px-6 py-5 space-y-4">
+        {/* Operations control-plane — mode indicator + runtime payment toggles. */}
+        <AdminCard title="Operations control-plane" sw="Udhibiti wa uendeshaji">
+          <ControlPlane controls={controls} />
+        </AdminCard>
+
         {/* Reconciliation strip — ledger vs PSP settlement. */}
         <AdminCard>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">

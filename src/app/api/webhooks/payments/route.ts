@@ -1,31 +1,37 @@
 /**
  * Payment-provider webhook receiver.
  *
- * Production providers (Selcom, Azampay, Mixx by Yas) post deposit/withdrawal
- * status updates to this endpoint. Each post is signed with HMAC-SHA-256 using
- * the per-provider secret (env var `${PROVIDER}_WEBHOOK_SECRET`). We verify the
- * signature with timing-safe compare + a 5-minute timestamp window before doing
- * anything stateful.
+ * Two inbound shapes are handled:
  *
- * Headers expected:
- *   X-Provider:    selcom | azampay | mixx
- *   X-Signature:   hex-encoded HMAC-SHA-256 of the raw request body
- *   X-Timestamp:   ISO-8601 (provider-stamped) — replay protection window
+ *  • SELCOM — posts a signed callback with `Authorization: SELCOM …` and a JSON
+ *    body carrying `order_id`/`transid` + `payment_status`. Detected by the auth
+ *    scheme (Selcom does not send our `X-Provider` header). DEPOSITS are settled
+ *    from an AUTHORITATIVE, signed order-status re-query (we never credit on the
+ *    callback body alone); WITHDRAWALS (wallet-cashin, no status endpoint) settle
+ *    only on a signature-verified callback, else stay PROCESSING for the reconcile
+ *    sweep. See src/lib/server/selcom.ts + docs/SELCOM-API-DIGEST.md.
  *
- * On success the audit log records `webhook.payment.received` under the WALLET
- * category. Replay-protection rejections are logged under SYSTEM.
+ *  • Generic (Azampay, Mixx by Yas) — `X-Provider`/`X-Signature`/`X-Timestamp`
+ *    with HMAC-SHA-256 over `${timestamp}.${body}`, per-provider secret, 5-minute
+ *    replay window, timing-safe, fails closed. Unchanged (audit C5).
+ *
+ * On success the audit log records `webhook.payment.received` under WALLET.
+ * Replay/verify rejections are logged under SYSTEM. Settlement itself
+ * (settlePaymentWebhook) is exactly-once + amount-tamper-defended.
  */
 import { NextResponse } from "next/server";
 import { verifyWebhookSignature } from "@/lib/server/crypto";
 import { audit } from "@/lib/server/audit";
 import { settlePaymentWebhook } from "@/lib/server/wallet-service";
+import { db } from "@/lib/server/store";
+import { selcomEnv, selcomVerifyOrder, verifySelcomCallback } from "@/lib/server/selcom";
 
 /** Map the many provider-specific status spellings to our two terminal states.
  *  Anything not recognised is treated as a non-terminal update we simply ack. */
 function normalizeStatus(raw: unknown): "CONFIRMED" | "FAILED" | null {
   const s = String(raw ?? "").toUpperCase();
   if (["CONFIRMED", "SUCCESS", "SUCCESSFUL", "COMPLETED", "PAID", "SETTLED"].includes(s)) return "CONFIRMED";
-  if (["FAILED", "FAILURE", "DECLINED", "CANCELLED", "CANCELED", "REJECTED", "REVERSED"].includes(s)) return "FAILED";
+  if (["FAILED", "FAILURE", "DECLINED", "CANCELLED", "CANCELED", "REJECTED", "REVERSED", "EXPIRED"].includes(s)) return "FAILED";
   return null;
 }
 
@@ -39,10 +45,18 @@ const KNOWN_PROVIDERS: Record<string, string> = {
 };
 
 export async function POST(req: Request) {
+  const authHeader = req.headers.get("authorization") ?? "";
+  const body = await req.text();
+
+  // Selcom's signed callback uses `Authorization: SELCOM …`, not our X-Provider
+  // scheme — route it to the dedicated handler. The generic path below is unchanged.
+  if (/^SELCOM\s+/i.test(authHeader)) {
+    return handleSelcomCallback(req, body);
+  }
+
   const provider = (req.headers.get("x-provider") ?? "").toLowerCase();
   const signature = req.headers.get("x-signature") ?? "";
   const timestamp = req.headers.get("x-timestamp") ?? undefined;
-  const body = await req.text();
 
   if (!provider || !KNOWN_PROVIDERS[provider]) {
     return NextResponse.json({ ok: false, error: "unknown-provider" }, { status: 400 });
@@ -124,5 +138,96 @@ export async function POST(req: Request) {
     targetId: ref,
     payload: { provider, ...settled },
   });
+  return NextResponse.json({ ok: true, ...settled });
+}
+
+/**
+ * Selcom callback handler.
+ *
+ * DEPOSITS are the money-in path we care most about: we IGNORE the callback body's
+ * claimed status and instead re-query Selcom's order-status with our fully-verified
+ * signature (selcomVerifyOrder) — a forged or replayed callback therefore cannot
+ * credit a wallet, and a genuine one is confirmed against Selcom's own record. The
+ * re-queried amount also flows into settlePaymentWebhook's M4 tamper check.
+ *
+ * WITHDRAWALS (wallet-cashin) have no confirmed status endpoint, so we settle them
+ * only on a signature-verified callback; an unverified one is ignored and the hold
+ * stays until the reconcile sweep or a manual /admin/payments action resolves it —
+ * the wallet is already debited-and-held, so nothing is lost or double-paid.
+ *
+ * Always returns HTTP 200 on a parseable callback so Selcom stops retrying; the
+ * verdict is in the audit log.
+ */
+async function handleSelcomCallback(req: Request, body: string): Promise<NextResponse> {
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(body) as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ ok: false, error: "bad-json" }, { status: 400 });
+  }
+
+  const orderId = String(parsed.order_id ?? "");
+  const transid = String(parsed.transid ?? "");
+  const ref = orderId || transid; // our correlation id — the providerRef we stored
+  const paymentStatus = String(parsed.payment_status ?? "");
+
+  const env = selcomEnv();
+  const sigOk = env
+    ? verifySelcomCallback({
+        signedFields: req.headers.get("signed-fields") ?? "",
+        timestamp: req.headers.get("timestamp") ?? "",
+        digestB64: req.headers.get("digest") ?? "",
+        body: parsed,
+        apiSecret: env.apiSecret,
+      })
+    : false;
+
+  audit({
+    category: "WALLET",
+    action: "webhook.payment.received",
+    actorId: null,
+    targetType: "Webhook",
+    targetId: ref || null,
+    payload: { provider: "selcom", order_id: orderId || null, transid: transid || null, payment_status: paymentStatus, sigVerified: sigOk },
+  });
+
+  if (!ref) return NextResponse.json({ ok: true, ignored: true, reason: "no-reference" });
+  if (!env) {
+    // Selcom callback arrived but creds aren't configured — we cannot verify or
+    // re-query. Log and ack (nothing to settle safely).
+    audit({ category: "SYSTEM", action: "webhook.payment.rejected", actorId: null, targetType: "Webhook", targetId: ref, payload: { provider: "selcom", reason: "selcom-not-configured" } });
+    return NextResponse.json({ ok: true, ignored: true, reason: "selcom-not-configured" });
+  }
+
+  const txn = await db.txn.findByProviderRef(ref);
+  if (!txn) return NextResponse.json({ ok: true, ignored: true, reason: "unknown-reference" });
+
+  let status: "CONFIRMED" | "FAILED" | null = null;
+  let amount: number | undefined;
+
+  if (txn.type === "DEPOSIT") {
+    // AUTHORITATIVE re-query — never credit on the callback body alone.
+    const verdict = await selcomVerifyOrder(env, orderId || ref);
+    status = verdict.status;
+    amount = verdict.amount;
+  } else {
+    // Withdrawal: settle only on a verified callback (no re-query endpoint).
+    if (!sigOk) {
+      audit({ category: "SYSTEM", action: "webhook.payment.rejected", actorId: null, targetType: "Webhook", targetId: ref, payload: { provider: "selcom", reason: "unverified-withdrawal-callback" } });
+      return NextResponse.json({ ok: true, ignored: true, reason: "unverified-withdrawal-callback" });
+    }
+    status = normalizeStatus(paymentStatus);
+  }
+
+  if (!status) return NextResponse.json({ ok: true, ignored: true, reason: "non-terminal-status" });
+
+  let settled: Awaited<ReturnType<typeof settlePaymentWebhook>>;
+  try {
+    settled = await settlePaymentWebhook({ providerRef: ref, status, amount });
+  } catch (err) {
+    audit({ category: "WALLET", action: "webhook.payment.settle_error", actorId: null, targetType: "Webhook", targetId: ref, payload: { provider: "selcom", error: String(err) } });
+    return NextResponse.json({ ok: false, error: "settle-failed" }, { status: 500 });
+  }
+  audit({ category: "WALLET", action: "webhook.payment.settled", actorId: null, targetType: "Webhook", targetId: ref, payload: { provider: "selcom", ...settled } });
   return NextResponse.json({ ok: true, ...settled });
 }
