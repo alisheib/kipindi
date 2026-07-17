@@ -81,15 +81,26 @@ Collection channel names (`MPESA-TZ`, `AIRTELMONEY`, …) are a **different, UNC
 - JSON body order == signing-string order == `Signed-Fields` order — reordering after signing → 401.
 - Timestamp MUST be `Africa/Dar_es_Salaam` (+03:00) — skew/wrong offset → 401.
 
-## 8. ⚠️ Confirm with Selcom before flipping the provider to `selcom` in production
-1. Exact live host string + your `vendor` till id.
-2. `HPCASHIN` / `TTCASHIN` exact strings (single-source).
-3. `qwiksend/process` payload field names (only if bank payouts are used).
-4. Whether collection needs a channel field + its strings (`MPESA-TZ` …).
-5. The **FAILED** `payment_status` enum value(s) for the callback.
-6. Standalone `/v1/wallet/pushussd` existence + fields (only if direct C2B is used).
-7. Callback ACK requirement, retry count/schedule, and USSD-push expiry.
-8. Callback `Timestamp` format (`yyyy-dd-mm H:i:s`) for Digest verification.
+## 8. Status re-queries (CONFIRMED from the official docs 2026-07-17)
+Both money movements settle from a SIGNED status re-query, not from trusting the callback:
+- **Deposit (checkout):** `GET /v1/checkout/order-status?order_id=` → `data[0].payment_status`.
+- **Withdrawal (wallet-cashin):** `GET /v1/walletcashin/query?transid=` (Signed-Fields: `transid`)
+  → envelope `resultcode`/`result` (`000`/SUCCESS = paid; `111`/`927`/`999` = pending; else fail).
+- Result codes (authoritative): `000`=SUCCESS · `111`,`927`=INPROGRESS · `999`=AMBIGUOUS
+  (status unknown — wait & re-query; ⚠️ NEVER hard-fail) · all others = FAIL.
+- Cashin `utilitycode` codes are all **CONFIRMED** in the Wallet Cashin utilitycode table:
+  `VMCASHIN`, `AMCASHIN`, `TPCASHIN` (Mixx by Yas), `EZCASHIN`, `HPCASHIN`, `TTCASHIN`, `CASHIN` (auto-route).
 
-Items 1–2 + 5 are the ones that affect the confirmed path; the sandbox round-trip will
-also reveal the real callback shape to finalize the parser against reality.
+## 9. ⚠️ Still to confirm with Selcom before flipping to `selcom` in production
+1. **Live host string + your `vendor` till id + float `pin`** — needed to authenticate at all.
+2. **Deposit rail choice:** the docs expose TWO collection paths — (a) **Checkout**
+   (`create-order` → `wallet-payment`, what the adapter uses today) and (b) **C2B**
+   (`POST /v1/wallet/pushussd` {transid, utilityref, amount, vendor, msisdn} → status via
+   `GET /v1/c2b/query-status`, callbacks via C2B `/lookup /validation /notification` with
+   `Authorization: Bearer <shared-token>`). Confirm which one your vendor account is enabled
+   for; that decides the deposit endpoint + which callback contract applies.
+3. The **FAILED** `payment_status` value for the checkout callback (docs show COMPLETED/PENDING;
+   we no longer depend on it since deposits settle via order-status, but good to pin).
+4. `qwiksend/process` field names (only if bank payouts are ever used).
+
+The sandbox round-trip resolves #1–#3 against reality.

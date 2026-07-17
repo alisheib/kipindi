@@ -68,7 +68,9 @@ ok("INTERNAL → null", mnoToSelcomCashin("INTERNAL") === null);
 ok("000 → ACCEPTED", selcomInitiateVerdict({ resultcode: "000", result: "SUCCESS" }) === "ACCEPTED");
 ok("111 PENDING → ACCEPTED", selcomInitiateVerdict({ resultcode: "111", result: "PENDING" }) === "ACCEPTED");
 ok("927 INPROGRESS → ACCEPTED", selcomInitiateVerdict({ resultcode: "927" }) === "ACCEPTED");
+ok("999 AMBIGUOUS → ACCEPTED (never hard-fail a maybe-successful movement)", selcomInitiateVerdict({ resultcode: "999", result: "AMBIGOUS" }) === "ACCEPTED");
 ok("failure code → FAILED", selcomInitiateVerdict({ resultcode: "038", result: "FAIL" }) === "FAILED");
+ok("403 FAIL → FAILED", selcomInitiateVerdict({ resultcode: "403", result: "FAIL" }) === "FAILED");
 ok("empty → FAILED", selcomInitiateVerdict({}) === "FAILED");
 
 // ── Inbound callback verifier ─────────────────────────────────────────────────

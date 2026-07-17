@@ -24,7 +24,7 @@ import { verifyWebhookSignature } from "@/lib/server/crypto";
 import { audit } from "@/lib/server/audit";
 import { settlePaymentWebhook } from "@/lib/server/wallet-service";
 import { db } from "@/lib/server/store";
-import { selcomEnv, selcomVerifyOrder, verifySelcomCallback } from "@/lib/server/selcom";
+import { selcomEnv, selcomVerifyOrder, selcomVerifyCashin, verifySelcomCallback } from "@/lib/server/selcom";
 
 /** Map the many provider-specific status spellings to our two terminal states.
  *  Anything not recognised is treated as a non-terminal update we simply ack. */
@@ -206,17 +206,17 @@ async function handleSelcomCallback(req: Request, body: string): Promise<NextRes
   let amount: number | undefined;
 
   if (txn.type === "DEPOSIT") {
-    // AUTHORITATIVE re-query — never credit on the callback body alone.
+    // AUTHORITATIVE re-query (checkout order-status) — never credit on the
+    // callback body alone.
     const verdict = await selcomVerifyOrder(env, orderId || ref);
     status = verdict.status;
     amount = verdict.amount;
   } else {
-    // Withdrawal: settle only on a verified callback (no re-query endpoint).
-    if (!sigOk) {
-      audit({ category: "SYSTEM", action: "webhook.payment.rejected", actorId: null, targetType: "Webhook", targetId: ref, payload: { provider: "selcom", reason: "unverified-withdrawal-callback" } });
-      return NextResponse.json({ ok: true, ignored: true, reason: "unverified-withdrawal-callback" });
-    }
-    status = normalizeStatus(paymentStatus);
+    // Withdrawal (wallet-cashin): AUTHORITATIVE re-query via the docs'
+    // GET /v1/walletcashin/query — we do not trust the callback body/signature
+    // for a payout confirmation either. (sigOk above is captured for audit only.)
+    const verdict = await selcomVerifyCashin(env, transid || ref);
+    status = verdict.status;
   }
 
   if (!status) return NextResponse.json({ ok: true, ignored: true, reason: "non-terminal-status" });

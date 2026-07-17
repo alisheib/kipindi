@@ -187,12 +187,27 @@ async function selcomFetch(env: SelcomEnv, method: "POST" | "GET", path: string,
   }
 }
 
-/** Selcom envelope → our terminal verdict. `000`=success, `111`/`927`=pending
- *  (async), anything else = fail. Used at INITIATE time. */
+/** Selcom envelope → our terminal verdict at INITIATE time. Per the docs:
+ *  `000`=SUCCESS · `111`/`927`=INPROGRESS · `999`=AMBIGUOUS (status unknown, wait
+ *  for recon) · everything else = FAIL. We treat SUCCESS/INPROGRESS/AMBIGUOUS all
+ *  as ACCEPTED → the money movement stays PROCESSING and is resolved by the status
+ *  re-query / reconcile sweep. ⚠️ Money-safety: 999 must NOT be a hard fail — the
+ *  request may have gone through, so failing it could reverse a real payout. */
 export function selcomInitiateVerdict(json: SelcomEnvelope): "ACCEPTED" | "FAILED" {
   const code = String(json.resultcode ?? "").trim();
   const result = String(json.result ?? "").toUpperCase();
-  if (code === "000" || code === "111" || code === "927" || result === "SUCCESS" || result === "PENDING" || result === "INPROGRESS") return "ACCEPTED";
+  if (code === "000" || code === "111" || code === "927" || code === "999" || ["SUCCESS", "PENDING", "INPROGRESS", "AMBIGOUS", "AMBIGUOUS"].includes(result)) return "ACCEPTED";
+  return "FAILED";
+}
+
+/** Map a Selcom status-query envelope (order-status / walletcashin query) to a
+ *  terminal settlement verdict. `000`/SUCCESS = done; a hard-fail code = failed;
+ *  INPROGRESS/AMBIGUOUS = null (not terminal — query again later). */
+function envelopeSettlementVerdict(json: SelcomEnvelope): "CONFIRMED" | "FAILED" | null {
+  const code = String(json.resultcode ?? "").trim();
+  const result = String(json.result ?? "").toUpperCase();
+  if (code === "000" || result === "SUCCESS") return "CONFIRMED";
+  if (code === "111" || code === "927" || code === "999" || ["INPROGRESS", "PENDING", "AMBIGOUS", "AMBIGUOUS"].includes(result)) return null;
   return "FAILED";
 }
 
@@ -270,6 +285,24 @@ export async function selcomVerifyOrder(env: SelcomEnv, orderId: string): Promis
   if (ps === "COMPLETED") return { status: "CONFIRMED", amount };
   if (ps === "PENDING" || ps === "") return { status: null }; // not terminal yet
   return { status: "FAILED", amount }; // any other terminal value = not paid
+}
+
+/**
+ * Authoritative status of a wallet-cashin (disbursement/payout), via the docs'
+ * `GET /v1/walletcashin/query?transid=` (Signed-Fields: transid). This lets a
+ * withdrawal settle from a SIGNED re-query rather than trusting the inbound
+ * callback — the same money-safe posture as deposits. Returns null while the
+ * payout is still in progress / ambiguous, so we simply query again later.
+ */
+export async function selcomVerifyCashin(env: SelcomEnv, transid: string): Promise<{ status: "CONFIRMED" | "FAILED" | null }> {
+  let res: SelcomResponse;
+  try {
+    res = await selcomFetch(env, "GET", "/walletcashin/query", { transid });
+  } catch {
+    return { status: null };
+  }
+  if (!res.ok) return { status: null };
+  return { status: envelopeSettlementVerdict(res.json) };
 }
 
 function isAbort(err: unknown): boolean {
