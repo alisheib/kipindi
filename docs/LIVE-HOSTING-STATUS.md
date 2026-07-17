@@ -5,32 +5,38 @@
 > Full procedures/architecture live in [`GO-LIVE-RUNBOOK.md`](GO-LIVE-RUNBOOK.md); this file
 > is just "where are we RIGHT NOW."
 >
-> **Last updated: 2026-07-17 — SELCOM PAYMENTS BUILT + MERGED + LIVE (Selcom OFF/mock default);
-> deposit creds validated against the live gateway. R2 KYC LIVE. DNS still propagating.**
+> **Last updated: 2026-07-17 ~18:50 — 🚀 DOMAIN LIVE. https://50pick.tz + https://www.50pick.tz
+> serve the app with valid Let's Encrypt certs; global DNS propagated (all major resolvers →
+> Railway). SELCOM built + LIVE (OFF/mock default, deposit creds validated). R2 KYC LIVE.
+> Left: Selcom deposit go-live test + payout PIN + the final switch.**
 
 ## TL;DR status
 | Item | State | Blocker / next |
 |---|---|---|
 | App on Railway host | 🟢 LIVE & healthy | `kipindi-production.up.railway.app` → 200; testers active |
 | DNS delegation (tzNIC registry) | 🟢 **FLIPPED** ~15:23 | registry now returns `ollie`/`yadiel.ns.cloudflare.com` |
-| Custom domain `50pick.tz`/`www` | 🟡 Propagating | resolvers catching up (24h old-TTL); www already → Railway, apex still cached-old on some |
+| Custom domain `50pick.tz`/`www` | 🟢 **LIVE** | both serve the app (HTTP 200, real app) over valid HTTPS; global DNS propagated (Cloudflare/Google/Quad9/OpenDNS → Railway 69.46.46.10/.31) |
 | Cloudflare DNS zone | 🟢 Done & verified | 31 records, 0 proxied; all correct incl. mail; verified via CF API |
-| Railway verify + cert | 🟡 Issuing | `Verified: no` → flips to yes once Railway's resolvers see the delegation (mins–~1h); then `https://50pick.tz` serves the app (returns 404 until verified) |
+| Railway verify + cert | 🟢 **VALID** | both Verified: yes, cert VALID (Let's Encrypt CN=50pick.tz, exp 2026-10-15) |
 | R2 (KYC storage) | 🟢 **LIVE** | bucket `50pick-kyc`; 5 vars set in Railway; prod-env round-trip PASS |
 | Selcom payments (deposits) | 🟢 **LIVE code, OFF** | merged `main @f7d9081`; provider=mock default; deposit creds set + **validated** (live probe HTTP 404 = auth OK). Next: 1 real deposit test → flip provider→selcom |
 | Selcom payouts (withdrawals) | 🔴 Blocked | needs **disbursement creds + float PIN** from Selcom (what we have is deposit-only); set `PAYMENT_VENDOR_PIN` |
 | The go-live switch | ⚪ Not started | after the deposit test + certs: unset TEST_FUNDING, rebaseline, licence ref, AUTO_SETTLE — see `docs/GO-LIVE-CONTINUATION-PROMPT.md` §6 |
 
-## ⏳ CURRENT WAIT: DNS propagation → Railway verify → certs
-- The tzNIC registry **FLIPPED to Cloudflare ~15:23** (Netpoa pushed it — took ~3h). Now the
-  delegation propagates to resolvers worldwide (old NS had a 24h TTL, so some resolvers lag).
-- **Next:** Railway's resolvers see the delegation → `railway domain status` flips to
-  `Verified: yes` → TLS certs issue → `https://50pick.tz` + `https://www.50pick.tz` serve
-  the app. Until verified, the custom domains return **404** (Railway edge for an unverified
-  domain) — expected, not a defect.
-- **Watch:** `railway domain status 50pick.tz -s 50pick` (+ `www.…`) for `Verified: yes`;
-  `curl -I https://50pick.tz` for the app + valid cert. (Background watcher polling.)
-- Nothing to do but wait for propagation to reach Railway (mins–~1h typically).
+## ✅ DOMAIN CUTOVER — DONE (how it went, for the record)
+- tzNIC registry flipped to Cloudflare ~15:23 (Netpoa pushed it after ~3h + a support ticket).
+- Railway domain verification then STUCK ~3h at `Verified: no` (nameserver-move negative-cache:
+  Railway's resolver had cached "the `_railway-verify` TXT doesn't exist" from before). Railway
+  support confirmed this is normal (can take hours–a day) and the fix is **remove + re-add**.
+- **FIX APPLIED:** deleted both custom domains → waited 15 min → re-added → Railway issued NEW
+  CNAME targets (apex→`ggze9tup.up.railway.app`, www→`3hwa21jh.up.railway.app`; the
+  `_railway-verify` TXT values were UNCHANGED) → updated the 2 CNAMEs in Cloudflare via the API
+  → **Verified: yes + certs VALID within ~2 min.** New Railway edge IPs: apex 69.46.46.10, www
+  69.46.46.31.
+- ⚠️ Gotcha for humans: a stale LOCAL/office DNS resolver (e.g. `192.168.66.x`) can keep showing
+  the OLD Apache "Index of /" page long after the site is live for everyone else — it's a client
+  cache, not the site. Fix: point that machine at `1.1.1.1`, add a hosts entry, or wait out the TTL.
+- Verify: `railway domain status 50pick.tz -s 50pick` → Verified: yes; `curl https://50pick.tz/api/health` → `{"ok":true...}`.
 
 ## ⚠️ Do NOT (guardrails for any session touching this)
 - Do **not** re-edit the Cloudflare **web** records (apex/www CNAMEs, the two `_railway-verify`
