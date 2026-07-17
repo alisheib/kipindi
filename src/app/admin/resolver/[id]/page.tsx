@@ -116,7 +116,7 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
                   href={m.sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-1 flex items-center gap-1.5 font-mono text-[12px] text-teal-300 hover:text-teal-200 break-all"
+                  className="mt-1 flex items-center gap-1.5 font-mono text-[12px] text-royal-300 hover:text-royal-200 break-all"
                 >
                   <I.externalLink s={12} className="shrink-0" />
                   {m.sourceUrl}
@@ -148,7 +148,7 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
                 </p>
                 {m.sentinelEvidence && <p className="mt-1 text-[12px] leading-snug text-text-secondary">{m.sentinelEvidence}</p>}
                 {m.sentinelSourceUrl && (
-                  <a href={m.sentinelSourceUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 font-mono text-[11px] text-teal-300 hover:text-teal-200">
+                  <a href={m.sentinelSourceUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 font-mono text-[11px] text-royal-300 hover:text-royal-200">
                     AI source <I.externalLink s={10} />
                   </a>
                 )}

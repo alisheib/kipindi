@@ -95,7 +95,7 @@ export default async function AdminSourcesPage() {
                           href={`https://${s.domain}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 font-mono text-[12px] text-teal-300 hover:text-teal-200"
+                          className="inline-flex items-center gap-1 font-mono text-[12px] text-royal-300 hover:text-royal-200"
                         >
                           {s.domain}
                           <I.ext size={11} aria-hidden />

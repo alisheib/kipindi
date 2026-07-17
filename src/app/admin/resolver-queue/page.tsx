@@ -158,7 +158,7 @@ export default async function ResolverQueuePage({
                           : "neutral"
                         }>{t.label}</Chip>
                         <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{m.category}</span>
-                        <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1 font-mono text-[11px] text-teal-300 hover:text-teal-200">
+                        <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1 font-mono text-[11px] text-royal-300 hover:text-royal-200">
                           Source
                           <I.ext size={11} />
                         </a>
@@ -204,7 +204,7 @@ export default async function ResolverQueuePage({
                           <p className="mt-1 text-[12px] text-text-secondary leading-snug">{m.sentinelEvidence}</p>
                         )}
                         {m.sentinelSourceUrl && (
-                          <a href={m.sentinelSourceUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 font-mono text-[11px] text-teal-300 hover:text-teal-200">
+                          <a href={m.sentinelSourceUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 font-mono text-[11px] text-royal-300 hover:text-royal-200">
                             AI source <I.ext size={10} />
                           </a>
                         )}

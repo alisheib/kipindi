@@ -327,7 +327,7 @@ function TrustItem({
 }) {
   const accent = {
     yes:  "text-yes-300",
-    teal: "text-teal-300",
+    teal: "text-royal-300",
     gold: "text-gold-300",
   }[tone];
 

@@ -175,7 +175,7 @@ export default async function MarketPredictorsPage({
               href={m.sourceUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="shrink-0 inline-flex items-center gap-1 font-mono text-[11px] text-teal-300 hover:text-teal-200"
+              className="shrink-0 inline-flex items-center gap-1 font-mono text-[11px] text-royal-300 hover:text-royal-200"
             >
               Source <I.ext size={11} />
             </a>

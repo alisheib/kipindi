@@ -12,8 +12,8 @@ export function SteppedProgress({ steps, current, className }: { steps: number; 
           key={i}
           className={cn("flex-1 h-1 rounded-pill transition-colors", i === current && "prog-sweep")}
           style={{
-            background: i < current ? "var(--teal-400)" : i === current ? "var(--teal-500)" : "var(--bg-overlay)",
-            boxShadow: i === current ? "0 0 8px -1px color-mix(in oklab, var(--teal-400) 60%, transparent)" : "none",
+            background: i < current ? "var(--royal-400)" : i === current ? "var(--royal-500)" : "var(--bg-overlay)",
+            boxShadow: i === current ? "0 0 8px -1px color-mix(in oklab, var(--royal-400) 60%, transparent)" : "none",
             transition: "background var(--ease-stage)",
           }}
         />
