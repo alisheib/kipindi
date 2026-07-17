@@ -63,7 +63,11 @@
 2. [ ] R2 live + a KYC upload→view round-trip works.
 3. [ ] Full gate on the go-live commit: `tsc` + `build` + `test:all` + `test:integrity`;
        on real PG: `s10` (double-spend), `s11` (audit fork), `money-e2e` (drift 0).
-4. [ ] **Unset `TEST_FUNDING`** (stop minting un-ledgered test money).
+4. [ ] **Unset `TEST_FUNDING`** (stop minting un-ledgered test money). ⚠️ This ALSO
+       auto-hard-locks the solo-resolution override (POCA §16) — from this point an
+       officer can never resolve a market they hold a position in. See
+       `docs/COMPLIANCE-DECISIONS.md` (2026-07-17). Confirm the resolver-queue toggle
+       shows "locked (live)" after go-live.
 5. [ ] **Format / rebaseline the DB** → clean genesis (ledger, audit chain, wallets
        from zero; clears the test float + pre-audit rows). *This is the point where
        "clean" becomes real — after it, ANY trial-balance drift = a real defect.*

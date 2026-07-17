@@ -11,7 +11,7 @@ import { ProbabilityBar } from "@/components/markets/probability-bar";
 import { CircularProgress } from "@/components/markets/circular-progress";
 import { ResolveControls } from "./resolve-controls";
 import { ConflictOverrideToggle } from "./conflict-override-toggle";
-import { getConflictedResolutionAllowed } from "@/lib/server/test-overrides";
+import { getConflictedResolutionAllowed, isConflictOverrideHardLocked } from "@/lib/server/test-overrides";
 import { formatDateTime } from "@/lib/utils";
 import { CEREMONY, SELECTION } from "@/lib/admin-status-lexicon";
 
@@ -71,6 +71,7 @@ export default async function ResolverQueuePage({
   const awaitingStage2 = pending.filter((m) => !!m.resolutionStage1By).length;
   const windowLabel = (WINDOW_OPTIONS.find((o) => o.value === windowFilter)?.label ?? "").toLowerCase();
   const conflictOverride = await getConflictedResolutionAllowed().catch(() => false);
+  const conflictHardLocked = isConflictOverrideHardLocked();
 
   // Paginate
   const page = parsePage(sp.page, pending.length);
@@ -86,7 +87,7 @@ export default async function ResolverQueuePage({
         period={false}
         actions={
           <div className="flex items-center gap-2.5 flex-wrap">
-            <ConflictOverrideToggle enabled={conflictOverride} />
+            <ConflictOverrideToggle enabled={conflictOverride} hardLocked={conflictHardLocked} />
             <div className="flex items-center gap-2.5 font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
               <span>{pending.length} pending</span>
               {overdueCount > 0 && <><span className="text-border">·</span><span className="text-claret-300">{overdueCount} overdue</span></>}

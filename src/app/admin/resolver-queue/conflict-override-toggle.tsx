@@ -13,10 +13,27 @@ import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { toggleConflictOverrideAction } from "./conflict-override-action";
 
-export function ConflictOverrideToggle({ enabled }: { enabled: boolean }) {
+export function ConflictOverrideToggle({ enabled, hardLocked = false }: { enabled: boolean; hardLocked?: boolean }) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const { toast } = useToast();
+
+  // Real money is live (TEST_FUNDING unset at go-live) → POCA §16 hard lock. The
+  // override cannot be enabled; render a clear disabled state so a tester isn't
+  // left wondering why the toggle "won't stay on".
+  if (hardLocked) {
+    return (
+      <span
+        title="Solo resolution is LOCKED because real money is live (POCA §16 — an officer can never resolve a market they hold a position in). It only works during the pre-launch testing window, before TEST_FUNDING is unset."
+        className="inline-flex items-center gap-2 rounded-md border px-2.5 h-8 font-mono text-[10px] uppercase tracking-[0.12em]"
+        style={{ borderColor: "var(--border-strong)", background: "var(--bg-inset)", color: "var(--text-faint)" }}
+      >
+        <I.lock s={13} />
+        <span className="hidden sm:inline">Solo resolve · locked (live)</span>
+        <span className="sm:hidden">Locked</span>
+      </span>
+    );
+  }
 
   const toggle = () => {
     startTransition(async () => {

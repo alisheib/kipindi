@@ -66,6 +66,7 @@
     "test:admin-money-ops": "tsx scripts/admin-money-ops.test.mts",
     "test:officer-conflict": "tsx scripts/officer-conflict.test.mts",
     "test:solo-resolution": "tsx scripts/solo-resolution-override.test.mts",
+    "test:conflict-gate": "tsx scripts/conflict-override-gate.test.mts",
     "test:activity": "tsx scripts/activity-summary.test.mts",
     "test:2fa": "tsx scripts/player-2fa.test.mts",
     "test:totp-enc": "tsx scripts/totp-encryption.test.mts",
