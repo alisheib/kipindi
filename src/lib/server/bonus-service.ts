@@ -27,6 +27,7 @@
  * forfeit-on-withdrawal path here.
  */
 import { db, type StoredBonusGrant, type BonusSource } from "./store";
+import type { Prisma } from "@prisma/client";
 import { randomId } from "./crypto";
 import { withLock } from "./locks";
 import { audit } from "./audit";
@@ -354,27 +355,34 @@ export async function spendBonus(userId: string, amountTzs: number): Promise<{ s
  * `withLock("wallet:<userId>")` — e.g. bet placement, which must debit real +
  * bonus atomically inside its own wallet lock (re-acquiring the same key would
  * deadlock). Do NOT call this without holding the wallet lock.
+ *
+ * tx (bet-stake single-tx): pass the caller's open money `$transaction` client
+ * to run EVERY read and write in that transaction — a mid-bet failure then rolls
+ * the grant decrements + bonusBalance debit back with the rest of the movement.
+ * In tx mode the `bonus.spent` audit is NOT raised here (the tx may still roll
+ * back); the caller raises it after commit. Guard-miss compensation is also
+ * skipped in tx mode — the caller aborts the tx and rollback undoes the grants.
  */
-export async function spendBonusLocked(userId: string, amountTzs: number): Promise<{ spent: number; allocations: BonusAllocation[] }> {
+export async function spendBonusLocked(userId: string, amountTzs: number, tx?: Prisma.TransactionClient | null): Promise<{ spent: number; allocations: BonusAllocation[] }> {
   const amount = tzs(amountTzs);
   if (!(amount > 0)) return { spent: 0, allocations: [] };
-  return spendBonusCore(userId, amount);
+  return spendBonusCore(userId, amount, tx);
 }
 
-async function spendBonusCore(userId: string, amount: number): Promise<{ spent: number; allocations: BonusAllocation[] }> {
-  const wallet = await db.wallet.findByUserId(userId);
+async function spendBonusCore(userId: string, amount: number, tx?: Prisma.TransactionClient | null): Promise<{ spent: number; allocations: BonusAllocation[] }> {
+  const wallet = await db.wallet.findByUserId(userId, tx);
   if (!wallet) return { spent: 0, allocations: [] };
   let toSpend = Math.min(amount, wallet.bonusBalance ?? 0);
   if (toSpend <= 0) return { spent: 0, allocations: [] };
 
   const allocations: BonusAllocation[] = [];
   let spent = 0;
-  const active = await db.bonusGrant.listActiveByUser(userId); // FIFO
+  const active = await db.bonusGrant.listActiveByUser(userId, tx); // FIFO
   for (const g of active) {
     if (toSpend <= 0) break;
     const take = Math.min(toSpend, g.remainingTzs);
     if (take <= 0) continue;
-    await db.bonusGrant.update(g.id, { remainingTzs: g.remainingTzs - take });
+    await db.bonusGrant.update(g.id, { remainingTzs: g.remainingTzs - take }, tx);
     allocations.push({ grantId: g.id, amount: take });
     spent += take;
     toSpend -= take;
@@ -383,15 +391,21 @@ async function spendBonusCore(userId: string, amount: number): Promise<{ spent: 
     // Guarded debit (defense-in-depth): never drive bonusBalance negative even if
     // a future caller forgets the wallet lock. On a guard miss, roll back the
     // per-grant remaining decrements we just made and report nothing spent.
-    const adjusted = await db.wallet.adjust(wallet.id, { bonusBalance: -spent }, { requireBonusBalanceGte: spent });
+    // In tx mode the caller aborts the whole transaction on an under-spend, so
+    // the manual re-increment (which would double-apply after rollback) is skipped.
+    const adjusted = await db.wallet.adjust(wallet.id, { bonusBalance: -spent }, { requireBonusBalanceGte: spent }, tx);
     if (!adjusted) {
-      for (const a of allocations) {
-        const g = await db.bonusGrant.findById(a.grantId);
-        if (g) await db.bonusGrant.update(a.grantId, { remainingTzs: g.remainingTzs + a.amount });
+      if (!tx) {
+        for (const a of allocations) {
+          const g = await db.bonusGrant.findById(a.grantId);
+          if (g) await db.bonusGrant.update(a.grantId, { remainingTzs: g.remainingTzs + a.amount });
+        }
       }
       return { spent: 0, allocations: [] };
     }
-    audit({ category: "WALLET", action: "bonus.spent", actorId: userId, targetType: "Wallet", targetId: wallet.id, payload: { spent, allocations } });
+    // Deferred in tx mode: an audit raised here would survive a later rollback
+    // and narrate a spend that never happened. The caller audits after commit.
+    if (!tx) audit({ category: "WALLET", action: "bonus.spent", actorId: userId, targetType: "Wallet", targetId: wallet.id, payload: { spent, allocations } });
   }
   return { spent, allocations };
 }

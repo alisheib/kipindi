@@ -662,8 +662,12 @@ export const prismaDb = {
 
   // ── WALLET ────────────────────────────────────────────────────────────────
   wallet: {
-    findByUserId: async (userId: string): Promise<StoredWallet | null> => {
-      const w = await pc().wallet.findUnique({ where: { userId } });
+    // tx (bet-stake single-tx): a read issued INSIDE an open money $transaction
+    // must run on the tx client — the pooled client would borrow a second
+    // connection per in-flight bet (pool-exhaustion risk under load) and would
+    // not see the tx's own uncommitted writes.
+    findByUserId: async (userId: string, tx?: Prisma.TransactionClient | null): Promise<StoredWallet | null> => {
+      const w = await (tx ?? pc()).wallet.findUnique({ where: { userId } });
       return w ? toStoredWallet(w) : null;
     },
     listAll: async (): Promise<StoredWallet[]> => {
@@ -1424,8 +1428,12 @@ export const prismaDb = {
       const row = await pc().bonusGrant.findFirst({ where: { sourceRef } });
       return row ? toStoredBonusGrant(row) : null;
     },
-    update: async (id: string, patch: Partial<StoredBonusGrant>): Promise<StoredBonusGrant | null> => {
-      try {
+    // tx (bet-stake single-tx): inside a money $transaction a DB error must
+    // PROPAGATE so the whole movement rolls back — never swallow it to null
+    // (same contract as wallet.adjust above). Self-committing mode keeps the
+    // original catch → null contract.
+    update: async (id: string, patch: Partial<StoredBonusGrant>, tx?: Prisma.TransactionClient | null): Promise<StoredBonusGrant | null> => {
+      const run = async (): Promise<StoredBonusGrant | null> => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const data: Record<string, any> = {};
         for (const [k, v] of Object.entries(patch)) {
@@ -1436,11 +1444,11 @@ export const prismaDb = {
             data[k] = v;
           }
         }
-        const row = await pc().bonusGrant.update({ where: { id }, data });
+        const row = await (tx ?? pc()).bonusGrant.update({ where: { id }, data });
         return toStoredBonusGrant(row);
-      } catch {
-        return null;
-      }
+      };
+      if (tx) return run(); // let a db error propagate to roll back the tx
+      try { return await run(); } catch { return null; }
     },
     listByUser: async (userId: string): Promise<StoredBonusGrant[]> => {
       const rows = await pc().bonusGrant.findMany({
@@ -1449,8 +1457,9 @@ export const prismaDb = {
       });
       return rows.map(toStoredBonusGrant);
     },
-    listActiveByUser: async (userId: string): Promise<StoredBonusGrant[]> => {
-      const rows = await pc().bonusGrant.findMany({
+    // tx: see wallet.findByUserId — in-tx reads must use the tx client.
+    listActiveByUser: async (userId: string, tx?: Prisma.TransactionClient | null): Promise<StoredBonusGrant[]> => {
+      const rows = await (tx ?? pc()).bonusGrant.findMany({
         where: { userId, status: "ACTIVE" },
         orderBy: { createdAt: "asc" }, // FIFO
       });
