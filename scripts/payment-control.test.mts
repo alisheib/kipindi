@@ -68,6 +68,7 @@ delete E.AUTO_SETTLE;
 setCreds(false); ok("selcom not configured w/o creds", paymentProviderConfigured("selcom") === false);
 setCreds(true);  ok("selcom configured with 4 creds", paymentProviderConfigured("selcom") === true);
 ok("mock never configured", paymentProviderConfigured("mock") === false);
+ok("azampay NOT configured from Selcom's shared creds", paymentProviderConfigured("azampay") === false);
 
 // ── TEST-mode overrides (freely settable) ─────────────────────────────────────
 resetStore(); setEnv("development", undefined); setCreds(true);

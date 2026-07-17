@@ -120,7 +120,10 @@ export function paymentProviderConfigured(provider: PaymentProviderId): boolean 
     return !!process.env.PAYMENT_API_KEY && !!process.env.PAYMENT_API_SECRET && !!process.env.PAYMENT_VENDOR_ID && !!process.env.PAYMENT_API_URL;
   }
   if (provider === "azampay") {
-    return !!process.env.PAYMENT_API_KEY && !!process.env.PAYMENT_API_SECRET;
+    // AzamPay is an unwired stub and is NOT contracted for 50pick. Gate it on
+    // AzamPay-SPECIFIC creds (not the shared PAYMENT_* vars, which belong to
+    // Selcom) so it never falsely shows as "configured"/selectable in admin.
+    return !!process.env.AZAMPAY_CLIENT_ID && !!process.env.AZAMPAY_CLIENT_SECRET;
   }
   return false;
 }
