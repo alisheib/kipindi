@@ -11,18 +11,42 @@ You are running 50pick's GO-LIVE mission (repo `F:\kipindi-main`; every push to
 until DNS lands, then `https://www.50pick.tz`. Railway CLI = alisheib07.
 
 STATE — everything code is DONE, merged, live, and verified:
-- Final Audit COMPLETE (all 11 Criticals + Highs + Mediums).
-- §9 enhancement batch merged + live. GBT licence obtained.
+- Final Audit COMPLETE (all 11 Criticals + Highs + Mediums). GBT licence obtained.
+- §9 enhancement batch merged + live.
 - ALL money paths atomic — bet-stake single-`$transaction` merged @ 595901e
   (independently verified: e2e:money 57/57, e2e:fault 34/34, s10 PASS).
+- Route/auth audit done: sensitive admin VIEWS tier-gated (MODERATOR can't see
+  money/PII/config); `/watchlist` + `/proposals/new` edge-protected (@56e376b).
+- Solo-resolution override re-gated to real-money state: works pre-launch for
+  testers, auto-hard-locks when TEST_FUNDING is unset at go-live (@2d26008,
+  docs/COMPLIANCE-DECISIONS.md).
+- UI/CSS/design validated at 360/768/1280/1920 (0 hard failures; disciplined token
+  palette; docs/VISUAL-CONSISTENCY-AUDIT.md). One product note (not a blocker):
+  `/markets` defaults to the "Today" filter, which can render an empty board — Ali
+  to decide whether to default to "All"/"Ending soon" or fall back when empty.
 - Payment plumbing built; only the outbound adapter body is stubbed. Adapter
   scaffold + runbook ready on branch `feat/payment-adapter`.
 - Railway static egress IPs ACTIVE: 162.220.232.250 / 152.55.176.240 /
   152.55.177.181 (sent to the PSP; webhook `https://www.50pick.tz/api/webhooks/payments`).
 
-Ali brings this session: payment API keys + docs, Cloudflare access (ideally a
-scoped Zone-DNS-Edit API token for 50pick.tz), the Netpoa nameserver-swap screen,
-and the Postmark DKIM record. Domain is owned at Netpoa.
+## ⭐ ACCESS I NEED FROM ALI TO TAKE YOU LIVE (grant at session start)
+- **Railway** — CLI already logged in as alisheib07 (no action). I'll set env vars
+  + read logs + manage domains/deploys via the CLI.
+- **Cloudflare** — the 50pick.tz account (created 2026-07-03). Best: create a scoped
+  **API token → Zone : DNS : Edit** for `50pick.tz` and paste it to me, so I set all
+  DNS records myself. Otherwise screen-share and I dictate each record.
+- **Netpoa** (registrar) — ONE action: change the domain nameservers to the two
+  Cloudflare gives us. Either do it when I hand you the 2 values, or give me access.
+- **Postmark** — dashboard access (or paste me the values): the **DKIM `._domainkey`
+  TXT** (name+value) + the Return-Path/`pm-bounces` CNAME for `50pick.tz`, so email
+  survives the DNS move. (Postmark account/API key/templates are untouched.)
+- **Payment aggregator (Selcom/AzamPay)** — which one you signed + the **API docs**
+  (collection + disbursement + webhook signature) + **sandbox creds** + **base URL**
+  + **API key/secret** + **webhook signing secret**. Paste secrets in-session (never
+  into the repo).
+- **Cloudflare R2** — create bucket `kipindi-kyc` + an R2 API token (Object R/W) and
+  paste: account id (for the endpoint), access key id, secret.
+🔐 All secrets go into Railway env vars or are pasted to me in-session — never committed.
 
 RUN IN THIS ORDER (each step has a dedicated doc — follow it exactly):
 
