@@ -5,8 +5,8 @@
 > Full procedures/architecture live in [`GO-LIVE-RUNBOOK.md`](GO-LIVE-RUNBOOK.md); this file
 > is just "where are we RIGHT NOW."
 >
-> **Last updated: 2026-07-17 15:30 — tzNIC registry FLIPPED to Cloudflare (~15:23); DNS
-> propagating worldwide, Railway domains verifying. R2 KYC storage LIVE + verified.**
+> **Last updated: 2026-07-17 — SELCOM PAYMENTS BUILT + MERGED + LIVE (Selcom OFF/mock default);
+> deposit creds validated against the live gateway. R2 KYC LIVE. DNS still propagating.**
 
 ## TL;DR status
 | Item | State | Blocker / next |
@@ -17,8 +17,9 @@
 | Cloudflare DNS zone | 🟢 Done & verified | 31 records, 0 proxied; all correct incl. mail; verified via CF API |
 | Railway verify + cert | 🟡 Issuing | `Verified: no` → flips to yes once Railway's resolvers see the delegation (mins–~1h); then `https://50pick.tz` serves the app (returns 404 until verified) |
 | R2 (KYC storage) | 🟢 **LIVE** | bucket `50pick-kyc`; 5 vars set in Railway; prod-env round-trip PASS |
-| Selcom payments | 🟡 Branch staged | `feat/payment-selcom`; needs Selcom keys/docs |
-| The go-live switch | ⚪ Not started | after Selcom + certs: unset TEST_FUNDING, rebaseline, AUTO_SETTLE |
+| Selcom payments (deposits) | 🟢 **LIVE code, OFF** | merged `main @f7d9081`; provider=mock default; deposit creds set + **validated** (live probe HTTP 404 = auth OK). Next: 1 real deposit test → flip provider→selcom |
+| Selcom payouts (withdrawals) | 🔴 Blocked | needs **disbursement creds + float PIN** from Selcom (what we have is deposit-only); set `PAYMENT_VENDOR_PIN` |
+| The go-live switch | ⚪ Not started | after the deposit test + certs: unset TEST_FUNDING, rebaseline, licence ref, AUTO_SETTLE — see `docs/GO-LIVE-CONTINUATION-PROMPT.md` §6 |
 
 ## ⏳ CURRENT WAIT: DNS propagation → Railway verify → certs
 - The tzNIC registry **FLIPPED to Cloudflare ~15:23** (Netpoa pushed it — took ~3h). Now the
@@ -48,16 +49,25 @@
 - Verified: local + prod-env (`railway run … node scripts/r2-roundtrip.mjs`) round-trip PASS.
   New KYC uploads → R2; existing inline docs keep working (no backfill).
 
-## Selcom payments — how to finish
-- Branch `feat/payment-selcom` (off current main + adapter scaffold, tsc green). Fill the
-  two `selcomAdapter` bodies in `src/lib/server/payments.ts` per
-  `docs/PAYMENT-INTEGRATION-CHECKLIST.md` (on the branch). Needs Selcom keys/docs. See
-  runbook §6.
+## Selcom payments — ✅ BUILT + LIVE (Selcom OFF), deposits validated (2026-07-17)
+- Adapter + operations control-plane merged to `main` (@f7d9081) and deployed. Provider defaults
+  to `mock` — nothing routes to Selcom until an officer flips the toggle in `/admin/payments`.
+- **Deposit creds VALIDATED** end-to-end against the live gateway via the admin "Test Selcom"
+  probe (HTTP 404 = authenticated + IP-allow-listed; 401/403 would mean bad creds/signature).
+- **Full handoff (money model, creds/PINs, integration, pending, go-live switch, copy-paste
+  prompt): `docs/GO-LIVE-CONTINUATION-PROMPT.md`.** Signing digest: `docs/SELCOM-API-DIGEST.md`.
+- **Pending:** (1) one small real deposit test → flip deposits on; (2) **disbursement creds +
+  float PIN** from Selcom → set `PAYMENT_VENDOR_PIN` → withdrawals work.
+- ⚠️ Prod creds are **IP-allow-listed** to the Railway egress — validate from the deployed app,
+  never locally.
 
 ## Env state (Railway, service `50pick`) — key flags
 - Set + correct: `NODE_ENV=production`, `USE_PRISMA_DAL=true`, `TEST_FUNDING=true` (pre-launch),
   `DATABASE_URL`, `POSTMARK_API_KEY`, `POSTMARK_WEBHOOK_SECRET`, `SELCOM_WEBHOOK_SECRET`,
   `NEXT_PUBLIC_APP_URL=https://www.50pick.tz`.
+- **Selcom (deposits) — set + validated:** `PAYMENT_API_URL` (prod `apigw/v1`), `PAYMENT_VENDOR_ID`,
+  `PAYMENT_API_KEY`, `PAYMENT_API_SECRET` (secret values — Railway only). `PAYMENT_AGGREGATOR`
+  intentionally **unset** (→ mock; flip via admin). **Missing for payouts:** `PAYMENT_VENDOR_PIN`.
 - **To change at the go-live switch:** unset `TEST_FUNDING` (→ auto-hard-locks solo-resolution),
   set `AUTO_SETTLE=true`, set real `NEXT_PUBLIC_LICENSE_REF` (currently placeholder
   `TZ-GBT-2026-XXXX`).

@@ -20,11 +20,15 @@
 > (DNS→R2→payment keys→the switch) is `docs/next-session-prompt.md`. **Nothing in
 > the plan now blocks launch — the one remaining unblock is the payment aggregator
 > API keys.** Remaining code = optional admin features (A6/A7/A13–A16) + polish.
-> 🚀 **GO-LIVE IN PROGRESS (2026-07-17):** DNS cut over Netpoa→Cloudflare (all records +
-> mail carried over, verified; awaiting propagation + Railway cert issuance). R2 KYC client
-> (`@aws-sdk/client-s3`) deployed — awaiting R2 creds. Selcom adapter staged on
-> `feat/payment-selcom` (⚠️ do NOT merge the stale `feat/payment-adapter`). Full record +
-> step-by-step: [`docs/GO-LIVE-RUNBOOK.md`](docs/GO-LIVE-RUNBOOK.md).
+> 🚀 **GO-LIVE IN PROGRESS (2026-07-17):** DNS cut over Netpoa→Cloudflare (records + mail
+> carried over; propagating — 50pick.tz still shows old Apache, use the Railway domain).
+> R2 KYC storage **LIVE** (bucket `50pick-kyc`). **SELCOM payments + operations control-plane
+> BUILT + MERGED + LIVE (Selcom OFF/mock default); deposit creds set + VALIDATED against the
+> live gateway.** ⚠️ deposit-only — withdrawals need Selcom disbursement creds + float PIN.
+> ⭐ **Full handoff + copy-paste go-live prompt: [`docs/GO-LIVE-CONTINUATION-PROMPT.md`](docs/GO-LIVE-CONTINUATION-PROMPT.md)**
+> (money model, creds/PINs, integration, pending, the switch). LEFT: 1 real deposit test →
+> flip deposits on · payout PIN · the go-live switch. Runbook: [`docs/GO-LIVE-RUNBOOK.md`](docs/GO-LIVE-RUNBOOK.md).
+> ⚠️ do NOT merge the stale remote `feat/payment-adapter`.
 > 🧭 **START HERE — two always-on skills:**
 > • **`50pick-standards`** (`.claude/skills/50pick-standards/SKILL.md`) — **how we build**:
 >   the quality bar, the 9-role gate, UI-kit & design discipline, the responsiveness matrix

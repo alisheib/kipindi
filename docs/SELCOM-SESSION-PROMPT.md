@@ -1,3 +1,9 @@
+> ✅ **DONE (2026-07-17) — this session is COMPLETE.** The Selcom adapter + operations
+> control-plane were built, merged to `main`, deployed, and the deposit credentials were
+> validated against the live gateway. Do NOT re-run this prompt. For the go-live continuation
+> (real deposit test → payout PIN → the switch) use **`docs/GO-LIVE-CONTINUATION-PROMPT.md`**.
+> Kept for the record.
+
 # 50pick — Payments + Operations Control-Plane session (copy-paste prompt)
 
 > The dedicated session for the LAST code before go-live: the **Selcom** adapter **plus** a
