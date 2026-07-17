@@ -19,9 +19,10 @@ code items are optional admin features (A6/A7/A13–A16) + polish, none blocking
   Remaining <44px: logo Home link, desktop nav links, /proposals buttons — a future
   sweep; AA/2.5.8 already met.
 - **M2** largest-remainder payout — **DONE** (Σ payouts == floor(netPool) exactly).
-- **bet-STAKE single-`$transaction`** — the one C3 atomicity exception (settlement,
-  deposit, withdraw, refunds are already atomic; the money is correct + drift is
-  detected/alerted, so this is hardening, not a blocker; fresh focused session).
+- **bet-STAKE single-`$transaction`** — **DONE (merged @595901e, 2026-07-17).** The
+  last C3 exception is closed; ALL money paths (settle/deposit/withdraw/refund AND
+  bet placement) now commit atomically. Verified e2e:money 57/57 + e2e:fault 34/34
+  (row-level rollback) + s10 double-spend PASS.
 - **C5** webhook nonce table — closed as won't-build (idempotency already prevents
   double-credit; a nonce would reject providers' legitimate retries).
 

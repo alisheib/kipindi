@@ -140,9 +140,12 @@ Ordered by value for a clean go-live + real-money ops. Update status inline.
         credits each OPEN winner the allocated amount. New `test:payout-alloc` 12/12;
         money-invariants 78/78, ledger 89/89, markets/solo/emergency/settlement-gate
         green; **money-e2e on PG 57/57, conservation drift 0.00**.
-      • **bet-STAKE single-`$transaction` — DEFERRED:** highest blast radius (nested
-        wallet→market lock + pool unwind + bonus spend); money is already correct +
-        drift detected. Fresh focused session with the load harness.
+      • **bet-STAKE single-`$transaction` — DONE (merged @595901e, 2026-07-17).**
+        Every money write of a bet (real debit, bonus spend, pool, position, txn,
+        ledger) commits in ONE `$transaction`, opened after both advisory locks
+        (deadlock-free), close-check before any money write. Independently verified:
+        e2e:money 57/57, e2e:fault 34/34 (row-level rollback), s10 PASS. ALL money
+        paths are now atomic. Details: `docs/session-betstake-notes.md`.
       • 1 `eslint-disable` in market-service — cosmetic, leave.
 - [ ] **A21 · F10 lite mode · F12 live odds via SSE** (SSE bus exists, notifications-only).
 

@@ -7,17 +7,18 @@
 
 ## ✅ Already cleared
 - GBT licence (the hard legal gate).
-- The whole money engine: exact pari-mutuel payout (drift 0.00), atomic
-  settle/deposit/withdraw/refund, double-entry ledger + trial balance, fork-proof
-  audit chain, exactly-once webhooks. Audit + §9 enhancement all merged + live.
+- The whole money engine: exact pari-mutuel payout (drift 0.00), **ALL money paths
+  atomic** — settle/deposit/withdraw/refund AND bet placement (bet-stake single-tx
+  merged @595901e, verified e2e:money 57/57 + e2e:fault 34/34 + s10) — double-entry
+  ledger + trial balance, fork-proof audit chain, exactly-once webhooks. Audit +
+  §9 enhancement all merged + live.
 
 ## 1 · Code to finish before real money (🤖 me)
 - [ ] **Payment gateway** — wire + TEST the aggregator on `feat/payment-adapter`
-      (tomorrow, when keys land): sandbox round-trip, reconcile to 0, merge, deploy.
+      (when keys land): sandbox round-trip, reconcile to 0, merge, deploy.
       *Send me: which aggregator, API/webhook docs, base URL, key+secret.*
-- [ ] **bet-stake single-transaction** (strongly recommended) — the one money path
-      not yet fully atomic. ~1 focused session. Close it so every money write is
-      all-or-nothing before customers fund wallets.
+- [x] **bet-stake single-transaction** — DONE (merged @595901e). Every money write
+      of a bet is now one atomic `$transaction`. No longer a launch consideration.
 - [ ] **Activate R2 for KYC** — the seam is built; I run `npm i @aws-sdk/client-s3`,
       confirm the code path, and we do a staging KYC upload→view round-trip once
       you set the R2 creds (§2).

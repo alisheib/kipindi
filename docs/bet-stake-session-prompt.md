@@ -1,8 +1,14 @@
 # Bet-stake single-transaction — dedicated session prompt + design handoff
 
-> Copy-paste the PROMPT block into a fresh session. The design below it is the
-> completed analysis from Session M (2026-07-16) — follow it; don't re-derive.
-> Session M stays the go-live command center and will review + merge the branch.
+> ✅ **DONE & MERGED 2026-07-17 (@595901e).** Built on `feat/bet-stake-single-tx`,
+> independently re-verified by Session M (code read + tsc/build/test:all 65/65 +
+> PG proofs e2e:money 57/57, e2e:fault 34/34, s10 PASS), merged to `main`,
+> deployed. ALL money paths are now atomic. Kept for the record — the branch is
+> merged; do NOT re-run this as pending work. Outcome: `docs/session-betstake-notes.md`.
+
+> (historical) Copy-paste the PROMPT block into a fresh session. The design below
+> it is the completed analysis from Session M (2026-07-16) — follow it; don't
+> re-derive. Session M stays the go-live command center and will review + merge.
 
 ---
 

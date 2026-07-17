@@ -14,9 +14,12 @@
 > audited balance-adjust + force-reverify-KYC) and Session-E's §9 UI/compliance work
 > (A8 unified maker-checker · A9 config factory · A10 money-format guard · A11 six
 > popups→`<Modal>` · A17/§9.2/§9.4 · A18 tap-targets · A19 carousels) merged
-> zero-conflict @ `023dfbf` and verified on prod. **Nothing in the plan now blocks
-> launch — the one remaining unblock is the payment aggregator API keys** (in
-> progress). Remaining code = optional admin features (A6/A7/A13–A16) + polish.
+> zero-conflict @ `023dfbf` and verified on prod. **ALL money paths are now atomic** —
+> bet-stake single-`$transaction` merged @ `595901e` (2026-07-17; verified e2e:money
+> 57/57 + e2e:fault 34/34 + s10). **GBT licence obtained.** The go-live mission
+> (DNS→R2→payment keys→the switch) is `docs/next-session-prompt.md`. **Nothing in
+> the plan now blocks launch — the one remaining unblock is the payment aggregator
+> API keys.** Remaining code = optional admin features (A6/A7/A13–A16) + polish.
 > 🧭 **START HERE — two always-on skills:**
 > • **`50pick-standards`** (`.claude/skills/50pick-standards/SKILL.md`) — **how we build**:
 >   the quality bar, the 9-role gate, UI-kit & design discipline, the responsiveness matrix
