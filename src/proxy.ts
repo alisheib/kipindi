@@ -23,7 +23,11 @@ import { NextResponse, type NextRequest } from "next/server";
 // Must match COOKIE_NAME in src/lib/server/session.ts
 const SESSION_COOKIE = "kp_session";
 
-const PROTECTED_PREFIXES = ["/wallet", "/positions", "/profile", "/admin"];
+// Private, user-scoped surfaces get edge protection (defence-in-depth on top of
+// each page's own session check). `/watchlist` and `/proposals/new` are
+// user-specific too, so they belong here (audit 2026-07-17). Public `/proposals`
+// (list) and `/proposals/[id]` stay open; only the `/new` composer is gated.
+const PROTECTED_PREFIXES = ["/wallet", "/positions", "/profile", "/watchlist", "/proposals/new", "/admin"];
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some(p => pathname === p || pathname.startsWith(p + "/"));
 }

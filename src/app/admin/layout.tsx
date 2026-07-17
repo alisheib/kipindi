@@ -11,9 +11,47 @@ import { hasTotp } from "@/lib/server/totp";
 import { verifySession, signSession } from "@/lib/server/crypto";
 import { ConfidentialBand, AdminSidebar, AdminTopBar, type AdminSession } from "@/components/admin/admin-shell";
 import { TOTP_COOKIE_NAME, TOTP_TTL_SEC } from "@/lib/server/totp-cookie";
-import { ADMIN_CONSOLE_ROLES } from "@/lib/server/roles";
+import { ADMIN_CONSOLE_ROLES, MONEY_ROLES, COMPLIANCE_ROLES, CONFIG_ROLES, hasRole, type Role } from "@/lib/server/roles";
+import { AdminRestricted } from "@/components/admin/admin-restricted";
 
 const ADMIN_ROLES = ADMIN_CONSOLE_ROLES; // role tier — see @/lib/server/roles
+
+/**
+ * READ-tier gate (audit 2026-07-17). The console gate above admits MODERATOR
+ * (ADMIN_CONSOLE_ROLES), but money / compliance-PII / config-and-regulator-data
+ * SURFACES must be ADMIN/COMPLIANCE only to even VIEW — the same rule the tiers
+ * enforce for the ACTIONS (roles.ts). Rendering AdminRestricted here (instead of
+ * `children`) means React never renders the page subtree, so a MODERATOR's browser
+ * never receives the data AND the page's server data-fetch never runs. Market-ops
+ * surfaces (markets, resolver, candidates, proposals, sources, moderation,
+ * objections, live, ai-polls, events, overview) stay broad — MODERATOR's job.
+ * Most-specific prefix wins (first match). finance/insights/reports keep their own
+ * in-page gate too (harmless belt-and-suspenders).
+ */
+const READ_TIERS: Array<{ prefix: string; tier: Set<Role>; need: string }> = [
+  { prefix: "/admin/finance",         tier: MONEY_ROLES,      need: "Admin or Compliance" },
+  { prefix: "/admin/insights",        tier: MONEY_ROLES,      need: "Admin or Compliance" },
+  { prefix: "/admin/payments",        tier: MONEY_ROLES,      need: "Admin or Compliance" },
+  { prefix: "/admin/settlement",      tier: MONEY_ROLES,      need: "Admin or Compliance" },
+  { prefix: "/admin/aml",             tier: MONEY_ROLES,      need: "Admin or Compliance" },
+  { prefix: "/admin/bonuses",         tier: MONEY_ROLES,      need: "Admin or Compliance" },
+  { prefix: "/admin/affiliate",       tier: MONEY_ROLES,      need: "Admin or Compliance" },
+  { prefix: "/admin/players",         tier: COMPLIANCE_ROLES, need: "Admin or Compliance" },
+  { prefix: "/admin/kyc",             tier: COMPLIANCE_ROLES, need: "Admin or Compliance" },
+  { prefix: "/admin/approvals",       tier: COMPLIANCE_ROLES, need: "Admin or Compliance" },
+  { prefix: "/admin/privacy",         tier: COMPLIANCE_ROLES, need: "Admin or Compliance" },
+  { prefix: "/admin/self-exclusions", tier: COMPLIANCE_ROLES, need: "Admin or Compliance" },
+  { prefix: "/admin/compliance",      tier: COMPLIANCE_ROLES, need: "Admin or Compliance" },
+  { prefix: "/admin/reports",         tier: CONFIG_ROLES,     need: "Admin or Compliance" },
+  { prefix: "/admin/config",          tier: CONFIG_ROLES,     need: "Admin or Compliance" },
+  { prefix: "/admin/system",          tier: CONFIG_ROLES,     need: "Admin or Compliance" },
+  { prefix: "/admin/ai-usage",        tier: CONFIG_ROLES,     need: "Admin or Compliance" },
+  { prefix: "/admin/retention",       tier: CONFIG_ROLES,     need: "Admin or Compliance" },
+  { prefix: "/admin/audit",           tier: CONFIG_ROLES,     need: "Admin or Compliance" },
+];
+function requiredReadTier(path: string): { tier: Set<Role>; need: string } | null {
+  return READ_TIERS.find((r) => path === r.prefix || path.startsWith(r.prefix + "/")) ?? null;
+}
 
 /**
  * Routes inside /admin/* that DON'T require an admin TOTP cookie:
@@ -163,6 +201,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     } catch { /* read-only render context — next mutable request resyncs */ }
   }
 
+  // READ-tier gate: money / compliance-PII / config surfaces are ADMIN/COMPLIANCE
+  // only to VIEW. When the role falls short we render AdminRestricted in place of
+  // `children` — the page subtree (and its server data-fetch) never runs.
+  const readTier = requiredReadTier(path);
+  const readBlocked = !!readTier && !hasRole(session.role, readTier.tier);
+
   return (
     <div className="min-h-screen bg-bg-base text-text">
       <ConfidentialBand session={adminSession} />
@@ -170,7 +214,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <AdminSidebar activeKey={activeKey} />
         <main className="flex-1 min-w-0 flex flex-col">
           <AdminTopBar crumbs={crumbs} session={adminSession} activeKey={activeKey} />
-          <div className="flex-1">{children}</div>
+          <div className="flex-1">
+            {readBlocked
+              ? <AdminRestricted title={crumbs[crumbs.length - 1] ?? "Restricted"} need={readTier!.need} />
+              : children}
+          </div>
         </main>
       </div>
     </div>
