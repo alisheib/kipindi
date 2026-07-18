@@ -92,7 +92,8 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset",
-    "db:push": "prisma db push"
+    "db:push": "prisma db push",
+    "test:txn-search": "tsx scripts/txn-search.test.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

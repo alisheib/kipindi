@@ -8,6 +8,7 @@
 import { prismaDb } from "./prisma-dal";
 import { hasDatabase } from "./prisma";
 import { randomId } from "./crypto";
+import { matchesFilters, sortAndPage, summarise, type TxnSearchFilters, type TxnSearchResult } from "./txn-filters";
 
 export type StoredUser = {
   id: string;
@@ -664,6 +665,15 @@ const memoryDb = {
     listByStatus: (status: StoredTxn["status"]) => Array.from(store.txns.values()).filter((t) => t.status === status),
     /** All transactions — analytics only. Avoids the user-by-user N+1 walk. */
     listAll: (): StoredTxn[] => Array.from(store.txns.values()),
+    /** Filtered + paginated transaction search for the compliance browser.
+     *  Summary totals cover the WHOLE filtered set, not the returned page —
+     *  an operator reconciling against a gateway statement needs the full figure.
+     *  Filter/sort rules live in `txn-filters.ts` so this and the Prisma DAL
+     *  can't drift. */
+    search: (f: TxnSearchFilters = {}): TxnSearchResult => {
+      const all = Array.from(store.txns.values()).filter((t) => matchesFilters(t, f));
+      return { rows: sortAndPage(all, f), total: all.length, summary: summarise(all) };
+    },
     findByIdempotencyKey: (key: string): StoredTxn | null => {
       for (const t of store.txns.values()) if (t.idempotencyKey === key) return t;
       return null;

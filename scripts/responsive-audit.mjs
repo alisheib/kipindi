@@ -72,7 +72,7 @@ const PLAYER = [
 const ADMIN = [
   "/admin", "/admin/live", "/admin/markets", "/admin/resolver-queue",
   "/admin/ai-polls", "/admin/candidates", "/admin/proposals", "/admin/sources",
-  "/admin/config", "/admin/finance", "/admin/payments", "/admin/reports",
+  "/admin/config", "/admin/finance", "/admin/payments", "/admin/transactions", "/admin/reports",
   "/admin/players", "/admin/players/cohorts", "/admin/affiliate",
   "/admin/bonuses", "/admin/invites", "/admin/compliance", "/admin/moderation",
   "/admin/aml", "/admin/self-exclusions", "/admin/privacy", "/admin/retention",

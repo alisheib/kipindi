@@ -127,7 +127,7 @@ const PROD_HEADERS: Record<string, string> = {
 // without it the browser blocks eval() and every page navigation crashes
 // with "Server Components render error" (digest 793074517). TODO: migrate
 // to nonce-based CSP when Next.js supports it for Turbopack builds.
-const CSP = [
+const CSP_BASE = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
@@ -137,20 +137,34 @@ const CSP = [
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
-  "upgrade-insecure-requests",
-].join("; ");
+];
+// `upgrade-insecure-requests` is only correct over HTTPS. On a plain-HTTP origin
+// (local dev / preview / a health probe) it force-upgrades every subresource to
+// https://<that same http host>, which fails with ERR_SSL_PROTOCOL_ERROR. So we
+// emit it only when the request actually arrived over HTTPS (prod behind Railway
+// sets x-forwarded-proto=https) — production security is unchanged.
+const CSP_SECURE = [...CSP_BASE, "upgrade-insecure-requests"].join("; ");
+const CSP_PLAIN = CSP_BASE.join("; ");
 
-function withSecurityHeaders(res: NextResponse): NextResponse {
+function withSecurityHeaders(res: NextResponse, secure = true): NextResponse {
   for (const [k, v] of Object.entries(SECURITY_HEADERS)) res.headers.set(k, v);
-  res.headers.set("Content-Security-Policy", CSP);
+  res.headers.set("Content-Security-Policy", secure ? CSP_SECURE : CSP_PLAIN);
   if (process.env.NODE_ENV === "production") {
     for (const [k, v] of Object.entries(PROD_HEADERS)) res.headers.set(k, v);
   }
   return res;
 }
 
+/** True when the request reached us over HTTPS (prod behind Railway sets
+ *  `x-forwarded-proto: https`; local http dev/preview does not). */
+function isSecureRequest(req: NextRequest): boolean {
+  const proto = req.headers.get("x-forwarded-proto") ?? req.nextUrl.protocol.replace(":", "");
+  return proto.split(",")[0].trim() === "https";
+}
+
 export async function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
+  const secure = isSecureRequest(req);
 
   // Hard-block dev-test endpoints in production at the edge — defence in
   // depth on top of the per-route NODE_ENV check. Even if NODE_ENV is
@@ -158,7 +172,7 @@ export async function proxy(req: NextRequest) {
   // the handler. Returns a real 404 (not JSON) so scanners don't see
   // a different shape than other missing routes.
   if (pathname.startsWith("/api/dev-test") && process.env.NODE_ENV === "production") {
-    return withSecurityHeaders(new NextResponse("Not Found", { status: 404 }));
+    return withSecurityHeaders(new NextResponse("Not Found", { status: 404 }), secure);
   }
 
   const cookie = req.cookies.get(SESSION_COOKIE)?.value;
@@ -182,7 +196,7 @@ export async function proxy(req: NextRequest) {
       // Clear the bad cookie so the next request doesn't keep
       // re-presenting it. Path + name must match the issuer.
       if (cookie) res.cookies.delete(SESSION_COOKIE);
-      return withSecurityHeaders(res);
+      return withSecurityHeaders(res, secure);
     }
   }
 
@@ -193,6 +207,7 @@ export async function proxy(req: NextRequest) {
   requestHeaders.set("x-href", pathname + search);
   return withSecurityHeaders(
     NextResponse.next({ request: { headers: requestHeaders } }),
+    secure,
   );
 }
 

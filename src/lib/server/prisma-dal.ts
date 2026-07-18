@@ -22,6 +22,10 @@ import type { PrismaClient, Prisma } from "@prisma/client";
 // before. `PrismaClient` is assignable to `TransactionClient` (it has a superset
 // of the model delegates), so `tx ?? pc()` is well-typed for the model calls.
 type Db = Prisma.TransactionClient | PrismaClient;
+import {
+  summarise, GATEWAY_TYPES, STUCK_PROCESSING_MS,
+  type TxnSearchFilters, type TxnSearchResult,
+} from "./txn-filters";
 import type {
   StoredUser,
   StoredKyc,
@@ -810,6 +814,67 @@ export const prismaDb = {
     listAll: async (): Promise<StoredTxn[]> => {
       const rows = await pc().transaction.findMany();
       return rows.map(toStoredTxn);
+    },
+    /** Filtered + paginated transaction search for the compliance browser.
+     *  Filtering/sorting/pagination are pushed into SQL — this table is the
+     *  largest on a money platform and must never be walked in memory. The
+     *  summary totals cover the WHOLE filtered set (a second, page-independent
+     *  pass), because an operator reconciling against a gateway statement needs
+     *  the full figure, not the page's. Rules mirror `txn-filters.ts`; the
+     *  search tests assert the two DALs agree. */
+    search: async (f: TxnSearchFilters = {}): Promise<TxnSearchResult> => {
+      const and: Prisma.TransactionWhereInput[] = [];
+      if (f.types?.length) and.push({ type: { in: [...f.types] } as never });
+      if (f.statuses?.length) and.push({ status: { in: [...f.statuses] } as never });
+      if (f.providers?.length) and.push({ provider: { in: [...f.providers] } as never });
+      if (f.fromMs != null) and.push({ createdAt: { gte: new Date(f.fromMs) } });
+      if (f.toMs != null) and.push({ createdAt: { lt: new Date(f.toMs) } });
+      if (f.q) {
+        const q = f.q.trim();
+        and.push({ OR: [
+          { id: { contains: q, mode: "insensitive" } },
+          { providerRef: { contains: q, mode: "insensitive" } },
+          { msisdn: { contains: q, mode: "insensitive" } },
+          { userId: { contains: q, mode: "insensitive" } },
+        ] });
+      }
+      // "Needs attention" = unreconciled (confirmed gateway money with no ref)
+      // OR awaiting AML OR still in flight. Mirrors attentionOf()'s warn levels.
+      if (f.attentionOnly) {
+        and.push({ OR: [
+          { AND: [{ type: { in: [...GATEWAY_TYPES] } as never }, { status: "CONFIRMED" as never }, { providerRef: null }] },
+          { status: "AML_REVIEW" as never },
+          { AND: [{ status: "PROCESSING" as never }, { createdAt: { lt: new Date(Date.now() - STUCK_PROCESSING_MS) } }] },
+        ] });
+      }
+      const finalWhere: Prisma.TransactionWhereInput = and.length ? { AND: and } : {};
+
+      const field = f.sort?.field ?? "createdAt";
+      const dir = f.sort?.dir ?? "desc";
+      const orderBy: Prisma.TransactionOrderByWithRelationInput =
+        field === "amount" ? { amount: dir }
+        : field === "type" ? { type: dir }
+        : field === "status" ? { status: dir }
+        : field === "provider" ? { provider: dir }
+        : { createdAt: dir };
+
+      const take = Math.max(1, Math.min(f.take ?? 50, 500));
+      const skip = Math.max(0, f.skip ?? 0);
+      const [rows, total, allForSummary] = await Promise.all([
+        pc().transaction.findMany({ where: finalWhere, orderBy, skip, take }),
+        pc().transaction.count({ where: finalWhere }),
+        // Summary needs every matching row's type/status/amount/fee/providerRef.
+        // Selected narrowly so this stays cheap even on a large filtered set.
+        pc().transaction.findMany({
+          where: finalWhere,
+          select: { type: true, status: true, amount: true, fee: true, providerRef: true },
+        }),
+      ]);
+      const summary = summarise(allForSummary.map((r) => ({
+        type: r.type, status: r.status, amount: Number(r.amount), fee: Number(r.fee),
+        providerRef: r.providerRef, createdAt: new Date().toISOString(),
+      }) as unknown as StoredTxn));
+      return { rows: rows.map(toStoredTxn), total, summary };
     },
     findByIdempotencyKey: async (key: string): Promise<StoredTxn | null> => {
       const row = await pc().transaction.findUnique({ where: { idempotencyKey: key } });
