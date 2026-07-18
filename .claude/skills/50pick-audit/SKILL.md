@@ -21,13 +21,16 @@ next start` **against the live money DB**. There is no staging. So:
 - **Verify AFTER every push (Ali's rule):** technical (`tsc`+`test:*`) · logical ·
   **visual** (screenshot the live page with playwright + LOOK) · **live-DB**
   (`curl` prod → HTTP 200, and `railway logs -s 50pick` shows a clean boot).
-- **⚠️ Verify against the RAILWAY domain `https://kipindi-production.up.railway.app`,
-  NOT `50pick.tz`.** As of 2026-07-16 the custom domain (`50pick.tz` + `www.`) DNS
-  resolves to an **Apache parking page** (`Server: Apache`, an "Index of /"), NOT
-  Railway — so `curl 50pick.tz` returns a misleading HTTP 200 from the wrong host.
-  Both customs are ACTIVE on the Railway service; DNS just isn't pointing at it.
-  **Ali/ops:** repoint `50pick.tz`/`www` DNS at Railway (CNAME to the service) —
-  real users currently see a directory listing, not the platform.
+- **✅ DNS IS DONE (re-verified 2026-07-18).** `https://50pick.tz`, `https://www.50pick.tz`
+  and `https://kipindi-production.up.railway.app` all serve the same Railway instance
+  (matching `/api/health` uptime). Verify against ANY of them. The former warning —
+  that the customs resolved to an Apache parking page — was true on 2026-07-16 and was
+  fixed by the Netpoa→Cloudflare cutover on 2026-07-17; it is kept here only so a
+  session reading an old transcript doesn't re-raise it as a live issue.
+  ⚠️ `NEXT_PUBLIC_APP_URL` (`https://www.50pick.tz`) is now load-bearing for MONEY:
+  it builds the Selcom card `redirect_url`/`cancel_url` and the email-confirmation
+  link. If it ever points somewhere that isn't the app, card deposits strand and
+  the deposit gate can't be opened.
 - **Migrations:** additive only where possible; test on local PG first (§3/§4).
 
 ## 1. Where the work stands — read this FIRST

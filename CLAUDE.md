@@ -20,14 +20,25 @@
 > (DNS→R2→payment keys→the switch) is `docs/next-session-prompt.md`. **Nothing in
 > the plan now blocks launch — the one remaining unblock is the payment aggregator
 > API keys.** Remaining code = optional admin features (A6/A7/A13–A16) + polish.
-> 🚀 **GO-LIVE IN PROGRESS (2026-07-17):** DNS cut over Netpoa→Cloudflare (records + mail
-> carried over; propagating — 50pick.tz still shows old Apache, use the Railway domain).
-> R2 KYC storage **LIVE** (bucket `50pick-kyc`). **SELCOM payments + operations control-plane
-> BUILT + MERGED + LIVE (Selcom OFF/mock default); deposit creds set + VALIDATED against the
-> live gateway.** ⚠️ deposit-only — withdrawals need Selcom disbursement creds + float PIN.
+> 🚀 **GO-LIVE (2026-07-18) — CARD DEPOSITS + EMAIL-GATED MONEY-IN SHIPPED @ `3a31a87`.**
+> **DNS is DONE**: `50pick.tz` AND `www.50pick.tz` both resolve to Railway and serve the
+> app (the old "Apache parking page" warning is obsolete — verified 2026-07-18).
+> R2 KYC storage **LIVE** (bucket `50pick-kyc`).
+> **Card deposits LIVE** (Selcom hosted checkout: `create-order` → gateway → `/wallet/deposit/return`
+> → signed order-status re-query → exactly-once credit) + **player receipts** (`/wallet/receipt/[id]`).
+> **Email is now mandatory at sign-up and GATES THE FIRST DEPOSIT**; sign-in takes email *or* phone.
+> Ladder: browse free → confirm email to deposit → KYC to withdraw.
+> 🔴 **TWO OPERATOR ACTIONS REMAIN BEFORE A REAL DEPOSIT WORKS** (both are audited admin-UI
+> decisions on purpose, so they carry a named actor — do not script them):
+>   1. **/admin/payments → set provider to `selcom`.** A persisted `mock` outranks
+>      `PAYMENT_AGGREGATOR`, so deposits are still refused (`PROVIDER_DOWN`) until flipped.
+>   2. **Clear the persisted `test.overrides` conflicted-resolution flag** (boot warns each
+>      deploy). POCA §16 is *enforced at runtime* regardless, so this is hygiene, not exposure.
+> ⚠️ deposit-only — withdrawals still need Selcom disbursement creds + float PIN.
+> ⚠️ `NEXT_PUBLIC_LICENSE_REF` is still the placeholder `TZ-GBT-2026-XXXX` — the footer shows
+> it as "(pending)". Replace with the real GBT number before public launch.
 > ⭐ **Full handoff + copy-paste go-live prompt: [`docs/GO-LIVE-CONTINUATION-PROMPT.md`](docs/GO-LIVE-CONTINUATION-PROMPT.md)**
-> (money model, creds/PINs, integration, pending, the switch). LEFT: 1 real deposit test →
-> flip deposits on · payout PIN · the go-live switch. Runbook: [`docs/GO-LIVE-RUNBOOK.md`](docs/GO-LIVE-RUNBOOK.md).
+> (money model, creds/PINs, integration, pending, the switch). Runbook: [`docs/GO-LIVE-RUNBOOK.md`](docs/GO-LIVE-RUNBOOK.md).
 > ⚠️ do NOT merge the stale remote `feat/payment-adapter`.
 > 🧭 **START HERE — two always-on skills:**
 > • **`50pick-standards`** (`.claude/skills/50pick-standards/SKILL.md`) — **how we build**:
