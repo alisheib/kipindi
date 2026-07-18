@@ -5,9 +5,10 @@
 > Full procedures/architecture live in [`GO-LIVE-RUNBOOK.md`](GO-LIVE-RUNBOOK.md); this file
 > is just "where are we RIGHT NOW."
 >
-> **Last updated: 2026-07-17 ~18:50 — 🚀 DOMAIN LIVE. https://50pick.tz + https://www.50pick.tz
+> **Last updated: 2026-07-18 ~03:55 — 🚀 DOMAIN LIVE. https://50pick.tz + https://www.50pick.tz
 > serve the app with valid Let's Encrypt certs; global DNS propagated (all major resolvers →
-> Railway). SELCOM built + LIVE (OFF/mock default, deposit creds validated). R2 KYC LIVE.
+> Railway). SELCOM built + LIVE (OFF/mock default; deposit creds GENUINELY validated via the
+> corrected `/checkout/order-status` probe — @213165c). R2 KYC LIVE.
 > Left: Selcom deposit go-live test + payout PIN + the final switch.**
 
 ## TL;DR status
@@ -19,7 +20,7 @@
 | Cloudflare DNS zone | 🟢 Done & verified | 31 records, 0 proxied; all correct incl. mail; verified via CF API |
 | Railway verify + cert | 🟢 **VALID** | both Verified: yes, cert VALID (Let's Encrypt CN=50pick.tz, exp 2026-10-15) |
 | R2 (KYC storage) | 🟢 **LIVE** | bucket `50pick-kyc`; 5 vars set in Railway; prod-env round-trip PASS |
-| Selcom payments (deposits) | 🟢 **LIVE code, OFF** | merged `main @f7d9081`; provider=mock default; deposit creds set + **validated** (live probe HTTP 404 = auth OK). Next: 1 real deposit test → flip provider→selcom |
+| Selcom payments (deposits) | 🟢 **LIVE code, OFF** | merged `main @213165c`; provider=mock default; deposit creds set + **GENUINELY validated** (corrected probe hits `/checkout/order-status` → HTTP 200 + envelope `404 order-not-found` = signature/creds/IP reached the real handler; a bad-auth request returns 401/403). Next: 1 real deposit test → flip provider→selcom |
 | Selcom payouts (withdrawals) | 🔴 Blocked | needs **disbursement creds + float PIN** from Selcom (what we have is deposit-only); set `PAYMENT_VENDOR_PIN` |
 | The go-live switch | ⚪ Not started | after the deposit test + certs: unset TEST_FUNDING, rebaseline, licence ref, AUTO_SETTLE — see `docs/GO-LIVE-CONTINUATION-PROMPT.md` §6 |
 
@@ -58,8 +59,15 @@
 ## Selcom payments — ✅ BUILT + LIVE (Selcom OFF), deposits validated (2026-07-17)
 - Adapter + operations control-plane merged to `main` (@f7d9081) and deployed. Provider defaults
   to `mock` — nothing routes to Selcom until an officer flips the toggle in `/admin/payments`.
-- **Deposit creds VALIDATED** end-to-end against the live gateway via the admin "Test Selcom"
-  probe (HTTP 404 = authenticated + IP-allow-listed; 401/403 would mean bad creds/signature).
+- **Deposit creds GENUINELY VALIDATED** end-to-end against the live gateway via the admin "Test
+  Selcom" probe (2026-07-18, @213165c). The probe now hits the real `/checkout/order-status`
+  endpoint (the same one the deposit reconciliation uses) and returned **HTTP 200 + envelope
+  `resultcode 404` / "50pick-conn-probe not found"** — an *application-level* order-not-found,
+  which means the signature + API key/secret + vendor + allow-listed IP were all accepted and the
+  request reached the real order-lookup handler. A bad signature/creds returns 401/403.
+  ⚠️ NOTE: the earlier "HTTP 404 = auth OK" reading (pre-@213165c) was a FALSE positive — the old
+  probe hit a non-existent `/order-status` path, so its 404 was transport-level (any unsigned
+  request 404s too) and never actually exercised the signature. Fixed in @213165c.
 - **Full handoff (money model, creds/PINs, integration, pending, go-live switch, copy-paste
   prompt): `docs/GO-LIVE-CONTINUATION-PROMPT.md`.** Signing digest: `docs/SELCOM-API-DIGEST.md`.
 - **Pending:** (1) one small real deposit test → flip deposits on; (2) **disbursement creds +
