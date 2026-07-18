@@ -15,6 +15,7 @@ import {
   mnoToSelcomCashin,
   selcomInitiateVerdict,
   verifySelcomCallback,
+  selcomPing,
 } from "../src/lib/server/selcom.ts";
 
 let pass = 0, fail = 0;
@@ -84,6 +85,24 @@ ok("wrong secret → rejected", verifySelcomCallback({ signedFields: cbHeaders["
 ok("tampered body → rejected", verifySelcomCallback({ signedFields: cbHeaders["Signed-Fields"], timestamp: cbTs, digestB64: cbHeaders.Digest, body: { ...cbBody, payment_status: "PENDING" }, apiSecret: cbSecret }) === false);
 ok("missing digest → rejected", verifySelcomCallback({ signedFields: cbHeaders["Signed-Fields"], timestamp: cbTs, digestB64: "", body: cbBody, apiSecret: cbSecret }) === false);
 ok("missing timestamp → rejected", verifySelcomCallback({ signedFields: cbHeaders["Signed-Fields"], timestamp: "", digestB64: cbHeaders.Digest, body: cbBody, apiSecret: cbSecret }) === false);
+
+// ── Connectivity probe hits the REAL signed endpoint ──────────────────────────
+// Regression guard: the "Test Selcom" probe MUST target /checkout/order-status
+// (the same endpoint the deposit reconciliation uses) — never the bare
+// /order-status, which doesn't exist on the gateway and would make a 404 "auth
+// OK" reading a false positive (any unsigned request to a missing path 404s too).
+{
+  const realFetch = globalThis.fetch;
+  let capturedUrl = "";
+  globalThis.fetch = (async (url: unknown) => {
+    capturedUrl = String(url);
+    return new Response(JSON.stringify({ resultcode: "000", message: "order not found" }), { status: 404, headers: { "content-type": "application/json" } });
+  }) as typeof fetch;
+  await selcomPing({ baseUrl: "https://apigw.selcommobile.com/v1", apiKey: "k", apiSecret: "s", vendor: "v", timeoutMs: 5_000 });
+  globalThis.fetch = realFetch;
+  ok("probe targets /checkout/order-status", /\/v1\/checkout\/order-status\?/.test(capturedUrl));
+  ok("probe does NOT hit bare /order-status", !/\/v1\/order-status\?/.test(capturedUrl));
+}
 
 console.log(`\nselcom-adapter: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

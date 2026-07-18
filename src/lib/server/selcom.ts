@@ -314,7 +314,7 @@ export async function selcomVerifyCashin(env: SelcomEnv, transid: string): Promi
  */
 export async function selcomPing(env: SelcomEnv): Promise<{ reachable: boolean; authOk: boolean; httpStatus: number; resultcode?: string; message?: string; error?: string }> {
   try {
-    const res = await selcomFetch(env, "GET", "/order-status", { order_id: "50pick-conn-probe" });
+    const res = await selcomFetch(env, "GET", "/checkout/order-status", { order_id: "50pick-conn-probe" });
     // Auth is accepted unless Selcom explicitly rejects it (401/403). A 200/404
     // with a normal envelope means the signature was accepted (the order just
     // doesn't exist) — exactly what we want to confirm without moving money.
